@@ -1,0 +1,24 @@
+# BossRushMod 专用 .gitignore
+
+# 编译输出
+Build/
+*.dll
+*.pdb
+
+# 临时/备份文件
+*_tmp.cs
+*_backup.cs
+*.bak
+
+# 日志
+*.log
+
+# 本地开发文件（不需要版本控制）
+big_preview.png
+BossRush_学习笔记.md
+bossrush模式D设计文档.md
+cleanup_old_files.bat
+compile_official.bat
+info.ini
+ngm.mp3
+test_bossrush_official.bat

@@ -1,0 +1,1807 @@
+// ============================================================================
+// WavesArena.cs - 波次与竞技场管理
+// ============================================================================
+// 模块说明：
+//   管理 BossRush 模组的波次系统和竞技场逻辑，包括：
+//   - 波次敌人生成和管理
+//   - 竞技场几何体构建（地面、围墙、掩体）
+//   - 玩家传送到竞技场
+//   - 波次间隔倒计时
+//   
+// 主要功能：
+//   - StartBossRush: 开始 BossRush 模式
+//   - TeleportToBossRushAsync: 异步传送到竞技场
+//   - BuildBossRushArenaGeometry: 构建竞技场几何体
+//   - SpawnNextEnemy: 生成下一波敌人
+// ============================================================================
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using UnityEngine;
+using Cysharp.Threading.Tasks;
+using ItemStatsSystem;
+using Duckov.ItemUsage;
+using Duckov.Scenes;
+using Duckov.Economy;
+using System.Reflection;
+using UnityEngine.Events;
+using UnityEngine.SceneManagement;
+using Duckov.UI.DialogueBubbles;
+using Duckov.UI;
+using UnityEngine.AI;
+using Duckov.ItemBuilders;
+
+namespace BossRush
+{
+    /// <summary>
+    /// 波次与竞技场管理模块
+    /// </summary>
+    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    {
+        /// <summary>
+        /// 开始 BossRush 模式（WavesArena 备份实现，不作为主入口）
+        /// </summary>
+        private void StartBossRush_WavesArena(BossRushInteractable interactionSource = null)
+        {
+            if (IsActive)
+            {
+                ShowMessage("BossRush已经在进行中！");
+                return;
+            }
+
+            // 没有从交互点传入时，使用默认难度（每波1个Boss）
+            if (interactionSource == null)
+            {
+                bossesPerWave = 1;
+            }
+
+            // 标记：后续进入 DEMO 挑战地图应由 BossRush 控制
+            bossRushArenaPlanned = true;
+            
+            // 1. 尝试使用 CharacterMainControl.Main (如果是静态单例)
+            // 由于不确定是否存在静态 Main 属性，我们使用 FindObjectOfType
+            CharacterMainControl main = null;
+            try
+            {
+                main = CharacterMainControl.Main;
+            }
+            catch { }
+
+            if (main != null)
+            {
+                playerCharacter = main;
+                try
+                {
+                    Debug.Log("[BossRush] StartBossRush: 使用 CharacterMainControl.Main 作为玩家角色: " + main.name + " (scene=" + main.gameObject.scene.name + ") pos=" + main.transform.position);
+                }
+                catch { }
+            }
+            else
+            {
+                try
+                {
+                    var candidate = FindObjectOfType<CharacterMainControl>();
+                    if (candidate != null)
+                    {
+                        bool isMain = false;
+                        try
+                        {
+                            isMain = CharacterMainControlExtensions.IsMainCharacter(candidate);
+                        }
+                        catch { }
+                        try
+                        {
+                            Debug.Log("[BossRush] StartBossRush: FindObjectOfType 得到候选角色: " + candidate.name + " (scene=" + candidate.gameObject.scene.name + ") pos=" + candidate.transform.position + ", IsMainCharacter=" + isMain);
+                        }
+                        catch { }
+                        if (isMain)
+                        {
+                            playerCharacter = candidate;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            // 2. 如果没找到，尝试查找所有 CharacterMainControl 并检查 IsMainCharacter 属性
+            if (playerCharacter == null)
+            {
+                try
+                {
+                    var allCharacters = FindObjectsOfType<CharacterMainControl>();
+                    foreach (var character in allCharacters)
+                    {
+                        bool isMain = false;
+                        try
+                        {
+                            isMain = CharacterMainControlExtensions.IsMainCharacter(character);
+                        }
+                        catch { }
+                        try
+                        {
+                            Debug.Log("[BossRush] StartBossRush: 扫描角色: " + character.name + " (scene=" + character.gameObject.scene.name + ") pos=" + character.transform.position + ", IsMainCharacter=" + isMain);
+                        }
+                        catch { }
+                        if (isMain)
+                        {
+                            playerCharacter = character;
+                            break;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            // 3. 如果还是没找到，尝试通过 Tag 查找
+            if (playerCharacter == null)
+            {
+                try
+                {
+                    var playerObj = GameObject.FindGameObjectWithTag("Player");
+                    if (playerObj != null)
+                    {
+                        var candidate = playerObj.GetComponent<CharacterMainControl>();
+                        if (candidate != null)
+                        {
+                            bool isMain = false;
+                            try
+                            {
+                                isMain = CharacterMainControlExtensions.IsMainCharacter(candidate);
+                            }
+                            catch { }
+                            try
+                            {
+                                Debug.Log("[BossRush] StartBossRush: Tag=Player 得到角色: " + candidate.name + " (scene=" + candidate.gameObject.scene.name + ") pos=" + candidate.transform.position + ", IsMainCharacter=" + isMain);
+                            }
+                            catch { }
+                            playerCharacter = candidate;
+                        }
+                        else
+                        {
+                            Debug.LogWarning("[BossRush] StartBossRush: Tag=Player 对象上没有 CharacterMainControl 组件: " + playerObj.name);
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[BossRush] StartBossRush: 未找到 Tag=Player 对象");
+                    }
+                }
+                catch { }
+            }
+            
+            if (playerCharacter == null)
+            {
+                ShowMessage("无法找到玩家角色！请确保在游戏中！");
+                Debug.LogError("[BossRush] 无法找到玩家角色！");
+                return;
+            }
+            else
+            {
+                try
+                {
+                    var finalMain = playerCharacter as CharacterMainControl;
+                    if (finalMain != null)
+                    {
+                        Debug.Log("[BossRush] StartBossRush: 最终锁定玩家角色: " + finalMain.name + " (scene=" + finalMain.gameObject.scene.name + ") pos=" + finalMain.transform.position);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[BossRush] StartBossRush: 最终 playerCharacter 不是 CharacterMainControl 类型: " + playerCharacter.name);
+                    }
+                }
+                catch { }
+            }
+            
+            ShowMessage("开始BossRush模式，正在前往竞技场...");
+            Debug.Log("[BossRush] 开始BossRush模式，正在前往竞技场...");
+            
+            try
+            {
+                if (MultiSceneCore.Instance != null)
+                {
+                    CharacterMainControl finalMainForTeleport = null;
+                    try
+                    {
+                        finalMainForTeleport = playerCharacter as CharacterMainControl;
+                    }
+                    catch {}
+                    if (finalMainForTeleport == null)
+                    {
+                        try
+                        {
+                            finalMainForTeleport = CharacterMainControl.Main;
+                        }
+                        catch {}
+                    }
+
+                    if (finalMainForTeleport != null)
+                    {
+                        TeleportToBossRushAsync();
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[BossRush] StartBossRush: 未找到用于传送的玩家角色 CharacterMainControl");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[BossRush] StartBossRush: MultiSceneCore.Instance 为 null，尝试使用 SceneLoader 方案");
+                    TeleportToBossRushAsync();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] StartBossRush: 启动传送任务时出错: " + e.Message);
+            }
+
+            // 直接开始第一波Boss（会在短暂延迟后在玩家附近生成）
+        }
+
+        private async void TeleportToBossRushAsync_WavesArena()
+        {
+            bool usedTicketTeleport = false;
+
+            // 直接使用 SceneLoader 方案加载 BossRush 场景（与原版挑战船票流程一致）
+            try
+            {
+                if (SceneLoader.Instance != null)
+                {
+                    Debug.Log("[BossRush] TeleportToBossRushAsync: 使用 SceneLoader.LoadScene 加载 BossRush 场景, SceneID=" + BossRushArenaSceneID);
+                    try
+                    {
+                        await SceneLoader.Instance.LoadScene(
+                            BossRushArenaSceneID,
+                            null,
+                            false,
+                            false,
+                            true,
+                            false,
+                            default(MultiSceneLocation),
+                            true,
+                            false
+                        );
+                        usedTicketTeleport = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError("[BossRush] TeleportToBossRushAsync: SceneLoader.LoadScene 调用失败: " + ex.Message + "\n" + ex.StackTrace);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("[BossRush] TeleportToBossRushAsync: SceneLoader.Instance 为 null，无法加载 BossRush 场景");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[BossRush] TeleportToBossRushAsync: 处理 SceneLoader 方案时出错: " + ex.Message);
+            }
+
+            if (!usedTicketTeleport)
+            {
+                ShowMessage("进入BossRush场景失败，请查看日志");
+            }
+        }
+
+        private void EnsureBossRushArenaForScene_WavesArena(Scene scene)
+        {
+            if (arenaCreated && arenaStartPoint != null && arenaStartPoint.scene == scene)
+            {
+                return;
+            }
+
+            try
+            {
+                SceneLocationsProvider provider = null;
+                System.Collections.ObjectModel.ReadOnlyCollection<SceneLocationsProvider> providers = SceneLocationsProvider.ActiveProviders;
+                if (providers != null)
+                {
+                    foreach (SceneLocationsProvider p in providers)
+                    {
+                        if (p != null && p.gameObject.scene == scene)
+                        {
+                            provider = p;
+                            break;
+                        }
+                    }
+                }
+
+                if (provider == null)
+                {
+                    Debug.LogWarning("[BossRush] EnsureBossRushArenaForScene: 未找到 SceneLocationsProvider, scene=" + scene.name);
+                    return;
+                }
+
+                Transform arenaRoot = provider.transform.Find("BossRushArena");
+                if (arenaRoot == null)
+                {
+                    GameObject arenaRootObj = new GameObject("BossRushArena");
+                    arenaRootObj.transform.SetParent(provider.transform);
+                    arenaRootObj.transform.localPosition = new Vector3(0f, 150f, 0f);
+                    arenaRoot = arenaRootObj.transform;
+                }
+
+                arenaStartPoint = arenaRoot.gameObject;
+                arenaCreated = true;
+
+                Transform spawn = arenaRoot.Find("SpawnPoint");
+                if (spawn == null)
+                {
+                    GameObject sp = new GameObject("SpawnPoint");
+                    sp.transform.SetParent(arenaRoot);
+                    sp.transform.localPosition = new Vector3(0f, 2f, 0f);
+                }
+
+                BuildBossRushArenaGeometry(arenaRoot);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] EnsureBossRushArenaForScene 出错: " + e.Message);
+            }
+        }
+
+        private void BuildBossRushArenaGeometry_WavesArena(Transform arenaRoot)
+        {
+            if (arenaRoot == null)
+            {
+                return;
+            }
+
+            // 如果已经有开始按钮，认为竞技场已经搭建完毕
+            if (arenaRoot.Find("BossRushStartButton") != null)
+            {
+                return;
+            }
+
+            try
+            {
+                // 创建地面平台
+                GameObject platform = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                platform.name = "BossRushPlatform";
+                platform.transform.SetParent(arenaRoot);
+                platform.transform.localPosition = Vector3.zero;
+                platform.transform.localScale = new Vector3(100, 2, 100); // 100x100的平台
+                int originalLayer = platform.layer;
+
+                // 将平台的 Layer 设置为游戏的 groundLayerMask 中的第一个有效层，确保角色与平台的交互与官方地面一致
+                try
+                {
+                    LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
+                    int maskValue = groundMask.value;
+                    int groundLayer = originalLayer;
+                    for (int i = 0; i < 32; i++)
+                    {
+                        if ((maskValue & (1 << i)) != 0)
+                        {
+                            groundLayer = i;
+                            break;
+                        }
+                    }
+                    platform.layer = groundLayer;
+                    Debug.Log("[BossRush] BuildBossRushArenaGeometry: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
+                }
+                catch {}
+
+                // 设置材质颜色，方便视觉识别
+                Renderer renderer = platform.GetComponent<Renderer>();
+                MeshFilter srcMeshFilter = platform.GetComponent<MeshFilter>();
+                if (renderer != null)
+                {
+                    renderer.material.color = new Color(0.3f, 0.3f, 0.3f, 1f);
+                }
+                if (renderer != null && srcMeshFilter != null)
+                {
+                    GameObject visual = new GameObject("BossRushPlatform_Visual");
+                    visual.transform.SetParent(arenaRoot);
+                    visual.transform.localPosition = platform.transform.localPosition;
+                    visual.transform.localRotation = platform.transform.localRotation;
+                    visual.transform.localScale = platform.transform.localScale;
+                    MeshFilter visualMF = visual.AddComponent<MeshFilter>();
+                    visualMF.sharedMesh = srcMeshFilter.sharedMesh;
+                    MeshRenderer visualRenderer = visual.AddComponent<MeshRenderer>();
+                    visualRenderer.sharedMaterial = renderer.material;
+                    visual.layer = originalLayer;
+                    renderer.enabled = false;
+                }
+
+                // 在平台四周创建可见矮墙，防止玩家掉出平台
+                try
+                {
+                    float arenaSize = 100f; // 对应 plane 10x10 缩放后的尺寸
+                    float halfSize = arenaSize * 0.5f;
+                    float wallHeight = 4f;
+                    float wallThickness = 2f;
+
+                    // 计算墙体使用的 Layer（来自 wallLayerMask）
+                    LayerMask wallMask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
+                    int wallMaskValue = wallMask.value;
+                    int wallLayer = platform.layer;
+                    for (int i = 0; i < 32; i++)
+                    {
+                        if ((wallMaskValue & (1 << i)) != 0)
+                        {
+                            wallLayer = i;
+                            break;
+                        }
+                    }
+
+                    // 北墙（+Z）
+                    GameObject northWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    northWall.name = "BossRushWall_North";
+                    northWall.transform.SetParent(arenaRoot);
+                    northWall.transform.localPosition = new Vector3(0f, wallHeight * 0.5f, halfSize);
+                    northWall.transform.localScale = new Vector3(arenaSize, wallHeight, wallThickness);
+                    northWall.layer = wallLayer;
+
+                    // 南墙（-Z）
+                    GameObject southWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    southWall.name = "BossRushWall_South";
+                    southWall.transform.SetParent(arenaRoot);
+                    southWall.transform.localPosition = new Vector3(0f, wallHeight * 0.5f, -halfSize);
+                    southWall.transform.localScale = new Vector3(arenaSize, wallHeight, wallThickness);
+                    southWall.layer = wallLayer;
+
+                    // 东墙（+X）
+                    GameObject eastWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    eastWall.name = "BossRushWall_East";
+                    eastWall.transform.SetParent(arenaRoot);
+                    eastWall.transform.localPosition = new Vector3(halfSize, wallHeight * 0.5f, 0f);
+                    eastWall.transform.localScale = new Vector3(wallThickness, wallHeight, arenaSize);
+                    eastWall.layer = wallLayer;
+
+                    // 西墙（-X）
+                    GameObject westWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    westWall.name = "BossRushWall_West";
+                    westWall.transform.SetParent(arenaRoot);
+                    westWall.transform.localPosition = new Vector3(-halfSize, wallHeight * 0.5f, 0f);
+                    westWall.transform.localScale = new Vector3(wallThickness, wallHeight, arenaSize);
+                    westWall.layer = wallLayer;
+
+                    // 在场地中添加一些简单掩体
+                    Vector3[] coverPositions = new Vector3[]
+                    {
+                        new Vector3(15f, 1.5f, 0f),
+                        new Vector3(-15f, 1.5f, 0f),
+                        new Vector3(0f, 1.5f, 15f),
+                        new Vector3(0f, 1.5f, -15f)
+                    };
+
+                    for (int ci = 0; ci < coverPositions.Length; ci++)
+                    {
+                        GameObject cover = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        cover.name = "BossRushCover_" + ci;
+                        cover.transform.SetParent(arenaRoot);
+                        cover.transform.localPosition = coverPositions[ci];
+                        cover.transform.localScale = new Vector3(4f, 3f, 4f);
+                        cover.layer = wallLayer;
+                    }
+
+                    // 在竞技场周围创建一圈简单的可见边界方块，模拟粒子环效果
+                    try
+                    {
+                        GameObject fxRoot = new GameObject("BossRushBoundaryFX");
+                        fxRoot.transform.SetParent(arenaRoot);
+                        fxRoot.transform.localPosition = Vector3.zero;
+
+                        float fxRadius = halfSize + 5f;
+                        int fxCount = 16;
+                        for (int i = 0; i < fxCount; i++)
+                        {
+                            float ang = (float)i / (float)fxCount * Mathf.PI * 2f;
+                            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            marker.name = "BoundaryFX_" + i;
+                            marker.transform.SetParent(fxRoot.transform);
+                            marker.transform.localPosition = new Vector3(Mathf.Cos(ang) * fxRadius, 1.5f, Mathf.Sin(ang) * fxRadius);
+                            marker.transform.localScale = new Vector3(1.5f, 3f, 1.5f);
+                            marker.layer = wallLayer;
+
+                            Renderer mr = marker.GetComponent<Renderer>();
+                            if (mr != null)
+                            {
+                                mr.material.color = new Color(0.2f, 0.8f, 1.0f, 1f);
+                            }
+                        }
+
+                        // 为竞技场中心添加一点局部光源，避免场景过暗
+                        GameObject lightObj = new GameObject("BossRushLight");
+                        lightObj.transform.SetParent(arenaRoot);
+                        lightObj.transform.localPosition = new Vector3(0f, 15f, 0f);
+                        Light pointLight = lightObj.AddComponent<Light>();
+                        pointLight.type = LightType.Point;
+                        pointLight.range = arenaSize + 40f;
+                        pointLight.intensity = 1.5f;
+                        pointLight.color = new Color(0.9f, 0.9f, 1.0f, 1f);
+                        pointLight.shadows = LightShadows.None;
+                    }
+                    catch {}
+
+                    Debug.Log("[BossRush] BuildBossRushArenaGeometry: 创建围墙、掩体和边界标记完成，使用 Layer: " + wallLayer);
+                }
+                catch {}
+
+                Debug.Log("[BossRush] BuildBossRushArenaGeometry: 竞技场创建完成");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] BuildBossRushArenaGeometry 出错: " + e.Message);
+            }
+        }
+
+        private IEnumerator TeleportPlayerToArenaDelayed_WavesArena()
+        {
+            // 给 MultiScene 系统和其他管理器一点时间完成初始化，然后再用老的 SetPosition 方案把玩家拉到竞技场
+            yield return new UnityEngine.WaitForSeconds(0.5f);
+            TeleportPlayerToArena();
+        }
+
+        private bool TryResolveTeleportLocation_WavesArena(BossRushInteractable interactionSource, CharacterMainControl main, out MultiSceneLocation location)
+        {
+            location = default(MultiSceneLocation);
+            try
+            {
+                MultiSceneTeleporter teleporter = null;
+                Transform sourceTransform = null;
+                if (interactionSource != null)
+                {
+                    sourceTransform = interactionSource.transform;
+                    try
+                    {
+                        teleporter = sourceTransform.GetComponentInParent<MultiSceneTeleporter>();
+                    }
+                    catch {}
+                }
+
+                Vector3 refPos = Vector3.zero;
+                if (main != null)
+                {
+                    refPos = main.transform.position;
+                }
+                else if (sourceTransform != null)
+                {
+                    refPos = sourceTransform.position;
+                }
+
+                if (teleporter == null)
+                {
+                    try
+                    {
+                        MultiSceneTeleporter[] allTeleporters = UnityEngine.Object.FindObjectsOfType<MultiSceneTeleporter>(true);
+                        float bestDist = float.MaxValue;
+                        MultiSceneTeleporter best = null;
+                        foreach (MultiSceneTeleporter t in allTeleporters)
+                        {
+                            if (t == null)
+                            {
+                                continue;
+                            }
+                            float d = (t.transform.position - refPos).sqrMagnitude;
+                            if (d < bestDist)
+                            {
+                                bestDist = d;
+                                best = t;
+                            }
+                        }
+                        teleporter = best;
+                    }
+                    catch {}
+                }
+
+                if (teleporter != null)
+                {
+                    location = teleporter.Target;
+                    try
+                    {
+                        Debug.Log("[BossRush] TryResolveTeleportLocation: 使用 MultiSceneTeleporter " + teleporter.name + " (scene=" + teleporter.gameObject.scene.name + ") Target.SceneID=" + location.SceneID + " LocationName=" + location.LocationName);
+                    }
+                    catch {}
+                    return true;
+                }
+            }
+            catch {}
+            return false;
+        }
+
+        /// <summary>
+        /// 创建竞技场（备用老实现）
+        /// </summary>
+        private void CreateArena_WavesArena()
+        {
+            // 创建竞技场起点
+            if (arenaStartPoint == null)
+            {
+                arenaStartPoint = new GameObject("BossRushArena");
+                // 将竞技场放在当前玩家位置上方一段高度，形成独立的空中平台
+                Vector3 basePos = Vector3.zero;
+                if (playerCharacter != null)
+                {
+                    basePos = playerCharacter.transform.position;
+                }
+                else
+                {
+                    basePos = new Vector3(500f, 50f, 500f);
+                }
+                arenaStartPoint.transform.position = basePos + new Vector3(0f, 50f, 0f);
+                
+                // 创建地面平台
+                GameObject platform = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                platform.transform.SetParent(arenaStartPoint.transform);
+                platform.transform.localPosition = Vector3.zero;
+                platform.transform.localScale = new Vector3(10, 1, 10); // 100x100的平台
+
+                // 将平台的 Layer 设置为游戏的 groundLayerMask 中的第一个有效层，确保角色与平台的交互与官方地面一致
+                try
+                {
+                    LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
+                    int maskValue = groundMask.value;
+                    int groundLayer = platform.layer;
+                    for (int i = 0; i < 32; i++)
+                    {
+                        if ((maskValue & (1 << i)) != 0)
+                        {
+                            groundLayer = i;
+                            break;
+                        }
+                    }
+                    platform.layer = groundLayer;
+                    Debug.Log("[BossRush] CreateArena: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
+                }
+                catch {}
+                
+                // 设置材质
+                var renderer = platform.GetComponent<Renderer>();
+                if (renderer != null)
+                {
+                    renderer.material.color = new Color(0.3f, 0.3f, 0.3f, 1f);
+                }
+
+                // 在平台四周创建可见矮墙，防止玩家掉出平台
+                try
+                {
+                    float arenaSize = 100f; // 对应 plane 10x10 缩放后的尺寸
+                    float halfSize = arenaSize * 0.5f;
+                    float wallHeight = 4f;
+                    float wallThickness = 2f;
+
+                    // 计算墙体使用的 Layer（来自 wallLayerMask）
+                    LayerMask wallMask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
+                    int wallMaskValue = wallMask.value;
+                    int wallLayer = platform.layer;
+                    for (int i = 0; i < 32; i++)
+                    {
+                        if ((wallMaskValue & (1 << i)) != 0)
+                        {
+                            wallLayer = i;
+                            break;
+                        }
+                    }
+
+                    // 北墙（+Z）
+                    GameObject northWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    northWall.name = "BossRushWall_North";
+                    northWall.transform.SetParent(arenaStartPoint.transform);
+                    northWall.transform.localPosition = new Vector3(0f, wallHeight * 0.5f, halfSize);
+                    northWall.transform.localScale = new Vector3(arenaSize, wallHeight, wallThickness);
+                    northWall.layer = wallLayer;
+
+                    // 南墙（-Z）
+                    GameObject southWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    southWall.name = "BossRushWall_South";
+                    southWall.transform.SetParent(arenaStartPoint.transform);
+                    southWall.transform.localPosition = new Vector3(0f, wallHeight * 0.5f, -halfSize);
+                    southWall.transform.localScale = new Vector3(arenaSize, wallHeight, wallThickness);
+                    southWall.layer = wallLayer;
+
+                    // 东墙（+X）
+                    GameObject eastWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    eastWall.name = "BossRushWall_East";
+                    eastWall.transform.SetParent(arenaStartPoint.transform);
+                    eastWall.transform.localPosition = new Vector3(halfSize, wallHeight * 0.5f, 0f);
+                    eastWall.transform.localScale = new Vector3(wallThickness, wallHeight, arenaSize);
+                    eastWall.layer = wallLayer;
+
+                    // 西墙（-X）
+                    GameObject westWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    westWall.name = "BossRushWall_West";
+                    westWall.transform.SetParent(arenaStartPoint.transform);
+                    westWall.transform.localPosition = new Vector3(-halfSize, wallHeight * 0.5f, 0f);
+                    westWall.transform.localScale = new Vector3(wallThickness, wallHeight, arenaSize);
+                    westWall.layer = wallLayer;
+
+                    // 在场地中添加一些简单掩体
+                    Vector3[] coverPositions = new Vector3[]
+                    {
+                        new Vector3(15f, 1.5f, 0f),
+                        new Vector3(-15f, 1.5f, 0f),
+                        new Vector3(0f, 1.5f, 15f),
+                        new Vector3(0f, 1.5f, -15f)
+                    };
+
+                    for (int ci = 0; ci < coverPositions.Length; ci++)
+                    {
+                        GameObject cover = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        cover.name = "BossRushCover_" + ci;
+                        cover.transform.SetParent(arenaStartPoint.transform);
+                        cover.transform.localPosition = coverPositions[ci];
+                        cover.transform.localScale = new Vector3(4f, 3f, 4f);
+                        cover.layer = wallLayer;
+                    }
+
+                    Debug.Log("[BossRush] CreateArena: 创建围墙和掩体完成，使用 Layer: " + wallLayer);
+                }
+                catch {}
+                
+                Debug.Log("[BossRush] 竞技场创建完成");
+            }
+        }
+
+        /// <summary>
+        /// 传送玩家到竞技场区域
+        /// </summary>
+        private void TeleportPlayerToArena_WavesArena()
+        {
+            // 确保 playerCharacter 缓存可用
+            if (playerCharacter == null)
+            {
+                try
+                {
+                    playerCharacter = CharacterMainControl.Main;
+                }
+                catch {}
+
+                if (playerCharacter == null)
+                {
+                    try
+                    {
+                        var candidate = UnityEngine.Object.FindObjectOfType<CharacterMainControl>();
+                        if (candidate != null)
+                        {
+                            bool isMain = false;
+                            try
+                            {
+                                isMain = CharacterMainControlExtensions.IsMainCharacter(candidate);
+                            }
+                            catch {}
+                            if (isMain)
+                            {
+                                playerCharacter = candidate;
+                            }
+                        }
+                    }
+                    catch {}
+                }
+            }
+
+            // 确保 arenaStartPoint 指向当前场景的竞技场根节点
+            if (arenaStartPoint == null)
+            {
+                try
+                {
+                    EnsureBossRushArenaForScene(SceneManager.GetActiveScene());
+                }
+                catch {}
+            }
+
+            if (playerCharacter == null || arenaStartPoint == null)
+            {
+                Debug.LogError("[BossRush] TeleportPlayerToArena: playerCharacter 或 arenaStartPoint 为空，无法传送");
+                return;
+            }
+
+            // 尝试获取 CharacterMainControl 实例
+            CharacterMainControl main = playerCharacter as CharacterMainControl;
+            if (main == null)
+            {
+                try
+                {
+                    main = CharacterMainControl.Main;
+                }
+                catch {}
+            }
+
+            if (main == null)
+            {
+                Debug.LogError("[BossRush] TeleportPlayerToArena: 无法获取 CharacterMainControl 实例");
+                return;
+            }
+
+            bool isMainCharacter = false;
+            try
+            {
+                isMainCharacter = CharacterMainControlExtensions.IsMainCharacter(main);
+            }
+            catch {}
+            try
+            {
+                Debug.Log("[BossRush] TeleportPlayerToArena: 选中传送目标角色: " + main.name + " (scene=" + main.gameObject.scene.name + ") pos=" + main.transform.position + ", IsMainCharacter=" + isMainCharacter);
+            }
+            catch {}
+
+            // 传送到竞技场
+            Vector3 fromPos = main.transform.position;
+            Vector3 arenaPosition = arenaStartPoint.transform.position + new Vector3(0f, 5f, 0f);
+
+            // 使用官方的地面/墙体 LayerMask 尝试向下射线，修正落点到实际地面，避免无限下落
+            Vector3 finalPosition = arenaPosition;
+            try
+            {
+                LayerMask mask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask | Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
+                RaycastHit hit;
+                Vector3 rayOrigin = arenaPosition + new Vector3(0f, 50f, 0f);
+                if (Physics.Raycast(rayOrigin, Vector3.down, out hit, 200f, mask, QueryTriggerInteraction.Ignore))
+                {
+                    finalPosition = hit.point + new Vector3(0f, 1f, 0f);
+                    Debug.Log("[BossRush] TeleportPlayerToArena: 使用 Raycast 修正落点为地面: " + finalPosition + " 命中碰撞体: " + hit.collider.name);
+                }
+                else
+                {
+                    Debug.Log("[BossRush] TeleportPlayerToArena: 未找到地面碰撞体，使用默认落点: " + arenaPosition);
+                }
+            }
+            catch {}
+
+            // 获取相机并记录偏移，参照 InvisibleTeleporter 的做法
+            GameCamera cam = null;
+            try
+            {
+                cam = GameCamera.Instance;
+            }
+            catch {}
+
+            Vector3 camOffset = Vector3.zero;
+            if (cam != null)
+            {
+                camOffset = cam.transform.position - fromPos;
+                try
+                {
+                    Debug.Log("[BossRush] TeleportPlayerToArena: Camera cullingMask = " + cam.renderCamera.cullingMask);
+                }
+                catch {}
+            }
+
+            Debug.Log("[BossRush] TeleportPlayerToArena: from " + fromPos + " (scene=" + main.gameObject.scene.name + ") to " + finalPosition + " (arenaScene=" + arenaStartPoint.scene.name + ")");
+
+            try
+            {
+                main.SetPosition(finalPosition);
+                Debug.Log("[BossRush] 使用 CharacterMainControl.SetPosition 传送玩家");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] SetPosition 传送出错: " + e.Message + "，改用 transform.position");
+                main.transform.position = arenaPosition;
+            }
+
+            // 同步相机位置，避免相机留在原地导致视觉错觉
+            if (cam != null)
+            {
+                cam.transform.position = main.transform.position + camOffset;
+                Debug.Log("[BossRush] 已同步相机位置到 " + cam.transform.position);
+            }
+        }
+
+        private void TryCreateReturnInteractable_WavesArena()
+        {
+            try
+            {
+                if (GameObject.Find("BossRushReturnButton_DemoChallenge") != null)
+                {
+                    return;
+                }
+
+                CharacterMainControl main = null;
+                try
+                {
+                    main = CharacterMainControl.Main;
+                }
+                catch {}
+
+                if (main == null)
+                {
+                    try
+                    {
+                        main = playerCharacter as CharacterMainControl;
+                    }
+                    catch {}
+                }
+
+                if (main == null)
+                {
+                    Debug.LogWarning("[BossRush] TryCreateReturnInteractable: 无法找到玩家角色");
+                    return;
+                }
+
+                Vector3 pos = main.transform.position + main.transform.forward * 2f;
+                pos.y += 0.5f;
+
+                GameObject returnButton = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                returnButton.name = "BossRushReturnButton_DemoChallenge";
+                returnButton.transform.position = pos;
+
+                var renderer = returnButton.GetComponent<Renderer>();
+                if (renderer != null)
+                {
+                    renderer.material.color = Color.green;
+                }
+
+                var col = returnButton.GetComponent<Collider>();
+                if (col != null)
+                {
+                    col.isTrigger = true;
+                }
+
+                returnButton.AddComponent<BossRushReturnInteractable>();
+
+                Debug.Log("[BossRush] 已创建 BossRush 返回出生点交互点");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] TryCreateReturnInteractable 出错: " + e.Message);
+            }
+        }
+
+        private void ReturnToBossRushStart_WavesArena()
+        {
+            try
+            {
+                CharacterMainControl main = null;
+                try
+                {
+                    main = CharacterMainControl.Main;
+                }
+                catch {}
+
+                if (main == null)
+                {
+                    try
+                    {
+                        main = playerCharacter as CharacterMainControl;
+                    }
+                    catch {}
+                }
+
+                if (main == null)
+                {
+                    Debug.LogWarning("[BossRush] ReturnToBossRushStart: 无法找到玩家角色");
+                    return;
+                }
+
+                Vector3 targetPos = demoChallengeStartPosition;
+                if (targetPos == Vector3.zero)
+                {
+                    targetPos = main.transform.position;
+                }
+
+                try
+                {
+                    main.SetPosition(targetPos);
+                    Debug.Log("[BossRush] ReturnToBossRushStart: 使用 SetPosition 将玩家传送回 BossRush 起始位置 " + targetPos);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("[BossRush] ReturnToBossRushStart: SetPosition 出错: " + e.Message + "，改用 transform.position");
+                    main.transform.position = targetPos;
+                }
+
+                ShowMessage("已返回出生点");
+            }
+            catch {}
+        }
+
+        /// <summary>
+        /// 开始第一波Boss（在竞技场内）- 单波生成模式
+        /// </summary>
+        public void StartFirstWave()
+        {
+            if (!IsActive)
+            {
+                // 记录玩家当前位置作为出生点（BossRush失败时传送回此处）
+                try
+                {
+                    CharacterMainControl main = CharacterMainControl.Main;
+                    if (main != null)
+                    {
+                        demoChallengeStartPosition = main.transform.position;
+                        DevLog("[BossRush] 已记录玩家出生点: " + demoChallengeStartPosition);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("[BossRush] 记录玩家出生点失败: " + e.Message);
+                }
+                
+                // 每次挑战开始时随机打乱本次要挑战的敌人顺序
+                try
+                {
+                    if (enemyPresets != null && enemyPresets.Count > 1)
+                    {
+                        for (int i = enemyPresets.Count - 1; i > 0; i--)
+                        {
+                            int j = UnityEngine.Random.Range(0, i + 1);
+                            if (j != i)
+                            {
+                                var tmp = enemyPresets[i];
+                                enemyPresets[i] = enemyPresets[j];
+                                enemyPresets[j] = tmp;
+                            }
+                        }
+                        DevLog("[BossRush] 已随机打乱本次 BossRush 的敌人出场顺序");
+                    }
+                }
+                catch (Exception shuffleEx)
+                {
+                    Debug.LogWarning("[BossRush] 打乱敌人顺序时出错: " + shuffleEx.Message);
+                }
+
+                // 清理场景中现有的敌人，准备开始BossRush
+                ClearEnemiesForBossRush();
+                
+                ShowMessage("开始BossRush挑战！");
+                SetBossRushRuntimeActive(true);
+                currentEnemyIndex = 0;
+                defeatedEnemies = 0;
+                totalEnemies = enemyPresets.Count;
+                bossesInCurrentWaveTotal = 0;
+                bossesInCurrentWaveRemaining = 0;
+                currentWaveBosses.Clear();
+                
+                // 清空掉落追踪字典
+                bossSpawnTimes.Clear();
+                bossOriginalLootCounts.Clear();
+                countedDeadBosses.Clear();
+                
+                DevLog("[BossRush] 启动单波生成模式，共 " + totalEnemies + " 个敌人");
+                
+                // 订阅敌人死亡事件（只订阅一次）
+                Health.OnDead -= OnEnemyDiedWithDamageInfo; // 先取消避免重复
+                Health.OnDead += OnEnemyDiedWithDamageInfo;
+                
+                // 立即生成第一个敌人
+                SpawnNextEnemy();
+            }
+        }
+        
+        private static Vector3 GetSafeBossSpawnPosition(Vector3 rawPosition)
+        {
+            Vector3 result = rawPosition;
+            try
+            {
+                Vector3 origin = rawPosition + Vector3.up * 5f;
+                float maxDistance = 20f;
+                LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
+                RaycastHit hit;
+                if (Physics.Raycast(origin, Vector3.down, out hit, maxDistance, groundMask))
+                {
+                    result = hit.point + Vector3.up * 0.1f;
+                }
+                else
+                {
+                    NavMeshHit navHit;
+                    if (NavMesh.SamplePosition(rawPosition, out navHit, 5f, NavMesh.AllAreas))
+                    {
+                        result = navHit.position + Vector3.up * 0.1f;
+                    }
+                    else
+                    {
+                        result = rawPosition + Vector3.up * 0.5f;
+                    }
+                }
+            }
+            catch
+            {
+                result = rawPosition;
+            }
+            return result;
+        }
+        
+        /// <summary>
+        /// 生成下一个敌人（根据 bossesPerWave 支持单Boss或多Boss一波）
+        /// </summary>
+        private void SpawnNextEnemy()
+        {
+            // 普通模式：跑完列表后直接通关
+            if (!infiniteHellMode)
+            {
+                if (currentEnemyIndex >= enemyPresets.Count)
+                {
+                    // 所有敌人已击败，显示完成对话
+                    OnAllEnemiesDefeated();
+                    return;
+                }
+            }
+
+            EnemyPresetInfo preset = null;
+            if (infiniteHellMode)
+            {
+                // 无间炼狱：每一波按权重随机选择Boss，不再依赖 currentEnemyIndex 作为索引
+                preset = PickRandomEnemyForInfiniteHell();
+                if (preset == null)
+                {
+                    Debug.LogError("[BossRush] SpawnNextEnemy: InfiniteHell 模式下未找到可用敌人预设");
+                    return;
+                }
+            }
+            else
+            {
+                preset = enemyPresets[currentEnemyIndex];
+            }
+
+            DevLog("[BossRush] 生成第 " + (currentEnemyIndex + 1) + "/" + totalEnemies + " 波: " + preset.displayName);
+
+            try
+            {
+                // 获取玩家
+                CharacterMainControl playerMain = CharacterMainControl.Main;
+                if (playerMain == null)
+                {
+                    Debug.LogError("[BossRush] 玩家未找到，无法生成敌人");
+                    return;
+                }
+
+                // 使用事先采集好的固定刷新点（在这些点中随机选择一个）
+                if (ArenaSpawnPoints == null || ArenaSpawnPoints.Length == 0)
+                {
+                    Debug.LogError("[BossRush] ArenaSpawnPoints 为空，无法生成敌人");
+                    return;
+                }
+
+                if (bossesPerWave <= 1)
+                {
+                    // 单Boss模式：每波只生成一个Boss，同样维护波次计数，便于自检逻辑使用
+                    bossesInCurrentWaveTotal = 1;
+                    bossesInCurrentWaveRemaining = 1;
+                    currentWaveBosses.Clear();
+
+                    int index = UnityEngine.Random.Range(0, ArenaSpawnPoints.Length);
+                    Vector3 spawnPos = GetSafeBossSpawnPosition(ArenaSpawnPoints[index]);
+
+                    // 显示敌人生成横幅（在生成前显示）
+                    ShowEnemyBanner(preset.displayName, spawnPos, playerMain.transform.position);
+
+                    // 异步创建敌人实例
+                    SpawnEnemyAtPositionAsync(preset, spawnPos);
+                }
+                else
+                {
+                    // 多Boss模式：同一波生成 bossesPerWave 个相同Boss
+                    bossesInCurrentWaveTotal = bossesPerWave;
+                    bossesInCurrentWaveRemaining = bossesPerWave;
+                    currentWaveBosses.Clear();
+
+                    for (int i = 0; i < bossesPerWave; i++)
+                    {
+                        EnemyPresetInfo wavePreset = preset;
+                        if (infiniteHellMode)
+                        {
+                            var altPreset = PickRandomEnemyForInfiniteHell();
+                            if (altPreset != null)
+                            {
+                                wavePreset = altPreset;
+                            }
+                        }
+
+                        int index = UnityEngine.Random.Range(0, ArenaSpawnPoints.Length);
+                        Vector3 spawnPos = GetSafeBossSpawnPosition(ArenaSpawnPoints[index]);
+
+                        // 第一只Boss时显示横幅
+                        if (i == 0)
+                        {
+                            ShowEnemyBanner(wavePreset.displayName, spawnPos, playerMain.transform.position);
+                        }
+
+                        // 异步创建敌人实例
+                        SpawnEnemyAtPositionAsync(wavePreset, spawnPos);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] 生成敌人失败: " + e.Message);
+            }
+        }
+        
+        public void StartNextWaveCountdown()
+        {
+            float interval = GetWaveIntervalSeconds();
+
+            if (!infiniteHellMode)
+            {
+                try
+                {
+                    nextWaveBossName = null;
+                    int presetCount = (enemyPresets != null) ? enemyPresets.Count : 0;
+                    if (currentEnemyIndex >= 0 && currentEnemyIndex < presetCount)
+                    {
+                        EnemyPresetInfo nextPreset = enemyPresets[currentEnemyIndex];
+                        if (nextPreset != null)
+                        {
+                            nextWaveBossName = nextPreset.displayName;
+                        }
+                    }
+                }
+                catch
+                {
+                    nextWaveBossName = null;
+                }
+            }
+            else
+            {
+                nextWaveBossName = null;
+            }
+            if (interval <= 0f)
+            {
+                waitingForNextWave = false;
+                lastWaveCountdownSeconds = -1;
+                SpawnNextEnemy();
+                return;
+            }
+
+            // 重置上一轮倒计时状态
+            waitingForNextWave = true;
+            waveCountdown = interval;
+            lastWaveCountdownSeconds = -1;
+
+            if (interval <= 5f)
+            {
+                int secondsInt = Mathf.RoundToInt(interval);
+                if (secondsInt < 1)
+                {
+                    secondsInt = 1;
+                }
+
+                if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
+                {
+                    ShowBigBanner("<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + secondsInt + "</color> 秒后抵达战场...");
+                }
+                else
+                {
+                    ShowBigBanner("下一波将在 <color=yellow>" + secondsInt + "</color> 秒后开始...");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 敌人死亡事件处理（带DamageInfo参数）
+        /// </summary>
+        private void OnEnemyDiedWithDamageInfo(Health deadHealth, DamageInfo damageInfo)
+        {
+            try
+            {
+                if (!IsActive || deadHealth == null)
+                {
+                    return;
+                }
+
+                CharacterMainControl deadCharacter = null;
+                try
+                {
+                    deadCharacter = deadHealth.TryGetCharacter();
+                }
+                catch {}
+
+                // 多Boss模式：检查是否是当前波的其中一名Boss
+                if (bossesPerWave > 1 && currentWaveBosses != null && currentWaveBosses.Count > 0)
+                {
+                    MonoBehaviour matchedBoss = null;
+                    for (int i = 0; i < currentWaveBosses.Count; i++)
+                    {
+                        MonoBehaviour boss = currentWaveBosses[i];
+                        if (boss == null) continue;
+
+                        bool isDeadBoss = false;
+
+                        try
+                        {
+                            CharacterMainControl bossCharacter = boss as CharacterMainControl;
+                            if (bossCharacter != null && deadCharacter != null)
+                            {
+                                isDeadBoss = (bossCharacter == deadCharacter);
+                            }
+                        }
+                        catch {}
+
+                        if (!isDeadBoss)
+                        {
+                            try
+                            {
+                                Health bossHealth = boss.GetComponent<Health>();
+                                if (bossHealth == deadHealth || boss.gameObject == deadHealth.gameObject)
+                                {
+                                    isDeadBoss = true;
+                                }
+                            }
+                            catch {}
+                        }
+
+                        if (isDeadBoss)
+                        {
+                            matchedBoss = boss;
+                            break;
+                        }
+                    }
+
+                    if (matchedBoss != null)
+                    {
+                        DevLog("[BossRush] 当前波有一名Boss被击败");
+
+                        // 处理Boss掉落随机化
+                        CharacterMainControl bossMainControl = matchedBoss as CharacterMainControl;
+                        if (bossMainControl != null)
+                        {
+                            HandleBossDeath(bossMainControl, damageInfo);
+                        }
+                    }
+                }
+                else
+                {
+                    // 单Boss模式：保持原有逻辑
+                    bool isCurrentBossDead = false;
+
+                    if (currentBoss != null)
+                    {
+                        try
+                        {
+                            CharacterMainControl currentBossCharacter = currentBoss as CharacterMainControl;
+                            if (currentBossCharacter != null && deadCharacter != null)
+                            {
+                                isCurrentBossDead = (currentBossCharacter == deadCharacter);
+                            }
+                        }
+                        catch {}
+
+                        if (!isCurrentBossDead)
+                        {
+                            try
+                            {
+                                isCurrentBossDead = (deadHealth.gameObject == ((MonoBehaviour)currentBoss).gameObject);
+                            }
+                            catch {}
+                        }
+                    }
+
+                    if (currentBoss != null && isCurrentBossDead)
+                    {
+                        DevLog("[BossRush] 当前敌人已击败");
+                        CharacterMainControl bossMainControl = currentBoss as CharacterMainControl;
+                        if (bossMainControl != null)
+                        {
+                            HandleBossDeath(bossMainControl, damageInfo);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] OnEnemyDied 错误: " + e.Message);
+            }
+        }
+
+        private void HandleBossDeath(CharacterMainControl bossMain, DamageInfo damageInfo)
+        {
+            try
+            {
+                if (!IsActive || bossMain == null)
+                {
+                    return;
+                }
+
+                if (countedDeadBosses.Contains(bossMain))
+                {
+                    return;
+                }
+
+                countedDeadBosses.Add(bossMain);
+
+                // 无间炼狱：先累加现金池
+                if (infiniteHellMode)
+                {
+                    try
+                    {
+                        float maxHp = 0f;
+                        if (bossMain.Health != null)
+                        {
+                            maxHp = bossMain.Health.MaxHealth;
+                        }
+                        if (maxHp < 0f) maxHp = 0f;
+                        long reward = (long)Mathf.Round(maxHp * 10f);
+                        if (reward < 0L) reward = 0L;
+                        infiniteHellCashPool += reward;
+                        infiniteHellWaveCashThisWave += reward;
+                    }
+                    catch {}
+                }
+
+                if (bossesPerWave > 1 && currentWaveBosses != null && currentWaveBosses.Count > 0)
+                {
+                    for (int i = 0; i < currentWaveBosses.Count; i++)
+                    {
+                        MonoBehaviour boss = currentWaveBosses[i];
+                        if (boss == null)
+                        {
+                            continue;
+                        }
+
+                        CharacterMainControl bossCharacter = null;
+                        try
+                        {
+                            bossCharacter = boss as CharacterMainControl;
+                        }
+                        catch {}
+
+                        if (bossCharacter == bossMain)
+                        {
+                            currentWaveBosses.RemoveAt(i);
+                            break;
+                        }
+                    }
+                }
+
+                defeatedEnemies++;
+
+                if (bossesPerWave > 1)
+                {
+                    bossesInCurrentWaveRemaining = Mathf.Max(0, bossesInCurrentWaveRemaining - 1);
+
+                    if (bossesInCurrentWaveRemaining <= 0)
+                    {
+                        ProceedAfterWaveFinished();
+                        return;
+                    }
+                }
+                else
+                {
+                    // 单Boss模式：击杀后直接推进到下一波
+                    ProceedAfterWaveFinished();
+                    return;
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        /// <summary>
+        /// 当当前波所有Boss被击杀或因生成失败/异常被跳过时，推进到下一波或结束挑战
+        /// </summary>
+        private void ProceedAfterWaveFinished()
+        {
+            try
+            {
+                currentEnemyIndex++;
+                currentBoss = null;
+
+                if (infiniteHellMode)
+                {
+                    // 无间炼狱：统一走专用逻辑
+                    OnInfiniteHellWaveCompleted();
+                    return;
+                }
+
+                int presetCount = (enemyPresets != null) ? enemyPresets.Count : 0;
+                if (currentEnemyIndex < presetCount)
+                {
+                    try
+                    {
+                        if (bossRushSignInteract != null)
+                        {
+                            bossRushSignInteract.AddClearLootboxOptions();
+                        }
+                    }
+                    catch {}
+
+                    if (config != null && config.useInteractBetweenWaves)
+                    {
+                        try
+                        {
+                            if (bossRushSignInteract != null)
+                            {
+                                bossRushSignInteract.SetNextWaveMode();
+                            }
+                        }
+                        catch {}
+                    }
+                    else
+                    {
+                        StartNextWaveCountdown();
+                    }
+                }
+                else
+                {
+                    OnAllEnemiesDefeated();
+                }
+            }
+            catch {}
+        }
+
+        /// <summary>
+        /// Boss 在生成阶段失败时的统一处理：修正当前波计数并在必要时推进波次
+        /// </summary>
+        private void OnBossSpawnFailed(EnemyPresetInfo preset)
+        {
+            try
+            {
+                // 记录日志方便排查
+                try
+                {
+                    string name = (preset != null ? preset.displayName : "<null>");
+                    DevLog("[BossRush] OnBossSpawnFailed: Boss 生成失败, preset=" + name);
+                }
+                catch {}
+
+                // 递增已击败敌人数，保持总数一致
+                defeatedEnemies++;
+
+                if (bossesPerWave > 1)
+                {
+                    // 多Boss模式：减少当前波剩余Boss数量
+                    bossesInCurrentWaveRemaining = Mathf.Max(0, bossesInCurrentWaveRemaining - 1);
+
+                    if (bossesInCurrentWaveRemaining <= 0)
+                    {
+                        ProceedAfterWaveFinished();
+                    }
+                }
+                else
+                {
+                    // 单Boss模式：视为跳过该敌人，直接进入下一波
+                    ProceedAfterWaveFinished();
+                }
+            }
+            catch {}
+        }
+
+        /// <summary>
+        /// 初始化敌人预设列表 - 动态识别所有显示名字的敌人
+        /// </summary>
+        private void InitializeEnemyPresets()
+        {
+            enemyPresets.Clear();
+            
+            // 获取所有可能的敌人类型
+            var enemyTypes = new List<EnemyPresetInfo>();
+            
+            // 仅通过游戏内的角色预设动态发现敌人类型
+            TryDiscoverAdditionalEnemies(enemyTypes);
+            
+            // 按团队类型和基础生命值排序（scav -> usec -> bear -> lab -> wolf），只保留真正的敌对阵营
+            enemyPresets = enemyTypes
+                .Where(e =>
+                    (e.team == (int)Teams.scav
+                     || e.team == (int)Teams.usec
+                     || e.team == (int)Teams.bear
+                     || e.team == (int)Teams.lab
+                     || e.team == (int)Teams.wolf)
+                    && e.baseHealth > 100f)
+                .OrderBy(e => e.team)
+                .ThenBy(e => e.baseHealth)
+                .ToList();
+
+            // 计算 Boss 池基础血量范围
+            try
+            {
+                if (enemyPresets != null && enemyPresets.Count > 0)
+                {
+                    float minH = float.MaxValue;
+                    float maxH = 0f;
+                    for (int i = 0; i < enemyPresets.Count; i++)
+                    {
+                        float h = enemyPresets[i].baseHealth;
+                        if (h <= 0f)
+                        {
+                            continue;
+                        }
+                        if (h < minH)
+                        {
+                            minH = h;
+                        }
+                        if (h > maxH)
+                        {
+                            maxH = h;
+                        }
+                    }
+
+                    if (minH < float.MaxValue && maxH > 0f && maxH >= minH)
+                    {
+                        minBossBaseHealth = minH;
+                        maxBossBaseHealth = maxH;
+                        DevLog("[BossRush] Boss池基础血量范围: " + minBossBaseHealth + " ~ " + maxBossBaseHealth);
+                    }
+                }
+            }
+            catch {}
+
+            DevLog("[BossRush] 初始化完成，共发现 " + enemyPresets.Count + " 个敌人类型");
+        }
+
+        /// <summary>
+        /// 无间炼狱模式下按权重随机选取一个敌人预设
+        /// 权重根据基础血量与波次线性放大，高血量Boss在后期权重更高
+        /// </summary>
+        private EnemyPresetInfo PickRandomEnemyForInfiniteHell()
+        {
+            if (enemyPresets == null || enemyPresets.Count == 0)
+            {
+                return null;
+            }
+
+            float refMin = minBossBaseHealth;
+            float refMax = maxBossBaseHealth;
+
+            // 如果没有有效范围，退化为等概率随机
+            if (!(refMax > refMin && refMin > 0f))
+            {
+                int idx = UnityEngine.Random.Range(0, enemyPresets.Count);
+                return enemyPresets[idx];
+            }
+
+            // 计算每个Boss的权重
+            float totalWeight = 0f;
+            float[] weights = new float[enemyPresets.Count];
+            // 基础系数：t * baseK + (wave/50)*t，t 为基础血量归一化
+            const float baseK = 4f;
+            float waveTerm = (float)infiniteHellWaveIndex / 50f;
+
+            for (int i = 0; i < enemyPresets.Count; i++)
+            {
+                float h = enemyPresets[i].baseHealth;
+                if (h <= 0f)
+                {
+                    h = refMin;
+                }
+
+                float t = Mathf.Clamp01((h - refMin) / (refMax - refMin));
+                float w = 1f + t * baseK + waveTerm * t;
+                if (w < 0.01f)
+                {
+                    w = 0.01f;
+                }
+
+                weights[i] = w;
+                totalWeight += w;
+            }
+
+            if (totalWeight <= 0f)
+            {
+                int idx = UnityEngine.Random.Range(0, enemyPresets.Count);
+                return enemyPresets[idx];
+            }
+
+            // 按累计权重抽样
+            float r = UnityEngine.Random.value * totalWeight;
+            float acc = 0f;
+            for (int i = 0; i < enemyPresets.Count; i++)
+            {
+                acc += weights[i];
+                if (r <= acc)
+                {
+                    return enemyPresets[i];
+                }
+            }
+
+            // 理论上不会到这里，兜底返回最后一个
+            return enemyPresets[enemyPresets.Count - 1];
+        }
+
+        private void AddEnemyType(List<EnemyPresetInfo> list, string name, string displayName, int team, float health, float damage)
+        {
+            list.Add(new EnemyPresetInfo 
+            { 
+                name = name, 
+                displayName = displayName, 
+                team = team, 
+                baseHealth = health, 
+                baseDamage = damage 
+            });
+        }
+        
+        /// <summary>
+        /// 尝试发现额外的敌人类型
+        /// </summary>
+        private void TryDiscoverAdditionalEnemies(List<EnemyPresetInfo> enemyList)
+        {
+            try
+            {
+                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                if (allPresets != null && allPresets.Length > 0)
+                {
+                    foreach (var preset in allPresets)
+                    {
+                        if (preset == null)
+                        {
+                            continue;
+                        }
+
+                        string nameKey = preset.nameKey;
+                        if (string.IsNullOrEmpty(nameKey))
+                        {
+                            continue;
+                        }
+
+                        string displayName = GetLocalizedCharacterName(nameKey);
+                        bool isSpecialUnknownBoss = nameKey == "Cname_Boss_Red";
+
+                        if (!preset.showName && !isSpecialUnknownBoss)
+                        {
+                            continue;
+                        }
+
+                        if (enemyList.Any(e => e.name == nameKey))
+                        {
+                            continue;
+                        }
+
+                        int team = (int)preset.team;
+                        float health = (preset.health > 0f) ? preset.health : 100f;
+                        float damage = preset.damageMultiplier;
+
+                        var newEnemy = new EnemyPresetInfo
+                        {
+                            name = nameKey,
+                            displayName = displayName,
+                            team = team,
+                            baseHealth = health,
+                            baseDamage = damage
+                        };
+
+                        enemyList.Add(newEnemy);
+                        DevLog("[BossRush] 发现额外敌人类型: " + nameKey + " (team=" + team + ", health=" + health + ")");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 动态发现敌人时出现异常: " + e.Message);
+            }
+        }
+
+        private string GetLocalizedCharacterName(string nameKey)
+        {
+            if (string.IsNullOrEmpty(nameKey))
+            {
+                return nameKey;
+            }
+
+            try
+            {
+                string[] types = new string[]
+                {
+                    "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
+                    "SodaCraft.Localizations.LocalizationManager, TeamSoda.Duckov.Core",
+                    "LocalizationManager, Assembly-CSharp"
+                };
+
+                Type locType = null;
+                for (int i = 0; i < types.Length; i++)
+                {
+                    locType = Type.GetType(types[i]);
+                    if (locType != null)
+                    {
+                        break;
+                    }
+                }
+
+                if (locType != null)
+                {
+                    var method = locType.GetMethod("ToPlainText", BindingFlags.Static | BindingFlags.Public);
+                    if (method != null)
+                    {
+                        object result = method.Invoke(null, new object[] { nameKey });
+                        string str = result as string;
+                        if (!string.IsNullOrEmpty(str))
+                        {
+                            return str;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return nameKey;
+        }
+
+    }
+}
