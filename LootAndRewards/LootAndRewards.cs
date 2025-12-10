@@ -1281,6 +1281,24 @@ namespace BossRush
                 InteractableLootbox lootbox = UnityEngine.Object.Instantiate(prefab, position, rotation);
                 lootbox.needInspect = true;
 
+                // 为 Boss 奖励箱创建独立本地 Inventory，避免与其他 Lootbox 通过位置哈希共享同一个库存
+                // 这是解决"箱子没有奖励且格子为64"问题的关键
+                try
+                {
+                    System.Type lootboxType = typeof(InteractableLootbox);
+                    System.Reflection.MethodInfo createLocalInventoryMethod =
+                        lootboxType.GetMethod("CreateLocalInventory", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    if (createLocalInventoryMethod != null)
+                    {
+                        createLocalInventoryMethod.Invoke(lootbox, null);
+                        DevLog("[BossRush] Boss 奖励箱已创建独立本地 Inventory");
+                    }
+                }
+                catch (Exception localInvEx)
+                {
+                    Debug.LogWarning("[BossRush] 创建 Boss 奖励箱本地 Inventory 失败: " + localInvEx.Message);
+                }
+
                 try
                 {
                     if (lootbox != null && lootbox.gameObject != null)
@@ -1858,6 +1876,19 @@ namespace BossRush
                         loader.randomFromPool = true;
                         loader.ignoreLevelConfig = true;
                         loader.CalculateChances();
+
+                        // 关键：手动调用 Setup() 填充物品
+                        // 因为 CreateLocalInventory 后 Inventory 属性直接返回 inventoryReference，
+                        // 不会再走 GetOrCreateInventory 的逻辑，所以 LootBoxLoader.Setup() 不会被自动触发
+                        try
+                        {
+                            loader.StartSetup();
+                            DevLog("[BossRush] 已手动触发 LootBoxLoader.StartSetup() 填充物品");
+                        }
+                        catch (Exception setupEx)
+                        {
+                            Debug.LogWarning("[BossRush] 调用 LootBoxLoader.StartSetup() 失败: " + setupEx.Message);
+                        }
                     }
                     catch (Exception cfgEx)
                     {
@@ -1869,11 +1900,13 @@ namespace BossRush
                     Debug.LogWarning("[BossRush] Boss 奖励盒子上没有 LootBoxLoader 组件，将使用 Prefab 默认内容");
                 }
 
-                // 访问一次 Inventory，确保需要搜索动画
+                // 访问一次 Inventory，确保需要搜索动画，并设置初始容量
                 Inventory inventory = lootbox.Inventory;
                 if (inventory != null)
                 {
                     inventory.NeedInspection = lootbox.needInspect;
+                    // 先设置一个较大的初始容量，等 LootBoxLoader 填充完成后再调整
+                    inventory.SetCapacity(512);
                 }
 
                 DevLog("[BossRush] 已为 Boss 生成专用奖励盒子，总目标物品数量=" + totalCount + ", 期望高品质比例=" + highChance.ToString("P0") + "（击杀耗时: " + killDuration.ToString("F1") + "秒）");
@@ -1976,6 +2009,20 @@ namespace BossRush
                 DevLog("[BossRush] Boss 掉落实际物品列表结束");
             }
             catch {}
+
+            // LootBoxLoader 填充完成后，根据实际物品数量调整 Inventory 容量
+            // 这是解决"格子为64"问题的关键
+            try
+            {
+                int lastPos = inv.GetLastItemPosition();
+                int newCapacity = Mathf.Max(8, lastPos + 1);
+                inv.SetCapacity(newCapacity);
+                DevLog("[BossRush] Boss 奖励箱容量已调整为: " + newCapacity);
+            }
+            catch (Exception capEx)
+            {
+                Debug.LogWarning("[BossRush] 调整 Boss 奖励箱容量失败: " + capEx.Message);
+            }
         }
 
         /// <summary>
