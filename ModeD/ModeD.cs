@@ -86,7 +86,7 @@ namespace BossRush
         #region Mode D 核心方法
         
         /// <summary>
-        /// 检测玩家是否满足"裸体"条件（完全为空）
+        /// 检测玩家是否满足"裸体"条件（完全为空，包括狗子背包）
         /// </summary>
         public bool IsPlayerNaked()
         {
@@ -161,6 +161,30 @@ namespace BossRush
                         DevLog("[ModeD] 背包中存在非船票物品: " + item.DisplayName + " (TypeID=" + typeId + ")");
                         return false;
                     }
+                }
+
+                // 检查狗子背包（PetProxy.PetInventory）是否有物品，防止通过狗子保险箱偷渡装备
+                try
+                {
+                    Inventory petInventory = PetProxy.PetInventory;
+                    if (petInventory != null && petInventory.Content != null && petInventory.Content.Count > 0)
+                    {
+                        // 遍历狗子背包，检查是否有任何物品
+                        for (int i = 0; i < petInventory.Content.Count; i++)
+                        {
+                            Item petItem = petInventory.Content[i];
+                            if (petItem != null)
+                            {
+                                DevLog("[ModeD] 狗子背包中存在物品: " + petItem.DisplayName + " - 不满足裸体条件");
+                                return false;
+                            }
+                        }
+                    }
+                }
+                catch (Exception petEx)
+                {
+                    // 如果无法访问狗子背包（可能狗子不存在），忽略此检查
+                    DevLog("[ModeD] 无法检查狗子背包: " + petEx.Message);
                 }
 
                 DevLog("[ModeD] 玩家满足裸体条件");
@@ -421,30 +445,78 @@ namespace BossRush
                     // 只收集敌对阵营
                     if (team == 0) continue; // 0 通常是玩家阵营
 
-                    // 排除商人和宠物类型（characterIconType == merchant 或 pet）
-                    // 通过反射获取 characterIconType 字段（私有字段）
+                    // 排除商人和宠物类型
                     bool shouldExclude = false;
+                    
+                    // 方法1：通过反射获取 characterIconType 字段
                     try
                     {
                         var iconField = typeof(CharacterRandomPreset).GetField("characterIconType",
                             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                         if (iconField != null)
                         {
-                            int iconType = (int)iconField.GetValue(preset);
-                            // CharacterIconTypes: merchant = 4, pet = 5
-                            if (iconType == 4)
+                            object iconValue = iconField.GetValue(preset);
+                            if (iconValue != null)
                             {
-                                shouldExclude = true;
-                                DevLog("[ModeD] 排除商人: " + nameKey);
-                            }
-                            else if (iconType == 5)
-                            {
-                                shouldExclude = true;
-                                DevLog("[ModeD] 排除宠物: " + nameKey);
+                                int iconType = (int)iconValue;
+                                // CharacterIconTypes: merchant = 4, pet = 5
+                                if (iconType == 4)
+                                {
+                                    shouldExclude = true;
+                                    DevLog("[ModeD] 排除商人(iconType): " + nameKey);
+                                }
+                                else if (iconType == 5)
+                                {
+                                    shouldExclude = true;
+                                    DevLog("[ModeD] 排除宠物(iconType): " + nameKey);
+                                }
                             }
                         }
                     }
                     catch { }
+                    
+                    // 方法2：通过 GetCharacterIcon() 返回的图标来判断
+                    if (!shouldExclude)
+                    {
+                        try
+                        {
+                            Sprite icon = preset.GetCharacterIcon();
+                            if (icon != null)
+                            {
+                                Sprite merchantIcon = GameplayDataSettings.UIStyle.MerchantCharacterIcon;
+                                Sprite petIcon = GameplayDataSettings.UIStyle.PetCharacterIcon;
+                                if (merchantIcon != null && icon == merchantIcon)
+                                {
+                                    shouldExclude = true;
+                                    DevLog("[ModeD] 排除商人(icon): " + nameKey);
+                                }
+                                else if (petIcon != null && icon == petIcon)
+                                {
+                                    shouldExclude = true;
+                                    DevLog("[ModeD] 排除宠物(icon): " + nameKey);
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                    
+                    // 方法3：通过名字关键词排除（作为最后的保险）
+                    if (!shouldExclude)
+                    {
+                        string lowerName = nameKey.ToLower();
+                        if (lowerName.Contains("merchant") || lowerName.Contains("trader") || 
+                            lowerName.Contains("shop") || lowerName.Contains("vendor") ||
+                            nameKey.Contains("商人") || nameKey.Contains("商贩"))
+                        {
+                            shouldExclude = true;
+                            DevLog("[ModeD] 排除商人(name): " + nameKey);
+                        }
+                        else if (lowerName.Contains("pet") || nameKey.Contains("宠物"))
+                        {
+                            shouldExclude = true;
+                            DevLog("[ModeD] 排除宠物(name): " + nameKey);
+                        }
+                    }
 
                     if (shouldExclude) continue;
 

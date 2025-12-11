@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // ModeDWaves.cs - Mode D 波次管理
 // ============================================================================
 // 模块说明：
@@ -230,8 +230,63 @@ namespace BossRush
 
             List<EnemyPresetInfo> pool = modeDMinionPool;
 
-            // 第 1~5 波过滤掉显示名为“???”（中英文）的敌人
-            if (modeDWaveIndex <= 5)
+            // 第 1~2 波：只刷血量最低的敌人（拾荒者等最普通的鸭鸭敌人）
+            if (modeDWaveIndex <= 2)
+            {
+                // 先过滤掉"???"名字的敌人
+                List<EnemyPresetInfo> validMinions = new List<EnemyPresetInfo>();
+                for (int i = 0; i < modeDMinionPool.Count; i++)
+                {
+                    EnemyPresetInfo info = modeDMinionPool[i];
+                    if (info == null) continue;
+
+                    string name = info.displayName;
+                    if (name == null) name = string.Empty;
+
+                    if (name == "???" || name == "？？？")
+                    {
+                        continue;
+                    }
+
+                    validMinions.Add(info);
+                }
+
+                if (validMinions.Count > 0)
+                {
+                    // 找出血量最低值
+                    float minHealth = float.MaxValue;
+                    for (int i = 0; i < validMinions.Count; i++)
+                    {
+                        if (validMinions[i].baseHealth < minHealth)
+                        {
+                            minHealth = validMinions[i].baseHealth;
+                        }
+                    }
+
+                    // 筛选出血量最低的敌人（允许 10% 的误差范围，以包含同级别的敌人）
+                    float healthThreshold = minHealth * 1.1f;
+                    List<EnemyPresetInfo> lowestHealthMinions = new List<EnemyPresetInfo>();
+                    for (int i = 0; i < validMinions.Count; i++)
+                    {
+                        if (validMinions[i].baseHealth <= healthThreshold)
+                        {
+                            lowestHealthMinions.Add(validMinions[i]);
+                        }
+                    }
+
+                    if (lowestHealthMinions.Count > 0)
+                    {
+                        pool = lowestHealthMinions;
+                        DevLog("[ModeD] 前两波限制：只刷血量最低的敌人，可选数量=" + pool.Count + ", 血量阈值=" + healthThreshold);
+                    }
+                    else
+                    {
+                        pool = validMinions;
+                    }
+                }
+            }
+            // 第 3~5 波：过滤掉"???"名字的敌人，但不限制血量
+            else if (modeDWaveIndex <= 5)
             {
                 List<EnemyPresetInfo> filtered = new List<EnemyPresetInfo>();
                 for (int i = 0; i < modeDMinionPool.Count; i++)
@@ -244,7 +299,7 @@ namespace BossRush
 
                     if (name == "???" || name == "？？？")
                     {
-                        continue; // 过滤掉“???” 名字的小怪
+                        continue; // 过滤掉"???" 名字的小怪
                     }
 
                     filtered.Add(info);
@@ -255,7 +310,6 @@ namespace BossRush
                     pool = filtered;
                 }
             }
-
             return pool[UnityEngine.Random.Range(0, pool.Count)];
         }
 
