@@ -421,6 +421,33 @@ namespace BossRush
                     // 只收集敌对阵营
                     if (team == 0) continue; // 0 通常是玩家阵营
 
+                    // 排除商人和宠物类型（characterIconType == merchant 或 pet）
+                    // 通过反射获取 characterIconType 字段（私有字段）
+                    bool shouldExclude = false;
+                    try
+                    {
+                        var iconField = typeof(CharacterRandomPreset).GetField("characterIconType",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        if (iconField != null)
+                        {
+                            int iconType = (int)iconField.GetValue(preset);
+                            // CharacterIconTypes: merchant = 4, pet = 5
+                            if (iconType == 4)
+                            {
+                                shouldExclude = true;
+                                DevLog("[ModeD] 排除商人: " + nameKey);
+                            }
+                            else if (iconType == 5)
+                            {
+                                shouldExclude = true;
+                                DevLog("[ModeD] 排除宠物: " + nameKey);
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (shouldExclude) continue;
+
                     float health = (preset.health > 0f) ? preset.health : 100f;
                     float damage = preset.damageMultiplier;
 
