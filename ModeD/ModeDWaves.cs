@@ -56,6 +56,8 @@ namespace BossRush
                 }
                 
                 modeDWaveIndex++;
+                // 重置波次完成标志，允许下一波完成时触发
+                modeDWaveCompletePending = false;
                 DevLog("[ModeD] 开始第 " + modeDWaveIndex + " 波");
 
                 // 每次开新波前动态刷新每波敌人数
@@ -750,12 +752,87 @@ namespace BossRush
         }
 
         /// <summary>
+        /// Mode D 波次完整性自检：定期检查是否有敌人存活，如果没有则自动推进波次
+        /// </summary>
+        /// <remarks>
+        /// 解决问题：敌人死亡事件可能丢失（瞬杀、事件触发时机等），导致波次卡住无法推进。
+        /// 此方法作为兜底机制，每隔一段时间检查一次敌人存活状态。
+        /// </remarks>
+        private void TryFixStuckWaveIfNoModeDEnemyAlive()
+        {
+            try
+            {
+                if (!modeDActive)
+                {
+                    return;
+                }
+
+                // 如果当前波次索引为0，说明还没开始第一波，不需要自检
+                if (modeDWaveIndex <= 0)
+                {
+                    return;
+                }
+
+                // 清理已死亡的敌人引用
+                CleanupDeadEnemies();
+
+                // 如果列表为空，说明当前波所有敌人都已死亡
+                if (modeDCurrentWaveEnemies.Count == 0)
+                {
+                    DevLog("[ModeD] 自检：当前波没有任何存活敌人，自动触发波次完成");
+                    OnModeDWaveComplete();
+                }
+                else
+                {
+                    // 额外检查：遍历列表中的敌人，确认是否真的存活
+                    int aliveCount = 0;
+                    for (int i = 0; i < modeDCurrentWaveEnemies.Count; i++)
+                    {
+                        CharacterMainControl enemy = modeDCurrentWaveEnemies[i];
+                        if (enemy == null)
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            Health h = enemy.Health;
+                            if (h != null && !h.IsDead)
+                            {
+                                aliveCount++;
+                            }
+                        }
+                        catch {}
+                    }
+
+                    if (aliveCount <= 0)
+                    {
+                        DevLog("[ModeD] 自检：列表中有 " + modeDCurrentWaveEnemies.Count + " 个引用，但实际存活数为0，自动触发波次完成");
+                        modeDCurrentWaveEnemies.Clear();
+                        OnModeDWaveComplete();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[ModeD] TryFixStuckWaveIfNoModeDEnemyAlive 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
         /// Mode D 波次完成
         /// </summary>
         private void OnModeDWaveComplete()
         {
             try
             {
+                // 防止重复触发（敌人死亡事件和自检可能同时触发）
+                if (modeDWaveCompletePending)
+                {
+                    return;
+                }
+                modeDWaveCompletePending = true;
+
                 DevLog("[ModeD] 第 " + modeDWaveIndex + " 波完成！");
 
                 ShowBigBanner("第 <color=yellow>" + modeDWaveIndex + "</color> 波完成！");

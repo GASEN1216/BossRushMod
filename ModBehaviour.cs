@@ -294,7 +294,15 @@ namespace BossRush
                 if (waveIntegrityCheckTimer >= WaveIntegrityCheckInterval)
                 {
                     waveIntegrityCheckTimer = 0f;
-                    TryFixStuckWaveIfNoBossAlive();
+                    // Mode D 使用独立的自检逻辑
+                    if (modeDActive)
+                    {
+                        TryFixStuckWaveIfNoModeDEnemyAlive();
+                    }
+                    else
+                    {
+                        TryFixStuckWaveIfNoBossAlive();
+                    }
                 }
             }
             else

@@ -64,6 +64,9 @@ namespace BossRush
         /// <summary>Mode D 医疗品池</summary>
         private readonly List<int> modeDMedicalPool = new List<int>();
         
+        /// <summary>Mode D 当前波次是否正在处理完成逻辑（防止重复触发）</summary>
+        private bool modeDWaveCompletePending = false;
+        
         #endregion
         
         #region Mode D 配置
@@ -208,6 +211,7 @@ namespace BossRush
 
                 modeDActive = true;
                 modeDWaveIndex = 0;
+                modeDWaveCompletePending = false;
                 modeDCurrentWaveEnemies.Clear();
 
                 // 读取配置
