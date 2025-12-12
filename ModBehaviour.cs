@@ -110,6 +110,9 @@ namespace BossRush
         {
             try
             {
+                // 每次打开弹药商店时重置 ID 105 购买计数
+                item105PurchaseCount = 0;
+                
                 EnsureAmmoShop();
                 if (ammoShop != null)
                 {

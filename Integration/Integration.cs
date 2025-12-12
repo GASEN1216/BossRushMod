@@ -34,6 +34,8 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour
     {
+        // 物品 ID 105 购买计数器（用于检测进货行为）
+        private int item105PurchaseCount = 0;
         /// <summary>
         /// 初始化动态物品（从 AssetBundle 加载 BossRush 船票）
         /// </summary>
@@ -979,6 +981,9 @@ namespace BossRush
             // 注册场景加载事件，在进入新场景时注入交互
             SceneManager.sceneLoaded += OnSceneLoaded;
             
+            // 注册商店购买事件，用于检测进货行为
+            StockShop.OnItemPurchased += OnItemPurchased_Integration;
+            
             // 如果当前已经在场景中，立即执行一次
             if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
             {
@@ -989,6 +994,7 @@ namespace BossRush
         void OnDestroy_Integration()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            StockShop.OnItemPurchased -= OnItemPurchased_Integration;
             Health.OnDead -= OnPlayerDeathInBossRush;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
             
@@ -1013,6 +1019,34 @@ namespace BossRush
             if (arenaStartPoint != null) UnityEngine.Object.Destroy(arenaStartPoint);
             
             DevLog("[BossRush] Boss Rush Mod已卸载");
+        }
+
+        /// <summary>
+        /// 商店购买事件处理：检测玩家是否大量购买 ID 105 物品（进货行为）
+        /// 仅在 BossRush 弹药商店（ammoShop）中生效
+        /// </summary>
+        private void OnItemPurchased_Integration(StockShop shop, Item item)
+        {
+            try
+            {
+                if (shop == null || item == null) return;
+                
+                // 仅在 BossRush 弹药商店中检测
+                if (ammoShop == null || shop != ammoShop) return;
+                
+                // 检测是否购买了 ID 105 的物品
+                if (item.TypeID == 105)
+                {
+                    item105PurchaseCount++;
+                    
+                    // 达到 10 个时显示横幅提示
+                    if (item105PurchaseCount == 10)
+                    {
+                        ShowBigBanner("喂喂，你这家伙来这进货了是吗(*´･д･)?");
+                    }
+                }
+            }
+            catch {}
         }
 
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
