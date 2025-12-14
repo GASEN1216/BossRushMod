@@ -805,10 +805,9 @@ namespace BossRush
                     obj.transform.localScale = Vector3.one;
 
                     var newInteract = obj.AddComponent<BossRushInteractable>();
-                    newInteract.requireItem = true;
-                    newInteract.requireItemId = (bossRushTicketTypeId > 0 ? bossRushTicketTypeId : 868);
-                    newInteract.requireOnce = false; // 每次交互都需要一张票
-                    newInteract.whenToUseRequireItem = InteractableBase.WhenToUseRequireItemTypes.OnTimeOut; // 在交互完成时扣除
+                    // 不再使用 requireItem 扣费，改为通过 MapSelectionView 的 Cost 系统扣费
+                    // 这样可以在玩家确认后才扣除船票
+                    newInteract.requireItem = false;
 
                     list.Add(newInteract);
 
@@ -1109,10 +1108,9 @@ namespace BossRush
                     obj.transform.localPosition = Vector3.zero;
 
                     var newInteract = obj.AddComponent<BossRushInteractable>();
-                    newInteract.requireItem = true;
-                    newInteract.requireItemId = (bossRushTicketTypeId > 0 ? bossRushTicketTypeId : 868);
-                    newInteract.requireOnce = false; // 每次交互都需要一张票
-                    newInteract.whenToUseRequireItem = InteractableBase.WhenToUseRequireItemTypes.OnTimeOut; // 在交互完成时扣除
+                    // 不再使用 requireItem 扣费，改为通过 MapSelectionView 的 Cost 系统扣费
+                    // 这样可以在玩家确认后才扣除船票
+                    newInteract.requireItem = false;
 
                     list.Add(newInteract);
 

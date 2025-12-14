@@ -222,8 +222,9 @@ namespace BossRush
                 }
                 else
                 {
-                    // 否则传送到挑战地图
-                    BossRush.ModBehaviour.Instance.StartBossRushFromInteraction(this);
+                    // 否则打开地图选择 UI，让玩家确认后再传送
+                    // 使用官方 MapSelectionView 流程，确认后才扣费
+                    BossRushMapSelectionHelper.ShowBossRushMapSelection();
                 }
             }
         }
