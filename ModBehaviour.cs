@@ -182,7 +182,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
 
         private StockShop ammoShop;
 
@@ -232,6 +232,9 @@ namespace BossRush
             
             // 监听玩家死亡事件
             Health.OnDead += OnPlayerDeathInBossRush;
+
+            // 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
+            RegisterInteractDebugListener();
         }
         
         void Update()
@@ -553,6 +556,9 @@ namespace BossRush
 
         void OnDestroy()
         {
+            // 注销交互调试监听
+            UnregisterInteractDebugListener();
+
             OnDestroy_Integration();
         }
 
