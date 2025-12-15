@@ -2517,14 +2517,16 @@ namespace BossRush
                     Debug.LogWarning("[BossRush] 记录 Boss 生成信息失败: " + recordEx.Message);
                 }
                 
-                // Boss会自动通过AI系统检测并攻击玩家（因为team不同）
-                // 如果需要强制设置仇恨，可以在此添加逻辑
+                // 强制设置 AI 仇恨到玩家
+                // 设置 forceTracePlayerDistance 为较大值，确保远距离生成的敌人也会追踪玩家
                 var main = CharacterMainControl.Main;
                 if (main != null)
                 {
                     var ai = character.GetComponentInChildren<AICharacterController>();
                     if (ai != null && main.mainDamageReceiver != null)
                     {
+                        // 设置强制追踪距离为 500，确保无论多远都会追踪玩家
+                        ai.forceTracePlayerDistance = 500f;
                         ai.searchedEnemy = main.mainDamageReceiver;
                         ai.SetTarget(main.mainDamageReceiver.transform);
                         ai.SetNoticedToTarget(main.mainDamageReceiver);

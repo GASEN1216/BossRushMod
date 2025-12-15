@@ -433,7 +433,8 @@ namespace BossRush
                     // 激活敌人
                     character.gameObject.SetActive(true);
 
-                    // 设置AI仇恨
+                    // 强制设置 AI 仇恨到玩家
+                    // 设置 forceTracePlayerDistance 为较大值，确保远距离生成的敌人也会追踪玩家
                     try
                     {
                         CharacterMainControl playerMain = CharacterMainControl.Main;
@@ -442,6 +443,7 @@ namespace BossRush
                             AICharacterController ai = character.GetComponentInChildren<AICharacterController>();
                             if (ai != null)
                             {
+                                ai.forceTracePlayerDistance = 500f;
                                 ai.searchedEnemy = playerMain.mainDamageReceiver;
                                 ai.SetTarget(playerMain.mainDamageReceiver.transform);
                                 ai.SetNoticedToTarget(playerMain.mainDamageReceiver);
