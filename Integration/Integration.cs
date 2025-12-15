@@ -26,6 +26,7 @@ using Duckov.Scenes;
 using Duckov.Economy;
 using Duckov.UI;
 using ItemStatsSystem;
+using Saves;
 
 namespace BossRush
 {
@@ -36,6 +37,12 @@ namespace BossRush
     {
         // 物品 ID 105 购买计数器（用于检测进货行为）
         private int item105PurchaseCount = 0;
+        
+        // BossRush 船票库存持久化相关
+        private const string TICKET_STOCK_SAVE_KEY = "BossRush_TicketStock";
+        private const int TICKET_DEFAULT_MAX_STOCK = 10;
+        private static int cachedTicketStock = -1;  // -1 表示未初始化，需要从存档读取
+        private static StockShop.Entry injectedTicketEntry = null;  // 缓存注入的船票条目引用
         /// <summary>
         /// 初始化动态物品（从 AssetBundle 加载 BossRush 船票）
         /// </summary>
@@ -350,15 +357,38 @@ namespace BossRush
                             {
                                 StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
                                 itemEntry.typeID = bossRushTicketTypeId;
-                                itemEntry.maxStock = 10;
+                                itemEntry.maxStock = TICKET_DEFAULT_MAX_STOCK;
                                 itemEntry.forceUnlock = true;
                                 itemEntry.priceFactor = 1f;
                                 itemEntry.possibility = 1f;
                                 itemEntry.lockInDemo = false;
 
                                 StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
+                                
+                                // 从存档读取库存，如果没有存档则使用默认最大库存
+                                int stockToSet = LoadTicketStockFromSave();
+                                wrapped.CurrentStock = stockToSet;
+                                wrapped.Show = true;
+                                
+                                // 缓存引用，用于后续存档
+                                injectedTicketEntry = wrapped;
+                                
                                 shop.entries.Add(wrapped);
                                 addedCount++;
+                                
+                                DevLog("[BossRush] 船票注入成功，库存设置为: " + stockToSet);
+                            }
+                            else
+                            {
+                                // 已存在的条目，更新缓存引用
+                                foreach (StockShop.Entry entry in shop.entries)
+                                {
+                                    if (entry != null && entry.ItemTypeID == bossRushTicketTypeId)
+                                    {
+                                        injectedTicketEntry = entry;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -372,6 +402,82 @@ namespace BossRush
             {
                 Debug.LogError("[BossRush] InjectBossRushTicketIntoShops 出错: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 从存档读取船票库存
+        /// </summary>
+        private int LoadTicketStockFromSave()
+        {
+            try
+            {
+                // 如果已有缓存值，直接返回
+                if (cachedTicketStock >= 0)
+                {
+                    return cachedTicketStock;
+                }
+                
+                // 尝试从存档读取
+                if (SavesSystem.KeyExisits(TICKET_STOCK_SAVE_KEY))
+                {
+                    cachedTicketStock = SavesSystem.Load<int>(TICKET_STOCK_SAVE_KEY);
+                    DevLog("[BossRush] 从存档读取船票库存: " + cachedTicketStock);
+                    return cachedTicketStock;
+                }
+                
+                // 没有存档，返回默认最大库存
+                cachedTicketStock = TICKET_DEFAULT_MAX_STOCK;
+                DevLog("[BossRush] 无存档，使用默认船票库存: " + cachedTicketStock);
+                return cachedTicketStock;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[BossRush] 读取船票库存失败: " + e.Message);
+                cachedTicketStock = TICKET_DEFAULT_MAX_STOCK;
+                return cachedTicketStock;
+            }
+        }
+
+        /// <summary>
+        /// 存档时保存船票库存
+        /// </summary>
+        private void OnCollectSaveData_TicketStock()
+        {
+            try
+            {
+                // 优先从注入的条目获取当前库存
+                int stockToSave = 0;
+                if (injectedTicketEntry != null)
+                {
+                    stockToSave = injectedTicketEntry.CurrentStock;
+                }
+                else if (cachedTicketStock >= 0)
+                {
+                    stockToSave = cachedTicketStock;
+                }
+                else
+                {
+                    stockToSave = TICKET_DEFAULT_MAX_STOCK;
+                }
+                
+                SavesSystem.Save<int>(TICKET_STOCK_SAVE_KEY, stockToSave);
+                cachedTicketStock = stockToSave;
+                DevLog("[BossRush] 保存船票库存: " + stockToSave);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[BossRush] 保存船票库存失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 读档时重置缓存，强制从存档重新读取
+        /// </summary>
+        private void OnSetFile_TicketStock()
+        {
+            cachedTicketStock = -1;  // 重置缓存，下次注入时会从存档读取
+            injectedTicketEntry = null;  // 清除旧引用
+            DevLog("[BossRush] 检测到读档，重置船票库存缓存");
         }
 
         private void InjectLocalization_Integration()
@@ -984,6 +1090,10 @@ namespace BossRush
             // 注册商店购买事件，用于检测进货行为
             StockShop.OnItemPurchased += OnItemPurchased_Integration;
             
+            // 注册存档系统事件，用于持久化船票库存
+            SavesSystem.OnCollectSaveData += OnCollectSaveData_TicketStock;
+            SavesSystem.OnSetFile += OnSetFile_TicketStock;
+            
             // 如果当前已经在场景中，立即执行一次
             if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
             {
@@ -995,6 +1105,8 @@ namespace BossRush
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
             StockShop.OnItemPurchased -= OnItemPurchased_Integration;
+            SavesSystem.OnCollectSaveData -= OnCollectSaveData_TicketStock;
+            SavesSystem.OnSetFile -= OnSetFile_TicketStock;
             Health.OnDead -= OnPlayerDeathInBossRush;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
             
