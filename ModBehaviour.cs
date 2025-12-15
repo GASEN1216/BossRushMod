@@ -29,7 +29,273 @@ namespace BossRush
         // 单例
         public static ModBehaviour Instance { get; private set; }
         
-        // 公共方法：获取竞技场场景名称
+        // ============================================================================
+        // BossRush 地图配置系统（集中管理，方便后续添加新地图）
+        // ============================================================================
+        
+        /// <summary>
+        /// BossRush 地图配置类（统一管理所有地图相关配置）
+        /// </summary>
+        public class BossRushMapConfig
+        {
+            public string sceneName;           // 运行时场景名称（如 Level_DemoChallenge_1）
+            public string sceneID;             // 加载用场景ID（如 Level_DemoChallenge_Main）
+            public string displayName;         // 显示名称
+            public Vector3[] spawnPoints;      // Boss 刷新点
+            public Vector3? customSpawnPos;    // 玩家自定义传送位置（null 表示使用默认）
+            public Vector3? defaultSignPos;    // 默认路牌位置（null 表示使用玩家位置偏移）
+            public int beaconIndex;            // 信标索引（用于地图选择UI）
+            public string previewImageName;    // 预览图文件名（可选，用于地图选择UI）
+            public Vector3 mapNorth;           // 地图北方向量（用于方位播报，与小地图朝向一致）
+            
+            public BossRushMapConfig(string name, string id, string display, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null)
+            {
+                sceneName = name;
+                sceneID = id;
+                displayName = display;
+                spawnPoints = spawns;
+                customSpawnPos = customPos;
+                defaultSignPos = signPos;
+                beaconIndex = beacon;
+                previewImageName = preview;
+                // 默认使用 DEMO 竞技场的北方向量
+                mapNorth = north.HasValue ? north.Value : new Vector3(-0.959f, 0f, 0.284f);
+            }
+        }
+        
+        // DEMO 竞技场刷新点
+        private static readonly Vector3[] DemoChallengeSpawnPoints = new Vector3[]
+        {
+            new Vector3(232.01f, -7.98f, 182.38f),
+            new Vector3(234.05f, -7.98f, 182.23f),
+            new Vector3(237.19f, -7.98f, 181.60f),
+            new Vector3(240.00f, -7.99f, 182.02f),
+            new Vector3(242.16f, -7.67f, 183.34f),
+            new Vector3(240.41f, -7.98f, 189.71f),
+            new Vector3(252.37f, -7.74f, 196.98f),
+            new Vector3(255.19f, -7.87f, 198.51f),
+            new Vector3(259.80f, -7.95f, 200.02f),
+            new Vector3(260.75f, -7.99f, 203.25f),
+            new Vector3(262.71f, -7.99f, 206.51f),
+            new Vector3(262.88f, -7.98f, 210.13f),
+            new Vector3(262.37f, -7.89f, 214.27f),
+            new Vector3(260.52f, -7.96f, 217.05f),
+            new Vector3(258.01f, -7.99f, 219.57f),
+            new Vector3(254.88f, -7.98f, 220.09f),
+            new Vector3(252.17f, -7.98f, 220.23f),
+            new Vector3(248.35f, -7.98f, 221.56f),
+            new Vector3(243.97f, -7.98f, 223.85f),
+            new Vector3(241.10f, -7.85f, 226.24f),
+            new Vector3(237.70f, -7.99f, 224.00f),
+            new Vector3(234.41f, -7.99f, 222.38f),
+            new Vector3(233.38f, -7.61f, 218.86f),
+        };
+        
+        // 零号区刷新点
+        private static readonly Vector3[] GroundZeroSpawnPoints = new Vector3[]
+        {
+            new Vector3(415.19f, 0.01f, 260.08f),
+            new Vector3(420.59f, 0.01f, 255.98f),
+            new Vector3(424.44f, 0.01f, 255.94f),
+            new Vector3(428.62f, 0.01f, 256.38f),
+            new Vector3(431.39f, 0.01f, 256.86f),
+            new Vector3(430.83f, 0.01f, 262.11f),
+            new Vector3(436.16f, 0.01f, 265.04f),
+            new Vector3(440.31f, 0.01f, 264.93f),
+            new Vector3(445.54f, 0.01f, 264.69f),
+            new Vector3(449.59f, 0.01f, 264.74f),
+            new Vector3(453.48f, 0.01f, 265.38f),
+            new Vector3(453.75f, 0.01f, 269.68f),
+            new Vector3(453.36f, 0.01f, 273.52f),
+            new Vector3(451.73f, 0.01f, 279.18f),
+            new Vector3(451.99f, 0.01f, 296.23f),
+            new Vector3(447.45f, 0.01f, 299.28f),
+            new Vector3(448.98f, 0.01f, 304.90f),
+            new Vector3(438.40f, 0.01f, 302.60f),
+            new Vector3(432.79f, 0.01f, 305.06f),
+            new Vector3(419.29f, 0.01f, 300.64f),
+            new Vector3(415.02f, 0.01f, 299.25f),
+            new Vector3(415.09f, 0.01f, 286.28f),
+            new Vector3(415.34f, 0.01f, 279.90f),
+            new Vector3(418.43f, 0.01f, 265.79f),
+        };
+        
+        /// <summary>
+        /// 所有支持的 BossRush 地图配置（添加新地图只需在此处添加配置）
+        /// </summary>
+        private static readonly BossRushMapConfig[] BossRushMapConfigs = new BossRushMapConfig[]
+        {
+            // DEMO 竞技场（默认地图）
+            new BossRushMapConfig(
+                "Level_DemoChallenge_1",      // 运行时场景名
+                "Level_DemoChallenge_Main",   // 加载用场景ID
+                "DEMO终极挑战",                // 显示名称
+                DemoChallengeSpawnPoints,     // 刷新点
+                null,                         // 使用默认传送位置
+                new Vector3(235.48f, -7.99f, 202.41f),  // 默认路牌位置
+                0,                            // 信标索引
+                "demo-preview.png",           // 预览图
+                new Vector3(-0.959f, 0f, 0.284f)  // 地图北方（DEMO竞技场校准值）
+            ),
+            // 零号区
+            new BossRushMapConfig(
+                "Level_GroundZero_1",         // 运行时场景名
+                "Level_GroundZero_Main",      // 加载用场景ID
+                "零号区",                      // 显示名称
+                GroundZeroSpawnPoints,        // 刷新点
+                new Vector3(429.77f, 0.02f, 279.19f),  // 自定义传送位置
+                null,                         // 路牌位置（使用玩家位置偏移）
+                0,                            // 信标索引
+                null,                         // 预览图（暂无）
+                new Vector3(0f, 0f, 1f)       // 地图北方（零号区：Z+ 方向）
+            ),
+            // 后续添加新地图只需在此处添加 BossRushMapConfig
+        };
+        
+        // 当前地图使用的刷新点（根据场景动态选择）
+        private Vector3[] currentMapSpawnPoints = null;
+        
+        // ============================================================================
+        // BossRush 地图配置查询方法
+        // ============================================================================
+        
+        /// <summary>
+        /// 根据运行时场景名获取地图配置
+        /// </summary>
+        public static BossRushMapConfig GetMapConfigBySceneName(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return null;
+            
+            for (int i = 0; i < BossRushMapConfigs.Length; i++)
+            {
+                if (BossRushMapConfigs[i].sceneName == sceneName)
+                {
+                    return BossRushMapConfigs[i];
+                }
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 根据加载用场景ID获取地图配置
+        /// </summary>
+        public static BossRushMapConfig GetMapConfigBySceneID(string sceneID)
+        {
+            if (string.IsNullOrEmpty(sceneID)) return null;
+            
+            for (int i = 0; i < BossRushMapConfigs.Length; i++)
+            {
+                if (BossRushMapConfigs[i].sceneID == sceneID)
+                {
+                    return BossRushMapConfigs[i];
+                }
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 获取当前场景的地图配置
+        /// </summary>
+        public static BossRushMapConfig GetCurrentMapConfig()
+        {
+            string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            return GetMapConfigBySceneName(currentScene);
+        }
+        
+        /// <summary>
+        /// 获取所有地图配置
+        /// </summary>
+        public static BossRushMapConfig[] GetAllMapConfigs()
+        {
+            return BossRushMapConfigs;
+        }
+        
+        /// <summary>
+        /// 检查指定场景是否是有效的 BossRush 竞技场场景
+        /// </summary>
+        public bool IsValidBossRushArenaScene(string sceneName)
+        {
+            return GetMapConfigBySceneName(sceneName) != null;
+        }
+        
+        /// <summary>
+        /// 检查当前场景是否是有效的 BossRush 竞技场场景
+        /// </summary>
+        public bool IsCurrentSceneValidBossRushArena()
+        {
+            return GetCurrentMapConfig() != null;
+        }
+        
+        /// <summary>
+        /// 获取指定场景的刷新点
+        /// </summary>
+        public static Vector3[] GetSpawnPointsForScene(string sceneName)
+        {
+            BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
+            return mapConfig != null ? mapConfig.spawnPoints : null;
+        }
+        
+        /// <summary>
+        /// 获取当前场景的刷新点
+        /// </summary>
+        public Vector3[] GetCurrentSceneSpawnPoints()
+        {
+            // 优先使用动态设置的刷新点
+            if (currentMapSpawnPoints != null && currentMapSpawnPoints.Length > 0)
+            {
+                return currentMapSpawnPoints;
+            }
+            
+            BossRushMapConfig mapConfig = GetCurrentMapConfig();
+            return mapConfig != null ? mapConfig.spawnPoints : DemoChallengeSpawnPoints;
+        }
+        
+        /// <summary>
+        /// 获取当前场景的默认传送位置（用于玩家传送、路牌位置等）
+        /// 优先使用 customSpawnPos，其次使用 defaultSignPos，最后使用 DEMO 竞技场默认位置
+        /// </summary>
+        public static Vector3 GetCurrentSceneDefaultPosition()
+        {
+            BossRushMapConfig mapConfig = GetCurrentMapConfig();
+            if (mapConfig != null)
+            {
+                // 优先使用自定义传送位置
+                if (mapConfig.customSpawnPos.HasValue)
+                {
+                    return mapConfig.customSpawnPos.Value;
+                }
+                // 其次使用默认路牌位置
+                if (mapConfig.defaultSignPos.HasValue)
+                {
+                    return mapConfig.defaultSignPos.Value;
+                }
+            }
+            // 兜底：DEMO 竞技场默认位置
+            return new Vector3(235.48f, -7.99f, 202.41f);
+        }
+        
+        /// <summary>
+        /// 获取指定场景的默认传送位置
+        /// </summary>
+        public static Vector3 GetDefaultPositionForScene(string sceneName)
+        {
+            BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
+            if (mapConfig != null)
+            {
+                if (mapConfig.customSpawnPos.HasValue)
+                {
+                    return mapConfig.customSpawnPos.Value;
+                }
+                if (mapConfig.defaultSignPos.HasValue)
+                {
+                    return mapConfig.defaultSignPos.Value;
+                }
+            }
+            // 兜底：DEMO 竞技场默认位置
+            return new Vector3(235.48f, -7.99f, 202.41f);
+        }
+        
+        // 公共方法：获取竞技场场景名称（DEMO竞技场，保留兼容）
         public string GetArenaSceneName()
         {
             return BossRushArenaSceneName;
@@ -130,33 +396,9 @@ namespace BossRush
         private int currentEnemyIndex = 0;
         // 记录由 BossRush 自己生成的“大兴兴”Boss，用于区分原版 DEMO 地图刷出的同名 Boss
         private readonly HashSet<CharacterMainControl> bossRushOwnedDaXingXing = new HashSet<CharacterMainControl>();
-        // 固定Boss刷新点（来自 Level_DemoChallenge_Main 实测坐标）
-        private static readonly Vector3[] ArenaSpawnPoints = new Vector3[]
-        {
-            new Vector3(232.01f, -7.98f, 182.38f),
-            new Vector3(234.05f, -7.98f, 182.23f),
-            new Vector3(237.19f, -7.98f, 181.60f),
-            new Vector3(240.00f, -7.99f, 182.02f),
-            new Vector3(242.16f, -7.67f, 183.34f),
-            new Vector3(240.41f, -7.98f, 189.71f),
-            new Vector3(252.37f, -7.74f, 196.98f),
-            new Vector3(255.19f, -7.87f, 198.51f),
-            new Vector3(259.80f, -7.95f, 200.02f),
-            new Vector3(260.75f, -7.99f, 203.25f),
-            new Vector3(262.71f, -7.99f, 206.51f),
-            new Vector3(262.88f, -7.98f, 210.13f),
-            new Vector3(262.37f, -7.89f, 214.27f),
-            new Vector3(260.52f, -7.96f, 217.05f),
-            new Vector3(258.01f, -7.99f, 219.57f),
-            new Vector3(254.88f, -7.98f, 220.09f),
-            new Vector3(252.17f, -7.98f, 220.23f),
-            new Vector3(248.35f, -7.98f, 221.56f),
-            new Vector3(243.97f, -7.98f, 223.85f),
-            new Vector3(241.10f, -7.85f, 226.24f),
-            new Vector3(237.70f, -7.99f, 224.00f),
-            new Vector3(234.41f, -7.99f, 222.38f),
-            new Vector3(233.38f, -7.61f, 218.86f),
-        };
+        // 注：刷新点数组已移至 BossRushMapConfig 配置系统中统一管理（见文件顶部）
+        // 以下为兼容旧代码的别名引用
+        private static Vector3[] ArenaSpawnPoints { get { return DemoChallengeSpawnPoints; } }
         
         // 状态
         public bool IsActive { get; private set; }
@@ -340,14 +582,46 @@ namespace BossRush
                     else
                     {
                         Vector3 playerPos = main.transform.position;
-                        // 缩小扫描范围到玩家脚下
-                        Vector3 feetPos = playerPos + Vector3.down * 0.1f;
-                        LogNearbyGameObjects(feetPos, 0.2f, 100);
+                        string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                        
+                        // 基地场景输出建筑物信息，其他场景输出最近的 GameObject
+                        if (sceneName.Contains("Base_Scene"))
+                        {
+                            LogNearbyBuildingInfo(playerPos, 15f);
+                        }
+                        else
+                        {
+                            // 战斗场景输出最近的一个 GameObject
+                            LogNearbyGameObjects(playerPos, 10f, 1);
+                        }
                     }
                 }
                 catch (Exception e)
                 {
                     Debug.LogError("[BossRush] F5 调试失败: " + e.Message);
+                }
+            }
+
+            // 调试快捷键 F6：复制 F5 记住的 GameObject 到玩家脚下
+            if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F6))
+            {
+                try
+                {
+                    CharacterMainControl main = CharacterMainControl.Main;
+                    if (main == null)
+                    {
+                        DevLog("[BossRush] F6 调试：未找到玩家 CharacterMainControl");
+                    }
+                    else
+                    {
+                        Vector3 playerPos = main.transform.position;
+                        // 复制 F5 记住的 GameObject 到玩家脚下
+                        CloneRememberedGameObject(playerPos);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("[BossRush] F6 调试失败: " + e.Message);
                 }
             }
 
@@ -576,6 +850,14 @@ namespace BossRush
         {
             TryCreateArenaDifficultyEntryPoint_UIAndSigns();
         }
+        
+        /// <summary>
+        /// 在指定位置创建 BossRush 难度选择路牌
+        /// </summary>
+        private void TryCreateArenaDifficultyEntryPoint(Vector3 position)
+        {
+            TryCreateArenaDifficultyEntryPoint_UIAndSigns(position);
+        }
 
         private void TryCreateNextWaveEntryPoint()
         {
@@ -660,8 +942,8 @@ namespace BossRush
             // 清理场景中现有的敌人
             ClearEnemiesForBossRush();
             
-            // 传送玩家到指定位置（BossRush 难度入口附近）
-            Vector3 targetPosition = new Vector3(235.48f, -7.99f, 202.41f);
+            // 传送玩家到指定位置（从配置系统获取当前地图的默认位置）
+            Vector3 targetPosition = GetCurrentSceneDefaultPosition();
             try
             {
                 CharacterMainControl main = null;
@@ -800,7 +1082,8 @@ namespace BossRush
 
         private System.Collections.IEnumerator EnsurePlayerTeleportedInDemoChallenge()
         {
-            Vector3 targetPosition = new Vector3(235.48f, -7.99f, 202.41f);
+            // 从配置系统获取当前地图的默认位置
+            Vector3 targetPosition = GetCurrentSceneDefaultPosition();
             const float maxDuration = 30f;
             const float interval = 0.5f;
             float elapsed = 0f;
@@ -2613,7 +2896,18 @@ namespace BossRush
             // 根据 TeleportMonitor 记录推算：在 Level_DemoChallenge_Main 中，
             // 向小地图“下方”移动对应世界坐标增量约为 (2.97, -0.88)，
             // 因此小地图“北”(上) 对应的世界方向约为 (-2.97, 0.88) 归一化
-            Vector3 mapNorth = new Vector3(-0.959f, 0f, 0.284f);
+            // 从地图配置系统获取当前地图的北方向量
+            BossRushMapConfig currentMapConfig = GetCurrentMapConfig();
+            Vector3 mapNorth;
+            if (currentMapConfig != null)
+            {
+                mapNorth = currentMapConfig.mapNorth;
+            }
+            else
+            {
+                // 默认使用 DEMO 竞技场的北方向量
+                mapNorth = new Vector3(-0.959f, 0f, 0.284f);
+            }
             mapNorth.Normalize();
 
             float angle = Vector3.SignedAngle(mapNorth, direction, Vector3.up);

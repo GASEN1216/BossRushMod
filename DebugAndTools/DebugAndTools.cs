@@ -34,6 +34,9 @@ namespace BossRush
     {
         // 交互调试监听是否已注册
         private static bool interactDebugListenerRegistered = false;
+        
+        // F5 记住的最近 GameObject，供 F6 复制使用
+        private static GameObject lastNearestGameObject = null;
 
         /// <summary>
         /// 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
@@ -259,6 +262,57 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 找到 Transform 的根 Prefab（向上查找到 Scene 下的第一层子对象）
+        /// 例如：Scene/Group_Fact/Prfb_Roadblock_1/Default_2 -> Prfb_Roadblock_1
+        /// </summary>
+        /// <param name="t">目标 Transform</param>
+        /// <returns>根 Prefab 的 Transform，如果找不到则返回 null</returns>
+        private static Transform FindPrefabRoot(Transform t)
+        {
+            if (t == null) return null;
+            
+            // 向上查找，直到父对象的名字是 "Scene" 或没有父对象
+            Transform current = t;
+            Transform lastValid = t;
+            
+            while (current.parent != null)
+            {
+                string parentName = current.parent.name;
+                // 如果父对象是 Scene 或类似的根容器，当前对象就是 Prefab 根
+                if (parentName == "Scene" || parentName.StartsWith("Scene_") || 
+                    parentName.StartsWith("Level_") || parentName.StartsWith("Group_"))
+                {
+                    return current;
+                }
+                lastValid = current;
+                current = current.parent;
+            }
+            
+            // 如果没有找到 Scene，返回最顶层的对象
+            return lastValid;
+        }
+        
+        /// <summary>
+        /// 检查一个 Transform 是否是另一个 Transform 的子对象（或自身）
+        /// </summary>
+        /// <param name="child">要检查的 Transform</param>
+        /// <param name="parent">父 Transform</param>
+        /// <returns>如果 child 是 parent 或 parent 的子对象，返回 true</returns>
+        private static bool IsChildOf(Transform child, Transform parent)
+        {
+            if (child == null || parent == null) return false;
+            if (child == parent) return true;
+            
+            Transform current = child.parent;
+            while (current != null)
+            {
+                if (current == parent) return true;
+                current = current.parent;
+            }
+            return false;
+        }
+        
+        /// <summary>
         /// 获取 Transform 的完整层级路径
         /// </summary>
         /// <param name="t">目标 Transform</param>
@@ -283,6 +337,7 @@ namespace BossRush
 
         /// <summary>
         /// 输出玩家附近的 GameObject 信息（用于调试）
+        /// 过滤掉玩家自身及其子对象，只输出场景中的独立物体
         /// </summary>
         /// <param name="playerPos">玩家位置</param>
         /// <param name="radius">搜索半径</param>
@@ -299,6 +354,14 @@ namespace BossRush
                     DevLog("[BossRush] F5 调试：场景中未找到任何 Transform");
                     return;
                 }
+                
+                // 获取玩家的 Transform，用于过滤
+                Transform playerTransform = null;
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main != null)
+                {
+                    playerTransform = main.transform;
+                }
 
                 List<Transform> nearby = new List<Transform>();
 
@@ -309,13 +372,23 @@ namespace BossRush
                     {
                         continue;
                     }
+                    
+                    // 过滤掉玩家自身及其所有子对象
+                    if (playerTransform != null && IsChildOf(t, playerTransform))
+                    {
+                        continue;
+                    }
 
                     Vector3 pos = t.position;
                     float distSq = (pos - playerPos).sqrMagnitude;
 
                     if (distSq <= radiusSq && distSq > 0.0001f)
                     {
-                        nearby.Add(t);
+                        // 只添加包含 BoxCollider 组件的 GameObject
+                        if (t.gameObject.GetComponent<UnityEngine.BoxCollider>() != null)
+                        {
+                            nearby.Add(t);
+                        }
                     }
                 }
 
@@ -433,11 +506,353 @@ namespace BossRush
                            ", layer=" + layerName +
                            ", active=" + active +
                            ", components=" + componentsInfo);
+                    
+                    // 记住第一个（最近的）GameObject 的根 Prefab，供 F6 复制使用
+                    if (i == 0 && go != null)
+                    {
+                        // 找到根 Prefab（Scene 下的第一层子对象）
+                        Transform root = FindPrefabRoot(t);
+                        if (root != null)
+                        {
+                            lastNearestGameObject = root.gameObject;
+                            DevLog("[BossRush] F5 已记住根对象: " + root.name + "，按 F6 可复制到脚下");
+                        }
+                        else
+                        {
+                            lastNearestGameObject = go;
+                            DevLog("[BossRush] F5 已记住此对象，按 F6 可复制到脚下");
+                        }
+                    }
                 }
             }
             catch (System.Exception e)
             {
                 Debug.LogError("[BossRush] F5 调试：LogNearbyGameObjects 出错: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// F6 调试：复制 F5 记住的 GameObject 到玩家脚下
+        /// </summary>
+        /// <param name="playerPos">玩家位置（目标位置）</param>
+        private void CloneRememberedGameObject(Vector3 playerPos)
+        {
+            try
+            {
+                if (lastNearestGameObject == null)
+                {
+                    DevLog("[BossRush] F6 调试：没有记住的对象，请先按 F5 选择一个对象");
+                    return;
+                }
+                
+                // 复制 GameObject
+                GameObject original = lastNearestGameObject;
+                GameObject clone = UnityEngine.Object.Instantiate(original);
+                clone.name = original.name + "_Clone";
+                clone.transform.position = playerPos;
+                
+                // 保持原始旋转和缩放
+                clone.transform.rotation = original.transform.rotation;
+                clone.transform.localScale = original.transform.localScale;
+                
+                string originalPath = GetTransformPath(original.transform);
+                
+                DevLog("[BossRush] F6 调试：已复制 GameObject 到玩家脚下");
+                DevLog("[BossRush]   原对象: " + original.name + ", 路径=" + originalPath);
+                DevLog("[BossRush]   克隆到: " + playerPos + ", 新名称=" + clone.name);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[BossRush] F6 调试：CloneRememberedGameObject 出错: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// F5 调试：输出玩家脚下/最近的建筑物详细信息
+        /// 使用反射访问 Building 类，避免直接引用导致的程序集依赖问题
+        /// </summary>
+        private void LogNearbyBuildingInfo(Vector3 playerPos, float radius = 10f)
+        {
+            try
+            {
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                
+                // 通过反射获取 Building 类型
+                Type buildingType = null;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try
+                    {
+                        buildingType = asm.GetType("Duckov.Buildings.Building");
+                        if (buildingType != null) break;
+                    }
+                    catch { }
+                }
+                
+                if (buildingType == null)
+                {
+                    DevLog("[BossRush] F5 建筑调试：未找到 Building 类型");
+                    return;
+                }
+                
+                // 查找场景中所有 Building 组件
+                UnityEngine.Object[] allBuildings = UnityEngine.Object.FindObjectsOfType(buildingType);
+                
+                if (allBuildings == null || allBuildings.Length == 0)
+                {
+                    DevLog("[BossRush] F5 建筑调试：场景 " + sceneName + " 中未找到任何 Building 组件");
+                    return;
+                }
+                
+                // 按距离排序，找到最近的建筑
+                List<Component> nearbyBuildings = new List<Component>();
+                foreach (var obj in allBuildings)
+                {
+                    Component building = obj as Component;
+                    if (building == null || building.gameObject == null) continue;
+                    
+                    float dist = Vector3.Distance(playerPos, building.transform.position);
+                    if (dist <= radius)
+                    {
+                        nearbyBuildings.Add(building);
+                    }
+                }
+                
+                // 按距离排序
+                nearbyBuildings.Sort((a, b) => 
+                    Vector3.Distance(playerPos, a.transform.position).CompareTo(
+                    Vector3.Distance(playerPos, b.transform.position)));
+                
+                if (nearbyBuildings.Count == 0)
+                {
+                    DevLog("[BossRush] F5 建筑调试：玩家周围 " + radius + "m 内未找到任何建筑物（场景共有 " + allBuildings.Length + " 个建筑）");
+                    return;
+                }
+                
+                DevLog("[BossRush] F5 建筑调试：场景=" + sceneName + ", 玩家位置=" + playerPos + ", 半径=" + radius + "m, 找到 " + nearbyBuildings.Count + " 个建筑");
+                
+                // 获取 Building 类的属性和方法
+                PropertyInfo idProp = buildingType.GetProperty("ID");
+                PropertyInfo displayNameProp = buildingType.GetProperty("DisplayName");
+                PropertyInfo descriptionProp = buildingType.GetProperty("Description");
+                PropertyInfo guidProp = buildingType.GetProperty("GUID");
+                PropertyInfo dimensionsProp = buildingType.GetProperty("Dimensions");
+                
+                // 获取 BuildingManager 类型
+                Type buildingManagerType = null;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try
+                    {
+                        buildingManagerType = asm.GetType("Duckov.Buildings.BuildingManager");
+                        if (buildingManagerType != null) break;
+                    }
+                    catch { }
+                }
+                MethodInfo getBuildingInfoMethod = null;
+                if (buildingManagerType != null)
+                {
+                    getBuildingInfoMethod = buildingManagerType.GetMethod("GetBuildingInfo", BindingFlags.Public | BindingFlags.Static);
+                }
+                
+                // 输出每个建筑的详细信息
+                int outputCount = Math.Min(nearbyBuildings.Count, 5); // 最多输出5个
+                for (int i = 0; i < outputCount; i++)
+                {
+                    Component building = nearbyBuildings[i];
+                    if (building == null) continue;
+                    
+                    float dist = Vector3.Distance(playerPos, building.transform.position);
+                    string path = GetTransformPath(building.transform);
+                    
+                    // 基本信息（通过反射获取）
+                    string id = "";
+                    string displayName = "";
+                    string description = "";
+                    int guid = 0;
+                    string dimensions = "";
+                    
+                    try 
+                    { 
+                        if (idProp != null) 
+                        { 
+                            object val = idProp.GetValue(building, null); 
+                            if (val != null) id = val.ToString(); 
+                        } 
+                    } 
+                    catch { }
+                    
+                    try 
+                    { 
+                        if (displayNameProp != null) 
+                        { 
+                            object val = displayNameProp.GetValue(building, null); 
+                            if (val != null) displayName = val.ToString(); 
+                        } 
+                    } 
+                    catch { }
+                    
+                    try 
+                    { 
+                        if (descriptionProp != null) 
+                        { 
+                            object val = descriptionProp.GetValue(building, null); 
+                            if (val != null) description = val.ToString(); 
+                        } 
+                    } 
+                    catch { }
+                    
+                    try 
+                    { 
+                        if (guidProp != null) 
+                        { 
+                            object val = guidProp.GetValue(building, null); 
+                            if (val != null) guid = (int)val; 
+                        } 
+                    } 
+                    catch { }
+                    
+                    try 
+                    { 
+                        if (dimensionsProp != null) 
+                        { 
+                            object val = dimensionsProp.GetValue(building, null); 
+                            if (val != null) dimensions = val.ToString(); 
+                        } 
+                    } 
+                    catch { }
+                    
+                    // 获取 BuildingInfo 详细信息
+                    string costInfo = "";
+                    string requireBuildingsInfo = "";
+                    int maxAmount = 0;
+                    int currentAmount = 0;
+                    bool reachedLimit = false;
+                    
+                    if (getBuildingInfoMethod != null && !string.IsNullOrEmpty(id))
+                    {
+                        try
+                        {
+                            object infoObj = getBuildingInfoMethod.Invoke(null, new object[] { id });
+                            if (infoObj != null)
+                            {
+                                Type infoType = infoObj.GetType();
+                                
+                                // 检查 Valid 属性
+                                PropertyInfo validProp = infoType.GetProperty("Valid");
+                                bool valid = validProp != null && (bool)validProp.GetValue(infoObj, null);
+                                
+                                if (valid)
+                                {
+                                    // 获取 maxAmount
+                                    FieldInfo maxAmountField = infoType.GetField("maxAmount");
+                                    if (maxAmountField != null) maxAmount = (int)maxAmountField.GetValue(infoObj);
+                                    
+                                    // 获取 CurrentAmount
+                                    PropertyInfo currentAmountProp = infoType.GetProperty("CurrentAmount");
+                                    if (currentAmountProp != null) currentAmount = (int)currentAmountProp.GetValue(infoObj, null);
+                                    
+                                    // 获取 ReachedAmountLimit
+                                    PropertyInfo reachedLimitProp = infoType.GetProperty("ReachedAmountLimit");
+                                    if (reachedLimitProp != null) reachedLimit = (bool)reachedLimitProp.GetValue(infoObj, null);
+                                    
+                                    // 获取 cost
+                                    FieldInfo costField = infoType.GetField("cost");
+                                    if (costField != null)
+                                    {
+                                        object costObj = costField.GetValue(infoObj);
+                                        if (costObj != null)
+                                        {
+                                            Type costType = costObj.GetType();
+                                            FieldInfo moneyField = costType.GetField("money");
+                                            FieldInfo itemsField = costType.GetField("items");
+                                            
+                                            long money = moneyField != null ? (long)moneyField.GetValue(costObj) : 0;
+                                            Array items = null;
+                                            if (itemsField != null)
+                                            {
+                                                items = itemsField.GetValue(costObj) as Array;
+                                            }
+                                            int itemCount = items != null ? items.Length : 0;
+                                            
+                                            if (money > 0 || itemCount > 0)
+                                            {
+                                                costInfo = "金钱=" + money;
+                                                if (itemCount > 0) costInfo += ", 物品数=" + itemCount;
+                                            }
+                                        }
+                                    }
+                                    
+                                    // 获取 requireBuildings
+                                    FieldInfo requireBuildingsField = infoType.GetField("requireBuildings");
+                                    if (requireBuildingsField != null)
+                                    {
+                                        string[] requireBuildings = requireBuildingsField.GetValue(infoObj) as string[];
+                                        if (requireBuildings != null && requireBuildings.Length > 0)
+                                        {
+                                            requireBuildingsInfo = string.Join(",", requireBuildings);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                    
+                    // 获取子对象信息
+                    int childCount = building.transform.childCount;
+                    string childrenInfo = "";
+                    for (int c = 0; c < Math.Min(childCount, 5); c++)
+                    {
+                        Transform child = building.transform.GetChild(c);
+                        if (child != null)
+                        {
+                            childrenInfo += (c > 0 ? ", " : "") + child.name;
+                        }
+                    }
+                    if (childCount > 5) childrenInfo += "...";
+                    
+                    // 获取组件列表
+                    Component[] components = building.GetComponents<Component>();
+                    string componentsInfo = "";
+                    foreach (var comp in components)
+                    {
+                        if (comp == null) continue;
+                        string typeName = comp.GetType().Name;
+                        componentsInfo += (componentsInfo.Length > 0 ? ", " : "") + typeName;
+                    }
+                    
+                    DevLog("[BossRush] F5 建筑 #" + (i + 1) + 
+                           ": ID=" + id +
+                           ", 名称=" + displayName +
+                           ", GUID=" + guid +
+                           ", 距离=" + dist.ToString("F2") + "m" +
+                           ", 位置=" + building.transform.position +
+                           ", 尺寸=" + dimensions +
+                           ", 数量=" + currentAmount + "/" + maxAmount +
+                           ", 达上限=" + reachedLimit);
+                    
+                    DevLog("[BossRush]   路径=" + path +
+                           ", 费用=[" + costInfo + "]" +
+                           ", 前置建筑=[" + requireBuildingsInfo + "]");
+                    
+                    if (!string.IsNullOrEmpty(description))
+                    {
+                        DevLog("[BossRush]   描述=" + description);
+                    }
+                    
+                    DevLog("[BossRush]   子对象(" + childCount + ")=[" + childrenInfo + "]" +
+                           ", 组件=[" + componentsInfo + "]");
+                }
+                
+                if (nearbyBuildings.Count > outputCount)
+                {
+                    DevLog("[BossRush] F5 建筑调试：还有 " + (nearbyBuildings.Count - outputCount) + " 个建筑未显示");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[BossRush] F5 建筑调试出错: " + e.Message + "\n" + e.StackTrace);
             }
         }
     }

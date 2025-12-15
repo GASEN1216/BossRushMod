@@ -54,23 +54,8 @@ namespace BossRush
         protected override void Awake()
         {
             // 1. 提前设置名称，防止 base.Awake 中的 patch 读取不到或覆盖
-            // 根据场景或自定义名称设置不同的名称
-            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            if (useCustomName && !string.IsNullOrEmpty(customName))
-            {
-                this.InteractName = customName;
-                this._overrideInteractNameKey = customName;
-            }
-            else if (sceneName == "Level_DemoChallenge_1")
-            {
-                this.InteractName = "开始第一波";
-                this._overrideInteractNameKey = "开始第一波";
-            }
-            else
-            {
-                this.InteractName = "Boss Rush";
-                this._overrideInteractNameKey = "BossRush";
-            }
+            // 使用统一的场景判断方法
+            SetInteractNameByScene();
             this.overrideInteractName = true;
 
             // 2. 尝试调用基类 Awake，并捕获可能的异常 (如 Patch 导致的 NRE)
@@ -85,19 +70,7 @@ namespace BossRush
             }
 
             // 3. 再次确保名称正确 (以防 base.Awake 重置了它)
-            string sceneName2 = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            if (useCustomName && !string.IsNullOrEmpty(customName))
-            {
-                this.InteractName = customName;
-            }
-            else if (sceneName2 == "Level_DemoChallenge_1")
-            {
-                this.InteractName = "开始第一波";
-            }
-            else
-            {
-                this.InteractName = "Boss Rush";
-            }
+            SetInteractNameByScene();
             
             // 4. 确保对象是"隐形"的，作为一个纯逻辑交互点
             // 不需要 Collider (如果它是 Group 的一部分，主对象有 Collider)
@@ -122,13 +95,25 @@ namespace BossRush
         {
             base.Start();
             // 强制设置名称，防止Awake时被覆盖或未生效
-            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            SetInteractNameByScene();
+            this.overrideInteractName = true;
+        }
+        
+        /// <summary>
+        /// 根据当前场景设置交互名称
+        /// </summary>
+        private void SetInteractNameByScene()
+        {
+            // 检查是否在有效的 BossRush 竞技场场景内
+            bool isInArena = BossRush.ModBehaviour.Instance != null && 
+                             BossRush.ModBehaviour.Instance.IsCurrentSceneValidBossRushArena();
+            
             if (useCustomName && !string.IsNullOrEmpty(customName))
             {
                 this.InteractName = customName;
                 this._overrideInteractNameKey = customName;
             }
-            else if (sceneName == "Level_DemoChallenge_1")
+            else if (isInArena)
             {
                 this.InteractName = "开始第一波";
                 this._overrideInteractNameKey = "开始第一波";
@@ -138,7 +123,6 @@ namespace BossRush
                 this.InteractName = "Boss Rush";
                 this._overrideInteractNameKey = "BossRush";
             }
-            this.overrideInteractName = true;
         }
         
         protected override bool IsInteractable()
@@ -154,8 +138,8 @@ namespace BossRush
             // 交互完成，根据当前场景决定行为
             if (BossRush.ModBehaviour.Instance != null)
             {
-                // 如果已经在挑战地图内，直接开始第一波
-                if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == BossRush.ModBehaviour.Instance.GetArenaSceneName())
+                // 如果已经在有效的 BossRush 竞技场场景内（DEMO竞技场或零号区等），直接开始第一波
+                if (BossRush.ModBehaviour.Instance.IsCurrentSceneValidBossRushArena())
                 {
                     // 通过交互点配置当前模式（默认1，只在使用自定义难度时生效）
                     BossRush.ModBehaviour.Instance.ConfigureBossRushMode(bossesPerWave, isInfiniteHell);
@@ -439,7 +423,8 @@ namespace BossRush
         {
             try
             {
-                Vector3 target = new Vector3(235.48f, -7.99f, 202.41f);
+                // 从配置系统获取当前地图的默认位置
+                Vector3 target = ModBehaviour.GetCurrentSceneDefaultPosition();
 
                 try
                 {

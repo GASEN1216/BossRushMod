@@ -440,11 +440,41 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 在默认位置（DEMO挑战场景）创建路牌
+        /// </summary>
         private void TryCreateArenaDifficultyEntryPoint_UIAndSigns()
+        {
+            TryCreateArenaDifficultyEntryPoint_UIAndSigns(null);
+        }
+        
+        /// <summary>
+        /// 在指定位置创建 BossRush 难度选择路牌
+        /// </summary>
+        /// <param name="customPosition">自定义位置，为 null 时使用默认位置（DEMO挑战场景）</param>
+        private void TryCreateArenaDifficultyEntryPoint_UIAndSigns(Vector3? customPosition)
         {
             try
             {
-                Vector3 position = new Vector3(235.48f, -7.99f, 202.41f);
+                // 从配置系统获取默认路牌位置
+                Vector3 position;
+                if (customPosition.HasValue)
+                {
+                    position = customPosition.Value;
+                }
+                else
+                {
+                    BossRushMapConfig currentConfig = GetCurrentMapConfig();
+                    if (currentConfig != null && currentConfig.defaultSignPos.HasValue)
+                    {
+                        position = currentConfig.defaultSignPos.Value;
+                    }
+                    else
+                    {
+                        // 兜底：从配置系统获取当前地图的默认位置
+                        position = GetCurrentSceneDefaultPosition();
+                    }
+                }
                 string signName = "BossRush_Roadsign";
 
                 // 检查是否已存在
@@ -764,7 +794,8 @@ namespace BossRush
                 // - 在 BossRush 挑战场景 (Level_DemoChallenge_1) 里，注入两个难度选项：弹指可灭 / 有点意思
                 // - 其它场景只注入一个默认 BossRush 选项（显示为“Boss Rush”），作为进入挑战地图的入口
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (sceneName == BossRushArenaSceneName)
+                // 使用配置系统判断是否在有效的 BossRush 竞技场场景
+                if (IsCurrentSceneValidBossRushArena())
                 {
                     // 弹指可灭（每波 1 个Boss）
                     GameObject easyObj = new GameObject("BossRushOption_Easy");
@@ -1056,7 +1087,8 @@ namespace BossRush
                 // - 在 BossRush 挑战场景 (Level_DemoChallenge_1) 里，注入三个难度选项：弹指可灭 / 有点意思 / 无间炼狱
                 // - 其它场景只注入一个默认 BossRush 选项（显示为“Boss Rush”），作为进入挑战地图的入口
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (sceneName == BossRushArenaSceneName)
+                // 使用配置系统判断是否在有效的 BossRush 竞技场场景
+                if (IsCurrentSceneValidBossRushArena())
                 {
                     // 弹指可灭（每波 1 个Boss）
                     GameObject easyObj = new GameObject("BossRushOption_Easy");

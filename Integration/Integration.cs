@@ -1057,19 +1057,60 @@ namespace BossRush
             {
                 InjectBossRushTicketIntoShops();
 
-                if (scene.name == BossRushArenaSceneName)
+                // 使用配置系统检查是否是有效的 BossRush 竞技场场景
+                BossRushMapConfig loadedMapConfig = GetMapConfigBySceneName(scene.name);
+                if (loadedMapConfig != null && !loadedMapConfig.customSpawnPos.HasValue)
                 {
-                    // 只有在通过 BossRush 启动的 DEMO 挑战时才执行竞技场逻辑
+                    // 只有在通过 BossRush 启动且是默认传送位置的地图时才执行竞技场逻辑
                     if (bossRushArenaPlanned)
                     {
                         InitializeEnemyPresets();
                         bossRushArenaActive = true;
                         bossRushArenaPlanned = false;
+                        
+                        // 设置当前地图的刷新点
+                        SetCurrentMapSpawnPoints(scene.name);
 
-                        // Level_DemoChallenge_1 场景：设置BossRush竞技场
+                        // 设置BossRush竞技场
                         demoChallengeStartPosition = Vector3.zero;
                         // 延迟到地图完全加载后再执行传送和创建交互点，避免被游戏自身的出生点逻辑覆盖
                         StartCoroutine(WaitForLevelInitializedThenSetup(scene));
+                    }
+                }
+                // 处理 BossRush 自定义传送位置（如零号区等其他地图）
+                // 只在目标子场景加载后才执行传送，避免在 LoadingScreen 场景就触发
+                else if (bossRushArenaPlanned)
+                {
+                    // 检查当前场景是否是待处理地图的目标子场景
+                    string targetSubScene = BossRushMapSelectionHelper.GetPendingTargetSubSceneName();
+                    string targetMainScene = BossRushMapSelectionHelper.GetPendingMainSceneName();
+                    Vector3? customPos = BossRushMapSelectionHelper.GetPendingCustomPosition();
+                    
+                    // 只有当前场景匹配目标子场景时才执行传送
+                    if (targetSubScene != null && scene.name == targetSubScene && customPos.HasValue)
+                    {
+                        DevLog("[BossRush] 检测到目标子场景加载: " + scene.name + ", 执行自定义传送到: " + customPos.Value);
+                        bossRushArenaPlanned = false;
+                        
+                        // 延迟传送玩家到自定义位置
+                        StartCoroutine(TeleportPlayerToCustomPosition(customPos.Value));
+                        
+                        // 清除待处理的地图条目
+                        BossRushMapSelectionHelper.ClearPendingMapEntry();
+                    }
+                    // 如果是加载屏幕、菜单场景或主场景（_Main），保持标记等待子场景加载
+                    else if (scene.name.Contains("Loading") || scene.name.Contains("Menu") || 
+                             (targetMainScene != null && scene.name == targetMainScene))
+                    {
+                        DevLog("[BossRush] 检测到中间场景: " + scene.name + ", 保持传送标记等待目标子场景");
+                        // 不重置 bossRushArenaPlanned，等待目标场景加载
+                    }
+                    else
+                    {
+                        // 其他场景，重置标记
+                        DevLog("[BossRush] 非目标场景: " + scene.name + ", 重置传送标记");
+                        bossRushArenaPlanned = false;
+                        BossRushMapSelectionHelper.ClearPendingMapEntry();
                     }
                 }
                 else
@@ -1106,6 +1147,9 @@ namespace BossRush
                         bossRushArenaActive = false;
                         bossRushArenaPlanned = false;
                         currentBoss = null;
+                        
+                        // 重置 spawner 禁用标志，以便下次进入竞技场时能重新禁用
+                        spawnersDisabled = false;
                         try
                         {
                             if (ammoShop != null)
@@ -1140,6 +1184,350 @@ namespace BossRush
             catch { }
         }
 
+        /// <summary>
+        /// 将玩家传送到自定义位置（用于 BossRush 地图选择中的非默认地图）
+        /// </summary>
+        private System.Collections.IEnumerator TeleportPlayerToCustomPosition(Vector3 targetPosition)
+        {
+            DevLog("[BossRush] TeleportPlayerToCustomPosition: 开始等待场景初始化，目标位置: " + targetPosition);
+            
+            // 等待场景完全加载
+            const float maxWait = 30f;
+            const float interval = 0.1f;
+            float elapsed = 0f;
+            
+            while (elapsed < maxWait)
+            {
+                bool mainExists = false;
+                bool levelInited = false;
+                
+                try { mainExists = CharacterMainControl.Main != null; } catch { }
+                try { levelInited = LevelManager.LevelInited; } catch { }
+                
+                if (mainExists && levelInited)
+                {
+                    break;
+                }
+                
+                yield return new WaitForSeconds(interval);
+                elapsed += interval;
+            }
+            
+            // 额外等待一小段时间，确保游戏自身的出生点逻辑已执行完毕
+            yield return new WaitForSeconds(0.5f);
+            
+            // 传送玩家到目标位置
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main != null)
+                {
+                    // 使用 Raycast 修正落点到地面
+                    Vector3 finalPosition = targetPosition;
+                    RaycastHit hit;
+                    if (Physics.Raycast(targetPosition + Vector3.up * 10f, Vector3.down, out hit, 50f))
+                    {
+                        finalPosition = hit.point + new Vector3(0f, 0.1f, 0f);
+                        DevLog("[BossRush] TeleportPlayerToCustomPosition: 使用 Raycast 修正落点: " + finalPosition);
+                    }
+                    
+                    // 保存相机偏移
+                    GameCamera camera = GameCamera.Instance;
+                    Vector3 cameraOffset = Vector3.zero;
+                    if (camera != null)
+                    {
+                        cameraOffset = camera.transform.position - main.transform.position;
+                    }
+                    
+                    // 传送玩家
+                    try
+                    {
+                        main.SetPosition(finalPosition);
+                        DevLog("[BossRush] TeleportPlayerToCustomPosition: 使用 SetPosition 传送玩家到 " + finalPosition);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning("[BossRush] SetPosition 失败: " + e.Message + "，改用 transform.position");
+                        main.transform.position = finalPosition;
+                    }
+                    
+                    // 恢复相机位置
+                    if (camera != null)
+                    {
+                        camera.transform.position = main.transform.position + cameraOffset;
+                    }
+                    
+                    DevLog("[BossRush] TeleportPlayerToCustomPosition: 传送完成");
+                    
+                    // 在有效的 BossRush 竞技场场景执行初始化
+                    string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                    BossRushMapConfig mapConfig = GetMapConfigBySceneName(currentScene);
+                    if (mapConfig != null && mapConfig.customSpawnPos.HasValue)
+                    {
+                        // 启动该地图的 BossRush 初始化协程
+                        StartCoroutine(SetupBossRushInGroundZero(finalPosition));
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[BossRush] TeleportPlayerToCustomPosition: CharacterMainControl.Main 为 null");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[BossRush] TeleportPlayerToCustomPosition 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 在零号区设置 BossRush 模式（类似 SetupBossRushInDemoChallenge）
+        /// </summary>
+        private System.Collections.IEnumerator SetupBossRushInGroundZero(Vector3 playerPosition)
+        {
+            DevLog("[BossRush] SetupBossRushInGroundZero: 开始初始化零号区 BossRush 模式");
+            
+            // 0. 重置 spawner 禁用标志（确保能重新禁用新场景的 spawner）
+            spawnersDisabled = false;
+            
+            // 1. 禁用场景中的 spawner，阻止敌怪生成
+            DisableAllSpawners();
+            DevLog("[BossRush] SetupBossRushInGroundZero: 已禁用所有敌怪生成器");
+            
+            // 2. 启动持续清理敌人协程（直到波次开始）
+            StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
+            
+            // 3. 等待场景稳定
+            yield return new UnityEngine.WaitForSeconds(0.5f);
+            
+            // 4. 清理场景中现有的敌人
+            ClearEnemiesForBossRush();
+            DevLog("[BossRush] SetupBossRushInGroundZero: 已清理现有敌人");
+            
+            // 5. 生成地图阻挡物（路障、铁丝网等）
+            SpawnBossRushMapObjects();
+            
+            // 6. 在玩家位置附近创建 BossRush 路牌
+            Vector3 signPosition = playerPosition + new Vector3(-2f, 0f, 1f);
+            TryCreateArenaDifficultyEntryPoint(signPosition);
+            DevLog("[BossRush] SetupBossRushInGroundZero: 已创建 BossRush 路牌，位置=" + signPosition);
+            
+            // 7. 设置当前地图的刷新点（使用当前场景名）
+            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            SetCurrentMapSpawnPoints(currentSceneName);
+            
+            // 8. 标记 BossRush 竞技场已激活
+            bossRushArenaActive = true;
+            InitializeEnemyPresets();
+            DevLog("[BossRush] SetupBossRushInGroundZero: 零号区 BossRush 模式初始化完成");
+            
+            // 9. 检测 Mode D 条件：玩家裸体入场
+            bool shouldStartModeD = false;
+            try
+            {
+                shouldStartModeD = IsPlayerNaked();
+                if (shouldStartModeD)
+                {
+                    DevLog("[BossRush] SetupBossRushInGroundZero: 检测到玩家裸体入场，将启动 Mode D");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[BossRush] SetupBossRushInGroundZero: 检测 Mode D 条件失败: " + e.Message);
+            }
+            
+            // 10. 如果满足 Mode D 条件，延迟启动 Mode D
+            if (shouldStartModeD)
+            {
+                yield return new UnityEngine.WaitForSeconds(0.5f);
+                TryStartModeD();
+            }
+        }
+        
+        /// <summary>
+        /// 根据场景名称设置当前地图的刷新点（使用 BossRushMapConfig 配置系统）
+        /// </summary>
+        private void SetCurrentMapSpawnPoints(string sceneName)
+        {
+            // 使用配置系统获取刷新点（使用 mapConfig 避免与实例字段 config 混淆）
+            BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
+            if (mapConfig != null && mapConfig.spawnPoints != null)
+            {
+                currentMapSpawnPoints = mapConfig.spawnPoints;
+                DevLog("[BossRush] SetCurrentMapSpawnPoints: 使用 " + mapConfig.displayName + " 刷新点，共 " + mapConfig.spawnPoints.Length + " 个");
+            }
+            else
+            {
+                // 默认使用 DEMO 竞技场刷新点
+                currentMapSpawnPoints = DemoChallengeSpawnPoints;
+                DevLog("[BossRush] SetCurrentMapSpawnPoints: 未知场景 " + sceneName + "，使用默认刷新点");
+            }
+        }
+        
+        /// <summary>
+        /// BossRush 地图物品复制配置
+        /// </summary>
+        private class MapObjectCloneConfig
+        {
+            public string templateName;      // 模板对象名称
+            public string parentNamePrefix;  // 父对象名称前缀（用于查找）
+            public Vector3 targetPosition;   // 目标位置
+            public string cloneName;         // 克隆后的名称
+            
+            public MapObjectCloneConfig(string template, string parentPrefix, Vector3 pos, string name)
+            {
+                templateName = template;
+                parentNamePrefix = parentPrefix;
+                targetPosition = pos;
+                cloneName = name;
+            }
+        }
+        
+        /// <summary>
+        /// 获取指定地图的物品复制配置列表
+        /// </summary>
+        private List<MapObjectCloneConfig> GetMapCloneConfigs(string sceneName)
+        {
+            List<MapObjectCloneConfig> configs = new List<MapObjectCloneConfig>();
+            
+            if (sceneName == "Level_GroundZero_1")
+            {
+                // 零号区地图的复制配置
+                
+                // 1. 路障 - 封堵出口
+                configs.Add(new MapObjectCloneConfig(
+                    "Prfb_Roadblock_1",
+                    "Group_",
+                    new Vector3(425.35f, 0.02f, 254.49f),
+                    "BossRush_Roadblock"
+                ));
+                
+                // 2. 火焰烟雾特效 - 复制到出口位置
+                configs.Add(new MapObjectCloneConfig(
+                    "Exit(Clone)",
+                    "Level_GroundZero_1",
+                    new Vector3(447.50f, 0.01f, 288.27f),
+                    "BossRush_Exit_FireSmoke"
+                ));
+                
+                // 3. 铁丝网 - 封堵地形缺口
+                configs.Add(new MapObjectCloneConfig(
+                    "Prfb_BarbedWire_01_03_20",
+                    "Group_",
+                    new Vector3(455.80f, 0.02f, 306.78f),
+                    "BossRush_BarbedWire"
+                ));
+            }
+            // 后续可以添加其他地图的配置
+            // else if (sceneName == "Level_OtherMap")
+            // {
+            //     configs.Add(...);
+            // }
+            
+            return configs;
+        }
+        
+        /// <summary>
+        /// 在 BossRush 模式下生成地图阻挡物（通用函数）
+        /// </summary>
+        private void SpawnBossRushMapObjects()
+        {
+            try
+            {
+                string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                List<MapObjectCloneConfig> configs = GetMapCloneConfigs(currentScene);
+                
+                if (configs.Count == 0)
+                {
+                    DevLog("[BossRush] SpawnBossRushMapObjects: 当前地图 " + currentScene + " 没有配置复制物品");
+                    return;
+                }
+                
+                DevLog("[BossRush] SpawnBossRushMapObjects: 开始在 " + currentScene + " 生成 " + configs.Count + " 个阻挡物");
+                
+                // 缓存所有 GameObject，避免多次查找
+                GameObject[] allObjects = UnityEngine.Object.FindObjectsOfType<GameObject>();
+                
+                foreach (MapObjectCloneConfig config in configs)
+                {
+                    CloneMapObject(allObjects, config);
+                }
+                
+                DevLog("[BossRush] SpawnBossRushMapObjects: 完成");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[BossRush] SpawnBossRushMapObjects 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 根据配置复制单个地图物品
+        /// </summary>
+        private void CloneMapObject(GameObject[] allObjects, MapObjectCloneConfig config)
+        {
+            try
+            {
+                GameObject template = null;
+                Transform parentTransform = null;
+                
+                // 查找模板对象
+                foreach (GameObject go in allObjects)
+                {
+                    if (go.name == config.templateName)
+                    {
+                        // 检查父对象名称前缀
+                        if (go.transform.parent != null && 
+                            go.transform.parent.name.StartsWith(config.parentNamePrefix))
+                        {
+                            template = go;
+                            parentTransform = go.transform.parent;
+                            break;
+                        }
+                        // 如果没有指定父对象前缀，直接使用找到的第一个
+                        else if (string.IsNullOrEmpty(config.parentNamePrefix))
+                        {
+                            template = go;
+                            parentTransform = go.transform.parent;
+                            break;
+                        }
+                    }
+                }
+                
+                if (template == null)
+                {
+                    DevLog("[BossRush] CloneMapObject: 未找到模板 " + config.templateName + " (父对象前缀: " + config.parentNamePrefix + ")");
+                    return;
+                }
+                
+                // 复制对象
+                GameObject clone = UnityEngine.Object.Instantiate(template);
+                clone.name = config.cloneName;
+                clone.transform.position = config.targetPosition;
+                clone.transform.rotation = template.transform.rotation;
+                clone.transform.localScale = template.transform.localScale;
+                
+                // 设置父对象
+                if (parentTransform != null)
+                {
+                    clone.transform.SetParent(parentTransform);
+                }
+                
+                DevLog("[BossRush] CloneMapObject: 已复制 " + config.templateName + " 到 " + config.targetPosition + " (名称: " + config.cloneName + ")");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[BossRush] CloneMapObject 失败 (" + config.templateName + "): " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 在零号区生成路障（BossRush 模式专用）- 保留旧函数名以兼容
+        /// </summary>
+        private void SpawnRoadblockInGroundZero()
+        {
+            SpawnBossRushMapObjects();
+        }
+        
         private System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)
         {
             DevLog("[BossRush] WaitForLevelInitializedThenSetup: 开始等待地图完全初始化...");

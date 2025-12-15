@@ -92,7 +92,8 @@ namespace BossRush
                         long perStack = cashThisWave / 3L;
                         if (perStack < 1L) perStack = cashThisWave; // 波次奖励太低时全部塞一叠
 
-                        Vector3 basePos = ArenaEntryPosition;
+                        // 从配置系统获取当前地图的默认位置作为兜底
+                        Vector3 basePos = GetCurrentSceneDefaultPosition();
                         try
                         {
                             if (_bossRushSignGameObject != null)
@@ -190,7 +191,8 @@ namespace BossRush
                         {
                             try
                             {
-                                Vector3 basePos = ArenaEntryPosition;
+                                // 从配置系统获取当前地图的默认位置作为兜底
+                                Vector3 basePos = GetCurrentSceneDefaultPosition();
                                 try
                                 {
                                     if (_bossRushSignGameObject != null)
@@ -230,7 +232,8 @@ namespace BossRush
                         {
                             try
                             {
-                                Vector3 basePos = ArenaEntryPosition;
+                                // 从配置系统获取当前地图的默认位置作为兜底
+                                Vector3 basePos = GetCurrentSceneDefaultPosition();
                                 try
                                 {
                                     if (_bossRushSignGameObject != null)
@@ -439,7 +442,8 @@ namespace BossRush
             try
             {
                 string sceneName = SceneManager.GetActiveScene().name;
-                if (sceneName != BossRushArenaSceneName)
+                // 使用配置系统判断是否在有效的 BossRush 竞技场场景
+                if (!IsCurrentSceneValidBossRushArena())
                 {
                     DevLog("[BossRush] OnAllEnemiesDefeated 被调用但当前不在竞技场场景(" + sceneName + ")，已重置状态不播报通关");
                     SetBossRushRuntimeActive(false);
@@ -552,7 +556,8 @@ namespace BossRush
                     }
                     else
                     {
-                        pos = new Vector3(235.48f, -7.99f, 202.41f);
+                        // 从配置系统获取当前地图的默认位置
+                        pos = GetCurrentSceneDefaultPosition();
                     }
                 }
 

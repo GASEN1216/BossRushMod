@@ -29,19 +29,64 @@ namespace BossRush
 {
     /// <summary>
     /// BossRush 地图选择 UI 辅助类
+    /// 注：地图配置已统一到 ModBehaviour.BossRushMapConfig，此类仅负责 UI 交互
     /// </summary>
     public static class BossRushMapSelectionHelper
     {
-        // BossRush 竞技场场景 ID
-        public const string BossRushSceneID = "Level_DemoChallenge_Main";
+        // BossRush 竞技场场景 ID（保留兼容性，从配置系统获取第一个地图）
+        public static string BossRushSceneID
+        {
+            get
+            {
+                ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+                if (configs != null && configs.Length > 0)
+                {
+                    return configs[0].sceneID;
+                }
+                return "Level_DemoChallenge_Main";
+            }
+        }
         
         // BossRush 落点编号（使用默认起点）
         public const int BossRushBeaconIndex = 0;
         
+        /// <summary>
+        /// 获取当前待处理地图的目标子场景名称（使用统一配置系统）
+        /// </summary>
+        public static string GetPendingTargetSubSceneName()
+        {
+            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            if (pendingMapEntryIndex >= 0 && configs != null && pendingMapEntryIndex < configs.Length)
+            {
+                // 返回运行时场景名（子场景名）
+                return configs[pendingMapEntryIndex].sceneName;
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 获取当前待处理地图的主场景名称（用于判断是否需要保持传送标记）
+        /// </summary>
+        public static string GetPendingMainSceneName()
+        {
+            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            if (pendingMapEntryIndex >= 0 && configs != null && pendingMapEntryIndex < configs.Length)
+            {
+                return configs[pendingMapEntryIndex].sceneID;
+            }
+            return null;
+        }
+        
+        // 当前选中的地图条目索引（用于传送后处理）
+        private static int pendingMapEntryIndex = -1;
+        
         // 是否已初始化
         private static bool initialized = false;
         
-        // 动态创建的 BossRush 条目 GameObject
+        // 动态创建的 BossRush 条目 GameObject 列表
+        private static List<GameObject> bossRushEntryObjects = new List<GameObject>();
+        
+        // 保留兼容性的单个条目引用
         private static GameObject bossRushEntryObject = null;
         
         /// <summary>
@@ -185,7 +230,28 @@ namespace BossRush
         private static List<GameObject> hiddenEntries = new List<GameObject>();
         
         /// <summary>
-        /// 注入 BossRush 目的地条目到 MapSelectionView
+        /// 获取待处理的自定义传送位置（场景加载后使用，使用统一配置系统）
+        /// </summary>
+        public static Vector3? GetPendingCustomPosition()
+        {
+            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            if (pendingMapEntryIndex >= 0 && configs != null && pendingMapEntryIndex < configs.Length)
+            {
+                return configs[pendingMapEntryIndex].customSpawnPos;
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 清除待处理的地图条目索引
+        /// </summary>
+        public static void ClearPendingMapEntry()
+        {
+            pendingMapEntryIndex = -1;
+        }
+        
+        /// <summary>
+        /// 注入 BossRush 目的地条目到 MapSelectionView（支持多个地图）
         /// </summary>
         private static bool InjectBossRushEntry(MapSelectionView mapView)
         {
@@ -203,23 +269,27 @@ namespace BossRush
                     return false;
                 }
                 
-                // 清空之前隐藏的条目列表
+                // 清空之前隐藏的条目列表和创建的条目列表
                 hiddenEntries.Clear();
+                foreach (GameObject obj in bossRushEntryObjects)
+                {
+                    if (obj != null)
+                    {
+                        UnityEngine.Object.Destroy(obj);
+                    }
+                }
+                bossRushEntryObjects.Clear();
                 
-                // 隐藏所有原有条目（除了 BossRush 条目）
+                // 隐藏所有原有条目，保存模板
                 MapSelectionEntry templateEntry = null;
                 foreach (MapSelectionEntry entry in existingEntries)
                 {
                     if (entry == null) continue;
                     
-                    if (entry.SceneID == BossRushSceneID)
-                    {
-                        // 已存在 BossRush 条目，更新其 Cost 并保持显示
-                        UpdateEntryCost(entry, CreateBossRushCost());
-                        Debug.Log("[BossRush] 已更新现有 BossRush 条目的 Cost");
-                        // 继续隐藏其他条目
-                    }
-                    else
+                    // 检查是否是我们之前创建的 BossRush 条目
+                    bool isBossRushEntry = entry.gameObject.name.StartsWith("BossRush_");
+                    
+                    if (!isBossRushEntry)
                     {
                         // 保存模板（用于克隆）
                         if (templateEntry == null)
@@ -230,74 +300,85 @@ namespace BossRush
                         entry.gameObject.SetActive(false);
                         hiddenEntries.Add(entry.gameObject);
                     }
-                }
-                
-                // 检查是否已存在 BossRush 条目
-                foreach (MapSelectionEntry entry in existingEntries)
-                {
-                    if (entry != null && entry.SceneID == BossRushSceneID)
+                    else
                     {
-                        // 确保 BossRush 条目显示
-                        entry.gameObject.SetActive(true);
-                        // 不再覆盖名称，让它显示场景原本的地名（由 Refresh() 从 SceneInfoCollection 获取）
-                        // 设置背景图片
-                        SetEntryBackgroundImage(entry);
-                        Debug.Log("[BossRush] 已隐藏 " + hiddenEntries.Count + " 个原有条目，保留 BossRush 条目");
-                        return true;
+                        // 销毁之前创建的 BossRush 条目
+                        UnityEngine.Object.Destroy(entry.gameObject);
                     }
                 }
                 
-                // 没有现有 BossRush 条目，需要克隆创建
+                // 没有可用的模板
                 if (templateEntry == null)
                 {
                     Debug.LogWarning("[BossRush] 没有可用的模板 MapSelectionEntry");
                     return false;
                 }
                 
-                // 克隆模板
-                GameObject cloned = UnityEngine.Object.Instantiate(templateEntry.gameObject, templateEntry.transform.parent);
-                cloned.name = "BossRush_MapSelectionEntry";
-                cloned.SetActive(true); // 确保克隆的条目是激活的
-                
-                // 获取克隆的 MapSelectionEntry 组件
-                MapSelectionEntry bossRushEntry = cloned.GetComponent<MapSelectionEntry>();
-                if (bossRushEntry == null)
+                // 使用统一配置系统获取地图列表
+                ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+                if (mapConfigs == null || mapConfigs.Length == 0)
                 {
-                    Debug.LogWarning("[BossRush] 克隆的对象上没有 MapSelectionEntry 组件");
-                    UnityEngine.Object.Destroy(cloned);
+                    Debug.LogWarning("[BossRush] 没有可用的地图配置");
                     return false;
                 }
                 
-                // 配置 BossRush 条目的字段（设置 sceneID、cost 等）
-                // 必须在 Setup() 之前设置 sceneID，因为 Setup() 会调用 Refresh()
-                ConfigureBossRushEntry(bossRushEntry);
+                // 为每个地图条目创建 UI 条目
+                Transform contentParent = templateEntry.transform.parent;
+                for (int i = 0; i < mapConfigs.Length; i++)
+                {
+                    ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[i];
+                    
+                    // 克隆模板
+                    GameObject cloned = UnityEngine.Object.Instantiate(templateEntry.gameObject, contentParent);
+                    cloned.name = "BossRush_MapSelectionEntry_" + i;
+                    cloned.SetActive(true);
+                    
+                    // 获取克隆的 MapSelectionEntry 组件
+                    MapSelectionEntry uiEntry = cloned.GetComponent<MapSelectionEntry>();
+                    if (uiEntry == null)
+                    {
+                        Debug.LogWarning("[BossRush] 克隆的对象上没有 MapSelectionEntry 组件");
+                        UnityEngine.Object.Destroy(cloned);
+                        continue;
+                    }
+                    
+                    // 配置条目字段（使用统一配置）
+                    ConfigureBossRushEntryWithMapConfig(uiEntry, mapConfig, i);
+                    
+                    // 调用 Setup 方法关联到 MapSelectionView
+                    uiEntry.Setup(mapView);
+                    
+                    // 设置显示名称
+                    SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(mapConfig.sceneID);
+                    string displayName = !string.IsNullOrEmpty(mapConfig.displayName) ? mapConfig.displayName : 
+                                         (sceneInfo != null ? sceneInfo.DisplayName : "未知地图");
+                    SetEntryDisplayNameDirect(cloned, displayName);
+                    Debug.Log("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ")");
+                    
+                    // 更新缩略图（如果有自定义预览图）
+                    if (!string.IsNullOrEmpty(mapConfig.previewImageName))
+                    {
+                        UpdateEntryThumbnailWithImage(uiEntry, mapConfig.previewImageName);
+                    }
+                    
+                    // 保存引用
+                    bossRushEntryObjects.Add(cloned);
+                    
+                    // 第一个条目保存到兼容性引用
+                    if (i == 0)
+                    {
+                        bossRushEntryObject = cloned;
+                    }
+                }
                 
-                // 调用 Setup 方法关联到 MapSelectionView
-                // Setup() 会调用 Refresh()，Refresh() 会从 SceneInfoCollection 获取场景信息并更新 UI
-                bossRushEntry.Setup(mapView);
-                
-                // 获取场景信息
-                SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(BossRushSceneID);
-                string displayName = sceneInfo != null ? sceneInfo.DisplayName : "Boss Rush 竞技场";
-                Debug.Log("[BossRush] 场景显示名称: " + displayName);
-                
-                // 直接查找克隆对象内部的 TextMeshProUGUI 组件并设置文本
-                // 这是最可靠的方法，不依赖于 SerializeField 的绑定
-                SetEntryDisplayNameDirect(cloned, displayName);
-                
-                // 更新缩略图
-                UpdateEntryThumbnail(bossRushEntry);
-                
-                // 保存引用以便后续清理
-                bossRushEntryObject = cloned;
-                
-                // 确保克隆的条目是激活的
-                cloned.SetActive(true);
-                Debug.Log("[BossRush] 已确保 BossRush 条目激活状态: " + cloned.activeInHierarchy);
-                
-                // 确保克隆的条目在最前面（siblingIndex = 0）
-                cloned.transform.SetAsFirstSibling();
-                Debug.Log("[BossRush] 已将 BossRush 条目移到最前面");
+                // 将所有 BossRush 条目移到最前面（按顺序）
+                for (int i = bossRushEntryObjects.Count - 1; i >= 0; i--)
+                {
+                    if (bossRushEntryObjects[i] != null)
+                    {
+                        bossRushEntryObjects[i].transform.SetAsFirstSibling();
+                    }
+                }
                 
                 // 验证所有条目的状态
                 MapSelectionEntry[] allEntries = mapView.GetComponentsInChildren<MapSelectionEntry>(true);
@@ -309,14 +390,205 @@ namespace BossRush
                     Debug.Log("[BossRush] 条目: " + e.gameObject.name + ", sceneID=" + e.SceneID + ", active=" + isActive + ", siblingIndex=" + siblingIndex);
                 }
                 
-                Debug.Log("[BossRush] 成功注入 BossRush 条目，已隐藏 " + hiddenEntries.Count + " 个原有条目");
-                return true;
+                Debug.Log("[BossRush] 成功注入 " + bossRushEntryObjects.Count + " 个 BossRush 条目，已隐藏 " + hiddenEntries.Count + " 个原有条目");
+                return bossRushEntryObjects.Count > 0;
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] InjectBossRushEntry 失败: " + e.Message);
+                Debug.LogError("[BossRush] InjectBossRushEntry 失败: " + e.Message + "\n" + e.StackTrace);
                 return false;
             }
+        }
+        
+        /// <summary>
+        /// 配置 BossRush 条目的字段（使用统一的 BossRushMapConfig 配置）
+        /// </summary>
+        private static void ConfigureBossRushEntryWithMapConfig(MapSelectionEntry entry, ModBehaviour.BossRushMapConfig mapConfig, int entryIndex)
+        {
+            try
+            {
+                // 使用反射设置私有字段
+                Type entryType = typeof(MapSelectionEntry);
+                
+                // 设置 sceneID（使用加载用场景ID）
+                FieldInfo sceneIdField = entryType.GetField("sceneID", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (sceneIdField != null)
+                {
+                    sceneIdField.SetValue(entry, mapConfig.sceneID);
+                }
+                
+                // 设置 beaconIndex
+                FieldInfo beaconField = entryType.GetField("beaconIndex", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (beaconField != null)
+                {
+                    beaconField.SetValue(entry, mapConfig.beaconIndex);
+                }
+                
+                // 设置 cost
+                FieldInfo costField = entryType.GetField("cost", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (costField != null)
+                {
+                    costField.SetValue(entry, CreateBossRushCost());
+                }
+                
+                // 清除 conditions（无解锁条件）
+                FieldInfo conditionsField = entryType.GetField("conditions", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (conditionsField != null)
+                {
+                    conditionsField.SetValue(entry, null);
+                }
+                
+                // 添加点击事件监听，记录选中的地图索引
+                BossRushMapEntryClickHandler clickHandler = entry.gameObject.GetComponent<BossRushMapEntryClickHandler>();
+                if (clickHandler == null)
+                {
+                    clickHandler = entry.gameObject.AddComponent<BossRushMapEntryClickHandler>();
+                }
+                clickHandler.entryIndex = entryIndex;
+                
+                Debug.Log("[BossRush] 已配置 BossRush 条目: sceneID=" + mapConfig.sceneID + ", beaconIndex=" + mapConfig.beaconIndex + ", entryIndex=" + entryIndex);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] ConfigureBossRushEntryWithMapConfig 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 配置 BossRush 条目的字段（旧版方法，保留兼容性）
+        /// </summary>
+        [System.Obsolete("请使用 ConfigureBossRushEntryWithMapConfig 代替")]
+        private static void ConfigureBossRushEntryWithMapEntry(MapSelectionEntry entry, object mapEntry, int entryIndex)
+        {
+            // 旧方法已废弃，不再使用
+            Debug.LogWarning("[BossRush] ConfigureBossRushEntryWithMapEntry 已废弃，请使用 ConfigureBossRushEntryWithMapConfig");
+        }
+        
+        /// <summary>
+        /// 配置 BossRush 条目的字段（原始方法，保留兼容性）
+        /// </summary>
+        private static void ConfigureBossRushEntry_Legacy(MapSelectionEntry entry)
+        {
+            try
+            {
+                // 使用反射设置私有字段
+                Type entryType = typeof(MapSelectionEntry);
+                
+                // 设置 sceneID
+                FieldInfo sceneIdField = entryType.GetField("sceneID", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (sceneIdField != null)
+                {
+                    sceneIdField.SetValue(entry, BossRushSceneID);
+                }
+                
+                // 设置 beaconIndex
+                FieldInfo beaconField = entryType.GetField("beaconIndex", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (beaconField != null)
+                {
+                    beaconField.SetValue(entry, BossRushBeaconIndex);
+                }
+                
+                // 设置 cost
+                FieldInfo costField = entryType.GetField("cost", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (costField != null)
+                {
+                    costField.SetValue(entry, CreateBossRushCost());
+                }
+                
+                // 清除 conditions（无解锁条件）
+                FieldInfo conditionsField = entryType.GetField("conditions", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (conditionsField != null)
+                {
+                    conditionsField.SetValue(entry, null);
+                }
+                
+                Debug.Log("[BossRush] 已配置 BossRush 条目: sceneID=" + BossRushSceneID + ", beaconIndex=" + BossRushBeaconIndex);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] ConfigureBossRushEntry_Legacy 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 设置待处理的地图条目索引（由点击处理器调用）
+        /// </summary>
+        public static void SetPendingMapEntryIndex(int index)
+        {
+            pendingMapEntryIndex = index;
+            Debug.Log("[BossRush] 设置待处理地图条目索引: " + index);
+        }
+        
+        /// <summary>
+        /// 更新条目缩略图（使用指定的图片文件名）
+        /// </summary>
+        private static void UpdateEntryThumbnailWithImage(MapSelectionEntry entry, string imageName)
+        {
+            try
+            {
+                Sprite sprite = LoadCustomBackgroundSpriteByName(imageName);
+                if (sprite == null) return;
+                
+                // 查找条目 GameObject 内部的所有 Image 组件
+                Image[] images = entry.GetComponentsInChildren<Image>(true);
+                
+                foreach (Image img in images)
+                {
+                    // 只更新 sprite 名称以 "Map_" 开头的 Image（这些是地图预览图）
+                    if (img.sprite != null && img.sprite.name.StartsWith("Map_"))
+                    {
+                        img.sprite = sprite;
+                        img.SetAllDirty();
+                    }
+                }
+                
+                // 设置 fullScreenImage 字段
+                FieldInfo imageField = typeof(MapSelectionEntry).GetField("fullScreenImage", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (imageField != null)
+                {
+                    imageField.SetValue(entry, sprite);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] UpdateEntryThumbnailWithImage 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 根据文件名加载自定义背景图片
+        /// </summary>
+        private static Sprite LoadCustomBackgroundSpriteByName(string imageName)
+        {
+            try
+            {
+                string modPath = GetModPath();
+                if (string.IsNullOrEmpty(modPath)) return null;
+                
+                // 尝试 Assets 子目录
+                string imagePath = System.IO.Path.Combine(modPath, "Assets", imageName);
+                if (!System.IO.File.Exists(imagePath))
+                {
+                    // 回退到根目录
+                    imagePath = System.IO.Path.Combine(modPath, imageName);
+                    if (!System.IO.File.Exists(imagePath))
+                    {
+                        return null;
+                    }
+                }
+                
+                byte[] imageData = System.IO.File.ReadAllBytes(imagePath);
+                Texture2D texture = new Texture2D(2, 2);
+                if (ImageConversion.LoadImage(texture, imageData))
+                {
+                    return Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] LoadCustomBackgroundSpriteByName 失败: " + e.Message);
+            }
+            return null;
         }
         
         // 缓存的自定义背景图片
@@ -915,15 +1187,41 @@ namespace BossRush
                 RestoreHiddenEntries();
                 
                 // 销毁动态创建的 BossRush 条目
-                if (bossRushEntryObject != null)
+                foreach (GameObject obj in bossRushEntryObjects)
                 {
-                    UnityEngine.Object.Destroy(bossRushEntryObject);
-                    bossRushEntryObject = null;
+                    if (obj != null)
+                    {
+                        UnityEngine.Object.Destroy(obj);
+                    }
                 }
+                bossRushEntryObjects.Clear();
+                bossRushEntryObject = null;
+                
+                // 清除待处理的地图索引
+                pendingMapEntryIndex = -1;
             }
             catch (Exception e)
             {
                 Debug.LogError("[BossRush] Cleanup 失败: " + e.Message);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// BossRush 地图条目点击处理器
+    /// 用于在玩家点击地图条目时记录选中的地图索引
+    /// </summary>
+    public class BossRushMapEntryClickHandler : MonoBehaviour, IPointerClickHandler
+    {
+        public int entryIndex = -1;
+        
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            // 记录选中的地图索引，供场景加载后使用
+            if (entryIndex >= 0)
+            {
+                BossRushMapSelectionHelper.SetPendingMapEntryIndex(entryIndex);
+                Debug.Log("[BossRush] 玩家点击地图条目: " + entryIndex);
             }
         }
     }

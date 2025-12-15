@@ -316,17 +316,24 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 获取不重复的刷新位置
+        /// 获取不重复的刷新位置（使用 BossRushMapConfig 配置系统）
         /// </summary>
         private Vector3 GetUniqueSpawnPosition(List<Vector3> usedPositions)
         {
             const int maxAttempts = 20;
             const float minDistance = 3f;
 
+            // 使用配置系统获取当前场景的刷新点
+            Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
+            if (spawnPoints == null || spawnPoints.Length == 0)
+            {
+                spawnPoints = DemoChallengeSpawnPoints;
+            }
+
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                int index = UnityEngine.Random.Range(0, ArenaSpawnPoints.Length);
-                Vector3 candidate = GetSafeBossSpawnPosition(ArenaSpawnPoints[index]);
+                int index = UnityEngine.Random.Range(0, spawnPoints.Length);
+                Vector3 candidate = GetSafeBossSpawnPosition(spawnPoints[index]);
 
                 bool tooClose = false;
                 foreach (Vector3 used in usedPositions)
@@ -345,8 +352,8 @@ namespace BossRush
             }
 
             // 实在找不到，随机返回一个
-            int fallbackIndex = UnityEngine.Random.Range(0, ArenaSpawnPoints.Length);
-            return GetSafeBossSpawnPosition(ArenaSpawnPoints[fallbackIndex]);
+            int fallbackIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+            return GetSafeBossSpawnPosition(spawnPoints[fallbackIndex]);
         }
 
         /// <summary>

@@ -1140,10 +1140,11 @@ namespace BossRush
                     return;
                 }
 
-                // 使用事先采集好的固定刷新点（在这些点中随机选择一个）
-                if (ArenaSpawnPoints == null || ArenaSpawnPoints.Length == 0)
+                // 使用当前地图的刷新点（根据场景动态选择）
+                Vector3[] spawnPoints = GetCurrentSpawnPoints();
+                if (spawnPoints == null || spawnPoints.Length == 0)
                 {
-                    Debug.LogError("[BossRush] ArenaSpawnPoints 为空，无法生成敌人");
+                    Debug.LogError("[BossRush] 当前地图刷新点为空，无法生成敌人");
                     return;
                 }
 
@@ -1154,8 +1155,8 @@ namespace BossRush
                     bossesInCurrentWaveRemaining = 1;
                     currentWaveBosses.Clear();
 
-                    int index = UnityEngine.Random.Range(0, ArenaSpawnPoints.Length);
-                    Vector3 spawnPos = GetSafeBossSpawnPosition(ArenaSpawnPoints[index]);
+                    int index = UnityEngine.Random.Range(0, spawnPoints.Length);
+                    Vector3 spawnPos = GetSafeBossSpawnPosition(spawnPoints[index]);
 
                     // 显示敌人生成横幅（在生成前显示）
                     ShowEnemyBanner(preset.displayName, spawnPos, playerMain.transform.position);
@@ -1182,8 +1183,8 @@ namespace BossRush
                             }
                         }
 
-                        int index = UnityEngine.Random.Range(0, ArenaSpawnPoints.Length);
-                        Vector3 spawnPos = GetSafeBossSpawnPosition(ArenaSpawnPoints[index]);
+                        int index = UnityEngine.Random.Range(0, spawnPoints.Length);
+                        Vector3 spawnPos = GetSafeBossSpawnPosition(spawnPoints[index]);
 
                         // 第一只Boss时显示横幅
                         if (i == 0)
@@ -1200,6 +1201,15 @@ namespace BossRush
             {
                 Debug.LogError("[BossRush] 生成敌人失败: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// 获取当前地图的刷新点数组（使用 BossRushMapConfig 配置系统）
+        /// </summary>
+        private Vector3[] GetCurrentSpawnPoints()
+        {
+            // 使用配置系统获取当前场景的刷新点
+            return GetCurrentSceneSpawnPoints();
         }
         
         public void StartNextWaveCountdown()
