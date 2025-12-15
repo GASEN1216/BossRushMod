@@ -602,26 +602,29 @@ namespace BossRush
                 }
             }
 
-            // 调试快捷键 F6：复制 F5 记住的 GameObject 到玩家脚下
+            // 调试快捷键 F6：切换放置模式
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F6))
             {
                 try
                 {
-                    CharacterMainControl main = CharacterMainControl.Main;
-                    if (main == null)
-                    {
-                        DevLog("[BossRush] F6 调试：未找到玩家 CharacterMainControl");
-                    }
-                    else
-                    {
-                        Vector3 playerPos = main.transform.position;
-                        // 复制 F5 记住的 GameObject 到玩家脚下
-                        CloneRememberedGameObject(playerPos);
-                    }
+                    TogglePlacementMode();
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] F6 调试失败: " + e.Message);
+                    Debug.LogError("[BossRush] F6 放置模式切换失败: " + e.Message);
+                }
+            }
+            
+            // 放置模式更新（每帧调用）
+            if (DevModeEnabled && IsPlacementModeActive())
+            {
+                try
+                {
+                    UpdatePlacementMode();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("[BossRush] 放置模式更新失败: " + e.Message);
                 }
             }
 

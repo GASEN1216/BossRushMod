@@ -7,13 +7,24 @@
 //   - GetTransformPath: 获取 Transform 的完整层级路径
 //   - LogNearbyGameObjects: 输出玩家附近的 GameObject 信息
 //   - OnInteractStartDebug: 交互事件监听，输出详细交互信息
+//   - 放置模式：预览并复制建筑物到指定位置
 //   
 // 调试快捷键（仅在 DevModeEnabled = true 时生效）：
-//   - F5: 输出玩家脚下的 GameObject
+//   - F5: 输出玩家脚下的 GameObject 并记住最近的对象
+//   - F6: 切换放置模式（预览 F5 记住的对象，鼠标左键确认放置）
 //   - F7: 输出最近的交互点信息
 //   - F8: 输出场景中所有非玩家角色
 //   - F9: 直接开始 BossRush
 //   - F10: 直接触发通关
+//
+// 放置模式说明：
+//   1. 按 F5 选择并记住一个建筑物
+//   2. 按 F6 进入放置模式（自动收起武器）
+//   3. 移动鼠标，预览对象会跟随鼠标在地板上移动
+//   4. 滚轮上下滚动可旋转对象（每次 15°）
+//   5. 鼠标左键点击确认放置（可连续放置多个）
+//   6. 鼠标右键点击删除鼠标处的建筑物（会输出详细日志）
+//   7. 再次按 F6 退出放置模式
 //
 // 交互调试（仅在 DevModeEnabled = true 时生效）：
 //   - 自动监听所有 InteractableBase.OnInteractStartStaticEvent 事件
@@ -37,6 +48,44 @@ namespace BossRush
         
         // F5 记住的最近 GameObject，供 F6 复制使用
         private static GameObject lastNearestGameObject = null;
+        
+        // ============================================================================
+        // 放置模式相关变量
+        // ============================================================================
+        // 放置模式是否激活
+        private static bool placementModeActive = false;
+        // 预览用的克隆对象
+        private static GameObject placementPreviewObject = null;
+        // 原始材质缓存（用于恢复）
+        private static Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
+        // 预览材质（半透明）
+        private static Material previewMaterial = null;
+        // 当前旋转角度（Y轴）
+        private static float placementRotationY = 0f;
+        // 每次滚轮旋转的角度
+        private const float ROTATION_STEP = 15f;
+        
+        // ============================================================================
+        // 右键删除确认相关变量
+        // ============================================================================
+        // 当前选中待删除的对象（第一次右键选中，第二次右键删除）
+        private static GameObject pendingDeleteObject = null;
+        // 选中对象的原始材质缓存（用于恢复）
+        private static Dictionary<Renderer, Material[]> pendingDeleteOriginalMaterials = new Dictionary<Renderer, Material[]>();
+        // 描边材质
+        private static Material outlineMaterial = null;
+        
+        // ============================================================================
+        // 预制体列表相关变量（滚轮切换）
+        // ============================================================================
+        // 附近预制体列表
+        private static List<GameObject> nearbyPrefabList = new List<GameObject>();
+        // 当前选中的预制体索引
+        private static int currentPrefabIndex = 0;
+        // 预制体列表是否已初始化
+        private static bool prefabListInitialized = false;
+        // 扫描半径
+        private const float PREFAB_SCAN_RADIUS = 50f;
 
         /// <summary>
         /// 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
@@ -854,6 +903,718 @@ namespace BossRush
             {
                 Debug.LogError("[BossRush] F5 建筑调试出错: " + e.Message + "\n" + e.StackTrace);
             }
+        }
+        
+        // ============================================================================
+        // 放置模式功能
+        // ============================================================================
+        
+        /// <summary>
+        /// 切换放置模式（F6 调用）
+        /// </summary>
+        private void TogglePlacementMode()
+        {
+            if (placementModeActive)
+            {
+                // 退出放置模式
+                ExitPlacementMode();
+            }
+            else
+            {
+                // 进入放置模式
+                EnterPlacementMode();
+            }
+        }
+        
+        /// <summary>
+        /// 进入放置模式
+        /// </summary>
+        private void EnterPlacementMode()
+        {
+            // 检查是否有 F5 记住的对象
+            if (lastNearestGameObject == null)
+            {
+                DevLog("[BossRush] 放置模式：没有记住的对象，请先按 F5 选择一个对象");
+                return;
+            }
+            
+            // 获取玩家
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null)
+            {
+                DevLog("[BossRush] 放置模式：未找到玩家");
+                return;
+            }
+            
+            try
+            {
+                // 收起武器
+                main.ChangeHoldItem(null);
+                DevLog("[BossRush] 放置模式：已收起武器");
+                
+                // 初始化旋转角度为原对象的Y轴旋转
+                placementRotationY = lastNearestGameObject.transform.eulerAngles.y;
+                
+                // 创建预览对象
+                CreatePreviewObject();
+                
+                if (placementPreviewObject != null)
+                {
+                    placementModeActive = true;
+                    DevLog("[BossRush] 放置模式：已进入，鼠标左键确认放置，滚轮旋转，再次按 F6 退出");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] 进入放置模式失败: " + e.Message);
+                ExitPlacementMode();
+            }
+        }
+        
+        /// <summary>
+        /// 退出放置模式
+        /// </summary>
+        private void ExitPlacementMode()
+        {
+            placementModeActive = false;
+            
+            // 销毁预览对象
+            if (placementPreviewObject != null)
+            {
+                UnityEngine.Object.Destroy(placementPreviewObject);
+                placementPreviewObject = null;
+            }
+            
+            // 清理材质缓存
+            originalMaterials.Clear();
+            
+            // 清除待删除选中状态
+            ClearPendingDelete();
+            
+            // 清空预制体列表
+            nearbyPrefabList.Clear();
+            prefabListInitialized = false;
+            currentPrefabIndex = 0;
+            
+            DevLog("[BossRush] 放置模式：已退出");
+        }
+        
+        /// <summary>
+        /// 切换预制体（滚轮触发）
+        /// </summary>
+        /// <param name="direction">方向：1=下一个，-1=上一个</param>
+        private void SwitchPrefab(int direction)
+        {
+            // 如果列表未初始化，先扫描附近预制体
+            if (!prefabListInitialized)
+            {
+                ScanNearbyPrefabs();
+            }
+            
+            // 如果列表为空，无法切换
+            if (nearbyPrefabList.Count == 0)
+            {
+                DevLog("[BossRush] 放置模式：附近没有可用的预制体");
+                return;
+            }
+            
+            // 计算新索引
+            currentPrefabIndex += direction;
+            
+            // 循环索引
+            if (currentPrefabIndex >= nearbyPrefabList.Count)
+            {
+                currentPrefabIndex = 0;
+            }
+            else if (currentPrefabIndex < 0)
+            {
+                currentPrefabIndex = nearbyPrefabList.Count - 1;
+            }
+            
+            // 获取新的预制体
+            GameObject newPrefab = nearbyPrefabList[currentPrefabIndex];
+            if (newPrefab == null)
+            {
+                // 如果对象已被销毁，从列表中移除并重试
+                nearbyPrefabList.RemoveAt(currentPrefabIndex);
+                if (nearbyPrefabList.Count > 0)
+                {
+                    currentPrefabIndex = currentPrefabIndex % nearbyPrefabList.Count;
+                    SwitchPrefab(0); // 重新获取当前索引的对象
+                }
+                return;
+            }
+            
+            // 保存当前预览对象的位置和旋转
+            Vector3 currentPos = Vector3.zero;
+            if (placementPreviewObject != null)
+            {
+                currentPos = placementPreviewObject.transform.position;
+                UnityEngine.Object.Destroy(placementPreviewObject);
+                placementPreviewObject = null;
+            }
+            
+            // 切换到新预制体
+            lastNearestGameObject = newPrefab;
+            placementRotationY = newPrefab.transform.eulerAngles.y;
+            
+            // 创建新的预览对象
+            CreatePreviewObject();
+            
+            // 恢复位置
+            if (placementPreviewObject != null && currentPos != Vector3.zero)
+            {
+                placementPreviewObject.transform.position = currentPos;
+            }
+            
+            DevLog("[BossRush] 放置模式：切换到预制体 [" + (currentPrefabIndex + 1) + "/" + nearbyPrefabList.Count + "] " + newPrefab.name);
+        }
+        
+        /// <summary>
+        /// 扫描玩家附近的预制体，构建可切换列表（按基础名称去重）
+        /// </summary>
+        private void ScanNearbyPrefabs()
+        {
+            nearbyPrefabList.Clear();
+            
+            // 获取玩家位置
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null)
+            {
+                DevLog("[BossRush] 放置模式：无法获取玩家位置");
+                prefabListInitialized = true;
+                return;
+            }
+            
+            Vector3 playerPos = main.transform.position;
+            Transform playerTransform = main.transform;
+            
+            // 扫描附近所有带碰撞器的对象
+            Collider[] colliders = Physics.OverlapSphere(playerPos, PREFAB_SCAN_RADIUS);
+            HashSet<GameObject> addedRoots = new HashSet<GameObject>();
+            HashSet<string> addedBaseNames = new HashSet<string>(); // 用于按基础名称去重
+            
+            foreach (var col in colliders)
+            {
+                if (col == null) continue;
+                
+                // 跳过玩家自身
+                if (IsChildOf(col.transform, playerTransform)) continue;
+                
+                // 找到根对象
+                GameObject root = FindTrueRootObject(col.transform);
+                if (root == null) continue;
+                
+                // 跳过已添加的对象实例
+                if (addedRoots.Contains(root)) continue;
+                
+                // 跳过预览对象
+                if (root.name.EndsWith("_Preview")) continue;
+                
+                // 跳过没有渲染器的对象（可能是纯碰撞体）
+                Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length == 0) continue;
+                
+                // 获取基础名称（去掉 _Clone 后缀和数字后缀）
+                string baseName = GetBasePrefabName(root.name);
+                
+                // 按基础名称去重，只保留第一个遇到的
+                if (addedBaseNames.Contains(baseName)) continue;
+                
+                // 添加到列表
+                nearbyPrefabList.Add(root);
+                addedRoots.Add(root);
+                addedBaseNames.Add(baseName);
+            }
+            
+            // 按基础名称排序，方便查找
+            nearbyPrefabList.Sort((a, b) => string.Compare(GetBasePrefabName(a.name), GetBasePrefabName(b.name), StringComparison.Ordinal));
+            
+            // 如果当前选中的对象在列表中，设置为当前索引
+            if (lastNearestGameObject != null)
+            {
+                int idx = nearbyPrefabList.IndexOf(lastNearestGameObject);
+                if (idx >= 0)
+                {
+                    currentPrefabIndex = idx;
+                }
+                else
+                {
+                    // 尝试按基础名称查找
+                    string targetBaseName = GetBasePrefabName(lastNearestGameObject.name);
+                    for (int i = 0; i < nearbyPrefabList.Count; i++)
+                    {
+                        if (GetBasePrefabName(nearbyPrefabList[i].name) == targetBaseName)
+                        {
+                            currentPrefabIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            prefabListInitialized = true;
+            DevLog("[BossRush] 放置模式：扫描到 " + nearbyPrefabList.Count + " 个不同类型的预制体（半径 " + PREFAB_SCAN_RADIUS + "m）");
+        }
+        
+        /// <summary>
+        /// 获取预制体的基础名称（去掉 _Clone、_Preview 和末尾数字后缀）
+        /// 例如：Prfb_BoxGroup_16_Clone -> Prfb_BoxGroup_16
+        ///       Prfb_Wall_01 -> Prfb_Wall_01
+        /// </summary>
+        private string GetBasePrefabName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            
+            // 去掉 _Clone 后缀
+            if (name.EndsWith("_Clone"))
+            {
+                name = name.Substring(0, name.Length - 6);
+            }
+            
+            // 去掉 _Preview 后缀
+            if (name.EndsWith("_Preview"))
+            {
+                name = name.Substring(0, name.Length - 8);
+            }
+            
+            // 去掉末尾的 (数字) 格式，如 "Object (1)"
+            int parenIdx = name.LastIndexOf(" (");
+            if (parenIdx > 0 && name.EndsWith(")"))
+            {
+                name = name.Substring(0, parenIdx);
+            }
+            
+            return name;
+        }
+        
+        /// <summary>
+        /// 创建预览对象（完整克隆，只禁用碰撞器）
+        /// 简化方案：直接实例化原始对象，保持完整渲染，只禁用碰撞器避免物理干扰
+        /// 确认放置时复制一份真实的，然后销毁预览
+        /// </summary>
+        private void CreatePreviewObject()
+        {
+            if (lastNearestGameObject == null) return;
+            
+            // 克隆对象（完整克隆，保持所有渲染效果）
+            placementPreviewObject = UnityEngine.Object.Instantiate(lastNearestGameObject);
+            placementPreviewObject.name = lastNearestGameObject.name + "_Preview";
+            
+            // 只禁用碰撞器，避免物理干扰，但保持完整渲染
+            Collider[] colliders = placementPreviewObject.GetComponentsInChildren<Collider>(true);
+            foreach (var col in colliders)
+            {
+                col.enabled = false;
+            }
+            
+            // 禁用 Rigidbody 避免物理模拟
+            Rigidbody[] rigidbodies = placementPreviewObject.GetComponentsInChildren<Rigidbody>(true);
+            foreach (var rb in rigidbodies)
+            {
+                rb.isKinematic = true;
+            }
+            
+            DevLog("[BossRush] 放置模式：预览对象已创建（完整渲染模式）");
+        }
+        
+        /// <summary>
+        /// 占位方法（保持兼容性）
+        /// </summary>
+        private void DisableAllNonRenderComponents(GameObject previewObj)
+        {
+            // 简化方案不再需要此方法，保留空实现以防其他地方调用
+            if (previewObj == null) return;
+            int disabledCount = 0;
+            if (disabledCount > 0)
+            {
+                DevLog("[BossRush] 放置模式：已禁用 " + disabledCount + " 个组件");
+            }
+        }
+        
+        /// <summary>
+        /// 更新放置模式（在 Update 中调用）
+        /// </summary>
+        private void UpdatePlacementMode()
+        {
+            if (!placementModeActive || placementPreviewObject == null) return;
+            
+            try
+            {
+                // 获取相机
+                Camera cam = null;
+                try
+                {
+                    if (GameCamera.Instance != null)
+                    {
+                        cam = GameCamera.Instance.renderCamera;
+                    }
+                }
+                catch { }
+                
+                if (cam == null)
+                {
+                    cam = Camera.main;
+                }
+                
+                if (cam == null) return;
+                
+                // 处理滚轮：默认旋转预览对象，按住Shift时切换预制体
+                float scroll = UnityEngine.Input.GetAxis("Mouse ScrollWheel");
+                if (scroll != 0f)
+                {
+                    bool shiftHeld = UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift);
+                    
+                    if (shiftHeld)
+                    {
+                        // 按住Shift：切换预制体
+                        SwitchPrefab(scroll > 0f ? 1 : -1);
+                    }
+                    else
+                    {
+                        // 不按Shift：旋转预览对象
+                        if (scroll > 0f)
+                        {
+                            placementRotationY += ROTATION_STEP;
+                        }
+                        else
+                        {
+                            placementRotationY -= ROTATION_STEP;
+                        }
+                        // 保持角度在 0-360 范围内
+                        if (placementRotationY >= 360f) placementRotationY -= 360f;
+                        if (placementRotationY < 0f) placementRotationY += 360f;
+                        
+                        DevLog("[BossRush] 放置模式：旋转角度 = " + placementRotationY.ToString("F0") + "°");
+                    }
+                }
+                
+                // 获取鼠标位置并转换为射线
+                Vector3 mousePos = UnityEngine.Input.mousePosition;
+                Ray ray = cam.ScreenPointToRay(mousePos);
+                
+                // 射线检测地板和墙体（扩大检测范围）
+                LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask | 
+                                       Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
+                RaycastHit hit;
+                
+                // 先尝试检测地板/墙体
+                bool hitSomething = Physics.Raycast(ray, out hit, 500f, groundMask, QueryTriggerInteraction.Ignore);
+                
+                // 如果没有命中，尝试用更宽泛的检测（所有碰撞体）
+                if (!hitSomething)
+                {
+                    hitSomething = Physics.Raycast(ray, out hit, 500f, ~0, QueryTriggerInteraction.Ignore);
+                }
+                
+                if (hitSomething)
+                {
+                    // 移动预览对象到命中点
+                    placementPreviewObject.transform.position = hit.point;
+                    
+                    // 应用旋转（保持原始X和Z轴旋转，只修改Y轴）
+                    if (lastNearestGameObject != null)
+                    {
+                        Vector3 originalEuler = lastNearestGameObject.transform.eulerAngles;
+                        placementPreviewObject.transform.rotation = Quaternion.Euler(originalEuler.x, placementRotationY, originalEuler.z);
+                    }
+                }
+                
+                // 检测鼠标左键点击 - 确认放置
+                if (UnityEngine.Input.GetMouseButtonDown(0))
+                {
+                    ConfirmPlacement();
+                }
+                
+                // 检测鼠标右键点击 - 选中/删除建筑物（两次确认）
+                if (UnityEngine.Input.GetMouseButtonDown(1))
+                {
+                    HandleRightClick(cam);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] 更新放置模式失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 处理右键点击（两次确认删除：第一次描边选中，第二次删除）
+        /// </summary>
+        private void HandleRightClick(Camera cam)
+        {
+            if (cam == null) return;
+            
+            try
+            {
+                Vector3 mousePos = UnityEngine.Input.mousePosition;
+                Ray ray = cam.ScreenPointToRay(mousePos);
+                
+                // 检测所有碰撞体
+                RaycastHit hit;
+                if (Physics.Raycast(ray, out hit, 500f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    // 找到命中对象的真正根对象
+                    Transform hitTransform = hit.collider.transform;
+                    GameObject targetObj = FindTrueRootObject(hitTransform);
+                    
+                    if (targetObj != null)
+                    {
+                        // 检查是否点击的是同一个对象
+                        if (pendingDeleteObject != null && pendingDeleteObject == targetObj)
+                        {
+                            // 第二次右键点击同一对象 - 执行删除
+                            ConfirmDeleteObject(targetObj);
+                        }
+                        else
+                        {
+                            // 第一次右键点击或点击了不同对象 - 选中并描边
+                            SelectObjectForDelete(targetObj);
+                        }
+                    }
+                    else
+                    {
+                        // 点击空白处，取消选中
+                        ClearPendingDelete();
+                        DevLog("[BossRush] 放置模式：未找到可选中的对象");
+                    }
+                }
+                else
+                {
+                    // 点击空白处，取消选中
+                    ClearPendingDelete();
+                    DevLog("[BossRush] 放置模式：右键未命中任何对象，已取消选中");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] 右键处理失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 找到真正的根对象（向上查找直到没有父对象或父对象是场景根）
+        /// </summary>
+        private GameObject FindTrueRootObject(Transform hitTransform)
+        {
+            if (hitTransform == null) return null;
+            
+            Transform current = hitTransform;
+            
+            // 向上查找，直到找到场景根下的第一层对象
+            while (current.parent != null)
+            {
+                string parentName = current.parent.name;
+                // 如果父对象是场景根容器，当前对象就是我们要的根对象
+                if (parentName == "Scene" || parentName.StartsWith("Scene_") || 
+                    parentName.StartsWith("Level_") || parentName.StartsWith("Group_") ||
+                    current.parent.parent == null)
+                {
+                    return current.gameObject;
+                }
+                current = current.parent;
+            }
+            
+            // 如果没有父对象，返回自身
+            return current.gameObject;
+        }
+        
+        /// <summary>
+        /// 选中对象并添加描边效果
+        /// </summary>
+        private void SelectObjectForDelete(GameObject targetObj)
+        {
+            // 先清除之前的选中
+            ClearPendingDelete();
+            
+            pendingDeleteObject = targetObj;
+            string objName = targetObj.name;
+            string objPath = GetTransformPath(targetObj.transform);
+            Vector3 objPos = targetObj.transform.position;
+            
+            DevLog("[BossRush] 放置模式选中：");
+            DevLog("[BossRush]   对象名称: " + objName);
+            DevLog("[BossRush]   对象路径: " + objPath);
+            DevLog("[BossRush]   对象位置: " + objPos);
+            DevLog("[BossRush]   再次右键此对象可删除，右键其他位置取消选中");
+            
+            // 创建描边材质（红色高亮）
+            if (outlineMaterial == null)
+            {
+                Shader urpShader = Shader.Find("Universal Render Pipeline/Lit");
+                if (urpShader != null)
+                {
+                    outlineMaterial = new Material(urpShader);
+                    outlineMaterial.SetFloat("_Surface", 1); // Transparent
+                    outlineMaterial.SetFloat("_Blend", 0);
+                    outlineMaterial.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    outlineMaterial.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    outlineMaterial.SetFloat("_ZWrite", 0);
+                    outlineMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    outlineMaterial.EnableKeyword("_EMISSION");
+                    outlineMaterial.SetColor("_BaseColor", new Color(1f, 0.3f, 0.3f, 0.7f));
+                    outlineMaterial.SetColor("_EmissionColor", new Color(1f, 0f, 0f, 1f));
+                    outlineMaterial.renderQueue = 3100;
+                }
+                else
+                {
+                    outlineMaterial = new Material(Shader.Find("Standard"));
+                    outlineMaterial.SetFloat("_Mode", 3);
+                    outlineMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    outlineMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    outlineMaterial.SetInt("_ZWrite", 0);
+                    outlineMaterial.EnableKeyword("_ALPHABLEND_ON");
+                    outlineMaterial.EnableKeyword("_EMISSION");
+                    outlineMaterial.color = new Color(1f, 0.3f, 0.3f, 0.7f);
+                    outlineMaterial.SetColor("_EmissionColor", new Color(1f, 0f, 0f, 1f));
+                    outlineMaterial.renderQueue = 3100;
+                }
+            }
+            
+            // 应用描边材质到所有渲染器
+            Renderer[] renderers = targetObj.GetComponentsInChildren<Renderer>(true);
+            foreach (var renderer in renderers)
+            {
+                if (renderer == null) continue;
+                
+                // 保存原始材质
+                pendingDeleteOriginalMaterials[renderer] = renderer.sharedMaterials;
+                
+                // 创建混合材质数组（原始材质 + 描边材质叠加效果）
+                Material[] newMats = new Material[renderer.sharedMaterials.Length];
+                for (int i = 0; i < newMats.Length; i++)
+                {
+                    // 创建原始材质的副本并添加红色叠加
+                    if (renderer.sharedMaterials[i] != null)
+                    {
+                        newMats[i] = new Material(renderer.sharedMaterials[i]);
+                        // 尝试设置颜色叠加
+                        if (newMats[i].HasProperty("_BaseColor"))
+                        {
+                            Color origColor = newMats[i].GetColor("_BaseColor");
+                            newMats[i].SetColor("_BaseColor", new Color(
+                                Mathf.Min(1f, origColor.r + 0.5f),
+                                origColor.g * 0.5f,
+                                origColor.b * 0.5f,
+                                origColor.a
+                            ));
+                        }
+                        else if (newMats[i].HasProperty("_Color"))
+                        {
+                            Color origColor = newMats[i].GetColor("_Color");
+                            newMats[i].SetColor("_Color", new Color(
+                                Mathf.Min(1f, origColor.r + 0.5f),
+                                origColor.g * 0.5f,
+                                origColor.b * 0.5f,
+                                origColor.a
+                            ));
+                        }
+                        // 添加自发光
+                        if (newMats[i].HasProperty("_EmissionColor"))
+                        {
+                            newMats[i].EnableKeyword("_EMISSION");
+                            newMats[i].SetColor("_EmissionColor", new Color(0.5f, 0f, 0f, 1f));
+                        }
+                    }
+                    else
+                    {
+                        newMats[i] = outlineMaterial;
+                    }
+                }
+                renderer.materials = newMats;
+            }
+        }
+        
+        /// <summary>
+        /// 确认删除选中的对象
+        /// </summary>
+        private void ConfirmDeleteObject(GameObject targetObj)
+        {
+            string objName = targetObj.name;
+            string objPath = GetTransformPath(targetObj.transform);
+            Vector3 objPos = targetObj.transform.position;
+            
+            DevLog("[BossRush] 放置模式删除确认：");
+            DevLog("[BossRush]   对象名称: " + objName);
+            DevLog("[BossRush]   对象路径: " + objPath);
+            DevLog("[BossRush]   对象位置: " + objPos);
+            
+            // 清除待删除状态
+            pendingDeleteObject = null;
+            pendingDeleteOriginalMaterials.Clear();
+            
+            // 销毁对象
+            UnityEngine.Object.Destroy(targetObj);
+            
+            DevLog("[BossRush] 放置模式：已删除 " + objName + " 位于 " + objPos);
+        }
+        
+        /// <summary>
+        /// 清除待删除选中状态，恢复原始材质
+        /// </summary>
+        private void ClearPendingDelete()
+        {
+            if (pendingDeleteObject != null)
+            {
+                // 恢复原始材质
+                foreach (var kvp in pendingDeleteOriginalMaterials)
+                {
+                    Renderer renderer = kvp.Key;
+                    Material[] originalMats = kvp.Value;
+                    
+                    if (renderer != null && originalMats != null)
+                    {
+                        renderer.sharedMaterials = originalMats;
+                    }
+                }
+                
+                DevLog("[BossRush] 放置模式：已取消选中 " + pendingDeleteObject.name);
+                pendingDeleteObject = null;
+            }
+            pendingDeleteOriginalMaterials.Clear();
+        }
+        
+        /// <summary>
+        /// 确认放置（鼠标左键点击时调用）
+        /// </summary>
+        private void ConfirmPlacement()
+        {
+            if (!placementModeActive || placementPreviewObject == null || lastNearestGameObject == null)
+            {
+                return;
+            }
+            
+            try
+            {
+                // 在预览位置创建真正的克隆
+                Vector3 placePos = placementPreviewObject.transform.position;
+                
+                // 使用当前旋转角度
+                Vector3 originalEuler = lastNearestGameObject.transform.eulerAngles;
+                Quaternion placeRot = Quaternion.Euler(originalEuler.x, placementRotationY, originalEuler.z);
+                
+                GameObject clone = UnityEngine.Object.Instantiate(lastNearestGameObject);
+                clone.name = lastNearestGameObject.name + "_Clone";
+                clone.transform.position = placePos;
+                clone.transform.rotation = placeRot;
+                clone.transform.localScale = lastNearestGameObject.transform.localScale;
+                
+                DevLog("[BossRush] 放置模式：已在 " + placePos + " 放置 " + clone.name + "，旋转=" + placementRotationY.ToString("F0") + "°");
+                
+                // 不退出放置模式，允许继续放置
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] 确认放置失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 检查放置模式是否激活（供外部调用）
+        /// </summary>
+        public static bool IsPlacementModeActive()
+        {
+            return placementModeActive;
         }
     }
 }
