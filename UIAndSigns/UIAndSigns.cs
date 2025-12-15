@@ -51,6 +51,88 @@ namespace BossRush
         
         #endregion
         
+        #region 路牌辅助方法
+        
+        /// <summary>
+        /// 移除 GameObject 上的刚体并将所有 Collider 设置为 Trigger，允许玩家穿过
+        /// </summary>
+        /// <param name="obj">目标 GameObject</param>
+        private void RemoveRigidbodyAndSetTrigger(GameObject obj)
+        {
+            if (obj == null) return;
+            
+            try
+            {
+                // 移除所有刚体组件
+                Rigidbody[] rigidbodies = obj.GetComponentsInChildren<Rigidbody>(true);
+                foreach (var rb in rigidbodies)
+                {
+                    if (rb != null)
+                    {
+                        UnityEngine.Object.Destroy(rb);
+                    }
+                }
+                
+                // 将所有 Collider 设置为 Trigger 模式
+                Collider[] colliders = obj.GetComponentsInChildren<Collider>(true);
+                foreach (var col in colliders)
+                {
+                    if (col != null)
+                    {
+                        col.isTrigger = true;
+                    }
+                }
+                
+                DevLog("[BossRush] RemoveRigidbodyAndSetTrigger: 已移除 " + rigidbodies.Length + " 个刚体，设置 " + colliders.Length + " 个 Collider 为 Trigger");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[BossRush] RemoveRigidbodyAndSetTrigger 异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 查找距离指定位置最近的 BoxCollider
+        /// </summary>
+        /// <param name="position">参考位置</param>
+        /// <param name="maxDistance">最大搜索距离，默认 50 米</param>
+        /// <returns>最近的 BoxCollider，未找到则返回 null</returns>
+        private BoxCollider FindNearestBoxCollider(Vector3 position, float maxDistance = 50f)
+        {
+            try
+            {
+                BoxCollider[] allBoxColliders = UnityEngine.Object.FindObjectsOfType<BoxCollider>();
+                BoxCollider nearest = null;
+                float nearestDistance = maxDistance;
+                
+                foreach (var boxCol in allBoxColliders)
+                {
+                    if (boxCol == null || boxCol.gameObject == null) continue;
+                    
+                    // 排除已禁用的、Trigger 类型的、以及我们自己创建的对象
+                    if (!boxCol.enabled) continue;
+                    if (boxCol.isTrigger) continue;
+                    if (boxCol.gameObject.name.StartsWith("BossRush_")) continue;
+                    
+                    float distance = Vector3.Distance(position, boxCol.transform.position);
+                    if (distance < nearestDistance)
+                    {
+                        nearestDistance = distance;
+                        nearest = boxCol;
+                    }
+                }
+                
+                return nearest;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[BossRush] FindNearestBoxCollider 异常: " + e.Message);
+                return null;
+            }
+        }
+        
+        #endregion
+        
         #region 路牌引用
         
         /// <summary>BossRush 路牌交互组件引用</summary>
@@ -581,6 +663,9 @@ namespace BossRush
                             catch {}
                         }
                         
+                        // 移除刚体，确保玩家可以穿过路牌
+                        RemoveRigidbodyAndSetTrigger(sign);
+                        
                         // 添加 BossRushSignInteractable 作为主交互
                         // 主选项：哎哟~你干嘛~（带生小鸡功能）
                         // 子选项：弹指可灭、有点意思
@@ -606,13 +691,29 @@ namespace BossRush
                     }
                     else
                     {
-                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 未找到 Interact_Roadsign 模板，创建隐形交互点");
+                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 未找到 Interact_Roadsign 模板，尝试查找最近的 BoxCollider 作为参考");
                         
-                        // 兜底：创建隐形交互点
+                        // 保底机制：查找最近的 BoxCollider 作为参考位置创建路牌
+                        Vector3 signPos = position + new Vector3(-1.2f, 0f, 0.5f);
+                        BoxCollider nearestBoxCollider = FindNearestBoxCollider(signPos);
+                        
+                        if (nearestBoxCollider != null)
+                        {
+                            // 在最近的 BoxCollider 附近创建路牌
+                            signPos = nearestBoxCollider.transform.position + new Vector3(-1.2f, 0f, 0.5f);
+                            DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 找到最近的 BoxCollider: " + nearestBoxCollider.gameObject.name + ", 位置=" + nearestBoxCollider.transform.position);
+                        }
+                        else
+                        {
+                            DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 未找到任何 BoxCollider，使用默认位置");
+                        }
+                        
+                        // 创建隐形交互点
                         GameObject obj = new GameObject(signName);
-                        obj.transform.position = position + new Vector3(-1.2f, 0f, 0.5f);
+                        obj.transform.position = signPos;
                         obj.transform.rotation = Quaternion.identity;
 
+                        // 创建 BoxCollider 并设置为 Trigger，允许玩家穿过
                         BoxCollider col = obj.AddComponent<BoxCollider>();
                         col.isTrigger = true;
                         col.size = new Vector3(1f, 2f, 1f);
@@ -620,6 +721,10 @@ namespace BossRush
                         var entry = obj.AddComponent<BossRushSignInteractable>();
                         entry.interactCollider = col;
                         bossRushSignInteract = entry;
+                        _signInteractBase = entry;
+                        _bossRushSignGameObject = obj;
+                        
+                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 已创建保底隐形交互点，位置=" + signPos);
                     }
                 }
                 catch (Exception ex)
