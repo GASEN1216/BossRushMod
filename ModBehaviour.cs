@@ -2219,7 +2219,7 @@ namespace BossRush
                         }
                     }
                     platform.layer = groundLayer;
-                    Debug.Log("[BossRush] BuildBossRushArenaGeometry: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
+                    DevLog("[BossRush] BuildBossRushArenaGeometry: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
                 }
                 catch {}
 
@@ -2356,11 +2356,11 @@ namespace BossRush
                     }
                     catch {}
 
-                    Debug.Log("[BossRush] BuildBossRushArenaGeometry: 创建围墙、掩体和边界标记完成，使用 Layer: " + wallLayer);
+                    DevLog("[BossRush] BuildBossRushArenaGeometry: 创建围墙、掩体和边界标记完成，使用 Layer: " + wallLayer);
                 }
                 catch {}
 
-                Debug.Log("[BossRush] BuildBossRushArenaGeometry: 竞技场创建完成");
+                DevLog("[BossRush] BuildBossRushArenaGeometry: 竞技场创建完成");
             }
             catch (Exception e)
             {
@@ -2432,7 +2432,7 @@ namespace BossRush
                     if (!string.IsNullOrEmpty(p.nameKey) && p.nameKey == preset.name)
                     {
                         targetPreset = p;
-                        Debug.Log("[BossRush] 找到匹配的预设: " + p.name + " (nameKey=" + p.nameKey + ")");
+                        DevLog("[BossRush] 找到匹配的预设: " + p.name + " (nameKey=" + p.nameKey + ")");
                         break;
                     }
                 }
@@ -2456,7 +2456,7 @@ namespace BossRush
                         if (presetTeam == preset.team)
                         {
                             targetPreset = p;
-                            Debug.Log("[BossRush] 使用同阵营强敌预设: " + p.name + " (nameKey=" + p.nameKey + ")");
+                            DevLog("[BossRush] 使用同阵营强敌预设: " + p.name + " (nameKey=" + p.nameKey + ")");
                             break;
                         }
                     }
@@ -2535,7 +2535,7 @@ namespace BossRush
                         // 关键：订阅 Boss 的掉落事件（使用lambda捕获Boss引用）
                         character.BeforeCharacterSpawnLootOnDead += (dmgInfo) => OnBossBeforeSpawnLoot(character, dmgInfo);
                         
-                        Debug.Log("[BossRush] 记录 Boss 生成信息并订阅掉落事件 - 时间: " + Time.time + ", 原始掉落数量: " + originalLootCount);
+                        DevLog("[BossRush] 记录 Boss 生成信息并订阅掉落事件 - 时间: " + Time.time + ", 原始掉落数量: " + originalLootCount);
                     }
                 }
                 catch (Exception recordEx)
@@ -2561,7 +2561,7 @@ namespace BossRush
                 }
                 
                 ShowMessage("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName);
-                Debug.Log("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
+                DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
             }
             catch (Exception e)
             {
@@ -2891,7 +2891,7 @@ namespace BossRush
                 NavMeshHit hit;
                 if (NavMesh.SamplePosition(targetPos, out hit, 5f, NavMesh.AllAreas))
                 {
-                    Debug.Log("[BossRush] 找到有效生成位置: " + hit.position);
+                    DevLog("[BossRush] 找到有效生成位置: " + hit.position);
                     return hit.position;
                 }
             }
@@ -2997,7 +2997,7 @@ namespace BossRush
                 try
                 {
                     main.SetPosition(targetPos);
-                    Debug.Log("[BossRush] ReturnToBossRushStart: 使用 SetPosition 将玩家传送回 BossRush 起始位置 " + targetPos);
+                    DevLog("[BossRush] ReturnToBossRushStart: 使用 SetPosition 将玩家传送回 BossRush 起始位置 " + targetPos);
                 }
                 catch (Exception e)
                 {

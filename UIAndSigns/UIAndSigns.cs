@@ -365,7 +365,7 @@ namespace BossRush
         {
             statusMessage = msg;
             messageTimer = 3f;
-            Debug.Log("[BossRush] UI提示: " + msg);
+            DevLog("[BossRush] UI提示: " + msg);
             
             // 尝试使用反射调用 NotificationText.ShowNext
             try
@@ -514,7 +514,7 @@ namespace BossRush
                 EnsureNotificationDurationAtLeastTwoSeconds();
                 // 使用游戏的通知系统显示横幅
                 NotificationText.Push(text);
-                Debug.Log("[BossRush] 显示横幅: " + text);
+                DevLog("[BossRush] 显示横幅: " + text);
             }
             catch (Exception e)
             {

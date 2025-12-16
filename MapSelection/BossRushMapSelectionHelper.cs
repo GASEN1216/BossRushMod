@@ -172,13 +172,13 @@ namespace BossRush
                 mapView.Open(null);
                 
                 // Open() 后验证条目状态
-                Debug.Log("[BossRush] Open() 后验证条目状态:");
+                ModBehaviour.DevLog("[BossRush] Open() 后验证条目状态:");
                 MapSelectionEntry[] entriesAfterOpen = mapView.GetComponentsInChildren<MapSelectionEntry>(true);
                 foreach (MapSelectionEntry e in entriesAfterOpen)
                 {
                     bool isActive = e.gameObject.activeInHierarchy;
                     bool selfActive = e.gameObject.activeSelf;
-                    Debug.Log("[BossRush] 条目: " + e.gameObject.name + ", sceneID=" + e.SceneID + ", activeInHierarchy=" + isActive + ", activeSelf=" + selfActive);
+                    ModBehaviour.DevLog("[BossRush] 条目: " + e.gameObject.name + ", sceneID=" + e.SceneID + ", activeInHierarchy=" + isActive + ", activeSelf=" + selfActive);
                 }
                 
                 // 关键：Open() 后再次设置显示名称
@@ -189,7 +189,7 @@ namespace BossRush
                     SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(BossRushSceneID);
                     string displayName = sceneInfo != null ? sceneInfo.DisplayName : "Boss Rush 竞技场";
                     SetEntryDisplayNameDirect(bossRushEntryObject, displayName);
-                    Debug.Log("[BossRush] Open() 后再次设置显示名称: " + displayName);
+                    ModBehaviour.DevLog("[BossRush] Open() 后再次设置显示名称: " + displayName);
                 }
                 
                 // 启动协程监控 UI 关闭，以便恢复隐藏的条目
@@ -199,7 +199,7 @@ namespace BossRush
                     mod.StartCoroutine(WatchMapSelectionViewClose(mapView));
                 }
                 
-                Debug.Log("[BossRush] 已打开 MapSelectionView，等待玩家选择");
+                ModBehaviour.DevLog("[BossRush] 已打开 MapSelectionView，等待玩家选择");
             }
             catch (Exception e)
             {
@@ -222,7 +222,7 @@ namespace BossRush
             
             // UI 已关闭，恢复隐藏的条目
             RestoreHiddenEntries();
-            Debug.Log("[BossRush] MapSelectionView 已关闭，已恢复隐藏的条目");
+            ModBehaviour.DevLog("[BossRush] MapSelectionView 已关闭，已恢复隐藏的条目");
         }
 
         
@@ -353,7 +353,7 @@ namespace BossRush
                     string displayName = !string.IsNullOrEmpty(mapConfig.displayName) ? mapConfig.displayName : 
                                          (sceneInfo != null ? sceneInfo.DisplayName : "未知地图");
                     SetEntryDisplayNameDirect(cloned, displayName);
-                    Debug.Log("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ")");
+                    ModBehaviour.DevLog("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ")");
                     
                     // 更新缩略图（如果有自定义预览图）
                     if (!string.IsNullOrEmpty(mapConfig.previewImageName))
@@ -382,15 +382,15 @@ namespace BossRush
                 
                 // 验证所有条目的状态
                 MapSelectionEntry[] allEntries = mapView.GetComponentsInChildren<MapSelectionEntry>(true);
-                Debug.Log("[BossRush] MapSelectionView 中共有 " + allEntries.Length + " 个条目");
+                ModBehaviour.DevLog("[BossRush] MapSelectionView 中共有 " + allEntries.Length + " 个条目");
                 foreach (MapSelectionEntry e in allEntries)
                 {
                     bool isActive = e.gameObject.activeInHierarchy;
                     int siblingIndex = e.transform.GetSiblingIndex();
-                    Debug.Log("[BossRush] 条目: " + e.gameObject.name + ", sceneID=" + e.SceneID + ", active=" + isActive + ", siblingIndex=" + siblingIndex);
+                    ModBehaviour.DevLog("[BossRush] 条目: " + e.gameObject.name + ", sceneID=" + e.SceneID + ", active=" + isActive + ", siblingIndex=" + siblingIndex);
                 }
                 
-                Debug.Log("[BossRush] 成功注入 " + bossRushEntryObjects.Count + " 个 BossRush 条目，已隐藏 " + hiddenEntries.Count + " 个原有条目");
+                ModBehaviour.DevLog("[BossRush] 成功注入 " + bossRushEntryObjects.Count + " 个 BossRush 条目，已隐藏 " + hiddenEntries.Count + " 个原有条目");
                 return bossRushEntryObjects.Count > 0;
             }
             catch (Exception e)
@@ -446,7 +446,7 @@ namespace BossRush
                 }
                 clickHandler.entryIndex = entryIndex;
                 
-                Debug.Log("[BossRush] 已配置 BossRush 条目: sceneID=" + mapConfig.sceneID + ", beaconIndex=" + mapConfig.beaconIndex + ", entryIndex=" + entryIndex);
+                ModBehaviour.DevLog("[BossRush] 已配置 BossRush 条目: sceneID=" + mapConfig.sceneID + ", beaconIndex=" + mapConfig.beaconIndex + ", entryIndex=" + entryIndex);
             }
             catch (Exception e)
             {
@@ -502,7 +502,7 @@ namespace BossRush
                     conditionsField.SetValue(entry, null);
                 }
                 
-                Debug.Log("[BossRush] 已配置 BossRush 条目: sceneID=" + BossRushSceneID + ", beaconIndex=" + BossRushBeaconIndex);
+                ModBehaviour.DevLog("[BossRush] 已配置 BossRush 条目: sceneID=" + BossRushSceneID + ", beaconIndex=" + BossRushBeaconIndex);
             }
             catch (Exception e)
             {
@@ -516,7 +516,7 @@ namespace BossRush
         public static void SetPendingMapEntryIndex(int index)
         {
             pendingMapEntryIndex = index;
-            Debug.Log("[BossRush] 设置待处理地图条目索引: " + index);
+            ModBehaviour.DevLog("[BossRush] 设置待处理地图条目索引: " + index);
         }
         
         /// <summary>
@@ -605,7 +605,7 @@ namespace BossRush
                 SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(BossRushSceneID);
                 if (sceneInfo != null)
                 {
-                    Debug.Log("[BossRush] 场景信息存在: ID=" + sceneInfo.ID + ", DisplayName=" + sceneInfo.DisplayName);
+                    ModBehaviour.DevLog("[BossRush] 场景信息存在: ID=" + sceneInfo.ID + ", DisplayName=" + sceneInfo.DisplayName);
                 }
                 else
                 {
@@ -649,7 +649,7 @@ namespace BossRush
                 // 设置自定义背景图片
                 SetEntryBackgroundImage(entry);
                 
-                Debug.Log("[BossRush] 已配置 BossRush 条目: sceneID=" + BossRushSceneID + ", beaconIndex=" + BossRushBeaconIndex);
+                ModBehaviour.DevLog("[BossRush] 已配置 BossRush 条目: sceneID=" + BossRushSceneID + ", beaconIndex=" + BossRushBeaconIndex);
             }
             catch (Exception e)
             {
@@ -677,7 +677,7 @@ namespace BossRush
                     if (imageField != null)
                     {
                         imageField.SetValue(entry, customBackgroundSprite);
-                        Debug.Log("[BossRush] 已设置 MapSelectionEntry.fullScreenImage 字段");
+                        ModBehaviour.DevLog("[BossRush] 已设置 MapSelectionEntry.fullScreenImage 字段");
                     }
                     else
                     {
@@ -697,7 +697,7 @@ namespace BossRush
                             if (imgName.Contains("background") || imgName.Contains("fullscreen") || imgName.Contains("preview"))
                             {
                                 img.sprite = customBackgroundSprite;
-                                Debug.Log("[BossRush] 已设置 Image 组件背景: " + img.gameObject.name);
+                                ModBehaviour.DevLog("[BossRush] 已设置 Image 组件背景: " + img.gameObject.name);
                             }
                         }
                     }
@@ -755,7 +755,7 @@ namespace BossRush
                         new Rect(0, 0, texture.width, texture.height),
                         new Vector2(0.5f, 0.5f)
                     );
-                    Debug.Log("[BossRush] 成功加载背景图片: " + imagePath);
+                    ModBehaviour.DevLog("[BossRush] 成功加载背景图片: " + imagePath);
                     return sprite;
                 }
                 else
@@ -793,7 +793,7 @@ namespace BossRush
                             if (pathField != null)
                             {
                                 string path = pathField.GetValue(infoObj) as string;
-                                Debug.Log("[BossRush] Mod 路径: " + path);
+                                ModBehaviour.DevLog("[BossRush] Mod 路径: " + path);
                                 return path;
                             }
                         }
@@ -830,8 +830,8 @@ namespace BossRush
                 Image[] images = entry.GetComponentsInChildren<Image>(true);
                 int updatedCount = 0;
                 
-                Debug.Log("[BossRush] 条目层级路径: " + GetHierarchyPath(entry.transform));
-                Debug.Log("[BossRush] 条目内部找到 " + images.Length + " 个 Image 组件");
+                ModBehaviour.DevLog("[BossRush] 条目层级路径: " + GetHierarchyPath(entry.transform));
+                ModBehaviour.DevLog("[BossRush] 条目内部找到 " + images.Length + " 个 Image 组件");
                 
                 foreach (Image img in images)
                 {
@@ -841,7 +841,7 @@ namespace BossRush
                     // 只更新 sprite 名称以 "Map_" 开头的 Image（这些是地图预览图）
                     if (img.sprite != null && img.sprite.name.StartsWith("Map_"))
                     {
-                        Debug.Log("[BossRush] 更新地图预览图: " + hierarchyPath + ", 原sprite=" + spriteName);
+                        ModBehaviour.DevLog("[BossRush] 更新地图预览图: " + hierarchyPath + ", 原sprite=" + spriteName);
                         img.sprite = customBackgroundSprite;
                         // 强制刷新 Image 组件
                         img.SetAllDirty();
@@ -849,7 +849,7 @@ namespace BossRush
                     }
                 }
                 
-                Debug.Log("[BossRush] 已更新 " + updatedCount + " 个地图预览图");
+                ModBehaviour.DevLog("[BossRush] 已更新 " + updatedCount + " 个地图预览图");
                 
                 // 强制刷新整个条目的布局
                 LayoutRebuilder.ForceRebuildLayoutImmediate(entry.transform as RectTransform);
@@ -862,7 +862,7 @@ namespace BossRush
                 {
                     if (img.sprite != null)
                     {
-                        Debug.Log("[BossRush] 验证 Image: " + img.gameObject.name + ", sprite=" + img.sprite.name);
+                        ModBehaviour.DevLog("[BossRush] 验证 Image: " + img.gameObject.name + ", sprite=" + img.sprite.name);
                     }
                 }
             }
@@ -895,19 +895,19 @@ namespace BossRush
             {
                 // 直接查找克隆对象内部的所有 TextMeshProUGUI 组件
                 TextMeshProUGUI[] textComps = clonedObject.GetComponentsInChildren<TextMeshProUGUI>(true);
-                Debug.Log("[BossRush] 克隆对象内部找到 " + textComps.Length + " 个 TextMeshProUGUI 组件");
+                ModBehaviour.DevLog("[BossRush] 克隆对象内部找到 " + textComps.Length + " 个 TextMeshProUGUI 组件");
                 
                 bool found = false;
                 foreach (TextMeshProUGUI tmp in textComps)
                 {
                     string objName = tmp.gameObject.name;
                     string hierarchyPath = GetHierarchyPath(tmp.transform);
-                    Debug.Log("[BossRush] TextMeshProUGUI: " + objName + ", text=" + tmp.text + ", path=" + hierarchyPath);
+                    ModBehaviour.DevLog("[BossRush] TextMeshProUGUI: " + objName + ", text=" + tmp.text + ", path=" + hierarchyPath);
                     
                     // 查找名为 "Text_MapName" 的组件（这是显示名称的组件）
                     if (objName == "Text_MapName")
                     {
-                        Debug.Log("[BossRush] 找到 Text_MapName，设置显示名称: " + displayName);
+                        ModBehaviour.DevLog("[BossRush] 找到 Text_MapName，设置显示名称: " + displayName);
                         tmp.text = displayName;
                         found = true;
                     }
@@ -922,7 +922,7 @@ namespace BossRush
                         string objName = tmp.gameObject.name.ToLower();
                         if (objName.Contains("name") || objName.Contains("title") || objName.Contains("display"))
                         {
-                            Debug.Log("[BossRush] 回退设置 TextMeshProUGUI: " + tmp.gameObject.name + " -> " + displayName);
+                            ModBehaviour.DevLog("[BossRush] 回退设置 TextMeshProUGUI: " + tmp.gameObject.name + " -> " + displayName);
                             tmp.text = displayName;
                         }
                     }
@@ -948,7 +948,7 @@ namespace BossRush
                     TextMeshProUGUI textComp = displayNameField.GetValue(entry) as TextMeshProUGUI;
                     if (textComp != null)
                     {
-                        Debug.Log("[BossRush] 通过反射设置显示名称: " + displayName + ", 组件路径: " + GetHierarchyPath(textComp.transform));
+                        ModBehaviour.DevLog("[BossRush] 通过反射设置显示名称: " + displayName + ", 组件路径: " + GetHierarchyPath(textComp.transform));
                         textComp.text = displayName;
                     }
                     else
@@ -960,17 +960,17 @@ namespace BossRush
                 // 方法2：直接查找条目内部的 TextMeshProUGUI 组件
                 // 通常显示名称的 TextMeshProUGUI 组件名称包含 "Name" 或 "Title"
                 TextMeshProUGUI[] textComps = entry.GetComponentsInChildren<TextMeshProUGUI>(true);
-                Debug.Log("[BossRush] 条目内部找到 " + textComps.Length + " 个 TextMeshProUGUI 组件");
+                ModBehaviour.DevLog("[BossRush] 条目内部找到 " + textComps.Length + " 个 TextMeshProUGUI 组件");
                 
                 foreach (TextMeshProUGUI tmp in textComps)
                 {
                     string objName = tmp.gameObject.name.ToLower();
-                    Debug.Log("[BossRush] TextMeshProUGUI: " + tmp.gameObject.name + ", text=" + tmp.text);
+                    ModBehaviour.DevLog("[BossRush] TextMeshProUGUI: " + tmp.gameObject.name + ", text=" + tmp.text);
                     
                     // 查找可能是显示名称的组件
                     if (objName.Contains("name") || objName.Contains("title") || objName.Contains("display"))
                     {
-                        Debug.Log("[BossRush] 更新 TextMeshProUGUI: " + tmp.gameObject.name + " -> " + displayName);
+                        ModBehaviour.DevLog("[BossRush] 更新 TextMeshProUGUI: " + tmp.gameObject.name + " -> " + displayName);
                         tmp.text = displayName;
                     }
                 }
@@ -994,7 +994,7 @@ namespace BossRush
                     TextMeshProUGUI textComp = displayNameField.GetValue(entry) as TextMeshProUGUI;
                     if (textComp != null)
                     {
-                        Debug.Log("[BossRush] 验证显示名称: " + textComp.text + ", 组件路径: " + GetHierarchyPath(textComp.transform));
+                        ModBehaviour.DevLog("[BossRush] 验证显示名称: " + textComp.text + ", 组件路径: " + GetHierarchyPath(textComp.transform));
                     }
                 }
             }
@@ -1038,12 +1038,12 @@ namespace BossRush
                         TextMeshProUGUI oldComp = displayNameField.GetValue(entry) as TextMeshProUGUI;
                         if (oldComp != null)
                         {
-                            Debug.Log("[BossRush] 原 displayNameText 绑定: " + GetHierarchyPath(oldComp.transform));
+                            ModBehaviour.DevLog("[BossRush] 原 displayNameText 绑定: " + GetHierarchyPath(oldComp.transform));
                         }
                         
                         // 重新绑定到克隆后的组件
                         displayNameField.SetValue(entry, displayNameComp);
-                        Debug.Log("[BossRush] 已重新绑定 displayNameText: " + GetHierarchyPath(displayNameComp.transform));
+                        ModBehaviour.DevLog("[BossRush] 已重新绑定 displayNameText: " + GetHierarchyPath(displayNameComp.transform));
                     }
                 }
                 else
@@ -1059,7 +1059,7 @@ namespace BossRush
                     if (costDisplayField != null)
                     {
                         costDisplayField.SetValue(entry, costDisplays[0]);
-                        Debug.Log("[BossRush] 已重新绑定 costDisplay");
+                        ModBehaviour.DevLog("[BossRush] 已重新绑定 costDisplay");
                     }
                 }
                 
@@ -1085,7 +1085,7 @@ namespace BossRush
                     if (lockedField != null)
                     {
                         lockedField.SetValue(entry, lockedIndicator.gameObject);
-                        Debug.Log("[BossRush] 已重新绑定 lockedIndicator");
+                        ModBehaviour.DevLog("[BossRush] 已重新绑定 lockedIndicator");
                     }
                 }
             }
@@ -1168,7 +1168,7 @@ namespace BossRush
                     }
                 }
                 hiddenEntries.Clear();
-                Debug.Log("[BossRush] 已恢复所有隐藏的条目");
+                ModBehaviour.DevLog("[BossRush] 已恢复所有隐藏的条目");
             }
             catch (Exception e)
             {
@@ -1221,7 +1221,7 @@ namespace BossRush
             if (entryIndex >= 0)
             {
                 BossRushMapSelectionHelper.SetPendingMapEntryIndex(entryIndex);
-                Debug.Log("[BossRush] 玩家点击地图条目: " + entryIndex);
+                ModBehaviour.DevLog("[BossRush] 玩家点击地图条目: " + entryIndex);
             }
         }
     }

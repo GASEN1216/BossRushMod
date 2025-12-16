@@ -75,7 +75,7 @@ namespace BossRush
                 playerCharacter = main;
                 try
                 {
-                    Debug.Log("[BossRush] StartBossRush: 使用 CharacterMainControl.Main 作为玩家角色: " + main.name + " (scene=" + main.gameObject.scene.name + ") pos=" + main.transform.position);
+                    DevLog("[BossRush] StartBossRush: 使用 CharacterMainControl.Main 作为玩家角色: " + main.name + " (scene=" + main.gameObject.scene.name + ") pos=" + main.transform.position);
                 }
                 catch { }
             }
@@ -94,7 +94,7 @@ namespace BossRush
                         catch { }
                         try
                         {
-                            Debug.Log("[BossRush] StartBossRush: FindObjectOfType 得到候选角色: " + candidate.name + " (scene=" + candidate.gameObject.scene.name + ") pos=" + candidate.transform.position + ", IsMainCharacter=" + isMain);
+                            DevLog("[BossRush] StartBossRush: FindObjectOfType 得到候选角色: " + candidate.name + " (scene=" + candidate.gameObject.scene.name + ") pos=" + candidate.transform.position + ", IsMainCharacter=" + isMain);
                         }
                         catch { }
                         if (isMain)
@@ -122,7 +122,7 @@ namespace BossRush
                         catch { }
                         try
                         {
-                            Debug.Log("[BossRush] StartBossRush: 扫描角色: " + character.name + " (scene=" + character.gameObject.scene.name + ") pos=" + character.transform.position + ", IsMainCharacter=" + isMain);
+                            DevLog("[BossRush] StartBossRush: 扫描角色: " + character.name + " (scene=" + character.gameObject.scene.name + ") pos=" + character.transform.position + ", IsMainCharacter=" + isMain);
                         }
                         catch { }
                         if (isMain)
@@ -154,7 +154,7 @@ namespace BossRush
                             catch { }
                             try
                             {
-                                Debug.Log("[BossRush] StartBossRush: Tag=Player 得到角色: " + candidate.name + " (scene=" + candidate.gameObject.scene.name + ") pos=" + candidate.transform.position + ", IsMainCharacter=" + isMain);
+                                DevLog("[BossRush] StartBossRush: Tag=Player 得到角色: " + candidate.name + " (scene=" + candidate.gameObject.scene.name + ") pos=" + candidate.transform.position + ", IsMainCharacter=" + isMain);
                             }
                             catch { }
                             playerCharacter = candidate;
@@ -185,7 +185,7 @@ namespace BossRush
                     var finalMain = playerCharacter as CharacterMainControl;
                     if (finalMain != null)
                     {
-                        Debug.Log("[BossRush] StartBossRush: 最终锁定玩家角色: " + finalMain.name + " (scene=" + finalMain.gameObject.scene.name + ") pos=" + finalMain.transform.position);
+                        DevLog("[BossRush] StartBossRush: 最终锁定玩家角色: " + finalMain.name + " (scene=" + finalMain.gameObject.scene.name + ") pos=" + finalMain.transform.position);
                     }
                     else
                     {
@@ -196,7 +196,7 @@ namespace BossRush
             }
             
             ShowMessage("开始BossRush模式，正在前往竞技场...");
-            Debug.Log("[BossRush] 开始BossRush模式，正在前往竞技场...");
+            DevLog("[BossRush] 开始BossRush模式，正在前往竞技场...");
             
             try
             {
@@ -249,7 +249,7 @@ namespace BossRush
             {
                 if (SceneLoader.Instance != null)
                 {
-                    Debug.Log("[BossRush] TeleportToBossRushAsync: 使用 SceneLoader.LoadScene 加载 BossRush 场景, SceneID=" + BossRushArenaSceneID);
+                    DevLog("[BossRush] TeleportToBossRushAsync: 使用 SceneLoader.LoadScene 加载 BossRush 场景, SceneID=" + BossRushArenaSceneID);
                     try
                     {
                         await SceneLoader.Instance.LoadScene(
@@ -381,7 +381,7 @@ namespace BossRush
                         }
                     }
                     platform.layer = groundLayer;
-                    Debug.Log("[BossRush] BuildBossRushArenaGeometry: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
+                    DevLog("[BossRush] BuildBossRushArenaGeometry: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
                 }
                 catch {}
 
@@ -518,11 +518,11 @@ namespace BossRush
                     }
                     catch {}
 
-                    Debug.Log("[BossRush] BuildBossRushArenaGeometry: 创建围墙、掩体和边界标记完成，使用 Layer: " + wallLayer);
+                    DevLog("[BossRush] BuildBossRushArenaGeometry: 创建围墙、掩体和边界标记完成，使用 Layer: " + wallLayer);
                 }
                 catch {}
 
-                Debug.Log("[BossRush] BuildBossRushArenaGeometry: 竞技场创建完成");
+                DevLog("[BossRush] BuildBossRushArenaGeometry: 竞技场创建完成");
             }
             catch (Exception e)
             {
@@ -594,7 +594,7 @@ namespace BossRush
                     location = teleporter.Target;
                     try
                     {
-                        Debug.Log("[BossRush] TryResolveTeleportLocation: 使用 MultiSceneTeleporter " + teleporter.name + " (scene=" + teleporter.gameObject.scene.name + ") Target.SceneID=" + location.SceneID + " LocationName=" + location.LocationName);
+                        DevLog("[BossRush] TryResolveTeleportLocation: 使用 MultiSceneTeleporter " + teleporter.name + " (scene=" + teleporter.gameObject.scene.name + ") Target.SceneID=" + location.SceneID + " LocationName=" + location.LocationName);
                     }
                     catch {}
                     return true;
@@ -646,7 +646,7 @@ namespace BossRush
                         }
                     }
                     platform.layer = groundLayer;
-                    Debug.Log("[BossRush] CreateArena: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
+                    DevLog("[BossRush] CreateArena: 设置平台 Layer 为 groundLayerMask 中的层: " + groundLayer);
                 }
                 catch {}
                 
@@ -729,11 +729,11 @@ namespace BossRush
                         cover.layer = wallLayer;
                     }
 
-                    Debug.Log("[BossRush] CreateArena: 创建围墙和掩体完成，使用 Layer: " + wallLayer);
+                    DevLog("[BossRush] CreateArena: 创建围墙和掩体完成，使用 Layer: " + wallLayer);
                 }
                 catch {}
                 
-                Debug.Log("[BossRush] 竞技场创建完成");
+                DevLog("[BossRush] 竞技场创建完成");
             }
         }
 
@@ -815,7 +815,7 @@ namespace BossRush
             catch {}
             try
             {
-                Debug.Log("[BossRush] TeleportPlayerToArena: 选中传送目标角色: " + main.name + " (scene=" + main.gameObject.scene.name + ") pos=" + main.transform.position + ", IsMainCharacter=" + isMainCharacter);
+                DevLog("[BossRush] TeleportPlayerToArena: 选中传送目标角色: " + main.name + " (scene=" + main.gameObject.scene.name + ") pos=" + main.transform.position + ", IsMainCharacter=" + isMainCharacter);
             }
             catch {}
 
@@ -833,11 +833,11 @@ namespace BossRush
                 if (Physics.Raycast(rayOrigin, Vector3.down, out hit, 200f, mask, QueryTriggerInteraction.Ignore))
                 {
                     finalPosition = hit.point + new Vector3(0f, 1f, 0f);
-                    Debug.Log("[BossRush] TeleportPlayerToArena: 使用 Raycast 修正落点为地面: " + finalPosition + " 命中碰撞体: " + hit.collider.name);
+                    DevLog("[BossRush] TeleportPlayerToArena: 使用 Raycast 修正落点为地面: " + finalPosition + " 命中碰撞体: " + hit.collider.name);
                 }
                 else
                 {
-                    Debug.Log("[BossRush] TeleportPlayerToArena: 未找到地面碰撞体，使用默认落点: " + arenaPosition);
+                    DevLog("[BossRush] TeleportPlayerToArena: 未找到地面碰撞体，使用默认落点: " + arenaPosition);
                 }
             }
             catch {}
@@ -856,17 +856,17 @@ namespace BossRush
                 camOffset = cam.transform.position - fromPos;
                 try
                 {
-                    Debug.Log("[BossRush] TeleportPlayerToArena: Camera cullingMask = " + cam.renderCamera.cullingMask);
+                    DevLog("[BossRush] TeleportPlayerToArena: Camera cullingMask = " + cam.renderCamera.cullingMask);
                 }
                 catch {}
             }
 
-            Debug.Log("[BossRush] TeleportPlayerToArena: from " + fromPos + " (scene=" + main.gameObject.scene.name + ") to " + finalPosition + " (arenaScene=" + arenaStartPoint.scene.name + ")");
+            DevLog("[BossRush] TeleportPlayerToArena: from " + fromPos + " (scene=" + main.gameObject.scene.name + ") to " + finalPosition + " (arenaScene=" + arenaStartPoint.scene.name + ")");
 
             try
             {
                 main.SetPosition(finalPosition);
-                Debug.Log("[BossRush] 使用 CharacterMainControl.SetPosition 传送玩家");
+                DevLog("[BossRush] 使用 CharacterMainControl.SetPosition 传送玩家");
             }
             catch (Exception e)
             {
@@ -878,7 +878,7 @@ namespace BossRush
             if (cam != null)
             {
                 cam.transform.position = main.transform.position + camOffset;
-                Debug.Log("[BossRush] 已同步相机位置到 " + cam.transform.position);
+                DevLog("[BossRush] 已同步相机位置到 " + cam.transform.position);
             }
         }
 
@@ -934,7 +934,7 @@ namespace BossRush
 
                 returnButton.AddComponent<BossRushReturnInteractable>();
 
-                Debug.Log("[BossRush] 已创建 BossRush 返回出生点交互点");
+                DevLog("[BossRush] 已创建 BossRush 返回出生点交互点");
             }
             catch (Exception e)
             {
@@ -977,7 +977,7 @@ namespace BossRush
                 try
                 {
                     main.SetPosition(targetPos);
-                    Debug.Log("[BossRush] ReturnToBossRushStart: 使用 SetPosition 将玩家传送回 BossRush 起始位置 " + targetPos);
+                    DevLog("[BossRush] ReturnToBossRushStart: 使用 SetPosition 将玩家传送回 BossRush 起始位置 " + targetPos);
                 }
                 catch (Exception e)
                 {

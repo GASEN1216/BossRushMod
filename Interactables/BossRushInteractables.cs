@@ -688,7 +688,7 @@ namespace BossRush
                 list.Add(hellInteract);
                 groupOptions.Add(hellInteract);
 
-                Debug.Log("[BossRush] BossRushSignInteractable: 已注入 3 个难度子选项（含无间炼狱）");
+                ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入 3 个难度子选项（含无间炼狱）");
             }
             catch (System.Exception e)
             {

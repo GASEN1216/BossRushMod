@@ -303,7 +303,7 @@ namespace BossRush
         /// 开发模式日志输出（仅在 DevModeEnabled = true 时输出）
         /// </summary>
         /// <param name="message">日志消息</param>
-        private static void DevLog(string message)
+        internal static void DevLog(string message)
         {
             if (DevModeEnabled)
             {
