@@ -424,7 +424,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = true;
+        internal const bool DevModeEnabled = false;
 
         private StockShop ammoShop;
 
@@ -808,6 +808,20 @@ namespace BossRush
                 catch (Exception e)
                 {
                     Debug.LogError("[BossRush] F10 调试触发通关失败: " + e.Message);
+                }
+            }
+            
+            // 调试快捷键 F11：给予生日蛋糕并显示祝福横幅
+            if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F11))
+            {
+                try
+                {
+                    DevLog("[BossRush] F11 调试：给予生日蛋糕");
+                    DebugGiveBirthdayCake();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("[BossRush] F11 调试给予生日蛋糕失败: " + e.Message);
                 }
             }
         }

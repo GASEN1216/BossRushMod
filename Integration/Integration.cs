@@ -122,6 +122,9 @@ namespace BossRush
                         continue;
                     }
 
+                    // 为船票添加 Tag（Key = 钥匙，SpecialKey = 钥匙（无法录入））
+                    AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" });
+                    
                     ItemAssetsCollection.AddDynamicEntry(itemPrefab);
                     itemCount++;
 
@@ -1076,6 +1079,11 @@ namespace BossRush
             InitializeDynamicItems();
             InjectBossRushTicketLocalization();
             InjectBossRushTicketIntoShops();
+            
+            // 初始化生日蛋糕物品
+            InitializeBirthdayCakeItem();
+            InjectBirthdayCakeLocalization();
+            InjectBirthdayCakeIntoShops();
 
             DevLog("[BossRush] ========================================");
             DevLog("[BossRush] Boss Rush Mod v1.0 已加载");
@@ -1168,6 +1176,13 @@ namespace BossRush
             try
             {
                 InjectBossRushTicketIntoShops();
+                InjectBirthdayCakeIntoShops();
+                
+                // 在基地场景检查并赠送12月份生日蛋糕
+                if (scene.name == "Base_SceneV2")
+                {
+                    StartCoroutine(DelayedBirthdayCakeGift());
+                }
 
                 // 使用配置系统检查是否是有效的 BossRush 竞技场场景
                 BossRushMapConfig loadedMapConfig = GetMapConfigBySceneName(scene.name);
