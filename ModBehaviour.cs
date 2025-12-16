@@ -478,11 +478,20 @@ namespace BossRush
             // 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
             RegisterInteractDebugListener();
         }
+
+        void OnGUI()
+        {
+            // 绘制 Boss 池配置窗口
+            DrawBossPoolWindow();
+        }
         
         void Update()
         {
             // 更新UI消息
             UpdateMessage();
+            
+            // 检测 Boss 池窗口快捷键（Ctrl+F10）
+            CheckBossPoolWindowHotkey();
             
             // 持续清理功能已移除，改为禁用spawner
             

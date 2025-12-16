@@ -14,9 +14,11 @@
 //   - infiniteHellBossesPerWave: 无间炼狱每波 Boss 数量（1-10，默认3）
 //   - bossStatMultiplier: Boss 全局数值倍率（0.1-10，默认1）
 //   - modeDEnemiesPerWave: 白手起家每波敌人数（1-10，默认3）
+//   - disabledBosses: 被禁用的 Boss 名称列表（用于 Boss 池筛选）
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -45,6 +47,9 @@ namespace BossRush
 
             /// <summary>白手起家每波敌人数（1-10，默认3）</summary>
             public int modeDEnemiesPerWave = 3;
+
+            /// <summary>被禁用的 Boss 名称列表（用于 Boss 池筛选）</summary>
+            public List<string> disabledBosses = new List<string>();
         }
         
         #endregion
@@ -327,6 +332,7 @@ namespace BossRush
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
                 string modeDKey = ModName + "_ModeDEnemiesPerWave";
+                
                 if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == modeDKey)
                 {
                     DevLog("[BossRush] 检测到配置变更: " + changedKey);
@@ -589,6 +595,7 @@ namespace BossRush
                 {
                     Debug.LogError("[BossRush] 注册Mode D每波敌人数配置项失败: " + ex.Message);
                 }
+
             }
             catch (Exception ex)
             {

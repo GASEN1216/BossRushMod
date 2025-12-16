@@ -1192,6 +1192,7 @@ namespace BossRush
                     if (bossRushArenaPlanned)
                     {
                         InitializeEnemyPresets();
+                        InitializeBossPoolFilter();
                         bossRushArenaActive = true;
                         bossRushArenaPlanned = false;
                         
@@ -1445,6 +1446,7 @@ namespace BossRush
             // 8. 标记 BossRush 竞技场已激活
             bossRushArenaActive = true;
             InitializeEnemyPresets();
+            InitializeBossPoolFilter();
             DevLog("[BossRush] SetupBossRushInGroundZero: 零号区 BossRush 模式初始化完成");
             
             // 9. 检测 Mode D 条件：玩家裸体入场

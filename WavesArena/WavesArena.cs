@@ -1101,10 +1101,21 @@ namespace BossRush
         /// </summary>
         private void SpawnNextEnemy()
         {
+            // 获取过滤后的 Boss 列表
+            var filteredPresets = GetFilteredEnemyPresets();
+            
+            // 检查 Boss 池是否为空
+            if (filteredPresets == null || filteredPresets.Count == 0)
+            {
+                ShowMessage("Boss池为空！请至少启用一个Boss。(Ctrl+F10 打开设置)");
+                Debug.LogWarning("[BossRush] SpawnNextEnemy: Boss 池为空，无法生成敌人");
+                return;
+            }
+
             // 普通模式：跑完列表后直接通关
             if (!infiniteHellMode)
             {
-                if (currentEnemyIndex >= enemyPresets.Count)
+                if (currentEnemyIndex >= filteredPresets.Count)
                 {
                     // 所有敌人已击败，显示完成对话
                     OnAllEnemiesDefeated();
@@ -1125,7 +1136,7 @@ namespace BossRush
             }
             else
             {
-                preset = enemyPresets[currentEnemyIndex];
+                preset = filteredPresets[currentEnemyIndex];
             }
 
             DevLog("[BossRush] 生成第 " + (currentEnemyIndex + 1) + "/" + totalEnemies + " 波: " + preset.displayName);
@@ -1631,7 +1642,9 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo PickRandomEnemyForInfiniteHell()
         {
-            if (enemyPresets == null || enemyPresets.Count == 0)
+            // 使用过滤后的 Boss 列表
+            var filteredPresets = GetFilteredEnemyPresets();
+            if (filteredPresets == null || filteredPresets.Count == 0)
             {
                 return null;
             }
@@ -1642,20 +1655,20 @@ namespace BossRush
             // 如果没有有效范围，退化为等概率随机
             if (!(refMax > refMin && refMin > 0f))
             {
-                int idx = UnityEngine.Random.Range(0, enemyPresets.Count);
-                return enemyPresets[idx];
+                int idx = UnityEngine.Random.Range(0, filteredPresets.Count);
+                return filteredPresets[idx];
             }
 
             // 计算每个Boss的权重
             float totalWeight = 0f;
-            float[] weights = new float[enemyPresets.Count];
+            float[] weights = new float[filteredPresets.Count];
             // 基础系数：t * baseK + (wave/50)*t，t 为基础血量归一化
             const float baseK = 4f;
             float waveTerm = (float)infiniteHellWaveIndex / 50f;
 
-            for (int i = 0; i < enemyPresets.Count; i++)
+            for (int i = 0; i < filteredPresets.Count; i++)
             {
-                float h = enemyPresets[i].baseHealth;
+                float h = filteredPresets[i].baseHealth;
                 if (h <= 0f)
                 {
                     h = refMin;
@@ -1674,24 +1687,24 @@ namespace BossRush
 
             if (totalWeight <= 0f)
             {
-                int idx = UnityEngine.Random.Range(0, enemyPresets.Count);
-                return enemyPresets[idx];
+                int idx = UnityEngine.Random.Range(0, filteredPresets.Count);
+                return filteredPresets[idx];
             }
 
             // 按累计权重抽样
             float r = UnityEngine.Random.value * totalWeight;
             float acc = 0f;
-            for (int i = 0; i < enemyPresets.Count; i++)
+            for (int i = 0; i < filteredPresets.Count; i++)
             {
                 acc += weights[i];
                 if (r <= acc)
                 {
-                    return enemyPresets[i];
+                    return filteredPresets[i];
                 }
             }
 
             // 理论上不会到这里，兜底返回最后一个
-            return enemyPresets[enemyPresets.Count - 1];
+            return filteredPresets[filteredPresets.Count - 1];
         }
 
         private void AddEnemyType(List<EnemyPresetInfo> list, string name, string displayName, int team, float health, float damage)
