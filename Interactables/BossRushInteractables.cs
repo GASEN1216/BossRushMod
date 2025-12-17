@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // BossRushInteractables.cs - 交互组件
 // ============================================================================
 // 模块说明：
@@ -110,18 +110,40 @@ namespace BossRush
             
             if (useCustomName && !string.IsNullOrEmpty(customName))
             {
-                this.InteractName = customName;
-                this._overrideInteractNameKey = customName;
+                // 本地化难度选项名称
+                string localizedName = GetLocalizedCustomName(customName);
+                this.InteractName = localizedName;
+                this._overrideInteractNameKey = localizedName;
             }
             else if (isInArena)
             {
-                this.InteractName = "开始第一波";
-                this._overrideInteractNameKey = "开始第一波";
+                string name = L10n.T("开始第一波", "Start First Wave");
+                this.InteractName = name;
+                this._overrideInteractNameKey = name;
             }
             else
             {
                 this.InteractName = "Boss Rush";
                 this._overrideInteractNameKey = "BossRush";
+            }
+        }
+        
+        /// <summary>
+        /// 获取本地化的自定义名称（难度选项）- 返回本地化键
+        /// </summary>
+        private string GetLocalizedCustomName(string cnName)
+        {
+            // 返回本地化键，实际文本由 LocalizationManager 解析
+            switch (cnName)
+            {
+                case "弹指可灭":
+                    return "BossRush_Easy";
+                case "有点意思":
+                    return "BossRush_Hard";
+                case "无间炼狱":
+                    return "BossRush_InfiniteHell";
+                default:
+                    return cnName;
             }
         }
         
@@ -221,7 +243,9 @@ namespace BossRush
             try
             {
                 this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_AmmoRefill";
+                // 使用本地化键，避免两边出现 *
+                this.InteractName = "BossRush_AmmoShop";
+                this._overrideInteractNameKey = "BossRush_AmmoShop";
             }
             catch {}
             try
@@ -313,7 +337,8 @@ namespace BossRush
             try
             {
                 this.overrideInteractName = true;
-                this.InteractName = "维修";
+                // 使用本地化键，避免两边出现 *
+                this.InteractName = "BossRush_Repair";
                 this._overrideInteractNameKey = "BossRush_Repair";
             }
             catch {}
@@ -372,7 +397,7 @@ namespace BossRush
         {
             try
             {
-                this.InteractName = "传送";
+                this.InteractName = L10n.T("传送", "Teleport");
             }
             catch {}
             try
@@ -409,7 +434,7 @@ namespace BossRush
             catch {}
             try
             {
-                this.InteractName = "传送";
+                this.InteractName = L10n.T("传送", "Teleport");
             }
             catch {}
         }
@@ -478,7 +503,9 @@ namespace BossRush
             try
             {
                 // 入口显示为“哎哟~你干嘛~”，鼓励玩家多按几次下蛋
-                this.InteractName = "哎哟~你干嘛~";
+                this.overrideInteractName = true;
+                this._overrideInteractNameKey = "BossRush_Sign_Entry";
+                this.InteractName = "BossRush_Sign_Entry";
             }
             catch {}
             try
@@ -521,7 +548,9 @@ namespace BossRush
             catch {}
             try
             {
-                this.InteractName = "哎哟~你干嘛~";
+                this.overrideInteractName = true;
+                this._overrideInteractNameKey = "BossRush_Sign_Entry";
+                this.InteractName = "BossRush_Sign_Entry";
             }
             catch {}
         }
@@ -569,24 +598,26 @@ namespace BossRush
                 switch (_state)
                 {
                     case SignState.EntryAndDifficulty:
-                        this.overrideInteractName = false;
-                        this._overrideInteractNameKey = null;
-                        this.InteractName = "哎哟~你干嘛~";
+                        // 使用本地化键显示"哎哟~你干嘛~"，避免显示"*"
+                        this.overrideInteractName = true;
+                        this._overrideInteractNameKey = "BossRush_Sign_Entry";
+                        this.InteractName = "BossRush_Sign_Entry";
                         break;
                     case SignState.Cheer:
                         // 使用本地化键显示“加油!!!”（无间炼狱会在此基础上改写为现金池显示）
-                        this.InteractName = "加油！！！";
+                        this.InteractName = "BossRush_Sign_Cheer";
                         this.overrideInteractName = true;
                         this._overrideInteractNameKey = "BossRush_Sign_Cheer";
                         break;
                     case SignState.NextWave:
-                        this.overrideInteractName = false;
-                        this._overrideInteractNameKey = null;
-                        this.InteractName = "冲！（下一波）";
+                        // 使用本地化键显示"冲！（下一波）"
+                        this.overrideInteractName = true;
+                        this._overrideInteractNameKey = "BossRush_Sign_NextWave";
+                        this.InteractName = "BossRush_Sign_NextWave";
                         break;
                     case SignState.Victory:
                         // 使用本地化键显示“君王凯旋归来，拿取属于王的荣耀！”
-                        this.InteractName = "君王凯旋归来，拿取属于王的荣耀！";
+                        this.InteractName = "BossRush_Sign_Victory";
                         this.overrideInteractName = true;
                         this._overrideInteractNameKey = "BossRush_Sign_Victory";
                         break;
@@ -901,7 +932,10 @@ namespace BossRush
             try
             {
                 string key = "BossRush_InfiniteHell_Cash";
-                string value = "现金池已累计：<color=red>" + cash.ToString() + "</color>";
+                string value = L10n.T(
+                    "现金池已累计：<color=red>" + cash.ToString() + "</color>",
+                    "Cash Pool: <color=red>" + cash.ToString() + "</color>"
+                );
 
                 // 尝试写入本地化字典中的对应键值
                 try
@@ -1045,7 +1079,7 @@ namespace BossRush
         {
             try
             {
-                this.InteractName = "冲！（下一波）";
+                this.InteractName = L10n.T("冲！（下一波）", "Charge! (Next Wave)");
             }
             catch {}
             try
@@ -1082,7 +1116,7 @@ namespace BossRush
             catch {}
             try
             {
-                this.InteractName = "冲！（下一波）";
+                this.InteractName = L10n.T("冲！（下一波）", "Charge! (Next Wave)");
             }
             catch {}
         }
@@ -1117,6 +1151,8 @@ namespace BossRush
             try
             {
                 this.overrideInteractName = true;
+                // 使用本地化键，避免两边出现 *
+                this.InteractName = "BossRush_ClearAllLootboxes";
                 this._overrideInteractNameKey = "BossRush_ClearAllLootboxes";
             }
             catch {}
@@ -1211,7 +1247,7 @@ namespace BossRush
                     var main = CharacterMainControl.Main;
                     if (main != null)
                     {
-                        string msg = "已清空 " + removed + " 个箱子";
+                        string msg = L10n.T("已清空 " + removed + " 个箱子", "Cleared " + removed + " lootboxes");
                         main.PopText(msg, -1f);
                     }
                 }
@@ -1231,6 +1267,8 @@ namespace BossRush
             try
             {
                 this.overrideInteractName = true;
+                // 使用本地化键，避免两边出现 *
+                this.InteractName = "BossRush_ClearEmptyLootboxes";
                 this._overrideInteractNameKey = "BossRush_ClearEmptyLootboxes";
             }
             catch {}
@@ -1345,7 +1383,7 @@ namespace BossRush
                     var main = CharacterMainControl.Main;
                     if (main != null)
                     {
-                        string msg = "已清空 " + removed + " 个空箱子";
+                        string msg = L10n.T("已清空 " + removed + " 个空箱子", "Cleared " + removed + " empty lootboxes");
                         main.PopText(msg, -1f);
                     }
                 }
@@ -1371,8 +1409,9 @@ namespace BossRush
             try
             {
                 this.overrideInteractName = true;
-                this.InteractName = "删除";
-                this._overrideInteractNameKey = "BossRush_DeleteLootbox";
+                // 使用本地化键，避免两边出现 *
+                this.InteractName = "BossRush_Delete";
+                this._overrideInteractNameKey = "BossRush_Delete";
             }
             catch {}
             try
@@ -1400,76 +1439,6 @@ namespace BossRush
                 this.lootbox = GetComponent<InteractableLootbox>();
             }
             catch {}
-            try
-            {
-                string key = "BossRush_DeleteLootbox";
-                string value = "删除";
-                string[] types = new string[]
-                {
-                    "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
-                    "SodaCraft.Localizations.LocalizationManager, TeamSoda.Duckov.Core",
-                    "SodaCraft.Localizations.LocalizationManager, Assembly-CSharp",
-                    "LocalizationManager, Assembly-CSharp"
-                };
-
-                Type locType = null;
-                for (int i = 0; i < types.Length; i++)
-                {
-                    locType = Type.GetType(types[i]);
-                    if (locType != null)
-                    {
-                        break;
-                    }
-                }
-
-                if (locType != null)
-                {
-                    var fields = locType.GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                    for (int i = 0; i < fields.Length; i++)
-                    {
-                        var field = fields[i];
-                        object val = null;
-                        try
-                        {
-                            val = field.GetValue(null);
-                        }
-                        catch {}
-                        if (val == null)
-                        {
-                            continue;
-                        }
-
-                        var dict = val as Dictionary<string, string>;
-                        if (dict != null)
-                        {
-                            if (dict.ContainsKey(key))
-                            {
-                                dict[key] = value;
-                            }
-                            else
-                            {
-                                dict.Add(key, value);
-                            }
-                            break;
-                        }
-
-                        var dictObj = val as System.Collections.IDictionary;
-                        if (dictObj != null)
-                        {
-                            if (dictObj.Contains(key))
-                            {
-                                dictObj[key] = value;
-                            }
-                            else
-                            {
-                                dictObj.Add(key, value);
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            catch {}
         }
 
         protected override void Start()
@@ -1482,8 +1451,9 @@ namespace BossRush
             try
             {
                 this.overrideInteractName = true;
-                this.InteractName = "删除";
-                this._overrideInteractNameKey = "BossRush_DeleteLootbox";
+                // 使用本地化键，避免两边出现 *
+                this.InteractName = "BossRush_Delete";
+                this._overrideInteractNameKey = "BossRush_Delete";
             }
             catch {}
         }
@@ -1822,7 +1792,7 @@ namespace BossRush
                 playerNear = true;
                 if (BossRush.ModBehaviour.Instance != null)
                 {
-                    BossRush.ModBehaviour.Instance.ShowMessage("按E键返回出生点！");
+                    BossRush.ModBehaviour.Instance.ShowMessage(L10n.T("按E键返回出生点！", "Press E to return to spawn!"));
                 }
             }
         }

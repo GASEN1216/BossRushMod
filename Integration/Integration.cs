@@ -146,8 +146,12 @@ namespace BossRush
         {
             try
             {
-                string displayName = "Boss Rush船票";
-                string descriptionText = "开启Boss Rush的凭证，九死一生，一旦倒在那，掉落的东西会被立马收走，一件不剩。但是裸体进入可白手起家！";
+                // 获取当前语言的本地化文本
+                string displayName = L10n.T("Boss Rush船票", "Boss Rush Ticket");
+                string descriptionText = L10n.T(
+                    "开启Boss Rush的凭证，九死一生，一旦倒在那，掉落的东西会被立马收走，一件不剩。但是裸体进入可白手起家！",
+                    "A ticket to enter Boss Rush. High risk, high reward - if you fall, all your loot will be taken. Enter naked for Rags to Riches mode!"
+                );
 
                 // 通过反射查找 LocalizationManager 类型
                 var types = new string[]
@@ -180,31 +184,24 @@ namespace BossRush
                             Dictionary<string, string> dict = val as Dictionary<string, string>;
                             if (dict != null)
                             {
-                                // 注入 Boss Rush船票 的名字和描述
-                                if (!dict.ContainsKey(displayName))
-                                {
-                                    dict.Add(displayName, displayName);
-                                }
+                                // 注入 Boss Rush船票 的名字（中英文键都注入）
+                                InjectLocalizedKey(dict, "Boss Rush船票", displayName);
+                                InjectLocalizedKey(dict, "Boss Rush Ticket", displayName);
+                                InjectLocalizedKey(dict, "BossRush_Ticket", displayName);
 
-                                if (!dict.ContainsKey("Boss Rush船票_Desc"))
-                                {
-                                    dict.Add("Boss Rush船票_Desc", descriptionText);
-                                }
+                                // 注入描述（中英文键都注入）
+                                InjectLocalizedKey(dict, "Boss Rush船票_Desc", descriptionText);
+                                InjectLocalizedKey(dict, "Boss Rush Ticket_Desc", descriptionText);
+                                InjectLocalizedKey(dict, "BossRush_Ticket_Desc", descriptionText);
 
+                                // 注入物品 ID 键（这是游戏系统查找物品名称的标准方式）
                                 if (bossRushTicketTypeId > 0)
                                 {
                                     string itemKey = "Item_" + bossRushTicketTypeId;
                                     string itemDescKey = itemKey + "_Desc";
 
-                                    if (!dict.ContainsKey(itemKey))
-                                    {
-                                        dict.Add(itemKey, displayName);
-                                    }
-
-                                    if (!dict.ContainsKey(itemDescKey))
-                                    {
-                                        dict.Add(itemDescKey, descriptionText);
-                                    }
+                                    InjectLocalizedKey(dict, itemKey, displayName);
+                                    InjectLocalizedKey(dict, itemDescKey, descriptionText);
                                 }
 
                                 injected = true;
@@ -215,30 +212,24 @@ namespace BossRush
                                 var dictObj = val as System.Collections.IDictionary;
                                 if (dictObj != null)
                                 {
-                                    if (!dictObj.Contains(displayName))
-                                    {
-                                        dictObj.Add(displayName, displayName);
-                                    }
+                                    // 注入 Boss Rush船票 的名字（中英文键都注入）
+                                    InjectLocalizedKeyDict(dictObj, "Boss Rush船票", displayName);
+                                    InjectLocalizedKeyDict(dictObj, "Boss Rush Ticket", displayName);
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Ticket", displayName);
 
-                                    if (!dictObj.Contains("Boss Rush船票_Desc"))
-                                    {
-                                        dictObj.Add("Boss Rush船票_Desc", descriptionText);
-                                    }
+                                    // 注入描述（中英文键都注入）
+                                    InjectLocalizedKeyDict(dictObj, "Boss Rush船票_Desc", descriptionText);
+                                    InjectLocalizedKeyDict(dictObj, "Boss Rush Ticket_Desc", descriptionText);
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Ticket_Desc", descriptionText);
 
+                                    // 注入物品 ID 键
                                     if (bossRushTicketTypeId > 0)
                                     {
                                         string itemKey = "Item_" + bossRushTicketTypeId;
                                         string itemDescKey = itemKey + "_Desc";
 
-                                        if (!dictObj.Contains(itemKey))
-                                        {
-                                            dictObj.Add(itemKey, displayName);
-                                        }
-
-                                        if (!dictObj.Contains(itemDescKey))
-                                        {
-                                            dictObj.Add(itemDescKey, descriptionText);
-                                        }
+                                        InjectLocalizedKeyDict(dictObj, itemKey, displayName);
+                                        InjectLocalizedKeyDict(dictObj, itemDescKey, descriptionText);
                                     }
 
                                     injected = true;
@@ -247,7 +238,7 @@ namespace BossRush
 
                             if (injected)
                             {
-                                DevLog("[BossRush] 成功注入 BossRush 船票本地化键值到字段: " + field.Name);
+                                DevLog("[BossRush] 成功注入 BossRush 船票本地化: " + displayName);
                             }
                         }
                         catch { }
@@ -672,200 +663,45 @@ namespace BossRush
                             Dictionary<string, string> dict = val as Dictionary<string, string>;
                             if (dict != null)
                             {
-                                // 注入新的本地化键：开始第一波
-                                if (dict.ContainsKey("开始第一波"))
-                                {
-                                    dict["开始第一波"] = "开始第一波";
-                                }
-                                else
-                                {
-                                    dict.Add("开始第一波", "开始第一波");
-                                }
-
-                                // 注入新的本地化键：BossRush 入口
-                                if (dict.ContainsKey("BossRush"))
-                                {
-                                    dict["BossRush"] = "Boss Rush";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush", "Boss Rush");
-                                }
-
-                                // 注入新的本地化键：难度选项 "弹指可灭" / "有点意思" / "无间炼狱"
-                                if (dict.ContainsKey("弹指可灭"))
-                                {
-                                    dict["弹指可灭"] = "弹指可灭";
-                                }
-                                else
-                                {
-                                    dict.Add("弹指可灭", "弹指可灭");
-                                }
-
-                                if (dict.ContainsKey("有点意思"))
-                                {
-                                    dict["有点意思"] = "有点意思";
-                                }
-                                else
-                                {
-                                    dict.Add("有点意思", "有点意思");
-                                }
-
-                                if (dict.ContainsKey("无间炼狱"))
-                                {
-                                    dict["无间炼狱"] = "无间炼狱";
-                                }
-                                else
-                                {
-                                    dict.Add("无间炼狱", "无间炼狱");
-                                }
-
-                                // 注入新的本地化键：测试
-                                if (dict.ContainsKey("测试"))
-                                {
-                                    dict["测试"] = "测试";
-                                }
-                                else
-                                {
-                                    dict.Add("测试", "测试");
-                                }
-
-                                // 注入新的本地化键：加油！（使用富文本金色）
-                                if (dict.ContainsKey("加油！"))
-                                {
-                                    dict["加油！"] = "<color=#FFD700>加油！</color>";
-                                }
-                                else
-                                {
-                                    dict.Add("加油！", "<color=#FFD700>加油！</color>");
-                                }
-
-                                // 注入新的本地化键：路牌加油状态（BossRush_Sign_Cheer）
-                                if (dict.ContainsKey("BossRush_Sign_Cheer"))
-                                {
-                                    dict["BossRush_Sign_Cheer"] = "<color=#FFD700>加油！！！</color>";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_Sign_Cheer", "<color=#FFD700>加油！！！</color>");
-                                }
-
-                                // 注入新的本地化键：哎哟~你干嘛~（使用富文本金色）
-                                if (dict.ContainsKey("哎哟~你干嘛~"))
-                                {
-                                    dict["哎哟~你干嘛~"] = "<color=#FFD700>哎哟~你干嘛~</color>";
-                                }
-                                else
-                                {
-                                    dict.Add("哎哟~你干嘛~", "<color=#FFD700>哎哟~你干嘛~</color>");
-                                }
-
-                                // 注入新的本地化键：冲！（下一波）（使用富文本金色）
-                                if (dict.ContainsKey("冲！（下一波）"))
-                                {
-                                    dict["冲！（下一波）"] = "<color=#FFD700>冲！（下一波）</color>";
-                                }
-                                else
-                                {
-                                    dict.Add("冲！（下一波）", "<color=#FFD700>冲！（下一波）</color>");
-                                }
-
-                                // 注入新的本地化键：路牌最终胜利状态（BossRush_Sign_Victory）
-                                if (dict.ContainsKey("BossRush_Sign_Victory"))
-                                {
-                                    dict["BossRush_Sign_Victory"] = "<color=#FFD700>君王凯旋归来，拿取属于王的荣耀！</color>";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_Sign_Victory", "<color=#FFD700>君王凯旋归来，拿取属于王的荣耀！</color>");
-                                }
-
-                                // 注入 Boss 奖励箱搬起/放下本地化键
-                                if (dict.ContainsKey("BossRush_Carry_Up"))
-                                {
-                                    dict["BossRush_Carry_Up"] = "搬起";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_Carry_Up", "搬起");
-                                }
-
-                                if (dict.ContainsKey("BossRush_Carry_Down"))
-                                {
-                                    dict["BossRush_Carry_Down"] = "放下";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_Carry_Down", "放下");
-                                }
-
-                                // 注入初始传送气泡的本地化键
-                                if (dict.ContainsKey("BossRush_InitEntry"))
-                                {
-                                    dict["BossRush_InitEntry"] = "<color=#FFD700>哎哟~你干嘛~</color>";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_InitEntry", "<color=#FFD700>哎哟~你干嘛~</color>");
-                                }
-
-                                // 注入救援传送气泡的本地化键
-                                if (dict.ContainsKey("传送"))
-                                {
-                                    dict["传送"] = "<color=#00BFFF>传送</color>";
-                                }
-                                else
-                                {
-                                    dict.Add("传送", "<color=#00BFFF>传送</color>");
-                                }
-
-                                // 注入清理箱子选项本地化键
-                                if (dict.ContainsKey("BossRush_ClearAllLootboxes"))
-                                {
-                                    dict["BossRush_ClearAllLootboxes"] = "清空所有箱子";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_ClearAllLootboxes", "清空所有箱子");
-                                }
-
-                                if (dict.ContainsKey("BossRush_ClearEmptyLootboxes"))
-                                {
-                                    dict["BossRush_ClearEmptyLootboxes"] = "清空所有空箱子";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_ClearEmptyLootboxes", "清空所有空箱子");
-                                }
-
-                                // Mode D: 冲下一波 选项本地化键
-                                if (dict.ContainsKey("BossRush_ModeD_NextWave"))
-                                {
-                                    dict["BossRush_ModeD_NextWave"] = "冲！下一波";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_ModeD_NextWave", "冲！下一波");
-                                }
-
-                                if (dict.ContainsKey("BossRush_AmmoRefill"))
-                                {
-                                    dict["BossRush_AmmoRefill"] = "加油站";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_AmmoRefill", "加油站");
-                                }
-
-                                // 注入新的本地化键：维修选项
-                                if (dict.ContainsKey("BossRush_Repair"))
-                                {
-                                    dict["BossRush_Repair"] = "维修";
-                                }
-                                else
-                                {
-                                    dict.Add("BossRush_Repair", "维修");
-                                }
+                                // 注入所有本地化键（使用 L10n.T 动态获取当前语言的值）
+                                InjectLocalizedKey(dict, "BossRush_StartFirstWave", L10n.T("开始第一波", "Start First Wave"));
+                                InjectLocalizedKey(dict, "BossRush", "Boss Rush");
+                                
+                                // 难度选项（带颜色）
+                                InjectLocalizedKey(dict, "BossRush_Easy", L10n.T("<color=#00FF00>弹指可灭</color>", "<color=#00FF00>Easy Mode</color>"));
+                                InjectLocalizedKey(dict, "BossRush_Hard", L10n.T("<color=#FFA500>有点意思</color>", "<color=#FFA500>Hard Mode</color>"));
+                                InjectLocalizedKey(dict, "BossRush_InfiniteHell", L10n.T("<color=#FF0000>无间炼狱</color>", "<color=#FF0000>Infinite Hell</color>"));
+                                
+                                // 路牌状态
+                                InjectLocalizedKey(dict, "BossRush_Sign_Cheer", L10n.T("<color=#FFD700>加油！！！</color>", "<color=#FFD700>Go! Go! Go!</color>"));
+                                InjectLocalizedKey(dict, "BossRush_Sign_Entry", L10n.T("<color=#FFD700>哎哟~你干嘛~</color>", "<color=#FFD700>Hey~ What are you doing~</color>"));
+                                InjectLocalizedKey(dict, "BossRush_Sign_NextWave", L10n.T("<color=#FFD700>冲！（下一波）</color>", "<color=#FFD700>Charge! (Next Wave)</color>"));
+                                InjectLocalizedKey(dict, "BossRush_Sign_Victory", L10n.T("<color=#FFD700>君王凯旋归来，拿取属于王的荣耀！</color>", "<color=#FFD700>The King Returns Triumphant, Claim Your Glory!</color>"));
+                                
+                                // 搬运选项
+                                InjectLocalizedKey(dict, "BossRush_Carry_Up", L10n.T("搬起", "Pick Up"));
+                                InjectLocalizedKey(dict, "BossRush_Carry_Down", L10n.T("放下", "Put Down"));
+                                
+                                // 传送
+                                InjectLocalizedKey(dict, "BossRush_Teleport", L10n.T("<color=#00BFFF>传送</color>", "<color=#00BFFF>Teleport</color>"));
+                                InjectLocalizedKey(dict, "BossRush_ReturnToSpawn", L10n.T("按E键返回出生点！", "Press E to return to spawn!"));
+                                
+                                // 清理箱子选项
+                                InjectLocalizedKey(dict, "BossRush_ClearAllLootboxes", L10n.T("清空所有箱子", "Clear All Lootboxes"));
+                                InjectLocalizedKey(dict, "BossRush_ClearEmptyLootboxes", L10n.T("清空所有空箱子", "Clear Empty Lootboxes"));
+                                
+                                // Mode D 选项
+                                InjectLocalizedKey(dict, "BossRush_ModeD_NextWave", L10n.T("冲！下一波", "Charge! Next Wave"));
+                                
+                                // 弹药和维修
+                                InjectLocalizedKey(dict, "BossRush_AmmoShop", L10n.T("弹药商店", "Ammo Shop"));
+                                InjectLocalizedKey(dict, "BossRush_Repair", L10n.T("维修", "Repair"));
+                                
+                                // 删除选项
+                                InjectLocalizedKey(dict, "BossRush_Delete", L10n.T("删除", "Delete"));
+                                
+                                // 下一波
+                                InjectLocalizedKey(dict, "BossRush_NextWave", L10n.T("下一波", "Next Wave"));
 
                                 injected = true;
                             }
@@ -875,25 +711,26 @@ namespace BossRush
                                 var dictObj = val as System.Collections.IDictionary;
                                 if (dictObj != null)
                                 {
-                                    // 注入新的本地化键：开始第一波
-                                    if (dictObj.Contains("开始第一波"))
-                                    {
-                                        dictObj["开始第一波"] = "开始第一波";
-                                    }
-                                    else
-                                    {
-                                        dictObj.Add("开始第一波", "开始第一波");
-                                    }
-                                    
-                                    // 注入新的本地化键：BossRush 入口
-                                    if (dictObj.Contains("BossRush"))
-                                    {
-                                        dictObj["BossRush"] = "Boss Rush";
-                                    }
-                                    else
-                                    {
-                                        dictObj.Add("BossRush", "Boss Rush");
-                                    }
+                                    // 注入基本键
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_StartFirstWave", L10n.T("开始第一波", "Start First Wave"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush", "Boss Rush");
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Easy", L10n.T("<color=#00FF00>弹指可灭</color>", "<color=#00FF00>Easy Mode</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Hard", L10n.T("<color=#FFA500>有点意思</color>", "<color=#FFA500>Hard Mode</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_InfiniteHell", L10n.T("<color=#FF0000>无间炼狱</color>", "<color=#FF0000>Infinite Hell</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Sign_Cheer", L10n.T("<color=#FFD700>加油！！！</color>", "<color=#FFD700>Go! Go! Go!</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Sign_Entry", L10n.T("<color=#FFD700>哎哟~你干嘛~</color>", "<color=#FFD700>Hey~ What are you doing~</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Sign_NextWave", L10n.T("<color=#FFD700>冲！（下一波）</color>", "<color=#FFD700>Charge! (Next Wave)</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Sign_Victory", L10n.T("<color=#FFD700>君王凯旋归来，拿取属于王的荣耀！</color>", "<color=#FFD700>The King Returns Triumphant, Claim Your Glory!</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Carry_Up", L10n.T("搬起", "Pick Up"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Carry_Down", L10n.T("放下", "Put Down"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Teleport", L10n.T("<color=#00BFFF>传送</color>", "<color=#00BFFF>Teleport</color>"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_ClearAllLootboxes", L10n.T("清空所有箱子", "Clear All Lootboxes"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_ClearEmptyLootboxes", L10n.T("清空所有空箱子", "Clear Empty Lootboxes"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_ModeD_NextWave", L10n.T("冲！下一波", "Charge! Next Wave"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_AmmoShop", L10n.T("弹药商店", "Ammo Shop"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Repair", L10n.T("维修", "Repair"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_Delete", L10n.T("删除", "Delete"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_NextWave", L10n.T("下一波", "Next Wave"));
 
                                     // 注入新的本地化键：难度选项 "弹指可灭" / "有点意思" / "无间炼狱"
                                     if (dictObj.Contains("弹指可灭"))
@@ -1061,6 +898,36 @@ namespace BossRush
                 Debug.LogError("[BossRush] 本地化注入失败: " + e.Message);
             }
         }
+        
+        /// <summary>
+        /// 辅助方法：注入本地化键到 Dictionary
+        /// </summary>
+        private static void InjectLocalizedKey(Dictionary<string, string> dict, string key, string value)
+        {
+            if (dict.ContainsKey(key))
+            {
+                dict[key] = value;
+            }
+            else
+            {
+                dict.Add(key, value);
+            }
+        }
+        
+        /// <summary>
+        /// 辅助方法：注入本地化键到 IDictionary
+        /// </summary>
+        private static void InjectLocalizedKeyDict(System.Collections.IDictionary dict, string key, string value)
+        {
+            if (dict.Contains(key))
+            {
+                dict[key] = value;
+            }
+            else
+            {
+                dict.Add(key, value);
+            }
+        }
 
         void Start_Integration()
         {
@@ -1162,7 +1029,7 @@ namespace BossRush
                     // 达到 10 个时显示横幅提示
                     if (item105PurchaseCount == 10)
                     {
-                        ShowBigBanner("喂喂，你这家伙来这进货了是吗(*´･д･)?");
+                        ShowBigBanner(L10n.T("喂喂，你这家伙来这进货了是吗(*´･д･)?", "Hey, are you here to stock up? (*´･д･)?"));
                     }
                 }
             }

@@ -233,8 +233,8 @@ namespace BossRush
                 // 设置路牌为 Mode D 模式
                 SetupSignForModeD();
 
-                ShowMessage("白手起家模式已激活！通过路牌开始挑战！");
-                ShowBigBanner("欢迎来到 <color=red>白手起家</color>！");
+                ShowMessage(L10n.T("白手起家模式已激活！通过路牌开始挑战！", "Rags to Riches mode activated! Start the challenge via the signpost!"));
+                ShowBigBanner(L10n.T("欢迎来到 <color=red>白手起家</color>！", "Welcome to <color=red>Rags to Riches</color>!"));
             }
             catch (Exception e)
             {
@@ -287,7 +287,10 @@ namespace BossRush
                 modeDCurrentWaveEnemies.Clear();
 
                 // 使用保存的波次数显示消息
-                ShowMessage("白手起家挑战结束！共完成 " + completedWaves + " 波");
+                ShowMessage(L10n.T(
+                    "白手起家挑战结束！共完成 " + completedWaves + " 波",
+                    "Rags to Riches challenge ended! Completed " + completedWaves + " waves"
+                ));
             }
             catch (Exception e)
             {

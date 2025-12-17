@@ -272,7 +272,7 @@ namespace BossRush
             bossPoolWindowRect.x = Mathf.Clamp(bossPoolWindowRect.x, 0, Screen.width - bossPoolWindowRect.width);
             bossPoolWindowRect.y = Mathf.Clamp(bossPoolWindowRect.y, 0, Screen.height - bossPoolWindowRect.height);
 
-            bossPoolWindowRect = GUI.Window(BossPoolWindowId, bossPoolWindowRect, DrawBossPoolWindowContent, "Boss池设置 (Ctrl+F10)");
+            bossPoolWindowRect = GUI.Window(BossPoolWindowId, bossPoolWindowRect, DrawBossPoolWindowContent, L10n.T("Boss池设置 (Ctrl+F10)", "Boss Pool Settings (Ctrl+F10)"));
         }
 
         /// <summary>
@@ -291,11 +291,11 @@ namespace BossRush
 
             // 工具栏：全选/全不选
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("全选", GUILayout.Width(80)))
+            if (GUILayout.Button(L10n.T("全选", "Select All"), GUILayout.Width(80)))
             {
                 EnableAllBosses();
             }
-            if (GUILayout.Button("全不选", GUILayout.Width(80)))
+            if (GUILayout.Button(L10n.T("全不选", "Deselect All"), GUILayout.Width(80)))
             {
                 DisableAllBosses();
             }
@@ -328,7 +328,7 @@ namespace BossRush
             }
             else
             {
-                GUILayout.Label("暂无 Boss 数据，请先进入游戏");
+                GUILayout.Label(L10n.T("暂无 Boss 数据，请先进入游戏", "No Boss data available, please enter the game first"));
             }
 
             GUILayout.EndScrollView();
@@ -338,13 +338,13 @@ namespace BossRush
             // 统计信息
             int enabledCount = bossEnabledStates.Count(kv => kv.Value);
             int totalCount = bossEnabledStates.Count;
-            GUILayout.Label("已启用: " + enabledCount + "/" + totalCount);
+            GUILayout.Label(L10n.T("已启用: ", "Enabled: ") + enabledCount + "/" + totalCount);
 
             // 警告：如果全部禁用
             if (enabledCount == 0 && totalCount > 0)
             {
                 GUI.color = Color.red;
-                GUILayout.Label("警告：至少需要启用一个 Boss！");
+                GUILayout.Label(L10n.T("警告：至少需要启用一个 Boss！", "Warning: At least one Boss must be enabled!"));
                 GUI.color = Color.white;
             }
 
@@ -353,7 +353,7 @@ namespace BossRush
             // 保存并关闭按钮
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("保存并关闭", GUILayout.Width(120)))
+            if (GUILayout.Button(L10n.T("保存并关闭", "Save & Close"), GUILayout.Width(120)))
             {
                 SyncBossPoolToConfig();
                 CloseBossPoolWindow();

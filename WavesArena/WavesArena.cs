@@ -48,7 +48,7 @@ namespace BossRush
         {
             if (IsActive)
             {
-                ShowMessage("BossRush已经在进行中！");
+                ShowMessage(L10n.T("BossRush已经在进行中！", "BossRush is already in progress!"));
                 return;
             }
 
@@ -174,7 +174,7 @@ namespace BossRush
             
             if (playerCharacter == null)
             {
-                ShowMessage("无法找到玩家角色！请确保在游戏中！");
+                ShowMessage(L10n.T("无法找到玩家角色！请确保在游戏中！", "Player not found! Make sure you are in game!"));
                 Debug.LogError("[BossRush] 无法找到玩家角色！");
                 return;
             }
@@ -195,7 +195,7 @@ namespace BossRush
                 catch { }
             }
             
-            ShowMessage("开始BossRush模式，正在前往竞技场...");
+            ShowMessage(L10n.T("开始BossRush模式，正在前往竞技场...", "Starting BossRush, heading to arena..."));
             DevLog("[BossRush] 开始BossRush模式，正在前往竞技场...");
             
             try
@@ -282,7 +282,7 @@ namespace BossRush
 
             if (!usedTicketTeleport)
             {
-                ShowMessage("进入BossRush场景失败，请查看日志");
+                ShowMessage(L10n.T("进入BossRush场景失败，请查看日志", "Failed to enter BossRush scene, check logs"));
             }
         }
 
@@ -985,7 +985,7 @@ namespace BossRush
                     main.transform.position = targetPos;
                 }
 
-                ShowMessage("已返回出生点");
+                ShowMessage(L10n.T("已返回出生点", "Returned to spawn point"));
             }
             catch {}
         }
@@ -1038,7 +1038,7 @@ namespace BossRush
                 // 清理场景中现有的敌人，准备开始BossRush
                 ClearEnemiesForBossRush();
                 
-                ShowMessage("开始BossRush挑战！");
+                ShowMessage(L10n.T("开始BossRush挑战！", "BossRush challenge started!"));
                 SetBossRushRuntimeActive(true);
                 currentEnemyIndex = 0;
                 defeatedEnemies = 0;
@@ -1107,7 +1107,7 @@ namespace BossRush
             // 检查 Boss 池是否为空
             if (filteredPresets == null || filteredPresets.Count == 0)
             {
-                ShowMessage("Boss池为空！请至少启用一个Boss。(Ctrl+F10 打开设置)");
+                ShowMessage(L10n.T("Boss池为空！请至少启用一个Boss。(Ctrl+F10 打开设置)", "Boss pool is empty! Enable at least one Boss. (Ctrl+F10 to open settings)"));
                 Debug.LogWarning("[BossRush] SpawnNextEnemy: Boss 池为空，无法生成敌人");
                 return;
             }
@@ -1274,11 +1274,17 @@ namespace BossRush
 
                 if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
                 {
-                    ShowBigBanner("<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + secondsInt + "</color> 秒后抵达战场...");
+                    ShowBigBanner(L10n.T(
+                        "<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + secondsInt + "</color> 秒后抵达战场...",
+                        "<color=red>" + nextWaveBossName + "</color> arriving in <color=yellow>" + secondsInt + "</color> seconds..."
+                    ));
                 }
                 else
                 {
-                    ShowBigBanner("下一波将在 <color=yellow>" + secondsInt + "</color> 秒后开始...");
+                    ShowBigBanner(L10n.T(
+                        "下一波将在 <color=yellow>" + secondsInt + "</color> 秒后开始...",
+                        "Next wave in <color=yellow>" + secondsInt + "</color> seconds..."
+                    ));
                 }
             }
         }

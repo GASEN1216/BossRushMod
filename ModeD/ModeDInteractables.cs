@@ -180,7 +180,9 @@ namespace BossRush
                     var main = CharacterMainControl.Main;
                     if (main != null)
                     {
-                        string msg = "已清空 " + removed + " 个箱子";
+                        string msg = L10n.T(
+                            "已清空 " + removed + " 个箱子",
+                            "Cleared " + removed + " lootboxes");
                         main.PopText(msg, -1f);
                     }
                 }
@@ -308,7 +310,9 @@ namespace BossRush
                     var main = CharacterMainControl.Main;
                     if (main != null)
                     {
-                        string msg = "已清空 " + removed + " 个空箱子";
+                        string msg = L10n.T(
+                            "已清空 " + removed + " 个空箱子",
+                            "Cleared " + removed + " empty lootboxes");
                         main.PopText(msg, -1f);
                     }
                 }

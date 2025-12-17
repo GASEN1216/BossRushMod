@@ -51,7 +51,9 @@ namespace BossRush
                 CleanupDeadEnemies();
                 if (modeDCurrentWaveEnemies.Count > 0)
                 {
-                    ShowMessage("当前波次还有 " + modeDCurrentWaveEnemies.Count + " 个敌人存活！");
+                    ShowMessage(L10n.T(
+                        "当前波次还有 " + modeDCurrentWaveEnemies.Count + " 个敌人存活！",
+                        modeDCurrentWaveEnemies.Count + " enemies still alive in current wave!"));
                     return;
                 }
                 
@@ -75,7 +77,10 @@ namespace BossRush
                        ", Boss=" + bossCount + ", 小怪=" + minionCount);
                 
                 // 显示波次横幅
-                ShowBigBanner("第 <color=yellow>" + modeDWaveIndex + "</color> 波开始！");
+                ShowBigBanner(L10n.T(
+                    "第 <color=yellow>" + modeDWaveIndex + "</color> 波开始！",
+                    "Wave <color=yellow>" + modeDWaveIndex + "</color> started!"
+                ));
                 
                 // 生成敌人
                 SpawnModeDWaveEnemies(bossCount, minionCount);
@@ -191,7 +196,7 @@ namespace BossRush
                     try
                     {
                         // 以“敌人”作为名称，使用无限波次样式（x/∞ 波）
-                        ShowEnemyBanner_UIAndSigns("敌人", bannerPos, playerMain.transform.position,
+                        ShowEnemyBanner_UIAndSigns(L10n.T("敌人", "Enemies"), bannerPos, playerMain.transform.position,
                             0, 1, true, Mathf.Max(0, modeDWaveIndex - 1), 1);
                     }
                     catch {}
@@ -844,7 +849,10 @@ namespace BossRush
 
                 DevLog("[ModeD] 第 " + modeDWaveIndex + " 波完成！");
 
-                ShowBigBanner("第 <color=yellow>" + modeDWaveIndex + "</color> 波完成！");
+                ShowBigBanner(L10n.T(
+                    "第 <color=yellow>" + modeDWaveIndex + "</color> 波完成！",
+                    "Wave <color=yellow>" + modeDWaveIndex + "</color> completed!"
+                ));
 
                 bool useInteract = false;
                 try
@@ -858,7 +866,7 @@ namespace BossRush
 
                 if (useInteract)
                 {
-                    ShowMessage("可以通过路牌开始下一波");
+                    ShowMessage(L10n.T("可以通过路牌开始下一波", "Use the signpost to start next wave"));
 
                     // 显示 Mode D 专用的"冲下一波"选项
                     ShowModeDNextWaveOption();
@@ -887,7 +895,9 @@ namespace BossRush
                             secondsInt = 1;
                         }
 
-                        ShowMessage("下一波将在 " + secondsInt + " 秒后自动开始");
+                        ShowMessage(L10n.T(
+                            "下一波将在 " + secondsInt + " 秒后自动开始",
+                            "Next wave starts in " + secondsInt + " seconds"));
 
                         StartCoroutine(ModeDAutoNextWave(interval));
                     }

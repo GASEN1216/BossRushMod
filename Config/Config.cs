@@ -401,15 +401,10 @@ namespace BossRush
 
                 config.waveIntervalSeconds = value;
 
-                bool isChinese = false;
-                SystemLanguage language = Application.systemLanguage;
-                if (language == SystemLanguage.Chinese || language == SystemLanguage.ChineseSimplified || language == SystemLanguage.ChineseTraditional)
-                {
-                    isChinese = true;
-                }
+                // 使用 L10n 工具类进行本地化
 
                 // 1) 原有：波次间休息时间滑条
-                string label = isChinese ? "波次间休息时间(秒)" : "Wave Interval (seconds)";
+                string label = L10n.T("波次间休息时间(秒)", "Wave Interval (seconds)");
                 string key = ModName + "_waveIntervalSeconds";
                 Vector2 range = new Vector2(2f, 60f);
                 
@@ -442,7 +437,7 @@ namespace BossRush
                         config.infiniteHellBossesPerWave = hellValue;
                     }
 
-                    string hellLabel = isChinese ? "无间炼狱：每波Boss数量" : "Infinite Hell: bosses per wave";
+                    string hellLabel = L10n.T("无间炼狱：每波Boss数量", "Infinite Hell: bosses per wave");
                     string hellKey = ModName + "_InfiniteHellBossesPerWave";
                     Vector2 hellRange = new Vector2(1f, 10f);
 
@@ -461,7 +456,7 @@ namespace BossRush
                 // 2) 新增：Boss 掉落随机化（时间加成）布尔下拉
                 try
                 {
-                    string lootLabel = isChinese ? "Boss 掉落随机化（时间加成）" : "Boss loot randomization (time bonus)";
+                    string lootLabel = L10n.T("Boss 掉落随机化（时间加成）", "Boss loot randomization (time bonus)");
                     string lootKey = ModName + "_EnableRandomBossLoot";
 
                     MethodInfo addBoolMethod = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
@@ -485,7 +480,7 @@ namespace BossRush
                 // 3) 新增：Boss 掉落箱是否作为掩体（挡子弹）
                 try
                 {
-                    string coverLabel = isChinese ? "Boss 掉落箱作为掩体（挡子弹）" : "Boss loot box blocks bullets";
+                    string coverLabel = L10n.T("Boss 掉落箱作为掩体（挡子弹）", "Boss loot box blocks bullets");
                     string coverKey = ModName + "_LootBoxBlocksBullets";
 
                     MethodInfo addBoolMethodCover = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
@@ -509,7 +504,7 @@ namespace BossRush
                 // 4) 新增：波次间是否需要交互点开下一波
                 try
                 {
-                    string interactLabel = isChinese ? "波次间使用交互点开启下一波" : "Use interact point between waves";
+                    string interactLabel = L10n.T("波次间使用交互点开启下一波", "Use interact point between waves");
                     string interactKey = ModName + "_UseInteractBetweenWaves";
 
                     MethodInfo addBoolMethod2 = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
@@ -545,7 +540,7 @@ namespace BossRush
                         config.bossStatMultiplier = bossStatValue;
                     }
 
-                    string bossStatLabel = isChinese ? "Boss全局数值倍率" : "Boss global stat multiplier";
+                    string bossStatLabel = L10n.T("Boss全局数值倍率", "Boss global stat multiplier");
                     string bossStatKey = ModName + "_BossStatMultiplier";
                     Vector2 bossStatRange = new Vector2(0.1f, 10f);
 
@@ -575,7 +570,7 @@ namespace BossRush
                         modeDValue = config.modeDEnemiesPerWave;
                     }
 
-                    string modeDLabel = isChinese ? "白手起家每波敌人数" : "Rags to Riches enemies per wave";
+                    string modeDLabel = L10n.T("白手起家每波敌人数", "Rags to Riches enemies per wave");
                     string modeDKey = ModName + "_ModeDEnemiesPerWave";
                     Vector2 modeDRange = new Vector2(1f, 10f);
 

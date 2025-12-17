@@ -39,14 +39,34 @@ namespace BossRush
         private const int BIRTHDAY_CAKE_TYPE_ID = 500002;
         
         /// <summary>
-        /// 生日蛋糕显示名称
+        /// 生日蛋糕显示名称（中文）
         /// </summary>
-        private const string BIRTHDAY_CAKE_DISPLAY_NAME = "生日蛋糕";
+        private const string BIRTHDAY_CAKE_DISPLAY_NAME_CN = "生日蛋糕";
         
         /// <summary>
-        /// 生日蛋糕描述
+        /// 生日蛋糕显示名称（英文）
         /// </summary>
-        private const string BIRTHDAY_CAKE_DESCRIPTION = "祝你永远开开心心快快乐乐！----来自小猪鲨的祝福";
+        private const string BIRTHDAY_CAKE_DISPLAY_NAME_EN = "Birthday Cake";
+        
+        /// <summary>
+        /// 生日蛋糕描述（中文）
+        /// </summary>
+        private const string BIRTHDAY_CAKE_DESCRIPTION_CN = "祝你永远开开心心快快乐乐！----来自小猪鲨的祝福";
+        
+        /// <summary>
+        /// 生日蛋糕描述（英文）
+        /// </summary>
+        private const string BIRTHDAY_CAKE_DESCRIPTION_EN = "May you always be happy! ----Blessings from Little Pig Shark";
+        
+        /// <summary>
+        /// 获取本地化的生日蛋糕名称
+        /// </summary>
+        private static string BIRTHDAY_CAKE_DISPLAY_NAME { get { return L10n.T(BIRTHDAY_CAKE_DISPLAY_NAME_CN, BIRTHDAY_CAKE_DISPLAY_NAME_EN); } }
+        
+        /// <summary>
+        /// 获取本地化的生日蛋糕描述
+        /// </summary>
+        private static string BIRTHDAY_CAKE_DESCRIPTION { get { return L10n.T(BIRTHDAY_CAKE_DESCRIPTION_CN, BIRTHDAY_CAKE_DESCRIPTION_EN); } }
         
         /// <summary>
         /// 生日蛋糕 AssetBundle 文件名
@@ -417,6 +437,10 @@ namespace BossRush
         {
             try
             {
+                // 获取当前语言的本地化文本
+                string displayName = BIRTHDAY_CAKE_DISPLAY_NAME;
+                string description = BIRTHDAY_CAKE_DESCRIPTION;
+                
                 var types = new string[]
                 {
                     "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
@@ -445,37 +469,27 @@ namespace BossRush
                             Dictionary<string, string> dict = val as Dictionary<string, string>;
                             if (dict != null)
                             {
-                                // 注入生日蛋糕名称
-                                if (!dict.ContainsKey(BIRTHDAY_CAKE_DISPLAY_NAME))
-                                {
-                                    dict.Add(BIRTHDAY_CAKE_DISPLAY_NAME, BIRTHDAY_CAKE_DISPLAY_NAME);
-                                }
+                                // 注入生日蛋糕名称（中英文键都注入）
+                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_CN, displayName);
+                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_EN, displayName);
+                                InjectLocalizedKey(dict, "BossRush_BirthdayCake", displayName);
                                 
-                                // 注入生日蛋糕描述
-                                string descKey = BIRTHDAY_CAKE_DISPLAY_NAME + "_Desc";
-                                if (!dict.ContainsKey(descKey))
-                                {
-                                    dict.Add(descKey, BIRTHDAY_CAKE_DESCRIPTION);
-                                }
+                                // 注入生日蛋糕描述（中英文键都注入）
+                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_CN + "_Desc", description);
+                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_EN + "_Desc", description);
+                                InjectLocalizedKey(dict, "BossRush_BirthdayCake_Desc", description);
                                 
-                                // 注入物品 ID 键
+                                // 注入物品 ID 键（这是游戏系统查找物品名称的标准方式）
                                 if (birthdayCakeTypeId > 0)
                                 {
                                     string itemKey = "Item_" + birthdayCakeTypeId;
                                     string itemDescKey = itemKey + "_Desc";
                                     
-                                    if (!dict.ContainsKey(itemKey))
-                                    {
-                                        dict.Add(itemKey, BIRTHDAY_CAKE_DISPLAY_NAME);
-                                    }
-                                    
-                                    if (!dict.ContainsKey(itemDescKey))
-                                    {
-                                        dict.Add(itemDescKey, BIRTHDAY_CAKE_DESCRIPTION);
-                                    }
+                                    InjectLocalizedKey(dict, itemKey, displayName);
+                                    InjectLocalizedKey(dict, itemDescKey, description);
                                 }
                                 
-                                DevLog("[BirthdayCake] 本地化注入成功");
+                                DevLog("[BirthdayCake] 本地化注入成功: " + displayName);
                                 return;
                             }
                         }

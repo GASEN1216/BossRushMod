@@ -425,13 +425,20 @@ namespace BossRush
                 if (bossesPerWaveParam > 1)
                 {
                     // 多Boss模式：不显示方向，改为“xxx已将你包围”，其中名字和“包围”用红色
-                    bannerText = "第 " + waveIndex + "/" + waveTotalText + " 波: <color=red>" + enemyName + "</color> 已将你<color=red>包围</color>";
+                    bannerText = L10n.T(
+                        "第 " + waveIndex + "/" + waveTotalText + " 波: <color=red>" + enemyName + "</color> 已将你<color=red>包围</color>",
+                        "Wave " + waveIndex + "/" + waveTotalText + ": <color=red>" + enemyName + "</color> has <color=red>surrounded</color> you"
+                    );
                 }
                 else
                 {
                     // 单Boss模式：保留原有方位提示
                     string direction = GetDirectionFromPlayer(enemyPos, playerPos);
-                    bannerText = "第 " + waveIndex + "/" + waveTotalText + " 波: <color=red>" + enemyName + "</color> 在 <color=yellow>" + direction + "</color> 方向";
+                    string localizedDirection = L10n.Direction(direction);
+                    bannerText = L10n.T(
+                        "第 " + waveIndex + "/" + waveTotalText + " 波: <color=red>" + enemyName + "</color> 在 <color=yellow>" + direction + "</color> 方向",
+                        "Wave " + waveIndex + "/" + waveTotalText + ": <color=red>" + enemyName + "</color> at <color=yellow>" + localizedDirection + "</color>"
+                    );
                 }
 
                 // 使用游戏的UI系统显示大横幅

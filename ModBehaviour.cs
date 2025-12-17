@@ -40,7 +40,8 @@ namespace BossRush
         {
             public string sceneName;           // 运行时场景名称（如 Level_DemoChallenge_1）
             public string sceneID;             // 加载用场景ID（如 Level_DemoChallenge_Main）
-            public string displayName;         // 显示名称
+            public string displayNameCN;       // 显示名称（中文）
+            public string displayNameEN;       // 显示名称（英文）
             public Vector3[] spawnPoints;      // Boss 刷新点
             public Vector3? customSpawnPos;    // 玩家自定义传送位置（null 表示使用默认）
             public Vector3? defaultSignPos;    // 默认路牌位置（null 表示使用玩家位置偏移）
@@ -48,11 +49,17 @@ namespace BossRush
             public string previewImageName;    // 预览图文件名（可选，用于地图选择UI）
             public Vector3 mapNorth;           // 地图北方向量（用于方位播报，与小地图朝向一致）
             
-            public BossRushMapConfig(string name, string id, string display, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null)
+            /// <summary>
+            /// 获取本地化的显示名称
+            /// </summary>
+            public string displayName { get { return L10n.T(displayNameCN, displayNameEN); } }
+            
+            public BossRushMapConfig(string name, string id, string displayCN, string displayEN, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null)
             {
                 sceneName = name;
                 sceneID = id;
-                displayName = display;
+                displayNameCN = displayCN;
+                displayNameEN = displayEN;
                 spawnPoints = spawns;
                 customSpawnPos = customPos;
                 defaultSignPos = signPos;
@@ -129,7 +136,8 @@ namespace BossRush
             new BossRushMapConfig(
                 "Level_DemoChallenge_1",      // 运行时场景名
                 "Level_DemoChallenge_Main",   // 加载用场景ID
-                "DEMO终极挑战",                // 显示名称
+                "DEMO终极挑战",                // 显示名称（中文）
+                "DEMO Ultimate Challenge",    // 显示名称（英文）
                 DemoChallengeSpawnPoints,     // 刷新点
                 null,                         // 使用默认传送位置
                 new Vector3(235.48f, -7.99f, 202.41f),  // 默认路牌位置
@@ -141,7 +149,8 @@ namespace BossRush
             new BossRushMapConfig(
                 "Level_GroundZero_1",         // 运行时场景名
                 "Level_GroundZero_Main",      // 加载用场景ID
-                "零号区",                      // 显示名称
+                "零号区",                      // 显示名称（中文）
+                "Ground Zero",                // 显示名称（英文）
                 GroundZeroSpawnPoints,        // 刷新点
                 new Vector3(429.77f, 0.02f, 279.19f),  // 自定义传送位置
                 null,                         // 路牌位置（使用玩家位置偏移）
@@ -424,7 +433,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
 
         private StockShop ammoShop;
 
@@ -523,11 +532,17 @@ namespace BossRush
                         {
                             if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
                             {
-                                ShowBigBanner("<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + seconds + "</color> 秒后抵达战场...");
+                                ShowBigBanner(L10n.T(
+                                    "<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + seconds + "</color> 秒后抵达战场...",
+                                    "<color=red>" + nextWaveBossName + "</color> arriving in <color=yellow>" + seconds + "</color> seconds..."
+                                ));
                             }
                             else
                             {
-                                ShowBigBanner("下一波将在 <color=yellow>" + seconds + "</color> 秒后开始...");
+                                ShowBigBanner(L10n.T(
+                                    "下一波将在 <color=yellow>" + seconds + "</color> 秒后开始...",
+                                    "Next wave in <color=yellow>" + seconds + "</color> seconds..."
+                                ));
                             }
                         }
                     }
@@ -2560,7 +2575,7 @@ namespace BossRush
                     }
                 }
                 
-                ShowMessage("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName);
+                ShowMessage(L10n.T("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName, "Wave " + (currentEnemyIndex + 1) + ": " + preset.displayName));
                 DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
             }
             catch (Exception e)
@@ -3005,7 +3020,7 @@ namespace BossRush
                     main.transform.position = targetPos;
                 }
 
-                ShowMessage("已返回出生点");
+                ShowMessage(L10n.T("已返回出生点", "Returned to spawn point"));
             }
             catch {}
         }

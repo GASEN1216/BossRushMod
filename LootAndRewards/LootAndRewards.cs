@@ -460,7 +460,7 @@ namespace BossRush
             // 取消敌人死亡监听
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
 
-            ShowMessage("所有敌人已击败！你赢了！");
+            ShowMessage(L10n.T("所有敌人已击败！你赢了！", "All enemies defeated! You win!"));
             DevLog("[BossRush] BossRush挑战完成！");
 
             // 将路牌切换到凯旋状态，仅展示最终彩色标题
@@ -477,12 +477,16 @@ namespace BossRush
             try
             {
                 int rewardHighCount = (bossesPerWave <= 1) ? 3 : 10;
-                string diffName = (bossesPerWave <= 1) ? "弹指可灭" : "有点意思";
+                string diffName = (bossesPerWave <= 1) ? L10n.T("弹指可灭", "Easy Mode") : L10n.T("有点意思", "Hard Mode");
 
-                string banner =
+                string banner = L10n.T(
                     "<color=#FF0000>恭</color><color=#FF7F00>喜</color><color=#FFFF00>通</color><color=#00FF00>关</color> " +
                     "<color=#00FFFF>\u300c" + diffName + "\u300d</color>！ " +
-                    "请到场地中心领取奖励\\o/";
+                    "请到场地中心领取奖励\\o/",
+                    "<color=#FF0000>C</color><color=#FF7F00>o</color><color=#FFFF00>n</color><color=#00FF00>g</color><color=#00FFFF>r</color><color=#0000FF>a</color><color=#8B00FF>t</color><color=#FF0000>s</color>! " +
+                    "<color=#00FFFF>\u300c" + diffName + "\u300d</color> " +
+                    "Claim your rewards at the center! \\o/"
+                );
 
                 ShowBigBanner(banner);
                 SpawnDifficultyRewardLootbox_LootAndRewards(rewardHighCount);
@@ -497,9 +501,13 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player != null)
                 {
-                    // 显示气泡对话（带炫彩文字）
-                    await DialogueBubblesManager.Show(
+                    // 显示气泡对话（带炫彩文字），支持中英文
+                    string bubbleText = L10n.T(
                         "<color=#FF0000>你</color><color=#FF7F00>简</color><color=#FFFF00>直</color><color=#00FF00>是</color><color=#0000FF>鸭</color><color=#4B0082>鸭</color><color=#9400D3>星</color><color=#FF0000>球</color><color=#FF7F00>里</color><color=#FFFF00>最</color><color=#00FF00>强</color><color=#0000FF>的</color><color=#4B0082>鸭</color><color=#9400D3>！</color><color=#FF0000>！</color><color=#FF7F00>！</color>",
+                        "<color=#FF0000>You</color> <color=#FF7F00>are</color> <color=#FFFF00>the</color> <color=#00FF00>strongest</color> <color=#0000FF>duck</color><color=#4B0082>!</color><color=#9400D3>!</color><color=#FF0000>!</color>"
+                    );
+                    await DialogueBubblesManager.Show(
+                        bubbleText,
                         player.transform,
                         1f,
                         false,
@@ -1036,7 +1044,7 @@ namespace BossRush
                     EndModeD();
                 }
 
-                ShowMessage("BossRush挑战失败！");
+                ShowMessage(L10n.T("BossRush挑战失败！", "BossRush challenge failed!"));
             }
             catch (Exception e)
             {
