@@ -1083,7 +1083,7 @@ namespace BossRush
             // 初始化生日蛋糕物品
             InitializeBirthdayCakeItem();
             InjectBirthdayCakeLocalization();
-            InjectBirthdayCakeIntoShops();
+            // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
 
             DevLog("[BossRush] ========================================");
             DevLog("[BossRush] Boss Rush Mod v1.0 已加载");
@@ -1176,7 +1176,7 @@ namespace BossRush
             try
             {
                 InjectBossRushTicketIntoShops();
-                InjectBirthdayCakeIntoShops();
+                // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
                 
                 // 在基地场景检查并赠送12月份生日蛋糕
                 if (scene.name == "Base_SceneV2")
