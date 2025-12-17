@@ -1479,14 +1479,15 @@ namespace BossRush
                         // 填满弹夹
                         FillGunMagazine(weapon);
 
-                        // 在枪内增加额外载弹
-                        FillGunInternalAmmo(weapon, 2, 30, 60);
+                        // 注意：不再调用 FillGunInternalAmmo，避免敌人掉落的武器内有大量子弹
+                        // 原代码：FillGunInternalAmmo(weapon, 2, 30, 60);
+                        // 这会导致玩家捡到的枪里有60-120发额外子弹（如狙击枪80发）
 
-                        // 给背包弹药
+                        // 给背包弹药（供敌人战斗使用，会随尸体掉落）
                         Item ammo = ItemAssetsCollection.InstantiateSync(gunSetting.TargetBulletID);
                         if (ammo != null)
                         {
-                            ammo.StackCount = UnityEngine.Random.Range(60, 120);
+                            ammo.StackCount = UnityEngine.Random.Range(30, 60);
                             enemy.CharacterItem.Inventory.AddAndMerge(ammo, 0);
                         }
                     }

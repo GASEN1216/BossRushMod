@@ -211,14 +211,62 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 前期波次需要排除的强力 Boss 名称列表
+        /// 包括：口口口口和四骑士（Cname_StormBoss1-5）
+        /// </summary>
+        private static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
+        {
+            "Cname_StormBoss1",    // 口口口口 或 四骑士
+            "Cname_StormBoss2",    // 口口口口 或 四骑士
+            "Cname_StormBoss3",    // 口口口口 或 四骑士
+            "Cname_StormBoss4",    // 口口口口 或 四骑士
+            "Cname_StormBoss5"     // 口口口口 或 四骑士
+        };
+
+        /// <summary>
         /// 获取随机 Boss 预设
         /// </summary>
+        /// <remarks>
+        /// 前期波次（第6-10波）会过滤掉强力 Boss（口口口口和四骑士，即 StormBoss1-5），
+        /// 避免白手起家模式下玩家在装备不足时遇到过强的敌人。
+        /// </remarks>
         private EnemyPresetInfo GetRandomBossPreset()
         {
             if (modeDBossPool == null || modeDBossPool.Count == 0)
             {
                 DevLog("[ModeD] Boss池为空");
                 return null;
+            }
+
+            // 第6-10波（首次出Boss的波次）：过滤掉强力Boss
+            if (modeDWaveIndex <= 10)
+            {
+                List<EnemyPresetInfo> filteredPool = new List<EnemyPresetInfo>();
+                for (int i = 0; i < modeDBossPool.Count; i++)
+                {
+                    EnemyPresetInfo boss = modeDBossPool[i];
+                    if (boss == null || string.IsNullOrEmpty(boss.name))
+                    {
+                        continue;
+                    }
+
+                    // 排除强力 Boss
+                    if (EarlyWaveExcludedBosses.Contains(boss.name))
+                    {
+                        continue;
+                    }
+
+                    filteredPool.Add(boss);
+                }
+
+                if (filteredPool.Count > 0)
+                {
+                    DevLog("[ModeD] 前期波次Boss过滤：可用Boss数=" + filteredPool.Count + "/" + modeDBossPool.Count);
+                    return filteredPool[UnityEngine.Random.Range(0, filteredPool.Count)];
+                }
+
+                // 如果过滤后没有可用Boss，回退到完整池
+                DevLog("[ModeD] 前期波次过滤后无可用Boss，使用完整池");
             }
             
             return modeDBossPool[UnityEngine.Random.Range(0, modeDBossPool.Count)];
