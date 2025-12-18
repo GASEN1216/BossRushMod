@@ -1362,13 +1362,24 @@ namespace BossRush
             // 5. 生成地图阻挡物（路障、铁丝网等）
             SpawnBossRushMapObjects();
             
-            // 6. 在玩家位置附近创建 BossRush 路牌
-            Vector3 signPosition = playerPosition + new Vector3(-2f, 0f, 1f);
+            // 6. 创建 BossRush 交互点（优先使用配置的位置，否则使用玩家位置偏移）
+            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            BossRushMapConfig currentMapConfig = GetMapConfigBySceneName(currentSceneName);
+            Vector3 signPosition;
+            if (currentMapConfig != null && currentMapConfig.defaultSignPos.HasValue)
+            {
+                signPosition = currentMapConfig.defaultSignPos.Value;
+                DevLog("[BossRush] SetupBossRushInGroundZero: 使用配置的交互点位置: " + signPosition);
+            }
+            else
+            {
+                signPosition = playerPosition + new Vector3(-2f, 0f, 1f);
+                DevLog("[BossRush] SetupBossRushInGroundZero: 使用玩家位置偏移: " + signPosition);
+            }
             TryCreateArenaDifficultyEntryPoint(signPosition);
-            DevLog("[BossRush] SetupBossRushInGroundZero: 已创建 BossRush 路牌，位置=" + signPosition);
+            DevLog("[BossRush] SetupBossRushInGroundZero: 已创建 BossRush 交互点，位置=" + signPosition);
             
             // 7. 设置当前地图的刷新点（使用当前场景名）
-            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             SetCurrentMapSpawnPoints(currentSceneName);
             
             // 8. 标记 BossRush 竞技场已激活
@@ -1477,7 +1488,7 @@ namespace BossRush
                     "BossRush_BarbedWire"
                 ));
             }
-            else if (sceneName == "Level_ChallengeSnow_1")
+            else if (sceneName == "Level_ChallengeSnow")
             {
                 // 零度挑战地图的复制配置
                 
@@ -1488,6 +1499,15 @@ namespace BossRush
                     new Vector3(242.54f, -0.01f, 259.44f),
                     "BossRush_Container_Clone",
                     270f  // Y轴旋转270度
+                ));
+                
+                // 2. 篝火 - 作为交互点载体
+                configs.Add(new MapObjectCloneConfig(
+                    "Pfb_Campingfire",
+                    "Env",
+                    new Vector3(225.32f, 0.01f, 285.64f),
+                    "BossRush_Campfire_Interact",
+                    0f
                 ));
             }
             // 后续可以添加其他地图的配置

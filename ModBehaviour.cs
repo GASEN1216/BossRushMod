@@ -181,13 +181,13 @@ namespace BossRush
             ),
             // 零度挑战（第二位）
             new BossRushMapConfig(
-                "Level_ChallengeSnow_1",      // 运行时场景名
-                "Level_ChallengeSnow",        // 加载用场景ID
+                "Level_ChallengeSnow",        // 运行时场景名（实际子场景名，不带_1后缀）
+                "Level_ChallengeSnow_Main",   // 加载用场景ID（需要_Main后缀才能正确初始化）
                 "零度挑战",                    // 显示名称（中文）
                 "Zero Challenge",             // 显示名称（英文）
                 ChallengeSnowSpawnPoints,     // 刷新点
                 new Vector3(227.46f, 0.01f, 287.58f),  // 玩家传送位置
-                null,                         // 路牌位置（使用玩家位置偏移）
+                new Vector3(225.32f, 0.01f, 285.64f),  // 交互点位置（与篝火相同）
                 0,                            // 信标索引
                 "zero-preview.png",           // 预览图
                 new Vector3(0f, 0f, 1f)       // 地图北方（零度挑战：Z+ 方向）
@@ -480,7 +480,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = true;
+        internal const bool DevModeEnabled = false;
 
         private StockShop ammoShop;
 

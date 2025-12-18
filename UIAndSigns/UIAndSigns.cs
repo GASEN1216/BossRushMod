@@ -698,22 +698,11 @@ namespace BossRush
                     }
                     else
                     {
-                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 未找到 Interact_Roadsign 模板，尝试查找最近的 BoxCollider 作为参考");
+                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 未找到 Interact_Roadsign 模板，创建隐形交互点");
                         
-                        // 保底机制：查找最近的 BoxCollider 作为参考位置创建路牌
-                        Vector3 signPos = position + new Vector3(-1.2f, 0f, 0.5f);
-                        BoxCollider nearestBoxCollider = FindNearestBoxCollider(signPos);
-                        
-                        if (nearestBoxCollider != null)
-                        {
-                            // 在最近的 BoxCollider 附近创建路牌
-                            signPos = nearestBoxCollider.transform.position + new Vector3(-1.2f, 0f, 0.5f);
-                            DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 找到最近的 BoxCollider: " + nearestBoxCollider.gameObject.name + ", 位置=" + nearestBoxCollider.transform.position);
-                        }
-                        else
-                        {
-                            DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 未找到任何 BoxCollider，使用默认位置");
-                        }
+                        // 直接使用配置的位置创建隐形交互点
+                        Vector3 signPos = position;
+                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用配置位置创建交互点: " + signPos);
                         
                         // 创建隐形交互点
                         GameObject obj = new GameObject(signName);
