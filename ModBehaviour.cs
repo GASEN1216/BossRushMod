@@ -1370,6 +1370,9 @@ namespace BossRush
                     {
                         if (multi == null || multi.gameObject == null) continue;
 
+                        // 跳过不可见的交互点，否则注入后也无法显示
+                        if (!multi.gameObject.activeInHierarchy) continue;
+
                         float distSq = (multi.transform.position - targetPos).sqrMagnitude;
                         if (EnableScanDebugLogs)
                         {
@@ -1394,6 +1397,9 @@ namespace BossRush
                     {
                         if (interact == null || interact.gameObject == null) continue;
                         if (interact is BossRushInteractable) continue;
+
+                        // 跳过不可见的交互点（如任务未完成的雪图挑战），否则注入后也无法显示
+                        if (!interact.gameObject.activeInHierarchy) continue;
 
                         // Base 场景中显式排除 Interact_Challenge，本交互点用于其它玩法，不作为 BossRush 入口
                         if (isBaseScene && interact.gameObject.name == "Interact_Challenge") continue;

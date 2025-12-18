@@ -946,6 +946,8 @@ namespace BossRush
                     obj.transform.localPosition = Vector3.zero;
                     obj.transform.localRotation = Quaternion.identity;
                     obj.transform.localScale = Vector3.one;
+                    // 确保 GameObject 激活，否则不会被添加到交互列表中显示
+                    obj.SetActive(true);
 
                     var newInteract = obj.AddComponent<BossRushInteractable>();
                     // 不再使用 requireItem 扣费，改为通过 MapSelectionView 的 Cost 系统扣费
