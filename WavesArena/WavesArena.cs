@@ -1042,7 +1042,11 @@ namespace BossRush
                 SetBossRushRuntimeActive(true);
                 currentEnemyIndex = 0;
                 defeatedEnemies = 0;
-                totalEnemies = enemyPresets.Count;
+                
+                // 使用过滤后的 Boss 池计算总数，确保横幅显示正确的 Boss 数量
+                var filteredPresetsForCount = GetFilteredEnemyPresets();
+                totalEnemies = (filteredPresetsForCount != null) ? filteredPresetsForCount.Count : 0;
+                
                 bossesInCurrentWaveTotal = 0;
                 bossesInCurrentWaveRemaining = 0;
                 currentWaveBosses.Clear();
@@ -1052,7 +1056,7 @@ namespace BossRush
                 bossOriginalLootCounts.Clear();
                 countedDeadBosses.Clear();
                 
-                DevLog("[BossRush] 启动单波生成模式，共 " + totalEnemies + " 个敌人");
+                DevLog("[BossRush] 启动单波生成模式，共 " + totalEnemies + " 个敌人（已过滤）");
                 
                 // 订阅敌人死亡事件（只订阅一次）
                 Health.OnDead -= OnEnemyDiedWithDamageInfo; // 先取消避免重复
