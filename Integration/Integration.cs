@@ -1062,6 +1062,7 @@ namespace BossRush
                     if (bossRushArenaPlanned)
                     {
                         InitializeEnemyPresets();
+                        InitializeItemValueCacheAsync(); // 异步初始化物品价值缓存
                         InitializeBossPoolFilter();
                         bossRushArenaActive = true;
                         bossRushArenaPlanned = false;
@@ -1316,6 +1317,7 @@ namespace BossRush
             // 8. 标记 BossRush 竞技场已激活
             bossRushArenaActive = true;
             InitializeEnemyPresets();
+            InitializeItemValueCacheAsync(); // 异步初始化物品价值缓存
             InitializeBossPoolFilter();
             DevLog("[BossRush] SetupBossRushInGroundZero: 零号区 BossRush 模式初始化完成");
             

@@ -71,6 +71,148 @@ namespace BossRush
         private List<int> infiniteHellHighQualityItemPool = null;
         private bool infiniteHellHighQualityItemPoolInitialized = false;
 
+        // ============================================================================
+        // 物品价值缓存系统 - 避免Boss死亡时同步实例化大量物品导致卡顿
+        // ============================================================================
+        private static Dictionary<int, ItemValueCacheEntry> _itemValueCache = null;
+        private static bool _itemValueCacheInitialized = false;
+        private static bool _itemValueCacheInitializing = false;
+
+        /// <summary>
+        /// 物品价值缓存条目
+        /// </summary>
+        private struct ItemValueCacheEntry
+        {
+            public int value;
+            public int quality;
+        }
+
+        /// <summary>
+        /// 初始化物品价值缓存（异步，在后台分帧处理避免卡顿）
+        /// </summary>
+        private void InitializeItemValueCacheAsync()
+        {
+            if (_itemValueCacheInitialized || _itemValueCacheInitializing)
+            {
+                return;
+            }
+            _itemValueCacheInitializing = true;
+            StartCoroutine(InitializeItemValueCacheCoroutine());
+        }
+
+        /// <summary>
+        /// 物品价值缓存初始化协程 - 分帧处理避免卡顿
+        /// </summary>
+        private IEnumerator InitializeItemValueCacheCoroutine()
+        {
+            if (_itemValueCache == null)
+            {
+                _itemValueCache = new Dictionary<int, ItemValueCacheEntry>();
+            }
+            else
+            {
+                _itemValueCache.Clear();
+            }
+
+            DevLog("[BossRush] 开始初始化物品价值缓存...");
+
+            // 收集所有候选物品ID
+            HashSet<int> idSet = new HashSet<int>();
+            try
+            {
+                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+                if (tagsData != null && tagsData.AllTags != null)
+                {
+                    List<Duckov.Utilities.Tag> baseExclude = new List<Duckov.Utilities.Tag>();
+                    if (tagsData.DestroyOnLootBox != null) baseExclude.Add(tagsData.DestroyOnLootBox);
+                    if (tagsData.DontDropOnDeadInSlot != null) baseExclude.Add(tagsData.DontDropOnDeadInSlot);
+                    if (tagsData.LockInDemoTag != null) baseExclude.Add(tagsData.LockInDemoTag);
+
+                    foreach (Duckov.Utilities.Tag tag in tagsData.AllTags)
+                    {
+                        if (tag == null || baseExclude.Contains(tag)) continue;
+
+                        ItemFilter filter = default(ItemFilter);
+                        filter.requireTags = new Duckov.Utilities.Tag[] { tag };
+                        filter.excludeTags = baseExclude.ToArray();
+                        filter.minQuality = 1;
+                        filter.maxQuality = 8;
+
+                        int[] ids = ItemAssetsCollection.Search(filter);
+                        if (ids != null)
+                        {
+                            foreach (int id in ids)
+                            {
+                                if (id > 0 && !ManualLootBlacklist.Contains(id))
+                                {
+                                    idSet.Add(id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[BossRush] 收集候选物品ID失败: " + e.Message);
+            }
+
+            DevLog("[BossRush] 物品价值缓存：共需处理 " + idSet.Count + " 个物品");
+
+            // 分帧处理：每帧处理一定数量的物品
+            const int itemsPerFrame = 20;
+            int processedCount = 0;
+            List<int> idList = new List<int>(idSet);
+
+            for (int i = 0; i < idList.Count; i++)
+            {
+                int itemId = idList[i];
+                try
+                {
+                    Item temp = ItemAssetsCollection.InstantiateSync(itemId);
+                    if (temp != null)
+                    {
+                        ItemValueCacheEntry entry = new ItemValueCacheEntry();
+                        try { entry.value = temp.Value; } catch { entry.value = 0; }
+                        try { entry.quality = temp.Quality; } catch { entry.quality = -1; }
+                        _itemValueCache[itemId] = entry;
+                        UnityEngine.Object.Destroy(temp.gameObject);
+                    }
+                }
+                catch { }
+
+                processedCount++;
+
+                // 每处理一定数量的物品，等待下一帧
+                if (processedCount >= itemsPerFrame)
+                {
+                    processedCount = 0;
+                    yield return null;
+                }
+            }
+
+            _itemValueCacheInitialized = true;
+            _itemValueCacheInitializing = false;
+            DevLog("[BossRush] 物品价值缓存初始化完成，共缓存 " + _itemValueCache.Count + " 个物品");
+        }
+
+        /// <summary>
+        /// 从缓存获取物品价值信息
+        /// </summary>
+        private bool TryGetCachedItemValue(int itemId, out int value, out int quality)
+        {
+            ItemValueCacheEntry entry;
+            if (_itemValueCache != null && _itemValueCache.TryGetValue(itemId, out entry))
+            {
+                value = entry.value;
+                quality = entry.quality;
+                return true;
+            }
+            value = 0;
+            quality = -1;
+            return false;
+        }
+
         /// <summary>
         /// 无间炼狱单波完成：掉落现金、更新显示并准备下一波（LootAndRewards 备份实现）
         /// </summary>
@@ -1753,61 +1895,28 @@ namespace BossRush
                                         int bestCandidateValue = -1;
                                         Dictionary<int, int> candidateValues = new Dictionary<int, int>();
 
+                                        // 使用缓存评估物品价值，避免同步实例化导致卡顿
                                         try
                                         {
                                             foreach (int candidateId in idSet)
                                             {
                                                 int v = 0;
                                                 int quality = -1;
-                                                string name = "<unknown>";
 
-                                                try
+                                                // 优先从缓存获取物品价值信息
+                                                if (TryGetCachedItemValue(candidateId, out v, out quality))
                                                 {
-                                                    // 使用 ItemAssetsCollection.InstantiateSync 获取带有完整配置的临时物品
-                                                    Item temp = ItemAssetsCollection.InstantiateSync(candidateId);
-                                                    if (temp != null)
-                                                    {
-                                                        try
-                                                        {
-                                                            v = temp.Value;
-                                                        }
-                                                        catch
-                                                        {
-                                                            v = 0;
-                                                        }
-
-                                                        try
-                                                        {
-                                                            quality = temp.Quality;
-                                                        }
-                                                        catch
-                                                        {
-                                                            quality = -1;
-                                                        }
-
-                                                        UnityEngine.Object.Destroy(temp.gameObject);
-                                                    }
+                                                    // 缓存命中，直接使用缓存数据
                                                 }
-                                                catch
+                                                else
                                                 {
+                                                    // 缓存未命中，跳过该物品的价值评估（不再同步实例化）
+                                                    // 仍然将其加入候选池，只是不参与高价值保底筛选
                                                     v = 0;
+                                                    quality = -1;
                                                 }
 
-                                                try
-                                                {
-                                                    var meta = ItemAssetsCollection.GetMetaData(candidateId);
-                                                    if (meta.id > 0)
-                                                    {
-                                                        name = meta.DisplayName;
-                                                    }
-                                                }
-                                                catch
-                                                {
-                                                    name = "<meta-failed>";
-                                                }
-
-                                                DevLog("[BossRush] Boss 候选物品评估: typeID=" + candidateId + ", 名称=" + name + ", 品质=" + quality + ", Value=" + v);
-
+                                                // 根据品质筛选保底候选
                                                 if (quality >= 4 && quality <= 6)
                                                 {
                                                     qualityRangeCandidates.Add(candidateId);
