@@ -127,6 +127,40 @@ namespace BossRush
             new Vector3(418.43f, 0.01f, 265.79f),
         };
         
+        // 零度挑战刷新点（Level_ChallengeSnow）
+        private static readonly Vector3[] ChallengeSnowSpawnPoints = new Vector3[]
+        {
+            new Vector3(234.35f, 0.01f, 254.65f),
+            new Vector3(235.37f, 0.01f, 258.41f),
+            new Vector3(232.42f, 0.01f, 263.32f),
+            new Vector3(228.14f, 0.01f, 263.83f),
+            new Vector3(228.06f, 0.01f, 252.52f),
+            new Vector3(224.85f, 0.01f, 253.22f),
+            new Vector3(221.40f, 0.01f, 253.45f),
+            new Vector3(221.49f, 0.01f, 258.26f),
+            new Vector3(219.95f, 0.01f, 263.19f),
+            new Vector3(219.68f, 0.01f, 269.28f),
+            new Vector3(219.81f, 0.01f, 273.64f),
+            new Vector3(228.37f, 0.01f, 270.90f),
+            new Vector3(233.89f, 0.01f, 271.26f),
+            new Vector3(237.32f, 0.01f, 272.13f),
+            new Vector3(237.15f, 0.01f, 276.96f),
+            new Vector3(246.94f, 0.01f, 293.57f),
+            new Vector3(250.41f, 0.01f, 294.05f),
+            new Vector3(250.59f, 0.01f, 297.42f),
+            new Vector3(249.84f, 0.01f, 300.39f),
+            new Vector3(246.66f, 0.01f, 300.58f),
+            new Vector3(243.86f, 0.01f, 300.33f),
+            new Vector3(240.00f, 0.01f, 302.76f),
+            new Vector3(237.94f, 0.01f, 300.77f),
+            new Vector3(235.35f, 0.01f, 300.72f),
+            new Vector3(231.55f, 0.01f, 301.00f),
+            new Vector3(227.64f, 0.01f, 299.78f),
+            new Vector3(224.68f, 0.01f, 297.40f),
+            new Vector3(219.81f, 0.01f, 298.57f),
+            new Vector3(220.25f, 0.01f, 294.99f),
+        };
+        
         /// <summary>
         /// 所有支持的 BossRush 地图配置（添加新地图只需在此处添加配置）
         /// </summary>
@@ -145,7 +179,20 @@ namespace BossRush
                 "demo-preview.png",           // 预览图
                 new Vector3(-0.959f, 0f, 0.284f)  // 地图北方（DEMO竞技场校准值）
             ),
-            // 零号区
+            // 零度挑战（第二位）
+            new BossRushMapConfig(
+                "Level_ChallengeSnow_1",      // 运行时场景名
+                "Level_ChallengeSnow",        // 加载用场景ID
+                "零度挑战",                    // 显示名称（中文）
+                "Zero Challenge",             // 显示名称（英文）
+                ChallengeSnowSpawnPoints,     // 刷新点
+                new Vector3(227.46f, 0.01f, 287.58f),  // 玩家传送位置
+                null,                         // 路牌位置（使用玩家位置偏移）
+                0,                            // 信标索引
+                "zero-preview.png",           // 预览图
+                new Vector3(0f, 0f, 1f)       // 地图北方（零度挑战：Z+ 方向）
+            ),
+            // 零号区（第三位）
             new BossRushMapConfig(
                 "Level_GroundZero_1",         // 运行时场景名
                 "Level_GroundZero_Main",      // 加载用场景ID

@@ -630,6 +630,9 @@ namespace BossRush
         {
             try
             {
+                // 首先使用 SetOverrideText 注入地图名称本地化（官方未提供的地图）
+                InjectMapNameLocalizations();
+                
                 // 尝试查找 LocalizationManager 类型
                 var types = new string[] 
                 { 
@@ -896,6 +899,60 @@ namespace BossRush
             catch (Exception e)
             {
                 Debug.LogError("[BossRush] 本地化注入失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 注入地图名称本地化（官方未提供本地化的地图）
+        /// 使用 LocalizationManager.SetOverrideText 方法
+        /// </summary>
+        private void InjectMapNameLocalizations()
+        {
+            try
+            {
+                // 尝试查找 LocalizationManager 类型
+                var types = new string[] 
+                { 
+                    "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
+                    "SodaCraft.Localizations.LocalizationManager, TeamSoda.Duckov.Core",
+                    "SodaCraft.Localizations.LocalizationManager, Assembly-CSharp"
+                };
+
+                Type locType = null;
+                foreach (var t in types)
+                {
+                    locType = Type.GetType(t);
+                    if (locType != null) break;
+                }
+
+                if (locType == null)
+                {
+                    DevLog("[BossRush] 未找到 LocalizationManager 类型，无法注入地图名称本地化");
+                    return;
+                }
+
+                // 查找 SetOverrideText 方法
+                MethodInfo setOverrideMethod = locType.GetMethod("SetOverrideText", 
+                    BindingFlags.Static | BindingFlags.Public,
+                    null,
+                    new Type[] { typeof(string), typeof(string) },
+                    null);
+
+                if (setOverrideMethod == null)
+                {
+                    DevLog("[BossRush] 未找到 SetOverrideText 方法，无法注入地图名称本地化");
+                    return;
+                }
+
+                // 注入零度挑战的本地化（官方未提供）
+                // 键名是 SceneInfoEntry 中的 displayName 字段值，即 "Level_ChallengeSnow"
+                string zeroChallengeDisplayName = L10n.T("零度挑战", "Zero Challenge");
+                setOverrideMethod.Invoke(null, new object[] { "Level_ChallengeSnow", zeroChallengeDisplayName });
+                DevLog("[BossRush] 已注入地图名称本地化: Level_ChallengeSnow -> " + zeroChallengeDisplayName);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[BossRush] 注入地图名称本地化失败: " + e.Message);
             }
         }
         
@@ -1373,13 +1430,15 @@ namespace BossRush
             public string parentNamePrefix;  // 父对象名称前缀（用于查找）
             public Vector3 targetPosition;   // 目标位置
             public string cloneName;         // 克隆后的名称
+            public float? rotationY;         // Y轴旋转角度（可选，null表示使用模板旋转）
             
-            public MapObjectCloneConfig(string template, string parentPrefix, Vector3 pos, string name)
+            public MapObjectCloneConfig(string template, string parentPrefix, Vector3 pos, string name, float? rotation = null)
             {
                 templateName = template;
                 parentNamePrefix = parentPrefix;
                 targetPosition = pos;
                 cloneName = name;
+                rotationY = rotation;
             }
         }
         
@@ -1418,11 +1477,20 @@ namespace BossRush
                     "BossRush_BarbedWire"
                 ));
             }
+            else if (sceneName == "Level_ChallengeSnow_1")
+            {
+                // 零度挑战地图的复制配置
+                
+                // 1. 集装箱 - 作为竞技场边界
+                configs.Add(new MapObjectCloneConfig(
+                    "Pfb_Container_01_B_Season_64",
+                    "Env",
+                    new Vector3(242.54f, -0.01f, 259.44f),
+                    "BossRush_Container_Clone",
+                    270f  // Y轴旋转270度
+                ));
+            }
             // 后续可以添加其他地图的配置
-            // else if (sceneName == "Level_OtherMap")
-            // {
-            //     configs.Add(...);
-            // }
             
             return configs;
         }
@@ -1504,7 +1572,17 @@ namespace BossRush
                 GameObject clone = UnityEngine.Object.Instantiate(template);
                 clone.name = config.cloneName;
                 clone.transform.position = config.targetPosition;
-                clone.transform.rotation = template.transform.rotation;
+                
+                // 设置旋转：如果配置了自定义Y轴旋转，则使用；否则使用模板旋转
+                if (config.rotationY.HasValue)
+                {
+                    Vector3 templateEuler = template.transform.rotation.eulerAngles;
+                    clone.transform.rotation = Quaternion.Euler(templateEuler.x, config.rotationY.Value, templateEuler.z);
+                }
+                else
+                {
+                    clone.transform.rotation = template.transform.rotation;
+                }
                 clone.transform.localScale = template.transform.localScale;
                 
                 // 设置父对象

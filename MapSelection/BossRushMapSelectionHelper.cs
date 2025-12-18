@@ -181,22 +181,14 @@ namespace BossRush
                     ModBehaviour.DevLog("[BossRush] 条目: " + e.gameObject.name + ", sceneID=" + e.SceneID + ", activeInHierarchy=" + isActive + ", activeSelf=" + selfActive);
                 }
                 
-                // 关键：Open() 后再次设置显示名称
-                // 因为 Open() 会触发 OnEnable() -> Refresh()，可能会覆盖我们之前设置的文本
-                // 此时需要再次强制设置正确的显示名称
-                if (bossRushEntryObject != null)
-                {
-                    SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(BossRushSceneID);
-                    string displayName = sceneInfo != null ? sceneInfo.DisplayName : "Boss Rush 竞技场";
-                    SetEntryDisplayNameDirect(bossRushEntryObject, displayName);
-                    ModBehaviour.DevLog("[BossRush] Open() 后再次设置显示名称: " + displayName);
-                }
-                
                 // 启动协程监控 UI 关闭，以便恢复隐藏的条目
                 ModBehaviour mod = ModBehaviour.Instance;
                 if (mod != null)
                 {
                     mod.StartCoroutine(WatchMapSelectionViewClose(mapView));
+                    
+                    // 关键：延迟几帧后再次设置显示名称，防止被 UI 系统的 Refresh() 覆盖
+                    mod.StartCoroutine(DelayedRefreshDisplayNames());
                 }
                 
                 ModBehaviour.DevLog("[BossRush] 已打开 MapSelectionView，等待玩家选择");
@@ -223,6 +215,60 @@ namespace BossRush
             // UI 已关闭，恢复隐藏的条目
             RestoreHiddenEntries();
             ModBehaviour.DevLog("[BossRush] MapSelectionView 已关闭，已恢复隐藏的条目");
+        }
+        
+        /// <summary>
+        /// 延迟后刷新所有 BossRush 条目的显示名称
+        /// 防止被 UI 系统的 Refresh() 覆盖
+        /// 使用多次刷新机制确保名称正确显示
+        /// </summary>
+        private static System.Collections.IEnumerator DelayedRefreshDisplayNames()
+        {
+            // 多次刷新：在不同时机刷新显示名称，确保覆盖 UI 系统的 Refresh()
+            // 第一次：等待帧结束后立即刷新
+            yield return new WaitForEndOfFrame();
+            RefreshAllEntryDisplayNames("帧结束后");
+            
+            // 第二次：等待 0.1 秒后刷新（覆盖可能的延迟 Refresh）
+            yield return new WaitForSeconds(0.1f);
+            RefreshAllEntryDisplayNames("0.1秒后");
+            
+            // 第三次：等待 0.3 秒后刷新（最终保障）
+            yield return new WaitForSeconds(0.2f);
+            RefreshAllEntryDisplayNames("0.3秒后");
+        }
+        
+        /// <summary>
+        /// 刷新所有 BossRush 条目的显示名称
+        /// </summary>
+        private static void RefreshAllEntryDisplayNames(string debugTag)
+        {
+            // 获取地图配置
+            ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+            if (mapConfigs == null || bossRushEntryObjects == null)
+            {
+                return;
+            }
+            
+            // 刷新所有条目的显示名称
+            for (int i = 0; i < bossRushEntryObjects.Count && i < mapConfigs.Length; i++)
+            {
+                GameObject entryObj = bossRushEntryObjects[i];
+                if (entryObj == null) continue;
+                
+                ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[i];
+                string displayName = mapConfig.displayName;
+                
+                // 如果配置的显示名称为空，尝试从场景信息获取
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(mapConfig.sceneID);
+                    displayName = sceneInfo != null ? sceneInfo.DisplayName : "未知地图";
+                }
+                
+                SetEntryDisplayNameDirect(entryObj, displayName);
+                ModBehaviour.DevLog("[BossRush] 延迟刷新显示名称(" + debugTag + "): " + displayName + " (index=" + i + ")");
+            }
         }
 
         

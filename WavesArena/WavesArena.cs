@@ -1236,10 +1236,12 @@ namespace BossRush
                 try
                 {
                     nextWaveBossName = null;
-                    int presetCount = (enemyPresets != null) ? enemyPresets.Count : 0;
+                    // 使用过滤后的 Boss 列表，确保预告的 Boss 与实际生成的一致
+                    var filteredPresets = GetFilteredEnemyPresets();
+                    int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
                     if (currentEnemyIndex >= 0 && currentEnemyIndex < presetCount)
                     {
-                        EnemyPresetInfo nextPreset = enemyPresets[currentEnemyIndex];
+                        EnemyPresetInfo nextPreset = filteredPresets[currentEnemyIndex];
                         if (nextPreset != null)
                         {
                             nextWaveBossName = nextPreset.displayName;
@@ -1510,7 +1512,9 @@ namespace BossRush
                     return;
                 }
 
-                int presetCount = (enemyPresets != null) ? enemyPresets.Count : 0;
+                // 使用过滤后的 Boss 列表判断是否还有下一波
+                var filteredPresets = GetFilteredEnemyPresets();
+                int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
                 if (currentEnemyIndex < presetCount)
                 {
                     try
@@ -1596,14 +1600,12 @@ namespace BossRush
             // 仅通过游戏内的角色预设动态发现敌人类型
             TryDiscoverAdditionalEnemies(enemyTypes);
             
-            // 按团队类型和基础生命值排序（scav -> usec -> bear -> lab -> wolf），只保留真正的敌对阵营
+            // 按团队类型和基础生命值排序，使用排除法过滤（排除玩家和中立阵营）
+            // 这样可以兼容其他mod添加的自定义敌对阵营
             enemyPresets = enemyTypes
                 .Where(e =>
-                    (e.team == (int)Teams.scav
-                     || e.team == (int)Teams.usec
-                     || e.team == (int)Teams.bear
-                     || e.team == (int)Teams.lab
-                     || e.team == (int)Teams.wolf)
+                    e.team != (int)Teams.player    // 排除玩家阵营
+                    && e.team != (int)Teams.middle // 排除中立阵营
                     && e.baseHealth > 100f)
                 .OrderBy(e => e.team)
                 .ThenBy(e => e.baseHealth)
