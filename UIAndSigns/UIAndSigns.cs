@@ -877,20 +877,23 @@ namespace BossRush
         {
             try
             {
-                // 再次检查是否已经注入过了
+                // 检查是否已经注入过
                 var list = GetGroupList(target);
                 if (list != null)
                 {
                     foreach (var item in list)
                     {
-                        if (item is BossRushInteractable) return false; // 已经有了
+                        if (item is BossRushInteractable)
+                        {
+                            return false;
+                        }
                     }
                 }
 
-                // 1. 确保 interactableGroup 为 true
+                // 确保 interactableGroup 为 true
                 target.interactableGroup = true;
 
-                // 2. 获取 otherInterablesInGroup 字段
+                // 获取 otherInterablesInGroup 字段
                 var field = typeof(InteractableBase).GetField("otherInterablesInGroup", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (field == null) return false;
 
@@ -946,8 +949,6 @@ namespace BossRush
                     obj.transform.localPosition = Vector3.zero;
                     obj.transform.localRotation = Quaternion.identity;
                     obj.transform.localScale = Vector3.one;
-                    // 确保 GameObject 激活，否则不会被添加到交互列表中显示
-                    obj.SetActive(true);
 
                     var newInteract = obj.AddComponent<BossRushInteractable>();
                     // 不再使用 requireItem 扣费，改为通过 MapSelectionView 的 Cost 系统扣费

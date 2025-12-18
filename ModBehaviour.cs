@@ -490,8 +490,7 @@ namespace BossRush
 
         void OnGUI()
         {
-            // 绘制 Boss 池配置窗口
-            DrawBossPoolWindow();
+            // Boss 池配置窗口现在使用 Unity UI Canvas 实现，不再需要 OnGUI
         }
         
         void Update()
@@ -848,6 +847,12 @@ namespace BossRush
                     Debug.LogError("[BossRush] F11 调试给予生日蛋糕失败: " + e.Message);
                 }
             }
+        }
+
+        void LateUpdate()
+        {
+            // Boss 池窗口的暂停和鼠标状态控制（在所有 Update 之后执行，确保覆盖游戏的设置）
+            BossPoolLateUpdate();
         }
         
         private static void InjectBossRushTicketLocalization()
@@ -1336,7 +1341,7 @@ namespace BossRush
             bool anyInjected = false;
             try
             {
-                // 只在 Base 集散地和 BossRush 竞技场两个场景里注入交互，且各自仅选择离指定锚点最近的一个交互点
+                // 只在 Base 集散地和 BossRush 竞技场两个场景里注入交互
                 var activeScene = SceneManager.GetActiveScene();
                 string sceneName = activeScene.name;
 
@@ -1350,46 +1355,17 @@ namespace BossRush
                 }
                 else if (isArenaScene)
                 {
-                    // BossRush 竞技场改为使用专用入口，不再在场景内扫描注入
                     return false;
                 }
                 else
                 {
-                    // 其他场景不再注入 BossRush 选项，避免把交互塞得到处都是
                     return false;
                 }
 
-                // 1. MultiInteraction：只在离目标坐标最近的一个上注入
-                var multiInteractions = FindObjectsOfType<MultiInteraction>(true);
-                MultiInteraction bestMulti = null;
-                float bestMultiDistSq = float.MaxValue;
-
-                if (multiInteractions != null)
-                {
-                    foreach (var multi in multiInteractions)
-                    {
-                        if (multi == null || multi.gameObject == null) continue;
-
-                        // 跳过不可见的交互点，否则注入后也无法显示
-                        if (!multi.gameObject.activeInHierarchy) continue;
-
-                        float distSq = (multi.transform.position - targetPos).sqrMagnitude;
-                        if (EnableScanDebugLogs)
-                        {
-                            DevLog("[BossRush] ScanAndInject: MultiInteraction candidate - name: " + multi.gameObject.name + ", position: " + multi.transform.position + ", distance: " + Mathf.Sqrt(distSq) + ", scene: " + sceneName + ", anchor: " + targetPos);
-                        }
-                        if (distSq < bestMultiDistSq)
-                        {
-                            bestMultiDistSq = distSq;
-                            bestMulti = multi;
-                        }
-                    }
-                }
-
-                // 2. InteractableBase：同样只选离目标坐标最近的一个
+                // 扫描所有 InteractableBase，找到船坞主交互点
                 var allInteractables = FindObjectsOfType<InteractableBase>(true);
-                InteractableBase bestInteract = null;
-                float bestInteractDistSq = float.MaxValue;
+                InteractableBase boatInteract = null;
+                float boatDistSq = float.MaxValue;
 
                 if (allInteractables != null)
                 {
@@ -1397,67 +1373,28 @@ namespace BossRush
                     {
                         if (interact == null || interact.gameObject == null) continue;
                         if (interact is BossRushInteractable) continue;
-
-                        // 跳过不可见的交互点（如任务未完成的雪图挑战），否则注入后也无法显示
-                        if (!interact.gameObject.activeInHierarchy) continue;
-
-                        // Base 场景中显式排除 Interact_Challenge，本交互点用于其它玩法，不作为 BossRush 入口
-                        if (isBaseScene && interact.gameObject.name == "Interact_Challenge") continue;
-
+                        
+                        string goName = interact.gameObject.name;
+                        string path = GetGameObjectPath(interact.gameObject);
                         float distSq = (interact.transform.position - targetPos).sqrMagnitude;
-                        if (distSq < bestInteractDistSq)
+                        
+                        // 查找船坞主交互点：路径包含 "Boat"，名称是 "Interact" 或 isGroup=True，排除子交互点
+                        bool isBoatPath = path.Contains("Boat");
+                        bool isMainInteract = goName == "Interact" || interact.interactableGroup;
+                        bool isSubInteract = goName.Contains("_");
+                        
+                        if (isBoatPath && isMainInteract && !isSubInteract && distSq < boatDistSq)
                         {
-                            bestInteractDistSq = distSq;
-                            bestInteract = interact;
+                            boatDistSq = distSq;
+                            boatInteract = interact;
                         }
                     }
                 }
 
-                // 3. 在 MultiInteraction 和 InteractableBase 中，只选择距离锚点最近的那一个注入，保证每个场景只有一个 BossRush 入口
-                float finalMultiDist = bestMulti != null ? bestMultiDistSq : float.MaxValue;
-                float finalInteractDist = bestInteract != null ? bestInteractDistSq : float.MaxValue;
-
-                // 调试日志：打印候选交互点信息（默认关闭，避免刷屏）
-                if (EnableScanDebugLogs)
+                // 如果找到船坞交互点，尝试注入
+                if (boatInteract != null)
                 {
-                    try
-                    {
-                        string sceneInfo = "[BossRush] ScanAndInject 场景=" + sceneName + ", 锚点=" + targetPos;
-                        if (bestMulti != null)
-                        {
-                            float dm = UnityEngine.Mathf.Sqrt(bestMultiDistSq);
-                            sceneInfo += " | 最近 MultiInteraction name=" + bestMulti.gameObject.name + " pos=" + bestMulti.transform.position + " dist=" + dm;
-                        }
-                        else
-                        {
-                            sceneInfo += " | 最近 MultiInteraction = null";
-                        }
-
-                        if (bestInteract != null)
-                        {
-                            float di = UnityEngine.Mathf.Sqrt(bestInteractDistSq);
-                            sceneInfo += " | 最近 InteractableBase name=" + bestInteract.gameObject.name + " pos=" + bestInteract.transform.position + " dist=" + di;
-                        }
-                        else
-                        {
-                            sceneInfo += " | 最近 InteractableBase = null";
-                        }
-
-                        DevLog(sceneInfo);
-                    }
-                    catch {}
-                }
-
-                if (finalMultiDist <= finalInteractDist && bestMulti != null)
-                {
-                    if (InjectIntoMultiInteraction(bestMulti))
-                    {
-                        anyInjected = true;
-                    }
-                }
-                else if (bestInteract != null)
-                {
-                    if (InjectIntoInteractableBaseGroup(bestInteract))
+                    if (InjectIntoInteractableBaseGroup(boatInteract))
                     {
                         anyInjected = true;
                     }
@@ -1465,9 +1402,25 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 扫描出错: " + e.Message);
+                Debug.LogError("[BossRush] 扫描出错: " + e.Message + "\n" + e.StackTrace);
             }
             return anyInjected;
+        }
+        
+        /// <summary>
+        /// 获取 GameObject 的完整层级路径
+        /// </summary>
+        private string GetGameObjectPath(GameObject obj)
+        {
+            if (obj == null) return "<null>";
+            string path = obj.name;
+            Transform parent = obj.transform.parent;
+            while (parent != null)
+            {
+                path = parent.name + "/" + path;
+                parent = parent.parent;
+            }
+            return path;
         }
 
         /// <summary>

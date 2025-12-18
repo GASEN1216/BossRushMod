@@ -1005,6 +1005,9 @@ namespace BossRush
             
             if (arenaStartPoint != null) UnityEngine.Object.Destroy(arenaStartPoint);
             
+            // 清理 Boss 池 UI
+            DestroyBossPoolUI();
+            
             DevLog("[BossRush] Boss Rush Mod已卸载");
         }
 
