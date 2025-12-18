@@ -691,7 +691,7 @@ namespace BossRush
                                 InjectLocalizedKey(dict, "BossRush_ClearEmptyLootboxes", L10n.T("清空所有空箱子", "Clear Empty Lootboxes"));
                                 
                                 // Mode D 选项
-                                InjectLocalizedKey(dict, "BossRush_ModeD_NextWave", L10n.T("冲！下一波", "Charge! Next Wave"));
+                                InjectLocalizedKey(dict, "BossRush_ModeD_NextWave", L10n.T("冲！（下一波）", "Charge! (Next Wave)"));
                                 
                                 // 弹药和维修
                                 InjectLocalizedKey(dict, "BossRush_AmmoShop", L10n.T("弹药商店", "Ammo Shop"));
@@ -726,7 +726,7 @@ namespace BossRush
                                     InjectLocalizedKeyDict(dictObj, "BossRush_Teleport", L10n.T("<color=#00BFFF>传送</color>", "<color=#00BFFF>Teleport</color>"));
                                     InjectLocalizedKeyDict(dictObj, "BossRush_ClearAllLootboxes", L10n.T("清空所有箱子", "Clear All Lootboxes"));
                                     InjectLocalizedKeyDict(dictObj, "BossRush_ClearEmptyLootboxes", L10n.T("清空所有空箱子", "Clear Empty Lootboxes"));
-                                    InjectLocalizedKeyDict(dictObj, "BossRush_ModeD_NextWave", L10n.T("冲！下一波", "Charge! Next Wave"));
+                                    InjectLocalizedKeyDict(dictObj, "BossRush_ModeD_NextWave", L10n.T("冲！（下一波）", "Charge! (Next Wave)"));
                                     InjectLocalizedKeyDict(dictObj, "BossRush_AmmoShop", L10n.T("弹药商店", "Ammo Shop"));
                                     InjectLocalizedKeyDict(dictObj, "BossRush_Repair", L10n.T("维修", "Repair"));
                                     InjectLocalizedKeyDict(dictObj, "BossRush_Delete", L10n.T("删除", "Delete"));
@@ -880,11 +880,11 @@ namespace BossRush
                                     // Mode D: 冲下一波 选项本地化键
                                     if (dictObj.Contains("BossRush_ModeD_NextWave"))
                                     {
-                                        dictObj["BossRush_ModeD_NextWave"] = "冲！下一波";
+                                        dictObj["BossRush_ModeD_NextWave"] = L10n.T("冲！（下一波）", "Charge! (Next Wave)");
                                     }
                                     else
                                     {
-                                        dictObj.Add("BossRush_ModeD_NextWave", "冲！下一波");
+                                        dictObj.Add("BossRush_ModeD_NextWave", L10n.T("冲！（下一波）", "Charge! (Next Wave)"));
                                     }
                                 }
                             }

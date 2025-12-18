@@ -1079,7 +1079,10 @@ namespace BossRush
         {
             try
             {
-                this.InteractName = L10n.T("冲！（下一波）", "Charge! (Next Wave)");
+                // 使用本地化键，避免两边出现 *，并保持与其他难度选项一致的颜色风格
+                this.overrideInteractName = true;
+                this._overrideInteractNameKey = "BossRush_Sign_NextWave";
+                this.InteractName = "BossRush_Sign_NextWave";
             }
             catch {}
             try
@@ -1116,7 +1119,10 @@ namespace BossRush
             catch {}
             try
             {
-                this.InteractName = L10n.T("冲！（下一波）", "Charge! (Next Wave)");
+                // 使用本地化键，避免两边出现 *，并保持与其他难度选项一致的颜色风格
+                this.overrideInteractName = true;
+                this._overrideInteractNameKey = "BossRush_Sign_NextWave";
+                this.InteractName = "BossRush_Sign_NextWave";
             }
             catch {}
         }
