@@ -1862,7 +1862,10 @@ namespace BossRush
 
                                                 object rcEntry = Activator.CreateInstance(randomContainerEntryType);
                                                 rcValueField.SetValue(rcEntry, lootEntry);
-                                                rcWeightField.SetValue(rcEntry, 1f);
+                                                
+                                                // 皇冠（1254）权重降为0.1，使其掉落概率与原版接近
+                                                float itemWeight = (id2 == 1254) ? 0.1f : 1f;
+                                                rcWeightField.SetValue(rcEntry, itemWeight);
 
                                                 entriesList.Add(rcEntry);
                                             }
