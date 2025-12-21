@@ -480,7 +480,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
 
         private StockShop ammoShop;
 
@@ -538,6 +538,9 @@ namespace BossRush
         void OnGUI()
         {
             // Boss 池配置窗口现在使用 Unity UI Canvas 实现，不再需要 OnGUI
+            
+            // 绘制物品生成器 UI（F1 呼出）
+            DrawItemSpawnerUI();
         }
         
         void Update()
@@ -547,6 +550,9 @@ namespace BossRush
             
             // 检测 Boss 池窗口快捷键（Ctrl+F10）
             CheckBossPoolWindowHotkey();
+            
+            // 检测物品生成器快捷键（F2）
+            CheckItemSpawnerHotkey();
             
             // 持续清理功能已移除，改为禁用spawner
             
