@@ -262,6 +262,15 @@ namespace BossRush
 
         // ========== 内部方法 ==========
 
+        // Character Layer 常量（游戏中 Character 层为 9）
+        private const int CHARACTER_LAYER = 9;
+        
+        // 游戏使用的 Shader 名称
+        private const string GAME_SHADER_NAME = "SodaCraft/SodaCharacter";
+        
+        // 缓存的游戏 Shader
+        private static Shader gameShader = null;
+
         /// <summary>
         /// 加载 AssetBundle 并自动检测装备类型
         /// </summary>
@@ -322,6 +331,9 @@ namespace BossRush
                         {
                             agent = go.AddComponent<DuckovItemAgent>();
                         }
+                        
+                        // 自动修复 Model 的 Layer 和 Shader
+                        FixModelLayerAndShader(go);
                         
                         modelsByBaseName[baseName] = agent;
                         if (detectedType.HasValue && !typesByBaseName.ContainsKey(baseName))
@@ -499,6 +511,75 @@ namespace BossRush
             catch (Exception e)
             {
                 Debug.LogWarning("[EquipmentFactory] 添加 Tag 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 修复 Model 的 Layer 和 Shader（关键！）
+        /// - Layer 必须为 Character (9)，否则相机不渲染
+        /// - Shader 必须为 SodaCraft/SodaCharacter，否则显示异常
+        /// </summary>
+        private static void FixModelLayerAndShader(GameObject modelGo)
+        {
+            try
+            {
+                // 递归设置所有子物体的 Layer 为 Character
+                SetLayerRecursively(modelGo, CHARACTER_LAYER);
+                
+                // 获取游戏 Shader（延迟加载）
+                if (gameShader == null)
+                {
+                    gameShader = Shader.Find(GAME_SHADER_NAME);
+                    if (gameShader == null)
+                    {
+                        Debug.LogWarning("[EquipmentFactory] 未找到游戏 Shader: " + GAME_SHADER_NAME + "，将使用原始 Shader");
+                    }
+                }
+                
+                // 替换所有 Renderer 的 Shader
+                if (gameShader != null)
+                {
+                    var renderers = modelGo.GetComponentsInChildren<Renderer>(true);
+                    foreach (var renderer in renderers)
+                    {
+                        if (renderer.sharedMaterials != null)
+                        {
+                            foreach (var mat in renderer.sharedMaterials)
+                            {
+                                if (mat != null && mat.shader != null)
+                                {
+                                    string oldShaderName = mat.shader.name;
+                                    // 只替换 Standard 或 URP Lit 等常见 Shader
+                                    if (oldShaderName.Contains("Standard") || 
+                                        oldShaderName.Contains("Lit") ||
+                                        oldShaderName.Contains("Universal"))
+                                    {
+                                        mat.shader = gameShader;
+                                        Debug.Log("[EquipmentFactory] 替换 Shader: " + oldShaderName + " -> " + GAME_SHADER_NAME);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Debug.Log("[EquipmentFactory] 已修复 Model Layer 和 Shader: " + modelGo.name);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[EquipmentFactory] 修复 Layer/Shader 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 递归设置 GameObject 及其所有子物体的 Layer
+        /// </summary>
+        private static void SetLayerRecursively(GameObject go, int layer)
+        {
+            go.layer = layer;
+            foreach (Transform child in go.transform)
+            {
+                SetLayerRecursively(child.gameObject, layer);
             }
         }
 
