@@ -431,76 +431,12 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 注入生日蛋糕本地化
+        /// 注入生日蛋糕本地化（委托给 LocalizationInjector）
         /// </summary>
         private void InjectBirthdayCakeLocalization()
         {
-            try
-            {
-                // 获取当前语言的本地化文本
-                string displayName = BIRTHDAY_CAKE_DISPLAY_NAME;
-                string description = BIRTHDAY_CAKE_DESCRIPTION;
-                
-                var types = new string[]
-                {
-                    "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
-                    "SodaCraft.Localizations.LocalizationManager, TeamSoda.Duckov.Core",
-                    "SodaCraft.Localizations.LocalizationManager, Assembly-CSharp",
-                    "LocalizationManager, Assembly-CSharp"
-                };
-                
-                Type locType = null;
-                foreach (var t in types)
-                {
-                    locType = Type.GetType(t);
-                    if (locType != null) break;
-                }
-                
-                if (locType != null)
-                {
-                    var fields = locType.GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-                    foreach (var field in fields)
-                    {
-                        try
-                        {
-                            var val = field.GetValue(null);
-                            if (val == null) continue;
-                            
-                            Dictionary<string, string> dict = val as Dictionary<string, string>;
-                            if (dict != null)
-                            {
-                                // 注入生日蛋糕名称（中英文键都注入）
-                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_CN, displayName);
-                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_EN, displayName);
-                                InjectLocalizedKey(dict, "BossRush_BirthdayCake", displayName);
-                                
-                                // 注入生日蛋糕描述（中英文键都注入）
-                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_CN + "_Desc", description);
-                                InjectLocalizedKey(dict, BIRTHDAY_CAKE_DISPLAY_NAME_EN + "_Desc", description);
-                                InjectLocalizedKey(dict, "BossRush_BirthdayCake_Desc", description);
-                                
-                                // 注入物品 ID 键（这是游戏系统查找物品名称的标准方式）
-                                if (birthdayCakeTypeId > 0)
-                                {
-                                    string itemKey = "Item_" + birthdayCakeTypeId;
-                                    string itemDescKey = itemKey + "_Desc";
-                                    
-                                    InjectLocalizedKey(dict, itemKey, displayName);
-                                    InjectLocalizedKey(dict, itemDescKey, description);
-                                }
-                                
-                                DevLog("[BirthdayCake] 本地化注入成功: " + displayName);
-                                return;
-                            }
-                        }
-                        catch { }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("[BirthdayCake] 本地化注入失败: " + e.Message);
-            }
+            LocalizationInjector.InjectCakeLocalization(birthdayCakeTypeId);
+            DevLog("[BirthdayCake] 本地化注入完成");
         }
         
         /// <summary>
