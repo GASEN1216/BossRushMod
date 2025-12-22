@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 
 namespace BossRush
@@ -182,29 +181,9 @@ namespace BossRush
         {
             try
             {
-                Type locType = LocalizationHelper.GetLocalizationManagerType();
-                if (locType == null)
-                {
-                    Debug.Log("[LocalizationInjector] 未找到 LocalizationManager 类型，无法注入地图名称本地化");
-                    return;
-                }
-
-                // 查找 SetOverrideText 方法
-                MethodInfo setOverrideMethod = locType.GetMethod("SetOverrideText", 
-                    BindingFlags.Static | BindingFlags.Public,
-                    null,
-                    new Type[] { typeof(string), typeof(string) },
-                    null);
-
-                if (setOverrideMethod == null)
-                {
-                    Debug.Log("[LocalizationInjector] 未找到 SetOverrideText 方法，无法注入地图名称本地化");
-                    return;
-                }
-
                 // 注入零度挑战的本地化（官方未提供）
                 string zeroChallengeDisplayName = L10n.T("零度挑战", "Zero Challenge");
-                setOverrideMethod.Invoke(null, new object[] { "Level_ChallengeSnow", zeroChallengeDisplayName });
+                LocalizationHelper.InjectLocalization("Level_ChallengeSnow", zeroChallengeDisplayName);
                 Debug.Log("[LocalizationInjector] 已注入地图名称本地化: Level_ChallengeSnow -> " + zeroChallengeDisplayName);
             }
             catch (Exception e)
