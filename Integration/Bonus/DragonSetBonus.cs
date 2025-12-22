@@ -53,6 +53,20 @@ namespace BossRush
         private Light dragonEyeLight1 = null;
         private Light dragonEyeLight2 = null;
         
+        // [性能优化] 缓存反射 FieldInfo，避免重复反射调用
+        private static FieldInfo cachedSlotChangedEventField = null;
+        private static bool slotChangedEventFieldCached = false;
+        
+        // [性能优化] 缓存头部骨骼名称数组
+        private static readonly string[] HEAD_BONE_NAMES = new string[] 
+        { 
+            "Head", "head", "Bip001 Head", "mixamorig:Head", 
+            "Bone_Head", "head_bone", "HeadBone"
+        };
+        
+        // [性能优化] 缓存找到的头部 Transform
+        private Transform cachedHeadTransform = null;
+        
         #endregion
         
         #region 事件注册
@@ -66,9 +80,8 @@ namespace BossRush
             
             try
             {
-                // 使用反射订阅 CharacterMainControl.OnMainCharacterSlotContentChangedEvent
-                var eventField = typeof(CharacterMainControl).GetField("OnMainCharacterSlotContentChangedEvent",
-                    BindingFlags.Public | BindingFlags.Static);
+                // [性能优化] 使用缓存的 FieldInfo，避免重复反射
+                FieldInfo eventField = GetCachedSlotChangedEventField();
                 
                 if (eventField != null)
                 {
@@ -87,12 +100,27 @@ namespace BossRush
                 
                 // 订阅场景加载事件，在玩家进入存档时检测套装
                 LevelManager.OnAfterLevelInitialized += OnLevelInitializedCheckDragonSet;
-                Debug.Log("[DragonSet] 已注册场景加载事件");
+                DevLog("[DragonSet] 已注册场景加载事件");
             }
             catch (Exception e)
             {
                 Debug.LogError("[DragonSet] 注册事件失败: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// [性能优化] 获取缓存的事件字段 FieldInfo
+        /// </summary>
+        private static FieldInfo GetCachedSlotChangedEventField()
+        {
+            if (!slotChangedEventFieldCached)
+            {
+                cachedSlotChangedEventField = typeof(CharacterMainControl).GetField(
+                    "OnMainCharacterSlotContentChangedEvent",
+                    BindingFlags.Public | BindingFlags.Static);
+                slotChangedEventFieldCached = true;
+            }
+            return cachedSlotChangedEventField;
         }
         
         /// <summary>
@@ -102,6 +130,9 @@ namespace BossRush
         {
             try
             {
+                // [性能优化] 场景切换时清理缓存的头部 Transform，因为角色可能重建
+                cachedHeadTransform = null;
+                
                 Debug.Log("[DragonSet] 场景加载完成，检测套装状态...");
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main != null)
@@ -128,8 +159,8 @@ namespace BossRush
             
             try
             {
-                var eventField = typeof(CharacterMainControl).GetField("OnMainCharacterSlotContentChangedEvent",
-                    BindingFlags.Public | BindingFlags.Static);
+                // [性能优化] 使用缓存的 FieldInfo
+                FieldInfo eventField = GetCachedSlotChangedEventField();
                 
                 if (eventField != null)
                 {
@@ -155,6 +186,9 @@ namespace BossRush
             
             // 清理特效
             DeactivateDragonSetBonus();
+            
+            // [性能优化] 清理缓存的头部 Transform
+            cachedHeadTransform = null;
         }
         
         /// <summary>
@@ -228,7 +262,7 @@ namespace BossRush
             {
                 if (character == null || character.CharacterItem == null)
                 {
-                    Debug.Log("[DragonSet] 角色或角色物品为空，跳过检测");
+                    DevLog("[DragonSet] 角色或角色物品为空，跳过检测");
                     if (dragonSetActive)
                     {
                         DeactivateDragonSetBonus();
@@ -246,17 +280,14 @@ namespace BossRush
                 {
                     string helmNameRaw = helmetItem.DisplayNameRaw;
                     string helmName = helmetItem.DisplayName;
-                    Debug.Log("[DragonSet] 当前头盔: DisplayName=" + helmName + ", DisplayNameRaw=" + helmNameRaw + ", TypeID=" + helmetItem.TypeID);
+                    // [性能优化] 使用 DevLog 替代 Debug.Log，减少字符串分配
+                    DevLog("[DragonSet] 当前头盔: " + (helmName ?? "null"));
                     if ((!string.IsNullOrEmpty(helmNameRaw) && helmNameRaw.Contains(DRAGON_HELM_NAME)) ||
                         (!string.IsNullOrEmpty(helmName) && helmName.Contains(DRAGON_HELM_NAME)))
                     {
                         hasDragonHelm = true;
-                        Debug.Log("[DragonSet] ✓ 匹配龙头!");
+                        DevLog("[DragonSet] ✓ 匹配龙头!");
                     }
-                }
-                else
-                {
-                    Debug.Log("[DragonSet] 当前头盔: 无");
                 }
                 
                 // 获取护甲
@@ -265,22 +296,18 @@ namespace BossRush
                 {
                     string armorNameRaw = armorItem.DisplayNameRaw;
                     string armorName = armorItem.DisplayName;
-                    Debug.Log("[DragonSet] 当前护甲: DisplayName=" + armorName + ", DisplayNameRaw=" + armorNameRaw + ", TypeID=" + armorItem.TypeID);
+                    // [性能优化] 使用 DevLog 替代 Debug.Log
+                    DevLog("[DragonSet] 当前护甲: " + (armorName ?? "null"));
                     if ((!string.IsNullOrEmpty(armorNameRaw) && armorNameRaw.Contains(DRAGON_ARMOR_NAME)) ||
                         (!string.IsNullOrEmpty(armorName) && armorName.Contains(DRAGON_ARMOR_NAME)))
                     {
                         hasDragonArmor = true;
-                        Debug.Log("[DragonSet] ✓ 匹配龙甲!");
+                        DevLog("[DragonSet] ✓ 匹配龙甲!");
                     }
-                }
-                else
-                {
-                    Debug.Log("[DragonSet] 当前护甲: 无");
                 }
                 
                 // 判断套装是否激活
                 bool shouldBeActive = hasDragonHelm && hasDragonArmor;
-                Debug.Log("[DragonSet] 套装状态: 龙头=" + hasDragonHelm + ", 龙甲=" + hasDragonArmor + ", 应激活=" + shouldBeActive + ", 当前激活=" + dragonSetActive);
                 
                 if (shouldBeActive && !dragonSetActive)
                 {
@@ -484,8 +511,14 @@ namespace BossRush
                 // 销毁旧特效
                 DestroyDragonEyeEffect();
                 
-                // 获取角色头部位置
-                Transform headTransform = FindHeadTransform(character);
+                // [性能优化] 优先使用缓存的头部 Transform
+                Transform headTransform = cachedHeadTransform;
+                if (headTransform == null)
+                {
+                    headTransform = FindHeadTransform(character);
+                    cachedHeadTransform = headTransform; // 缓存找到的结果
+                }
+                
                 if (headTransform == null)
                 {
                     DevLog("[DragonSet] 未找到头部 Transform，使用角色位置");
@@ -511,7 +544,7 @@ namespace BossRush
                 dragonEyeLight2 = rightEye.AddComponent<Light>();
                 ConfigureDragonEyeLight(dragonEyeLight2);
                 
-                Debug.Log("[DragonSet] 龙眼特效已创建，挂载到: " + headTransform.name);
+                DevLog("[DragonSet] 龙眼特效已创建，挂载到: " + headTransform.name);
             }
             catch (Exception e)
             {
@@ -539,14 +572,8 @@ namespace BossRush
         {
             try
             {
-                // 尝试查找常见的头部骨骼名称
-                string[] headBoneNames = new string[] 
-                { 
-                    "Head", "head", "Bip001 Head", "mixamorig:Head", 
-                    "Bone_Head", "head_bone", "HeadBone"
-                };
-                
-                foreach (string boneName in headBoneNames)
+                // [性能优化] 使用静态缓存的骨骼名称数组
+                foreach (string boneName in HEAD_BONE_NAMES)
                 {
                     Transform head = character.transform.Find(boneName);
                     if (head != null) return head;

@@ -107,7 +107,7 @@ namespace BossRush
             EquipmentHelper.AddRepairableTag(item);
             
             // 注入本地化
-            DragonSetLocalization.InjectDragonHelmLocalization(item.TypeID);
+            EquipmentLocalization.InjectDragonHelmLocalization(item.TypeID);
             
             Debug.Log("[DragonSetConfig] 龙头配置完成: HeadArmor=" + DRAGON_HELM_ARMOR + 
                 ", PhysicsResist=" + (DRAGON_HELM_PHYSICS_RESIST * 100) + "%, Durability=" + DRAGON_HELM_DURABILITY);
@@ -134,7 +134,7 @@ namespace BossRush
             EquipmentHelper.AddRepairableTag(item);
             
             // 注入本地化
-            DragonSetLocalization.InjectDragonArmorLocalization(item.TypeID);
+            EquipmentLocalization.InjectDragonArmorLocalization(item.TypeID);
             
             Debug.Log("[DragonSetConfig] 龙甲配置完成: BodyArmor=" + DRAGON_ARMOR_ARMOR + 
                 ", PhysicsResist=" + (DRAGON_ARMOR_PHYSICS_RESIST * 100) + "%, Durability=" + DRAGON_ARMOR_DURABILITY);
