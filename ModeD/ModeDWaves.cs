@@ -471,6 +471,9 @@ namespace BossRush
                     // 统一伤害倍率为1，避免不同Boss预设的damageMultiplier差异导致伤害过高
                     NormalizeDamageMultiplier(character);
 
+                    // 应用全局难度因子（血量、反应时间、攻击速度等）
+                    ApplyGlobalDifficultyScaling(character);
+
                     // 应用 Mode D 配装
                     EquipEnemyForModeD(character, modeDWaveIndex, currentPresetInfo.baseHealth);
 

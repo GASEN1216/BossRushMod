@@ -2444,6 +2444,13 @@ namespace BossRush
         {
             try
             {
+                // 检查是否是龙裔遗族Boss，使用专门的生成方法
+                if (IsDragonDescendantPreset(preset))
+                {
+                    SpawnDragonDescendant(position);
+                    return;
+                }
+                
                 // 查找所有CharacterRandomPreset（从Resources中查找）
                 var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
                 CharacterRandomPreset targetPreset = null;
@@ -2525,6 +2532,9 @@ namespace BossRush
                 }
                 catch {}
 
+                // 应用全局难度因子（血量、反应时间、攻击速度等）
+                ApplyGlobalDifficultyScaling(character);
+
                 // 无间炼狱：在角色生成后按当前波次进行生命值和伤害强化
                 if (infiniteHellMode)
                 {
@@ -2594,6 +2604,153 @@ namespace BossRush
             {
                 Debug.LogError("[BossRush] SpawnEnemyAtPositionAsync 错误: " + e.Message + "\n" + e.StackTrace);
                 OnBossSpawnFailed(preset);
+            }
+        }
+
+        /// <summary>
+        /// 应用游戏全局难度因子到 Boss（血量、反应时间、攻击间隔等）
+        /// 游戏原版的 Ruleset 定义了这些因子但未实际使用，我们在 BossRush 中手动应用
+        /// </summary>
+        private void ApplyGlobalDifficultyScaling(CharacterMainControl character)
+        {
+            if (character == null)
+            {
+                return;
+            }
+
+            try
+            {
+                // 获取当前难度规则
+                Duckov.Rules.Ruleset currentRule = null;
+                try
+                {
+                    currentRule = Duckov.Rules.GameRulesManager.Current;
+                }
+                catch {}
+
+                if (currentRule == null)
+                {
+                    DevLog("[BossRush] ApplyGlobalDifficultyScaling: 无法获取当前难度规则，跳过");
+                    return;
+                }
+
+                // 1. 应用敌人血量因子 (EnemyHealthFactor)
+                float healthFactor = 1f;
+                try
+                {
+                    healthFactor = currentRule.EnemyHealthFactor;
+                }
+                catch {}
+
+                if (healthFactor != 1f && healthFactor > 0f)
+                {
+                    try
+                    {
+                        var item = character.CharacterItem;
+                        if (item != null)
+                        {
+                            Stat hpStat = null;
+                            try
+                            {
+                                hpStat = item.GetStat("MaxHealth");
+                            }
+                            catch {}
+
+                            if (hpStat != null)
+                            {
+                                hpStat.BaseValue *= healthFactor;
+                                DevLog("[BossRush] 应用血量因子: " + healthFactor + ", 新血量: " + hpStat.BaseValue);
+                            }
+                        }
+                    }
+                    catch {}
+
+                    // 刷新当前血量为新的最大血量
+                    try
+                    {
+                        if (character.Health != null)
+                        {
+                            character.Health.SetHealth(character.Health.MaxHealth);
+                        }
+                    }
+                    catch {}
+                }
+
+                // 2. 应用敌人反应时间因子 (EnemyReactionTimeFactor)
+                // 3. 应用敌人攻击时间因子 (EnemyAttackTimeFactor)
+                // 4. 应用敌人攻击间隔因子 (EnemyAttackTimeSpaceFactor)
+                var ai = character.GetComponentInChildren<AICharacterController>();
+                if (ai != null)
+                {
+                    // 反应时间因子（值越大，反应越慢）
+                    float reactionFactor = 1f;
+                    try
+                    {
+                        reactionFactor = currentRule.EnemyReactionTimeFactor;
+                    }
+                    catch {}
+
+                    if (reactionFactor != 1f && reactionFactor > 0f)
+                    {
+                        try
+                        {
+                            // 基础反应时间乘以因子
+                            ai.baseReactionTime *= reactionFactor;
+                            DevLog("[BossRush] 应用反应时间因子: " + reactionFactor);
+                        }
+                        catch {}
+                    }
+
+                    // 攻击时间因子（值越大，单次攻击持续时间越长）
+                    float attackTimeFactor = 1f;
+                    try
+                    {
+                        attackTimeFactor = currentRule.EnemyAttackTimeFactor;
+                    }
+                    catch {}
+
+                    if (attackTimeFactor != 1f && attackTimeFactor > 0f)
+                    {
+                        try
+                        {
+                            // 射击时间范围乘以因子
+                            ai.shootTimeRange = new Vector2(
+                                ai.shootTimeRange.x * attackTimeFactor,
+                                ai.shootTimeRange.y * attackTimeFactor
+                            );
+                            DevLog("[BossRush] 应用攻击时间因子: " + attackTimeFactor);
+                        }
+                        catch {}
+                    }
+
+                    // 攻击间隔因子（值越大，攻击间隔越长，即攻击频率越低）
+                    float attackSpaceFactor = 1f;
+                    try
+                    {
+                        attackSpaceFactor = currentRule.EnemyAttackTimeSpaceFactor;
+                    }
+                    catch {}
+
+                    if (attackSpaceFactor != 1f && attackSpaceFactor > 0f)
+                    {
+                        try
+                        {
+                            // 射击间隔范围乘以因子
+                            ai.shootTimeSpaceRange = new Vector2(
+                                ai.shootTimeSpaceRange.x * attackSpaceFactor,
+                                ai.shootTimeSpaceRange.y * attackSpaceFactor
+                            );
+                            DevLog("[BossRush] 应用攻击间隔因子: " + attackSpaceFactor);
+                        }
+                        catch {}
+                    }
+                }
+
+                DevLog("[BossRush] 全局难度因子应用完成 - 血量因子:" + healthFactor);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[BossRush] ApplyGlobalDifficultyScaling 失败: " + e.Message);
             }
         }
 

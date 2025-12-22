@@ -37,6 +37,14 @@ namespace BossRush
         private const string CAKE_DESC_EN = "May you always be happy! ----Blessings from Little Pig Shark";
         
         // ============================================================================
+        // 龙裔遗族Boss本地化数据
+        // ============================================================================
+        private const string DRAGON_DESCENDANT_NAME_CN = "龙裔遗族";
+        private const string DRAGON_DESCENDANT_NAME_EN = "Dragon Descendant";
+        private const string DRAGON_DESCENDANT_RESURRECTION_CN = "我...命不该绝！";
+        private const string DRAGON_DESCENDANT_RESURRECTION_EN = "I...shall not perish!";
+        
+        // ============================================================================
         // 公共方法
         // ============================================================================
         
@@ -49,6 +57,7 @@ namespace BossRush
             {
                 InjectTicketLocalization(ticketTypeId);
                 InjectCakeLocalization(cakeTypeId);
+                InjectDragonDescendantLocalization();
                 InjectUILocalization();
                 InjectMapNameLocalizations();
                 EquipmentLocalization.InjectAllEquipmentLocalizations();
@@ -110,6 +119,28 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization(itemKey, displayName);
                 LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
             }
+        }
+        
+        /// <summary>
+        /// 注入龙裔遗族Boss本地化
+        /// </summary>
+        public static void InjectDragonDescendantLocalization()
+        {
+            string displayName = L10n.T(DRAGON_DESCENDANT_NAME_CN, DRAGON_DESCENDANT_NAME_EN);
+            string resurrection = L10n.T(DRAGON_DESCENDANT_RESURRECTION_CN, DRAGON_DESCENDANT_RESURRECTION_EN);
+            
+            // 注入Boss名称
+            LocalizationHelper.InjectLocalization(DragonDescendantConfig.BOSS_NAME_KEY, displayName);
+            LocalizationHelper.InjectLocalization(DRAGON_DESCENDANT_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(DRAGON_DESCENDANT_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization("Characters_DragonDescendant", displayName);
+            
+            // 注入复活对话
+            LocalizationHelper.InjectLocalization("DragonDescendant_Resurrection", resurrection);
+            LocalizationHelper.InjectLocalization(DRAGON_DESCENDANT_RESURRECTION_CN, resurrection);
+            LocalizationHelper.InjectLocalization(DRAGON_DESCENDANT_RESURRECTION_EN, resurrection);
+            
+            Debug.Log("[LocalizationInjector] 龙裔遗族本地化注入完成");
         }
 
         /// <summary>

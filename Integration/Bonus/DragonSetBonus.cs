@@ -399,25 +399,45 @@ namespace BossRush
                 // 检查是否有火焰伤害
                 if (damageInfo.elementFactors == null || damageInfo.elementFactors.Count == 0) return;
                 
-                float fireHealAmount = 0f;
+                // 使用 finalDamage（减免后的实际伤害）来计算治疗量
+                float totalFinalDamage = damageInfo.finalDamage;
+                if (totalFinalDamage <= 0f) return;
                 
-                // 遍历并处理火焰伤害
+                // 计算火焰伤害占比
+                float fireFactor = 0f;
+                float totalFactor = 0f;
                 for (int i = 0; i < damageInfo.elementFactors.Count; i++)
                 {
-                    var elementFactor = damageInfo.elementFactors[i];
-                    if (elementFactor.elementType == ElementTypes.fire && elementFactor.factor > 0f)
+                    var ef = damageInfo.elementFactors[i];
+                    if (ef.factor > 0f)
                     {
-                        // 计算火焰伤害量并转化为治疗
-                        float fireDamage = damageInfo.damageValue * elementFactor.factor;
-                        fireHealAmount += fireDamage * 0.8f; // 80% 转化为治疗
-                        
-                        // 将火焰伤害因子设为 0（免疫火焰伤害）
-                        // 创建新的 ElementFactor 替换原来的
-                        damageInfo.elementFactors[i] = new ElementFactor(ElementTypes.fire, 0f);
-                        
-                        DevLog("[DragonSet] 火焰伤害被吸收: " + fireDamage + " -> 治疗: " + fireHealAmount);
+                        totalFactor += ef.factor;
+                        if (ef.elementType == ElementTypes.fire)
+                        {
+                            fireFactor += ef.factor;
+                        }
                     }
                 }
+                
+                // 没有火焰伤害则跳过
+                if (fireFactor <= 0f || totalFactor <= 0f) return;
+                
+                // 计算火焰伤害在最终伤害中的占比
+                float fireRatio = fireFactor / totalFactor;
+                float actualFireDamage = totalFinalDamage * fireRatio;
+                float fireHealAmount = actualFireDamage * 0.8f; // 80% 转化为治疗
+                
+                // 将火焰伤害因子设为 0（免疫火焰伤害）
+                for (int i = 0; i < damageInfo.elementFactors.Count; i++)
+                {
+                    var ef = damageInfo.elementFactors[i];
+                    if (ef.elementType == ElementTypes.fire && ef.factor > 0f)
+                    {
+                        damageInfo.elementFactors[i] = new ElementFactor(ElementTypes.fire, 0f);
+                    }
+                }
+                
+                DevLog("[DragonSet] 玩家火焰伤害吸收: " + actualFireDamage.ToString("F1") + " -> 治疗: " + fireHealAmount.ToString("F1"));
                 
                 // 如果有火焰治疗，延迟添加生命值
                 if (fireHealAmount > 0f)

@@ -34,6 +34,18 @@ namespace BossRush
         
         #endregion
         
+        #region 龙裔遗族Boss本地化数据
+        
+        // 龙裔遗族Boss名称（红色显示）
+        private static readonly string DragonDescendantNameCN = "<color=red>龙裔遗族</color>";
+        private static readonly string DragonDescendantNameEN = "<color=red>Dragon Descendant</color>";
+        
+        // 复活台词
+        private static readonly string DragonDescendantResurrectionCN = "我...命不该绝！";
+        private static readonly string DragonDescendantResurrectionEN = "I... shall not fall!";
+        
+        #endregion
+        
         #region 公共方法
         
         /// <summary>
@@ -44,12 +56,50 @@ namespace BossRush
             try
             {
                 InjectDragonSetLocalization();
+                InjectDragonDescendantLocalization();
                 Debug.Log("[EquipmentLocalization] 所有装备本地化注入完成");
             }
             catch (Exception e)
             {
                 Debug.LogError("[EquipmentLocalization] 注入装备本地化失败: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// 注入龙裔遗族Boss本地化
+        /// </summary>
+        public static void InjectDragonDescendantLocalization()
+        {
+            try
+            {
+                string displayName = L10n.T(DragonDescendantNameCN, DragonDescendantNameEN);
+                
+                // 注入Boss名称键
+                LocalizationHelper.InjectLocalization("DragonDescendant", displayName);
+                LocalizationHelper.InjectLocalization("龙裔遗族", displayName);
+                
+                Debug.Log("[EquipmentLocalization] 龙裔遗族本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[EquipmentLocalization] 注入龙裔遗族本地化失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 获取龙裔遗族显示名称
+        /// </summary>
+        public static string GetDragonDescendantName()
+        {
+            return L10n.T(DragonDescendantNameCN, DragonDescendantNameEN);
+        }
+        
+        /// <summary>
+        /// 获取龙裔遗族复活台词
+        /// </summary>
+        public static string GetDragonDescendantResurrectionDialogue()
+        {
+            return L10n.T(DragonDescendantResurrectionCN, DragonDescendantResurrectionEN);
         }
         
         /// <summary>

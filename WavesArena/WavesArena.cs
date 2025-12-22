@@ -1610,6 +1610,9 @@ namespace BossRush
                 .OrderBy(e => e.team)
                 .ThenBy(e => e.baseHealth)
                 .ToList();
+            
+            // 注册龙裔遗族Boss
+            RegisterDragonDescendantPreset();
 
             // 计算 Boss 池基础血量范围
             try
