@@ -1200,12 +1200,13 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 恢复被隐藏的原有条目
+        /// 恢复被隐藏的原有条目，并销毁动态创建的 BossRush 条目
         /// </summary>
         public static void RestoreHiddenEntries()
         {
             try
             {
+                // 恢复被隐藏的原有条目
                 foreach (GameObject entry in hiddenEntries)
                 {
                     if (entry != null)
@@ -1214,7 +1215,19 @@ namespace BossRush
                     }
                 }
                 hiddenEntries.Clear();
-                ModBehaviour.DevLog("[BossRush] 已恢复所有隐藏的条目");
+                
+                // 销毁动态创建的 BossRush 条目，防止残留在 MapSelectionView 中
+                foreach (GameObject obj in bossRushEntryObjects)
+                {
+                    if (obj != null)
+                    {
+                        UnityEngine.Object.Destroy(obj);
+                    }
+                }
+                bossRushEntryObjects.Clear();
+                bossRushEntryObject = null;
+                
+                ModBehaviour.DevLog("[BossRush] 已恢复所有隐藏的条目并清理 BossRush 条目");
             }
             catch (Exception e)
             {
