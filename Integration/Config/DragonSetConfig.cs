@@ -87,11 +87,11 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 配置龙头属性
+        /// 配置赤龙首属性
         /// </summary>
         private static void ConfigureDragonHelm(Item item)
         {
-            Debug.Log("[DragonSetConfig] 配置龙头属性...");
+            Debug.Log("[DragonSetConfig] 配置赤龙首属性...");
             
             // 设置护甲值（使用公共辅助方法）
             EquipmentHelper.AddModifierToItem(item, "HeadArmor", ModifierType.Add, DRAGON_HELM_ARMOR, true);
@@ -109,16 +109,16 @@ namespace BossRush
             // 注入本地化
             EquipmentLocalization.InjectDragonHelmLocalization(item.TypeID);
             
-            Debug.Log("[DragonSetConfig] 龙头配置完成: HeadArmor=" + DRAGON_HELM_ARMOR + 
+            Debug.Log("[DragonSetConfig] 赤龙首配置完成: HeadArmor=" + DRAGON_HELM_ARMOR + 
                 ", PhysicsResist=" + (DRAGON_HELM_PHYSICS_RESIST * 100) + "%, Durability=" + DRAGON_HELM_DURABILITY);
         }
         
         /// <summary>
-        /// 配置龙甲属性
+        /// 配置焰鳞甲属性
         /// </summary>
         private static void ConfigureDragonArmor(Item item)
         {
-            Debug.Log("[DragonSetConfig] 配置龙甲属性...");
+            Debug.Log("[DragonSetConfig] 配置焰鳞甲属性...");
             
             // 设置护甲值（使用公共辅助方法）
             EquipmentHelper.AddModifierToItem(item, "BodyArmor", ModifierType.Add, DRAGON_ARMOR_ARMOR, true);
@@ -136,7 +136,7 @@ namespace BossRush
             // 注入本地化
             EquipmentLocalization.InjectDragonArmorLocalization(item.TypeID);
             
-            Debug.Log("[DragonSetConfig] 龙甲配置完成: BodyArmor=" + DRAGON_ARMOR_ARMOR + 
+            Debug.Log("[DragonSetConfig] 焰鳞甲配置完成: BodyArmor=" + DRAGON_ARMOR_ARMOR + 
                 ", PhysicsResist=" + (DRAGON_ARMOR_PHYSICS_RESIST * 100) + "%, Durability=" + DRAGON_ARMOR_DURABILITY);
         }
     }
