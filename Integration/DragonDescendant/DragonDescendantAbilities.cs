@@ -343,7 +343,7 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 投掷燃烧弹
+        /// 投掷燃烧弹 - 始终投向玩家脚下
         /// </summary>
         private void ThrowIncendiaryGrenade()
         {
@@ -359,20 +359,8 @@ namespace BossRush
                 
                 if (playerCharacter == null) return;
                 
-                // 根据血量选择目标
-                Vector3 targetPos;
-                float healthPercent = GetHealthPercent();
-                
-                if (isEnraged || healthPercent <= DragonDescendantConfig.HealthThreshold)
-                {
-                    // 低血量或狂暴状态：投向玩家脚下
-                    targetPos = playerCharacter.transform.position;
-                }
-                else
-                {
-                    // 高血量：投向玩家
-                    targetPos = playerCharacter.transform.position;
-                }
+                // 始终投向玩家脚下（不再区分血量阶段）
+                Vector3 targetPos = playerCharacter.transform.position;
                 
                 // 创建燃烧弹
                 CreateIncendiaryGrenade(targetPos);
