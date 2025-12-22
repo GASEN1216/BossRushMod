@@ -72,9 +72,9 @@ namespace BossRush
                 string displayName = L10n.T(DragonHelmNameCN, DragonHelmNameEN);
                 string description = L10n.T(DragonHelmDescCN, DragonHelmDescEN);
                 
-                // 注入中文键
-                LocalizationHelper.InjectLocalization(DragonHelmNameCN, displayName);
-                LocalizationHelper.InjectLocalization(DragonHelmNameCN + "_Desc", description);
+                // 注入原始键（Item 的 displayName 字段值为 "龙头"）
+                LocalizationHelper.InjectLocalization("龙头", displayName);
+                LocalizationHelper.InjectLocalization("龙头_Desc", description);
                 
                 // 注入物品 ID 键
                 if (typeId > 0)
@@ -103,9 +103,9 @@ namespace BossRush
                 string displayName = L10n.T(DragonArmorNameCN, DragonArmorNameEN);
                 string description = L10n.T(DragonArmorDescCN, DragonArmorDescEN);
                 
-                // 注入中文键
-                LocalizationHelper.InjectLocalization(DragonArmorNameCN, displayName);
-                LocalizationHelper.InjectLocalization(DragonArmorNameCN + "_Desc", description);
+                // 注入原始键（Item 的 displayName 字段值为 "龙甲"）
+                LocalizationHelper.InjectLocalization("龙甲", displayName);
+                LocalizationHelper.InjectLocalization("龙甲_Desc", description);
                 
                 // 注入物品 ID 键
                 if (typeId > 0)
