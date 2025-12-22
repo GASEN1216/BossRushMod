@@ -633,6 +633,9 @@ namespace BossRush
                 // 首先使用 SetOverrideText 注入地图名称本地化（官方未提供的地图）
                 InjectMapNameLocalizations();
                 
+                // 注入装备本地化（龙套装等）
+                EquipmentLocalization.InjectAllEquipmentLocalizations();
+                
                 // 尝试查找 LocalizationManager 类型
                 var types = new string[] 
                 { 
@@ -705,6 +708,8 @@ namespace BossRush
                                 
                                 // 下一波
                                 InjectLocalizedKey(dict, "BossRush_NextWave", L10n.T("下一波", "Next Wave"));
+                                
+                                // 装备本地化由 EquipmentLocalization 统一管理
 
                                 injected = true;
                             }
@@ -734,6 +739,8 @@ namespace BossRush
                                     InjectLocalizedKeyDict(dictObj, "BossRush_Repair", L10n.T("维修", "Repair"));
                                     InjectLocalizedKeyDict(dictObj, "BossRush_Delete", L10n.T("删除", "Delete"));
                                     InjectLocalizedKeyDict(dictObj, "BossRush_NextWave", L10n.T("下一波", "Next Wave"));
+                                    
+                                    // 装备本地化由 EquipmentLocalization 统一管理
 
                                     // 注入新的本地化键：难度选项 "弹指可灭" / "有点意思" / "无间炼狱"
                                     if (dictObj.Contains("弹指可灭"))
@@ -1030,6 +1037,9 @@ namespace BossRush
             SavesSystem.OnCollectSaveData += OnCollectSaveData_TicketStock;
             SavesSystem.OnSetFile += OnSetFile_TicketStock;
             
+            // 注册龙套装装备槽变化事件
+            RegisterDragonSetEvents();
+            
             // 如果当前已经在场景中，立即执行一次
             if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
             {
@@ -1045,6 +1055,9 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_TicketStock;
             Health.OnDead -= OnPlayerDeathInBossRush;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
+            
+            // 取消注册龙套装事件
+            UnregisterDragonSetEvents();
             
             try
             {

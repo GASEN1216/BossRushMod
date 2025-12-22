@@ -70,6 +70,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
+using ItemStatsSystem.Stats;
 using Duckov.Utilities;
 
 namespace BossRush
@@ -384,6 +385,9 @@ namespace BossRush
                         {
                             loadedModels[itemPrefab.TypeID] = modelAgent;
                         }
+                        
+                        // 配置龙套装（设置本地化键和属性）
+                        DragonSetConfig.TryConfigure(itemPrefab, baseName);
 
                         // 注册到游戏物品系统
                         ItemAssetsCollection.AddDynamicEntry(itemPrefab);
@@ -457,61 +461,11 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 为物品添加 Tag
+        /// 为物品添加 Tag（委托给 EquipmentHelper）
         /// </summary>
         private static void AddTagToItem(Item item, string tagName)
         {
-            try
-            {
-                var allTags = GameplayDataSettings.Tags.AllTags;
-                if (allTags == null) return;
-
-                Tag targetTag = null;
-                foreach (Tag tag in allTags)
-                {
-                    if (tag != null && tag.name == tagName)
-                    {
-                        targetTag = tag;
-                        break;
-                    }
-                }
-
-                if (targetTag == null)
-                {
-                    Debug.LogWarning("[EquipmentFactory] 未找到 Tag: " + tagName);
-                    return;
-                }
-
-                var tagsField = typeof(Item).GetField("tags", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (tagsField == null) return;
-
-                var tagCollection = tagsField.GetValue(item);
-                if (tagCollection == null) return;
-
-                var listField = tagCollection.GetType().GetField("list", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (listField == null) return;
-
-                var tagList = listField.GetValue(tagCollection) as List<Tag>;
-                if (tagList == null)
-                {
-                    tagList = new List<Tag>();
-                    listField.SetValue(tagCollection, tagList);
-                }
-
-                // 检查是否已存在
-                foreach (Tag t in tagList)
-                {
-                    if (t != null && t.name == tagName) return;
-                }
-
-                tagList.Add(targetTag);
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning("[EquipmentFactory] 添加 Tag 失败: " + e.Message);
-            }
+            EquipmentHelper.AddTagToItem(item, tagName);
         }
 
         /// <summary>
@@ -663,5 +617,8 @@ namespace BossRush
                 Debug.LogWarning("[EquipmentFactory] 注入 EquipmentModel 失败: " + e.Message);
             }
         }
+
+        // 注意：AddModifierToItem 和 SetItemConstant 方法已移至 EquipmentHelper 类
+        // 如需使用，请调用 EquipmentHelper.AddModifierToItem() 和 EquipmentHelper.SetItemConstant()
     }
 }
