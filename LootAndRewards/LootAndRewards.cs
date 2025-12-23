@@ -2399,108 +2399,41 @@ namespace BossRush
                 yield return new WaitForSeconds(0.1f);
             }
 
-            // 从Boss身上获取龙套装（保留耐久度等属性）
-            Item helmItem = null;
-            Item armorItem = null;
-            ItemStatsSystem.Items.Slot helmSlot = null;
-            ItemStatsSystem.Items.Slot armorSlot = null;
+            // 随机选择掉落龙头或龙甲
+            bool dropHelm = UnityEngine.Random.Range(0, 2) == 0;
+            int selectedTypeId = dropHelm ? DragonDescendantConfig.DRAGON_HELM_TYPE_ID : DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID;
+            string itemName = dropHelm ? "龙头" : "龙甲";
+
+            DevLog("[DragonDescendant] 随机选择龙套装掉落: " + itemName + " (TypeID=" + selectedTypeId + ")");
 
             try
             {
-                if (bossMain != null && bossMain.CharacterItem != null && bossMain.CharacterItem.Slots != null)
+                // 通过TypeID查找物品模板并创建新实例（满耐久）
+                Item templateItem = FindItemByTypeId(selectedTypeId);
+                if (templateItem == null)
                 {
-                    // 获取头盔槽位（Helmat）
-                    helmSlot = bossMain.CharacterItem.Slots.GetSlot("Helmat".GetHashCode());
-                    if (helmSlot != null && helmSlot.Content != null)
-                    {
-                        // 检查是否是龙头
-                        if (helmSlot.Content.TypeID == DragonDescendantConfig.DRAGON_HELM_TYPE_ID)
-                        {
-                            helmItem = helmSlot.Content;
-                            DevLog("[DragonDescendant] 从Boss身上获取龙头，耐久度: " + GetItemDurability(helmItem));
-                        }
-                    }
-
-                    // 获取护甲槽位（Armor）
-                    armorSlot = bossMain.CharacterItem.Slots.GetSlot("Armor".GetHashCode());
-                    if (armorSlot != null && armorSlot.Content != null)
-                    {
-                        // 检查是否是龙甲
-                        if (armorSlot.Content.TypeID == DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID)
-                        {
-                            armorItem = armorSlot.Content;
-                            DevLog("[DragonDescendant] 从Boss身上获取龙甲，耐久度: " + GetItemDurability(armorItem));
-                        }
-                    }
+                    Debug.LogWarning("[DragonDescendant] 未找到龙套装模板: TypeID=" + selectedTypeId);
+                    yield break;
                 }
-            }
-            catch (Exception getEx)
-            {
-                Debug.LogWarning("[DragonDescendant] 从Boss身上获取装备失败: " + getEx.Message);
-            }
 
-            // 随机选择龙头或龙甲
-            List<Item> availableItems = new List<Item>();
-            List<ItemStatsSystem.Items.Slot> availableSlots = new List<ItemStatsSystem.Items.Slot>();
-            if (helmItem != null)
-            {
-                availableItems.Add(helmItem);
-                availableSlots.Add(helmSlot);
-            }
-            if (armorItem != null)
-            {
-                availableItems.Add(armorItem);
-                availableSlots.Add(armorSlot);
-            }
-
-            if (availableItems.Count == 0)
-            {
-                Debug.LogWarning("[DragonDescendant] Boss身上没有找到龙套装，无法掉落");
-                yield break;
-            }
-
-            int randomIndex = UnityEngine.Random.Range(0, availableItems.Count);
-            Item selectedItem = availableItems[randomIndex];
-            ItemStatsSystem.Items.Slot selectedSlot = availableSlots[randomIndex];
-            string itemName = (selectedItem.TypeID == DragonDescendantConfig.DRAGON_HELM_TYPE_ID)
-                ? "龙头" : "龙甲";
-
-            DevLog("[DragonDescendant] 随机选择龙套装掉落: " + itemName + " (TypeID=" + selectedItem.TypeID + ")");
-
-            try
-            {
-                // 先从Boss的装备槽位中卸下装备（Unplug），解除父物体关系
-                Item unpluggedItem = selectedSlot.Unplug();
-                if (unpluggedItem != null)
+                // 创建新的物品实例（满耐久）
+                Item newItem = templateItem.CreateInstance();
+                if (newItem == null)
                 {
-                    DevLog("[DragonDescendant] 已从Boss装备槽卸下 " + itemName);
-                    
-                    // 强制解除物品的父物体关系（Unplug可能没有完全解除）
-                    if (unpluggedItem.transform.parent != null)
-                    {
-                        DevLog("[DragonDescendant] 物品仍有父物体: " + unpluggedItem.transform.parent.name + "，正在强制解除...");
-                        unpluggedItem.transform.SetParent(null);
-                    }
-                    
-                    // 将卸下的装备添加到掉落箱（保留耐久度等属性）
-                    inv.AddItem(unpluggedItem);
-                    DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱，耐久度: " + GetItemDurability(unpluggedItem));
+                    Debug.LogWarning("[DragonDescendant] 创建龙套装实例失败");
+                    yield break;
                 }
-                else
+
+                // 确保耐久度为满（CreateInstance应该已经是满耐久，但保险起见再设置一次）
+                float maxDurability = newItem.MaxDurability;
+                if (maxDurability > 0)
                 {
-                    // Unplug返回null，尝试直接使用selectedItem并手动解除父物体
-                    DevLog("[DragonDescendant] Unplug返回null，尝试直接使用selectedItem");
-                    if (selectedItem != null && selectedItem.transform != null)
-                    {
-                        selectedItem.transform.SetParent(null);
-                        inv.AddItem(selectedItem);
-                        DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱（直接方式），耐久度: " + GetItemDurability(selectedItem));
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[DragonDescendant] 从Boss身上卸下装备失败，selectedItem也为null");
-                    }
+                    newItem.Durability = maxDurability;
                 }
+
+                // 添加到掉落箱
+                inv.AddItem(newItem);
+                DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱，耐久度: " + GetItemDurability(newItem));
             }
             catch (Exception addEx)
             {
