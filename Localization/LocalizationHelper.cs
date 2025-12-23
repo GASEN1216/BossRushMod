@@ -34,7 +34,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[LocalizationHelper] InjectLocalization 出错: " + e.Message);
+                ModBehaviour.DevLog("[LocalizationHelper] InjectLocalization 出错: " + e.Message);
                 return false;
             }
         }

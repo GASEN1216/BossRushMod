@@ -304,12 +304,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] 未找到 Load 方法");
+                    DevLog("[BossRush] 未找到 Load 方法");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError("[BossRush] LoadConfigFromModConfig 失败: " + ex.Message);
+                DevLog("[BossRush] LoadConfigFromModConfig 失败: " + ex.Message);
             }
         }
 
@@ -350,7 +350,7 @@ namespace BossRush
             }
             catch (Exception ex)
             {
-                Debug.LogError("[BossRush] OnModConfigOptionsChanged 失败: " + ex.Message);
+                DevLog("[BossRush] OnModConfigOptionsChanged 失败: " + ex.Message);
             }
         }
 
@@ -417,7 +417,7 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] 未找到 AddInputWithSlider 方法");
+                    DevLog("[BossRush] 未找到 AddInputWithSlider 方法");
                 }
 
                 // 1b) 新增：无间炼狱每波 Boss 数量
@@ -450,7 +450,7 @@ namespace BossRush
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError("[BossRush] 注册无间炼狱 Boss 数配置项失败: " + ex.Message);
+                    DevLog("[BossRush] 注册无间炼狱 Boss 数配置项失败: " + ex.Message);
                 }
 
                 // 2) 新增：Boss 掉落随机化（时间加成）布尔下拉
@@ -469,12 +469,12 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] 未找到 AddBoolDropdownList 方法，随机掉落配置项不会显示在 ModConfig 中");
+                        DevLog("[BossRush] 未找到 AddBoolDropdownList 方法，随机掉落配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError("[BossRush] 注册随机掉落配置项失败: " + ex.Message);
+                    DevLog("[BossRush] 注册随机掉落配置项失败: " + ex.Message);
                 }
 
                 // 3) 新增：Boss 掉落箱是否作为掩体（挡子弹）
@@ -493,12 +493,12 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] 未找到 AddBoolDropdownList 方法，掉落箱掩体配置项不会显示在 ModConfig 中");
+                        DevLog("[BossRush] 未找到 AddBoolDropdownList 方法，掉落箱掩体配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError("[BossRush] 注册掉落箱掩体配置项失败: " + ex.Message);
+                    DevLog("[BossRush] 注册掉落箱掩体配置项失败: " + ex.Message);
                 }
 
                 // 4) 新增：波次间是否需要交互点开下一波
@@ -517,12 +517,12 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] 未找到 AddBoolDropdownList 方法，波次交互配置项不会显示在 ModConfig 中");
+                        DevLog("[BossRush] 未找到 AddBoolDropdownList 方法，波次交互配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError("[BossRush] 注册波次交互配置项失败: " + ex.Message);
+                    DevLog("[BossRush] 注册波次交互配置项失败: " + ex.Message);
                 }
                 try
                 {
@@ -553,12 +553,12 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] 未找到 AddInputWithSlider 方法，Boss数值倍率配置项不会显示在 ModConfig 中");
+                        DevLog("[BossRush] 未找到 AddInputWithSlider 方法，Boss数值倍率配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError("[BossRush] 注册Boss数值倍率配置项失败: " + ex.Message);
+                    DevLog("[BossRush] 注册Boss数值倍率配置项失败: " + ex.Message);
                 }
 
                 // 注册 Mode D 每波敌人数配置项
@@ -583,19 +583,19 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] 未找到 AddInputWithSlider 方法，Mode D每波敌人数配置项不会显示在 ModConfig 中");
+                        DevLog("[BossRush] 未找到 AddInputWithSlider 方法，Mode D每波敌人数配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError("[BossRush] 注册Mode D每波敌人数配置项失败: " + ex.Message);
+                    DevLog("[BossRush] 注册Mode D每波敌人数配置项失败: " + ex.Message);
                 }
 
             }
             catch (Exception ex)
             {
-                Debug.LogError("[BossRush] SetupModConfig 失败: " + ex.Message);
-                Debug.LogError("[BossRush] 堆栈: " + ex.StackTrace);
+                DevLog("[BossRush] SetupModConfig 失败: " + ex.Message);
+                DevLog("[BossRush] 堆栈: " + ex.StackTrace);
             }
         }
 

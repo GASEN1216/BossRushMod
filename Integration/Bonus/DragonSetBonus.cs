@@ -95,7 +95,7 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[DragonSet] 未找到 OnMainCharacterSlotContentChangedEvent 字段");
+                    DevLog("[DragonSet] 未找到 OnMainCharacterSlotContentChangedEvent 字段");
                 }
                 
                 // 订阅场景加载事件，在玩家进入存档时检测套装
@@ -104,7 +104,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] 注册事件失败: " + e.Message);
+                DevLog("[DragonSet] 注册事件失败: " + e.Message);
             }
         }
         
@@ -133,7 +133,7 @@ namespace BossRush
                 // [性能优化] 场景切换时清理缓存的头部 Transform，因为角色可能重建
                 cachedHeadTransform = null;
                 
-                Debug.Log("[DragonSet] 场景加载完成，检测套装状态...");
+                DevLog("[DragonSet] 场景加载完成，检测套装状态...");
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main != null)
                 {
@@ -141,12 +141,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.Log("[DragonSet] 主角尚未初始化，跳过检测");
+                    DevLog("[DragonSet] 主角尚未初始化，跳过检测");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] OnLevelInitializedCheckDragonSet 出错: " + e.Message);
+                DevLog("[DragonSet] OnLevelInitializedCheckDragonSet 出错: " + e.Message);
             }
         }
         
@@ -178,7 +178,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] 取消注册事件失败: " + e.Message);
+                DevLog("[DragonSet] 取消注册事件失败: " + e.Message);
             }
             
             // 取消注册伤害事件
@@ -206,7 +206,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] 注册伤害事件失败: " + e.Message);
+                DevLog("[DragonSet] 注册伤害事件失败: " + e.Message);
             }
         }
         
@@ -225,7 +225,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] 取消注册伤害事件失败: " + e.Message);
+                DevLog("[DragonSet] 取消注册伤害事件失败: " + e.Message);
             }
         }
         
@@ -247,7 +247,7 @@ namespace BossRush
             // 详细日志：显示槽位内容
             string contentInfo = slot.Content != null ? 
                 (slot.Content.DisplayName + " / " + slot.Content.DisplayNameRaw) : "空";
-            Debug.Log("[DragonSet] 装备槽变化: " + slotKey + " -> " + contentInfo);
+            DevLog("[DragonSet] 装备槽变化: " + slotKey + " -> " + contentInfo);
             
             // 检测套装状态
             CheckDragonSetStatus(character);
@@ -320,7 +320,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] CheckDragonSetStatus 出错: " + e.Message + "\n" + e.StackTrace);
+                DevLog("[DragonSet] CheckDragonSetStatus 出错: " + e.Message + "\n" + e.StackTrace);
             }
         }
         
@@ -351,7 +351,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] ActivateDragonSetBonus 出错: " + e.Message);
+                DevLog("[DragonSet] ActivateDragonSetBonus 出错: " + e.Message);
             }
         }
         
@@ -378,7 +378,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] DeactivateDragonSetBonus 出错: " + e.Message);
+                DevLog("[DragonSet] DeactivateDragonSetBonus 出错: " + e.Message);
             }
         }
         
@@ -447,7 +447,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] OnDragonSetHurt 出错: " + e.Message);
+                DevLog("[DragonSet] OnDragonSetHurt 出错: " + e.Message);
             }
         }
         
@@ -568,7 +568,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSet] CreateDragonEyeEffect 出错: " + e.Message);
+                DevLog("[DragonSet] CreateDragonEyeEffect 出错: " + e.Message);
             }
         }
         

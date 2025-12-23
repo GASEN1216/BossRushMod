@@ -723,7 +723,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] BossRushSignInteractable.InjectAllOptions 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] BossRushSignInteractable.InjectAllOptions 失败: " + e.Message);
             }
         }
 
@@ -1261,7 +1261,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 清空所有箱子失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] 清空所有箱子失败: " + e.Message);
             }
         }
     }
@@ -1397,7 +1397,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 清空空箱子失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] 清空空箱子失败: " + e.Message);
             }
         }
     }

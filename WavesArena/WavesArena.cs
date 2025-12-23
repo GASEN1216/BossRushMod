@@ -161,12 +161,12 @@ namespace BossRush
                         }
                         else
                         {
-                            Debug.LogWarning("[BossRush] StartBossRush: Tag=Player 对象上没有 CharacterMainControl 组件: " + playerObj.name);
+                            DevLog("[BossRush] [WARNING] StartBossRush: Tag=Player 对象上没有 CharacterMainControl 组件: " + playerObj.name);
                         }
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] StartBossRush: 未找到 Tag=Player 对象");
+                        DevLog("[BossRush] [WARNING] StartBossRush: 未找到 Tag=Player 对象");
                     }
                 }
                 catch { }
@@ -175,7 +175,7 @@ namespace BossRush
             if (playerCharacter == null)
             {
                 ShowMessage(L10n.T("无法找到玩家角色！请确保在游戏中！", "Player not found! Make sure you are in game!"));
-                Debug.LogError("[BossRush] 无法找到玩家角色！");
+                DevLog("[BossRush] [ERROR] 无法找到玩家角色！");
                 return;
             }
             else
@@ -189,7 +189,7 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] StartBossRush: 最终 playerCharacter 不是 CharacterMainControl 类型: " + playerCharacter.name);
+                        DevLog("[BossRush] [WARNING] StartBossRush: 最终 playerCharacter 不是 CharacterMainControl 类型: " + playerCharacter.name);
                     }
                 }
                 catch { }
@@ -223,18 +223,18 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] StartBossRush: 未找到用于传送的玩家角色 CharacterMainControl");
+                        DevLog("[BossRush] [WARNING] StartBossRush: 未找到用于传送的玩家角色 CharacterMainControl");
                     }
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] StartBossRush: MultiSceneCore.Instance 为 null，尝试使用 SceneLoader 方案");
+                    DevLog("[BossRush] [WARNING] StartBossRush: MultiSceneCore.Instance 为 null，尝试使用 SceneLoader 方案");
                     TeleportToBossRushAsync();
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] StartBossRush: 启动传送任务时出错: " + e.Message);
+                DevLog("[BossRush] [ERROR] StartBossRush: 启动传送任务时出错: " + e.Message);
             }
 
             // 直接开始第一波Boss（会在短暂延迟后在玩家附近生成）
@@ -267,17 +267,17 @@ namespace BossRush
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError("[BossRush] TeleportToBossRushAsync: SceneLoader.LoadScene 调用失败: " + ex.Message + "\n" + ex.StackTrace);
+                        DevLog("[BossRush] [ERROR] TeleportToBossRushAsync: SceneLoader.LoadScene 调用失败: " + ex.Message + "\n" + ex.StackTrace);
                     }
                 }
                 else
                 {
-                    Debug.LogError("[BossRush] TeleportToBossRushAsync: SceneLoader.Instance 为 null，无法加载 BossRush 场景");
+                    DevLog("[BossRush] [ERROR] TeleportToBossRushAsync: SceneLoader.Instance 为 null，无法加载 BossRush 场景");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError("[BossRush] TeleportToBossRushAsync: 处理 SceneLoader 方案时出错: " + ex.Message);
+                DevLog("[BossRush] [ERROR] TeleportToBossRushAsync: 处理 SceneLoader 方案时出错: " + ex.Message);
             }
 
             if (!usedTicketTeleport)
@@ -311,7 +311,7 @@ namespace BossRush
 
                 if (provider == null)
                 {
-                    Debug.LogWarning("[BossRush] EnsureBossRushArenaForScene: 未找到 SceneLocationsProvider, scene=" + scene.name);
+                    DevLog("[BossRush] [WARNING] EnsureBossRushArenaForScene: 未找到 SceneLocationsProvider, scene=" + scene.name);
                     return;
                 }
 
@@ -339,7 +339,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] EnsureBossRushArenaForScene 出错: " + e.Message);
+                DevLog("[BossRush] [ERROR] EnsureBossRushArenaForScene 出错: " + e.Message);
             }
         }
 
@@ -526,7 +526,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] BuildBossRushArenaGeometry 出错: " + e.Message);
+                DevLog("[BossRush] [ERROR] BuildBossRushArenaGeometry 出错: " + e.Message);
             }
         }
 
@@ -786,7 +786,7 @@ namespace BossRush
 
             if (playerCharacter == null || arenaStartPoint == null)
             {
-                Debug.LogError("[BossRush] TeleportPlayerToArena: playerCharacter 或 arenaStartPoint 为空，无法传送");
+                DevLog("[BossRush] [ERROR] TeleportPlayerToArena: playerCharacter 或 arenaStartPoint 为空，无法传送");
                 return;
             }
 
@@ -803,7 +803,7 @@ namespace BossRush
 
             if (main == null)
             {
-                Debug.LogError("[BossRush] TeleportPlayerToArena: 无法获取 CharacterMainControl 实例");
+                DevLog("[BossRush] [ERROR] TeleportPlayerToArena: 无法获取 CharacterMainControl 实例");
                 return;
             }
 
@@ -870,7 +870,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] SetPosition 传送出错: " + e.Message + "，改用 transform.position");
+                DevLog("[BossRush] [ERROR] SetPosition 传送出错: " + e.Message + "，改用 transform.position");
                 main.transform.position = arenaPosition;
             }
 
@@ -909,7 +909,7 @@ namespace BossRush
 
                 if (main == null)
                 {
-                    Debug.LogWarning("[BossRush] TryCreateReturnInteractable: 无法找到玩家角色");
+                    DevLog("[BossRush] [WARNING] TryCreateReturnInteractable: 无法找到玩家角色");
                     return;
                 }
 
@@ -938,7 +938,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] TryCreateReturnInteractable 出错: " + e.Message);
+                DevLog("[BossRush] [ERROR] TryCreateReturnInteractable 出错: " + e.Message);
             }
         }
 
@@ -964,7 +964,7 @@ namespace BossRush
 
                 if (main == null)
                 {
-                    Debug.LogWarning("[BossRush] ReturnToBossRushStart: 无法找到玩家角色");
+                    DevLog("[BossRush] [WARNING] ReturnToBossRushStart: 无法找到玩家角色");
                     return;
                 }
 
@@ -981,7 +981,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] ReturnToBossRushStart: SetPosition 出错: " + e.Message + "，改用 transform.position");
+                    DevLog("[BossRush] [ERROR] ReturnToBossRushStart: SetPosition 出错: " + e.Message + "，改用 transform.position");
                     main.transform.position = targetPos;
                 }
 
@@ -1009,7 +1009,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning("[BossRush] 记录玩家出生点失败: " + e.Message);
+                    DevLog("[BossRush] [WARNING] 记录玩家出生点失败: " + e.Message);
                 }
                 
                 // 每次挑战开始时随机打乱本次要挑战的敌人顺序
@@ -1032,7 +1032,7 @@ namespace BossRush
                 }
                 catch (Exception shuffleEx)
                 {
-                    Debug.LogWarning("[BossRush] 打乱敌人顺序时出错: " + shuffleEx.Message);
+                    DevLog("[BossRush] [WARNING] 打乱敌人顺序时出错: " + shuffleEx.Message);
                 }
 
                 // 清理场景中现有的敌人，准备开始BossRush
@@ -1112,7 +1112,7 @@ namespace BossRush
             if (filteredPresets == null || filteredPresets.Count == 0)
             {
                 ShowMessage(L10n.T("Boss池为空！请至少启用一个Boss。(Ctrl+F10 打开设置)", "Boss pool is empty! Enable at least one Boss. (Ctrl+F10 to open settings)"));
-                Debug.LogWarning("[BossRush] SpawnNextEnemy: Boss 池为空，无法生成敌人");
+                DevLog("[BossRush] [WARNING] SpawnNextEnemy: Boss 池为空，无法生成敌人");
                 return;
             }
 
@@ -1134,7 +1134,7 @@ namespace BossRush
                 preset = PickRandomEnemyForInfiniteHell();
                 if (preset == null)
                 {
-                    Debug.LogError("[BossRush] SpawnNextEnemy: InfiniteHell 模式下未找到可用敌人预设");
+                    DevLog("[BossRush] [ERROR] SpawnNextEnemy: InfiniteHell 模式下未找到可用敌人预设");
                     return;
                 }
             }
@@ -1151,7 +1151,7 @@ namespace BossRush
                 CharacterMainControl playerMain = CharacterMainControl.Main;
                 if (playerMain == null)
                 {
-                    Debug.LogError("[BossRush] 玩家未找到，无法生成敌人");
+                    DevLog("[BossRush] [ERROR] 玩家未找到，无法生成敌人");
                     return;
                 }
 
@@ -1159,7 +1159,7 @@ namespace BossRush
                 Vector3[] spawnPoints = GetCurrentSpawnPoints();
                 if (spawnPoints == null || spawnPoints.Length == 0)
                 {
-                    Debug.LogError("[BossRush] 当前地图刷新点为空，无法生成敌人");
+                    DevLog("[BossRush] [ERROR] 当前地图刷新点为空，无法生成敌人");
                     return;
                 }
 
@@ -1214,7 +1214,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 生成敌人失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 生成敌人失败: " + e.Message);
             }
         }
         
@@ -1407,7 +1407,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] OnEnemyDied 错误: " + e.Message);
+                DevLog("[BossRush] [ERROR] OnEnemyDied 错误: " + e.Message);
             }
         }
 

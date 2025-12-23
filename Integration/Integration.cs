@@ -74,28 +74,28 @@ namespace BossRush
                 }
                 if (assetBundleType == null)
                 {
-                    Debug.LogWarning("[BossRush] 无法找到 UnityEngine.AssetBundle 类型，跳过动态物品加载");
+                    DevLog("[BossRush] 无法找到 UnityEngine.AssetBundle 类型，跳过动态物品加载");
                     return;
                 }
 
                 MethodInfo loadFromFile = assetBundleType.GetMethod("LoadFromFile", new Type[] { typeof(string) });
                 if (loadFromFile == null)
                 {
-                    Debug.LogWarning("[BossRush] 未找到 AssetBundle.LoadFromFile 方法，跳过动态物品加载");
+                    DevLog("[BossRush] 未找到 AssetBundle.LoadFromFile 方法，跳过动态物品加载");
                     return;
                 }
 
                 object bundle = loadFromFile.Invoke(null, new object[] { bundlePath });
                 if (bundle == null)
                 {
-                    Debug.LogError("[BossRush] 反射调用 LoadFromFile 失败: " + bundlePath);
+                    DevLog("[BossRush] 反射调用 LoadFromFile 失败: " + bundlePath);
                     return;
                 }
 
                 MethodInfo loadAllAssets = assetBundleType.GetMethod("LoadAllAssets", new Type[] { typeof(Type) });
                 if (loadAllAssets == null)
                 {
-                    Debug.LogWarning("[BossRush] 未找到 AssetBundle.LoadAllAssets(Type) 方法，跳过动态物品加载");
+                    DevLog("[BossRush] 未找到 AssetBundle.LoadAllAssets(Type) 方法，跳过动态物品加载");
                     return;
                 }
 
@@ -103,7 +103,7 @@ namespace BossRush
                 UnityEngine.Object[] assets = loadAllAssets.Invoke(bundle, new object[] { typeof(UnityEngine.Object) }) as UnityEngine.Object[];
                 if (assets == null || assets.Length == 0)
                 {
-                    Debug.LogWarning("[BossRush] bossrush_ticket AssetBundle 中未找到任何资源");
+                    DevLog("[BossRush] bossrush_ticket AssetBundle 中未找到任何资源");
                     return;
                 }
 
@@ -138,7 +138,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] InitializeDynamicItems 出错: " + e.Message);
+                DevLog("[BossRush] InitializeDynamicItems 出错: " + e.Message);
             }
         }
 
@@ -155,7 +155,7 @@ namespace BossRush
         {
             if (bossRushTicketTypeId <= 0)
             {
-                Debug.LogWarning("[BossRush] BossRush 船票 TypeID 未初始化，跳过商店注入");
+                DevLog("[BossRush] BossRush 船票 TypeID 未初始化，跳过商店注入");
                 return;
             }
 
@@ -294,7 +294,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] InjectBossRushTicketIntoShops 出错: " + e.Message);
+                DevLog("[BossRush] InjectBossRushTicketIntoShops 出错: " + e.Message);
             }
         }
 
@@ -326,7 +326,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] 读取船票库存失败: " + e.Message);
+                DevLog("[BossRush] 读取船票库存失败: " + e.Message);
                 cachedTicketStock = TICKET_DEFAULT_MAX_STOCK;
                 return cachedTicketStock;
             }
@@ -360,7 +360,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] 保存船票库存失败: " + e.Message);
+                DevLog("[BossRush] 保存船票库存失败: " + e.Message);
             }
         }
 
@@ -722,7 +722,7 @@ namespace BossRush
                     }
                     catch (System.Exception e)
                     {
-                        Debug.LogWarning("[BossRush] SetPosition 失败: " + e.Message + "，改用 transform.position");
+                        DevLog("[BossRush] SetPosition 失败: " + e.Message + "，改用 transform.position");
                         main.transform.position = finalPosition;
                     }
                     
@@ -745,12 +745,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] TeleportPlayerToCustomPosition: CharacterMainControl.Main 为 null");
+                    DevLog("[BossRush] TeleportPlayerToCustomPosition: CharacterMainControl.Main 为 null");
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] TeleportPlayerToCustomPosition 失败: " + e.Message);
+                DevLog("[BossRush] TeleportPlayerToCustomPosition 失败: " + e.Message);
             }
         }
         
@@ -820,7 +820,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] SetupBossRushInGroundZero: 检测 Mode D 条件失败: " + e.Message);
+                DevLog("[BossRush] SetupBossRushInGroundZero: 检测 Mode D 条件失败: " + e.Message);
             }
             
             // 10. 如果满足 Mode D 条件，延迟启动 Mode D
@@ -964,7 +964,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] SpawnBossRushMapObjects 失败: " + e.Message);
+                DevLog("[BossRush] SpawnBossRushMapObjects 失败: " + e.Message);
             }
         }
         
@@ -1034,7 +1034,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] CloneMapObject 失败 (" + config.templateName + "): " + e.Message);
+                DevLog("[BossRush] CloneMapObject 失败 (" + config.templateName + "): " + e.Message);
             }
         }
         

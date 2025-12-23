@@ -127,35 +127,35 @@ namespace BossRush
                 }
                 if (assetBundleType == null)
                 {
-                    Debug.LogWarning("[BirthdayCake] 无法找到 AssetBundle 类型");
+                    DevLog("[BirthdayCake] 无法找到 AssetBundle 类型");
                     return;
                 }
                 
                 MethodInfo loadFromFile = assetBundleType.GetMethod("LoadFromFile", new Type[] { typeof(string) });
                 if (loadFromFile == null)
                 {
-                    Debug.LogWarning("[BirthdayCake] 未找到 LoadFromFile 方法");
+                    DevLog("[BirthdayCake] 未找到 LoadFromFile 方法");
                     return;
                 }
                 
                 object bundle = loadFromFile.Invoke(null, new object[] { bundlePath });
                 if (bundle == null)
                 {
-                    Debug.LogError("[BirthdayCake] 加载 AssetBundle 失败: " + bundlePath);
+                    DevLog("[BirthdayCake] 加载 AssetBundle 失败: " + bundlePath);
                     return;
                 }
                 
                 MethodInfo loadAllAssets = assetBundleType.GetMethod("LoadAllAssets", new Type[] { typeof(Type) });
                 if (loadAllAssets == null)
                 {
-                    Debug.LogWarning("[BirthdayCake] 未找到 LoadAllAssets 方法");
+                    DevLog("[BirthdayCake] 未找到 LoadAllAssets 方法");
                     return;
                 }
                 
                 UnityEngine.Object[] assets = loadAllAssets.Invoke(bundle, new object[] { typeof(UnityEngine.Object) }) as UnityEngine.Object[];
                 if (assets == null || assets.Length == 0)
                 {
-                    Debug.LogWarning("[BirthdayCake] AssetBundle 中未找到任何资源");
+                    DevLog("[BirthdayCake] AssetBundle 中未找到任何资源");
                     return;
                 }
                 
@@ -187,7 +187,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BirthdayCake] 初始化失败: " + e.Message);
+                DevLog("[BirthdayCake] 初始化失败: " + e.Message);
             }
         }
         
@@ -272,7 +272,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BirthdayCake] 配置物品失败: " + e.Message);
+                DevLog("[BirthdayCake] 配置物品失败: " + e.Message);
             }
         }
 
@@ -356,7 +356,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BirthdayCake] 查找高兴Buff失败: " + e.Message);
+                DevLog("[BirthdayCake] 查找高兴Buff失败: " + e.Message);
                 return null;
             }
         }
@@ -426,7 +426,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BirthdayCake] 添加 Tag 失败: " + e.Message);
+                DevLog("[BirthdayCake] 添加 Tag 失败: " + e.Message);
             }
         }
         
@@ -512,7 +512,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BirthdayCake] 商店注入失败: " + e.Message);
+                DevLog("[BirthdayCake] 商店注入失败: " + e.Message);
             }
         }
         
@@ -631,7 +631,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BirthdayCake] 赠送生日蛋糕失败: " + e.Message);
+                DevLog("[BirthdayCake] 赠送生日蛋糕失败: " + e.Message);
             }
         }
         
@@ -649,7 +649,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BirthdayCake] 显示横幅失败: " + e.Message);
+                DevLog("[BirthdayCake] 显示横幅失败: " + e.Message);
             }
         }
         
@@ -722,7 +722,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BirthdayCake] F11 给予失败: " + e.Message);
+                DevLog("[BirthdayCake] F11 给予失败: " + e.Message);
             }
         }
     }

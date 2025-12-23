@@ -195,7 +195,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] IsPlayerNaked 检测失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] IsPlayerNaked 检测失败: " + e.Message);
                 return false;
             }
         }
@@ -238,7 +238,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] StartModeD 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] StartModeD 失败: " + e.Message);
             }
         }
 
@@ -262,7 +262,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] TryStartModeD 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] TryStartModeD 失败: " + e.Message);
                 return false;
             }
         }
@@ -294,7 +294,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] EndModeD 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] EndModeD 失败: " + e.Message);
             }
         }
 
@@ -319,7 +319,7 @@ namespace BossRush
                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
                 if (tagsData == null)
                 {
-                    Debug.LogWarning("[ModeD] 无法获取 TagsData");
+                    DevLog("[ModeD] [WARNING] 无法获取 TagsData");
                     return;
                 }
 
@@ -379,7 +379,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] InitializeModeDItemPools 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] InitializeModeDItemPools 失败: " + e.Message);
             }
         }
 
@@ -437,7 +437,7 @@ namespace BossRush
                 var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
                 if (allPresets == null || allPresets.Length == 0)
                 {
-                    Debug.LogWarning("[ModeD] 未找到任何 CharacterRandomPreset");
+                    DevLog("[ModeD] [WARNING] 未找到任何 CharacterRandomPreset");
                     return;
                 }
 
@@ -560,7 +560,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] InitializeModeDEnemyPools 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] InitializeModeDEnemyPools 失败: " + e.Message);
             }
         }
         

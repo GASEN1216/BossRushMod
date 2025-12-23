@@ -109,7 +109,7 @@ namespace BossRush
             }
             catch (Exception ex)
             {
-                Debug.LogError("[BossRush] InitializeBossPoolFilter 失败: " + ex.Message);
+                DevLog("[BossRush] InitializeBossPoolFilter 失败: " + ex.Message);
             }
         }
 
@@ -226,7 +226,7 @@ namespace BossRush
             }
             catch (Exception ex)
             {
-                Debug.LogError("[BossRush] SyncBossPoolToConfig 失败: " + ex.Message);
+                DevLog("[BossRush] SyncBossPoolToConfig 失败: " + ex.Message);
             }
         }
 
@@ -352,7 +352,7 @@ namespace BossRush
             }
             catch (Exception ex)
             {
-                Debug.LogError("[BossRush] CreateBossPoolUI 失败: " + ex.Message + "\n" + ex.StackTrace);
+                DevLog("[BossRush] CreateBossPoolUI 失败: " + ex.Message + "\n" + ex.StackTrace);
             }
         }
 

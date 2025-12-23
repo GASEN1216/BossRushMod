@@ -79,10 +79,10 @@ namespace BossRush
             monitoring = false;
 
             // 输出完整日志
-            Debug.Log("[TeleportMonitor] 完整传送流程日志:");
+            ModBehaviour.DevLog("[TeleportMonitor] 完整传送流程日志:");
             foreach (var log in logBuffer)
             {
-                Debug.Log("[TeleportMonitor] " + log);
+                ModBehaviour.DevLog("[TeleportMonitor] " + log);
             }
         }
 
@@ -90,7 +90,7 @@ namespace BossRush
         {
             string timestamped = "[" + Time.realtimeSinceStartup.ToString("F3") + "s] " + message;
             logBuffer.Add(timestamped);
-            Debug.Log("[TeleportMonitor] " + timestamped);
+            ModBehaviour.DevLog("[TeleportMonitor] " + timestamped);
         }
 
         private void LogCurrentGameState()

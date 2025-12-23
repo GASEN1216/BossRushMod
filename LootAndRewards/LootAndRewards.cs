@@ -157,7 +157,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] 收集候选物品ID失败: " + e.Message);
+                DevLog("[BossRush] 收集候选物品ID失败: " + e.Message);
             }
 
             DevLog("[BossRush] 物品价值缓存：共需处理 " + idSet.Count + " 个物品");
@@ -667,7 +667,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 显示完成对话失败: " + e.Message);
+                DevLog("[BossRush] 显示完成对话失败: " + e.Message);
             }
         }
 
@@ -757,7 +757,7 @@ namespace BossRush
                 InteractableLootbox prefab = GetDifficultyRewardLootBoxTemplate();
                 if (prefab == null)
                 {
-                    Debug.LogWarning("[BossRush] SpawnDifficultyRewardLootbox: 未找到 Lootbox 模板，无法生成通关奖励箱");
+                    DevLog("[BossRush] SpawnDifficultyRewardLootbox: 未找到 Lootbox 模板，无法生成通关奖励箱");
                     return;
                 }
 
@@ -1052,7 +1052,7 @@ namespace BossRush
                                             }
                                             catch (Exception evalEx)
                                             {
-                                                Debug.LogWarning("[BossRush] 评估通关奖励候选物品失败: " + evalEx.Message);
+                                                DevLog("[BossRush] 评估通关奖励候选物品失败: " + evalEx.Message);
                                             }
 
                                             IEnumerable<int> poolSource = idSet;
@@ -1108,12 +1108,12 @@ namespace BossRush
                     }
                     catch (Exception cfgEx)
                     {
-                        Debug.LogWarning("[BossRush] 配置通关奖励 LootBoxLoader 失败: " + cfgEx.Message);
+                        DevLog("[BossRush] 配置通关奖励 LootBoxLoader 失败: " + cfgEx.Message);
                     }
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] 通关奖励盒子上没有 LootBoxLoader 组件，将使用 Prefab 默认内容");
+                    DevLog("[BossRush] 通关奖励盒子上没有 LootBoxLoader 组件，将使用 Prefab 默认内容");
                 }
 
                 Inventory inventory = lootbox.Inventory;
@@ -1126,7 +1126,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] SpawnDifficultyRewardLootbox 错误: " + e.Message);
+                DevLog("[BossRush] SpawnDifficultyRewardLootbox 错误: " + e.Message);
             }
         }
 
@@ -1193,7 +1193,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] OnPlayerDeathInBossRush错误: " + e.Message + "\n" + e.StackTrace);
+                DevLog("[BossRush] OnPlayerDeathInBossRush错误: " + e.Message + "\n" + e.StackTrace);
             }
         }
 
@@ -1245,7 +1245,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] OnMainCharacterBeforeSpawnLoot 错误: " + e.Message);
+                DevLog("[BossRush] OnMainCharacterBeforeSpawnLoot 错误: " + e.Message);
             }
         }
 
@@ -1363,7 +1363,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] OnBossBeforeSpawnLoot 错误: " + e.Message);
+                DevLog("[BossRush] OnBossBeforeSpawnLoot 错误: " + e.Message);
             }
         }
 
@@ -1373,7 +1373,7 @@ namespace BossRush
             {
                 if (bossMain == null)
                 {
-                    Debug.LogWarning("[BossRush] BossMain 无效，无法生成奖励盒子");
+                    DevLog("[BossRush] BossMain 无效，无法生成奖励盒子");
                     return;
                 }
 
@@ -1424,7 +1424,7 @@ namespace BossRush
 
                 if (prefab == null)
                 {
-                    Debug.LogWarning("[BossRush] 未找到可用的 Lootbox 模板，回退到原版 Boss 掉落逻辑");
+                    DevLog("[BossRush] 未找到可用的 Lootbox 模板，回退到原版 Boss 掉落逻辑");
                     return;
                 }
 
@@ -1457,7 +1457,7 @@ namespace BossRush
                 }
                 catch (Exception localInvEx)
                 {
-                    Debug.LogWarning("[BossRush] 创建 Boss 奖励箱本地 Inventory 失败: " + localInvEx.Message);
+                    DevLog("[BossRush] 创建 Boss 奖励箱本地 Inventory 失败: " + localInvEx.Message);
                 }
 
                 try
@@ -1947,7 +1947,7 @@ namespace BossRush
                                         }
                                         catch (Exception priceEx)
                                         {
-                                            Debug.LogWarning("[BossRush] 评估 Boss 候选物品价格失败: " + priceEx.Message);
+                                            DevLog("[BossRush] 评估 Boss 候选物品价格失败: " + priceEx.Message);
                                         }
 
                                         if (fixedItems != null)
@@ -2001,7 +2001,7 @@ namespace BossRush
                         }
                         catch (Exception poolEx)
                         {
-                            Debug.LogWarning("[BossRush] 构建 Boss 奖励 randomPool 失败: " + poolEx.Message);
+                            DevLog("[BossRush] 构建 Boss 奖励 randomPool 失败: " + poolEx.Message);
                         }
 
                         loader.randomFromPool = true;
@@ -2018,17 +2018,17 @@ namespace BossRush
                         }
                         catch (Exception setupEx)
                         {
-                            Debug.LogWarning("[BossRush] 调用 LootBoxLoader.StartSetup() 失败: " + setupEx.Message);
+                            DevLog("[BossRush] 调用 LootBoxLoader.StartSetup() 失败: " + setupEx.Message);
                         }
                     }
                     catch (Exception cfgEx)
                     {
-                        Debug.LogWarning("[BossRush] 配置 Boss 奖励 LootBoxLoader 失败: " + cfgEx.Message);
+                        DevLog("[BossRush] 配置 Boss 奖励 LootBoxLoader 失败: " + cfgEx.Message);
                     }
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] Boss 奖励盒子上没有 LootBoxLoader 组件，将使用 Prefab 默认内容");
+                    DevLog("[BossRush] Boss 奖励盒子上没有 LootBoxLoader 组件，将使用 Prefab 默认内容");
                 }
 
                 // 访问一次 Inventory，确保需要搜索动画，并设置初始容量
@@ -2050,7 +2050,7 @@ namespace BossRush
                 }
                 catch (Exception dragonEx)
                 {
-                    Debug.LogWarning("[BossRush] 安排龙套装掉落协程失败: " + dragonEx.Message);
+                    DevLog("[BossRush] 安排龙套装掉落协程失败: " + dragonEx.Message);
                 }
 
                 // 调试：记录实际掉落物的品质与价格，方便验证过滤逻辑
@@ -2060,12 +2060,12 @@ namespace BossRush
                 }
                 catch (Exception logEx)
                 {
-                    Debug.LogWarning("[BossRush] 安排 Boss 掉落实际物品日志协程失败: " + logEx.Message);
+                    DevLog("[BossRush] 安排 Boss 掉落实际物品日志协程失败: " + logEx.Message);
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] RandomizeBossLoot 错误: " + e.Message);
+                DevLog("[BossRush] RandomizeBossLoot 错误: " + e.Message);
             }
         }
 
@@ -2163,7 +2163,7 @@ namespace BossRush
             }
             catch (Exception capEx)
             {
-                Debug.LogWarning("[BossRush] 调整 Boss 奖励箱容量失败: " + capEx.Message);
+                DevLog("[BossRush] 调整 Boss 奖励箱容量失败: " + capEx.Message);
             }
         }
 
@@ -2354,7 +2354,7 @@ namespace BossRush
             }
             catch (Exception cleanEx)
             {
-                Debug.LogWarning("[BossRush] 清理通关奖励箱低品质物品失败: " + cleanEx.Message);
+                DevLog("[BossRush] 清理通关奖励箱低品质物品失败: " + cleanEx.Message);
             }
         }
 
@@ -2379,7 +2379,7 @@ namespace BossRush
 
             if (lootbox == null)
             {
-                Debug.LogWarning("[DragonDescendant] 掉落箱为空，无法添加龙套装");
+                DevLog("[DragonDescendant] 掉落箱为空，无法添加龙套装");
                 yield break;
             }
 
@@ -2387,7 +2387,7 @@ namespace BossRush
             Inventory inv = lootbox.Inventory;
             if (inv == null)
             {
-                Debug.LogWarning("[DragonDescendant] 掉落箱Inventory为空");
+                DevLog("[DragonDescendant] 掉落箱Inventory为空");
                 yield break;
             }
 
@@ -2412,7 +2412,7 @@ namespace BossRush
                 Item templateItem = FindItemByTypeId(selectedTypeId);
                 if (templateItem == null)
                 {
-                    Debug.LogWarning("[DragonDescendant] 未找到龙套装模板: TypeID=" + selectedTypeId);
+                    DevLog("[DragonDescendant] 未找到龙套装模板: TypeID=" + selectedTypeId);
                     yield break;
                 }
 
@@ -2420,7 +2420,7 @@ namespace BossRush
                 Item newItem = templateItem.CreateInstance();
                 if (newItem == null)
                 {
-                    Debug.LogWarning("[DragonDescendant] 创建龙套装实例失败");
+                    DevLog("[DragonDescendant] 创建龙套装实例失败");
                     yield break;
                 }
 
@@ -2437,7 +2437,7 @@ namespace BossRush
             }
             catch (Exception addEx)
             {
-                Debug.LogWarning("[DragonDescendant] 添加龙套装到掉落箱失败: " + addEx.Message);
+                DevLog("[DragonDescendant] 添加龙套装到掉落箱失败: " + addEx.Message);
             }
         }
 

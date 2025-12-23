@@ -101,7 +101,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonSetConfig] ConfigureEquipment 出错: " + e.Message);
+                ModBehaviour.DevLog("[DragonSetConfig] [ERROR] ConfigureEquipment 出错: " + e.Message);
             }
         }
 
@@ -110,7 +110,7 @@ namespace BossRush
         /// </summary>
         private static void ConfigureDragonHelm(Item item)
         {
-            Debug.Log("[DragonSetConfig] 配置赤龙首属性...");
+            ModBehaviour.DevLog("[DragonSetConfig] 配置赤龙首属性...");
 
             // 设置护甲值（满护甲上限）
             EquipmentHelper.AddModifierToItem(item, "HeadArmor", ModifierType.Add, DRAGON_HELM_ARMOR, true);
@@ -146,7 +146,7 @@ namespace BossRush
             // 注入本地化
             EquipmentLocalization.InjectDragonHelmLocalization(item.TypeID);
 
-            Debug.Log("[DragonSetConfig] 赤龙首配置完成");
+            ModBehaviour.DevLog("[DragonSetConfig] 赤龙首配置完成");
         }
 
         /// <summary>
@@ -154,7 +154,7 @@ namespace BossRush
         /// </summary>
         private static void ConfigureDragonArmor(Item item)
         {
-            Debug.Log("[DragonSetConfig] 配置焰鳞甲属性...");
+            ModBehaviour.DevLog("[DragonSetConfig] 配置焰鳞甲属性...");
 
             // 设置护甲值（满护甲上限）
             EquipmentHelper.AddModifierToItem(item, "BodyArmor", ModifierType.Add, DRAGON_ARMOR_ARMOR, true);
@@ -184,7 +184,7 @@ namespace BossRush
             // 注入本地化
             EquipmentLocalization.InjectDragonArmorLocalization(item.TypeID);
 
-            Debug.Log("[DragonSetConfig] 焰鳞甲配置完成");
+            ModBehaviour.DevLog("[DragonSetConfig] 焰鳞甲配置完成");
         }
     }
 }

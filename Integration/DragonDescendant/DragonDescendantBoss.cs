@@ -65,13 +65,13 @@ namespace BossRush
                 
                 if (basePreset == null)
                 {
-                    Debug.LogError("[DragonDescendant] 未找到???敌人预设，使用后备方案");
+                    DevLog("[DragonDescendant] [ERROR] 未找到???敌人预设，使用后备方案");
                     basePreset = FindFallbackPreset();
                 }
                 
                 if (basePreset == null)
                 {
-                    Debug.LogError("[DragonDescendant] 无法找到任何可用预设");
+                    DevLog("[DragonDescendant] [ERROR] 无法找到任何可用预设");
                     // 通知BossRush系统生成失败，以便推进波次
                     try
                     {
@@ -103,7 +103,7 @@ namespace BossRush
                 
                 if (character == null)
                 {
-                    Debug.LogError("[DragonDescendant] 生成角色失败");
+                    DevLog("[DragonDescendant] [ERROR] 生成角色失败");
                     // 通知BossRush系统生成失败，以便推进波次
                     try
                     {
@@ -213,7 +213,7 @@ namespace BossRush
                 }
                 catch (Exception recordEx)
                 {
-                    Debug.LogWarning("[DragonDescendant] 记录 Boss 生成信息失败: " + recordEx.Message);
+                    DevLog("[DragonDescendant] [WARNING] 记录 Boss 生成信息失败: " + recordEx.Message);
                 }
                 
                 DevLog("[DragonDescendant] 龙裔遗族Boss生成完成");
@@ -221,7 +221,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonDescendant] 生成Boss失败: " + e.Message + "\n" + e.StackTrace);
+                DevLog("[DragonDescendant] [ERROR] 生成Boss失败: " + e.Message + "\n" + e.StackTrace);
             }
         }
         
@@ -263,7 +263,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 查找???预设失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 查找???预设失败: " + e.Message);
             }
             
             return null;
@@ -347,7 +347,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 设置Boss属性失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 设置Boss属性失败: " + e.Message);
             }
         }
         
@@ -363,7 +363,7 @@ namespace BossRush
                 var characterItem = character.CharacterItem;
                 if (characterItem == null)
                 {
-                    Debug.LogWarning("[DragonDescendant] CharacterItem is null");
+                    DevLog("[DragonDescendant] [WARNING] CharacterItem is null");
                     return UniTask.CompletedTask;
                 }
                 
@@ -379,7 +379,7 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[DragonDescendant] 未找到龙头装备");
+                    DevLog("[DragonDescendant] [WARNING] 未找到龙头装备");
                 }
                 
                 // 装备龙甲（优先使用TypeID，其次使用名称）
@@ -394,7 +394,7 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[DragonDescendant] 未找到龙甲装备");
+                    DevLog("[DragonDescendant] [WARNING] 未找到龙甲装备");
                 }
                 
                 // 刷新装备模型显示
@@ -407,7 +407,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 装备失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 装备失败: " + e.Message);
             }
             return UniTask.CompletedTask;
         }
@@ -432,7 +432,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 通过TypeID查找物品失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 通过TypeID查找物品失败: " + e.Message);
             }
             return null;
         }
@@ -464,14 +464,14 @@ namespace BossRush
                         }
                         else
                         {
-                            Debug.LogWarning("[DragonDescendant] 未找到槽位 hash: " + slotHash);
+                            DevLog("[DragonDescendant] [WARNING] 未找到槽位 hash: " + slotHash);
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 装备护甲物品失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 装备护甲物品失败: " + e.Message);
             }
         }
         
@@ -495,7 +495,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 刷新装备模型失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 刷新装备模型失败: " + e.Message);
             }
         }
         
@@ -510,7 +510,7 @@ namespace BossRush
                 Item weaponItem = FindItemByName(weaponName);
                 if (weaponItem == null)
                 {
-                    Debug.LogWarning("[DragonDescendant] 未找到武器: " + weaponName);
+                    DevLog("[DragonDescendant] [WARNING] 未找到武器: " + weaponName);
                     return UniTask.CompletedTask;
                 }
                 
@@ -543,7 +543,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 装备武器失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 装备武器失败: " + e.Message);
             }
             return UniTask.CompletedTask;
         }
@@ -567,7 +567,7 @@ namespace BossRush
                 Item armorItem = FindItemByName(armorName);
                 if (armorItem == null)
                 {
-                    Debug.LogWarning("[DragonDescendant] 未找到护甲: " + armorName);
+                    DevLog("[DragonDescendant] [WARNING] 未找到护甲: " + armorName);
                     return UniTask.CompletedTask;
                 }
                 
@@ -592,19 +592,19 @@ namespace BossRush
                             }
                             else
                             {
-                                Debug.LogWarning("[DragonDescendant] 未找到槽位 hash: " + slotHash);
+                            DevLog("[DragonDescendant] [WARNING] 未找到槽位 hash: " + slotHash);
                             }
                         }
                         catch (Exception slotEx)
                         {
-                            Debug.LogWarning("[DragonDescendant] 装备到槽位失败: " + slotEx.Message);
+                            DevLog("[DragonDescendant] [WARNING] 装备到槽位失败: " + slotEx.Message);
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 装备护甲失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 装备护甲失败: " + e.Message);
             }
             return UniTask.CompletedTask;
         }
@@ -665,7 +665,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 加载子弹失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 加载子弹失败: " + e.Message);
             }
             return UniTask.CompletedTask;
         }
@@ -811,7 +811,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 死亡处理失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 死亡处理失败: " + e.Message);
             }
         }
         
@@ -853,7 +853,7 @@ namespace BossRush
             {
                 if (enemyPresets == null)
                 {
-                    Debug.LogWarning("[DragonDescendant] enemyPresets 为空，无法注册");
+                    DevLog("[DragonDescendant] [WARNING] enemyPresets 为空，无法注册");
                     return;
                 }
                 
@@ -893,7 +893,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 注册预设失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 注册预设失败: " + e.Message);
             }
         }
         
@@ -929,12 +929,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[DragonDescendant] 注册龙套装效果失败：Boss实例或Health为空");
+                    DevLog("[DragonDescendant] [WARNING] 注册龙套装效果失败：Boss实例或Health为空");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonDescendant] 注册龙套装效果失败: " + e.Message);
+                DevLog("[DragonDescendant] [ERROR] 注册龙套装效果失败: " + e.Message);
             }
         }
         
@@ -954,7 +954,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonDescendant] 取消注册龙套装效果失败: " + e.Message);
+                DevLog("[DragonDescendant] [ERROR] 取消注册龙套装效果失败: " + e.Message);
             }
         }
         
@@ -1022,7 +1022,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[DragonDescendant] OnDragonDescendantHurt 出错: " + e.Message);
+                DevLog("[DragonDescendant] [ERROR] OnDragonDescendantHurt 出错: " + e.Message);
             }
         }
         

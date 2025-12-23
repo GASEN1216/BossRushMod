@@ -480,7 +480,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = true;
+        internal const bool DevModeEnabled = false;
 
         private StockShop ammoShop;
 
@@ -674,7 +674,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] F5 调试失败: " + e.Message);
+                    DevLog("[BossRush] F5 调试失败: " + e.Message);
                 }
             }
 
@@ -687,7 +687,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] F6 放置模式切换失败: " + e.Message);
+                    DevLog("[BossRush] F6 放置模式切换失败: " + e.Message);
                 }
             }
             
@@ -700,7 +700,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] 放置模式更新失败: " + e.Message);
+                    DevLog("[BossRush] 放置模式更新失败: " + e.Message);
                 }
             }
 
@@ -796,7 +796,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] F8 调试失败: " + e.Message);
+                    DevLog("[BossRush] F8 调试失败: " + e.Message);
                 }
             }
 
@@ -865,7 +865,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] F7 调试失败: " + e.Message);
+                    DevLog("[BossRush] F7 调试失败: " + e.Message);
                 }
             }
 
@@ -883,7 +883,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] F10 调试触发通关失败: " + e.Message);
+                    DevLog("[BossRush] F10 调试触发通关失败: " + e.Message);
                 }
             }
             
@@ -897,7 +897,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] F11 调试给予生日蛋糕失败: " + e.Message);
+                    DevLog("[BossRush] F11 调试给予生日蛋糕失败: " + e.Message);
                 }
             }
         }
@@ -1025,7 +1025,7 @@ namespace BossRush
                 elapsed += interval;
             }
 
-            Debug.LogWarning("[BossRush] EnsureNextWaveEntryPoint: 在 " + 30f + " 秒内仍未能确认 BossRush_NextWaveEntry 存在, 共尝试 " + attempt + " 次，放弃重试。");
+            DevLog("[BossRush] EnsureNextWaveEntryPoint: 在 " + 30f + " 秒内仍未能确认 BossRush_NextWaveEntry 存在, 共尝试 " + attempt + " 次，放弃重试。");
         }
 
         private System.Collections.IEnumerator SetupBossRushInDemoChallenge(Scene scene)
@@ -1111,12 +1111,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] SetupBossRushInDemoChallenge: 未找到玩家角色，无法传送到指定位置");
+                    DevLog("[BossRush] SetupBossRushInDemoChallenge: 未找到玩家角色，无法传送到指定位置");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 传送玩家到 BossRush 难度入口附近失败: " + e.Message);
+                DevLog("[BossRush] 传送玩家到 BossRush 难度入口附近失败: " + e.Message);
             }
 
             try
@@ -1137,7 +1137,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 检测 Mode D 条件失败: " + e.Message);
+                DevLog("[BossRush] 检测 Mode D 条件失败: " + e.Message);
             }
 
             // 在 DEMO 场景中创建 BossRush 难度入口
@@ -1233,7 +1233,7 @@ namespace BossRush
                 elapsed += interval;
             }
 
-            Debug.LogWarning("[BossRush] EnsurePlayerTeleportedInDemoChallenge: 在 30 秒内未能找到玩家角色，放弃自动传送，共尝试 " + attempt + " 次");
+            DevLog("[BossRush] EnsurePlayerTeleportedInDemoChallenge: 在 30 秒内未能找到玩家角色，放弃自动传送，共尝试 " + attempt + " 次");
         }
 
         private void ClearEnemiesForBossRush()
@@ -1342,7 +1342,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] ClearEnemiesForBossRush 出错: " + e.Message);
+                DevLog("[BossRush] ClearEnemiesForBossRush 出错: " + e.Message);
             }
         }
 
@@ -1455,7 +1455,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 扫描出错: " + e.Message + "\n" + e.StackTrace);
+                DevLog("[BossRush] 扫描出错: " + e.Message + "\n" + e.StackTrace);
             }
             return anyInjected;
         }
@@ -1591,7 +1591,7 @@ namespace BossRush
 
                 if (main == null)
                 {
-                    Debug.LogWarning("[BossRush] TrySpawnEggForPlayer: 无法找到玩家角色");
+                    DevLog("[BossRush] TrySpawnEggForPlayer: 无法找到玩家角色");
                     return;
                 }
 
@@ -1618,7 +1618,7 @@ namespace BossRush
 
                 if (behavior == null || behavior.eggPrefab == null)
                 {
-                    Debug.LogWarning("[BossRush] TrySpawnEggForPlayer: 未找到 SpawnEgg 配置或 eggPrefab，跳过下蛋");
+                    DevLog("[BossRush] TrySpawnEggForPlayer: 未找到 SpawnEgg 配置或 eggPrefab，跳过下蛋");
                     return;
                 }
 
@@ -1639,7 +1639,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] TrySpawnEggForPlayer: 实例化蛋失败: " + e.Message);
+                    DevLog("[BossRush] TrySpawnEggForPlayer: 实例化蛋失败: " + e.Message);
                     return;
                 }
 
@@ -1662,7 +1662,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] TrySpawnEggForPlayer: 初始化蛋失败: " + e.Message);
+                    DevLog("[BossRush] TrySpawnEggForPlayer: 初始化蛋失败: " + e.Message);
                 }
             }
             catch {}
@@ -1804,7 +1804,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 销毁spawner时出错: " + e.Message);
+                DevLog("[BossRush] 销毁spawner时出错: " + e.Message);
             }
         }
 
@@ -2006,7 +2006,7 @@ namespace BossRush
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("[BossRush] 查找 LootBoxLoader 模板失败: " + ex.Message);
+                DevLog("[BossRush] 查找 LootBoxLoader 模板失败: " + ex.Message);
             }
 
             return _cachedLootBoxTemplateWithLoader;
@@ -2077,7 +2077,7 @@ namespace BossRush
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("[BossRush] 查找通关奖励 Lootbox 模板失败: " + ex.Message);
+                DevLog("[BossRush] 查找通关奖励 Lootbox 模板失败: " + ex.Message);
             }
 
             // 如果没有找到不同的，就退回到 Boss 掉落使用的模板
@@ -2127,7 +2127,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] ApplyLootBoxCoverSetting 失败: " + e.Message);
+                DevLog("[BossRush] ApplyLootBoxCoverSetting 失败: " + e.Message);
             }
         }
 
@@ -2176,7 +2176,7 @@ namespace BossRush
 
                 if (provider == null)
                 {
-                    Debug.LogWarning("[BossRush] EnsureBossRushArenaForScene: 未找到 SceneLocationsProvider, scene=" + scene.name);
+                    DevLog("[BossRush] EnsureBossRushArenaForScene: 未找到 SceneLocationsProvider, scene=" + scene.name);
                     return;
                 }
 
@@ -2204,7 +2204,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] EnsureBossRushArenaForScene 出错: " + e.Message);
+                DevLog("[BossRush] EnsureBossRushArenaForScene 出错: " + e.Message);
             }
         }
 
@@ -2391,7 +2391,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] BuildBossRushArenaGeometry 出错: " + e.Message);
+                DevLog("[BossRush] BuildBossRushArenaGeometry 出错: " + e.Message);
             }
         }
 
@@ -2498,7 +2498,7 @@ namespace BossRush
                 
                 if (targetPreset == null)
                 {
-                    Debug.LogError("[BossRush] 未找到合适的CharacterRandomPreset");
+                    DevLog("[BossRush] 未找到合适的CharacterRandomPreset");
                     OnBossSpawnFailed(preset);
                     return;
                 }
@@ -2511,7 +2511,7 @@ namespace BossRush
                 
                 if (character == null)
                 {
-                    Debug.LogError("[BossRush] 生成敌人失败");
+                    DevLog("[BossRush] 生成敌人失败");
                     OnBossSpawnFailed(preset);
                     return;
                 }
@@ -2577,7 +2577,7 @@ namespace BossRush
                 }
                 catch (Exception recordEx)
                 {
-                    Debug.LogWarning("[BossRush] 记录 Boss 生成信息失败: " + recordEx.Message);
+                    DevLog("[BossRush] 记录 Boss 生成信息失败: " + recordEx.Message);
                 }
                 
                 // 强制设置 AI 仇恨到玩家
@@ -2602,7 +2602,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] SpawnEnemyAtPositionAsync 错误: " + e.Message + "\n" + e.StackTrace);
+                DevLog("[BossRush] SpawnEnemyAtPositionAsync 错误: " + e.Message + "\n" + e.StackTrace);
                 OnBossSpawnFailed(preset);
             }
         }
@@ -2750,7 +2750,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] ApplyGlobalDifficultyScaling 失败: " + e.Message);
+                DevLog("[BossRush] ApplyGlobalDifficultyScaling 失败: " + e.Message);
             }
         }
 
@@ -3006,7 +3006,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] TryCleanNonBossRushDaXingXing 出错: " + e.Message);
+                DevLog("[BossRush] TryCleanNonBossRushDaXingXing 出错: " + e.Message);
             }
         }
         
@@ -3081,7 +3081,7 @@ namespace BossRush
             }
             
             // 如果找不到，使用玩家前方5米
-            Debug.LogWarning("[BossRush] 未找到有效NavMesh位置，使用玩家前方");
+            DevLog("[BossRush] 未找到有效NavMesh位置，使用玩家前方");
             Vector3 fallbackPos = playerPos + Vector3.forward * 5f;
             
             // 尝试采样前方位置
@@ -3168,7 +3168,7 @@ namespace BossRush
 
                 if (main == null)
                 {
-                    Debug.LogWarning("[BossRush] ReturnToBossRushStart: 无法找到玩家角色");
+                    DevLog("[BossRush] ReturnToBossRushStart: 无法找到玩家角色");
                     return;
                 }
 
@@ -3185,7 +3185,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[BossRush] ReturnToBossRushStart: SetPosition 出错: " + e.Message + "，改用 transform.position");
+                    DevLog("[BossRush] ReturnToBossRushStart: SetPosition 出错: " + e.Message + "，改用 transform.position");
                     main.transform.position = targetPos;
                 }
 

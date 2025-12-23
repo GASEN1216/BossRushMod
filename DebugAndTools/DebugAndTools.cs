@@ -105,7 +105,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 注册交互调试监听失败: " + e.Message);
+                DevLog("[BossRush] 注册交互调试监听失败: " + e.Message);
             }
         }
 
@@ -295,7 +295,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 交互调试输出失败: " + e.Message);
+                DevLog("[BossRush] 交互调试输出失败: " + e.Message);
             }
         }
 
@@ -577,7 +577,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] F5 调试：LogNearbyGameObjects 出错: " + e.Message);
+                DevLog("[BossRush] F5 调试：LogNearbyGameObjects 出错: " + e.Message);
             }
         }
         
@@ -613,7 +613,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] F6 调试：CloneRememberedGameObject 出错: " + e.Message);
+                DevLog("[BossRush] F6 调试：CloneRememberedGameObject 出错: " + e.Message);
             }
         }
         
@@ -902,7 +902,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[BossRush] F5 建筑调试出错: " + e.Message + "\n" + e.StackTrace);
+                DevLog("[BossRush] F5 建筑调试出错: " + e.Message + "\n" + e.StackTrace);
             }
         }
         
@@ -967,7 +967,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 进入放置模式失败: " + e.Message);
+                DevLog("[BossRush] 进入放置模式失败: " + e.Message);
                 ExitPlacementMode();
             }
         }
@@ -1335,7 +1335,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 更新放置模式失败: " + e.Message);
+                DevLog("[BossRush] 更新放置模式失败: " + e.Message);
             }
         }
         
@@ -1389,7 +1389,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 右键处理失败: " + e.Message);
+                DevLog("[BossRush] 右键处理失败: " + e.Message);
             }
         }
         
@@ -1606,7 +1606,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 确认放置失败: " + e.Message);
+                DevLog("[BossRush] 确认放置失败: " + e.Message);
             }
         }
         

@@ -122,7 +122,7 @@ namespace BossRush
             
             if (!Directory.Exists(equipmentDir))
             {
-                Debug.Log("[EquipmentFactory] 装备目录不存在，跳过自动加载: " + equipmentDir);
+                ModBehaviour.DevLog("[EquipmentFactory] 装备目录不存在，跳过自动加载: " + equipmentDir);
                 return 0;
             }
 
@@ -139,12 +139,12 @@ namespace BossRush
                 // 跳过已加载的 bundle
                 if (loadedBundles.Contains(fileName)) continue;
                 
-                Debug.Log("[EquipmentFactory] 自动加载 bundle: " + fileName);
+                ModBehaviour.DevLog("[EquipmentFactory] 自动加载 bundle: " + fileName);
                 int count = LoadBundle(fileName);
                 totalCount += count;
             }
             
-            Debug.Log("[EquipmentFactory] 自动加载完成，共 " + totalCount + " 个装备");
+            ModBehaviour.DevLog("[EquipmentFactory] 自动加载完成，共 " + totalCount + " 个装备");
             return totalCount;
         }
 
@@ -158,7 +158,7 @@ namespace BossRush
             // 避免重复加载
             if (loadedBundles.Contains(bundleName))
             {
-                Debug.Log("[EquipmentFactory] Bundle 已加载，跳过: " + bundleName);
+                ModBehaviour.DevLog("[EquipmentFactory] Bundle 已加载，跳过: " + bundleName);
                 return 0;
             }
 
@@ -172,7 +172,7 @@ namespace BossRush
             
             if (!File.Exists(bundlePath))
             {
-                Debug.LogWarning("[EquipmentFactory] 未找到 AssetBundle: " + bundlePath);
+                ModBehaviour.DevLog("[EquipmentFactory] 未找到 AssetBundle: " + bundlePath);
                 return 0;
             }
 
@@ -284,7 +284,7 @@ namespace BossRush
                 bundle = AssetBundle.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
-                    Debug.LogError("[EquipmentFactory] 加载 AssetBundle 失败: " + bundlePath);
+                    ModBehaviour.DevLog("[EquipmentFactory] 加载 AssetBundle 失败: " + bundlePath);
                     return 0;
                 }
 
@@ -292,7 +292,7 @@ namespace BossRush
                 var assets = bundle.LoadAllAssets<GameObject>();
                 if (assets == null || assets.Length == 0)
                 {
-                    Debug.LogWarning("[EquipmentFactory] AssetBundle 中未找到任何资源: " + bundleName);
+                    ModBehaviour.DevLog("[EquipmentFactory] AssetBundle 中未找到任何资源: " + bundleName);
                     return 0;
                 }
 
@@ -317,7 +317,7 @@ namespace BossRush
                         {
                             typesByBaseName[baseName] = detectedType.Value;
                         }
-                        Debug.Log("[EquipmentFactory] 发现 Item: " + goName + " (TypeID=" + item.TypeID + ", BaseName=" + baseName + ", Type=" + (detectedType.HasValue ? detectedType.Value.ToString() : "未知") + ")");
+                        ModBehaviour.DevLog("[EquipmentFactory] 发现 Item: " + goName + " (TypeID=" + item.TypeID + ", BaseName=" + baseName + ", Type=" + (detectedType.HasValue ? detectedType.Value.ToString() : "未知") + ")");
                         continue;
                     }
 
@@ -341,7 +341,7 @@ namespace BossRush
                         {
                             typesByBaseName[baseName] = detectedType.Value;
                         }
-                        Debug.Log("[EquipmentFactory] 发现 Model: " + goName + " -> BaseName=" + baseName);
+                        ModBehaviour.DevLog("[EquipmentFactory] 发现 Model: " + goName + " -> BaseName=" + baseName);
                     }
                 }
 
@@ -393,21 +393,21 @@ namespace BossRush
                         ItemAssetsCollection.AddDynamicEntry(itemPrefab);
                         loadedCount++;
 
-                        Debug.Log("[EquipmentFactory] 成功加载: " + itemPrefab.gameObject.name + 
+                        ModBehaviour.DevLog("[EquipmentFactory] 成功加载: " + itemPrefab.gameObject.name + 
                             " (TypeID=" + itemPrefab.TypeID + ", Type=" + equipType + ", Model=" + (modelAgent != null ? modelAgent.name : "无") + ")");
                     }
                     catch (Exception e)
                     {
-                        Debug.LogError("[EquipmentFactory] 处理 Item 失败: " + itemPrefab.gameObject.name + " - " + e.Message);
+                        ModBehaviour.DevLog("[EquipmentFactory] 处理 Item 失败: " + itemPrefab.gameObject.name + " - " + e.Message);
                     }
                 }
 
-                Debug.Log("[EquipmentFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个装备");
+                ModBehaviour.DevLog("[EquipmentFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个装备");
                 return loadedCount;
             }
             catch (Exception e)
             {
-                Debug.LogError("[EquipmentFactory] LoadBundleAutoDetect 出错: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[EquipmentFactory] LoadBundleAutoDetect 出错: " + e.Message + "\n" + e.StackTrace);
                 return 0;
             }
             // 注意：不要 Unload bundle，因为资源还在使用
@@ -486,7 +486,7 @@ namespace BossRush
                     gameShader = Shader.Find(GAME_SHADER_NAME);
                     if (gameShader == null)
                     {
-                        Debug.LogWarning("[EquipmentFactory] 未找到游戏 Shader: " + GAME_SHADER_NAME + "，将使用原始 Shader");
+                        ModBehaviour.DevLog("[EquipmentFactory] 未找到游戏 Shader: " + GAME_SHADER_NAME + "，将使用原始 Shader");
                     }
                 }
                 
@@ -509,7 +509,7 @@ namespace BossRush
                                         oldShaderName.Contains("Universal"))
                                     {
                                         mat.shader = gameShader;
-                                        Debug.Log("[EquipmentFactory] 替换 Shader: " + oldShaderName + " -> " + GAME_SHADER_NAME);
+                                        ModBehaviour.DevLog("[EquipmentFactory] 替换 Shader: " + oldShaderName + " -> " + GAME_SHADER_NAME);
                                     }
                                 }
                             }
@@ -517,11 +517,11 @@ namespace BossRush
                     }
                 }
                 
-                Debug.Log("[EquipmentFactory] 已修复 Model Layer 和 Shader: " + modelGo.name);
+                ModBehaviour.DevLog("[EquipmentFactory] 已修复 Model Layer 和 Shader: " + modelGo.name);
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[EquipmentFactory] 修复 Layer/Shader 失败: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentFactory] 修复 Layer/Shader 失败: " + e.Message);
             }
         }
         
@@ -614,7 +614,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[EquipmentFactory] 注入 EquipmentModel 失败: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentFactory] 注入 EquipmentModel 失败: " + e.Message);
             }
         }
 

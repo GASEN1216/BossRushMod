@@ -115,7 +115,7 @@ namespace BossRush
             
             if (bossCharacter == null)
             {
-                Debug.LogError("[DragonDescendant] Initialize: bossCharacter is null");
+                ModBehaviour.DevLog("[DragonDescendant] [ERROR] Initialize: bossCharacter is null");
                 return;
             }
             
@@ -140,7 +140,7 @@ namespace BossRush
             // 启动燃烧弹计时器
             grenadeTimerCoroutine = StartCoroutine(GrenadeTimerCoroutine());
             
-            Debug.Log("[DragonDescendant] 能力控制器初始化完成");
+            ModBehaviour.DevLog("[DragonDescendant] 能力控制器初始化完成");
         }
 
         
@@ -156,12 +156,12 @@ namespace BossRush
                 {
                     // 通过反射获取当前武器的射击事件
                     // 由于游戏API可能不直接暴露，我们使用Update轮询检测
-                    Debug.Log("[DragonDescendant] 使用Update轮询检测射击");
+                    ModBehaviour.DevLog("[DragonDescendant] 使用Update轮询检测射击");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 订阅射击事件失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 订阅射击事件失败: " + e.Message);
             }
         }
         
@@ -284,7 +284,7 @@ namespace BossRush
                 float distToBoss = Vector3.Distance(explosionPos, bossCharacter.transform.position);
                 bool shouldExplode = distToBoss <= DragonDescendantConfig.RocketBossDamageRadius;
                 
-                Debug.Log("[DragonDescendant] 火箭弹检测: 玩家位置: " + explosionPos + 
+                ModBehaviour.DevLog("[DragonDescendant] 火箭弹检测: 玩家位置: " + explosionPos + 
                     ", Boss距离: " + distToBoss + "m, 是否爆炸: " + shouldExplode);
                 
                 // 只有玩家在Boss附近时才创建爆炸
@@ -308,12 +308,12 @@ namespace BossRush
                         true
                     );
                     
-                    Debug.Log("[DragonDescendant] 火箭弹爆炸创建成功，范围: " + DragonDescendantConfig.RocketExplosionRadius);
+                    ModBehaviour.DevLog("[DragonDescendant] 火箭弹爆炸创建成功，范围: " + DragonDescendantConfig.RocketExplosionRadius);
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 发射火箭弹失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 发射火箭弹失败: " + e.Message);
             }
         }
 
@@ -367,7 +367,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 投掷燃烧弹失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 投掷燃烧弹失败: " + e.Message);
             }
         }
         
@@ -398,7 +398,7 @@ namespace BossRush
                     Vector3 velocity = CalculateThrowVelocity(startPos, targetPos, 8f);
                     grenade.Launch(startPos, velocity, bossCharacter, false);
                     
-                    Debug.Log("[DragonDescendant] 投掷燃烧弹到: " + targetPos);
+                    ModBehaviour.DevLog("[DragonDescendant] 投掷燃烧弹到: " + targetPos);
                 }
                 else
                 {
@@ -408,7 +408,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 创建燃烧弹失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 创建燃烧弹失败: " + e.Message);
             }
         }
         
@@ -549,7 +549,7 @@ namespace BossRush
             isResurrecting = true;
             isInvulnerable = true;
             
-            Debug.Log("[DragonDescendant] 开始复活序列");
+            ModBehaviour.DevLog("[DragonDescendant] 开始复活序列");
             
             // 使用原版API设置无敌状态
             if (bossHealth != null)
@@ -575,7 +575,7 @@ namespace BossRush
             {
                 float targetHealth = bossHealth.MaxHealth * DragonDescendantConfig.ResurrectionHealthPercent;
                 bossHealth.SetHealth(targetHealth);
-                Debug.Log("[DragonDescendant] 血量恢复到: " + targetHealth);
+                ModBehaviour.DevLog("[DragonDescendant] 血量恢复到: " + targetHealth);
                 
                 // 关闭原版无敌状态
                 bossHealth.SetInvincible(false);
@@ -585,6 +585,9 @@ namespace BossRush
             isInvulnerable = false;
             isResurrecting = false;
             hasResurrected = true;
+            
+            // 播放第二阶段音效
+            PlaySecondPhaseSound();
             
             // 进入狂暴状态
             EnterEnragedState();
@@ -629,7 +632,7 @@ namespace BossRush
                     // 禁用AI控制器
                     cachedAI.enabled = false;
                     
-                    Debug.Log("[DragonDescendant] AI已暂停 - 停止移动和射击");
+                    ModBehaviour.DevLog("[DragonDescendant] AI已暂停 - 停止移动和射击");
                 }
                 
                 // 停止角色移动输入
@@ -639,11 +642,11 @@ namespace BossRush
                 // 停止射击（调用原版Trigger方法）
                 bossCharacter.Trigger(false, false, false);
                 
-                Debug.Log("[DragonDescendant] Boss完全暂停");
+                ModBehaviour.DevLog("[DragonDescendant] Boss完全暂停");
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 暂停AI失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 暂停AI失败: " + e.Message);
             }
         }
         
@@ -668,12 +671,12 @@ namespace BossRush
                         cachedAI.noticed = true;
                     }
                     
-                    Debug.Log("[DragonDescendant] AI已恢复");
+                    ModBehaviour.DevLog("[DragonDescendant] AI已恢复");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 恢复AI失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 恢复AI失败: " + e.Message);
             }
         }
         
@@ -715,7 +718,7 @@ namespace BossRush
                     (Vector3.forward + Vector3.left).normalized         // NW
                 };
                 
-                Debug.Log("[DragonDescendant] 向八个方向投掷燃烧弹");
+                ModBehaviour.DevLog("[DragonDescendant] 向八个方向投掷燃烧弹");
                 
                 foreach (Vector3 dir in directions)
                 {
@@ -725,7 +728,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 八方向燃烧弹投掷失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 八方向燃烧弹投掷失败: " + e.Message);
             }
         }
         
@@ -773,7 +776,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning("[DragonDescendant] 显示对话气泡失败: " + e.Message);
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 显示对话气泡失败: " + e.Message);
                 }
                 
                 yield return new WaitForSeconds(charInterval);
@@ -803,7 +806,7 @@ namespace BossRush
             if (isEnraged) return;
             
             isEnraged = true;
-            Debug.Log("[DragonDescendant] 进入狂暴状态");
+            ModBehaviour.DevLog("[DragonDescendant] 进入狂暴状态");
             
             // 缓存AI控制器
             if (bossCharacter != null)
@@ -853,11 +856,11 @@ namespace BossRush
                 // 停止射击输入
                 bossCharacter.Trigger(false, false, false);
                 
-                Debug.Log("[DragonDescendant] 已收起武器并停止射击");
+                ModBehaviour.DevLog("[DragonDescendant] 已收起武器并停止射击");
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 禁用射击失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 禁用射击失败: " + e.Message);
             }
         }
         
@@ -874,7 +877,7 @@ namespace BossRush
                 if (speedStat != null)
                 {
                     speedStat.BaseValue *= DragonDescendantConfig.ChaseSpeedMultiplier;
-                    Debug.Log("[DragonDescendant] 移动速度提升到: " + speedStat.Value);
+                    ModBehaviour.DevLog("[DragonDescendant] 移动速度提升到: " + speedStat.Value);
                 }
                 
                 // 设置高Moveability值，免疫子弹减速效果
@@ -882,12 +885,12 @@ namespace BossRush
                 if (moveabilityStat != null)
                 {
                     moveabilityStat.BaseValue = 10f; // 设置很高的基础值，即使被减速也不会低于1
-                    Debug.Log("[DragonDescendant] 设置Moveability免疫减速");
+                    ModBehaviour.DevLog("[DragonDescendant] 设置Moveability免疫减速");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 应用速度加成失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 应用速度加成失败: " + e.Message);
             }
         }
         
@@ -914,11 +917,11 @@ namespace BossRush
                     }
                 }
                 
-                Debug.Log("[DragonDescendant] 扩大发光范围到: " + newRadius);
+                ModBehaviour.DevLog("[DragonDescendant] 扩大发光范围到: " + newRadius);
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 扩大发光范围失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 扩大发光范围失败: " + e.Message);
             }
         }
         
@@ -928,7 +931,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator ChasePlayerCoroutine()
         {
-            Debug.Log("[DragonDescendant] 开始追逐玩家");
+            ModBehaviour.DevLog("[DragonDescendant] 开始追逐玩家");
             
             while (isEnraged && bossCharacter != null)
             {
@@ -998,7 +1001,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 设置碰撞检测失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 设置碰撞检测失败: " + e.Message);
             }
         }
         
@@ -1033,7 +1036,7 @@ namespace BossRush
             if (Time.time - lastCollisionTime < COLLISION_COOLDOWN) return;
             lastCollisionTime = Time.time;
             
-            Debug.Log("[DragonDescendant] 撞击玩家");
+            ModBehaviour.DevLog("[DragonDescendant] 撞击玩家");
             
             // 播放撞击音效
             PlayCollisionSound();
@@ -1043,6 +1046,66 @@ namespace BossRush
             
             // 造成伤害
             ApplyCollisionDamage(player);
+        }
+        
+        /// <summary>
+        /// 播放第二阶段音效（进入狂暴状态时）
+        /// </summary>
+        private void PlaySecondPhaseSound()
+        {
+            try
+            {
+                // 获取mod基础路径
+                string baseDir = null;
+                try
+                {
+                    baseDir = System.IO.Path.GetDirectoryName(GetType().Assembly.Location);
+                }
+                catch { }
+                
+                if (string.IsNullOrEmpty(baseDir)) return;
+                
+                // 查找音效文件
+                string filePath = null;
+                string candidate1 = System.IO.Path.Combine(baseDir, "Assets", "dragonToSecond.mp3");
+                string candidate2 = System.IO.Path.Combine(baseDir, "dragonToSecond.mp3");
+                
+                if (System.IO.File.Exists(candidate1))
+                {
+                    filePath = candidate1;
+                }
+                else if (System.IO.File.Exists(candidate2))
+                {
+                    filePath = candidate2;
+                }
+                
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] 未找到第二阶段音效文件: dragonToSecond.mp3");
+                    return;
+                }
+                
+                // 获取播放目标（Boss自身）
+                GameObject target = bossCharacter != null ? bossCharacter.gameObject : null;
+                
+                // 使用反射调用AudioManager.PostCustomSFX
+                System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
+                if (audioManagerType != null)
+                {
+                    var method = audioManagerType.GetMethod("PostCustomSFX", 
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    if (method != null)
+                    {
+                        object[] args = new object[] { filePath, target, false };
+                        method.Invoke(null, args);
+                        ModBehaviour.DevLog("[DragonDescendant] 播放第二阶段音效: " + filePath);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] 播放第二阶段音效失败: " + e.Message);
+            }
         }
         
         /// <summary>
@@ -1078,7 +1141,7 @@ namespace BossRush
                 
                 if (string.IsNullOrEmpty(filePath))
                 {
-                    Debug.LogWarning("[DragonDescendant] 未找到撞击音效文件: hurt.mp3");
+                    ModBehaviour.DevLog("[DragonDescendant] 未找到撞击音效文件: hurt.mp3");
                     return;
                 }
                 
@@ -1099,13 +1162,13 @@ namespace BossRush
                     {
                         object[] args = new object[] { filePath, target, false };
                         method.Invoke(null, args);
-                        Debug.Log("[DragonDescendant] 播放撞击音效: " + filePath);
+                        ModBehaviour.DevLog("[DragonDescendant] 播放撞击音效: " + filePath);
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 播放撞击音效失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 播放撞击音效失败: " + e.Message);
             }
         }
         
@@ -1131,7 +1194,7 @@ namespace BossRush
                 try
                 {
                     player.SetForceMoveVelocity(knockbackDir * force);
-                    Debug.Log("[DragonDescendant] 使用SetForceMoveVelocity应用击退");
+                    ModBehaviour.DevLog("[DragonDescendant] 使用SetForceMoveVelocity应用击退");
                 }
                 catch
                 {
@@ -1140,21 +1203,21 @@ namespace BossRush
                     if (rb != null)
                     {
                         rb.AddForce(knockbackDir * force, ForceMode.Impulse);
-                        Debug.Log("[DragonDescendant] 使用Rigidbody应用击退");
+                        ModBehaviour.DevLog("[DragonDescendant] 使用Rigidbody应用击退");
                     }
                     else
                     {
                         // 最后方案：直接移动位置
                         player.transform.position += knockbackDir * (force * 0.1f);
-                        Debug.Log("[DragonDescendant] 直接移动位置应用击退");
+                        ModBehaviour.DevLog("[DragonDescendant] 直接移动位置应用击退");
                     }
                 }
                 
-                Debug.Log("[DragonDescendant] 应用击退: 方向=" + knockbackDir + ", 力=" + force);
+                ModBehaviour.DevLog("[DragonDescendant] 应用击退: 方向=" + knockbackDir + ", 力=" + force);
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 应用击退失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 应用击退失败: " + e.Message);
             }
         }
         
@@ -1187,24 +1250,24 @@ namespace BossRush
                 {
                     player.mainDamageReceiver.Hurt(dmgInfo);
                     damageApplied = true;
-                    Debug.Log("[DragonDescendant] 通过mainDamageReceiver造成碰撞伤害: " + DragonDescendantConfig.CollisionDamage);
+                    ModBehaviour.DevLog("[DragonDescendant] 通过mainDamageReceiver造成碰撞伤害: " + DragonDescendantConfig.CollisionDamage);
                 }
                 // 后备：直接使用Health组件
                 else if (player.Health != null)
                 {
                     player.Health.Hurt(dmgInfo);
                     damageApplied = true;
-                    Debug.Log("[DragonDescendant] 通过Health造成碰撞伤害: " + DragonDescendantConfig.CollisionDamage);
+                    ModBehaviour.DevLog("[DragonDescendant] 通过Health造成碰撞伤害: " + DragonDescendantConfig.CollisionDamage);
                 }
                 
                 if (!damageApplied)
                 {
-                    Debug.LogWarning("[DragonDescendant] 无法应用碰撞伤害 - 玩家没有有效的伤害接收器");
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 无法应用碰撞伤害 - 玩家没有有效的伤害接收器");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[DragonDescendant] 应用碰撞伤害失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 应用碰撞伤害失败: " + e.Message);
             }
         }
     }

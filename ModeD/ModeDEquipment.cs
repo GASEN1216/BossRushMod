@@ -81,7 +81,7 @@ namespace BossRush
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null)
                 {
-                    Debug.LogError("[ModeD] GivePlayerStarterKit: 未找到玩家");
+                    DevLog("[ModeD] [ERROR] GivePlayerStarterKit: 未找到玩家");
                     return;
                 }
 
@@ -144,7 +144,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GivePlayerStarterKit 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GivePlayerStarterKit 失败: " + e.Message);
             }
         }
         
@@ -189,7 +189,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomWeapon 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomWeapon 失败: " + e.Message);
             }
         }
 
@@ -228,7 +228,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] TryAddRandomAttachmentsFullRandom 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] TryAddRandomAttachmentsFullRandom 失败: " + e.Message);
             }
         }
 
@@ -280,7 +280,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomMeleeWeapon 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomMeleeWeapon 失败: " + e.Message);
             }
         }
         /// <summary>
@@ -332,7 +332,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomMeleeWeaponToEnemy 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomMeleeWeaponToEnemy 失败: " + e.Message);
             }
         }
         
@@ -363,7 +363,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomArmor 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomArmor 失败: " + e.Message);
             }
         }
 
@@ -394,7 +394,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomHelmet 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomHelmet 失败: " + e.Message);
             }
         }
 
@@ -439,7 +439,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomTotem 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomTotem 失败: " + e.Message);
             }
         }
 
@@ -484,7 +484,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomMask 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomMask 失败: " + e.Message);
             }
         }
 
@@ -529,7 +529,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveRandomBackpack 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveRandomBackpack 失败: " + e.Message);
             }
         }
 
@@ -596,7 +596,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveStarterAmmo 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveStarterAmmo 失败: " + e.Message);
             }
         }
 
@@ -638,7 +638,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveStarterMedical 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveStarterMedical 失败: " + e.Message);
             }
         }
 
@@ -713,7 +713,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] EnsureStarterGunHasBulletType 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] EnsureStarterGunHasBulletType 失败: " + e.Message);
             }
         }
 
@@ -750,7 +750,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] FillGunMagazine 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] FillGunMagazine 失败: " + e.Message);
             }
         }
 
@@ -787,7 +787,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] FillGunInternalAmmo 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] FillGunInternalAmmo 失败: " + e.Message);
             }
         }
 
@@ -864,7 +864,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] InitializeAccessoryPool 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] InitializeAccessoryPool 失败: " + e.Message);
             }
         }
 
@@ -912,7 +912,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] TryFillSlotWithRandomAccessory 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] TryFillSlotWithRandomAccessory 失败: " + e.Message);
             }
         }
 
@@ -1077,7 +1077,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] EquipEnemyForModeD 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] EquipEnemyForModeD 失败: " + e.Message);
             }
         }
 
@@ -1184,7 +1184,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveEnemyItemByCategory 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveEnemyItemByCategory 失败: " + e.Message);
             }
         }
 
@@ -1264,7 +1264,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveEnemyItemByCategoryNoWeapon 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveEnemyItemByCategoryNoWeapon 失败: " + e.Message);
             }
         }
 
@@ -1330,7 +1330,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] FillEnemyInventoryForModeD 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] FillEnemyInventoryForModeD 失败: " + e.Message);
             }
         }
 
@@ -1497,7 +1497,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] GiveEnemyEquippedWeapon 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] GiveEnemyEquippedWeapon 失败: " + e.Message);
             }
         }
 
@@ -1555,7 +1555,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] ClearEnemyInventory 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] ClearEnemyInventory 失败: " + e.Message);
             }
         }
         

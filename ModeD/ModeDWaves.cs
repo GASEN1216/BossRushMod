@@ -87,7 +87,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] ModeDStartNextWave 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] ModeDStartNextWave 失败: " + e.Message);
             }
         }
         
@@ -142,7 +142,7 @@ namespace BossRush
                 CharacterMainControl playerMain = CharacterMainControl.Main;
                 if (playerMain == null)
                 {
-                    Debug.LogError("[ModeD] 未找到玩家");
+                    DevLog("[ModeD] [ERROR] 未找到玩家");
                     return;
                 }
                 
@@ -206,7 +206,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] SpawnModeDWaveEnemies 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] SpawnModeDWaveEnemies 失败: " + e.Message);
             }
         }
         
@@ -520,13 +520,13 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[ModeD] SpawnModeDEnemy 尝试失败: " + e.Message);
+                    DevLog("[ModeD] [ERROR] SpawnModeDEnemy 尝试失败: " + e.Message);
                     // 下次重试时重新随机预设
                     currentPresetInfo = null;
                 }
             }
 
-            Debug.LogError("[ModeD] SpawnModeDEnemy 多次尝试仍然失败 (isBoss=" + isBoss + ")");
+            DevLog("[ModeD] [ERROR] SpawnModeDEnemy 多次尝试仍然失败 (isBoss=" + isBoss + ")");
         }
 
         /// <summary>
@@ -575,7 +575,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] NormalizeDamageMultiplier 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] NormalizeDamageMultiplier 失败: " + e.Message);
             }
         }
 
@@ -607,7 +607,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] ApplyModeDWaveScaling 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] ApplyModeDWaveScaling 失败: " + e.Message);
             }
         }
 
@@ -635,7 +635,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] ApplyBossStatMultiplierModeD 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] ApplyBossStatMultiplierModeD 失败: " + e.Message);
             }
         }
 
@@ -654,7 +654,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] RegisterModeDEnemyDeath 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] RegisterModeDEnemyDeath 失败: " + e.Message);
             }
         }
 
@@ -700,7 +700,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] OnModeDEnemyDeath 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] OnModeDEnemyDeath 失败: " + e.Message);
             }
         }
 
@@ -880,7 +880,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] TryFixStuckWaveIfNoModeDEnemyAlive 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] TryFixStuckWaveIfNoModeDEnemyAlive 失败: " + e.Message);
             }
         }
 
@@ -956,7 +956,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] OnModeDWaveComplete 失败: " + e.Message);
+                DevLog("[ModeD] [ERROR] OnModeDWaveComplete 失败: " + e.Message);
             }
         }
 

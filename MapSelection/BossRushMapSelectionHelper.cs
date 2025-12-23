@@ -107,7 +107,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] GetBossRushTicketTypeId 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] GetBossRushTicketTypeId 失败: " + e.Message);
             }
             return 868; // 默认回退值
         }
@@ -153,7 +153,7 @@ namespace BossRush
                 MapSelectionView mapView = MapSelectionView.Instance;
                 if (mapView == null)
                 {
-                    Debug.LogError("[BossRush] MapSelectionView.Instance 为 null，无法打开地图选择 UI");
+                    ModBehaviour.DevLog("[BossRush] MapSelectionView.Instance 为 null，无法打开地图选择 UI");
                     // 回退到直接传送
                     FallbackToDirectTeleport();
                     return;
@@ -163,7 +163,7 @@ namespace BossRush
                 bool injected = InjectBossRushEntry(mapView);
                 if (!injected)
                 {
-                    Debug.LogWarning("[BossRush] 无法注入 BossRush 条目，回退到直接传送");
+                    ModBehaviour.DevLog("[BossRush] 无法注入 BossRush 条目，回退到直接传送");
                     FallbackToDirectTeleport();
                     return;
                 }
@@ -195,7 +195,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] ShowBossRushMapSelection 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] ShowBossRushMapSelection 失败: " + e.Message);
                 FallbackToDirectTeleport();
             }
         }
@@ -311,7 +311,7 @@ namespace BossRush
                 
                 if (existingEntries == null || existingEntries.Length == 0)
                 {
-                    Debug.LogWarning("[BossRush] MapSelectionView 中未找到任何 MapSelectionEntry，无法注入");
+                    ModBehaviour.DevLog("[BossRush] MapSelectionView 中未找到任何 MapSelectionEntry，无法注入");
                     return false;
                 }
                 
@@ -356,7 +356,7 @@ namespace BossRush
                 // 没有可用的模板
                 if (templateEntry == null)
                 {
-                    Debug.LogWarning("[BossRush] 没有可用的模板 MapSelectionEntry");
+                    ModBehaviour.DevLog("[BossRush] 没有可用的模板 MapSelectionEntry");
                     return false;
                 }
                 
@@ -364,7 +364,7 @@ namespace BossRush
                 ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
                 if (mapConfigs == null || mapConfigs.Length == 0)
                 {
-                    Debug.LogWarning("[BossRush] 没有可用的地图配置");
+                    ModBehaviour.DevLog("[BossRush] 没有可用的地图配置");
                     return false;
                 }
                 
@@ -383,7 +383,7 @@ namespace BossRush
                     MapSelectionEntry uiEntry = cloned.GetComponent<MapSelectionEntry>();
                     if (uiEntry == null)
                     {
-                        Debug.LogWarning("[BossRush] 克隆的对象上没有 MapSelectionEntry 组件");
+                        ModBehaviour.DevLog("[BossRush] 克隆的对象上没有 MapSelectionEntry 组件");
                         UnityEngine.Object.Destroy(cloned);
                         continue;
                     }
@@ -441,7 +441,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] InjectBossRushEntry 失败: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[BossRush] InjectBossRushEntry 失败: " + e.Message + "\n" + e.StackTrace);
                 return false;
             }
         }
@@ -496,7 +496,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] ConfigureBossRushEntryWithMapConfig 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] ConfigureBossRushEntryWithMapConfig 失败: " + e.Message);
             }
         }
         
@@ -507,7 +507,7 @@ namespace BossRush
         private static void ConfigureBossRushEntryWithMapEntry(MapSelectionEntry entry, object mapEntry, int entryIndex)
         {
             // 旧方法已废弃，不再使用
-            Debug.LogWarning("[BossRush] ConfigureBossRushEntryWithMapEntry 已废弃，请使用 ConfigureBossRushEntryWithMapConfig");
+            ModBehaviour.DevLog("[BossRush] ConfigureBossRushEntryWithMapEntry 已废弃，请使用 ConfigureBossRushEntryWithMapConfig");
         }
         
         /// <summary>
@@ -552,7 +552,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] ConfigureBossRushEntry_Legacy 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] ConfigureBossRushEntry_Legacy 失败: " + e.Message);
             }
         }
         
@@ -597,7 +597,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] UpdateEntryThumbnailWithImage 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] UpdateEntryThumbnailWithImage 失败: " + e.Message);
             }
         }
         
@@ -632,7 +632,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] LoadCustomBackgroundSpriteByName 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] LoadCustomBackgroundSpriteByName 失败: " + e.Message);
             }
             return null;
         }
@@ -655,7 +655,7 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] 场景信息不存在: " + BossRushSceneID + "，Refresh() 可能无法正确显示名称");
+                    ModBehaviour.DevLog("[BossRush] 场景信息不存在: " + BossRushSceneID + "，Refresh() 可能无法正确显示名称");
                 }
                 
                 // 使用反射设置私有字段
@@ -699,7 +699,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] ConfigureBossRushEntry 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] ConfigureBossRushEntry 失败: " + e.Message);
             }
         }
         
@@ -727,7 +727,7 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] 未找到 fullScreenImage 字段");
+                        ModBehaviour.DevLog("[BossRush] 未找到 fullScreenImage 字段");
                     }
                     
                     // 尝试查找并设置 MapSelectionView 中的背景 Image 组件
@@ -750,12 +750,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] 自定义背景图片为 null");
+                    ModBehaviour.DevLog("[BossRush] 自定义背景图片为 null");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] SetEntryBackgroundImage 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] SetEntryBackgroundImage 失败: " + e.Message);
             }
         }
         
@@ -771,7 +771,7 @@ namespace BossRush
                 string modPath = GetModPath();
                 if (string.IsNullOrEmpty(modPath))
                 {
-                    Debug.LogWarning("[BossRush] 无法获取 Mod 路径");
+                    ModBehaviour.DevLog("[BossRush] 无法获取 Mod 路径");
                     return null;
                 }
                 
@@ -783,7 +783,7 @@ namespace BossRush
                     imagePath = System.IO.Path.Combine(modPath, "demo-preview.png");
                     if (!System.IO.File.Exists(imagePath))
                     {
-                        Debug.LogWarning("[BossRush] 背景图片不存在: " + imagePath);
+                        ModBehaviour.DevLog("[BossRush] 背景图片不存在: " + imagePath);
                         return null;
                     }
                 }
@@ -806,12 +806,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogError("[BossRush] 无法解析图片数据");
+                    ModBehaviour.DevLog("[BossRush] 无法解析图片数据");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] LoadCustomBackgroundSprite 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] LoadCustomBackgroundSprite 失败: " + e.Message);
             }
             return null;
         }
@@ -848,7 +848,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] GetModPath 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] GetModPath 失败: " + e.Message);
             }
             return null;
         }
@@ -868,7 +868,7 @@ namespace BossRush
                 
                 if (customBackgroundSprite == null)
                 {
-                    Debug.LogWarning("[BossRush] 无法加载自定义背景图片");
+                    ModBehaviour.DevLog("[BossRush] 无法加载自定义背景图片");
                     return;
                 }
                 
@@ -914,7 +914,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] UpdateEntryThumbnail 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] UpdateEntryThumbnail 失败: " + e.Message);
             }
         }
         
@@ -961,7 +961,7 @@ namespace BossRush
                 
                 if (!found)
                 {
-                    Debug.LogWarning("[BossRush] 未找到 Text_MapName 组件，尝试查找包含 'name' 的组件");
+                    ModBehaviour.DevLog("[BossRush] 未找到 Text_MapName 组件，尝试查找包含 'name' 的组件");
                     // 回退：查找名称包含 "name" 的组件
                     foreach (TextMeshProUGUI tmp in textComps)
                     {
@@ -976,7 +976,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] SetEntryDisplayNameDirect 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] SetEntryDisplayNameDirect 失败: " + e.Message);
             }
         }
         
@@ -999,7 +999,7 @@ namespace BossRush
                     }
                     else
                     {
-                        Debug.LogWarning("[BossRush] displayNameText 字段为 null，尝试查找子对象中的 TextMeshProUGUI");
+                        ModBehaviour.DevLog("[BossRush] displayNameText 字段为 null，尝试查找子对象中的 TextMeshProUGUI");
                     }
                 }
                 
@@ -1023,7 +1023,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] SetEntryDisplayName 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] SetEntryDisplayName 失败: " + e.Message);
             }
         }
         
@@ -1046,7 +1046,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] VerifyEntryDisplayName 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] VerifyEntryDisplayName 失败: " + e.Message);
             }
         }
         
@@ -1094,7 +1094,7 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning("[BossRush] 未找到 Text_MapName 组件，无法重新绑定 displayNameText");
+                    ModBehaviour.DevLog("[BossRush] 未找到 Text_MapName 组件，无法重新绑定 displayNameText");
                 }
                 
                 // 重新绑定 costDisplay
@@ -1137,7 +1137,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] RebindSerializedFields 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] RebindSerializedFields 失败: " + e.Message);
             }
         }
         
@@ -1156,7 +1156,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] UpdateEntryCost 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] UpdateEntryCost 失败: " + e.Message);
             }
         }
         
@@ -1176,7 +1176,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] SetBossRushArenaPlanned 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] SetBossRushArenaPlanned 失败: " + e.Message);
             }
         }
         
@@ -1195,7 +1195,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] FallbackToDirectTeleport 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] FallbackToDirectTeleport 失败: " + e.Message);
             }
         }
         
@@ -1231,7 +1231,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] RestoreHiddenEntries 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] RestoreHiddenEntries 失败: " + e.Message);
             }
         }
         
@@ -1261,7 +1261,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] Cleanup 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] Cleanup 失败: " + e.Message);
             }
         }
     }

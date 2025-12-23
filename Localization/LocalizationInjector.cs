@@ -61,11 +61,11 @@ namespace BossRush
                 InjectUILocalization();
                 InjectMapNameLocalizations();
                 EquipmentLocalization.InjectAllEquipmentLocalizations();
-                Debug.Log("[LocalizationInjector] 所有本地化注入完成");
+                ModBehaviour.DevLog("[LocalizationInjector] 所有本地化注入完成");
             }
             catch (Exception e)
             {
-                Debug.LogError("[LocalizationInjector] 注入失败: " + e.Message);
+                ModBehaviour.DevLog("[LocalizationInjector] 注入失败: " + e.Message);
             }
         }
         
@@ -140,7 +140,7 @@ namespace BossRush
             LocalizationHelper.InjectLocalization(DRAGON_DESCENDANT_RESURRECTION_CN, resurrection);
             LocalizationHelper.InjectLocalization(DRAGON_DESCENDANT_RESURRECTION_EN, resurrection);
             
-            Debug.Log("[LocalizationInjector] 龙裔遗族本地化注入完成");
+            ModBehaviour.DevLog("[LocalizationInjector] 龙裔遗族本地化注入完成");
         }
 
         /// <summary>
@@ -215,11 +215,11 @@ namespace BossRush
                 // 注入零度挑战的本地化（官方未提供）
                 string zeroChallengeDisplayName = L10n.T("零度挑战", "Zero Challenge");
                 LocalizationHelper.InjectLocalization("Level_ChallengeSnow", zeroChallengeDisplayName);
-                Debug.Log("[LocalizationInjector] 已注入地图名称本地化: Level_ChallengeSnow -> " + zeroChallengeDisplayName);
+                ModBehaviour.DevLog("[LocalizationInjector] 已注入地图名称本地化: Level_ChallengeSnow -> " + zeroChallengeDisplayName);
             }
             catch (Exception e)
             {
-                Debug.LogError("[LocalizationInjector] 注入地图名称本地化失败: " + e.Message);
+                ModBehaviour.DevLog("[LocalizationInjector] 注入地图名称本地化失败: " + e.Message);
             }
         }
         

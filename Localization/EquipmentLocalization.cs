@@ -57,11 +57,11 @@ namespace BossRush
             {
                 InjectDragonSetLocalization();
                 InjectDragonDescendantLocalization();
-                Debug.Log("[EquipmentLocalization] 所有装备本地化注入完成");
+                ModBehaviour.DevLog("[EquipmentLocalization] 所有装备本地化注入完成");
             }
             catch (Exception e)
             {
-                Debug.LogError("[EquipmentLocalization] 注入装备本地化失败: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入装备本地化失败: " + e.Message);
             }
         }
         
@@ -78,11 +78,11 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization("DragonDescendant", displayName);
                 LocalizationHelper.InjectLocalization("龙裔遗族", displayName);
                 
-                Debug.Log("[EquipmentLocalization] 龙裔遗族本地化注入完成");
+                ModBehaviour.DevLog("[EquipmentLocalization] 龙裔遗族本地化注入完成");
             }
             catch (Exception e)
             {
-                Debug.LogError("[EquipmentLocalization] 注入龙裔遗族本地化失败: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入龙裔遗族本地化失败: " + e.Message);
             }
         }
         
@@ -134,11 +134,11 @@ namespace BossRush
                     LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
                 }
                 
-                Debug.Log("[EquipmentLocalization] 赤龙首本地化注入完成");
+                ModBehaviour.DevLog("[EquipmentLocalization] 赤龙首本地化注入完成");
             }
             catch (Exception e)
             {
-                Debug.LogError("[EquipmentLocalization] 注入赤龙首本地化失败: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入赤龙首本地化失败: " + e.Message);
             }
         }
         
@@ -165,11 +165,11 @@ namespace BossRush
                     LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
                 }
                 
-                Debug.Log("[EquipmentLocalization] 焰鳞甲本地化注入完成");
+                ModBehaviour.DevLog("[EquipmentLocalization] 焰鳞甲本地化注入完成");
             }
             catch (Exception e)
             {
-                Debug.LogError("[EquipmentLocalization] 注入焰鳞甲本地化失败: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入焰鳞甲本地化失败: " + e.Message);
             }
         }
         

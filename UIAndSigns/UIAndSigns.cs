@@ -87,7 +87,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] RemoveRigidbodyAndSetTrigger 异常: " + e.Message);
+                DevLog("[BossRush] [WARNING] RemoveRigidbodyAndSetTrigger 异常: " + e.Message);
             }
         }
         
@@ -126,7 +126,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] FindNearestBoxCollider 异常: " + e.Message);
+                DevLog("[BossRush] [WARNING] FindNearestBoxCollider 异常: " + e.Message);
                 return null;
             }
         }
@@ -172,7 +172,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 创建救援传送气泡失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 创建救援传送气泡失败: " + e.Message);
             }
         }
 
@@ -268,7 +268,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 创建传送路牌失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 创建传送路牌失败: " + e.Message);
             }
         }
 
@@ -357,7 +357,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 创建传送气泡失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 创建传送气泡失败: " + e.Message);
             }
         }
 
@@ -446,7 +446,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] ShowEnemyBanner错误: " + e.Message);
+                DevLog("[BossRush] [ERROR] ShowEnemyBanner错误: " + e.Message);
             }
         }
         
@@ -507,7 +507,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] 调整 NotificationText 持续时间失败: " + e.Message);
+                DevLog("[BossRush] [WARNING] 调整 NotificationText 持续时间失败: " + e.Message);
             }
         }
 
@@ -525,7 +525,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] ShowBigBanner错误: " + e.Message);
+                DevLog("[BossRush] [ERROR] ShowBigBanner错误: " + e.Message);
             }
         }
 
@@ -732,7 +732,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 创建 BossRush 难度入口失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 创建 BossRush 难度入口失败: " + e.Message);
             }
         }
 
@@ -763,7 +763,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 创建下一波交互点失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 创建下一波交互点失败: " + e.Message);
             }
         }
 
@@ -857,7 +857,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] AddNextWaveToSign 失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] AddNextWaveToSign 失败: " + e.Message);
                 return false;
             }
         }
@@ -953,7 +953,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 反射注入失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 反射注入失败: " + e.Message);
                 return false;
             }
         }
@@ -1046,7 +1046,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] InjectBossRushOptionsIntoSign 失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] InjectBossRushOptionsIntoSign 失败: " + e.Message);
                 return false;
             }
         }
@@ -1151,7 +1151,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] InjectIntoInteractableBaseGroupWithEntry 失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] InjectIntoInteractableBaseGroupWithEntry 失败: " + e.Message);
                 return false;
             }
         }
@@ -1258,7 +1258,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[BossRush] 注入 MultiInteraction 失败: " + e.Message);
+                DevLog("[BossRush] [ERROR] 注入 MultiInteraction 失败: " + e.Message);
                 return false;
             }
         }

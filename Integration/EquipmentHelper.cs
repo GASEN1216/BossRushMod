@@ -41,7 +41,7 @@ namespace BossRush
                 
                 if (modifiers == null)
                 {
-                    Debug.Log("[EquipmentHelper] 物品没有 Modifiers，尝试创建...");
+                    ModBehaviour.DevLog("[EquipmentHelper] 物品没有 Modifiers，尝试创建...");
                     
                     modifiers = item.gameObject.AddComponent<ModifierDescriptionCollection>();
                     
@@ -64,7 +64,7 @@ namespace BossRush
                 
                 if (modifiers == null)
                 {
-                    Debug.LogWarning("[EquipmentHelper] 无法获取或创建 ModifierDescriptionCollection");
+                    ModBehaviour.DevLog("[EquipmentHelper] 无法获取或创建 ModifierDescriptionCollection");
                     return;
                 }
                 
@@ -90,11 +90,11 @@ namespace BossRush
                 modifiers.Add(modDesc);
                 
                 string modTypeStr = modType == ModifierType.Add ? "+" : (modType == ModifierType.PercentageAdd ? "*+" : "*");
-                Debug.Log("[EquipmentHelper] 添加 Modifier: Character/" + statKey + " " + modTypeStr + value + " (display=" + display + ")");
+                ModBehaviour.DevLog("[EquipmentHelper] 添加 Modifier: Character/" + statKey + " " + modTypeStr + value + " (display=" + display + ")");
             }
             catch (Exception e)
             {
-                Debug.LogError("[EquipmentHelper] AddModifierToItem 出错: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[EquipmentHelper] AddModifierToItem 出错: " + e.Message + "\n" + e.StackTrace);
             }
         }
         
@@ -109,12 +109,12 @@ namespace BossRush
                 if (constants != null)
                 {
                     constants.SetFloat(key, value, true);
-                    Debug.Log("[EquipmentHelper] 设置 Constant: " + key + " = " + value);
+                    ModBehaviour.DevLog("[EquipmentHelper] 设置 Constant: " + key + " = " + value);
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[EquipmentHelper] SetItemConstant 出错: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentHelper] SetItemConstant 出错: " + e.Message);
             }
         }
         
@@ -140,7 +140,7 @@ namespace BossRush
 
                 if (targetTag == null)
                 {
-                    Debug.LogWarning("[EquipmentHelper] 未找到 Tag: " + tagName);
+                    ModBehaviour.DevLog("[EquipmentHelper] 未找到 Tag: " + tagName);
                     return;
                 }
 
@@ -169,11 +169,11 @@ namespace BossRush
                 }
 
                 tagList.Add(targetTag);
-                Debug.Log("[EquipmentHelper] 已添加 Tag: " + tagName);
+                ModBehaviour.DevLog("[EquipmentHelper] 已添加 Tag: " + tagName);
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[EquipmentHelper] AddTagToItem 出错: " + e.Message);
+                ModBehaviour.DevLog("[EquipmentHelper] AddTagToItem 出错: " + e.Message);
             }
         }
         

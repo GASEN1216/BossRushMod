@@ -197,7 +197,7 @@ namespace BossRush
                     "Failed: " + e.Message
                 );
                 itemSpawnerMessageTimer = 3f;
-                Debug.LogError("[BossRush] 物品生成器错误: " + e.Message);
+                DevLog("[BossRush] 物品生成器错误: " + e.Message);
             }
         }
     }

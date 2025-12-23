@@ -69,7 +69,7 @@ namespace BossRush
                 var mod = ModBehaviour.Instance;
                 if (mod == null || !mod.IsModeDActive)
                 {
-                    Debug.LogWarning("[ModeD] ModeDNextWaveInteractable: Mode D 未激活");
+                    ModBehaviour.DevLog("[ModeD] [WARNING] ModeDNextWaveInteractable: Mode D 未激活");
                     return;
                 }
 
@@ -80,7 +80,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] ModeDNextWaveInteractable.OnTimeOut 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] ModeDNextWaveInteractable.OnTimeOut 失败: " + e.Message);
             }
         }
     }
@@ -190,7 +190,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] 清空所有箱子失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] 清空所有箱子失败: " + e.Message);
             }
         }
     }
@@ -320,7 +320,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] 清空空箱子失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] 清空空箱子失败: " + e.Message);
             }
         }
     }
@@ -367,7 +367,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] SetupSignForModeD 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] SetupSignForModeD 失败: " + e.Message);
             }
         }
 
@@ -387,7 +387,7 @@ namespace BossRush
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (field == null)
                 {
-                    Debug.LogError("[ModeD] 无法获取 otherInterablesInGroup 字段");
+                    ModBehaviour.DevLog("[ModeD] [ERROR] 无法获取 otherInterablesInGroup 字段");
                     return;
                 }
 
@@ -438,7 +438,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] AddModeDOptionsToSign 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] AddModeDOptionsToSign 失败: " + e.Message);
             }
         }
 
@@ -489,7 +489,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] ClearAllBossRushLootboxes 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] ClearAllBossRushLootboxes 失败: " + e.Message);
             }
         }
 
@@ -522,7 +522,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModeD] ClearEmptyBossRushLootboxes 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] ClearEmptyBossRushLootboxes 失败: " + e.Message);
             }
         }
     }
