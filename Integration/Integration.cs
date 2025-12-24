@@ -623,6 +623,9 @@ namespace BossRush
                         bossRushArenaPlanned = false;
                         currentBoss = null;
                         
+                        // 销毁快递员 NPC
+                        DestroyCourierNPC();
+                        
                         // 重置 spawner 禁用标志，以便下次进入竞技场时能重新禁用
                         spawnersDisabled = false;
                         try
@@ -829,6 +832,9 @@ namespace BossRush
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeD();
             }
+            
+            // 11. 生成快递员 NPC
+            SpawnCourierNPC();
         }
         
         /// <summary>

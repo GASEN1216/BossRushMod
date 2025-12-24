@@ -1105,6 +1105,12 @@ namespace BossRush
         /// </summary>
         private void SpawnNextEnemy()
         {
+            // 通知快递员 Boss 战开始
+            NotifyCourierBossFightStart();
+            
+            // 通知快递员有Boss了（不再是召唤间隔）
+            NotifyCourierNoBoss(false);
+            
             // 获取过滤后的 Boss 列表
             var filteredPresets = GetFilteredEnemyPresets();
             
@@ -1502,6 +1508,12 @@ namespace BossRush
         {
             try
             {
+                // 通知快递员 Boss 战结束
+                NotifyCourierBossFightEnd();
+                
+                // 通知快递员当前没有Boss（召唤间隔期间）
+                NotifyCourierNoBoss(true);
+                
                 currentEnemyIndex++;
                 currentBoss = null;
 

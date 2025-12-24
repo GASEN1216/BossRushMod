@@ -58,5 +58,24 @@ namespace BossRush
             }
             return count;
         }
+        
+        /// <summary>
+        /// 获取本地化文本
+        /// 使用游戏官方 API: LocalizationManager.GetPlainText
+        /// </summary>
+        /// <param name="key">本地化键</param>
+        /// <returns>本地化后的文本，如果未找到则返回键本身</returns>
+        public static string GetLocalizedText(string key)
+        {
+            try
+            {
+                return LocalizationManager.GetPlainText(key);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[LocalizationHelper] GetLocalizedText 出错: " + e.Message);
+                return key;
+            }
+        }
     }
 }

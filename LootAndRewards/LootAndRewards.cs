@@ -604,6 +604,9 @@ namespace BossRush
 
             // 取消敌人死亡监听
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
+            
+            // 通知快递员 BossRush 通关
+            NotifyCourierBossRushCompleted();
 
             ShowMessage(L10n.T("所有敌人已击败！你赢了！", "All enemies defeated! You win!"));
             DevLog("[BossRush] BossRush挑战完成！");
@@ -2359,13 +2362,41 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 判断Boss是否是龙裔遗族（支持多Boss模式）
+        /// 通过GameObject名称或预设nameKey判断，不依赖单一实例引用
+        /// </summary>
+        private bool IsDragonDescendantBoss(CharacterMainControl boss)
+        {
+            if (boss == null) return false;
+            
+            try
+            {
+                // 方法1：检查GameObject名称（SpawnDragonDescendant中设置为"BossRush_DragonDescendant"）
+                if (boss.gameObject != null && boss.gameObject.name.Contains("DragonDescendant"))
+                {
+                    return true;
+                }
+                
+                // 方法2：检查预设nameKey
+                if (boss.characterPreset != null && 
+                    boss.characterPreset.nameKey == DragonDescendantConfig.BOSS_NAME_KEY)
+                {
+                    return true;
+                }
+            }
+            catch { }
+            
+            return false;
+        }
+
+        /// <summary>
         /// 龙裔遗族特殊掉落：在掉落箱填充完成后添加龙套装（协程版本）
         /// 从Boss身上获取装备（保留耐久度等属性），而不是新创建
         /// </summary>
         private IEnumerator AddDragonSetToLootboxCoroutine(InteractableLootbox lootbox, CharacterMainControl bossMain)
         {
-            // 检查是否是龙裔遗族Boss
-            if (dragonDescendantInstance == null || bossMain != dragonDescendantInstance)
+            // 检查是否是龙裔遗族Boss（通过名称判断，支持多Boss模式）
+            if (!IsDragonDescendantBoss(bossMain))
             {
                 yield break;
             }

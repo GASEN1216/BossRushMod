@@ -1150,6 +1150,9 @@ namespace BossRush
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeD();
             }
+            
+            // 生成快递员 NPC
+            SpawnCourierNPC();
         }
 
         private void CreateRescueTeleportBubble()

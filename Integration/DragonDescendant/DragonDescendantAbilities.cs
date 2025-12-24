@@ -92,6 +92,23 @@ namespace BossRush
         /// </summary>
         private const float COLLISION_COOLDOWN = 0.5f;
         
+        // ========== 冰属性伤害减速机制 ==========
+        
+        /// <summary>
+        /// 累计冰属性伤害
+        /// </summary>
+        private float accumulatedIceDamage = 0f;
+        
+        /// <summary>
+        /// 是否处于冰冻减速状态
+        /// </summary>
+        private bool isIceSlowed = false;
+        
+        /// <summary>
+        /// 冰冻减速协程
+        /// </summary>
+        private Coroutine iceSlowdownCoroutine;
+        
         // ========== 公开属性 ==========
         
         /// <summary>
@@ -183,6 +200,10 @@ namespace BossRush
             if (chaseCoroutine != null)
             {
                 StopCoroutine(chaseCoroutine);
+            }
+            if (iceSlowdownCoroutine != null)
+            {
+                StopCoroutine(iceSlowdownCoroutine);
             }
         }
         
@@ -519,6 +540,12 @@ namespace BossRush
                 return;
             }
             
+            // 狂暴状态下检测冰属性伤害
+            if (isEnraged && !isIceSlowed)
+            {
+                CheckIceDamage(damageInfo);
+            }
+            
             // 检查是否需要触发复活
             if (!hasResurrected && !isResurrecting && bossHealth != null)
             {
@@ -527,6 +554,64 @@ namespace BossRush
                     // 触发复活
                     StartCoroutine(ResurrectionSequence());
                 }
+            }
+        }
+        
+        /// <summary>
+        /// 检测并累加冰属性伤害
+        /// </summary>
+        private void CheckIceDamage(DamageInfo damageInfo)
+        {
+            try
+            {
+                if (damageInfo.elementFactors == null || damageInfo.elementFactors.Count == 0) return;
+                if (bossHealth == null) return;
+                
+                float totalFinalDamage = damageInfo.finalDamage;
+                if (totalFinalDamage <= 0f) return;
+                
+                // 计算冰属性伤害占比
+                float iceFactor = 0f;
+                float totalFactor = 0f;
+                var factors = damageInfo.elementFactors;
+                int count = factors.Count;
+                
+                for (int i = 0; i < count; i++)
+                {
+                    var ef = factors[i];
+                    if (ef.factor > 0f)
+                    {
+                        totalFactor += ef.factor;
+                        if (ef.elementType == ElementTypes.ice)
+                        {
+                            iceFactor += ef.factor;
+                        }
+                    }
+                }
+                
+                // 没有冰属性伤害则跳过
+                if (iceFactor <= 0f || totalFactor <= 0f) return;
+                
+                // 计算实际冰属性伤害
+                float iceRatio = iceFactor / totalFactor;
+                float actualIceDamage = totalFinalDamage * iceRatio;
+                
+                // 累加冰属性伤害
+                accumulatedIceDamage += actualIceDamage;
+                
+                ModBehaviour.DevLog("[DragonDescendant] 冰属性伤害累计: " + accumulatedIceDamage.ToString("F1") + 
+                    " / " + (bossHealth.MaxHealth * 0.1f).ToString("F1"));
+                
+                // 检查是否达到阈值（最大生命值的10%）
+                float threshold = bossHealth.MaxHealth * 0.1f;
+                if (accumulatedIceDamage >= threshold)
+                {
+                    TriggerIceSlowdown();
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [ERROR] CheckIceDamage 出错: " + e.Message);
             }
         }
         
@@ -1268,6 +1353,166 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonDescendant] [WARNING] 应用碰撞伤害失败: " + e.Message);
+            }
+        }
+        
+        // ========== 冰属性减速机制 ==========
+        
+        /// <summary>
+        /// 触发冰冻减速效果
+        /// </summary>
+        private void TriggerIceSlowdown()
+        {
+            if (isIceSlowed) return;
+            
+            isIceSlowed = true;
+            ModBehaviour.DevLog("[DragonDescendant] 触发冰冻减速效果");
+            
+            try
+            {
+                // 将Moveability设为1f（减速）
+                if (bossCharacter != null && bossCharacter.CharacterItem != null)
+                {
+                    var moveabilityStat = bossCharacter.CharacterItem.GetStat("Moveability".GetHashCode());
+                    if (moveabilityStat != null)
+                    {
+                        moveabilityStat.BaseValue = 1f;
+                        ModBehaviour.DevLog("[DragonDescendant] Moveability设为1f");
+                    }
+                }
+                
+                // 显示对话气泡
+                ShowIceSlowdownDialogue();
+                
+                // 启动10秒后恢复的协程
+                if (iceSlowdownCoroutine != null)
+                {
+                    StopCoroutine(iceSlowdownCoroutine);
+                }
+                iceSlowdownCoroutine = StartCoroutine(IceSlowdownRecoveryCoroutine());
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [ERROR] TriggerIceSlowdown 出错: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 显示冰冻减速对话气泡
+        /// </summary>
+        private void ShowIceSlowdownDialogue()
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                
+                string dialogue = "此等极寒之力也被你征服了吗，可恶...";
+                float yOffset = 2.5f;
+                
+                try
+                {
+                    if (bossCharacter.characterModel != null && bossCharacter.characterModel.HelmatSocket != null)
+                    {
+                        yOffset = Vector3.Distance(bossCharacter.transform.position, 
+                            bossCharacter.characterModel.HelmatSocket.position) + 0.5f;
+                    }
+                }
+                catch { }
+                
+                // 使用DialogueBubblesManager显示
+                UniTaskExtensions.Forget(DialogueBubblesManager.Show(
+                    dialogue, 
+                    bossCharacter.transform, 
+                    yOffset, 
+                    false, 
+                    false, 
+                    -1f, 
+                    3f
+                ));
+                
+                ModBehaviour.DevLog("[DragonDescendant] 显示冰冻减速对话: " + dialogue);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 显示冰冻减速对话失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 冰冻减速恢复协程（10秒后恢复）
+        /// </summary>
+        private IEnumerator IceSlowdownRecoveryCoroutine()
+        {
+            // 等待10秒
+            yield return new WaitForSeconds(10f);
+            
+            ModBehaviour.DevLog("[DragonDescendant] 冰冻减速效果结束");
+            
+            try
+            {
+                // 恢复Moveability为10f
+                if (bossCharacter != null && bossCharacter.CharacterItem != null)
+                {
+                    var moveabilityStat = bossCharacter.CharacterItem.GetStat("Moveability".GetHashCode());
+                    if (moveabilityStat != null)
+                    {
+                        moveabilityStat.BaseValue = 10f;
+                        ModBehaviour.DevLog("[DragonDescendant] Moveability恢复为10f");
+                    }
+                }
+                
+                // 显示恢复对话气泡
+                ShowIceRecoveryDialogue();
+                
+                // 重置累计冰伤
+                accumulatedIceDamage = 0f;
+                isIceSlowed = false;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [ERROR] IceSlowdownRecoveryCoroutine 出错: " + e.Message);
+                isIceSlowed = false;
+            }
+        }
+        
+        /// <summary>
+        /// 显示冰冻恢复对话气泡
+        /// </summary>
+        private void ShowIceRecoveryDialogue()
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                
+                string dialogue = "哈哈哈用完了吗？轮到我了！";
+                float yOffset = 2.5f;
+                
+                try
+                {
+                    if (bossCharacter.characterModel != null && bossCharacter.characterModel.HelmatSocket != null)
+                    {
+                        yOffset = Vector3.Distance(bossCharacter.transform.position, 
+                            bossCharacter.characterModel.HelmatSocket.position) + 0.5f;
+                    }
+                }
+                catch { }
+                
+                // 使用DialogueBubblesManager显示
+                UniTaskExtensions.Forget(DialogueBubblesManager.Show(
+                    dialogue, 
+                    bossCharacter.transform, 
+                    yOffset, 
+                    false, 
+                    false, 
+                    -1f, 
+                    3f
+                ));
+                
+                ModBehaviour.DevLog("[DragonDescendant] 显示冰冻恢复对话: " + dialogue);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 显示冰冻恢复对话失败: " + e.Message);
             }
         }
     }
