@@ -40,6 +40,7 @@ namespace BossRush
         // 龙头属性
         private const float DRAGON_HELM_PHYSICS_RESIST = -0.1f;   // 物理减伤10%
         private const float DRAGON_HELM_STORM_PROTECTION = 1f;    // 风暴防护+1
+        private const float DRAGON_HELM_COLD_PROTECTION = 1f;     // 寒冷防护+1
         private const float DRAGON_HELM_CRIT_DAMAGE_GAIN = 0.1f;  // 枪械爆头伤害+10%
         private const float DRAGON_HELM_FIRE_FACTOR = -0.15f;     // 火承伤倍率-15%
         private const float DRAGON_HELM_ELECTRIC_FACTOR = -0.15f; // 电承伤倍率-15%
@@ -53,6 +54,7 @@ namespace BossRush
         // 龙甲属性
         private const float DRAGON_ARMOR_PHYSICS_RESIST = -0.2f;   // 物理减伤20%
         private const float DRAGON_ARMOR_STORM_PROTECTION = 1f;    // 风暴防护+1
+        private const float DRAGON_ARMOR_COLD_PROTECTION = 1f;     // 寒冷防护+1
         private const float DRAGON_ARMOR_FIRE_FACTOR = -0.2f;      // 火承伤倍率-20%
         private const float DRAGON_ARMOR_ELECTRIC_FACTOR = -0.2f;  // 电承伤倍率-20%
         private const float DRAGON_ARMOR_POISON_FACTOR = 0.4f;     // 毒承伤倍率+40%
@@ -122,6 +124,9 @@ namespace BossRush
             // 风暴防护+1
             EquipmentHelper.AddModifierToItem(item, "StormProtection", ModifierType.Add, DRAGON_HELM_STORM_PROTECTION, true);
 
+            // 寒冷防护+1
+            EquipmentHelper.AddModifierToItem(item, "ColdProtection", ModifierType.Add, DRAGON_HELM_COLD_PROTECTION, true);
+
             // 枪械爆头伤害+10%
             EquipmentHelper.AddModifierToItem(item, "GunCritDamageGain", ModifierType.PercentageAdd, DRAGON_HELM_CRIT_DAMAGE_GAIN, true);
 
@@ -165,6 +170,9 @@ namespace BossRush
 
             // 风暴防护+1
             EquipmentHelper.AddModifierToItem(item, "StormProtection", ModifierType.Add, DRAGON_ARMOR_STORM_PROTECTION, true);
+
+            // 寒冷防护+1
+            EquipmentHelper.AddModifierToItem(item, "ColdProtection", ModifierType.Add, DRAGON_ARMOR_COLD_PROTECTION, true);
 
             // 物理减伤20%
             EquipmentHelper.AddModifierToItem(item, "ElementFactor_Physics", ModifierType.PercentageAdd, DRAGON_ARMOR_PHYSICS_RESIST, true);
