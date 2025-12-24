@@ -2439,27 +2439,22 @@ namespace BossRush
 
             try
             {
-                // 通过TypeID查找物品模板并创建新实例（满耐久）
-                Item templateItem = FindItemByTypeId(selectedTypeId);
-                if (templateItem == null)
-                {
-                    DevLog("[DragonDescendant] 未找到龙套装模板: TypeID=" + selectedTypeId);
-                    yield break;
-                }
-
-                // 创建新的物品实例（满耐久）
-                Item newItem = templateItem.CreateInstance();
+                // 使用 ItemAssetsCollection.InstantiateSync 从原始 Prefab 创建全新物品
+                // 避免使用 FindItemByTypeId + CreateInstance，因为那会找到 Boss 身上已损坏的装备实例
+                Item newItem = ItemAssetsCollection.InstantiateSync(selectedTypeId);
                 if (newItem == null)
                 {
-                    DevLog("[DragonDescendant] 创建龙套装实例失败");
+                    DevLog("[DragonDescendant] 创建龙套装实例失败: TypeID=" + selectedTypeId);
                     yield break;
                 }
 
-                // 确保耐久度为满（CreateInstance应该已经是满耐久，但保险起见再设置一次）
+                // 确保耐久度为满（从 Prefab 创建的物品应该是满耐久，但保险起见再设置一次）
                 float maxDurability = newItem.MaxDurability;
                 if (maxDurability > 0)
                 {
                     newItem.Durability = maxDurability;
+                    // 清除可能存在的耐久度损耗值
+                    newItem.DurabilityLoss = 0f;
                 }
 
                 // 添加到掉落箱

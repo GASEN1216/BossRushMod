@@ -438,24 +438,24 @@ namespace BossRush
             
             if (hasAnimator)
             {
-                Debug.Log("[CourierNPC] Controller.Awake: 找到 Animator 组件");
+                ModBehaviour.DevLog("[CourierNPC] Controller.Awake: 找到 Animator 组件");
                 if (animator.runtimeAnimatorController != null)
                 {
-                    Debug.Log("[CourierNPC] Animator Controller: " + animator.runtimeAnimatorController.name);
+                    ModBehaviour.DevLog("[CourierNPC] Animator Controller: " + animator.runtimeAnimatorController.name);
                     // 列出所有参数
                     foreach (var param in animator.parameters)
                     {
-                        Debug.Log("[CourierNPC]   参数: " + param.name + " (" + param.type + ")");
+                        ModBehaviour.DevLog("[CourierNPC]   参数: " + param.name + " (" + param.type + ")");
                     }
                 }
                 else
                 {
-                    Debug.LogWarning("[CourierNPC] 警告：Animator 没有 RuntimeAnimatorController！");
+                    ModBehaviour.DevLog("[CourierNPC] [WARNING] 警告：Animator 没有 RuntimeAnimatorController！");
                 }
             }
             else
             {
-                Debug.LogWarning("[CourierNPC] Controller.Awake: 未找到 Animator 组件！");
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] Controller.Awake: 未找到 Animator 组件！");
             }
         }
         
@@ -467,12 +467,12 @@ namespace BossRush
                 if (CharacterMainControl.Main != null)
                 {
                     playerTransform = CharacterMainControl.Main.transform;
-                    Debug.Log("[CourierNPC] Controller.Start: 获取到玩家引用");
+                    ModBehaviour.DevLog("[CourierNPC] Controller.Start: 获取到玩家引用");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 获取 CharacterMainControl.Main 失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 获取 CharacterMainControl.Main 失败: " + e.Message);
             }
             
             if (playerTransform == null)
@@ -481,7 +481,7 @@ namespace BossRush
                 if (player != null)
                 {
                     playerTransform = player.transform;
-                    Debug.Log("[CourierNPC] Controller.Start: 通过 Tag 获取到玩家引用");
+                    ModBehaviour.DevLog("[CourierNPC] Controller.Start: 通过 Tag 获取到玩家引用");
                 }
             }
             
@@ -506,12 +506,8 @@ namespace BossRush
                 
                 // 添加 TextMeshPro 组件
                 nameTagText = nameTagObject.AddComponent<TMPro.TextMeshPro>();
-                // 使用本地化键获取快递员名称
-                string courierName = LocalizationHelper.GetLocalizedText("BossRush_CourierName");
-                if (string.IsNullOrEmpty(courierName) || courierName == "BossRush_CourierName")
-                {
-                    courierName = L10n.T("阿稳", "Awen");  // 回退到硬编码
-                }
+                // 直接使用 L10n.T 获取本地化名称（不依赖注入）
+                string courierName = L10n.T("阿稳", "Awen");
                 nameTagText.text = courierName;
                 nameTagText.fontSize = 4f;  // 字号大一点
                 nameTagText.alignment = TMPro.TextAlignmentOptions.Center;
@@ -523,11 +519,11 @@ namespace BossRush
                 // 设置排序层级确保可见
                 nameTagText.sortingOrder = 100;
                 
-                Debug.Log("[CourierNPC] 名字标签创建成功: " + courierName);
+                ModBehaviour.DevLog("[CourierNPC] 名字标签创建成功: " + courierName);
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 创建名字标签失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 创建名字标签失败: " + e.Message);
             }
         }
         
@@ -565,11 +561,11 @@ namespace BossRush
                 SafeSetBool(hash_IsArrived, true);  // 初始状态为已到达（静止）
                 SafeSetBool(hash_NoBoss, true);  // 初始状态为没有Boss
                 
-                Debug.Log("[CourierNPC] 动画参数初始化完成");
+                ModBehaviour.DevLog("[CourierNPC] 动画参数初始化完成");
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 初始化动画参数出错: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 初始化动画参数出错: " + e.Message);
             }
         }
         
@@ -629,7 +625,7 @@ namespace BossRush
             if (hasAnimator)
             {
                 SafeSetBool(hash_IsTalking, true);
-                Debug.Log("[CourierNPC] 开始对话动画");
+                ModBehaviour.DevLog("[CourierNPC] 开始对话动画");
             }
             
             // 显示随机对话气泡
@@ -643,17 +639,8 @@ namespace BossRush
         {
             try
             {
-                // 随机选择一句对话（使用本地化键）
-                int dialogueCount = LocalizationInjector.GetCourierDialogueCount();
-                int index = UnityEngine.Random.Range(0, dialogueCount);
-                string dialogueKey = "BossRush_CourierDialogue_" + index;
-                string dialogue = LocalizationHelper.GetLocalizedText(dialogueKey);
-                
-                // 如果本地化失败，使用回退文本
-                if (string.IsNullOrEmpty(dialogue) || dialogue == dialogueKey)
-                {
-                    dialogue = L10n.T("你好，有什么需要帮忙的吗？", "Hello, can I help you?");
-                }
+                // 随机选择一句对话（直接使用 L10n.T）
+                string dialogue = GetRandomCourierDialogue();
                 
                 // 使用原版气泡系统显示对话（speed=-1表示一次性显示全部文字）
                 // yOffset 设置为名字标签高度附近（1.5f，比名字标签稍低）
@@ -662,12 +649,47 @@ namespace BossRush
                     Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(dialogue, transform, yOffset, false, false, -1f, 3f)
                 );
                 
-                Debug.Log("[CourierNPC] 显示对话: " + dialogue);
+                ModBehaviour.DevLog("[CourierNPC] 显示对话: " + dialogue);
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 显示对话气泡失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 显示对话气泡失败: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// 获取随机快递员对话（直接使用 L10n.T，不依赖注入）
+        /// </summary>
+        private string GetRandomCourierDialogue()
+        {
+            // 快递员随机对话列表
+            string[][] dialogues = new string[][]
+            {
+                new string[] { "补给到了……先把伞可乐灌了，灵魂别掉地上。", "Supplies arrived... drink your Umbrella Cola first, don't let your soul drop." },
+                new string[] { "这地方路况真差，比拎着XO钥匙去洗脚房还折磨。", "The roads here are terrible, worse than carrying XO keys to a foot spa." },
+                new string[] { "别盯着我背包看，都是J-Lab登记过的，少一件杰夫要开会。", "Stop staring at my backpack, everything's registered with J-Lab. Jeff will call a meeting if anything's missing." },
+                new string[] { "Boss也得排队，先去祭坛交羽毛，图腾按流程发。", "Even bosses have to queue. Go to the altar with feathers first, totems are distributed by procedure." },
+                new string[] { "哎，这里谁点了'急件'？紫色空间能量都溢出来了。", "Hey, who ordered 'express delivery' here? Purple space energy is overflowing." },
+                new string[] { "星球都快崩了还要准点，J-Lab的KPI不讲情面。", "The planet's about to collapse and we still need to be on time. J-Lab's KPIs show no mercy." },
+                new string[] { "你要是能活到下一波，我给你盖个章，再塞你一瓶'有糖的'——有灵魂那种。", "If you survive the next wave, I'll stamp your card and slip you a 'sugared' one - the kind with soul." },
+                new string[] { "别吵，听见没？那边在打碟……蓝皮人可能又在看热闘。", "Quiet, hear that? Someone's DJing over there... the blue guys are probably watching again." },
+                new string[] { "我这把年纪了还在跑单，外星水熊虫母舰来了都得排队签收。", "At my age still running deliveries. Even alien tardigrade motherships have to queue for pickup." },
+                new string[] { "箱子里是什么？浓缩浆质、绷带，还有一张'无糖可乐慎用'的说明。", "What's in the box? Concentrated plasma, bandages, and a 'use sugar-free cola with caution' note." },
+                new string[] { "你要投诉？可以，去找蓝皮人，他一个响指就能把你的工单传送走。", "Want to complain? Sure, find the blue guy. One snap and he'll teleport your ticket away." },
+                new string[] { "路线规划又被风暴改了……行，绕开机器蜘蛛，走那条最紫的。", "Route changed by the storm again... fine, avoid the mech spiders, take the most purple path." },
+                new string[] { "我不怕Boss，我怕紫毒把快递标签腐蚀了——到时候谁也别想对账。", "I'm not afraid of bosses. I'm afraid the purple poison will corrode the delivery labels - then no one can reconcile accounts." },
+                new string[] { "签收方式：按爪印、按羽毛、或者交一块蓝色方块当押金。", "Sign for delivery: paw print, feather, or leave a blue cube as deposit." },
+                new string[] { "别跟我讲热血，我只认单号、撤离路线，以及'有糖才有灵魂'。", "Don't talk passion to me. I only care about order numbers, evacuation routes, and 'sugar means soul'." },
+                new string[] { "看到那只到处乱创的火龙了吗？", "See that fire dragon causing chaos everywhere?" },
+                new string[] { "嗯...火龙怕毒，哪天毒死它", "Hmm... fire dragons fear poison. Maybe poison it someday." },
+                new string[] { "你知道火龙也怕冰吗？我有一次都把它打坠机了哈哈哈哈", "Did you know fire dragons also fear ice? I once made it crash land hahaha" },
+                new string[] { "这该死的火龙把我的快递都创飞了", "That damn fire dragon knocked all my deliveries flying" },
+                new string[] { "那头火龙在叽里咕噜的时候最好跑远点", "When that fire dragon starts gurgling, you better run far away" },
+                new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" }
+            };
+            
+            int index = UnityEngine.Random.Range(0, dialogues.Length);
+            return L10n.T(dialogues[index][0], dialogues[index][1]);
         }
         
         /// <summary>
@@ -678,7 +700,7 @@ namespace BossRush
             if (hasAnimator)
             {
                 SafeSetBool(hash_IsTalking, false);
-                Debug.Log("[CourierNPC] 结束对话动画");
+                ModBehaviour.DevLog("[CourierNPC] 结束对话动画");
             }
         }
         
@@ -690,7 +712,7 @@ namespace BossRush
             if (hasAnimator)
             {
                 SafeSetBool(hash_IsArrived, arrived);
-                Debug.Log("[CourierNPC] 设置 IsArrived: " + arrived);
+                ModBehaviour.DevLog("[CourierNPC] 设置 IsArrived: " + arrived);
             }
         }
         
@@ -702,7 +724,7 @@ namespace BossRush
             if (hasAnimator)
             {
                 SafeSetBool(hash_IsBossFight, isFighting);
-                Debug.Log("[CourierNPC] 设置 BossFight: " + isFighting);
+                ModBehaviour.DevLog("[CourierNPC] 设置 BossFight: " + isFighting);
             }
         }
         
@@ -714,7 +736,7 @@ namespace BossRush
             if (hasAnimator)
             {
                 SafeSetBool(hash_NoBoss, noBoss);
-                Debug.Log("[CourierNPC] 设置 NoBoss: " + noBoss);
+                ModBehaviour.DevLog("[CourierNPC] 设置 NoBoss: " + noBoss);
             }
         }
         
@@ -727,7 +749,7 @@ namespace BossRush
             {
                 SafeSetBool(hash_IsCompleted, true);
                 SafeSetBool(hash_IsBossFight, false);
-                Debug.Log("[CourierNPC] 设置通关状态");
+                ModBehaviour.DevLog("[CourierNPC] 设置通关状态");
             }
         }
         
@@ -741,7 +763,7 @@ namespace BossRush
                 SafeSetBool(hash_IsTalking, false);
                 SafeSetBool(hash_IsBossFight, false);
                 SafeSetBool(hash_IsCompleted, false);
-                Debug.Log("[CourierNPC] 重置状态");
+                ModBehaviour.DevLog("[CourierNPC] 重置状态");
             }
         }
     }
@@ -786,6 +808,9 @@ namespace BossRush
         private float idleTimer = 0f;
         private const float IDLE_DURATION = 2f;  // 待机2秒
         
+        // 快递服务状态（服务期间停止移动）
+        private bool isInService = false;
+        
         // 气泡显示计时器
         private float cheerBubbleTimer = 0f;
         private float victoryBubbleTimer = 0f;
@@ -805,9 +830,26 @@ namespace BossRush
         public bool Moving { get { return moving; } }
         public bool WaitingForPathResult { get { return waitingForPathResult; } }
         
+        /// <summary>
+        /// 设置快递服务状态（服务期间停止移动）
+        /// </summary>
+        public void SetInService(bool inService)
+        {
+            isInService = inService;
+            if (inService)
+            {
+                StopMove();
+                ModBehaviour.DevLog("[CourierNPC] 进入快递服务状态，停止移动");
+            }
+            else
+            {
+                ModBehaviour.DevLog("[CourierNPC] 退出快递服务状态，恢复移动");
+            }
+        }
+        
         void Start()
         {
-            Debug.Log("[CourierNPC] CourierMovement.Start 开始");
+            ModBehaviour.DevLog("[CourierNPC] CourierMovement.Start 开始");
             
             controller = GetComponent<CourierNPCController>();
             animator = GetComponentInChildren<Animator>();
@@ -818,12 +860,12 @@ namespace BossRush
                 if (CharacterMainControl.Main != null)
                 {
                     playerTransform = CharacterMainControl.Main.transform;
-                    Debug.Log("[CourierNPC] 获取到玩家引用");
+                    ModBehaviour.DevLog("[CourierNPC] 获取到玩家引用");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 获取玩家引用失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 获取玩家引用失败: " + e.Message);
             }
             
             if (playerTransform == null)
@@ -832,7 +874,7 @@ namespace BossRush
                 if (player != null)
                 {
                     playerTransform = player.transform;
-                    Debug.Log("[CourierNPC] 通过 Tag 获取到玩家引用");
+                    ModBehaviour.DevLog("[CourierNPC] 通过 Tag 获取到玩家引用");
                 }
             }
             
@@ -847,7 +889,7 @@ namespace BossRush
         {
             yield return new WaitForSeconds(0.5f);
             
-            Debug.Log("[CourierNPC] 开始初始化移动系统，当前位置: " + transform.position);
+            ModBehaviour.DevLog("[CourierNPC] 开始初始化移动系统，当前位置: " + transform.position);
             
             // 1. 添加 CharacterController（用于物理碰撞，因为快递员没有 CharacterMainControl）
             characterController = gameObject.GetComponent<CharacterController>();
@@ -860,7 +902,7 @@ namespace BossRush
                 characterController.slopeLimit = 45f;
                 characterController.stepOffset = 0.3f;
                 characterController.skinWidth = 0.08f;
-                Debug.Log("[CourierNPC] 添加 CharacterController 组件");
+                ModBehaviour.DevLog("[CourierNPC] 添加 CharacterController 组件");
             }
             
             // 2. 添加 Seeker 组件（A* Pathfinding 核心组件，与原版 AI_PathControl 一致）
@@ -868,21 +910,21 @@ namespace BossRush
             if (seeker == null)
             {
                 seeker = gameObject.AddComponent<Seeker>();
-                Debug.Log("[CourierNPC] 添加 Seeker 组件");
+                ModBehaviour.DevLog("[CourierNPC] 添加 Seeker 组件");
             }
             else
             {
-                Debug.Log("[CourierNPC] Seeker 组件已存在");
+                ModBehaviour.DevLog("[CourierNPC] Seeker 组件已存在");
             }
             
             // 3. 检查 A* 是否可用
             if (AstarPath.active == null)
             {
-                Debug.LogWarning("[CourierNPC] 警告：A* Pathfinding 未激活！快递员将无法寻路");
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 警告：A* Pathfinding 未激活！快递员将无法寻路");
             }
             else
             {
-                Debug.Log("[CourierNPC] A* Pathfinding 已激活，图数量: " + AstarPath.active.graphs.Length);
+                ModBehaviour.DevLog("[CourierNPC] A* Pathfinding 已激活，图数量: " + AstarPath.active.graphs.Length);
                 
                 // 列出所有图的类型
                 for (int i = 0; i < AstarPath.active.graphs.Length; i++)
@@ -890,20 +932,20 @@ namespace BossRush
                     var graph = AstarPath.active.graphs[i];
                     if (graph != null)
                     {
-                        Debug.Log("[CourierNPC]   图[" + i + "]: " + graph.GetType().Name);
+                        ModBehaviour.DevLog("[CourierNPC]   图[" + i + "]: " + graph.GetType().Name);
                     }
                 }
             }
             
             isInitialized = true;
-            Debug.Log("[CourierNPC] 移动系统初始化完成（使用 A* Seeker）");
+            ModBehaviour.DevLog("[CourierNPC] 移动系统初始化完成（使用 A* Seeker）");
             
             // 立即尝试一次寻路测试
             yield return new WaitForSeconds(0.5f);
             if (seeker != null && AstarPath.active != null)
             {
                 Vector3 testTarget = transform.position + new Vector3(2f, 0f, 2f);
-                Debug.Log("[CourierNPC] 测试寻路到: " + testTarget);
+                ModBehaviour.DevLog("[CourierNPC] 测试寻路到: " + testTarget);
                 MoveToPos(testTarget);
             }
         }
@@ -915,7 +957,7 @@ namespace BossRush
         {
             if (seeker == null)
             {
-                Debug.LogWarning("[CourierNPC] MoveToPos 失败：Seeker 为空");
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] MoveToPos 失败：Seeker 为空");
                 return;
             }
             if (waitingForPathResult || moving)
@@ -932,7 +974,7 @@ namespace BossRush
             // 注意：不要在这里清空 path，否则会导致 UpdatePathFollowing 立即将 moving 设为 false
             seeker.StartPath(transform.position, pos, new OnPathDelegate(OnPathComplete));
             waitingForPathResult = true;
-            Debug.Log("[CourierNPC] 开始寻路到: " + pos);
+            ModBehaviour.DevLog("[CourierNPC] 开始寻路到: " + pos);
         }
         
         /// <summary>
@@ -945,11 +987,11 @@ namespace BossRush
                 path = p;
                 currentWaypoint = 0;
                 moving = true;
-                Debug.Log("[CourierNPC] 路径计算成功，路点数: " + p.vectorPath.Count);
+                ModBehaviour.DevLog("[CourierNPC] 路径计算成功，路点数: " + p.vectorPath.Count);
             }
             else
             {
-                Debug.LogWarning("[CourierNPC] 路径计算失败: " + p.errorLog);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 路径计算失败: " + p.errorLog);
             }
             waitingForPathResult = false;
         }
@@ -968,6 +1010,13 @@ namespace BossRush
         void Update()
         {
             if (!isInitialized) return;
+            
+            // 快递服务期间停止所有移动逻辑
+            if (isInService)
+            {
+                UpdateMoveAnimation(0f);
+                return;
+            }
             
             // 通关后显示胜利气泡（每5秒一次）
             if (isCompleted)
@@ -1024,7 +1073,7 @@ namespace BossRush
                     {
                         controller.StopTalking();
                     }
-                    Debug.Log("[CourierNPC] 待机结束，准备继续移动");
+                    ModBehaviour.DevLog("[CourierNPC] 待机结束，准备继续移动");
                 }
                 return;  // 待机期间不做移动决策
             }
@@ -1167,7 +1216,7 @@ namespace BossRush
                     {
                         controller.StartTalking();  // 使用 IsTalking 触发待机动画
                     }
-                    Debug.Log("[CourierNPC] 到达目标点，开始待机动画");
+                    ModBehaviour.DevLog("[CourierNPC] 到达目标点，开始待机动画");
                     return;
                 }
             }
@@ -1189,7 +1238,7 @@ namespace BossRush
                 // 调试：每秒输出一次位置
                 if (Time.frameCount % 60 == 0)
                 {
-                    Debug.Log("[CourierNPC] 移动中: 位置=" + transform.position + ", 速度=" + currentSpeed + ", 方向=" + direction + ", 路点=" + currentWaypoint + "/" + path.vectorPath.Count);
+                    ModBehaviour.DevLog("[CourierNPC] 移动中: 位置=" + transform.position + ", 速度=" + currentSpeed + ", 方向=" + direction + ", 路点=" + currentWaypoint + "/" + path.vectorPath.Count);
                 }
             }
             
@@ -1255,7 +1304,7 @@ namespace BossRush
                 // 重置垂直速度
                 verticalVelocity = 0f;
                 
-                Debug.Log("[CourierNPC] 位置修正到地面: " + newPos);
+                ModBehaviour.DevLog("[CourierNPC] 位置修正到地面: " + newPos);
             }
         }
         
@@ -1281,7 +1330,7 @@ namespace BossRush
             {
                 wanderTimer = WANDER_INTERVAL;  // 立即触发移动决策
             }
-            Debug.Log("[CourierNPC] SetBossFight: " + fighting);
+            ModBehaviour.DevLog("[CourierNPC] SetBossFight: " + fighting);
         }
         
         public void SetCompleted(bool completed)
@@ -1291,7 +1340,7 @@ namespace BossRush
             {
                 StopMove();
             }
-            Debug.Log("[CourierNPC] SetCompleted: " + completed);
+            ModBehaviour.DevLog("[CourierNPC] SetCompleted: " + completed);
         }
         
         /// <summary>
@@ -1304,7 +1353,7 @@ namespace BossRush
             {
                 controller.SetNoBoss(noBoss);
             }
-            Debug.Log("[CourierNPC] Movement.SetNoBoss: " + noBoss);
+            ModBehaviour.DevLog("[CourierNPC] Movement.SetNoBoss: " + noBoss);
         }
         
         /// <summary>
@@ -1354,7 +1403,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 显示气泡失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 显示气泡失败: " + e.Message);
             }
         }
         
@@ -1386,25 +1435,25 @@ namespace BossRush
                             float distance = diff.magnitude;
                             if (distance > 3f)
                             {
-                                Debug.Log("[CourierNPC] 选择刷新点 [" + randomIndex + "/" + spawnPoints.Length + "] 作为目标: " + targetPos);
+                                ModBehaviour.DevLog("[CourierNPC] 选择刷新点 [" + randomIndex + "/" + spawnPoints.Length + "] 作为目标: " + targetPos);
                                 return targetPos;
                             }
                         }
                         
                         // 如果多次尝试都找不到合适的点，就用第一个（也要修正高度）
                         Vector3 defaultPos = CorrectTargetHeight(spawnPoints[0]);
-                        Debug.Log("[CourierNPC] 使用默认刷新点: " + defaultPos);
+                        ModBehaviour.DevLog("[CourierNPC] 使用默认刷新点: " + defaultPos);
                         return defaultPos;
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 获取刷新点失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 获取刷新点失败: " + e.Message);
             }
             
             // 如果获取失败，返回零向量（不移动）
-            Debug.LogWarning("[CourierNPC] 无法获取刷新点，跳过移动");
+            ModBehaviour.DevLog("[CourierNPC] [WARNING] 无法获取刷新点，跳过移动");
             return Vector3.zero;
         }
         
@@ -1440,18 +1489,18 @@ namespace BossRush
                     // 找到第一个距离玩家大于12米的点就返回
                     if (distToPlayer > 12f)
                     {
-                        Debug.Log("[CourierNPC] Boss战逃跑：选择刷新点 [" + i + "]，距离玩家: " + distToPlayer.ToString("F1") + "米");
+                        ModBehaviour.DevLog("[CourierNPC] Boss战逃跑：选择刷新点 [" + i + "]，距离玩家: " + distToPlayer.ToString("F1") + "米");
                         return point;
                     }
                 }
                 
                 // 如果没找到合适的点，回退到随机选择
-                Debug.Log("[CourierNPC] Boss战逃跑：未找到距离玩家>12米的点，使用随机刷新点");
+                ModBehaviour.DevLog("[CourierNPC] Boss战逃跑：未找到距离玩家>12米的点，使用随机刷新点");
                 return GetRandomSpawnPoint();
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[CourierNPC] 获取远离玩家的刷新点失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 获取远离玩家的刷新点失败: " + e.Message);
                 return GetRandomSpawnPoint();
             }
         }
@@ -1525,7 +1574,7 @@ namespace BossRush
             try { controller = GetComponent<CourierNPCController>(); } catch { }
             
             isInitialized = true;
-            Debug.Log("[CourierNPC] CourierInteractable.Awake 完成，Layer=" + gameObject.layer);
+            ModBehaviour.DevLog("[CourierNPC] CourierInteractable.Awake 完成，Layer=" + gameObject.layer);
         }
         
         protected override void Start()
@@ -1544,7 +1593,7 @@ namespace BossRush
             // 显示交互标记
             try { this.MarkerActive = true; } catch { }
             
-            Debug.Log("[CourierNPC] CourierInteractable.Start 完成，MarkerActive=" + this.MarkerActive + ", InteractName=" + this.InteractName);
+            ModBehaviour.DevLog("[CourierNPC] CourierInteractable.Start 完成，MarkerActive=" + this.MarkerActive + ", InteractName=" + this.InteractName);
         }
         
         /// <summary>
@@ -1564,7 +1613,7 @@ namespace BossRush
             {
                 base.OnInteractStart(interactCharacter);
                 
-                Debug.Log("[CourierNPC] 玩家开始与快递员交互");
+                ModBehaviour.DevLog("[CourierNPC] 玩家开始与快递员交互");
                 
                 // 开始对话动画
                 if (controller != null)
@@ -1572,23 +1621,12 @@ namespace BossRush
                     controller.StartTalking();
                 }
                 
-                // 显示提示（使用本地化键）
-                if (ModBehaviour.Instance != null)
-                {
-                    string message = LocalizationHelper.GetLocalizedText("BossRush_CourierServiceUnavailable");
-                    if (string.IsNullOrEmpty(message) || message == "BossRush_CourierServiceUnavailable")
-                    {
-                        message = L10n.T("快递服务暂未开放，敬请期待！", "Courier service coming soon!");
-                    }
-                    ModBehaviour.Instance.ShowMessage(message);
-                }
-                
-                // 结束对话动画（延迟一点）
-                StartCoroutine(StopTalkingDelayed());
+                // 打开快递服务
+                CourierService.OpenService(transform);
             }
             catch (Exception e)
             {
-                Debug.LogError("[CourierNPC] OnInteractStart 出错: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] OnInteractStart 出错: " + e.Message);
             }
         }
         
@@ -1601,15 +1639,13 @@ namespace BossRush
             {
                 base.OnInteractStop();
                 
-                // 停止对话动画
-                if (controller != null)
-                {
-                    controller.StopTalking();
-                }
+                // 注意：不要在这里调用 StopTalking()
+                // 因为快递服务打开后，动画状态由 CourierService 控制
+                // 只有在 CourierService 关闭时才会调用 StopTalking()
             }
             catch (Exception e)
             {
-                Debug.LogError("[CourierNPC] OnInteractStop 出错: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] OnInteractStop 出错: " + e.Message);
             }
         }
         

@@ -60,6 +60,18 @@ namespace BossRush
         private const string COURIER_VICTORY_CN = "哈哈哈哈哈...赚大发了";
         private const string COURIER_VICTORY_EN = "Hahaha... I'm rich!";
         
+        // 快递服务功能本地化数据
+        private const string COURIER_SERVICE_SEND_CN = "发送";
+        private const string COURIER_SERVICE_SEND_EN = "Send";
+        private const string COURIER_SERVICE_FEE_CN = "快递费: {0}";
+        private const string COURIER_SERVICE_FEE_EN = "Fee: {0}";
+        private const string COURIER_SERVICE_GOODBYE_CN = "欢迎下次光临，稳叔爱你哟~";
+        private const string COURIER_SERVICE_GOODBYE_EN = "Come again, Uncle Wen loves you~";
+        private const string COURIER_SERVICE_INSUFFICIENT_CN = "资金不足";
+        private const string COURIER_SERVICE_INSUFFICIENT_EN = "Insufficient funds";
+        private const string COURIER_SERVICE_EMPTY_CN = "请放入物品";
+        private const string COURIER_SERVICE_EMPTY_EN = "Please add items";
+        
         // 快递员随机对话（中英文对照）
         private static readonly string[][] COURIER_DIALOGUES = new string[][]
         {
@@ -214,6 +226,22 @@ namespace BossRush
             
             string victoryDialogue = L10n.T(COURIER_VICTORY_CN, COURIER_VICTORY_EN);
             LocalizationHelper.InjectLocalization("BossRush_CourierVictory", victoryDialogue);
+            
+            // 快递服务功能本地化
+            string sendText = L10n.T(COURIER_SERVICE_SEND_CN, COURIER_SERVICE_SEND_EN);
+            LocalizationHelper.InjectLocalization("BossRush_CourierService_Send", sendText);
+            
+            string feeText = L10n.T(COURIER_SERVICE_FEE_CN, COURIER_SERVICE_FEE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_CourierService_Fee", feeText);
+            
+            string goodbyeText = L10n.T(COURIER_SERVICE_GOODBYE_CN, COURIER_SERVICE_GOODBYE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_CourierService_Goodbye", goodbyeText);
+            
+            string insufficientText = L10n.T(COURIER_SERVICE_INSUFFICIENT_CN, COURIER_SERVICE_INSUFFICIENT_EN);
+            LocalizationHelper.InjectLocalization("BossRush_CourierService_InsufficientFunds", insufficientText);
+            
+            string emptyText = L10n.T(COURIER_SERVICE_EMPTY_CN, COURIER_SERVICE_EMPTY_EN);
+            LocalizationHelper.InjectLocalization("BossRush_CourierService_Empty", emptyText);
             
             // 快递员随机对话（使用索引键）
             for (int i = 0; i < COURIER_DIALOGUES.Length; i++)

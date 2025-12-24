@@ -1,0 +1,968 @@
+// ============================================================================
+// CourierService.cs - 快递服务核心逻辑
+// ============================================================================
+// 模块说明：
+//   管理快递员NPC的快递服务功能，包括：
+//   - 打开快递容器UI（使用 InteractableLootbox.OnStartLoot 事件）
+//   - 计算快递费用（物品总价值的90%）
+//   - 发送物品到玩家仓库（复用 PlayerStorage.Push）
+//   - 显示告别气泡（复用 DialogueBubblesManager）
+// 
+// 实现说明：
+//   - 使用 InteractableLootbox 组件触发官方 LootView
+//   - 通过 OnStartLoot/OnStopLoot 事件驱动，无每帧循环检测
+//   - 通过 Inventory.onContentChanged 事件更新按钮状态
+// ============================================================================
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using ItemStatsSystem;
+using Duckov.UI;
+
+namespace BossRush
+{
+    /// <summary>
+    /// 快递服务核心逻辑（静态类）
+    /// </summary>
+    public static class CourierService
+    {
+        // ============================================================================
+        // 私有字段
+        // ============================================================================
+        
+        // 快递容器相关
+        private static GameObject containerObject;
+        private static Inventory courierInventory;
+        private static InteractableLootbox courierLootbox;
+        
+        // NPC引用（用于显示气泡和控制动画）
+        private static Transform courierNPCTransform;
+        private static CourierNPCController courierController;
+        
+        // 发送按钮UI
+        private static GameObject sendButtonObject;
+        private static Button sendButton;
+        private static TextMeshProUGUI buttonText;
+        
+        // 服务状态
+        private static bool isServiceActive = false;
+        
+        // 发送结果（用于显示告别气泡）
+        private static int lastSentItemCount = 0;
+        private static int lastDeliveryFee = 0;
+        
+        // 常量
+        private const int CONTAINER_CAPACITY = 35;  // 35个格子
+        private const float DELIVERY_FEE_RATE = 0.5f;  // 50%快递费
+        private const float GOODBYE_BUBBLE_DURATION = 4f;
+        private const float BUBBLE_Y_OFFSET = 1.5f;
+        
+        // 反射缓存
+        private static FieldInfo storeAllButtonField = null;
+        private static FieldInfo pickAllButtonField = null;
+        private static FieldInfo inventoryReferenceField = null;
+        private static FieldInfo lootTargetFadeGroupField = null;
+        private static bool reflectionInitialized = false;
+        
+        // CourierMovement 引用（用于控制移动）
+        private static CourierMovement courierMovement;
+        
+        // ============================================================================
+        // 公共方法
+        // ============================================================================
+        
+        /// <summary>
+        /// 打开快递服务（由 CourierInteractable 调用）
+        /// </summary>
+        public static void OpenService(Transform npcTransform)
+        {
+            if (isServiceActive)
+            {
+                ModBehaviour.DevLog("[CourierService] 服务已在运行中，忽略重复调用");
+                return;
+            }
+            
+            ModBehaviour.DevLog("[CourierService] 开始打开快递服务...");
+            
+            // 初始化反射缓存（仅用于按钮）
+            InitializeReflection();
+            
+            // 保存NPC引用
+            courierNPCTransform = npcTransform;
+            
+            // 获取 CourierNPCController 和 CourierMovement 引用
+            if (npcTransform != null)
+            {
+                courierController = npcTransform.GetComponent<CourierNPCController>();
+                courierMovement = npcTransform.GetComponent<CourierMovement>();
+                
+                ModBehaviour.DevLog("[CourierService] courierController: " + (courierController != null ? "找到" : "未找到"));
+                ModBehaviour.DevLog("[CourierService] courierMovement: " + (courierMovement != null ? "找到" : "未找到"));
+                
+                // 开始对话时停止移动并播放对话动画
+                // 注意：必须先停止移动，再播放动画
+                if (courierMovement != null)
+                {
+                    courierMovement.SetInService(true);  // 设置服务状态，阻止移动
+                    ModBehaviour.DevLog("[CourierService] 已调用 SetInService(true)");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] courierMovement 为空，无法停止移动！");
+                }
+                
+                if (courierController != null)
+                {
+                    courierController.StartTalking();  // 播放对话动画
+                    ModBehaviour.DevLog("[CourierService] 已调用 StartTalking()");
+                }
+            }
+            else
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] npcTransform 为空！");
+            }
+            
+            // 创建快递容器
+            CreateCourierContainer();
+            
+            // 使用官方方式打开 LootView
+            OpenLootViewOfficial();
+            
+            isServiceActive = true;
+            ModBehaviour.DevLog("[CourierService] 快递服务已打开");
+        }
+        
+        /// <summary>
+        /// 计算快递费用（物品总价值的90%，向上取整）
+        /// </summary>
+        public static int CalculateDeliveryFee(Inventory container)
+        {
+            if (container == null) return 0;
+            
+            int totalValue = 0;
+            foreach (Item item in container)
+            {
+                if (item != null)
+                {
+                    // 使用 Item.Value 获取物品单价，乘以堆叠数量
+                    totalValue += item.Value * item.StackCount;
+                }
+            }
+            
+            // 90%快递费，向上取整
+            return (int)Math.Ceiling(totalValue * DELIVERY_FEE_RATE);
+        }
+        
+        /// <summary>
+        /// 检查玩家是否能支付快递费
+        /// </summary>
+        public static bool CanAffordDelivery(int fee)
+        {
+            if (fee <= 0) return false;
+            return CanAffordDeliveryInternal(fee);
+        }
+        
+        /// <summary>
+        /// 内部资金检查（不检查fee是否>0）
+        /// </summary>
+        private static bool CanAffordDeliveryInternal(int fee)
+        {
+            try
+            {
+                long playerFunds = Duckov.Economy.EconomyManager.Money;
+                return playerFunds >= fee;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 获取玩家资金失败: " + e.Message);
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 执行发送操作
+        /// </summary>
+        public static void ExecuteDelivery()
+        {
+            if (courierInventory == null || courierInventory.GetItemCount() == 0)
+            {
+                ModBehaviour.DevLog("[CourierService] 容器为空，无法发送");
+                return;
+            }
+            
+            int fee = CalculateDeliveryFee(courierInventory);
+            if (!CanAffordDelivery(fee))
+            {
+                ModBehaviour.DevLog("[CourierService] 资金不足，无法发送");
+                return;
+            }
+            
+            try
+            {
+                // 使用 EconomyManager 扣除快递费（通过 Cost.Pay 方法）
+                var cost = new Duckov.Economy.Cost((long)fee);
+                if (!cost.Pay(true, true))
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 扣费失败");
+                    return;
+                }
+                ModBehaviour.DevLog("[CourierService] 已扣除快递费: " + fee);
+                
+                // 收集所有物品（避免遍历时修改集合）
+                List<Item> itemsToSend = new List<Item>();
+                foreach (Item item in courierInventory)
+                {
+                    if (item != null)
+                    {
+                        itemsToSend.Add(item);
+                    }
+                }
+                
+                // 直接操作 PlayerStorageBuffer.Buffer 避免显示单个物品通知
+                // 注意：PlayerStorage.IncomingItemBuffer 实际上就是 PlayerStorageBuffer.Buffer
+                // 但其他 mod 可能对 PlayerStorage 进行了 patch，所以我们直接使用 PlayerStorageBuffer
+                foreach (Item item in itemsToSend)
+                {
+                    item.Detach();  // 先从容器分离
+                    
+                    // 直接添加到缓冲区（不显示通知）
+                    var itemData = ItemStatsSystem.Data.ItemTreeData.FromItem(item);
+                    PlayerStorageBuffer.Buffer.Add(itemData);
+                    item.DestroyTree();  // 销毁物品树
+                    
+                    ModBehaviour.DevLog("[CourierService] 已发送物品: " + item.DisplayName);
+                }
+                
+                // 记录发送结果（用于告别气泡）
+                lastSentItemCount = itemsToSend.Count;
+                lastDeliveryFee = fee;
+                
+                ModBehaviour.DevLog("[CourierService] 发送完成，共 " + itemsToSend.Count + " 件物品");
+                
+                // 显示一次总的大横幅通知（绿色文字）
+                ShowDeliveryCompleteBanner();
+                
+                // 关闭服务
+                CloseService();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 发送失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+        
+        /// <summary>
+        /// 显示快递完成的大横幅通知（绿色背景，2秒）
+        /// </summary>
+        private static void ShowDeliveryCompleteBanner()
+        {
+            try
+            {
+                // 获取本地化文本（绿色文字）
+                string bannerText = L10n.T(
+                    "<color=#00FF00>快递已送达！</color>",
+                    "<color=#00FF00>Delivery Complete!</color>"
+                );
+                
+                // 使用游戏的通知系统显示横幅（与 BossRush 其他横幅一致）
+                NotificationText.Push(bannerText);
+                ModBehaviour.DevLog("[CourierService] 显示快递完成横幅");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 显示横幅失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 关闭服务并显示告别气泡
+        /// </summary>
+        public static void CloseService()
+        {
+            if (!isServiceActive) return;
+            
+            ModBehaviour.DevLog("[CourierService] 关闭快递服务...");
+            
+            // 标记服务已关闭（必须在最前面，防止重复调用）
+            isServiceActive = false;
+            
+            // 保存 NPC 引用（因为 Cleanup 会清空它们）
+            var savedController = courierController;
+            var savedMovement = courierMovement;
+            var savedNPCTransform = courierNPCTransform;
+            
+            // 停止对话动画（设置 isTalking = false）
+            if (savedController != null)
+            {
+                savedController.StopTalking();
+                ModBehaviour.DevLog("[CourierService] 已调用 StopTalking()");
+            }
+            else
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] courierController 为空，无法停止对话动画");
+            }
+            
+            // 恢复移动（设置 isInService = false）
+            if (savedMovement != null)
+            {
+                savedMovement.SetInService(false);
+                ModBehaviour.DevLog("[CourierService] 已调用 SetInService(false)，恢复移动");
+            }
+            else
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] courierMovement 为空，无法恢复移动");
+            }
+            
+            // 关闭 LootView
+            if (LootView.Instance != null && LootView.Instance.open)
+            {
+                LootView.Instance.Close();
+            }
+            
+            // 显示告别气泡（使用保存的 NPC Transform）
+            ShowGoodbyeBubbleInternal(savedNPCTransform);
+            
+            // 清理资源
+            Cleanup();
+            
+            ModBehaviour.DevLog("[CourierService] 快递服务已关闭");
+        }
+        
+        // ============================================================================
+        // 私有方法 - 反射初始化（仅用于按钮）
+        // ============================================================================
+        
+        /// <summary>
+        /// 初始化反射字段缓存（只执行一次）
+        /// </summary>
+        private static void InitializeReflection()
+        {
+            if (reflectionInitialized) return;
+            
+            try
+            {
+                BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
+                
+                // LootView 按钮字段（用于复制按钮样式）
+                storeAllButtonField = typeof(LootView).GetField("storeAllButton", privateInstance);
+                pickAllButtonField = typeof(LootView).GetField("pickAllButton", privateInstance);
+                
+                // LootView 容器区域字段（用于放置发送按钮）
+                lootTargetFadeGroupField = typeof(LootView).GetField("lootTargetFadeGroup", privateInstance);
+                
+                // InteractableLootbox 的 inventoryReference 字段（用于设置容器引用）
+                inventoryReferenceField = typeof(InteractableLootbox).GetField("inventoryReference", privateInstance);
+                
+                reflectionInitialized = true;
+                ModBehaviour.DevLog("[CourierService] 反射字段缓存初始化完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 反射初始化失败: " + e.Message);
+            }
+        }
+        
+        // ============================================================================
+        // 私有方法 - 容器创建
+        // ============================================================================
+        
+        /// <summary>
+        /// 创建快递容器
+        /// </summary>
+        private static void CreateCourierContainer()
+        {
+            // 清理旧容器
+            if (containerObject != null)
+            {
+                UnityEngine.Object.Destroy(containerObject);
+            }
+            
+            // 创建容器对象
+            containerObject = new GameObject("CourierServiceContainer");
+            
+            // 添加 Inventory 组件
+            courierInventory = containerObject.AddComponent<Inventory>();
+            courierInventory.SetCapacity(CONTAINER_CAPACITY);
+            
+            // 设置容器显示名称（使用 DisplayNameKey，会自动本地化）
+            courierInventory.DisplayNameKey = "BossRush_CourierService";
+            
+            // 添加 InteractableLootbox 组件（用于触发官方 LootView）
+            courierLootbox = containerObject.AddComponent<InteractableLootbox>();
+            
+            // 通过反射设置 inventoryReference，使 Lootbox.Inventory 返回我们的容器
+            if (inventoryReferenceField != null)
+            {
+                inventoryReferenceField.SetValue(courierLootbox, courierInventory);
+                ModBehaviour.DevLog("[CourierService] 已设置 InteractableLootbox.inventoryReference");
+            }
+            else
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] inventoryReferenceField 为空，无法设置容器引用");
+            }
+            
+            // 注册容器内容变化事件（事件驱动，无需每帧检测）
+            courierInventory.onContentChanged += OnContainerContentChanged;
+            
+            // 注册 LootView 关闭事件（通过 InteractableLootbox.OnStopLoot）
+            InteractableLootbox.OnStopLoot += OnLootboxStopLoot;
+            
+            ModBehaviour.DevLog("[CourierService] 快递容器创建成功，容量: " + CONTAINER_CAPACITY);
+        }
+        
+        // ============================================================================
+        // 私有方法 - 打开 LootView（通过触发官方 OnStartLoot 事件）
+        // ============================================================================
+
+        // 反射字段缓存
+        private static FieldInfo onStartLootField = null;
+        
+        /// <summary>
+        /// 通过触发官方 InteractableLootbox.OnStartLoot 事件打开容器UI
+        /// 这是最符合官方规范的方式，确保所有监听者（如 HardwareSyncingManager）都能收到通知
+        /// </summary>
+        private static void OpenLootViewOfficial()
+        {
+            try
+            {
+                if (LootView.Instance == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [ERROR] LootView.Instance 为空");
+                    return;
+                }
+                
+                if (courierLootbox == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [ERROR] courierLootbox 为空");
+                    return;
+                }
+                
+                // 验证 Inventory 已正确关联
+                if (courierLootbox.Inventory == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [ERROR] courierLootbox.Inventory 为空，容器关联失败");
+                    return;
+                }
+                
+                // 触发官方 OnStartLoot 事件（让 LootView 自然响应）
+                // 这样 HardwareSyncingManager 等其他监听者也能收到通知
+                TriggerOnStartLootEvent(courierLootbox);
+                
+                ModBehaviour.DevLog("[CourierService] 快递容器UI已打开（通过 OnStartLoot 事件）");
+                
+                // 延迟创建发送按钮（等待 LootView 完全打开）
+                if (ModBehaviour.Instance != null)
+                {
+                    ModBehaviour.Instance.StartCoroutine(CreateSendButtonDelayed());
+                    
+                    // 启动 LootView 关闭监控（备用方案，防止 OnStopLoot 事件不触发）
+                    ModBehaviour.Instance.StartCoroutine(MonitorLootViewClose());
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 打开 LootView 失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+        
+        /// <summary>
+        /// 触发 InteractableLootbox.OnStartLoot 静态事件
+        /// 官方 StartLoot() 方法内部就是这样触发的：
+        ///   Action<InteractableLootbox> onStartLoot = InteractableLootbox.OnStartLoot;
+        ///   if (onStartLoot != null) { onStartLoot(this); }
+        /// </summary>
+        private static void TriggerOnStartLootEvent(InteractableLootbox lootbox)
+        {
+            try
+            {
+                // 缓存反射字段（只获取一次）
+                // 注意：C# 事件的底层字段是 private static，需要使用 NonPublic | Static
+                if (onStartLootField == null)
+                {
+                    // OnStartLoot 是 public static event，但底层字段是 private
+                    onStartLootField = typeof(InteractableLootbox).GetField("OnStartLoot", 
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                }
+                
+                if (onStartLootField != null)
+                {
+                    // 获取事件的委托
+                    var onStartLootDelegate = onStartLootField.GetValue(null) as Action<InteractableLootbox>;
+                    if (onStartLootDelegate != null)
+                    {
+                        // 触发事件（调用所有订阅者，包括 LootView 和 HardwareSyncingManager）
+                        onStartLootDelegate.Invoke(lootbox);
+                        ModBehaviour.DevLog("[CourierService] OnStartLoot 事件已触发");
+                        return;
+                    }
+                    else
+                    {
+                        ModBehaviour.DevLog("[CourierService] [WARNING] OnStartLoot 事件委托为空（可能没有订阅者）");
+                    }
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 无法获取 OnStartLoot 字段");
+                }
+                
+                // 如果反射获取失败，回退到直接设置 targetLootBox 的方式
+                ModBehaviour.DevLog("[CourierService] [WARNING] 无法通过反射触发 OnStartLoot 事件，使用备用方案");
+                FallbackOpenLootView(lootbox);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 触发 OnStartLoot 事件失败: " + e.Message + "，使用备用方案");
+                FallbackOpenLootView(lootbox);
+            }
+        }
+        
+        /// <summary>
+        /// 备用方案：直接设置 targetLootBox 字段并打开 LootView
+        /// </summary>
+        private static void FallbackOpenLootView(InteractableLootbox lootbox)
+        {
+            try
+            {
+                var targetLootBoxField = typeof(LootView).GetField("targetLootBox", 
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                
+                if (targetLootBoxField != null)
+                {
+                    targetLootBoxField.SetValue(LootView.Instance, lootbox);
+                    LootView.Instance.Open(null);
+                    ModBehaviour.DevLog("[CourierService] 使用备用方案打开 LootView");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierService] [ERROR] 备用方案也失败：无法获取 targetLootBox 字段");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 备用方案失败: " + e.Message);
+            }
+        }
+        
+        // ============================================================================
+        // 私有方法 - 发送按钮
+        // ============================================================================
+        
+        /// <summary>
+        /// 延迟创建发送按钮
+        /// </summary>
+        private static IEnumerator CreateSendButtonDelayed()
+        {
+            // 等待 LootView 完全打开
+            yield return new WaitForSeconds(0.15f);
+            
+            // 确保 LootView 已打开
+            if (LootView.Instance == null || !LootView.Instance.open)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] LootView 未打开，无法创建发送按钮");
+                yield break;
+            }
+            
+            CreateSendButton();
+        }
+        
+        /// <summary>
+        /// 创建发送按钮
+        /// </summary>
+        private static void CreateSendButton()
+        {
+            if (LootView.Instance == null) return;
+            
+            try
+            {
+                Transform lootViewTransform = LootView.Instance.transform;
+                
+                // 获取容器区域的 FadeGroup（lootTargetFadeGroup）
+                Transform containerAreaParent = null;
+                if (lootTargetFadeGroupField != null)
+                {
+                    var fadeGroup = lootTargetFadeGroupField.GetValue(LootView.Instance);
+                    if (fadeGroup != null)
+                    {
+                        // FadeGroup 是 MonoBehaviour，获取其 transform
+                        var fadeGroupMono = fadeGroup as MonoBehaviour;
+                        if (fadeGroupMono != null)
+                        {
+                            containerAreaParent = fadeGroupMono.transform;
+                            ModBehaviour.DevLog("[CourierService] 找到容器区域 FadeGroup: " + containerAreaParent.name);
+                        }
+                    }
+                }
+                
+                // 优先使用 storeAllButton 作为模板
+                Button templateButton = null;
+                
+                if (storeAllButtonField != null)
+                {
+                    templateButton = storeAllButtonField.GetValue(LootView.Instance) as Button;
+                    if (templateButton != null)
+                    {
+                        ModBehaviour.DevLog("[CourierService] 使用 storeAllButton 作为模板");
+                    }
+                }
+                
+                // 如果 storeAllButton 不可用，尝试 pickAllButton
+                if (templateButton == null && pickAllButtonField != null)
+                {
+                    templateButton = pickAllButtonField.GetValue(LootView.Instance) as Button;
+                    if (templateButton != null)
+                    {
+                        ModBehaviour.DevLog("[CourierService] 使用 pickAllButton 作为模板");
+                    }
+                }
+                
+                // 如果都不可用，在 LootView 中查找任意按钮
+                if (templateButton == null)
+                {
+                    Button[] buttons = lootViewTransform.GetComponentsInChildren<Button>(true);
+                    if (buttons.Length > 0)
+                    {
+                        templateButton = buttons[0];
+                        ModBehaviour.DevLog("[CourierService] 使用第一个找到的按钮作为模板: " + templateButton.name);
+                    }
+                }
+                
+                if (templateButton == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [ERROR] 无法找到任何按钮模板");
+                    return;
+                }
+                
+                // 确定按钮的父级（优先放在容器区域）
+                Transform buttonParent = containerAreaParent != null ? containerAreaParent : templateButton.transform.parent;
+                
+                // 复制按钮
+                sendButtonObject = UnityEngine.Object.Instantiate(templateButton.gameObject, buttonParent);
+                sendButtonObject.name = "CourierSendButton";
+                sendButtonObject.SetActive(true);
+                
+                // 调整位置（往右移动，增加宽度）
+                RectTransform rt = sendButtonObject.GetComponent<RectTransform>();
+                RectTransform templateRt = templateButton.GetComponent<RectTransform>();
+                if (rt != null && templateRt != null)
+                {
+                    // 复制模板按钮的锚点设置
+                    rt.anchorMin = templateRt.anchorMin;
+                    rt.anchorMax = templateRt.anchorMax;
+                    rt.pivot = templateRt.pivot;
+                    // 位置往右移动 150 像素
+                    rt.anchoredPosition = new Vector2(templateRt.anchoredPosition.x + 150f, templateRt.anchoredPosition.y);
+                    // 宽度增加 100 像素
+                    rt.sizeDelta = new Vector2(templateRt.sizeDelta.x + 100f, templateRt.sizeDelta.y);
+                    ModBehaviour.DevLog("[CourierService] 按钮位置: anchoredPosition=" + rt.anchoredPosition + ", sizeDelta=" + rt.sizeDelta);
+                }
+                
+                // 配置按钮组件
+                sendButton = sendButtonObject.GetComponent<Button>();
+                if (sendButton != null)
+                {
+                    sendButton.onClick.RemoveAllListeners();
+                    sendButton.onClick.AddListener(OnSendButtonClicked);
+                }
+                
+                // 获取文本组件
+                buttonText = sendButtonObject.GetComponentInChildren<TextMeshProUGUI>();
+                
+                // 更新按钮状态
+                UpdateButtonState();
+                
+                ModBehaviour.DevLog("[CourierService] 发送按钮创建成功，父级: " + buttonParent.name);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 创建发送按钮失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+        
+        /// <summary>
+        /// 更新按钮状态（文本、颜色、可交互性）
+        /// 通过事件驱动调用，无需每帧检测
+        /// </summary>
+        private static void UpdateButtonState()
+        {
+            if (sendButton == null) return;
+            
+            bool hasItems = courierInventory != null && courierInventory.GetItemCount() > 0;
+            int fee = hasItems ? CalculateDeliveryFee(courierInventory) : 0;
+            bool canAfford = hasItems && fee > 0 && CanAffordDeliveryInternal(fee);
+            
+            // 获取本地化文本（从本地化系统获取）
+            string sendText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Send");
+            string emptyText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Empty");
+            
+            // 更新按钮文本和状态
+            string displayText;
+            bool interactable;
+            Color buttonColor;
+            
+            if (!hasItems)
+            {
+                displayText = emptyText;
+                interactable = false;
+                buttonColor = Color.gray;
+            }
+            else if (!canAfford)
+            {
+                // 资金不足时显示红色金额
+                displayText = sendText + " (<color=#FF0000>￥" + fee + "</color>)";
+                interactable = false;
+                buttonColor = Color.gray;
+            }
+            else
+            {
+                // 可以支付时显示绿色金额
+                displayText = sendText + " (￥" + fee + ")";
+                interactable = true;
+                buttonColor = new Color(0.2f, 0.8f, 0.2f);
+            }
+            
+            // 应用文本
+            if (buttonText != null)
+            {
+                buttonText.text = displayText;
+                buttonText.richText = true;  // 启用富文本支持
+            }
+            else if (sendButtonObject != null)
+            {
+                var legacyText = sendButtonObject.GetComponentInChildren<Text>();
+                if (legacyText != null)
+                {
+                    legacyText.text = displayText;
+                    legacyText.supportRichText = true;
+                }
+            }
+            
+            // 应用可交互性和颜色
+            sendButton.interactable = interactable;
+            var colors = sendButton.colors;
+            colors.normalColor = buttonColor;
+            colors.highlightedColor = buttonColor * 1.1f;
+            colors.pressedColor = buttonColor * 0.9f;
+            colors.disabledColor = Color.gray;
+            sendButton.colors = colors;
+        }
+        
+        /// <summary>
+        /// 发送按钮点击事件
+        /// </summary>
+        private static void OnSendButtonClicked()
+        {
+            ModBehaviour.DevLog("[CourierService] 发送按钮被点击");
+            ExecuteDelivery();
+        }
+        
+        /// <summary>
+        /// 容器内容变化事件（事件驱动，无需每帧检测）
+        /// </summary>
+        private static void OnContainerContentChanged(Inventory inventory, int index)
+        {
+            // 立即更新按钮状态
+            UpdateButtonState();
+        }
+        
+        /// <summary>
+        /// InteractableLootbox.OnStopLoot 事件处理（官方事件驱动）
+        /// </summary>
+        private static void OnLootboxStopLoot(InteractableLootbox lootbox)
+        {
+            // 只处理我们自己的 lootbox
+            if (lootbox != courierLootbox) return;
+            if (!isServiceActive) return;
+            
+            ModBehaviour.DevLog("[CourierService] 收到 OnStopLoot 事件");
+            OnLootViewClosed();
+        }
+        
+        /// <summary>
+        /// 监控 LootView 关闭状态（备用方案）
+        /// 因为我们没有通过正常交互流程打开 lootbox，OnStopLoot 可能不会触发
+        /// 所以需要一个备用的关闭检测机制
+        /// </summary>
+        private static IEnumerator MonitorLootViewClose()
+        {
+            // 等待 LootView 打开
+            yield return new WaitForSeconds(0.2f);
+            
+            // 持续检测 LootView 是否关闭（每0.5秒检测一次，非每帧）
+            while (isServiceActive)
+            {
+                // 如果 LootView 已关闭，触发关闭处理
+                if (LootView.Instance == null || !LootView.Instance.open)
+                {
+                    ModBehaviour.DevLog("[CourierService] 检测到 LootView 已关闭（通过监控协程）");
+                    OnLootViewClosed();
+                    yield break;
+                }
+                
+                // 每0.5秒检测一次，节省资源
+                yield return new WaitForSeconds(0.5f);
+            }
+        }
+
+        
+        // ============================================================================
+        // 私有方法 - LootView 关闭处理
+        // ============================================================================
+        
+        /// <summary>
+        /// LootView 关闭事件处理
+        /// </summary>
+        private static void OnLootViewClosed()
+        {
+            if (!isServiceActive) return;
+            
+            ModBehaviour.DevLog("[CourierService] LootView 被关闭");
+            
+            // 标记服务已关闭（必须在最前面，防止重复调用）
+            isServiceActive = false;
+            
+            // 保存 NPC 引用（因为 Cleanup 会清空它们）
+            var savedController = courierController;
+            var savedMovement = courierMovement;
+            var savedNPCTransform = courierNPCTransform;
+            
+            // 停止对话动画（设置 isTalking = false）
+            if (savedController != null)
+            {
+                savedController.StopTalking();
+                ModBehaviour.DevLog("[CourierService] OnLootViewClosed: 已调用 StopTalking()");
+            }
+            
+            // 恢复移动（设置 isInService = false）
+            if (savedMovement != null)
+            {
+                savedMovement.SetInService(false);
+                ModBehaviour.DevLog("[CourierService] OnLootViewClosed: 已调用 SetInService(false)，恢复移动");
+            }
+            
+            // 显示告别气泡（使用保存的 NPC Transform）
+            ShowGoodbyeBubbleInternal(savedNPCTransform);
+            
+            // 清理资源
+            Cleanup();
+        }
+        
+        // ============================================================================
+        // 私有方法 - 气泡显示
+        // ============================================================================
+        
+        /// <summary>
+        /// 显示告别气泡
+        /// </summary>
+        private static void ShowGoodbyeBubble()
+        {
+            ShowGoodbyeBubbleInternal(courierNPCTransform);
+        }
+        
+        /// <summary>
+        /// 显示告别气泡（内部方法，接受 Transform 参数）
+        /// </summary>
+        private static void ShowGoodbyeBubbleInternal(Transform npcTransform)
+        {
+            if (npcTransform == null)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] NPC Transform 为空，无法显示气泡");
+                return;
+            }
+            
+            try
+            {
+                string goodbyeText;
+                
+                // 如果有发送记录，显示发送结果
+                if (lastSentItemCount > 0)
+                {
+                    // 格式：已送达x件物品，共花费x元，欢迎下次光临~
+                    // x 用红色显示
+                    goodbyeText = L10n.T(
+                        "已送达<color=#FF0000>" + lastSentItemCount + "</color>件物品，共花费<color=#FF0000>￥" + lastDeliveryFee + "</color>，欢迎下次光临~",
+                        "Delivered <color=#FF0000>" + lastSentItemCount + "</color> items, cost <color=#FF0000>￥" + lastDeliveryFee + "</color>, come again~"
+                    );
+                    
+                    // 重置发送记录
+                    lastSentItemCount = 0;
+                    lastDeliveryFee = 0;
+                }
+                else
+                {
+                    // 没有发送物品时的默认告别语（从本地化系统获取）
+                    goodbyeText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Goodbye");
+                }
+                
+                // 使用原版气泡系统显示对话
+                Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
+                    Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                        goodbyeText,
+                        npcTransform,
+                        BUBBLE_Y_OFFSET,
+                        false,
+                        false,
+                        -1f,
+                        GOODBYE_BUBBLE_DURATION
+                    )
+                );
+                
+                ModBehaviour.DevLog("[CourierService] 显示告别气泡: " + goodbyeText);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 显示告别气泡失败: " + e.Message);
+            }
+        }
+        
+        // ============================================================================
+        // 私有方法 - 资源清理
+        // ============================================================================
+        
+        /// <summary>
+        /// 清理资源
+        /// </summary>
+        private static void Cleanup()
+        {
+            ModBehaviour.DevLog("[CourierService] 开始清理资源...");
+            
+            // 取消事件订阅
+            if (courierInventory != null)
+            {
+                courierInventory.onContentChanged -= OnContainerContentChanged;
+            }
+            
+            // 取消 OnStopLoot 事件订阅
+            InteractableLootbox.OnStopLoot -= OnLootboxStopLoot;
+            
+            // 销毁发送按钮
+            if (sendButtonObject != null)
+            {
+                UnityEngine.Object.Destroy(sendButtonObject);
+                sendButtonObject = null;
+                sendButton = null;
+                buttonText = null;
+            }
+            
+            // 销毁容器对象
+            if (containerObject != null)
+            {
+                UnityEngine.Object.Destroy(containerObject);
+                containerObject = null;
+                courierInventory = null;
+                courierLootbox = null;
+            }
+            
+            // 清空 NPC 引用
+            courierNPCTransform = null;
+            courierController = null;
+            courierMovement = null;
+            
+            ModBehaviour.DevLog("[CourierService] 资源清理完成");
+        }
+    }
+}

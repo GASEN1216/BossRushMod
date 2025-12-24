@@ -391,6 +391,7 @@ namespace BossRush
             // 统一调用 LocalizationInjector 注入所有本地化
             LocalizationInjector.InjectUILocalization();
             LocalizationInjector.InjectMapNameLocalizations();
+            LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             DevLog("[BossRush] 扩展本地化注入完成");
         }

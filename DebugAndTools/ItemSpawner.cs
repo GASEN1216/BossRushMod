@@ -3,7 +3,7 @@
 // ============================================================================
 // 模块说明：
 //   提供一个简单的 UI 界面，允许玩家通过输入物品 ID 获取物品
-//   按 F2 键呼出/关闭界面
+//   按 F2 键呼出/关闭界面（仅在 DevModeEnabled = true 时生效）
 // ============================================================================
 
 using System;
@@ -32,10 +32,13 @@ namespace BossRush
         // ============================================================================
         
         /// <summary>
-        /// 检测 F2 快捷键（在 Update 中调用）
+        /// 检测 F2 快捷键（在 Update 中调用，仅在 DevModeEnabled = true 时生效）
         /// </summary>
         private void CheckItemSpawnerHotkey()
         {
+            // 仅在开发模式下启用物品生成器
+            if (!DevModeEnabled) return;
+            
             if (UnityEngine.Input.GetKeyDown(KeyCode.F2))
             {
                 itemSpawnerUIVisible = !itemSpawnerUIVisible;
