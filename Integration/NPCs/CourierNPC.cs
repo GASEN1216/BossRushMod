@@ -835,16 +835,29 @@ namespace BossRush
         /// </summary>
         public void SetInService(bool inService)
         {
-            isInService = inService;
             if (inService)
             {
+                // 进入服务状态：立即停止移动
+                isInService = true;
                 StopMove();
                 ModBehaviour.DevLog("[CourierNPC] 进入快递服务状态，停止移动");
             }
             else
             {
-                ModBehaviour.DevLog("[CourierNPC] 退出快递服务状态，恢复移动");
+                // 退出服务状态：延迟2秒后恢复移动
+                ModBehaviour.DevLog("[CourierNPC] 退出快递服务状态，2秒后恢复移动");
+                StartCoroutine(DelayedResumeMovement());
             }
+        }
+        
+        /// <summary>
+        /// 延迟恢复移动（UI关闭后等待1秒再开始走动）
+        /// </summary>
+        private IEnumerator DelayedResumeMovement()
+        {
+            yield return new WaitForSeconds(1f);
+            isInService = false;
+            ModBehaviour.DevLog("[CourierNPC] 延迟结束，恢复移动");
         }
         
         void Start()
