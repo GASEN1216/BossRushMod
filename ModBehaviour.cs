@@ -1030,9 +1030,14 @@ namespace BossRush
 
         private System.Collections.IEnumerator SetupBossRushInDemoChallenge(Scene scene)
         {
+            // 重置 spawner 禁用标志（确保能重新禁用新场景的 spawner）
+            spawnersDisabled = false;
+            
             // 禁用场景中的spawner，阻止敌怪生成
             DisableAllSpawners();
             DevLog("[BossRush] 已禁用所有敌怪生成器");
+            
+            // 启动持续清理敌人协程（直到波次开始）
             StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
             
             // 等待场景初始化（缩短等待时间，尽快传送玩家）
