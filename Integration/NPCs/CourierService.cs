@@ -136,6 +136,10 @@ namespace BossRush
             OpenLootViewOfficial();
             
             isServiceActive = true;
+            
+            // 播放鸭子叫声（打开快递服务时喊一下）
+            PlayQuackSound();
+            
             ModBehaviour.DevLog("[CourierService] 快递服务已打开");
         }
         
@@ -278,6 +282,40 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[CourierService] [WARNING] 显示横幅失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 播放鸭子叫声（使用反射调用原版 AudioManager）
+        /// </summary>
+        private static void PlayQuackSound()
+        {
+            try
+            {
+                // 获取玩家角色
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null)
+                {
+                    // 使用反射调用 AudioManager.Post（避免 FMOD 程序集依赖）
+                    System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
+                    if (audioManagerType != null)
+                    {
+                        var postMethod = audioManagerType.GetMethod("Post", 
+                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                            null,
+                            new System.Type[] { typeof(string), typeof(GameObject) },
+                            null);
+                        if (postMethod != null)
+                        {
+                            postMethod.Invoke(null, new object[] { "Char/Voice/PlayerQuak", player.gameObject });
+                            ModBehaviour.DevLog("[CourierService] 播放鸭子叫声");
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 播放叫声失败: " + e.Message);
             }
         }
         
