@@ -67,6 +67,8 @@ namespace BossRush
         private static FieldInfo pickAllButtonField = null;
         private static FieldInfo inventoryReferenceField = null;
         private static FieldInfo lootTargetFadeGroupField = null;
+        private static FieldInfo lootTargetInventoryDisplayField = null;  // 容器区域的 InventoryDisplay
+        private static FieldInfo sortButtonField = null;  // InventoryDisplay 中的整理按钮
         private static bool reflectionInitialized = false;
         
         // CourierMovement 引用（用于控制移动）
@@ -359,6 +361,12 @@ namespace BossRush
                 // LootView 容器区域字段（用于放置发送按钮）
                 lootTargetFadeGroupField = typeof(LootView).GetField("lootTargetFadeGroup", privateInstance);
                 
+                // LootView 的 lootTargetInventoryDisplay 字段（容器区域的 InventoryDisplay）
+                lootTargetInventoryDisplayField = typeof(LootView).GetField("lootTargetInventoryDisplay", privateInstance);
+                
+                // InventoryDisplay 的 sortButton 字段（整理按钮，用于定位发送按钮）
+                sortButtonField = typeof(Duckov.UI.InventoryDisplay).GetField("sortButton", privateInstance);
+                
                 // InteractableLootbox 的 inventoryReference 字段（用于设置容器引用）
                 inventoryReferenceField = typeof(InteractableLootbox).GetField("inventoryReference", privateInstance);
                 
@@ -576,6 +584,8 @@ namespace BossRush
         
         /// <summary>
         /// 创建发送按钮
+        /// 定位策略：获取玩家背包整理按钮的相对位置，将发送按钮放到快递容器的相同相对位置
+        /// 这样可以确保在不同分辨率下都能正确定位
         /// </summary>
         private static void CreateSendButton()
         {
@@ -583,86 +593,78 @@ namespace BossRush
             
             try
             {
-                Transform lootViewTransform = LootView.Instance.transform;
-                
-                // 获取容器区域的 FadeGroup（lootTargetFadeGroup）
-                Transform containerAreaParent = null;
-                if (lootTargetFadeGroupField != null)
+                // 获取快递容器区域的 InventoryDisplay
+                Duckov.UI.InventoryDisplay courierInventoryDisplay = null;
+                if (lootTargetInventoryDisplayField != null)
                 {
-                    var fadeGroup = lootTargetFadeGroupField.GetValue(LootView.Instance);
-                    if (fadeGroup != null)
-                    {
-                        // FadeGroup 是 MonoBehaviour，获取其 transform
-                        var fadeGroupMono = fadeGroup as MonoBehaviour;
-                        if (fadeGroupMono != null)
-                        {
-                            containerAreaParent = fadeGroupMono.transform;
-                            ModBehaviour.DevLog("[CourierService] 找到容器区域 FadeGroup: " + containerAreaParent.name);
-                        }
-                    }
+                    courierInventoryDisplay = lootTargetInventoryDisplayField.GetValue(LootView.Instance) as Duckov.UI.InventoryDisplay;
                 }
                 
-                // 优先使用 storeAllButton 作为模板
-                Button templateButton = null;
-                
-                if (storeAllButtonField != null)
+                if (courierInventoryDisplay == null)
                 {
-                    templateButton = storeAllButtonField.GetValue(LootView.Instance) as Button;
-                    if (templateButton != null)
-                    {
-                        ModBehaviour.DevLog("[CourierService] 使用 storeAllButton 作为模板");
-                    }
-                }
-                
-                // 如果 storeAllButton 不可用，尝试 pickAllButton
-                if (templateButton == null && pickAllButtonField != null)
-                {
-                    templateButton = pickAllButtonField.GetValue(LootView.Instance) as Button;
-                    if (templateButton != null)
-                    {
-                        ModBehaviour.DevLog("[CourierService] 使用 pickAllButton 作为模板");
-                    }
-                }
-                
-                // 如果都不可用，在 LootView 中查找任意按钮
-                if (templateButton == null)
-                {
-                    Button[] buttons = lootViewTransform.GetComponentsInChildren<Button>(true);
-                    if (buttons.Length > 0)
-                    {
-                        templateButton = buttons[0];
-                        ModBehaviour.DevLog("[CourierService] 使用第一个找到的按钮作为模板: " + templateButton.name);
-                    }
-                }
-                
-                if (templateButton == null)
-                {
-                    ModBehaviour.DevLog("[CourierService] [ERROR] 无法找到任何按钮模板");
+                    ModBehaviour.DevLog("[CourierService] [ERROR] 无法获取快递容器的 InventoryDisplay");
                     return;
                 }
                 
-                // 确定按钮的父级（优先放在容器区域）
-                Transform buttonParent = containerAreaParent != null ? containerAreaParent : templateButton.transform.parent;
+                // 获取整理按钮作为模板（从快递容器的 InventoryDisplay 中获取）
+                Button sortButton = null;
+                if (sortButtonField != null)
+                {
+                    sortButton = sortButtonField.GetValue(courierInventoryDisplay) as Button;
+                }
                 
-                // 复制按钮
-                sendButtonObject = UnityEngine.Object.Instantiate(templateButton.gameObject, buttonParent);
+                if (sortButton == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [ERROR] 无法获取整理按钮");
+                    return;
+                }
+                
+                ModBehaviour.DevLog("[CourierService] 找到整理按钮: " + sortButton.name + ", 父级: " + sortButton.transform.parent.name);
+                
+                // 复制整理按钮作为发送按钮（放在同一个父级下）
+                sendButtonObject = UnityEngine.Object.Instantiate(sortButton.gameObject, sortButton.transform.parent);
                 sendButtonObject.name = "CourierSendButton";
                 sendButtonObject.SetActive(true);
                 
-                // 调整位置（往右移动，增加宽度）
+                // 使用与整理按钮完全相同的位置
                 RectTransform rt = sendButtonObject.GetComponent<RectTransform>();
-                RectTransform templateRt = templateButton.GetComponent<RectTransform>();
-                if (rt != null && templateRt != null)
+                RectTransform sortRt = sortButton.GetComponent<RectTransform>();
+                if (rt != null && sortRt != null)
                 {
-                    // 复制模板按钮的锚点设置
-                    rt.anchorMin = templateRt.anchorMin;
-                    rt.anchorMax = templateRt.anchorMax;
-                    rt.pivot = templateRt.pivot;
-                    // 位置往右移动 150 像素
-                    rt.anchoredPosition = new Vector2(templateRt.anchoredPosition.x + 150f, templateRt.anchoredPosition.y);
-                    // 宽度增加 100 像素
-                    rt.sizeDelta = new Vector2(templateRt.sizeDelta.x + 100f, templateRt.sizeDelta.y);
-                    ModBehaviour.DevLog("[CourierService] 按钮位置: anchoredPosition=" + rt.anchoredPosition + ", sizeDelta=" + rt.sizeDelta);
+                    // 完全复制整理按钮的位置设置
+                    rt.anchorMin = sortRt.anchorMin;
+                    rt.anchorMax = sortRt.anchorMax;
+                    rt.pivot = sortRt.pivot;
+                    rt.anchoredPosition = sortRt.anchoredPosition;
+                    
+                    // 增加宽度以容纳费用文本
+                    rt.sizeDelta = new Vector2(sortRt.sizeDelta.x + 100f, sortRt.sizeDelta.y);
+                    
+                    ModBehaviour.DevLog("[CourierService] 发送按钮 sizeDelta: " + rt.sizeDelta);
+                }
+                
+                // 处理 LayoutElement（如果存在，需要修改它的 preferredWidth）
+                var layoutElement = sendButtonObject.GetComponent<LayoutElement>();
+                if (layoutElement != null)
+                {
+                    // 增加 preferredWidth
+                    if (layoutElement.preferredWidth > 0)
+                    {
+                        layoutElement.preferredWidth += 100f;
+                        ModBehaviour.DevLog("[CourierService] 修改 LayoutElement.preferredWidth: " + layoutElement.preferredWidth);
+                    }
+                    if (layoutElement.minWidth > 0)
+                    {
+                        layoutElement.minWidth += 100f;
+                    }
+                }
+                
+                // 禁用 ContentSizeFitter（如果存在，它会覆盖我们的宽度设置）
+                var contentSizeFitter = sendButtonObject.GetComponent<ContentSizeFitter>();
+                if (contentSizeFitter != null)
+                {
+                    contentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                    ModBehaviour.DevLog("[CourierService] 禁用 ContentSizeFitter 水平适配");
                 }
                 
                 // 配置按钮组件
@@ -679,7 +681,7 @@ namespace BossRush
                 // 更新按钮状态
                 UpdateButtonState();
                 
-                ModBehaviour.DevLog("[CourierService] 发送按钮创建成功，父级: " + buttonParent.name);
+                ModBehaviour.DevLog("[CourierService] 发送按钮创建成功（基于整理按钮位置）");
             }
             catch (Exception e)
             {
