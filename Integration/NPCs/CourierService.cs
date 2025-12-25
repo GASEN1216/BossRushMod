@@ -247,7 +247,7 @@ namespace BossRush
                 // 显示一次总的大横幅通知（绿色文字）
                 ShowDeliveryCompleteBanner();
                 
-                // 关闭服务
+                // 关闭服务（会显示告别气泡）
                 CloseService();
             }
             catch (Exception e)
@@ -323,6 +323,10 @@ namespace BossRush
             {
                 LootView.Instance.Close();
             }
+            
+            // 返还容器中的物品到玩家背包（如果有关闭时未发送的物品）
+            // 注意：如果是从 ExecuteDelivery() 调用的，容器应该已经空了
+            ReturnItemsToPlayerInventory();
             
             // 显示告别气泡（使用保存的 NPC Transform）
             ShowGoodbyeBubbleInternal(savedNPCTransform);
@@ -844,11 +848,228 @@ namespace BossRush
                 ModBehaviour.DevLog("[CourierService] OnLootViewClosed: 已调用 SetInService(false)，恢复移动");
             }
             
+            // 返还容器中的物品到玩家背包（如果有关闭时未发送的物品）
+            ReturnItemsToPlayerInventory();
+            
             // 显示告别气泡（使用保存的 NPC Transform）
             ShowGoodbyeBubbleInternal(savedNPCTransform);
             
             // 清理资源
             Cleanup();
+        }
+        
+        /// <summary>
+        /// 返还容器中的物品到玩家背包（当玩家关闭UI但未发送物品时）
+        /// </summary>
+        private static void ReturnItemsToPlayerInventory()
+        {
+            if (courierInventory == null)
+            {
+                ModBehaviour.DevLog("[CourierService] 容器为空，无需返还物品");
+                return;
+            }
+            
+            // 检查容器中是否还有物品
+            int itemCount = courierInventory.GetItemCount();
+            if (itemCount == 0)
+            {
+                ModBehaviour.DevLog("[CourierService] 容器中没有物品，无需返还");
+                return;
+            }
+            
+            ModBehaviour.DevLog("[CourierService] 检测到容器中有 " + itemCount + " 件物品未发送，开始返还到玩家背包...");
+            
+            try
+            {
+                // 获取玩家角色和背包
+                CharacterMainControl player = null;
+                try
+                {
+                    player = CharacterMainControl.Main;
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 获取玩家角色失败: " + e.Message);
+                }
+                
+                if (player == null || player.CharacterItem == null || player.CharacterItem.Inventory == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 无法获取玩家背包，尝试丢到地上");
+                    // 如果无法获取玩家背包，尝试丢到地上
+                    DropItemsToGround(player);
+                    return;
+                }
+                
+                Inventory playerInventory = player.CharacterItem.Inventory;
+                
+                // 收集所有需要返还的物品（避免遍历时修改集合）
+                List<Item> itemsToReturn = new List<Item>();
+                foreach (Item item in courierInventory)
+                {
+                    if (item != null)
+                    {
+                        itemsToReturn.Add(item);
+                    }
+                }
+                
+                int returnedCount = 0;
+                int droppedCount = 0;
+                
+                // 尝试将物品添加到玩家背包
+                foreach (Item item in itemsToReturn)
+                {
+                    if (item == null) continue;
+                    
+                    // 先从容器分离
+                    item.Detach();
+                    
+                    // 尝试添加到玩家背包
+                    bool added = playerInventory.AddAndMerge(item, 0);
+                    if (added)
+                    {
+                        returnedCount++;
+                        ModBehaviour.DevLog("[CourierService] 已返还物品到背包: " + item.DisplayName);
+                    }
+                    else
+                    {
+                        // 背包满了，丢到地上（在玩家位置）
+                        try
+                        {
+                            item.Drop(player, true);
+                            droppedCount++;
+                            ModBehaviour.DevLog("[CourierService] 背包已满，已丢到地上: " + item.DisplayName);
+                        }
+                        catch (Exception e)
+                        {
+                            ModBehaviour.DevLog("[CourierService] [WARNING] 丢物品到地上失败: " + e.Message);
+                            // 如果丢到地上失败，销毁物品（这种情况应该很少见）
+                            item.DestroyTree();
+                        }
+                    }
+                }
+                
+                ModBehaviour.DevLog("[CourierService] 物品返还完成 - 背包: " + returnedCount + " 件, 地上: " + droppedCount + " 件");
+                
+                // 如果有物品被返还，显示通知
+                if (returnedCount > 0 || droppedCount > 0)
+                {
+                    string message;
+                    if (droppedCount > 0)
+                    {
+                        message = L10n.T(
+                            "已返还 " + returnedCount + " 件物品到背包，" + droppedCount + " 件物品已丢到地上",
+                            "Returned " + returnedCount + " items to inventory, " + droppedCount + " items dropped on ground"
+                        );
+                    }
+                    else
+                    {
+                        message = L10n.T(
+                            "已返还 " + returnedCount + " 件物品到背包",
+                            "Returned " + returnedCount + " items to inventory"
+                        );
+                    }
+                    NotificationText.Push(message);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 返还物品失败: " + e.Message + "\n" + e.StackTrace);
+                // 如果返还失败，尝试丢到地上作为备用方案
+                CharacterMainControl player = null;
+                try
+                {
+                    player = CharacterMainControl.Main;
+                }
+                catch { }
+                DropItemsToGround(player);
+            }
+        }
+        
+        /// <summary>
+        /// 将容器中的所有物品丢到地上（备用方案，当无法获取玩家背包时）
+        /// </summary>
+        private static void DropItemsToGround(CharacterMainControl player)
+        {
+            if (courierInventory == null) return;
+            
+            try
+            {
+                List<Item> itemsToDrop = new List<Item>();
+                foreach (Item item in courierInventory)
+                {
+                    if (item != null)
+                    {
+                        itemsToDrop.Add(item);
+                    }
+                }
+                
+                if (itemsToDrop.Count == 0) return;
+                
+                int droppedCount = 0;
+                
+                foreach (Item item in itemsToDrop)
+                {
+                    if (item == null) continue;
+                    
+                    // 先从容器分离
+                    item.Detach();
+                    
+                    // 尝试丢到地上
+                    try
+                    {
+                        if (player != null)
+                        {
+                            // 在玩家位置丢下
+                            item.Drop(player, true);
+                        }
+                        else
+                        {
+                            // 如果无法获取玩家，尝试获取玩家位置
+                            CharacterMainControl mainPlayer = null;
+                            try
+                            {
+                                mainPlayer = CharacterMainControl.Main;
+                            }
+                            catch { }
+                            
+                            if (mainPlayer != null)
+                            {
+                                item.Drop(mainPlayer, true);
+                            }
+                            else
+                            {
+                                // 如果还是无法获取玩家，销毁物品
+                                item.DestroyTree();
+                                ModBehaviour.DevLog("[CourierService] [WARNING] 无法获取玩家位置，销毁物品: " + item.DisplayName);
+                                continue;
+                            }
+                        }
+                        
+                        droppedCount++;
+                        ModBehaviour.DevLog("[CourierService] 已丢到地上: " + item.DisplayName);
+                    }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[CourierService] [WARNING] 丢物品到地上失败: " + e.Message);
+                        // 如果丢到地上失败，销毁物品
+                        item.DestroyTree();
+                    }
+                }
+                
+                if (droppedCount > 0)
+                {
+                    ModBehaviour.DevLog("[CourierService] 已丢 " + droppedCount + " 件物品到地上");
+                    string message = L10n.T(
+                        "已丢 " + droppedCount + " 件物品到地上",
+                        "Dropped " + droppedCount + " items on ground"
+                    );
+                    NotificationText.Push(message);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 丢物品到地上失败: " + e.Message);
+            }
         }
         
         // ============================================================================
@@ -876,17 +1097,30 @@ namespace BossRush
             
             try
             {
-                string goodbyeText;
-                
-                // 如果有发送记录，显示发送结果
+                // 如果有发送记录，显示气泡
                 if (lastSentItemCount > 0)
                 {
                     // 格式：已送达x件物品，共花费x元，欢迎下次光临~
                     // x 用红色显示
-                    goodbyeText = L10n.T(
+                    string goodbyeText = L10n.T(
                         "已送达<color=#FF0000>" + lastSentItemCount + "</color>件物品，共花费<color=#FF0000>￥" + lastDeliveryFee + "</color>，欢迎下次光临~",
                         "Delivered <color=#FF0000>" + lastSentItemCount + "</color> items, cost <color=#FF0000>￥" + lastDeliveryFee + "</color>, come again~"
                     );
+                    
+                    // 使用原版气泡系统显示对话
+                    Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
+                        Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                            goodbyeText,
+                            npcTransform,
+                            BUBBLE_Y_OFFSET,
+                            false,
+                            false,
+                            -1f,
+                            GOODBYE_BUBBLE_DURATION
+                        )
+                    );
+                    
+                    ModBehaviour.DevLog("[CourierService] 显示告别气泡: " + goodbyeText);
                     
                     // 重置发送记录
                     lastSentItemCount = 0;
@@ -894,28 +1128,31 @@ namespace BossRush
                 }
                 else
                 {
-                    // 没有发送物品时的默认告别语（从本地化系统获取）
-                    goodbyeText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Goodbye");
+                    // 没有发送物品时，使用气泡显示"穷小子，没钱还来浪费爷的时间"
+                    string bubbleText = L10n.T(
+                        "穷小子，没钱还来浪费爷的时间",
+                        "Poor kid, wasting my time without money"
+                    );
+                    
+                    // 使用原版气泡系统显示对话
+                    Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
+                        Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                            bubbleText,
+                            npcTransform,
+                            BUBBLE_Y_OFFSET,
+                            false,
+                            false,
+                            -1f,
+                            GOODBYE_BUBBLE_DURATION
+                        )
+                    );
+                    
+                    ModBehaviour.DevLog("[CourierService] 显示告别气泡: " + bubbleText);
                 }
-                
-                // 使用原版气泡系统显示对话
-                Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
-                    Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
-                        goodbyeText,
-                        npcTransform,
-                        BUBBLE_Y_OFFSET,
-                        false,
-                        false,
-                        -1f,
-                        GOODBYE_BUBBLE_DURATION
-                    )
-                );
-                
-                ModBehaviour.DevLog("[CourierService] 显示告别气泡: " + goodbyeText);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[CourierService] [WARNING] 显示告别气泡失败: " + e.Message);
+                ModBehaviour.DevLog("[CourierService] [WARNING] 显示告别消息失败: " + e.Message);
             }
         }
         
