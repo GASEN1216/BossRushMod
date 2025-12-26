@@ -1807,6 +1807,18 @@ namespace BossRush
                     }
                 }
 
+                // 销毁 CharacterSpawnerRoot（触发器刷怪，如 DEMO 地图的大兴兴）
+                var spawnerRoots = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>();
+                foreach (var root in spawnerRoots)
+                {
+                    if (root != null)
+                    {
+                        UnityEngine.Object.Destroy(root.gameObject);
+                        destroyedCount++;
+                        DevLog("[BossRush] 已销毁 CharacterSpawnerRoot: " + root.gameObject.name);
+                    }
+                }
+
                 spawnersDisabled = true;
                 DevLog("[BossRush] 已销毁 " + destroyedCount + " 个spawner");
             }
@@ -2447,8 +2459,9 @@ namespace BossRush
         
         /// <summary>
         /// 在指定位置生成敌人（使用CharacterRandomPreset）
+        /// 返回生成的角色，如果失败返回 null
         /// </summary>
-        private async void SpawnEnemyAtPositionAsync(EnemyPresetInfo preset, Vector3 position)
+        private async UniTask<CharacterMainControl> SpawnEnemyAtPositionAsync(EnemyPresetInfo preset, Vector3 position)
         {
             try
             {
@@ -2456,7 +2469,9 @@ namespace BossRush
                 if (IsDragonDescendantPreset(preset))
                 {
                     SpawnDragonDescendant(position);
-                    return;
+                    // 龙裔遗族使用独立生成逻辑，这里返回 null 但不视为失败
+                    // 龙裔遗族的生成验证由其自身逻辑处理
+                    return null;
                 }
                 
                 // 查找所有CharacterRandomPreset（从Resources中查找）
@@ -2507,8 +2522,7 @@ namespace BossRush
                 if (targetPreset == null)
                 {
                     DevLog("[BossRush] 未找到合适的CharacterRandomPreset");
-                    OnBossSpawnFailed(preset);
-                    return;
+                    return null;
                 }
                 
                 // 使用CharacterRandomPreset的CreateCharacterAsync方法生成敌人
@@ -2520,8 +2534,7 @@ namespace BossRush
                 if (character == null)
                 {
                     DevLog("[BossRush] 生成敌人失败");
-                    OnBossSpawnFailed(preset);
-                    return;
+                    return null;
                 }
                 
                 currentBoss = character;
@@ -2607,11 +2620,13 @@ namespace BossRush
                 
                 ShowMessage(L10n.T("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName, "Wave " + (currentEnemyIndex + 1) + ": " + preset.displayName));
                 DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
+                
+                return character;
             }
             catch (Exception e)
             {
                 DevLog("[BossRush] SpawnEnemyAtPositionAsync 错误: " + e.Message + "\n" + e.StackTrace);
-                OnBossSpawnFailed(preset);
+                return null;
             }
         }
 
