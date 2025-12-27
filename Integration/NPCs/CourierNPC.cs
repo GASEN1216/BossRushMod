@@ -685,7 +685,8 @@ namespace BossRush
                 new string[] { "你知道火龙也怕冰吗？我有一次都把它打坠机了哈哈哈哈", "Did you know fire dragons also fear ice? I once made it crash land hahaha" },
                 new string[] { "这该死的火龙把我的快递都创飞了", "That damn fire dragon knocked all my deliveries flying" },
                 new string[] { "那头火龙在叽里咕噜的时候最好跑远点", "When that fire dragon starts gurgling, you better run far away" },
-                new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" }
+                new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" },
+                new string[] { "有时候送的快也很重要，直接就把钱拿过来，概不赊账！", "Sometimes speed matters, just hand over the money, no credit!" }
             };
             
             int index = UnityEngine.Random.Range(0, dialogues.Length);
@@ -806,7 +807,7 @@ namespace BossRush
         // 待机状态（到达目标后播放待机动画）
         private bool isIdling = false;
         private float idleTimer = 0f;
-        private const float IDLE_DURATION = 2f;  // 待机2秒
+        private const float IDLE_DURATION = 10f;  // 待机10秒
         
         // 快递服务状态（服务期间停止移动）
         private bool isInService = false;
@@ -830,6 +831,9 @@ namespace BossRush
         public bool Moving { get { return moving; } }
         public bool WaitingForPathResult { get { return waitingForPathResult; } }
         
+        // 延迟恢复移动的协程引用（用于取消）
+        private Coroutine delayedResumeCoroutine = null;
+        
         /// <summary>
         /// 设置快递服务状态（服务期间停止移动）
         /// </summary>
@@ -837,16 +841,33 @@ namespace BossRush
         {
             if (inService)
             {
-                // 进入服务状态：立即停止移动
+                // 进入服务状态：取消之前的延迟恢复协程，立即停止移动
+                if (delayedResumeCoroutine != null)
+                {
+                    StopCoroutine(delayedResumeCoroutine);
+                    delayedResumeCoroutine = null;
+                    ModBehaviour.DevLog("[CourierNPC] 取消之前的延迟恢复协程");
+                }
                 isInService = true;
                 StopMove();
                 ModBehaviour.DevLog("[CourierNPC] 进入快递服务状态，停止移动");
             }
             else
             {
-                // 退出服务状态：延迟2秒后恢复移动
-                ModBehaviour.DevLog("[CourierNPC] 退出快递服务状态，2秒后恢复移动");
-                StartCoroutine(DelayedResumeMovement());
+                // 退出服务状态
+                // 如果正在待机期间，重置待机计时器并重新触发待机动画，避免滑步
+                if (isIdling)
+                {
+                    idleTimer = 0f;
+                    if (controller != null)
+                    {
+                        controller.StartTalking();  // 重新触发待机动画
+                    }
+                    ModBehaviour.DevLog("[CourierNPC] 退出服务状态，继续待机动画");
+                }
+                // 延迟1秒后恢复移动
+                ModBehaviour.DevLog("[CourierNPC] 退出快递服务状态，1秒后恢复移动");
+                delayedResumeCoroutine = StartCoroutine(DelayedResumeMovement());
             }
         }
         
@@ -856,8 +877,13 @@ namespace BossRush
         private IEnumerator DelayedResumeMovement()
         {
             yield return new WaitForSeconds(1f);
+            // 只有在仍处于非服务状态时才恢复移动（双重保险）
+            if (!isInService)
+            {
+                ModBehaviour.DevLog("[CourierNPC] 延迟结束，恢复移动");
+            }
             isInService = false;
-            ModBehaviour.DevLog("[CourierNPC] 延迟结束，恢复移动");
+            delayedResumeCoroutine = null;
         }
         
         void Start()
@@ -1519,116 +1545,227 @@ namespace BossRush
         }
     }
     
+    // CourierDeliveryInteractable 已移除，快递服务现在由 CourierInteractable 主选项处理
+    
     /// <summary>
-    /// 快递员交互组件
-    /// 参考 BossRushSignInteractable 实现，使用正确的交互方式
+    /// 快递员交互组件 - 寄存服务选项
+    /// 直接打开原版 PlayerStorage（玩家仓库）
     /// </summary>
-    public class CourierInteractable : InteractableBase
+    public class CourierStorageInteractable : InteractableBase
     {
         private CourierNPCController controller;
         private bool isInitialized = false;
         
         protected override void Awake()
         {
-            // 参考路牌实现：设置为非组交互（只有一个选项）
-            try { this.interactableGroup = false; } catch { }
+            // 子选项不需要设置 interactableGroup，它们是被主交互组件管理的
             
-            // 设置交互名称（使用本地化键，必须在 base.Awake 之前设置）
             try
             {
                 this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_CourierService";
-                this.InteractName = "BossRush_CourierService";
+                this._overrideInteractNameKey = "BossRush_StorageService";
+                this.InteractName = "BossRush_StorageService";
             }
             catch { }
             
-            // 设置交互标记偏移（人物高度中间位置）
             try { this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f); } catch { }
             
-            // 确保有 Collider（参考路牌：使用 isTrigger = true）
-            try
-            {
-                Collider existingCol = GetComponent<Collider>();
-                if (existingCol == null)
-                {
-                    CapsuleCollider col = gameObject.AddComponent<CapsuleCollider>();
-                    col.height = 2f;
-                    col.radius = 0.5f;
-                    col.center = new Vector3(0f, 1f, 0f);
-                    col.isTrigger = true;
-                    this.interactCollider = col;
-                }
-                else
-                {
-                    existingCol.isTrigger = true;
-                    this.interactCollider = existingCol;
-                }
-            }
-            catch { }
-            
-            // 调用基类 Awake（可能被其他 Mod Patch，需要 try-catch）
             try { base.Awake(); } catch { }
             
-            // 手动设置 Layer 为 Interactable（base.Awake 可能失败）
-            try
-            {
-                if (this.interactCollider != null)
-                {
-                    int interactableLayer = LayerMask.NameToLayer("Interactable");
-                    if (interactableLayer != -1)
-                    {
-                        this.interactCollider.gameObject.layer = interactableLayer;
-                    }
-                }
-            }
-            catch { }
+            try { controller = GetComponentInParent<CourierNPCController>(); } catch { }
             
-            // 获取控制器引用
-            try { controller = GetComponent<CourierNPCController>(); } catch { }
+            // 子选项不需要自己的 Collider，隐藏交互标记
+            try { this.MarkerActive = false; } catch { }
             
             isInitialized = true;
-            ModBehaviour.DevLog("[CourierNPC] CourierInteractable.Awake 完成，Layer=" + gameObject.layer);
         }
         
         protected override void Start()
         {
             try { base.Start(); } catch { }
-            
-            // 再次确保名称正确（使用本地化键）
-            try
-            {
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_CourierService";
-                this.InteractName = "BossRush_CourierService";
-            }
-            catch { }
-            
-            // 显示交互标记
-            try { this.MarkerActive = true; } catch { }
-            
-            ModBehaviour.DevLog("[CourierNPC] CourierInteractable.Start 完成，MarkerActive=" + this.MarkerActive + ", InteractName=" + this.InteractName);
         }
         
-        /// <summary>
-        /// 检查是否可交互
-        /// </summary>
         protected override bool IsInteractable()
         {
             return isInitialized;
         }
         
-        /// <summary>
-        /// 交互开始时调用（玩家按下交互键）
-        /// </summary>
         protected override void OnInteractStart(CharacterMainControl interactCharacter)
         {
             try
             {
                 base.OnInteractStart(interactCharacter);
+                ModBehaviour.DevLog("[CourierNPC] 玩家选择寄存服务");
                 
-                ModBehaviour.DevLog("[CourierNPC] 玩家开始与快递员交互");
+                // 调用寄存服务
+                StorageDepositService.OpenService(controller?.transform);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 寄存服务交互出错: " + e.Message);
+            }
+        }
+        
+        protected override void OnInteractStop()
+        {
+            try { base.OnInteractStop(); } catch { }
+        }
+    }
+    
+    /// <summary>
+    /// 快递员主交互组件
+    /// 使用 InteractableBase 的 interactableGroup 模式，与路牌一样的方式实现多选项
+    /// 玩家按 F 交互后弹出选项列表（快递服务、寄存服务）
+    /// </summary>
+    public class CourierInteractable : InteractableBase
+    {
+        private bool optionsInjected = false;
+        private List<InteractableBase> groupOptions = new List<InteractableBase>();
+        
+        protected override void Awake()
+        {
+            try
+            {
+                // 设置为交互组（启用多选项模式）
+                this.interactableGroup = true;
                 
-                // 开始对话动画
+                // 设置主交互名称（显示为第一个选项"快递服务"）
+                this.overrideInteractName = true;
+                this._overrideInteractNameKey = "BossRush_CourierService";
+                this.InteractName = "BossRush_CourierService";
+                
+                // 设置交互标记偏移（显示在人物中间）
+                this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] CourierInteractable.Awake 设置属性失败: " + e.Message);
+            }
+            
+            try
+            {
+                base.Awake();
+            }
+            catch (Exception e)
+            {
+                // 捕获可能的异常，确保 Mod 能继续运行
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] CourierInteractable base.Awake 异常: " + e.Message);
+            }
+            
+            // 确保有 Collider
+            try
+            {
+                Collider col = GetComponent<Collider>();
+                if (col == null)
+                {
+                    CapsuleCollider capsule = gameObject.AddComponent<CapsuleCollider>();
+                    capsule.height = 2f;
+                    capsule.radius = 0.8f;
+                    capsule.center = new Vector3(0f, 1f, 0f);
+                    capsule.isTrigger = false;  // 不是触发器，是实体碰撞器
+                    this.interactCollider = capsule;
+                }
+                else
+                {
+                    this.interactCollider = col;
+                }
+                
+                // 设置 Layer 为 Interactable（让玩家能检测到交互点）
+                int interactableLayer = LayerMask.NameToLayer("Interactable");
+                if (interactableLayer != -1)
+                {
+                    gameObject.layer = interactableLayer;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] CourierInteractable 设置 Collider 失败: " + e.Message);
+            }
+            
+            ModBehaviour.DevLog("[CourierNPC] CourierInteractable.Awake 完成");
+        }
+        
+        protected override void Start()
+        {
+            try
+            {
+                base.Start();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] CourierInteractable base.Start 异常: " + e.Message);
+            }
+            
+            // 注入所有选项
+            if (!optionsInjected)
+            {
+                InjectAllOptions();
+            }
+        }
+        
+        /// <summary>
+        /// 注入所有交互选项（寄存服务作为子选项，快递服务由主交互处理）
+        /// </summary>
+        private void InjectAllOptions()
+        {
+            try
+            {
+                optionsInjected = true;
+                
+                // 获取或创建 otherInterablesInGroup 列表
+                var field = typeof(InteractableBase).GetField("otherInterablesInGroup",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field == null)
+                {
+                    ModBehaviour.DevLog("[CourierNPC] [ERROR] 无法获取 otherInterablesInGroup 字段");
+                    return;
+                }
+                
+                var list = field.GetValue(this) as List<InteractableBase>;
+                if (list == null)
+                {
+                    list = new List<InteractableBase>();
+                    field.SetValue(this, list);
+                }
+                
+                // 主选项是"快递服务"（由 OnTimeOut 处理）
+                // 子选项只有"寄存服务"
+                GameObject storageObj = new GameObject("CourierOption_Storage");
+                storageObj.transform.SetParent(transform);
+                storageObj.transform.localPosition = Vector3.zero;
+                var storageInteract = storageObj.AddComponent<CourierStorageInteractable>();
+                list.Add(storageInteract);
+                groupOptions.Add(storageInteract);
+                
+                ModBehaviour.DevLog("[CourierNPC] CourierInteractable: 已注入选项（主选项=快递服务，子选项=寄存服务）");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] InjectAllOptions 失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+        
+        protected override bool IsInteractable()
+        {
+            // 快递员始终可交互
+            return true;
+        }
+        
+        protected override void OnInteractStart(CharacterMainControl interactCharacter)
+        {
+            base.OnInteractStart(interactCharacter);
+            ModBehaviour.DevLog("[CourierNPC] 玩家开始与快递员交互");
+        }
+        
+        protected override void OnTimeOut()
+        {
+            // 主交互选项"快递服务"被选中
+            try
+            {
+                ModBehaviour.DevLog("[CourierNPC] 玩家选择快递服务（主选项）");
+                
+                // 获取控制器并开始对话
+                var controller = GetComponent<CourierNPCController>();
                 if (controller != null)
                 {
                     controller.StartTalking();
@@ -1639,35 +1776,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[CourierNPC] [ERROR] OnInteractStart 出错: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 交互停止时调用
-        /// </summary>
-        protected override void OnInteractStop()
-        {
-            try
-            {
-                base.OnInteractStop();
-                
-                // 注意：不要在这里调用 StopTalking()
-                // 因为快递服务打开后，动画状态由 CourierService 控制
-                // 只有在 CourierService 关闭时才会调用 StopTalking()
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[CourierNPC] [ERROR] OnInteractStop 出错: " + e.Message);
-            }
-        }
-        
-        private IEnumerator StopTalkingDelayed()
-        {
-            yield return new WaitForSeconds(2f);
-            if (controller != null)
-            {
-                controller.StopTalking();
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 快递服务交互出错: " + e.Message);
             }
         }
     }

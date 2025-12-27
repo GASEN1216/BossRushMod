@@ -382,6 +382,9 @@ namespace BossRush
         // 配置当前BossRush模式（支持无间炼狱标记）
         public void ConfigureBossRushMode(int bossesPerWave, bool useInfiniteHell)
         {
+            // [DEBUG] 记录传入参数
+            DevLog("[BossRush] ConfigureBossRushMode 调用: 传入 bossesPerWave=" + bossesPerWave + ", useInfiniteHell=" + useInfiniteHell + ", 当前 this.bossesPerWave=" + this.bossesPerWave);
+            
             if (bossesPerWave < 1)
             {
                 bossesPerWave = 1;
@@ -393,10 +396,12 @@ namespace BossRush
             if (infiniteHellMode && config != null && config.infiniteHellBossesPerWave > 0)
             {
                 this.bossesPerWave = config.infiniteHellBossesPerWave;
+                DevLog("[BossRush] ConfigureBossRushMode: 无间炼狱模式，使用配置值 this.bossesPerWave=" + this.bossesPerWave);
             }
             else
             {
                 this.bossesPerWave = bossesPerWave;
+                DevLog("[BossRush] ConfigureBossRushMode: 普通模式，设置 this.bossesPerWave=" + this.bossesPerWave);
             }
 
             // 重置无间炼狱进度状态
@@ -432,7 +437,7 @@ namespace BossRush
         {
             try
             {
-                // 每次打开弹药商店时重置 ID 105 购买计数
+                // 每次打开加油站时重置 ID 105 购买计数
                 item105PurchaseCount = 0;
                 
                 EnsureAmmoShop();
@@ -494,6 +499,12 @@ namespace BossRush
         // BossRush 进入 DEMO 挑战场景的来源标记
         private static bool bossRushArenaPlanned = false;  // 通过 BossRush 启动的 DEMO 挑战加载已发起但尚未完成
         private static bool bossRushArenaActive = false;   // 当前 DEMO 挑战场景是否处于 BossRush 控制之下
+        
+        /// <summary>
+        /// 竞技场是否激活（通关后仍为true，直到离开场景）
+        /// 用于子弹商店等功能在通关后仍可使用
+        /// </summary>
+        public bool IsBossRushArenaActive => bossRushArenaActive;
 
         private Vector3 demoChallengeStartPosition = Vector3.zero;
         
@@ -1929,16 +1940,121 @@ namespace BossRush
         /// <summary>
         /// 无间炼狱单波完成：掉落现金、更新显示并准备下一波
         /// </summary>
-        private async void OnInfiniteHellWaveCompleted()
+        private void OnInfiniteHellWaveCompleted()
         {
             OnInfiniteHellWaveCompleted_LootAndRewards();
             return;
         }
         
         /// <summary>
+        /// 玩家手动强制结束当前波次（作为boss刷不出来的兜底方案）
+        /// 清理当前波次的所有Boss并推进到下一波或结束挑战
+        /// 支持：弹指可灭、有点意思、无间炼狱、白手起家
+        /// </summary>
+        public void ForceEndCurrentWave()
+        {
+            try
+            {
+                // 检查是否在BossRush或ModeD模式中
+                if (!IsActive && !IsModeDActive)
+                {
+                    DevLog("[BossRush] ForceEndCurrentWave: BossRush和ModeD都未激活，忽略");
+                    return;
+                }
+                
+                // 白手起家模式：清理ModeD敌人列表
+                if (IsModeDActive)
+                {
+                    DevLog("[ModeD] ForceEndCurrentWave: 玩家手动结束当前波次");
+                    
+                    // 清理当前波次的所有敌人
+                    if (modeDCurrentWaveEnemies != null)
+                    {
+                        for (int i = 0; i < modeDCurrentWaveEnemies.Count; i++)
+                        {
+                            CharacterMainControl enemy = modeDCurrentWaveEnemies[i];
+                            if (enemy != null)
+                            {
+                                try
+                                {
+                                    Health h = enemy.Health;
+                                    if (h != null && !h.IsDead)
+                                    {
+                                        UnityEngine.Object.Destroy(enemy.gameObject);
+                                    }
+                                }
+                                catch {}
+                            }
+                        }
+                        modeDCurrentWaveEnemies.Clear();
+                    }
+                    
+                    // 触发ModeD波次完成
+                    OnModeDWaveComplete();
+                    return;
+                }
+                
+                // BossRush模式（弹指可灭、有点意思、无间炼狱）
+                DevLog("[BossRush] ForceEndCurrentWave: 玩家手动结束当前波次");
+                
+                // 清理当前波次的所有Boss
+                if (bossesPerWave > 1)
+                {
+                    // 多Boss模式：清理currentWaveBosses列表中的所有Boss
+                    if (currentWaveBosses != null)
+                    {
+                        for (int i = 0; i < currentWaveBosses.Count; i++)
+                        {
+                            MonoBehaviour boss = currentWaveBosses[i];
+                            if (boss != null)
+                            {
+                                try
+                                {
+                                    Health h = boss.GetComponent<Health>();
+                                    if (h != null && !h.IsDead)
+                                    {
+                                        // 直接销毁Boss对象
+                                        UnityEngine.Object.Destroy(boss.gameObject);
+                                    }
+                                }
+                                catch {}
+                            }
+                        }
+                        currentWaveBosses.Clear();
+                    }
+                    bossesInCurrentWaveRemaining = 0;
+                }
+                else
+                {
+                    // 单Boss模式：清理currentBoss
+                    if (currentBoss != null)
+                    {
+                        try
+                        {
+                            MonoBehaviour bossMb = currentBoss as MonoBehaviour;
+                            if (bossMb != null)
+                            {
+                                UnityEngine.Object.Destroy(bossMb.gameObject);
+                            }
+                        }
+                        catch {}
+                        currentBoss = null;
+                    }
+                }
+                
+                // 推进到下一波或结束挑战
+                ProceedAfterWaveFinished();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] ForceEndCurrentWave 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
         /// 所有敌人击败完成
         /// </summary>
-        private async void OnAllEnemiesDefeated()
+        private void OnAllEnemiesDefeated()
         {
             OnAllEnemiesDefeated_LootAndRewards();
             return;
@@ -2165,7 +2281,7 @@ namespace BossRush
             return;
         }
 
-        private async void TeleportToBossRushAsync()
+        private void TeleportToBossRushAsync()
         {
             TeleportToBossRushAsync_WavesArena();
             return;
@@ -2468,10 +2584,9 @@ namespace BossRush
                 // 检查是否是龙裔遗族Boss，使用专门的生成方法
                 if (IsDragonDescendantPreset(preset))
                 {
-                    SpawnDragonDescendant(position);
-                    // 龙裔遗族使用独立生成逻辑，这里返回 null 但不视为失败
-                    // 龙裔遗族的生成验证由其自身逻辑处理
-                    return null;
+                    // 龙裔遗族使用独立生成逻辑，等待生成完成并返回结果
+                    var dragonBoss = await SpawnDragonDescendant(position);
+                    return dragonBoss;
                 }
                 
                 // 查找所有CharacterRandomPreset（从Resources中查找）
@@ -2553,9 +2668,6 @@ namespace BossRush
                 }
                 catch {}
 
-                // 应用全局难度因子（血量、反应时间、攻击速度等）
-                ApplyGlobalDifficultyScaling(character);
-
                 // 无间炼狱：在角色生成后按当前波次进行生命值和伤害强化
                 if (infiniteHellMode)
                 {
@@ -2618,6 +2730,9 @@ namespace BossRush
                     }
                 }
                 
+                // 延迟校验Boss位置，防止低配玩家地形加载慢导致Boss卡在地下
+                StartCoroutine(DelayedBossPositionValidation(character, 0.5f));
+                
                 ShowMessage(L10n.T("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName, "Wave " + (currentEnemyIndex + 1) + ": " + preset.displayName));
                 DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
                 
@@ -2627,153 +2742,6 @@ namespace BossRush
             {
                 DevLog("[BossRush] SpawnEnemyAtPositionAsync 错误: " + e.Message + "\n" + e.StackTrace);
                 return null;
-            }
-        }
-
-        /// <summary>
-        /// 应用游戏全局难度因子到 Boss（血量、反应时间、攻击间隔等）
-        /// 游戏原版的 Ruleset 定义了这些因子但未实际使用，我们在 BossRush 中手动应用
-        /// </summary>
-        private void ApplyGlobalDifficultyScaling(CharacterMainControl character)
-        {
-            if (character == null)
-            {
-                return;
-            }
-
-            try
-            {
-                // 获取当前难度规则
-                Duckov.Rules.Ruleset currentRule = null;
-                try
-                {
-                    currentRule = Duckov.Rules.GameRulesManager.Current;
-                }
-                catch {}
-
-                if (currentRule == null)
-                {
-                    DevLog("[BossRush] ApplyGlobalDifficultyScaling: 无法获取当前难度规则，跳过");
-                    return;
-                }
-
-                // 1. 应用敌人血量因子 (EnemyHealthFactor)
-                float healthFactor = 1f;
-                try
-                {
-                    healthFactor = currentRule.EnemyHealthFactor;
-                }
-                catch {}
-
-                if (healthFactor != 1f && healthFactor > 0f)
-                {
-                    try
-                    {
-                        var item = character.CharacterItem;
-                        if (item != null)
-                        {
-                            Stat hpStat = null;
-                            try
-                            {
-                                hpStat = item.GetStat("MaxHealth");
-                            }
-                            catch {}
-
-                            if (hpStat != null)
-                            {
-                                hpStat.BaseValue *= healthFactor;
-                                DevLog("[BossRush] 应用血量因子: " + healthFactor + ", 新血量: " + hpStat.BaseValue);
-                            }
-                        }
-                    }
-                    catch {}
-
-                    // 刷新当前血量为新的最大血量
-                    try
-                    {
-                        if (character.Health != null)
-                        {
-                            character.Health.SetHealth(character.Health.MaxHealth);
-                        }
-                    }
-                    catch {}
-                }
-
-                // 2. 应用敌人反应时间因子 (EnemyReactionTimeFactor)
-                // 3. 应用敌人攻击时间因子 (EnemyAttackTimeFactor)
-                // 4. 应用敌人攻击间隔因子 (EnemyAttackTimeSpaceFactor)
-                var ai = character.GetComponentInChildren<AICharacterController>();
-                if (ai != null)
-                {
-                    // 反应时间因子（值越大，反应越慢）
-                    float reactionFactor = 1f;
-                    try
-                    {
-                        reactionFactor = currentRule.EnemyReactionTimeFactor;
-                    }
-                    catch {}
-
-                    if (reactionFactor != 1f && reactionFactor > 0f)
-                    {
-                        try
-                        {
-                            // 基础反应时间乘以因子
-                            ai.baseReactionTime *= reactionFactor;
-                            DevLog("[BossRush] 应用反应时间因子: " + reactionFactor);
-                        }
-                        catch {}
-                    }
-
-                    // 攻击时间因子（值越大，单次攻击持续时间越长）
-                    float attackTimeFactor = 1f;
-                    try
-                    {
-                        attackTimeFactor = currentRule.EnemyAttackTimeFactor;
-                    }
-                    catch {}
-
-                    if (attackTimeFactor != 1f && attackTimeFactor > 0f)
-                    {
-                        try
-                        {
-                            // 射击时间范围乘以因子
-                            ai.shootTimeRange = new Vector2(
-                                ai.shootTimeRange.x * attackTimeFactor,
-                                ai.shootTimeRange.y * attackTimeFactor
-                            );
-                            DevLog("[BossRush] 应用攻击时间因子: " + attackTimeFactor);
-                        }
-                        catch {}
-                    }
-
-                    // 攻击间隔因子（值越大，攻击间隔越长，即攻击频率越低）
-                    float attackSpaceFactor = 1f;
-                    try
-                    {
-                        attackSpaceFactor = currentRule.EnemyAttackTimeSpaceFactor;
-                    }
-                    catch {}
-
-                    if (attackSpaceFactor != 1f && attackSpaceFactor > 0f)
-                    {
-                        try
-                        {
-                            // 射击间隔范围乘以因子
-                            ai.shootTimeSpaceRange = new Vector2(
-                                ai.shootTimeSpaceRange.x * attackSpaceFactor,
-                                ai.shootTimeSpaceRange.y * attackSpaceFactor
-                            );
-                            DevLog("[BossRush] 应用攻击间隔因子: " + attackSpaceFactor);
-                        }
-                        catch {}
-                    }
-                }
-
-                DevLog("[BossRush] 全局难度因子应用完成 - 血量因子:" + healthFactor);
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] ApplyGlobalDifficultyScaling 失败: " + e.Message);
             }
         }
 

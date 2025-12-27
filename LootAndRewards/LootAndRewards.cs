@@ -425,10 +425,23 @@ namespace BossRush
 
         private int GetRandomInfiniteHellHighQualityRewardTypeID()
         {
+            // 皇冠（1254）权重降为0.1，与其他模式保持一致
+            const int CROWN_TYPE_ID = 1254;
+            const float CROWN_REROLL_CHANCE = 0.9f;
+
             if (infiniteHellHighQualityItemPoolInitialized && infiniteHellHighQualityItemPool != null && infiniteHellHighQualityItemPool.Count > 0)
             {
                 int cachedIndex = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
-                return infiniteHellHighQualityItemPool[cachedIndex];
+                int resultId = infiniteHellHighQualityItemPool[cachedIndex];
+                
+                // 如果抽到皇冠，90%概率重新抽取
+                if (resultId == CROWN_TYPE_ID && UnityEngine.Random.value < CROWN_REROLL_CHANCE)
+                {
+                    cachedIndex = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
+                    resultId = infiniteHellHighQualityItemPool[cachedIndex];
+                }
+                
+                return resultId;
             }
 
             infiniteHellHighQualityItemPoolInitialized = true;
@@ -575,7 +588,16 @@ namespace BossRush
             infiniteHellHighQualityItemPool = pool;
 
             int index = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
-            return infiniteHellHighQualityItemPool[index];
+            int finalId = infiniteHellHighQualityItemPool[index];
+            
+            // 如果抽到皇冠，90%概率重新抽取
+            if (finalId == CROWN_TYPE_ID && UnityEngine.Random.value < CROWN_REROLL_CHANCE)
+            {
+                index = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
+                finalId = infiniteHellHighQualityItemPool[index];
+            }
+            
+            return finalId;
         }
 
         /// <summary>
@@ -600,7 +622,9 @@ namespace BossRush
             catch {}
 
             SetBossRushRuntimeActive(false);
-            bossRushArenaActive = false;
+            // 注意：胜利后保持 bossRushArenaActive = true，确保大兴兴清理逻辑持续运行
+            // 直到玩家离开 DEMO 场景，防止玩家走到左边触发原版大兴兴 Boss
+            // bossRushArenaActive 会在玩家离开场景时（通过 OnSceneLoaded）自动重置
 
             // 取消敌人死亡监听
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
@@ -989,68 +1013,24 @@ namespace BossRush
                                             // 先统计通关奖励候选总数量
                                             DevLog("[BossRush] 通关奖励候选物品数量=" + idSet.Count);
 
-                                            // 基于真实物品数据评估品质和价格，收集 Quality>=5 且 Value>=2000 的高价值候选
-                                            const int difficultyHighPriceThreshold = 2000;
+                                            // 使用 GetMetaData 获取品质信息，避免 InstantiateSync 导致的卡顿
+                                            // 只筛选 Quality>=5 的高品质物品（高品质物品通常价格也高，无需额外价格检查）
                                             List<int> highValueCandidates = new List<int>();
 
                                             try
                                             {
                                                 foreach (int candidateId in idSet)
                                                 {
-                                                    int v = 0;
-                                                    int quality = -1;
-                                                    string name = "<unknown>";
-
                                                     try
                                                     {
-                                                        Item temp = ItemAssetsCollection.InstantiateSync(candidateId);
-                                                        if (temp != null)
-                                                        {
-                                                            try
-                                                            {
-                                                                v = temp.Value;
-                                                            }
-                                                            catch
-                                                            {
-                                                                v = 0;
-                                                            }
-
-                                                            try
-                                                            {
-                                                                quality = temp.Quality;
-                                                            }
-                                                            catch
-                                                            {
-                                                                quality = -1;
-                                                            }
-
-                                                            UnityEngine.Object.Destroy(temp.gameObject);
-                                                        }
-                                                    }
-                                                    catch
-                                                    {
-                                                        v = 0;
-                                                    }
-
-                                                    try
-                                                    {
+                                                        // 使用元数据获取品质，避免实例化物品导致的性能问题
                                                         var meta = ItemAssetsCollection.GetMetaData(candidateId);
-                                                        if (meta.id > 0)
+                                                        if (meta.id > 0 && meta.quality >= 5)
                                                         {
-                                                            name = meta.DisplayName;
+                                                            highValueCandidates.Add(candidateId);
                                                         }
                                                     }
-                                                    catch
-                                                    {
-                                                        name = "<meta-failed>";
-                                                    }
-
-                                                    DevLog("[BossRush] 通关奖励候选物品评估: typeID=" + candidateId + ", 名称=" + name + ", Quality=" + quality + ", Value=" + v);
-
-                                                    if (quality >= 5 && v >= difficultyHighPriceThreshold)
-                                                    {
-                                                        highValueCandidates.Add(candidateId);
-                                                    }
+                                                    catch {}
                                                 }
                                             }
                                             catch (Exception evalEx)
@@ -1062,7 +1042,7 @@ namespace BossRush
                                             if (highValueCandidates.Count > 0)
                                             {
                                                 poolSource = highValueCandidates;
-                                                DevLog("[BossRush] 通关奖励高品质高价候选物品数量=" + highValueCandidates.Count + " (Quality>=5, Value>=" + difficultyHighPriceThreshold + ")");
+                                                DevLog("[BossRush] 通关奖励高品质候选物品数量=" + highValueCandidates.Count + " (Quality>=5)");
                                             }
 
                                             // 使用最终确定的候选集合构建 randomPool；如果没有高价候选，则退回使用完整 idSet

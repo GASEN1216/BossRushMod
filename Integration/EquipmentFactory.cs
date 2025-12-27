@@ -1,24 +1,25 @@
 // ============================================================================
-// EquipmentFactory.cs - 自定义装备工厂
+// EquipmentFactory.cs - 自定义装备/武器工厂
 // ============================================================================
 // 模块说明：
-//   提供简单的 API 从 AssetBundle 加载自定义装备
-//   支持自动扫描目录加载所有装备包
+//   提供简单的 API 从 AssetBundle 加载自定义装备、武器和Buff
+//   支持自动扫描目录加载所有资源包
 // 
 // ============================================================================
 // 资源文件要求（放在 Assets/Equipment/ 目录下）：
 // ============================================================================
 //
 //   BossRush/Assets/Equipment/
-//   ├── my_equipment          # 可包含多个装备的 AssetBundle（无扩展名）
+//   ├── my_equipment          # 可包含多个装备/武器的 AssetBundle（无扩展名）
 //   └── ...
 //
 // ============================================================================
 // Prefab 命名规范（重要！）：
 // ============================================================================
 //
-//   格式：{自定义名}_{类型}_{Model/Item}
+//   格式：{自定义名}_{类型}_{后缀}
 //
+//   【装备类】
 //   | Prefab 类型 | 命名格式                | 示例                    |
 //   |-------------|-------------------------|-------------------------|
 //   | 头盔物品    | {名称}_Helmet_Item      | MyGear_Helmet_Item      |
@@ -32,34 +33,59 @@
 //   | 耳机物品    | {名称}_Headset_Item     | MyGear_Headset_Item     |
 //   | 耳机模型    | {名称}_Headset_Model    | MyGear_Headset_Model    |
 //
-//   自动匹配规则：MyGear_Helmet_Item 自动匹配 MyGear_Helmet_Model
+//   【武器类】
+//   | Prefab 类型 | 命名格式                | 示例                    |
+//   |-------------|-------------------------|-------------------------|
+//   | 枪械物品    | {名称}_Gun_Item         | Dragon_Gun_Item         |
+//   | 枪械模型    | {名称}_Gun_Model        | Dragon_Gun_Model（可选）|
+//   | 子弹预制体  | {名称}_Bullet           | Dragon_Bullet           |
+//   | Buff预制体  | {名称}_Buff             | Dragon_Buff             |
+//
+//   自动匹配规则：
+//   - Dragon_Gun_Item 自动匹配 Dragon_Gun_Model、Dragon_Bullet、Dragon_Buff
+//   - 武器的 Buff 和 Bullet 会自动注入到 ItemSetting_Gun 组件
 //
 // ============================================================================
 // Unity 中 Prefab 配置要求：
 // ============================================================================
 //
-// Item Prefab 必须配置：
+// 【装备 Item Prefab】必须配置：
 //   - Item 组件
 //   - typeID：唯一ID（建议 600000+）
-//   - displayName：显示名称
-//   - agentUtilities.agents：添加 key="EquipmentModel" 指向 Model Prefab
 //   - ⚠️ 不需要配置 tags，代码会自动添加！
 //
-// Model Prefab 必须配置：
-//   - DuckovItemAgent 组件（在父物体上）
-//   - 子物体 Layer = Character (9)
-//   - 子物体 Scale 调整到合适大小
+// 【武器 Item Prefab】必须配置：
+//   - Item 组件 + ItemSetting_Gun 组件
+//   - typeID：唯一ID
+//   - ItemSetting_Gun 的基础属性（triggerMode, reloadMode 等）
+//   - ⚠️ bulletPfb 和 buff 可以不配置，代码会自动关联同名资源
+//
+// 【Buff Prefab】必须配置：
+//   - Buff 组件（来自 Duckov.Buffs 命名空间）
+//   - id：唯一Buff ID
+//   - maxLayers：最大叠加层数
+//   - displayName/description：本地化键名
+//   - limitedLifeTime/totalLifeTime：持续时间
+//   - effects：Effect列表（可选）
+//
+// 【Bullet Prefab】必须配置：
+//   - Projectile 组件
+//   - radius：碰撞半径
+//   - hitFx：命中特效（可选）
 //
 // ============================================================================
 // 使用方式：
 // ============================================================================
 //
 //   方式一：自动加载（推荐）
-//   // 在 InitializeCustomEquipment() 中调用：
-//   EquipmentFactory.LoadAllEquipment();  // 自动扫描并加载 Assets/Equipment/ 下所有 bundle
+//   EquipmentFactory.LoadAllEquipment();  // 自动扫描并加载所有 bundle
 //
 //   方式二：手动加载单个 bundle
-//   EquipmentFactory.LoadBundle("my_equipment");  // 自动识别装备类型
+//   EquipmentFactory.LoadBundle("my_equipment");
+//
+//   方式三：获取已加载的Buff（用于代码中手动应用）
+//   Buff dragonBuff = EquipmentFactory.GetLoadedBuff("Dragon");
+//   character.AddBuff(dragonBuff, fromWho);
 //
 // ============================================================================
 
@@ -72,11 +98,12 @@ using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using ItemStatsSystem.Stats;
 using Duckov.Utilities;
+using Duckov.Buffs;
 
 namespace BossRush
 {
     /// <summary>
-    /// 装备类型枚举
+    /// 物品类型枚举（扩展支持武器）
     /// </summary>
     public enum EquipmentType
     {
@@ -84,16 +111,28 @@ namespace BossRush
         Armor,      // 护甲 - 使用 "Armor" Tag
         Backpack,   // 背包 - 使用 "Backpack" Tag
         FaceMask,   // 面罩 - 使用 "FaceMask" Tag
-        Headset     // 耳机 - 使用 "Headset" Tag
+        Headset,    // 耳机 - 使用 "Headset" Tag
+        Gun         // 枪械 - 使用 "Gun" Tag（新增）
     }
 
     /// <summary>
-    /// 自定义装备工厂 - 从 AssetBundle 加载装备
+    /// 自定义装备/武器工厂 - 从 AssetBundle 加载装备、武器和Buff
     /// </summary>
     public static class EquipmentFactory
     {
+        // ========== 缓存字典 ==========
+        
         // 已加载的模型缓存（TypeID -> ItemAgent）
         private static Dictionary<int, ItemAgent> loadedModels = new Dictionary<int, ItemAgent>();
+        
+        // 已加载的Buff缓存（基础名 -> Buff预制体）
+        private static Dictionary<string, Buff> loadedBuffs = new Dictionary<string, Buff>();
+        
+        // 已加载的子弹缓存（基础名 -> Projectile预制体）
+        private static Dictionary<string, Projectile> loadedBullets = new Dictionary<string, Projectile>();
+        
+        // 已加载的武器缓存（TypeID -> Item）
+        private static Dictionary<int, Item> loadedGuns = new Dictionary<int, Item>();
         
         // 已加载的 bundle 列表（避免重复加载）
         private static HashSet<string> loadedBundles = new HashSet<string>();
@@ -103,16 +142,24 @@ namespace BossRush
 
         // 装备资源目录（固定路径）
         private const string EQUIPMENT_PATH = "Assets/Equipment";
+        
+        // Character Layer 常量（游戏中 Character 层为 9）
+        private const int CHARACTER_LAYER = 9;
+        
+        // 游戏使用的 Shader 名称
+        private const string GAME_SHADER_NAME = "SodaCraft/SodaCharacter";
+        
+        // 缓存的游戏 Shader
+        private static Shader gameShader = null;
 
         // ========== 公开 API ==========
 
         /// <summary>
         /// 自动加载 Assets/Equipment/ 目录下所有 AssetBundle（推荐）
         /// </summary>
-        /// <returns>加载的装备总数</returns>
+        /// <returns>加载的物品总数</returns>
         public static int LoadAllEquipment()
         {
-            // 获取 Mod 目录
             if (modDirectory == null)
             {
                 modDirectory = Path.GetDirectoryName(typeof(EquipmentFactory).Assembly.Location);
@@ -144,25 +191,21 @@ namespace BossRush
                 totalCount += count;
             }
             
-            ModBehaviour.DevLog("[EquipmentFactory] 自动加载完成，共 " + totalCount + " 个装备");
+            ModBehaviour.DevLog("[EquipmentFactory] 自动加载完成，共 " + totalCount + " 个物品");
             return totalCount;
         }
 
         /// <summary>
-        /// 从 AssetBundle 加载装备（自动识别装备类型）
+        /// 从 AssetBundle 加载装备/武器（自动识别类型）
         /// </summary>
-        /// <param name="bundleName">AssetBundle 文件名（放在 Assets/Equipment/ 下）</param>
-        /// <returns>加载的装备数量</returns>
         public static int LoadBundle(string bundleName)
         {
-            // 避免重复加载
             if (loadedBundles.Contains(bundleName))
             {
                 ModBehaviour.DevLog("[EquipmentFactory] Bundle 已加载，跳过: " + bundleName);
                 return 0;
             }
 
-            // 获取 Mod 目录
             if (modDirectory == null)
             {
                 modDirectory = Path.GetDirectoryName(typeof(EquipmentFactory).Assembly.Location);
@@ -176,7 +219,7 @@ namespace BossRush
                 return 0;
             }
 
-            int count = LoadBundleAutoDetect(bundlePath, bundleName);
+            int count = LoadBundleInternal(bundlePath, bundleName);
             
             if (count > 0)
             {
@@ -187,7 +230,62 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 获取已加载的模型缓存（用于运行时修复 Layer/Shader）
+        /// 获取已加载的Buff预制体（用于代码中手动应用Buff）
+        /// </summary>
+        /// <param name="baseName">Buff基础名（如 "Dragon" 对应 Dragon_Buff）</param>
+        public static Buff GetLoadedBuff(string baseName)
+        {
+            Buff buff;
+            if (loadedBuffs.TryGetValue(baseName, out buff))
+            {
+                return buff;
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 获取已加载的Buff预制体（通过Buff ID）
+        /// </summary>
+        public static Buff GetLoadedBuffById(int buffId)
+        {
+            foreach (var kvp in loadedBuffs)
+            {
+                if (kvp.Value != null && kvp.Value.ID == buffId)
+                {
+                    return kvp.Value;
+                }
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 获取已加载的子弹预制体
+        /// </summary>
+        public static Projectile GetLoadedBullet(string baseName)
+        {
+            Projectile bullet;
+            if (loadedBullets.TryGetValue(baseName, out bullet))
+            {
+                return bullet;
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 获取已加载的武器（通过TypeID）
+        /// </summary>
+        public static Item GetLoadedGun(int typeId)
+        {
+            Item gun;
+            if (loadedGuns.TryGetValue(typeId, out gun))
+            {
+                return gun;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取已加载的模型缓存
         /// </summary>
         public static Dictionary<int, ItemAgent> GetLoadedModels()
         {
@@ -195,15 +293,25 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 检查 TypeID 是否是已加载的自定义装备
+        /// 检查 TypeID 是否是已加载的自定义物品
         /// </summary>
         public static bool IsCustomEquipment(int typeId)
         {
-            return loadedModels.ContainsKey(typeId);
+            return loadedModels.ContainsKey(typeId) || loadedGuns.ContainsKey(typeId);
+        }
+        
+        /// <summary>
+        /// 获取所有已加载的Buff（只读）
+        /// </summary>
+        public static IReadOnlyDictionary<string, Buff> GetAllLoadedBuffs()
+        {
+            return loadedBuffs;
         }
 
+        // ========== 类型解析方法 ==========
+
         /// <summary>
-        /// 获取装备类型对应的 Tag 名称
+        /// 获取物品类型对应的 Tag 名称
         /// </summary>
         private static string GetTagName(EquipmentType type)
         {
@@ -214,20 +322,28 @@ namespace BossRush
                 case EquipmentType.Backpack: return "Backpack";
                 case EquipmentType.FaceMask: return "FaceMask";
                 case EquipmentType.Headset: return "Headset";
+                case EquipmentType.Gun: return "Gun";
                 default: return "Helmat";
             }
         }
 
         /// <summary>
-        /// 从 Prefab 名称中解析装备类型
+        /// 从 Prefab 名称中解析物品类型
         /// 命名格式：{自定义名}_{类型}_{Model/Item}
-        /// 例如：MyGear_Helmet_Item, MyGear_Armor_Model
         /// </summary>
         private static EquipmentType? ParseEquipmentTypeFromName(string prefabName)
         {
             string nameLower = prefabName.ToLower();
             
-            // 检查是否包含类型关键字
+            // 武器类型（优先检测）
+            if (nameLower.Contains("_gun_")) return EquipmentType.Gun;
+            if (nameLower.Contains("_weapon_")) return EquipmentType.Gun;
+            if (nameLower.Contains("_rifle_")) return EquipmentType.Gun;
+            if (nameLower.Contains("_pistol_")) return EquipmentType.Gun;
+            if (nameLower.Contains("_shotgun_")) return EquipmentType.Gun;
+            if (nameLower.Contains("_smg_")) return EquipmentType.Gun;
+            
+            // 装备类型
             if (nameLower.Contains("_helmet_")) return EquipmentType.Helmet;
             if (nameLower.Contains("_armor_")) return EquipmentType.Armor;
             if (nameLower.Contains("_platecarrier_")) return EquipmentType.Armor;
@@ -241,41 +357,51 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 从 Prefab 名称中提取装备基础名（去掉 _Model 或 _Item 后缀）
-        /// 例如：MyGear_Helmet_Item -> MyGear_Helmet
+        /// 从 Prefab 名称中提取基础名（去掉后缀）
+        /// 例如：Dragon_Gun_Item -> Dragon_Gun, Dragon_Bullet -> Dragon
         /// </summary>
-        private static string ExtractEquipmentBaseName(string prefabName)
+        private static string ExtractBaseName(string prefabName)
         {
             string name = prefabName;
             
-            // 去掉 _Item 或 _Model 后缀
-            if (name.EndsWith("_Item", StringComparison.OrdinalIgnoreCase))
+            // 去掉常见后缀
+            string[] suffixes = { "_Item", "_Model", "_Bullet", "_Buff", "_FX", "_Effect" };
+            foreach (string suffix in suffixes)
             {
-                name = name.Substring(0, name.Length - 5);
-            }
-            else if (name.EndsWith("_Model", StringComparison.OrdinalIgnoreCase))
-            {
-                name = name.Substring(0, name.Length - 6);
+                if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    name = name.Substring(0, name.Length - suffix.Length);
+                    break;
+                }
             }
             
             return name;
         }
-
-        // ========== 内部方法 ==========
-
-        // Character Layer 常量（游戏中 Character 层为 9）
-        private const int CHARACTER_LAYER = 9;
         
-        // 游戏使用的 Shader 名称
-        private const string GAME_SHADER_NAME = "SodaCraft/SodaCharacter";
-        
-        // 缓存的游戏 Shader
-        private static Shader gameShader = null;
+        /// <summary>
+        /// 从武器基础名中提取Buff/Bullet匹配名
+        /// 例如：Dragon_Gun -> Dragon（用于匹配 Dragon_Bullet, Dragon_Buff）
+        /// </summary>
+        private static string ExtractWeaponPrefix(string gunBaseName)
+        {
+            // 去掉 _Gun, _Weapon 等后缀
+            string[] weaponSuffixes = { "_Gun", "_Weapon", "_Rifle", "_Pistol", "_Shotgun", "_SMG" };
+            foreach (string suffix in weaponSuffixes)
+            {
+                if (gunBaseName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return gunBaseName.Substring(0, gunBaseName.Length - suffix.Length);
+                }
+            }
+            return gunBaseName;
+        }
+
+        // ========== 核心加载逻辑 ==========
 
         /// <summary>
-        /// 加载 AssetBundle 并自动检测装备类型
+        /// 加载 AssetBundle 并自动检测所有资源类型
         /// </summary>
-        private static int LoadBundleAutoDetect(string bundlePath, string bundleName)
+        private static int LoadBundleInternal(string bundlePath, string bundleName)
         {
             AssetBundle bundle = null;
             
@@ -288,7 +414,6 @@ namespace BossRush
                     return 0;
                 }
 
-                // 加载所有 GameObject
                 var assets = bundle.LoadAllAssets<GameObject>();
                 if (assets == null || assets.Length == 0)
                 {
@@ -296,47 +421,81 @@ namespace BossRush
                     return 0;
                 }
 
-                // 分类收集 Item 和 Model（按装备基础名分组）
-                // Key: 装备基础名（如 MyGear_Helmet）, Value: (Item, Model, Type)
+                // 分类收集所有资源
                 Dictionary<string, Item> itemsByBaseName = new Dictionary<string, Item>();
                 Dictionary<string, ItemAgent> modelsByBaseName = new Dictionary<string, ItemAgent>();
                 Dictionary<string, EquipmentType> typesByBaseName = new Dictionary<string, EquipmentType>();
+                Dictionary<string, Buff> buffsByPrefix = new Dictionary<string, Buff>();
+                Dictionary<string, Projectile> bulletsByPrefix = new Dictionary<string, Projectile>();
+                Dictionary<string, ItemSetting_Gun> gunSettingsByBaseName = new Dictionary<string, ItemSetting_Gun>();
 
+                // 第一遍：分类所有资源
                 foreach (var go in assets)
                 {
                     string goName = go.name;
-                    string baseName = ExtractEquipmentBaseName(goName);
-                    EquipmentType? detectedType = ParseEquipmentTypeFromName(goName);
+                    string baseName = ExtractBaseName(goName);
+                    
+                    // 检查是否是 Buff 预制体
+                    Buff buff = go.GetComponent<Buff>();
+                    if (buff != null)
+                    {
+                        string prefix = baseName; // Dragon_Buff -> Dragon
+                        buffsByPrefix[prefix] = buff;
+                        loadedBuffs[prefix] = buff;
+                        ModBehaviour.DevLog("[EquipmentFactory] 发现 Buff: " + goName + " (ID=" + buff.ID + ", Prefix=" + prefix + ")");
+                        continue;
+                    }
+                    
+                    // 检查是否是 Projectile（子弹）预制体
+                    Projectile projectile = go.GetComponent<Projectile>();
+                    if (projectile != null)
+                    {
+                        string prefix = baseName; // Dragon_Bullet -> Dragon
+                        bulletsByPrefix[prefix] = projectile;
+                        loadedBullets[prefix] = projectile;
+                        ModBehaviour.DevLog("[EquipmentFactory] 发现 Bullet: " + goName + " (Prefix=" + prefix + ")");
+                        continue;
+                    }
 
-                    // 检查是否是 Item Prefab
+                    // 检查是否是 Item 预制体
                     Item item = go.GetComponent<Item>();
                     if (item != null)
                     {
+                        EquipmentType? detectedType = ParseEquipmentTypeFromName(goName);
+                        
+                        // 检查是否是武器（有 ItemSetting_Gun 组件）
+                        ItemSetting_Gun gunSetting = go.GetComponent<ItemSetting_Gun>();
+                        if (gunSetting != null)
+                        {
+                            detectedType = EquipmentType.Gun;
+                            gunSettingsByBaseName[baseName] = gunSetting;
+                        }
+                        
                         itemsByBaseName[baseName] = item;
                         if (detectedType.HasValue)
                         {
                             typesByBaseName[baseName] = detectedType.Value;
                         }
-                        ModBehaviour.DevLog("[EquipmentFactory] 发现 Item: " + goName + " (TypeID=" + item.TypeID + ", BaseName=" + baseName + ", Type=" + (detectedType.HasValue ? detectedType.Value.ToString() : "未知") + ")");
+                        
+                        string typeStr = detectedType.HasValue ? detectedType.Value.ToString() : "未知";
+                        ModBehaviour.DevLog("[EquipmentFactory] 发现 Item: " + goName + " (TypeID=" + item.TypeID + ", Type=" + typeStr + ")");
                         continue;
                     }
 
-                    // 检查是否是 Model Prefab
+                    // 检查是否是 Model 预制体
                     ItemAgent agent = go.GetComponent<ItemAgent>();
                     bool isModel = agent != null || goName.ToLower().EndsWith("_model");
                     
                     if (isModel)
                     {
-                        // 如果没有 ItemAgent，添加 DuckovItemAgent
                         if (agent == null)
                         {
                             agent = go.AddComponent<DuckovItemAgent>();
                         }
-                        
-                        // 自动修复 Model 的 Layer 和 Shader
                         FixModelLayerAndShader(go);
-                        
                         modelsByBaseName[baseName] = agent;
+                        
+                        EquipmentType? detectedType = ParseEquipmentTypeFromName(goName);
                         if (detectedType.HasValue && !typesByBaseName.ContainsKey(baseName))
                         {
                             typesByBaseName[baseName] = detectedType.Value;
@@ -345,7 +504,7 @@ namespace BossRush
                     }
                 }
 
-                // 处理每个 Item
+                // 第二遍：处理每个 Item，关联相关资源
                 int loadedCount = 0;
                 
                 foreach (var kvp in itemsByBaseName)
@@ -355,14 +514,12 @@ namespace BossRush
                     
                     try
                     {
-                        // 获取装备类型
+                        // 获取物品类型
                         EquipmentType equipType = EquipmentType.Helmet; // 默认
                         if (typesByBaseName.ContainsKey(baseName))
                         {
                             equipType = typesByBaseName[baseName];
                         }
-                        
-                        string tagName = GetTagName(equipType);
                         
                         // 查找匹配的 Model
                         ItemAgent modelAgent = null;
@@ -371,13 +528,17 @@ namespace BossRush
                             modelAgent = modelsByBaseName[baseName];
                         }
 
-                        // 添加装备 Tag
-                        AddTagToItem(itemPrefab, tagName);
-
-                        // 注入 EquipmentModel（如果 Unity 中未配置）
-                        if (modelAgent != null && !HasEquipmentModel(itemPrefab))
+                        // 根据类型处理
+                        if (equipType == EquipmentType.Gun)
                         {
-                            InjectEquipmentModel(itemPrefab, modelAgent);
+                            // 武器处理
+                            ProcessGunItem(itemPrefab, baseName, modelAgent, gunSettingsByBaseName, buffsByPrefix, bulletsByPrefix);
+                            loadedGuns[itemPrefab.TypeID] = itemPrefab;
+                        }
+                        else
+                        {
+                            // 装备处理
+                            ProcessEquipmentItem(itemPrefab, baseName, equipType, modelAgent);
                         }
 
                         // 缓存模型
@@ -394,7 +555,7 @@ namespace BossRush
                         loadedCount++;
 
                         ModBehaviour.DevLog("[EquipmentFactory] 成功加载: " + itemPrefab.gameObject.name + 
-                            " (TypeID=" + itemPrefab.TypeID + ", Type=" + equipType + ", Model=" + (modelAgent != null ? modelAgent.name : "无") + ")");
+                            " (TypeID=" + itemPrefab.TypeID + ", Type=" + equipType + ")");
                     }
                     catch (Exception e)
                     {
@@ -402,16 +563,142 @@ namespace BossRush
                     }
                 }
 
-                ModBehaviour.DevLog("[EquipmentFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个装备");
+                ModBehaviour.DevLog("[EquipmentFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个物品");
                 return loadedCount;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[EquipmentFactory] LoadBundleAutoDetect 出错: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[EquipmentFactory] LoadBundleInternal 出错: " + e.Message + "\n" + e.StackTrace);
                 return 0;
             }
             // 注意：不要 Unload bundle，因为资源还在使用
         }
+
+        // ========== 装备处理 ==========
+
+        /// <summary>
+        /// 处理装备类型物品（头盔、护甲、背包等）
+        /// </summary>
+        private static void ProcessEquipmentItem(Item itemPrefab, string baseName, EquipmentType equipType, ItemAgent modelAgent)
+        {
+            string tagName = GetTagName(equipType);
+            
+            // 添加装备 Tag
+            EquipmentHelper.AddTagToItem(itemPrefab, tagName);
+
+            // 注入 EquipmentModel（如果 Unity 中未配置）
+            if (modelAgent != null && !HasEquipmentModel(itemPrefab))
+            {
+                InjectEquipmentModel(itemPrefab, modelAgent);
+            }
+        }
+
+        // ========== 武器处理 ==========
+
+        /// <summary>
+        /// 处理武器类型物品
+        /// </summary>
+        private static void ProcessGunItem(
+            Item itemPrefab, 
+            string baseName, 
+            ItemAgent modelAgent,
+            Dictionary<string, ItemSetting_Gun> gunSettingsByBaseName,
+            Dictionary<string, Buff> buffsByPrefix,
+            Dictionary<string, Projectile> bulletsByPrefix)
+        {
+            // 添加 Gun Tag
+            EquipmentHelper.AddTagToItem(itemPrefab, "Gun");
+            
+            // 获取 ItemSetting_Gun 组件
+            ItemSetting_Gun gunSetting = null;
+            if (gunSettingsByBaseName.ContainsKey(baseName))
+            {
+                gunSetting = gunSettingsByBaseName[baseName];
+            }
+            else
+            {
+                gunSetting = itemPrefab.GetComponent<ItemSetting_Gun>();
+            }
+            
+            if (gunSetting == null)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 武器缺少 ItemSetting_Gun 组件: " + itemPrefab.name);
+                return;
+            }
+            
+            // 提取武器前缀用于匹配 Buff 和 Bullet
+            string weaponPrefix = ExtractWeaponPrefix(baseName);
+            
+            // 自动关联 Buff（如果未配置）
+            if (gunSetting.buff == null)
+            {
+                Buff matchedBuff;
+                if (buffsByPrefix.TryGetValue(weaponPrefix, out matchedBuff))
+                {
+                    InjectGunBuff(gunSetting, matchedBuff);
+                    ModBehaviour.DevLog("[EquipmentFactory] 自动关联 Buff: " + weaponPrefix + "_Buff -> " + itemPrefab.name);
+                }
+            }
+            
+            // 自动关联 Bullet（如果未配置）
+            if (gunSetting.bulletPfb == null)
+            {
+                Projectile matchedBullet;
+                if (bulletsByPrefix.TryGetValue(weaponPrefix, out matchedBullet))
+                {
+                    InjectGunBullet(gunSetting, matchedBullet);
+                    ModBehaviour.DevLog("[EquipmentFactory] 自动关联 Bullet: " + weaponPrefix + "_Bullet -> " + itemPrefab.name);
+                }
+            }
+            
+            // 注入 EquipmentModel（如果有模型）
+            if (modelAgent != null && !HasEquipmentModel(itemPrefab))
+            {
+                InjectEquipmentModel(itemPrefab, modelAgent);
+            }
+        }
+
+        /// <summary>
+        /// 注入 Buff 到武器的 ItemSetting_Gun
+        /// </summary>
+        private static void InjectGunBuff(ItemSetting_Gun gunSetting, Buff buff)
+        {
+            try
+            {
+                FieldInfo buffField = typeof(ItemSetting_Gun).GetField("buff", 
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (buffField != null)
+                {
+                    buffField.SetValue(gunSetting, buff);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 注入 Buff 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 注入 Bullet 到武器的 ItemSetting_Gun
+        /// </summary>
+        private static void InjectGunBullet(ItemSetting_Gun gunSetting, Projectile bullet)
+        {
+            try
+            {
+                FieldInfo bulletField = typeof(ItemSetting_Gun).GetField("bulletPfb", 
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (bulletField != null)
+                {
+                    bulletField.SetValue(gunSetting, bullet);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 注入 Bullet 失败: " + e.Message);
+            }
+        }
+
+        // ========== 通用辅助方法 ==========
 
         /// <summary>
         /// 检查 Item 是否已配置 EquipmentModel
@@ -442,12 +729,9 @@ namespace BossRush
                 {
                     var entry = itemProp.GetValue(agentsList, new object[] { i });
                     var keyField = entry.GetType().GetField("key", BindingFlags.Public | BindingFlags.Instance);
-                    var prefabField = entry.GetType().GetField("agentPrefab", BindingFlags.Public | BindingFlags.Instance);
                     
                     string key = keyField != null ? keyField.GetValue(entry) as string : null;
-                    var prefab = prefabField != null ? prefabField.GetValue(entry) as ItemAgent : null;
-                    
-                    if (key == "EquipmentModel" && prefab != null)
+                    if (key == "EquipmentModel")
                     {
                         return true;
                     }
@@ -461,36 +745,19 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 为物品添加 Tag（委托给 EquipmentHelper）
-        /// </summary>
-        private static void AddTagToItem(Item item, string tagName)
-        {
-            EquipmentHelper.AddTagToItem(item, tagName);
-        }
-
-        /// <summary>
-        /// 修复 Model 的 Layer 和 Shader（关键！）
-        /// - Layer 必须为 Character (9)，否则相机不渲染
-        /// - Shader 必须为 SodaCraft/SodaCharacter，否则显示异常
+        /// 修复 Model 的 Layer 和 Shader
         /// </summary>
         private static void FixModelLayerAndShader(GameObject modelGo)
         {
             try
             {
-                // 递归设置所有子物体的 Layer 为 Character
                 SetLayerRecursively(modelGo, CHARACTER_LAYER);
                 
-                // 获取游戏 Shader（延迟加载）
                 if (gameShader == null)
                 {
                     gameShader = Shader.Find(GAME_SHADER_NAME);
-                    if (gameShader == null)
-                    {
-                        ModBehaviour.DevLog("[EquipmentFactory] 未找到游戏 Shader: " + GAME_SHADER_NAME + "，将使用原始 Shader");
-                    }
                 }
                 
-                // 替换所有 Renderer 的 Shader
                 if (gameShader != null)
                 {
                     var renderers = modelGo.GetComponentsInChildren<Renderer>(true);
@@ -503,21 +770,17 @@ namespace BossRush
                                 if (mat != null && mat.shader != null)
                                 {
                                     string oldShaderName = mat.shader.name;
-                                    // 只替换 Standard 或 URP Lit 等常见 Shader
                                     if (oldShaderName.Contains("Standard") || 
                                         oldShaderName.Contains("Lit") ||
                                         oldShaderName.Contains("Universal"))
                                     {
                                         mat.shader = gameShader;
-                                        ModBehaviour.DevLog("[EquipmentFactory] 替换 Shader: " + oldShaderName + " -> " + GAME_SHADER_NAME);
                                     }
                                 }
                             }
                         }
                     }
                 }
-                
-                ModBehaviour.DevLog("[EquipmentFactory] 已修复 Model Layer 和 Shader: " + modelGo.name);
             }
             catch (Exception e)
             {
@@ -526,7 +789,7 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 递归设置 GameObject 及其所有子物体的 Layer
+        /// 递归设置 Layer
         /// </summary>
         private static void SetLayerRecursively(GameObject go, int layer)
         {
@@ -587,7 +850,6 @@ namespace BossRush
                 var agentPrefabField = agentKeyPairType.GetField("agentPrefab", 
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
-                // 创建新条目
                 object newEntry = Activator.CreateInstance(agentKeyPairType);
                 if (keyField != null)
                 {
@@ -604,7 +866,6 @@ namespace BossRush
                     addMethod.Invoke(agentsList, new object[] { newEntry });
                 }
 
-                // 清除缓存
                 var cacheField = agentUtilities.GetType().GetField("hashedAgentsCache", 
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (cacheField != null)
@@ -617,8 +878,5 @@ namespace BossRush
                 ModBehaviour.DevLog("[EquipmentFactory] 注入 EquipmentModel 失败: " + e.Message);
             }
         }
-
-        // 注意：AddModifierToItem 和 SetItemConstant 方法已移至 EquipmentHelper 类
-        // 如需使用，请调用 EquipmentHelper.AddModifierToItem() 和 EquipmentHelper.SetItemConstant()
     }
 }

@@ -6,6 +6,9 @@
 //   按 F2 键呼出/关闭界面（仅在 DevModeEnabled = true 时生效）
 // ============================================================================
 
+// 抑制 DevModeEnabled = false 时的"无法访问的代码"警告
+#pragma warning disable CS0162
+
 using System;
 using UnityEngine;
 using ItemStatsSystem;

@@ -244,7 +244,7 @@ namespace BossRush
             {
                 UpdateChase();
                 
-                // 狂暴状态下持续停止射击
+                // 狂暴状态下持续停止Boss自身射击（使用直接生成子弹代替）
                 bossCharacter.Trigger(false, false, false);
             }
         }
@@ -899,14 +899,14 @@ namespace BossRush
                 cachedAI = bossCharacter.GetComponentInChildren<AICharacterController>();
             }
             
-            // 禁用射击行为并收起武器
+            // 禁用Boss自身的射击行为（二阶段使用直接生成子弹）
             DisableShooting();
             
             // 扩大套装发光范围
             ExpandGlowRadius();
             
-            // 增加移动速度
-            ApplyChaseSpeedBoost();
+            // 不再在这里应用速度加成，由ChasePlayerCoroutine动态控制
+            // ApplyChaseSpeedBoost(); // 已移除
             
             // 设置碰撞检测
             SetupCollisionDetection();
@@ -917,7 +917,7 @@ namespace BossRush
                 bossCharacter.SetRunInput(true);
             }
             
-            // 启动追逐协程
+            // 启动二阶段行为循环协程
             chaseCoroutine = StartCoroutine(ChasePlayerCoroutine());
         }
         
@@ -1011,12 +1011,12 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 追逐玩家协程 - 使用原版寻路系统
-        /// 参考原版TraceTarget行为树节点实现
+        /// 追逐玩家协程 - 二阶段行为循环
+        /// 循环：停止射击 -> 冲刺 -> 扇形射击 -> 重复
         /// </summary>
         private IEnumerator ChasePlayerCoroutine()
         {
-            ModBehaviour.DevLog("[DragonDescendant] 开始追逐玩家");
+            ModBehaviour.DevLog("[DragonDescendant] 开始二阶段行为循环");
             
             while (isEnraged && bossCharacter != null)
             {
@@ -1026,35 +1026,365 @@ namespace BossRush
                     try { playerCharacter = CharacterMainControl.Main; } catch { }
                 }
                 
-                if (playerCharacter != null && cachedAI != null)
+                if (playerCharacter == null)
                 {
-                    // 获取目标位置
-                    Vector3 targetPos = playerCharacter.transform.position;
-                    
-                    // 使用原版AI的MoveToPos方法进行寻路追逐
-                    cachedAI.MoveToPos(targetPos);
-                    
-                    // 设置目标让AI面向玩家
-                    if (playerCharacter.mainDamageReceiver != null)
-                    {
-                        cachedAI.searchedEnemy = playerCharacter.mainDamageReceiver;
-                        cachedAI.SetTarget(playerCharacter.mainDamageReceiver.transform);
-                        cachedAI.noticed = true;
-                    }
-                    
-                    // 同步面向方向（参考原版TraceTarget的syncDirectionIfNoAimTarget逻辑）
-                    Vector3 moveDir = bossCharacter.CurrentMoveDirection;
-                    if (moveDir.magnitude > 0f)
-                    {
-                        bossCharacter.SetAimPoint(bossCharacter.transform.position + moveDir * 1000f);
-                    }
-                    
-                    // 确保保持跑步状态
-                    bossCharacter.SetRunInput(true);
+                    yield return new WaitForSeconds(0.5f);
+                    continue;
                 }
                 
-                // 等待一段时间再更新路径（与原版TraceTarget一致：0.15秒）
-                yield return new WaitForSeconds(chaseUpdateInterval);
+                // ========== 阶段1：停止并射击10发直线子弹 ==========
+                ModBehaviour.DevLog("[DragonDescendant] 阶段1：停止射击");
+                SetMoveability(1f);
+                StopMovement();
+                
+                // 获取朝向玩家的方向
+                Vector3 dirToPlayer = GetDirectionToPlayer();
+                
+                // 射击10发直线子弹
+                yield return StartCoroutine(FireLinearBullets(dirToPlayer, 10, 0.1f));
+                
+                // ========== 阶段2：高速冲刺0.5秒 ==========
+                ModBehaviour.DevLog("[DragonDescendant] 阶段2：高速冲刺");
+                SetMoveability(10f);
+                
+                float chargeTime = 0f;
+                while (chargeTime < 0.5f && isEnraged && bossCharacter != null)
+                {
+                    // 更新玩家引用
+                    if (playerCharacter == null)
+                    {
+                        try { playerCharacter = CharacterMainControl.Main; } catch { }
+                    }
+                    
+                    if (playerCharacter != null && cachedAI != null)
+                    {
+                        // 朝玩家方向冲刺
+                        Vector3 targetPos = playerCharacter.transform.position;
+                        cachedAI.MoveToPos(targetPos);
+                        
+                        if (playerCharacter.mainDamageReceiver != null)
+                        {
+                            cachedAI.searchedEnemy = playerCharacter.mainDamageReceiver;
+                            cachedAI.SetTarget(playerCharacter.mainDamageReceiver.transform);
+                            cachedAI.noticed = true;
+                        }
+                        
+                        bossCharacter.SetRunInput(true);
+                    }
+                    
+                    chargeTime += Time.deltaTime;
+                    yield return null;
+                }
+                
+                // ========== 阶段3：停止并射击扇形子弹3秒 ==========
+                ModBehaviour.DevLog("[DragonDescendant] 阶段3：扇形射击");
+                SetMoveability(1f);
+                StopMovement();
+                
+                // 更新朝向玩家的方向
+                dirToPlayer = GetDirectionToPlayer();
+                
+                // 射击扇形子弹3秒（30发，来回扫射，60度扇形角度）
+                yield return StartCoroutine(FireFanBulletsSweep(dirToPlayer, 30, 3f, 60f));
+                
+                // 短暂等待后进入下一个循环
+                yield return new WaitForSeconds(0.2f);
+            }
+        }
+        
+        /// <summary>
+        /// 设置Moveability值
+        /// </summary>
+        private void SetMoveability(float value)
+        {
+            try
+            {
+                if (bossCharacter == null || bossCharacter.CharacterItem == null) return;
+                
+                var moveabilityStat = bossCharacter.CharacterItem.GetStat("Moveability".GetHashCode());
+                if (moveabilityStat != null)
+                {
+                    moveabilityStat.BaseValue = value;
+                    ModBehaviour.DevLog("[DragonDescendant] Moveability设为: " + value);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 设置Moveability失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 停止移动
+        /// </summary>
+        private void StopMovement()
+        {
+            try
+            {
+                if (bossCharacter != null)
+                {
+                    bossCharacter.SetMoveInput(Vector2.zero);
+                    bossCharacter.SetRunInput(false);
+                }
+                if (cachedAI != null)
+                {
+                    cachedAI.StopMove();
+                }
+            }
+            catch { }
+        }
+        
+        /// <summary>
+        /// 获取朝向玩家的方向（水平面）
+        /// </summary>
+        private Vector3 GetDirectionToPlayer()
+        {
+            if (bossCharacter == null || playerCharacter == null)
+                return Vector3.forward;
+            
+            Vector3 dir = playerCharacter.transform.position - bossCharacter.transform.position;
+            dir.y = 0f;
+            return dir.normalized;
+        }
+        
+        /// <summary>
+        /// 发射直线子弹
+        /// 直接使用BulletPool生成子弹
+        /// </summary>
+        /// <param name="direction">发射方向</param>
+        /// <param name="count">子弹数量</param>
+        /// <param name="interval">每发间隔（秒）</param>
+        private IEnumerator FireLinearBullets(Vector3 direction, int count, float interval)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (!isEnraged || bossCharacter == null) yield break;
+                
+                // 更新方向（追踪玩家）
+                direction = GetDirectionToPlayer();
+                
+                // 直接生成子弹
+                SpawnBulletDirect(direction);
+                
+                yield return new WaitForSeconds(interval);
+            }
+        }
+        
+        /// <summary>
+        /// 发射扇形子弹
+        /// 直接使用BulletPool生成子弹，实时追踪玩家方向
+        /// </summary>
+        /// <param name="baseDirection">基础方向（初始朝向玩家，会实时更新）</param>
+        /// <param name="bulletCount">子弹总数</param>
+        /// <param name="duration">持续时间（秒）</param>
+        /// <param name="totalAngle">扇形总角度</param>
+        private IEnumerator FireFanBullets(Vector3 baseDirection, int bulletCount, float duration, float totalAngle)
+        {
+            if (bulletCount <= 0) yield break;
+            
+            // 扇形子弹间隔更小，射击更快（1秒内射完30发）
+            float interval = 1f / bulletCount;
+            float angleStep = totalAngle / (bulletCount - 1);
+            
+            for (int i = 0; i < bulletCount; i++)
+            {
+                if (!isEnraged || bossCharacter == null) yield break;
+                
+                // 实时更新基础方向（追踪玩家）
+                baseDirection = GetDirectionToPlayer();
+                
+                // 计算当前子弹的偏转角度
+                // 从 -totalAngle/2 到 +totalAngle/2
+                float angle = -totalAngle * 0.5f + angleStep * i;
+                
+                // 使用Quaternion旋转基础方向
+                Vector3 bulletDir = Quaternion.Euler(0f, angle, 0f) * baseDirection;
+                
+                // 直接生成子弹（不通过Boss的枪）
+                SpawnBulletDirect(bulletDir);
+                
+                yield return new WaitForSeconds(interval);
+            }
+        }
+        
+        /// <summary>
+        /// 发射扇形子弹（来回扫射版本）
+        /// 子弹从左到右再从右到左来回扫射，给玩家躲避空间
+        /// </summary>
+        /// <param name="baseDirection">基础方向（朝向玩家）</param>
+        /// <param name="bulletCount">子弹总数</param>
+        /// <param name="duration">持续时间（秒）</param>
+        /// <param name="totalAngle">扇形总角度</param>
+        private IEnumerator FireFanBulletsSweep(Vector3 baseDirection, int bulletCount, float duration, float totalAngle)
+        {
+            if (bulletCount <= 0) yield break;
+            
+            // 计算每发子弹的间隔时间（3秒24发）
+            float interval = duration / bulletCount;
+            
+            for (int i = 0; i < bulletCount; i++)
+            {
+                if (!isEnraged || bossCharacter == null) yield break;
+                
+                // 实时更新基础方向（追踪玩家）
+                baseDirection = GetDirectionToPlayer();
+                
+                // 使用正弦函数计算当前角度，实现来回扫射
+                // t从0到1，sin(t * PI)从0到1再到0，实现一个来回
+                float t = (float)i / (bulletCount - 1);
+                float sweepProgress = Mathf.Sin(t * Mathf.PI); // 0 -> 1 -> 0
+                
+                // 角度从 -totalAngle/2 到 +totalAngle/2 再回到 -totalAngle/2
+                float angle = -totalAngle * 0.5f + totalAngle * sweepProgress;
+                
+                // 使用Quaternion旋转基础方向
+                Vector3 bulletDir = Quaternion.Euler(0f, angle, 0f) * baseDirection;
+                
+                // 直接生成子弹
+                SpawnBulletDirect(bulletDir);
+                
+                yield return new WaitForSeconds(interval);
+            }
+        }
+        
+        /// <summary>
+        /// 直接生成子弹（使用BulletPool）
+        /// 参考原版ItemAgent_Gun.ShootOneBullet
+        /// </summary>
+        private void SpawnBulletDirect(Vector3 direction)
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                if (LevelManager.Instance == null || LevelManager.Instance.BulletPool == null) return;
+                
+                // 获取Boss的枪
+                var gun = bossCharacter.GetGun();
+                Projectile bulletPrefab = null;
+                float bulletSpeed = 30f;
+                float bulletDistance = 50f;
+                float damage = 15f;
+                
+                // 尝试从Boss的枪获取子弹预制体和属性
+                if (gun != null)
+                {
+                    // 通过反射获取GunItemSetting
+                    var gunSettingField = gun.GetType().GetProperty("GunItemSetting");
+                    if (gunSettingField != null)
+                    {
+                        var gunSetting = gunSettingField.GetValue(gun) as ItemSetting_Gun;
+                        if (gunSetting != null && gunSetting.bulletPfb != null)
+                        {
+                            bulletPrefab = gunSetting.bulletPfb;
+                        }
+                    }
+                    
+                    // 获取子弹属性
+                    bulletSpeed = gun.BulletSpeed;
+                    bulletDistance = gun.BulletDistance;
+                    damage = gun.Damage;
+                }
+                
+                // 如果没有找到预制体，尝试从Resources获取默认子弹
+                if (bulletPrefab == null)
+                {
+                    // 尝试从场景中找到任意子弹预制体
+                    var existingBullets = Resources.FindObjectsOfTypeAll<Projectile>();
+                    if (existingBullets != null && existingBullets.Length > 0)
+                    {
+                        bulletPrefab = existingBullets[0];
+                    }
+                }
+                
+                if (bulletPrefab == null)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 未找到子弹预制体");
+                    return;
+                }
+                
+                // 计算发射位置（Boss胸口位置）
+                Vector3 muzzlePos = bossCharacter.transform.position + Vector3.up * 1.2f;
+                
+                // 从BulletPool获取子弹
+                Projectile bullet = LevelManager.Instance.BulletPool.GetABullet(bulletPrefab);
+                if (bullet == null)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] BulletPool返回null");
+                    return;
+                }
+                
+                // 设置子弹位置和方向
+                bullet.transform.position = muzzlePos;
+                bullet.transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
+                
+                // 创建ProjectileContext
+                ProjectileContext ctx = default(ProjectileContext);
+                ctx.direction = direction.normalized;
+                ctx.speed = bulletSpeed;
+                ctx.distance = bulletDistance;
+                ctx.halfDamageDistance = bulletDistance * 0.5f;
+                ctx.damage = damage;
+                ctx.penetrate = 0;
+                ctx.critRate = 0f;
+                ctx.critDamageFactor = 1.5f;
+                ctx.armorPiercing = 0f;
+                ctx.armorBreak = 0f;
+                ctx.fromCharacter = bossCharacter;
+                ctx.team = bossCharacter.Team;
+                ctx.element_Fire = 1f; // 火属性子弹
+                ctx.firstFrameCheck = false;
+                
+                // 使用Init方法初始化子弹
+                bullet.Init(ctx);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 直接生成子弹失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 设置Boss的瞄准方向
+        /// 参考原版RotateAim.cs
+        /// </summary>
+        private void SetAimDirection(Vector3 direction)
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                
+                // 设置瞄准点为Boss位置 + 方向 * 远距离
+                Vector3 aimPoint = bossCharacter.transform.position + direction * 100f;
+                bossCharacter.SetAimPoint(aimPoint);
+            }
+            catch { }
+        }
+        
+        /// <summary>
+        /// 发射一发子弹
+        /// 使用原版的Trigger方法触发射击
+        /// </summary>
+        private void FireBullet(Vector3 direction)
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                
+                // 确保武器已拿出
+                if (cachedAI != null)
+                {
+                    cachedAI.defaultWeaponOut = true;
+                }
+                
+                // 设置瞄准方向
+                SetAimDirection(direction);
+                
+                // 触发射击（triggerInput=true, triggerThisFrame=true）
+                bossCharacter.Trigger(true, true, false);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 发射子弹失败: " + e.Message);
             }
         }
 

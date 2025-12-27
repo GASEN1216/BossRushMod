@@ -137,7 +137,19 @@ namespace BossRush
                     return null;
                 }
 
+                // 皇冠（1254）权重降为0.1，与其他模式保持一致
+                // 实现方式：90%概率重新抽取（如果抽到皇冠）
+                const int CROWN_TYPE_ID = 1254;
+                const float CROWN_REROLL_CHANCE = 0.9f;
+
                 int id = modeDGlobalItemPool[UnityEngine.Random.Range(0, modeDGlobalItemPool.Count)];
+                
+                // 如果抽到皇冠，90%概率重新抽取
+                if (id == CROWN_TYPE_ID && UnityEngine.Random.value < CROWN_REROLL_CHANCE)
+                {
+                    id = modeDGlobalItemPool[UnityEngine.Random.Range(0, modeDGlobalItemPool.Count)];
+                }
+
                 return ItemAssetsCollection.InstantiateSync(id);
             }
             catch

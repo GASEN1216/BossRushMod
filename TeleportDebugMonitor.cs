@@ -1,3 +1,6 @@
+// 抑制 DevModeEnabled = false 时的"无法访问的代码"警告
+#pragma warning disable CS0162
+
 using System;
 using System.Collections.Generic;
 using System.Reflection;

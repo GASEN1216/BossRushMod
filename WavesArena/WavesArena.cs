@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // WavesArena.cs - 波次与竞技场管理
 // ============================================================================
 // 模块说明：
@@ -41,6 +41,70 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        #region 前期波次Boss排除
+
+        /// <summary>
+        /// 前期波次需要排除的强力 Boss 名称列表
+        /// 包括：口口口口和四骑士（Cname_StormBoss1-5）
+        /// </summary>
+        private static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
+        {
+            "Cname_StormBoss1",    // 口口口口 或 四骑士
+            "Cname_StormBoss2",    // 口口口口 或 四骑士
+            "Cname_StormBoss3",    // 口口口口 或 四骑士
+            "Cname_StormBoss4",    // 口口口口 或 四骑士
+            "Cname_StormBoss5"     // 口口口口 或 四骑士
+        };
+
+        /// <summary>
+        /// 检查是否是前期波次需要排除的强力Boss
+        /// </summary>
+        private bool IsEarlyWaveExcludedBoss(string bossName)
+        {
+            if (string.IsNullOrEmpty(bossName)) return false;
+            return EarlyWaveExcludedBosses.Contains(bossName);
+        }
+
+        /// <summary>
+        /// 预处理：确保前10波不出现强力Boss
+        /// 在挑战开始时调用一次，将前10位中的强力Boss与后面的普通Boss交换
+        /// </summary>
+        private void EnsureEarlyWavesNoStrongBoss()
+        {
+            if (enemyPresets == null || enemyPresets.Count <= 10) return;
+            
+            int swapCount = 0;
+            int nextSwapTarget = 10; // 从第10位开始找可交换的普通Boss
+            
+            for (int i = 0; i < 10 && i < enemyPresets.Count; i++)
+            {
+                if (!IsEarlyWaveExcludedBoss(enemyPresets[i].name)) continue;
+                
+                // 找一个第10位之后的普通Boss来交换
+                while (nextSwapTarget < enemyPresets.Count && 
+                       IsEarlyWaveExcludedBoss(enemyPresets[nextSwapTarget].name))
+                {
+                    nextSwapTarget++;
+                }
+                
+                if (nextSwapTarget >= enemyPresets.Count) break; // 没有可交换的了
+                
+                // 交换
+                var tmp = enemyPresets[i];
+                enemyPresets[i] = enemyPresets[nextSwapTarget];
+                enemyPresets[nextSwapTarget] = tmp;
+                nextSwapTarget++;
+                swapCount++;
+            }
+            
+            if (swapCount > 0)
+            {
+                DevLog("[BossRush] 前10波强力Boss预处理完成，交换了 " + swapCount + " 个Boss");
+            }
+        }
+
+        #endregion
+
         /// <summary>
         /// 开始 BossRush 模式（WavesArena 备份实现，不作为主入口）
         /// </summary>
@@ -60,6 +124,10 @@ namespace BossRush
 
             // 标记：后续进入 DEMO 挑战地图应由 BossRush 控制
             bossRushArenaPlanned = true;
+            
+            // 设置 pending 地图索引为 DEMO 挑战地图（索引 0），确保中间场景检查能正确识别目标场景
+            BossRushMapSelectionHelper.SetPendingMapEntryIndex(0);
+            DevLog("[BossRush] F9 快捷启动：设置 pending 地图索引为 0 (DEMO挑战)");
             
             // 1. 尝试使用 CharacterMainControl.Main (如果是静态单例)
             // 由于不确定是否存在静态 Main 属性，我们使用 FindObjectOfType
@@ -995,6 +1063,9 @@ namespace BossRush
         /// </summary>
         public void StartFirstWave()
         {
+            // [DEBUG] 记录当前状态
+            DevLog("[BossRush] StartFirstWave 调用: IsActive=" + IsActive + ", bossesPerWave=" + bossesPerWave + ", infiniteHellMode=" + infiniteHellMode);
+            
             if (!IsActive)
             {
                 // 记录玩家当前位置作为出生点（BossRush失败时传送回此处）
@@ -1017,6 +1088,7 @@ namespace BossRush
                 {
                     if (enemyPresets != null && enemyPresets.Count > 1)
                     {
+                        // Fisher-Yates 洗牌
                         for (int i = enemyPresets.Count - 1; i > 0; i--)
                         {
                             int j = UnityEngine.Random.Range(0, i + 1);
@@ -1027,6 +1099,14 @@ namespace BossRush
                                 enemyPresets[j] = tmp;
                             }
                         }
+                        
+                        // 弹指可灭/有点意思模式：预处理，确保前10波不出现强力Boss
+                        // 将前10位中的强力Boss与第10位之后的普通Boss交换
+                        if (!infiniteHellMode)
+                        {
+                            EnsureEarlyWavesNoStrongBoss();
+                        }
+                        
                         DevLog("[BossRush] 已随机打乱本次 BossRush 的敌人出场顺序");
                     }
                 }
@@ -1067,37 +1147,119 @@ namespace BossRush
             }
         }
         
+        /// <summary>
+        /// 获取安全的Boss生成位置（确保在地面上）
+        /// </summary>
         private static Vector3 GetSafeBossSpawnPosition(Vector3 rawPosition)
         {
             Vector3 result = rawPosition;
             try
             {
-                Vector3 origin = rawPosition + Vector3.up * 5f;
-                float maxDistance = 20f;
+                // 从更高的位置向下射线检测，增加检测成功率
+                Vector3 origin = rawPosition + Vector3.up * 10f;
+                float maxDistance = 30f;
                 LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
                 RaycastHit hit;
                 if (Physics.Raycast(origin, Vector3.down, out hit, maxDistance, groundMask))
                 {
-                    result = hit.point + Vector3.up * 0.1f;
+                    result = hit.point + Vector3.up * 0.15f;
                 }
                 else
                 {
+                    // Raycast失败，尝试NavMesh
                     NavMeshHit navHit;
-                    if (NavMesh.SamplePosition(rawPosition, out navHit, 5f, NavMesh.AllAreas))
+                    if (NavMesh.SamplePosition(rawPosition, out navHit, 10f, NavMesh.AllAreas))
                     {
-                        result = navHit.position + Vector3.up * 0.1f;
+                        result = navHit.position + Vector3.up * 0.15f;
                     }
                     else
                     {
-                        result = rawPosition + Vector3.up * 0.5f;
+                        // 都失败了，使用原始位置但抬高一点
+                        result = rawPosition + Vector3.up * 1f;
                     }
                 }
             }
             catch
             {
-                result = rawPosition;
+                result = rawPosition + Vector3.up * 1f;
             }
             return result;
+        }
+        
+        /// <summary>
+        /// 校验并修正Boss位置（生成后调用，防止Boss卡在地下）
+        /// </summary>
+        private void ValidateAndFixBossPosition(CharacterMainControl boss)
+        {
+            if (boss == null) return;
+            
+            try
+            {
+                Vector3 currentPos = boss.transform.position;
+                
+                // 从Boss当前位置向上发射射线，检测是否在地面以下
+                Vector3 checkOrigin = currentPos + Vector3.up * 0.5f;
+                LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
+                RaycastHit hitUp;
+                
+                // 如果向上能打到地面，说明Boss在地下
+                if (Physics.Raycast(checkOrigin, Vector3.up, out hitUp, 20f, groundMask))
+                {
+                    // Boss在地面以下，需要修正
+                    Vector3 fixedPos = hitUp.point + Vector3.up * 0.5f;
+                    boss.transform.position = fixedPos;
+                    DevLog("[BossRush] 修正Boss位置（从地下拉出）: " + boss.name + " -> " + fixedPos);
+                    return;
+                }
+                
+                // 从高处向下检测，确认Boss脚下有地面
+                Vector3 abovePos = currentPos + Vector3.up * 15f;
+                RaycastHit hitDown;
+                if (Physics.Raycast(abovePos, Vector3.down, out hitDown, 30f, groundMask))
+                {
+                    float groundY = hitDown.point.y;
+                    // 如果Boss的Y坐标比地面低超过0.5米，修正位置
+                    if (currentPos.y < groundY - 0.5f)
+                    {
+                        Vector3 fixedPos = new Vector3(currentPos.x, groundY + 0.15f, currentPos.z);
+                        boss.transform.position = fixedPos;
+                        DevLog("[BossRush] 修正Boss位置（Y坐标过低）: " + boss.name + " -> " + fixedPos);
+                    }
+                }
+                else
+                {
+                    // Raycast失败，尝试NavMesh
+                    NavMeshHit navHit;
+                    if (NavMesh.SamplePosition(currentPos, out navHit, 15f, NavMesh.AllAreas))
+                    {
+                        if (currentPos.y < navHit.position.y - 0.5f)
+                        {
+                            Vector3 fixedPos = navHit.position + Vector3.up * 0.15f;
+                            boss.transform.position = fixedPos;
+                            DevLog("[BossRush] 修正Boss位置（NavMesh校准）: " + boss.name + " -> " + fixedPos);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] ValidateAndFixBossPosition 异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 延迟校验Boss位置的协程（给地形加载留出时间）
+        /// </summary>
+        private IEnumerator DelayedBossPositionValidation(CharacterMainControl boss, float delay)
+        {
+            if (boss == null) yield break;
+            
+            yield return new WaitForSeconds(delay);
+            
+            if (boss != null && boss.gameObject != null)
+            {
+                ValidateAndFixBossPosition(boss);
+            }
         }
         
         /// <summary>
@@ -1105,6 +1267,9 @@ namespace BossRush
         /// </summary>
         private void SpawnNextEnemy()
         {
+            // [DEBUG] 记录当前状态
+            DevLog("[BossRush] SpawnNextEnemy 调用: bossesPerWave=" + bossesPerWave + ", currentEnemyIndex=" + currentEnemyIndex + ", totalEnemies=" + totalEnemies);
+            
             // 通知快递员 Boss 战开始
             NotifyCourierBossFightStart();
             
@@ -1146,6 +1311,8 @@ namespace BossRush
             }
             else
             {
+                // 弹指可灭/有点意思模式：按顺序选取Boss
+                // 强力Boss已在挑战开始时预处理，前10波不会出现
                 preset = filteredPresets[currentEnemyIndex];
             }
 
@@ -1182,8 +1349,8 @@ namespace BossRush
                     // 显示敌人生成横幅（在生成前显示）
                     ShowEnemyBanner(preset.displayName, spawnPos, playerMain.transform.position);
 
-                    // 异步创建敌人实例
-                    SpawnEnemyAtPositionAsync(preset, spawnPos);
+                    // 使用带验证的异步生成方法
+                    SpawnBossWithVerificationAsync(preset, spawnPos, spawnPoints).Forget();
                 }
                 else
                 {
@@ -1192,6 +1359,9 @@ namespace BossRush
                     bossesInCurrentWaveRemaining = bossesPerWave;
                     currentWaveBosses.Clear();
 
+                    // 收集本波需要生成的所有Boss预设信息（位置由生成方法内部分配，确保不重复）
+                    var bossSpawnInfos = new List<(EnemyPresetInfo preset, Vector3 position)>();
+                    
                     for (int i = 0; i < bossesPerWave; i++)
                     {
                         EnemyPresetInfo wavePreset = preset;
@@ -1204,24 +1374,280 @@ namespace BossRush
                             }
                         }
 
-                        int index = UnityEngine.Random.Range(0, spawnPoints.Length);
-                        Vector3 spawnPos = GetSafeBossSpawnPosition(spawnPoints[index]);
-
-                        // 第一只Boss时显示横幅
-                        if (i == 0)
-                        {
-                            ShowEnemyBanner(wavePreset.displayName, spawnPos, playerMain.transform.position);
-                        }
-
-                        // 异步创建敌人实例
-                        SpawnEnemyAtPositionAsync(wavePreset, spawnPos);
+                        // 位置占位，实际位置由 SpawnMultipleBossesWithVerificationAsync 内部分配
+                        bossSpawnInfos.Add((wavePreset, Vector3.zero));
                     }
+                    
+                    // 显示第一个Boss的横幅（使用第一个刷怪点作为参考）
+                    if (bossSpawnInfos.Count > 0)
+                    {
+                        Vector3 bannerPos = GetSafeBossSpawnPosition(spawnPoints[0]);
+                        ShowEnemyBanner(bossSpawnInfos[0].preset.displayName, bannerPos, playerMain.transform.position);
+                    }
+                    
+                    // 使用带验证和重试的批量生成方法
+                    SpawnMultipleBossesWithVerificationAsync(bossSpawnInfos, spawnPoints).Forget();
                 }
             }
             catch (Exception e)
             {
                 DevLog("[BossRush] [ERROR] 生成敌人失败: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// 单Boss模式：带验证的异步生成（包含重试机制）
+        /// </summary>
+        private async UniTaskVoid SpawnBossWithVerificationAsync(EnemyPresetInfo preset, Vector3 position, Vector3[] spawnPoints)
+        {
+            const int maxRetries = 3;
+            int attempt = 0;
+            CharacterMainControl spawnedBoss = null;
+            
+            while (attempt < maxRetries && spawnedBoss == null)
+            {
+                attempt++;
+                
+                if (attempt > 1)
+                {
+                    DevLog("[BossRush] 单Boss生成重试 #" + attempt + ": " + preset.displayName);
+                    // 重试时使用新的随机位置
+                    int newIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+                    position = GetSafeBossSpawnPosition(spawnPoints[newIndex]);
+                }
+                
+                spawnedBoss = await SpawnEnemyAtPositionAsync(preset, position);
+                
+                if (spawnedBoss == null && attempt < maxRetries)
+                {
+                    // 等待一小段时间后重试
+                    await UniTask.Delay(200);
+                }
+            }
+            
+            if (spawnedBoss == null)
+            {
+                DevLog("[BossRush] [ERROR] 单Boss生成失败，已重试 " + maxRetries + " 次: " + preset.displayName);
+                OnBossSpawnFailed(preset);
+            }
+            else
+            {
+                DevLog("[BossRush] 单Boss生成成功: " + preset.displayName + " (尝试次数: " + attempt + ")");
+            }
+        }
+        
+        /// <summary>
+        /// 多Boss模式：带验证和重试的批量生成
+        /// 确保每个Boss使用不同的刷怪点，避免位置冲突
+        /// </summary>
+        private async UniTaskVoid SpawnMultipleBossesWithVerificationAsync(
+            List<(EnemyPresetInfo preset, Vector3 position)> bossSpawnInfos, 
+            Vector3[] spawnPoints)
+        {
+            const int maxRetries = 3;
+            int expectedCount = bossSpawnInfos.Count;
+            
+            DevLog("[BossRush] 开始批量生成 " + expectedCount + " 个Boss");
+            
+            // 重新分配刷怪点，确保每个Boss使用不同的位置
+            var assignedPositions = AssignUniqueSpawnPositions(expectedCount, spawnPoints);
+            for (int i = 0; i < bossSpawnInfos.Count && i < assignedPositions.Count; i++)
+            {
+                bossSpawnInfos[i] = (bossSpawnInfos[i].preset, assignedPositions[i]);
+            }
+            
+            // 记录已使用的刷怪点索引，用于重试时避免冲突
+            var usedSpawnIndices = new HashSet<int>();
+            for (int i = 0; i < Mathf.Min(expectedCount, spawnPoints.Length); i++)
+            {
+                usedSpawnIndices.Add(i);
+            }
+            
+            // 第一轮：串行生成所有Boss（避免并行时的潜在冲突）
+            var results = new List<CharacterMainControl>();
+            var failedInfos = new List<(EnemyPresetInfo preset, int originalIndex)>();
+            
+            for (int i = 0; i < bossSpawnInfos.Count; i++)
+            {
+                var info = bossSpawnInfos[i];
+                CharacterMainControl spawned = null;
+                
+                try
+                {
+                    spawned = await SpawnEnemyAtPositionAsync(info.preset, info.position);
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] Boss生成异常 #" + i + ": " + e.Message);
+                }
+                
+                results.Add(spawned);
+                
+                if (spawned == null && !IsDragonDescendantPreset(info.preset))
+                {
+                    failedInfos.Add((info.preset, i));
+                }
+                
+                // 每个Boss生成后短暂等待，确保游戏状态稳定
+                if (i < bossSpawnInfos.Count - 1)
+                {
+                    await UniTask.Delay(50);
+                }
+            }
+            
+            // 统计成功生成的数量
+            int successCount = 0;
+            for (int i = 0; i < results.Count; i++)
+            {
+                if (results[i] != null)
+                {
+                    successCount++;
+                }
+                else if (IsDragonDescendantPreset(bossSpawnInfos[i].preset))
+                {
+                    // 龙裔遗族返回 null 但不视为失败
+                    successCount++;
+                }
+            }
+            
+            DevLog("[BossRush] 首轮生成完成: 成功=" + successCount + ", 失败=" + failedInfos.Count);
+            
+            // 重试失败的Boss
+            int retryAttempt = 0;
+            while (failedInfos.Count > 0 && retryAttempt < maxRetries)
+            {
+                retryAttempt++;
+                DevLog("[BossRush] 开始重试失败的Boss (第 " + retryAttempt + " 轮), 剩余: " + failedInfos.Count);
+                
+                // 等待一小段时间后重试
+                await UniTask.Delay(300);
+                
+                var stillFailed = new List<(EnemyPresetInfo preset, int originalIndex)>();
+                
+                foreach (var failedInfo in failedInfos)
+                {
+                    // 重试时选择一个未使用过的刷怪点
+                    Vector3 newPos = GetUnusedSpawnPosition(spawnPoints, usedSpawnIndices);
+                    
+                    CharacterMainControl retryResult = null;
+                    try
+                    {
+                        retryResult = await SpawnEnemyAtPositionAsync(failedInfo.preset, newPos);
+                    }
+                    catch (Exception e)
+                    {
+                        DevLog("[BossRush] Boss重试生成异常: " + e.Message);
+                    }
+                    
+                    if (retryResult != null)
+                    {
+                        successCount++;
+                        DevLog("[BossRush] 重试成功: " + failedInfo.preset.displayName);
+                    }
+                    else if (!IsDragonDescendantPreset(failedInfo.preset))
+                    {
+                        stillFailed.Add(failedInfo);
+                    }
+                    else
+                    {
+                        successCount++;
+                    }
+                    
+                    // 每次重试后短暂等待
+                    await UniTask.Delay(100);
+                }
+                
+                failedInfos = stillFailed;
+                DevLog("[BossRush] 重试轮 " + retryAttempt + " 完成: 当前成功总数=" + successCount + ", 仍失败=" + failedInfos.Count);
+            }
+            
+            // 最终验证
+            int finalFailCount = expectedCount - successCount;
+            if (finalFailCount > 0)
+            {
+                DevLog("[BossRush] [WARNING] 最终有 " + finalFailCount + " 个Boss生成失败，修正波次计数");
+                
+                // 修正波次计数，避免卡住
+                bossesInCurrentWaveTotal = successCount;
+                bossesInCurrentWaveRemaining = successCount;
+                
+                // 如果全部失败，直接推进下一波
+                if (successCount <= 0)
+                {
+                    DevLog("[BossRush] [ERROR] 本波所有Boss生成失败，跳过本波");
+                    ProceedAfterWaveFinished();
+                }
+            }
+            else
+            {
+                DevLog("[BossRush] 批量生成完成: 全部 " + expectedCount + " 个Boss成功生成");
+            }
+        }
+        
+        /// <summary>
+        /// 为多个Boss分配不重复的刷怪点位置
+        /// </summary>
+        private List<Vector3> AssignUniqueSpawnPositions(int count, Vector3[] spawnPoints)
+        {
+            var positions = new List<Vector3>();
+            
+            if (spawnPoints == null || spawnPoints.Length == 0)
+            {
+                DevLog("[BossRush] [WARNING] AssignUniqueSpawnPositions: 刷怪点数组为空");
+                return positions;
+            }
+            
+            // 打乱刷怪点顺序，然后依次分配
+            var shuffledIndices = new List<int>();
+            for (int i = 0; i < spawnPoints.Length; i++)
+            {
+                shuffledIndices.Add(i);
+            }
+            
+            // Fisher-Yates 洗牌算法
+            for (int i = shuffledIndices.Count - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                int temp = shuffledIndices[i];
+                shuffledIndices[i] = shuffledIndices[j];
+                shuffledIndices[j] = temp;
+            }
+            
+            // 分配位置（每个Boss使用不同的刷怪点）
+            for (int i = 0; i < count; i++)
+            {
+                int spawnIndex = shuffledIndices[i % shuffledIndices.Count];
+                Vector3 basePos = spawnPoints[spawnIndex];
+                positions.Add(GetSafeBossSpawnPosition(basePos));
+            }
+            
+            DevLog("[BossRush] 分配了 " + positions.Count + " 个不重复的刷怪位置");
+            return positions;
+        }
+        
+        /// <summary>
+        /// 获取一个未使用过的刷怪点位置（用于重试）
+        /// </summary>
+        private Vector3 GetUnusedSpawnPosition(Vector3[] spawnPoints, HashSet<int> usedIndices)
+        {
+            if (spawnPoints == null || spawnPoints.Length == 0)
+            {
+                return Vector3.zero;
+            }
+            
+            // 优先选择未使用过的刷怪点
+            for (int i = 0; i < spawnPoints.Length; i++)
+            {
+                if (!usedIndices.Contains(i))
+                {
+                    usedIndices.Add(i);
+                    return GetSafeBossSpawnPosition(spawnPoints[i]);
+                }
+            }
+            
+            // 所有刷怪点都用过了，随机选一个
+            int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+            return GetSafeBossSpawnPosition(spawnPoints[randomIndex]);
         }
         
         /// <summary>

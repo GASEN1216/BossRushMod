@@ -52,13 +52,18 @@ namespace BossRush
         // 服务状态
         private static bool isServiceActive = false;
         
+        /// <summary>
+        /// 检查服务是否激活（公共属性）
+        /// </summary>
+        public static bool IsServiceActive { get { return isServiceActive; } }
+        
         // 发送结果（用于显示告别气泡）
         private static int lastSentItemCount = 0;
         private static int lastDeliveryFee = 0;
         
         // 常量
         private const int CONTAINER_CAPACITY = 35;  // 35个格子
-        private const float DELIVERY_FEE_RATE = 0.5f;  // 50%快递费
+        private const float DELIVERY_FEE_RATE = 0.1f;  // 10%快递费
         private const float GOODBYE_BUBBLE_DURATION = 4f;
         private const float BUBBLE_Y_OFFSET = 1.5f;
         
@@ -69,6 +74,7 @@ namespace BossRush
         private static FieldInfo lootTargetFadeGroupField = null;
         private static FieldInfo lootTargetInventoryDisplayField = null;  // 容器区域的 InventoryDisplay
         private static FieldInfo sortButtonField = null;  // InventoryDisplay 中的整理按钮
+        private static FieldInfo lootboxDisplayNameKeyField = null;  // InteractableLootbox 的 displayNameKey 字段
         private static bool reflectionInitialized = false;
         
         // CourierMovement 引用（用于控制移动）
@@ -408,6 +414,9 @@ namespace BossRush
                 // InteractableLootbox 的 inventoryReference 字段（用于设置容器引用）
                 inventoryReferenceField = typeof(InteractableLootbox).GetField("inventoryReference", privateInstance);
                 
+                // InteractableLootbox 的 displayNameKey 字段（用于设置容器显示名称）
+                lootboxDisplayNameKeyField = typeof(InteractableLootbox).GetField("displayNameKey", privateInstance);
+                
                 reflectionInitialized = true;
                 ModBehaviour.DevLog("[CourierService] 反射字段缓存初始化完成");
             }
@@ -439,9 +448,6 @@ namespace BossRush
             courierInventory = containerObject.AddComponent<Inventory>();
             courierInventory.SetCapacity(CONTAINER_CAPACITY);
             
-            // 设置容器显示名称（使用 DisplayNameKey，会自动本地化）
-            courierInventory.DisplayNameKey = "BossRush_CourierService";
-            
             // 添加 InteractableLootbox 组件（用于触发官方 LootView）
             courierLootbox = containerObject.AddComponent<InteractableLootbox>();
             
@@ -456,6 +462,9 @@ namespace BossRush
                 ModBehaviour.DevLog("[CourierService] [WARNING] inventoryReferenceField 为空，无法设置容器引用");
             }
             
+            // 设置容器显示名称（必须在 InteractableLootbox 上设置，因为它会覆盖 Inventory 的 DisplayNameKey）
+            SetLootboxDisplayNameKey(courierLootbox, "BossRush_CourierService_ContainerTitle");
+            
             // 注册容器内容变化事件（事件驱动，无需每帧检测）
             courierInventory.onContentChanged += OnContainerContentChanged;
             
@@ -463,6 +472,28 @@ namespace BossRush
             InteractableLootbox.OnStopLoot += OnLootboxStopLoot;
             
             ModBehaviour.DevLog("[CourierService] 快递容器创建成功，容量: " + CONTAINER_CAPACITY);
+        }
+        
+        /// <summary>
+        /// 设置 InteractableLootbox 的 displayNameKey 字段（通过反射）
+        /// </summary>
+        private static void SetLootboxDisplayNameKey(InteractableLootbox lootbox, string key)
+        {
+            if (lootbox == null || lootboxDisplayNameKeyField == null)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 无法设置 displayNameKey: lootbox=" + (lootbox != null) + ", field=" + (lootboxDisplayNameKeyField != null));
+                return;
+            }
+            
+            try
+            {
+                lootboxDisplayNameKeyField.SetValue(lootbox, key);
+                ModBehaviour.DevLog("[CourierService] 已设置 InteractableLootbox.displayNameKey: " + key);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 设置 displayNameKey 失败: " + e.Message);
+            }
         }
         
         // ============================================================================
@@ -858,6 +889,142 @@ namespace BossRush
         // ============================================================================
         
         /// <summary>
+        /// 尝试自动发送物品到玩家仓库（关闭UI时调用）
+        /// 当玩家关闭UI但未点击发送按钮时，如果资金充足则自动扣费发送
+        /// </summary>
+        /// <returns>true 如果成功自动发送，false 如果需要返还到背包</returns>
+        private static bool TryAutoDelivery()
+        {
+            // 检查容器是否有物品
+            if (courierInventory == null || courierInventory.GetItemCount() == 0)
+            {
+                ModBehaviour.DevLog("[CourierService] TryAutoDelivery: 容器为空，无需自动发送");
+                return false;
+            }
+            
+            // 计算快递费用
+            int fee = CalculateDeliveryFee(courierInventory);
+            if (fee <= 0)
+            {
+                ModBehaviour.DevLog("[CourierService] TryAutoDelivery: 快递费用为0，无需自动发送");
+                return false;
+            }
+            
+            // 检查玩家资金是否充足
+            if (!CanAffordDeliveryInternal(fee))
+            {
+                ModBehaviour.DevLog("[CourierService] TryAutoDelivery: 资金不足，无法自动发送");
+                return false;
+            }
+            
+            // 执行自动发送
+            return ExecuteAutoDelivery(fee);
+        }
+        
+        /// <summary>
+        /// 执行自动发送操作（复用 ExecuteDelivery 的核心逻辑）
+        /// </summary>
+        /// <param name="fee">已计算好的快递费用</param>
+        /// <returns>true 如果发送成功</returns>
+        private static bool ExecuteAutoDelivery(int fee)
+        {
+            try
+            {
+                // 使用 EconomyManager 扣除快递费（通过 Cost.Pay 方法）
+                var cost = new Duckov.Economy.Cost((long)fee);
+                if (!cost.Pay(true, true))
+                {
+                    ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 扣费失败");
+                    return false;
+                }
+                ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 已扣除快递费: " + fee);
+                
+                // 收集所有物品（避免遍历时修改集合）
+                List<Item> itemsToSend = new List<Item>();
+                foreach (Item item in courierInventory)
+                {
+                    if (item != null)
+                    {
+                        itemsToSend.Add(item);
+                    }
+                }
+                
+                // 发送物品到玩家仓库
+                foreach (Item item in itemsToSend)
+                {
+                    item.Detach();  // 先从容器分离
+                    
+                    // 直接添加到缓冲区（不显示通知）
+                    var itemData = ItemStatsSystem.Data.ItemTreeData.FromItem(item);
+                    PlayerStorageBuffer.Buffer.Add(itemData);
+                    item.DestroyTree();  // 销毁物品树
+                    
+                    ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 已发送物品: " + item.DisplayName);
+                }
+                
+                // 记录发送结果（用于告别气泡）
+                lastSentItemCount = itemsToSend.Count;
+                lastDeliveryFee = fee;
+                
+                ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 自动发送完成，共 " + itemsToSend.Count + " 件物品");
+                
+                // 显示快递完成横幅
+                ShowDeliveryCompleteBanner();
+                
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] ExecuteAutoDelivery 失败: " + e.Message + "\n" + e.StackTrace);
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 显示自动发送的告别气泡
+        /// </summary>
+        private static void ShowAutoDeliveryBubble(Transform npcTransform)
+        {
+            if (npcTransform == null)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] NPC Transform 为空，无法显示自动发送气泡");
+                return;
+            }
+            
+            try
+            {
+                // 显示新的告别气泡："货我已经送出去了，钱我就收下了"
+                string bubbleText = L10n.T(
+                    "货我已经送出去了，钱我就收下了",
+                    "I've sent the goods, I'll take the money"
+                );
+                
+                // 使用原版气泡系统显示对话
+                Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
+                    Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                        bubbleText,
+                        npcTransform,
+                        BUBBLE_Y_OFFSET,
+                        false,
+                        false,
+                        -1f,
+                        GOODBYE_BUBBLE_DURATION
+                    )
+                );
+                
+                ModBehaviour.DevLog("[CourierService] 显示自动发送告别气泡: " + bubbleText);
+                
+                // 重置发送记录（防止下次打开时显示旧数据）
+                lastSentItemCount = 0;
+                lastDeliveryFee = 0;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 显示自动发送气泡失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
         /// LootView 关闭事件处理
         /// </summary>
         private static void OnLootViewClosed()
@@ -888,11 +1055,21 @@ namespace BossRush
                 ModBehaviour.DevLog("[CourierService] OnLootViewClosed: 已调用 SetInService(false)，恢复移动");
             }
             
-            // 返还容器中的物品到玩家背包（如果有关闭时未发送的物品）
-            ReturnItemsToPlayerInventory();
+            // 新增：尝试自动发送（如果容器有物品且资金充足）
+            bool autoDelivered = TryAutoDelivery();
             
-            // 显示告别气泡（使用保存的 NPC Transform）
-            ShowGoodbyeBubbleInternal(savedNPCTransform);
+            if (autoDelivered)
+            {
+                // 自动发送成功，显示新的告别气泡
+                ShowAutoDeliveryBubble(savedNPCTransform);
+            }
+            else
+            {
+                // 自动发送失败（资金不足或容器为空），返还物品到玩家背包
+                ReturnItemsToPlayerInventory();
+                // 显示原有告别气泡
+                ShowGoodbyeBubbleInternal(savedNPCTransform);
+            }
             
             // 清理资源
             Cleanup();

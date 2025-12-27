@@ -35,9 +35,11 @@ namespace BossRush
         private DragonDescendantAbilityController dragonDescendantAbilities;
         
         /// <summary>
-        /// 龙裔遗族是否已注册到预设列表
+        /// 龙裔遗族是否已注册到预设列表 - 用于防止重复注册
         /// </summary>
+        #pragma warning disable CS0414
         private static bool dragonDescendantRegistered = false;
+        #pragma warning restore CS0414
         
         /// <summary>
         /// Boss龙套装效果是否已注册
@@ -54,7 +56,7 @@ namespace BossRush
         /// <summary>
         /// 生成龙裔遗族Boss
         /// </summary>
-        public async void SpawnDragonDescendant(Vector3 position)
+        public async UniTask<CharacterMainControl> SpawnDragonDescendant(Vector3 position)
         {
             try
             {
@@ -91,7 +93,7 @@ namespace BossRush
                         OnBossSpawnFailed(dragonPreset);
                     }
                     catch {}
-                    return;
+                    return null;
                 }
                 
                 DevLog("[DragonDescendant] 使用预设: " + basePreset.name + " (nameKey=" + basePreset.nameKey + ")");
@@ -122,7 +124,7 @@ namespace BossRush
                         OnBossSpawnFailed(dragonPreset);
                     }
                     catch {}
-                    return;
+                    return null;
                 }
                 
                 dragonDescendantInstance = character;
@@ -164,9 +166,6 @@ namespace BossRush
                 
                 // 设置Boss属性
                 SetupBossAttributes(character);
-                
-                // 应用全局难度因子（血量、反应时间、攻击速度等）
-                ApplyGlobalDifficultyScaling(character);
                 
                 // 装备武器和护甲
                 await EquipDragonDescendant(character);
@@ -218,10 +217,14 @@ namespace BossRush
                 
                 DevLog("[DragonDescendant] 龙裔遗族Boss生成完成");
                 ShowMessage(L10n.T("龙裔遗族 出现了！", "Dragon Descendant has appeared!"));
+                
+                // 返回生成的角色引用，供BossRush系统验证
+                return character;
             }
             catch (Exception e)
             {
                 DevLog("[DragonDescendant] [ERROR] 生成Boss失败: " + e.Message + "\n" + e.StackTrace);
+                return null;
             }
         }
         

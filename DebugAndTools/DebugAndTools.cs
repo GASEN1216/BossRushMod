@@ -13,6 +13,9 @@
 //   - F5: 输出玩家脚下的 GameObject 并记住最近的对象
 //   - F6: 切换放置模式（预览 F5 记住的对象，鼠标左键确认放置）
 //   - F7: 输出最近的交互点信息
+
+// 抑制 DevModeEnabled = false 时的"无法访问的代码"警告
+#pragma warning disable CS0162
 //   - F8: 输出场景中所有非玩家角色
 //   - F9: 直接开始 BossRush
 //   - F10: 直接触发通关
@@ -59,8 +62,10 @@ namespace BossRush
         private static GameObject placementPreviewObject = null;
         // 原始材质缓存（用于恢复）
         private static Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
-        // 预览材质（半透明）
+        // 预览材质（半透明）- 保留用于未来放置模式功能
+        #pragma warning disable CS0414
         private static Material previewMaterial = null;
+        #pragma warning restore CS0414
         // 当前旋转角度（Y轴）
         private static float placementRotationY = 0f;
         // 每次滚轮旋转的角度

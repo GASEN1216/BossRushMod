@@ -490,7 +490,7 @@ namespace BossRush
 
         /// <summary>
         /// 商店购买事件处理：检测玩家是否大量购买 ID 105 物品（进货行为）
-        /// 仅在 BossRush 弹药商店（ammoShop）中生效
+        /// 仅在 BossRush 加油站（ammoShop）中生效
         /// </summary>
         private void OnItemPurchased_Integration(StockShop shop, Item item)
         {
@@ -498,7 +498,7 @@ namespace BossRush
             {
                 if (shop == null || item == null) return;
                 
-                // 仅在 BossRush 弹药商店中检测
+                // 仅在 BossRush 加油站中检测
                 if (ammoShop == null || shop != ammoShop) return;
                 
                 // 检测是否购买了 ID 105 的物品

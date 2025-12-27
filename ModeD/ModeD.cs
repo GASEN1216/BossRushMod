@@ -232,6 +232,8 @@ namespace BossRush
 
                 // 设置路牌为 Mode D 模式
                 SetupSignForModeD();
+                
+                // 初始状态保持为生小鸡（EntryAndDifficulty），波次开始时再切换到加油状态
 
                 ShowMessage(L10n.T("白手起家模式已激活！通过路牌开始挑战！", "Rags to Riches mode activated! Start the challenge via the signpost!"));
                 ShowBigBanner(L10n.T("欢迎来到 <color=red>白手起家</color>！", "Welcome to <color=red>Rags to Riches</color>!"));
@@ -344,6 +346,8 @@ namespace BossRush
                     int[] ids = SearchItemsByTag(tagsData.Armor, excludeArray);
                     if (ids != null) modeDArmortPool.AddRange(ids);
                 }
+                // 移除龙甲（龙裔遗族Boss专属掉落，不应出现在白手起家随机池中）
+                modeDArmortPool.Remove(DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID);
 
                 // 头盔池（Helmat Tag）
                 if (tagsData.Helmat != null)
@@ -351,6 +355,8 @@ namespace BossRush
                     int[] ids = SearchItemsByTag(tagsData.Helmat, excludeArray);
                     if (ids != null) modeDHelmetPool.AddRange(ids);
                 }
+                // 移除龙头（龙裔遗族Boss专属掉落，不应出现在白手起家随机池中）
+                modeDHelmetPool.Remove(DragonDescendantConfig.DRAGON_HELM_TYPE_ID);
 
                 // 弹药池（Bullet Tag）
                 if (tagsData.Bullet != null)
@@ -449,8 +455,8 @@ namespace BossRush
                     if (string.IsNullOrEmpty(nameKey)) continue;
 
                     int team = (int)preset.team;
-                    // 只收集敌对阵营
-                    if (team == 0) continue; // 0 通常是玩家阵营
+                    // 只收集敌对阵营，排除玩家和中立阵营
+                    if (team == (int)Teams.player || team == (int)Teams.middle) continue;
 
                     // 排除商人和宠物类型
                     bool shouldExclude = false;

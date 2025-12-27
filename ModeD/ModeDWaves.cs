@@ -82,6 +82,12 @@ namespace BossRush
                     "Wave <color=yellow>" + modeDWaveIndex + "</color> started!"
                 ));
                 
+                // 波次开始时切换路牌到加油状态（支持连点10次结束波次的兜底机制）
+                if (bossRushSignInteract != null)
+                {
+                    bossRushSignInteract.SetCheerMode();
+                }
+                
                 // 生成敌人
                 SpawnModeDWaveEnemies(bossCount, minionCount);
             }
@@ -146,7 +152,15 @@ namespace BossRush
                     return;
                 }
                 
-                List<Vector3> usedPositions = new List<Vector3>();
+                // 获取刷怪点并洗牌，确保随机但不重复
+                Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
+                if (spawnPoints == null || spawnPoints.Length == 0)
+                {
+                    spawnPoints = DemoChallengeSpawnPoints;
+                }
+                var shuffledPositions = ShuffleSpawnPoints(spawnPoints);
+                int spawnIndex = 0;
+                
                 bool bannerShown = false;
                 Vector3 bannerPos = Vector3.zero;
                 
@@ -156,8 +170,8 @@ namespace BossRush
                     EnemyPresetInfo bossPreset = GetRandomBossPreset();
                     if (bossPreset != null)
                     {
-                        Vector3 spawnPos = GetUniqueSpawnPosition(usedPositions);
-                        usedPositions.Add(spawnPos);
+                        Vector3 spawnPos = GetSafeBossSpawnPosition(shuffledPositions[spawnIndex % shuffledPositions.Count]);
+                        spawnIndex++;
                         
                         // 第一只敌人作为方位横幅代表点
                         if (!bannerShown)
@@ -176,8 +190,8 @@ namespace BossRush
                     EnemyPresetInfo minionPreset = GetRandomMinionPreset();
                     if (minionPreset != null)
                     {
-                        Vector3 spawnPos = GetUniqueSpawnPosition(usedPositions);
-                        usedPositions.Add(spawnPos);
+                        Vector3 spawnPos = GetSafeBossSpawnPosition(shuffledPositions[spawnIndex % shuffledPositions.Count]);
+                        spawnIndex++;
                         
                         // 如果本波没有 Boss，则用第一只小怪作为代表点
                         if (!bannerShown)
@@ -209,20 +223,6 @@ namespace BossRush
                 DevLog("[ModeD] [ERROR] SpawnModeDWaveEnemies 失败: " + e.Message);
             }
         }
-        
-        /// <summary>
-        /// 前期波次需要排除的强力 Boss 名称列表
-        /// 包括：口口口口和四骑士（Cname_StormBoss1-5）
-        /// </summary>
-        private static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
-        {
-            "Cname_StormBoss1",    // 口口口口 或 四骑士
-            "Cname_StormBoss2",    // 口口口口 或 四骑士
-            "Cname_StormBoss3",    // 口口口口 或 四骑士
-            "Cname_StormBoss4",    // 口口口口 或 四骑士
-            "Cname_StormBoss5"     // 口口口口 或 四骑士
-        };
-
         /// <summary>
         /// 获取随机 Boss 预设
         /// </summary>
@@ -369,44 +369,19 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 获取不重复的刷新位置（使用 BossRushMapConfig 配置系统）
+        /// 洗牌刷怪点数组（Fisher-Yates 算法）
         /// </summary>
-        private Vector3 GetUniqueSpawnPosition(List<Vector3> usedPositions)
+        private List<Vector3> ShuffleSpawnPoints(Vector3[] spawnPoints)
         {
-            const int maxAttempts = 20;
-            const float minDistance = 3f;
-
-            // 使用配置系统获取当前场景的刷新点
-            Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
-            if (spawnPoints == null || spawnPoints.Length == 0)
+            var list = new List<Vector3>(spawnPoints);
+            for (int i = list.Count - 1; i > 0; i--)
             {
-                spawnPoints = DemoChallengeSpawnPoints;
+                int j = UnityEngine.Random.Range(0, i + 1);
+                Vector3 temp = list[i];
+                list[i] = list[j];
+                list[j] = temp;
             }
-
-            for (int attempt = 0; attempt < maxAttempts; attempt++)
-            {
-                int index = UnityEngine.Random.Range(0, spawnPoints.Length);
-                Vector3 candidate = GetSafeBossSpawnPosition(spawnPoints[index]);
-
-                bool tooClose = false;
-                foreach (Vector3 used in usedPositions)
-                {
-                    if (Vector3.Distance(candidate, used) < minDistance)
-                    {
-                        tooClose = true;
-                        break;
-                    }
-                }
-
-                if (!tooClose)
-                {
-                    return candidate;
-                }
-            }
-
-            // 实在找不到，随机返回一个
-            int fallbackIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-            return GetSafeBossSpawnPosition(spawnPoints[fallbackIndex]);
+            return list;
         }
 
         /// <summary>
@@ -470,9 +445,6 @@ namespace BossRush
 
                     // 统一伤害倍率为1，避免不同Boss预设的damageMultiplier差异导致伤害过高
                     NormalizeDamageMultiplier(character);
-
-                    // 应用全局难度因子（血量、反应时间、攻击速度等）
-                    ApplyGlobalDifficultyScaling(character);
 
                     // 应用 Mode D 配装
                     EquipEnemyForModeD(character, modeDWaveIndex, currentPresetInfo.baseHealth);
@@ -904,6 +876,12 @@ namespace BossRush
                     "第 <color=yellow>" + modeDWaveIndex + "</color> 波完成！",
                     "Wave <color=yellow>" + modeDWaveIndex + "</color> completed!"
                 ));
+                
+                // 波次结束时切换路牌回生小鸡状态
+                if (bossRushSignInteract != null)
+                {
+                    bossRushSignInteract.SetEntryMode();
+                }
 
                 bool useInteract = false;
                 try

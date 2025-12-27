@@ -61,6 +61,8 @@ namespace BossRush
         private const string COURIER_VICTORY_EN = "Hahaha... I'm rich!";
         
         // 快递服务功能本地化数据
+        private const string COURIER_CONTAINER_TITLE_CN = "阿稳速递";
+        private const string COURIER_CONTAINER_TITLE_EN = "Awen Express";
         private const string COURIER_SERVICE_SEND_CN = "发送";
         private const string COURIER_SERVICE_SEND_EN = "Send";
         private const string COURIER_SERVICE_FEE_CN = "快递费: {0}";
@@ -71,6 +73,46 @@ namespace BossRush
         private const string COURIER_SERVICE_INSUFFICIENT_EN = "Insufficient funds";
         private const string COURIER_SERVICE_EMPTY_CN = "请放入物品";
         private const string COURIER_SERVICE_EMPTY_EN = "Please add items";
+        
+        // ============================================================================
+        // 寄存服务本地化数据
+        // ============================================================================
+        private const string STORAGE_SERVICE_CN = "寄存服务";
+        private const string STORAGE_SERVICE_EN = "Storage Service";
+        private const string STORAGE_CONTAINER_TITLE_CN = "阿稳寄存";
+        private const string STORAGE_CONTAINER_TITLE_EN = "Awen Storage";
+        private const string STORAGE_SERVICE_RETRIEVE_ALL_CN = "全部取出";
+        private const string STORAGE_SERVICE_RETRIEVE_ALL_EN = "Retrieve All";
+        private const string STORAGE_SERVICE_INSUFFICIENT_CN = "别乱碰，不然让你见识下稳叔的厉害";
+        private const string STORAGE_SERVICE_INSUFFICIENT_EN = "Don't touch that, or I'll show you what Uncle Wen is capable of";
+        private const string STORAGE_SERVICE_RETRIEVED_CN = "多存多优惠！小子！";
+        private const string STORAGE_SERVICE_RETRIEVED_EN = "Store more, save more! Kid!";
+        private const string STORAGE_SERVICE_EMPTY_CN = "空空如也";
+        private const string STORAGE_SERVICE_EMPTY_EN = "Empty";
+        
+        // 阿稳寄存服务（新版）本地化数据
+        private const string STORAGE_DEPOSIT_SERVICE_NAME_CN = "寄存服务";
+        private const string STORAGE_DEPOSIT_SERVICE_NAME_EN = "Storage Deposit";
+        private const string STORAGE_DEPOSIT_SHOP_NAME_CN = "阿稳寄存";
+        private const string STORAGE_DEPOSIT_SHOP_NAME_EN = "Awen's Storage";
+        private const string STORAGE_DEPOSIT_BUTTON_CN = "寄存";
+        private const string STORAGE_DEPOSIT_BUTTON_EN = "Deposit";
+        private const string STORAGE_DEPOSIT_DEPOSITED_CN = "物品已存入寄存柜";
+        private const string STORAGE_DEPOSIT_DEPOSITED_EN = "Item deposited";
+        private const string STORAGE_DEPOSIT_RETRIEVED_CN = "物品已取回";
+        private const string STORAGE_DEPOSIT_RETRIEVED_EN = "Item retrieved";
+        private const string STORAGE_DEPOSIT_INVENTORY_FULL_CN = "背包已满，无法取回";
+        private const string STORAGE_DEPOSIT_INVENTORY_FULL_EN = "Inventory full";
+        private const string STORAGE_DEPOSIT_FAREWELL_CN = "多存多优惠！小子！";
+        private const string STORAGE_DEPOSIT_FAREWELL_EN = "Deposit more, get more discounts! Kid!";
+        private const string STORAGE_DEPOSIT_RETRIEVE_ALL_CN = "全部取出";
+        private const string STORAGE_DEPOSIT_RETRIEVE_ALL_EN = "Retrieve All";
+        private const string STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_CN = "该物品未解锁，无法寄存";
+        private const string STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_EN = "Item not unlocked, cannot deposit";
+        private const string STORAGE_DEPOSIT_DISCARD_ALL_CN = "全部丢弃";
+        private const string STORAGE_DEPOSIT_DISCARD_ALL_EN = "Discard All";
+        private const string STORAGE_DEPOSIT_DISCARDED_CN = "已丢弃所有寄存物品";
+        private const string STORAGE_DEPOSIT_DISCARDED_EN = "All deposited items discarded";
         
         // 快递员随机对话（中英文对照）
         private static readonly string[][] COURIER_DIALOGUES = new string[][]
@@ -95,7 +137,8 @@ namespace BossRush
             new string[] { "你知道火龙也怕冰吗？我有一次都把它打坠机了哈哈哈哈", "Did you know fire dragons also fear ice? I once made it crash land hahaha" },
             new string[] { "这该死的火龙把我的快递都创飞了", "That damn fire dragon knocked all my deliveries flying" },
             new string[] { "那头火龙在叽里咕噜的时候最好跑远点", "When that fire dragon starts gurgling, you better run far away" },
-            new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" }
+            new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" },
+            new string[] { "有时候送的快也很重要，直接就把钱拿过来，概不赊账！", "Sometimes speed matters, just hand over the money, no credit!" }
         };
         
         // ============================================================================
@@ -206,6 +249,7 @@ namespace BossRush
             // 快递员名称
             string courierName = L10n.T(COURIER_NAME_CN, COURIER_NAME_EN);
             LocalizationHelper.InjectLocalization("BossRush_CourierName", courierName);
+            LocalizationHelper.InjectLocalization("BossRush_CourierNPC", courierName);  // 快递员主交互选项名称
             LocalizationHelper.InjectLocalization(COURIER_NAME_CN, courierName);
             
             // 快递服务选项
@@ -226,6 +270,10 @@ namespace BossRush
             
             string victoryDialogue = L10n.T(COURIER_VICTORY_CN, COURIER_VICTORY_EN);
             LocalizationHelper.InjectLocalization("BossRush_CourierVictory", victoryDialogue);
+            
+            // 快递容器标题（UI显示在最上面的名字）
+            string courierContainerTitle = L10n.T(COURIER_CONTAINER_TITLE_CN, COURIER_CONTAINER_TITLE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_CourierService_ContainerTitle", courierContainerTitle);
             
             // 快递服务功能本地化
             string sendText = L10n.T(COURIER_SERVICE_SEND_CN, COURIER_SERVICE_SEND_EN);
@@ -249,6 +297,66 @@ namespace BossRush
                 string dialogue = L10n.T(COURIER_DIALOGUES[i][0], COURIER_DIALOGUES[i][1]);
                 LocalizationHelper.InjectLocalization("BossRush_CourierDialogue_" + i, dialogue);
             }
+            
+            // 寄存服务本地化
+            string storageService = L10n.T(STORAGE_SERVICE_CN, STORAGE_SERVICE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageService", storageService);
+            LocalizationHelper.InjectLocalization(STORAGE_SERVICE_CN, storageService);
+            
+            // 寄存容器标题（UI显示在最上面的名字）
+            string storageContainerTitle = L10n.T(STORAGE_CONTAINER_TITLE_CN, STORAGE_CONTAINER_TITLE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageService_ContainerTitle", storageContainerTitle);
+            
+            string retrieveAll = L10n.T(STORAGE_SERVICE_RETRIEVE_ALL_CN, STORAGE_SERVICE_RETRIEVE_ALL_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageService_RetrieveAll", retrieveAll);
+            
+            string storageInsufficient = L10n.T(STORAGE_SERVICE_INSUFFICIENT_CN, STORAGE_SERVICE_INSUFFICIENT_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageService_InsufficientFunds", storageInsufficient);
+            
+            string storageRetrieved = L10n.T(STORAGE_SERVICE_RETRIEVED_CN, STORAGE_SERVICE_RETRIEVED_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageService_Retrieved", storageRetrieved);
+            
+            string storageEmpty = L10n.T(STORAGE_SERVICE_EMPTY_CN, STORAGE_SERVICE_EMPTY_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageService_Empty", storageEmpty);
+            
+            // 阿稳寄存服务（新版）本地化
+            string depositServiceName = L10n.T(STORAGE_DEPOSIT_SERVICE_NAME_CN, STORAGE_DEPOSIT_SERVICE_NAME_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_ServiceName", depositServiceName);
+            
+            string depositShopName = L10n.T(STORAGE_DEPOSIT_SHOP_NAME_CN, STORAGE_DEPOSIT_SHOP_NAME_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_ShopName", depositShopName);
+            
+            string depositDeposited = L10n.T(STORAGE_DEPOSIT_DEPOSITED_CN, STORAGE_DEPOSIT_DEPOSITED_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_Deposited", depositDeposited);
+            
+            string depositRetrieved = L10n.T(STORAGE_DEPOSIT_RETRIEVED_CN, STORAGE_DEPOSIT_RETRIEVED_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_Retrieved", depositRetrieved);
+            
+            string depositInventoryFull = L10n.T(STORAGE_DEPOSIT_INVENTORY_FULL_CN, STORAGE_DEPOSIT_INVENTORY_FULL_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_InventoryFull", depositInventoryFull);
+            
+            string depositFarewell = L10n.T(STORAGE_DEPOSIT_FAREWELL_CN, STORAGE_DEPOSIT_FAREWELL_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_Farewell", depositFarewell);
+            
+            // 寄存按钮文字
+            string depositButton = L10n.T(STORAGE_DEPOSIT_BUTTON_CN, STORAGE_DEPOSIT_BUTTON_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_Button", depositButton);
+            
+            // "全部取出"按钮文字
+            string retrieveAllButton = L10n.T(STORAGE_DEPOSIT_RETRIEVE_ALL_CN, STORAGE_DEPOSIT_RETRIEVE_ALL_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_RetrieveAll", retrieveAllButton);
+            
+            // "全部丢弃"按钮文字
+            string discardAllButton = L10n.T(STORAGE_DEPOSIT_DISCARD_ALL_CN, STORAGE_DEPOSIT_DISCARD_ALL_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_DiscardAll", discardAllButton);
+            
+            // "已丢弃所有寄存物品"通知文字
+            string discardedNotification = L10n.T(STORAGE_DEPOSIT_DISCARDED_CN, STORAGE_DEPOSIT_DISCARDED_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_Discarded", discardedNotification);
+            
+            // "物品未解锁"提示文字
+            string itemNotUnlocked = L10n.T(STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_CN, STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_EN);
+            LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_ItemNotUnlocked", itemNotUnlocked);
             
             ModBehaviour.DevLog("[LocalizationInjector] 快递员NPC本地化注入完成");
         }
@@ -306,7 +414,7 @@ namespace BossRush
                 { "BossRush_ModeD_NextWave", L10n.T("冲！（下一波）", "Charge! (Next Wave)") },
                 
                 // 弹药和维修
-                { "BossRush_AmmoShop", L10n.T("弹药商店", "Ammo Shop") },
+                { "BossRush_AmmoShop", L10n.T("加油站", "Ammo Shop") },
                 { "BossRush_AmmoRefill", "加油站" },
                 { "BossRush_Repair", L10n.T("维修", "Repair") },
                 

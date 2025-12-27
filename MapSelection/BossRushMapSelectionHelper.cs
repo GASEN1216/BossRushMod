@@ -80,8 +80,10 @@ namespace BossRush
         // 当前选中的地图条目索引（用于传送后处理）
         private static int pendingMapEntryIndex = -1;
         
-        // 是否已初始化
+        // 是否已初始化 - 保留用于未来扩展
+        #pragma warning disable CS0414
         private static bool initialized = false;
+        #pragma warning restore CS0414
         
         // 动态创建的 BossRush 条目 GameObject 列表
         private static List<GameObject> bossRushEntryObjects = new List<GameObject>();
