@@ -167,12 +167,15 @@ namespace BossRush
                 // 设置Boss属性
                 SetupBossAttributes(character);
                 
+                // 关键：在装备龙息武器之前，从角色已装备的原始武器获取完整属性（二阶段使用）
+                OriginalWeaponData originalWeaponData = GetWeaponDataFromEquippedWeapon(character);
+                
                 // 装备武器和护甲
                 await EquipDragonDescendant(character);
                 
-                // 添加能力控制器
+                // 添加能力控制器（传入原始武器完整属性）
                 dragonDescendantAbilities = character.gameObject.AddComponent<DragonDescendantAbilityController>();
-                dragonDescendantAbilities.Initialize(character);
+                dragonDescendantAbilities.Initialize(character, originalWeaponData);
                 
                 // 激活角色
                 character.gameObject.SetActive(true);
@@ -228,16 +231,39 @@ namespace BossRush
             }
         }
         
+        // ========== 性能优化：预设缓存 ==========
+        // 避免每次生成Boss时都调用Resources.FindObjectsOfTypeAll
+        
         /// <summary>
-        /// 查找"???"敌人预设
+        /// 缓存的???敌人预设
+        /// </summary>
+        private static CharacterRandomPreset cachedQuestionMarkPreset = null;
+        
+        /// <summary>
+        /// 是否已搜索过???预设
+        /// </summary>
+        private static bool questionMarkPresetSearched = false;
+        
+        /// <summary>
+        /// 查找"???"敌人预设（带缓存）
+        /// [性能优化] 使用EnemySpawner.AllPresets替代Resources.FindObjectsOfTypeAll
         /// </summary>
         private CharacterRandomPreset FindQuestionMarkPreset()
         {
+            // 使用缓存
+            if (cachedQuestionMarkPreset != null) return cachedQuestionMarkPreset;
+            if (questionMarkPresetSearched) return null;
+            
+            questionMarkPresetSearched = true;
+            
             try
             {
-                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                // 直接使用Resources.FindObjectsOfTypeAll获取预设列表
+                // 此方法仅在Boss生成时调用一次，不影响战斗性能
+                var presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
                 
-                foreach (var preset in allPresets)
+                // 遍历查找???预设
+                foreach (var preset in presets)
                 {
                     if (preset == null) continue;
                     
@@ -247,12 +273,13 @@ namespace BossRush
                         preset.Name == "???" ||
                         preset.DisplayName == "???")
                     {
+                        cachedQuestionMarkPreset = preset;
                         return preset;
                     }
                 }
                 
                 // 尝试通过名称模糊匹配
-                foreach (var preset in allPresets)
+                foreach (var preset in presets)
                 {
                     if (preset == null) continue;
                     
@@ -260,6 +287,7 @@ namespace BossRush
                         preset.name.Contains("Question") ||
                         preset.name.Contains("Unknown"))
                     {
+                        cachedQuestionMarkPreset = preset;
                         return preset;
                     }
                 }
@@ -273,36 +301,198 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 查找后备预设（任意showName=true的敌人）
+        /// 缓存的后备预设
+        /// </summary>
+        private static CharacterRandomPreset cachedFallbackPreset = null;
+        
+        /// <summary>
+        /// 是否已搜索过后备预设
+        /// </summary>
+        private static bool fallbackPresetSearched = false;
+        
+        /// <summary>
+        /// 清理龙裔遗族相关的所有静态缓存（场景切换时调用，防止持有已销毁对象引用）
+        /// </summary>
+        public static void ClearDragonDescendantStaticCache()
+        {
+            // 清理预设缓存
+            cachedQuestionMarkPreset = null;
+            questionMarkPresetSearched = false;
+            cachedFallbackPreset = null;
+            fallbackPresetSearched = false;
+            
+            // 清理物品缓存
+            cachedItemsByName.Clear();
+            cachedBulletsByCaliber.Clear();
+            
+            // 清理武器配置缓存
+            DragonBreathWeaponConfig.ClearStaticCache();
+            
+            // 清理Buff处理器缓存
+            DragonBreathBuffHandler.ClearStaticCache();
+        }
+        
+        /// <summary>
+        /// 查找后备预设（任意showName=true的敌人）（带缓存）
+        /// [性能优化] 复用FindQuestionMarkPreset的预设列表获取逻辑
         /// </summary>
         private CharacterRandomPreset FindFallbackPreset()
         {
+            // 使用缓存
+            if (cachedFallbackPreset != null) return cachedFallbackPreset;
+            if (fallbackPresetSearched) return null;
+            
+            fallbackPresetSearched = true;
+            
             try
             {
-                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                // 直接使用Resources.FindObjectsOfTypeAll获取预设列表
+                // 此方法仅在Boss生成时调用一次，不影响战斗性能
+                var presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
                 
-                foreach (var preset in allPresets)
+                foreach (var preset in presets)
                 {
                     if (preset == null) continue;
                     
                     // 查找显示名字的敌人（通常是精英/Boss）
                     if (preset.showName && preset.team != Teams.player)
                     {
+                        cachedFallbackPreset = preset;
                         return preset;
                     }
                 }
                 
                 // 如果没有showName的，返回任意非玩家预设
-                foreach (var preset in allPresets)
+                foreach (var preset in presets)
                 {
                     if (preset == null) continue;
                     if (preset.team != Teams.player)
                     {
+                        cachedFallbackPreset = preset;
                         return preset;
                     }
                 }
             }
             catch { }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// 原始武器属性数据（用于二阶段射击）
+        /// </summary>
+        public class OriginalWeaponData
+        {
+            public Projectile bulletPrefab;      // 子弹预制体
+            public GameObject muzzleFxPrefab;    // 枪口特效预制体
+            public string shootKey;              // 开枪音效键
+            public float bulletSpeed;            // 子弹速度
+            public float shootSpeed;             // 射速（每秒发射数）
+            public float damage;                 // 伤害
+            public float bulletDistance;         // 子弹射程
+        }
+        
+        /// <summary>
+        /// 从角色已装备的武器获取完整属性（在替换为龙息武器之前调用）
+        /// 用于二阶段发射原始武器的子弹
+        /// </summary>
+        private OriginalWeaponData GetWeaponDataFromEquippedWeapon(CharacterMainControl character)
+        {
+            try
+            {
+                if (character == null) return null;
+                
+                OriginalWeaponData data = new OriginalWeaponData();
+                
+                // 从角色当前手持的枪获取属性
+                var gun = character.GetGun();
+                if (gun != null)
+                {
+                    // 获取射速、子弹速度、伤害等属性
+                    data.bulletSpeed = gun.BulletSpeed;
+                    data.shootSpeed = gun.ShootSpeed;
+                    data.damage = gun.Damage;
+                    data.bulletDistance = gun.BulletDistance;
+                    
+                    // 通过反射获取GunItemSetting
+                    var gunSettingProp = gun.GetType().GetProperty("GunItemSetting");
+                    if (gunSettingProp != null)
+                    {
+                        var gunSetting = gunSettingProp.GetValue(gun) as ItemSetting_Gun;
+                        if (gunSetting != null)
+                        {
+                            data.bulletPrefab = gunSetting.bulletPfb;
+                            data.muzzleFxPrefab = gunSetting.muzzleFxPfb;
+                            data.shootKey = gunSetting.shootKey;
+                            
+                            DevLog("[DragonDescendant] 从角色手持武器获取完整属性: " +
+                                "子弹=" + (data.bulletPrefab != null ? data.bulletPrefab.name : "null") +
+                                ", 射速=" + data.shootSpeed +
+                                ", 子弹速度=" + data.bulletSpeed +
+                                ", 伤害=" + data.damage +
+                                ", 音效=" + data.shootKey);
+                            return data;
+                        }
+                    }
+                    
+                    // 尝试直接从gun.Item获取
+                    if (gun.Item != null)
+                    {
+                        var itemGunSetting = gun.Item.GetComponent<ItemSetting_Gun>();
+                        if (itemGunSetting != null)
+                        {
+                            data.bulletPrefab = itemGunSetting.bulletPfb;
+                            data.muzzleFxPrefab = itemGunSetting.muzzleFxPfb;
+                            data.shootKey = itemGunSetting.shootKey;
+                            
+                            DevLog("[DragonDescendant] 从角色武器Item获取完整属性: " +
+                                "子弹=" + (data.bulletPrefab != null ? data.bulletPrefab.name : "null") +
+                                ", 射速=" + data.shootSpeed +
+                                ", 音效=" + data.shootKey);
+                            return data;
+                        }
+                    }
+                }
+                
+                // 方法2：从主武器槽位获取
+                var primSlot = character.PrimWeaponSlot();
+                if (primSlot != null && primSlot.Content != null)
+                {
+                    var weaponItem = primSlot.Content;
+                    var itemGunSetting = weaponItem.GetComponent<ItemSetting_Gun>();
+                    if (itemGunSetting != null)
+                    {
+                        data.bulletPrefab = itemGunSetting.bulletPfb;
+                        data.muzzleFxPrefab = itemGunSetting.muzzleFxPfb;
+                        data.shootKey = itemGunSetting.shootKey;
+                        
+                        // 从Item的Stats获取数值属性
+                        data.bulletSpeed = weaponItem.GetStatValue("BulletSpeed".GetHashCode());
+                        data.shootSpeed = weaponItem.GetStatValue("ShootSpeed".GetHashCode());
+                        data.damage = weaponItem.GetStatValue("Damage".GetHashCode());
+                        data.bulletDistance = weaponItem.GetStatValue("BulletDistance".GetHashCode());
+                        
+                        // 设置默认值
+                        if (data.bulletSpeed <= 0) data.bulletSpeed = 30f;
+                        if (data.shootSpeed <= 0) data.shootSpeed = 5f;
+                        if (data.damage <= 0) data.damage = 15f;
+                        if (data.bulletDistance <= 0) data.bulletDistance = 50f;
+                        
+                        DevLog("[DragonDescendant] 从主武器槽位获取完整属性: " +
+                            "子弹=" + (data.bulletPrefab != null ? data.bulletPrefab.name : "null") +
+                            ", 武器=" + weaponItem.name +
+                            ", 射速=" + data.shootSpeed +
+                            ", 音效=" + data.shootKey);
+                        return data;
+                    }
+                }
+                
+                DevLog("[DragonDescendant] [WARNING] 未能从角色已装备武器获取属性");
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonDescendant] [WARNING] 从角色武器获取属性失败: " + e.Message);
+            }
             
             return null;
         }
@@ -474,6 +664,9 @@ namespace BossRush
                 // 让Boss手持武器
                 character.ChangeHoldItem(dragonBreathItem);
                 
+                // 为Boss的龙息武器添加火焰特效（从带火AK-47复制）
+                TryAddFireEffectsToBossWeapon(character, dragonBreathItem);
+                
                 DevLog("[DragonDescendant] 已装备龙息武器 (TypeID=" + DragonDescendantConfig.DRAGON_BREATH_TYPE_ID + ")");
             }
             catch (Exception e)
@@ -483,20 +676,60 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 通过TypeID查找物品
+        /// 为Boss的龙息武器添加火焰特效
+        /// </summary>
+        private void TryAddFireEffectsToBossWeapon(CharacterMainControl character, Item dragonBreathItem)
+        {
+            try
+            {
+                if (character == null || dragonBreathItem == null) return;
+                
+                // 获取Boss手持的武器Agent
+                var gun = character.GetGun();
+                if (gun != null && gun.Item == dragonBreathItem)
+                {
+                    // 调用DragonBreathWeaponConfig的火焰特效添加方法
+                    DragonBreathWeaponConfig.TryAddFireEffectsToAgent(gun);
+                    DevLog("[DragonDescendant] 已为Boss龙息武器添加火焰特效");
+                }
+                else
+                {
+                    DevLog("[DragonDescendant] [WARNING] 无法获取Boss的龙息武器Agent，火焰特效添加失败");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonDescendant] [WARNING] 添加火焰特效失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 通过TypeID查找物品预制体
+        /// [性能优化] 使用ItemAssetsCollection替代Resources.FindObjectsOfTypeAll
         /// </summary>
         private Item FindItemByTypeId(int typeId)
         {
             try
             {
-                var allItems = Resources.FindObjectsOfTypeAll<Item>();
-                foreach (var item in allItems)
+                // [性能优化] 优先使用ItemAssetsCollection.GetPrefab获取预制体
+                var prefab = ItemAssetsCollection.GetPrefab(typeId);
+                if (prefab != null)
                 {
-                    if (item == null) continue;
-                    if (item.TypeID == typeId)
+                    DevLog("[DragonDescendant] 通过TypeID找到物品: " + prefab.name + " (TypeID=" + typeId + ")");
+                    return prefab;
+                }
+                
+                // 后备方案：遍历ItemAssetsCollection.entries
+                var itemAssets = ItemAssetsCollection.Instance;
+                if (itemAssets != null && itemAssets.entries != null)
+                {
+                    foreach (var entry in itemAssets.entries)
                     {
-                        DevLog("[DragonDescendant] 通过TypeID找到物品: " + item.name + " (TypeID=" + typeId + ")");
-                        return item;
+                        if (entry.prefab != null && entry.prefab.TypeID == typeId)
+                        {
+                            DevLog("[DragonDescendant] 通过entries找到物品: " + entry.prefab.name + " (TypeID=" + typeId + ")");
+                            return entry.prefab;
+                        }
                     }
                 }
             }
@@ -680,7 +913,7 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 加载最高级子弹
+        /// 加载最高级子弹并装填到武器
         /// </summary>
         private UniTask LoadHighestTierAmmo(CharacterMainControl character)
         {
@@ -688,86 +921,223 @@ namespace BossRush
             {
                 // 获取当前武器
                 var gun = character.GetGun();
-                if (gun == null) return UniTask.CompletedTask;
-                
-                // 获取枪械口径
-                int caliber = 0;
-                try
+                if (gun == null)
                 {
-                    var gunSetting = gun.GunItemSetting;
-                    if (gunSetting != null)
+                    DevLog("[DragonDescendant] [WARNING] 无法获取Boss武器，跳过弹药加载");
+                    return UniTask.CompletedTask;
+                }
+                
+                var gunSetting = gun.GunItemSetting;
+                if (gunSetting == null)
+                {
+                    DevLog("[DragonDescendant] [WARNING] 武器没有GunItemSetting，跳过弹药加载");
+                    return UniTask.CompletedTask;
+                }
+                
+                // 获取武器口径
+                string weaponCaliber = gun.Item.Constants.GetString("Caliber".GetHashCode(), null);
+                if (string.IsNullOrEmpty(weaponCaliber))
+                {
+                    weaponCaliber = "BR"; // 龙息武器默认BR口径
+                }
+                DevLog("[DragonDescendant] 武器口径: " + weaponCaliber);
+                
+                // 查找匹配口径的子弹
+                Item bestBullet = FindBulletByCaliber(weaponCaliber);
+                if (bestBullet == null)
+                {
+                    DevLog("[DragonDescendant] [WARNING] 未找到口径 " + weaponCaliber + " 的子弹");
+                    return UniTask.CompletedTask;
+                }
+                
+                DevLog("[DragonDescendant] 找到子弹: " + bestBullet.name + " (TypeID=" + bestBullet.TypeID + ")");
+                
+                // 获取库存
+                var inventory = character.CharacterItem.Inventory;
+                if (inventory == null)
+                {
+                    DevLog("[DragonDescendant] [WARNING] Boss没有库存");
+                    return UniTask.CompletedTask;
+                }
+                
+                // 添加大量子弹到库存（每组30发，添加10组 = 300发）
+                int ammoPerStack = 30;
+                int stackCount = 10;
+                for (int i = 0; i < stackCount; i++)
+                {
+                    var bulletItem = bestBullet.CreateInstance();
+                    if (bulletItem != null)
                     {
-                        // 尝试获取口径（如果有的话）
-                        try
-                        {
-                            var caliberField = gunSetting.GetType().GetField("caliber", 
-                                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                            if (caliberField != null)
-                            {
-                                caliber = (int)caliberField.GetValue(gunSetting);
-                            }
-                        }
-                        catch { }
+                        bulletItem.StackCount = ammoPerStack;
+                        inventory.AddItem(bulletItem);
                     }
                 }
-                catch { }
+                DevLog("[DragonDescendant] 已添加 " + (ammoPerStack * stackCount) + " 发子弹到库存");
                 
-                // 查找最高级子弹
-                Item bestBullet = FindHighestTierBullet(caliber);
-                if (bestBullet != null)
+                // 设置武器的目标弹药类型
+                gunSetting.SetTargetBulletType(bestBullet.TypeID);
+                DevLog("[DragonDescendant] 已设置目标弹药类型: " + bestBullet.TypeID);
+                
+                // 直接装填弹药到武器弹夹（使用反射设置bulletCount）
+                int capacity = gunSetting.Capacity;
+                if (capacity <= 0) capacity = 20; // 默认容量
+                
+                // 通过Variables设置BulletCount
+                int bulletCountHash = "BulletCount".GetHashCode();
+                gun.Item.Variables.SetInt(bulletCountHash, capacity);
+                
+                // 同时在武器库存中添加对应数量的子弹实例（模拟已装填状态）
+                if (gun.Item.Inventory != null)
                 {
-                    // 创建子弹并添加到库存
-                    var inventory = character.CharacterItem.Inventory;
-                    if (inventory != null)
+                    var loadedBullet = bestBullet.CreateInstance();
+                    if (loadedBullet != null)
                     {
-                        for (int i = 0; i < 5; i++) // 添加5组子弹
-                        {
-                            var bulletItem = bestBullet.CreateInstance();
-                            if (bulletItem != null)
-                            {
-                                inventory.AddItem(bulletItem);
-                            }
-                        }
-                        
-                        DevLog("[DragonDescendant] 加载子弹: " + bestBullet.name);
+                        loadedBullet.StackCount = capacity;
+                        gun.Item.Inventory.AddItem(loadedBullet);
                     }
                 }
+                
+                DevLog("[DragonDescendant] 已装填 " + capacity + " 发子弹到弹夹");
             }
             catch (Exception e)
             {
-                DevLog("[DragonDescendant] [WARNING] 加载子弹失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 加载子弹失败: " + e.Message + "\n" + e.StackTrace);
             }
             return UniTask.CompletedTask;
         }
         
+        // ========== 性能优化：子弹缓存 ==========
+        
         /// <summary>
-        /// 通过名称查找物品
+        /// 缓存的子弹（按口径）
+        /// </summary>
+        private static Dictionary<string, Item> cachedBulletsByCaliber = new Dictionary<string, Item>();
+        
+        /// <summary>
+        /// 根据口径查找子弹（带缓存）
+        /// [性能优化] 使用ItemAssetsCollection替代Resources.FindObjectsOfTypeAll
+        /// </summary>
+        private Item FindBulletByCaliber(string caliber)
+        {
+            // 检查缓存
+            Item cachedBullet;
+            if (cachedBulletsByCaliber.TryGetValue(caliber, out cachedBullet))
+            {
+                return cachedBullet;
+            }
+            
+            try
+            {
+                Item bestBullet = null;
+                int bestQuality = -1;
+                int caliberHash = "Caliber".GetHashCode();
+                
+                // 获取Bullet Tag
+                Duckov.Utilities.Tag bulletTag = null;
+                try
+                {
+                    bulletTag = Duckov.Utilities.GameplayDataSettings.Tags.Bullet;
+                }
+                catch { }
+                
+                // [性能优化] 使用ItemAssetsCollection遍历，避免Resources.FindObjectsOfTypeAll
+                var itemAssets = ItemAssetsCollection.Instance;
+                if (itemAssets != null && itemAssets.entries != null)
+                {
+                    foreach (var entry in itemAssets.entries)
+                    {
+                        if (entry == null || entry.prefab == null) continue;
+                        var item = entry.prefab;
+                        
+                        // 检查是否是子弹（通过Tag判断）
+                        if (bulletTag != null && !item.Tags.Contains(bulletTag)) continue;
+                        
+                        // 检查口径是否匹配
+                        string itemCaliber = item.Constants.GetString(caliberHash, null);
+                        if (string.IsNullOrEmpty(itemCaliber) || itemCaliber != caliber) continue;
+                        
+                        // 获取品质
+                        int quality = 0;
+                        try
+                        {
+                            quality = (int)item.Quality;
+                        }
+                        catch { }
+                        
+                        // 选择最高品质的子弹
+                        if (bestBullet == null || quality > bestQuality)
+                        {
+                            bestQuality = quality;
+                            bestBullet = item;
+                        }
+                    }
+                }
+                
+                // 缓存结果
+                if (bestBullet != null)
+                {
+                    cachedBulletsByCaliber[caliber] = bestBullet;
+                }
+                
+                return bestBullet;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonDescendant] [WARNING] 查找子弹失败: " + e.Message);
+            }
+            
+            return null;
+        }
+        
+        // ========== 性能优化：物品名称缓存 ==========
+        
+        /// <summary>
+        /// 缓存的物品（按名称）
+        /// </summary>
+        private static Dictionary<string, Item> cachedItemsByName = new Dictionary<string, Item>();
+        
+        /// <summary>
+        /// 通过名称查找物品（带缓存）
+        /// [性能优化] 使用ItemAssetsCollection替代Resources.FindObjectsOfTypeAll
         /// </summary>
         private Item FindItemByName(string itemName)
         {
+            // 检查缓存
+            Item cachedItem;
+            if (cachedItemsByName.TryGetValue(itemName, out cachedItem))
+            {
+                return cachedItem;
+            }
+            
             try
             {
-                var allItems = Resources.FindObjectsOfTypeAll<Item>();
+                // [性能优化] 使用ItemAssetsCollection遍历
+                var itemAssets = ItemAssetsCollection.Instance;
+                if (itemAssets == null || itemAssets.entries == null) return null;
                 
-                foreach (var item in allItems)
+                // 精确匹配
+                foreach (var entry in itemAssets.entries)
                 {
-                    if (item == null) continue;
+                    if (entry == null || entry.prefab == null) continue;
+                    var item = entry.prefab;
                     
-                    // 精确匹配
                     if (item.name == itemName || item.DisplayName == itemName)
                     {
+                        cachedItemsByName[itemName] = item;
                         return item;
                     }
                 }
                 
                 // 模糊匹配
-                foreach (var item in allItems)
+                foreach (var entry in itemAssets.entries)
                 {
-                    if (item == null) continue;
+                    if (entry == null || entry.prefab == null) continue;
+                    var item = entry.prefab;
                     
                     if (item.name.Contains(itemName) || 
                         (item.DisplayName != null && item.DisplayName.Contains(itemName)))
                     {
+                        cachedItemsByName[itemName] = item;
                         return item;
                     }
                 }
@@ -777,56 +1147,6 @@ namespace BossRush
             return null;
         }
         
-        /// <summary>
-        /// 查找最高级子弹
-        /// </summary>
-        private Item FindHighestTierBullet(int caliber)
-        {
-            try
-            {
-                var allItems = Resources.FindObjectsOfTypeAll<Item>();
-                Item bestBullet = null;
-                int bestQuality = -1;
-                
-                foreach (var item in allItems)
-                {
-                    if (item == null) continue;
-                    
-                    // 检查是否是子弹（通过名称或类型判断）
-                    bool isBullet = false;
-                    try
-                    {
-                        string itemName = item.name.ToLower();
-                        isBullet = itemName.Contains("bullet") || 
-                                   itemName.Contains("ammo") || 
-                                   itemName.Contains("round") ||
-                                   itemName.Contains("子弹");
-                    }
-                    catch { }
-                    
-                    if (!isBullet) continue;
-                    
-                    // 获取品质
-                    int quality = 0;
-                    try
-                    {
-                        quality = (int)item.Quality;
-                    }
-                    catch { }
-                    
-                    if (quality > bestQuality)
-                    {
-                        bestQuality = quality;
-                        bestBullet = item;
-                    }
-                }
-                
-                return bestBullet;
-            }
-            catch { }
-            
-            return null;
-        }
 
         
         /// <summary>

@@ -115,7 +115,9 @@ namespace BossRush
         
         // "全部取出"按钮相关
         private static GameObject retrieveAllButtonObj = null;
+        #pragma warning disable CS0414
         private static UnityEngine.UI.Button retrieveAllButton = null;
+        #pragma warning restore CS0414
         private static TMPro.TextMeshProUGUI retrieveAllText = null;
         private static TMPro.TextMeshProUGUI originalRefreshCountDown = null;
         private static GameObject hiddenRefreshLabel = null;  // 被隐藏的"下次刷新"标签
@@ -125,8 +127,10 @@ namespace BossRush
         
         // "全部丢弃"按钮相关
         private static GameObject discardAllButtonObj = null;
+        #pragma warning disable CS0414
         private static UnityEngine.UI.Button discardAllButton = null;
         private static TMPro.TextMeshProUGUI discardAllText = null;
+        #pragma warning restore CS0414
         
         // 物品实例缓存（使用唯一索引作为 key，避免同类型物品冲突）
         private static Dictionary<int, Item> depositItemInstances = new Dictionary<int, Item>();
@@ -135,10 +139,12 @@ namespace BossRush
         private static string originalTextSell = null;
         
         // 待寄存物品（用于拦截售出逻辑）
+        #pragma warning disable CS0414
         private static Item pendingDepositItem = null;
         
         // 右键删除相关
         private static bool rightClickDeleteEnabled = true;
+        #pragma warning restore CS0414
         
         // ============================================================================
         // 公共属性

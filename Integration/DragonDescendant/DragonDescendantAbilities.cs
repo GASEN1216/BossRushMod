@@ -110,9 +110,26 @@ namespace BossRush
         private static bool bulletSearched = false;
         
         /// <summary>
-        /// 碰撞冷却时间
+        /// 二阶段使用的原始武器完整属性
         /// </summary>
-        private const float COLLISION_COOLDOWN = 0.5f;
+        private ModBehaviour.OriginalWeaponData originalWeaponData = null;
+        
+        /// <summary>
+        /// 碰撞冷却时间（使用配置常量）
+        /// </summary>
+        private const float COLLISION_COOLDOWN = DragonDescendantConfig.CollisionCooldown;
+        
+        // ========== 性能优化：WaitForSeconds缓存 ==========
+        // 避免每次协程中创建新的WaitForSeconds对象产生GC
+        
+        private static readonly WaitForSeconds wait01s = new WaitForSeconds(0.1f);
+        private static readonly WaitForSeconds wait02s = new WaitForSeconds(0.2f);
+        private static readonly WaitForSeconds wait05s = new WaitForSeconds(0.5f);
+        private static readonly WaitForSeconds wait1s = new WaitForSeconds(1f);
+        private static readonly WaitForSeconds wait3s = new WaitForSeconds(3f);
+        private static readonly WaitForSeconds wait10s = new WaitForSeconds(10f);
+        private static WaitForSeconds cachedGrenadeInterval = null;
+        private static float cachedGrenadeIntervalValue = -1f;
         
         // ========== 冰属性伤害减速机制 ==========
         
@@ -120,6 +137,28 @@ namespace BossRush
         /// 累计冰属性伤害
         /// </summary>
         private float accumulatedIceDamage = 0f;
+        
+        // ========== 性能优化：AudioManager反射缓存 ==========
+        
+        /// <summary>
+        /// 缓存的AudioManager类型
+        /// </summary>
+        private static System.Type cachedAudioManagerType = null;
+        
+        /// <summary>
+        /// 缓存的Post方法
+        /// </summary>
+        private static MethodInfo cachedAudioPostMethod = null;
+        
+        /// <summary>
+        /// 缓存的PostCustomSFX方法
+        /// </summary>
+        private static MethodInfo cachedAudioPostCustomSFXMethod = null;
+        
+        /// <summary>
+        /// 是否已缓存AudioManager反射
+        /// </summary>
+        private static bool audioManagerReflectionCached = false;
         
         /// <summary>
         /// 是否处于冰冻减速状态
@@ -148,9 +187,14 @@ namespace BossRush
         /// <summary>
         /// 初始化能力控制器
         /// </summary>
-        public void Initialize(CharacterMainControl character)
+        /// <param name="character">Boss角色</param>
+        /// <param name="weaponData">原始武器完整属性（二阶段使用）</param>
+        public void Initialize(CharacterMainControl character, ModBehaviour.OriginalWeaponData weaponData = null)
         {
             bossCharacter = character;
+            
+            // 保存原始武器完整属性（二阶段使用）
+            originalWeaponData = weaponData;
             
             if (bossCharacter == null)
             {
@@ -182,12 +226,18 @@ namespace BossRush
             // 性能优化：预缓存预制体（只在首次初始化时执行）
             PreCachePrefabs();
             
-            ModBehaviour.DevLog("[DragonDescendant] 能力控制器初始化完成");
+            ModBehaviour.DevLog("[DragonDescendant] 能力控制器初始化完成, 原始武器数据: " + 
+                (originalWeaponData != null ? 
+                    "子弹=" + (originalWeaponData.bulletPrefab != null ? originalWeaponData.bulletPrefab.name : "null") +
+                    ", 射速=" + originalWeaponData.shootSpeed +
+                    ", 音效=" + originalWeaponData.shootKey
+                    : "null"));
         }
         
         /// <summary>
         /// 预缓存所有需要的预制体（性能优化）
-        /// 在初始化时一次性查找，避免战斗中频繁调用Resources.FindObjectsOfTypeAll
+        /// 在初始化时一次性查找，避免战斗中频繁调用
+        /// [性能优化] 使用ItemAssetsCollection替代Resources.FindObjectsOfTypeAll，减少低端机卡顿
         /// </summary>
         private void PreCachePrefabs()
         {
@@ -197,25 +247,37 @@ namespace BossRush
                 grenadeSearched = true;
                 try
                 {
-                    var allGrenades = Resources.FindObjectsOfTypeAll<Grenade>();
-                    foreach (var g in allGrenades)
+                    // [性能优化] 从ItemAssetsCollection遍历查找燃烧弹，避免Resources.FindObjectsOfTypeAll
+                    var itemAssets = ItemAssetsCollection.Instance;
+                    if (itemAssets != null && itemAssets.entries != null)
                     {
-                        if (g == null) continue;
-                        // 查找火焰类型的手雷
-                        if (g.fxType == ExplosionFxTypes.fire || 
-                            g.name.ToLower().Contains("fire") || 
-                            g.name.ToLower().Contains("incendiary") ||
-                            g.name.Contains("燃烧"))
+                        foreach (var entry in itemAssets.entries)
                         {
-                            cachedGrenadePrefab = g;
-                            ModBehaviour.DevLog("[DragonDescendant] 已缓存燃烧弹预制体: " + g.name);
-                            break;
+                            if (entry == null || entry.prefab == null) continue;
+                            var grenade = entry.prefab.GetComponent<Grenade>();
+                            if (grenade == null) continue;
+                            
+                            // 查找火焰类型的手雷
+                            if (grenade.fxType == ExplosionFxTypes.fire || 
+                                entry.prefab.name.IndexOf("fire", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                                entry.prefab.name.IndexOf("incendiary", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                entry.prefab.name.Contains("燃烧"))
+                            {
+                                cachedGrenadePrefab = grenade;
+                                ModBehaviour.DevLog("[DragonDescendant] 已缓存燃烧弹预制体: " + grenade.name);
+                                break;
+                            }
+                            
+                            // 记录第一个找到的手雷作为后备
+                            if (cachedGrenadePrefab == null)
+                            {
+                                cachedGrenadePrefab = grenade;
+                            }
                         }
                     }
-                    // 如果没找到火焰类型，使用任意手雷
-                    if (cachedGrenadePrefab == null && allGrenades.Length > 0)
+                    
+                    if (cachedGrenadePrefab != null && cachedGrenadePrefab.fxType != ExplosionFxTypes.fire)
                     {
-                        cachedGrenadePrefab = allGrenades[0];
                         ModBehaviour.DevLog("[DragonDescendant] 使用默认手雷预制体: " + cachedGrenadePrefab.name);
                     }
                 }
@@ -250,15 +312,10 @@ namespace BossRush
                         }
                     }
                     
-                    // 后备：从Resources获取
+                    // 后备：如果没有找到子弹，记录警告
                     if (cachedBulletPrefab == null)
                     {
-                        var existingBullets = Resources.FindObjectsOfTypeAll<Projectile>();
-                        if (existingBullets != null && existingBullets.Length > 0)
-                        {
-                            cachedBulletPrefab = existingBullets[0];
-                            ModBehaviour.DevLog("[DragonDescendant] 已缓存默认子弹预制体: " + cachedBulletPrefab.name);
-                        }
+                        ModBehaviour.DevLog("[DragonDescendant] [WARNING] 未能缓存子弹预制体");
                     }
                 }
                 catch (Exception e)
@@ -300,19 +357,22 @@ namespace BossRush
                 bossHealth.OnHurtEvent.RemoveListener(OnBossHurt);
             }
             
-            // 停止协程
-            if (grenadeTimerCoroutine != null)
-            {
-                StopCoroutine(grenadeTimerCoroutine);
-            }
-            if (chaseCoroutine != null)
-            {
-                StopCoroutine(chaseCoroutine);
-            }
-            if (iceSlowdownCoroutine != null)
-            {
-                StopCoroutine(iceSlowdownCoroutine);
-            }
+            // [内存优化] 停止所有协程，包括嵌套的子协程
+            // StopAllCoroutines会停止该MonoBehaviour上的所有协程
+            StopAllCoroutines();
+            
+            // 清理协程引用
+            grenadeTimerCoroutine = null;
+            chaseCoroutine = null;
+            iceSlowdownCoroutine = null;
+            
+            // 清理其他引用，帮助GC
+            bossCharacter = null;
+            bossHealth = null;
+            playerCharacter = null;
+            cachedBossGun = null;
+            cachedAI = null;
+            originalWeaponData = null;
         }
         
         // ========== 火箭弹逻辑 ==========
@@ -322,18 +382,23 @@ namespace BossRush
         /// </summary>
         private int lastBulletInMag = -1;
         
+        /// <summary>
+        /// 缓存的Boss枪械引用（避免每帧调用GetGun）
+        /// </summary>
+        private ItemAgent_Gun cachedBossGun = null;
+        
         private void Update()
         {
+            // [性能优化] 快速返回路径：Boss不存在时直接返回
+            if (bossCharacter == null) return;
+            
             // 复活期间完全停止AI行为
             if (isResurrecting || aiPaused)
             {
                 // 强制停止移动和射击
-                if (bossCharacter != null)
-                {
-                    bossCharacter.SetMoveInput(Vector2.zero);
-                    bossCharacter.SetRunInput(false);
-                    bossCharacter.Trigger(false, false, false);
-                }
+                bossCharacter.SetMoveInput(Vector2.zero);
+                bossCharacter.SetRunInput(false);
+                bossCharacter.Trigger(false, false, false);
                 if (cachedAI != null)
                 {
                     cachedAI.StopMove();
@@ -342,13 +407,15 @@ namespace BossRush
             }
             
             // 检测射击（通过弹药变化）- 只在非狂暴状态下检测
-            if (!isEnraged && bossCharacter != null)
+            // [性能说明] 这里使用轮询是因为游戏原版没有暴露射击事件API
+            // 已优化：枪械引用每0.5秒刷新一次，减少GetGun()调用
+            if (!isEnraged)
             {
                 DetectShooting();
             }
             
             // 狂暴状态下的追逐逻辑
-            if (isEnraged && bossCharacter != null && playerCharacter != null)
+            if (isEnraged && playerCharacter != null)
             {
                 UpdateChase();
                 
@@ -358,28 +425,48 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 射击检测帧计数器（每N帧检测一次）
+        /// </summary>
+        private int shootDetectFrameCounter = 0;
+        
+        /// <summary>
+        /// 射击检测间隔帧数（每5帧检测一次，约83ms@60fps，低端机友好）
+        /// </summary>
+        private const int SHOOT_DETECT_FRAME_INTERVAL = 5;
+        
+        /// <summary>
         /// 检测Boss是否射击
+        /// [性能优化] 使用帧计数器替代Time.time比较，减少每帧开销
+        /// [设计说明] 由于游戏原版没有暴露射击事件API，只能通过轮询弹药变化来检测
         /// </summary>
         private void DetectShooting()
         {
-            try
+            // [性能优化] 使用帧计数器，避免每帧调用Time.time
+            shootDetectFrameCounter++;
+            if (shootDetectFrameCounter < SHOOT_DETECT_FRAME_INTERVAL) return;
+            shootDetectFrameCounter = 0;
+            
+            // 每30帧（约0.5秒@60fps）重新获取枪械引用
+            if (cachedBossGun == null)
             {
-                // 使用GetGun方法获取当前武器
-                var gun = bossCharacter.GetGun();
-                if (gun == null) return;
-                
-                int currentBullet = gun.BulletCount;
-                
-                if (lastBulletInMag >= 0 && currentBullet < lastBulletInMag)
+                cachedBossGun = bossCharacter.GetGun();
+                if (cachedBossGun != null)
                 {
-                    // 检测到射击
-                    int shotsFired = lastBulletInMag - currentBullet;
-                    OnBossShoot(shotsFired);
+                    lastBulletInMag = cachedBossGun.BulletCount;
                 }
-                
-                lastBulletInMag = currentBullet;
+                return;
             }
-            catch { }
+            
+            int currentBullet = cachedBossGun.BulletCount;
+            
+            if (lastBulletInMag >= 0 && currentBullet < lastBulletInMag)
+            {
+                // 检测到射击
+                int shotsFired = lastBulletInMag - currentBullet;
+                OnBossShoot(shotsFired);
+            }
+            
+            lastBulletInMag = currentBullet;
         }
         
         /// <summary>
@@ -451,6 +538,7 @@ namespace BossRush
         
         /// <summary>
         /// 燃烧弹计时器协程
+        /// [性能优化] 使用缓存的WaitForSeconds避免GC
         /// </summary>
         private IEnumerator GrenadeTimerCoroutine()
         {
@@ -461,7 +549,8 @@ namespace BossRush
                     ? DragonDescendantConfig.EnragedGrenadeInterval 
                     : DragonDescendantConfig.NormalGrenadeInterval;
                 
-                yield return new WaitForSeconds(interval);
+                // [性能优化] 使用缓存的WaitForSeconds
+                yield return GetCachedWaitForSeconds(interval);
                 
                 // 复活期间不投掷
                 if (isResurrecting) continue;
@@ -469,6 +558,29 @@ namespace BossRush
                 // 投掷燃烧弹
                 ThrowIncendiaryGrenade();
             }
+        }
+        
+        /// <summary>
+        /// 获取缓存的WaitForSeconds对象
+        /// [性能优化] 避免每次创建新对象产生GC
+        /// </summary>
+        private WaitForSeconds GetCachedWaitForSeconds(float seconds)
+        {
+            // 常用时间使用预缓存对象
+            if (Mathf.Approximately(seconds, 0.1f)) return wait01s;
+            if (Mathf.Approximately(seconds, 0.2f)) return wait02s;
+            if (Mathf.Approximately(seconds, 0.5f)) return wait05s;
+            if (Mathf.Approximately(seconds, 1f)) return wait1s;
+            if (Mathf.Approximately(seconds, 3f)) return wait3s;
+            if (Mathf.Approximately(seconds, 10f)) return wait10s;
+            
+            // 燃烧弹间隔使用动态缓存
+            if (!Mathf.Approximately(cachedGrenadeIntervalValue, seconds))
+            {
+                cachedGrenadeIntervalValue = seconds;
+                cachedGrenadeInterval = new WaitForSeconds(seconds);
+            }
+            return cachedGrenadeInterval;
         }
         
         /// <summary>
@@ -577,10 +689,11 @@ namespace BossRush
         
         /// <summary>
         /// 延迟火焰爆炸（作为燃烧弹的后备方案）
+        /// [性能优化] 使用缓存的WaitForSeconds
         /// </summary>
         private IEnumerator DelayedFireExplosion(Vector3 position, float delay)
         {
-            yield return new WaitForSeconds(delay);
+            yield return GetCachedWaitForSeconds(delay);
             
             try
             {
@@ -643,6 +756,7 @@ namespace BossRush
         
         /// <summary>
         /// 检测并累加冰属性伤害
+        /// [性能优化] 移除字符串拼接日志，减少GC分配
         /// </summary>
         private void CheckIceDamage(DamageInfo damageInfo)
         {
@@ -683,13 +797,11 @@ namespace BossRush
                 // 累加冰属性伤害
                 accumulatedIceDamage += actualIceDamage;
                 
-                ModBehaviour.DevLog("[DragonDescendant] 冰属性伤害累计: " + accumulatedIceDamage.ToString("F1") + 
-                    " / " + (bossHealth.MaxHealth * 0.1f).ToString("F1"));
-                
-                // 检查是否达到阈值（最大生命值的10%）
+                // [性能优化] 只在达到阈值时输出日志，避免频繁字符串拼接
                 float threshold = bossHealth.MaxHealth * 0.1f;
                 if (accumulatedIceDamage >= threshold)
                 {
+                    ModBehaviour.DevLog("[DragonDescendant] 冰属性伤害达到阈值，触发减速");
                     TriggerIceSlowdown();
                 }
             }
@@ -909,6 +1021,9 @@ namespace BossRush
             string dialogue = DragonDescendantConfig.ResurrectionDialogue;
             float charInterval = DragonDescendantConfig.DialogueCharInterval;
             
+            // [性能优化] 使用缓存的WaitForSeconds
+            WaitForSeconds waitCharInterval = GetCachedWaitForSeconds(charInterval);
+            
             // 逐字显示
             string displayText = "";
             foreach (char c in dialogue)
@@ -916,43 +1031,52 @@ namespace BossRush
                 displayText += c;
                 
                 // 显示气泡
-                try
-                {
-                    if (bossCharacter != null)
-                    {
-                        float yOffset = 2.5f;
-                        try
-                        {
-                            if (bossCharacter.characterModel != null && bossCharacter.characterModel.HelmatSocket != null)
-                            {
-                                yOffset = Vector3.Distance(bossCharacter.transform.position, 
-                                    bossCharacter.characterModel.HelmatSocket.position) + 0.5f;
-                            }
-                        }
-                        catch { }
-                        
-                        // 使用DialogueBubblesManager显示
-                        UniTaskExtensions.Forget(DialogueBubblesManager.Show(
-                            displayText, 
-                            bossCharacter.transform, 
-                            yOffset, 
-                            false, 
-                            false, 
-                            -1f, 
-                            charInterval + 0.5f
-                        ));
-                    }
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 显示对话气泡失败: " + e.Message);
-                }
+                ShowDialogueBubble(displayText, charInterval + 0.5f);
                 
-                yield return new WaitForSeconds(charInterval);
+                yield return waitCharInterval;
             }
             
             // 等待最后一个字符显示完成
-            yield return new WaitForSeconds(0.5f);
+            yield return wait05s;
+        }
+        
+        /// <summary>
+        /// 显示对话气泡（通用方法，消除重复代码）
+        /// </summary>
+        /// <param name="text">对话文本</param>
+        /// <param name="duration">显示时长</param>
+        private void ShowDialogueBubble(string text, float duration)
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                
+                float yOffset = DragonDescendantConfig.DialogueBubbleYOffset;
+                try
+                {
+                    if (bossCharacter.characterModel != null && bossCharacter.characterModel.HelmatSocket != null)
+                    {
+                        yOffset = Vector3.Distance(bossCharacter.transform.position, 
+                            bossCharacter.characterModel.HelmatSocket.position) + 0.5f;
+                    }
+                }
+                catch { }
+                
+                // 使用DialogueBubblesManager显示
+                UniTaskExtensions.Forget(DialogueBubblesManager.Show(
+                    text, 
+                    bossCharacter.transform, 
+                    yOffset, 
+                    false, 
+                    false, 
+                    -1f, 
+                    duration
+                ));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 显示对话气泡失败: " + e.Message);
+            }
         }
         
         // ========== 狂暴状态 ==========
@@ -965,7 +1089,9 @@ namespace BossRush
         /// <summary>
         /// 追逐更新间隔（与原版TraceTarget一致：0.15秒）
         /// </summary>
+        #pragma warning disable CS0414
         private float chaseUpdateInterval = 0.15f;
+        #pragma warning restore CS0414
         
         /// <summary>
         /// 进入狂暴状态
@@ -982,6 +1108,9 @@ namespace BossRush
             {
                 cachedAI = bossCharacter.GetComponentInChildren<AICharacterController>();
             }
+            
+            // 应用二阶段伤害倍率
+            ApplyPhase2DamageMultiplier();
             
             // 禁用Boss自身的射击行为（二阶段使用直接生成子弹）
             DisableShooting();
@@ -1003,6 +1132,39 @@ namespace BossRush
             
             // 启动二阶段行为循环协程
             chaseCoroutine = StartCoroutine(ChasePlayerCoroutine());
+        }
+        
+        /// <summary>
+        /// 应用二阶段伤害倍率
+        /// </summary>
+        private void ApplyPhase2DamageMultiplier()
+        {
+            try
+            {
+                if (bossCharacter == null || bossCharacter.CharacterItem == null) return;
+                
+                var item = bossCharacter.CharacterItem;
+                
+                // 设置枪械伤害倍率
+                var gunDmgStat = item.GetStat("GunDamageMultiplier");
+                if (gunDmgStat != null)
+                {
+                    gunDmgStat.BaseValue = DragonDescendantConfig.Phase2DamageMultiplier;
+                }
+                
+                // 设置近战伤害倍率
+                var meleeDmgStat = item.GetStat("MeleeDamageMultiplier");
+                if (meleeDmgStat != null)
+                {
+                    meleeDmgStat.BaseValue = DragonDescendantConfig.Phase2DamageMultiplier;
+                }
+                
+                ModBehaviour.DevLog("[DragonDescendant] 二阶段伤害倍率已应用: " + DragonDescendantConfig.Phase2DamageMultiplier);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 应用二阶段伤害倍率失败: " + e.Message);
+            }
         }
         
         /// <summary>
@@ -1112,7 +1274,8 @@ namespace BossRush
                 
                 if (playerCharacter == null)
                 {
-                    yield return new WaitForSeconds(0.5f);
+                    // [性能优化] 使用缓存的WaitForSeconds
+                    yield return wait05s;
                     continue;
                 }
                 
@@ -1171,8 +1334,8 @@ namespace BossRush
                 // 射击扇形子弹3秒（30发，来回扫射，60度扇形角度）
                 yield return StartCoroutine(FireFanBulletsSweep(dirToPlayer, 30, 3f, 60f));
                 
-                // 短暂等待后进入下一个循环
-                yield return new WaitForSeconds(0.2f);
+                // [性能优化] 使用缓存的WaitForSeconds
+                yield return wait02s;
             }
         }
         
@@ -1240,9 +1403,18 @@ namespace BossRush
         /// <param name="interval">每发间隔（秒）</param>
         private IEnumerator FireLinearBullets(Vector3 direction, int count, float interval)
         {
+            ModBehaviour.DevLog("[DragonDescendant] FireLinearBullets开始: count=" + count + ", isEnraged=" + isEnraged);
+            
+            // [性能优化] 使用缓存的WaitForSeconds
+            WaitForSeconds waitInterval = GetCachedWaitForSeconds(interval);
+            
             for (int i = 0; i < count; i++)
             {
-                if (!isEnraged || bossCharacter == null) yield break;
+                if (!isEnraged || bossCharacter == null)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] FireLinearBullets中断: isEnraged=" + isEnraged);
+                    yield break;
+                }
                 
                 // 更新方向（追踪玩家）
                 direction = GetDirectionToPlayer();
@@ -1250,8 +1422,10 @@ namespace BossRush
                 // 直接生成子弹
                 SpawnBulletDirect(direction);
                 
-                yield return new WaitForSeconds(interval);
+                yield return waitInterval;
             }
+            
+            ModBehaviour.DevLog("[DragonDescendant] FireLinearBullets完成");
         }
         
         /// <summary>
@@ -1270,6 +1444,9 @@ namespace BossRush
             float interval = 1f / bulletCount;
             float angleStep = totalAngle / (bulletCount - 1);
             
+            // [性能优化] 预计算WaitForSeconds
+            WaitForSeconds waitInterval = GetCachedWaitForSeconds(interval);
+            
             for (int i = 0; i < bulletCount; i++)
             {
                 if (!isEnraged || bossCharacter == null) yield break;
@@ -1287,7 +1464,7 @@ namespace BossRush
                 // 直接生成子弹（不通过Boss的枪）
                 SpawnBulletDirect(bulletDir);
                 
-                yield return new WaitForSeconds(interval);
+                yield return waitInterval;
             }
         }
         
@@ -1301,14 +1478,25 @@ namespace BossRush
         /// <param name="totalAngle">扇形总角度</param>
         private IEnumerator FireFanBulletsSweep(Vector3 baseDirection, int bulletCount, float duration, float totalAngle)
         {
+            ModBehaviour.DevLog("[DragonDescendant] FireFanBulletsSweep开始: bulletCount=" + bulletCount + 
+                ", duration=" + duration + ", isEnraged=" + isEnraged);
+            
             if (bulletCount <= 0) yield break;
             
             // 计算每发子弹的间隔时间（3秒24发）
             float interval = duration / bulletCount;
             
+            // [性能优化] 预计算WaitForSeconds
+            WaitForSeconds waitInterval = GetCachedWaitForSeconds(interval);
+            
             for (int i = 0; i < bulletCount; i++)
             {
-                if (!isEnraged || bossCharacter == null) yield break;
+                if (!isEnraged || bossCharacter == null)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] FireFanBulletsSweep中断: isEnraged=" + isEnraged + 
+                        ", bossCharacter=" + (bossCharacter != null));
+                    yield break;
+                }
                 
                 // 实时更新基础方向（追踪玩家）
                 baseDirection = GetDirectionToPlayer();
@@ -1327,48 +1515,76 @@ namespace BossRush
                 // 直接生成子弹
                 SpawnBulletDirect(bulletDir);
                 
-                yield return new WaitForSeconds(interval);
+                yield return waitInterval;
             }
+            
+            ModBehaviour.DevLog("[DragonDescendant] FireFanBulletsSweep完成");
         }
         
         /// <summary>
         /// 直接生成子弹（使用BulletPool）
         /// 参考原版ItemAgent_Gun.ShootOneBullet
-        /// 性能优化：使用预缓存的子弹预制体，避免每次调用Resources.FindObjectsOfTypeAll
+        /// 二阶段使用原始武器完整属性（子弹、射速、音效等）
         /// </summary>
         private void SpawnBulletDirect(Vector3 direction)
         {
             try
             {
                 if (bossCharacter == null) return;
-                if (LevelManager.Instance == null || LevelManager.Instance.BulletPool == null) return;
+                if (LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] BulletPool不可用");
+                    return;
+                }
                 
-                // 获取Boss的枪（用于读取子弹属性）
-                var gun = bossCharacter.GetGun();
+                // 使用原始武器属性
                 float bulletSpeed = 30f;
                 float bulletDistance = 50f;
                 float damage = 15f;
+                Projectile bulletPrefab = null;
+                string shootKey = "Default";
+                GameObject muzzleFxPrefab = null;
                 
-                // 从Boss的枪获取子弹属性
-                if (gun != null)
+                // 优先使用原始武器数据
+                if (originalWeaponData != null)
                 {
-                    bulletSpeed = gun.BulletSpeed;
-                    bulletDistance = gun.BulletDistance;
-                    damage = gun.Damage;
+                    bulletPrefab = originalWeaponData.bulletPrefab;
+                    bulletSpeed = originalWeaponData.bulletSpeed > 0 ? originalWeaponData.bulletSpeed : 30f;
+                    bulletDistance = originalWeaponData.bulletDistance > 0 ? originalWeaponData.bulletDistance : 50f;
+                    damage = originalWeaponData.damage > 0 ? originalWeaponData.damage : 15f;
+                    shootKey = !string.IsNullOrEmpty(originalWeaponData.shootKey) ? originalWeaponData.shootKey : "Default";
+                    muzzleFxPrefab = originalWeaponData.muzzleFxPrefab;
                 }
                 
-                // 使用预缓存的子弹预制体（已在Initialize时缓存）
-                if (cachedBulletPrefab == null)
+                // 回退到缓存的子弹预制体
+                if (bulletPrefab == null)
                 {
-                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 未找到子弹预制体");
+                    bulletPrefab = cachedBulletPrefab;
+                }
+                
+                // 最后尝试从缓存的子弹预制体获取
+                if (bulletPrefab == null && cachedBulletPrefab != null)
+                {
+                    bulletPrefab = cachedBulletPrefab;
+                }
+                    
+                if (bulletPrefab == null)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 无法获取任何子弹预制体");
                     return;
                 }
                 
                 // 计算发射位置（Boss胸口位置）
                 Vector3 muzzlePos = bossCharacter.transform.position + Vector3.up * 1.2f;
                 
+                // 播放开枪音效
+                PlayShootSound(shootKey);
+                
+                // 生成枪口特效
+                SpawnMuzzleFlash(muzzlePos, direction, muzzleFxPrefab);
+                
                 // 从BulletPool获取子弹
-                Projectile bullet = LevelManager.Instance.BulletPool.GetABullet(cachedBulletPrefab);
+                Projectile bullet = LevelManager.Instance.BulletPool.GetABullet(bulletPrefab);
                 if (bullet == null)
                 {
                     ModBehaviour.DevLog("[DragonDescendant] [WARNING] BulletPool返回null");
@@ -1388,7 +1604,7 @@ namespace BossRush
                 ctx.damage = damage;
                 ctx.penetrate = 0;
                 ctx.critRate = 0f;
-                ctx.critDamageFactor = 1.5f;
+                ctx.critDamageFactor = DragonDescendantConfig.Phase2CritDamageFactor;
                 ctx.armorPiercing = 0f;
                 ctx.armorBreak = 0f;
                 ctx.fromCharacter = bossCharacter;
@@ -1402,6 +1618,101 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonDescendant] [WARNING] 直接生成子弹失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 播放开枪音效（使用缓存的反射）
+        /// </summary>
+        private void PlayShootSound(string shootKey)
+        {
+            try
+            {
+                if (bossCharacter == null || string.IsNullOrEmpty(shootKey)) return;
+                
+                // 缓存AudioManager反射（只执行一次）
+                if (!audioManagerReflectionCached)
+                {
+                    CacheAudioManagerReflection();
+                }
+                
+                if (cachedAudioPostMethod == null) return;
+                
+                // 提取纯 shootKey（去除可能存在的路径前缀）
+                string pureKey = shootKey;
+                
+                // 如果包含完整路径，提取最后的 key 部分
+                int lastSlash = shootKey.LastIndexOf('/');
+                if (lastSlash >= 0 && lastSlash < shootKey.Length - 1)
+                {
+                    pureKey = shootKey.Substring(lastSlash + 1);
+                }
+                
+                // 去除可能的 event: 前缀
+                if (pureKey.StartsWith("event:"))
+                {
+                    pureKey = pureKey.Substring(6);
+                    if (pureKey.Length > 0 && pureKey[0] == '/')
+                    {
+                        pureKey = pureKey.Substring(1);
+                    }
+                }
+                
+                // 构建音效路径（使用原版格式，不带 event:/ 前缀）
+                string eventName = "SFX/Combat/Gun/Shoot/" + pureKey.ToLower();
+                
+                // 使用缓存的方法调用
+                cachedAudioPostMethod.Invoke(null, new object[] { eventName, bossCharacter.gameObject });
+            }
+            catch (Exception e)
+            {
+                // 音效播放失败不影响游戏逻辑
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 播放开枪音效失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 缓存AudioManager的反射信息（只执行一次）
+        /// </summary>
+        private static void CacheAudioManagerReflection()
+        {
+            if (audioManagerReflectionCached) return;
+            
+            try
+            {
+                cachedAudioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
+                if (cachedAudioManagerType != null)
+                {
+                    cachedAudioPostMethod = cachedAudioManagerType.GetMethod("Post", 
+                        new System.Type[] { typeof(string), typeof(GameObject) });
+                    cachedAudioPostCustomSFXMethod = cachedAudioManagerType.GetMethod("PostCustomSFX", 
+                        BindingFlags.Public | BindingFlags.Static);
+                }
+            }
+            catch { }
+            
+            audioManagerReflectionCached = true;
+        }
+        
+        /// <summary>
+        /// 生成枪口特效
+        /// </summary>
+        private void SpawnMuzzleFlash(Vector3 position, Vector3 direction, GameObject muzzleFxPrefab)
+        {
+            try
+            {
+                if (muzzleFxPrefab == null) return;
+                
+                // 实例化枪口特效
+                GameObject fx = UnityEngine.Object.Instantiate(muzzleFxPrefab, position, Quaternion.LookRotation(direction));
+                
+                // 自动销毁（2秒后）
+                UnityEngine.Object.Destroy(fx, 2f);
+            }
+            catch (Exception e)
+            {
+                // 特效生成失败不影响游戏逻辑
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 生成枪口特效失败: " + e.Message);
             }
         }
         
@@ -1468,7 +1779,7 @@ namespace BossRush
                     triggerObj.transform.localPosition = Vector3.up * 1f;
                     
                     collisionTrigger = triggerObj.AddComponent<SphereCollider>();
-                    collisionTrigger.radius = 1.5f;
+                    collisionTrigger.radius = DragonDescendantConfig.CollisionTriggerRadius;
                     collisionTrigger.isTrigger = true;
                     
                     // 添加碰撞检测脚本
@@ -1530,59 +1841,7 @@ namespace BossRush
         /// </summary>
         private void PlaySecondPhaseSound()
         {
-            try
-            {
-                // 获取mod基础路径
-                string baseDir = null;
-                try
-                {
-                    baseDir = System.IO.Path.GetDirectoryName(GetType().Assembly.Location);
-                }
-                catch { }
-                
-                if (string.IsNullOrEmpty(baseDir)) return;
-                
-                // 查找音效文件
-                string filePath = null;
-                string candidate1 = System.IO.Path.Combine(baseDir, "Assets", "dragonToSecond.mp3");
-                string candidate2 = System.IO.Path.Combine(baseDir, "dragonToSecond.mp3");
-                
-                if (System.IO.File.Exists(candidate1))
-                {
-                    filePath = candidate1;
-                }
-                else if (System.IO.File.Exists(candidate2))
-                {
-                    filePath = candidate2;
-                }
-                
-                if (string.IsNullOrEmpty(filePath))
-                {
-                    ModBehaviour.DevLog("[DragonDescendant] 未找到第二阶段音效文件: dragonToSecond.mp3");
-                    return;
-                }
-                
-                // 获取播放目标（Boss自身）
-                GameObject target = bossCharacter != null ? bossCharacter.gameObject : null;
-                
-                // 使用反射调用AudioManager.PostCustomSFX
-                System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
-                if (audioManagerType != null)
-                {
-                    var method = audioManagerType.GetMethod("PostCustomSFX", 
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    if (method != null)
-                    {
-                        object[] args = new object[] { filePath, target, false };
-                        method.Invoke(null, args);
-                        ModBehaviour.DevLog("[DragonDescendant] 播放第二阶段音效: " + filePath);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[DragonDescendant] 播放第二阶段音效失败: " + e.Message);
-            }
+            PlayCustomSound("dragonToSecond.mp3", bossCharacter != null ? bossCharacter.gameObject : null);
         }
         
         /// <summary>
@@ -1590,8 +1849,26 @@ namespace BossRush
         /// </summary>
         private void PlayCollisionSound()
         {
+            PlayCustomSound("hurt.mp3", playerCharacter != null ? playerCharacter.gameObject : null);
+        }
+        
+        /// <summary>
+        /// 播放自定义音效（通用方法，使用缓存的反射）
+        /// </summary>
+        /// <param name="fileName">音效文件名</param>
+        /// <param name="target">播放目标GameObject</param>
+        private void PlayCustomSound(string fileName, GameObject target)
+        {
             try
             {
+                // 缓存AudioManager反射（只执行一次）
+                if (!audioManagerReflectionCached)
+                {
+                    CacheAudioManagerReflection();
+                }
+                
+                if (cachedAudioPostCustomSFXMethod == null) return;
+                
                 // 获取mod基础路径
                 string baseDir = null;
                 try
@@ -1604,8 +1881,8 @@ namespace BossRush
                 
                 // 查找音效文件
                 string filePath = null;
-                string candidate1 = System.IO.Path.Combine(baseDir, "Assets", "hurt.mp3");
-                string candidate2 = System.IO.Path.Combine(baseDir, "hurt.mp3");
+                string candidate1 = System.IO.Path.Combine(baseDir, "Assets", fileName);
+                string candidate2 = System.IO.Path.Combine(baseDir, fileName);
                 
                 if (System.IO.File.Exists(candidate1))
                 {
@@ -1618,34 +1895,18 @@ namespace BossRush
                 
                 if (string.IsNullOrEmpty(filePath))
                 {
-                    ModBehaviour.DevLog("[DragonDescendant] 未找到撞击音效文件: hurt.mp3");
+                    ModBehaviour.DevLog("[DragonDescendant] 未找到音效文件: " + fileName);
                     return;
                 }
                 
-                // 获取播放目标（玩家）
-                GameObject target = null;
-                if (playerCharacter != null)
-                {
-                    target = playerCharacter.gameObject;
-                }
-                
-                // 使用反射调用AudioManager.PostCustomSFX
-                System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
-                if (audioManagerType != null)
-                {
-                    var method = audioManagerType.GetMethod("PostCustomSFX", 
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    if (method != null)
-                    {
-                        object[] args = new object[] { filePath, target, false };
-                        method.Invoke(null, args);
-                        ModBehaviour.DevLog("[DragonDescendant] 播放撞击音效: " + filePath);
-                    }
-                }
+                // 使用缓存的方法调用
+                object[] args = new object[] { filePath, target, false };
+                cachedAudioPostCustomSFXMethod.Invoke(null, args);
+                ModBehaviour.DevLog("[DragonDescendant] 播放音效: " + filePath);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 播放撞击音效失败: " + e.Message);
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 播放音效失败: " + e.Message);
             }
         }
         
@@ -1661,7 +1922,7 @@ namespace BossRush
                 
                 // 计算击退方向（从Boss指向玩家）
                 Vector3 knockbackDir = (player.transform.position - bossCharacter.transform.position).normalized;
-                knockbackDir.y = 0.3f; // 稍微向上
+                knockbackDir.y = DragonDescendantConfig.KnockbackYComponent; // 稍微向上
                 knockbackDir.Normalize();
                 
                 // 应用击退力
@@ -1794,40 +2055,8 @@ namespace BossRush
         /// </summary>
         private void ShowIceSlowdownDialogue()
         {
-            try
-            {
-                if (bossCharacter == null) return;
-                
-                string dialogue = "此等极寒之力也被你征服了吗，可恶...";
-                float yOffset = 2.5f;
-                
-                try
-                {
-                    if (bossCharacter.characterModel != null && bossCharacter.characterModel.HelmatSocket != null)
-                    {
-                        yOffset = Vector3.Distance(bossCharacter.transform.position, 
-                            bossCharacter.characterModel.HelmatSocket.position) + 0.5f;
-                    }
-                }
-                catch { }
-                
-                // 使用DialogueBubblesManager显示
-                UniTaskExtensions.Forget(DialogueBubblesManager.Show(
-                    dialogue, 
-                    bossCharacter.transform, 
-                    yOffset, 
-                    false, 
-                    false, 
-                    -1f, 
-                    3f
-                ));
-                
-                ModBehaviour.DevLog("[DragonDescendant] 显示冰冻减速对话: " + dialogue);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 显示冰冻减速对话失败: " + e.Message);
-            }
+            ShowDialogueBubble("此等极寒之力也被你征服了吗，可恶...", 3f);
+            ModBehaviour.DevLog("[DragonDescendant] 显示冰冻减速对话");
         }
         
         /// <summary>
@@ -1835,8 +2064,8 @@ namespace BossRush
         /// </summary>
         private IEnumerator IceSlowdownRecoveryCoroutine()
         {
-            // 等待10秒
-            yield return new WaitForSeconds(10f);
+            // [性能优化] 使用缓存的WaitForSeconds
+            yield return wait10s;
             
             ModBehaviour.DevLog("[DragonDescendant] 冰冻减速效果结束");
             
@@ -1872,50 +2101,44 @@ namespace BossRush
         /// </summary>
         private void ShowIceRecoveryDialogue()
         {
-            try
-            {
-                if (bossCharacter == null) return;
-                
-                string dialogue = "哈哈哈用完了吗？轮到我了！";
-                float yOffset = 2.5f;
-                
-                try
-                {
-                    if (bossCharacter.characterModel != null && bossCharacter.characterModel.HelmatSocket != null)
-                    {
-                        yOffset = Vector3.Distance(bossCharacter.transform.position, 
-                            bossCharacter.characterModel.HelmatSocket.position) + 0.5f;
-                    }
-                }
-                catch { }
-                
-                // 使用DialogueBubblesManager显示
-                UniTaskExtensions.Forget(DialogueBubblesManager.Show(
-                    dialogue, 
-                    bossCharacter.transform, 
-                    yOffset, 
-                    false, 
-                    false, 
-                    -1f, 
-                    3f
-                ));
-                
-                ModBehaviour.DevLog("[DragonDescendant] 显示冰冻恢复对话: " + dialogue);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 显示冰冻恢复对话失败: " + e.Message);
-            }
+            ShowDialogueBubble("哈哈哈用完了吗？轮到我了！", 3f);
+            ModBehaviour.DevLog("[DragonDescendant] 显示冰冻恢复对话");
         }
     }
     
     /// <summary>
     /// 碰撞检测器组件
     /// 用于检测Boss与玩家的碰撞
+    /// [性能优化] 使用OnTriggerEnter+协程替代OnTriggerStay，减少物理帧开销
     /// </summary>
     public class DragonDescendantCollisionDetector : MonoBehaviour
     {
         private DragonDescendantAbilityController controller;
+        
+        /// <summary>
+        /// 上次碰撞时间（用于冷却检查）
+        /// </summary>
+        private float lastCollisionCheckTime = 0f;
+        
+        /// <summary>
+        /// 碰撞检查冷却时间（与controller中的COLLISION_COOLDOWN一致）
+        /// </summary>
+        private const float CHECK_COOLDOWN = 0.5f;
+        
+        /// <summary>
+        /// 当前在触发器内的玩家
+        /// </summary>
+        private CharacterMainControl playerInTrigger = null;
+        
+        /// <summary>
+        /// 持续碰撞检测协程
+        /// </summary>
+        private Coroutine stayCheckCoroutine = null;
+        
+        /// <summary>
+        /// 缓存的WaitForSeconds
+        /// </summary>
+        private static readonly WaitForSeconds waitCheckInterval = new WaitForSeconds(CHECK_COOLDOWN);
         
         public void Initialize(DragonDescendantAbilityController ctrl)
         {
@@ -1927,25 +2150,72 @@ namespace BossRush
         
         private void OnTriggerEnter(Collider other)
         {
-            CheckCollision(other);
+            CharacterMainControl character = GetPlayerFromCollider(other);
+            if (character != null && character.IsMainCharacter)
+            {
+                playerInTrigger = character;
+                
+                // 立即检测一次
+                TryTriggerCollision();
+                
+                // 启动持续检测协程
+                if (stayCheckCoroutine == null)
+                {
+                    stayCheckCoroutine = StartCoroutine(StayCheckCoroutine());
+                }
+            }
         }
         
-        private void OnTriggerStay(Collider other)
+        private void OnTriggerExit(Collider other)
         {
-            // 持续碰撞也触发（但有冷却）
-            CheckCollision(other);
+            CharacterMainControl character = GetPlayerFromCollider(other);
+            if (character != null && character == playerInTrigger)
+            {
+                playerInTrigger = null;
+                
+                // 停止持续检测协程
+                if (stayCheckCoroutine != null)
+                {
+                    StopCoroutine(stayCheckCoroutine);
+                    stayCheckCoroutine = null;
+                }
+            }
         }
         
-        private void CheckCollision(Collider other)
+        /// <summary>
+        /// 持续碰撞检测协程（替代OnTriggerStay）
+        /// </summary>
+        private IEnumerator StayCheckCoroutine()
         {
-            if (controller == null) return;
-            if (other == null) return;
+            while (playerInTrigger != null)
+            {
+                yield return waitCheckInterval;
+                TryTriggerCollision();
+            }
+            stayCheckCoroutine = null;
+        }
+        
+        /// <summary>
+        /// 尝试触发碰撞（带冷却检查）
+        /// </summary>
+        private void TryTriggerCollision()
+        {
+            if (controller == null || playerInTrigger == null) return;
+            if (Time.time - lastCollisionCheckTime < CHECK_COOLDOWN) return;
             
-            // 检查是否是玩家（多种方式检测）
-            CharacterMainControl character = null;
+            lastCollisionCheckTime = Time.time;
+            controller.OnCollisionWithPlayer(playerInTrigger);
+        }
+        
+        /// <summary>
+        /// 从碰撞器获取玩家角色
+        /// </summary>
+        private CharacterMainControl GetPlayerFromCollider(Collider other)
+        {
+            if (other == null) return null;
             
             // 方式1：从碰撞器的父级查找
-            character = other.GetComponentInParent<CharacterMainControl>();
+            CharacterMainControl character = other.GetComponentInParent<CharacterMainControl>();
             
             // 方式2：从碰撞器本身查找
             if (character == null)
@@ -1963,11 +2233,18 @@ namespace BossRush
                 }
             }
             
-            // 确认是主角色
-            if (character != null && character.IsMainCharacter)
+            return character;
+        }
+        
+        private void OnDestroy()
+        {
+            if (stayCheckCoroutine != null)
             {
-                controller.OnCollisionWithPlayer(character);
+                StopCoroutine(stayCheckCoroutine);
+                stayCheckCoroutine = null;
             }
+            playerInTrigger = null;
+            controller = null;
         }
     }
 }

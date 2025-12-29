@@ -10,7 +10,6 @@
 using System;
 using System.Reflection;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
@@ -51,11 +50,6 @@ namespace BossRush
         /// 开枪声音Key（与MCX Spear相同：rifle_heavy）
         /// </summary>
         public const string SHOOT_KEY = "rifle_heavy";
-        
-        /// <summary>
-        /// 换弹声音Key（与MCX Spear相同：rifle_heavy）
-        /// </summary>
-        public const string RELOAD_KEY = "rifle_heavy";
         
         // ========== 缓存字段（避免反射开销）==========
         // Stat类的baseValue和display字段缓存
@@ -460,19 +454,18 @@ namespace BossRush
                 }
                 else
                 {
-                    // 变量不存在，使用字符串版本创建（hash版本不会创建新变量）
-                    int currentBulletCount = gunSetting.BulletCount;
-                    if (currentBulletCount < 0) currentBulletCount = 0;
+                    // 变量不存在，使用默认值0创建（避免调用gunSetting.BulletCount触发错误）
+                    int defaultBulletCount = 0;
                     
                     // 使用字符串key版本的SetInt来创建变量
-                    item.Variables.SetInt("BulletCount", currentBulletCount, true);
+                    item.Variables.SetInt("BulletCount", defaultBulletCount, true);
                     
                     // 再次获取并设置Display
                     bulletCountEntry = item.Variables.GetEntry(bulletCountHash);
                     if (bulletCountEntry != null)
                     {
                         bulletCountEntry.Display = true;
-                        ModBehaviour.DevLog("[DragonBreathWeapon] 创建BulletCount=" + currentBulletCount + ", Display=true");
+                        ModBehaviour.DevLog("[DragonBreathWeapon] 创建BulletCount=" + defaultBulletCount + ", Display=true");
                     }
                     else
                     {
@@ -596,6 +589,11 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 换弹声音Key（与火AK相同：mag_rifle）
+        /// </summary>
+        public const string RELOAD_KEY = "mag_rifle";
+        
+        /// <summary>
         /// 配置枪械的音效（shootKey, reloadKey）和子弹预制体
         /// 静默执行，仅在实际修改时输出日志
         /// </summary>
@@ -614,10 +612,12 @@ namespace BossRush
                     ModBehaviour.DevLog("[DragonBreathWeapon] shootKey: '" + oldShootKey + "' -> '" + SHOOT_KEY + "'");
                 }
                 
-                // 设置换弹声音Key（与MCX Spear相同）
+                // 设置换弹声音Key（与MCX Spear相同，避免使用无效的默认值）
                 if (gunSetting.reloadKey != RELOAD_KEY)
                 {
+                    string oldReloadKey = gunSetting.reloadKey;
                     gunSetting.reloadKey = RELOAD_KEY;
+                    ModBehaviour.DevLog("[DragonBreathWeapon] reloadKey: '" + oldReloadKey + "' -> '" + RELOAD_KEY + "'");
                 }
                 
                 // 设置子弹预制体（使用燃烧子弹 BulletNormal_Burn，与带火AK-47相同）
@@ -756,6 +756,40 @@ namespace BossRush
         private static bool fireAK47ModelSearched = false;
         
         /// <summary>
+        /// 清理所有静态缓存（场景切换时调用，防止持有已销毁对象引用）
+        /// </summary>
+        public static void ClearStaticCache()
+        {
+            // 清理特效追踪集合
+            effectsAddedAgents.Clear();
+            
+            // 清理预制体缓存（可能指向已卸载的资源）
+            cachedFireAK47Model = null;
+            fireAK47ModelSearched = false;
+            cachedBurnBullet = null;
+            bulletPrefabSearched = false;
+            cachedFireMuzzle = null;
+            muzzlePrefabSearched = false;
+            
+            // 清理Tag缓存
+            tagCache.Clear();
+            cachedTagsGetMethod = null;
+            tagsGetMethodCached = false;
+            
+            // 清理Stat反射缓存（类型信息不需要清理，但重置标记以便重新验证）
+            statFieldsCached = false;
+            
+            // 清理ParticleSystem反射缓存
+            psReflectionCached = false;
+            
+            // 清理SodaPointLight反射缓存
+            sodaLightReflectionCached = false;
+            
+            // 重置Tag打印标记
+            tagsPrinted = false;
+        }
+        
+        /// <summary>
         /// 为龙息武器的ItemAgent添加火焰特效（从带火AK-47复制）
         /// 在玩家手持龙息武器时调用
         /// </summary>
@@ -860,9 +894,12 @@ namespace BossRush
             ModBehaviour.DevLog("[DragonBreathWeapon] 源对象: " + source.name);
             ModBehaviour.DevLog("[DragonBreathWeapon] 目标对象: " + target.name);
             
-            // 打印源对象的子对象结构（用于调试）
-            PrintChildHierarchy(source.transform, "[源]", 0);
-            PrintChildHierarchy(target.transform, "[目标]", 0);
+            // [性能优化] 调试用的层级打印只在DevModeEnabled开启时执行，避免不必要的字符串拼接开销
+            if (ModBehaviour.DevModeEnabled)
+            {
+                PrintChildHierarchy(source.transform, "[源]", 0);
+                PrintChildHierarchy(target.transform, "[目标]", 0);
+            }
             
             Transform sourceRoot = source.transform;
             Transform targetRoot = target.transform;
@@ -937,6 +974,7 @@ namespace BossRush
         
         /// <summary>
         /// 打印子对象层级结构（调试用，最多2层）
+        /// [性能优化] 移除LINQ，使用手动循环
         /// </summary>
         private static void PrintChildHierarchy(Transform parent, string prefix, int depth)
         {
@@ -947,12 +985,20 @@ namespace BossRush
                 Transform child = parent.GetChild(i);
                 string indent = new string(' ', depth * 2);
                 
-                // 获取组件信息
+                // [性能优化] 手动构建组件名称字符串，避免LINQ分配
                 var components = child.GetComponents<Component>();
-                string compNames = string.Join(", ", components
-                    .Where(c => c != null && !(c is Transform))
-                    .Select(c => c.GetType().Name)
-                    .Take(3));
+                string compNames = "";
+                int compCount = 0;
+                for (int j = 0; j < components.Length && compCount < 3; j++)
+                {
+                    var c = components[j];
+                    if (c != null && !(c is Transform))
+                    {
+                        if (compCount > 0) compNames += ", ";
+                        compNames += c.GetType().Name;
+                        compCount++;
+                    }
+                }
                 
                 ModBehaviour.DevLog(prefix + indent + "├─ " + child.name + 
                     (string.IsNullOrEmpty(compNames) ? "" : " (" + compNames + ")") +
@@ -1042,27 +1088,35 @@ namespace BossRush
         
         /// <summary>
         /// 复制SodaPointLight组件到目标父对象下
+        /// [性能优化] 移除LINQ，使用手动循环
         /// </summary>
         private static void CopySodaPointLights(Transform source, Transform targetParent)
         {
             try
             {
-                // 查找所有SodaPointLight
-                var sodaLights = source.GetComponentsInChildren<Component>(true)
-                    .Where(c => c != null && c.GetType().Name == "SodaPointLight")
-                    .ToArray();
+                // [性能优化] 手动查找SodaPointLight，避免LINQ分配
+                var allComponents = source.GetComponentsInChildren<Component>(true);
+                var sodaLights = new List<Component>();
+                for (int i = 0; i < allComponents.Length; i++)
+                {
+                    var c = allComponents[i];
+                    if (c != null && c.GetType().Name == "SodaPointLight")
+                    {
+                        sodaLights.Add(c);
+                    }
+                }
                 
-                if (sodaLights.Length == 0)
+                if (sodaLights.Count == 0)
                 {
                     ModBehaviour.DevLog("[DragonBreathWeapon] 源对象中未找到SodaPointLight");
                     return;
                 }
                 
-                ModBehaviour.DevLog("[DragonBreathWeapon] 找到 " + sodaLights.Length + " 个SodaPointLight");
+                ModBehaviour.DevLog("[DragonBreathWeapon] 找到 " + sodaLights.Count + " 个SodaPointLight");
                 ModBehaviour.DevLog("[DragonBreathWeapon] 发光点父对象: " + targetParent.name);
                 
                 // 缓存SodaPointLight类型和方法（只执行一次）
-                if (!sodaLightReflectionCached && sodaLights.Length > 0)
+                if (!sodaLightReflectionCached && sodaLights.Count > 0)
                 {
                     cachedSodaLightType = sodaLights[0].GetType();
                     cachedSyncToLightMethod = cachedSodaLightType.GetMethod("SyncToLight", 
@@ -1071,8 +1125,9 @@ namespace BossRush
                 }
                 
                 int copyCount = 0;
-                foreach (var light in sodaLights)
+                for (int idx = 0; idx < sodaLights.Count; idx++)
                 {
+                    var light = sodaLights[idx];
                     string lightName = light.gameObject.name;
                     string newName = "FireLight_" + copyCount;
                     

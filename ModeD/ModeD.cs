@@ -339,6 +339,8 @@ namespace BossRush
                     int[] ids = SearchItemsByTag(tagsData.Gun, excludeArray);
                     if (ids != null) modeDWeaponPool.AddRange(ids);
                 }
+                // 移除龙息（龙裔遗族Boss专属掉落，不应出现在白手起家随机池中）
+                modeDWeaponPool.Remove(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID);
 
                 // 护甲池（Armor Tag）
                 if (tagsData.Armor != null)

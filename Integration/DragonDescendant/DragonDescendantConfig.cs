@@ -20,9 +20,14 @@ namespace BossRush
         public const float BaseHealth = 500f;
         
         /// <summary>
-        /// 伤害倍率
+        /// 伤害倍率（一阶段）
         /// </summary>
-        public const float DamageMultiplier = 1.1f;
+        public const float DamageMultiplier = 0.3f;
+        
+        /// <summary>
+        /// 二阶段伤害倍率
+        /// </summary>
+        public const float Phase2DamageMultiplier = 1.1f;
         
         // ========== 火箭弹配置 ==========
         
@@ -121,6 +126,31 @@ namespace BossRush
         /// 追逐速度倍率
         /// </summary>
         public const float ChaseSpeedMultiplier = 1.5f;
+        
+        /// <summary>
+        /// 碰撞检测半径（米）
+        /// </summary>
+        public const float CollisionTriggerRadius = 1.5f;
+        
+        /// <summary>
+        /// 碰撞冷却时间（秒）
+        /// </summary>
+        public const float CollisionCooldown = 0.5f;
+        
+        /// <summary>
+        /// 对话气泡Y轴偏移（米）
+        /// </summary>
+        public const float DialogueBubbleYOffset = 2.5f;
+        
+        /// <summary>
+        /// 二阶段子弹暴击伤害倍率
+        /// </summary>
+        public const float Phase2CritDamageFactor = 1.5f;
+        
+        /// <summary>
+        /// 击退方向Y分量（稍微向上）
+        /// </summary>
+        public const float KnockbackYComponent = 0.3f;
         
         // ========== 预设名称 ==========
         

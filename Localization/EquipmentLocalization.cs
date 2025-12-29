@@ -58,6 +58,18 @@ namespace BossRush
         
         #endregion
         
+        #region 龙焰灼烧Buff本地化数据
+        
+        // 龙焰灼烧Buff名称
+        private static readonly string DragonBurnNameCN = "龙焰灼烧";
+        private static readonly string DragonBurnNameEN = "Dragon Burn";
+        
+        // 龙焰灼烧Buff描述
+        private static readonly string DragonBurnDescCN = "每秒受到最大生命值0.1%的火焰伤害，最多叠加10层，持续10秒";
+        private static readonly string DragonBurnDescEN = "Takes 0.1% max HP fire damage per second, stacks up to 10 times, lasts 10 seconds";
+        
+        #endregion
+        
         #region 公共方法
         
         /// <summary>
@@ -70,6 +82,7 @@ namespace BossRush
                 InjectDragonSetLocalization();
                 InjectDragonDescendantLocalization();
                 InjectDragonBreathWeaponLocalization();
+                InjectDragonBurnBuffLocalization();
                 ModBehaviour.DevLog("[EquipmentLocalization] 所有装备本地化注入完成");
             }
             catch (Exception e)
@@ -272,6 +285,58 @@ namespace BossRush
         public static string GetDragonBreathDescription()
         {
             return L10n.T(DragonBreathDescCN, DragonBreathDescEN);
+        }
+        
+        #endregion
+        
+        #region 龙焰灼烧Buff本地化方法
+        
+        /// <summary>
+        /// 注入龙焰灼烧Buff本地化
+        /// </summary>
+        public static void InjectDragonBurnBuffLocalization()
+        {
+            try
+            {
+                string displayName = L10n.T(DragonBurnNameCN, DragonBurnNameEN);
+                string description = L10n.T(DragonBurnDescCN, DragonBurnDescEN);
+                
+                // 注入 DragonBreathConfig 中定义的本地化键
+                LocalizationHelper.InjectLocalization(DragonBreathConfig.LOC_KEY_BUFF_NAME, displayName);
+                LocalizationHelper.InjectLocalization(DragonBreathConfig.LOC_KEY_BUFF_DESC, description);
+                
+                // 注入原始键（Buff 的 displayName 字段值）
+                LocalizationHelper.InjectLocalization("龙焰灼烧", displayName);
+                LocalizationHelper.InjectLocalization("龙焰灼烧_Desc", description);
+                
+                // 注入 Buff ID 键（BuffID = 500006）
+                int buffId = DragonBreathConfig.BUFF_ID;
+                string buffKey = "Buff_" + buffId;
+                LocalizationHelper.InjectLocalization(buffKey, displayName);
+                LocalizationHelper.InjectLocalization(buffKey + "_Desc", description);
+                
+                ModBehaviour.DevLog("[EquipmentLocalization] 龙焰灼烧Buff本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入龙焰灼烧Buff本地化失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 获取龙焰灼烧Buff显示名称
+        /// </summary>
+        public static string GetDragonBurnName()
+        {
+            return L10n.T(DragonBurnNameCN, DragonBurnNameEN);
+        }
+        
+        /// <summary>
+        /// 获取龙焰灼烧Buff描述
+        /// </summary>
+        public static string GetDragonBurnDescription()
+        {
+            return L10n.T(DragonBurnDescCN, DragonBurnDescEN);
         }
         
         #endregion

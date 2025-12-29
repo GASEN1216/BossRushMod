@@ -55,7 +55,8 @@ namespace BossRush
             1092, 1158, 1164, 1214, 1225, 1249, 1273,
             // 龙套装（龙裔遗族Boss专属掉落，不应出现在随机掉落池中）
             500003, // 赤龙首（龙头）
-            500004  // 焰鳞甲（龙甲）
+            500004, // 焰鳞甲（龙甲）
+            500005  // 龙息武器
         };
 
         private List<EnemyPresetInfo> enemyPresets = new List<EnemyPresetInfo>();
