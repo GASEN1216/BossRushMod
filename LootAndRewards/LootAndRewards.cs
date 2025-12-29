@@ -2410,12 +2410,31 @@ namespace BossRush
                 yield return new WaitForSeconds(0.1f);
             }
 
-            // 随机选择掉落龙头或龙甲
-            bool dropHelm = UnityEngine.Random.Range(0, 2) == 0;
-            int selectedTypeId = dropHelm ? DragonDescendantConfig.DRAGON_HELM_TYPE_ID : DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID;
-            string itemName = dropHelm ? "龙头" : "龙甲";
+            // 按概率随机选择掉落物品：龙息10%、龙头30%、龙甲60%
+            float roll = UnityEngine.Random.Range(0f, 1f);
+            int selectedTypeId;
+            string itemName;
+            
+            if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON)
+            {
+                // 10% 龙息武器
+                selectedTypeId = DragonDescendantConfig.DRAGON_BREATH_TYPE_ID;
+                itemName = "龙息";
+            }
+            else if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON + DragonDescendantConfig.DROP_CHANCE_HELM)
+            {
+                // 30% 龙头
+                selectedTypeId = DragonDescendantConfig.DRAGON_HELM_TYPE_ID;
+                itemName = "龙头";
+            }
+            else
+            {
+                // 60% 龙甲
+                selectedTypeId = DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID;
+                itemName = "龙甲";
+            }
 
-            DevLog("[DragonDescendant] 随机选择龙套装掉落: " + itemName + " (TypeID=" + selectedTypeId + ")");
+            DevLog("[DragonDescendant] 随机选择龙套装掉落: " + itemName + " (TypeID=" + selectedTypeId + ", roll=" + roll.ToString("F3") + ")");
 
             try
             {
@@ -2435,6 +2454,13 @@ namespace BossRush
                     newItem.Durability = maxDurability;
                     // 清除可能存在的耐久度损耗值
                     newItem.DurabilityLoss = 0f;
+                }
+                
+                // 如果是龙息武器，需要配置武器属性
+                if (selectedTypeId == DragonDescendantConfig.DRAGON_BREATH_TYPE_ID)
+                {
+                    DragonBreathWeaponConfig.ConfigureWeapon(newItem);
+                    DevLog("[DragonDescendant] 已配置龙息武器属性");
                 }
 
                 // 添加到掉落箱

@@ -400,10 +400,13 @@ namespace BossRush
                     DevLog("[DragonDescendant] [WARNING] 未找到龙甲装备");
                 }
                 
+                // 装备龙息武器（替换原有武器）
+                EquipDragonBreathWeapon(character);
+                
                 // 刷新装备模型显示
                 RefreshEquipmentModels(character);
                 
-                // 加载最高级子弹
+                // 加载最高级子弹（BR口径）
                 LoadHighestTierAmmo(character);
                 
                 DevLog("[DragonDescendant] 装备完成");
@@ -413,6 +416,70 @@ namespace BossRush
                 DevLog("[DragonDescendant] [WARNING] 装备失败: " + e.Message);
             }
             return UniTask.CompletedTask;
+        }
+        
+        /// <summary>
+        /// 装备龙息武器（替换Boss原有武器）
+        /// </summary>
+        private void EquipDragonBreathWeapon(CharacterMainControl character)
+        {
+            try
+            {
+                if (character == null) return;
+                
+                // 获取主武器槽位
+                var primSlot = character.PrimWeaponSlot();
+                if (primSlot == null)
+                {
+                    DevLog("[DragonDescendant] [WARNING] 未找到主武器槽位");
+                    return;
+                }
+                
+                // 移除原有武器
+                Item oldWeapon = primSlot.Content;
+                if (oldWeapon != null)
+                {
+                    DevLog("[DragonDescendant] 移除原有武器: " + oldWeapon.name + " (TypeID=" + oldWeapon.TypeID + ")");
+                    // Unplug() 直接返回Item，不需要out参数
+                    Item unpluggedItem = primSlot.Unplug();
+                    // 销毁原有武器实例
+                    if (unpluggedItem != null)
+                    {
+                        UnityEngine.Object.Destroy(unpluggedItem.gameObject);
+                    }
+                }
+                
+                // 使用 ItemAssetsCollection.InstantiateSync 创建龙息武器实例
+                Item dragonBreathItem = ItemAssetsCollection.InstantiateSync(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID);
+                if (dragonBreathItem == null)
+                {
+                    DevLog("[DragonDescendant] [WARNING] 创建龙息武器实例失败 (TypeID=" + DragonDescendantConfig.DRAGON_BREATH_TYPE_ID + ")");
+                    return;
+                }
+                
+                // 配置龙息武器属性
+                DragonBreathWeaponConfig.ConfigureWeapon(dragonBreathItem);
+                
+                // 添加到库存
+                var inventory = character.CharacterItem.Inventory;
+                if (inventory != null)
+                {
+                    inventory.AddItem(dragonBreathItem);
+                }
+                
+                // 装备到主武器槽
+                Item pluggedOut;
+                primSlot.Plug(dragonBreathItem, out pluggedOut);
+                
+                // 让Boss手持武器
+                character.ChangeHoldItem(dragonBreathItem);
+                
+                DevLog("[DragonDescendant] 已装备龙息武器 (TypeID=" + DragonDescendantConfig.DRAGON_BREATH_TYPE_ID + ")");
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonDescendant] [WARNING] 装备龙息武器失败: " + e.Message + "\n" + e.StackTrace);
+            }
         }
         
         /// <summary>

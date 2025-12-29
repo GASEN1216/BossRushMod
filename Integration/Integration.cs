@@ -423,8 +423,9 @@ namespace BossRush
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
             
-            // 初始化龙息武器Buff处理器（必须在EquipmentFactory加载后调用）
-            DragonBreathBuffHandler.Initialize();
+            // 注意：龙息武器Buff处理器现在是按需订阅
+            // 只在玩家装备龙息武器时才订阅Health.OnHurt事件，卸下时取消订阅
+            // 这样可以避免在所有伤害事件中进行武器ID检查，提升性能
 
             DevLog("[BossRush] ========================================");
             DevLog("[BossRush] Boss Rush Mod v1.0 已加载");
@@ -464,6 +465,9 @@ namespace BossRush
             
             // 取消注册龙套装事件
             UnregisterDragonSetEvents();
+            
+            // 取消订阅龙息武器火焰特效事件
+            UnsubscribeDragonBreathEffectEvent();
             
             // 清理龙息武器Buff处理器
             DragonBreathBuffHandler.Cleanup();
@@ -525,6 +529,10 @@ namespace BossRush
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
         {
             DevLog("[BossRush] 场景加载: " + scene.name);
+            
+            // 在任何场景加载后都尝试订阅龙息武器事件
+            // 使用延迟调用确保玩家角色已初始化
+            StartCoroutine(DelayedSubscribeDragonBreathEvents());
 
             try
             {
@@ -1123,59 +1131,107 @@ namespace BossRush
             StartCoroutine(SetupBossRushInDemoChallenge(scene));
         }
         
-        // ========== 龙息武器运行时配置 ==========
+        // ========== 龙息武器火焰特效（仅视觉效果）==========
+        
+        // 是否已订阅手持物品变更事件
+        private bool dragonBreathEffectEventSubscribed = false;
+        // 缓存的玩家角色引用
+        private CharacterMainControl cachedMainCharForEffect = null;
         
         /// <summary>
-        /// 检查并配置玩家装备的龙息武器（在Update中调用）
+        /// 延迟订阅龙息武器火焰特效事件（等待玩家角色初始化）
         /// </summary>
-        private void CheckAndConfigureDragonBreathWeapon()
+        private System.Collections.IEnumerator DelayedSubscribeDragonBreathEvents()
+        {
+            // 等待0.5秒确保玩家角色已初始化
+            yield return new WaitForSeconds(0.5f);
+            SubscribeDragonBreathEffectEvent();
+        }
+        
+        /// <summary>
+        /// 订阅手持物品变更事件（用于添加火焰特效）
+        /// </summary>
+        private void SubscribeDragonBreathEffectEvent()
         {
             try
             {
-                // 获取玩家角色
                 if (LevelManager.Instance == null) return;
                 var mainChar = LevelManager.Instance.MainCharacter;
                 if (mainChar == null) return;
                 
-                // 获取角色的Item
-                var charItem = mainChar.CharacterItem;
-                if (charItem == null) return;
+                // 如果已订阅同一个角色，跳过
+                if (dragonBreathEffectEventSubscribed && cachedMainCharForEffect == mainChar) return;
                 
-                // 检查所有槽位中的武器
-                if (charItem.Slots != null)
-                {
-                    for (int i = 0; i < charItem.Slots.Count; i++)
-                    {
-                        var slot = charItem.Slots.GetSlotByIndex(i);
-                        if (slot != null && slot.Content != null)
-                        {
-                            DragonBreathWeaponConfig.TryConfigureRuntime(slot.Content);
-                        }
-                    }
-                }
+                // 先取消之前的订阅
+                UnsubscribeDragonBreathEffectEvent();
                 
-                // 检查背包中的武器
-                if (charItem.Inventory != null)
-                {
-                    foreach (var item in charItem.Inventory)
-                    {
-                        if (item != null)
-                        {
-                            DragonBreathWeaponConfig.TryConfigureRuntime(item);
-                        }
-                    }
-                }
+                // 订阅手持物品变更事件
+                mainChar.OnHoldAgentChanged += OnPlayerHoldAgentChanged;
                 
-                // 检查当前手持的武器，为龙息武器添加火焰特效
+                cachedMainCharForEffect = mainChar;
+                dragonBreathEffectEventSubscribed = true;
+                
+                DevLog("[DragonBreath] 已订阅手持物品变更事件（火焰特效）");
+                
+                // 检查当前手持的武器（处理玩家进入存档时已装备龙息武器的情况）
                 var currentGun = mainChar.GetGun();
                 if (currentGun != null)
                 {
+                    // 添加火焰特效
                     DragonBreathWeaponConfig.TryAddFireEffectsToAgent(currentGun);
+                    
+                    // 如果是龙息武器，订阅Buff事件
+                    if (currentGun.Item != null && currentGun.Item.TypeID == DragonBreathConfig.WEAPON_TYPE_ID)
+                    {
+                        DragonBreathBuffHandler.Subscribe();
+                    }
                 }
             }
-            catch
+            catch (Exception e)
             {
-                // 静默处理异常，避免影响游戏
+                DevLog("[DragonBreath] 订阅火焰特效事件失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 取消订阅火焰特效事件
+        /// </summary>
+        private void UnsubscribeDragonBreathEffectEvent()
+        {
+            try
+            {
+                if (!dragonBreathEffectEventSubscribed || cachedMainCharForEffect == null) return;
+                
+                cachedMainCharForEffect.OnHoldAgentChanged -= OnPlayerHoldAgentChanged;
+                
+                cachedMainCharForEffect = null;
+                dragonBreathEffectEventSubscribed = false;
+            }
+            catch { }
+        }
+        
+        /// <summary>
+        /// 玩家手持物品变更回调（添加火焰特效 + 管理Buff事件订阅）
+        /// </summary>
+        private void OnPlayerHoldAgentChanged(DuckovItemAgent newAgent)
+        {
+            var gunAgent = newAgent as ItemAgent_Gun;
+            
+            // 检查是否为龙息武器
+            bool isDragonBreath = gunAgent != null && 
+                                  gunAgent.Item != null && 
+                                  gunAgent.Item.TypeID == DragonBreathConfig.WEAPON_TYPE_ID;
+            
+            if (isDragonBreath)
+            {
+                // 装备龙息武器：添加火焰特效 + 订阅Buff事件
+                DragonBreathWeaponConfig.TryAddFireEffectsToAgent(gunAgent);
+                DragonBreathBuffHandler.Subscribe();
+            }
+            else
+            {
+                // 卸下龙息武器：取消订阅Buff事件（节省性能）
+                DragonBreathBuffHandler.Unsubscribe();
             }
         }
     }

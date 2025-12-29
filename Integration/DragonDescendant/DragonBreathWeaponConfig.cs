@@ -57,9 +57,17 @@ namespace BossRush
         /// </summary>
         public const string RELOAD_KEY = "rifle_heavy";
         
-        // ========== 已配置的实例跟踪 ==========
-        // 用于避免重复配置同一个Item实例
-        private static HashSet<int> configuredInstances = new HashSet<int>();
+        // ========== 缓存字段（避免反射开销）==========
+        // Stat类的baseValue和display字段缓存
+        private static FieldInfo cachedStatBaseValueField = null;
+        private static FieldInfo cachedStatDisplayField = null;
+        private static bool statFieldsCached = false;
+        
+        // 子弹和枪口特效预制体缓存
+        private static Projectile cachedBurnBullet = null;
+        private static GameObject cachedFireMuzzle = null;
+        private static bool bulletPrefabSearched = false;
+        private static bool muzzlePrefabSearched = false;
         
         // ========== 配件槽位配置 ==========
         // 槽位Key -> 对应的Tag名称
@@ -141,41 +149,18 @@ namespace BossRush
         };
         
         /// <summary>
-        /// 检查并配置龙息武器（运行时调用，用于配置玩家装备的武器实例）
-        /// 每次都强制配置音效和子弹，确保属性正确
+        /// [已弃用] 运行时配置方法 - 预制体配置已在EquipmentFactory加载时完成
+        /// 保留此方法以备将来需要
         /// </summary>
+        [System.Obsolete("预制体配置已在EquipmentFactory加载时完成，不再需要运行时配置")]
         public static void TryConfigureRuntime(Item item)
         {
-            if (item == null) return;
-            if (item.TypeID != WEAPON_TYPE_ID) return;
-            
-            int instanceId = item.GetInstanceID();
-            bool isFirstConfig = !configuredInstances.Contains(instanceId);
-            
-            // 每次都强制配置音效和子弹（解决实例化后默认值覆盖的问题）
-            ConfigureGunSettings(item);
-            
-            // 首次配置时执行完整配置
-            if (isFirstConfig)
-            {
-                // 检查Caliber当前值（用于调试）
-                string currentCaliber = null;
-                try
-                {
-                    if (item.Constants != null)
-                        currentCaliber = item.Constants.GetString("Caliber");
-                }
-                catch { }
-                
-                ModBehaviour.DevLog("[DragonBreathWeapon] 检测到龙息武器，开始运行时配置 (InstanceID=" + instanceId + ", Caliber='" + (currentCaliber ?? "null") + "')");
-                ConfigureWeapon(item);
-                configuredInstances.Add(instanceId);
-                ModBehaviour.DevLog("[DragonBreathWeapon] 运行时配置完成 (InstanceID=" + instanceId + ")");
-            }
+            // 预制体配置已在EquipmentFactory.LoadBundleInternal中通过TryConfigure完成
+            // 所有从预制体实例化的Item都会继承配置，不需要运行时再次配置
         }
         
         /// <summary>
-        /// 尝试配置龙息武器（在EquipmentFactory加载后调用）
+        /// 尝试配置龙息武器（在EquipmentFactory加载后调用，配置预制体）
         /// </summary>
         public static bool TryConfigure(Item item, string baseName)
         {
@@ -351,19 +336,41 @@ namespace BossRush
             }
         }
         
+        // ========== Tag查找缓存 ==========
+        private static MethodInfo cachedTagsGetMethod = null;
+        private static bool tagsGetMethodCached = false;
+        private static Dictionary<string, Tag> tagCache = new Dictionary<string, Tag>();
+        
         private static Tag GetTagByName(string tagName)
         {
+            // 先检查缓存
+            Tag cachedTag;
+            if (tagCache.TryGetValue(tagName, out cachedTag))
+            {
+                return cachedTag;
+            }
+            
             try
             {
                 var tagsData = GameplayDataSettings.Tags;
                 if (tagsData != null)
                 {
-                    var getMethod = tagsData.GetType().GetMethod("Get", 
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (getMethod != null)
+                    // 缓存Get方法（只执行一次）
+                    if (!tagsGetMethodCached)
                     {
-                        Tag result = getMethod.Invoke(tagsData, new object[] { tagName }) as Tag;
-                        if (result != null) return result;
+                        cachedTagsGetMethod = tagsData.GetType().GetMethod("Get", 
+                            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                        tagsGetMethodCached = true;
+                    }
+                    
+                    if (cachedTagsGetMethod != null)
+                    {
+                        Tag result = cachedTagsGetMethod.Invoke(tagsData, new object[] { tagName }) as Tag;
+                        if (result != null)
+                        {
+                            tagCache[tagName] = result;
+                            return result;
+                        }
                     }
                 }
                 
@@ -373,7 +380,10 @@ namespace BossRush
                     foreach (Tag tag in allTags)
                     {
                         if (tag != null && tag.name == tagName)
+                        {
+                            tagCache[tagName] = tag;
                             return tag;
+                        }
                     }
                 }
             }
@@ -529,11 +539,14 @@ namespace BossRush
         {
             try
             {
-                // 尝试设置Stat的display属性
-                FieldInfo displayField = typeof(Stat).GetField("display", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (displayField != null)
-                    displayField.SetValue(stat, display);
+                // 缓存反射字段，避免每次调用都查找
+                if (!statFieldsCached)
+                {
+                    CacheStatFields();
+                }
+                
+                if (cachedStatDisplayField != null)
+                    cachedStatDisplayField.SetValue(stat, display);
             }
             catch { }
         }
@@ -542,12 +555,35 @@ namespace BossRush
         {
             try
             {
-                FieldInfo baseValueField = typeof(Stat).GetField("baseValue", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (baseValueField != null)
-                    baseValueField.SetValue(stat, value);
+                // 缓存反射字段，避免每次调用都查找
+                if (!statFieldsCached)
+                {
+                    CacheStatFields();
+                }
+                
+                if (cachedStatBaseValueField != null)
+                    cachedStatBaseValueField.SetValue(stat, value);
             }
             catch { }
+        }
+        
+        /// <summary>
+        /// 缓存Stat类的反射字段（只执行一次）
+        /// </summary>
+        private static void CacheStatFields()
+        {
+            if (statFieldsCached) return;
+            
+            try
+            {
+                cachedStatBaseValueField = typeof(Stat).GetField("baseValue", 
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                cachedStatDisplayField = typeof(Stat).GetField("display", 
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+            catch { }
+            
+            statFieldsCached = true;
         }
         
         private static void AddWeaponTags(Item item)
@@ -628,10 +664,18 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 从游戏中查找子弹预制体
+        /// 从游戏中查找子弹预制体（带缓存）
         /// </summary>
         private static Projectile FindProjectilePrefab(string name)
         {
+            // 使用缓存
+            if (name == "BulletNormal_Burn")
+            {
+                if (cachedBurnBullet != null) return cachedBurnBullet;
+                if (bulletPrefabSearched) return null;
+                bulletPrefabSearched = true;
+            }
+            
             try
             {
                 // 从已加载的武器中查找（遍历entries）
@@ -644,6 +688,11 @@ namespace BossRush
                         var gunSetting = entry.prefab.GetComponent<ItemSetting_Gun>();
                         if (gunSetting != null && gunSetting.bulletPfb != null && gunSetting.bulletPfb.name == name)
                         {
+                            // 缓存结果
+                            if (name == "BulletNormal_Burn")
+                            {
+                                cachedBurnBullet = gunSetting.bulletPfb;
+                            }
                             return gunSetting.bulletPfb;
                         }
                     }
@@ -654,10 +703,18 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 从游戏中查找枪口火焰预制体
+        /// 从游戏中查找枪口火焰预制体（带缓存）
         /// </summary>
         private static GameObject FindMuzzleFxPrefab(string name)
         {
+            // 使用缓存
+            if (name == "MuzzleFlash_Fire")
+            {
+                if (cachedFireMuzzle != null) return cachedFireMuzzle;
+                if (muzzlePrefabSearched) return null;
+                muzzlePrefabSearched = true;
+            }
+            
             try
             {
                 // 从已加载的武器中查找
@@ -670,6 +727,11 @@ namespace BossRush
                         var gunSetting = entry.prefab.GetComponent<ItemSetting_Gun>();
                         if (gunSetting != null && gunSetting.muzzleFxPfb != null && gunSetting.muzzleFxPfb.name == name)
                         {
+                            // 缓存结果
+                            if (name == "MuzzleFlash_Fire")
+                            {
+                                cachedFireMuzzle = gunSetting.muzzleFxPfb;
+                            }
                             return gunSetting.muzzleFxPfb;
                         }
                     }
@@ -900,8 +962,14 @@ namespace BossRush
             }
         }
         
+        // ========== ParticleSystem反射缓存 ==========
+        private static Type cachedPSType = null;
+        private static PropertyInfo cachedIsPlayingProp = null;
+        private static MethodInfo cachedPlayMethod = null;
+        private static bool psReflectionCached = false;
+        
         /// <summary>
-        /// 确保粒子系统正在播放（使用反射避免直接引用ParticleSystem类型）
+        /// 确保粒子系统正在播放（使用反射避免直接引用ParticleSystem类型，带缓存）
         /// </summary>
         private static void EnsureParticleSystemPlaying(GameObject obj)
         {
@@ -909,41 +977,25 @@ namespace BossRush
             
             try
             {
-                // 使用反射获取ParticleSystem组件并调用Play方法
-                var psType = typeof(Component).Assembly.GetType("UnityEngine.ParticleSystem");
-                if (psType == null)
+                // 缓存ParticleSystem类型和方法（只执行一次）
+                if (!psReflectionCached)
                 {
-                    // 尝试从UnityEngine.ParticleSystemModule程序集获取
-                    foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                    {
-                        psType = asm.GetType("UnityEngine.ParticleSystem");
-                        if (psType != null) break;
-                    }
+                    CacheParticleSystemReflection();
                 }
                 
-                if (psType == null)
-                {
-                    ModBehaviour.DevLog("[DragonBreathWeapon] 无法找到ParticleSystem类型");
-                    return;
-                }
+                if (cachedPSType == null) return;
                 
                 // 获取组件
-                var ps = obj.GetComponent(psType);
+                var ps = obj.GetComponent(cachedPSType);
                 if (ps == null) return;
                 
                 // 检查是否正在播放
-                var isPlayingProp = psType.GetProperty("isPlaying", BindingFlags.Public | BindingFlags.Instance);
-                bool isPlaying = isPlayingProp != null && (bool)isPlayingProp.GetValue(ps, null);
+                bool isPlaying = cachedIsPlayingProp != null && (bool)cachedIsPlayingProp.GetValue(ps, null);
                 
-                if (!isPlaying)
+                if (!isPlaying && cachedPlayMethod != null)
                 {
-                    // 调用Play方法
-                    var playMethod = psType.GetMethod("Play", new Type[] { typeof(bool) });
-                    if (playMethod != null)
-                    {
-                        playMethod.Invoke(ps, new object[] { true });  // withChildren = true
-                        ModBehaviour.DevLog("[DragonBreathWeapon] 启动粒子系统: " + obj.name);
-                    }
+                    cachedPlayMethod.Invoke(ps, new object[] { true });  // withChildren = true
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 启动粒子系统: " + obj.name);
                 }
             }
             catch (Exception e)
@@ -951,6 +1003,42 @@ namespace BossRush
                 ModBehaviour.DevLog("[DragonBreathWeapon] EnsureParticleSystemPlaying异常: " + e.Message);
             }
         }
+        
+        /// <summary>
+        /// 缓存ParticleSystem的反射信息（只执行一次）
+        /// </summary>
+        private static void CacheParticleSystemReflection()
+        {
+            if (psReflectionCached) return;
+            
+            try
+            {
+                // 获取ParticleSystem类型
+                cachedPSType = typeof(Component).Assembly.GetType("UnityEngine.ParticleSystem");
+                if (cachedPSType == null)
+                {
+                    foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        cachedPSType = asm.GetType("UnityEngine.ParticleSystem");
+                        if (cachedPSType != null) break;
+                    }
+                }
+                
+                if (cachedPSType != null)
+                {
+                    cachedIsPlayingProp = cachedPSType.GetProperty("isPlaying", BindingFlags.Public | BindingFlags.Instance);
+                    cachedPlayMethod = cachedPSType.GetMethod("Play", new Type[] { typeof(bool) });
+                }
+            }
+            catch { }
+            
+            psReflectionCached = true;
+        }
+        
+        // ========== SodaPointLight反射缓存 ==========
+        private static Type cachedSodaLightType = null;
+        private static MethodInfo cachedSyncToLightMethod = null;
+        private static bool sodaLightReflectionCached = false;
         
         /// <summary>
         /// 复制SodaPointLight组件到目标父对象下
@@ -972,6 +1060,15 @@ namespace BossRush
                 
                 ModBehaviour.DevLog("[DragonBreathWeapon] 找到 " + sodaLights.Length + " 个SodaPointLight");
                 ModBehaviour.DevLog("[DragonBreathWeapon] 发光点父对象: " + targetParent.name);
+                
+                // 缓存SodaPointLight类型和方法（只执行一次）
+                if (!sodaLightReflectionCached && sodaLights.Length > 0)
+                {
+                    cachedSodaLightType = sodaLights[0].GetType();
+                    cachedSyncToLightMethod = cachedSodaLightType.GetMethod("SyncToLight", 
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    sodaLightReflectionCached = true;
+                }
                 
                 int copyCount = 0;
                 foreach (var light in sodaLights)
@@ -1005,16 +1102,13 @@ namespace BossRush
                     copy.transform.localScale = srcLocalScale;
                     copy.SetActive(true);
                     
-                    // 调用SodaPointLight的SyncToLight方法来初始化材质属性
-                    var sodaLightComponent = copy.GetComponent<Component>();
-                    if (sodaLightComponent != null && sodaLightComponent.GetType().Name == "SodaPointLight")
+                    // 调用SodaPointLight的SyncToLight方法来初始化材质属性（使用缓存的方法）
+                    if (cachedSyncToLightMethod != null)
                     {
-                        // 使用反射调用私有方法SyncToLight
-                        var syncMethod = sodaLightComponent.GetType().GetMethod("SyncToLight", 
-                            BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (syncMethod != null)
+                        var sodaLightComponent = copy.GetComponent(cachedSodaLightType);
+                        if (sodaLightComponent != null)
                         {
-                            syncMethod.Invoke(sodaLightComponent, null);
+                            cachedSyncToLightMethod.Invoke(sodaLightComponent, null);
                             ModBehaviour.DevLog("[DragonBreathWeapon] 已调用SyncToLight");
                         }
                     }

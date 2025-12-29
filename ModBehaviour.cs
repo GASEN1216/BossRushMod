@@ -562,9 +562,6 @@ namespace BossRush
             // 更新UI消息
             UpdateMessage();
             
-            // 运行时配置龙息武器（检查玩家装备的武器）
-            CheckAndConfigureDragonBreathWeapon();
-            
             // 检测 Boss 池窗口快捷键（Ctrl+F10）
             CheckBossPoolWindowHotkey();
             

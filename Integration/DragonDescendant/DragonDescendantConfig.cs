@@ -156,6 +156,28 @@ namespace BossRush
         /// </summary>
         public const int DRAGON_ARMOR_TYPE_ID = 500004;
         
+        /// <summary>
+        /// 龙息武器TypeID（引用DragonBreathConfig）
+        /// </summary>
+        public const int DRAGON_BREATH_TYPE_ID = DragonBreathConfig.WEAPON_TYPE_ID;
+        
+        // ========== 掉落概率配置 ==========
+        
+        /// <summary>
+        /// 龙头掉落概率 (30%)
+        /// </summary>
+        public const float DROP_CHANCE_HELM = 0.3f;
+        
+        /// <summary>
+        /// 龙甲掉落概率 (60%)
+        /// </summary>
+        public const float DROP_CHANCE_ARMOR = 0.6f;
+        
+        /// <summary>
+        /// 龙息武器掉落概率 (10%)
+        /// </summary>
+        public const float DROP_CHANCE_WEAPON = 0.1f;
+        
         // ========== 本地化键 ==========
         
         /// <summary>

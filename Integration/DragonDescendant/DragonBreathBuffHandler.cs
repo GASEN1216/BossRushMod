@@ -4,6 +4,9 @@
 // 模块说明：
 //   监听Health.OnHurt事件，当龙息武器命中敌人时触发龙焰灼烧Buff
 //   绕过原版buffChanceMultiplier限制，使用自定义概率判定
+//   
+//   性能优化：只在玩家装备龙息武器时订阅事件，卸下时取消订阅
+//   避免在所有伤害事件中进行武器ID检查
 // ============================================================================
 
 using UnityEngine;
@@ -16,57 +19,58 @@ namespace BossRush
     /// </summary>
     public static class DragonBreathBuffHandler
     {
-        // 初始化状态
-        private static bool isInitialized = false;
+        // 事件订阅状态
+        private static bool isSubscribed = false;
         
         // 缓存的Buff预制体（延迟加载）
         private static Buff cachedBuffPrefab = null;
         
         /// <summary>
-        /// 初始化处理器，订阅全局伤害事件
+        /// 订阅伤害事件（在玩家装备龙息武器时调用）
         /// </summary>
-        public static void Initialize()
+        public static void Subscribe()
         {
-            if (isInitialized)
-            {
-                ModBehaviour.DevLog("[DragonBreath] 已初始化，跳过重复初始化");
-                return;
-            }
+            if (isSubscribed) return;
             
-            // 订阅全局伤害事件
-            Health.OnHurt += OnGlobalHurt;
-            isInitialized = true;
+            Health.OnHurt += OnDragonBreathHurt;
+            isSubscribed = true;
             
-            ModBehaviour.DevLog("[DragonBreath] 初始化完成，已订阅Health.OnHurt事件");
+            ModBehaviour.DevLog("[DragonBreath] 已订阅Health.OnHurt事件（装备龙息武器）");
         }
         
         /// <summary>
-        /// 清理处理器，取消订阅事件
+        /// 取消订阅伤害事件（在玩家卸下龙息武器时调用）
+        /// </summary>
+        public static void Unsubscribe()
+        {
+            if (!isSubscribed) return;
+            
+            Health.OnHurt -= OnDragonBreathHurt;
+            isSubscribed = false;
+            
+            ModBehaviour.DevLog("[DragonBreath] 已取消订阅Health.OnHurt事件（卸下龙息武器）");
+        }
+        
+        /// <summary>
+        /// 清理处理器（Mod卸载时调用）
         /// </summary>
         public static void Cleanup()
         {
-            if (!isInitialized)
-            {
-                return;
-            }
-            
-            // 取消订阅事件
-            Health.OnHurt -= OnGlobalHurt;
-            isInitialized = false;
+            Unsubscribe();
             cachedBuffPrefab = null;
-            
-            ModBehaviour.DevLog("[DragonBreath] 已清理，取消订阅Health.OnHurt事件");
         }
         
         /// <summary>
-        /// 全局伤害事件回调
+        /// 龙息武器伤害事件回调
+        /// 注意：此回调只在玩家装备龙息武器时才会被调用，无需检查武器ID
         /// </summary>
-        private static void OnGlobalHurt(Health health, DamageInfo damageInfo)
+        private static void OnDragonBreathHurt(Health health, DamageInfo damageInfo)
         {
-            // 安全检查：Health不能为null
+            // 安全检查
             if (health == null) return;
             
-            // 检查武器ID是否为龙息武器
+            // 双重保险：确认是龙息武器造成的伤害
+            // （虽然只在装备时订阅，但可能有其他武器同时造成伤害）
             if (damageInfo.fromWeaponItemID != DragonBreathConfig.WEAPON_TYPE_ID) return;
             
             // 获取目标角色
@@ -82,13 +86,9 @@ namespace BossRush
             
             // 获取Buff预制体
             Buff buffPrefab = GetBuffPrefab();
-            if (buffPrefab == null)
-            {
-                // 仅在首次失败时输出警告，避免刷屏
-                return;
-            }
+            if (buffPrefab == null) return;
             
-            // 应用Buff（不输出日志，避免战斗中刷屏）
+            // 应用Buff
             target.AddBuff(buffPrefab, attacker, damageInfo.fromWeaponItemID);
         }
         
