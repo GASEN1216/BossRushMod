@@ -87,6 +87,28 @@ namespace BossRush
         /// </summary>
         private float lastCollisionTime = 0f;
         
+        // ========== 性能优化：预制体缓存 ==========
+        
+        /// <summary>
+        /// 缓存的燃烧弹预制体（启动时查找一次）
+        /// </summary>
+        private static Grenade cachedGrenadePrefab = null;
+        
+        /// <summary>
+        /// 是否已搜索过燃烧弹预制体
+        /// </summary>
+        private static bool grenadeSearched = false;
+        
+        /// <summary>
+        /// 缓存的子弹预制体（启动时查找一次）
+        /// </summary>
+        private static Projectile cachedBulletPrefab = null;
+        
+        /// <summary>
+        /// 是否已搜索过子弹预制体
+        /// </summary>
+        private static bool bulletSearched = false;
+        
         /// <summary>
         /// 碰撞冷却时间
         /// </summary>
@@ -157,7 +179,93 @@ namespace BossRush
             // 启动燃烧弹计时器
             grenadeTimerCoroutine = StartCoroutine(GrenadeTimerCoroutine());
             
+            // 性能优化：预缓存预制体（只在首次初始化时执行）
+            PreCachePrefabs();
+            
             ModBehaviour.DevLog("[DragonDescendant] 能力控制器初始化完成");
+        }
+        
+        /// <summary>
+        /// 预缓存所有需要的预制体（性能优化）
+        /// 在初始化时一次性查找，避免战斗中频繁调用Resources.FindObjectsOfTypeAll
+        /// </summary>
+        private void PreCachePrefabs()
+        {
+            // 缓存燃烧弹预制体
+            if (!grenadeSearched)
+            {
+                grenadeSearched = true;
+                try
+                {
+                    var allGrenades = Resources.FindObjectsOfTypeAll<Grenade>();
+                    foreach (var g in allGrenades)
+                    {
+                        if (g == null) continue;
+                        // 查找火焰类型的手雷
+                        if (g.fxType == ExplosionFxTypes.fire || 
+                            g.name.ToLower().Contains("fire") || 
+                            g.name.ToLower().Contains("incendiary") ||
+                            g.name.Contains("燃烧"))
+                        {
+                            cachedGrenadePrefab = g;
+                            ModBehaviour.DevLog("[DragonDescendant] 已缓存燃烧弹预制体: " + g.name);
+                            break;
+                        }
+                    }
+                    // 如果没找到火焰类型，使用任意手雷
+                    if (cachedGrenadePrefab == null && allGrenades.Length > 0)
+                    {
+                        cachedGrenadePrefab = allGrenades[0];
+                        ModBehaviour.DevLog("[DragonDescendant] 使用默认手雷预制体: " + cachedGrenadePrefab.name);
+                    }
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 缓存燃烧弹预制体失败: " + e.Message);
+                }
+            }
+            
+            // 缓存子弹预制体
+            if (!bulletSearched)
+            {
+                bulletSearched = true;
+                try
+                {
+                    // 优先从Boss的枪获取
+                    if (bossCharacter != null)
+                    {
+                        var gun = bossCharacter.GetGun();
+                        if (gun != null)
+                        {
+                            var gunSettingField = gun.GetType().GetProperty("GunItemSetting");
+                            if (gunSettingField != null)
+                            {
+                                var gunSetting = gunSettingField.GetValue(gun) as ItemSetting_Gun;
+                                if (gunSetting != null && gunSetting.bulletPfb != null)
+                                {
+                                    cachedBulletPrefab = gunSetting.bulletPfb;
+                                    ModBehaviour.DevLog("[DragonDescendant] 已缓存Boss枪械子弹预制体");
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 后备：从Resources获取
+                    if (cachedBulletPrefab == null)
+                    {
+                        var existingBullets = Resources.FindObjectsOfTypeAll<Projectile>();
+                        if (existingBullets != null && existingBullets.Length > 0)
+                        {
+                            cachedBulletPrefab = existingBullets[0];
+                            ModBehaviour.DevLog("[DragonDescendant] 已缓存默认子弹预制体: " + cachedBulletPrefab.name);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 缓存子弹预制体失败: " + e.Message);
+                }
+            }
         }
 
         
@@ -434,36 +542,12 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 查找燃烧弹预制体
+        /// 查找燃烧弹预制体（使用缓存）
         /// </summary>
         private Grenade FindIncendiaryGrenadePrefab()
         {
-            try
-            {
-                // 尝试从游戏资源中查找燃烧弹
-                var allGrenades = Resources.FindObjectsOfTypeAll<Grenade>();
-                foreach (var g in allGrenades)
-                {
-                    if (g == null) continue;
-                    // 查找火焰类型的手雷
-                    if (g.fxType == ExplosionFxTypes.fire || 
-                        g.name.ToLower().Contains("fire") || 
-                        g.name.ToLower().Contains("incendiary") ||
-                        g.name.Contains("燃烧"))
-                    {
-                        return g;
-                    }
-                }
-                
-                // 如果没找到火焰类型，返回任意手雷
-                if (allGrenades.Length > 0)
-                {
-                    return allGrenades[0];
-                }
-            }
-            catch { }
-            
-            return null;
+            // 直接返回缓存的预制体（已在Initialize时预缓存）
+            return cachedGrenadePrefab;
         }
         
         /// <summary>
@@ -1250,6 +1334,7 @@ namespace BossRush
         /// <summary>
         /// 直接生成子弹（使用BulletPool）
         /// 参考原版ItemAgent_Gun.ShootOneBullet
+        /// 性能优化：使用预缓存的子弹预制体，避免每次调用Resources.FindObjectsOfTypeAll
         /// </summary>
         private void SpawnBulletDirect(Vector3 direction)
         {
@@ -1258,45 +1343,22 @@ namespace BossRush
                 if (bossCharacter == null) return;
                 if (LevelManager.Instance == null || LevelManager.Instance.BulletPool == null) return;
                 
-                // 获取Boss的枪
+                // 获取Boss的枪（用于读取子弹属性）
                 var gun = bossCharacter.GetGun();
-                Projectile bulletPrefab = null;
                 float bulletSpeed = 30f;
                 float bulletDistance = 50f;
                 float damage = 15f;
                 
-                // 尝试从Boss的枪获取子弹预制体和属性
+                // 从Boss的枪获取子弹属性
                 if (gun != null)
                 {
-                    // 通过反射获取GunItemSetting
-                    var gunSettingField = gun.GetType().GetProperty("GunItemSetting");
-                    if (gunSettingField != null)
-                    {
-                        var gunSetting = gunSettingField.GetValue(gun) as ItemSetting_Gun;
-                        if (gunSetting != null && gunSetting.bulletPfb != null)
-                        {
-                            bulletPrefab = gunSetting.bulletPfb;
-                        }
-                    }
-                    
-                    // 获取子弹属性
                     bulletSpeed = gun.BulletSpeed;
                     bulletDistance = gun.BulletDistance;
                     damage = gun.Damage;
                 }
                 
-                // 如果没有找到预制体，尝试从Resources获取默认子弹
-                if (bulletPrefab == null)
-                {
-                    // 尝试从场景中找到任意子弹预制体
-                    var existingBullets = Resources.FindObjectsOfTypeAll<Projectile>();
-                    if (existingBullets != null && existingBullets.Length > 0)
-                    {
-                        bulletPrefab = existingBullets[0];
-                    }
-                }
-                
-                if (bulletPrefab == null)
+                // 使用预缓存的子弹预制体（已在Initialize时缓存）
+                if (cachedBulletPrefab == null)
                 {
                     ModBehaviour.DevLog("[DragonDescendant] [WARNING] 未找到子弹预制体");
                     return;
@@ -1306,7 +1368,7 @@ namespace BossRush
                 Vector3 muzzlePos = bossCharacter.transform.position + Vector3.up * 1.2f;
                 
                 // 从BulletPool获取子弹
-                Projectile bullet = LevelManager.Instance.BulletPool.GetABullet(bulletPrefab);
+                Projectile bullet = LevelManager.Instance.BulletPool.GetABullet(cachedBulletPrefab);
                 if (bullet == null)
                 {
                     ModBehaviour.DevLog("[DragonDescendant] [WARNING] BulletPool返回null");

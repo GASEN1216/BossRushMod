@@ -485,7 +485,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
 
         private StockShop ammoShop;
 
@@ -544,6 +544,9 @@ namespace BossRush
 
             // 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
             RegisterInteractDebugListener();
+            
+            // 注册开枪调试监听（仅在 DevModeEnabled = true 时生效）
+            RegisterShootDebugListener();
         }
 
         void OnGUI()
@@ -558,6 +561,9 @@ namespace BossRush
         {
             // 更新UI消息
             UpdateMessage();
+            
+            // 运行时配置龙息武器（检查玩家装备的武器）
+            CheckAndConfigureDragonBreathWeapon();
             
             // 检测 Boss 池窗口快捷键（Ctrl+F10）
             CheckBossPoolWindowHotkey();
@@ -657,6 +663,19 @@ namespace BossRush
                 daXingXingCleanTimer = 0f;
             }
             
+            // 调试快捷键 F4：输出玩家装备的两把武器的详细信息
+            if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F4))
+            {
+                try
+                {
+                    LogPlayerWeaponsDetailedInfo();
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] F4 武器信息输出失败: " + e.Message);
+                }
+            }
+
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F5))
             {
                 try
@@ -942,6 +961,9 @@ namespace BossRush
         {
             // 注销交互调试监听
             UnregisterInteractDebugListener();
+            
+            // 注销开枪调试监听
+            UnregisterShootDebugListener();
 
             OnDestroy_Integration();
         }

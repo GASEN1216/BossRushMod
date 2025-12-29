@@ -100,5 +100,41 @@ namespace BossRush
             return cnDirection;
         }
         
+        // ========== 龙息武器本地化 ==========
+        
+        /// <summary>
+        /// 获取龙息武器名称
+        /// </summary>
+        public static string DragonBreathName
+        {
+            get { return T("龙息", "Dragon's Breath"); }
+        }
+        
+        /// <summary>
+        /// 获取龙息武器描述
+        /// </summary>
+        public static string DragonBreathDesc
+        {
+            get { return T("龙裔遗族的改装MCX SUPER，命中敌人有50%概率施加龙焰灼烧效果", 
+                          "Modified MCX SUPER of Dragon Descendant, 50% chance to apply Dragon Burn on hit"); }
+        }
+        
+        /// <summary>
+        /// 获取龙焰灼烧Buff名称
+        /// </summary>
+        public static string DragonBurnName
+        {
+            get { return T("龙焰灼烧", "Dragon Burn"); }
+        }
+        
+        /// <summary>
+        /// 获取龙焰灼烧Buff描述
+        /// </summary>
+        public static string DragonBurnDesc
+        {
+            get { return T("每秒受到最大生命值0.1%的火焰伤害，最多叠加10层，持续10秒", 
+                          "Takes 0.1% max HP fire damage per second per layer, stacks up to 10, lasts 10 seconds"); }
+        }
+        
     }
 }

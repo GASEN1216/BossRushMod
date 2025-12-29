@@ -549,6 +549,9 @@ namespace BossRush
                         
                         // 配置龙套装（设置本地化键和属性）
                         DragonSetConfig.TryConfigure(itemPrefab, baseName);
+                        
+                        // 配置龙息武器（配件槽位、弹药类型、耐久度、标签）
+                        DragonBreathWeaponConfig.TryConfigure(itemPrefab, baseName);
 
                         // 注册到游戏物品系统
                         ItemAssetsCollection.AddDynamicEntry(itemPrefab);

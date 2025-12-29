@@ -422,6 +422,9 @@ namespace BossRush
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
+            
+            // 初始化龙息武器Buff处理器（必须在EquipmentFactory加载后调用）
+            DragonBreathBuffHandler.Initialize();
 
             DevLog("[BossRush] ========================================");
             DevLog("[BossRush] Boss Rush Mod v1.0 已加载");
@@ -461,6 +464,9 @@ namespace BossRush
             
             // 取消注册龙套装事件
             UnregisterDragonSetEvents();
+            
+            // 清理龙息武器Buff处理器
+            DragonBreathBuffHandler.Cleanup();
             
             try
             {
@@ -1115,6 +1121,62 @@ namespace BossRush
 
             // 执行原来的设置逻辑
             StartCoroutine(SetupBossRushInDemoChallenge(scene));
+        }
+        
+        // ========== 龙息武器运行时配置 ==========
+        
+        /// <summary>
+        /// 检查并配置玩家装备的龙息武器（在Update中调用）
+        /// </summary>
+        private void CheckAndConfigureDragonBreathWeapon()
+        {
+            try
+            {
+                // 获取玩家角色
+                if (LevelManager.Instance == null) return;
+                var mainChar = LevelManager.Instance.MainCharacter;
+                if (mainChar == null) return;
+                
+                // 获取角色的Item
+                var charItem = mainChar.CharacterItem;
+                if (charItem == null) return;
+                
+                // 检查所有槽位中的武器
+                if (charItem.Slots != null)
+                {
+                    for (int i = 0; i < charItem.Slots.Count; i++)
+                    {
+                        var slot = charItem.Slots.GetSlotByIndex(i);
+                        if (slot != null && slot.Content != null)
+                        {
+                            DragonBreathWeaponConfig.TryConfigureRuntime(slot.Content);
+                        }
+                    }
+                }
+                
+                // 检查背包中的武器
+                if (charItem.Inventory != null)
+                {
+                    foreach (var item in charItem.Inventory)
+                    {
+                        if (item != null)
+                        {
+                            DragonBreathWeaponConfig.TryConfigureRuntime(item);
+                        }
+                    }
+                }
+                
+                // 检查当前手持的武器，为龙息武器添加火焰特效
+                var currentGun = mainChar.GetGun();
+                if (currentGun != null)
+                {
+                    DragonBreathWeaponConfig.TryAddFireEffectsToAgent(currentGun);
+                }
+            }
+            catch
+            {
+                // 静默处理异常，避免影响游戏
+            }
         }
     }
 }

@@ -46,6 +46,18 @@ namespace BossRush
         
         #endregion
         
+        #region 龙息武器本地化数据
+        
+        // 龙息武器名称
+        private static readonly string DragonBreathNameCN = "龙息";
+        private static readonly string DragonBreathNameEN = "Dragon's Breath";
+        
+        // 龙息武器描述
+        private static readonly string DragonBreathDescCN = "J-Lab实验室将赤龙的残骸与MCX相结合的完美艺术品。按下扳机的那一刻，你会明白\"生存\"和\"撤离\"之间还有第三个选项：把道路烤出来。";
+        private static readonly string DragonBreathDescEN = "A masterpiece from J-Lab, fusing crimson dragon remains with the MCX. The moment you pull the trigger, you'll realize there's a third option between 'survive' and 'extract': burn your way out.";
+        
+        #endregion
+        
         #region 公共方法
         
         /// <summary>
@@ -57,6 +69,7 @@ namespace BossRush
             {
                 InjectDragonSetLocalization();
                 InjectDragonDescendantLocalization();
+                InjectDragonBreathWeaponLocalization();
                 ModBehaviour.DevLog("[EquipmentLocalization] 所有装备本地化注入完成");
             }
             catch (Exception e)
@@ -207,6 +220,58 @@ namespace BossRush
         public static string GetDragonArmorDescription()
         {
             return L10n.T(DragonArmorDescCN, DragonArmorDescEN);
+        }
+        
+        #endregion
+        
+        #region 龙息武器本地化方法
+        
+        /// <summary>
+        /// 注入龙息武器本地化
+        /// </summary>
+        public static void InjectDragonBreathWeaponLocalization()
+        {
+            try
+            {
+                string displayName = L10n.T(DragonBreathNameCN, DragonBreathNameEN);
+                string description = L10n.T(DragonBreathDescCN, DragonBreathDescEN);
+                
+                // 注入原始键（Item 的 displayName 字段值为 "龙息"）
+                LocalizationHelper.InjectLocalization("龙息", displayName);
+                LocalizationHelper.InjectLocalization("龙息_Desc", description);
+                
+                // 注入 DragonBreathConfig 中定义的本地化键
+                LocalizationHelper.InjectLocalization(DragonBreathConfig.LOC_KEY_WEAPON_NAME, displayName);
+                LocalizationHelper.InjectLocalization(DragonBreathConfig.LOC_KEY_WEAPON_DESC, description);
+                
+                // 注入物品 ID 键（TypeID = 500005）
+                int typeId = DragonBreathConfig.WEAPON_TYPE_ID;
+                string itemKey = "Item_" + typeId;
+                LocalizationHelper.InjectLocalization(itemKey, displayName);
+                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+                
+                ModBehaviour.DevLog("[EquipmentLocalization] 龙息武器本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入龙息武器本地化失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 获取龙息武器显示名称
+        /// </summary>
+        public static string GetDragonBreathName()
+        {
+            return L10n.T(DragonBreathNameCN, DragonBreathNameEN);
+        }
+        
+        /// <summary>
+        /// 获取龙息武器描述
+        /// </summary>
+        public static string GetDragonBreathDescription()
+        {
+            return L10n.T(DragonBreathDescCN, DragonBreathDescEN);
         }
         
         #endregion
