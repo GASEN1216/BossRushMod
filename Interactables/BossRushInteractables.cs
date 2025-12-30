@@ -1047,7 +1047,6 @@ namespace BossRush
                         // 开启下一波，然后回到加油状态
                         BossRush.ModBehaviour.Instance.StartNextWaveCountdown();
                         _state = SignState.Cheer;
-                        _cheerClickCount = 0; // 重置计数器
                         UpdateMainInteractName();
                         break;
                     case SignState.Victory:
