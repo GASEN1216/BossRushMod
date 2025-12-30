@@ -599,16 +599,6 @@ namespace BossRush
         }
 
         private SignState _state = SignState.EntryAndDifficulty;
-        
-        // 加油状态连续点击计数器（点满10次结束当前波次，作为玩家手动兜底推进方案）
-        private int _cheerClickCount = 0;
-        private const int CHEER_CLICKS_TO_END_WAVE = 10;
-        private const float CHEER_CLICK_TIMEOUT = 2f; // 超过2秒没点就重置（用于协程超时）
-        
-        // 加油倒计数UI相关
-        private GameObject _cheerCountdownUI = null;
-        private UnityEngine.UI.Text _cheerCountdownText = null;
-        private Coroutine _cheerCountdownCoroutine = null;
 
         private void UpdateMainInteractName()
         {
@@ -927,24 +917,18 @@ namespace BossRush
         public void SetCheerMode()
         {
             _state = SignState.Cheer;
-            _cheerClickCount = 0; // 切换到加油状态时重置计数器
-            HideCheerCountdownUI(); // 隐藏倒计数UI
             UpdateMainInteractName();
         }
 
         public void SetNextWaveMode()
         {
             _state = SignState.NextWave;
-            _cheerClickCount = 0; // 切换状态时重置计数器
-            HideCheerCountdownUI(); // 隐藏倒计数UI
             UpdateMainInteractName();
         }
 
         public void SetVictoryMode()
         {
             _state = SignState.Victory;
-            _cheerClickCount = 0; // 切换状态时重置计数器
-            HideCheerCountdownUI(); // 隐藏倒计数UI
             UpdateMainInteractName();
         }
         
@@ -954,100 +938,7 @@ namespace BossRush
         public void SetEntryMode()
         {
             _state = SignState.EntryAndDifficulty;
-            _cheerClickCount = 0; // 切换状态时重置计数器
-            HideCheerCountdownUI(); // 隐藏倒计数UI
             UpdateMainInteractName();
-        }
-        
-        /// <summary>
-        /// 显示加油倒计数UI（红色数字，显示在屏幕右侧）
-        /// </summary>
-        private void ShowCheerCountdownUI(int remaining)
-        {
-            try
-            {
-                // 如果UI不存在，创建它
-                if (_cheerCountdownUI == null)
-                {
-                    // 查找Canvas
-                    Canvas canvas = UnityEngine.Object.FindObjectOfType<Canvas>();
-                    if (canvas == null) return;
-                    
-                    _cheerCountdownUI = new GameObject("BossRush_CheerCountdown");
-                    _cheerCountdownUI.transform.SetParent(canvas.transform, false);
-                    
-                    // 添加Text组件
-                    _cheerCountdownText = _cheerCountdownUI.AddComponent<UnityEngine.UI.Text>();
-                    _cheerCountdownText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    _cheerCountdownText.fontSize = 72;
-                    _cheerCountdownText.color = Color.red;
-                    _cheerCountdownText.alignment = TextAnchor.MiddleCenter;
-                    _cheerCountdownText.fontStyle = FontStyle.Bold;
-                    
-                    // 添加Outline效果增强可见性
-                    var outline = _cheerCountdownUI.AddComponent<UnityEngine.UI.Outline>();
-                    outline.effectColor = Color.black;
-                    outline.effectDistance = new Vector2(2, -2);
-                    
-                    // 设置位置（屏幕右侧中间偏上）
-                    RectTransform rect = _cheerCountdownUI.GetComponent<RectTransform>();
-                    rect.anchorMin = new Vector2(0.85f, 0.6f);
-                    rect.anchorMax = new Vector2(0.95f, 0.7f);
-                    rect.offsetMin = Vector2.zero;
-                    rect.offsetMax = Vector2.zero;
-                }
-                
-                // 更新数字
-                _cheerCountdownText.text = remaining.ToString();
-                _cheerCountdownUI.SetActive(true);
-                
-                // 重置/启动2秒超时协程
-                if (_cheerCountdownCoroutine != null)
-                {
-                    StopCoroutine(_cheerCountdownCoroutine);
-                }
-                _cheerCountdownCoroutine = StartCoroutine(CheerCountdownTimeout());
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] ShowCheerCountdownUI 失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 隐藏加油倒计数UI
-        /// </summary>
-        private void HideCheerCountdownUI()
-        {
-            try
-            {
-                if (_cheerCountdownCoroutine != null)
-                {
-                    StopCoroutine(_cheerCountdownCoroutine);
-                    _cheerCountdownCoroutine = null;
-                }
-                
-                if (_cheerCountdownUI != null)
-                {
-                    _cheerCountdownUI.SetActive(false);
-                }
-                
-                // 重置计数器
-                _cheerClickCount = 0;
-            }
-            catch {}
-        }
-        
-        /// <summary>
-        /// 2秒超时协程，超时后隐藏UI并重置计数
-        /// </summary>
-        private IEnumerator CheerCountdownTimeout()
-        {
-            yield return new WaitForSeconds(CHEER_CLICK_TIMEOUT);
-            
-            // 超时，隐藏UI并重置
-            HideCheerCountdownUI();
-            ModBehaviour.DevLog("[BossRush] 加油倒计数超时，已重置");
         }
 
         /// <summary>
@@ -1150,35 +1041,7 @@ namespace BossRush
                         BossRush.ModBehaviour.Instance.TrySpawnEggForPlayer();
                         break;
                     case SignState.Cheer:
-                        // 加油状态：连续点击10次结束当前波次（作为玩家手动兜底推进方案）
-                        // 第一次点击时显示红色数字10，之后每次点击数字减1
-                        // 超过2秒没点就重置，减到0时视为当前波次已结束
-                        
-                        // 如果是第一次点击（计数为0），初始化为10
-                        if (_cheerClickCount == 0)
-                        {
-                            _cheerClickCount = CHEER_CLICKS_TO_END_WAVE;
-                        }
-                        
-                        // 显示当前剩余次数
-                        ShowCheerCountdownUI(_cheerClickCount);
-                        
-                        // 减少计数
-                        _cheerClickCount--;
-                        
-                        if (_cheerClickCount <= 0)
-                        {
-                            // 达到0次，结束当前波次（视为boss已全部打完）
-                            _cheerClickCount = 0;
-                            HideCheerCountdownUI();
-                            
-                            // 调用ModBehaviour的方法来结束当前波次
-                            if (BossRush.ModBehaviour.Instance != null)
-                            {
-                                BossRush.ModBehaviour.Instance.ForceEndCurrentWave();
-                            }
-                            ModBehaviour.DevLog("[BossRush] 加油连点10次，手动结束当前波次！");
-                        }
+                        // 加油状态：纯展示，没有实际效果
                         break;
                     case SignState.NextWave:
                         // 开启下一波，然后回到加油状态
