@@ -419,6 +419,10 @@ namespace BossRush
             InjectBirthdayCakeLocalization();
             // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
             
+            // 初始化 Wiki Book 物品
+            InitializeWikiBookItem();
+            InjectWikiBookLocalization();
+            
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");

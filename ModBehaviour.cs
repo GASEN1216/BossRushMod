@@ -485,7 +485,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
 
         private StockShop ammoShop;
 
@@ -538,6 +538,9 @@ namespace BossRush
             DevLog("[BossRush] 正在加载 Boss Rush Mod...");
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            
+            // 重置Wiki缓存，确保每次进游戏都重新加载
+            WikiContentManager.Instance.ResetCache();
             
             // 监听玩家死亡事件
             Health.OnDead += OnPlayerDeathInBossRush;
@@ -1963,111 +1966,6 @@ namespace BossRush
         {
             OnInfiniteHellWaveCompleted_LootAndRewards();
             return;
-        }
-        
-        /// <summary>
-        /// 玩家手动强制结束当前波次（作为boss刷不出来的兜底方案）
-        /// 清理当前波次的所有Boss并推进到下一波或结束挑战
-        /// 支持：弹指可灭、有点意思、无间炼狱、白手起家
-        /// </summary>
-        public void ForceEndCurrentWave()
-        {
-            try
-            {
-                // 检查是否在BossRush或ModeD模式中
-                if (!IsActive && !IsModeDActive)
-                {
-                    DevLog("[BossRush] ForceEndCurrentWave: BossRush和ModeD都未激活，忽略");
-                    return;
-                }
-                
-                // 白手起家模式：清理ModeD敌人列表
-                if (IsModeDActive)
-                {
-                    DevLog("[ModeD] ForceEndCurrentWave: 玩家手动结束当前波次");
-                    
-                    // 清理当前波次的所有敌人
-                    if (modeDCurrentWaveEnemies != null)
-                    {
-                        for (int i = 0; i < modeDCurrentWaveEnemies.Count; i++)
-                        {
-                            CharacterMainControl enemy = modeDCurrentWaveEnemies[i];
-                            if (enemy != null)
-                            {
-                                try
-                                {
-                                    Health h = enemy.Health;
-                                    if (h != null && !h.IsDead)
-                                    {
-                                        UnityEngine.Object.Destroy(enemy.gameObject);
-                                    }
-                                }
-                                catch {}
-                            }
-                        }
-                        modeDCurrentWaveEnemies.Clear();
-                    }
-                    
-                    // 触发ModeD波次完成
-                    OnModeDWaveComplete();
-                    return;
-                }
-                
-                // BossRush模式（弹指可灭、有点意思、无间炼狱）
-                DevLog("[BossRush] ForceEndCurrentWave: 玩家手动结束当前波次");
-                
-                // 清理当前波次的所有Boss
-                if (bossesPerWave > 1)
-                {
-                    // 多Boss模式：清理currentWaveBosses列表中的所有Boss
-                    if (currentWaveBosses != null)
-                    {
-                        for (int i = 0; i < currentWaveBosses.Count; i++)
-                        {
-                            MonoBehaviour boss = currentWaveBosses[i];
-                            if (boss != null)
-                            {
-                                try
-                                {
-                                    Health h = boss.GetComponent<Health>();
-                                    if (h != null && !h.IsDead)
-                                    {
-                                        // 直接销毁Boss对象
-                                        UnityEngine.Object.Destroy(boss.gameObject);
-                                    }
-                                }
-                                catch {}
-                            }
-                        }
-                        currentWaveBosses.Clear();
-                    }
-                    bossesInCurrentWaveRemaining = 0;
-                }
-                else
-                {
-                    // 单Boss模式：清理currentBoss
-                    if (currentBoss != null)
-                    {
-                        try
-                        {
-                            MonoBehaviour bossMb = currentBoss as MonoBehaviour;
-                            if (bossMb != null)
-                            {
-                                UnityEngine.Object.Destroy(bossMb.gameObject);
-                            }
-                        }
-                        catch {}
-                        currentBoss = null;
-                    }
-                }
-                
-                // 推进到下一波或结束挑战
-                ProceedAfterWaveFinished();
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[BossRush] ForceEndCurrentWave 失败: " + e.Message);
-            }
         }
         
         /// <summary>

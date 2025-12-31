@@ -37,6 +37,14 @@ namespace BossRush
         private const string CAKE_DESC_EN = "May you always be happy! ----Blessings from Little Pig Shark";
         
         // ============================================================================
+        // Wiki Book 本地化数据
+        // ============================================================================
+        private const string WIKI_BOOK_NAME_CN = "Boss Rush 百科全书";
+        private const string WIKI_BOOK_NAME_EN = "Boss Rush Encyclopedia";
+        private const string WIKI_BOOK_DESC_CN = "记载了 Boss Rush 模式的各种知识，包括 Boss 介绍、装备说明、模式攻略等。";
+        private const string WIKI_BOOK_DESC_EN = "A comprehensive guide to Boss Rush mode, including boss introductions, equipment descriptions, and strategy guides.";
+        
+        // ============================================================================
         // 龙裔遗族Boss本地化数据
         // ============================================================================
         private const string DRAGON_DESCENDANT_NAME_CN = "龙裔遗族";
@@ -148,12 +156,13 @@ namespace BossRush
         /// <summary>
         /// 注入所有本地化（主入口）
         /// </summary>
-        public static void InjectAll(int ticketTypeId = 0, int cakeTypeId = 0)
+        public static void InjectAll(int ticketTypeId = 0, int cakeTypeId = 0, int wikiBookTypeId = 0)
         {
             try
             {
                 InjectTicketLocalization(ticketTypeId);
                 InjectCakeLocalization(cakeTypeId);
+                InjectWikiBookLocalization(wikiBookTypeId);
                 InjectDragonDescendantLocalization();
                 InjectCourierNPCLocalization();
                 InjectUILocalization();
@@ -217,6 +226,34 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization(itemKey, displayName);
                 LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
             }
+        }
+        
+        /// <summary>
+        /// 注入 Wiki Book 本地化
+        /// </summary>
+        public static void InjectWikiBookLocalization(int typeId)
+        {
+            string displayName = L10n.T(WIKI_BOOK_NAME_CN, WIKI_BOOK_NAME_EN);
+            string description = L10n.T(WIKI_BOOK_DESC_CN, WIKI_BOOK_DESC_EN);
+            
+            // 注入中英文键
+            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization("BossRush_WikiBook", displayName);
+            
+            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_CN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_EN + "_Desc", description);
+            LocalizationHelper.InjectLocalization("BossRush_WikiBook_Desc", description);
+            
+            // 注入物品 ID 键
+            if (typeId > 0)
+            {
+                string itemKey = "Item_" + typeId;
+                LocalizationHelper.InjectLocalization(itemKey, displayName);
+                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+            }
+            
+            ModBehaviour.DevLog("[LocalizationInjector] Wiki Book 本地化注入完成");
         }
         
         /// <summary>
@@ -486,6 +523,22 @@ namespace BossRush
         public static string GetCakeDescription()
         {
             return L10n.T(CAKE_DESC_CN, CAKE_DESC_EN);
+        }
+        
+        /// <summary>
+        /// 获取 Wiki Book 显示名称
+        /// </summary>
+        public static string GetWikiBookName()
+        {
+            return L10n.T(WIKI_BOOK_NAME_CN, WIKI_BOOK_NAME_EN);
+        }
+        
+        /// <summary>
+        /// 获取 Wiki Book 描述
+        /// </summary>
+        public static string GetWikiBookDescription()
+        {
+            return L10n.T(WIKI_BOOK_DESC_CN, WIKI_BOOK_DESC_EN);
         }
     }
 }
