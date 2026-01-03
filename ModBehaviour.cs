@@ -161,6 +161,88 @@ namespace BossRush
             new Vector3(220.25f, 0.01f, 294.99f),
         };
         
+        // 仓库区刷新点（Level_HiddenWarehouse）
+        private static readonly Vector3[] HiddenWarehouseSpawnPoints = new Vector3[]
+        {
+            new Vector3(141.35f, 0.02f, 170.59f),
+            new Vector3(126.82f, 0.02f, 169.88f),
+            new Vector3(129.92f, 0.02f, 172.90f),
+            new Vector3(116.08f, 0.02f, 168.03f),
+            new Vector3(115.49f, 0.02f, 178.44f),
+            new Vector3(119.05f, 0.02f, 177.15f),
+            new Vector3(124.62f, 0.02f, 176.69f),
+            new Vector3(109.01f, 0.02f, 190.09f),
+            new Vector3(117.45f, 0.02f, 196.56f),
+            new Vector3(118.59f, 0.02f, 203.29f),
+            new Vector3(138.41f, 0.02f, 202.64f),
+            new Vector3(129.81f, 0.02f, 212.69f),
+            new Vector3(146.06f, 0.02f, 196.94f),
+        };
+        
+        // 农场镇刷新点（Level_Farm_01）- 基于实际测量坐标
+        private static readonly Vector3[] FarmTownSpawnPoints = new Vector3[]
+        {
+            new Vector3(367.54f, 0.04f, 598.68f),   // 西北（快递员附近）
+            new Vector3(368.47f, 0.04f, 588.55f),   // 西
+            new Vector3(365.30f, 0.04f, 581.88f),   // 西南
+            new Vector3(374.28f, 0.04f, 575.82f),   // 南偏西
+            new Vector3(378.53f, 0.04f, 570.46f),   // 南
+            new Vector3(392.67f, 0.04f, 570.36f),   // 南偏东
+            new Vector3(404.34f, 0.04f, 582.67f),   // 东南
+            new Vector3(404.53f, 0.04f, 589.58f),   // 东
+            new Vector3(393.05f, 0.04f, 600.78f),   // 东北
+            new Vector3(384.58f, 0.04f, 598.45f),   // 北
+            new Vector3(376.39f, 0.04f, 598.13f),   // 北偏西
+        };
+        
+        // J-Lab 实验室刷新点（Level_JLab_1）- 基于 Player.log 提取的坐标
+        private static readonly Vector3[] JLabSpawnPoints = new Vector3[]
+        {
+            new Vector3(-90.76f, 0.02f, -56.25f),
+            new Vector3(-78.04f, 0.02f, -56.94f),
+            new Vector3(-76.37f, 0.02f, -44.28f),
+            new Vector3(-72.16f, 0.02f, -37.85f),
+            new Vector3(-73.87f, 0.02f, -27.95f),
+            new Vector3(-64.30f, 0.02f, -22.38f),
+            new Vector3(-53.08f, 0.02f, -29.81f),
+            new Vector3(-44.50f, 0.02f, -29.05f),
+            new Vector3(-30.57f, 0.02f, -29.24f),
+            new Vector3(-11.86f, 0.02f, -21.66f),
+            new Vector3(-16.54f, 0.02f, -31.63f),
+            new Vector3(-12.65f, 0.02f, -38.82f),
+            new Vector3(-18.50f, 0.02f, -43.34f),
+            new Vector3(-12.67f, 0.02f, -50.20f),
+            new Vector3(-13.51f, 0.02f, -57.46f),
+            new Vector3(-23.80f, 0.02f, -66.11f),
+            new Vector3(-66.06f, 0.02f, -65.31f),
+        };
+        
+        // 风暴区地下刷新点（Level_StormZone_B0）- 基于 Player.log 提取的坐标
+        private static readonly Vector3[] StormZoneUndergroundSpawnPoints = new Vector3[]
+        {
+            new Vector3(109.92f, 0.02f, 503.95f),
+            new Vector3(95.41f, 0.02f, 512.83f),
+            new Vector3(88.76f, 0.02f, 506.97f),
+            new Vector3(83.03f, 0.02f, 501.59f),
+            new Vector3(83.21f, 0.02f, 496.36f),
+            new Vector3(80.40f, 0.02f, 489.53f),
+            new Vector3(83.54f, 0.02f, 470.90f),
+            new Vector3(98.30f, 0.02f, 466.85f),
+            new Vector3(105.47f, 0.02f, 457.83f),
+            new Vector3(114.10f, 0.02f, 457.36f),
+            new Vector3(117.98f, 0.02f, 465.75f),
+            new Vector3(127.64f, 0.02f, 468.28f),
+            new Vector3(136.18f, 0.02f, 470.73f),
+            new Vector3(139.21f, 0.02f, 480.10f),
+            new Vector3(139.15f, 0.02f, 488.37f),
+            new Vector3(138.02f, 0.02f, 496.70f),
+            new Vector3(133.72f, 0.02f, 503.70f),
+            new Vector3(128.21f, 0.02f, 509.46f),
+            new Vector3(123.54f, 0.08f, 513.22f),
+            new Vector3(118.94f, 0.02f, 508.00f),
+            new Vector3(99.41f, 0.02f, 508.61f),
+        };
+        
         /// <summary>
         /// 所有支持的 BossRush 地图配置（添加新地图只需在此处添加配置）
         /// </summary>
@@ -204,6 +286,58 @@ namespace BossRush
                 0,                            // 信标索引
                 null,                         // 预览图（暂无）
                 new Vector3(0f, 0f, 1f)       // 地图北方（零号区：Z+ 方向）
+            ),
+            // 仓库区（第四位）
+            new BossRushMapConfig(
+                "Level_HiddenWarehouse",      // 运行时场景名
+                "Level_HiddenWarehouse_Main", // 加载用场景ID（需要_Main后缀才能正确初始化）
+                "仓库区",                      // 显示名称（中文）
+                "Hidden Warehouse",           // 显示名称（英文）
+                HiddenWarehouseSpawnPoints,   // 刷新点
+                new Vector3(128.86f, 0.02f, 190.80f),  // 玩家传送位置
+                new Vector3(128.86f, 0.02f, 190.80f),  // 路牌位置
+                0,                            // 信标索引
+                null,                         // 预览图（使用原版传送UI第二个选项的图）
+                new Vector3(0f, 0f, 1f)       // 地图北方（仓库区：Z+ 方向）
+            ),
+            // 农场镇（第五位）
+            new BossRushMapConfig(
+                "Level_Farm_01",              // 运行时场景名
+                "Level_Farm_Main",            // 加载用场景ID（需要_Main后缀）
+                "农场镇",                      // 显示名称（中文）
+                "Farm Town",                  // 显示名称（英文）
+                FarmTownSpawnPoints,          // 刷新点
+                new Vector3(387.79f, 0.04f, 585.96f),  // 玩家传送位置
+                new Vector3(387.79f, 0.04f, 585.96f),  // 路牌位置
+                0,                            // 信标索引
+                null,                         // 预览图（使用原版传送UI第三个选项的图）
+                new Vector3(0f, 0f, 1f)       // 地图北方（农场镇：Z+ 方向）
+            ),
+            // J-Lab 实验室（第六位）
+            new BossRushMapConfig(
+                "Level_JLab_1",               // 运行时场景名
+                "Level_JLab_Main",            // 加载用场景ID（需要_Main后缀）
+                "J-Lab实验室",                 // 显示名称（中文）
+                "J-Lab Laboratory",           // 显示名称（英文）
+                JLabSpawnPoints,              // 刷新点
+                new Vector3(-36.16f, 0.02f, -52.02f),  // 玩家传送位置
+                new Vector3(-36.16f, 0.02f, -52.02f),  // 路牌位置
+                0,                            // 信标索引
+                null,                         // 预览图（使用原版传送UI第五个选项的图）
+                new Vector3(0f, 0f, 1f)       // 地图北方（J-Lab：Z+ 方向）
+            ),
+            // 口口场地（第七位）- 风暴区地下
+            new BossRushMapConfig(
+                "Level_StormZone_B0",         // 运行时场景名（子场景）
+                "Level_StormZone_Main",       // 加载用场景ID（需要_Main后缀）
+                "口口场地",                    // 显示名称（中文）
+                "Underground Arena",          // 显示名称（英文）
+                StormZoneUndergroundSpawnPoints, // 刷新点
+                new Vector3(110.14f, 0.02f, 485.10f),  // 玩家传送位置
+                new Vector3(110.14f, 0.02f, 485.10f),  // 路牌位置
+                0,                            // 信标索引
+                null,                         // 预览图（使用原版传送UI第六个选项的图）
+                new Vector3(0f, 0f, 1f)       // 地图北方（风暴区地下：Z+ 方向）
             ),
             // 后续添加新地图只需在此处添加 BossRushMapConfig
         };
@@ -697,8 +831,8 @@ namespace BossRush
                         }
                         else
                         {
-                            // 战斗场景输出最近的一个 GameObject
-                            LogNearbyGameObjects(playerPos, 10f, 1);
+                            // 战斗场景输出最近的 30 个 GameObject
+                            LogNearbyGameObjects(playerPos, 10f, 30);
                         }
                     }
                 }
@@ -1804,6 +1938,7 @@ namespace BossRush
         
         /// <summary>
         /// 禁用场景中的所有spawner
+        /// [性能优化] 使用单次 FindObjectsOfType<MonoBehaviour> 替代多次调用
         /// </summary>
         private void DisableAllSpawners()
         {
@@ -1816,39 +1951,37 @@ namespace BossRush
             {
                 int destroyedCount = 0;
                 
-                // 销毁 RandomCharacterSpawner
-                var randomSpawners = UnityEngine.Object.FindObjectsOfType<RandomCharacterSpawner>();
-                foreach (var spawner in randomSpawners)
+                // [性能优化] 使用单次查找获取所有 MonoBehaviour，然后按类型筛选
+                // 这比多次调用 FindObjectsOfType<T> 更高效
+                MonoBehaviour[] allBehaviours = UnityEngine.Object.FindObjectsOfType<MonoBehaviour>();
+                
+                // 收集需要销毁的 GameObject（避免在遍历时修改集合）
+                List<GameObject> toDestroy = new List<GameObject>();
+                
+                foreach (var behaviour in allBehaviours)
                 {
-                    if (spawner != null)
+                    if (behaviour == null) continue;
+                    
+                    // 检查是否是需要销毁的 spawner 类型
+                    if (behaviour is RandomCharacterSpawner || 
+                        behaviour is WaveCharacterSpawner || 
+                        behaviour is CharacterSpawnerRoot)
                     {
-                        UnityEngine.Object.Destroy(spawner.gameObject);
-                        destroyedCount++;
-                        DevLog("[BossRush] 已销毁 RandomCharacterSpawner: " + spawner.gameObject.name);
+                        if (!toDestroy.Contains(behaviour.gameObject))
+                        {
+                            toDestroy.Add(behaviour.gameObject);
+                        }
                     }
                 }
-
-                // 销毁 WaveCharacterSpawner
-                var waveSpawners = UnityEngine.Object.FindObjectsOfType<WaveCharacterSpawner>();
-                foreach (var spawner in waveSpawners)
+                
+                // 批量销毁
+                foreach (var go in toDestroy)
                 {
-                    if (spawner != null)
+                    if (go != null)
                     {
-                        UnityEngine.Object.Destroy(spawner.gameObject);
+                        DevLog("[BossRush] 已销毁 " + go.GetType().Name + ": " + go.name);
+                        UnityEngine.Object.Destroy(go);
                         destroyedCount++;
-                        DevLog("[BossRush] 已销毁 WaveCharacterSpawner: " + spawner.gameObject.name);
-                    }
-                }
-
-                // 销毁 CharacterSpawnerRoot（触发器刷怪，如 DEMO 地图的大兴兴）
-                var spawnerRoots = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>();
-                foreach (var root in spawnerRoots)
-                {
-                    if (root != null)
-                    {
-                        UnityEngine.Object.Destroy(root.gameObject);
-                        destroyedCount++;
-                        DevLog("[BossRush] 已销毁 CharacterSpawnerRoot: " + root.gameObject.name);
                     }
                 }
 

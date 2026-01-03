@@ -1148,40 +1148,53 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 获取安全的Boss生成位置（确保在地面上）
+        /// 获取安全的Boss生成位置（只修正Y轴高度，不改变XZ坐标）
         /// </summary>
+        /// <remarks>
+        /// 保持原始XZ坐标不变，只通过Raycast修正Y轴高度到地面
+        /// 避免NavMesh采样导致敌人刷在预设点位之外
+        /// </remarks>
         private static Vector3 GetSafeBossSpawnPosition(Vector3 rawPosition)
         {
             Vector3 result = rawPosition;
+            string method = "原始";
             try
             {
-                // 从更高的位置向下射线检测，增加检测成功率
-                Vector3 origin = rawPosition + Vector3.up * 10f;
+                // 从更高的位置向下射线检测地面高度
+                Vector3 origin = rawPosition + Vector3.up * 15f;
                 float maxDistance = 30f;
                 LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
                 RaycastHit hit;
                 if (Physics.Raycast(origin, Vector3.down, out hit, maxDistance, groundMask))
                 {
-                    result = hit.point + Vector3.up * 0.15f;
+                    // 只修正Y轴，保持XZ不变
+                    result = new Vector3(rawPosition.x, hit.point.y + 0.15f, rawPosition.z);
+                    method = "Raycast(仅Y轴)";
                 }
                 else
                 {
-                    // Raycast失败，尝试NavMesh
+                    // Raycast失败，尝试用NavMesh获取高度（但不改变XZ）
                     NavMeshHit navHit;
-                    if (NavMesh.SamplePosition(rawPosition, out navHit, 10f, NavMesh.AllAreas))
+                    if (NavMesh.SamplePosition(rawPosition, out navHit, 5f, NavMesh.AllAreas))
                     {
-                        result = navHit.position + Vector3.up * 0.15f;
+                        // 只取NavMesh的Y值，XZ保持原始
+                        result = new Vector3(rawPosition.x, navHit.position.y + 0.15f, rawPosition.z);
+                        method = "NavMesh(仅Y轴)";
                     }
                     else
                     {
                         // 都失败了，使用原始位置但抬高一点
-                        result = rawPosition + Vector3.up * 1f;
+                        result = rawPosition + Vector3.up * 0.5f;
+                        method = "回退(+0.5m)";
                     }
                 }
+                
+                DevLog($"[BossRush] 刷新点修正: 原始={rawPosition}, 结果={result}, 方法={method}");
             }
-            catch
+            catch (Exception e)
             {
-                result = rawPosition + Vector3.up * 1f;
+                result = rawPosition + Vector3.up * 0.5f;
+                DevLog($"[BossRush] GetSafeBossSpawnPosition 异常: {e.Message}");
             }
             return result;
         }

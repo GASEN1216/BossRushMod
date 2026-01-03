@@ -39,10 +39,10 @@ namespace BossRush
         // ============================================================================
         // Wiki Book 本地化数据
         // ============================================================================
-        private const string WIKI_BOOK_NAME_CN = "Boss Rush 百科全书";
-        private const string WIKI_BOOK_NAME_EN = "Boss Rush Encyclopedia";
-        private const string WIKI_BOOK_DESC_CN = "记载了 Boss Rush 模式的各种知识，包括 Boss 介绍、装备说明、模式攻略等。";
-        private const string WIKI_BOOK_DESC_EN = "A comprehensive guide to Boss Rush mode, including boss introductions, equipment descriptions, and strategy guides.";
+        private const string WIKI_BOOK_NAME_CN = "冒险家日志";
+        private const string WIKI_BOOK_NAME_EN = "Adventurer's Journal";
+        private const string WIKI_BOOK_DESC_CN = "一本皱皱巴巴的冒险家日志，看得出阿稳已经翻了又翻、开了又开。";
+        private const string WIKI_BOOK_DESC_EN = "A crumpled adventurer's journal. You can tell Awen has flipped through it again and again.";
         
         // ============================================================================
         // 龙裔遗族Boss本地化数据
@@ -121,6 +121,17 @@ namespace BossRush
         private const string STORAGE_DEPOSIT_DISCARD_ALL_EN = "Discard All";
         private const string STORAGE_DEPOSIT_DISCARDED_CN = "已丢弃所有寄存物品";
         private const string STORAGE_DEPOSIT_DISCARDED_EN = "All deposited items discarded";
+        
+        // ============================================================================
+        // 快递员首次见面对话（大对话系统）
+        // ============================================================================
+        private static readonly string[][] COURIER_FIRST_MEET_DIALOGUES = new string[][]
+        {
+            new string[] { "哟，新来的？我是阿稳，这片区域的快递员。", "Hey, newbie? I'm Awen, the courier for this area." },
+            new string[] { "别看我只是个送快递的，这地方的门道我可清楚得很。", "Don't let the delivery job fool you, I know all the ins and outs of this place." },
+            new string[] { "这本书给你，里面记载了不少有用的情报。", "Here's a book for you, it contains a lot of useful intel." },
+            new string[] { "有什么需要寄存的东西也可以找我，收费公道童叟无欺！", "If you need to store anything, come find me. Fair prices, no tricks!" }
+        };
         
         // 快递员随机对话（中英文对照）
         private static readonly string[][] COURIER_DIALOGUES = new string[][]
@@ -244,6 +255,11 @@ namespace BossRush
             LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_CN + "_Desc", description);
             LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_EN + "_Desc", description);
             LocalizationHelper.InjectLocalization("BossRush_WikiBook_Desc", description);
+            
+            // 注入 Unity 预制体中使用的本地化键（冒险家日志）
+            // 预制体 displayName 字段设置为 "冒险家日志"，游戏会用它作为本地化键查找
+            LocalizationHelper.InjectLocalization("冒险家日志", displayName);
+            LocalizationHelper.InjectLocalization("冒险家日志_Desc", description);
             
             // 注入物品 ID 键
             if (typeId > 0)
@@ -395,7 +411,39 @@ namespace BossRush
             string itemNotUnlocked = L10n.T(STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_CN, STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_EN);
             LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_ItemNotUnlocked", itemNotUnlocked);
             
+            // 快递员首次见面对话（大对话系统使用）
+            for (int i = 0; i < COURIER_FIRST_MEET_DIALOGUES.Length; i++)
+            {
+                string dialogue = L10n.T(COURIER_FIRST_MEET_DIALOGUES[i][0], COURIER_FIRST_MEET_DIALOGUES[i][1]);
+                LocalizationHelper.InjectLocalization("BossRush_CourierFirstMeet_" + i, dialogue);
+            }
+            
+            // "给你"气泡文字
+            string giveText = L10n.T("给你", "Here you go");
+            LocalizationHelper.InjectLocalization("BossRush_CourierGive", giveText);
+            
             ModBehaviour.DevLog("[LocalizationInjector] 快递员NPC本地化注入完成");
+        }
+        
+        /// <summary>
+        /// 获取快递员首次见面对话数量
+        /// </summary>
+        public static int GetCourierFirstMeetDialogueCount()
+        {
+            return COURIER_FIRST_MEET_DIALOGUES.Length;
+        }
+        
+        /// <summary>
+        /// 获取快递员首次见面对话的本地化键数组
+        /// </summary>
+        public static string[] GetCourierFirstMeetDialogueKeys()
+        {
+            string[] keys = new string[COURIER_FIRST_MEET_DIALOGUES.Length];
+            for (int i = 0; i < COURIER_FIRST_MEET_DIALOGUES.Length; i++)
+            {
+                keys[i] = "BossRush_CourierFirstMeet_" + i;
+            }
+            return keys;
         }
         
         /// <summary>

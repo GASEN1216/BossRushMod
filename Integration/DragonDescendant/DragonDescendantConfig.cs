@@ -49,12 +49,12 @@ namespace BossRush
         /// <summary>
         /// 火箭弹直接命中伤害
         /// </summary>
-        public const float RocketDirectDamage = 20f;
+        public const float RocketDirectDamage = 5f;
         
         /// <summary>
         /// 火箭弹爆炸伤害
         /// </summary>
-        public const float RocketExplosionDamage = 20f;
+        public const float RocketExplosionDamage = 5f;
         
         /// <summary>
         /// 火箭弹爆炸范围（基础1m，如果Boss在范围内会动态扩大到 distToBoss+0.5m）

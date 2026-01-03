@@ -15,9 +15,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
 using Duckov.Utilities;
 using Pathfinding;
+using Cysharp.Threading.Tasks;
+using Saves;
+using ItemStatsSystem;
+using Dialogues;
+using NodeCanvas.DialogueTrees;
+using SodaCraft.Localizations;
 
 namespace BossRush
 {
@@ -162,18 +169,65 @@ namespace BossRush
                 return;
             }
             
-            // 获取生成位置（随机选择一个 Boss 刷新点）
-            Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
-            if (spawnPoints == null || spawnPoints.Length == 0)
-            {
-                DevLog("[CourierNPC] 无法获取刷新点，跳过生成");
-                return;
-            }
+            // 获取生成位置
+            Vector3 spawnPos;
+            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             
-            // 随机选择一个刷新点
-            int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-            Vector3 spawnPos = spawnPoints[randomIndex];
-            DevLog("[CourierNPC] 随机选择刷新点 [" + randomIndex + "/" + spawnPoints.Length + "], 位置: " + spawnPos);
+            // Level_DemoChallenge_1 场景使用固定位置
+            if (currentSceneName == "Level_DemoChallenge_1")
+            {
+                spawnPos = new Vector3(234.80f, -7.99f, 206.56f);
+                DevLog("[CourierNPC] Level_DemoChallenge_1 场景，使用固定位置: " + spawnPos);
+            }
+            // Level_ChallengeSnow 场景使用固定位置
+            else if (currentSceneName == "Level_ChallengeSnow")
+            {
+                spawnPos = new Vector3(221.48f, 0.01f, 287.92f);
+                DevLog("[CourierNPC] Level_ChallengeSnow 场景，使用固定位置: " + spawnPos);
+            }
+            // Level_GroundZero_1 场景使用固定位置
+            else if (currentSceneName == "Level_GroundZero_1")
+            {
+                spawnPos = new Vector3(428.25f, 0.02f, 284.11f);
+                DevLog("[CourierNPC] Level_GroundZero_1 场景，使用固定位置: " + spawnPos);
+            }
+            // Level_HiddenWarehouse 仓库区场景使用固定位置
+            else if (currentSceneName == "Level_HiddenWarehouse")
+            {
+                spawnPos = new Vector3(129.37f, 0.02f, 186.54f);
+                DevLog("[CourierNPC] Level_HiddenWarehouse 场景，使用固定位置: " + spawnPos);
+            }
+            // Level_Farm_01 农场镇场景使用固定位置
+            else if (currentSceneName == "Level_Farm_01")
+            {
+                spawnPos = new Vector3(383.43f, 0.04f, 585.01f);
+                DevLog("[CourierNPC] Level_Farm_01 场景，使用固定位置: " + spawnPos);
+            }
+            // Level_JLab_1 J-Lab实验室场景使用固定位置
+            else if (currentSceneName == "Level_JLab_1")
+            {
+                spawnPos = new Vector3(-35.53f, 0.09f, -56.07f);
+                DevLog("[CourierNPC] Level_JLab_1 场景，使用固定位置: " + spawnPos);
+            }
+            // Level_StormZone_B0 风暴区地下场景使用固定位置
+            else if (currentSceneName == "Level_StormZone_B0")
+            {
+                spawnPos = new Vector3(109.99f, 0.02f, 489.79f);
+                DevLog("[CourierNPC] Level_StormZone_B0 场景，使用固定位置: " + spawnPos);
+            }
+            else
+            {
+                // 其他场景随机选择刷新点
+                Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
+                if (spawnPoints == null || spawnPoints.Length == 0)
+                {
+                    DevLog("[CourierNPC] 无法获取刷新点，跳过生成");
+                    return;
+                }
+                int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+                spawnPos = spawnPoints[randomIndex];
+                DevLog("[CourierNPC] 随机选择刷新点 [" + randomIndex + "/" + spawnPoints.Length + "], 位置: " + spawnPos);
+            }
             
             // 使用 Raycast 修正落点到地面
             RaycastHit hit;
@@ -414,7 +468,66 @@ namespace BossRush
         // 距离阈值（米）
         private const float NEAR_DISTANCE = 5f;
         
+        // ============================================================================
+        // 首次见面对话功能
+        // ============================================================================
+        
+        // 存档持久化 Key（每个存档独立）
+        private const string FIRST_MEET_SAVE_KEY = "BossRush_CourierFirstMeet";
+        
+        // Wiki Book 物品 TypeID
+        private const int WIKI_BOOK_TYPE_ID = 500007;
+        
+        // 对话进行中标志
+        private bool isInFirstMeetDialogue = false;
+        
+        // DuckovDialogueActor 组件引用（用于大对话显示）
+        private DuckovDialogueActor dialogueActor = null;
+        
+        // 注：首次见面对话内容已移至 LocalizationInjector.COURIER_FIRST_MEET_DIALOGUES
+        // 使用 LocalizationInjector.GetCourierFirstMeetDialogueKeys() 获取本地化键
+        
+        /// <summary>
+        /// 检查是否已触发首次见面（从存档读取）
+        /// </summary>
+        private bool HasTriggeredFirstMeet
+        {
+            get
+            {
+                try
+                {
+                    if (Saves.SavesSystem.KeyExisits(FIRST_MEET_SAVE_KEY))
+                    {
+                        return Saves.SavesSystem.Load<bool>(FIRST_MEET_SAVE_KEY);
+                    }
+                    return false;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 设置首次见面状态（保存到存档）
+        /// </summary>
+        private void SetFirstMeetTriggered()
+        {
+            try
+            {
+                Saves.SavesSystem.Save<bool>(FIRST_MEET_SAVE_KEY, true);
+                ModBehaviour.DevLog("[CourierNPC] 首次见面状态已保存到存档");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 保存首次见面状态失败: " + e.Message);
+            }
+        }
+        
+        // ============================================================================
         // 游戏原生动画参数哈希值（与 CharacterAnimationControl 一致）
+        // ============================================================================
         private static readonly int hash_MoveSpeed = Animator.StringToHash("MoveSpeed");
         private static readonly int hash_MoveDirX = Animator.StringToHash("MoveDirX");
         private static readonly int hash_MoveDirY = Animator.StringToHash("MoveDirY");
@@ -490,6 +603,41 @@ namespace BossRush
             
             // 创建名字标签
             CreateNameTag();
+            
+            // 设置对话Actor组件（用于大对话显示）- 使用新的工厂类
+            SetupDialogueActor();
+        }
+        
+        /// <summary>
+        /// 设置 DuckovDialogueActor 组件（用于大对话显示）
+        /// 使用 DialogueActorFactory 统一创建，符合官方实现方式
+        /// </summary>
+        private void SetupDialogueActor()
+        {
+            try
+            {
+                // 使用工厂类创建 Actor（自动处理反射和本地化）
+                dialogueActor = DialogueActorFactory.CreateBilingual(
+                    gameObject,
+                    "courier_npc",           // Actor ID
+                    "阿稳",                   // 中文名称
+                    "Awen",                  // 英文名称
+                    new Vector3(0, 2f, 0)    // 对话指示器偏移量
+                );
+                
+                if (dialogueActor != null)
+                {
+                    ModBehaviour.DevLog("[CourierNPC] DuckovDialogueActor 组件已通过工厂创建");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierNPC] [WARNING] DialogueActorFactory 创建失败");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 设置 DuckovDialogueActor 失败: " + e.Message);
+            }
         }
         
         /// <summary>
@@ -589,6 +737,194 @@ namespace BossRush
         {
             // 实时更新与玩家的距离状态
             UpdateDistanceState();
+            
+            // 检查首次见面触发
+            CheckFirstMeetTrigger();
+        }
+        
+        /// <summary>
+        /// 检查并触发首次见面对话
+        /// </summary>
+        private void CheckFirstMeetTrigger()
+        {
+            // 如果已经在对话中，跳过
+            if (isInFirstMeetDialogue) return;
+            
+            // DevMode 下的触发检查（每次场景切换后可触发一次）
+            if (ModBehaviour.DevModeEnabled)
+            {
+                // DevMode 下，如果本场景已触发过，跳过
+                if (hasTriggeredThisScene) return;
+            }
+            else
+            {
+                // 非 DevMode 下，如果已经触发过，永久跳过
+                if (HasTriggeredFirstMeet) return;
+            }
+            
+            // 如果玩家引用为空，跳过
+            if (playerTransform == null) return;
+            
+            // 检测玩家距离
+            float distance = Vector3.Distance(transform.position, playerTransform.position);
+            if (distance <= NEAR_DISTANCE)
+            {
+                // 标记本场景已触发（DevMode 用）
+                hasTriggeredThisScene = true;
+                
+                // 触发首次见面对话
+                ModBehaviour.DevLog("[CourierNPC] 玩家进入范围，触发首次见面对话" + (ModBehaviour.DevModeEnabled ? " (DevMode: 场景切换后可重复触发)" : ""));
+                TriggerFirstMeetDialogue().Forget();
+            }
+        }
+        
+        // DevMode 下的场景触发标记（每次场景切换重置）
+        private bool hasTriggeredThisScene = false;
+        
+        /// <summary>
+        /// 重置场景触发标记（供场景切换时调用）
+        /// </summary>
+        public void ResetSceneTrigger()
+        {
+            hasTriggeredThisScene = false;
+            ModBehaviour.DevLog("[CourierNPC] 场景触发标记已重置");
+        }
+        
+        /// <summary>
+        /// 触发首次见面对话序列（异步）
+        /// 使用 DialogueManager 统一管理，符合官方实现方式
+        /// </summary>
+        private async Cysharp.Threading.Tasks.UniTaskVoid TriggerFirstMeetDialogue()
+        {
+            // 获取移动组件引用（在 try 外部，以便 finally 中使用）
+            CourierMovement movement = GetComponent<CourierMovement>();
+            
+            try
+            {
+                // 标记对话进行中
+                isInFirstMeetDialogue = true;
+                
+                // 立即保存状态到存档（防止中途退出后重复触发）
+                // 注意：DevMode 下不保存，以便重复测试
+                if (!ModBehaviour.DevModeEnabled)
+                {
+                    SetFirstMeetTriggered();
+                }
+                
+                // 停止移动
+                if (movement != null)
+                {
+                    movement.SetInService(true);
+                }
+                
+                // 面向玩家
+                FacePlayer();
+                
+                // 开始对话动画
+                StartTalking();
+                
+                // 使用 DialogueManager 显示对话序列（使用本地化键）
+                // 获取首次见面对话的本地化键数组
+                string[] dialogueKeys = LocalizationInjector.GetCourierFirstMeetDialogueKeys();
+                
+                ModBehaviour.DevLog("[CourierNPC] 开始首次见面对话序列，共 " + dialogueKeys.Length + " 条对话");
+                
+                // 使用 DialogueManager 显示对话序列
+                await DialogueManager.ShowDialogueSequence(dialogueActor, dialogueKeys);
+                
+                ModBehaviour.DevLog("[CourierNPC] 对话序列完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 首次见面对话出错: " + e.Message + "\n" + e.StackTrace);
+                // 确保对话系统状态正确
+                DialogueManager.ForceEndDialogue();
+            }
+            
+            // 无论对话是否成功，都执行后续逻辑（生成物品等）
+            try
+            {
+                // 对话结束，停止对话动画
+                StopTalking();
+                
+                // 显示"给你"气泡（使用本地化键）
+                string giveText = "BossRush_CourierGive".ToPlainText();
+                float yOffset = 1.5f;
+                Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
+                    Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(giveText, transform, yOffset, false, false, -1f, 3f)
+                );
+                ModBehaviour.DevLog("[CourierNPC] 显示气泡: " + giveText);
+                
+                // 等待一小段时间让气泡显示
+                await Cysharp.Threading.Tasks.UniTask.Delay(500);
+                
+                // 生成 Wiki Book 物品
+                SpawnWikiBook();
+                
+                // 恢复移动
+                if (movement != null)
+                {
+                    movement.SetInService(false);
+                }
+                
+                ModBehaviour.DevLog("[CourierNPC] 首次见面对话序列完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 后续处理出错: " + e.Message);
+            }
+            finally
+            {
+                isInFirstMeetDialogue = false;
+            }
+        }
+        
+        /// <summary>
+        /// 面向玩家
+        /// </summary>
+        private void FacePlayer()
+        {
+            if (playerTransform == null) return;
+            
+            try
+            {
+                Vector3 direction = playerTransform.position - transform.position;
+                direction.y = 0;  // 只在水平面上旋转
+                if (direction.sqrMagnitude > 0.01f)
+                {
+                    transform.rotation = Quaternion.LookRotation(direction);
+                }
+            }
+            catch { }
+        }
+        
+        /// <summary>
+        /// 生成 Wiki Book 物品（在NPC脚下）
+        /// </summary>
+        private void SpawnWikiBook()
+        {
+            try
+            {
+                // 使用 ItemAssetsCollection 生成物品
+                Item wikiBook = ItemAssetsCollection.InstantiateSync(WIKI_BOOK_TYPE_ID);
+                
+                if (wikiBook == null)
+                {
+                    ModBehaviour.DevLog("[CourierNPC] [ERROR] 无法生成 Wiki Book 物品，TypeID=" + WIKI_BOOK_TYPE_ID);
+                    return;
+                }
+                
+                // 在NPC脚下生成物品（而不是直接发送给玩家）
+                Vector3 dropPosition = transform.position;
+                Vector3 dropDirection = Vector3.forward;
+                wikiBook.Drop(dropPosition, true, dropDirection, 0f);
+                
+                ModBehaviour.DevLog("[CourierNPC] Wiki Book 物品已生成在NPC脚下，位置=" + dropPosition);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 生成 Wiki Book 失败: " + e.Message);
+            }
         }
         
         /// <summary>
@@ -807,7 +1143,7 @@ namespace BossRush
         // 待机状态（到达目标后播放待机动画）
         private bool isIdling = false;
         private float idleTimer = 0f;
-        private const float IDLE_DURATION = 10f;  // 待机10秒
+        private const float IDLE_DURATION = 5f;  // 待机5秒
         
         // 快递服务状态（服务期间停止移动）
         private bool isInService = false;
@@ -1397,16 +1733,49 @@ namespace BossRush
         
         /// <summary>
         /// 修正目标点的Y坐标到地面（使用Raycast预先计算，避免到达后下沉）
+        /// [修复] 从更高位置发射射线，并使用多次射线检测找到最低的地面点
+        /// 这样可以避免在室内场景中错误地返回房顶高度
         /// </summary>
         private Vector3 CorrectTargetHeight(Vector3 pos)
         {
             RaycastHit hit;
-            Vector3 rayStart = pos + Vector3.up * 5f;
-            if (Physics.Raycast(rayStart, Vector3.down, out hit, 20f))
+            // [修复] 从更高位置发射射线（50米），确保能穿过多层建筑
+            Vector3 rayStart = pos + Vector3.up * 50f;
+            
+            // 使用 RaycastAll 获取所有碰撞点，然后选择最低的地面点
+            RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 100f);
+            if (hits != null && hits.Length > 0)
             {
-                // 返回地面位置 + 一点偏移，确保不会陷入地面
+                // 找到最低的碰撞点（最接近配置的 Y 坐标）
+                float lowestY = float.MaxValue;
+                float configY = pos.y;
+                float bestY = pos.y;
+                
+                foreach (var h in hits)
+                {
+                    // 优先选择接近配置 Y 坐标的点（允许 1 米误差）
+                    if (Mathf.Abs(h.point.y - configY) < 1f)
+                    {
+                        bestY = h.point.y + 0.1f;
+                        break;
+                    }
+                    // 否则选择最低的点
+                    if (h.point.y < lowestY)
+                    {
+                        lowestY = h.point.y;
+                        bestY = h.point.y + 0.1f;
+                    }
+                }
+                
+                return new Vector3(pos.x, bestY, pos.z);
+            }
+            
+            // 如果没有碰撞，使用单次射线检测
+            if (Physics.Raycast(rayStart, Vector3.down, out hit, 100f))
+            {
                 return new Vector3(pos.x, hit.point.y + 0.1f, pos.z);
             }
+            
             return pos;
         }
         

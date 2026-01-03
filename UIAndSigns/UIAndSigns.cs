@@ -685,7 +685,16 @@ namespace BossRush
                         {
                             BoxCollider col = sign.AddComponent<BoxCollider>();
                             col.isTrigger = true;
-                            col.size = new Vector3(1f, 2f, 1f);
+                            // Level_ChallengeSnow 场景使用更大的交互范围
+                            string currentScene = SceneManager.GetActiveScene().name;
+                            if (currentScene == "Level_ChallengeSnow")
+                            {
+                                col.size = new Vector3(3f, 2f, 3f);
+                            }
+                            else
+                            {
+                                col.size = new Vector3(1f, 2f, 1f);
+                            }
                             signInteract.interactCollider = col;
                         }
                         
@@ -712,7 +721,16 @@ namespace BossRush
                         // 创建 BoxCollider 并设置为 Trigger，允许玩家穿过
                         BoxCollider col = obj.AddComponent<BoxCollider>();
                         col.isTrigger = true;
-                        col.size = new Vector3(1f, 2f, 1f);
+                        // Level_ChallengeSnow 场景使用更大的交互范围
+                        string currentScene = SceneManager.GetActiveScene().name;
+                        if (currentScene == "Level_ChallengeSnow")
+                        {
+                            col.size = new Vector3(3f, 2f, 3f);
+                        }
+                        else
+                        {
+                            col.size = new Vector3(1f, 2f, 1f);
+                        }
 
                         var entry = obj.AddComponent<BossRushSignInteractable>();
                         entry.interactCollider = col;

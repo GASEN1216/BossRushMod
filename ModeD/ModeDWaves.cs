@@ -275,6 +275,9 @@ namespace BossRush
         /// <summary>
         /// 获取随机小怪预设
         /// </summary>
+        /// <remarks>
+        /// 前10波会过滤掉幽灵（Cname_Ghost）
+        /// </remarks>
         private EnemyPresetInfo GetRandomMinionPreset()
         {
             if (modeDMinionPool == null || modeDMinionPool.Count == 0)
@@ -285,14 +288,31 @@ namespace BossRush
 
             List<EnemyPresetInfo> pool = modeDMinionPool;
 
+            // 前10波：过滤掉幽灵（白手起家前期难以应对）
+            if (modeDWaveIndex <= 10)
+            {
+                List<EnemyPresetInfo> noGhostPool = new List<EnemyPresetInfo>();
+                for (int i = 0; i < pool.Count; i++)
+                {
+                    EnemyPresetInfo info = pool[i];
+                    if (info == null) continue;
+                    if (info.name == "Cname_Ghost") continue; // 排除幽灵
+                    noGhostPool.Add(info);
+                }
+                if (noGhostPool.Count > 0)
+                {
+                    pool = noGhostPool;
+                }
+            }
+
             // 第 1~2 波：只刷血量最低的敌人（拾荒者等最普通的鸭鸭敌人）
             if (modeDWaveIndex <= 2)
             {
                 // 先过滤掉"???"名字的敌人
                 List<EnemyPresetInfo> validMinions = new List<EnemyPresetInfo>();
-                for (int i = 0; i < modeDMinionPool.Count; i++)
+                for (int i = 0; i < pool.Count; i++)
                 {
-                    EnemyPresetInfo info = modeDMinionPool[i];
+                    EnemyPresetInfo info = pool[i];
                     if (info == null) continue;
 
                     string name = info.displayName;
@@ -344,9 +364,9 @@ namespace BossRush
             else if (modeDWaveIndex <= 5)
             {
                 List<EnemyPresetInfo> filtered = new List<EnemyPresetInfo>();
-                for (int i = 0; i < modeDMinionPool.Count; i++)
+                for (int i = 0; i < pool.Count; i++)
                 {
-                    EnemyPresetInfo info = modeDMinionPool[i];
+                    EnemyPresetInfo info = pool[i];
                     if (info == null) continue;
 
                     string name = info.displayName;

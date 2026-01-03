@@ -417,25 +417,39 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 找到 Transform 的根 Prefab（向上查找到 Scene 下的第一层子对象）
-        /// 例如：Scene/Group_Fact/Prfb_Roadblock_1/Default_2 -> Prfb_Roadblock_1
+        /// 找到 Transform 的最近预制体根对象
+        /// 优先返回最近的 Pfb_/Prfb_ 前缀对象，找不到则返回容器下的第一层子对象
+        /// 例如：Env/Zone_D1/Pfb_Store_01/Indoor/Prfb_Shop_Shelf_01_53/Col_Default -> Prfb_Shop_Shelf_01_53
         /// </summary>
         /// <param name="t">目标 Transform</param>
-        /// <returns>根 Prefab 的 Transform，如果找不到则返回 null</returns>
+        /// <returns>最近的预制体 Transform，如果找不到则返回 null</returns>
         private static Transform FindPrefabRoot(Transform t)
         {
             if (t == null) return null;
             
-            // 向上查找，直到父对象的名字是 "Scene" 或没有父对象
+            // 优先查找：从当前对象向上找，返回第一个以 Pfb_ 或 Prfb_ 开头的对象
             Transform current = t;
+            while (current != null)
+            {
+                string name = current.name;
+                if (name.StartsWith("Pfb_") || name.StartsWith("Prfb_"))
+                {
+                    return current;
+                }
+                current = current.parent;
+            }
+            
+            // 备用逻辑：如果没找到预制体前缀，向上查找到容器下的第一层子对象
+            current = t;
             Transform lastValid = t;
             
             while (current.parent != null)
             {
                 string parentName = current.parent.name;
-                // 如果父对象是 Scene 或类似的根容器，当前对象就是 Prefab 根
-                if (parentName == "Scene" || parentName.StartsWith("Scene_") || 
-                    parentName.StartsWith("Level_") || parentName.StartsWith("Group_"))
+                // 如果父对象是 Scene、Env、Zone 或类似的根容器，当前对象就是根
+                if (parentName == "Scene" || parentName == "Env" ||
+                    parentName.StartsWith("Scene_") || parentName.StartsWith("Level_") || 
+                    parentName.StartsWith("Group_") || parentName.StartsWith("Zone_"))
                 {
                     return current;
                 }
@@ -443,7 +457,7 @@ namespace BossRush
                 current = current.parent;
             }
             
-            // 如果没有找到 Scene，返回最顶层的对象
+            // 如果没有找到容器，返回最顶层的对象
             return lastValid;
         }
         
@@ -539,8 +553,8 @@ namespace BossRush
 
                     if (distSq <= radiusSq && distSq > 0.0001f)
                     {
-                        // 只添加包含 BoxCollider 组件的 GameObject
-                        if (t.gameObject.GetComponent<UnityEngine.BoxCollider>() != null)
+                        // 添加包含任意 Collider 组件的 GameObject（包括 BoxCollider, SphereCollider, CapsuleCollider 等）
+                        if (t.gameObject.GetComponent<UnityEngine.Collider>() != null)
                         {
                             nearby.Add(t);
                         }
