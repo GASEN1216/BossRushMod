@@ -187,84 +187,38 @@ namespace BossRush
                     return;
                 }
 
-                // 查找路牌模板
-                GameObject template = null;
-                try
+                // 直接使用传入的位置（自定义模型不需要偏移）
+                Vector3 signPos = position;
+
+                // 使用 EntityModelFactory 创建路牌模型（自定义模型不需要旋转）
+                GameObject sign = EntityModelFactory.CreateSignpost(signPos);
+                sign.name = signName;
+
+                // 检查是否为后备对象
+                bool isFallback = sign.name.Contains("_Fallback") || sign.GetComponentInChildren<MeshRenderer>() == null;
+                
+                if (!isFallback)
                 {
-                    template = GameObject.Find("Interact_Roadsign");
-                    if (template == null)
-                    {
-                        foreach (var obj in Resources.FindObjectsOfTypeAll<GameObject>())
-                        {
-                            if (obj != null && obj.name.Contains("Roadsign") && obj.scene.isLoaded)
-                            {
-                                if (obj.name.StartsWith("BossRush_")) continue;
-                                template = obj;
-                                DevLog("[BossRush] TryCreateRescueRoadsign: 通过搜索找到模板: " + obj.name);
-                                break;
-                            }
-                        }
-                    }
+                    // 移除刚体，确保玩家可以穿过路牌
+                    RemoveRigidbodyAndSetTrigger(sign);
                 }
-                catch {}
 
-                if (template != null)
+                // 添加 BoxCollider 作为交互触发器
+                BoxCollider col = sign.GetComponent<BoxCollider>();
+                if (col == null)
                 {
-                    // 克隆一个新的路牌实例
-                    GameObject sign = UnityEngine.Object.Instantiate(template);
-                    sign.name = signName;
-
-                    // 放置在传送点附近（稍微偏移，避免和气泡重叠）
-                    Vector3 signPos = position + new Vector3(-1.2f, 0f, 0.5f);
-                    sign.transform.position = signPos;
-                    sign.transform.rotation = template.transform.rotation;
-
-                    // 清理克隆出来的原生交互，只保留我们自己的传送交互
-                    InteractableBase[] oldInteracts = sign.GetComponentsInChildren<InteractableBase>();
-                    Collider savedCollider = null;
-
-                    foreach (var oldInteract in oldInteracts)
-                    {
-                        try
-                        {
-                            if (savedCollider == null && oldInteract.interactCollider != null)
-                            {
-                                savedCollider = oldInteract.interactCollider;
-                            }
-
-                            var bubble = oldInteract.GetComponent<DialogueBubbleProxy>();
-                            if (bubble != null)
-                            {
-                                UnityEngine.Object.Destroy(bubble);
-                            }
-
-                            UnityEngine.Object.Destroy(oldInteract);
-                        }
-                        catch {}
-                    }
-
-                    // 在路牌上挂载传送交互，并将交互标记设置在路牌中部
-                    var teleport = sign.AddComponent<BossRushTeleportBubble>();
-                    if (savedCollider != null)
-                    {
-                        teleport.interactCollider = savedCollider;
-                    }
-                    else
-                    {
-                        BoxCollider col = sign.AddComponent<BoxCollider>();
-                        col.isTrigger = true;
-                        col.size = new Vector3(1f, 2f, 1f);
-                        teleport.interactCollider = col;
-                    }
-
-                    teleport.interactMarkerOffset = new Vector3(0f, 1.2f, 0f);
-
-                    DevLog("[BossRush] TryCreateRescueRoadsign: 成功创建传送路牌, 位置=" + signPos);
+                    col = sign.AddComponent<BoxCollider>();
                 }
-                else
-                {
-                    DevLog("[BossRush] TryCreateRescueRoadsign: 未找到 Interact_Roadsign 模板，跳过创建");
-                }
+                col.isTrigger = true;
+                col.size = new Vector3(1f, 2f, 1f);
+
+                // 在路牌上挂载传送交互
+                var teleport = sign.AddComponent<BossRushTeleportBubble>();
+                teleport.interactCollider = col;
+                // 交互标记放在路牌中部（模型已向上偏移1米，所以这里用0）
+                teleport.interactMarkerOffset = new Vector3(0f, 0f, 0f);
+
+                DevLog("[BossRush] TryCreateRescueRoadsign: 成功创建传送路牌, 位置=" + signPos);
             }
             catch (Exception e)
             {
@@ -539,12 +493,21 @@ namespace BossRush
         
         /// <summary>
         /// 在指定位置创建 BossRush 难度选择路牌
+        /// 使用 EntityModelFactory 加载自定义模型，不再依赖场景模板
         /// </summary>
         /// <param name="customPosition">自定义位置，为 null 时使用默认位置（DEMO挑战场景）</param>
         private void TryCreateArenaDifficultyEntryPoint_UIAndSigns(Vector3? customPosition)
         {
             try
             {
+                // Level_ChallengeSnow 场景不创建路牌（该场景有自己的交互点）
+                string currentScene = SceneManager.GetActiveScene().name;
+                if (currentScene == "Level_ChallengeSnow")
+                {
+                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: Level_ChallengeSnow 场景跳过创建路牌");
+                    return;
+                }
+                
                 // 从配置系统获取默认路牌位置
                 Vector3 position;
                 if (customPosition.HasValue)
@@ -582,170 +545,58 @@ namespace BossRush
                 // 保存路牌的 InteractableBase 引用，供后续下一波注入使用
                 bossRushSignInteract = null;
 
-                try
+                // 直接使用配置的位置
+                Vector3 signPos = position;
+
+                // 根据场景决定路牌朝向
+                // Demo 挑战地图 (Level_DemoChallenge_1) 使用默认朝向
+                // 其他地图额外旋转 65 度（Y轴）使路牌朝向玩家出生点方向
+                Quaternion signRotation = Quaternion.identity;
+                if (currentScene != "Level_DemoChallenge_1")
                 {
-                    // 克隆路牌模板（尝试多种方式查找）
-                    GameObject template = GameObject.Find("Interact_Roadsign");
-                    
-                    // 如果没找到，尝试在所有对象中搜索包含 Roadsign 的
-                    if (template == null)
-                    {
-                        foreach (var obj in Resources.FindObjectsOfTypeAll<GameObject>())
-                        {
-                            if (obj != null && obj.name.Contains("Roadsign") && obj.scene.isLoaded)
-                            {
-                                // 排除我们自己创建的
-                                if (obj.name.StartsWith("BossRush_")) continue;
-                                template = obj;
-                                DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 通过搜索找到模板: " + obj.name);
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (template != null)
-                    {
-                        // 隐藏模板路牌自身的交互点（不再使用原生交互）
-                        try
-                        {
-                            var originalInteracts = template.GetComponentsInChildren<InteractableBase>(true);
-                            if (originalInteracts != null)
-                            {
-                                foreach (var ori in originalInteracts)
-                                {
-                                    if (ori == null) continue;
-                                    try
-                                    {
-                                        ori.MarkerActive = false;
-                                    }
-                                    catch {}
-                                    try
-                                    {
-                                        if (ori.interactCollider != null)
-                                        {
-                                            ori.interactCollider.enabled = false;
-                                        }
-                                    }
-                                    catch {}
-                                }
-                            }
-                        }
-                        catch {}
-
-                        // 直接克隆到场景根节点，不使用父对象
-                        GameObject sign = UnityEngine.Object.Instantiate(template);
-                        sign.name = signName;
-                        
-                        // 位置：在玩家传送目标点左侧
-                        Vector3 signPos = position + new Vector3(-1.2f, 0f, 0.5f);
-                        sign.transform.position = signPos;
-                        
-                        // 旋转调整：在模板旋转基础上再旋转一些（+22.5°）
-                        Vector3 templateRotation = template.transform.rotation.eulerAngles;
-                        sign.transform.rotation = Quaternion.Euler(templateRotation.x, templateRotation.y + 22.5f, templateRotation.z);
-
-                        // 获取并销毁原有的 InteractableBase（我们将创建自己的）
-                        InteractableBase[] oldInteracts = sign.GetComponentsInChildren<InteractableBase>();
-                        Collider savedCollider = null;
-                        
-                        foreach (var oldInteract in oldInteracts)
-                        {
-                            try
-                            {
-                                if (savedCollider == null && oldInteract.interactCollider != null)
-                                {
-                                    savedCollider = oldInteract.interactCollider;
-                                }
-                                
-                                // 销毁对话气泡
-                                var bubble = oldInteract.GetComponent<DialogueBubbleProxy>();
-                                if (bubble != null)
-                                {
-                                    UnityEngine.Object.Destroy(bubble);
-                                }
-                                
-                                // 销毁原有交互组件
-                                UnityEngine.Object.Destroy(oldInteract);
-                            }
-                            catch {}
-                        }
-                        
-                        // 移除刚体，确保玩家可以穿过路牌
-                        RemoveRigidbodyAndSetTrigger(sign);
-                        
-                        // 添加 BossRushSignInteractable 作为主交互
-                        // 主选项：哎哟~你干嘛~（带生小鸡功能）
-                        // 子选项：弹指可灭、有点意思
-                        var signInteract = sign.AddComponent<BossRushSignInteractable>();
-                        if (savedCollider != null)
-                        {
-                            signInteract.interactCollider = savedCollider;
-                        }
-                        else
-                        {
-                            BoxCollider col = sign.AddComponent<BoxCollider>();
-                            col.isTrigger = true;
-                            // Level_ChallengeSnow 场景使用更大的交互范围
-                            string currentScene = SceneManager.GetActiveScene().name;
-                            if (currentScene == "Level_ChallengeSnow")
-                            {
-                                col.size = new Vector3(3f, 2f, 3f);
-                            }
-                            else
-                            {
-                                col.size = new Vector3(1f, 2f, 1f);
-                            }
-                            signInteract.interactCollider = col;
-                        }
-                        
-                        // 保存引用
-                        bossRushSignInteract = signInteract;
-                        _signInteractBase = signInteract;
-                        _bossRushSignGameObject = sign;
-
-                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 成功创建路牌交互（主选项+2个难度子选项），位置=" + signPos + ", 旋转=" + sign.transform.rotation.eulerAngles);
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 未找到 Interact_Roadsign 模板，创建隐形交互点");
-                        
-                        // 直接使用配置的位置创建隐形交互点
-                        Vector3 signPos = position;
-                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用配置位置创建交互点: " + signPos);
-                        
-                        // 创建隐形交互点
-                        GameObject obj = new GameObject(signName);
-                        obj.transform.position = signPos;
-                        obj.transform.rotation = Quaternion.identity;
-
-                        // 创建 BoxCollider 并设置为 Trigger，允许玩家穿过
-                        BoxCollider col = obj.AddComponent<BoxCollider>();
-                        col.isTrigger = true;
-                        // Level_ChallengeSnow 场景使用更大的交互范围
-                        string currentScene = SceneManager.GetActiveScene().name;
-                        if (currentScene == "Level_ChallengeSnow")
-                        {
-                            col.size = new Vector3(3f, 2f, 3f);
-                        }
-                        else
-                        {
-                            col.size = new Vector3(1f, 2f, 1f);
-                        }
-
-                        var entry = obj.AddComponent<BossRushSignInteractable>();
-                        entry.interactCollider = col;
-                        bossRushSignInteract = entry;
-                        _signInteractBase = entry;
-                        _bossRushSignGameObject = obj;
-                        
-                        DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 已创建保底隐形交互点，位置=" + signPos);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint 异常: " + ex.Message);
+                    // 非 Demo 地图：额外 Y 轴旋转 65 度
+                    signRotation = Quaternion.Euler(0f, 65f, 0f);
                 }
 
+                // 使用 EntityModelFactory 创建路牌模型
+                GameObject sign = EntityModelFactory.CreateSignpost(signPos, signRotation);
+                sign.name = signName;
+
+                // 检查是否为后备对象（名称包含 _Fallback）
+                bool isFallback = sign.name.Contains("_Fallback") || sign.GetComponentInChildren<MeshRenderer>() == null;
+                
+                if (isFallback)
+                {
+                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用后备交互点（无自定义模型）");
+                }
+                else
+                {
+                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用自定义路牌模型");
+                    // 移除刚体，确保玩家可以穿过路牌
+                    RemoveRigidbodyAndSetTrigger(sign);
+                }
+
+                // 添加 BoxCollider 作为交互触发器
+                BoxCollider col = sign.GetComponent<BoxCollider>();
+                if (col == null)
+                {
+                    col = sign.AddComponent<BoxCollider>();
+                }
+                col.isTrigger = true;
+                col.size = new Vector3(1f, 2f, 1f);
+
+                // 添加 BossRushSignInteractable 作为主交互
+                var signInteract = sign.AddComponent<BossRushSignInteractable>();
+                signInteract.interactCollider = col;
+                // 交互标记放在路牌中部（模型已向上偏移1米，所以这里用0）
+                signInteract.interactMarkerOffset = new Vector3(0f, 0f, 0f);
+                
+                // 保存引用
+                bossRushSignInteract = signInteract;
+                _signInteractBase = signInteract;
+                _bossRushSignGameObject = sign;
+
+                DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 成功创建路牌交互，位置=" + signPos);
                 DevLog("[BossRush] 已在 DEMO 挑战场景创建 BossRush 难度入口");
             }
             catch (Exception e)

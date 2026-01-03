@@ -417,6 +417,56 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 获取 Mod 根目录路径
+        /// </summary>
+        /// <returns>Mod 目录路径，失败时返回 null</returns>
+        public static string GetModPath()
+        {
+            try
+            {
+                // 方法1：通过程序集位置获取
+                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
+                if (!string.IsNullOrEmpty(assemblyLocation))
+                {
+                    string modDir = System.IO.Path.GetDirectoryName(assemblyLocation);
+                    if (!string.IsNullOrEmpty(modDir) && System.IO.Directory.Exists(modDir))
+                    {
+                        return modDir;
+                    }
+                }
+                
+                // 方法2：通过 ModBehaviour.info.path 获取
+                ModBehaviour mod = ModBehaviour.Instance;
+                if (mod != null)
+                {
+                    var infoField = typeof(Duckov.Modding.ModBehaviour).GetField("info", 
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                    if (infoField != null)
+                    {
+                        object infoObj = infoField.GetValue(mod);
+                        if (infoObj != null)
+                        {
+                            var pathField = infoObj.GetType().GetField("path");
+                            if (pathField != null)
+                            {
+                                string path = pathField.GetValue(infoObj) as string;
+                                if (!string.IsNullOrEmpty(path))
+                                {
+                                    return path;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] GetModPath 失败: " + e.Message);
+            }
+            return null;
+        }
+
+        /// <summary>
         /// 找到 Transform 的最近预制体根对象
         /// 优先返回最近的 Pfb_/Prfb_ 前缀对象，找不到则返回容器下的第一层子对象
         /// 例如：Env/Zone_D1/Pfb_Store_01/Indoor/Prfb_Shop_Shelf_01_53/Col_Default -> Prfb_Shop_Shelf_01_53

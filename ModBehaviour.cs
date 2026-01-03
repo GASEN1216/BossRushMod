@@ -673,6 +673,24 @@ namespace BossRush
             Instance = this;
             DontDestroyOnLoad(gameObject);
             
+            // 初始化实体模型工厂（加载 Assets/entity/ 目录下的 AssetBundle）
+            try
+            {
+                string modPath = GetModPath();
+                if (!string.IsNullOrEmpty(modPath))
+                {
+                    EntityModelFactory.Initialize(modPath);
+                }
+                else
+                {
+                    DevLog("[BossRush] [WARNING] 无法获取 Mod 路径，EntityModelFactory 未初始化");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] EntityModelFactory 初始化异常: " + e.Message);
+            }
+            
             // 重置Wiki缓存，确保每次进游戏都重新加载
             WikiContentManager.Instance.ResetCache();
             
@@ -1098,6 +1116,16 @@ namespace BossRush
             
             // 注销开枪调试监听
             UnregisterShootDebugListener();
+
+            // 卸载实体模型工厂资源
+            try
+            {
+                EntityModelFactory.Shutdown();
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);
+            }
 
             OnDestroy_Integration();
         }

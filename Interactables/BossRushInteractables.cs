@@ -524,8 +524,8 @@ namespace BossRush
             catch {}
             try
             {
-                // 将交互标记往上挪动到路牌中部
-                this.interactMarkerOffset = new Vector3(0f, 1.2f, 0f);
+                // 将交互标记放在路牌中部（模型已向上偏移1米，所以这里用0）
+                this.interactMarkerOffset = new Vector3(0f, 0f, 0f);
             }
             catch {}
             try
@@ -642,8 +642,8 @@ namespace BossRush
                 this.interactableGroup = true;
                 _state = SignState.EntryAndDifficulty;
                 UpdateMainInteractName();
-                // 将路牌交互标记抬到路牌中部
-                this.interactMarkerOffset = new Vector3(0f, 1.2f, 0f);
+                // 将路牌交互标记放在路牌中部（模型已向上偏移1米，所以这里用0）
+                this.interactMarkerOffset = new Vector3(0f, 0f, 0f);
             }
             catch {}
             try
