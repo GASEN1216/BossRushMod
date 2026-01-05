@@ -2434,6 +2434,7 @@ namespace BossRush
         /// [性能优化] 使用缓存的反射字段，避免重复获取
         /// [修复] 先通过反射设置 created=true 阻止生成，再销毁 spawner
         /// [Bug修复] 移除范围检查，禁用所有 spawner，因为 spawner root 位置可能与实际刷怪点位置不同
+        /// [Bug修复] 销毁前保留灯光组件，避免场景变暗
         /// </summary>
         private void DisableAllSpawners()
         {
@@ -2446,6 +2447,7 @@ namespace BossRush
             {
                 int disabledCount = 0;
                 int destroyedCount = 0;
+                int preservedLightsCount = 0;
                 
                 // [性能优化] 缓存反射字段，只获取一次
                 if (!_createdFieldCached)
@@ -2480,6 +2482,25 @@ namespace BossRush
                             catch {}
                         }
                         
+                        // [Bug修复] 销毁前保留灯光组件，避免场景变暗
+                        // 获取 spawner 及其子对象中的所有灯光
+                        try
+                        {
+                            Light[] lights = root.gameObject.GetComponentsInChildren<Light>(true);
+                            if (lights != null && lights.Length > 0)
+                            {
+                                foreach (var light in lights)
+                                {
+                                    if (light == null || light.gameObject == null) continue;
+                                    
+                                    // 将灯光对象移出 spawner 层级，避免被一起销毁
+                                    light.transform.SetParent(null);
+                                    preservedLightsCount++;
+                                }
+                            }
+                        }
+                        catch {}
+                        
                         // 销毁 spawner
                         try
                         {
@@ -2491,7 +2512,7 @@ namespace BossRush
                 }
 
                 spawnersDisabled = true;
-                DevLog("[BossRush] 已禁用并销毁 " + destroyedCount + " 个 CharacterSpawnerRoot");
+                DevLog("[BossRush] 已禁用并销毁 " + destroyedCount + " 个 CharacterSpawnerRoot，保留了 " + preservedLightsCount + " 个灯光");
             }
             catch (Exception e)
             {
