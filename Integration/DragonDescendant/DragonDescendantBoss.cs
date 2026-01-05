@@ -330,6 +330,9 @@ namespace BossRush
             
             // 清理Buff处理器缓存
             DragonBreathBuffHandler.ClearStaticCache();
+            
+            // 清理能力控制器缓存（燃烧弹、子弹预制体）
+            DragonDescendantAbilityController.ClearStaticCache();
         }
         
         /// <summary>

@@ -50,6 +50,10 @@ namespace BossRush
         private const int JOURNAL_DEFAULT_MAX_STOCK = 1;  // 最大库存为1
         private static int cachedJournalStock = -1;  // -1 表示未初始化，需要从存档读取
         private static StockShop.Entry injectedJournalEntry = null;  // 缓存注入的冒险家日志条目引用
+        
+        // [性能优化] 商店注入完成标记，避免每次场景加载都重复扫描
+        private static bool _shopInjectionCompleted = false;
+        
         /// <summary>
         /// 初始化动态物品（从 AssetBundle 加载 BossRush 船票）
         /// </summary>
@@ -158,14 +162,29 @@ namespace BossRush
             DevLog("[BossRush] 船票本地化注入完成");
         }
 
-        private void InjectBossRushTicketIntoShops_Integration()
+        /// <summary>
+        /// 将船票注入到商店
+        /// </summary>
+        /// <param name="targetSceneName">目标场景名称，如果为null则使用GetActiveScene</param>
+        private void InjectBossRushTicketIntoShops_Integration(string targetSceneName = null)
         {
             if (bossRushTicketTypeId <= 0)
             {
                 DevLog("[BossRush] BossRush 船票 TypeID 未初始化，跳过商店注入");
                 return;
             }
-
+            
+            // [性能优化] 只在基地场景扫描商店，船票只在基地售货机出售
+            string currentScene = targetSceneName;
+            if (string.IsNullOrEmpty(currentScene))
+            {
+                try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
+            }
+            if (currentScene != "Base_SceneV2")
+            {
+                return;
+            }
+            
             try
             {
                 StockShop[] shops = UnityEngine.Object.FindObjectsOfType<StockShop>();
@@ -308,8 +327,23 @@ namespace BossRush
         /// <summary>
         /// 将冒险家日志注入到商店（与船票逻辑相同）
         /// </summary>
-        private void InjectAdventureJournalIntoShops_Integration()
+        /// <param name="targetSceneName">目标场景名称，如果为null则使用GetActiveScene</param>
+        private void InjectAdventureJournalIntoShops_Integration(string targetSceneName = null)
         {
+            // 如果不在基地场景，跳过扫描
+            string currentScene = targetSceneName;
+            if (string.IsNullOrEmpty(currentScene))
+            {
+                try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
+            }
+            if (currentScene != "Base_SceneV2")
+            {
+                return;
+            }
+            
+            // [Bug修复] 每次场景加载都重新扫描商店，因为场景切换后商店对象会被重建
+            // StockShop.Entry 不是 Unity 对象，无法通过 null 检查判断是否有效
+            
             try
             {
                 StockShop[] shops = UnityEngine.Object.FindObjectsOfType<StockShop>();
@@ -553,6 +587,7 @@ namespace BossRush
         {
             cachedTicketStock = -1;  // 重置缓存，下次注入时会从存档读取
             injectedTicketEntry = null;  // 清除旧引用
+            _shopInjectionCompleted = false;  // [性能优化] 重置商店注入标记，读档后需要重新注入
             DevLog("[BossRush] 检测到读档，重置船票库存缓存");
         }
 
@@ -601,9 +636,10 @@ namespace BossRush
             InjectBirthdayCakeLocalization();
             // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
             
-            // 初始化 Wiki Book 物品
+            // 初始化 Wiki Book 物品（冒险家日志）
             InitializeWikiBookItem();
             InjectWikiBookLocalization();
+            InjectAdventureJournalIntoShops_Integration();  // 将冒险家日志注入到售货机
             
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
             int equipCount = EquipmentFactory.LoadAllEquipment();
@@ -664,6 +700,9 @@ namespace BossRush
             // 清理龙息武器Buff处理器
             DragonBreathBuffHandler.Cleanup();
             
+            // [性能优化] 重置商店注入标记
+            _shopInjectionCompleted = false;
+            
             try
             {
                 Type modBehaviourType = FindModConfigType("ModConfig.ModBehaviour");
@@ -686,6 +725,9 @@ namespace BossRush
             
             // 清理 Boss 池 UI
             DestroyBossPoolUI();
+            
+            // [性能优化] 重置敌人预设初始化标记，下次加载Mod时重新扫描
+            _enemyPresetsInitialized = false;
             
             DevLog("[BossRush] Boss Rush Mod已卸载");
         }
@@ -731,8 +773,8 @@ namespace BossRush
 
             try
             {
-                InjectBossRushTicketIntoShops();
-                InjectAdventureJournalIntoShops_Integration();
+                InjectBossRushTicketIntoShops_Integration(scene.name);
+                InjectAdventureJournalIntoShops_Integration(scene.name);
                 // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
                 
                 // 在基地场景检查并赠送12月份生日蛋糕
@@ -754,12 +796,28 @@ namespace BossRush
                         bossRushArenaActive = true;
                         bossRushArenaPlanned = false;
                         
+                        // [Bug修复] 确保订阅龙息Buff处理器，使龙裔遗族Boss的龙息能触发龙焰灼烧
+                        DragonBreathBuffHandler.Subscribe();
+                        
                         // 设置当前地图的刷新点
                         SetCurrentMapSpawnPoints(scene.name);
+                        
+                        // [性能优化] 立即设置竞技场中心，确保后续清理有范围限制
+                        SetArenaCenterFromMapConfig(scene.name);
+                        spawnersDisabled = false; // 重置标志确保能重新禁用
+                        
+                        // [修复] 立即禁用 spawner，防止敌人生成
+                        // 场景加载时 spawner 已经存在，必须立即禁用
+                        DisableAllSpawners();
+                        DevLog("[BossRush] 场景加载后立即禁用 spawner");
+                        
+                        // [修复] 立即启动持续清理协程，清理已生成的敌人
+                        StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
+                        DevLog("[BossRush] 场景加载后立即启动持续清理协程");
 
                         // 设置BossRush竞技场
                         demoChallengeStartPosition = Vector3.zero;
-                        // 延迟到地图完全加载后再执行传送和创建交互点，避免被游戏自身的出生点逻辑覆盖
+                        // 延迟到地图完全加载后再执行传送、禁用spawner和创建交互点
                         StartCoroutine(WaitForLevelInitializedThenSetup(scene));
                     }
                 }
@@ -818,6 +876,17 @@ namespace BossRush
                         lastWaveCountdownSeconds = -1;
                         statusMessage = string.Empty;
                         messageTimer = 0f;
+                        
+                        // [多次进入优化] 清理波次相关状态
+                        currentWaveBosses.Clear();
+                        bossesInCurrentWaveTotal = 0;
+                        bossesInCurrentWaveRemaining = 0;
+                        currentEnemyIndex = 0;
+                        defeatedEnemies = 0;
+                        totalEnemies = 0;
+                        
+                        // [多次进入优化] 清理大兴兴追踪集合，防止持有已销毁对象引用
+                        bossRushOwnedDaXingXing.Clear();
 
                         // 清理 NotificationText.pendingTexts 队列
                         try
@@ -1121,13 +1190,17 @@ namespace BossRush
             // 0. 重置 spawner 禁用标志（确保能重新禁用新场景的 spawner）
             spawnersDisabled = false;
             
+            // [性能优化] 先根据地图配置设置竞技场中心，确保后续清理和禁用操作有范围限制
+            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            SetArenaCenterFromMapConfig(currentSceneName);
+            
             // 1. [重要] 先生成地图阻挡物和撤离点（必须在销毁 spawner 之前执行）
             // 因为撤离点模板 ExitNoSmoke Variant 位于 EnemySpawner_TestBossZone 下
             SpawnBossRushMapObjects();
             
-            // 2. 禁用场景中的 spawner，阻止敌怪生成（会销毁 EnemySpawner_TestBossZone）
+            // 2. 禁用场景中的 spawner，阻止敌怪生成（会销毁 EnemySpawner_TestBossZone）（现在有 50m 范围限制）
             DisableAllSpawners();
-            DevLog("[BossRush] SetupBossRushInGroundZero: 已禁用所有敌怪生成器");
+            DevLog("[BossRush] SetupBossRushInGroundZero: 已禁用竞技场范围内的敌怪生成器");
             
             // 3. 启动持续清理敌人协程（直到波次开始）
             StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
@@ -1135,12 +1208,11 @@ namespace BossRush
             // 4. 等待场景稳定
             yield return new UnityEngine.WaitForSeconds(0.5f);
             
-            // 5. 清理场景中现有的敌人
+            // 5. 清理场景中现有的敌人（现在有 50m 范围限制）
             ClearEnemiesForBossRush();
-            DevLog("[BossRush] SetupBossRushInGroundZero: 已清理现有敌人");
+            DevLog("[BossRush] SetupBossRushInGroundZero: 已清理竞技场范围内的敌人");
             
             // 6. 创建 BossRush 交互点（优先使用配置的位置，否则使用玩家位置偏移）
-            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             BossRushMapConfig currentMapConfig = GetMapConfigBySceneName(currentSceneName);
             Vector3 signPosition;
             if (currentMapConfig != null && currentMapConfig.defaultSignPos.HasValue)
@@ -2084,18 +2156,15 @@ namespace BossRush
                 
                 DevLog("[DragonBreath] 已订阅手持物品变更事件（火焰特效）");
                 
+                // 始终订阅Buff事件（龙裔遗族Boss也会发射龙息子弹，需要触发龙焰灼烧Buff）
+                DragonBreathBuffHandler.Subscribe();
+                
                 // 检查当前手持的武器（处理玩家进入存档时已装备龙息武器的情况）
                 var currentGun = mainChar.GetGun();
                 if (currentGun != null)
                 {
                     // 添加火焰特效
                     DragonBreathWeaponConfig.TryAddFireEffectsToAgent(currentGun);
-                    
-                    // 如果是龙息武器，订阅Buff事件
-                    if (currentGun.Item != null && currentGun.Item.TypeID == DragonBreathConfig.WEAPON_TYPE_ID)
-                    {
-                        DragonBreathBuffHandler.Subscribe();
-                    }
                 }
             }
             catch (Exception e)
@@ -2122,7 +2191,8 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 玩家手持物品变更回调（添加火焰特效 + 管理Buff事件订阅）
+        /// 玩家手持物品变更回调（添加火焰特效）
+        /// 注意：Buff事件订阅不再与玩家手持武器绑定，因为龙裔遗族Boss也会发射龙息子弹
         /// </summary>
         private void OnPlayerHoldAgentChanged(DuckovItemAgent newAgent)
         {
@@ -2135,15 +2205,10 @@ namespace BossRush
             
             if (isDragonBreath)
             {
-                // 装备龙息武器：添加火焰特效 + 订阅Buff事件
+                // 装备龙息武器：添加火焰特效
                 DragonBreathWeaponConfig.TryAddFireEffectsToAgent(gunAgent);
-                DragonBreathBuffHandler.Subscribe();
             }
-            else
-            {
-                // 卸下龙息武器：取消订阅Buff事件（节省性能）
-                DragonBreathBuffHandler.Unsubscribe();
-            }
+            // 不再在此处取消订阅Buff事件，因为Boss的龙息子弹也需要触发龙焰灼烧Buff
         }
     }
 }

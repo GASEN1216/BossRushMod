@@ -89,6 +89,11 @@ namespace BossRush
     /// Mode D "清空所有箱子" 交互选项
     /// <para>清理场地上所有由 BossRush 生成的掉落箱（无论是否为空）</para>
     /// </summary>
+    /// <remarks>
+    /// 此类已废弃，清空箱子功能已移至 TrashCanInteractable。
+    /// 保留此类以便向后兼容。
+    /// </remarks>
+    [Obsolete("清空箱子功能已移至 TrashCanInteractable，请使用垃圾桶交互")]
     public class ModeDClearAllLootboxesInteractable : InteractableBase
     {
         protected override void Awake()
@@ -199,6 +204,11 @@ namespace BossRush
     /// Mode D "清空空箱子" 交互选项
     /// <para>仅清理已被搜刮过的空掉落箱，保留有物品的箱子</para>
     /// </summary>
+    /// <remarks>
+    /// 此类已废弃，清空箱子功能已移至 TrashCanInteractable。
+    /// 保留此类以便向后兼容。
+    /// </remarks>
+    [Obsolete("清空箱子功能已移至 TrashCanInteractable，请使用垃圾桶交互")]
     public class ModeDClearEmptyLootboxesInteractable : InteractableBase
     {
         protected override void Awake()
@@ -336,11 +346,7 @@ namespace BossRush
         /// <summary>Mode D "冲下一波" 选项 GameObject</summary>
         private GameObject modeDNextWaveOption = null;
         
-        /// <summary>Mode D "清空所有箱子" 选项 GameObject</summary>
-        private GameObject modeDClearAllOption = null;
-        
-        /// <summary>Mode D "清空空箱子" 选项 GameObject</summary>
-        private GameObject modeDClearEmptyOption = null;
+        // 注：modeDClearAllOption 和 modeDClearEmptyOption 已移至 TrashCanInteractable
         
         #endregion
         
@@ -373,6 +379,7 @@ namespace BossRush
 
         /// <summary>
         /// 添加 Mode D 选项到路牌
+        /// 注意：清空箱子选项已移至垃圾桶，此处仅添加"冲下一波"选项
         /// </summary>
         private void AddModeDOptionsToSign()
         {
@@ -382,9 +389,8 @@ namespace BossRush
 
                 Transform signTransform = bossRushSignInteract.transform;
 
-                // 获取路牌的 otherInterablesInGroup 列表
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                // 使用缓存的 FieldInfo 获取路牌的 otherInterablesInGroup 列表
+                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null)
                 {
                     ModBehaviour.DevLog("[ModeD] [ERROR] 无法获取 otherInterablesInGroup 字段");
@@ -412,29 +418,9 @@ namespace BossRush
                 }
                 modeDNextWaveOption.SetActive(true);
 
-                // 添加"清空所有箱子"选项
-                if (modeDClearAllOption == null)
-                {
-                    modeDClearAllOption = new GameObject("ModeD_ClearAllLootboxes");
-                    modeDClearAllOption.transform.SetParent(signTransform);
-                    modeDClearAllOption.transform.localPosition = Vector3.zero;
-                    var clearAllInteract = modeDClearAllOption.AddComponent<ModeDClearAllLootboxesInteractable>();
-                    list.Add(clearAllInteract);
-                }
-                modeDClearAllOption.SetActive(true);
+                // 清空箱子选项已移至垃圾桶（TrashCanInteractable），不再添加到路牌
 
-                // 添加"清空空箱子"选项
-                if (modeDClearEmptyOption == null)
-                {
-                    modeDClearEmptyOption = new GameObject("ModeD_ClearEmptyLootboxes");
-                    modeDClearEmptyOption.transform.SetParent(signTransform);
-                    modeDClearEmptyOption.transform.localPosition = Vector3.zero;
-                    var clearEmptyInteract = modeDClearEmptyOption.AddComponent<ModeDClearEmptyLootboxesInteractable>();
-                    list.Add(clearEmptyInteract);
-                }
-                modeDClearEmptyOption.SetActive(true);
-
-                DevLog("[ModeD] 已添加 Mode D 选项到路牌，当前选项数: " + list.Count);
+                DevLog("[ModeD] 已添加 Mode D 选项到路牌（清空箱子选项已移至垃圾桶），当前选项数: " + list.Count);
             }
             catch (Exception e)
             {

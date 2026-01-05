@@ -1968,14 +1968,15 @@ namespace BossRush
                 int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
                 if (currentEnemyIndex < presetCount)
                 {
-                    try
-                    {
-                        if (bossRushSignInteract != null)
-                        {
-                            bossRushSignInteract.AddClearLootboxOptions();
-                        }
-                    }
-                    catch {}
+                    // 注意：清空箱子选项已移至垃圾桶交互物，不再在路牌上添加
+                    // try
+                    // {
+                    //     if (bossRushSignInteract != null)
+                    //     {
+                    //         bossRushSignInteract.AddClearLootboxOptions();
+                    //     }
+                    // }
+                    // catch {}
 
                     if (config != null && config.useInteractBetweenWaves)
                     {
@@ -2040,10 +2041,18 @@ namespace BossRush
 
         /// <summary>
         /// 初始化敌人预设列表 - 动态识别所有显示名字的敌人
+        /// [性能优化] 添加初始化标记，避免每次传送都重复扫描
         /// </summary>
         private void InitializeEnemyPresets()
         {
-            enemyPresets.Clear();
+            // [性能优化] 如果已经初始化过，跳过重复扫描
+            if (_enemyPresetsInitialized && enemyPresets != null && enemyPresets.Count > 0)
+            {
+                DevLog("[BossRush] 敌人预设已初始化，跳过重复扫描 (共 " + enemyPresets.Count + " 个)");
+                return;
+            }
+            
+            enemyPresets.Clear();;
             
             // 获取所有可能的敌人类型
             var enemyTypes = new List<EnemyPresetInfo>();
@@ -2100,6 +2109,9 @@ namespace BossRush
             catch {}
 
             DevLog("[BossRush] 初始化完成，共发现 " + enemyPresets.Count + " 个敌人类型");
+            
+            // [性能优化] 标记初始化完成，后续传送不再重复扫描
+            _enemyPresetsInitialized = true;
         }
 
         /// <summary>

@@ -47,7 +47,8 @@ namespace BossRush
 
                 try
                 {
-                    var fMerchant = typeof(StockShop).GetField("merchantID", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    // 使用缓存的 FieldInfo
+                    var fMerchant = ReflectionCache.StockShop_MerchantID;
                     if (fMerchant != null)
                     {
                         fMerchant.SetValue(ammoShop, "BossRushAmmo");
@@ -103,7 +104,8 @@ namespace BossRush
 
                 try
                 {
-                    var fItems = typeof(StockShop).GetField("itemInstances", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    // 使用缓存的 FieldInfo
+                    var fItems = ReflectionCache.StockShop_ItemInstances;
                     if (fItems != null)
                     {
                         var dict = fItems.GetValue(ammoShop) as Dictionary<int, Item>;

@@ -65,8 +65,8 @@ namespace BossRush
         private static readonly string DragonBurnNameEN = "Dragon Burn";
         
         // 龙焰灼烧Buff描述
-        private static readonly string DragonBurnDescCN = "每秒受到最大生命值0.1%的火焰伤害，最多叠加10层，持续10秒";
-        private static readonly string DragonBurnDescEN = "Takes 0.1% max HP fire damage per second, stacks up to 10 times, lasts 10 seconds";
+        private static readonly string DragonBurnDescCN = "每秒受到最大生命值0.1%+1点真实火焰伤害，最多叠加10层，持续10秒";
+        private static readonly string DragonBurnDescEN = "Takes 0.1% max HP + 1 true fire damage per second per layer, stacks up to 10, lasts 10 seconds";
         
         #endregion
         

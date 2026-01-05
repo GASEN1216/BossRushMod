@@ -444,6 +444,18 @@ namespace BossRush
             // 预定义分类标题
             switch (categoryId.ToLower())
             {
+                case "start":
+                    return isChinese ? "入门" : "Getting Started";
+                case "mechanics":
+                    return isChinese ? "机制" : "Mechanics";
+                case "config":
+                    return isChinese ? "配置" : "Configuration";
+                case "misc":
+                    return isChinese ? "杂项" : "Misc";
+                case "easter":
+                    return isChinese ? "彩蛋" : "Easter Egg";
+                case "changelog":
+                    return isChinese ? "更新日志" : "Changelog";
                 case "boss":
                     return isChinese ? "Boss 图鉴" : "Boss Guide";
                 case "equipment":

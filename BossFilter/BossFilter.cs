@@ -36,6 +36,10 @@ namespace BossRush
 
         /// <summary>Boss 池筛选是否已初始化</summary>
         private bool bossPoolFilterInitialized = false;
+        
+        // [性能优化] 过滤后的 Boss 列表缓存
+        private List<EnemyPresetInfo> _filteredPresetsCache = null;
+        private bool _filteredPresetsCacheDirty = true;
 
         /// <summary>Boss 池 UI Canvas</summary>
         private GameObject bossPoolCanvas = null;
@@ -102,6 +106,7 @@ namespace BossRush
                 }
 
                 bossPoolFilterInitialized = true;
+                InvalidateFilteredPresetsCache();  // [性能优化] 初始化后标记缓存需要刷新
 
                 int enabledCount = bossEnabledStates.Count(kv => kv.Value);
                 int totalCount = bossEnabledStates.Count;
@@ -147,10 +152,12 @@ namespace BossRush
             }
 
             bossEnabledStates[bossName] = enabled;
+            InvalidateFilteredPresetsCache();  // [性能优化] 标记缓存需要刷新
         }
 
         /// <summary>
         /// 获取过滤后的 Boss 列表
+        /// [性能优化] 使用缓存，只在 Boss 启用状态变化时重新计算
         /// </summary>
         public List<EnemyPresetInfo> GetFilteredEnemyPresets()
         {
@@ -158,12 +165,31 @@ namespace BossRush
             {
                 return new List<EnemyPresetInfo>();
             }
+            
+            // [性能优化] 如果缓存有效，直接返回缓存
+            if (!_filteredPresetsCacheDirty && _filteredPresetsCache != null)
+            {
+                return _filteredPresetsCache;
+            }
 
-            return enemyPresets.Where(preset => 
+            // 重新计算过滤后的列表
+            _filteredPresetsCache = enemyPresets.Where(preset => 
                 preset != null && 
                 !string.IsNullOrEmpty(preset.name) && 
                 IsBossEnabled(preset.name)
             ).ToList();
+            
+            _filteredPresetsCacheDirty = false;
+            return _filteredPresetsCache;
+        }
+        
+        /// <summary>
+        /// 标记过滤缓存为脏（需要重新计算）
+        /// 在 Boss 启用状态变化时调用
+        /// </summary>
+        private void InvalidateFilteredPresetsCache()
+        {
+            _filteredPresetsCacheDirty = true;
         }
 
         /// <summary>
@@ -176,6 +202,7 @@ namespace BossRush
             {
                 bossEnabledStates[key] = true;
             }
+            InvalidateFilteredPresetsCache();  // [性能优化] 标记缓存需要刷新
             RefreshBossPoolUI();
         }
 
@@ -189,6 +216,7 @@ namespace BossRush
             {
                 bossEnabledStates[key] = false;
             }
+            InvalidateFilteredPresetsCache();  // [性能优化] 标记缓存需要刷新
             RefreshBossPoolUI();
         }
 

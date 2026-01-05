@@ -110,6 +110,21 @@ namespace BossRush
         private static bool bulletSearched = false;
         
         /// <summary>
+        /// 清理静态缓存（场景切换时调用，防止持有已销毁对象引用）
+        /// </summary>
+        public static void ClearStaticCache()
+        {
+            cachedGrenadePrefab = null;
+            grenadeSearched = false;
+            cachedBulletPrefab = null;
+            bulletSearched = false;
+            
+            // 清理WaitForSeconds缓存
+            cachedGrenadeInterval = null;
+            cachedGrenadeIntervalValue = -1f;
+        }
+        
+        /// <summary>
         /// 二阶段使用的原始武器完整属性
         /// </summary>
         private ModBehaviour.OriginalWeaponData originalWeaponData = null;
@@ -237,7 +252,6 @@ namespace BossRush
         /// <summary>
         /// 预缓存所有需要的预制体（性能优化）
         /// 在初始化时一次性查找，避免战斗中频繁调用
-        /// [性能优化] 使用ItemAssetsCollection替代Resources.FindObjectsOfTypeAll，减少低端机卡顿
         /// </summary>
         private void PreCachePrefabs()
         {
@@ -247,38 +261,42 @@ namespace BossRush
                 grenadeSearched = true;
                 try
                 {
-                    // [性能优化] 从ItemAssetsCollection遍历查找燃烧弹，避免Resources.FindObjectsOfTypeAll
-                    var itemAssets = ItemAssetsCollection.Instance;
-                    if (itemAssets != null && itemAssets.entries != null)
+                    // 使用Resources.FindObjectsOfTypeAll查找所有Grenade预制体
+                    // 注意：此方法仅在Boss初始化时调用一次，不影响战斗性能
+                    var grenades = Resources.FindObjectsOfTypeAll<Grenade>();
+                    ModBehaviour.DevLog("[DragonDescendant] 搜索到 " + grenades.Length + " 个Grenade预制体");
+                    
+                    foreach (var grenade in grenades)
                     {
-                        foreach (var entry in itemAssets.entries)
+                        if (grenade == null) continue;
+                        
+                        // 查找火焰类型的手雷
+                        if (grenade.fxType == ExplosionFxTypes.fire || 
+                            grenade.name.IndexOf("fire", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                            grenade.name.IndexOf("incendiary", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            grenade.name.Contains("燃烧") ||
+                            grenade.name.Contains("Fire") ||
+                            grenade.name.Contains("Burn"))
                         {
-                            if (entry == null || entry.prefab == null) continue;
-                            var grenade = entry.prefab.GetComponent<Grenade>();
-                            if (grenade == null) continue;
-                            
-                            // 查找火焰类型的手雷
-                            if (grenade.fxType == ExplosionFxTypes.fire || 
-                                entry.prefab.name.IndexOf("fire", StringComparison.OrdinalIgnoreCase) >= 0 || 
-                                entry.prefab.name.IndexOf("incendiary", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                entry.prefab.name.Contains("燃烧"))
-                            {
-                                cachedGrenadePrefab = grenade;
-                                ModBehaviour.DevLog("[DragonDescendant] 已缓存燃烧弹预制体: " + grenade.name);
-                                break;
-                            }
-                            
-                            // 记录第一个找到的手雷作为后备
-                            if (cachedGrenadePrefab == null)
-                            {
-                                cachedGrenadePrefab = grenade;
-                            }
+                            cachedGrenadePrefab = grenade;
+                            ModBehaviour.DevLog("[DragonDescendant] 已缓存燃烧弹预制体: " + grenade.name + " (fxType=" + grenade.fxType + ")");
+                            break;
+                        }
+                        
+                        // 记录第一个找到的手雷作为后备
+                        if (cachedGrenadePrefab == null)
+                        {
+                            cachedGrenadePrefab = grenade;
                         }
                     }
                     
                     if (cachedGrenadePrefab != null && cachedGrenadePrefab.fxType != ExplosionFxTypes.fire)
                     {
                         ModBehaviour.DevLog("[DragonDescendant] 使用默认手雷预制体: " + cachedGrenadePrefab.name);
+                    }
+                    else if (cachedGrenadePrefab == null)
+                    {
+                        ModBehaviour.DevLog("[DragonDescendant] [WARNING] 未找到任何Grenade预制体，将使用火焰爆炸作为后备");
                     }
                 }
                 catch (Exception e)

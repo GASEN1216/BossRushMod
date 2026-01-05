@@ -1,10 +1,10 @@
 categoryId	entryId	titleKey_zh	titleKey_en	order
-mode	mode__overview	模式说明	Mode Overview	1
-mode	mode__mode_a	模式A：弹指可灭	Mode A: Easy	2
-mode	mode__mode_b	模式B：有点意思	Mode B: Medium	3
-mode	mode__mode_c	模式C：无间炼狱	Mode C: Infinite Hell	4
-mode	mode__mode_d	模式D：白手起家	Mode D: Naked Start	5
-tips	tips__mechanics	挑战机制	Challenge Mechanics	1
-tips	tips__config	Mod配置	Mod Configuration	2
-tips	tips__easter_egg	彩蛋	Easter Egg	3
-tips	tips__changelog	更新日志	Changelog	4
+start	mode__overview	入门指南	Getting Started	1
+mode	mode__mode_a	弹指可灭	Mode A: Easy	1
+mode	mode__mode_b	有点意思	Mode B: Medium	2
+mode	mode__mode_c	无间炼狱	Mode C: Infinite Hell	3
+mode	mode__mode_d	白手起家	Mode D: Naked Start	4
+mechanics	tips__mechanics	挑战机制	Challenge Mechanics	1
+config	tips__config	Mod配置	Mod Configuration	1
+easter	tips__easter_egg	彩蛋	Easter Egg	1
+changelog	tips__changelog	更新日志	Changelog	1

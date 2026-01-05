@@ -132,8 +132,8 @@ namespace BossRush
         /// </summary>
         public static string DragonBurnDesc
         {
-            get { return T("每秒受到最大生命值0.1%的火焰伤害，最多叠加10层，持续10秒", 
-                          "Takes 0.1% max HP fire damage per second per layer, stacks up to 10, lasts 10 seconds"); }
+            get { return T("每秒受到最大生命值0.1%+1点真实火焰伤害，最多叠加10层，持续10秒", 
+                          "Takes 0.1% max HP + 1 true fire damage per second per layer, stacks up to 10, lasts 10 seconds"); }
         }
         
     }

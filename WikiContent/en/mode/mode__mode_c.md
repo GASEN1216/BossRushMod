@@ -1,9 +1,23 @@
 ## Mode C: Infinite Hell
 
-- Infinite waves, each wave spawns **x random Bosses** (default 3, configurable, more bosses = more rewards)
+### Core Rules
+- Infinite waves
+- Each wave spawns **x random Bosses** (default 3, configurable)
 - Each wave gets stronger
 - Shop available for ammo resupply
-- **If you're lucky enough to spawn bosses from different factions, a little strategy can let you reap the benefits of their infighting**
-- Small reward every 5 successful waves, reach wave 100 for lifetime wealth!
-- No more words needed, come fight if you need money. This mode drops no boxes, only cash rewards based on killed bosses. Perfect for combat lovers and impatient players
-- Cash rewards scatter at the signpost after each wave, more waves completed = more cash scattered, giving visual satisfaction
+
+![ModeC-SelectInfiniteHell](TODO.png)
+
+### Rewards (Cash Pool)
+- This mode **does not drop boss loot boxes**
+- Cash rewards accumulate into a **cash pool** based on kills
+- After each wave, cash will drop near the **signpost** (usually in multiple stacks)
+
+![ModeC-CashDropsAtSignpost](TODO.png)
+
+### Extra Rewards
+- **Every 5 waves**: one extra reward drop near the signpost
+- **At wave 100**: a one-time special reward drop near the signpost
+
+### Tips
+- **If you're lucky enough to spawn bosses from different factions**, a little strategy can let you reap the benefits of their infighting

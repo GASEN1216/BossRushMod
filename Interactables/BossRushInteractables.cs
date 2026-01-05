@@ -837,62 +837,16 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// [已废弃] 在路牌上添加清空箱子选项
+        /// <para>清空箱子功能已移至垃圾桶交互物 (TrashCanInteractable)</para>
+        /// </summary>
+        [System.Obsolete("清空箱子选项已移至垃圾桶交互物，此方法不再使用")]
         public void AddClearLootboxOptions()
         {
-            try
-            {
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field == null) return;
-
-                var list = field.GetValue(this) as List<InteractableBase>;
-                if (list == null) return;
-
-                bool hasClearAll = false;
-                bool hasClearEmpty = false;
-
-                for (int i = list.Count - 1; i >= 0; i--)
-                {
-                    var item = list[i];
-                    if (item == null)
-                    {
-                        list.RemoveAt(i);
-                        continue;
-                    }
-
-                    if (item is BossRushClearAllLootboxesInteractable)
-                    {
-                        hasClearAll = true;
-                    }
-                    else if (item is BossRushClearEmptyLootboxesInteractable)
-                    {
-                        hasClearEmpty = true;
-                    }
-                }
-
-                if (!hasClearAll)
-                {
-                    GameObject clearAllObj = new GameObject("BossRushOption_ClearAllLootboxes");
-                    clearAllObj.transform.SetParent(transform);
-                    clearAllObj.transform.localPosition = Vector3.zero;
-                    var clearAllInteract = clearAllObj.AddComponent<BossRushClearAllLootboxesInteractable>();
-                    list.Add(clearAllInteract);
-                    groupOptions.Add(clearAllInteract);
-                }
-
-                if (!hasClearEmpty)
-                {
-                    GameObject clearEmptyObj = new GameObject("BossRushOption_ClearEmptyLootboxes");
-                    clearEmptyObj.transform.SetParent(transform);
-                    clearEmptyObj.transform.localPosition = Vector3.zero;
-                    var clearEmptyInteract = clearEmptyObj.AddComponent<BossRushClearEmptyLootboxesInteractable>();
-                    list.Add(clearEmptyInteract);
-                    groupOptions.Add(clearEmptyInteract);
-                }
-            }
-            catch
-            {
-            }
+            // 此方法已废弃，清空箱子功能已移至垃圾桶交互物
+            // 保留方法签名以保持向后兼容性
+            ModBehaviour.DevLog("[BossRush] AddClearLootboxOptions 已废弃，清空箱子功能已移至垃圾桶");
         }
 
         public void RemoveDifficultyOptions()
@@ -1840,6 +1794,187 @@ namespace BossRush
 
                 gameObject.SetActive(false);
             }
+        }
+    }
+
+    /// <summary>
+    /// 垃圾桶交互组件 - 提供清空箱子功能
+    /// <para>在路牌旁边显示，一直可见，包含"清空所有箱子"和"清空空箱子"两个选项</para>
+    /// <para>第一个选项直接显示"清空所有箱子"，不显示"垃圾桶"</para>
+    /// </summary>
+    public class TrashCanInteractable : InteractableBase
+    {
+        private bool optionsInjected = false;
+        private List<InteractableBase> groupOptions = new List<InteractableBase>();
+
+        protected override void Awake()
+        {
+            try
+            {
+                // 设置为交互组，包含多个子选项
+                this.interactableGroup = true;
+                
+                // 直接显示"清空所有箱子"而不是"垃圾桶"
+                this.overrideInteractName = true;
+                this._overrideInteractNameKey = "BossRush_ClearAllLootboxes";
+                this.InteractName = "BossRush_ClearAllLootboxes";
+                
+                // 交互标记放在垃圾桶中部
+                this.interactMarkerOffset = new Vector3(0f, 0f, 0f);
+            }
+            catch {}
+            
+            try
+            {
+                base.Awake();
+            }
+            catch {}
+            
+            try
+            {
+                // 一直显示交互标记
+                this.MarkerActive = true;
+            }
+            catch {}
+        }
+
+        protected override void Start()
+        {
+            try
+            {
+                base.Start();
+            }
+            catch {}
+            
+            // 注入清空箱子选项
+            if (!optionsInjected)
+            {
+                InjectClearOptions();
+            }
+        }
+
+        /// <summary>
+        /// 注入清空箱子选项（仅清空空箱子，因为主交互已经是清空所有箱子）
+        /// </summary>
+        private void InjectClearOptions()
+        {
+            try
+            {
+                optionsInjected = true;
+
+                // 获取或创建 otherInterablesInGroup 列表
+                var field = typeof(InteractableBase).GetField("otherInterablesInGroup",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field == null) return;
+
+                var list = field.GetValue(this) as List<InteractableBase>;
+                if (list == null)
+                {
+                    list = new List<InteractableBase>();
+                    field.SetValue(this, list);
+                }
+
+                // 只添加"清空空箱子"选项，因为主交互已经是"清空所有箱子"
+                GameObject clearEmptyObj = new GameObject("TrashCanOption_ClearEmpty");
+                clearEmptyObj.transform.SetParent(transform);
+                clearEmptyObj.transform.localPosition = Vector3.zero;
+                var clearEmptyInteract = clearEmptyObj.AddComponent<BossRushClearEmptyLootboxesInteractable>();
+                list.Add(clearEmptyInteract);
+                groupOptions.Add(clearEmptyInteract);
+
+                ModBehaviour.DevLog("[BossRush] TrashCanInteractable: 已注入清空空箱子选项");
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] TrashCanInteractable.InjectClearOptions 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 主交互触发时执行清空所有箱子
+        /// </summary>
+        protected override void OnTimeOut()
+        {
+            try
+            {
+                int removed = 0;
+                InteractableLootbox[] boxes = null;
+
+                try
+                {
+                    boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
+                }
+                catch {}
+
+                if (boxes != null)
+                {
+                    for (int i = 0; i < boxes.Length; i++)
+                    {
+                        InteractableLootbox box = boxes[i];
+                        if (box == null) continue;
+
+                        BossRushLootboxMarker marker = null;
+                        try { marker = box.GetComponent<BossRushLootboxMarker>(); } catch {}
+
+                        if (marker == null) continue;
+
+                        try
+                        {
+                            if (box.gameObject != null)
+                            {
+                                removed++;
+                                UnityEngine.Object.Destroy(box.gameObject);
+                            }
+                        }
+                        catch {}
+                    }
+                }
+
+                try
+                {
+                    var main = CharacterMainControl.Main;
+                    if (main != null)
+                    {
+                        string msg = L10n.T(
+                            "已清空 " + removed + " 个箱子",
+                            "Cleared " + removed + " lootboxes");
+                        main.PopText(msg, -1f);
+                    }
+                }
+                catch {}
+
+                ModBehaviour.DevLog("[BossRush] TrashCanInteractable: 已清空 " + removed + " 个箱子");
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] TrashCanInteractable.OnTimeOut 失败: " + e.Message);
+            }
+        }
+
+        protected override bool IsInteractable()
+        {
+            try
+            {
+                ModBehaviour mod = ModBehaviour.Instance;
+                if (mod == null)
+                {
+                    return false;
+                }
+
+                // 只要 BossRush 激活、ModeD 激活、或竞技场激活，都允许交互
+                bool bossRushActive = false;
+                bool modeDActive = false;
+                bool arenaActive = false;
+
+                try { bossRushActive = mod.IsActive; } catch {}
+                try { modeDActive = mod.IsModeDActive; } catch {}
+                try { arenaActive = mod.IsBossRushArenaActive; } catch {}
+
+                return bossRushActive || modeDActive || arenaActive;
+            }
+            catch {}
+
+            return false;
         }
     }
 }

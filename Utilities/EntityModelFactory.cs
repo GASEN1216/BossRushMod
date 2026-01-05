@@ -49,6 +49,9 @@ namespace BossRush
 
         // 预定义的路牌预制体名称
         private const string SIGNPOST_PREFAB_NAME = "BossRush_Signpost_Model";
+        
+        // 预定义的垃圾桶预制体名称
+        private const string TRASHCAN_PREFAB_NAME = "BossRush_TrashCan_Model";
 
         #endregion
 
@@ -279,16 +282,25 @@ namespace BossRush
         private static GameObject InstantiatePrefab(GameObject prefab, string prefabName, Vector3 position, Quaternion rotation)
         {
             // 路牌模型的 pivot 在模型中心，需要向上偏移使其底部贴地
-            // 路牌高度约 2 米，偏移 1 米使底部贴地
+            // 路牌高度约 2 米，偏移 0.8 米使底部贴地
             Vector3 adjustedPosition = position;
             Quaternion adjustedRotation = rotation;
             
             if (prefabName == SIGNPOST_PREFAB_NAME)
             {
-                adjustedPosition.y += 1.0f;
+                adjustedPosition.y += 0.8f;
                 // 基础模型朝向修正：X轴旋转-90度，Y轴旋转90度
-                // 额外的 Y 轴旋转通过传入的 rotation 参数控制
-                adjustedRotation = rotation * Quaternion.Euler(-90f, 90f, 0f);
+                // 传入的 rotation 用于额外的 Y 轴旋转控制
+                Quaternion baseRotation = Quaternion.Euler(-90f, 90f, 0f);
+                adjustedRotation = Quaternion.Euler(0f, rotation.eulerAngles.y, 0f) * baseRotation;
+            }
+            else if (prefabName == TRASHCAN_PREFAB_NAME)
+            {
+                // 垃圾桶模型的 pivot 在模型中心，需要向上偏移使其底部贴地
+                adjustedPosition.y += 0.5f;
+                // 基础模型朝向修正：与路牌相同
+                Quaternion baseRotation = Quaternion.Euler(-90f, 90f, 0f);
+                adjustedRotation = Quaternion.Euler(0f, rotation.eulerAngles.y, 0f) * baseRotation;
             }
             
             GameObject instance = UnityEngine.Object.Instantiate(prefab, adjustedPosition, adjustedRotation);
@@ -432,6 +444,27 @@ namespace BossRush
         public static GameObject CreateSignpost(Vector3 position)
         {
             return Create(SIGNPOST_PREFAB_NAME, position, Quaternion.identity);
+        }
+
+        /// <summary>
+        /// 创建垃圾桶模型（便捷方法）
+        /// </summary>
+        /// <param name="position">位置</param>
+        /// <param name="rotation">旋转</param>
+        /// <returns>垃圾桶 GameObject</returns>
+        public static GameObject CreateTrashCan(Vector3 position, Quaternion rotation)
+        {
+            return Create(TRASHCAN_PREFAB_NAME, position, rotation);
+        }
+
+        /// <summary>
+        /// 创建垃圾桶模型（使用默认旋转）
+        /// </summary>
+        /// <param name="position">位置</param>
+        /// <returns>垃圾桶 GameObject</returns>
+        public static GameObject CreateTrashCan(Vector3 position)
+        {
+            return Create(TRASHCAN_PREFAB_NAME, position, Quaternion.identity);
         }
 
         #endregion

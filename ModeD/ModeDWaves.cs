@@ -774,8 +774,8 @@ namespace BossRush
                     {
                         box.interactableGroup = true;
 
-                        System.Type baseType = typeof(InteractableBase);
-                        System.Reflection.FieldInfo othersField = baseType.GetField("otherInterablesInGroup", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        // 使用缓存的 FieldInfo
+                        System.Reflection.FieldInfo othersField = ReflectionCache.InteractableBase_OtherInterablesInGroup;
                         if (othersField != null)
                         {
                             System.Collections.Generic.List<InteractableBase> hostList = othersField.GetValue(box) as System.Collections.Generic.List<InteractableBase>;

@@ -36,6 +36,11 @@ namespace BossRush
         /// </summary>
         public const string BUFF_BASE_NAME = "dragon";
         
+        /// <summary>
+        /// 每层基础伤害（真实伤害，无视护甲）
+        /// </summary>
+        public const float BASE_DAMAGE_PER_LAYER = 1f;
+        
         // ========== 本地化键 ==========
         
         /// <summary>

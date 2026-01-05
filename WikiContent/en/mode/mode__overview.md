@@ -1,20 +1,24 @@
 ## BossRush Mode Guide
 
-Github: https://github.com/GASEN1216/BossRushMod
+### Links
+- Github: https://github.com/GASEN1216/BossRushMod
+- Video: https://www.bilibili.com/video/BV1mCSbBJEQC/
 
-Video: https://www.bilibili.com/video/BV1mCSbBJEQC/
+### How to Enter BossRush
+- Purchase the item "Boss Rush Ticket" from the **vending machine**
+- Go to the **boat in the sewer** and use the ticket to enter the BossRush map
+- After entering, interact with the **signpost** to choose a mode and start the challenge
+- You can leave anytime from the **evac point on the right**
 
-### New Item: Boss Rush Ticket
-In this Mod, you can purchase the new item "Boss Rush Ticket" from the **vending machine**.  
-After purchasing, go to the **boat in the sewer** and use the ticket to sail to the BossRush exclusive battle area.
+![EnterBossRush-TicketAndBoat](TODO.png)
+
+### Signpost Interaction (BossRush)
+- The signpost is the main interaction entry (start challenge / select mode)
+- After each wave, you can continue from the center (whether manual interaction is required to start the next wave is configurable)
+
+![BossRush-SignpostInteraction](TODO.png)
 
 ### New Content List
 - NPC: 1 (Courier Awen)
 - Boss: 1 (Dragon Descendant)
 - Equipment: 3 (Dragon Head, Flame Scale Armor, Dragon Breath)
-
-### How to Enter BossRush
-1. Purchase Boss Rush Ticket from vending machine  
-2. Go to the sewer, find the docked boat  
-3. Use the ticket to enter the map, interact with the signpost
-4. Start continuous battle

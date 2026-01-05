@@ -2369,5 +2369,73 @@ namespace BossRush
                 LogChildTransforms(child, prefix, depth + 1, maxDepth);
             }
         }
+        
+        // ============================================================================
+        // 帧率显示（DevMode）
+        // ============================================================================
+        
+        // 帧率计算变量
+        private float fpsUpdateInterval = 0.5f;  // 更新间隔（秒）
+        private float fpsAccumulator = 0f;       // 帧时间累加器
+        private int fpsFrameCount = 0;           // 帧计数
+        private float currentFps = 0f;           // 当前帧率
+        private float fpsTimeSinceLastUpdate = 0f;  // 距上次更新的时间
+        private GUIStyle fpsLabelStyle = null;   // 帧率显示样式（缓存）
+        
+        /// <summary>
+        /// 更新帧率计算（在 Update 中调用）
+        /// </summary>
+        private void UpdateFpsCounter()
+        {
+            if (!DevModeEnabled) return;
+            
+            fpsTimeSinceLastUpdate += Time.unscaledDeltaTime;
+            fpsAccumulator += Time.unscaledDeltaTime;
+            fpsFrameCount++;
+            
+            // 每隔 fpsUpdateInterval 秒更新一次帧率
+            if (fpsTimeSinceLastUpdate >= fpsUpdateInterval)
+            {
+                currentFps = fpsFrameCount / fpsAccumulator;
+                fpsFrameCount = 0;
+                fpsAccumulator = 0f;
+                fpsTimeSinceLastUpdate = 0f;
+            }
+        }
+        
+        /// <summary>
+        /// 绘制帧率显示（在 OnGUI 中调用）
+        /// </summary>
+        private void DrawFpsCounter()
+        {
+            if (!DevModeEnabled) return;
+            
+            // 初始化样式（仅一次）
+            if (fpsLabelStyle == null)
+            {
+                fpsLabelStyle = new GUIStyle(GUI.skin.label);
+                fpsLabelStyle.fontSize = 16;
+                fpsLabelStyle.fontStyle = FontStyle.Bold;
+                fpsLabelStyle.normal.textColor = Color.white;
+            }
+            
+            // 根据帧率设置颜色
+            if (currentFps >= 60f)
+            {
+                fpsLabelStyle.normal.textColor = Color.green;
+            }
+            else if (currentFps >= 30f)
+            {
+                fpsLabelStyle.normal.textColor = Color.yellow;
+            }
+            else
+            {
+                fpsLabelStyle.normal.textColor = Color.red;
+            }
+            
+            // 在屏幕左上角显示帧率
+            string fpsText = "FPS: " + currentFps.ToString("F1");
+            GUI.Label(new Rect(10, 10, 120, 30), fpsText, fpsLabelStyle);
+        }
     }
 }

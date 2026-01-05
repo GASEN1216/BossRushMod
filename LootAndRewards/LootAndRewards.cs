@@ -63,6 +63,9 @@ namespace BossRush
         private List<EnemyPresetInfo> enemyPresets = new List<EnemyPresetInfo>();
         private float minBossBaseHealth = 100f;
         private float maxBossBaseHealth = 100f;
+        
+        // [性能优化] 敌人预设初始化标记，避免每次传送都重复扫描
+        private static bool _enemyPresetsInitialized = false;
 
         private readonly Dictionary<CharacterMainControl, float> bossSpawnTimes = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, int> bossOriginalLootCounts = new Dictionary<CharacterMainControl, int>();

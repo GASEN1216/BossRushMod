@@ -101,7 +101,8 @@ namespace BossRush
         {
             try
             {
-                BoxCollider[] allBoxColliders = UnityEngine.Object.FindObjectsOfType<BoxCollider>();
+                // 使用 ObjectCache 获取缓存的 BoxCollider 数组
+                BoxCollider[] allBoxColliders = ObjectCache.GetBoxColliders();
                 BoxCollider nearest = null;
                 float nearestDistance = maxDistance;
                 
@@ -142,8 +143,95 @@ namespace BossRush
         private InteractableBase _signInteractBase = null;
         // 路牌 GameObject 引用（用于添加下一波选项）
         private GameObject _bossRushSignGameObject = null;
+        
+        /// <summary>垃圾桶 GameObject 引用</summary>
+        private GameObject _bossRushTrashCanGameObject = null;
 
         private static bool notificationDurationTweaked = false;
+        
+        #endregion
+        
+        #region 垃圾桶创建
+        
+        /// <summary>
+        /// 在路牌旁边创建垃圾桶
+        /// </summary>
+        /// <param name="signpostPosition">路牌位置（地面位置，未经 Y 轴偏移）</param>
+        /// <param name="signpostRotation">路牌旋转</param>
+        /// <param name="placeOnRight">true=放在右边，false=放在前方（仅 DEMO 挑战地图使用前方）</param>
+        private void CreateTrashCanNextToSignpost(Vector3 signpostPosition, Quaternion signpostRotation, bool placeOnRight = false)
+        {
+            try
+            {
+                string trashCanName = "BossRush_TrashCan";
+                
+                // 检查是否已存在
+                GameObject existingTrashCan = GameObject.Find(trashCanName);
+                if (existingTrashCan != null)
+                {
+                    DevLog("[BossRush] CreateTrashCanNextToSignpost: 垃圾桶已存在，跳过创建");
+                    _bossRushTrashCanGameObject = existingTrashCan;
+                    return;
+                }
+                
+                // 计算偏移方向
+                const float OFFSET_DISTANCE = 1.5f;
+                Vector3 trashCanPos;
+                if (placeOnRight)
+                {
+                    // 零度挑战等非 DEMO 地图：使用固定偏移方向 (1.30, 0, 0.65)，归一化后乘以距离
+                    // 原始偏移向量：(226.55 - 225.25, 0, 287.40 - 286.75) = (1.30, 0, 0.65)
+                    Vector3 rightOffset = new Vector3(1.30f, 0f, 0.65f).normalized;
+                    trashCanPos = signpostPosition + rightOffset * OFFSET_DISTANCE;
+                }
+                else
+                {
+                    // DEMO 挑战地图：前方方向（考虑旋转）
+                    Vector3 forwardDirection = signpostRotation * Vector3.forward;
+                    trashCanPos = signpostPosition + forwardDirection * OFFSET_DISTANCE;
+                }
+                
+                // 使用 EntityModelFactory 创建垃圾桶模型（旋转与路牌一致）
+                GameObject trashCan = EntityModelFactory.CreateTrashCan(trashCanPos, signpostRotation);
+                trashCan.name = trashCanName;
+                
+                // 检查是否为后备对象
+                bool isFallback = trashCan.name.Contains("_Fallback") || trashCan.GetComponentInChildren<MeshRenderer>() == null;
+                
+                if (!isFallback)
+                {
+                    // 移除刚体，确保玩家可以穿过垃圾桶
+                    RemoveRigidbodyAndSetTrigger(trashCan);
+                }
+                
+                // 添加 BoxCollider 作为交互触发器
+                BoxCollider col = trashCan.GetComponent<BoxCollider>();
+                if (col == null)
+                {
+                    col = trashCan.AddComponent<BoxCollider>();
+                }
+                col.isTrigger = true;
+                col.size = new Vector3(0.8f, 1.2f, 0.8f);
+                
+                // 添加 TrashCanInteractable 作为主交互
+                var trashCanInteract = trashCan.AddComponent<TrashCanInteractable>();
+                trashCanInteract.interactCollider = col;
+                // 交互标记放在垃圾桶中部
+                trashCanInteract.interactMarkerOffset = new Vector3(0f, 0f, 0f);
+                
+                // 保存引用
+                _bossRushTrashCanGameObject = trashCan;
+                
+                string positionDesc = placeOnRight ? "右边" : "前方";
+                DevLog("[BossRush] CreateTrashCanNextToSignpost: 成功创建垃圾桶（" + positionDesc + "），位置=" + trashCanPos);
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [ERROR] 创建垃圾桶失败: " + e.Message);
+            }
+        }
+        
+        #endregion
 
         private void UpdateMessage_UIAndSigns()
         {
@@ -321,19 +409,12 @@ namespace BossRush
             messageTimer = 3f;
             DevLog("[BossRush] UI提示: " + msg);
             
-            // 尝试使用反射调用 NotificationText.ShowNext
+            // 使用缓存的反射调用 NotificationText.ShowNext
             try
             {
-                var type = Type.GetType("Duckov.UI.NotificationText, TeamSoda.Duckov.Core");
-                if (type == null) type = Type.GetType("NotificationText, Assembly-CSharp");
-                
-                if (type != null)
+                if (ReflectionCache.NotificationText_ShowNext != null)
                 {
-                    var method = type.GetMethod("ShowNext", BindingFlags.Static | BindingFlags.Public);
-                    if (method != null)
-                    {
-                        method.Invoke(null, new object[] { msg });
-                    }
+                    ReflectionCache.NotificationText_ShowNext.Invoke(null, new object[] { msg });
                 }
             }
             catch {}
@@ -418,12 +499,13 @@ namespace BossRush
 
             try
             {
-                NotificationText[] instances = Resources.FindObjectsOfTypeAll<NotificationText>();
+                // 使用 ObjectCache 获取缓存的 NotificationText 实例
+                NotificationText[] instances = ObjectCache.GetNotificationTexts();
                 if (instances != null && instances.Length > 0)
                 {
-                    System.Type type = typeof(NotificationText);
-                    System.Reflection.FieldInfo durationField = type.GetField("duration", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-                    System.Reflection.FieldInfo durationPendingField = type.GetField("durationIfPending", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                    // 使用 ReflectionCache 获取缓存的 FieldInfo
+                    FieldInfo durationField = ReflectionCache.NotificationText_Duration;
+                    FieldInfo durationPendingField = ReflectionCache.NotificationText_DurationIfPending;
 
                     for (int i = 0; i < instances.Length; i++)
                     {
@@ -500,11 +582,14 @@ namespace BossRush
         {
             try
             {
-                // Level_ChallengeSnow 场景不创建路牌（该场景有自己的交互点）
                 string currentScene = SceneManager.GetActiveScene().name;
-                if (currentScene == "Level_ChallengeSnow")
+                bool isChallengeSnow = (currentScene == "Level_ChallengeSnow");
+                
+                // Level_ChallengeSnow 场景：不创建路牌模型，但要创建隐形交互点和垃圾桶
+                if (isChallengeSnow)
                 {
-                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: Level_ChallengeSnow 场景跳过创建路牌");
+                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: Level_ChallengeSnow 场景，创建隐形交互点和垃圾桶");
+                    CreateInvisibleEntryPointForChallengeSnow(customPosition);
                     return;
                 }
                 
@@ -550,12 +635,12 @@ namespace BossRush
 
                 // 根据场景决定路牌朝向
                 // Demo 挑战地图 (Level_DemoChallenge_1) 使用默认朝向
-                // 其他地图额外旋转 65 度（Y轴）使路牌朝向玩家出生点方向
+                // 其他地图旋转使路牌面向玩家
                 Quaternion signRotation = Quaternion.identity;
                 if (currentScene != "Level_DemoChallenge_1")
                 {
-                    // 非 Demo 地图：额外 Y 轴旋转 65 度
-                    signRotation = Quaternion.Euler(0f, 65f, 0f);
+                    // 非 Demo 地图：Y 轴旋转 40 度，使路牌面向玩家
+                    signRotation = Quaternion.Euler(0f, 60f, 0f);
                 }
 
                 // 使用 EntityModelFactory 创建路牌模型
@@ -595,6 +680,14 @@ namespace BossRush
                 bossRushSignInteract = signInteract;
                 _signInteractBase = signInteract;
                 _bossRushSignGameObject = sign;
+                
+                // [性能优化] 设置竞技场中心位置（用于限制清理和禁用范围）
+                _arenaCenter = signPos;
+                _arenaCenterSet = true;
+
+                // 创建垃圾桶：DEMO 挑战地图放前方，其他地图放右边
+                bool placeTrashCanOnRight = (currentScene != "Level_DemoChallenge_1");
+                CreateTrashCanNextToSignpost(signPos, signRotation, placeTrashCanOnRight);
 
                 DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 成功创建路牌交互，位置=" + signPos);
                 DevLog("[BossRush] 已在 DEMO 挑战场景创建 BossRush 难度入口");
@@ -602,6 +695,92 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[BossRush] [ERROR] 创建 BossRush 难度入口失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 为零度挑战地图创建隐形交互点和垃圾桶
+        /// 该场景不需要路牌模型，但需要交互点用于选择难度
+        /// </summary>
+        /// <param name="customPosition">自定义位置，为 null 时使用配置的默认位置</param>
+        private void CreateInvisibleEntryPointForChallengeSnow(Vector3? customPosition)
+        {
+            try
+            {
+                // 获取交互点位置
+                Vector3 position;
+                if (customPosition.HasValue)
+                {
+                    position = customPosition.Value;
+                }
+                else
+                {
+                    BossRushMapConfig currentConfig = GetCurrentMapConfig();
+                    if (currentConfig != null && currentConfig.defaultSignPos.HasValue)
+                    {
+                        position = currentConfig.defaultSignPos.Value;
+                    }
+                    else
+                    {
+                        // 兜底：使用默认位置
+                        position = new Vector3(225.32f, 0.01f, 285.64f);
+                    }
+                }
+                
+                string signName = "BossRush_Roadsign";
+                
+                // 检查是否已存在
+                GameObject existingSign = GameObject.Find(signName);
+                if (existingSign != null)
+                {
+                    DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 交互点已存在，跳过创建");
+                    if (bossRushSignInteract == null)
+                    {
+                        bossRushSignInteract = existingSign.GetComponent<BossRushSignInteractable>();
+                    }
+                    return;
+                }
+                
+                // 重置引用
+                bossRushSignInteract = null;
+                
+                // 零度挑战地图：垃圾桶需要旋转90度面向玩家
+                Quaternion signRotation = Quaternion.Euler(0f, 90f, 0f);
+                
+                // 创建隐形交互点（空 GameObject）
+                GameObject invisibleSign = new GameObject(signName);
+                invisibleSign.transform.position = position;
+                invisibleSign.transform.rotation = signRotation;
+                
+                // 添加 BoxCollider 作为交互触发器（零度挑战地图使用更大的范围）
+                BoxCollider col = invisibleSign.AddComponent<BoxCollider>();
+                col.isTrigger = true;
+                col.size = new Vector3(2f, 2f, 2f);  // 加大交互范围，方便玩家触发
+                
+                // 添加 BossRushSignInteractable 作为主交互
+                var signInteract = invisibleSign.AddComponent<BossRushSignInteractable>();
+                signInteract.interactCollider = col;
+                signInteract.interactMarkerOffset = new Vector3(0f, 1f, 0f);  // 交互标记稍微抬高
+                
+                // 保存引用
+                bossRushSignInteract = signInteract;
+                _signInteractBase = signInteract;
+                _bossRushSignGameObject = invisibleSign;
+                
+                // [性能优化] 设置竞技场中心位置（用于限制清理和禁用范围）
+                _arenaCenter = position;
+                _arenaCenterSet = true;
+                
+                DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 成功创建隐形交互点，位置=" + position);
+                
+                // 在交互点右边创建垃圾桶（非 DEMO 地图统一放右边）
+                CreateTrashCanNextToSignpost(position, signRotation, true);;
+                
+                DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 零度挑战地图初始化完成");
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [ERROR] CreateInvisibleEntryPointForChallengeSnow 失败: " + e.Message);
             }
         }
 
@@ -751,8 +930,8 @@ namespace BossRush
                 // 确保 interactableGroup 为 true
                 target.interactableGroup = true;
 
-                // 获取 otherInterablesInGroup 字段
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup", BindingFlags.NonPublic | BindingFlags.Instance);
+                // 使用缓存的 FieldInfo 获取 otherInterablesInGroup 字段
+                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null) return false;
 
                 // 3. 获取列表值，如果为null则初始化
@@ -839,7 +1018,8 @@ namespace BossRush
                 // 启用交互组
                 target.interactableGroup = true;
 
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup", BindingFlags.NonPublic | BindingFlags.Instance);
+                // 使用缓存的 FieldInfo
+                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null)
                 {
                     DevLog("[BossRush] InjectBossRushOptionsIntoSign: 未找到 otherInterablesInGroup 字段");
@@ -932,7 +1112,8 @@ namespace BossRush
                 // 启用交互组
                 target.interactableGroup = true;
 
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup", BindingFlags.NonPublic | BindingFlags.Instance);
+                // 使用缓存的 FieldInfo
+                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null)
                 {
                     DevLog("[BossRush] InjectIntoInteractableBaseGroupWithEntry: 未找到 otherInterablesInGroup 字段");
@@ -1034,8 +1215,8 @@ namespace BossRush
                     return false;
                 }
 
-                // 获取私有字段 interactables
-                var field = typeof(MultiInteraction).GetField("interactables", BindingFlags.NonPublic | BindingFlags.Instance);
+                // 使用缓存的 FieldInfo 获取私有字段 interactables
+                var field = ReflectionCache.MultiInteraction_Interactables;
                 if (field == null)
                 {
                     return false;
@@ -1131,7 +1312,5 @@ namespace BossRush
                 return false;
             }
         }
-        
-        #endregion
     }
 }

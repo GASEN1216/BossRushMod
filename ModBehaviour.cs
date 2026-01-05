@@ -19,6 +19,159 @@ using Duckov.ItemBuilders;
 
 namespace BossRush
 {
+    // ============================================================================
+    // ReflectionCache - 反射结果缓存（性能优化）
+    // ============================================================================
+    /// <summary>
+    /// 反射缓存 - 存储常用的 FieldInfo 和 MethodInfo，避免重复反射调用
+    /// </summary>
+    internal static class ReflectionCache
+    {
+        // InteractableBase.otherInterablesInGroup (私有字段)
+        public static readonly FieldInfo InteractableBase_OtherInterablesInGroup;
+        
+        // MultiInteraction.interactables (私有字段)
+        public static readonly FieldInfo MultiInteraction_Interactables;
+        
+        // NotificationText.duration / durationIfPending (私有字段)
+        public static readonly FieldInfo NotificationText_Duration;
+        public static readonly FieldInfo NotificationText_DurationIfPending;
+        
+        // StockShop 私有字段
+        public static readonly FieldInfo StockShop_MerchantID;
+        public static readonly FieldInfo StockShop_ItemInstances;
+        
+        // CharacterRandomPreset.characterIconType (私有字段)
+        public static readonly FieldInfo CharacterRandomPreset_CharacterIconType;
+        
+        // NotificationText.ShowNext (静态方法)
+        public static readonly MethodInfo NotificationText_ShowNext;
+        
+        // 缓存初始化标志
+        public static readonly bool IsInitialized;
+        
+        static ReflectionCache()
+        {
+            try
+            {
+                const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
+                const BindingFlags publicStatic = BindingFlags.Public | BindingFlags.Static;
+                
+                // InteractableBase.otherInterablesInGroup
+                InteractableBase_OtherInterablesInGroup = typeof(InteractableBase).GetField(
+                    "otherInterablesInGroup", privateInstance);
+                
+                // MultiInteraction.interactables
+                MultiInteraction_Interactables = typeof(MultiInteraction).GetField(
+                    "interactables", privateInstance);
+                
+                // NotificationText 字段
+                NotificationText_Duration = typeof(NotificationText).GetField(
+                    "duration", privateInstance | BindingFlags.Public);
+                NotificationText_DurationIfPending = typeof(NotificationText).GetField(
+                    "durationIfPending", privateInstance | BindingFlags.Public);
+                
+                // StockShop 字段
+                StockShop_MerchantID = typeof(StockShop).GetField(
+                    "merchantID", privateInstance);
+                StockShop_ItemInstances = typeof(StockShop).GetField(
+                    "itemInstances", privateInstance);
+                
+                // CharacterRandomPreset.characterIconType
+                CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(
+                    "characterIconType", privateInstance);
+                
+                // NotificationText.ShowNext 方法 - 尝试多种类型名称
+                Type notificationTextType = typeof(NotificationText);
+                if (notificationTextType == null)
+                {
+                    notificationTextType = Type.GetType("Duckov.UI.NotificationText, TeamSoda.Duckov.Core");
+                }
+                if (notificationTextType == null)
+                {
+                    notificationTextType = Type.GetType("NotificationText, Assembly-CSharp");
+                }
+                if (notificationTextType != null)
+                {
+                    NotificationText_ShowNext = notificationTextType.GetMethod("ShowNext", publicStatic);
+                }
+                
+                IsInitialized = true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[BossRush] ReflectionCache 初始化异常: " + e.Message);
+                IsInitialized = false;
+            }
+        }
+    }
+    
+    // ============================================================================
+    // ObjectCache - 场景对象缓存（性能优化）
+    // ============================================================================
+    /// <summary>
+    /// 场景对象缓存 - 存储 FindObjectsOfType 结果，按场景自动失效
+    /// </summary>
+    internal static class ObjectCache
+    {
+        private static BoxCollider[] _cachedBoxColliders;
+        private static NotificationText[] _cachedNotificationTexts;
+        private static string _lastSceneName;
+        
+        /// <summary>
+        /// 检查并刷新缓存（场景变化时自动失效）
+        /// </summary>
+        public static void RefreshIfNeeded()
+        {
+            try
+            {
+                string currentScene = SceneManager.GetActiveScene().name;
+                if (_lastSceneName != currentScene)
+                {
+                    _cachedBoxColliders = null;
+                    _cachedNotificationTexts = null;
+                    _lastSceneName = currentScene;
+                }
+            }
+            catch { }
+        }
+        
+        /// <summary>
+        /// 强制刷新所有缓存
+        /// </summary>
+        public static void ForceRefresh()
+        {
+            _cachedBoxColliders = null;
+            _cachedNotificationTexts = null;
+            _lastSceneName = null;
+        }
+        
+        /// <summary>
+        /// 获取缓存的 BoxCollider 数组
+        /// </summary>
+        public static BoxCollider[] GetBoxColliders()
+        {
+            RefreshIfNeeded();
+            if (_cachedBoxColliders == null)
+            {
+                _cachedBoxColliders = UnityEngine.Object.FindObjectsOfType<BoxCollider>();
+            }
+            return _cachedBoxColliders;
+        }
+        
+        /// <summary>
+        /// 获取缓存的 NotificationText 数组
+        /// </summary>
+        public static NotificationText[] GetNotificationTexts()
+        {
+            RefreshIfNeeded();
+            if (_cachedNotificationTexts == null)
+            {
+                _cachedNotificationTexts = Resources.FindObjectsOfTypeAll<NotificationText>();
+            }
+            return _cachedNotificationTexts;
+        }
+    }
     
     /// <summary>
     /// Boss Rush Mod
@@ -602,6 +755,13 @@ namespace BossRush
         private void SetBossRushRuntimeActive(bool active)
         {
             IsActive = active;
+            
+            // [Bug修复] BossRush开始时确保订阅龙息Buff处理器
+            // 无论玩家手上拿什么武器，龙裔遗族Boss的龙息都应该能触发龙焰灼烧
+            if (active)
+            {
+                DragonBreathBuffHandler.Subscribe();
+            }
         }
         
         // UI提示（字段定义已移动到 UIAndSigns 部分类中）
@@ -619,7 +779,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = true;
+        internal const bool DevModeEnabled = false;
 
         private StockShop ammoShop;
 
@@ -661,11 +821,73 @@ namespace BossRush
         private float daXingXingCleanTimer = 0f;
         private const float DaXingXingCleanInterval = 0.5f;
         
+        // [性能优化] 角色缓存列表，避免每次清理时都调用 FindObjectsOfType
+        private static List<CharacterMainControl> _cachedCharacters = new List<CharacterMainControl>();
+        private static bool _characterCacheNeedsRefresh = true;
+        // [性能优化] 缓存定时刷新计时器，用于捕获动态生成的敌人
+        private static float _characterCacheRefreshTimer = 0f;
+        private const float CharacterCacheRefreshInterval = 10f; // 每 10 秒强制刷新一次缓存（从 5f 优化为 10f）
+        
+        // [性能优化] 复用的销毁列表，避免每次清理时分配新的 List
+        private static readonly List<GameObject> _reusableDestroyList = new List<GameObject>(32);
+        
+        // [性能优化] 缓存 CharacterSpawnerRoot.created 字段的反射引用
+        private static System.Reflection.FieldInfo _cachedCreatedField = null;
+        private static bool _createdFieldCached = false;
+        
         // Boss 掉落随机化相关
         
         // 是否已禁用spawner
         private bool spawnersDisabled = false;
-        private const float CLEAR_RADIUS = 9999f; // 清理半径开到最大（整张地图级别）
+        
+        // [性能优化] 竞技场范围限制 - 以路牌为圆心的清理/禁用范围
+        private const float ARENA_RADIUS = 500f; // 竞技场半径（米）
+        private static Vector3 _arenaCenter = Vector3.zero; // 竞技场中心位置（路牌位置）
+        private static bool _arenaCenterSet = false; // 是否已设置竞技场中心
+        
+        /// <summary>
+        /// 根据地图配置设置竞技场中心位置
+        /// 在禁用 spawner 和清理敌人之前调用，确保范围限制生效
+        /// </summary>
+        private void SetArenaCenterFromMapConfig(string sceneName)
+        {
+            try
+            {
+                BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
+                if (mapConfig != null)
+                {
+                    // 优先使用默认路牌位置，其次使用自定义传送位置
+                    if (mapConfig.defaultSignPos.HasValue)
+                    {
+                        _arenaCenter = mapConfig.defaultSignPos.Value;
+                    }
+                    else if (mapConfig.customSpawnPos.HasValue)
+                    {
+                        _arenaCenter = mapConfig.customSpawnPos.Value;
+                    }
+                    else if (mapConfig.spawnPoints != null && mapConfig.spawnPoints.Length > 0)
+                    {
+                        // 兜底：使用刷新点的中心位置
+                        Vector3 sum = Vector3.zero;
+                        for (int i = 0; i < mapConfig.spawnPoints.Length; i++)
+                        {
+                            sum += mapConfig.spawnPoints[i];
+                        }
+                        _arenaCenter = sum / mapConfig.spawnPoints.Length;
+                    }
+                    _arenaCenterSet = true;
+                    DevLog("[BossRush] 已设置竞技场中心: " + _arenaCenter + " (场景=" + sceneName + ", 半径=" + ARENA_RADIUS + "m)");
+                }
+                else
+                {
+                    DevLog("[BossRush] 未找到场景 " + sceneName + " 的地图配置，范围限制未启用");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] SetArenaCenterFromMapConfig 出错: " + e.Message);
+            }
+        }
 
         void Awake()
         {
@@ -710,14 +932,21 @@ namespace BossRush
             
             // 绘制物品生成器 UI（F1 呼出）
             DrawItemSpawnerUI();
+            
+            // 绘制帧率显示（DevMode）
+            DrawFpsCounter();
         }
         
         void Update()
         {
+            // 更新帧率计数器（DevMode）
+            UpdateFpsCounter();
+            
             // 更新UI消息
             UpdateMessage();
             
             // 检测 Boss 池窗口快捷键（Ctrl+F10）
+            // 注：热键检测使用 GetKeyDown，必须每帧检测，否则会丢失按键
             CheckBossPoolWindowHotkey();
             
             // 检测物品生成器快捷键（F2）
@@ -886,11 +1115,27 @@ namespace BossRush
                 }
             }
 
-            // 调试快捷键 F9
+            // 调试快捷键 F9：打开传送地图UI
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F9))
             {
-                DevLog("[BossRush] F9按下，开始BossRush");
-                StartBossRush();
+                DevLog("[BossRush] F9按下，打开传送地图UI");
+                
+                // 给玩家背包发送一张BossRush船票 (id=500001)
+                try
+                {
+                    Item ticket = ItemAssetsCollection.InstantiateSync(500001);
+                    if (ticket != null)
+                    {
+                        ItemUtilities.SendToPlayerCharacterInventory(ticket, false);
+                        DevLog("[BossRush] 已发送BossRush船票到玩家背包");
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] 发送船票失败: " + e.Message);
+                }
+                
+                BossRushMapSelectionHelper.ShowBossRushMapSelection();
             }
 
             // 调试快捷键 F8：输出场景中除玩家外所有角色信息
@@ -1058,7 +1303,8 @@ namespace BossRush
                     DevLog("[BossRush] F10 调试：直接清场并触发通关流程");
                     try
                     {
-                        ClearEnemiesForBossRush();
+                        // [Bug修复] F10调试时强制清理所有敌人，忽略范围限制
+                        ForceKillAllEnemies();
                     }
                     catch {}
                     OnAllEnemiesDefeated();
@@ -1100,9 +1346,9 @@ namespace BossRush
             InitializeDynamicItems_Integration();
         }
 
-        private void InjectBossRushTicketIntoShops()
+        private void InjectBossRushTicketIntoShops(string targetSceneName = null)
         {
-            InjectBossRushTicketIntoShops_Integration();
+            InjectBossRushTicketIntoShops_Integration(targetSceneName);
         }
         void Start()
         {
@@ -1132,6 +1378,16 @@ namespace BossRush
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            // [性能优化] 场景加载时标记角色缓存需要刷新，并重置计时器
+            _characterCacheNeedsRefresh = true;
+            _characterCacheRefreshTimer = 0f;
+            
+            // [性能优化] 场景加载时重置竞技场中心标记（新场景需要重新设置）
+            _arenaCenterSet = false;
+            
+            // [性能优化] 场景加载时刷新对象缓存（BoxCollider、NotificationText 等）
+            ObjectCache.RefreshIfNeeded();
+            
             OnSceneLoaded_Integration(scene, mode);
         }
 
@@ -1225,20 +1481,15 @@ namespace BossRush
 
         private System.Collections.IEnumerator SetupBossRushInDemoChallenge(Scene scene)
         {
-            // 重置 spawner 禁用标志（确保能重新禁用新场景的 spawner）
-            spawnersDisabled = false;
-            
-            // 禁用场景中的spawner，阻止敌怪生成
-            DisableAllSpawners();
-            DevLog("[BossRush] 已禁用所有敌怪生成器");
-            
-            // 启动持续清理敌人协程（直到波次开始）
-            StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
-            
             // 等待场景初始化（缩短等待时间，尽快传送玩家）
             yield return new UnityEngine.WaitForSeconds(0.5f);
             
-            // 清理场景中现有的敌人
+            // [修复] spawner 已在 OnSceneLoaded 中立即禁用，这里再次调用确保万无一失
+            // 由于 spawnersDisabled 标志，重复调用会直接返回
+            DisableAllSpawners();
+            DevLog("[BossRush] 已禁用竞技场范围内的敌怪生成器");
+            
+            // 清理场景中现有的敌人（确保清理干净）
             ClearEnemiesForBossRush();
             
             // 传送玩家到指定位置（从配置系统获取当前地图的默认位置）
@@ -1439,15 +1690,142 @@ namespace BossRush
             DevLog("[BossRush] EnsurePlayerTeleportedInDemoChallenge: 在 30 秒内未能找到玩家角色，放弃自动传送，共尝试 " + attempt + " 次");
         }
 
+        /// <summary>
+        /// 强制杀死所有敌人（用于F10调试，忽略范围限制）
+        /// 直接调用Health.Kill()而不是Destroy，确保触发死亡事件
+        /// </summary>
+        private void ForceKillAllEnemies()
+        {
+            try
+            {
+                // 刷新角色缓存
+                RefreshCharacterCache();
+                _cachedCharacters.RemoveAll(c => c == null);
+                
+                if (_cachedCharacters.Count == 0)
+                {
+                    DevLog("[BossRush] ForceKillAllEnemies: 没有找到任何角色");
+                    return;
+                }
+                
+                CharacterMainControl main = null;
+                try { main = CharacterMainControl.Main; } catch {}
+                
+                int killedCount = 0;
+                
+                foreach (var c in _cachedCharacters)
+                {
+                    if (c == null) continue;
+                    
+                    // 跳过玩家
+                    bool isMain = false;
+                    try
+                    {
+                        if (main != null && c == main) isMain = true;
+                        else isMain = CharacterMainControlExtensions.IsMainCharacter(c);
+                    }
+                    catch {}
+                    if (isMain) continue;
+                    
+                    // 跳过宠物
+                    bool isPet = false;
+                    try
+                    {
+                        if (c.characterPreset != null && c.characterPreset.team == Teams.player)
+                        {
+                            isPet = c.GetComponent<PetAI>() != null;
+                        }
+                    }
+                    catch {}
+                    if (isPet) continue;
+                    
+                    // 跳过蛋孵出来的友方鸭鸭
+                    bool isEggDuck = false;
+                    try
+                    {
+                        if (eggSpawnPreset != null && c.characterPreset == eggSpawnPreset)
+                        {
+                            isEggDuck = true;
+                        }
+                    }
+                    catch {}
+                    if (isEggDuck) continue;
+                    
+                    // 检查队伍 - 只杀死敌对队伍
+                    bool isEnemy = false;
+                    try
+                    {
+                        if (c.characterPreset != null)
+                        {
+                            Teams team = c.characterPreset.team;
+                            isEnemy = (team == Teams.scav || team == Teams.usec || 
+                                      team == Teams.bear || team == Teams.lab || team == Teams.wolf);
+                        }
+                    }
+                    catch {}
+                    if (!isEnemy) continue;
+                    
+                    // 使用Health.Hurt()造成致命伤害，确保触发死亡事件
+                    try
+                    {
+                        if (c.Health != null && !c.Health.IsDead)
+                        {
+                            // 创建致命伤害
+                            DamageInfo dmgInfo = new DamageInfo(main);
+                            dmgInfo.damageValue = c.Health.MaxHealth * 10f; // 造成10倍最大生命值的伤害
+                            dmgInfo.ignoreArmor = true;
+                            c.Health.Hurt(dmgInfo);
+                            killedCount++;
+                        }
+                    }
+                    catch
+                    {
+                        // 如果Hurt失败，尝试直接销毁
+                        try
+                        {
+                            if (c.gameObject != null)
+                            {
+                                UnityEngine.Object.Destroy(c.gameObject);
+                                killedCount++;
+                            }
+                        }
+                        catch {}
+                    }
+                }
+                
+                _characterCacheNeedsRefresh = true;
+                DevLog("[BossRush] ForceKillAllEnemies: 已杀死 " + killedCount + " 个敌人");
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] ForceKillAllEnemies 出错: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 清理场景中的敌人（用于 BossRush 初始化阶段）
+        /// [性能优化] 使用角色缓存而非 FindObjectsOfType，并缓存 PetAI 检查结果
+        /// [性能优化] 只清理竞技场范围内（50米）的敌人
+        /// </summary>
         private void ClearEnemiesForBossRush()
         {
             try
             {
-                var characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>();
-                if (characters == null)
+                // [性能优化] 首次调用时刷新缓存，后续使用缓存
+                if (_characterCacheNeedsRefresh || _cachedCharacters.Count == 0)
+                {
+                    RefreshCharacterCache();
+                }
+                
+                // 清理缓存中已销毁的引用
+                _cachedCharacters.RemoveAll(c => c == null);
+                
+                if (_cachedCharacters.Count == 0)
                 {
                     return;
                 }
+                
+                DevLog("[BossRush] ClearEnemiesForBossRush: 开始清理，缓存角色数=" + _cachedCharacters.Count + ", 竞技场中心已设置=" + _arenaCenterSet);
 
                 CharacterMainControl main = null;
                 try
@@ -1457,7 +1835,14 @@ namespace BossRush
                 catch {}
 
                 int clearedCount = 0;
-                foreach (var c in characters)
+                // [性能优化] 使用复用列表，避免每次清理时分配新的 List
+                _reusableDestroyList.Clear();
+                
+                // [性能优化] 范围限制参数
+                bool useRangeLimit = _arenaCenterSet;
+                float radiusSq = ARENA_RADIUS * ARENA_RADIUS;
+                
+                foreach (var c in _cachedCharacters)
                 {
                     if (c == null)
                     {
@@ -1500,11 +1885,15 @@ namespace BossRush
                         continue;
                     }
 
-                    // 检查是否为宠物 (PetAI组件)
+                    // [性能优化] 检查是否为宠物 - 使用缓存的 PetAI 检查
                     bool isPet = false;
                     try
                     {
-                        isPet = c.GetComponent<PetAI>() != null;
+                        // 宠物通常有特定的 team，先检查 team 可以避免大部分 GetComponent 调用
+                        if (c.characterPreset != null && c.characterPreset.team == Teams.player)
+                        {
+                            isPet = c.GetComponent<PetAI>() != null;
+                        }
                     }
                     catch {}
 
@@ -1532,16 +1921,40 @@ namespace BossRush
                     {
                         continue;
                     }
-
-                    // 清理敌对单位
-                    try
+                    
+                    // [性能优化] 范围检查：只清理竞技场范围内的敌人
+                    if (useRangeLimit && c.transform != null)
                     {
-                        UnityEngine.Object.Destroy(c.gameObject);
+                        float distSq = (c.transform.position - _arenaCenter).sqrMagnitude;
+                        if (distSq > radiusSq)
+                        {
+                            continue; // 超出范围，跳过
+                        }
+                    }
+
+                    // 收集需要清理的敌对单位
+                    if (c.gameObject != null)
+                    {
+                        _reusableDestroyList.Add(c.gameObject);
+                    }
+                }
+                
+                // 批量销毁
+                foreach (var go in _reusableDestroyList)
+                {
+                    if (go != null)
+                    {
+                        UnityEngine.Object.Destroy(go);
                         clearedCount++;
                     }
-                    catch {}
                 }
-
+                
+                // 如果有销毁操作，标记缓存需要刷新
+                if (clearedCount > 0)
+                {
+                    _characterCacheNeedsRefresh = true;
+                    DevLog("[BossRush] ClearEnemiesForBossRush: 已清理 " + clearedCount + " 个敌人");
+                }
             }
             catch (Exception e)
             {
@@ -1549,14 +1962,51 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 持续清理敌人直到波次开始
+        /// [性能优化] 使用渐进式间隔，前期快速清理，后期降低频率
+        /// [低端机优化] 减少持续清理的 CPU 开销
+        /// </summary>
         private System.Collections.IEnumerator ContinuousClearEnemiesUntilWaveStart()
         {
-            while (!IsActive)
+            DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 协程已启动");
+            
+            // 首次立即刷新缓存
+            RefreshCharacterCache();
+            
+            // [修复] 不再使用场景名检测，改用 bossRushArenaActive 标志
+            // 因为多场景加载时 GetActiveScene() 可能返回不同的场景名
+            int loopCount = 0;
+            
+            // [性能优化] 只在前几次循环中尝试禁用 spawner，之后假设已全部禁用
+            const int MAX_SPAWNER_DISABLE_ATTEMPTS = 5;
+            
+            while (!IsActive && bossRushArenaActive)
             {
+                loopCount++;
+                
+                // [性能优化] 只在前几次循环中禁用 spawner，避免持续的 FindObjectsOfType 开销
+                if (loopCount <= MAX_SPAWNER_DISABLE_ATTEMPTS)
+                {
+                    spawnersDisabled = false; // 重置标志，允许重新扫描
+                    DisableAllSpawners();
+                }
+                
+                // 刷新缓存并清理敌人
+                RefreshCharacterCache();
+                int enemyCount = _cachedCharacters.Count;
                 ClearEnemiesForBossRush();
-                // 缩短清理间隔，减少敌人短暂刷出后才被清掉的延迟感
-                yield return new UnityEngine.WaitForSeconds(0.3f);
+                
+                if (loopCount <= 5 || loopCount % 10 == 0)
+                {
+                    DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 第 " + loopCount + " 次清理，缓存角色数=" + enemyCount);
+                }
+                
+                // 保持 0.5 秒间隔，确保玩家加载完成前敌人已被清理干净
+                yield return new UnityEngine.WaitForSeconds(0.5f);
             }
+            
+            DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 协程结束，IsActive=" + IsActive + ", bossRushArenaActive=" + bossRushArenaActive + ", 总循环次数=" + loopCount);
         }
 
         /// <summary>
@@ -1709,7 +2159,8 @@ namespace BossRush
         {
              try
              {
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup", BindingFlags.NonPublic | BindingFlags.Instance);
+                // 使用缓存的 FieldInfo
+                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field != null)
                 {
                     return field.GetValue(target) as List<InteractableBase>;
@@ -1966,7 +2417,10 @@ namespace BossRush
         
         /// <summary>
         /// 禁用场景中的所有spawner
-        /// [性能优化] 使用单次 FindObjectsOfType<MonoBehaviour> 替代多次调用
+        /// [性能优化] 只扫描 CharacterSpawnerRoot，因为它是所有 spawner 的根控制器
+        /// [性能优化] 使用缓存的反射字段，避免重复获取
+        /// [修复] 先通过反射设置 created=true 阻止生成，再销毁 spawner
+        /// [Bug修复] 移除范围检查，禁用所有 spawner，因为 spawner root 位置可能与实际刷怪点位置不同
         /// </summary>
         private void DisableAllSpawners()
         {
@@ -1977,44 +2431,54 @@ namespace BossRush
 
             try
             {
+                int disabledCount = 0;
                 int destroyedCount = 0;
                 
-                // [性能优化] 使用单次查找获取所有 MonoBehaviour，然后按类型筛选
-                // 这比多次调用 FindObjectsOfType<T> 更高效
-                MonoBehaviour[] allBehaviours = UnityEngine.Object.FindObjectsOfType<MonoBehaviour>();
-                
-                // 收集需要销毁的 GameObject（避免在遍历时修改集合）
-                List<GameObject> toDestroy = new List<GameObject>();
-                
-                foreach (var behaviour in allBehaviours)
+                // [性能优化] 缓存反射字段，只获取一次
+                if (!_createdFieldCached)
                 {
-                    if (behaviour == null) continue;
-                    
-                    // 检查是否是需要销毁的 spawner 类型
-                    if (behaviour is RandomCharacterSpawner || 
-                        behaviour is WaveCharacterSpawner || 
-                        behaviour is CharacterSpawnerRoot)
-                    {
-                        if (!toDestroy.Contains(behaviour.gameObject))
-                        {
-                            toDestroy.Add(behaviour.gameObject);
-                        }
-                    }
+                    _cachedCreatedField = typeof(CharacterSpawnerRoot).GetField("created", 
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    _createdFieldCached = true;
                 }
                 
-                // 批量销毁
-                foreach (var go in toDestroy)
+                // [性能优化] 只扫描 CharacterSpawnerRoot，它是所有 spawner 的根控制器
+                // 禁用 CharacterSpawnerRoot 就能阻止其下所有子 spawner 生成敌人
+                // [Bug修复] 禁用所有 spawner，不再做范围检查，因为：
+                // 1. CharacterSpawnerRoot 的位置可能与实际刷怪点（Points组件）位置不同
+                // 2. 有些地图的 spawner root 在地图中心，但刷怪点分布在玩家周围
+                // 3. BossRush 模式下禁用所有原版刷怪是期望的行为
+                CharacterSpawnerRoot[] spawnerRoots = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>();
+                
+                if (spawnerRoots != null)
                 {
-                    if (go != null)
+                    foreach (var root in spawnerRoots)
                     {
-                        DevLog("[BossRush] 已销毁 " + go.GetType().Name + ": " + go.name);
-                        UnityEngine.Object.Destroy(go);
-                        destroyedCount++;
+                        if (root == null || root.gameObject == null) continue;
+                        
+                        // [修复] 设置 created=true 阻止生成
+                        if (_cachedCreatedField != null)
+                        {
+                            try
+                            {
+                                _cachedCreatedField.SetValue(root, true);
+                                disabledCount++;
+                            }
+                            catch {}
+                        }
+                        
+                        // 销毁 spawner
+                        try
+                        {
+                            UnityEngine.Object.Destroy(root.gameObject);
+                            destroyedCount++;
+                        }
+                        catch {}
                     }
                 }
 
                 spawnersDisabled = true;
-                DevLog("[BossRush] 已销毁 " + destroyedCount + " 个spawner");
+                DevLog("[BossRush] 已禁用并销毁 " + destroyedCount + " 个 CharacterSpawnerRoot");
             }
             catch (Exception e)
             {
@@ -2935,8 +3399,27 @@ namespace BossRush
         {
             try
             {
-                var characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>();
-                if (characters == null || characters.Length == 0)
+                // [性能优化] 使用缓存的角色列表，避免每次都调用 FindObjectsOfType
+                // 只有 DEMO 地图才需要定时刷新缓存（因为只有 DEMO 地图有原生大兴兴 spawner）
+                // 其他地图只在场景加载时刷新一次即可
+                string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                bool isDemoMap = (currentScene == "Level_DemoChallenge_1");
+                
+                // [性能优化] 范围限制参数
+                bool useRangeLimit = _arenaCenterSet;
+                float radiusSq = ARENA_RADIUS * ARENA_RADIUS;
+                
+                _characterCacheRefreshTimer += DaXingXingCleanInterval;
+                if (_characterCacheNeedsRefresh || (isDemoMap && _characterCacheRefreshTimer >= CharacterCacheRefreshInterval))
+                {
+                    RefreshCharacterCache();
+                    _characterCacheRefreshTimer = 0f;
+                }
+                
+                // 清理缓存中已销毁的引用
+                _cachedCharacters.RemoveAll(c => c == null);
+                
+                if (_cachedCharacters.Count == 0)
                 {
                     return;
                 }
@@ -2949,27 +3432,17 @@ namespace BossRush
                 catch {}
 
                 // 清理 bossRushOwnedDaXingXing 中已经被销毁的引用
+                // [性能优化] 使用 RemoveWhere 替代创建临时 List，减少 GC 压力
                 try
                 {
                     if (bossRushOwnedDaXingXing != null && bossRushOwnedDaXingXing.Count > 0)
                     {
-                        var toRemove = new List<CharacterMainControl>();
-                        foreach (var owned in bossRushOwnedDaXingXing)
-                        {
-                            if (owned == null)
-                            {
-                                toRemove.Add(owned);
-                            }
-                        }
-                        for (int i = 0; i < toRemove.Count; i++)
-                        {
-                            bossRushOwnedDaXingXing.Remove(toRemove[i]);
-                        }
+                        bossRushOwnedDaXingXing.RemoveWhere(owned => owned == null);
                     }
                 }
                 catch {}
 
-                foreach (var c in characters)
+                foreach (var c in _cachedCharacters)
                 {
                     if (c == null)
                     {
@@ -3055,6 +3528,16 @@ namespace BossRush
                     {
                         continue;
                     }
+                    
+                    // [性能优化] 范围检查：只清理竞技场范围内的大兴兴
+                    if (useRangeLimit && c.transform != null)
+                    {
+                        float distSq = (c.transform.position - _arenaCenter).sqrMagnitude;
+                        if (distSq > radiusSq)
+                        {
+                            continue; // 超出范围，跳过
+                        }
+                    }
 
                     // 其余所有大兴兴都视为 DEMO 地图原生刷出的 BossRush 外来 Boss，直接清除
                     try
@@ -3076,6 +3559,29 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[BossRush] TryCleanNonBossRushDaXingXing 出错: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// [性能优化] 刷新角色缓存列表
+        /// 场景加载时立即刷新，之后每隔一段时间定时刷新以捕获动态生成的敌人
+        /// </summary>
+        private void RefreshCharacterCache()
+        {
+            try
+            {
+                var characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>();
+                _cachedCharacters.Clear();
+                if (characters != null)
+                {
+                    _cachedCharacters.AddRange(characters);
+                }
+                _characterCacheNeedsRefresh = false;
+                DevLog("[BossRush] 角色缓存已刷新，共 " + _cachedCharacters.Count + " 个角色");
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] RefreshCharacterCache 出错: " + e.Message);
             }
         }
         

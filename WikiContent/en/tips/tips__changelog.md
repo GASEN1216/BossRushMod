@@ -1,5 +1,7 @@
 ## Changelog
-
+ 
+![Changelog](TODO.png)
+ 
 ### 2025.12.29 23:30
 - Koukou helmet, armor, and Bitcoin miner no longer drop
 

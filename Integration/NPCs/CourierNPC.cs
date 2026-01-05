@@ -1610,8 +1610,8 @@ namespace BossRush
             if (characterController != null && characterController.enabled)
             {
                 CollisionFlags flags = characterController.Move(moveVector);
-                // 调试：每秒输出一次位置
-                if (Time.frameCount % 60 == 0)
+                // [性能优化] 调试日志：每5秒输出一次位置（降低日志频率）
+                if (Time.frameCount % 300 == 0)
                 {
                     ModBehaviour.DevLog("[CourierNPC] 移动中: 位置=" + transform.position + ", 速度=" + currentSpeed + ", 方向=" + direction + ", 路点=" + currentWaypoint + "/" + path.vectorPath.Count);
                 }

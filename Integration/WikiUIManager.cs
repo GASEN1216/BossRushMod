@@ -77,9 +77,9 @@ namespace BossRush
         private string currentEntryId = null;
         
         /// <summary>
-        /// 当前条目的分页内容
+        /// 当前条目的分页内容（已废弃，改用TMP内置分页）
         /// </summary>
-        private List<string[]> pagedContent = new List<string[]>();
+        // private List<string[]> pagedContent = new List<string[]>();
         
         // ============================================================================
         // UI 节点缓存
@@ -122,14 +122,19 @@ namespace BossRush
         // ============================================================================
         
         /// <summary>
-        /// 每页最大字符数（左右两栏合计）
+        /// 当前解析后的内容（用于TMP分页）
         /// </summary>
-        private const int CHARS_PER_PAGE = 800;
+        private string currentParsedContent = "";
         
         /// <summary>
-        /// 单栏最大字符数
+        /// 左栏当前显示的TMP页码（从1开始）
         /// </summary>
-        private const int CHARS_PER_COLUMN = 400;
+        private int leftPageToDisplay = 1;
+        
+        /// <summary>
+        /// 右栏当前显示的TMP页码（从1开始）
+        /// </summary>
+        private int rightPageToDisplay = 2;
         
         // ============================================================================
         // 公共方法
@@ -422,8 +427,8 @@ namespace BossRush
                     }
                     if (lblCategories != null)
                     {
-                        lblCategories.text = "分类";
-                        ModBehaviour.DevLog("[WikiUIManager] Lbl_Categories 文本已设置为: 分类");
+                        lblCategories.text = "分类(demo)";
+                        ModBehaviour.DevLog("[WikiUIManager] Lbl_Categories 文本已设置为: 分类(demo)");
                     }
                 }
                 
@@ -809,8 +814,8 @@ namespace BossRush
                 txtArticleTitle.text = entry.GetTitle();
             }
             
-            // 分页
-            PaginateContent(content);
+            // 使用TMP内置分页设置内容
+            SetupContentWithTMPPaging(content);
             
             // 显示第一页
             currentPageIndex = 0;
@@ -1086,131 +1091,107 @@ namespace BossRush
         // ============================================================================
         
         /// <summary>
-        /// 分页内容
+        /// 设置内容并使用TMP内置分页
         /// </summary>
-        private void PaginateContent(string content)
+        private void SetupContentWithTMPPaging(string content)
         {
-            pagedContent.Clear();
-            
             if (string.IsNullOrEmpty(content))
             {
-                pagedContent.Add(new string[] { "[内容为空]", "" });
-                totalPages = 1;
-                return;
+                currentParsedContent = "[内容为空]";
             }
-            
-            // 解析 Markdown
-            string parsedContent = WikiContentManager.Instance.ParseMarkdown(content);
-            
-            // 按行分割，然后按字符数分页
-            string[] lines = parsedContent.Split('\n');
-            
-            StringBuilder leftBuilder = new StringBuilder();
-            StringBuilder rightBuilder = new StringBuilder();
-            int currentCharCount = 0;
-            bool fillingLeft = true;
-            
-            foreach (string line in lines)
+            else
             {
-                string lineWithNewline = line + "\n";
-                int lineLength = lineWithNewline.Length;
-                
-                if (fillingLeft)
-                {
-                    // 检查是否超出左栏容量
-                    if (currentCharCount + lineLength > CHARS_PER_COLUMN)
-                    {
-                        // 切换到右栏
-                        fillingLeft = false;
-                        currentCharCount = 0;
-                    }
-                }
-                
-                if (fillingLeft)
-                {
-                    leftBuilder.Append(lineWithNewline);
-                    currentCharCount += lineLength;
-                }
-                else
-                {
-                    // 检查是否超出右栏容量
-                    if (currentCharCount + lineLength > CHARS_PER_COLUMN)
-                    {
-                        // 保存当前页，开始新页
-                        pagedContent.Add(new string[] { leftBuilder.ToString().TrimEnd(), rightBuilder.ToString().TrimEnd() });
-                        leftBuilder.Clear();
-                        rightBuilder.Clear();
-                        fillingLeft = true;
-                        currentCharCount = 0;
-                    }
-                    
-                    if (fillingLeft)
-                    {
-                        leftBuilder.Append(lineWithNewline);
-                        currentCharCount += lineLength;
-                    }
-                    else
-                    {
-                        rightBuilder.Append(lineWithNewline);
-                        currentCharCount += lineLength;
-                    }
-                }
+                // 解析 Markdown
+                currentParsedContent = WikiContentManager.Instance.ParseMarkdown(content);
             }
             
-            // 添加最后一页
-            if (leftBuilder.Length > 0 || rightBuilder.Length > 0)
-            {
-                pagedContent.Add(new string[] { leftBuilder.ToString().TrimEnd(), rightBuilder.ToString().TrimEnd() });
-            }
-            
-            totalPages = pagedContent.Count;
-            if (totalPages == 0)
-            {
-                pagedContent.Add(new string[] { "[内容为空]", "" });
-                totalPages = 1;
-            }
-            
-            ModBehaviour.DevLog("[WikiUIManager] 内容分页完成: " + totalPages + " 页");
-        }
-        
-        /// <summary>
-        /// 刷新正文内容显示
-        /// </summary>
-        private void RefreshArticleContent()
-        {
-            if (currentPageIndex < 0 || currentPageIndex >= pagedContent.Count)
-            {
-                return;
-            }
-            
-            var page = pagedContent[currentPageIndex];
-            
-            // 更新左右栏内容，并设置字体大小和颜色
+            // 设置左栏为Page模式，让TMP自动计算分页
             if (txtLeft != null)
             {
-                txtLeft.text = page[0];
-                // 设置较小的字体大小（默认可能太大）
+                txtLeft.text = currentParsedContent;
                 txtLeft.fontSize = 18f;
-                // 使用深棕色文字，与黄棕色背景形成对比
                 txtLeft.color = new Color(0.25f, 0.2f, 0.15f, 1f);
-                // 添加链接点击处理组件
+                txtLeft.enableWordWrapping = true;
+                txtLeft.overflowMode = TMPro.TextOverflowModes.Page;
+                txtLeft.pageToDisplay = 1;
+                
+                // 强制更新以获取正确的pageCount
+                txtLeft.ForceMeshUpdate();
+                
+                // 获取TMP计算出的总页数
+                totalPages = txtLeft.textInfo.pageCount;
+                if (totalPages < 1) totalPages = 1;
+                
+                // 计算书本的总"翻页数"（每次翻页显示左右两栏，即2个TMP页）
+                // 例如：TMP有5页，则书本有3翻（1-2, 3-4, 5-空）
+                int bookPages = (totalPages + 1) / 2;
+                
+                ModBehaviour.DevLog("[WikiUIManager] TMP分页完成: TMP页数=" + totalPages + ", 书本翻页数=" + bookPages);
+                
+                // 添加链接点击处理
                 EnsureLinkHandler(txtLeft);
             }
+            
+            // 设置右栏
             if (txtRight != null)
             {
-                txtRight.text = page.Length > 1 ? page[1] : "";
-                // 设置较小的字体大小
+                txtRight.text = currentParsedContent;
                 txtRight.fontSize = 18f;
-                // 使用深棕色文字
                 txtRight.color = new Color(0.25f, 0.2f, 0.15f, 1f);
-                // 添加链接点击处理组件
+                txtRight.enableWordWrapping = true;
+                txtRight.overflowMode = TMPro.TextOverflowModes.Page;
+                txtRight.pageToDisplay = 2; // 右栏显示第2页
+                txtRight.ForceMeshUpdate();
+                
                 EnsureLinkHandler(txtRight);
             }
             
-            // 更新页码
+            // 初始化页码
+            currentPageIndex = 0; // 书本的第0翻（显示TMP的第1-2页）
+            leftPageToDisplay = 1;
+            rightPageToDisplay = 2;
+        }
+        
+        /// <summary>
+        /// 刷新正文内容显示（使用TMP内置分页）
+        /// </summary>
+        private void RefreshArticleContent()
+        {
+            // 计算当前翻页对应的TMP页码
+            leftPageToDisplay = currentPageIndex * 2 + 1;
+            rightPageToDisplay = currentPageIndex * 2 + 2;
+            
+            ModBehaviour.DevLog("[WikiUIManager] RefreshArticleContent - 书本翻页: " + currentPageIndex + ", 左栏TMP页: " + leftPageToDisplay + ", 右栏TMP页: " + rightPageToDisplay + ", TMP总页数: " + totalPages);
+            
+            // 更新左栏显示的页
+            if (txtLeft != null)
+            {
+                txtLeft.pageToDisplay = leftPageToDisplay;
+                txtLeft.ForceMeshUpdate();
+            }
+            
+            // 更新右栏显示的页（如果超出总页数则显示空）
+            if (txtRight != null)
+            {
+                if (rightPageToDisplay <= totalPages)
+                {
+                    txtRight.pageToDisplay = rightPageToDisplay;
+                }
+                else
+                {
+                    // 右栏没有内容，设置为空或显示一个不存在的页
+                    txtRight.pageToDisplay = rightPageToDisplay; // TMP会自动处理超出范围的情况
+                }
+                txtRight.ForceMeshUpdate();
+            }
+            
+            // 计算书本的总翻页数
+            int bookTotalPages = (totalPages + 1) / 2;
+            
+            // 更新页码显示
             if (txtPageNumber != null)
             {
-                txtPageNumber.text = (currentPageIndex + 1) + "/" + totalPages;
+                txtPageNumber.text = (currentPageIndex + 1) + "/" + bookTotalPages;
             }
             
             // 更新翻页按钮状态
@@ -1220,7 +1201,7 @@ namespace BossRush
             }
             if (btnNextPage != null)
             {
-                btnNextPage.interactable = currentPageIndex < totalPages - 1;
+                btnNextPage.interactable = currentPageIndex < bookTotalPages - 1;
             }
         }
         
@@ -1250,7 +1231,10 @@ namespace BossRush
         /// </summary>
         private void NextPage()
         {
-            ModBehaviour.DevLog("[WikiUIManager] NextPage() 被调用, isOnArticlePage=" + isOnArticlePage + ", currentPageIndex=" + currentPageIndex + ", totalPages=" + totalPages);
+            // 计算书本的总翻页数
+            int bookTotalPages = (totalPages + 1) / 2;
+            
+            ModBehaviour.DevLog("[WikiUIManager] NextPage() 被调用, isOnArticlePage=" + isOnArticlePage + ", currentPageIndex=" + currentPageIndex + ", bookTotalPages=" + bookTotalPages);
             
             if (!isOnArticlePage)
             {
@@ -1258,7 +1242,7 @@ namespace BossRush
                 return;
             }
             
-            if (currentPageIndex < totalPages - 1)
+            if (currentPageIndex < bookTotalPages - 1)
             {
                 currentPageIndex++;
                 RefreshArticleContent();

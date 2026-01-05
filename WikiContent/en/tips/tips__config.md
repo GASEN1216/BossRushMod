@@ -1,15 +1,23 @@
 ## Mod Configuration
 
-- Custom wave interval time
-- Whether boss random loot boxes can block bullets
-- Whether interaction is needed between waves to start next wave
-- Boss drop randomization (harder boss + faster kill = better drop chance!)
-- Number of bosses per wave in Mode C
-- Boss stat adjustments
-- Custom boss pool, press Ctrl+F10 to open config
+### Config Entry
+- ModConfig is supported:
+- https://steamcommunity.com/sharedfiles/filedetails/?id=3590674339
+- Local file config is also supported (requires game restart):
+- `..\Escape from Duckov\Duckov_Data\StreamingAssets\BossRushModConfig.txt`
 
-Already supports ModConfig
-https://steamcommunity.com/sharedfiles/filedetails/?id=3590674339
+![BossRush-ModConfigExample](TODO.png)
 
-Also supports reading config from the following path (requires game restart):
-..\Escape from Duckov\Duckov_Data\StreamingAssets\BossRushModConfig.txt
+### Config Keys (Defaults)
+- `waveIntervalSeconds`: Wave interval (2~60 seconds, default 15)
+- `enableRandomBossLoot`: Boss loot randomization (loot slots/high-quality cap scale with Boss MaxHP; faster kills further increase high-quality chance)
+- `useInteractBetweenWaves`: Require interaction between waves to start the next wave
+- `lootBoxBlocksBullets`: Whether boss loot boxes can block bullets (act as cover)
+- `infiniteHellBossesPerWave`: Mode C bosses per wave (1~10, default 3)
+- `bossStatMultiplier`: Global boss stats multiplier (0.1~10, default 1)
+- `modeDEnemiesPerWave`: Mode D enemies per wave (1~10, default 3)
+
+### Boss Pool Filter
+- Custom boss pool is supported, press **Ctrl+F10** to open the config window
+
+![BossRush-BossPoolConfigWindow(Ctrl+F10)](TODO.png)

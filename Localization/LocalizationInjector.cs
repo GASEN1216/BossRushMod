@@ -495,6 +495,9 @@ namespace BossRush
                 { "BossRush_ClearAllLootboxes", L10n.T("清空所有箱子", "Clear All Lootboxes") },
                 { "BossRush_ClearEmptyLootboxes", L10n.T("清空所有空箱子", "Clear Empty Lootboxes") },
                 
+                // 垃圾桶交互
+                { "BossRush_TrashCan", L10n.T("垃圾桶", "Trash Can") },
+                
                 // Mode D 选项
                 { "BossRush_ModeD_NextWave", L10n.T("冲！（下一波）", "Charge! (Next Wave)") },
                 
