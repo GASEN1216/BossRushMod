@@ -1328,6 +1328,19 @@ namespace BossRush
                     DevLog("[BossRush] F11 调试给予生日蛋糕失败: " + e.Message);
                 }
             }
+            
+            // 调试快捷键 F12：传送到快递员NPC身边
+            if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F12))
+            {
+                try
+                {
+                    TeleportToCourierNPC();
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] F12 传送到快递员失败: " + e.Message);
+                }
+            }
         }
 
         void LateUpdate()

@@ -942,11 +942,79 @@ namespace BossRush
                         }
                     }
                     
+                    // 普通模式下：检查是否需要在当前场景生成快递员NPC
+                    // 使用 NPCSpawnConfig 配置系统判断
+                    if (NPCSpawnConfig.HasCourierNormalModeConfig(scene.name))
+                    {
+                        DevLog("[CourierNPC] 普通模式检测到配置场景: " + scene.name + ", 延迟生成快递员");
+                        StartCoroutine(DelayedSpawnCourierInNormalMode(scene.name));
+                    }
+                    
                     // 其他场景：注入传送到竞技场的交互选项
                     StartCoroutine(FindInteractionTargets(10));
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// 普通模式下延迟生成快递员NPC
+        /// 等待场景完全初始化后再生成，确保地面碰撞体等已加载
+        /// </summary>
+        private System.Collections.IEnumerator DelayedSpawnCourierInNormalMode(string sceneName)
+        {
+            // 等待场景完全加载
+            const float maxWait = 10f;
+            const float interval = 0.2f;
+            float elapsed = 0f;
+            
+            while (elapsed < maxWait)
+            {
+                bool mainExists = false;
+                bool levelInited = false;
+                
+                try { mainExists = CharacterMainControl.Main != null; } catch { }
+                try { levelInited = LevelManager.LevelInited; } catch { }
+                
+                if (mainExists && levelInited)
+                {
+                    break;
+                }
+                
+                yield return new WaitForSeconds(interval);
+                elapsed += interval;
+            }
+            
+            // 额外等待确保场景物理碰撞体已加载
+            yield return new WaitForSeconds(0.5f);
+            
+            // 再次检查是否仍在目标场景（玩家可能已切换场景）
+            string currentScene = "";
+            try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch { }
+            
+            if (currentScene != sceneName)
+            {
+                DevLog("[CourierNPC] 场景已切换，取消普通模式快递员生成");
+                yield break;
+            }
+            
+            // 检查是否已进入 BossRush 模式（玩家可能在等待期间启动了 BossRush）
+            if (IsActive || IsModeDActive || IsBossRushArenaActive)
+            {
+                DevLog("[CourierNPC] 已进入 BossRush 模式，跳过普通模式快递员生成");
+                yield break;
+            }
+            
+            // 检查快递员是否已存在
+            if (courierNPCInstance != null)
+            {
+                DevLog("[CourierNPC] 快递员已存在，跳过生成");
+                yield break;
+            }
+            
+            // 生成快递员
+            DevLog("[CourierNPC] 普通模式场景初始化完成，开始生成快递员");
+            SpawnCourierNPC();
         }
 
         /// <summary>

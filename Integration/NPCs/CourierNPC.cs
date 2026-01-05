@@ -33,6 +33,10 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour
     {
+        // ============================================================================
+        // 快递员实例和资源
+        // ============================================================================
+        
         // 快递员实例
         private GameObject courierNPCInstance = null;
         private CourierNPCController courierController = null;
@@ -148,8 +152,62 @@ namespace BossRush
             }
         }
         
+        // ============================================================================
+        // 刷新位置辅助方法
+        // ============================================================================
+        
+        /// <summary>
+        /// 获取BossRush竞技场模式的刷新位置
+        /// 使用 NPCSpawnConfig 中的配置
+        /// </summary>
+        private Vector3 GetBossRushArenaSpawnPosition(string sceneName)
+        {
+            // 从配置中查询BossRush模式固定位置
+            if (NPCSpawnConfig.TryGetCourierBossRushPosition(sceneName, out Vector3 position))
+            {
+                return position;
+            }
+            
+            // 未配置的场景使用随机刷新点
+            Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
+            if (spawnPoints != null && spawnPoints.Length > 0)
+            {
+                int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+                DevLog("[CourierNPC] BossRush模式随机刷新点 [" + randomIndex + "/" + spawnPoints.Length + "]");
+                return spawnPoints[randomIndex];
+            }
+            return Vector3.zero;
+        }
+        
+        /// <summary>
+        /// 获取普通模式的刷新位置（非BossRush模式）
+        /// 使用 NPCSpawnConfig 中的配置
+        /// </summary>
+        private Vector3 GetNormalModeSpawnPosition(string sceneName)
+        {
+            if (NPCSpawnConfig.TryGetCourierNormalModePosition(sceneName, out Vector3 position))
+            {
+                int count = NPCSpawnConfig.GetCourierNormalModeSpawnPointCount(sceneName);
+                DevLog("[CourierNPC] 普通模式随机刷新点，场景: " + sceneName + ", 可选点数: " + count);
+                return position;
+            }
+            
+            // 没有配置则返回零向量表示不生成
+            DevLog("[CourierNPC] 场景 " + sceneName + " 未配置普通模式刷新点");
+            return Vector3.zero;
+        }
+        
+        /// <summary>
+        /// 检查当前场景是否应该在普通模式下生成快递员
+        /// </summary>
+        private bool ShouldSpawnCourierInNormalMode(string sceneName)
+        {
+            return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
+        }
+        
         /// <summary>
         /// 在 BossRush 竞技场生成快递员 NPC
+        /// 支持BossRush模式（固定位置）和普通模式（随机刷新点）
         /// </summary>
         public void SpawnCourierNPC()
         {
@@ -173,60 +231,44 @@ namespace BossRush
             Vector3 spawnPos;
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             
-            // Level_DemoChallenge_1 场景使用固定位置
-            if (currentSceneName == "Level_DemoChallenge_1")
+            // 检测是否为BossRush模式（包括ModeD和竞技场激活状态）
+            bool isBossRushMode = IsActive || IsModeDActive || IsBossRushArenaActive;
+            DevLog("[CourierNPC] 模式检测: IsActive=" + IsActive + ", IsModeDActive=" + IsModeDActive + ", IsBossRushArenaActive=" + IsBossRushArenaActive + " => BossRush模式=" + isBossRushMode);
+            
+            if (isBossRushMode)
             {
-                spawnPos = new Vector3(234.80f, -7.99f, 206.56f);
-                DevLog("[CourierNPC] Level_DemoChallenge_1 场景，使用固定位置: " + spawnPos);
-            }
-            // Level_ChallengeSnow 场景使用固定位置
-            else if (currentSceneName == "Level_ChallengeSnow")
-            {
-                spawnPos = new Vector3(221.48f, 0.01f, 287.92f);
-                DevLog("[CourierNPC] Level_ChallengeSnow 场景，使用固定位置: " + spawnPos);
-            }
-            // Level_GroundZero_1 场景使用固定位置
-            else if (currentSceneName == "Level_GroundZero_1")
-            {
-                spawnPos = new Vector3(428.25f, 0.02f, 284.11f);
-                DevLog("[CourierNPC] Level_GroundZero_1 场景，使用固定位置: " + spawnPos);
-            }
-            // Level_HiddenWarehouse 仓库区场景使用固定位置
-            else if (currentSceneName == "Level_HiddenWarehouse")
-            {
-                spawnPos = new Vector3(129.37f, 0.02f, 186.54f);
-                DevLog("[CourierNPC] Level_HiddenWarehouse 场景，使用固定位置: " + spawnPos);
-            }
-            // Level_Farm_01 农场镇场景使用固定位置
-            else if (currentSceneName == "Level_Farm_01")
-            {
-                spawnPos = new Vector3(383.43f, 0.04f, 585.01f);
-                DevLog("[CourierNPC] Level_Farm_01 场景，使用固定位置: " + spawnPos);
-            }
-            // Level_JLab_1 J-Lab实验室场景使用固定位置
-            else if (currentSceneName == "Level_JLab_1")
-            {
-                spawnPos = new Vector3(-35.53f, 0.09f, -56.07f);
-                DevLog("[CourierNPC] Level_JLab_1 场景，使用固定位置: " + spawnPos);
-            }
-            // Level_StormZone_B0 风暴区地下场景使用固定位置
-            else if (currentSceneName == "Level_StormZone_B0")
-            {
-                spawnPos = new Vector3(109.99f, 0.02f, 489.79f);
-                DevLog("[CourierNPC] Level_StormZone_B0 场景，使用固定位置: " + spawnPos);
+                // BossRush模式：使用竞技场固定位置
+                spawnPos = GetBossRushArenaSpawnPosition(currentSceneName);
+                DevLog("[CourierNPC] BossRush模式，场景: " + currentSceneName + ", 位置: " + spawnPos);
+                
+                // 检查是否获取到有效位置
+                if (spawnPos == Vector3.zero)
+                {
+                    DevLog("[CourierNPC] BossRush模式无法获取刷新点，跳过生成");
+                    return;
+                }
             }
             else
             {
-                // 其他场景随机选择刷新点
-                Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
-                if (spawnPoints == null || spawnPoints.Length == 0)
+                // 普通模式：检查是否有配置的随机刷新点
+                if (ShouldSpawnCourierInNormalMode(currentSceneName))
                 {
-                    DevLog("[CourierNPC] 无法获取刷新点，跳过生成");
+                    spawnPos = GetNormalModeSpawnPosition(currentSceneName);
+                    DevLog("[CourierNPC] 普通模式，场景: " + currentSceneName + ", 随机位置: " + spawnPos);
+                    
+                    // 检查是否获取到有效位置
+                    if (spawnPos == Vector3.zero)
+                    {
+                        DevLog("[CourierNPC] 普通模式无法获取刷新点，跳过生成");
+                        return;
+                    }
+                }
+                else
+                {
+                    // 普通模式下，未配置的场景不生成快递员
+                    DevLog("[CourierNPC] 普通模式，场景 " + currentSceneName + " 未配置刷新点，跳过生成");
                     return;
                 }
-                int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-                spawnPos = spawnPoints[randomIndex];
-                DevLog("[CourierNPC] 随机选择刷新点 [" + randomIndex + "/" + spawnPoints.Length + "], 位置: " + spawnPos);
             }
             
             // 使用 Raycast 修正落点到地面
@@ -234,7 +276,11 @@ namespace BossRush
             if (Physics.Raycast(spawnPos + Vector3.up * 5f, Vector3.down, out hit, 20f))
             {
                 spawnPos = hit.point + new Vector3(0f, 0.1f, 0f);
-                DevLog("[CourierNPC] 修正后位置: " + spawnPos);
+                DevLog("[CourierNPC] Raycast修正后位置: " + spawnPos);
+            }
+            else
+            {
+                DevLog("[CourierNPC] Raycast修正失败，使用原始坐标: " + spawnPos);
             }
             
             try
@@ -264,6 +310,13 @@ namespace BossRush
                 // 添加移动控制组件（内部会延迟初始化 NavMeshAgent）
                 CourierMovement movement = courierNPCInstance.AddComponent<CourierMovement>();
                 DevLog("[CourierNPC] 移动组件添加成功");
+                
+                // 设置移动模式：普通模式使用 NPCSpawnConfig 刷新点，BossRush模式使用 Boss 刷新点
+                if (!isBossRushMode)
+                {
+                    movement.SetNormalMode(true, currentSceneName);
+                    DevLog("[CourierNPC] 设置为普通模式，使用场景 " + currentSceneName + " 的刷新点");
+                }
                 
                 // 添加交互组件
                 AddCourierInteraction(courierNPCInstance);
@@ -446,6 +499,43 @@ namespace BossRush
                     movement.SetCompleted(true);
                 }
             }
+        }
+        
+        /// <summary>
+        /// 传送玩家到快递员NPC身边（调试功能，F12 调用）
+        /// </summary>
+        public void TeleportToCourierNPC()
+        {
+            // 检查快递员是否存在
+            if (courierNPCInstance == null)
+            {
+                DevLog("[BossRush] F12 传送：快递员NPC不存在");
+                return;
+            }
+            
+            // 获取玩家引用
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null)
+            {
+                DevLog("[BossRush] F12 传送：未找到玩家 CharacterMainControl");
+                return;
+            }
+            
+            // 计算传送目标位置（快递员位置偏移2米，避免重叠）
+            Vector3 courierPos = courierNPCInstance.transform.position;
+            Vector3 offset = new Vector3(2f, 0f, 0f);  // X轴偏移2米
+            Vector3 targetPos = courierPos + offset;
+            
+            // 使用 Raycast 修正落点到地面
+            RaycastHit hit;
+            if (Physics.Raycast(targetPos + Vector3.up * 5f, Vector3.down, out hit, 20f))
+            {
+                targetPos = hit.point + new Vector3(0f, 0.1f, 0f);
+            }
+            
+            // 执行传送
+            main.transform.position = targetPos;
+            DevLog("[BossRush] F12 传送：已将玩家传送到快递员身边，位置: " + targetPos);
         }
     }
 
@@ -1148,6 +1238,10 @@ namespace BossRush
         // 快递服务状态（服务期间停止移动）
         private bool isInService = false;
         
+        // 普通模式标志和刷新点缓存（非BossRush模式时使用NPCSpawnConfig中的刷新点）
+        private bool isNormalMode = false;
+        private Vector3[] normalModeSpawnPoints = null;
+        
         // 气泡显示计时器
         private float cheerBubbleTimer = 0f;
         private float victoryBubbleTimer = 0f;
@@ -1169,6 +1263,36 @@ namespace BossRush
         
         // 延迟恢复移动的协程引用（用于取消）
         private Coroutine delayedResumeCoroutine = null;
+        
+        /// <summary>
+        /// 设置普通模式（非BossRush模式）
+        /// 普通模式下使用 NPCSpawnConfig 中配置的刷新点作为漫步目标
+        /// </summary>
+        /// <param name="normalMode">是否为普通模式</param>
+        /// <param name="sceneName">场景名称，用于获取对应的刷新点配置</param>
+        public void SetNormalMode(bool normalMode, string sceneName = null)
+        {
+            isNormalMode = normalMode;
+            normalModeSpawnPoints = null;
+            
+            if (normalMode && !string.IsNullOrEmpty(sceneName))
+            {
+                // 从 NPCSpawnConfig 获取普通模式刷新点
+                if (NPCSpawnConfig.CourierNormalModeConfigs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
+                {
+                    normalModeSpawnPoints = config.spawnPoints;
+                    ModBehaviour.DevLog("[CourierNPC] 设置普通模式，场景: " + sceneName + ", 刷新点数: " + (normalModeSpawnPoints?.Length ?? 0));
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierNPC] 普通模式场景 " + sceneName + " 未配置刷新点");
+                }
+            }
+            else
+            {
+                ModBehaviour.DevLog("[CourierNPC] 设置为BossRush模式");
+            }
+        }
         
         /// <summary>
         /// 设置快递服务状态（服务期间停止移动）
@@ -1816,43 +1940,55 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 获取随机的 Boss 刷新点作为目标（预先修正Y坐标到地面）
+        /// 获取随机的刷新点作为目标（预先修正Y坐标到地面）
+        /// 普通模式使用 NPCSpawnConfig 中的刷新点，BossRush模式使用 Boss 刷新点
         /// </summary>
         private Vector3 GetRandomSpawnPoint()
         {
             try
             {
-                if (ModBehaviour.Instance != null)
+                Vector3[] spawnPoints = null;
+                
+                // 根据模式选择刷新点来源
+                if (isNormalMode && normalModeSpawnPoints != null && normalModeSpawnPoints.Length > 0)
                 {
-                    Vector3[] spawnPoints = ModBehaviour.Instance.GetCurrentSceneSpawnPoints();
-                    if (spawnPoints != null && spawnPoints.Length > 0)
+                    // 普通模式：使用 NPCSpawnConfig 中配置的刷新点
+                    spawnPoints = normalModeSpawnPoints;
+                    ModBehaviour.DevLog("[CourierNPC] 使用普通模式刷新点，共 " + spawnPoints.Length + " 个");
+                }
+                else if (ModBehaviour.Instance != null)
+                {
+                    // BossRush模式：使用 Boss 刷新点
+                    spawnPoints = ModBehaviour.Instance.GetCurrentSceneSpawnPoints();
+                }
+                
+                if (spawnPoints != null && spawnPoints.Length > 0)
+                {
+                    // 随机选择一个刷新点（排除当前位置附近的点）
+                    int maxAttempts = 5;
+                    for (int i = 0; i < maxAttempts; i++)
                     {
-                        // 随机选择一个刷新点（排除当前位置附近的点）
-                        int maxAttempts = 5;
-                        for (int i = 0; i < maxAttempts; i++)
-                        {
-                            int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-                            Vector3 targetPos = spawnPoints[randomIndex];
-                            
-                            // 使用 Raycast 修正目标点的 Y 坐标到地面
-                            targetPos = CorrectTargetHeight(targetPos);
-                            
-                            // 确保目标点与当前位置有一定距离（使用水平距离）
-                            Vector3 diff = targetPos - transform.position;
-                            diff.y = 0;
-                            float distance = diff.magnitude;
-                            if (distance > 3f)
-                            {
-                                ModBehaviour.DevLog("[CourierNPC] 选择刷新点 [" + randomIndex + "/" + spawnPoints.Length + "] 作为目标: " + targetPos);
-                                return targetPos;
-                            }
-                        }
+                        int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+                        Vector3 targetPos = spawnPoints[randomIndex];
                         
-                        // 如果多次尝试都找不到合适的点，就用第一个（也要修正高度）
-                        Vector3 defaultPos = CorrectTargetHeight(spawnPoints[0]);
-                        ModBehaviour.DevLog("[CourierNPC] 使用默认刷新点: " + defaultPos);
-                        return defaultPos;
+                        // 使用 Raycast 修正目标点的 Y 坐标到地面
+                        targetPos = CorrectTargetHeight(targetPos);
+                        
+                        // 确保目标点与当前位置有一定距离（使用水平距离）
+                        Vector3 diff = targetPos - transform.position;
+                        diff.y = 0;
+                        float distance = diff.magnitude;
+                        if (distance > 3f)
+                        {
+                            ModBehaviour.DevLog("[CourierNPC] 选择刷新点 [" + randomIndex + "/" + spawnPoints.Length + "] 作为目标: " + targetPos);
+                            return targetPos;
+                        }
                     }
+                    
+                    // 如果多次尝试都找不到合适的点，就用第一个（也要修正高度）
+                    Vector3 defaultPos = CorrectTargetHeight(spawnPoints[0]);
+                    ModBehaviour.DevLog("[CourierNPC] 使用默认刷新点: " + defaultPos);
+                    return defaultPos;
                 }
             }
             catch (Exception e)
