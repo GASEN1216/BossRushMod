@@ -945,6 +945,9 @@ namespace BossRush
             // 更新UI消息
             UpdateMessage();
             
+            // 龙套装冲刺检测
+            UpdateDragonDash();
+            
             // 检测 Boss 池窗口快捷键（Ctrl+F10）
             // 注：热键检测使用 GetKeyDown，必须每帧检测，否则会丢失按键
             CheckBossPoolWindowHotkey();
@@ -3249,6 +3252,9 @@ namespace BossRush
                 {
                     ApplyInfiniteHellScaling(character, preset);
                 }
+
+                // 应用全局 Boss 数值倍率（所有模式生效）
+                ApplyBossStatMultiplier(character);
 
                 // 多Boss模式下，将本次生成的敌人加入当前波列表，便于统一统计死亡
                 if (bossesPerWave > 1)

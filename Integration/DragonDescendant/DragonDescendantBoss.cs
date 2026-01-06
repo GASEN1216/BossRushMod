@@ -167,6 +167,9 @@ namespace BossRush
                 // 设置Boss属性
                 SetupBossAttributes(character);
                 
+                // 应用全局 Boss 数值倍率（所有模式生效）
+                ApplyBossStatMultiplier(character);
+                
                 // 关键：在装备龙息武器之前，从角色已装备的原始武器获取完整属性（二阶段使用）
                 OriginalWeaponData originalWeaponData = GetWeaponDataFromEquippedWeapon(character);
                 

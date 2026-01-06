@@ -2,6 +2,10 @@
  
 ![Changelog](TODO.png)
 
+### 2026.1.6 23:00
+- Dragon Set new effect: Double-tap direction keys to dash, 1.5s cooldown
+- Boss global stat multiplier config now applies globally
+
 ### 2026.1.5 22:30
 - Courier Awen now spawns and roams randomly on official maps
 - Fixed the bug where Koukou arena becomes dark

@@ -469,11 +469,8 @@ namespace BossRush
                     // 应用 Mode D 配装
                     EquipEnemyForModeD(character, modeDWaveIndex, currentPresetInfo.baseHealth);
 
-                    // 应用数值强化（复用现有逻辑）
-                    if (config != null && config.bossStatMultiplier != 1f)
-                    {
-                        ApplyBossStatMultiplierModeD(character, config.bossStatMultiplier);
-                    }
+                    // 应用全局 Boss 数值倍率（使用统一方法）
+                    ApplyBossStatMultiplier(character);
 
                     // 渐进式难度：按波次提升敌人属性
                     ApplyModeDWaveScaling(character, modeDWaveIndex);
@@ -600,34 +597,6 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeD] [ERROR] ApplyModeDWaveScaling 失败: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 应用Boss数值倍率（暂不修改，使用现有的敌人基础属性）
-        /// </summary>
-        private void ApplyBossStatMultiplierModeD(CharacterMainControl character, float multiplier)
-        {
-            try
-            {
-                if (multiplier == 1f) return;
-
-                // 通过 Health 组件修改生命值
-                try
-                {
-                    Health health = character.Health;
-                    if (health != null)
-                    {
-                        float maxHp = health.MaxHealth;
-                        float newHp = maxHp * multiplier;
-                        health.CurrentHealth = newHp;
-                    }
-                }
-                catch {}
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] ApplyBossStatMultiplierModeD 失败: " + e.Message);
             }
         }
 

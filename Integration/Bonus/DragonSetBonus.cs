@@ -375,6 +375,9 @@ namespace BossRush
                 
                 // 销毁眼睛特效
                 DestroyDragonEyeEffect();
+                
+                // 清理冲刺残影
+                ClearAfterimages();
             }
             catch (Exception e)
             {
@@ -658,6 +661,464 @@ namespace BossRush
                 dragonEyeLight2 = null;
                 DevLog("[DragonSet] 龙眼特效已销毁");
             }
+        }
+        
+        #endregion
+        
+        #region 龙影冲刺
+        
+        // 冲刺配置
+        private const float DASH_DISTANCE = 3f;           // 冲刺距离
+        private const float DASH_DURATION = 0.1f;         // 冲刺持续时间
+        private const float DASH_COOLDOWN = 1.5f;         // 冲刺冷却时间
+        private const float DOUBLE_TAP_THRESHOLD = 0.3f;  // 双击判定时间阈值
+        private const int AFTERIMAGE_COUNT = 3;           // 残影数量
+        
+        // [性能优化] 缓存 LayerMask，避免每次冲刺都调用字符串查找
+        private static readonly int DASH_OBSTACLE_LAYER_MASK = LayerMask.GetMask("Default", "Wall", "Obstacle");
+        
+        // 冲刺状态
+        private bool isDragonDashing = false;
+        private float lastDashTime = -999f;
+        
+        // 双击检测 - WASD 四个方向
+        private float lastWPressTime = -999f;
+        private float lastSPressTime = -999f;
+        private float lastAPressTime = -999f;
+        private float lastDPressTime = -999f;
+        
+        // 记录触发冲刺的方向键
+        private Vector3 lastDoubleTapDirection = Vector3.zero;
+        
+        // 残影列表
+        private System.Collections.Generic.List<GameObject> afterimages = new System.Collections.Generic.List<GameObject>();
+        
+        /// <summary>
+        /// 龙影冲刺 Update 检测（在主 Update 中调用）
+        /// </summary>
+        private void UpdateDragonDash()
+        {
+            // 只在套装激活时检测
+            if (!dragonSetActive) return;
+            
+            // 冷却中不检测
+            if (Time.time - lastDashTime < DASH_COOLDOWN) return;
+            
+            // 冲刺中不检测新输入
+            if (isDragonDashing) return;
+            
+            // 检测双击
+            CheckDoubleTapDash();
+        }
+        
+        /// <summary>
+        /// 检测双击方向键触发冲刺
+        /// </summary>
+        private void CheckDoubleTapDash()
+        {
+            float currentTime = Time.time;
+            
+            // W 键 - 前
+            if (Input.GetKeyDown(KeyCode.W))
+            {
+                if (currentTime - lastWPressTime < DOUBLE_TAP_THRESHOLD)
+                {
+                    lastDoubleTapDirection = Vector3.forward;
+                    TriggerDragonDash();
+                    lastWPressTime = -999f;
+                    return;
+                }
+                lastWPressTime = currentTime;
+            }
+            
+            // S 键 - 后
+            if (Input.GetKeyDown(KeyCode.S))
+            {
+                if (currentTime - lastSPressTime < DOUBLE_TAP_THRESHOLD)
+                {
+                    lastDoubleTapDirection = Vector3.back;
+                    TriggerDragonDash();
+                    lastSPressTime = -999f;
+                    return;
+                }
+                lastSPressTime = currentTime;
+            }
+            
+            // A 键 - 左
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                if (currentTime - lastAPressTime < DOUBLE_TAP_THRESHOLD)
+                {
+                    lastDoubleTapDirection = Vector3.left;
+                    TriggerDragonDash();
+                    lastAPressTime = -999f;
+                    return;
+                }
+                lastAPressTime = currentTime;
+            }
+            
+            // D 键 - 右
+            if (Input.GetKeyDown(KeyCode.D))
+            {
+                if (currentTime - lastDPressTime < DOUBLE_TAP_THRESHOLD)
+                {
+                    lastDoubleTapDirection = Vector3.right;
+                    TriggerDragonDash();
+                    lastDPressTime = -999f;
+                    return;
+                }
+                lastDPressTime = currentTime;
+            }
+        }
+        
+        /// <summary>
+        /// 触发龙影冲刺
+        /// </summary>
+        private void TriggerDragonDash()
+        {
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null) return;
+            
+            // 获取相机朝向，将方向键方向转换为世界坐标方向
+            Vector3 dashDirection = GetCameraRelativeDirection(lastDoubleTapDirection);
+            if (dashDirection == Vector3.zero) return;
+            
+            DevLog("[DragonSet] 龙影冲刺触发！方向: " + dashDirection);
+            lastDashTime = Time.time;
+            
+            StartCoroutine(DragonDashCoroutine(main, dashDirection));
+        }
+        
+        /// <summary>
+        /// 将方向键方向转换为相机相对的世界方向
+        /// </summary>
+        private Vector3 GetCameraRelativeDirection(Vector3 inputDirection)
+        {
+            try
+            {
+                Camera cam = Camera.main;
+                if (cam == null) return inputDirection;
+                
+                // 获取相机的前方和右方（忽略Y轴）
+                Vector3 camForward = cam.transform.forward;
+                camForward.y = 0;
+                camForward.Normalize();
+                
+                Vector3 camRight = cam.transform.right;
+                camRight.y = 0;
+                camRight.Normalize();
+                
+                // 将输入方向转换为世界方向
+                Vector3 worldDirection = camForward * inputDirection.z + camRight * inputDirection.x;
+                return worldDirection.normalized;
+            }
+            catch
+            {
+                return inputDirection;
+            }
+        }
+        
+        /// <summary>
+        /// 龙影冲刺协程
+        /// </summary>
+        private System.Collections.IEnumerator DragonDashCoroutine(CharacterMainControl main, Vector3 direction)
+        {
+            isDragonDashing = true;
+            
+            Vector3 startPos = main.transform.position;
+            Vector3 endPos = startPos + direction * DASH_DISTANCE;
+            
+            // 检测障碍物，调整终点（使用缓存的 LayerMask）
+            RaycastHit hit;
+            if (Physics.Raycast(startPos + Vector3.up * 0.5f, direction, out hit, DASH_DISTANCE, 
+                DASH_OBSTACLE_LAYER_MASK))
+            {
+                endPos = hit.point - direction * 0.3f;
+                endPos.y = startPos.y;
+            }
+            
+            // 清理旧残影
+            ClearAfterimages();
+            
+            float elapsed = 0f;
+            int afterimageIndex = 0;
+            float afterimageInterval = DASH_DURATION / AFTERIMAGE_COUNT;
+            float nextAfterimageTime = 0f;
+            
+            while (elapsed < DASH_DURATION)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / DASH_DURATION;
+                
+                // 使用缓动函数让冲刺更有冲击感
+                float easedT = 1f - Mathf.Pow(1f - t, 3f); // ease-out cubic
+                
+                // 移动玩家
+                Vector3 newPos = Vector3.Lerp(startPos, endPos, easedT);
+                main.transform.position = newPos;
+                
+                // 生成残影（在当前位置）
+                if (elapsed >= nextAfterimageTime && afterimageIndex < AFTERIMAGE_COUNT)
+                {
+                    CreateAfterimageAtPosition(main, main.transform.position);
+                    afterimageIndex++;
+                    nextAfterimageTime += afterimageInterval;
+                }
+                
+                yield return null;
+            }
+            
+            // 确保到达终点
+            main.transform.position = endPos;
+            
+            isDragonDashing = false;
+            
+            // 延迟清理残影
+            StartCoroutine(ClearAfterimagesDelayed(0.5f));
+        }
+        
+        /// <summary>
+        /// 在指定位置创建残影 - 保留原始颜色
+        /// </summary>
+        private void CreateAfterimageAtPosition(CharacterMainControl main, Vector3 position)
+        {
+            try
+            {
+                // 获取角色模型
+                CharacterModel charModel = main.characterModel;
+                if (charModel == null)
+                {
+                    DevLog("[DragonSet] CreateAfterimageAtPosition: characterModel 为空!");
+                    return;
+                }
+                
+                // 直接复制整个 characterModel 节点
+                GameObject afterimage = UnityEngine.Object.Instantiate(charModel.gameObject);
+                afterimage.name = "DragonAfterimage_" + Time.frameCount;
+                
+                // 确保残影是激活的
+                afterimage.SetActive(true);
+                
+                // 设置到指定位置，保持原始旋转
+                afterimage.transform.position = position;
+                afterimage.transform.rotation = charModel.transform.rotation;
+                afterimage.transform.localScale = charModel.transform.lossyScale;
+                
+                // 脱离父节点，成为独立物体
+                afterimage.transform.SetParent(null, true);
+                
+                // 移除非渲染组件，设置图层
+                RemoveNonRenderComponentsKeepMaterial(afterimage);
+                
+                afterimages.Add(afterimage);
+                
+                // 启动淡出协程
+                StartCoroutine(FadeOutAfterimageKeepColor(afterimage, 0.4f));
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonSet] CreateAfterimageAtPosition 异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 移除非渲染组件，但保留原始材质
+        /// [性能优化] 合并组件查询，一次遍历处理所有组件
+        /// </summary>
+        private void RemoveNonRenderComponentsKeepMaterial(GameObject obj)
+        {
+            // [性能优化] 一次获取所有组件，避免多次 GetComponentsInChildren 调用
+            Component[] allComponents = obj.GetComponentsInChildren<Component>(true);
+            
+            foreach (var comp in allComponents)
+            {
+                if (comp == null) continue;
+                
+                // 设置所有 GameObject 的图层为 Character (9)
+                comp.gameObject.layer = 9;
+                
+                // 根据组件类型分别处理
+                if (comp is CharacterModel)
+                {
+                    // 移除 CharacterModel 脚本
+                    UnityEngine.Object.Destroy(comp);
+                }
+                else if (comp is Animator anim)
+                {
+                    // 禁用 Animator（保持当前姿势）
+                    anim.enabled = false;
+                }
+                else if (comp is Collider)
+                {
+                    // 移除碰撞器
+                    UnityEngine.Object.Destroy(comp);
+                }
+                else if (comp is Rigidbody)
+                {
+                    // 移除刚体
+                    UnityEngine.Object.Destroy(comp);
+                }
+                else if (comp is Renderer renderer)
+                {
+                    // 处理渲染器
+                    if (renderer.GetType().Name.Contains("Particle"))
+                    {
+                        // 禁用粒子系统渲染器
+                        renderer.enabled = false;
+                    }
+                    else
+                    {
+                        // 启用其他渲染器
+                        renderer.enabled = true;
+                    }
+                }
+                else if (comp is MonoBehaviour && !(comp is Transform))
+                {
+                    // 移除其他 MonoBehaviour（Transform 不能移除）
+                    UnityEngine.Object.Destroy(comp);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 残影淡出效果 - 保留原始颜色，随时间透明消散
+        /// </summary>
+        private System.Collections.IEnumerator FadeOutAfterimageKeepColor(GameObject afterimage, float duration)
+        {
+            if (afterimage == null) yield break;
+            
+            Renderer[] renderers = afterimage.GetComponentsInChildren<Renderer>(true);
+            
+            // 保存原始颜色，并将材质设置为透明渲染模式
+            var originalColors = new System.Collections.Generic.Dictionary<Material, Color>();
+            foreach (var renderer in renderers)
+            {
+                if (renderer == null || renderer.GetType().Name.Contains("Particle")) continue;
+                
+                foreach (var mat in renderer.materials)
+                {
+                    if (mat != null && !originalColors.ContainsKey(mat))
+                    {
+                        // 保存原始颜色
+                        if (mat.HasProperty("_Color"))
+                        {
+                            originalColors[mat] = mat.color;
+                        }
+                        
+                        // 将材质设置为透明渲染模式（Fade模式）
+                        SetMaterialTransparent(mat);
+                    }
+                }
+            }
+            
+            float elapsed = 0f;
+            while (elapsed < duration && afterimage != null)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                
+                // 透明度从1渐变到0
+                float alpha = Mathf.Lerp(1f, 0f, t);
+                
+                // 更新材质透明度
+                foreach (var kvp in originalColors)
+                {
+                    if (kvp.Key != null)
+                    {
+                        Color c = kvp.Value;
+                        c.a = alpha;
+                        kvp.Key.color = c;
+                    }
+                }
+                
+                yield return null;
+            }
+            
+            // 淡出完成后销毁
+            if (afterimage != null)
+            {
+                afterimages.Remove(afterimage);
+                UnityEngine.Object.Destroy(afterimage);
+            }
+        }
+        
+        /// <summary>
+        /// 将材质设置为透明渲染模式（支持 Standard Shader 和 URP/HDRP）
+        /// </summary>
+        private void SetMaterialTransparent(Material mat)
+        {
+            if (mat == null) return;
+            
+            try
+            {
+                // Standard Shader 透明模式设置
+                if (mat.HasProperty("_Mode"))
+                {
+                    mat.SetFloat("_Mode", 2f); // Fade 模式
+                }
+                
+                // 设置渲染队列为透明
+                mat.renderQueue = 3000;
+                
+                // 设置混合模式
+                if (mat.HasProperty("_SrcBlend"))
+                {
+                    mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                }
+                if (mat.HasProperty("_DstBlend"))
+                {
+                    mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                }
+                
+                // 禁用深度写入（透明物体通常不写入深度）
+                if (mat.HasProperty("_ZWrite"))
+                {
+                    mat.SetInt("_ZWrite", 0);
+                }
+                
+                // 启用透明关键字
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                
+                // URP/HDRP 兼容：设置 Surface Type 为透明
+                if (mat.HasProperty("_Surface"))
+                {
+                    mat.SetFloat("_Surface", 1f); // 1 = Transparent
+                }
+                if (mat.HasProperty("_Blend"))
+                {
+                    mat.SetFloat("_Blend", 0f); // 0 = Alpha
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonSet] SetMaterialTransparent 异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 延迟清理残影
+        /// </summary>
+        private System.Collections.IEnumerator ClearAfterimagesDelayed(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            ClearAfterimages();
+        }
+        
+        /// <summary>
+        /// 清理所有残影
+        /// </summary>
+        private void ClearAfterimages()
+        {
+            foreach (var ai in afterimages)
+            {
+                if (ai != null)
+                {
+                    UnityEngine.Object.Destroy(ai);
+                }
+            }
+            afterimages.Clear();
         }
         
         #endregion
