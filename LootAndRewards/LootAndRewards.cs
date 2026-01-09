@@ -2373,6 +2373,34 @@ namespace BossRush
             
             return false;
         }
+        
+        /// <summary>
+        /// 判断Boss是否是龙王（支持多Boss模式）
+        /// 通过GameObject名称或预设nameKey判断
+        /// </summary>
+        private bool IsDragonKingBoss(CharacterMainControl boss)
+        {
+            if (boss == null) return false;
+            
+            try
+            {
+                // 方法1：检查GameObject名称（SpawnDragonKing中设置为"BossRush_DragonKing"）
+                if (boss.gameObject != null && boss.gameObject.name.Contains("DragonKing"))
+                {
+                    return true;
+                }
+                
+                // 方法2：检查预设nameKey
+                if (boss.characterPreset != null && 
+                    boss.characterPreset.nameKey == DragonKingConfig.BossNameKey)
+                {
+                    return true;
+                }
+            }
+            catch { }
+            
+            return false;
+        }
 
         /// <summary>
         /// 龙裔遗族特殊掉落：在掉落箱填充完成后添加龙套装（协程版本）

@@ -767,6 +767,9 @@ namespace BossRush
             // [内存优化] 场景切换时清理龙裔遗族相关的静态缓存，防止持有已销毁对象引用
             ClearDragonDescendantStaticCache();
             
+            // [内存优化] 场景切换时清理龙王相关的静态缓存
+            ClearDragonKingStaticCache();
+            
             // 在任何场景加载后都尝试订阅龙息武器事件
             // 使用延迟调用确保玩家角色已初始化
             StartCoroutine(DelayedSubscribeDragonBreathEvents());

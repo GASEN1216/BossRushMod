@@ -383,13 +383,14 @@ namespace BossRush
             grenadeTimerCoroutine = null;
             chaseCoroutine = null;
             iceSlowdownCoroutine = null;
-            
+
             // 清理其他引用，帮助GC
             bossCharacter = null;
             bossHealth = null;
             playerCharacter = null;
             cachedBossGun = null;
-            cachedAI = null;
+            if (aiController != null) aiController.Cleanup();
+            aiController = null;
             originalWeaponData = null;
         }
         
@@ -417,9 +418,9 @@ namespace BossRush
                 bossCharacter.SetMoveInput(Vector2.zero);
                 bossCharacter.SetRunInput(false);
                 bossCharacter.Trigger(false, false, false);
-                if (cachedAI != null)
+                if (aiController?.GetAI() != null)
                 {
-                    cachedAI.StopMove();
+                    aiController?.GetAI().StopMove();
                 }
                 return; // 不执行其他逻辑
             }
@@ -895,87 +896,34 @@ namespace BossRush
         /// <summary>
         /// AI是否被暂停
         /// </summary>
-        private bool aiPaused = false;
-        
+        private bool aiPaused => aiController != null && aiController.IsPaused;
+
         /// <summary>
         /// 暂停AI行动（复活对话期间）
-        /// 完全停止Boss的移动、射击和AI决策
+        /// 使用统一的AI控制辅助类
         /// </summary>
         private void PauseAI()
         {
-            try
+            // 确保AI控制器已初始化
+            if (aiController == null && bossCharacter != null)
             {
-                if (bossCharacter == null) return;
-                
-                aiPaused = true;
-                
-                // 缓存AI控制器
-                if (cachedAI == null)
-                {
-                    cachedAI = bossCharacter.GetComponentInChildren<AICharacterController>();
-                }
-                
-                if (cachedAI != null)
-                {
-                    // 停止AI移动（清除寻路路径）
-                    cachedAI.StopMove();
-                    
-                    // 收起武器（停止射击行为）
-                    cachedAI.PutBackWeapon();
-                    cachedAI.defaultWeaponOut = false;
-                    
-                    // 清除目标
-                    cachedAI.searchedEnemy = null;
-                    cachedAI.noticed = false;
-                    
-                    // 禁用AI控制器
-                    cachedAI.enabled = false;
-                    
-                    ModBehaviour.DevLog("[DragonDescendant] AI已暂停 - 停止移动和射击");
-                }
-                
-                // 停止角色移动输入
-                bossCharacter.SetMoveInput(Vector2.zero);
-                bossCharacter.SetRunInput(false);
-                
-                // 停止射击（调用原版Trigger方法）
-                bossCharacter.Trigger(false, false, false);
-                
-                ModBehaviour.DevLog("[DragonDescendant] Boss完全暂停");
+                aiController = new BossAIController(bossCharacter, "DragonDescendant");
             }
-            catch (Exception e)
+
+            if (aiController != null)
             {
-                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 暂停AI失败: " + e.Message);
+                aiController.Pause();
             }
         }
-        
+
         /// <summary>
         /// 恢复AI行动
         /// </summary>
         private void ResumeAI()
         {
-            try
+            if (aiController != null)
             {
-                aiPaused = false;
-                
-                if (cachedAI != null)
-                {
-                    // 重新启用AI控制器
-                    cachedAI.enabled = true;
-                    
-                    // 恢复目标追踪
-                    if (playerCharacter != null && playerCharacter.mainDamageReceiver != null)
-                    {
-                        cachedAI.searchedEnemy = playerCharacter.mainDamageReceiver;
-                        cachedAI.noticed = true;
-                    }
-                    
-                    ModBehaviour.DevLog("[DragonDescendant] AI已恢复");
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 恢复AI失败: " + e.Message);
+                aiController.Resume(playerCharacter);
             }
         }
         
@@ -1098,11 +1046,11 @@ namespace BossRush
         }
         
         // ========== 狂暴状态 ==========
-        
+
         /// <summary>
-        /// AI控制器引用（缓存）
+        /// AI控制辅助类（统一的暂停/恢复接口）
         /// </summary>
-        private AICharacterController cachedAI;
+        private BossAIController aiController;
         
         /// <summary>
         /// 追逐更新间隔（与原版TraceTarget一致：0.15秒）
@@ -1110,23 +1058,23 @@ namespace BossRush
         #pragma warning disable CS0414
         private float chaseUpdateInterval = 0.15f;
         #pragma warning restore CS0414
-        
+
         /// <summary>
         /// 进入狂暴状态
         /// </summary>
         private void EnterEnragedState()
         {
             if (isEnraged) return;
-            
+
             isEnraged = true;
             ModBehaviour.DevLog("[DragonDescendant] 进入狂暴状态");
-            
-            // 缓存AI控制器
-            if (bossCharacter != null)
+
+            // 初始化AI控制辅助类
+            if (bossCharacter != null && aiController == null)
             {
-                cachedAI = bossCharacter.GetComponentInChildren<AICharacterController>();
+                aiController = new BossAIController(bossCharacter, "DragonDescendant");
             }
-            
+
             // 应用二阶段伤害倍率
             ApplyPhase2DamageMultiplier();
             
@@ -1194,12 +1142,13 @@ namespace BossRush
             try
             {
                 if (bossCharacter == null) return;
-                
+
                 // 使用原版API收起武器
-                if (cachedAI != null)
+                var ai = aiController?.GetAI();
+                if (ai != null)
                 {
-                    cachedAI.PutBackWeapon();
-                    cachedAI.defaultWeaponOut = false;
+                    ai.PutBackWeapon();
+                    ai.defaultWeaponOut = false;
                 }
                 
                 // 停止射击输入
@@ -1320,20 +1269,21 @@ namespace BossRush
                     {
                         try { playerCharacter = CharacterMainControl.Main; } catch { }
                     }
-                    
-                    if (playerCharacter != null && cachedAI != null)
+
+                    var ai = aiController?.GetAI();
+                    if (playerCharacter != null && ai != null)
                     {
                         // 朝玩家方向冲刺
                         Vector3 targetPos = playerCharacter.transform.position;
-                        cachedAI.MoveToPos(targetPos);
-                        
+                        ai.MoveToPos(targetPos);
+
                         if (playerCharacter.mainDamageReceiver != null)
                         {
-                            cachedAI.searchedEnemy = playerCharacter.mainDamageReceiver;
-                            cachedAI.SetTarget(playerCharacter.mainDamageReceiver.transform);
-                            cachedAI.noticed = true;
+                            ai.searchedEnemy = playerCharacter.mainDamageReceiver;
+                            ai.SetTarget(playerCharacter.mainDamageReceiver.transform);
+                            ai.noticed = true;
                         }
-                        
+
                         bossCharacter.SetRunInput(true);
                     }
                     
@@ -1391,9 +1341,9 @@ namespace BossRush
                     bossCharacter.SetMoveInput(Vector2.zero);
                     bossCharacter.SetRunInput(false);
                 }
-                if (cachedAI != null)
+                if (aiController?.GetAI() != null)
                 {
-                    cachedAI.StopMove();
+                    aiController?.GetAI().StopMove();
                 }
             }
             catch { }
@@ -1760,16 +1710,17 @@ namespace BossRush
             try
             {
                 if (bossCharacter == null) return;
-                
+
                 // 确保武器已拿出
-                if (cachedAI != null)
+                var ai = aiController?.GetAI();
+                if (ai != null)
                 {
-                    cachedAI.defaultWeaponOut = true;
+                    ai.defaultWeaponOut = true;
                 }
-                
+
                 // 设置瞄准方向
                 SetAimDirection(direction);
-                
+
                 // 触发射击（triggerInput=true, triggerThisFrame=true）
                 bossCharacter.Trigger(true, true, false);
             }
@@ -1817,14 +1768,15 @@ namespace BossRush
         private void UpdateChase()
         {
             // 协程已经处理追逐逻辑，这里只做简单的状态维护
-            if (!isEnraged || bossCharacter == null || cachedAI == null) return;
-            
+            var ai = aiController?.GetAI();
+            if (!isEnraged || bossCharacter == null || ai == null) return;
+
             // 确保AI保持追逐状态
             if (playerCharacter != null && playerCharacter.mainDamageReceiver != null)
             {
-                cachedAI.searchedEnemy = playerCharacter.mainDamageReceiver;
-                cachedAI.noticed = true;
-                
+                ai.searchedEnemy = playerCharacter.mainDamageReceiver;
+                ai.noticed = true;
+
                 // 确保保持跑步状态
                 bossCharacter.SetRunInput(true);
             }

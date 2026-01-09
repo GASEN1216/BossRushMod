@@ -136,5 +136,39 @@ namespace BossRush
                           "Takes 0.1% max HP + 1 true fire damage per second per layer, stacks up to 10, lasts 10 seconds"); }
         }
         
+        // ========== 龙王Boss本地化 ==========
+        
+        /// <summary>
+        /// 获取龙王Boss名称
+        /// </summary>
+        public static string DragonKingName
+        {
+            get { return T("龙王", "Dragon King"); }
+        }
+        
+        /// <summary>
+        /// 获取龙王出现消息
+        /// </summary>
+        public static string DragonKingAppeared
+        {
+            get { return T("龙王 出现了！", "Dragon King has appeared!"); }
+        }
+        
+        /// <summary>
+        /// 获取龙王被击败消息
+        /// </summary>
+        public static string DragonKingDefeated
+        {
+            get { return T("龙王被击败了！", "Dragon King has been defeated!"); }
+        }
+        
+        /// <summary>
+        /// 获取龙王进入狂暴状态消息
+        /// </summary>
+        public static string DragonKingEnraged
+        {
+            get { return T("龙王进入狂暴状态！", "Dragon King enters rage mode!"); }
+        }
+        
     }
 }

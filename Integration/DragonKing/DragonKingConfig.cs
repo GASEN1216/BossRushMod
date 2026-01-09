@@ -1,0 +1,396 @@
+// ============================================================================
+// DragonKingConfig.cs - 龙王Boss配置
+// ============================================================================
+// 模块说明：
+//   定义龙王Boss的所有可配置参数
+//   基于泰拉瑞亚光之女皇的AI框架设计
+// ============================================================================
+
+namespace BossRush
+{
+    /// <summary>
+    /// 攻击类型枚举
+    /// </summary>
+    public enum DragonKingAttackType
+    {
+        PrismaticBolts,      // 棱彩弹
+        PrismaticBolts2,     // 棱彩弹2（螺旋）
+        Dash,                // 冲刺
+        SunDance,            // 太阳舞
+        EverlastingRainbow,  // 永恒彩虹
+        EtherealLance,       // 以太长矛
+        EtherealLance2       // 以太长矛2（切屏）
+    }
+
+    /// <summary>
+    /// 龙王Boss配置参数
+    /// </summary>
+    public static class DragonKingConfig
+    {
+        // ========== 调试模式配置 ==========
+        
+        /// <summary>
+        /// 是否启用调试模式（只重复释放指定技能）
+        /// </summary>
+        public static bool DebugMode = true;
+        
+        /// <summary>
+        /// 调试模式下重复释放的技能类型
+        /// </summary>
+        public static DragonKingAttackType DebugAttackType = DragonKingAttackType.SunDance;
+        
+        // ========== Boss基础属性 ==========
+        
+        /// <summary>
+        /// 基础血量
+        /// </summary>
+        public const float BaseHealth = 5000f;
+        
+        /// <summary>
+        /// 伤害倍率
+        /// </summary>
+        public const float DamageMultiplier = 1.5f;
+        
+        /// <summary>
+        /// Boss名称本地化键
+        /// </summary>
+        public const string BossNameKey = "boss_dragonking";
+        
+        /// <summary>
+        /// Boss中文名称
+        /// </summary>
+        public const string BossNameCN = "龙王";
+        
+        /// <summary>
+        /// Boss英文名称
+        /// </summary>
+        public const string BossNameEN = "Dragon King";
+        
+        // ========== 阶段参数 ==========
+        
+        /// <summary>
+        /// 二阶段血量阈值（50%）
+        /// </summary>
+        public const float Phase2HealthThreshold = 0.5f;
+        
+        /// <summary>
+        /// 一阶段攻击间隔（秒）
+        /// </summary>
+        public const float Phase1AttackInterval = 0.5f;
+        
+        /// <summary>
+        /// 二阶段攻击间隔（秒）
+        /// </summary>
+        public const float Phase2AttackInterval = 0.3f;
+        
+        /// <summary>
+        /// 二阶段转换持续时间（秒）
+        /// </summary>
+        public const float Phase2TransitionDuration = 1.0f;
+        
+        // ========== 棱彩弹参数 ==========
+        
+        /// <summary>
+        /// 棱彩弹数量
+        /// </summary>
+        public const int PrismaticBoltCount = 8;
+        
+        /// <summary>
+        /// 棱彩弹延迟时间（秒）
+        /// </summary>
+        public const float PrismaticBoltDelay = 0.5f;
+        
+        /// <summary>
+        /// 棱彩弹追踪强度（0-1，1为完美追踪）
+        /// </summary>
+        public const float PrismaticBoltTrackingStrength = 0.8f;
+        
+        /// <summary>
+        /// 棱彩弹追踪持续时间（秒）- 超过此时间后直线飞行
+        /// </summary>
+        public const float PrismaticBoltTrackingDuration = 1.0f;
+        
+        /// <summary>
+        /// 棱彩弹伤害
+        /// </summary>
+        public const float PrismaticBoltDamage = 15f;
+        
+        /// <summary>
+        /// 棱彩弹生命周期（秒）
+        /// </summary>
+        public const float PrismaticBoltLifetime = 5f;
+        
+        /// <summary>
+        /// 棱彩弹移动速度
+        /// </summary>
+        public const float PrismaticBoltSpeed = 12f;
+        
+        /// <summary>
+        /// 棱彩弹缩放倍数（增大弹幕大小）
+        /// </summary>
+        public const float PrismaticBoltScale = 2.5f;
+        
+        // ========== 棱彩弹2参数（螺旋） ==========
+        
+        /// <summary>
+        /// 螺旋发射间隔（秒）
+        /// </summary>
+        public const float SpiralFireInterval = 0.1f;
+        
+        /// <summary>
+        /// 螺旋发射持续时间（秒）
+        /// </summary>
+        public const float SpiralFireDuration = 3f;
+        
+        /// <summary>
+        /// 螺旋角度增量（度）
+        /// </summary>
+        public const float SpiralAngleIncrement = 15f;
+        
+        // ========== 冲刺参数 ==========
+        
+        /// <summary>
+        /// 冲刺蓄力时间（秒）
+        /// </summary>
+        public const float DashChargeTime = 0.5f;
+        
+        /// <summary>
+        /// 冲刺速度（单位/秒）
+        /// </summary>
+        public const float DashSpeed = 25f;
+        
+        /// <summary>
+        /// 冲刺持续时间（秒）
+        /// </summary>
+        public const float DashDuration = 0.5f;
+        
+        /// <summary>
+        /// 冲刺伤害
+        /// </summary>
+        public const float DashDamage = 30f;
+        
+        // ========== 太阳舞参数 ==========
+        
+        /// <summary>
+        /// 太阳舞光束数量
+        /// </summary>
+        public const int SunDanceBeamCount = 6;
+        
+        /// <summary>
+        /// 太阳舞旋转速度（度/秒）
+        /// </summary>
+        public const float SunDanceRotationSpeed = 30f;
+        
+        /// <summary>
+        /// 太阳舞波数
+        /// </summary>
+        public const int SunDanceWaveCount = 3;
+        
+        /// <summary>
+        /// 太阳舞波偏移角度（度）
+        /// </summary>
+        public const float SunDanceWaveOffset = 20f;
+        
+        /// <summary>
+        /// 太阳舞每tick伤害
+        /// </summary>
+        public const float SunDanceDamagePerTick = 10f;
+        
+        /// <summary>
+        /// 太阳舞持续时间（秒）
+        /// </summary>
+        public const float SunDanceDuration = 5f;
+        
+        /// <summary>
+        /// 太阳舞伤害tick间隔（秒）
+        /// </summary>
+        public const float SunDanceTickInterval = 0.2f;
+        
+        // ========== 永恒彩虹参数 ==========
+        
+        /// <summary>
+        /// 永恒彩虹星数量
+        /// </summary>
+        public const int RainbowStarCount = 13;
+        
+        /// <summary>
+        /// 永恒彩虹轨迹伤害
+        /// </summary>
+        public const float RainbowTrailDamage = 5f;
+        
+        /// <summary>
+        /// 永恒彩虹持续时间（秒）
+        /// </summary>
+        public const float RainbowDuration = 8f;
+        
+        /// <summary>
+        /// 永恒彩虹最大扩散半径
+        /// </summary>
+        public const float RainbowMaxRadius = 10f;
+        
+        /// <summary>
+        /// 永恒彩虹旋转速度（度/秒）
+        /// </summary>
+        public const float RainbowRotationSpeed = 45f;
+        
+        // ========== 以太长矛参数 ==========
+        
+        /// <summary>
+        /// 以太长矛数量
+        /// </summary>
+        public const int EtherealLanceCount = 12;
+        
+        /// <summary>
+        /// 以太长矛预警时间（秒）
+        /// </summary>
+        public const float EtherealLanceWarningDuration = 1.0f;
+        
+        /// <summary>
+        /// 以太长矛速度（单位/秒）
+        /// </summary>
+        public const float EtherealLanceSpeed = 20f;
+        
+        /// <summary>
+        /// 以太长矛伤害
+        /// </summary>
+        public const float EtherealLanceDamage = 25f;
+        
+        // ========== 以太长矛2参数（切屏） ==========
+        
+        /// <summary>
+        /// 切屏剑阵波数
+        /// </summary>
+        public const int ScreenLanceWaveCount = 4;
+        
+        /// <summary>
+        /// 每波长矛数量
+        /// </summary>
+        public const int ScreenLancePerWave = 8;
+        
+        /// <summary>
+        /// 波间隔时间（秒）
+        /// </summary>
+        public const float ScreenLanceWaveInterval = 0.5f;
+        
+        // ========== 碰撞伤害参数 ==========
+        
+        /// <summary>
+        /// 碰撞伤害值
+        /// </summary>
+        public const float CollisionDamage = 25f;
+        
+        /// <summary>
+        /// 碰撞伤害冷却时间（秒）
+        /// </summary>
+        public const float CollisionCooldown = 0.5f;
+        
+        /// <summary>
+        /// 碰撞检测半径
+        /// </summary>
+        public const float CollisionRadius = 1.5f;
+        
+        // ========== 换位参数 ==========
+        
+        /// <summary>
+        /// 换位最小高度（米）
+        /// </summary>
+        public const float RepositionHeightMin = 3f;
+        
+        /// <summary>
+        /// 换位最大高度（米）
+        /// </summary>
+        public const float RepositionHeightMax = 5f;
+        
+        /// <summary>
+        /// 换位移动速度（单位/秒）
+        /// </summary>
+        public const float RepositionSpeed = 15f;
+        
+        /// <summary>
+        /// 悬浮跟随速度（单位/秒）- 非攻击时跟随玩家的速度
+        /// </summary>
+        public const float HoverFollowSpeed = 8f;
+        
+        /// <summary>
+        /// 悬浮偏移角度（度）- 相对于玩家的偏移方向
+        /// </summary>
+        public const float HoverOffsetAngle = 45f;
+        
+        // ========== 资源路径 ==========
+        
+        /// <summary>
+        /// AssetBundle文件路径（相对于Mod目录）
+        /// </summary>
+        public const string AssetBundlePath = "Assets/boss/dragonking";
+        
+        /// <summary>
+        /// 棱彩弹预制体名称
+        /// </summary>
+        public const string PrismaticBoltPrefab = "PrismaticBolt";
+        
+        /// <summary>
+        /// 太阳舞光束组预制体名称
+        /// </summary>
+        public const string SunBeamGroupPrefab = "SunBeamGroup";
+        
+        /// <summary>
+        /// 永恒彩虹星预制体名称
+        /// </summary>
+        public const string RainbowStarPrefab = "RainbowStar";
+        
+        /// <summary>
+        /// 以太长矛预制体名称
+        /// </summary>
+        public const string EtherealLancePrefab = "EtherealLance";
+        
+        /// <summary>
+        /// 冲刺残影预制体名称
+        /// </summary>
+        public const string DashTrailPrefab = "DashTrail";
+        
+        /// <summary>
+        /// 传送特效预制体名称
+        /// </summary>
+        public const string TeleportFXPrefab = "TeleportFX";
+        
+        /// <summary>
+        /// 阶段转换特效预制体名称
+        /// </summary>
+        public const string PhaseTransitionPrefab = "PhaseTransition";
+        
+        // ========== 攻击序列 ==========
+        
+        /// <summary>
+        /// 一阶段攻击序列
+        /// </summary>
+        public static readonly DragonKingAttackType[] Phase1Sequence = new DragonKingAttackType[]
+        {
+            DragonKingAttackType.PrismaticBolts,
+            DragonKingAttackType.Dash,
+            DragonKingAttackType.SunDance,
+            DragonKingAttackType.Dash,
+            DragonKingAttackType.EverlastingRainbow,
+            DragonKingAttackType.PrismaticBolts,
+            DragonKingAttackType.Dash,
+            DragonKingAttackType.EtherealLance,
+            DragonKingAttackType.Dash,
+            DragonKingAttackType.EverlastingRainbow
+        };
+        
+        /// <summary>
+        /// 二阶段攻击序列
+        /// </summary>
+        public static readonly DragonKingAttackType[] Phase2Sequence = new DragonKingAttackType[]
+        {
+            DragonKingAttackType.EtherealLance2,
+            DragonKingAttackType.PrismaticBolts,
+            DragonKingAttackType.Dash,
+            DragonKingAttackType.EverlastingRainbow,
+            DragonKingAttackType.PrismaticBolts,
+            DragonKingAttackType.SunDance,
+            DragonKingAttackType.EtherealLance,
+            DragonKingAttackType.Dash,
+            DragonKingAttackType.PrismaticBolts2
+        };
+    }
+}

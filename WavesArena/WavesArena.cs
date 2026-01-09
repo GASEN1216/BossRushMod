@@ -1496,7 +1496,7 @@ namespace BossRush
                 
                 results.Add(spawned);
                 
-                if (spawned == null && !IsDragonDescendantPreset(info.preset))
+                if (spawned == null && !IsDragonDescendantPreset(info.preset) && !IsDragonKingPreset(info.preset))
                 {
                     failedInfos.Add((info.preset, i));
                 }
@@ -1516,9 +1516,9 @@ namespace BossRush
                 {
                     successCount++;
                 }
-                else if (IsDragonDescendantPreset(bossSpawnInfos[i].preset))
+                else if (IsDragonDescendantPreset(bossSpawnInfos[i].preset) || IsDragonKingPreset(bossSpawnInfos[i].preset))
                 {
-                    // 龙裔遗族返回 null 但不视为失败
+                    // 龙裔遗族和龙王返回 null 但不视为失败
                     successCount++;
                 }
             }
@@ -1557,7 +1557,7 @@ namespace BossRush
                         successCount++;
                         DevLog("[BossRush] 重试成功: " + failedInfo.preset.displayName);
                     }
-                    else if (!IsDragonDescendantPreset(failedInfo.preset))
+                    else if (!IsDragonDescendantPreset(failedInfo.preset) && !IsDragonKingPreset(failedInfo.preset))
                     {
                         stillFailed.Add(failedInfo);
                     }
@@ -2073,6 +2073,9 @@ namespace BossRush
             
             // 注册龙裔遗族Boss
             RegisterDragonDescendantPreset();
+            
+            // 注册龙王Boss
+            RegisterDragonKingPreset();
 
             // 计算 Boss 池基础血量范围
             try
