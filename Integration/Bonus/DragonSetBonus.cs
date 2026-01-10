@@ -673,6 +673,7 @@ namespace BossRush
         private const float DASH_COOLDOWN = 1.5f;         // 冲刺冷却时间
         private const float DOUBLE_TAP_THRESHOLD = 0.3f;  // 双击判定时间阈值
         private const int AFTERIMAGE_COUNT = 3;           // 残影数量
+        private const float INPUT_THRESHOLD = 0.5f;       // 输入阈值，判定方向键是否按下
         
         // [性能优化] 缓存 LayerMask，避免每次冲刺都调用字符串查找
         private static readonly int DASH_OBSTACLE_LAYER_MASK = LayerMask.GetMask("Default", "Wall", "Obstacle");
@@ -681,11 +682,18 @@ namespace BossRush
         private bool isDragonDashing = false;
         private float lastDashTime = -999f;
         
-        // 双击检测 - WASD 四个方向
-        private float lastWPressTime = -999f;
-        private float lastSPressTime = -999f;
-        private float lastAPressTime = -999f;
-        private float lastDPressTime = -999f;
+        // 双击检测 - 基于移动输入轴（兼容自定义按键）
+        // 四个方向：前(+Y)、后(-Y)、左(-X)、右(+X)
+        private float lastForwardPressTime = -999f;   // 前
+        private float lastBackPressTime = -999f;      // 后
+        private float lastLeftPressTime = -999f;      // 左
+        private float lastRightPressTime = -999f;     // 右
+        
+        // 上一帧的输入状态（用于检测按下瞬间）
+        private bool wasForwardPressed = false;
+        private bool wasBackPressed = false;
+        private bool wasLeftPressed = false;
+        private bool wasRightPressed = false;
         
         // 记录触发冲刺的方向键
         private Vector3 lastDoubleTapDirection = Vector3.zero;
@@ -712,63 +720,89 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 检测双击方向键触发冲刺
+        /// 检测双击方向键触发冲刺（兼容自定义按键）
+        /// 通过监听 InputManager.MoveAxisInput 来检测移动输入，而非硬编码 WASD
         /// </summary>
         private void CheckDoubleTapDash()
         {
+            // 获取当前移动输入
+            InputManager inputManager = LevelManager.Instance?.InputManager;
+            if (inputManager == null) return;
+            
+            Vector2 moveInput = inputManager.MoveAxisInput;
             float currentTime = Time.time;
             
-            // W 键 - 前
-            if (Input.GetKeyDown(KeyCode.W))
+            // 检测当前帧各方向是否按下（超过阈值）
+            bool isForwardPressed = moveInput.y > INPUT_THRESHOLD;
+            bool isBackPressed = moveInput.y < -INPUT_THRESHOLD;
+            bool isRightPressed = moveInput.x > INPUT_THRESHOLD;
+            bool isLeftPressed = moveInput.x < -INPUT_THRESHOLD;
+            
+            // 前 - 检测按下瞬间（从未按下变为按下）
+            if (isForwardPressed && !wasForwardPressed)
             {
-                if (currentTime - lastWPressTime < DOUBLE_TAP_THRESHOLD)
+                if (currentTime - lastForwardPressTime < DOUBLE_TAP_THRESHOLD)
                 {
                     lastDoubleTapDirection = Vector3.forward;
                     TriggerDragonDash();
-                    lastWPressTime = -999f;
-                    return;
+                    lastForwardPressTime = -999f;
                 }
-                lastWPressTime = currentTime;
+                else
+                {
+                    lastForwardPressTime = currentTime;
+                }
             }
             
-            // S 键 - 后
-            if (Input.GetKeyDown(KeyCode.S))
+            // 后 - 检测按下瞬间
+            if (isBackPressed && !wasBackPressed)
             {
-                if (currentTime - lastSPressTime < DOUBLE_TAP_THRESHOLD)
+                if (currentTime - lastBackPressTime < DOUBLE_TAP_THRESHOLD)
                 {
                     lastDoubleTapDirection = Vector3.back;
                     TriggerDragonDash();
-                    lastSPressTime = -999f;
-                    return;
+                    lastBackPressTime = -999f;
                 }
-                lastSPressTime = currentTime;
+                else
+                {
+                    lastBackPressTime = currentTime;
+                }
             }
             
-            // A 键 - 左
-            if (Input.GetKeyDown(KeyCode.A))
+            // 左 - 检测按下瞬间
+            if (isLeftPressed && !wasLeftPressed)
             {
-                if (currentTime - lastAPressTime < DOUBLE_TAP_THRESHOLD)
+                if (currentTime - lastLeftPressTime < DOUBLE_TAP_THRESHOLD)
                 {
                     lastDoubleTapDirection = Vector3.left;
                     TriggerDragonDash();
-                    lastAPressTime = -999f;
-                    return;
+                    lastLeftPressTime = -999f;
                 }
-                lastAPressTime = currentTime;
+                else
+                {
+                    lastLeftPressTime = currentTime;
+                }
             }
             
-            // D 键 - 右
-            if (Input.GetKeyDown(KeyCode.D))
+            // 右 - 检测按下瞬间
+            if (isRightPressed && !wasRightPressed)
             {
-                if (currentTime - lastDPressTime < DOUBLE_TAP_THRESHOLD)
+                if (currentTime - lastRightPressTime < DOUBLE_TAP_THRESHOLD)
                 {
                     lastDoubleTapDirection = Vector3.right;
                     TriggerDragonDash();
-                    lastDPressTime = -999f;
-                    return;
+                    lastRightPressTime = -999f;
                 }
-                lastDPressTime = currentTime;
+                else
+                {
+                    lastRightPressTime = currentTime;
+                }
             }
+            
+            // 更新上一帧状态
+            wasForwardPressed = isForwardPressed;
+            wasBackPressed = isBackPressed;
+            wasLeftPressed = isLeftPressed;
+            wasRightPressed = isRightPressed;
         }
         
         /// <summary>
