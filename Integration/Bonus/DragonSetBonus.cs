@@ -877,43 +877,45 @@ namespace BossRush
             StartCoroutine(ClearAfterimagesDelayed(0.5f));
         }
         
+        // [性能优化] 缓存残影材质，避免重复创建
+        private static Material cachedAfterimageSpriteMaterial = null;
+        
         /// <summary>
-        /// 在指定位置创建残影 - 保留原始颜色
+        /// 在指定位置创建残影 - 轻量级粒子效果版本
+        /// [性能优化] 不再复制完整角色模型，改用简单的精灵残影
         /// </summary>
         private void CreateAfterimageAtPosition(CharacterMainControl main, Vector3 position)
         {
             try
             {
-                // 获取角色模型
-                CharacterModel charModel = main.characterModel;
-                if (charModel == null)
-                {
-                    DevLog("[DragonSet] CreateAfterimageAtPosition: characterModel 为空!");
-                    return;
-                }
+                // 创建简单的残影精灵
+                GameObject afterimage = new GameObject("DragonAfterimage_Light");
+                afterimage.transform.position = position + Vector3.up * 1f; // 角色中心高度
+                afterimage.transform.rotation = main.transform.rotation;
                 
-                // 直接复制整个 characterModel 节点
-                GameObject afterimage = UnityEngine.Object.Instantiate(charModel.gameObject);
-                afterimage.name = "DragonAfterimage_" + Time.frameCount;
+                // 添加精灵渲染器
+                SpriteRenderer sr = afterimage.AddComponent<SpriteRenderer>();
                 
-                // 确保残影是激活的
-                afterimage.SetActive(true);
+                // 使用内置的白色圆形精灵（Unity默认）
+                sr.sprite = CreateSimpleCircleSprite();
+                sr.color = new Color(1f, 0.3f, 0.1f, 0.6f); // 橙红色半透明
+                sr.sortingOrder = 100;
                 
-                // 设置到指定位置，保持原始旋转
-                afterimage.transform.position = position;
-                afterimage.transform.rotation = charModel.transform.rotation;
-                afterimage.transform.localScale = charModel.transform.lossyScale;
+                // 设置适中的尺寸
+                afterimage.transform.localScale = new Vector3(1.8f, 2.8f, 1f);
                 
-                // 脱离父节点，成为独立物体
-                afterimage.transform.SetParent(null, true);
-                
-                // 移除非渲染组件，设置图层
-                RemoveNonRenderComponentsKeepMaterial(afterimage);
+                // 添加光源增强视觉效果
+                Light light = afterimage.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(1f, 0.3f, 0.1f);
+                light.intensity = 2f;
+                light.range = 1.5f;
+                light.shadows = LightShadows.None;
                 
                 afterimages.Add(afterimage);
                 
-                // 启动淡出协程
-                StartCoroutine(FadeOutAfterimageKeepColor(afterimage, 0.4f));
+                // 启动淡出协程（延长持续时间）
+                StartCoroutine(FadeOutAfterimageLight(afterimage, sr, light, 0.5f));
             }
             catch (Exception e)
             {
@@ -921,115 +923,78 @@ namespace BossRush
             }
         }
         
+        // [性能优化] 缓存生成的精灵
+        private static Sprite cachedCircleSprite = null;
+        
         /// <summary>
-        /// 移除非渲染组件，但保留原始材质
-        /// [性能优化] 合并组件查询，一次遍历处理所有组件
+        /// 创建简单的圆形精灵（用于残影效果）
+        /// [性能优化] 使用缓存避免重复创建
         /// </summary>
-        private void RemoveNonRenderComponentsKeepMaterial(GameObject obj)
+        private Sprite CreateSimpleCircleSprite()
         {
-            // [性能优化] 一次获取所有组件，避免多次 GetComponentsInChildren 调用
-            Component[] allComponents = obj.GetComponentsInChildren<Component>(true);
+            if (cachedCircleSprite != null) return cachedCircleSprite;
             
-            foreach (var comp in allComponents)
+            // 创建一个更大更清晰的渐变圆形纹理
+            int size = 64;
+            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            Color[] pixels = new Color[size * size];
+            
+            float center = size / 2f;
+            float maxDist = center;
+            
+            for (int y = 0; y < size; y++)
             {
-                if (comp == null) continue;
-                
-                // 设置所有 GameObject 的图层为 Character (9)
-                comp.gameObject.layer = 9;
-                
-                // 根据组件类型分别处理
-                if (comp is CharacterModel)
+                for (int x = 0; x < size; x++)
                 {
-                    // 移除 CharacterModel 脚本
-                    UnityEngine.Object.Destroy(comp);
-                }
-                else if (comp is Animator anim)
-                {
-                    // 禁用 Animator（保持当前姿势）
-                    anim.enabled = false;
-                }
-                else if (comp is Collider)
-                {
-                    // 移除碰撞器
-                    UnityEngine.Object.Destroy(comp);
-                }
-                else if (comp is Rigidbody)
-                {
-                    // 移除刚体
-                    UnityEngine.Object.Destroy(comp);
-                }
-                else if (comp is Renderer renderer)
-                {
-                    // 处理渲染器
-                    if (renderer.GetType().Name.Contains("Particle"))
-                    {
-                        // 禁用粒子系统渲染器
-                        renderer.enabled = false;
-                    }
-                    else
-                    {
-                        // 启用其他渲染器
-                        renderer.enabled = true;
-                    }
-                }
-                else if (comp is MonoBehaviour && !(comp is Transform))
-                {
-                    // 移除其他 MonoBehaviour（Transform 不能移除）
-                    UnityEngine.Object.Destroy(comp);
+                    float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                    float alpha = Mathf.Clamp01(1f - (dist / maxDist));
+                    // 更锐利的边缘，中心更亮
+                    alpha = Mathf.Pow(alpha, 0.7f);
+                    pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
                 }
             }
+            
+            tex.SetPixels(pixels);
+            tex.Apply();
+            
+            cachedCircleSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+            return cachedCircleSprite;
         }
         
         /// <summary>
-        /// 残影淡出效果 - 保留原始颜色，随时间透明消散
+        /// 轻量级残影淡出效果
+        /// [性能优化] 只修改单个 SpriteRenderer 的颜色，无材质实例化
         /// </summary>
-        private System.Collections.IEnumerator FadeOutAfterimageKeepColor(GameObject afterimage, float duration)
+        private System.Collections.IEnumerator FadeOutAfterimageLight(GameObject afterimage, SpriteRenderer sr, Light light, float duration)
         {
-            if (afterimage == null) yield break;
+            if (afterimage == null || sr == null) yield break;
             
-            Renderer[] renderers = afterimage.GetComponentsInChildren<Renderer>(true);
-            
-            // 保存原始颜色，并将材质设置为透明渲染模式
-            var originalColors = new System.Collections.Generic.Dictionary<Material, Color>();
-            foreach (var renderer in renderers)
-            {
-                if (renderer == null || renderer.GetType().Name.Contains("Particle")) continue;
-                
-                foreach (var mat in renderer.materials)
-                {
-                    if (mat != null && !originalColors.ContainsKey(mat))
-                    {
-                        // 保存原始颜色
-                        if (mat.HasProperty("_Color"))
-                        {
-                            originalColors[mat] = mat.color;
-                        }
-                        
-                        // 将材质设置为透明渲染模式（Fade模式）
-                        SetMaterialTransparent(mat);
-                    }
-                }
-            }
-            
+            Color startColor = sr.color;
+            float startIntensity = light != null ? light.intensity : 0f;
+            Vector3 startScale = afterimage.transform.localScale;
             float elapsed = 0f;
+            
             while (elapsed < duration && afterimage != null)
             {
                 elapsed += Time.deltaTime;
                 float t = elapsed / duration;
                 
-                // 透明度从1渐变到0
-                float alpha = Mathf.Lerp(1f, 0f, t);
+                // 使用缓动函数让淡出更自然
+                float easedT = t * t; // ease-in
                 
-                // 更新材质透明度
-                foreach (var kvp in originalColors)
+                // 透明度衰减
+                float alpha = Mathf.Lerp(startColor.a, 0f, easedT);
+                sr.color = new Color(startColor.r, startColor.g, startColor.b, alpha);
+                
+                // 光源强度衰减
+                if (light != null)
                 {
-                    if (kvp.Key != null)
-                    {
-                        Color c = kvp.Value;
-                        c.a = alpha;
-                        kvp.Key.color = c;
-                    }
+                    light.intensity = Mathf.Lerp(startIntensity, 0f, easedT);
                 }
+                
+                // 轻微放大效果（扩散感）
+                float scale = Mathf.Lerp(1f, 1.3f, easedT);
+                afterimage.transform.localScale = new Vector3(startScale.x * scale, startScale.y * scale, 1f);
                 
                 yield return null;
             }
@@ -1039,61 +1004,6 @@ namespace BossRush
             {
                 afterimages.Remove(afterimage);
                 UnityEngine.Object.Destroy(afterimage);
-            }
-        }
-        
-        /// <summary>
-        /// 将材质设置为透明渲染模式（支持 Standard Shader 和 URP/HDRP）
-        /// </summary>
-        private void SetMaterialTransparent(Material mat)
-        {
-            if (mat == null) return;
-            
-            try
-            {
-                // Standard Shader 透明模式设置
-                if (mat.HasProperty("_Mode"))
-                {
-                    mat.SetFloat("_Mode", 2f); // Fade 模式
-                }
-                
-                // 设置渲染队列为透明
-                mat.renderQueue = 3000;
-                
-                // 设置混合模式
-                if (mat.HasProperty("_SrcBlend"))
-                {
-                    mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                }
-                if (mat.HasProperty("_DstBlend"))
-                {
-                    mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                }
-                
-                // 禁用深度写入（透明物体通常不写入深度）
-                if (mat.HasProperty("_ZWrite"))
-                {
-                    mat.SetInt("_ZWrite", 0);
-                }
-                
-                // 启用透明关键字
-                mat.EnableKeyword("_ALPHABLEND_ON");
-                mat.DisableKeyword("_ALPHATEST_ON");
-                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                
-                // URP/HDRP 兼容：设置 Surface Type 为透明
-                if (mat.HasProperty("_Surface"))
-                {
-                    mat.SetFloat("_Surface", 1f); // 1 = Transparent
-                }
-                if (mat.HasProperty("_Blend"))
-                {
-                    mat.SetFloat("_Blend", 0f); // 0 = Alpha
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[DragonSet] SetMaterialTransparent 异常: " + e.Message);
             }
         }
         
