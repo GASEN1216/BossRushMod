@@ -709,6 +709,9 @@ namespace BossRush
             // 只在套装激活时检测
             if (!dragonSetActive) return;
             
+            // 检查配置是否启用冲刺
+            if (config == null || !config.enableDragonDash) return;
+            
             // 冷却中不检测
             if (Time.time - lastDashTime < DASH_COOLDOWN) return;
             

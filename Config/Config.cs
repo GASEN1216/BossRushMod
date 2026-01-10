@@ -50,6 +50,9 @@ namespace BossRush
 
             /// <summary>被禁用的 Boss 名称列表（用于 Boss 池筛选）</summary>
             public List<string> disabledBosses = new List<string>();
+
+            /// <summary>龙套装冲刺功能开关（默认开启）</summary>
+            public bool enableDragonDash = true;
         }
         
         #endregion
@@ -300,7 +303,13 @@ namespace BossRush
                     }
                     config.modeDEnemiesPerWave = loadedModeD;
 
-                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD);
+                    // 加载龙套装冲刺开关
+                    string dragonDashKey = ModName + "_EnableDragonDash";
+                    object dragonDashResult = boolLoadMethod.Invoke(null, new object[] { dragonDashKey, config.enableDragonDash });
+                    bool loadedDragonDash = (bool)dragonDashResult;
+                    config.enableDragonDash = loadedDragonDash;
+
+                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash);
                 }
                 else
                 {
@@ -347,6 +356,15 @@ namespace BossRush
                         StartNextWaveCountdown();
                     }
                 }
+
+                // 龙套装冲刺开关
+                string dragonDashKey = ModName + "_EnableDragonDash";
+                if (changedKey == dragonDashKey)
+                {
+                    DevLog("[BossRush] 检测到龙套装冲刺配置变更");
+                    LoadConfigFromModConfig();
+                    SaveConfigToFile();
+                }
             }
             catch (Exception ex)
             {
@@ -370,6 +388,7 @@ namespace BossRush
                 
                 DevLog("[BossRush] 找到 ModConfig.ModBehaviour 类型，开始注册配置项");
                 
+                // 注册配置变更事件监听
                 MethodInfo addDelegateMethod = modBehaviourType.GetMethod("AddOnOptionsChangedDelegate", BindingFlags.Public | BindingFlags.Static);
                 if (addDelegateMethod != null)
                 {
@@ -378,98 +397,26 @@ namespace BossRush
                     DevLog("[BossRush] 已注册配置变更事件监听");
                 }
 
-                float value = 15f;
-                if (config != null)
-                {
-                    value = config.waveIntervalSeconds;
-                }
-
-                if (value < 2f)
-                {
-                    value = 2f;
-                }
-
-                if (value > 60f)
-                {
-                    value = 60f;
-                }
-
                 if (config == null)
                 {
                     config = new BossRushConfig();
                 }
 
-                config.waveIntervalSeconds = value;
-
-                // 使用 L10n 工具类进行本地化
-
-                // 1) 原有：波次间休息时间滑条
-                string label = L10n.T("波次间休息时间(秒)", "Wave Interval (seconds)");
-                string key = ModName + "_waveIntervalSeconds";
-                Vector2 range = new Vector2(2f, 60f);
-                
                 MethodInfo addSliderMethod = modBehaviourType.GetMethod("AddInputWithSlider", BindingFlags.Public | BindingFlags.Static);
-                if (addSliderMethod != null)
-                {
-                    DevLog("[BossRush] 尝试注册配置项: key=" + key + ", value=" + value);
-                    addSliderMethod.Invoke(null, new object[] { ModName, key, label, typeof(float), value, range });
-                    DevLog("[BossRush] 配置项注册成功");
-                }
-                else
-                {
-                    DevLog("[BossRush] 未找到 AddInputWithSlider 方法");
-                }
+                MethodInfo addBoolMethod = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
 
-                // 1b) 新增：无间炼狱每波 Boss 数量
+                // ========== 开关类配置 ==========
+                
+                // Boss 掉落随机化（时间加成）
                 try
                 {
-                    int hellValue = (config != null) ? config.infiniteHellBossesPerWave : 3;
-                    if (hellValue < 1)
-                    {
-                        hellValue = 1;
-                    }
-                    if (hellValue > 10)
-                    {
-                        hellValue = 10;
-                    }
-                    if (config != null)
-                    {
-                        config.infiniteHellBossesPerWave = hellValue;
-                    }
-
-                    string hellLabel = L10n.T("无间炼狱：每波Boss数量", "Infinite Hell: bosses per wave");
-                    string hellKey = ModName + "_InfiniteHellBossesPerWave";
-                    Vector2 hellRange = new Vector2(1f, 10f);
-
-                    if (addSliderMethod != null)
-                    {
-                        DevLog("[BossRush] 尝试注册无间炼狱 Boss 数配置项: key=" + hellKey + ", value=" + hellValue);
-                        addSliderMethod.Invoke(null, new object[] { ModName, hellKey, hellLabel, typeof(int), hellValue, hellRange });
-                        DevLog("[BossRush] 无间炼狱 Boss 数配置项注册成功");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    DevLog("[BossRush] 注册无间炼狱 Boss 数配置项失败: " + ex.Message);
-                }
-
-                // 2) 新增：Boss 掉落随机化（时间加成）布尔下拉
-                try
-                {
-                    string lootLabel = L10n.T("Boss 掉落随机化（时间加成）", "Boss loot randomization (time bonus)");
+                    string lootLabel = L10n.T("Boss掉落随机化（时间加成）", "Boss loot randomization (time bonus)");
                     string lootKey = ModName + "_EnableRandomBossLoot";
-
-                    MethodInfo addBoolMethod = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
+                    
                     if (addBoolMethod != null)
                     {
-                        bool defaultLootValue = config != null && config.enableRandomBossLoot;
-                        DevLog("[BossRush] 尝试注册随机掉落配置项: key=" + lootKey + ", value=" + defaultLootValue);
-                        addBoolMethod.Invoke(null, new object[] { ModName, lootKey, lootLabel, defaultLootValue });
+                        addBoolMethod.Invoke(null, new object[] { ModName, lootKey, lootLabel, config.enableRandomBossLoot });
                         DevLog("[BossRush] 随机掉落配置项注册成功");
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] 未找到 AddBoolDropdownList 方法，随机掉落配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
@@ -477,23 +424,16 @@ namespace BossRush
                     DevLog("[BossRush] 注册随机掉落配置项失败: " + ex.Message);
                 }
 
-                // 3) 新增：Boss 掉落箱是否作为掩体（挡子弹）
+                // Boss 掉落箱作为掩体
                 try
                 {
-                    string coverLabel = L10n.T("Boss 掉落箱作为掩体（挡子弹）", "Boss loot box blocks bullets");
+                    string coverLabel = L10n.T("Boss掉落箱作为掩体（挡子弹）", "Boss loot box blocks bullets");
                     string coverKey = ModName + "_LootBoxBlocksBullets";
-
-                    MethodInfo addBoolMethodCover = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
-                    if (addBoolMethodCover != null)
+                    
+                    if (addBoolMethod != null)
                     {
-                        bool defaultCoverValue = config != null && config.lootBoxBlocksBullets;
-                        DevLog("[BossRush] 尝试注册掉落箱掩体配置项: key=" + coverKey + ", value=" + defaultCoverValue);
-                        addBoolMethodCover.Invoke(null, new object[] { ModName, coverKey, coverLabel, defaultCoverValue });
+                        addBoolMethod.Invoke(null, new object[] { ModName, coverKey, coverLabel, config.lootBoxBlocksBullets });
                         DevLog("[BossRush] 掉落箱掩体配置项注册成功");
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] 未找到 AddBoolDropdownList 方法，掉落箱掩体配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
@@ -501,59 +441,75 @@ namespace BossRush
                     DevLog("[BossRush] 注册掉落箱掩体配置项失败: " + ex.Message);
                 }
 
-                // 4) 新增：波次间是否需要交互点开下一波
+                // 波次间使用交互点开启下一波
                 try
                 {
                     string interactLabel = L10n.T("波次间使用交互点开启下一波", "Use interact point between waves");
                     string interactKey = ModName + "_UseInteractBetweenWaves";
-
-                    MethodInfo addBoolMethod2 = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
-                    if (addBoolMethod2 != null)
+                    
+                    if (addBoolMethod != null)
                     {
-                        bool defaultInteractValue = config != null && config.useInteractBetweenWaves;
-                        DevLog("[BossRush] 尝试注册波次交互配置项: key=" + interactKey + ", value=" + defaultInteractValue);
-                        addBoolMethod2.Invoke(null, new object[] { ModName, interactKey, interactLabel, defaultInteractValue });
+                        addBoolMethod.Invoke(null, new object[] { ModName, interactKey, interactLabel, config.useInteractBetweenWaves });
                         DevLog("[BossRush] 波次交互配置项注册成功");
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] 未找到 AddBoolDropdownList 方法，波次交互配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册波次交互配置项失败: " + ex.Message);
                 }
+
+                // 龙套装：双击冲刺
                 try
                 {
-                    float bossStatValue = (config != null) ? config.bossStatMultiplier : 1f;
-                    if (bossStatValue < 0.1f)
+                    string dragonDashLabel = L10n.T("龙套装：双击冲刺", "Dragon Set: Double-tap Dash");
+                    string dragonDashKey = ModName + "_EnableDragonDash";
+                    
+                    if (addBoolMethod != null)
                     {
-                        bossStatValue = 0.1f;
+                        addBoolMethod.Invoke(null, new object[] { ModName, dragonDashKey, dragonDashLabel, config.enableDragonDash });
+                        DevLog("[BossRush] 龙套装冲刺配置项注册成功");
                     }
-                    if (bossStatValue > 10f)
-                    {
-                        bossStatValue = 10f;
-                    }
-                    if (config != null)
-                    {
-                        config.bossStatMultiplier = bossStatValue;
-                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册龙套装冲刺配置项失败: " + ex.Message);
+                }
 
+                // ========== 数值滑条类配置 ==========
+                
+                // 波次间休息时间
+                try
+                {
+                    float waveValue = Mathf.Clamp(config.waveIntervalSeconds, 2f, 60f);
+                    config.waveIntervalSeconds = waveValue;
+                    
+                    string waveLabel = L10n.T("波次间休息时间(秒)", "Wave Interval (seconds)");
+                    string waveKey = ModName + "_waveIntervalSeconds";
+                    
+                    if (addSliderMethod != null)
+                    {
+                        addSliderMethod.Invoke(null, new object[] { ModName, waveKey, waveLabel, typeof(float), waveValue, new Vector2(2f, 60f) });
+                        DevLog("[BossRush] 波次间隔配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册波次间隔配置项失败: " + ex.Message);
+                }
+
+                // Boss 全局数值倍率
+                try
+                {
+                    float bossStatValue = Mathf.Clamp(config.bossStatMultiplier, 0.1f, 10f);
+                    config.bossStatMultiplier = bossStatValue;
+                    
                     string bossStatLabel = L10n.T("Boss全局数值倍率", "Boss global stat multiplier");
                     string bossStatKey = ModName + "_BossStatMultiplier";
-                    Vector2 bossStatRange = new Vector2(0.1f, 10f);
-
-                    MethodInfo addSliderMethodBoss = modBehaviourType.GetMethod("AddInputWithSlider", BindingFlags.Public | BindingFlags.Static);
-                    if (addSliderMethodBoss != null)
+                    
+                    if (addSliderMethod != null)
                     {
-                        DevLog("[BossRush] 尝试注册Boss数值倍率配置项: key=" + bossStatKey + ", value=" + bossStatValue);
-                        addSliderMethodBoss.Invoke(null, new object[] { ModName, bossStatKey, bossStatLabel, typeof(float), bossStatValue, bossStatRange });
+                        addSliderMethod.Invoke(null, new object[] { ModName, bossStatKey, bossStatLabel, typeof(float), bossStatValue, new Vector2(0.1f, 10f) });
                         DevLog("[BossRush] Boss数值倍率配置项注册成功");
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] 未找到 AddInputWithSlider 方法，Boss数值倍率配置项不会显示在 ModConfig 中");
                     }
                 }
                 catch (Exception ex)
@@ -561,36 +517,46 @@ namespace BossRush
                     DevLog("[BossRush] 注册Boss数值倍率配置项失败: " + ex.Message);
                 }
 
-                // 注册 Mode D 每波敌人数配置项
+                // 无间炼狱每波 Boss 数量
                 try
                 {
-                    int modeDValue = 3;
-                    if (config != null)
+                    int hellValue = Mathf.Clamp(config.infiniteHellBossesPerWave, 1, 10);
+                    config.infiniteHellBossesPerWave = hellValue;
+                    
+                    string hellLabel = L10n.T("无间炼狱：每波Boss数量", "Infinite Hell: bosses per wave");
+                    string hellKey = ModName + "_InfiniteHellBossesPerWave";
+                    
+                    if (addSliderMethod != null)
                     {
-                        modeDValue = config.modeDEnemiesPerWave;
-                    }
-
-                    string modeDLabel = L10n.T("白手起家每波敌人数", "Rags to Riches enemies per wave");
-                    string modeDKey = ModName + "_ModeDEnemiesPerWave";
-                    Vector2 modeDRange = new Vector2(1f, 10f);
-
-                    MethodInfo addSliderMethodModeD = modBehaviourType.GetMethod("AddInputWithSlider", BindingFlags.Public | BindingFlags.Static);
-                    if (addSliderMethodModeD != null)
-                    {
-                        DevLog("[BossRush] 尝试注册Mode D每波敌人数配置项: key=" + modeDKey + ", value=" + modeDValue);
-                        addSliderMethodModeD.Invoke(null, new object[] { ModName, modeDKey, modeDLabel, typeof(int), modeDValue, modeDRange });
-                        DevLog("[BossRush] Mode D每波敌人数配置项注册成功");
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] 未找到 AddInputWithSlider 方法，Mode D每波敌人数配置项不会显示在 ModConfig 中");
+                        addSliderMethod.Invoke(null, new object[] { ModName, hellKey, hellLabel, typeof(int), hellValue, new Vector2(1f, 10f) });
+                        DevLog("[BossRush] 无间炼狱Boss数配置项注册成功");
                     }
                 }
                 catch (Exception ex)
                 {
-                    DevLog("[BossRush] 注册Mode D每波敌人数配置项失败: " + ex.Message);
+                    DevLog("[BossRush] 注册无间炼狱Boss数配置项失败: " + ex.Message);
                 }
 
+                // 白手起家每波敌人数
+                try
+                {
+                    int modeDValue = Mathf.Clamp(config.modeDEnemiesPerWave, 1, 10);
+                    config.modeDEnemiesPerWave = modeDValue;
+                    
+                    string modeDLabel = L10n.T("白手起家：每波敌人数", "Rags to Riches: enemies per wave");
+                    string modeDKey = ModName + "_ModeDEnemiesPerWave";
+                    
+                    if (addSliderMethod != null)
+                    {
+                        addSliderMethod.Invoke(null, new object[] { ModName, modeDKey, modeDLabel, typeof(int), modeDValue, new Vector2(1f, 10f) });
+                        DevLog("[BossRush] 白手起家敌人数配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册白手起家敌人数配置项失败: " + ex.Message);
+                }
+                
             }
             catch (Exception ex)
             {
