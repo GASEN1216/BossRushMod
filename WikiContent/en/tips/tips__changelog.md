@@ -2,6 +2,13 @@
  
 ![Changelog](TODO.png)
 
+### 2026.1.11 00:40
+- Fixed lag issue caused by Dragon Set effect when using other character models
+- Fixed Dragon Set hardcoded WASD movement key detection
+- Dragon Set dash detection reduced from 0.3s to 0.15s to reduce accidental triggers
+- Added Dragon Set dash effect toggle in config
+- Fixed dash getting stuck on walls
+
 ### 2026.1.6 23:00
 - Dragon Set new effect: Double-tap direction keys to dash, 1.5s cooldown
 - Boss global stat multiplier config now applies globally
