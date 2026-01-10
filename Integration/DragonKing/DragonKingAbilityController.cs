@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
+using Duckov.Utilities;
 
 namespace BossRush
 {
@@ -115,11 +116,21 @@ namespace BossRush
         /// 缓存的武器子弹预制体（用于太阳舞弹幕）
         /// </summary>
         private Projectile cachedWeaponBullet = null;
-        
+
         /// <summary>
         /// 是否已缓存武器子弹
         /// </summary>
         private bool weaponBulletCached = false;
+
+        /// <summary>
+        /// 缓存的反射字段：Projectile.hitLayers
+        /// </summary>
+        private System.Reflection.FieldInfo cachedHitLayersField = null;
+
+        /// <summary>
+        /// 缓存的穿墙LayerMask（只检测伤害接收层）
+        /// </summary>
+        private LayerMask piercingLayerMask = new LayerMask();
         
         /// <summary>
         /// 太阳舞弹幕发射协程引用
@@ -135,12 +146,22 @@ namespace BossRush
         /// 缓存的武器射击音效键
         /// </summary>
         private string cachedWeaponShootKey = null;
-        
+
         /// <summary>
         /// 缓存的武器子弹速度
         /// </summary>
         private float cachedWeaponBulletSpeed = 30f;
-        
+
+        /// <summary>
+        /// 太阳舞音效播放计数器（每N发子弹播放一次音效）
+        /// </summary>
+        private int sunDanceSoundCounter = 0;
+
+        /// <summary>
+        /// 太阳舞音效播放间隔（每多少发子弹播放一次）
+        /// </summary>
+        private const int SUN_DANCE_SOUND_INTERVAL = 24; // 每24发子弹播放一次音效（每秒10次）
+
         /// <summary>
         /// 太阳舞期间Boss锁定位置（用于弹幕发射位置）
         /// </summary>
@@ -246,18 +267,18 @@ namespace BossRush
         {
             if (weaponBulletCached) return;
             weaponBulletCached = true;
-            
+
             try
             {
                 if (bossCharacter == null) return;
-                
+
                 // 方法1：从角色当前手持的枪获取
                 var gun = bossCharacter.GetGun();
                 if (gun != null)
                 {
                     // 缓存子弹速度
                     cachedWeaponBulletSpeed = gun.BulletSpeed;
-                    
+
                     // 通过反射获取GunItemSetting
                     var gunSettingProp = gun.GetType().GetProperty("GunItemSetting");
                     if (gunSettingProp != null)
@@ -268,10 +289,11 @@ namespace BossRush
                             cachedWeaponBullet = gunSetting.bulletPfb;
                             cachedWeaponShootKey = gunSetting.shootKey;
                             ModBehaviour.DevLog("[DragonKing] 从手持武器缓存: 子弹=" + cachedWeaponBullet.name + ", 音效=" + cachedWeaponShootKey + ", 速度=" + cachedWeaponBulletSpeed);
+                            CacheSunDancePiercingData();
                             return;
                         }
                     }
-                    
+
                     // 尝试直接从gun.Item获取
                     if (gun.Item != null)
                     {
@@ -281,11 +303,12 @@ namespace BossRush
                             cachedWeaponBullet = itemGunSetting.bulletPfb;
                             cachedWeaponShootKey = itemGunSetting.shootKey;
                             ModBehaviour.DevLog("[DragonKing] 从武器Item缓存: 子弹=" + cachedWeaponBullet.name + ", 音效=" + cachedWeaponShootKey + ", 速度=" + cachedWeaponBulletSpeed);
+                            CacheSunDancePiercingData();
                             return;
                         }
                     }
                 }
-                
+
                 // 方法2：从主武器槽位获取
                 var primSlot = bossCharacter.PrimWeaponSlot();
                 if (primSlot != null && primSlot.Content != null)
@@ -299,11 +322,12 @@ namespace BossRush
                         // 尝试从Item获取子弹速度
                         float speed = weaponItem.GetStatValue("BulletSpeed".GetHashCode());
                         if (speed > 0) cachedWeaponBulletSpeed = speed;
-                        ModBehaviour.DevLog("[DragonKing] 从主武器槽位缓存: 子弹=" + cachedWeaponBullet.name + ", 音效=" + cachedWeaponShootKey + ", 速度=" + cachedWeaponBulletSpeed);
+                        ModBehaviour.DevLog("[DragonKing] 从主武器槽位缓存: 子弹=" + cachedWeaponBullet.name + ", 武器=" + weaponItem.name + ", 音效=" + cachedWeaponShootKey + ", 速度=" + cachedWeaponBulletSpeed);
+                        CacheSunDancePiercingData();
                         return;
                     }
                 }
-                
+
                 // 方法3：不使用默认子弹，如果没有找到就记录警告
                 if (cachedWeaponBullet == null)
                 {
@@ -313,6 +337,32 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonKing] [WARNING] 缓存武器子弹失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 缓存太阳舞穿墙所需的反射字段和LayerMask值（只调用一次）
+        /// 因为Projectile.Init()会重置hitLayers，所以必须在每发子弹Init后设置
+        /// 但为了性能，反射字段只查找一次
+        /// </summary>
+        private void CacheSunDancePiercingData()
+        {
+            if (cachedHitLayersField != null) return; // 已缓存
+
+            try
+            {
+                // 缓存反射字段
+                var projectileType = typeof(Projectile);
+                cachedHitLayersField = projectileType.GetField("hitLayers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                // 直接使用GameplayDataSettings的LayerMask（本身就是LayerMask类型）
+                piercingLayerMask = GameplayDataSettings.Layers.damageReceiverLayerMask;
+
+                ModBehaviour.DevLog("[DragonKing] 太阳舞穿墙数据已缓存");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonKing] [WARNING] 缓存穿墙数据失败: " + e.Message);
             }
         }
         
@@ -1387,7 +1437,10 @@ namespace BossRush
         private IEnumerator ExecuteSunDance()
         {
             ModBehaviour.DevLog("[DragonKing] 执行太阳舞攻击");
-            
+
+            // 重置音效计数器
+            sunDanceSoundCounter = 0;
+
             if (bossCharacter == null || playerCharacter == null) yield break;
             
             // 计算目标位置（玩家同一平面，偏移一定距离）
@@ -1497,7 +1550,7 @@ namespace BossRush
         private IEnumerator SunDanceBarrageLoop()
         {
             ModBehaviour.DevLog("[DragonKing] 太阳舞弹幕开始");
-            
+
             // 初始方向：指向玩家
             UpdatePlayerReference();
             Vector3 initialDir = Vector3.forward;
@@ -1508,9 +1561,9 @@ namespace BossRush
                 if (initialDir.sqrMagnitude < 0.01f) initialDir = Vector3.forward;
                 initialDir = initialDir.normalized;
             }
-            
+
             float currentRotation = 0f;           // 当前整体旋转角度
-            float rotationPerTick = 5f;           // 每0.1s旋转5°
+            float rotationPerTick = 10f;          // 每0.1s旋转10°
             float angleStep = 15f;                // 每15°一个方向
             int directionCount = 24;              // 360°/15° = 24个方向
             int tickCount = 0;
@@ -1580,8 +1633,8 @@ namespace BossRush
                     }
                 }
                 
-                // 使用原武器的子弹速度的一半（太阳舞弹幕速度降低）
-                float bulletSpeed = cachedWeaponBulletSpeed * 0.4f;
+                // 使用原武器的子弹速度的30%（太阳舞弹幕速度降低）
+                float bulletSpeed = cachedWeaponBulletSpeed * 0.3f;
                 
                 // 计算发射位置（Boss胸口位置，使用锁定位置而非当前位置）
                 Vector3 muzzlePos = sunDanceLockPosition + Vector3.up * 1.2f;
@@ -1642,7 +1695,14 @@ namespace BossRush
                 
                 // 使用Init方法初始化子弹
                 bullet.Init(ctx);
-                
+
+                // Init后会重置hitLayers，必须重新设置穿墙属性
+                // 使用缓存的反射字段，性能优化（只查找一次字段）
+                if (cachedHitLayersField != null)
+                {
+                    cachedHitLayersField.SetValue(bullet, piercingLayerMask);
+                }
+
                 // 记录到活跃弹幕列表
                 activeProjectiles.Add(bullet.gameObject);
             }
@@ -1651,7 +1711,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[DragonKing] [WARNING] 发射太阳舞子弹失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 播放武器射击音效
         /// </summary>
@@ -1659,41 +1719,31 @@ namespace BossRush
         {
             try
             {
-                if (bossCharacter == null || string.IsNullOrEmpty(cachedWeaponShootKey)) return;
-                
-                // 提取纯 shootKey（去除可能存在的路径前缀）
-                string pureKey = cachedWeaponShootKey;
-                
-                // 如果包含完整路径，提取最后的 key 部分
-                int lastSlash = cachedWeaponShootKey.LastIndexOf('/');
-                if (lastSlash >= 0 && lastSlash < cachedWeaponShootKey.Length - 1)
+                if (bossCharacter == null || string.IsNullOrEmpty(cachedWeaponShootKey))
                 {
-                    pureKey = cachedWeaponShootKey.Substring(lastSlash + 1);
+                    return;
                 }
-                
-                // 去除可能的 event: 前缀
-                if (pureKey.StartsWith("event:"))
+
+                // 只在每隔N发子弹时播放音效，避免音效重叠
+                sunDanceSoundCounter++;
+                if (sunDanceSoundCounter % SUN_DANCE_SOUND_INTERVAL != 0)
                 {
-                    pureKey = pureKey.Substring(6);
-                    if (pureKey.Length > 0 && pureKey[0] == '/')
-                    {
-                        pureKey = pureKey.Substring(1);
-                    }
+                    return;
                 }
-                
-                // 构建音效路径
-                string eventName = "SFX/Combat/Gun/Shoot/" + pureKey.ToLower();
-                
+
+                // 直接使用缓存shootKey，不做额外处理
+                string eventName = "SFX/Combat/Gun/Shoot/" + cachedWeaponShootKey.ToLower();
+
                 // 使用反射调用AudioManager
                 var audioManagerType = typeof(LevelManager).Assembly.GetType("Duckov.AudioManager");
                 if (audioManagerType != null)
                 {
-                    var postMethod = audioManagerType.GetMethod("Post", 
+                    var postMethod = audioManagerType.GetMethod("Post",
                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
                         null,
                         new System.Type[] { typeof(string), typeof(GameObject) },
                         null);
-                    
+
                     if (postMethod != null)
                     {
                         postMethod.Invoke(null, new object[] { eventName, bossCharacter.gameObject });
@@ -1703,7 +1753,6 @@ namespace BossRush
             catch (Exception e)
             {
                 // 音效播放失败不影响游戏逻辑
-                ModBehaviour.DevLog("[DragonKing] [WARNING] 播放射击音效失败: " + e.Message);
             }
         }
         
