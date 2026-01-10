@@ -671,7 +671,7 @@ namespace BossRush
         private const float DASH_DISTANCE = 3f;           // 冲刺距离
         private const float DASH_DURATION = 0.1f;         // 冲刺持续时间
         private const float DASH_COOLDOWN = 1.5f;         // 冲刺冷却时间
-        private const float DOUBLE_TAP_THRESHOLD = 0.3f;  // 双击判定时间阈值
+        private const float DOUBLE_TAP_THRESHOLD = 0.15f;  // 双击判定时间阈值（0.15秒）
         private const int AFTERIMAGE_COUNT = 3;           // 残影数量
         private const float INPUT_THRESHOLD = 0.5f;       // 输入阈值，判定方向键是否按下
         
