@@ -856,43 +856,37 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 龙影冲刺协程
+        /// 龙影冲刺协程 - 使用原版 SetForceMoveVelocity 逻辑
         /// </summary>
         private System.Collections.IEnumerator DragonDashCoroutine(CharacterMainControl main, Vector3 direction)
         {
             isDragonDashing = true;
             
             Vector3 startPos = main.transform.position;
-            Vector3 endPos = startPos + direction * DASH_DISTANCE;
-            
-            // 检测障碍物，调整终点（使用缓存的 LayerMask）
-            RaycastHit hit;
-            if (Physics.Raycast(startPos + Vector3.up * 0.5f, direction, out hit, DASH_DISTANCE, 
-                DASH_OBSTACLE_LAYER_MASK))
-            {
-                endPos = hit.point - direction * 0.3f;
-                endPos.y = startPos.y;
-            }
             
             // 清理旧残影
             ClearAfterimages();
+            
+            // 计算冲刺速度（距离/时间）
+            float dashSpeed = DASH_DISTANCE / DASH_DURATION;
             
             float elapsed = 0f;
             int afterimageIndex = 0;
             float afterimageInterval = DASH_DURATION / AFTERIMAGE_COUNT;
             float nextAfterimageTime = 0f;
             
+            // 使用原版的 SetForceMoveVelocity 方式移动，让物理系统处理碰撞
             while (elapsed < DASH_DURATION)
             {
                 elapsed += Time.deltaTime;
-                float t = elapsed / DASH_DURATION;
+                float t = Mathf.Clamp01(elapsed / DASH_DURATION);
                 
-                // 使用缓动函数让冲刺更有冲击感
-                float easedT = 1f - Mathf.Pow(1f - t, 3f); // ease-out cubic
+                // 使用缓动曲线计算当前速度倍率（ease-out）
+                float speedMultiplier = 1f - Mathf.Pow(t, 2f); // 开始快，结束慢
+                speedMultiplier = Mathf.Max(0.3f, speedMultiplier); // 最低保持 30% 速度
                 
-                // 移动玩家
-                Vector3 newPos = Vector3.Lerp(startPos, endPos, easedT);
-                main.transform.position = newPos;
+                // 设置强制移动速度，让物理系统处理碰撞
+                main.SetForceMoveVelocity(direction * dashSpeed * speedMultiplier);
                 
                 // 生成残影（在当前位置）
                 if (elapsed >= nextAfterimageTime && afterimageIndex < AFTERIMAGE_COUNT)
@@ -905,8 +899,8 @@ namespace BossRush
                 yield return null;
             }
             
-            // 确保到达终点
-            main.transform.position = endPos;
+            // 冲刺结束，恢复正常移动
+            main.SetForceMoveVelocity(Vector3.zero);
             
             isDragonDashing = false;
             
