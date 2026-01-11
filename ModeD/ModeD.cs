@@ -42,9 +42,18 @@ namespace BossRush
         
         /// <summary>Mode D 小怪预设池</summary>
         private readonly List<EnemyPresetInfo> modeDMinionPool = new List<EnemyPresetInfo>();
-        
+
         /// <summary>Mode D Boss预设池（复用现有enemyPresets）</summary>
         private List<EnemyPresetInfo> modeDBossPool = null;
+
+        /// <summary>CharacterRandomPreset 缓存字典（按 nameKey 索引，避免重复 FindObjectsOfTypeAll）</summary>
+        private static System.Collections.Generic.Dictionary<string, CharacterRandomPreset> cachedCharacterPresets = null;
+
+        /// <summary>复用 List 缓存（避免 GetRandomBossPreset/GetRandomMinionPreset 每次 new List 造成 GC）</summary>
+        private static readonly System.Collections.Generic.List<EnemyPresetInfo> presetFilterCache = new System.Collections.Generic.List<EnemyPresetInfo>();
+
+        /// <summary>复用 List 缓存 #2（用于两阶段过滤，如血量筛选）</summary>
+        private static readonly System.Collections.Generic.List<EnemyPresetInfo> presetFilterCache2 = new System.Collections.Generic.List<EnemyPresetInfo>();
         
         /// <summary>Mode D 物品池是否已初始化</summary>
         private bool modeDItemPoolsInitialized = false;
@@ -63,10 +72,31 @@ namespace BossRush
         
         /// <summary>Mode D 医疗品池</summary>
         private readonly List<int> modeDMedicalPool = new List<int>();
-        
+
+        /// <summary>Mode D 近战武器池（MeleeWeapon Tag，预建）</summary>
+        private readonly List<int> modeDMeleePool = new List<int>();
+
+        /// <summary>Mode D 图腾池（Totem Tag，预建）</summary>
+        private readonly List<int> modeDTotemPool = new List<int>();
+
+        /// <summary>Mode D 面具池（Mask Tag，预建）</summary>
+        private readonly List<int> modeDMaskPool = new List<int>();
+
+        /// <summary>Mode D 背包池（Backpack Tag，预建）</summary>
+        private readonly List<int> modeDBackpackPool = new List<int>();
+
         /// <summary>Mode D 当前波次是否正在处理完成逻辑（防止重复触发）</summary>
         private bool modeDWaveCompletePending = false;
-        
+
+        /// <summary>Mode D 当前波次预期生成的敌人数（按实际调用 SpawnModeDEnemy 的次数累计）</summary>
+        private int modeDExpectedEnemiesInCurrentWave = 0;
+
+        /// <summary>Mode D 当前波次已"结案"的生成数量（成功或最终失败都算结案）</summary>
+        private int modeDSpawnResolvedInCurrentWave = 0;
+
+        /// <summary>自动下一波协程句柄（用于取消旧协程，防止重复开波）</summary>
+        private Coroutine modeDAutoNextWaveCoroutine = null;
+
         #endregion
         
         #region Mode D 配置
@@ -85,9 +115,9 @@ namespace BossRush
         public int ModeDWaveIndex { get { return modeDWaveIndex; } }
         
         #endregion
-        
+
         #region Mode D 核心方法
-        
+
         /// <summary>
         /// 检测玩家是否满足"裸体"条件（完全为空，包括狗子背包）
         /// </summary>
@@ -227,6 +257,9 @@ namespace BossRush
                 // 初始化敌人池
                 InitializeModeDEnemyPools();
 
+                // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
+                EnsureModeDGlobalItemPool();
+
                 // 给玩家发放开局装备
                 GivePlayerStarterKit();
 
@@ -316,6 +349,10 @@ namespace BossRush
                 modeDHelmetPool.Clear();
                 modeDAmmoPool.Clear();
                 modeDMedicalPool.Clear();
+                modeDMeleePool.Clear();
+                modeDTotemPool.Clear();
+                modeDMaskPool.Clear();
+                modeDBackpackPool.Clear();
 
                 // 获取 Tag 系统
                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
@@ -377,13 +414,49 @@ namespace BossRush
                     if (ids != null) modeDMedicalPool.AddRange(ids);
                 }
 
+                // P1-8: 预建近战武器池（MeleeWeapon Tag）
+                Duckov.Utilities.Tag meleeTag = FindTagByNameInInit("MeleeWeapon");
+                if (meleeTag != null)
+                {
+                    int[] ids = SearchItemsByTag(meleeTag, excludeArray);
+                    if (ids != null) modeDMeleePool.AddRange(ids);
+                }
+
+                // P1-8: 预建图腾池（Totem Tag）
+                Duckov.Utilities.Tag totemTag = FindTagByNameInInit("Totem");
+                if (totemTag != null)
+                {
+                    int[] ids = SearchItemsByTag(totemTag, excludeArray);
+                    if (ids != null) modeDTotemPool.AddRange(ids);
+                }
+
+                // P1-8: 预建面具池（Mask Tag）
+                Duckov.Utilities.Tag maskTag = FindTagByNameInInit("Mask");
+                if (maskTag == null) maskTag = FindTagByNameInInit("FaceMask");
+                if (maskTag != null)
+                {
+                    int[] ids = SearchItemsByTag(maskTag, excludeArray);
+                    if (ids != null) modeDMaskPool.AddRange(ids);
+                }
+
+                // P1-8: 预建背包池（使用 GameplayDataSettings.Tags.Backpack）
+                if (tagsData.Backpack != null)
+                {
+                    int[] ids = SearchItemsByTag(tagsData.Backpack, excludeArray);
+                    if (ids != null) modeDBackpackPool.AddRange(ids);
+                }
+
                 modeDItemPoolsInitialized = true;
                 DevLog("[ModeD] 物品池初始化完成: " +
                        "武器=" + modeDWeaponPool.Count +
                        ", 护甲=" + modeDArmortPool.Count +
                        ", 头盔=" + modeDHelmetPool.Count +
                        ", 弹药=" + modeDAmmoPool.Count +
-                       ", 医疗=" + modeDMedicalPool.Count);
+                       ", 医疗=" + modeDMedicalPool.Count +
+                       ", 近战=" + modeDMeleePool.Count +
+                       ", 图腾=" + modeDTotemPool.Count +
+                       ", 面具=" + modeDMaskPool.Count +
+                       ", 背包=" + modeDBackpackPool.Count);
             }
             catch (Exception e)
             {
@@ -448,6 +521,18 @@ namespace BossRush
                     DevLog("[ModeD] [WARNING] 未找到任何 CharacterRandomPreset");
                     return;
                 }
+
+                // 构建缓存字典（一次性 O(N) 操作，后续 SpawnModeDEnemy 可 O(1) 查询）
+                cachedCharacterPresets = new System.Collections.Generic.Dictionary<string, CharacterRandomPreset>();
+                foreach (var preset in allPresets)
+                {
+                    if (preset == null || string.IsNullOrEmpty(preset.nameKey)) continue;
+                    if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
+                    {
+                        cachedCharacterPresets[preset.nameKey] = preset;
+                    }
+                }
+                DevLog("[ModeD] 缓存了 " + cachedCharacterPresets.Count + " 个 CharacterRandomPreset");
 
                 foreach (var preset in allPresets)
                 {

@@ -2,6 +2,11 @@
  
 ![Changelog](TODO.png)
 
+### 2026.1.11 20:00
+- Optimized Naked Start mode code
+- Fixed bug where Naked Start incorrectly completed "Snap of Fingers" achievement
+- Dragon Descendant now spawns in Naked Start mode
+
 ### 2026.1.11 00:40
 - Fixed lag issue caused by Dragon Set effect when using other character models
 - Fixed Dragon Set hardcoded WASD movement key detection

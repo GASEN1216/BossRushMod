@@ -24,6 +24,11 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        /// <summary>上次尝试构建全局掉落池的时间（用于节流，避免 TagsData 未就绪时高频重试）</summary>
+        private static float lastGlobalPoolAttemptTime = -999f;
+        /// <summary>全局掉落池构建尝试的最小间隔（秒）</summary>
+        private const float GLOBAL_POOL_RETRY_INTERVAL = 5f;
+
         /// <summary>
         /// 构建/缓存 Mode D 全局掉落物品池
         /// <para>从全物品池中收集可掉落物品，排除黑名单和不应掉落的 Tag</para>
@@ -35,7 +40,12 @@ namespace BossRush
                 return;
             }
 
-            modeDGlobalItemPoolInitialized = true;
+            // 节流：避免 TagsData 未就绪时高频重试
+            if (Time.unscaledTime - lastGlobalPoolAttemptTime < GLOBAL_POOL_RETRY_INTERVAL)
+            {
+                return;
+            }
+            lastGlobalPoolAttemptTime = Time.unscaledTime;
 
             if (modeDGlobalItemPool == null)
             {
@@ -51,6 +61,7 @@ namespace BossRush
                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
                 if (tagsData == null || tagsData.AllTags == null || tagsData.AllTags.Count == 0)
                 {
+                    // TagsData 未就绪，不设置初始化标记，允许下次重试
                     return;
                 }
 
@@ -58,6 +69,9 @@ namespace BossRush
                 if (tagsData.DestroyOnLootBox != null) baseExclude.Add(tagsData.DestroyOnLootBox);
                 if (tagsData.DontDropOnDeadInSlot != null) baseExclude.Add(tagsData.DontDropOnDeadInSlot);
                 if (tagsData.LockInDemoTag != null) baseExclude.Add(tagsData.LockInDemoTag);
+
+                // P1-3 优化：把 ToArray() 提到循环外，避免每次循环都分配数组
+                Duckov.Utilities.Tag[] excludeArray = baseExclude.ToArray();
 
                 List<Duckov.Utilities.Tag> includeTags = new List<Duckov.Utilities.Tag>();
                 for (int i = 0; i < tagsData.AllTags.Count; i++)
@@ -86,7 +100,7 @@ namespace BossRush
 
                     ItemFilter filter = default(ItemFilter);
                     filter.requireTags = new Duckov.Utilities.Tag[] { requireTag };
-                    filter.excludeTags = baseExclude.ToArray();
+                    filter.excludeTags = excludeArray;
                     filter.minQuality = 1;
                     filter.maxQuality = 8;
 
@@ -113,6 +127,19 @@ namespace BossRush
                 if (idSet.Count > 0)
                 {
                     modeDGlobalItemPool.AddRange(idSet);
+                }
+
+                // P1-3 修复：只在池非空时设置初始化标记，避免"空池锁死"
+                // 如果 Search 返回空（TagsData 未就绪或其他原因），保持 false 允许下次重试
+                if (modeDGlobalItemPool.Count > 0)
+                {
+                    modeDGlobalItemPoolInitialized = true;
+                    DevLog("[ModeD] 全局掉落池构建完成：物品数=" + modeDGlobalItemPool.Count);
+                }
+                else
+                {
+                    // 池为空，不设置初始化标记，允许下次重试
+                    DevLog("[ModeD] [WARNING] 全局掉落池为空，未设置初始化标记，将稍后重试");
                 }
             }
             catch

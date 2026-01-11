@@ -25,6 +25,9 @@ namespace BossRush
     /// </summary>
     public class ModeDNextWaveInteractable : InteractableBase
     {
+        /// <summary>本地去抖标志（防止帧内重复触发）</summary>
+        private bool _clickedThisFrame = false;
+
         protected override void Awake()
         {
             try
@@ -62,21 +65,33 @@ namespace BossRush
             return true;
         }
 
+        /// <summary>P0-1 修复：使用本地去抖代替访问私有字段，避免编译错误</summary>
         protected override void OnTimeOut()
         {
             try
             {
+                // 本地去抖：防止帧内多次触发
+                if (_clickedThisFrame) return;
+                _clickedThisFrame = true;
+
                 var mod = ModBehaviour.Instance;
                 if (mod == null || !mod.IsModeDActive)
                 {
                     ModBehaviour.DevLog("[ModeD] [WARNING] ModeDNextWaveInteractable: Mode D 未激活");
+                    _clickedThisFrame = false;
                     return;
                 }
 
-                mod.ModeDStartNextWave();
+                // 调用开波，检查返回值
+                bool success = mod.ModeDStartNextWave();
 
-                // 交互后隐藏此选项，直到波次完成
-                gameObject.SetActive(false);
+                // 只在成功开波时隐藏按钮（失败时按钮保持可见，玩家可以重试）
+                if (success)
+                {
+                    gameObject.SetActive(false);
+                }
+
+                _clickedThisFrame = false;
             }
             catch (Exception e)
             {

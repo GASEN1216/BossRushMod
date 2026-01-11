@@ -233,35 +233,19 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 发放随机近战武器（从游戏所有近战武器中随机）
+        /// 发放随机近战武器（从预建池中随机）
         /// </summary>
         private void GiveRandomMeleeWeapon(CharacterMainControl character)
         {
             try
             {
-                // 通过名字查找近战武器 Tag
-                Duckov.Utilities.Tag meleeTag = FindTagByName("MeleeWeapon");
-                if (meleeTag == null)
+                if (modeDMeleePool.Count == 0)
                 {
-                    DevLog("[ModeD] 未找到 MeleeWeapon Tag，跳过近战武器发放");
+                    DevLog("[ModeD] 近战武器池为空，跳过近战武器发放");
                     return;
                 }
 
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { meleeTag };
-                filter.minQuality = 1;
-                filter.maxQuality = 8; // 包含所有品质
-                int[] meleeIds = ItemAssetsCollection.Search(filter);
-
-                if (meleeIds == null || meleeIds.Length == 0)
-                {
-                    DevLog("[ModeD] 近战武器池为空，跳过");
-                    return;
-                }
-
-                // 随机选择一把近战武器
-                int meleeId = meleeIds[UnityEngine.Random.Range(0, meleeIds.Length)];
-
+                int meleeId = modeDMeleePool[UnityEngine.Random.Range(0, modeDMeleePool.Count)];
                 Item melee = ItemAssetsCollection.InstantiateSync(meleeId);
                 if (melee == null)
                 {
@@ -283,34 +267,22 @@ namespace BossRush
                 DevLog("[ModeD] [ERROR] GiveRandomMeleeWeapon 失败: " + e.Message);
             }
         }
+
         /// <summary>
-        /// 给敌人发放随机近战武器
+        /// 给敌人发放随机近战武器（从预建池中随机）
         /// </summary>
         /// <param name="enemy">敌人角色</param>
         private void GiveRandomMeleeWeaponToEnemy(CharacterMainControl enemy)
         {
             try
             {
-                Duckov.Utilities.Tag meleeTag = FindTagByName("MeleeWeapon");
-                if (meleeTag == null)
-                {
-                    DevLog("[ModeD] 未找到 MeleeWeapon Tag，跳过敌人近战武器发放");
-                    return;
-                }
-
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { meleeTag };
-                filter.minQuality = 1;
-                filter.maxQuality = 8;
-                int[] meleeIds = ItemAssetsCollection.Search(filter);
-
-                if (meleeIds == null || meleeIds.Length == 0)
+                if (modeDMeleePool.Count == 0)
                 {
                     DevLog("[ModeD] 敌人近战武器池为空，跳过");
                     return;
                 }
 
-                int meleeId = meleeIds[UnityEngine.Random.Range(0, meleeIds.Length)];
+                int meleeId = modeDMeleePool[UnityEngine.Random.Range(0, modeDMeleePool.Count)];
                 Item melee = ItemAssetsCollection.InstantiateSync(meleeId);
                 if (melee == null)
                 {
@@ -321,10 +293,16 @@ namespace BossRush
                 bool equipped = enemy.CharacterItem.TryPlug(melee, true, null, 0);
                 if (!equipped)
                 {
+                    // P1-4 修复：装备失败时尝试放入背包，否则销毁防止泄漏
                     Inventory inventory = enemy.CharacterItem.Inventory;
                     if (inventory != null)
                     {
                         inventory.AddAndMerge(melee, 0);
+                    }
+                    else
+                    {
+                        UnityEngine.Object.Destroy(melee.gameObject);
+                        DevLog("[ModeD] [WARNING] 敌人近战武器装备失败且无背包，已销毁");
                     }
                 }
 
@@ -399,33 +377,19 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 发放随机图腾（从游戏所有图腾中随机）
+        /// 发放随机图腾（从预建池中随机）
         /// </summary>
         private void GiveRandomTotem(CharacterMainControl character)
         {
             try
             {
-                // 查找图腾 Tag
-                Duckov.Utilities.Tag totemTag = FindTagByName("Totem");
-                if (totemTag == null)
-                {
-                    DevLog("[ModeD] 未找到 Totem Tag，跳过图腾发放");
-                    return;
-                }
-
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { totemTag };
-                filter.minQuality = 1;
-                filter.maxQuality = 8; // 包含所有品质
-                int[] totemIds = ItemAssetsCollection.Search(filter);
-
-                if (totemIds == null || totemIds.Length == 0)
+                if (modeDTotemPool.Count == 0)
                 {
                     DevLog("[ModeD] 图腾池为空，跳过图腾发放");
                     return;
                 }
 
-                int totemId = totemIds[UnityEngine.Random.Range(0, totemIds.Length)];
+                int totemId = modeDTotemPool[UnityEngine.Random.Range(0, modeDTotemPool.Count)];
                 Item totem = ItemAssetsCollection.InstantiateSync(totemId);
                 if (totem != null)
                 {
@@ -444,33 +408,19 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 发放随机面具（从游戏所有面具中随机）
+        /// 发放随机面具（从预建池中随机）
         /// </summary>
         private void GiveRandomMask(CharacterMainControl character)
         {
             try
             {
-                // 查找面具 Tag
-                Duckov.Utilities.Tag maskTag = FindTagByName("Mask");
-                if (maskTag == null)
-                {
-                    DevLog("[ModeD] 未找到 Mask Tag，跳过面具发放");
-                    return;
-                }
-
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { maskTag };
-                filter.minQuality = 1;
-                filter.maxQuality = 8; // 包含所有品质
-                int[] maskIds = ItemAssetsCollection.Search(filter);
-
-                if (maskIds == null || maskIds.Length == 0)
+                if (modeDMaskPool.Count == 0)
                 {
                     DevLog("[ModeD] 面具池为空，跳过面具发放");
                     return;
                 }
 
-                int maskId = maskIds[UnityEngine.Random.Range(0, maskIds.Length)];
+                int maskId = modeDMaskPool[UnityEngine.Random.Range(0, modeDMaskPool.Count)];
                 Item mask = ItemAssetsCollection.InstantiateSync(maskId);
                 if (mask != null)
                 {
@@ -489,33 +439,19 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 发放随机背包（从游戏所有背包中随机）
+        /// 发放随机背包（从预建池中随机）
         /// </summary>
         private void GiveRandomBackpack(CharacterMainControl character)
         {
             try
             {
-                // 使用 GameplayDataSettings.Tags.Backpack
-                Duckov.Utilities.Tag backpackTag = GameplayDataSettings.Tags.Backpack;
-                if (backpackTag == null)
-                {
-                    DevLog("[ModeD] 未找到 Backpack Tag，跳过背包发放");
-                    return;
-                }
-
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { backpackTag };
-                filter.minQuality = 1;
-                filter.maxQuality = 8; // 包含所有品质
-                int[] backpackIds = ItemAssetsCollection.Search(filter);
-
-                if (backpackIds == null || backpackIds.Length == 0)
+                if (modeDBackpackPool.Count == 0)
                 {
                     DevLog("[ModeD] 背包池为空，跳过背包发放");
                     return;
                 }
 
-                int backpackId = backpackIds[UnityEngine.Random.Range(0, backpackIds.Length)];
+                int backpackId = modeDBackpackPool[UnityEngine.Random.Range(0, modeDBackpackPool.Count)];
                 Item backpack = ItemAssetsCollection.InstantiateSync(backpackId);
                 if (backpack != null)
                 {
@@ -644,7 +580,7 @@ namespace BossRush
 
         /// <summary>
         /// 确保开局武器有弹药类型
-        /// <para>如果武器没有指定弹药类型，从弹药池中查找匹配的弹药</para>
+        /// <para>通过武器口径查找匹配的弹药</para>
         /// </summary>
         /// <param name="weapon">需要设置弹药类型的武器</param>
         private void EnsureStarterGunHasBulletType(Item weapon)
@@ -659,57 +595,48 @@ namespace BossRush
                 // 已有弹药类型，无需设置
                 if (gunSetting.TargetBulletID >= 0) return;
 
+                // 获取武器的口径
+                string weaponCaliber = weapon.Constants.GetString("Caliber".GetHashCode(), null);
+                if (string.IsNullOrEmpty(weaponCaliber))
+                {
+                    DevLog("[ModeD] 武器没有口径信息，无法匹配弹药");
+                    return;
+                }
+
+                DevLog("[ModeD] 武器口径: " + weaponCaliber);
+
                 if (modeDAmmoPool.Count == 0)
                 {
                     DevLog("[ModeD] 弹药池为空，无法为武器设置弹药类型");
                     return;
                 }
 
-                List<int> shuffledPool = new List<int>(modeDAmmoPool);
-                for (int i = shuffledPool.Count - 1; i > 0; i--)
+                // 遍历弹药池，找到口径匹配的弹药
+                List<int> matchingAmmo = new List<int>();
+                for (int i = 0; i < modeDAmmoPool.Count; i++)
                 {
-                    int j = UnityEngine.Random.Range(0, i + 1);
-                    int temp = shuffledPool[i];
-                    shuffledPool[i] = shuffledPool[j];
-                    shuffledPool[j] = temp;
-                }
-
-                for (int i = 0; i < shuffledPool.Count; i++)
-                {
-                    int ammoId = shuffledPool[i];
-                    Item ammo = null;
+                    int ammoId = modeDAmmoPool[i];
                     try
                     {
-                        ammo = ItemAssetsCollection.InstantiateSync(ammoId);
-                        if (ammo == null)
+                        var meta = ItemAssetsCollection.GetMetaData(ammoId);
+                        if (meta.caliber == weaponCaliber)
                         {
-                            continue;
-                        }
-
-                        bool valid = false;
-                        try
-                        {
-                            valid = gunSetting.IsValidBullet(ammo);
-                        }
-                        catch {}
-
-                        if (valid)
-                        {
-                            gunSetting.SetTargetBulletType(ammo);
-                            DevLog("[ModeD] 为武器设置弹药类型: " + ammo.DisplayName + " (ID=" + ammoId + ")");
-                            return;
+                            matchingAmmo.Add(ammoId);
                         }
                     }
-                    finally
-                    {
-                        if (ammo != null)
-                        {
-                            UnityEngine.Object.Destroy(ammo.gameObject);
-                        }
-                    }
+                    catch {}
                 }
 
-                DevLog("[ModeD] 未找到与武器口径匹配的弹药类型");
+                if (matchingAmmo.Count == 0)
+                {
+                    DevLog("[ModeD] 未找到口径 " + weaponCaliber + " 的弹药");
+                    return;
+                }
+
+                // 随机选择一个匹配的弹药
+                int selectedAmmoId = matchingAmmo[UnityEngine.Random.Range(0, matchingAmmo.Count)];
+                gunSetting.SetTargetBulletType(selectedAmmoId);
+                DevLog("[ModeD] 为武器设置弹药类型: ID=" + selectedAmmoId + " (口径=" + weaponCaliber + ")");
             }
             catch (Exception e)
             {
@@ -738,13 +665,17 @@ namespace BossRush
 
                 if (bulletsNeeded <= 0) return;
 
+                // P2-7 修复：检查武器是否有 Inventory
+                Inventory weaponInventory = weapon.Inventory;
+                if (weaponInventory == null) return;
+
                 // 创建弹药并放入枪的弹夹内
                 Item ammo = ItemAssetsCollection.InstantiateSync(targetBulletId);
                 if (ammo != null)
                 {
                     ammo.StackCount = bulletsNeeded;
                     // 直接放入枪的库存（弹夹）
-                    weapon.Inventory.AddAndMerge(ammo, 0);
+                    weaponInventory.AddAndMerge(ammo, 0);
                     DevLog("[ModeD] 填满弹夹: " + weapon.DisplayName + " +" + bulletsNeeded + " 发");
                 }
             }
@@ -792,33 +723,37 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 按品质范围随机选择物品
+        /// 按品质范围随机选择物品（优化版：有限随机抽样，无列表分配）
         /// </summary>
         private int GetRandomItemByQuality(List<int> pool, int minQuality, int maxQuality)
         {
+            // P1-11: 先检查空池
+            if (pool == null || pool.Count == 0)
+            {
+                return 0;
+            }
+
             try
             {
-                List<int> filtered = new List<int>();
+                // P1-11 优化：使用有限随机抽样代替分配 filtered List
+                // 最多尝试 30 次，如果都找不到符合品质的，就直接返回随机的一个
+                const int MAX_QUALITY_ATTEMPTS = 30;
 
-                foreach (int id in pool)
+                for (int attempt = 0; attempt < MAX_QUALITY_ATTEMPTS; attempt++)
                 {
+                    int id = pool[UnityEngine.Random.Range(0, pool.Count)];
                     try
                     {
                         var meta = ItemAssetsCollection.GetMetaData(id);
                         if (meta.quality >= minQuality && meta.quality <= maxQuality)
                         {
-                            filtered.Add(id);
+                            return id;
                         }
                     }
                     catch {}
                 }
 
-                if (filtered.Count > 0)
-                {
-                    return filtered[UnityEngine.Random.Range(0, filtered.Count)];
-                }
-
-                // 没有符合品质要求的，随机返回一个
+                // 没有找到符合品质要求的，随机返回一个
                 return pool[UnityEngine.Random.Range(0, pool.Count)];
             }
             catch
@@ -869,25 +804,21 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 尝试用随机配件填充槽位
+        /// P1-7 优化：尝试用随机配件填充槽位（有限随机抽样，而非全池洗牌）
         /// </summary>
         private void TryFillSlotWithRandomAccessory(Item weapon, Slot slot)
         {
             try
             {
-                // 打乱配件池顺序，避免总是安装同一配件
-                List<int> shuffledPool = new List<int>(modeDAccessoryPool);
-                for (int i = shuffledPool.Count - 1; i > 0; i--)
-                {
-                    int j = UnityEngine.Random.Range(0, i + 1);
-                    int temp = shuffledPool[i];
-                    shuffledPool[i] = shuffledPool[j];
-                    shuffledPool[j] = temp;
-                }
+                if (modeDAccessoryPool.Count == 0) return;
 
-                // 遍历配件池，找到第一个可以安装的配件
-                foreach (int accessoryId in shuffledPool)
+                // P1-7 优化：改为有限次数随机抽样，而不是复制+洗牌整个池
+                // 每个槽最多尝试 8 次，避免大量 Instantiate/Destroy 和 GC
+                const int MAX_ACCESSORY_ATTEMPTS = 8;
+
+                for (int attempt = 0; attempt < MAX_ACCESSORY_ATTEMPTS; attempt++)
                 {
+                    int accessoryId = modeDAccessoryPool[UnityEngine.Random.Range(0, modeDAccessoryPool.Count)];
                     try
                     {
                         Item accessory = ItemAssetsCollection.InstantiateSync(accessoryId);
@@ -900,6 +831,12 @@ namespace BossRush
                             if (slot.Plug(accessory, out replaced))
                             {
                                 DevLog("[ModeD] 安装配件: " + accessory.DisplayName + " 到 " + slot.DisplayName);
+                                
+                                // 销毁被替换的配件（如果有）
+                                if (replaced != null)
+                                {
+                                    UnityEngine.Object.Destroy(replaced.gameObject);
+                                }
                                 return; // 成功安装，退出
                             }
                         }
@@ -909,6 +846,8 @@ namespace BossRush
                     }
                     catch {}
                 }
+
+                // 尝试 8 次后仍未找到合适的配件，放弃此槽
             }
             catch (Exception e)
             {
@@ -936,7 +875,8 @@ namespace BossRush
         /// <param name="enemy">敌人角色</param>
         /// <param name="waveIndex">当前波次</param>
         /// <param name="enemyHealth">敌人血量（用于决定装备品质）</param>
-        public void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth)
+        /// <param name="isBoss">是否为Boss（Boss保留原有头盔和护甲）</param>
+        public void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss = false)
         {
             try
             {
@@ -991,88 +931,106 @@ namespace BossRush
 
                 Item characterItem = enemy.CharacterItem;
                 if (characterItem == null) return;
+
+                // P1-4 修复：解耦 Inventory 检查，允许无背包敌人也能配装
+                // 即使 inventory 为 null，仍然可以给敌人装备武器（TryPlug），只是不能往背包塞东西
                 Inventory inventory = characterItem.Inventory;
-                if (inventory == null) return;
+                bool hasInventory = (inventory != null);
 
                 if (keepOriginalMeleeSetup)
                 {
                     DevLog("[ModeD] 检测到近战/宠物型敌人，保留原始武器配置，仅追加掉落");
 
-                    int meleeTargetItemCount = 5 + Mathf.FloorToInt(enemyHealth / 100f);
-                    if (meleeTargetItemCount < 5)
+                    // 只有有背包的敌人才追加掉落
+                    if (hasInventory)
                     {
-                        meleeTargetItemCount = 5;
-                    }
-
-                    int meleeCurrentCount = 0;
-                    try
-                    {
-                        if (inventory.Content != null)
+                        int meleeTargetItemCount = 5 + Mathf.FloorToInt(enemyHealth / 100f);
+                        if (meleeTargetItemCount < 5)
                         {
-                            meleeCurrentCount = inventory.Content.Count;
+                            meleeTargetItemCount = 5;
+                        }
+
+                        int meleeCurrentCount = 0;
+                        try
+                        {
+                            if (inventory.Content != null)
+                            {
+                                meleeCurrentCount = inventory.Content.Count;
+                            }
+                        }
+                        catch {}
+
+                        int meleeRemainingToFill = Mathf.Max(0, meleeTargetItemCount - meleeCurrentCount);
+                        if (meleeRemainingToFill > 0)
+                        {
+                            FillEnemyInventoryForModeD(enemy, qualityLevel, meleeRemainingToFill);
                         }
                     }
-                    catch {}
-
-                    int meleeRemainingToFill = Mathf.Max(0, meleeTargetItemCount - meleeCurrentCount);
-                    if (meleeRemainingToFill > 0)
+                    else
                     {
-                        FillEnemyInventoryForModeD(enemy, qualityLevel, meleeRemainingToFill);
+                        DevLog("[ModeD] 敌人无背包，跳过追加掉落");
                     }
 
                     return;
                 }
 
-                // 清空敌人现有装备和背包
-                ClearEnemyInventory(enemy);
+                // 清空敌人现有装备和背包（ClearEnemyInventory 内部已处理 inventory == null）
+                // Boss保留原有头盔和护甲
+                ClearEnemyInventory(enemy, isBoss);
 
                 int minQ = Mathf.Max(1, qualityLevel - 1);
                 int maxQ = Mathf.Min(8, qualityLevel + 2);
 
-                // 1. 随机填充少量额外掉落物（不包含武器和弹药）
-                int extraItems = 3;
-
-                ItemCategory[] nonWeaponCategories = new ItemCategory[]
+                // 1. 随机填充少量额外掉落物（不包含武器和弹药）- 需要背包
+                if (hasInventory)
                 {
-                    ItemCategory.Accessory,
-                    ItemCategory.Helmet,
-                    ItemCategory.Armor,
-                    ItemCategory.Medical,
-                    ItemCategory.Totem,
-                    ItemCategory.Mask
-                };
+                    int extraItems = 3;
 
-                for (int i = 0; i < extraItems; i++)
-                {
-                    ItemCategory randomCategory = nonWeaponCategories[UnityEngine.Random.Range(0, nonWeaponCategories.Length)];
-                    GiveEnemyItemByCategoryNoWeapon(enemy, randomCategory, qualityLevel);
+                    ItemCategory[] nonWeaponCategories = new ItemCategory[]
+                    {
+                        ItemCategory.Accessory,
+                        ItemCategory.Helmet,
+                        ItemCategory.Armor,
+                        ItemCategory.Medical,
+                        ItemCategory.Totem,
+                        ItemCategory.Mask
+                    };
+
+                    for (int i = 0; i < extraItems; i++)
+                    {
+                        ItemCategory randomCategory = nonWeaponCategories[UnityEngine.Random.Range(0, nonWeaponCategories.Length)];
+                        GiveEnemyItemByCategoryNoWeapon(enemy, randomCategory, qualityLevel);
+                    }
                 }
 
-                // 2. 确保敌人有武器可用（装备到手上）
+                // 2. 确保敌人有武器可用（装备到手上，不需要背包）
                 GiveEnemyEquippedWeapon(enemy, qualityLevel);
                 GiveRandomMeleeWeaponToEnemy(enemy);
 
-                // 3. 尝试将敌人背包进一步填满（仅限 Mode D）
-                int targetItemCount = 5 + Mathf.FloorToInt(enemyHealth / 100f);
-                if (targetItemCount < 5)
+                // 3. 尝试将敌人背包进一步填满（仅限 Mode D，需要背包）
+                if (hasInventory)
                 {
-                    targetItemCount = 5;
-                }
-
-                int currentCount = 0;
-                try
-                {
-                    if (inventory != null && inventory.Content != null)
+                    int targetItemCount = 5 + Mathf.FloorToInt(enemyHealth / 100f);
+                    if (targetItemCount < 5)
                     {
-                        currentCount = inventory.Content.Count;
+                        targetItemCount = 5;
                     }
-                }
-                catch {}
 
-                int remainingToFill = Mathf.Max(0, targetItemCount - currentCount);
-                if (remainingToFill > 0)
-                {
-                    FillEnemyInventoryForModeD(enemy, qualityLevel, remainingToFill);
+                    int currentCount = 0;
+                    try
+                    {
+                        if (inventory.Content != null)
+                        {
+                            currentCount = inventory.Content.Count;
+                        }
+                    }
+                    catch {}
+
+                    int remainingToFill = Mathf.Max(0, targetItemCount - currentCount);
+                    if (remainingToFill > 0)
+                    {
+                        FillEnemyInventoryForModeD(enemy, qualityLevel, remainingToFill);
+                    }
                 }
             }
             catch (Exception e)
@@ -1168,11 +1126,19 @@ namespace BossRush
                         break;
 
                     case ItemCategory.Totem:
-                        item = CreateItemByTagName("Totem", minQ, maxQ);
+                        if (modeDTotemPool.Count > 0)
+                        {
+                            int id = modeDTotemPool[UnityEngine.Random.Range(0, modeDTotemPool.Count)];
+                            item = ItemAssetsCollection.InstantiateSync(id);
+                        }
                         break;
 
                     case ItemCategory.Mask:
-                        item = CreateItemByTagName("Mask", minQ, maxQ);
+                        if (modeDMaskPool.Count > 0)
+                        {
+                            int id = modeDMaskPool[UnityEngine.Random.Range(0, modeDMaskPool.Count)];
+                            item = ItemAssetsCollection.InstantiateSync(id);
+                        }
                         break;
                 }
 
@@ -1242,11 +1208,19 @@ namespace BossRush
                         break;
 
                     case ItemCategory.Totem:
-                        item = CreateItemByTagName("Totem", minQ, maxQ);
+                        if (modeDTotemPool.Count > 0)
+                        {
+                            int id = modeDTotemPool[UnityEngine.Random.Range(0, modeDTotemPool.Count)];
+                            item = ItemAssetsCollection.InstantiateSync(id);
+                        }
                         break;
 
                     case ItemCategory.Mask:
-                        item = CreateItemByTagName("Mask", minQ, maxQ);
+                        if (modeDMaskPool.Count > 0)
+                        {
+                            int id = modeDMaskPool[UnityEngine.Random.Range(0, modeDMaskPool.Count)];
+                            item = ItemAssetsCollection.InstantiateSync(id);
+                        }
                         break;
 
                     // 不处理武器和弹药类型
@@ -1417,33 +1391,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 根据Tag名称创建物品
-        /// </summary>
-        private Item CreateItemByTagName(string tagName, int minQ, int maxQ)
-        {
-            try
-            {
-                Duckov.Utilities.Tag tag = FindTagByName(tagName);
-                if (tag == null) return null;
-
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { tag };
-                filter.minQuality = minQ;
-                filter.maxQuality = maxQ;
-                int[] ids = ItemAssetsCollection.Search(filter);
-
-                if (ids != null && ids.Length > 0)
-                {
-                    int id = ids[UnityEngine.Random.Range(0, ids.Length)];
-                    return ItemAssetsCollection.InstantiateSync(id);
-                }
-            }
-            catch {}
-            return null;
-        }
-
-        /// <summary>
-        /// 给敌人装备武器（装在手上用于战斗）
+        /// P1-10 优化：给敌人装备武器（装在手上用于战斗），检查返回值防止泄漏
         /// </summary>
         private void GiveEnemyEquippedWeapon(CharacterMainControl enemy, int qualityLevel)
         {
@@ -1461,8 +1409,24 @@ namespace BossRush
                 // 随机加配件
                 TryAddRandomAttachmentsFullRandom(weapon);
 
-                // 装备到手上
-                enemy.CharacterItem.TryPlug(weapon, true, null, 0);
+                // P1-10 修复：检查 TryPlug 返回值，失败时处理武器防止泄漏
+                bool equipped = enemy.CharacterItem.TryPlug(weapon, true, null, 0);
+                if (!equipped)
+                {
+                    // 装备失败，尝试放入背包
+                    Inventory inventory = enemy.CharacterItem.Inventory;
+                    if (inventory != null)
+                    {
+                        inventory.AddAndMerge(weapon, 0);
+                    }
+                    else
+                    {
+                        // 背包也不存在，销毁武器防止泄漏
+                        UnityEngine.Object.Destroy(weapon.gameObject);
+                        DevLog("[ModeD] [WARNING] 敌人武器装备失败且无背包，已销毁武器");
+                        return;
+                    }
+                }
 
                 // 给弹药和填满弹夹
                 ItemSetting_Gun gunSetting = weapon.GetComponent<ItemSetting_Gun>();
@@ -1483,12 +1447,16 @@ namespace BossRush
                         // 原代码：FillGunInternalAmmo(weapon, 2, 30, 60);
                         // 这会导致玩家捡到的枪里有60-120发额外子弹（如狙击枪80发）
 
-                        // 给背包弹药（供敌人战斗使用，会随尸体掉落）
-                        Item ammo = ItemAssetsCollection.InstantiateSync(gunSetting.TargetBulletID);
-                        if (ammo != null)
+                        // P1-4 修复：给背包弹药（供敌人战斗使用，会随尸体掉落），检查 Inventory 是否为 null
+                        Inventory enemyInventory = enemy.CharacterItem.Inventory;
+                        if (enemyInventory != null)
                         {
-                            ammo.StackCount = UnityEngine.Random.Range(30, 60);
-                            enemy.CharacterItem.Inventory.AddAndMerge(ammo, 0);
+                            Item ammo = ItemAssetsCollection.InstantiateSync(gunSetting.TargetBulletID);
+                            if (ammo != null)
+                            {
+                                ammo.StackCount = UnityEngine.Random.Range(30, 60);
+                                enemyInventory.AddAndMerge(ammo, 0);
+                            }
                         }
                     }
                 }
@@ -1519,21 +1487,26 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 清空敌人背包和装备
+        /// P1-9 优化：清空敌人背包和装备（移除 ToArray() 避免 GC）
         /// </summary>
-        private void ClearEnemyInventory(CharacterMainControl enemy)
+        /// <param name="enemy">敌人角色</param>
+        /// <param name="preserveHelmetAndArmor">是否保留头盔和护甲（Boss专用）</param>
+        private void ClearEnemyInventory(CharacterMainControl enemy, bool preserveHelmetAndArmor = false)
         {
             try
             {
                 Item characterItem = enemy.CharacterItem;
                 if (characterItem == null) return;
 
-                // 清空背包
+                // 清空背包 - P1-9 修复：使用倒序 for 循环代替 ToArray()
                 Inventory inventory = characterItem.Inventory;
                 if (inventory != null && inventory.Content != null)
                 {
-                    foreach (Item item in inventory.Content.ToArray())
+                    var content = inventory.Content;
+                    // 倒序遍历，避免在移除元素时出现问题
+                    for (int i = content.Count - 1; i >= 0; --i)
                     {
+                        var item = content[i];
                         if (item != null)
                         {
                             item.Detach();
@@ -1542,11 +1515,25 @@ namespace BossRush
                     }
                 }
 
-                // 清空装备槽
+                // 清空装备槽（如果 preserveHelmetAndArmor 为 true，则跳过头盔和护甲槽）
                 foreach (Slot slot in characterItem.Slots)
                 {
                     if (slot != null && slot.Content != null)
                     {
+                        // 如果需要保留头盔和护甲，检查槽位类型
+                        if (preserveHelmetAndArmor)
+                        {
+                            // 通过槽位 Key 判断是否为头盔或护甲槽
+                            // 游戏中头盔槽 Key 为 "Helmat"，护甲槽 Key 为 "Armor"
+                            string slotKey = slot.Key ?? "";
+                            bool isHelmetOrArmorSlot = slotKey == "Helmat" || slotKey == "Armor";
+                            if (isHelmetOrArmorSlot)
+                            {
+                                DevLog("[ModeD] 保留Boss头盔/护甲槽: " + slotKey);
+                                continue; // 跳过此槽位
+                            }
+                        }
+
                         Item content = slot.Content;
                         slot.Unplug();
                         UnityEngine.Object.Destroy(content.gameObject);
@@ -1562,4 +1549,3 @@ namespace BossRush
         #endregion
     }
 }
-

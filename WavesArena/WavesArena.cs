@@ -1742,11 +1742,19 @@ namespace BossRush
 
         /// <summary>
         /// 敌人死亡事件处理（带DamageInfo参数）
+        /// <para>仅用于普通模式（弹指可灭/有点意思/无间炼狱），Mode D 有独立的死亡处理逻辑</para>
         /// </summary>
         private void OnEnemyDiedWithDamageInfo(Health deadHealth, DamageInfo damageInfo)
         {
             try
             {
+                // Mode D 有独立的敌人死亡处理（RegisterModeDEnemyDeath），不走普通模式逻辑
+                // 避免 Mode D 打死敌人时误触发普通模式的通关判定
+                if (modeDActive)
+                {
+                    return;
+                }
+                
                 if (!IsActive || deadHealth == null)
                 {
                     return;
