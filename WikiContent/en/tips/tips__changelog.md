@@ -2,6 +2,9 @@
  
 ![Changelog](TODO.png)
 
+### 2026.1.12 16:00
+- Naked Start mode now excludes mercenary faction
+
 ### 2026.1.11 20:00
 - Optimized Naked Start mode code
 - Fixed bug where Naked Start incorrectly completed "Snap of Fingers" achievement

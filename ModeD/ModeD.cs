@@ -545,6 +545,13 @@ namespace BossRush
                     // 只收集敌对阵营，排除玩家和中立阵营
                     if (team == (int)Teams.player || team == (int)Teams.middle) continue;
 
+                    // 雇佣兵在运行时会被设置为友方（leader.IsMainCharacter），无法被玩家击杀
+                    if (nameKey == "Cname_Usec")
+                    {
+                        DevLog("[ModeD] 排除雇佣兵预设: " + nameKey);
+                        continue;
+                    }
+
                     // 排除商人和宠物类型
                     bool shouldExclude = false;
                     
