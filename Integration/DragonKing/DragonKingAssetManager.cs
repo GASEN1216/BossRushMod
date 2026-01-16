@@ -20,26 +20,37 @@ namespace BossRush
     public static class DragonKingAssetManager
     {
         // ========== 资源缓存 ==========
-        
+
         /// <summary>
         /// 已加载的AssetBundle
         /// </summary>
         private static AssetBundle loadedBundle = null;
-        
+
         /// <summary>
         /// 预制体缓存
         /// </summary>
         private static Dictionary<string, GameObject> prefabCache = new Dictionary<string, GameObject>();
-        
+
         /// <summary>
         /// 是否已尝试加载
         /// </summary>
         private static bool loadAttempted = false;
-        
+
         /// <summary>
         /// 加载是否成功
         /// </summary>
         private static bool loadSucceeded = false;
+
+        /// <summary>
+        /// AssetBundle的依赖计数（用于正确管理生命周期）
+        /// 当有Boss实例时递增，销毁时递减，为0时才真正卸载
+        /// </summary>
+        private static int assetBundleRefCount = 0;
+
+        /// <summary>
+        /// 动态创建的Material跟踪列表（防止内存泄漏）
+        /// </summary>
+        private static List<Material> dynamicMaterials = new List<Material>();
         
         // ========== 公开方法 ==========
         
@@ -68,7 +79,7 @@ namespace BossRush
             {
                 string bundlePath = Path.Combine(modBasePath, DragonKingConfig.AssetBundlePath);
                 
-                ModBehaviour.DevLog("[DragonKing] 同步加载AssetBundle: " + bundlePath);
+                ModBehaviour.DevLog($"[DragonKing] 同步加载AssetBundle: {bundlePath}");
                 
                 if (!File.Exists(bundlePath))
                 {
@@ -85,14 +96,15 @@ namespace BossRush
                 }
                 
                 loadSucceeded = true;
-                ModBehaviour.DevLog("[DragonKing] AssetBundle加载成功");
-                
+                assetBundleRefCount++; // 增加引用计数
+                ModBehaviour.DevLog($"[DragonKing] AssetBundle加载成功，引用计数: {assetBundleRefCount}");
+
                 PreloadPrefabs();
                 return true;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [ERROR] 同步加载AssetBundle异常: " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] 同步加载AssetBundle异常: {e.Message}");
                 return false;
             }
         }
@@ -123,11 +135,11 @@ namespace BossRush
                     GetPrefab(name);
                 }
                 
-                ModBehaviour.DevLog("[DragonKing] 预制体预加载完成，缓存数量: " + prefabCache.Count);
+                ModBehaviour.DevLog($"[DragonKing] 预制体预加载完成，缓存数量: {prefabCache.Count}");
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [WARNING] 预加载预制体失败: " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 预加载预制体失败: {e.Message}");
             }
         }
         
@@ -149,7 +161,7 @@ namespace BossRush
             // 从AssetBundle加载
             if (loadedBundle == null)
             {
-                ModBehaviour.DevLog("[DragonKing] [WARNING] AssetBundle未加载，无法获取预制体: " + name);
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] AssetBundle未加载，无法获取预制体: {name}");
                 return null;
             }
             
@@ -159,20 +171,20 @@ namespace BossRush
                 if (prefab != null)
                 {
                     prefabCache[name] = prefab;
-                    ModBehaviour.DevLog("[DragonKing] 加载预制体成功: " + name);
+                    ModBehaviour.DevLog($"[DragonKing] 加载预制体成功: {name}");
                     
                     // 输出预制体详细信息用于调试
                     LogPrefabDetails(prefab, name);
                 }
                 else
                 {
-                    ModBehaviour.DevLog("[DragonKing] [WARNING] 预制体不存在: " + name);
+                    ModBehaviour.DevLog($"[DragonKing] [WARNING] 预制体不存在: {name}");
                 }
                 return prefab;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [ERROR] 加载预制体失败: " + name + " - " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] 加载预制体失败: {name} - {e.Message}");
                 return null;
             }
         }
@@ -190,12 +202,12 @@ namespace BossRush
                 var lights = prefab.GetComponentsInChildren<Light>(true);
                 var allComponents = prefab.GetComponentsInChildren<Component>(true);
                 
-                ModBehaviour.DevLog("[DragonKing] 预制体详情 [" + name + "]: " +
-                    "子对象=" + prefab.transform.childCount + 
-                    ", Renderer=" + renderers.Length + 
-                    ", MeshFilter=" + meshFilters.Length + 
-                    ", Light=" + lights.Length +
-                    ", 总组件=" + allComponents.Length);
+                ModBehaviour.DevLog($"[DragonKing] 预制体详情 [{name}]: " +
+                    $"子对象={prefab.transform.childCount}, " +
+                    $"Renderer={renderers.Length}, " +
+                    $"MeshFilter={meshFilters.Length}, " +
+                    $"Light={lights.Length}, " +
+                    $"总组件={allComponents.Length}");
                 
                 // 列出所有组件类型
                 var componentTypes = new System.Collections.Generic.HashSet<string>();
@@ -206,7 +218,7 @@ namespace BossRush
                         componentTypes.Add(comp.GetType().Name);
                     }
                 }
-                ModBehaviour.DevLog("[DragonKing] 预制体组件类型 [" + name + "]: " + string.Join(", ", componentTypes));
+                ModBehaviour.DevLog($"[DragonKing] 预制体组件类型 [{name}]: {string.Join(", ", componentTypes)}");
                 
                 // 检查材质
                 foreach (var renderer in renderers)
@@ -214,15 +226,13 @@ namespace BossRush
                     if (renderer != null && renderer.sharedMaterial != null)
                     {
                         var mat = renderer.sharedMaterial;
-                        ModBehaviour.DevLog("[DragonKing] 预制体材质 [" + name + "]: " + 
-                            "材质=" + mat.name + 
-                            ", Shader=" + (mat.shader != null ? mat.shader.name : "null"));
+                        ModBehaviour.DevLog($"[DragonKing] 预制体材质 [{name}]: 材质={mat.name}, Shader={(mat.shader != null ? mat.shader.name : "null")}");
                     }
                 }
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [WARNING] 输出预制体详情失败: " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 输出预制体详情失败: {e.Message}");
             }
         }
         
@@ -253,7 +263,7 @@ namespace BossRush
                 
                 if (renderers.Length == 0)
                 {
-                    ModBehaviour.DevLog("[DragonKing] 预制体 " + prefabName + " 没有渲染器，添加后备视觉效果");
+                    ModBehaviour.DevLog($"[DragonKing] 预制体 {prefabName} 没有渲染器，添加后备视觉效果");
                     AddFallbackVisuals(instance, prefabName);
                 }
                 
@@ -267,7 +277,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [ERROR] 实例化特效失败: " + prefabName + " - " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] 实例化特效失败: {prefabName} - {e.Message}");
                 return CreateFallbackEffect(prefabName, position, rotation);
             }
         }
@@ -305,12 +315,12 @@ namespace BossRush
                 
                 if (playedCount > 0)
                 {
-                    ModBehaviour.DevLog("[DragonKing] 已播放 " + playedCount + " 个粒子系统");
+                    ModBehaviour.DevLog($"[DragonKing] 已播放 {playedCount} 个粒子系统");
                 }
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [WARNING] 播放粒子系统失败: " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 播放粒子系统失败: {e.Message}");
             }
         }
         
@@ -332,7 +342,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] EnableAllLights异常: {e.Message}");
+            }
         }
         
         /// <summary>
@@ -342,18 +355,18 @@ namespace BossRush
         {
             try
             {
-                GameObject fallback = new GameObject("Fallback_" + prefabName);
+                GameObject fallback = new GameObject($"Fallback_{prefabName}");
                 fallback.transform.position = position;
                 fallback.transform.rotation = rotation;
                 
                 AddFallbackVisuals(fallback, prefabName);
                 
-                ModBehaviour.DevLog("[DragonKing] 创建后备特效: " + prefabName);
+                ModBehaviour.DevLog($"[DragonKing] 创建后备特效: {prefabName}");
                 return fallback;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [ERROR] 创建后备特效失败: " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] 创建后备特效失败: {e.Message}");
                 return null;
             }
         }
@@ -392,10 +405,20 @@ namespace BossRush
                     mat.SetColor("_EmissionColor", effectColor * 2f);
                     mat.EnableKeyword("_EMISSION");
                     renderer.material = mat;
+
+                    // 跟踪动态创建的Material以便清理（添加null检查）
+                    if (mat != null)
+                    {
+                        lock (dynamicMaterials)
+                        {
+                            dynamicMaterials.Add(mat);
+                        }
+                    }
                 }
-                catch
+                catch (Exception e)
                 {
                     // 如果Standard着色器不可用，使用默认颜色
+                    ModBehaviour.DevLog($"[DragonKing] [WARNING] 创建发光材质失败，使用默认颜色: {e.Message}");
                     renderer.material.color = effectColor;
                 }
             }
@@ -497,7 +520,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKing] [ERROR] 实例化特效失败: " + prefabName + " - " + e.Message);
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] 实例化特效失败: {prefabName} - {e.Message}");
                 return null;
             }
         }
@@ -514,23 +537,65 @@ namespace BossRush
                 loadedBundle = null;
                 ModBehaviour.DevLog("[DragonKing] AssetBundle已卸载");
             }
-            
+
             prefabCache.Clear();
             loadAttempted = false;
             loadSucceeded = false;
+            assetBundleRefCount = 0;
         }
-        
+
         /// <summary>
-        /// 清理缓存（场景切换时调用）
+        /// 清理缓存（Boss销毁时调用）
+        /// 使用引用计数管理，只有当所有Boss实例都销毁后才真正卸载
         /// </summary>
         public static void ClearCache()
+        {
+            assetBundleRefCount--;
+            ModBehaviour.DevLog($"[DragonKing] 资源缓存清理，引用计数: {assetBundleRefCount}");
+
+            // 只有当引用计数为0时才真正清理
+            if (assetBundleRefCount <= 0)
+            {
+                prefabCache.Clear();
+                loadAttempted = false;
+                loadSucceeded = false;
+                assetBundleRefCount = 0;
+                ModBehaviour.DevLog("[DragonKing] 所有资源已清理，AssetBundle仍保持加载以便复用");
+            }
+        }
+
+        /// <summary>
+        /// 强制清理所有资源（场景切换时调用）
+        /// </summary>
+        public static void ForceCleanup()
         {
             prefabCache.Clear();
             loadAttempted = false;
             loadSucceeded = false;
-            
-            // 不卸载AssetBundle，保持加载状态以便复用
-            ModBehaviour.DevLog("[DragonKing] 资源缓存已清理");
+            assetBundleRefCount = 0;
+
+            // 清理所有动态创建的Material（防止内存泄漏）
+            CleanupDynamicMaterials();
+
+            ModBehaviour.DevLog("[DragonKing] 强制清理完成");
+        }
+
+        /// <summary>
+        /// 清理所有动态创建的Material
+        /// </summary>
+        private static void CleanupDynamicMaterials()
+        {
+            lock (dynamicMaterials)
+            {
+                foreach (var mat in dynamicMaterials)
+                {
+                    if (mat != null)
+                    {
+                        UnityEngine.Object.Destroy(mat);
+                    }
+                }
+                dynamicMaterials.Clear();
+            }
         }
         
         /// <summary>

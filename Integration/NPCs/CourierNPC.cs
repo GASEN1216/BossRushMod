@@ -840,17 +840,8 @@ namespace BossRush
             // 如果已经在对话中，跳过
             if (isInFirstMeetDialogue) return;
             
-            // DevMode 下的触发检查（每次场景切换后可触发一次）
-            if (ModBehaviour.DevModeEnabled)
-            {
-                // DevMode 下，如果本场景已触发过，跳过
-                if (hasTriggeredThisScene) return;
-            }
-            else
-            {
-                // 非 DevMode 下，如果已经触发过，永久跳过
-                if (HasTriggeredFirstMeet) return;
-            }
+            // 如果已经触发过首次见面，永久跳过（DevMode 和非 DevMode 统一逻辑）
+            if (HasTriggeredFirstMeet) return;
             
             // 如果玩家引用为空，跳过
             if (playerTransform == null) return;
@@ -859,25 +850,10 @@ namespace BossRush
             float distance = Vector3.Distance(transform.position, playerTransform.position);
             if (distance <= NEAR_DISTANCE)
             {
-                // 标记本场景已触发（DevMode 用）
-                hasTriggeredThisScene = true;
-                
                 // 触发首次见面对话
-                ModBehaviour.DevLog("[CourierNPC] 玩家进入范围，触发首次见面对话" + (ModBehaviour.DevModeEnabled ? " (DevMode: 场景切换后可重复触发)" : ""));
+                ModBehaviour.DevLog("[CourierNPC] 玩家进入范围，触发首次见面对话");
                 TriggerFirstMeetDialogue().Forget();
             }
-        }
-        
-        // DevMode 下的场景触发标记（每次场景切换重置）
-        private bool hasTriggeredThisScene = false;
-        
-        /// <summary>
-        /// 重置场景触发标记（供场景切换时调用）
-        /// </summary>
-        public void ResetSceneTrigger()
-        {
-            hasTriggeredThisScene = false;
-            ModBehaviour.DevLog("[CourierNPC] 场景触发标记已重置");
         }
         
         /// <summary>
@@ -895,11 +871,7 @@ namespace BossRush
                 isInFirstMeetDialogue = true;
                 
                 // 立即保存状态到存档（防止中途退出后重复触发）
-                // 注意：DevMode 下不保存，以便重复测试
-                if (!ModBehaviour.DevModeEnabled)
-                {
-                    SetFirstMeetTriggered();
-                }
+                SetFirstMeetTriggered();
                 
                 // 停止移动
                 if (movement != null)

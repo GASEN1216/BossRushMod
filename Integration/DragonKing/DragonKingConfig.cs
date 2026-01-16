@@ -32,12 +32,12 @@ namespace BossRush
         /// <summary>
         /// 是否启用调试模式（只重复释放指定技能）
         /// </summary>
-        public static bool DebugMode = true;
+        public static bool DebugMode = false;
         
         /// <summary>
         /// 调试模式下重复释放的技能类型
         /// </summary>
-        public static DragonKingAttackType DebugAttackType = DragonKingAttackType.SunDance;
+        public static DragonKingAttackType DebugAttackType = DragonKingAttackType.EtherealLance2;
         
         // ========== Boss基础属性 ==========
         
@@ -49,7 +49,7 @@ namespace BossRush
         /// <summary>
         /// 伤害倍率
         /// </summary>
-        public const float DamageMultiplier = 1.5f;
+        public const float DamageMultiplier = 0.5f;
         
         /// <summary>
         /// Boss名称本地化键
@@ -76,12 +76,12 @@ namespace BossRush
         /// <summary>
         /// 一阶段攻击间隔（秒）
         /// </summary>
-        public const float Phase1AttackInterval = 0.5f;
+        public const float Phase1AttackInterval = 1.0f;
         
         /// <summary>
         /// 二阶段攻击间隔（秒）
         /// </summary>
-        public const float Phase2AttackInterval = 0.3f;
+        public const float Phase2AttackInterval = 0.5f;
         
         /// <summary>
         /// 二阶段转换持续时间（秒）
@@ -108,7 +108,7 @@ namespace BossRush
         /// <summary>
         /// 棱彩弹追踪持续时间（秒）- 超过此时间后直线飞行
         /// </summary>
-        public const float PrismaticBoltTrackingDuration = 1.0f;
+        public const float PrismaticBoltTrackingDuration = 2.5f;
         
         /// <summary>
         /// 棱彩弹伤害
@@ -123,7 +123,7 @@ namespace BossRush
         /// <summary>
         /// 棱彩弹移动速度
         /// </summary>
-        public const float PrismaticBoltSpeed = 12f;
+        public const float PrismaticBoltSpeed = 10f;
         
         /// <summary>
         /// 棱彩弹缩放倍数（增大弹幕大小）
@@ -140,34 +140,71 @@ namespace BossRush
         /// <summary>
         /// 螺旋发射持续时间（秒）
         /// </summary>
-        public const float SpiralFireDuration = 3f;
+        public const float SpiralFireDuration = 1f;
         
         /// <summary>
         /// 螺旋角度增量（度）
         /// </summary>
         public const float SpiralAngleIncrement = 15f;
         
+        /// <summary>
+        /// 棱彩弹2追踪持续时间（秒）- 超过此时间后直线飞行
+        /// </summary>
+        public const float PrismaticBolt2TrackingDuration = 2f;
+        
         // ========== 冲刺参数 ==========
         
         /// <summary>
-        /// 冲刺蓄力时间（秒）
+        /// 冲刺蓄力时间（秒）- 包含粒子聚拢和倒计时光圈
         /// </summary>
-        public const float DashChargeTime = 0.5f;
+        public const float DashChargeTime = 0.8f;
         
         /// <summary>
-        /// 冲刺速度（单位/秒）
+        /// 倒计时光圈开始时间（蓄力结束前多少秒显示光圈）
+        /// </summary>
+        public const float DashCountdownRingTime = 0.3f;
+        
+        /// <summary>
+        /// 冲刺速度（单位/秒）- 使用 SetForceMoveVelocity
         /// </summary>
         public const float DashSpeed = 25f;
         
         /// <summary>
         /// 冲刺持续时间（秒）
         /// </summary>
-        public const float DashDuration = 0.5f;
+        public const float DashDuration = 0.6f;
         
         /// <summary>
         /// 冲刺伤害
         /// </summary>
         public const float DashDamage = 30f;
+        
+        /// <summary>
+        /// 冲刺碰撞检测半径
+        /// </summary>
+        public const float DashCollisionRadius = 1.5f;
+        
+        // ========== 岩浆区域参数 ==========
+        
+        /// <summary>
+        /// 岩浆区域伤害（每次触发）
+        /// </summary>
+        public const float LavaDamage = 5f;
+        
+        /// <summary>
+        /// 岩浆区域伤害间隔（秒）
+        /// </summary>
+        public const float LavaDamageInterval = 0.5f;
+        
+        /// <summary>
+        /// 岩浆区域持续时间（秒）
+        /// </summary>
+        public const float LavaDuration = 3f;
+        
+        /// <summary>
+        /// 岩浆区域检测半径
+        /// </summary>
+        public const float LavaRadius = 1f;
         
         // ========== 太阳舞参数 ==========
         
@@ -200,12 +237,32 @@ namespace BossRush
         /// 太阳舞持续时间（秒）
         /// </summary>
         public const float SunDanceDuration = 5f;
-        
+
         /// <summary>
         /// 太阳舞伤害tick间隔（秒）
         /// </summary>
         public const float SunDanceTickInterval = 0.2f;
-        
+
+        /// <summary>
+        /// 太阳舞弹幕方向数量（360度均分）
+        /// </summary>
+        public const int SunDanceBarrageDirectionCount = 24;
+
+        /// <summary>
+        /// 太阳舞弹幕方向间隔（度）
+        /// </summary>
+        public const float SunDanceBarrageAngleStep = 15f;
+
+        /// <summary>
+        /// 太阳舞弹幕每次旋转角度（度）
+        /// </summary>
+        public const float SunDanceBarrageRotationPerTick = 5f;
+
+        /// <summary>
+        /// 太阳舞弹幕速度倍率（相对于原武器速度）
+        /// </summary>
+        public const float SunDanceBulletSpeedMultiplier = 0.3f;
+
         // ========== 永恒彩虹参数 ==========
         
         /// <summary>
@@ -248,7 +305,7 @@ namespace BossRush
         /// <summary>
         /// 以太长矛速度（单位/秒）
         /// </summary>
-        public const float EtherealLanceSpeed = 20f;
+        public const float EtherealLanceSpeed = 40f;
         
         /// <summary>
         /// 以太长矛伤害
@@ -265,7 +322,7 @@ namespace BossRush
         /// <summary>
         /// 每波长矛数量
         /// </summary>
-        public const int ScreenLancePerWave = 8;
+        public const int ScreenLancePerWave = 16;
         
         /// <summary>
         /// 波间隔时间（秒）
@@ -277,7 +334,7 @@ namespace BossRush
         /// <summary>
         /// 碰撞伤害值
         /// </summary>
-        public const float CollisionDamage = 25f;
+        public const float CollisionDamage = 15f;
         
         /// <summary>
         /// 碰撞伤害冷却时间（秒）
@@ -315,7 +372,54 @@ namespace BossRush
         /// 悬浮偏移角度（度）- 相对于玩家的偏移方向
         /// </summary>
         public const float HoverOffsetAngle = 45f;
-        
+
+        // ========== 自定义射击参数 ==========
+
+        /// <summary>
+        /// 自定义子弹基础伤害
+        /// </summary>
+        public const float CustomBulletDamage = 15f;
+
+        /// <summary>
+        /// 自定义子弹飞行距离
+        /// </summary>
+        public const float CustomBulletDistance = 100f;
+
+        /// <summary>
+        /// 自定义子弹半伤害距离
+        /// </summary>
+        public const float CustomBulletHalfDamageDistance = 50f;
+
+        /// <summary>
+        /// 自定义子弹暴击率
+        /// </summary>
+        public const float CustomBulletCritRate = 0.1f;
+
+        /// <summary>
+        /// 自定义子弹暴击伤害倍率
+        /// </summary>
+        public const float CustomBulletCritDamageFactor = 1.5f;
+
+        /// <summary>
+        /// 一阶段每发子弹数量
+        /// </summary>
+        public const int Phase1BulletCount = 1;
+
+        /// <summary>
+        /// 一阶段射击偏移范围（米）
+        /// </summary>
+        public const float Phase1OffsetRange = 2f;
+
+        /// <summary>
+        /// 二阶段每发子弹数量
+        /// </summary>
+        public const int Phase2BulletCount = 2;
+
+        /// <summary>
+        /// 二阶段射击偏移范围（米）
+        /// </summary>
+        public const float Phase2OffsetRange = 4f;
+
         // ========== 资源路径 ==========
         
         /// <summary>

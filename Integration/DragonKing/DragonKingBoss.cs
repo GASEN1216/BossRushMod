@@ -52,7 +52,7 @@ namespace BossRush
         /// 是否已搜索过龙王基础预设
         /// </summary>
         private static bool dragonKingBasePresetSearched = false;
-        
+
         /// <summary>
         /// 清理龙王相关的所有静态缓存（场景切换时调用）
         /// </summary>
@@ -60,11 +60,23 @@ namespace BossRush
         {
             cachedDragonKingBasePreset = null;
             dragonKingBasePresetSearched = false;
-            
-            // 清理资源管理器缓存
-            DragonKingAssetManager.ClearCache();
-            
+
+            // 强制清理资源管理器缓存（场景切换时使用）
+            DragonKingAssetManager.ForceCleanup();
+
             // 清理能力控制器缓存
+            DragonKingAbilityController.ClearStaticCache();
+        }
+
+        /// <summary>
+        /// 释放Boss实例资源（Boss销毁时调用）
+        /// </summary>
+        public static void ReleaseDragonKingInstance()
+        {
+            // 使用引用计数清理
+            DragonKingAssetManager.ClearCache();
+
+            // 清理能力控制器静态材质缓存
             DragonKingAbilityController.ClearStaticCache();
         }
         
@@ -77,7 +89,7 @@ namespace BossRush
         {
             try
             {
-                DevLog("[DragonKing] 开始生成龙王Boss at " + position);
+                DevLog($"[DragonKing] 开始生成龙王Boss at {position}");
                 
                 // 查找基础敌人预设（复用???预设）
                 CharacterRandomPreset basePreset = FindDragonKingBasePreset();
@@ -85,17 +97,11 @@ namespace BossRush
                 if (basePreset == null)
                 {
                     DevLog("[DragonKing] [ERROR] 未找到基础敌人预设");
-                    // 通知BossRush系统生成失败
-                    try
-                    {
-                        EnemyPresetInfo dragonKingPreset = FindDragonKingPresetInfo();
-                        OnBossSpawnFailed(dragonKingPreset);
-                    }
-                    catch {}
+                    NotifyBossSpawnFailed();
                     return null;
                 }
                 
-                DevLog("[DragonKing] 使用预设: " + basePreset.name);
+                DevLog($"[DragonKing] 使用预设: {basePreset.name}");
                 
                 // 生成角色
                 Vector3 dir = Vector3.forward;
@@ -105,12 +111,7 @@ namespace BossRush
                 if (character == null)
                 {
                     DevLog("[DragonKing] [ERROR] 生成角色失败");
-                    try
-                    {
-                        EnemyPresetInfo dragonKingPreset = FindDragonKingPresetInfo();
-                        OnBossSpawnFailed(dragonKingPreset);
-                    }
-                    catch {}
+                    NotifyBossSpawnFailed();
                     return null;
                 }
                 
@@ -136,7 +137,7 @@ namespace BossRush
                     customPreset.nameKey = DragonKingConfig.BossNameKey;
                     character.characterPreset = customPreset;
                     
-                    DevLog("[DragonKing] 已创建独立预设副本, nameKey=" + customPreset.nameKey);
+                    DevLog($"[DragonKing] 已创建独立预设副本, nameKey={customPreset.nameKey}");
                 }
                 
                 // 设置Health组件
@@ -179,13 +180,13 @@ namespace BossRush
                 // 记录Boss生成信息
                 try
                 {
-                    bossSpawnTimes[character] = Time.time + 1f;
+                    bossSpawnTimes[character] = Time.time;
                     bossOriginalLootCounts[character] = 5; // 龙王掉落更多
                     character.BeforeCharacterSpawnLootOnDead += (dmgInfo) => OnBossBeforeSpawnLoot(character, dmgInfo);
                 }
                 catch (Exception recordEx)
                 {
-                    DevLog("[DragonKing] [WARNING] 记录Boss生成信息失败: " + recordEx.Message);
+                    DevLog($"[DragonKing] [WARNING] 记录Boss生成信息失败: {recordEx.Message}");
                 }
                 
                 DevLog("[DragonKing] 龙王Boss生成完成");
@@ -195,7 +196,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[DragonKing] [ERROR] 生成Boss失败: " + e.Message + "\n" + e.StackTrace);
+                DevLog($"[DragonKing] [ERROR] 生成Boss失败: {e.Message}\n{e.StackTrace}");
                 return null;
             }
         }
@@ -275,12 +276,11 @@ namespace BossRush
                     meleeDmgStat.BaseValue = DragonKingConfig.DamageMultiplier;
                 }
                 
-                DevLog("[DragonKing] Boss属性设置完成: HP=" + DragonKingConfig.BaseHealth + 
-                    ", DmgMult=" + DragonKingConfig.DamageMultiplier);
+                DevLog($"[DragonKing] Boss属性设置完成: HP={DragonKingConfig.BaseHealth}, DmgMult={DragonKingConfig.DamageMultiplier}");
             }
             catch (Exception e)
             {
-                DevLog("[DragonKing] [WARNING] 设置Boss属性失败: " + e.Message);
+                DevLog($"[DragonKing] [WARNING] 设置Boss属性失败: {e.Message}");
             }
         }
         
@@ -316,7 +316,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[DragonKing] [WARNING] 配置AI时出错: " + e.Message);
+                DevLog($"[DragonKing] [WARNING] 配置AI时出错: {e.Message}");
             }
         }
         
@@ -327,18 +327,44 @@ namespace BossRush
         {
             DevLog("[DragonKing] 龙王被击败");
             ShowMessage(L10n.DragonKingDefeated);
-            
+
+            // 移除事件监听（防止内存泄漏）
+            // 使用缓存的实例引用，因为DamageInfo是结构体且可能没有victim属性
+            if (dragonKingInstance != null && dragonKingInstance.Health != null)
+            {
+                dragonKingInstance.Health.OnDeadEvent.RemoveListener(OnDragonKingDeath);
+            }
+
             // 清理能力控制器
             if (dragonKingAbilities != null)
             {
                 dragonKingAbilities.OnBossDeath();
             }
-            
+
             // 清理实例引用
             dragonKingInstance = null;
             dragonKingAbilities = null;
+
+            // 释放Boss实例资源（使用引用计数）
+            ReleaseDragonKingInstance();
         }
-        
+
+        /// <summary>
+        /// 通知Boss生成失败（提取重复的Try-Catch块）
+        /// </summary>
+        private void NotifyBossSpawnFailed()
+        {
+            try
+            {
+                EnemyPresetInfo dragonKingPreset = FindDragonKingPresetInfo();
+                OnBossSpawnFailed(dragonKingPreset);
+            }
+            catch (Exception e)
+            {
+                DevLog($"[DragonKing] [WARNING] NotifyBossSpawnFailed异常: {e.Message}");
+            }
+        }
+
         /// <summary>
         /// 检查是否是龙王预设
         /// </summary>
