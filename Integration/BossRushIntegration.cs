@@ -645,6 +645,9 @@ namespace BossRush
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
             
+            // 初始化飞行图腾系统
+            InitializeFlightTotemSystem();
+            
             // 注意：龙息武器Buff处理器现在是按需订阅
             // 只在玩家装备龙息武器时才订阅Health.OnHurt事件，卸下时取消订阅
             // 这样可以避免在所有伤害事件中进行武器ID检查，提升性能
@@ -699,6 +702,9 @@ namespace BossRush
             
             // 清理龙息武器Buff处理器
             DragonBreathBuffHandler.Cleanup();
+            
+            // 清理飞行图腾系统
+            CleanupFlightTotemSystem();
             
             // [性能优化] 重置商店注入标记
             _shopInjectionCompleted = false;
@@ -773,6 +779,9 @@ namespace BossRush
             // 在任何场景加载后都尝试订阅龙息武器事件
             // 使用延迟调用确保玩家角色已初始化
             StartCoroutine(DelayedSubscribeDragonBreathEvents());
+            
+            // 设置飞行图腾系统（注入商店、Hook Dash等）
+            SetupFlightTotemForScene(scene);
 
             try
             {
