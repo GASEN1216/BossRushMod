@@ -301,7 +301,7 @@ namespace BossRush
             {
                 StopCoroutine(knockbackClearCoroutine);
             }
-            knockbackClearCoroutine = StartCoroutine(ClearKnockbackAfterDelay(0.3f));
+            knockbackClearCoroutine = StartCoroutine(ClearKnockbackAfterDelay());
 
             ModBehaviour.DevLog($"[DragonKing] 玩家被击退，速度: {knockbackVelocity}");
         }
@@ -309,7 +309,7 @@ namespace BossRush
         /// <summary>
         /// 延迟清除击退效果
         /// </summary>
-        private IEnumerator ClearKnockbackAfterDelay(float delay)
+        private IEnumerator ClearKnockbackAfterDelay()
         {
             yield return knockbackClearTime; // delay = 0.3f
             

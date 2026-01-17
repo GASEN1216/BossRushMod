@@ -192,15 +192,6 @@ namespace BossRush
         /// </summary>
         private static System.Reflection.MethodInfo cachedAudioPostMethod = null;
 
-        /// <summary>
-        /// 缓存的NodeCanvas.BehaviourTree类型
-        /// </summary>
-        private static System.Type cachedBehaviourTreeType = null;
-
-        /// <summary>
-        /// 缓存的NodeCanvas.Framework.Behaviour类型的enabled属性
-        /// </summary>
-        private static System.Reflection.PropertyInfo cachedBehaviourEnabledProperty = null;
 
         /// <summary>
         /// 太阳舞音效播放间隔（每多少发子弹播放一次）
@@ -1907,23 +1898,47 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 播放玩家受伤音效
+        /// 缓存的受伤音效路径
+        /// </summary>
+        private static string cachedHurtSoundPath = null;
+        
+        /// <summary>
+        /// 是否已检查过受伤音效路径
+        /// </summary>
+        private static bool hurtSoundPathChecked = false;
+        
+        /// <summary>
+        /// 播放玩家受伤音效（使用缓存路径避免重复文件检查）
         /// </summary>
         private void PlayHurtSound()
         {
             try
             {
-                // 获取Mod目录
-                string modBasePath = System.IO.Path.GetDirectoryName(GetType().Assembly.Location);
-                
-                // 优先查找Assets目录（标准资源位置）
-                string assetsPath = System.IO.Path.Combine(modBasePath, "Assets", "hurt.mp3");
-                string hurtSoundPath = System.IO.File.Exists(assetsPath) ? assetsPath 
-                    : System.IO.Path.Combine(modBasePath, "hurt.mp3");
-                
-                if (System.IO.File.Exists(hurtSoundPath) && ModBehaviour.Instance != null)
+                // 只在首次调用时检查路径
+                if (!hurtSoundPathChecked)
                 {
-                    ModBehaviour.Instance.PlaySoundEffect(hurtSoundPath);
+                    hurtSoundPathChecked = true;
+                    string modBasePath = System.IO.Path.GetDirectoryName(GetType().Assembly.Location);
+                    
+                    // 优先查找Assets目录（标准资源位置）
+                    string assetsPath = System.IO.Path.Combine(modBasePath, "Assets", "hurt.mp3");
+                    if (System.IO.File.Exists(assetsPath))
+                    {
+                        cachedHurtSoundPath = assetsPath;
+                    }
+                    else
+                    {
+                        string rootPath = System.IO.Path.Combine(modBasePath, "hurt.mp3");
+                        if (System.IO.File.Exists(rootPath))
+                        {
+                            cachedHurtSoundPath = rootPath;
+                        }
+                    }
+                }
+                
+                if (cachedHurtSoundPath != null && ModBehaviour.Instance != null)
+                {
+                    ModBehaviour.Instance.PlaySoundEffect(cachedHurtSoundPath);
                 }
             }
             catch (Exception e)
@@ -2423,56 +2438,7 @@ namespace BossRush
             }
         }
         
-        /// <summary>
-        /// 创建圆环网格（备用方法）
-        /// </summary>
-        private Mesh CreateRingMesh(float outerRadius, float innerRadius, int segments)
-        {
-            Mesh mesh = new Mesh();
-            
-            int vertexCount = segments * 2;
-            Vector3[] vertices = new Vector3[vertexCount];
-            int[] triangles = new int[segments * 6];
-            Vector2[] uvs = new Vector2[vertexCount];
-            
-            float angleStep = 360f / segments;
-            
-            for (int i = 0; i < segments; i++)
-            {
-                float angle = i * angleStep * Mathf.Deg2Rad;
-                float cos = Mathf.Cos(angle);
-                float sin = Mathf.Sin(angle);
-                
-                // 外圈顶点
-                vertices[i * 2] = new Vector3(cos * outerRadius, 0f, sin * outerRadius);
-                // 内圈顶点
-                vertices[i * 2 + 1] = new Vector3(cos * innerRadius, 0f, sin * innerRadius);
-                
-                // UV
-                uvs[i * 2] = new Vector2((float)i / segments, 1f);
-                uvs[i * 2 + 1] = new Vector2((float)i / segments, 0f);
-                
-                // 三角形
-                int nextI = (i + 1) % segments;
-                int triIndex = i * 6;
-                
-                triangles[triIndex] = i * 2;
-                triangles[triIndex + 1] = nextI * 2;
-                triangles[triIndex + 2] = i * 2 + 1;
-                
-                triangles[triIndex + 3] = nextI * 2;
-                triangles[triIndex + 4] = nextI * 2 + 1;
-                triangles[triIndex + 5] = i * 2 + 1;
-            }
-            
-            mesh.vertices = vertices;
-            mesh.triangles = triangles;
-            mesh.uv = uvs;
-            mesh.RecalculateNormals();
-            
-            return mesh;
-        }
-        
+
         /// <summary>
         /// 生成冲刺残影特效（带岩浆伤害区域）
         /// </summary>
@@ -3594,47 +3560,7 @@ namespace BossRush
             ModBehaviour.DevLog("[DragonKing] 以太长矛2攻击完成");
         }
         
-        /// <summary>
-        /// 发射一波长矛
-        /// </summary>
-        private IEnumerator LaunchLanceWave(List<GameObject> lances, Vector3 direction, float speed)
-        {
-            float maxFlightTime = 3f;
-            float startTime = Time.time;
 
-            while (Time.time - startTime < maxFlightTime)
-            {
-                bool anyActive = false;
-
-                foreach (var lance in lances)
-                {
-                    if (lance == null) continue;
-                    anyActive = true;
-
-                    lance.transform.position += direction * speed * Time.deltaTime;
-
-                    if (CheckProjectileHit(lance.transform.position, DragonKingConfig.EtherealLanceDamage))
-                    {
-                        activeProjectiles.Remove(lance);
-                        Destroy(lance);
-                    }
-                }
-
-                if (!anyActive) break;
-                yield return null;
-            }
-
-            // 清理
-            foreach (var lance in lances)
-            {
-                if (lance != null)
-                {
-                    activeProjectiles.Remove(lance);
-                    Destroy(lance);
-                }
-            }
-        }
-        
         // ========== 碰撞伤害处理 ==========
         
         /// <summary>
