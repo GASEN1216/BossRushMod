@@ -265,6 +265,9 @@ namespace BossRush
             // 获取移动输入
             Vector2 moveInput = GetMovementInput();
 
+            // 计算相对于摄像机视角的水平移动方向
+            Vector3 horizontalMovement = GetCameraRelativeMovement(moveInput, horizontalSpeed * deltaTime);
+
             // 计算移动向量
             Vector3 currentPos = characterController.transform.position;
             Vector3 newPos = currentPos;
@@ -272,18 +275,19 @@ namespace BossRush
             // 垂直移动
             newPos.y += verticalSpeed * deltaTime;
 
-            // 水平移动
-            newPos.x += moveInput.x * horizontalSpeed * deltaTime;
-            newPos.z += moveInput.y * horizontalSpeed * deltaTime;
+            // 水平移动（相对于摄像机视角）
+            newPos.x += horizontalMovement.x;
+            newPos.z += horizontalMovement.z;
 
             // 使用 ForceSetPosition 直接设置位置
             characterController.movementControl.ForceSetPosition(newPos);
 
-            // 同时设置速度
+            // 同时设置速度（相对于摄像机视角）
+            Vector3 horizontalVelocity = GetCameraRelativeMovement(moveInput, horizontalSpeed);
             characterController.SetForceMoveVelocity(new Vector3(
-                moveInput.x * horizontalSpeed,
+                horizontalVelocity.x,
                 verticalSpeed,
-                moveInput.y * horizontalSpeed
+                horizontalVelocity.z
             ));
 
             // 持续暂停地面约束
@@ -291,6 +295,43 @@ namespace BossRush
             {
                 PauseGroundConstraint(0.1f);
             }
+        }
+
+        /// <summary>
+        /// 获取相对于摄像机视角的水平移动向量
+        /// </summary>
+        /// <param name="input">WASD 输入（x=左右，y=前后）</param>
+        /// <param name="magnitude">移动量</param>
+        /// <returns>世界坐标系下的水平移动向量</returns>
+        private Vector3 GetCameraRelativeMovement(Vector2 input, float magnitude)
+        {
+            if (input.sqrMagnitude < 0.001f) return Vector3.zero;
+
+            // 获取主摄像机
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                // 备用：直接使用世界坐标
+                return new Vector3(input.x * magnitude, 0f, input.y * magnitude);
+            }
+
+            // 获取摄像机的前方和右方向量（忽略Y轴，只取水平分量）
+            Vector3 cameraForward = mainCamera.transform.forward;
+            Vector3 cameraRight = mainCamera.transform.right;
+
+            // 将Y分量置零，只保留水平方向
+            cameraForward.y = 0f;
+            cameraRight.y = 0f;
+
+            // 归一化（避免斜向移动时速度变快）
+            cameraForward.Normalize();
+            cameraRight.Normalize();
+
+            // 计算相对于摄像机的移动方向
+            // input.y 是前后（W/S），input.x 是左右（A/D）
+            Vector3 movement = (cameraForward * input.y + cameraRight * input.x) * magnitude;
+
+            return movement;
         }
 
         // ========== 辅助方法 ==========

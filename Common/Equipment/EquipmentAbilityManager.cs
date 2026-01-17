@@ -439,7 +439,13 @@ namespace BossRush.Common.Equipment
 
             // 清理旧的动作
             CleanupAbilityAction();
-            // 注意：不自动清空 targetCharacter，等待 RebindToCharacter 调用
+
+            // 主动重建能力动作（修复：不再等待 RebindToCharacter，避免角色引用相同时无法重建）
+            if (targetCharacter != null)
+            {
+                SetupAbilityAction();
+                LogIfVerbose("场景切换后已主动重建能力动作");
+            }
         }
 
         /// <summary>

@@ -674,10 +674,28 @@ namespace BossRush
         // [已移除] 悬浮跟随机制 - 该功能未被使用且可能导致位置异常
         
         /// <summary>
-        /// 更新玩家引用
+        /// 上次更新玩家引用的时间
+        /// </summary>
+        private float lastPlayerRefUpdateTime = 0f;
+        
+        /// <summary>
+        /// 玩家引用更新间隔（秒）- 不需要每帧更新
+        /// </summary>
+        private const float PLAYER_REF_UPDATE_INTERVAL = 0.1f;
+        
+        /// <summary>
+        /// 更新玩家引用（带节流，避免每帧调用）
         /// </summary>
         private void UpdatePlayerReference()
         {
+            // 性能优化：节流更新，每0.1秒更新一次
+            if (Time.time - lastPlayerRefUpdateTime < PLAYER_REF_UPDATE_INTERVAL && playerCharacter != null)
+            {
+                return;
+            }
+            
+            lastPlayerRefUpdateTime = Time.time;
+            
             try
             {
                 playerCharacter = CharacterMainControl.Main;
@@ -1556,8 +1574,8 @@ namespace BossRush
                     int bulletCount = isPhase2 ? DragonKingConfig.Phase2BulletCount : DragonKingConfig.Phase1BulletCount;
                     float offsetRange = isPhase2 ? DragonKingConfig.Phase2OffsetRange : DragonKingConfig.Phase1OffsetRange;
                     
-                    Vector3 bossPos = bossCharacter.transform.position + Vector3.up * 1.2f; // 胸口位置
-                    Vector3 playerPos = playerCharacter.transform.position + Vector3.up * 1f; // 玩家中心
+                    Vector3 bossPos = bossCharacter.transform.position + Vector3.up * DragonKingConfig.BossChestHeightOffset; // 胸口位置
+                    Vector3 playerPos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset; // 玩家中心
                     
                     // 发射指定数量的子弹
                     for (int i = 0; i < bulletCount; i++)
@@ -1600,7 +1618,7 @@ namespace BossRush
                 float bulletSpeed = cachedWeaponBulletSpeed;
                 
                 // 计算发射位置（Boss胸口位置）
-                Vector3 muzzlePos = bossCharacter.transform.position + Vector3.up * 1.2f;
+                Vector3 muzzlePos = bossCharacter.transform.position + Vector3.up * DragonKingConfig.BossChestHeightOffset;
                 
                 // 从BulletPool获取子弹
                 Projectile bullet = LevelManager.Instance.BulletPool.GetABullet(cachedWeaponBullet);
@@ -1672,7 +1690,7 @@ namespace BossRush
             {
                 float angle = i * angleStep;
                 Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * 1f;
-                Vector3 spawnPos = bossPos + offset + Vector3.up * 1f;
+                Vector3 spawnPos = bossPos + offset + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
 
                 // 使用Unity预制体创建棱彩弹
                 GameObject bolt = DragonKingAssetManager.InstantiateEffect(
@@ -1719,32 +1737,38 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 追踪弹幕协程
-        /// 前2秒追踪玩家，之后直线飞行
-        /// 使用刚体速度移动，让粒子系统能正确继承发射器速度
+        /// 统一的追踪弹幕协程（合并了4个重复协程）
+        /// 前N秒追踪玩家，之后直线飞行
+        /// 自动检测是否有刚体，选择合适的移动方式
         /// </summary>
-        private IEnumerator TrackingProjectile(GameObject projectile, float lifetime)
+        /// <param name="projectile">弹幕对象</param>
+        /// <param name="lifetime">生命周期（秒）</param>
+        /// <param name="trackingDuration">追踪持续时间（秒），默认使用配置值</param>
+        private IEnumerator TrackingProjectileCore(GameObject projectile, float lifetime, float trackingDuration = -1f)
         {
+            // 使用默认追踪时间（如果未指定）
+            if (trackingDuration < 0f)
+            {
+                trackingDuration = DragonKingConfig.PrismaticBoltTrackingDuration;
+            }
+            
             float startTime = Time.time;
             float speed = DragonKingConfig.PrismaticBoltSpeed;
             float trackingStrength = DragonKingConfig.PrismaticBoltTrackingStrength;
-            float trackingDuration = DragonKingConfig.PrismaticBoltTrackingDuration;
+            float targetHeightOffset = DragonKingConfig.PlayerTargetHeightOffset;
 
-            // 获取刚体组件
+            // 获取刚体组件（决定移动方式）
             Rigidbody rb = projectile.GetComponent<Rigidbody>();
-            if (rb == null)
-            {
-                // 如果没有刚体，使用原来的方式移动
-                yield return TrackingProjectileLegacy(projectile, lifetime);
-                yield break;
-            }
+            bool useRigidbody = (rb != null);
 
-            Vector3 currentVelocity = Vector3.zero;
+            Vector3 currentVelocity = projectile.transform.forward * speed;
             bool trackingEnded = false;
 
-            // 给一个初始速度，让粒子系统开始继承
-            currentVelocity = projectile.transform.forward * speed;
-            rb.velocity = currentVelocity;
+            // 如果有刚体，设置初始速度
+            if (useRigidbody)
+            {
+                rb.velocity = currentVelocity;
+            }
 
             while (projectile != null && Time.time - startTime < lifetime)
             {
@@ -1758,25 +1782,43 @@ namespace BossRush
                     UpdatePlayerReference();
                     if (playerCharacter != null)
                     {
-                        Vector3 targetPos = playerCharacter.transform.position + Vector3.up * 1f;
+                        Vector3 targetPos = playerCharacter.transform.position + Vector3.up * targetHeightOffset;
                         Vector3 dirToTarget = (targetPos - currentPos).normalized;
 
                         // 不完美追踪：混合当前方向和目标方向
-                        Vector3 desiredVelocity = dirToTarget * speed;
-                        currentVelocity = Vector3.Lerp(currentVelocity, desiredVelocity, trackingStrength * Time.deltaTime * 5f);
+                        if (!useRigidbody && currentVelocity.sqrMagnitude < 0.01f)
+                        {
+                            // 非刚体模式下，如果速度为0则直接设置
+                            currentVelocity = dirToTarget * speed;
+                        }
+                        else
+                        {
+                            Vector3 desiredVelocity = dirToTarget * speed;
+                            currentVelocity = Vector3.Lerp(currentVelocity, desiredVelocity, trackingStrength * Time.deltaTime * 5f);
+                        }
                     }
                 }
                 else if (!trackingEnded)
                 {
                     // 追踪结束，锁定当前方向
                     trackingEnded = true;
-                    currentVelocity = currentVelocity.normalized * speed;
+                    if (currentVelocity.sqrMagnitude > 0.01f)
+                    {
+                        currentVelocity = currentVelocity.normalized * speed;
+                    }
                     ModBehaviour.DevLog("[DragonKing] 棱彩弹追踪结束，转为直线飞行");
                 }
                 // 直线飞行阶段：保持当前速度方向不变
 
-                // 使用刚体速度移动，这样粒子系统能继承发射器速度
-                rb.velocity = currentVelocity;
+                // 根据是否有刚体选择移动方式
+                if (useRigidbody)
+                {
+                    rb.velocity = currentVelocity;
+                }
+                else
+                {
+                    projectile.transform.position += currentVelocity * Time.deltaTime;
+                }
 
                 // 设置朝向
                 if (currentVelocity.sqrMagnitude > 0.01f)
@@ -1801,95 +1843,31 @@ namespace BossRush
                 Destroy(projectile);
             }
         }
-
+        
         /// <summary>
-        /// 旧版追踪弹幕协程（没有刚体时使用）
+        /// 追踪弹幕协程（兼容旧接口）
         /// </summary>
-        private IEnumerator TrackingProjectileLegacy(GameObject projectile, float lifetime)
+        private IEnumerator TrackingProjectile(GameObject projectile, float lifetime)
         {
-            float startTime = Time.time;
-            float speed = DragonKingConfig.PrismaticBoltSpeed;
-            float trackingStrength = DragonKingConfig.PrismaticBoltTrackingStrength;
-            float trackingDuration = DragonKingConfig.PrismaticBoltTrackingDuration;
-
-            Vector3 currentVelocity = Vector3.zero;
-            bool trackingEnded = false;
-
-            while (projectile != null && Time.time - startTime < lifetime)
-            {
-                float elapsed = Time.time - startTime;
-                Vector3 currentPos = projectile.transform.position;
-
-                // 判断是否还在追踪阶段
-                if (elapsed < trackingDuration && !trackingEnded)
-                {
-                    // 追踪阶段：追踪玩家
-                    UpdatePlayerReference();
-                    if (playerCharacter != null)
-                    {
-                        Vector3 targetPos = playerCharacter.transform.position + Vector3.up * 1f;
-                        Vector3 dirToTarget = (targetPos - currentPos).normalized;
-
-                        // 不完美追踪：混合当前方向和目标方向
-                        if (currentVelocity.sqrMagnitude < 0.01f)
-                        {
-                            currentVelocity = dirToTarget * speed;
-                        }
-                        else
-                        {
-                            Vector3 desiredVelocity = dirToTarget * speed;
-                            currentVelocity = Vector3.Lerp(currentVelocity, desiredVelocity, trackingStrength * Time.deltaTime * 5f);
-                        }
-                    }
-                }
-                else if (!trackingEnded)
-                {
-                    // 追踪结束，锁定当前方向
-                    trackingEnded = true;
-                    if (currentVelocity.sqrMagnitude > 0.01f)
-                    {
-                        currentVelocity = currentVelocity.normalized * speed;
-                    }
-                    ModBehaviour.DevLog("[DragonKing] 棱彩弹追踪结束，转为直线飞行");
-                }
-                // 直线飞行阶段：保持当前速度方向不变
-
-                // 移动弹幕
-                projectile.transform.position += currentVelocity * Time.deltaTime;
-                if (currentVelocity.sqrMagnitude > 0.01f)
-                {
-                    projectile.transform.rotation = Quaternion.LookRotation(currentVelocity);
-                }
-
-                // 检测碰撞
-                if (CheckProjectileHit(currentPos, DragonKingConfig.PrismaticBoltDamage))
-                {
-                    Destroy(projectile);
-                    yield break;
-                }
-
-                yield return null;
-            }
-
-            // 销毁弹幕
-            if (projectile != null)
-            {
-                activeProjectiles.Remove(projectile);
-                Destroy(projectile);
-            }
+            return TrackingProjectileCore(projectile, lifetime);
         }
         
         /// <summary>
         /// 检测弹幕是否命中玩家
+        /// 性能优化：使用sqrMagnitude避免开方运算
         /// </summary>
         private bool CheckProjectileHit(Vector3 position, float damage)
         {
             if (playerCharacter == null) return false;
             
-            float hitRadius = 1.05f;
-            float distance = Vector3.Distance(position, playerCharacter.transform.position + Vector3.up * 1f);
+            // 性能优化：使用sqrMagnitude避免开方运算
+            // 使用配置中的常量
+            float hitRadius = DragonKingConfig.ProjectileHitRadius;
+            float hitRadiusSqr = hitRadius * hitRadius;
+            float targetHeightOffset = DragonKingConfig.PlayerTargetHeightOffset;
+            Vector3 diff = position - (playerCharacter.transform.position + Vector3.up * targetHeightOffset);
             
-            if (distance < hitRadius)
+            if (diff.sqrMagnitude < hitRadiusSqr)
             {
                 ApplyDamageToPlayer(damage);
                 return true;
@@ -1912,7 +1890,8 @@ namespace BossRush
                 DamageInfo dmgInfo = new DamageInfo(bossCharacter);
                 dmgInfo.damageValue = damage;
                 // 设置伤害点位置（玩家身体中心），这样伤害数字才能正确显示
-                dmgInfo.damagePoint = playerCharacter.transform.position + Vector3.up * 0.8f;
+                // 使用配置中的常量
+                dmgInfo.damagePoint = playerCharacter.transform.position + Vector3.up * DragonKingConfig.DamagePointHeightOffset;
                 dmgInfo.damageNormal = Vector3.up;
                 // 添加火元素伤害，让原版受伤系统显示伤害数字
                 dmgInfo.AddElementFactor(ElementTypes.fire, 1f);
@@ -1985,7 +1964,7 @@ namespace BossRush
                 bossCharacter.transform.position = lockedPosition;
                 
                 // 从Boss身体中心发射（加上高度偏移）
-                Vector3 spawnPos = lockedPosition + Vector3.up * 1.2f;
+                Vector3 spawnPos = lockedPosition + Vector3.up * DragonKingConfig.BossChestHeightOffset;
                 
                 // 计算发射方向（螺旋旋转）
                 Vector3 fireDir = Quaternion.Euler(0f, currentAngle, 0f) * Vector3.forward;
@@ -2018,145 +1997,11 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 带自定义追踪时间的追踪弹幕协程
+        /// 带自定义追踪时间的追踪弹幕协程（兼容旧接口）
         /// </summary>
         private IEnumerator TrackingProjectileWithDuration(GameObject projectile, float lifetime, float customTrackingDuration)
         {
-            float startTime = Time.time;
-            float speed = DragonKingConfig.PrismaticBoltSpeed;
-            float trackingStrength = DragonKingConfig.PrismaticBoltTrackingStrength;
-            float trackingDuration = customTrackingDuration;
-
-            // 获取刚体组件
-            Rigidbody rb = projectile.GetComponent<Rigidbody>();
-            if (rb == null)
-            {
-                // 如果没有刚体，使用旧版方式
-                yield return TrackingProjectileLegacyWithDuration(projectile, lifetime, customTrackingDuration);
-                yield break;
-            }
-
-            Vector3 currentVelocity = Vector3.zero;
-            bool trackingEnded = false;
-
-            // 给一个初始速度
-            currentVelocity = projectile.transform.forward * speed;
-            rb.velocity = currentVelocity;
-
-            while (projectile != null && Time.time - startTime < lifetime)
-            {
-                float elapsed = Time.time - startTime;
-                Vector3 currentPos = projectile.transform.position;
-
-                // 判断是否还在追踪阶段
-                if (elapsed < trackingDuration && !trackingEnded)
-                {
-                    // 追踪阶段：追踪玩家
-                    UpdatePlayerReference();
-                    if (playerCharacter != null)
-                    {
-                        Vector3 targetPos = playerCharacter.transform.position + Vector3.up * 1f;
-                        Vector3 dirToTarget = (targetPos - currentPos).normalized;
-
-                        // 不完美追踪：混合当前方向和目标方向
-                        Vector3 desiredVelocity = dirToTarget * speed;
-                        currentVelocity = Vector3.Lerp(currentVelocity, desiredVelocity, trackingStrength * Time.deltaTime * 5f);
-                    }
-                }
-                else if (!trackingEnded)
-                {
-                    // 追踪结束，锁定当前方向
-                    trackingEnded = true;
-                    currentVelocity = currentVelocity.normalized * speed;
-                    ModBehaviour.DevLog("[DragonKing] 棱彩弹2追踪结束，转为直线飞行");
-                }
-
-                // 使用刚体速度移动
-                rb.velocity = currentVelocity;
-
-                // 设置朝向
-                if (currentVelocity.sqrMagnitude > 0.01f)
-                {
-                    projectile.transform.rotation = Quaternion.LookRotation(currentVelocity);
-                }
-
-                // 检测碰撞
-                if (CheckProjectileHit(currentPos, DragonKingConfig.PrismaticBoltDamage))
-                {
-                    Destroy(projectile);
-                    yield break;
-                }
-
-                yield return null;
-            }
-
-            // 销毁弹幕
-            if (projectile != null)
-            {
-                activeProjectiles.Remove(projectile);
-                Destroy(projectile);
-            }
-        }
-        
-        /// <summary>
-        /// 旧版带自定义追踪时间的追踪弹幕协程（没有刚体时使用）
-        /// </summary>
-        private IEnumerator TrackingProjectileLegacyWithDuration(GameObject projectile, float lifetime, float customTrackingDuration)
-        {
-            float startTime = Time.time;
-            float speed = DragonKingConfig.PrismaticBoltSpeed;
-            float trackingStrength = DragonKingConfig.PrismaticBoltTrackingStrength;
-            float trackingDuration = customTrackingDuration;
-
-            Vector3 currentVelocity = projectile.transform.forward * speed;
-            bool trackingEnded = false;
-
-            while (projectile != null && Time.time - startTime < lifetime)
-            {
-                float elapsed = Time.time - startTime;
-                Vector3 currentPos = projectile.transform.position;
-
-                if (elapsed < trackingDuration && !trackingEnded)
-                {
-                    UpdatePlayerReference();
-                    if (playerCharacter != null)
-                    {
-                        Vector3 targetPos = playerCharacter.transform.position + Vector3.up * 1f;
-                        Vector3 dirToTarget = (targetPos - currentPos).normalized;
-                        Vector3 desiredVelocity = dirToTarget * speed;
-                        currentVelocity = Vector3.Lerp(currentVelocity, desiredVelocity, trackingStrength * Time.deltaTime * 5f);
-                    }
-                }
-                else if (!trackingEnded)
-                {
-                    trackingEnded = true;
-                    currentVelocity = currentVelocity.normalized * speed;
-                }
-
-                // 移动弹幕
-                projectile.transform.position += currentVelocity * Time.deltaTime;
-
-                // 设置朝向
-                if (currentVelocity.sqrMagnitude > 0.01f)
-                {
-                    projectile.transform.rotation = Quaternion.LookRotation(currentVelocity);
-                }
-
-                // 检测碰撞
-                if (CheckProjectileHit(currentPos, DragonKingConfig.PrismaticBoltDamage))
-                {
-                    Destroy(projectile);
-                    yield break;
-                }
-
-                yield return null;
-            }
-
-            if (projectile != null)
-            {
-                activeProjectiles.Remove(projectile);
-                Destroy(projectile);
-            }
+            return TrackingProjectileCore(projectile, lifetime, customTrackingDuration);
         }
         
         // ========== 冲刺攻击 ==========
@@ -2660,18 +2505,18 @@ namespace BossRush
         
         /// <summary>
         /// 检测冲刺碰撞
+        /// 性能优化：使用sqrMagnitude避免开方运算
         /// </summary>
         private bool CheckDashCollision()
         {
             if (bossCharacter == null || playerCharacter == null) return false;
             
-            float collisionRadius = 1.5f;
-            float distance = Vector3.Distance(
-                bossCharacter.transform.position, 
-                playerCharacter.transform.position
-            );
+            // 性能优化：使用sqrMagnitude避免开方运算
+            const float collisionRadius = 1.5f;
+            const float collisionRadiusSqr = collisionRadius * collisionRadius; // 2.25f
+            Vector3 diff = bossCharacter.transform.position - playerCharacter.transform.position;
             
-            return distance < collisionRadius;
+            return diff.sqrMagnitude < collisionRadiusSqr;
         }
         
         // ========== 太阳舞攻击 ==========
@@ -2799,7 +2644,7 @@ namespace BossRush
             isSunDanceActive = true;
             
             // 生成光束组（放在Boss身体中间高度）
-            Vector3 beamPos = targetPos + Vector3.up * 1.2f; // Boss身体中间高度
+            Vector3 beamPos = targetPos + Vector3.up * DragonKingConfig.BossChestHeightOffset; // Boss身体中间高度
             GameObject beamGroup = DragonKingAssetManager.InstantiateEffect(
                 DragonKingConfig.SunBeamGroupPrefab,
                 beamPos,
@@ -2933,7 +2778,7 @@ namespace BossRush
                 float bulletSpeed = cachedWeaponBulletSpeed * DragonKingConfig.SunDanceBulletSpeedMultiplier;
 
                 // 计算发射位置（Boss胸口位置，使用锁定位置而非当前位置）
-                Vector3 muzzlePos = sunDanceLockPosition + Vector3.up * 1.2f;
+                Vector3 muzzlePos = sunDanceLockPosition + Vector3.up * DragonKingConfig.BossChestHeightOffset;
 
                 // 播放射击音效（内部已做节流）
                 PlayWeaponShootSound();
@@ -3194,7 +3039,7 @@ namespace BossRush
             for (int i = 0; i < starCount; i++)
             {
                 float angle = i * angleStep;
-                Vector3 spawnPos = centerPos + Vector3.up * 1f;
+                Vector3 spawnPos = centerPos + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
                 
                 GameObject star = DragonKingAssetManager.InstantiateEffect(
                     DragonKingConfig.RainbowStarPrefab,
@@ -3305,7 +3150,7 @@ namespace BossRush
                 for (int i = 0; i < linesPerWave; i++)
                 {
                     // 动态获取玩家当前位置（高度设为身体中间）
-                    Vector3 currentPos = playerCharacter.transform.position + Vector3.up * 1f;
+                    Vector3 currentPos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
 
                     // 每条线都在玩家脚下，旋转5°
                     float rotation = i * 5f;
@@ -3604,7 +3449,7 @@ namespace BossRush
             if (playerCharacter == null || lance == null) return false;
 
             Vector3 lancePos = lance.transform.position;
-            Vector3 playerPos = playerCharacter.transform.position + Vector3.up * 1f;
+            Vector3 playerPos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
 
             // 使用射线检测长矛到玩家的路径
             Vector3 direction = (playerPos - lancePos).normalized;
@@ -3685,7 +3530,7 @@ namespace BossRush
                 List<GameObject> warningLines = new List<GameObject>(linesPerWave);
 
                 // 模拟玩家移动轨迹来生成线位置
-                Vector3 basePos = playerCharacter.transform.position + Vector3.up * 1f;
+                Vector3 basePos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
                 Vector3 playerForward = playerCharacter.transform.forward;
                 playerForward.y = 0;
                 playerForward = playerForward.normalized;
@@ -3914,6 +3759,7 @@ namespace BossRush
     /// <summary>
     /// 龙王碰撞检测器组件
     /// 用于检测Boss与玩家的碰撞并触发伤害
+    /// [修复] 使用距离检测替代触发器事件，避免多碰撞器导致的异常
     /// </summary>
     public class DragonKingCollisionDetector : MonoBehaviour
     {
@@ -3930,19 +3776,14 @@ namespace BossRush
         private const float CHECK_COOLDOWN = 0.5f;
         
         /// <summary>
-        /// 当前在触发器内的玩家
+        /// 碰撞检测半径
         /// </summary>
-        private CharacterMainControl playerInTrigger = null;
+        private float collisionRadius = 1.5f;
         
         /// <summary>
-        /// 持续碰撞检测协程
+        /// 缓存的玩家引用
         /// </summary>
-        private Coroutine stayCheckCoroutine = null;
-        
-        /// <summary>
-        /// 缓存的WaitForSeconds
-        /// </summary>
-        private static readonly WaitForSeconds waitCheckInterval = new WaitForSeconds(CHECK_COOLDOWN);
+        private CharacterMainControl cachedPlayer = null;
         
         /// <summary>
         /// 初始化碰撞检测器
@@ -3950,58 +3791,40 @@ namespace BossRush
         public void Initialize(DragonKingAbilityController ctrl)
         {
             controller = ctrl;
+            collisionRadius = DragonKingConfig.CollisionRadius;
             
-            // 设置碰撞层级
-            gameObject.layer = LayerMask.NameToLayer("Default");
+            // 禁用SphereCollider的触发器功能，改用距离检测
+            var sphereCollider = GetComponent<SphereCollider>();
+            if (sphereCollider != null)
+            {
+                sphereCollider.enabled = false;
+            }
             
-            ModBehaviour.DevLog("[DragonKing] 碰撞检测器组件初始化完成");
+            ModBehaviour.DevLog("[DragonKing] 碰撞检测器组件初始化完成（使用距离检测模式）");
         }
         
-        private void OnTriggerEnter(Collider other)
+        void Update()
         {
-            CharacterMainControl character = GetPlayerFromCollider(other);
-            if (character != null && character.IsMainCharacter)
+            // 每帧检测距离，替代触发器事件
+            if (controller == null) return;
+            if (!enabled) return;
+            
+            // 获取玩家引用
+            if (cachedPlayer == null || !cachedPlayer.gameObject.activeInHierarchy)
             {
-                playerInTrigger = character;
-                
-                // 立即检测一次
-                TryTriggerCollision();
-                
-                // 启动持续检测协程
-                if (stayCheckCoroutine == null)
-                {
-                    stayCheckCoroutine = StartCoroutine(StayCheckCoroutine());
-                }
+                cachedPlayer = CharacterMainControl.Main;
             }
-        }
-        
-        private void OnTriggerExit(Collider other)
-        {
-            CharacterMainControl character = GetPlayerFromCollider(other);
-            if (character != null && character == playerInTrigger)
+            
+            if (cachedPlayer == null) return;
+            
+            // 计算与玩家的距离
+            float distance = Vector3.Distance(transform.position, cachedPlayer.transform.position);
+            
+            // 如果在碰撞范围内，尝试触发碰撞
+            if (distance <= collisionRadius)
             {
-                playerInTrigger = null;
-                
-                // 停止持续检测协程
-                if (stayCheckCoroutine != null)
-                {
-                    StopCoroutine(stayCheckCoroutine);
-                    stayCheckCoroutine = null;
-                }
-            }
-        }
-        
-        /// <summary>
-        /// 持续碰撞检测协程（替代OnTriggerStay以优化性能）
-        /// </summary>
-        private IEnumerator StayCheckCoroutine()
-        {
-            while (playerInTrigger != null)
-            {
-                yield return waitCheckInterval;
                 TryTriggerCollision();
             }
-            stayCheckCoroutine = null;
         }
         
         /// <summary>
@@ -4009,50 +3832,16 @@ namespace BossRush
         /// </summary>
         private void TryTriggerCollision()
         {
-            if (controller == null || playerInTrigger == null) return;
+            if (controller == null || cachedPlayer == null) return;
             if (Time.time - lastCollisionCheckTime < CHECK_COOLDOWN) return;
             
             lastCollisionCheckTime = Time.time;
-            controller.OnCollisionWithPlayer(playerInTrigger);
-        }
-        
-        /// <summary>
-        /// 从碰撞器获取玩家角色
-        /// </summary>
-        private CharacterMainControl GetPlayerFromCollider(Collider other)
-        {
-            if (other == null) return null;
-            
-            // 方式1：从碰撞器的父级查找
-            CharacterMainControl character = other.GetComponentInParent<CharacterMainControl>();
-            
-            // 方式2：从碰撞器本身查找
-            if (character == null)
-            {
-                character = other.GetComponent<CharacterMainControl>();
-            }
-            
-            // 方式3：检查DamageReceiver
-            if (character == null)
-            {
-                var damageReceiver = other.GetComponent<DamageReceiver>();
-                if (damageReceiver != null && damageReceiver.health != null)
-                {
-                    character = damageReceiver.health.TryGetCharacter();
-                }
-            }
-            
-            return character;
+            controller.OnCollisionWithPlayer(cachedPlayer);
         }
         
         private void OnDestroy()
         {
-            if (stayCheckCoroutine != null)
-            {
-                StopCoroutine(stayCheckCoroutine);
-                stayCheckCoroutine = null;
-            }
-            playerInTrigger = null;
+            cachedPlayer = null;
             controller = null;
         }
     }

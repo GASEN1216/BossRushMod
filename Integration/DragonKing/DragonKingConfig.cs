@@ -346,6 +346,28 @@ namespace BossRush
         /// </summary>
         public const float CollisionRadius = 1.5f;
         
+        // ========== 位置偏移参数（提取的魔法数字） ==========
+        
+        /// <summary>
+        /// Boss胸口高度偏移（弹幕发射位置）
+        /// </summary>
+        public const float BossChestHeightOffset = 1.2f;
+        
+        /// <summary>
+        /// 玩家目标高度偏移（追踪目标位置）
+        /// </summary>
+        public const float PlayerTargetHeightOffset = 1f;
+        
+        /// <summary>
+        /// 伤害点高度偏移（伤害数字显示位置）
+        /// </summary>
+        public const float DamagePointHeightOffset = 0.8f;
+        
+        /// <summary>
+        /// 弹幕命中检测半径
+        /// </summary>
+        public const float ProjectileHitRadius = 1.05f;
+        
         // ========== 换位参数 ==========
         
         /// <summary>
