@@ -32,13 +32,13 @@ namespace BossRush
 
         public override int ItemTypeId => TotemTypeIdBase;
 
-        public override string DisplayNameCN => "飞行1阶";
+        public override string DisplayNameCN => "腾云驾雾 I";
 
-        public override string DisplayNameEN => "Flight Totem Lv.1";
+        public override string DisplayNameEN => "Cloud Soar I";
 
-        public override string DescriptionCN => "装备后，冲刺变为飞行。长按空格持续向上飞行，体力耗尽后缓慢下降。";
+        public override string DescriptionCN => "尔等凡鸭怎知我俯瞰众生的疲惫";
 
-        public override string DescriptionEN => "When equipped, dash becomes flight. Hold space to fly upward continuously, glide slowly when stamina is depleted.";
+        public override string DescriptionEN => "Mere ducks cannot fathom my exhaustion overlooking all beings";
 
         public override int ItemQuality => 6;
 
@@ -102,5 +102,49 @@ namespace BossRush
         /// 图腾物品TypeID（动态分配，从500010开始）
         /// </summary>
         public const int TotemTypeIdBase = 500010;
+
+        // ========== 属性键（用于添加装备属性显示）==========
+
+        /// <summary>
+        /// 最大向上速度属性名
+        /// </summary>
+        public const string STAT_MAX_UPWARD_SPEED = "Flight_MaxUpwardSpeed";
+
+        /// <summary>
+        /// 加速时间属性名
+        /// </summary>
+        public const string STAT_ACCELERATION_TIME = "Flight_AccelerationTime";
+
+        /// <summary>
+        /// 滑翔水平速度属性名
+        /// </summary>
+        public const string STAT_GLIDING_SPEED = "Flight_GlidingSpeed";
+
+        /// <summary>
+        /// 缓慢下落速度属性名
+        /// </summary>
+        public const string STAT_DESCENT_SPEED = "Flight_DescentSpeed";
+
+        /// <summary>
+        /// 启动体力消耗属性名
+        /// </summary>
+        public const string STAT_STARTUP_STAMINA = "Flight_StartupStamina";
+
+        /// <summary>
+        /// 飞行体力消耗属性名
+        /// </summary>
+        public const string STAT_FLIGHT_STAMINA_DRAIN = "Flight_FlightStaminaDrain";
+
+        /// <summary>
+        /// 下落体力消耗属性名
+        /// </summary>
+        public const string STAT_DESCENT_STAMINA_DRAIN = "Flight_DescentStaminaDrain";
+
+        // ========== 自定义数据键（用于显示文字值）==========
+
+        /// <summary>
+        /// 能力键自定义数据键（用于显示"翻滚键：腾云"）
+        /// </summary>
+        public const string VAR_ABILITY_KEY = "Flight_Ability";
     }
 }
