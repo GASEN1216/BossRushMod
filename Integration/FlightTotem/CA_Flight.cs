@@ -66,6 +66,11 @@ namespace BossRush
         /// </summary>
         private const float TakeoffBufferTime = 0.2f;
 
+        /// <summary>
+        /// 云雾特效实例
+        /// </summary>
+        private FlightCloudEffect cloudEffect;
+
         // ========== 静态反射缓存（共享给所有实例） ==========
 
         private static PropertyInfo characterItemProperty = null;
@@ -137,6 +142,9 @@ namespace BossRush
             currentUpwardSpeed = 0f;
             flightStartTime = Time.time;
 
+            // 创建云雾特效
+            CreateCloudEffect();
+
             LogIfVerbose($"飞行开始！起始Y={startY}");
             return true;
         }
@@ -146,6 +154,9 @@ namespace BossRush
             float currentY = characterController.transform.position.y;
             float heightGained = currentY - startY;
             LogIfVerbose($"飞行结束！结束Y={currentY}, 上升了{heightGained:F1}");
+
+            // 停止云雾特效
+            DestroyCloudEffect();
         }
 
         // 重写：体力消耗由子类自己处理（因为飞行和滑翔的消耗速率不同）
@@ -388,6 +399,40 @@ namespace BossRush
             }
 
             return 4f; // 默认值
+        }
+
+        // ========== 云雾特效方法 ==========
+
+        /// <summary>
+        /// 创建云雾特效
+        /// </summary>
+        private void CreateCloudEffect()
+        {
+            if (cloudEffect != null)
+            {
+                cloudEffect.StopEffect();
+            }
+
+            // 使用静态工厂方法创建特效
+            cloudEffect = FlightCloudEffect.Create<FlightCloudEffect>(
+                characterController.transform,
+                characterController.transform.position + new Vector3(0f, -0.3f, 0f)
+            );
+
+            LogIfVerbose("云雾特效已创建");
+        }
+
+        /// <summary>
+        /// 销毁云雾特效
+        /// </summary>
+        private void DestroyCloudEffect()
+        {
+            if (cloudEffect != null)
+            {
+                cloudEffect.StopEffect();
+                cloudEffect = null;
+                LogIfVerbose("云雾特效已停止");
+            }
         }
 
         /// <summary>
