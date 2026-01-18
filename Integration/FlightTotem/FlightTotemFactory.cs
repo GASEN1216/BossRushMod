@@ -2,18 +2,19 @@
 // FlightTotemFactory.cs - 飞行图腾物品工厂
 // ============================================================================
 // 模块说明：
-//   创建和注册飞行1阶图腾物品
-//   直接复用原版图腾作为模板，无需额外资源
+//   从 Unity AssetBundle 加载飞行图腾物品
+//   使用 EquipmentFactory 统一加载流程
+// ============================================================================
+// Unity 资源要求：
+//   - AssetBundle 名称：flight_totem
+//   - 路径：Assets/Equipment/flight_totem
+//   - Prefab 命名：FlightTotem_Lv{等级}_Item
+//   - 必须配置 Item 组件和 typeID
 // ============================================================================
 
 using System;
-using System.Reflection;
 using UnityEngine;
-using Duckov.Utilities;
-using Duckov.Economy;
 using ItemStatsSystem;
-using ItemStatsSystem.Items;
-using BossRush.Common.Utils;
 
 namespace BossRush
 {
@@ -31,7 +32,7 @@ namespace BossRush
         // ========== 初始化 ==========
 
         /// <summary>
-        /// 初始化飞行图腾物品
+        /// 初始化飞行图腾物品 - 从 Unity AssetBundle 加载
         /// </summary>
         private void InitializeFlightTotemItem()
         {
@@ -40,8 +41,28 @@ namespace BossRush
 
             try
             {
-                // 直接使用原版图腾作为模板
-                CreateFlightTotemFromVanillaTemplate();
+                // 使用 EquipmentFactory 加载飞行图腾 AssetBundle
+                int count = EquipmentFactory.LoadBundle("flight_totem");
+                
+                if (count > 0)
+                {
+                    // 获取加载的图腾物品
+                    flightTotemPrefab = GetLoadedFlightTotem();
+                    
+                    if (flightTotemPrefab != null)
+                    {
+                        flightTotemTypeId = flightTotemPrefab.TypeID;
+                        DevLog($"[FlightTotem] 成功加载飞行图腾: TypeID={flightTotemTypeId}");
+                    }
+                    else
+                    {
+                        DevLog("[FlightTotem] 未找到飞行图腾物品，请检查 Unity Prefab 配置");
+                    }
+                }
+                else
+                {
+                    DevLog("[FlightTotem] 加载飞行图腾 AssetBundle 失败，请检查 Assets/Equipment/flight_totem 是否存在");
+                }
             }
             catch (Exception e)
             {
@@ -50,138 +71,29 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 从原版图腾模板创建飞行图腾
+        /// 获取已加载的飞行图腾物品
         /// </summary>
-        private void CreateFlightTotemFromVanillaTemplate()
+        private Item GetLoadedFlightTotem()
         {
-            // 查找现有的图腾作为模板
-            Tag totemTag = FindTagByName("Totem");
-            if (totemTag == null)
+            var config = FlightConfig.Instance;
+            
+            // 尝试从 EquipmentFactory 缓存中获取
+            if (EquipmentFactory.IsCustomEquipment(config.ItemTypeId))
             {
-                DevLog("[FlightTotem] 未找到 Totem Tag，无法创建图腾");
-                return;
-            }
-
-            ItemFilter filter = default(ItemFilter);
-            filter.requireTags = new Tag[] { totemTag };
-            filter.minQuality = 1;
-            filter.maxQuality = 8;
-            int[] totemIds = ItemAssetsCollection.Search(filter);
-
-            if (totemIds == null || totemIds.Length == 0)
-            {
-                DevLog("[FlightTotem] 未找到任何图腾模板");
-                return;
-            }
-
-            // 使用第一个图腾作为模板
-            Item templateTotem = ItemAssetsCollection.InstantiateSync(totemIds[0]);
-            if (templateTotem == null)
-            {
-                DevLog("[FlightTotem] 无法实例化模板图腾");
-                return;
-            }
-
-            // 克隆并配置
-            GameObject totemGO = UnityEngine.Object.Instantiate(templateTotem.gameObject);
-            totemGO.name = "FlightTotem_Lv1";
-            UnityEngine.Object.DontDestroyOnLoad(totemGO);
-            totemGO.SetActive(false);
-
-            // 销毁临时模板
-            UnityEngine.Object.Destroy(templateTotem.gameObject);
-
-            Item totemItem = totemGO.GetComponent<Item>();
-            if (totemItem == null)
-            {
-                UnityEngine.Object.Destroy(totemGO);
-                return;
-            }
-
-            // 配置为飞行图腾
-            ConfigureFlightTotemItem(totemItem);
-
-            // 注册到物品系统
-            ItemAssetsCollection.AddDynamicEntry(totemItem);
-
-            flightTotemPrefab = totemItem;
-            flightTotemTypeId = totemItem.TypeID;
-
-            DevLog($"[FlightTotem] 成功创建飞行图腾: TypeID={flightTotemTypeId}");
-        }
-
-        /// <summary>
-        /// 配置飞行图腾物品属性
-        /// </summary>
-        private void ConfigureFlightTotemItem(Item totemItem)
-        {
-            if (totemItem == null) return;
-
-            try
-            {
-                var config = FlightConfig.Instance;
-
-                // 1. 设置 TypeID
-                var typeIdField = BossRush.Common.Utils.ReflectionCache.GetField(
-                    typeof(Item),
-                    "typeID",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                );
-                if (typeIdField != null)
+                // 检查是否是武器类型（虽然图腾不是武器，但使用统一接口）
+                Item totem = EquipmentFactory.GetLoadedGun(config.ItemTypeId);
+                if (totem != null) return totem;
+                
+                // 检查模型缓存（图腾可能只有 Item 没有 Model）
+                var models = EquipmentFactory.GetLoadedModels();
+                if (models.ContainsKey(config.ItemTypeId))
                 {
-                    typeIdField.SetValue(totemItem, config.ItemTypeId);
+                    // 从 ItemAssetsCollection 获取
+                    return ItemAssetsCollection.InstantiateSync(config.ItemTypeId);
                 }
-
-                // 2. 设置 displayName
-                var displayNameField = BossRush.Common.Utils.ReflectionCache.GetField(
-                    typeof(Item),
-                    "displayName",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                );
-                if (displayNameField != null)
-                {
-                    displayNameField.SetValue(totemItem, "BossRush_FlightTotem");
-                }
-
-                // 3. 移除原模板的 Effect 组件
-                foreach (var effect in totemItem.GetComponents<Effect>())
-                {
-                    UnityEngine.Object.DestroyImmediate(effect);
-                }
-
-                // 4. 移除原模板的 EffectTrigger 组件
-                foreach (var trigger in totemItem.GetComponents<EffectTrigger>())
-                {
-                    UnityEngine.Object.DestroyImmediate(trigger);
-                }
-
-                // 5. 清空使用行为
-                var usageUtils = totemItem.GetComponent<UsageUtilities>();
-                if (usageUtils?.behaviors != null)
-                {
-                    usageUtils.behaviors.Clear();
-                }
-
-                // 6. 添加 Totem 标签
-                AddTagsToItem(totemItem, config.ItemTags);
-
-                // 7. 设置品质
-                var qualityField = BossRush.Common.Utils.ReflectionCache.GetField(
-                    typeof(Item),
-                    "quality",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                );
-                if (qualityField != null)
-                {
-                    qualityField.SetValue(totemItem, config.ItemQuality);
-                }
-
-                DevLog("[FlightTotem] 物品配置完成");
             }
-            catch (Exception e)
-            {
-                DevLog($"[FlightTotem] 配置物品失败: {e.Message}");
-            }
+            
+            return null;
         }
 
         // ========== 本地化 ==========

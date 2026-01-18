@@ -40,9 +40,9 @@ namespace BossRush
 
         public override string DescriptionEN => "When equipped, dash becomes flight. Hold space to fly upward continuously, glide slowly when stamina is depleted.";
 
-        public override int ItemQuality => 3;
+        public override int ItemQuality => 6;
 
-        public override string[] ItemTags => new string[] { "Totem" };
+        public override string[] ItemTags => new string[] { "Totem", "DontDropOnDeadInSlot" };
 
         public override string IconAssetName => "birthday_cake";
 
