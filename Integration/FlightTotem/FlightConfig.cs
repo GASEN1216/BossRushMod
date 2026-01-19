@@ -53,15 +53,15 @@ namespace BossRush
         /// <summary>
         /// 最大向上速度（单位/秒）
         /// </summary>
-        public float MaxUpwardSpeed => 5f;
+        public float MaxUpwardSpeed => 10f;
 
         /// <summary>
         /// 加速到最大速度所需时间（秒）
         /// </summary>
-        public float AccelerationTime => 3f;
+        public float AccelerationTime => 0.3f;
 
         /// <summary>
-        /// 向上加速度 = 最大速度 / 加速时间（约 1.67 单位/秒²）
+        /// 向上加速度 = 最大速度 / 加速时间
         /// </summary>
         public float UpwardAcceleration => MaxUpwardSpeed / AccelerationTime;
 
@@ -73,7 +73,7 @@ namespace BossRush
         /// <summary>
         /// 缓慢下落速度（负值，向下）
         /// </summary>
-        public float SlowDescentSpeed => -2f;
+        public float SlowDescentSpeed => -0.8f;
 
         /// <summary>
         /// 缓慢下落时的体力消耗（每秒）
