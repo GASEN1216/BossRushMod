@@ -779,7 +779,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
 
         private StockShop ammoShop;
 
@@ -2432,6 +2432,55 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 播放自定义音效文件
+        /// </summary>
+        /// <param name="filePath">音效文件的完整路径</param>
+        public void PlaySoundEffect(string filePath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+                {
+                    DevLog("[BossRush] PlaySoundEffect: 音效文件不存在: " + filePath);
+                    return;
+                }
+                
+                GameObject target = null;
+                try
+                {
+                    CharacterMainControl main = CharacterMainControl.Main;
+                    if (main != null)
+                    {
+                        target = main.gameObject;
+                    }
+                }
+                catch {}
+                
+                // 使用游戏的AudioManager播放音效
+                System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
+                if (audioManagerType == null)
+                {
+                    DevLog("[BossRush] PlaySoundEffect: AudioManager类型未找到");
+                    return;
+                }
+                
+                var method = audioManagerType.GetMethod("PostCustomSFX", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (method == null)
+                {
+                    DevLog("[BossRush] PlaySoundEffect: PostCustomSFX方法未找到");
+                    return;
+                }
+                
+                object[] args = new object[] { filePath, target, false };
+                method.Invoke(null, args);
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] PlaySoundEffect异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
         /// 禁用场景中的所有spawner
         /// [性能优化] 只扫描 CharacterSpawnerRoot，因为它是所有 spawner 的根控制器
         /// [性能优化] 使用缓存的反射字段，避免重复获取
@@ -3166,6 +3215,14 @@ namespace BossRush
                     // 龙裔遗族使用独立生成逻辑，等待生成完成并返回结果
                     var dragonBoss = await SpawnDragonDescendant(position);
                     return dragonBoss;
+                }
+                
+                // 检查是否是龙王Boss，使用专门的生成方法
+                if (IsDragonKingPreset(preset))
+                {
+                    // 龙王使用独立生成逻辑
+                    var dragonKingBoss = await SpawnDragonKing(position);
+                    return dragonKingBoss;
                 }
                 
                 // 查找所有CharacterRandomPreset（从Resources中查找）

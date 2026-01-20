@@ -32,6 +32,8 @@
 //   | 面罩模型    | {名称}_FaceMask_Model   | MyGear_FaceMask_Model   |
 //   | 耳机物品    | {名称}_Headset_Item     | MyGear_Headset_Item     |
 //   | 耳机模型    | {名称}_Headset_Model    | MyGear_Headset_Model    |
+//   | 图腾物品    | {名称}_Totem_Item       | FlightTotem_Lv1_Item    |
+//   | 图腾模型    | {名称}_Totem_Model      | FlightTotem_Lv1_Model   |
 //
 //   【武器类】
 //   | Prefab 类型 | 命名格式                | 示例                    |
@@ -53,6 +55,13 @@
 //   - Item 组件
 //   - typeID：唯一ID（建议 600000+）
 //   - ⚠️ 不需要配置 tags，代码会自动添加！
+//
+// 【图腾 Item Prefab】必须配置：
+//   - Item 组件
+//   - typeID：唯一ID（建议 600100+）
+//   - displayName：本地化键名（如 "BossRush_FlightTotem"）
+//   - quality：品质等级（1-8）
+//   - ⚠️ 不需要配置 tags，代码会自动添加 Totem 标签
 //
 // 【武器 Item Prefab】必须配置：
 //   - Item 组件 + ItemSetting_Gun 组件
@@ -103,7 +112,7 @@ using Duckov.Buffs;
 namespace BossRush
 {
     /// <summary>
-    /// 物品类型枚举（扩展支持武器）
+    /// 物品类型枚举（扩展支持武器和图腾）
     /// </summary>
     public enum EquipmentType
     {
@@ -112,7 +121,8 @@ namespace BossRush
         Backpack,   // 背包 - 使用 "Backpack" Tag
         FaceMask,   // 面罩 - 使用 "FaceMask" Tag
         Headset,    // 耳机 - 使用 "Headset" Tag
-        Gun         // 枪械 - 使用 "Gun" Tag（新增）
+        Gun,        // 枪械 - 使用 "Gun" Tag
+        Totem       // 图腾 - 使用 "Totem" Tag（新增）
     }
 
     /// <summary>
@@ -323,6 +333,7 @@ namespace BossRush
                 case EquipmentType.FaceMask: return "FaceMask";
                 case EquipmentType.Headset: return "Headset";
                 case EquipmentType.Gun: return "Gun";
+                case EquipmentType.Totem: return "Totem";
                 default: return "Helmat";
             }
         }
@@ -342,6 +353,10 @@ namespace BossRush
             if (nameLower.Contains("_pistol_")) return EquipmentType.Gun;
             if (nameLower.Contains("_shotgun_")) return EquipmentType.Gun;
             if (nameLower.Contains("_smg_")) return EquipmentType.Gun;
+            
+            // 图腾类型（新增）
+            if (nameLower.Contains("_totem_")) return EquipmentType.Totem;
+            if (nameLower.Contains("totem")) return EquipmentType.Totem;
             
             // 装备类型
             if (nameLower.Contains("_helmet_")) return EquipmentType.Helmet;
@@ -549,7 +564,10 @@ namespace BossRush
                         
                         // 配置龙套装（设置本地化键和属性）
                         DragonSetConfig.TryConfigure(itemPrefab, baseName);
-                        
+
+                        // 配置飞行图腾（设置本地化键和属性）
+                        FlightTotemConfig.TryConfigure(itemPrefab, baseName);
+
                         // 配置龙息武器（配件槽位、弹药类型、耐久度、标签）
                         DragonBreathWeaponConfig.TryConfigure(itemPrefab, baseName);
 
@@ -588,6 +606,13 @@ namespace BossRush
             
             // 添加装备 Tag
             EquipmentHelper.AddTagToItem(itemPrefab, tagName);
+            
+            // 图腾类型需要额外添加 DontDropOnDeadInSlot 标签（绑定装备）
+            if (equipType == EquipmentType.Totem)
+            {
+                EquipmentHelper.AddTagToItem(itemPrefab, "DontDropOnDeadInSlot");
+                ModBehaviour.DevLog("[EquipmentFactory] 为图腾添加绑定装备标签: " + itemPrefab.name);
+            }
 
             // 注入 EquipmentModel（如果 Unity 中未配置）
             if (modelAgent != null && !HasEquipmentModel(itemPrefab))
