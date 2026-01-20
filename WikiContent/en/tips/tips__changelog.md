@@ -2,6 +2,11 @@
  
 ![Changelog](TODO.png)
 
+### 2026.1.20 23:00
+- Fixed Courier Awen's delivery function failing in some situations
+- Reduced Dragon Descendant's phase transition duration
+- Adjusted high-quality drop rates for "Snap of Fingers" and "Interesting" boss difficulties
+
 ### 2026.1.12 16:00
 - Naked Start mode now excludes mercenary faction
 
