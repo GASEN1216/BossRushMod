@@ -169,7 +169,7 @@ public static class ModConfigAPI
                         return type;
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
                     // 忽略单个程序集的查找错误
                     continue;
