@@ -61,10 +61,10 @@ namespace BossRush
         private const float LOOT_HIGH_QUALITY_DIVISOR = 100f;
         
         /// <summary>高品质数量上限</summary>
-        private const int LOOT_HIGH_QUALITY_COUNT_MAX = 7;
+        private const int LOOT_HIGH_QUALITY_COUNT_MAX = 10;
         
-        /// <summary>血量加成系数（每100血量增加的高品质概率，0.01即1%）</summary>
-        private const float LOOT_HEALTH_BONUS_RATE = 0.01f;
+        /// <summary>血量加成系数（每100血量增加的高品质概率，0.01即5%）</summary>
+        private const float LOOT_HEALTH_BONUS_RATE = 0.05f;
         
         /// <summary>击杀时间加成系数（最快击杀时的最大加成，0.1即10%）</summary>
         private const float LOOT_TIME_BONUS_RATE = 0.1f;
