@@ -1032,30 +1032,19 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 显示复活对话气泡
+        /// 显示复活对话气泡（简化版：只显示两次）
         /// </summary>
         private IEnumerator ShowResurrectionDialogue()
         {
             string dialogue = DragonDescendantConfig.ResurrectionDialogue;
-            float charInterval = DragonDescendantConfig.DialogueCharInterval;
             
-            // [性能优化] 使用缓存的WaitForSeconds
-            WaitForSeconds waitCharInterval = GetCachedWaitForSeconds(charInterval);
+            // 第一次：显示 "我..."（悬念效果）
+            ShowDialogueBubble("我...", 2f);
+            yield return wait1s;
             
-            // 逐字显示
-            string displayText = "";
-            foreach (char c in dialogue)
-            {
-                displayText += c;
-                
-                // 显示气泡
-                ShowDialogueBubble(displayText, charInterval + 0.5f);
-                
-                yield return waitCharInterval;
-            }
-            
-            // 等待最后一个字符显示完成
-            yield return wait05s;
+            // 第二次：显示完整对话
+            ShowDialogueBubble(dialogue, 2f);
+            yield return wait1s;
         }
         
         /// <summary>
