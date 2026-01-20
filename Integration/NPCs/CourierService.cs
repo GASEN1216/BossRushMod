@@ -235,26 +235,32 @@ namespace BossRush
                     }
                 }
                 
-                // 直接操作 PlayerStorageBuffer.Buffer 避免显示单个物品通知
-                // 注意：PlayerStorage.IncomingItemBuffer 实际上就是 PlayerStorageBuffer.Buffer
-                // 但其他 mod 可能对 PlayerStorage 进行了 patch，所以我们直接使用 PlayerStorageBuffer
+                // 使用原版 PlayerStorage.Push() 方法发送物品到快递站（Buffer）
                 foreach (Item item in itemsToSend)
                 {
+                    string itemName = item.DisplayName;  // 先保存名称，因为 Push 后 item 会被销毁
                     item.Detach();  // 先从容器分离
                     
-                    // 直接添加到缓冲区（不显示通知）
-                    var itemData = ItemStatsSystem.Data.ItemTreeData.FromItem(item);
-                    PlayerStorageBuffer.Buffer.Add(itemData);
-                    item.DestroyTree();  // 销毁物品树
+                    // 使用原版 PlayerStorage.Push() 方法
+                    // 参数 toBufferDirectly=true 表示直接放入快递站（Buffer），不尝试放入仓库
+                    PlayerStorage.Push(item, true);
                     
-                    ModBehaviour.DevLog("[CourierService] 已发送物品: " + item.DisplayName);
+                    ModBehaviour.DevLog("[CourierService] 已发送物品到快递站: " + itemName);
                 }
+                
+                // 清空原版 PlayerStorage.Push 产生的通知队列，避免每个物品都播报一次
+                // 我们会在后面显示一次汇总通知
+                ClearNotificationQueue();
                 
                 // 记录发送结果（用于告别气泡）
                 lastSentItemCount = itemsToSend.Count;
                 lastDeliveryFee = fee;
                 
                 ModBehaviour.DevLog("[CourierService] 发送完成，共 " + itemsToSend.Count + " 件物品");
+                
+                // 立即保存快递数据
+                PlayerStorageBuffer.SaveBuffer();
+                ModBehaviour.DevLog("[CourierService] 已保存快递数据到存档");
                 
                 // 显示一次总的大横幅通知（绿色文字）
                 ShowDeliveryCompleteBanner();
@@ -275,19 +281,52 @@ namespace BossRush
         {
             try
             {
-                // 获取本地化文本（绿色文字）
+                // 获取本地化文本（绿色文字），显示发送的物品数量
                 string bannerText = L10n.T(
-                    "<color=#00FF00>快递已送达！</color>",
-                    "<color=#00FF00>Delivery Complete!</color>"
+                    "<color=#00FF00>" + lastSentItemCount + "件快递已送达！</color>",
+                    "<color=#00FF00>" + lastSentItemCount + " items delivered!</color>"
                 );
                 
-                // 使用游戏的通知系统显示横幅（与 BossRush 其他横幅一致）
+                // 使用游戏的通知系统显示横幅
                 NotificationText.Push(bannerText);
-                ModBehaviour.DevLog("[CourierService] 显示快递完成横幅");
+                ModBehaviour.DevLog("[CourierService] 显示快递完成横幅: " + lastSentItemCount + " 件物品");
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[CourierService] [WARNING] 显示横幅失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 清空通知队列（通过反射访问 NotificationText.pendingTexts 静态字段）
+        /// 用于禁止 PlayerStorage.Push 产生的逐个物品通知
+        /// </summary>
+        private static void ClearNotificationQueue()
+        {
+            try
+            {
+                // 获取 NotificationText 类的 pendingTexts 静态字段
+                var pendingTextsField = typeof(NotificationText).GetField("pendingTexts", 
+                    BindingFlags.NonPublic | BindingFlags.Static);
+                
+                if (pendingTextsField != null)
+                {
+                    var queue = pendingTextsField.GetValue(null) as System.Collections.Generic.Queue<string>;
+                    if (queue != null)
+                    {
+                        int clearedCount = queue.Count;
+                        queue.Clear();
+                        ModBehaviour.DevLog("[CourierService] 已清空通知队列，清除了 " + clearedCount + " 条通知");
+                    }
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 无法获取 pendingTexts 字段");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 清空通知队列失败: " + e.Message);
             }
         }
         
@@ -967,6 +1006,10 @@ namespace BossRush
                 lastDeliveryFee = fee;
                 
                 ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 自动发送完成，共 " + itemsToSend.Count + " 件物品");
+                
+                // 立即保存快递数据到存档
+                PlayerStorageBuffer.SaveBuffer();
+                ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 已保存快递数据到存档");
                 
                 // 显示快递完成横幅
                 ShowDeliveryCompleteBanner();
