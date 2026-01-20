@@ -506,6 +506,9 @@ namespace BossRush
             // 启动攻击循环
             attackLoopCoroutine = StartCoroutine(AttackLoop());
             
+            // 播放登场音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_Spawn);
+            
             ModBehaviour.DevLog("[DragonKing] 能力控制器初始化完成");
         }
         
@@ -704,6 +707,9 @@ namespace BossRush
         /// </summary>
         public void OnBossDeath()
         {
+            // 播放死亡音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_Death);
+            
             CurrentPhase = DragonKingPhase.Dead;
             
             // 停止自定义射击
@@ -1049,6 +1055,9 @@ namespace BossRush
         private IEnumerator TriggerPhase2Transition()
         {
             ModBehaviour.DevLog("[DragonKing] 触发二阶段转换");
+            
+            // 播放阶段转换音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_Phase2);
 
             CurrentPhase = DragonKingPhase.Transitioning;
 
@@ -1704,6 +1713,9 @@ namespace BossRush
 
                     bolts.Add(bolt);
                     activeProjectiles.Add(bolt);
+                    
+                    // 播放棱彩弹1生成音效（每个弹幕都播放）
+                    ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltSpawn);
                 }
             }
 
@@ -1861,6 +1873,10 @@ namespace BossRush
             if (diff.sqrMagnitude < hitRadiusSqr)
             {
                 ApplyDamageToPlayer(damage);
+                
+                // 播放棱彩弹命中音效
+                ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltHit);
+                
                 return true;
             }
             
@@ -1999,6 +2015,9 @@ namespace BossRush
                     activeProjectiles.Add(bolt);
                     // 使用棱彩弹2专用的追踪时间（2秒），添加到协程管理列表
                     StartTrackedCoroutine(TrackingProjectileWithDuration(bolt, DragonKingConfig.PrismaticBoltLifetime, DragonKingConfig.PrismaticBolt2TrackingDuration));
+                    
+                    // 播放棱彩弹2生成音效（每个弹幕都播放）
+                    ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltSpawn2);
                 }
                 
                 currentAngle += angleIncrement;
@@ -2057,6 +2076,9 @@ namespace BossRush
             float lockTargetTime1 = chargeTime - 0.3f;
             // 在冲刺前0.1秒锁定玩家位置作为第二段冲刺方向
             float lockTargetTime2 = chargeTime - 0.1f;
+            
+            // 播放冲刺蓄力音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_DashCharge);
             
             // 创建粒子聚拢特效
             GameObject chargeParticles = CreateChargeParticles(bossCharacter.transform);
@@ -2144,6 +2166,9 @@ namespace BossRush
             
             // ========== 第一段冲刺 - 直接移动到锁定的目标位置 ==========
             ModBehaviour.DevLog($"[DragonKing] 开始第一段冲刺！起点={startDashPos} 目标={finalTargetPos} 距离={totalDistance}");
+            
+            // 播放冲刺爆发音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_DashBurst);
             
             // 强制转向冲刺方向
             bossCharacter.transform.rotation = Quaternion.LookRotation(finalDashDir);
@@ -2585,6 +2610,10 @@ namespace BossRush
             {
                 activeEffects.Add(warningCircle); // 添加到全局清理列表
             }
+            
+            // 播放太阳舞警告音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_SunWarning);
+            
             yield return wait15s; // 使用缓存的WaitForSeconds(1.5f)
             
             // 销毁预警圆圈
@@ -2996,6 +3025,9 @@ namespace BossRush
             float maxRadius = DragonKingConfig.RainbowMaxRadius;
             float rotationSpeed = DragonKingConfig.RainbowRotationSpeed;
             float duration = DragonKingConfig.RainbowDuration;
+            
+            // 播放永恒彩虹生成音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_RainbowSpawn);
 
             // 生成星星 - 预分配List容量
             List<GameObject> stars = new List<GameObject>(starCount);
@@ -3127,6 +3159,9 @@ namespace BossRush
                     {
                         warningLines.Add(line);
                         activeWarningLines.Add(line); // 添加到全局清理列表
+                        
+                        // 播放长矛警告音效（每条线都播放）
+                        ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_LanceWarning);
                     }
 
                     yield return wait01s; // lineInterval = 0.1f
@@ -3140,6 +3175,9 @@ namespace BossRush
                 {
                     if (line != null)
                     {
+                        // 播放长矛发射音效（每条长矛都播放）
+                        ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_LanceFire);
+                        
                         FireLanceFromWarningLine(line);
                         activeWarningLines.Remove(line); // 从全局清理列表移除
                         Destroy(line); // 移除警告线
@@ -3581,6 +3619,9 @@ namespace BossRush
             if (Time.time - lastCollisionDamageTime < DragonKingConfig.CollisionCooldown) return;
             
             lastCollisionDamageTime = Time.time;
+            
+            // 播放碰撞音效
+            ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_Hit);
             
             // 应用碰撞伤害
             ApplyCollisionDamage(player);

@@ -6,6 +6,8 @@
 //   基于泰拉瑞亚光之女皇的AI框架设计
 // ============================================================================
 
+using System.IO;
+
 namespace BossRush
 {
     /// <summary>
@@ -483,6 +485,81 @@ namespace BossRush
         /// 阶段转换特效预制体名称
         /// </summary>
         public const string PhaseTransitionPrefab = "PhaseTransition";
+        
+        // ========== 音效路径 ==========
+        
+        /// <summary>
+        /// 音效文件基础路径
+        /// </summary>
+        public static readonly string SoundBasePath = Path.Combine(
+            Path.GetDirectoryName(typeof(DragonKingConfig).Assembly.Location),
+            "Assets", "Sounds", "DragonKing"
+        );
+        
+        /// <summary>
+        /// Boss登场音效
+        /// </summary>
+        public static readonly string Sound_Spawn = Path.Combine(SoundBasePath, "common_spawn.mp3");
+        
+        /// <summary>
+        /// Boss死亡音效
+        /// </summary>
+        public static readonly string Sound_Death = Path.Combine(SoundBasePath, "common_death.mp3");
+        
+        /// <summary>
+        /// 碰撞/受击音效
+        /// </summary>
+        public static readonly string Sound_Hit = Path.Combine(SoundBasePath, "common_hit.mp3");
+        
+        /// <summary>
+        /// 二阶段转换音效
+        /// </summary>
+        public static readonly string Sound_Phase2 = Path.Combine(SoundBasePath, "phase2_transition.mp3");
+        
+        /// <summary>
+        /// 冲刺蓄力音效
+        /// </summary>
+        public static readonly string Sound_DashCharge = Path.Combine(SoundBasePath, "dash_charge.mp3");
+        
+        /// <summary>
+        /// 冲刺爆发音效
+        /// </summary>
+        public static readonly string Sound_DashBurst = Path.Combine(SoundBasePath, "dash_burst.mp3");
+        
+        /// <summary>
+        /// 太阳舞警告音效
+        /// </summary>
+        public static readonly string Sound_SunWarning = Path.Combine(SoundBasePath, "sun_warning.mp3");
+        
+        /// <summary>
+        /// 长矛警告音效
+        /// </summary>
+        public static readonly string Sound_LanceWarning = Path.Combine(SoundBasePath, "lance_warning.mp3");
+        
+        /// <summary>
+        /// 长矛发射音效
+        /// </summary>
+        public static readonly string Sound_LanceFire = Path.Combine(SoundBasePath, "lance_fire.mp3");
+        
+        /// <summary>
+        /// 棱彩弹1生成音效
+        /// </summary>
+        public static readonly string Sound_BoltSpawn = Path.Combine(SoundBasePath, "bolt_spawn.mp3");
+        
+        /// <summary>
+        /// 棱彩弹2生成音效
+        /// </summary>
+        public static readonly string Sound_BoltSpawn2 = Path.Combine(SoundBasePath, "bolt_spawn2.mp3");
+        
+        /// <summary>
+        /// 棱彩弹命中音效
+        /// </summary>
+        public static readonly string Sound_BoltHit = Path.Combine(SoundBasePath, "bolt_hit.mp3");
+        
+        /// <summary>
+        /// 永恒彩虹生成音效
+        /// </summary>
+        public static readonly string Sound_RainbowSpawn = Path.Combine(SoundBasePath, "rainbow_spawn.mp3");
         
         // ========== 攻击序列 ==========
         
