@@ -2092,15 +2092,15 @@ namespace BossRush
 
                 DevLog("[BossRush] 已为 Boss 生成专用奖励盒子，总目标物品数量=" + totalCount + ", 期望高品质比例=" + highChance.ToString("P0") + "（击杀耗时: " + killDuration.ToString("F1") + "秒）");
 
-                // 龙裔遗族特殊掉落：在掉落箱创建后添加龙套装
-                // 使用协程等待 LootBoxLoader 填充完成后再添加
+                // Boss特殊掉落：在掉落箱创建后添加专属掉落物
+                // 统一使用一个协程处理所有Boss的特殊掉落
                 try
                 {
-                    this.StartCoroutine(AddDragonSetToLootboxCoroutine(lootbox, bossMain));
+                    this.StartCoroutine(AddBossSpecialLootToLootboxCoroutine(lootbox, bossMain));
                 }
-                catch (Exception dragonEx)
+                catch (Exception specialLootEx)
                 {
-                    DevLog("[BossRush] 安排龙套装掉落协程失败: " + dragonEx.Message);
+                    DevLog("[BossRush] 安排Boss特殊掉落协程失败: " + specialLootEx.Message);
                 }
 
                 // 调试：记录实际掉落物的品质与价格，方便验证过滤逻辑
@@ -2465,110 +2465,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 龙裔遗族特殊掉落：在掉落箱填充完成后添加龙套装（协程版本）
-        /// 从Boss身上获取装备（保留耐久度等属性），而不是新创建
-        /// </summary>
-        private IEnumerator AddDragonSetToLootboxCoroutine(InteractableLootbox lootbox, CharacterMainControl bossMain)
-        {
-            // 检查是否是龙裔遗族Boss（通过名称判断，支持多Boss模式）
-            if (!IsDragonDescendantBoss(bossMain))
-            {
-                yield break;
-            }
-
-            // 检查是否启用了随机掉落配置
-            if (config == null || !config.enableRandomBossLoot)
-            {
-                DevLog("[DragonDescendant] 随机掉落未启用，跳过龙套装掉落");
-                yield break;
-            }
-
-            if (lootbox == null)
-            {
-                DevLog("[DragonDescendant] 掉落箱为空，无法添加龙套装");
-                yield break;
-            }
-
-            // 等待掉落箱Inventory加载完成
-            Inventory inv = lootbox.Inventory;
-            if (inv == null)
-            {
-                DevLog("[DragonDescendant] 掉落箱Inventory为空");
-                yield break;
-            }
-
-            int tries = 0;
-            const int maxTries = 30;
-            while (tries < maxTries && inv.Loading)
-            {
-                tries++;
-                yield return new WaitForSeconds(0.1f);
-            }
-
-            // 按概率随机选择掉落物品：龙息10%、龙头30%、龙甲60%
-            float roll = UnityEngine.Random.Range(0f, 1f);
-            int selectedTypeId;
-            string itemName;
-            
-            if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON)
-            {
-                // 10% 龙息武器
-                selectedTypeId = DragonDescendantConfig.DRAGON_BREATH_TYPE_ID;
-                itemName = "龙息";
-            }
-            else if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON + DragonDescendantConfig.DROP_CHANCE_HELM)
-            {
-                // 30% 龙头
-                selectedTypeId = DragonDescendantConfig.DRAGON_HELM_TYPE_ID;
-                itemName = "龙头";
-            }
-            else
-            {
-                // 60% 龙甲
-                selectedTypeId = DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID;
-                itemName = "龙甲";
-            }
-
-            DevLog("[DragonDescendant] 随机选择龙套装掉落: " + itemName + " (TypeID=" + selectedTypeId + ", roll=" + roll.ToString("F3") + ")");
-
-            try
-            {
-                // 使用 ItemAssetsCollection.InstantiateSync 从原始 Prefab 创建全新物品
-                // 避免使用 FindItemByTypeId + CreateInstance，因为那会找到 Boss 身上已损坏的装备实例
-                Item newItem = ItemAssetsCollection.InstantiateSync(selectedTypeId);
-                if (newItem == null)
-                {
-                    DevLog("[DragonDescendant] 创建龙套装实例失败: TypeID=" + selectedTypeId);
-                    yield break;
-                }
-
-                // 确保耐久度为满（从 Prefab 创建的物品应该是满耐久，但保险起见再设置一次）
-                float maxDurability = newItem.MaxDurability;
-                if (maxDurability > 0)
-                {
-                    newItem.Durability = maxDurability;
-                    // 清除可能存在的耐久度损耗值
-                    newItem.DurabilityLoss = 0f;
-                }
-                
-                // 如果是龙息武器，需要配置武器属性
-                if (selectedTypeId == DragonDescendantConfig.DRAGON_BREATH_TYPE_ID)
-                {
-                    DragonBreathWeaponConfig.ConfigureWeapon(newItem);
-                    DevLog("[DragonDescendant] 已配置龙息武器属性");
-                }
-
-                // 添加到掉落箱
-                inv.AddItem(newItem);
-                DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱，耐久度: " + GetItemDurability(newItem));
-            }
-            catch (Exception addEx)
-            {
-                DevLog("[DragonDescendant] 添加龙套装到掉落箱失败: " + addEx.Message);
-            }
-        }
-
-        /// <summary>
         /// 获取物品的耐久度（用于日志）
         /// </summary>
         private string GetItemDurability(Item item)
@@ -2594,14 +2490,168 @@ namespace BossRush
         /// <summary>
         /// [已废弃] 在掉落物品生成之前，检查是否是龙裔遗族Boss并添加龙套装到库存
         /// 注意：此方法已不再使用，因为BossRush创建独立的掉落箱，不使用Boss库存
-        /// 请使用 AddDragonSetToLootboxCoroutine 代替
+        /// 请使用 AddBossSpecialLootToLootboxCoroutine 代替
         /// </summary>
-        [System.Obsolete("使用 AddDragonSetToLootboxCoroutine 代替")]
+        [System.Obsolete("使用 AddBossSpecialLootToLootboxCoroutine 代替")]
         private void TryAddDragonSetToLootBeforeSpawn(CharacterMainControl bossMain)
         {
             // 此方法已废弃，保留仅为兼容性
-            // 龙套装掉落逻辑已移至 AddDragonSetToLootboxCoroutine
-            DevLog("[DragonDescendant] TryAddDragonSetToLootBeforeSpawn 已废弃，请使用 AddDragonSetToLootboxCoroutine");
+            DevLog("[DragonDescendant] TryAddDragonSetToLootBeforeSpawn 已废弃");
+        }
+        
+        /// <summary>
+        /// Boss特殊掉落：统一处理所有Boss的专属掉落物（协程版本）
+        /// 在掉落箱填充完成后添加专属掉落物
+        /// </summary>
+        private IEnumerator AddBossSpecialLootToLootboxCoroutine(InteractableLootbox lootbox, CharacterMainControl bossMain)
+        {
+            if (lootbox == null || bossMain == null)
+            {
+                yield break;
+            }
+
+            // 检查是否启用了随机掉落配置
+            if (config == null || !config.enableRandomBossLoot)
+            {
+                yield break;
+            }
+
+            // 等待掉落箱Inventory加载完成
+            Inventory inv = lootbox.Inventory;
+            if (inv == null)
+            {
+                yield break;
+            }
+
+            int tries = 0;
+            const int maxTries = 30;
+            while (tries < maxTries && inv.Loading)
+            {
+                tries++;
+                yield return new WaitForSeconds(0.1f);
+            }
+
+            // 根据Boss类型添加对应的专属掉落物
+            if (IsDragonDescendantBoss(bossMain))
+            {
+                // 龙裔遗族：按概率掉落龙套装（龙息10%、龙头30%、龙甲60%）
+                yield return AddDragonDescendantLoot(inv);
+            }
+            else if (IsDragonKingBoss(bossMain))
+            {
+                // 龙王：100%掉落飞行图腾
+                yield return AddDragonKingLoot(inv);
+            }
+            // 未来新增Boss在此添加 else if 分支
+        }
+        
+        /// <summary>
+        /// 添加龙裔遗族专属掉落物到Inventory
+        /// </summary>
+        private IEnumerator AddDragonDescendantLoot(Inventory inv)
+        {
+            // 按概率随机选择掉落物品：龙息10%、龙头30%、龙甲60%
+            float roll = UnityEngine.Random.Range(0f, 1f);
+            int selectedTypeId;
+            string itemName;
+            
+            if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON)
+            {
+                selectedTypeId = DragonDescendantConfig.DRAGON_BREATH_TYPE_ID;
+                itemName = "龙息";
+            }
+            else if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON + DragonDescendantConfig.DROP_CHANCE_HELM)
+            {
+                selectedTypeId = DragonDescendantConfig.DRAGON_HELM_TYPE_ID;
+                itemName = "龙头";
+            }
+            else
+            {
+                selectedTypeId = DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID;
+                itemName = "龙甲";
+            }
+
+            DevLog("[DragonDescendant] 随机选择龙套装掉落: " + itemName + " (TypeID=" + selectedTypeId + ", roll=" + roll.ToString("F3") + ")");
+
+            try
+            {
+                Item newItem = ItemAssetsCollection.InstantiateSync(selectedTypeId);
+                if (newItem == null)
+                {
+                    DevLog("[DragonDescendant] 创建龙套装实例失败: TypeID=" + selectedTypeId);
+                    yield break;
+                }
+
+                // 确保耐久度为满
+                float maxDurability = newItem.MaxDurability;
+                if (maxDurability > 0)
+                {
+                    newItem.Durability = maxDurability;
+                    newItem.DurabilityLoss = 0f;
+                }
+                
+                // 如果是龙息武器，需要配置武器属性
+                if (selectedTypeId == DragonDescendantConfig.DRAGON_BREATH_TYPE_ID)
+                {
+                    DragonBreathWeaponConfig.ConfigureWeapon(newItem);
+                    DevLog("[DragonDescendant] 已配置龙息武器属性");
+                }
+
+                inv.AddItem(newItem);
+                DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱");
+            }
+            catch (Exception addEx)
+            {
+                DevLog("[DragonDescendant] 添加龙套装到掉落箱失败: " + addEx.Message);
+            }
+            
+            yield break;
+        }
+        
+        /// <summary>
+        /// 添加龙王专属掉落物到Inventory
+        /// </summary>
+        private IEnumerator AddDragonKingLoot(Inventory inv)
+        {
+            // 按概率掉落飞行图腾
+            float roll = UnityEngine.Random.Range(0f, 1f);
+            if (roll > DragonKingConfig.DROP_CHANCE)
+            {
+                DevLog("[DragonKing] 未触发掉落 (roll=" + roll.ToString("F3") + ")");
+                yield break;
+            }
+
+            int selectedTypeId = DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID;
+            string itemName = "腾云驾雾 I";
+
+            DevLog("[DragonKing] 龙王掉落: " + itemName + " (TypeID=" + selectedTypeId + ")");
+
+            try
+            {
+                Item newItem = ItemAssetsCollection.InstantiateSync(selectedTypeId);
+                if (newItem == null)
+                {
+                    DevLog("[DragonKing] 创建掉落物实例失败: TypeID=" + selectedTypeId);
+                    yield break;
+                }
+
+                // 确保耐久度为满
+                float maxDurability = newItem.MaxDurability;
+                if (maxDurability > 0)
+                {
+                    newItem.Durability = maxDurability;
+                    newItem.DurabilityLoss = 0f;
+                }
+
+                inv.AddItem(newItem);
+                DevLog("[DragonKing] 已将 " + itemName + " 添加到掉落箱");
+            }
+            catch (Exception addEx)
+            {
+                DevLog("[DragonKing] 添加掉落物到掉落箱失败: " + addEx.Message);
+            }
+            
+            yield break;
         }
     }
 }

@@ -596,6 +596,18 @@ namespace BossRush
             DragonKingAttackType.PrismaticBolts2
         };
         
+        // ========== 掉落物配置 ==========
+        
+        /// <summary>
+        /// 龙王专属掉落物TypeID（腾云驾雾 I 飞行图腾）
+        /// </summary>
+        public const int DRAGON_KING_LOOT_TYPE_ID = FlightConfig.TotemTypeIdBase;
+        
+        /// <summary>
+        /// 龙王掉落物掉落概率 (100% - 龙王必掉飞行图腾)
+        /// </summary>
+        public const float DROP_CHANCE = 1.0f;
+        
         // ========== 孩儿护我配置 ==========
         
         /// <summary>
