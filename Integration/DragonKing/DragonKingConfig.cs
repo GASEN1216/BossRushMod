@@ -595,5 +595,52 @@ namespace BossRush
             DragonKingAttackType.Dash,
             DragonKingAttackType.PrismaticBolts2
         };
+        
+        // ========== 孩儿护我配置 ==========
+        
+        /// <summary>
+        /// 孩儿护我触发血量阈值（HP）
+        /// </summary>
+        public const float ChildProtectionHealthThreshold = 1f;
+        
+        /// <summary>
+        /// 飞升目标高度（米）
+        /// </summary>
+        public const float ChildProtectionFlyHeight = 5f;
+        
+        /// <summary>
+        /// 飞升速度（米/秒）
+        /// </summary>
+        public const float ChildProtectionFlySpeed = 3f;
+        
+        /// <summary>
+        /// 龙王对话内容（中文）
+        /// </summary>
+        public const string ChildProtectionDialogueCN = "孩儿护我！";
+        
+        /// <summary>
+        /// 龙王对话内容（英文）
+        /// </summary>
+        public const string ChildProtectionDialogueEN = "My child, protect me!";
+        
+        /// <summary>
+        /// 龙裔遗族对话内容（中文）
+        /// </summary>
+        public const string DescendantDialogueCN = "爹爹！";
+        
+        /// <summary>
+        /// 龙裔遗族对话内容（英文）
+        /// </summary>
+        public const string DescendantDialogueEN = "Father!";
+        
+        /// <summary>
+        /// 对话气泡显示时长（秒）
+        /// </summary>
+        public const float DialogueDuration = 2f;
+        
+        /// <summary>
+        /// 对话气泡Y轴偏移（米）
+        /// </summary>
+        public const float DialogueBubbleYOffset = 2.5f;
     }
 }

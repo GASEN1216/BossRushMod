@@ -34,6 +34,8 @@ using UnityEngine;
 using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using Duckov.Utilities;
+using Duckov.UI.DialogueBubbles;
+using BossRush.Common.Effects;
 
 namespace BossRush
 {
@@ -202,6 +204,43 @@ namespace BossRush
         /// 太阳舞期间Boss锁定位置（用于弹幕发射位置）
         /// </summary>
         private Vector3 sunDanceLockPosition;
+        
+        // ========== 孩儿护我系统 ==========
+        
+        /// <summary>
+        /// 是否已触发孩儿护我
+        /// </summary>
+        private bool childProtectionTriggered = false;
+        
+        /// <summary>
+        /// 是否处于孩儿护我阶段
+        /// </summary>
+        private bool isInChildProtection = false;
+        
+        /// <summary>
+        /// 召唤的龙裔遗族引用
+        /// </summary>
+        private CharacterMainControl spawnedDescendant = null;
+        
+        /// <summary>
+        /// 飞行平台（防止下落）
+        /// </summary>
+        private GameObject flightPlatform = null;
+        
+        /// <summary>
+        /// 锁定的最低Y坐标（悬停高度）
+        /// </summary>
+        private float lockedMinY = float.MinValue;
+        
+        /// <summary>
+        /// 孩儿护我协程引用
+        /// </summary>
+        private Coroutine childProtectionCoroutine = null;
+        
+        /// <summary>
+        /// 飞升云雾特效引用
+        /// </summary>
+        private FlightCloudEffect flightCloudEffect = null;
         
         // ========== 自定义射击系统（替代原版AI射击） ==========
         
@@ -728,6 +767,9 @@ namespace BossRush
                 sunDanceBarrageCoroutine = null;
             }
             
+            // 清理孩儿护我状态
+            CleanupChildProtection();
+            
             // 停止所有协程
             StopAllCoroutines();
             
@@ -756,6 +798,9 @@ namespace BossRush
             // 停止太阳舞弹幕
             isSunDanceActive = false;
             sunDanceBarrageCoroutine = null;
+            
+            // 清理孩儿护我状态
+            CleanupChildProtection();
             
             // 停止所有协程（防止协程泄漏）
             StopAllCoroutines();
@@ -1175,6 +1220,15 @@ namespace BossRush
             // 进入二阶段
             CurrentPhase = DragonKingPhase.Phase2;
 
+            // 【修复】重新启动攻击循环，确保二阶段攻击能够正常执行
+            // 原因：二阶段转换期间停止了currentAttackCoroutine，可能导致AttackLoop状态不一致
+            if (attackLoopCoroutine != null)
+            {
+                StopCoroutine(attackLoopCoroutine);
+            }
+            attackLoopCoroutine = StartCoroutine(AttackLoop());
+            ModBehaviour.DevLog("[DragonKing] 已重新启动攻击循环");
+
             ModBehaviour.DevLog("[DragonKing] 二阶段转换完成");
         }
         
@@ -1283,7 +1337,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 计算阶段转换传送目标位置（玩家脚下的地面位置）
+        /// 计算阶段转换传送目标位置（玩家附近的有效地面位置）
+        /// 【修复】使用FindValidTeleportPosition进行位置验证，防止掉出地图
         /// </summary>
         private Vector3 FindGroundPositionNearPlayer()
         {
@@ -1292,29 +1347,34 @@ namespace BossRush
                 return bossCharacter != null ? bossCharacter.transform.position : Vector3.zero;
             }
 
-            // 获取玩家脚下地面位置（向下发射射线）
+            // 使用FindValidTeleportPosition找到玩家附近的有效位置
+            // 距离范围：2-4米，确保不会太近也不会太远
             Vector3 playerPos = playerCharacter.transform.position;
-            Vector3 origin = playerPos + Vector3.up * 0.5f; // 从玩家稍微上方发射
-
-            float groundY = 0f;
+            Vector3 targetPos = FindValidTeleportPosition(playerPos, 2f, 4f, 15);
+            
+            // 如果找不到有效位置，使用玩家位置
+            if (targetPos == playerPos)
+            {
+                ModBehaviour.DevLog("[DragonKing] [WARNING] 二阶段转换：未找到有效传送位置，使用玩家位置");
+            }
+            
+            // 确保使用地面高度（向下发射射线检测地面）
+            Vector3 origin = targetPos + Vector3.up * 2f;
             int groundLayer = GetGroundLayer();
             int groundLayerMask = 1 << groundLayer;
 
             RaycastHit hit;
             if (Physics.Raycast(origin, Vector3.down, out hit, 10f, groundLayerMask))
             {
-                groundY = hit.point.y;
+                targetPos.y = hit.point.y;
+                ModBehaviour.DevLog($"[DragonKing] 二阶段转换：检测到地面高度 {hit.point.y}");
             }
             else
             {
-                // 没检测到地面，使用玩家位置
-                groundY = playerPos.y;
+                // 没检测到地面，使用玩家高度
+                targetPos.y = playerPos.y;
+                ModBehaviour.DevLog("[DragonKing] [WARNING] 二阶段转换：未检测到地面，使用玩家高度");
             }
-
-            // 保持当前Boss高度（不改变y值）
-            float currentHeight = bossCharacter != null ? bossCharacter.transform.position.y : groundY;
-
-            Vector3 targetPos = new Vector3(playerPos.x, currentHeight, playerPos.z);
 
             return targetPos;
         }
@@ -1385,15 +1445,42 @@ namespace BossRush
         /// </summary>
         private void OnBossHurt(DamageInfo damageInfo)
         {
+            // 孩儿护我阶段无敌（双重保护）
+            if (isInChildProtection && bossHealth != null)
+            {
+                bossHealth.SetHealth(bossHealth.CurrentHealth + damageInfo.finalDamage);
+                return;
+            }
+            
             // 阶段转换中无敌
             if (CurrentPhase == DragonKingPhase.Transitioning && bossHealth != null)
             {
                 bossHealth.SetHealth(bossHealth.CurrentHealth + damageInfo.finalDamage);
                 return;
             }
+            
+            // 检查是否触发孩儿护我（血量降至1HP）
+            CheckChildProtection();
 
             // 立即检查阶段转换（确保半血时立即转阶段，而不是等当前攻击结束）
             CheckPhaseTransition();
+        }
+        
+        /// <summary>
+        /// 检查是否触发孩儿护我
+        /// </summary>
+        private void CheckChildProtection()
+        {
+            // 已触发过则跳过（幂等性）
+            if (childProtectionTriggered) return;
+            
+            // 检查血量是否降至阈值
+            if (bossHealth == null) return;
+            if (bossHealth.CurrentHealth > DragonKingConfig.ChildProtectionHealthThreshold) return;
+            
+            // 触发孩儿护我
+            childProtectionTriggered = true;
+            childProtectionCoroutine = StartCoroutine(ChildProtectionSequence());
         }
         
         // ========== 攻击执行 ==========
@@ -3718,6 +3805,439 @@ namespace BossRush
         public void RandomizeHoverSide()
         {
             hoverSide = UnityEngine.Random.value > 0.5f ? 1 : -1;
+        }
+        
+        // ========== 孩儿护我系统方法 ==========
+        
+        /// <summary>
+        /// 孩儿护我序列协程
+        /// </summary>
+        private IEnumerator ChildProtectionSequence()
+        {
+            ModBehaviour.DevLog("[DragonKing] 触发孩儿护我机制");
+            
+            isInChildProtection = true;
+            
+            // 1. 锁血并设置无敌
+            if (bossHealth != null)
+            {
+                bossHealth.SetHealth(DragonKingConfig.ChildProtectionHealthThreshold);
+                bossHealth.SetInvincible(true);
+            }
+            
+            // 2. 停止所有攻击和射击
+            isAttacking = false;
+            isCustomShootingActive = false;
+            if (customShootingCoroutine != null)
+            {
+                StopCoroutine(customShootingCoroutine);
+                customShootingCoroutine = null;
+            }
+            if (attackLoopCoroutine != null)
+            {
+                StopCoroutine(attackLoopCoroutine);
+                attackLoopCoroutine = null;
+            }
+            
+            // 3. 暂停AI
+            if (aiController != null)
+            {
+                aiController.Pause();
+            }
+            
+            // 4. 显示龙王对话气泡
+            ShowDragonKingDialogue();
+            
+            yield return wait1s;
+            
+            // 5. 飞升到指定高度
+            yield return StartCoroutine(FlyToHeight(DragonKingConfig.ChildProtectionFlyHeight));
+            
+            yield return wait05s;
+            
+            // 6. 召唤龙裔遗族
+            yield return StartCoroutine(SpawnDescendantForProtection());
+            
+            // 7. 等待龙裔遗族死亡（由OnDescendantDeath回调处理）
+            // 协程在此结束，后续由回调处理
+            ModBehaviour.DevLog("[DragonKing] 孩儿护我序列完成，等待龙裔遗族死亡");
+        }
+        
+        /// <summary>
+        /// 显示龙王对话气泡
+        /// </summary>
+        private void ShowDragonKingDialogue()
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                
+                string dialogue = L10n.T(
+                    DragonKingConfig.ChildProtectionDialogueCN,
+                    DragonKingConfig.ChildProtectionDialogueEN
+                );
+                
+                // 使用DialogueBubblesManager显示气泡
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    dialogue,
+                    bossCharacter.transform,
+                    DragonKingConfig.DialogueBubbleYOffset,
+                    false,
+                    false,
+                    -1f,
+                    DragonKingConfig.DialogueDuration
+                );
+                
+                ModBehaviour.DevLog("[DragonKing] 显示对话气泡: " + dialogue);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 显示对话气泡失败: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 飞升到指定高度（复用腾云驾雾机制）
+        /// </summary>
+        private IEnumerator FlyToHeight(float targetHeight)
+        {
+            if (bossCharacter == null) yield break;
+            
+            ModBehaviour.DevLog($"[DragonKing] 开始飞升到 {targetHeight} 米高度");
+            
+            // 创建飞行平台（防止下落）
+            CreateFlightPlatform();
+            
+            // 创建云雾特效
+            CreateFlightCloudEffect();
+            
+            float startY = bossCharacter.transform.position.y;
+            float targetY = startY + targetHeight;
+            lockedMinY = startY;
+            
+            // 使用加速度机制上升
+            float currentUpwardSpeed = 0f;
+            float maxUpwardSpeed = DragonKingConfig.ChildProtectionFlySpeed;
+            float accelerationTime = 0.3f;
+            float upwardAcceleration = maxUpwardSpeed / accelerationTime;
+            
+            while (bossCharacter != null)
+            {
+                float currentY = bossCharacter.transform.position.y;
+                
+                // 到达目标高度
+                if (currentY >= targetY)
+                {
+                    lockedMinY = targetY;
+                    break;
+                }
+                
+                // 加速度机制
+                currentUpwardSpeed = Mathf.Min(
+                    currentUpwardSpeed + upwardAcceleration * Time.deltaTime,
+                    maxUpwardSpeed
+                );
+                
+                // 直接修改位置实现上升（简化实现）
+                Vector3 pos = bossCharacter.transform.position;
+                pos.y += currentUpwardSpeed * Time.deltaTime;
+                bossCharacter.transform.position = pos;
+                
+                // 更新锁定高度
+                if (pos.y > lockedMinY)
+                {
+                    lockedMinY = pos.y;
+                }
+                
+                // 更新飞行平台位置
+                UpdateFlightPlatformPosition();
+                
+                yield return null;
+            }
+            
+            ModBehaviour.DevLog($"[DragonKing] 飞升完成，当前高度: {bossCharacter?.transform.position.y}");
+        }
+        
+        /// <summary>
+        /// 创建飞行平台（防止下落）
+        /// </summary>
+        private void CreateFlightPlatform()
+        {
+            if (flightPlatform != null) return;
+            
+            flightPlatform = new GameObject("DragonKing_FlightPlatform");
+            flightPlatform.hideFlags = HideFlags.HideInHierarchy;
+            
+            var boxCollider = flightPlatform.AddComponent<BoxCollider>();
+            boxCollider.isTrigger = false;
+            boxCollider.center = Vector3.zero;
+            boxCollider.size = new Vector3(5f, 0.1f, 5f);
+            
+            // 设置层级为Ground
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            if (groundLayer >= 0)
+            {
+                flightPlatform.layer = groundLayer;
+            }
+            
+            UpdateFlightPlatformPosition();
+            
+            ModBehaviour.DevLog("[DragonKing] 创建飞行平台");
+        }
+        
+        /// <summary>
+        /// 更新飞行平台位置
+        /// </summary>
+        private void UpdateFlightPlatformPosition()
+        {
+            if (flightPlatform == null || bossCharacter == null) return;
+            
+            Vector3 bossPos = bossCharacter.transform.position;
+            flightPlatform.transform.position = new Vector3(bossPos.x, bossPos.y - 0.06f, bossPos.z);
+        }
+        
+        /// <summary>
+        /// 销毁飞行平台
+        /// </summary>
+        private void DestroyFlightPlatform()
+        {
+            if (flightPlatform != null)
+            {
+                Destroy(flightPlatform);
+                flightPlatform = null;
+                ModBehaviour.DevLog("[DragonKing] 销毁飞行平台");
+            }
+        }
+        
+        /// <summary>
+        /// 创建飞升云雾特效
+        /// </summary>
+        private void CreateFlightCloudEffect()
+        {
+            if (flightCloudEffect != null || bossCharacter == null) return;
+            
+            try
+            {
+                flightCloudEffect = RingParticleEffect.Create<FlightCloudEffect>(
+                    bossCharacter.transform,
+                    bossCharacter.transform.position
+                );
+                ModBehaviour.DevLog("[DragonKing] 创建飞升云雾特效");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 创建云雾特效失败: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 销毁飞升云雾特效
+        /// </summary>
+        private void DestroyFlightCloudEffect()
+        {
+            if (flightCloudEffect != null)
+            {
+                flightCloudEffect.StopEffect();
+                flightCloudEffect = null;
+                ModBehaviour.DevLog("[DragonKing] 销毁飞升云雾特效");
+            }
+        }
+        
+        /// <summary>
+        /// 召唤龙裔遗族保护龙王
+        /// </summary>
+        private IEnumerator SpawnDescendantForProtection()
+        {
+            ModBehaviour.DevLog("[DragonKing] 开始召唤龙裔遗族");
+            
+            // 获取随机刷怪点
+            Vector3 spawnPosition = GetRandomSpawnPoint();
+            
+            // 使用标志位等待异步生成完成
+            bool spawnCompleted = false;
+            CharacterMainControl spawnResult = null;
+            
+            // 启动异步生成任务
+            SpawnDescendantAsync(spawnPosition, (result) => {
+                spawnResult = result;
+                spawnCompleted = true;
+            });
+            
+            // 等待生成完成（最多等待10秒）
+            float waitTime = 0f;
+            while (!spawnCompleted && waitTime < 10f)
+            {
+                waitTime += Time.deltaTime;
+                yield return null;
+            }
+            
+            spawnedDescendant = spawnResult;
+            
+            if (spawnedDescendant == null)
+            {
+                ModBehaviour.DevLog("[DragonKing] [WARNING] 龙裔遗族生成失败，龙王直接死亡");
+                TriggerLinkedDeath();
+                yield break;
+            }
+            
+            // 显示龙裔遗族对话气泡
+            ShowDescendantDialogue();
+            
+            // 订阅龙裔遗族死亡事件
+            if (spawnedDescendant.Health != null)
+            {
+                spawnedDescendant.Health.OnDeadEvent.AddListener(OnDescendantDeath);
+                ModBehaviour.DevLog("[DragonKing] 已订阅龙裔遗族死亡事件");
+            }
+        }
+        
+        /// <summary>
+        /// 获取随机刷怪点
+        /// </summary>
+        private Vector3 GetRandomSpawnPoint()
+        {
+            try
+            {
+                Vector3[] spawnPoints = ModBehaviour.Instance?.GetCurrentSceneSpawnPoints();
+                if (spawnPoints != null && spawnPoints.Length > 0)
+                {
+                    int index = UnityEngine.Random.Range(0, spawnPoints.Length);
+                    return spawnPoints[index];
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 获取刷怪点失败: {e.Message}");
+            }
+            
+            // 后备方案：使用龙王位置附近
+            if (bossCharacter != null)
+            {
+                return bossCharacter.transform.position + Vector3.forward * 5f + Vector3.down * DragonKingConfig.ChildProtectionFlyHeight;
+            }
+            
+            return Vector3.zero;
+        }
+        
+        /// <summary>
+        /// 异步生成龙裔遗族（辅助方法，用于协程中调用异步方法）
+        /// </summary>
+        private async void SpawnDescendantAsync(Vector3 position, System.Action<CharacterMainControl> callback)
+        {
+            try
+            {
+                CharacterMainControl result = null;
+                if (ModBehaviour.Instance != null)
+                {
+                    result = await ModBehaviour.Instance.SpawnDragonDescendant(position);
+                }
+                callback?.Invoke(result);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 异步生成龙裔遗族失败: {e.Message}");
+                callback?.Invoke(null);
+            }
+        }
+        
+        /// <summary>
+        /// 显示龙裔遗族对话气泡
+        /// </summary>
+        private void ShowDescendantDialogue()
+        {
+            try
+            {
+                if (spawnedDescendant == null) return;
+                
+                string dialogue = L10n.T(
+                    DragonKingConfig.DescendantDialogueCN,
+                    DragonKingConfig.DescendantDialogueEN
+                );
+                
+                // 使用DialogueBubblesManager显示气泡
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    dialogue,
+                    spawnedDescendant.transform,
+                    DragonDescendantConfig.DialogueBubbleYOffset,
+                    false,
+                    false,
+                    -1f,
+                    DragonKingConfig.DialogueDuration
+                );
+                
+                ModBehaviour.DevLog("[DragonKing] 龙裔遗族显示对话气泡: " + dialogue);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 龙裔遗族显示对话气泡失败: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 龙裔遗族死亡回调
+        /// </summary>
+        private void OnDescendantDeath(DamageInfo damageInfo)
+        {
+            ModBehaviour.DevLog("[DragonKing] 龙裔遗族死亡，触发龙王联动死亡");
+            TriggerLinkedDeath();
+        }
+        
+        /// <summary>
+        /// 触发联动死亡
+        /// </summary>
+        private void TriggerLinkedDeath()
+        {
+            if (bossCharacter == null || bossHealth == null) return;
+            
+            ModBehaviour.DevLog("[DragonKing] 执行联动死亡");
+            
+            // 移除无敌状态
+            bossHealth.SetInvincible(false);
+            isInChildProtection = false;
+            
+            // 清理飞行平台
+            DestroyFlightPlatform();
+            
+            // 设置血量为0触发死亡
+            bossHealth.SetHealth(0f);
+            
+            // 创建伤害信息触发死亡事件
+            DamageInfo deathDamage = new DamageInfo(null);
+            deathDamage.damageValue = 1f;
+            bossHealth.Hurt(deathDamage);
+        }
+        
+        /// <summary>
+        /// 清理孩儿护我状态
+        /// </summary>
+        private void CleanupChildProtection()
+        {
+            // 取消龙裔遗族死亡事件订阅
+            if (spawnedDescendant != null && spawnedDescendant.Health != null)
+            {
+                spawnedDescendant.Health.OnDeadEvent.RemoveListener(OnDescendantDeath);
+            }
+            spawnedDescendant = null;
+            
+            // 停止孩儿护我协程
+            if (childProtectionCoroutine != null)
+            {
+                StopCoroutine(childProtectionCoroutine);
+                childProtectionCoroutine = null;
+            }
+            
+            // 销毁飞行平台
+            DestroyFlightPlatform();
+            
+            // 销毁云雾特效
+            DestroyFlightCloudEffect();
+            
+            // 重置状态
+            childProtectionTriggered = false;
+            isInChildProtection = false;
+            lockedMinY = float.MinValue;
+            
+            ModBehaviour.DevLog("[DragonKing] 孩儿护我状态已清理");
         }
     }
     
