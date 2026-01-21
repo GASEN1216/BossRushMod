@@ -75,7 +75,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 配置飞行图腾装备属性（类似龙装备的配置方式）
+        /// 配置飞行图腾装备属性（使用 CustomData 字符对字符样式）
         /// </summary>
         private void ConfigureFlightTotemEquipment(Item item)
         {
@@ -86,30 +86,37 @@ namespace BossRush
                 var config = FlightConfig.Instance;
                 DevLog("[FlightTotem] 配置飞行图腾属性...");
 
-                // 能力键：使用 CustomData 显示"翻滚键：腾云"（文字对文字）
+                // 翻滚键：腾云
                 item.Variables.Set(FlightConfig.VAR_ABILITY_KEY, L10n.IsChinese ? "腾云" : "Soar", true);
                 item.Variables.SetDisplay(FlightConfig.VAR_ABILITY_KEY, true);
 
                 // 最大向上速度
-                EquipmentHelper.AddModifierToItem(item, FlightConfig.STAT_MAX_UPWARD_SPEED, ModifierType.Add, config.MaxUpwardSpeed, true);
+                item.Variables.Set(FlightConfig.VAR_MAX_UPWARD_SPEED, config.MaxUpwardSpeed.ToString("0.#"), true);
+                item.Variables.SetDisplay(FlightConfig.VAR_MAX_UPWARD_SPEED, true);
 
                 // 加速时间
-                EquipmentHelper.AddModifierToItem(item, FlightConfig.STAT_ACCELERATION_TIME, ModifierType.Add, config.AccelerationTime, true);
+                item.Variables.Set(FlightConfig.VAR_ACCELERATION_TIME, config.AccelerationTime.ToString("0.#") + "s", true);
+                item.Variables.SetDisplay(FlightConfig.VAR_ACCELERATION_TIME, true);
 
-                // 滑翔水平速度倍率（直接显示数值）
-                EquipmentHelper.AddModifierToItem(item, FlightConfig.STAT_GLIDING_SPEED, ModifierType.Add, config.GlidingHorizontalSpeedMultiplier, true);
+                // 滑翔水平系数
+                item.Variables.Set(FlightConfig.VAR_GLIDING_MULTIPLIER, config.GlidingHorizontalSpeedMultiplier.ToString("0.#"), true);
+                item.Variables.SetDisplay(FlightConfig.VAR_GLIDING_MULTIPLIER, true);
 
-                // 缓慢下落速度（负值）
-                EquipmentHelper.AddModifierToItem(item, FlightConfig.STAT_DESCENT_SPEED, ModifierType.Add, config.SlowDescentSpeed, true);
+                // 缓慢下落速度
+                item.Variables.Set(FlightConfig.VAR_DESCENT_SPEED, config.SlowDescentSpeed.ToString("0.#"), true);
+                item.Variables.SetDisplay(FlightConfig.VAR_DESCENT_SPEED, true);
 
                 // 启动体力消耗
-                EquipmentHelper.AddModifierToItem(item, FlightConfig.STAT_STARTUP_STAMINA, ModifierType.Add, config.StartupStaminaCost, true);
+                item.Variables.Set(FlightConfig.VAR_STARTUP_STAMINA, config.StartupStaminaCost.ToString("0.#"), true);
+                item.Variables.SetDisplay(FlightConfig.VAR_STARTUP_STAMINA, true);
 
                 // 飞行体力消耗
-                EquipmentHelper.AddModifierToItem(item, FlightConfig.STAT_FLIGHT_STAMINA_DRAIN, ModifierType.Add, config.StaminaDrainPerSecond, true);
+                item.Variables.Set(FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, config.StaminaDrainPerSecond.ToString("0.#") + "/s", true);
+                item.Variables.SetDisplay(FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, true);
 
-                // 下落体力消耗
-                EquipmentHelper.AddModifierToItem(item, FlightConfig.STAT_DESCENT_STAMINA_DRAIN, ModifierType.Add, config.SlowDescentStaminaDrainPerSecond, true);
+                // 滑翔体力消耗
+                item.Variables.Set(FlightConfig.VAR_GLIDING_STAMINA_DRAIN, config.SlowDescentStaminaDrainPerSecond.ToString("0.#") + "/s", true);
+                item.Variables.SetDisplay(FlightConfig.VAR_GLIDING_STAMINA_DRAIN, true);
 
                 DevLog("[FlightTotem] 属性配置完成");
             }
@@ -175,35 +182,66 @@ namespace BossRush
 
         /// <summary>
         /// 注入飞行图腾属性本地化
-        /// 注意：
-        /// - Stat 使用 "Stat_" + 属性键 作为本地化键
-        /// - CustomData 使用 "Var_" + 键 作为本地化键
+        /// 注意：CustomData 使用 "Var_" + 键 作为本地化键
         /// </summary>
         private void InjectFlightTotemStatLocalizations()
         {
-            // 能力键：CustomData 本地化（Var_ 前缀）
+            var config = FlightConfig.Instance;
+
+            // 翻滚键
             LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_ABILITY_KEY, L10n.T("翻滚键", "Dash"));
+            LocalizationHelper.InjectLocalization("腾云", "腾云");
+            LocalizationHelper.InjectLocalization("Soar", "Soar");
 
             // 最大向上速度
-            LocalizationHelper.InjectLocalization("Stat_" + FlightConfig.STAT_MAX_UPWARD_SPEED, L10n.T("最大向上速度", "Max Upward Speed"));
+            LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_MAX_UPWARD_SPEED, L10n.T("最大向上速度", "Max Upward Speed"));
 
             // 加速时间
-            LocalizationHelper.InjectLocalization("Stat_" + FlightConfig.STAT_ACCELERATION_TIME, L10n.T("加速时间", "Acceleration Time"));
+            LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_ACCELERATION_TIME, L10n.T("加速时间", "Acceleration Time"));
 
-            // 滑翔水平速度
-            LocalizationHelper.InjectLocalization("Stat_" + FlightConfig.STAT_GLIDING_SPEED, L10n.T("滑翔水平速度", "Gliding Speed"));
+            // 滑翔水平移动系数
+            LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_GLIDING_MULTIPLIER, L10n.T("滑翔水平移动系数", "Gliding Move Multiplier"));
 
             // 缓慢下落速度
-            LocalizationHelper.InjectLocalization("Stat_" + FlightConfig.STAT_DESCENT_SPEED, L10n.T("缓慢下落速度", "Slow Descent Speed"));
+            LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_DESCENT_SPEED, L10n.T("缓慢下落速度", "Slow Descent Speed"));
 
             // 启动体力消耗
-            LocalizationHelper.InjectLocalization("Stat_" + FlightConfig.STAT_STARTUP_STAMINA, L10n.T("启动体力消耗", "Startup Stamina"));
+            LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_STARTUP_STAMINA, L10n.T("启动体力消耗", "Startup Stamina"));
 
             // 飞行体力消耗
-            LocalizationHelper.InjectLocalization("Stat_" + FlightConfig.STAT_FLIGHT_STAMINA_DRAIN, L10n.T("飞行体力消耗", "Flight Stamina Drain"));
+            LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, L10n.T("飞行体力消耗", "Flight Stamina Drain"));
 
-            // 下落体力消耗
-            LocalizationHelper.InjectLocalization("Stat_" + FlightConfig.STAT_DESCENT_STAMINA_DRAIN, L10n.T("下落体力消耗", "Descent Stamina Drain"));
+            // 滑翔体力消耗
+            LocalizationHelper.InjectLocalization("Var_" + FlightConfig.VAR_GLIDING_STAMINA_DRAIN, L10n.T("滑翔体力消耗", "Gliding Stamina Drain"));
+
+            // ========== 属性值本地化（防止显示星号）==========
+            // 最大向上速度值
+            string maxSpeedVal = config.MaxUpwardSpeed.ToString("0.#");
+            LocalizationHelper.InjectLocalization(maxSpeedVal, maxSpeedVal);
+
+            // 加速时间值
+            string accelVal = config.AccelerationTime.ToString("0.#") + "s";
+            LocalizationHelper.InjectLocalization(accelVal, accelVal);
+
+            // 滑翔水平系数值
+            string glidingVal = config.GlidingHorizontalSpeedMultiplier.ToString("0.#");
+            LocalizationHelper.InjectLocalization(glidingVal, glidingVal);
+
+            // 缓慢下落速度值
+            string descentVal = config.SlowDescentSpeed.ToString("0.#");
+            LocalizationHelper.InjectLocalization(descentVal, descentVal);
+
+            // 启动体力消耗值
+            string startupVal = config.StartupStaminaCost.ToString("0.#");
+            LocalizationHelper.InjectLocalization(startupVal, startupVal);
+
+            // 飞行体力消耗值
+            string flightDrainVal = config.StaminaDrainPerSecond.ToString("0.#") + "/s";
+            LocalizationHelper.InjectLocalization(flightDrainVal, flightDrainVal);
+
+            // 滑翔体力消耗值
+            string glidingDrainVal = config.SlowDescentStaminaDrainPerSecond.ToString("0.#") + "/s";
+            LocalizationHelper.InjectLocalization(glidingDrainVal, glidingDrainVal);
         }
     }
 }

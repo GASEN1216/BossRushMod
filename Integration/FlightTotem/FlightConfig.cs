@@ -103,42 +103,42 @@ namespace BossRush
         /// </summary>
         public const int TotemTypeIdBase = 500010;
 
-        // ========== 属性键（用于添加装备属性显示）==========
+        // ========== 属性键（用于 CustomData 字符对字符显示）==========
 
         /// <summary>
         /// 最大向上速度属性名
         /// </summary>
-        public const string STAT_MAX_UPWARD_SPEED = "Flight_MaxUpwardSpeed";
+        public const string VAR_MAX_UPWARD_SPEED = "Flight_MaxUpwardSpeed";
 
         /// <summary>
         /// 加速时间属性名
         /// </summary>
-        public const string STAT_ACCELERATION_TIME = "Flight_AccelerationTime";
+        public const string VAR_ACCELERATION_TIME = "Flight_AccelerationTime";
 
         /// <summary>
-        /// 滑翔水平速度属性名
+        /// 滑翔水平移动系数属性名
         /// </summary>
-        public const string STAT_GLIDING_SPEED = "Flight_GlidingSpeed";
+        public const string VAR_GLIDING_MULTIPLIER = "Flight_GlidingMultiplier";
 
         /// <summary>
         /// 缓慢下落速度属性名
         /// </summary>
-        public const string STAT_DESCENT_SPEED = "Flight_DescentSpeed";
+        public const string VAR_DESCENT_SPEED = "Flight_DescentSpeed";
 
         /// <summary>
         /// 启动体力消耗属性名
         /// </summary>
-        public const string STAT_STARTUP_STAMINA = "Flight_StartupStamina";
+        public const string VAR_STARTUP_STAMINA = "Flight_StartupStamina";
 
         /// <summary>
         /// 飞行体力消耗属性名
         /// </summary>
-        public const string STAT_FLIGHT_STAMINA_DRAIN = "Flight_FlightStaminaDrain";
+        public const string VAR_FLIGHT_STAMINA_DRAIN = "Flight_FlightStaminaDrain";
 
         /// <summary>
-        /// 下落体力消耗属性名
+        /// 滑翔体力消耗属性名
         /// </summary>
-        public const string STAT_DESCENT_STAMINA_DRAIN = "Flight_DescentStaminaDrain";
+        public const string VAR_GLIDING_STAMINA_DRAIN = "Flight_GlidingStaminaDrain";
 
         // ========== 自定义数据键（用于显示文字值）==========
 

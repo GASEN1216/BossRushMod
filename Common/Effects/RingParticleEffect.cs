@@ -16,9 +16,27 @@ namespace BossRush.Common.Effects
     /// <summary>
     /// 通用环形粒子特效基类
     /// 创建多个环形分布的粒子发射器，支持Local和World双层系统
+    /// [性能优化] 使用静态缓存的材质和纹理，避免重复创建
     /// </summary>
     public abstract class RingParticleEffect : MonoBehaviour
     {
+        // ========== 静态缓存（性能优化：所有实例共享材质和纹理） ==========
+        
+        /// <summary>
+        /// 缓存的粒子材质（所有实例共享）
+        /// </summary>
+        private static Material cachedParticleMaterial = null;
+        
+        /// <summary>
+        /// 缓存的粒子纹理（所有实例共享）
+        /// </summary>
+        private static Texture2D cachedParticleTexture = null;
+        
+        /// <summary>
+        /// 材质缓存锁（线程安全）
+        /// </summary>
+        private static readonly object materialLock = new object();
+        
         // ========== 可配置参数（子类通过属性覆盖） ==========
         
         /// <summary>
@@ -299,52 +317,71 @@ namespace BossRush.Common.Effects
         }
         
         /// <summary>
-        /// 创建粒子材质（可被子类覆盖以自定义材质）
+        /// 创建粒子材质（使用静态缓存，所有实例共享）
+        /// [性能优化] 避免每次创建特效时重复创建材质和纹理
         /// </summary>
         protected virtual Material CreateMaterial()
         {
-            string[] shaderNames = {
-                "Particles/Alpha Blended",
-                "Legacy Shaders/Particles/Alpha Blended",
-                "Mobile/Particles/Alpha Blended",
-                "UI/Default",
-                "Sprites/Default"
-            };
-            
-            foreach (string shaderName in shaderNames)
+            // 使用静态缓存的材质
+            lock (materialLock)
             {
-                Shader s = Shader.Find(shaderName);
-                if (s != null)
+                if (cachedParticleMaterial != null)
                 {
-                    Material mat = new Material(s);
-                    mat.name = "ParticleEffectMat";
-                    mat.renderQueue = 3000;
-                    
-                    if (mat.HasProperty("_TintColor"))
-                    {
-                        mat.SetColor("_TintColor", Color.white);
-                    }
-                    if (mat.HasProperty("_Color"))
-                    {
-                        mat.SetColor("_Color", Color.white);
-                    }
-                    
-                    mat.mainTexture = CreateTexture();
-                    return mat;
+                    return cachedParticleMaterial;
                 }
+                
+                string[] shaderNames = {
+                    "Particles/Alpha Blended",
+                    "Legacy Shaders/Particles/Alpha Blended",
+                    "Mobile/Particles/Alpha Blended",
+                    "UI/Default",
+                    "Sprites/Default"
+                };
+                
+                foreach (string shaderName in shaderNames)
+                {
+                    Shader s = Shader.Find(shaderName);
+                    if (s != null)
+                    {
+                        Material mat = new Material(s);
+                        mat.name = "ParticleEffectMat_Shared";
+                        mat.renderQueue = 3000;
+                        mat.hideFlags = HideFlags.DontSave; // 防止被意外销毁
+                        
+                        if (mat.HasProperty("_TintColor"))
+                        {
+                            mat.SetColor("_TintColor", Color.white);
+                        }
+                        if (mat.HasProperty("_Color"))
+                        {
+                            mat.SetColor("_Color", Color.white);
+                        }
+                        
+                        mat.mainTexture = GetOrCreateSharedTexture();
+                        cachedParticleMaterial = mat;
+                        return mat;
+                    }
+                }
+                
+                return null;
             }
-            
-            return null;
         }
         
         /// <summary>
-        /// 创建粒子纹理（可被子类覆盖以自定义纹理）
+        /// 获取或创建共享的粒子纹理
+        /// [性能优化] 所有实例共享同一纹理
         /// </summary>
-        protected virtual Texture2D CreateTexture()
+        private static Texture2D GetOrCreateSharedTexture()
         {
+            if (cachedParticleTexture != null)
+            {
+                return cachedParticleTexture;
+            }
+            
             int size = 64;
             Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            tex.hideFlags = HideFlags.HideAndDontSave;
+            tex.hideFlags = HideFlags.DontSave; // 防止被意外销毁
+            tex.name = "ParticleTexture_Shared";
             
             for (int x = 0; x < size; x++)
             {
@@ -367,7 +404,17 @@ namespace BossRush.Common.Effects
             }
             
             tex.Apply();
+            cachedParticleTexture = tex;
             return tex;
+        }
+        
+        /// <summary>
+        /// 创建粒子纹理（已废弃，使用 GetOrCreateSharedTexture 代替）
+        /// 保留此方法以兼容可能的子类覆盖
+        /// </summary>
+        protected virtual Texture2D CreateTexture()
+        {
+            return GetOrCreateSharedTexture();
         }
 
         // ========== 粒子发射 ==========
@@ -432,37 +479,15 @@ namespace BossRush.Common.Effects
             Destroy(gameObject);
         }
         
+        /// <summary>
+        /// 清理材质（使用共享材质后不再需要销毁）
+        /// [性能优化] 共享材质由静态缓存管理，不在实例销毁时清理
+        /// </summary>
         private void CleanupMaterials()
         {
-            if (emittersLocal != null)
-            {
-                foreach (var ps in emittersLocal)
-                {
-                    if (ps != null)
-                    {
-                        var renderer = ps.GetComponent<ParticleSystemRenderer>();
-                        if (renderer != null && renderer.material != null)
-                        {
-                            Destroy(renderer.material);
-                        }
-                    }
-                }
-            }
-            
-            if (emittersWorld != null)
-            {
-                foreach (var ps in emittersWorld)
-                {
-                    if (ps != null)
-                    {
-                        var renderer = ps.GetComponent<ParticleSystemRenderer>();
-                        if (renderer != null && renderer.material != null)
-                        {
-                            Destroy(renderer.material);
-                        }
-                    }
-                }
-            }
+            // 使用共享材质后，不再需要在实例销毁时清理材质
+            // 材质和纹理由静态缓存管理，在应用程序退出时自动清理
+            // 这避免了频繁创建/销毁材质带来的GC压力
         }
     }
 }

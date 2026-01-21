@@ -24,27 +24,27 @@ namespace BossRush
         private const string FLIGHT_TOTEM_LV1_BASE = "FlightTotem_Lv1";
 
         // ========== 飞行1阶配置 ==========
-        private const float MAX_UPWARD_SPEED = 5f;              // 最大向上速度
-        private const float ACCELERATION_TIME = 3f;              // 加速时间
+        private const float MAX_UPWARD_SPEED = 10f;             // 最大向上速度
+        private const float ACCELERATION_TIME = 0.3f;           // 加速时间
         private const float GLIDING_SPEED_MULTIPLIER = 0.8f;     // 滑翔水平速度倍率
         private const float SLOW_DESCENT_SPEED = -2f;           // 缓慢下落速度
         private const float STARTUP_STAMINA_COST = 5f;          // 启动体力消耗
         private const float STAMINA_DRAIN_PER_SECOND = 50f;     // 飞行体力消耗
-        private const float SLOW_DESCENT_STAMINA_DRAIN = 30f;   // 下落体力消耗
+        private const float SLOW_DESCENT_STAMINA_DRAIN = 30f;   // 滑翔体力消耗
 
         // ========== 本地化键 ==========
         private const string LOC_KEY_DISPLAY = "BossRush_FlightTotem";        // 物品显示名本地化键
         private const string LOC_KEY_DESC = "BossRush_FlightTotem_Desc";        // 物品描述本地化键
 
-        // ========== 属性键 ==========
-        private const string VAR_ABILITY_KEY = "Flight_Ability";               // 能力键 CustomData
-        private const string STAT_MAX_UPWARD_SPEED = "Flight_MaxUpwardSpeed";
-        private const string STAT_ACCELERATION_TIME = "Flight_AccelerationTime";
-        private const string STAT_GLIDING_SPEED = "Flight_GlidingSpeed";
-        private const string STAT_DESCENT_SPEED = "Flight_DescentSpeed";
-        private const string STAT_STARTUP_STAMINA = "Flight_StartupStamina";
-        private const string STAT_FLIGHT_STAMINA_DRAIN = "Flight_FlightStaminaDrain";
-        private const string STAT_DESCENT_STAMINA_DRAIN = "Flight_DescentStaminaDrain";
+        // ========== 属性键（全部使用 CustomData 字符对字符样式）==========
+        private const string VAR_ABILITY_KEY = "Flight_Ability";               // 翻滚键
+        private const string VAR_MAX_UPWARD_SPEED = "Flight_MaxUpwardSpeed";   // 最大向上速度
+        private const string VAR_ACCELERATION_TIME = "Flight_AccelerationTime"; // 加速时间
+        private const string VAR_GLIDING_MULTIPLIER = "Flight_GlidingMultiplier"; // 滑翔水平移动系数
+        private const string VAR_DESCENT_SPEED = "Flight_DescentSpeed";        // 缓慢下落速度
+        private const string VAR_STARTUP_STAMINA = "Flight_StartupStamina";    // 启动体力消耗
+        private const string VAR_FLIGHT_STAMINA_DRAIN = "Flight_FlightStaminaDrain"; // 飞行体力消耗
+        private const string VAR_GLIDING_STAMINA_DRAIN = "Flight_GlidingStaminaDrain"; // 滑翔体力消耗
 
         /// <summary>
         /// 尝试配置飞行图腾（自动识别是否为飞行图腾物品）
@@ -78,31 +78,38 @@ namespace BossRush
                 // ========== 设置物品的 displayName 字段（用于本地化） ==========
                 item.DisplayNameRaw = LOC_KEY_DISPLAY;
 
-                // 能力键：使用 CustomData 显示"翻滚键：腾云"（文字对文字）
+                // 翻滚键：腾云
                 string abilityValue = L10n.IsChinese ? "腾云" : "Soar";
                 item.Variables.Set(VAR_ABILITY_KEY, abilityValue, true);
                 item.Variables.SetDisplay(VAR_ABILITY_KEY, true);
 
-                // 最大向上速度
-                EquipmentHelper.AddModifierToItem(item, STAT_MAX_UPWARD_SPEED, ModifierType.Add, MAX_UPWARD_SPEED, true);
+                // 最大向上速度：10
+                item.Variables.Set(VAR_MAX_UPWARD_SPEED, MAX_UPWARD_SPEED.ToString("0.#"), true);
+                item.Variables.SetDisplay(VAR_MAX_UPWARD_SPEED, true);
 
-                // 加速时间
-                EquipmentHelper.AddModifierToItem(item, STAT_ACCELERATION_TIME, ModifierType.Add, ACCELERATION_TIME, true);
+                // 加速时间：0.3
+                item.Variables.Set(VAR_ACCELERATION_TIME, ACCELERATION_TIME.ToString("0.#") + "s", true);
+                item.Variables.SetDisplay(VAR_ACCELERATION_TIME, true);
 
-                // 滑翔水平速度倍率
-                EquipmentHelper.AddModifierToItem(item, STAT_GLIDING_SPEED, ModifierType.Add, GLIDING_SPEED_MULTIPLIER, true);
+                // 滑翔水平系数：0.8
+                item.Variables.Set(VAR_GLIDING_MULTIPLIER, GLIDING_SPEED_MULTIPLIER.ToString("0.#"), true);
+                item.Variables.SetDisplay(VAR_GLIDING_MULTIPLIER, true);
 
-                // 缓慢下落速度（负值）
-                EquipmentHelper.AddModifierToItem(item, STAT_DESCENT_SPEED, ModifierType.Add, SLOW_DESCENT_SPEED, true);
+                // 缓慢下落速度：-2
+                item.Variables.Set(VAR_DESCENT_SPEED, SLOW_DESCENT_SPEED.ToString("0.#"), true);
+                item.Variables.SetDisplay(VAR_DESCENT_SPEED, true);
 
-                // 启动体力消耗
-                EquipmentHelper.AddModifierToItem(item, STAT_STARTUP_STAMINA, ModifierType.Add, STARTUP_STAMINA_COST, true);
+                // 启动体力消耗：5
+                item.Variables.Set(VAR_STARTUP_STAMINA, STARTUP_STAMINA_COST.ToString("0.#"), true);
+                item.Variables.SetDisplay(VAR_STARTUP_STAMINA, true);
 
-                // 飞行体力消耗
-                EquipmentHelper.AddModifierToItem(item, STAT_FLIGHT_STAMINA_DRAIN, ModifierType.Add, STAMINA_DRAIN_PER_SECOND, true);
+                // 飞行体力消耗：50/s
+                item.Variables.Set(VAR_FLIGHT_STAMINA_DRAIN, STAMINA_DRAIN_PER_SECOND.ToString("0.#") + "/s", true);
+                item.Variables.SetDisplay(VAR_FLIGHT_STAMINA_DRAIN, true);
 
-                // 下落体力消耗
-                EquipmentHelper.AddModifierToItem(item, STAT_DESCENT_STAMINA_DRAIN, ModifierType.Add, SLOW_DESCENT_STAMINA_DRAIN, true);
+                // 滑翔体力消耗：30/s
+                item.Variables.Set(VAR_GLIDING_STAMINA_DRAIN, SLOW_DESCENT_STAMINA_DRAIN.ToString("0.#") + "/s", true);
+                item.Variables.SetDisplay(VAR_GLIDING_STAMINA_DRAIN, true);
 
                 // 注入本地化
                 InjectFlightTotemLocalization(item.TypeID);
@@ -128,33 +135,61 @@ namespace BossRush
             LocalizationHelper.InjectLocalization(LOC_KEY_DISPLAY, displayName);
             LocalizationHelper.InjectLocalization(LOC_KEY_DESC, description);
 
-            // 能力值本地化（防止显示 *腾云*）
+            // ========== CustomData 键本地化（Var_ 前缀）==========
+            // 翻滚键
+            LocalizationHelper.InjectLocalization("Var_" + VAR_ABILITY_KEY, L10n.T("翻滚键", "Dash"));
             LocalizationHelper.InjectLocalization("腾云", "腾云");
             LocalizationHelper.InjectLocalization("Soar", "Soar");
 
-            // 能力键：CustomData 本地化（Var_ 前缀）
-            LocalizationHelper.InjectLocalization("Var_" + VAR_ABILITY_KEY, L10n.T("翻滚键", "Dash"));
-
             // 最大向上速度
-            LocalizationHelper.InjectLocalization("Stat_" + STAT_MAX_UPWARD_SPEED, L10n.T("最大向上速度", "Max Upward Speed"));
+            LocalizationHelper.InjectLocalization("Var_" + VAR_MAX_UPWARD_SPEED, L10n.T("最大向上速度", "Max Upward Speed"));
 
             // 加速时间
-            LocalizationHelper.InjectLocalization("Stat_" + STAT_ACCELERATION_TIME, L10n.T("加速时间", "Acceleration Time"));
+            LocalizationHelper.InjectLocalization("Var_" + VAR_ACCELERATION_TIME, L10n.T("加速时间", "Acceleration Time"));
 
-            // 滑翔水平速度
-            LocalizationHelper.InjectLocalization("Stat_" + STAT_GLIDING_SPEED, L10n.T("滑翔水平速度", "Gliding Speed"));
+            // 滑翔水平移动系数
+            LocalizationHelper.InjectLocalization("Var_" + VAR_GLIDING_MULTIPLIER, L10n.T("滑翔水平移动系数", "Gliding Move Multiplier"));
 
             // 缓慢下落速度
-            LocalizationHelper.InjectLocalization("Stat_" + STAT_DESCENT_SPEED, L10n.T("缓慢下落速度", "Slow Descent Speed"));
+            LocalizationHelper.InjectLocalization("Var_" + VAR_DESCENT_SPEED, L10n.T("缓慢下落速度", "Slow Descent Speed"));
 
             // 启动体力消耗
-            LocalizationHelper.InjectLocalization("Stat_" + STAT_STARTUP_STAMINA, L10n.T("启动体力消耗", "Startup Stamina"));
+            LocalizationHelper.InjectLocalization("Var_" + VAR_STARTUP_STAMINA, L10n.T("启动体力消耗", "Startup Stamina"));
 
             // 飞行体力消耗
-            LocalizationHelper.InjectLocalization("Stat_" + STAT_FLIGHT_STAMINA_DRAIN, L10n.T("飞行体力消耗", "Flight Stamina Drain"));
+            LocalizationHelper.InjectLocalization("Var_" + VAR_FLIGHT_STAMINA_DRAIN, L10n.T("飞行体力消耗", "Flight Stamina Drain"));
 
-            // 下落体力消耗
-            LocalizationHelper.InjectLocalization("Stat_" + STAT_DESCENT_STAMINA_DRAIN, L10n.T("下落体力消耗", "Descent Stamina Drain"));
+            // 滑翔体力消耗
+            LocalizationHelper.InjectLocalization("Var_" + VAR_GLIDING_STAMINA_DRAIN, L10n.T("滑翔体力消耗", "Gliding Stamina Drain"));
+
+            // ========== 属性值本地化（防止显示星号）==========
+            // 最大向上速度值
+            string maxSpeedVal = MAX_UPWARD_SPEED.ToString("0.#");
+            LocalizationHelper.InjectLocalization(maxSpeedVal, maxSpeedVal);
+
+            // 加速时间值
+            string accelVal = ACCELERATION_TIME.ToString("0.#") + "s";
+            LocalizationHelper.InjectLocalization(accelVal, accelVal);
+
+            // 滑翔水平系数值
+            string glidingVal = GLIDING_SPEED_MULTIPLIER.ToString("0.#");
+            LocalizationHelper.InjectLocalization(glidingVal, glidingVal);
+
+            // 缓慢下落速度值
+            string descentVal = SLOW_DESCENT_SPEED.ToString("0.#");
+            LocalizationHelper.InjectLocalization(descentVal, descentVal);
+
+            // 启动体力消耗值
+            string startupVal = STARTUP_STAMINA_COST.ToString("0.#");
+            LocalizationHelper.InjectLocalization(startupVal, startupVal);
+
+            // 飞行体力消耗值
+            string flightDrainVal = STAMINA_DRAIN_PER_SECOND.ToString("0.#") + "/s";
+            LocalizationHelper.InjectLocalization(flightDrainVal, flightDrainVal);
+
+            // 滑翔体力消耗值
+            string glidingDrainVal = SLOW_DESCENT_STAMINA_DRAIN.ToString("0.#") + "/s";
+            LocalizationHelper.InjectLocalization(glidingDrainVal, glidingDrainVal);
 
             ModBehaviour.DevLog("[FlightTotemConfig] 本地化注入完成");
         }
