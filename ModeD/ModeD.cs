@@ -370,32 +370,26 @@ namespace BossRush
                 if (tagsData.Character != null) baseExclude.Add(tagsData.Character);
                 Duckov.Utilities.Tag[] excludeArray = baseExclude.ToArray();
 
-                // 武器池（Gun Tag）
+                // 武器池（Gun Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
                 if (tagsData.Gun != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Gun, excludeArray);
                     if (ids != null) modeDWeaponPool.AddRange(ids);
                 }
-                // 移除龙息（龙裔遗族Boss专属掉落，不应出现在白手起家随机池中）
-                modeDWeaponPool.Remove(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID);
 
-                // 护甲池（Armor Tag）
+                // 护甲池（Armor Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
                 if (tagsData.Armor != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Armor, excludeArray);
                     if (ids != null) modeDArmortPool.AddRange(ids);
                 }
-                // 移除龙甲（龙裔遗族Boss专属掉落，不应出现在白手起家随机池中）
-                modeDArmortPool.Remove(DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID);
 
-                // 头盔池（Helmat Tag）
+                // 头盔池（Helmat Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
                 if (tagsData.Helmat != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Helmat, excludeArray);
                     if (ids != null) modeDHelmetPool.AddRange(ids);
                 }
-                // 移除龙头（龙裔遗族Boss专属掉落，不应出现在白手起家随机池中）
-                modeDHelmetPool.Remove(DragonDescendantConfig.DRAGON_HELM_TYPE_ID);
 
                 // 弹药池（Bullet Tag）
                 if (tagsData.Bullet != null)
@@ -422,7 +416,7 @@ namespace BossRush
                     if (ids != null) modeDMeleePool.AddRange(ids);
                 }
 
-                // P1-8: 预建图腾池（Totem Tag）
+                // P1-8: 预建图腾池（Totem Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
                 Duckov.Utilities.Tag totemTag = FindTagByNameInInit("Totem");
                 if (totemTag != null)
                 {
@@ -465,7 +459,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 根据Tag搜索物品（包含所有品质）
+        /// 根据Tag搜索物品（包含所有品质），自动过滤黑名单物品
         /// </summary>
         private int[] SearchItemsByTag(Duckov.Utilities.Tag tag, Duckov.Utilities.Tag[] excludeTags)
         {
@@ -476,7 +470,24 @@ namespace BossRush
                 filter.excludeTags = excludeTags;
                 filter.minQuality = 1;
                 filter.maxQuality = 8; // 包含所有品质
-                return ItemAssetsCollection.Search(filter);
+                int[] rawIds = ItemAssetsCollection.Search(filter);
+                
+                if (rawIds == null || rawIds.Length == 0)
+                {
+                    return rawIds;
+                }
+                
+                // 过滤掉黑名单物品（统一使用 LootBlacklistRegistry）
+                List<int> filteredIds = new List<int>(rawIds.Length);
+                for (int i = 0; i < rawIds.Length; i++)
+                {
+                    int id = rawIds[i];
+                    if (id > 0 && !IsItemBlacklisted(id))
+                    {
+                        filteredIds.Add(id);
+                    }
+                }
+                return filteredIds.ToArray();
             }
             catch
             {
