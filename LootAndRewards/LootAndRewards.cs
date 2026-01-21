@@ -73,22 +73,14 @@ namespace BossRush
         
         private static InteractableLootbox _cachedLootBoxTemplateWithLoader = null;
         private static InteractableLootbox _cachedDifficultyRewardLootBoxTemplate = null;
-        private static readonly HashSet<int> ManualLootBlacklist = new HashSet<int>
+        
+        /// <summary>
+        /// 检查物品ID是否在掉落黑名单中
+        /// </summary>
+        private static bool IsItemBlacklisted(int itemId)
         {
-            153, 284, 292, 293, 294, 295, 297, 299, 300,
-            313, 314, 315, 316, 317, 366, 373, 375, 376,
-            385, 386, 427, 672, 745, 747, 750, 751, 753, 757,
-            760, 761, 762, 763, 766, 774, 775, 778, 809,
-            811, 814, 816, 817, 823, 824, 825, 835, 1046,
-            1047, 1048, 1049, 1050, 1051, 1052, 1053, 1054,
-            1062, 1064, 1065, 1066, 1067, 1068, 1069, 1073,
-            397, 910, 913, // 用户指定的黑名单物品
-            1092, 1158, 1164, 1214, 1225, 1249, 1273,
-            // 龙套装（龙裔遗族Boss专属掉落，不应出现在随机掉落池中）
-            500003, // 赤龙首（龙头）
-            500004, // 焰鳞甲（龙甲）
-            500005  // 龙息武器
-        };
+            return LootBlacklistRegistry.Contains(itemId);
+        }
 
         private List<EnemyPresetInfo> enemyPresets = new List<EnemyPresetInfo>();
         private float minBossBaseHealth = 100f;
@@ -181,7 +173,7 @@ namespace BossRush
                         {
                             foreach (int id in ids)
                             {
-                                if (id > 0 && !ManualLootBlacklist.Contains(id))
+                                if (id > 0 && !IsItemBlacklisted(id))
                                 {
                                     idSet.Add(id);
                                 }
@@ -537,7 +529,7 @@ namespace BossRush
                     int id = ids[j];
                     if (id > 0)
                     {
-                        if (ManualLootBlacklist.Contains(id))
+                        if (IsItemBlacklisted(id))
                         {
                             continue;
                         }
@@ -1040,7 +1032,7 @@ namespace BossRush
                                                         int id = ids[j];
                                                         if (id > 0)
                                                         {
-                                                            if (ManualLootBlacklist.Contains(id))
+                                                            if (IsItemBlacklisted(id))
                                                             {
                                                                 continue;
                                                             }
@@ -1892,7 +1884,7 @@ namespace BossRush
                                                     int id = ids[j];
                                                     if (id > 0)
                                                     {
-                                                        if (ManualLootBlacklist.Contains(id))
+                                                        if (IsItemBlacklisted(id))
                                                         {
                                                             continue;
                                                         }

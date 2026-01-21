@@ -115,7 +115,7 @@ namespace BossRush
                         int id = ids[j];
                         if (id > 0)
                         {
-                            if (ManualLootBlacklist.Contains(id))
+                            if (IsItemBlacklisted(id))
                             {
                                 continue;
                             }
