@@ -1172,7 +1172,83 @@ namespace BossRush
 
                 if (!isPlayer) return;
 
-                DevLog("[BossRush] 检测到玩家死亡，阻止物品掉落");
+                DevLog("[BossRush] 检测到玩家死亡，掉落玩家全部物品");
+
+                // 掉落玩家身上的全部物品
+                try
+                {
+                    CharacterMainControl main = CharacterMainControl.Main;
+                    if (main != null && main.CharacterItem != null)
+                    {
+                        Vector3 dropPos = main.transform.position;
+                        Vector3 dropDir = main.CurrentAimDirection;
+                        int droppedCount = 0;
+
+                        // 1. 掉落背包中的所有物品
+                        try
+                        {
+                            List<Item> inventoryItems = new List<Item>();
+                            foreach (Item item in main.CharacterItem.Inventory)
+                            {
+                                if (item != null)
+                                {
+                                    inventoryItems.Add(item);
+                                }
+                            }
+                            foreach (Item item in inventoryItems)
+                            {
+                                try
+                                {
+                                    item.Drop(dropPos, true, dropDir, 360f);
+                                    droppedCount++;
+                                }
+                                catch (Exception dropEx)
+                                {
+                                    DevLog("[BossRush] 掉落背包物品失败: " + dropEx.Message);
+                                }
+                            }
+                        }
+                        catch (Exception invEx)
+                        {
+                            DevLog("[BossRush] 遍历背包失败: " + invEx.Message);
+                        }
+
+                        // 2. 掉落装备槽位中的所有物品
+                        try
+                        {
+                            List<Item> slotItems = new List<Item>();
+                            foreach (ItemStatsSystem.Items.Slot slot in main.CharacterItem.Slots)
+                            {
+                                if (slot != null && slot.Content != null)
+                                {
+                                    slotItems.Add(slot.Content);
+                                }
+                            }
+                            foreach (Item item in slotItems)
+                            {
+                                try
+                                {
+                                    item.Drop(dropPos, true, dropDir, 360f);
+                                    droppedCount++;
+                                }
+                                catch (Exception dropEx)
+                                {
+                                    DevLog("[BossRush] 掉落装备物品失败: " + dropEx.Message);
+                                }
+                            }
+                        }
+                        catch (Exception slotEx)
+                        {
+                            DevLog("[BossRush] 遍历装备槽位失败: " + slotEx.Message);
+                        }
+
+                        DevLog("[BossRush] 玩家死亡，已掉落 " + droppedCount + " 件物品");
+                    }
+                }
+                catch (Exception dropAllEx)
+                {
+                    DevLog("[BossRush] 掉落玩家物品时出错: " + dropAllEx.Message);
+                }
 
                 // 结束BossRush
                 SetBossRushRuntimeActive(false);
