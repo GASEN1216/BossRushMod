@@ -39,6 +39,10 @@ namespace BossRush
         private const string DRAGON_HELM_NAME = "龙头";
         private const string DRAGON_ARMOR_NAME = "龙甲";
         
+        // 龙王套装物品名称（用于匹配）
+        private const string DRAGON_KING_HELM_NAME = "龙王之冕";
+        private const string DRAGON_KING_ARMOR_NAME = "龙王鳞铠";
+        
         // 装备槽名称
         private const string ARMOR_SLOT_NAME = "Armor";
         private const string HELMET_SLOT_NAME = "Helmat"; // 游戏原版拼写
@@ -270,9 +274,11 @@ namespace BossRush
                     return;
                 }
                 
-                // 检测是否穿戴龙套装
+                // 检测装备状态
                 bool hasDragonHelm = false;
                 bool hasDragonArmor = false;
+                bool hasDragonKingHelm = false;
+                bool hasDragonKingArmor = false;
                 
                 // 获取头盔
                 Item helmetItem = character.GetHelmatItem();
@@ -280,13 +286,21 @@ namespace BossRush
                 {
                     string helmNameRaw = helmetItem.DisplayNameRaw;
                     string helmName = helmetItem.DisplayName;
-                    // [性能优化] 使用 DevLog 替代 Debug.Log，减少字符串分配
                     DevLog("[DragonSet] 当前头盔: " + (helmName ?? "null"));
+                    
+                    // 检测标准龙头
                     if ((!string.IsNullOrEmpty(helmNameRaw) && helmNameRaw.Contains(DRAGON_HELM_NAME)) ||
                         (!string.IsNullOrEmpty(helmName) && helmName.Contains(DRAGON_HELM_NAME)))
                     {
                         hasDragonHelm = true;
                         DevLog("[DragonSet] ✓ 匹配龙头!");
+                    }
+                    // 检测龙王之冕
+                    else if ((!string.IsNullOrEmpty(helmNameRaw) && helmNameRaw.Contains(DRAGON_KING_HELM_NAME)) ||
+                             (!string.IsNullOrEmpty(helmName) && helmName.Contains(DRAGON_KING_HELM_NAME)))
+                    {
+                        hasDragonKingHelm = true;
+                        DevLog("[DragonSet] ✓ 匹配龙王之冕!");
                     }
                 }
                 
@@ -296,22 +310,32 @@ namespace BossRush
                 {
                     string armorNameRaw = armorItem.DisplayNameRaw;
                     string armorName = armorItem.DisplayName;
-                    // [性能优化] 使用 DevLog 替代 Debug.Log
                     DevLog("[DragonSet] 当前护甲: " + (armorName ?? "null"));
+                    
+                    // 检测标准龙甲
                     if ((!string.IsNullOrEmpty(armorNameRaw) && armorNameRaw.Contains(DRAGON_ARMOR_NAME)) ||
                         (!string.IsNullOrEmpty(armorName) && armorName.Contains(DRAGON_ARMOR_NAME)))
                     {
                         hasDragonArmor = true;
                         DevLog("[DragonSet] ✓ 匹配龙甲!");
                     }
+                    // 检测龙王鳞铠
+                    else if ((!string.IsNullOrEmpty(armorNameRaw) && armorNameRaw.Contains(DRAGON_KING_ARMOR_NAME)) ||
+                             (!string.IsNullOrEmpty(armorName) && armorName.Contains(DRAGON_KING_ARMOR_NAME)))
+                    {
+                        hasDragonKingArmor = true;
+                        DevLog("[DragonSet] ✓ 匹配龙王鳞铠!");
+                    }
                 }
                 
                 // 判断套装是否激活
-                bool shouldBeActive = hasDragonHelm && hasDragonArmor;
+                bool hasFullDragonSet = hasDragonHelm && hasDragonArmor;
+                bool hasFullDragonKingSet = hasDragonKingHelm && hasDragonKingArmor;
+                bool shouldBeActive = hasFullDragonSet || hasFullDragonKingSet;
                 
                 if (shouldBeActive && !dragonSetActive)
                 {
-                    ActivateDragonSetBonus(character);
+                    ActivateDragonSetBonus(character, hasFullDragonKingSet);
                 }
                 else if (!shouldBeActive && dragonSetActive)
                 {
@@ -327,12 +351,12 @@ namespace BossRush
         /// <summary>
         /// 激活龙套装效果
         /// </summary>
-        private void ActivateDragonSetBonus(CharacterMainControl character)
+        private void ActivateDragonSetBonus(CharacterMainControl character, bool isDragonKing = false)
         {
             try
             {
                 dragonSetActive = true;
-                DevLog("[DragonSet] 龙套装效果激活！");
+                DevLog(isDragonKing ? "[DragonSet] 龙王套装效果激活！" : "[DragonSet] 龙套装效果激活！");
                 
                 // 注册伤害事件（用于火焰伤害转治疗）
                 RegisterDragonHurtEvent();
@@ -344,9 +368,12 @@ namespace BossRush
                 StartDragonEyeEffectCoroutine();
                 
                 // 显示提示（物理减伤已通过装备属性实现，会显示在装备详情中）
+                string titleCN = isDragonKing ? "<color=#FFD700>【龙王之庇护】</color>" : "<color=#FF4500>【龙之庇护】</color>";
+                string titleEN = isDragonKing ? "<color=#FFD700>[Dragon King's Protection]</color>" : "<color=#FF4500>[Dragon's Protection]</color>";
+                
                 ShowMessage(L10n.T(
-                    "<color=#FF4500>【龙之庇护】</color> 套装效果激活！\n火焰伤害转化为治疗",
-                    "<color=#FF4500>[Dragon's Protection]</color> Set bonus activated!\nFire damage heals you"
+                    titleCN + " 套装效果激活！\n火焰伤害转化为治疗",
+                    titleEN + " Set bonus activated!\nFire damage heals you"
                 ));
             }
             catch (Exception e)
