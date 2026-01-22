@@ -608,6 +608,28 @@ namespace BossRush
         /// </summary>
         public const float DROP_CHANCE = 1.0f;
         
+        // ========== 装备配置 ==========
+        
+        /// <summary>
+        /// 龙王之冕TypeID
+        /// </summary>
+        public const int DRAGON_KING_HELM_TYPE_ID = 500011;
+        
+        /// <summary>
+        /// 龙王鳞铠TypeID
+        /// </summary>
+        public const int DRAGON_KING_ARMOR_TYPE_ID = 500012;
+        
+        /// <summary>
+        /// 龙王之冕资源名称
+        /// </summary>
+        public const string DRAGON_KING_HELM_NAME = "dragonking_Helmet_Item";
+        
+        /// <summary>
+        /// 龙王鳞铠资源名称
+        /// </summary>
+        public const string DRAGON_KING_ARMOR_NAME = "dragonking_Armor_Item";
+        
         // ========== 孩儿护我配置 ==========
         
         /// <summary>

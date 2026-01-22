@@ -152,6 +152,9 @@ namespace BossRush
                 // 应用全局Boss数值倍率
                 ApplyBossStatMultiplier(character);
                 
+                // 装备龙王套装
+                await EquipDragonKing(character);
+                
                 // 禁用原有AI组件，龙王Boss完全由DragonKingAbilityController控制
                 DisableDragonKingOriginalAI(character);
                 
@@ -281,6 +284,63 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog($"[DragonKing] [WARNING] 设置Boss属性失败: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 装备龙王Boss
+        /// </summary>
+        private async UniTask EquipDragonKing(CharacterMainControl character)
+        {
+            try
+            {
+                if (character == null) return;
+                
+                DevLog("[DragonKing] 开始为龙王装备套装...");
+                
+                // 装备龙王之冕
+                Item helmItem = FindItemByTypeId(DragonKingConfig.DRAGON_KING_HELM_TYPE_ID);
+                if (helmItem == null)
+                {
+                    helmItem = FindItemByName(DragonKingConfig.DRAGON_KING_HELM_NAME);
+                }
+                
+                if (helmItem != null)
+                {
+                    EquipArmorItem(character, helmItem, "Helmat".GetHashCode());
+                }
+                else
+                {
+                    DevLog("[DragonKing] [WARNING] 未找到龙王之冕装备");
+                }
+                
+                // 装备龙王鳞铠
+                Item armorItem = FindItemByTypeId(DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID);
+                if (armorItem == null)
+                {
+                    armorItem = FindItemByName(DragonKingConfig.DRAGON_KING_ARMOR_NAME);
+                }
+                
+                if (armorItem != null)
+                {
+                    EquipArmorItem(character, armorItem, "Armor".GetHashCode());
+                }
+                else
+                {
+                    DevLog("[DragonKing] [WARNING] 未找到龙王鳞铠装备");
+                }
+                
+                // 刷新装备模型显示
+                RefreshEquipmentModels(character);
+                
+                // 加载最高级子弹（如果有武器的话）
+                await LoadHighestTierAmmo(character);
+                
+                DevLog("[DragonKing] 龙王装备完成");
+            }
+            catch (Exception e)
+            {
+                DevLog($"[DragonKing] [WARNING] 装备失败: {e.Message}");
             }
         }
         
