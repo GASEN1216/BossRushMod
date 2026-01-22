@@ -49,6 +49,7 @@ namespace BossRush
         
         // 套装状态
         private bool dragonSetActive = false;
+        private bool dragonKingSetActive = false; // 标记是否为龙王套装
         private bool dragonSetEventRegistered = false;
         private bool dragonHurtEventRegistered = false;
         
@@ -356,10 +357,15 @@ namespace BossRush
             try
             {
                 dragonSetActive = true;
+                dragonKingSetActive = isDragonKing;
                 DevLog(isDragonKing ? "[DragonSet] 龙王套装效果激活！" : "[DragonSet] 龙套装效果激活！");
                 
-                // 注册伤害事件（用于火焰伤害转治疗）
-                RegisterDragonHurtEvent();
+                // 龙王套装不触发火焰转治疗（由用户要求只保留红眼）
+                if (!isDragonKing)
+                {
+                    // 注册伤害事件（用于火焰伤害转治疗）
+                    RegisterDragonHurtEvent();
+                }
                 
                 // 创建眼睛红光特效
                 CreateDragonEyeEffect(character);
@@ -392,6 +398,7 @@ namespace BossRush
             try
             {
                 dragonSetActive = false;
+                dragonKingSetActive = false;
                 DevLog("[DragonSet] 龙套装效果停用");
                 
                 // 停止呼吸灯协程
@@ -423,8 +430,8 @@ namespace BossRush
         {
             try
             {
-                // 只处理主角的伤害
-                if (!dragonSetActive || health == null || !health.IsMainCharacterHealth) return;
+                // 只处理主角的伤害，且龙王套装不触发此效果
+                if (!dragonSetActive || dragonKingSetActive || health == null || !health.IsMainCharacterHealth) return;
                 
                 // 检查是否有火焰伤害
                 if (damageInfo.elementFactors == null || damageInfo.elementFactors.Count == 0) return;
@@ -733,8 +740,8 @@ namespace BossRush
         /// </summary>
         private void UpdateDragonDash()
         {
-            // 只在套装激活时检测
-            if (!dragonSetActive) return;
+            // 只在标准龙套装激活时检测（龙王套装不触发冲刺）
+            if (!dragonSetActive || dragonKingSetActive) return;
             
             // 检查配置是否启用冲刺
             if (config == null || !config.enableDragonDash) return;
