@@ -505,9 +505,17 @@ namespace BossRush
                     {
                         if (agent == null)
                         {
-                            agent = go.AddComponent<DuckovItemAgent>();
+                            // AssetBundle 中缺少 DuckovItemAgent 组件
+                            // 创建一个运行时包装器 prefab，而不是直接修改原始对象
+                            agent = CreateModelWrapper(go, goName);
+                            if (agent == null)
+                            {
+                                ModBehaviour.DevLog("[EquipmentFactory] 无法为 Model 创建包装器: " + goName);
+                                continue;
+                            }
+                            ModBehaviour.DevLog("[EquipmentFactory] 为 Model 创建了运行时包装器: " + goName);
                         }
-                        FixModelLayerAndShader(go);
+                        FixModelLayerAndShader(agent.gameObject);
                         modelsByBaseName[baseName] = agent;
                         
                         EquipmentType? detectedType = ParseEquipmentTypeFromName(goName);
@@ -564,6 +572,9 @@ namespace BossRush
                         
                         // 配置龙套装（设置本地化键和属性）
                         DragonSetConfig.TryConfigure(itemPrefab, baseName);
+
+                        // 配置龙王套装（设置本地化键和属性）
+                        DragonKingSetConfig.TryConfigure(itemPrefab, baseName);
 
                         // 配置飞行图腾（设置本地化键和属性）
                         FlightTotemConfig.TryConfigure(itemPrefab, baseName);
@@ -813,6 +824,51 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[EquipmentFactory] 修复 Layer/Shader 失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 为缺少 DuckovItemAgent 组件的模型创建运行时副本并添加组件
+        /// AssetBundle 中的对象是只读的，动态添加的组件无法被正确序列化
+        /// 所以需要先实例化创建可修改的运行时副本
+        /// </summary>
+        private static DuckovItemAgent CreateModelWrapper(GameObject originalModel, string modelName)
+        {
+            try
+            {
+                // 实例化 AssetBundle 中的对象，创建一个可修改的运行时副本
+                GameObject runtimeCopy = UnityEngine.Object.Instantiate(originalModel);
+                runtimeCopy.name = modelName;  // 保持原名
+                runtimeCopy.hideFlags = HideFlags.HideAndDontSave;
+                
+                // 在运行时副本上添加 DuckovItemAgent 组件
+                DuckovItemAgent agent = runtimeCopy.AddComponent<DuckovItemAgent>();
+                
+                // 确保 socketsList 被初始化
+                var socketsField = typeof(DuckovItemAgent).GetField("socketsList", 
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (socketsField != null)
+                {
+                    var socketsList = socketsField.GetValue(agent);
+                    if (socketsList == null)
+                    {
+                        socketsField.SetValue(agent, new List<Transform>());
+                    }
+                }
+                
+                // 设置 Layer
+                SetLayerRecursively(runtimeCopy, CHARACTER_LAYER);
+                
+                // 不要销毁，让它作为 prefab 使用
+                UnityEngine.Object.DontDestroyOnLoad(runtimeCopy);
+                
+                ModBehaviour.DevLog("[EquipmentFactory] 成功创建模型运行时副本: " + modelName);
+                return agent;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 创建模型运行时副本失败: " + modelName + " - " + e.Message);
+                return null;
             }
         }
         
