@@ -65,6 +65,11 @@ namespace BossRush.Common.Equipment
         protected Item cachedCharacterItem = null;
         protected CharacterMainControl cachedCharacterForItem = null;
 
+        /// <summary>
+        /// 场景切换保护标记 - 防止场景切换时误停用能力
+        /// </summary>
+        protected bool sceneTransitionProtection = false;
+
         // ========== 抽象属性和方法 ==========
 
         /// <summary>
@@ -102,6 +107,8 @@ namespace BossRush.Common.Equipment
         {
             // 订阅全局装备槽位变化事件
             CharacterMainControl.OnMainCharacterSlotContentChangedEvent += OnMainCharacterSlotContentChanged;
+            // 订阅场景加载事件，用于场景切换保护
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
             LogIfVerbose("已订阅 OnMainCharacterSlotContentChangedEvent");
         }
 
@@ -109,6 +116,7 @@ namespace BossRush.Common.Equipment
         {
             // 取消订阅
             CharacterMainControl.OnMainCharacterSlotContentChangedEvent -= OnMainCharacterSlotContentChanged;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
             DeactivateAbility();
         }
 
@@ -116,11 +124,27 @@ namespace BossRush.Common.Equipment
         {
             // 取消订阅
             CharacterMainControl.OnMainCharacterSlotContentChangedEvent -= OnMainCharacterSlotContentChanged;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
             DeactivateAbility();
 
             if (_instance == this)
             {
                 _instance = null;
+            }
+        }
+
+        /// <summary>
+        /// 场景加载完成时调用 - 清除场景切换保护
+        /// </summary>
+        protected virtual void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            // 场景加载完成后，清除保护标记并重新检查装备
+            sceneTransitionProtection = false;
+            
+            // 延迟检查装备状态，确保角色已完全加载
+            if (abilityActivated)
+            {
+                LogIfVerbose($"场景加载完成: {scene.name}，延迟重新检查装备状态");
             }
         }
 
@@ -203,6 +227,9 @@ namespace BossRush.Common.Equipment
             {
                 if (slot == null || slot.Content == null) continue;
 
+                // 调试：打印每个槽位的物品信息
+                LogIfVerbose($"检查槽位 {slot.Key}: 物品={slot.Content.name}, TypeID={slot.Content.TypeID}");
+
                 if (IsMatchingItem(slot.Content))
                 {
                     foundMatchingItem = true;
@@ -243,10 +270,33 @@ namespace BossRush.Common.Equipment
             }
             else if (!foundMatchingItem && abilityActivated)
             {
-                equippedItem = null;
-                lastRegisteredCharacter = null;
-                DeactivateAbility();
-                OnAfterDeactivate();
+                // 检查是否是场景切换导致的误检测
+                // 如果槽位为空但能力已激活，可能是场景切换中物品暂时不可见
+                // 只有当明确检测到槽位有其他物品时才停用
+                bool hasAnyTotemSlotContent = false;
+                foreach (Slot slot in characterItem.Slots)
+                {
+                    if (slot != null && slot.Key.StartsWith("Totem") && slot.Content != null)
+                    {
+                        hasAnyTotemSlotContent = true;
+                        break;
+                    }
+                }
+                
+                if (hasAnyTotemSlotContent)
+                {
+                    // 图腾槽位有内容但不是我们的装备，说明玩家换了其他图腾
+                    LogIfVerbose("检测到图腾槽位有其他物品，停用能力");
+                    equippedItem = null;
+                    lastRegisteredCharacter = null;
+                    DeactivateAbility();
+                    OnAfterDeactivate();
+                }
+                else
+                {
+                    // 图腾槽位为空，可能是场景切换或物品暂时不可见，保持能力激活
+                    LogIfVerbose("图腾槽位为空，可能是场景切换，保持能力激活状态");
+                }
             }
         }
 

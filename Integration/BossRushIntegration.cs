@@ -610,6 +610,7 @@ namespace BossRush
             LocalizationInjector.InjectMapNameLocalizations();
             LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
             EquipmentLocalization.InjectAllEquipmentLocalizations();
+            InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             DevLog("[BossRush] 扩展本地化注入完成");
         }
 
@@ -675,6 +676,9 @@ namespace BossRush
             
             // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
+
+            // 初始化逆鳞图腾系统（新架构）
+            InitializeReverseScaleSystem();
             
             // 如果当前已经在场景中，立即执行一次
             if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
@@ -696,6 +700,9 @@ namespace BossRush
             
             // 取消注册龙套装事件
             UnregisterDragonSetEvents();
+
+            // 清理逆鳞图腾系统（新架构）
+            CleanupReverseScaleSystem();
             
             // 取消订阅龙息武器火焰特效事件
             UnsubscribeDragonBreathEffectEvent();
