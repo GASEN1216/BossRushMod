@@ -25,6 +25,7 @@ using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 using ItemStatsSystem.Items;
 using FX;
+using Duckov.Buffs;
 
 namespace BossRush
 {
@@ -701,13 +702,20 @@ namespace BossRush
         
         #region 龙影冲刺
         
-        // 冲刺配置
-        private const float DASH_DISTANCE = 3f;           // 冲刺距离
+        // 冲刺配置 - 龙套装
+        private const float DASH_DISTANCE = 3f;           // 龙套装冲刺距离
         private const float DASH_DURATION = 0.1f;         // 冲刺持续时间
-        private const float DASH_COOLDOWN = 1.5f;         // 冲刺冷却时间
+        private const float DASH_COOLDOWN = 1.5f;         // 龙套装冲刺冷却时间
         private const float DOUBLE_TAP_THRESHOLD = 0.15f;  // 双击判定时间阈值（0.15秒）
         private const int AFTERIMAGE_COUNT = 3;           // 残影数量
         private const float INPUT_THRESHOLD = 0.5f;       // 输入阈值，判定方向键是否按下
+        
+        // 冲刺配置 - 龙王套装
+        private const float DRAGON_KING_DASH_DISTANCE_FIRST = 6f;     // 龙王套装第一次冲刺距离（6米）
+        private const float DRAGON_KING_DASH_DISTANCE_SECOND = 3f;    // 龙王套装第二次冲刺距离（龙套装1倍）
+        private const float DRAGON_KING_DASH_DURATION = 0.15f;        // 龙王套装冲刺持续时间（稍长，配合更远距离）
+        private const float DRAGON_KING_CHAIN_WINDOW = 0.15f;         // 龙王套装连续冲刺窗口期（与双击间隔一致）
+        private const float DRAGON_KING_DASH_COOLDOWN = 0.5f;          // 龙王套装冲刺冷却时间（0.5秒）
         
         // [性能优化] 缓存 LayerMask，避免每次冲刺都调用字符串查找
         private static readonly int DASH_OBSTACLE_LAYER_MASK = LayerMask.GetMask("Default", "Wall", "Obstacle");
@@ -715,6 +723,11 @@ namespace BossRush
         // 冲刺状态
         private bool isDragonDashing = false;
         private float lastDashTime = -999f;
+        
+        // 龙王套装连续冲刺状态
+        private bool isInChainDashWindow = false;         // 是否处于连续冲刺窗口期
+        private float chainDashWindowEndTime = 0f;        // 连续冲刺窗口结束时间
+        private bool hasUsedChainDash = false;            // 是否已使用连续冲刺
         
         // 双击检测 - 基于移动输入轴（兼容自定义按键）
         // 四个方向：前(+Y)、后(-Y)、左(-X)、右(+X)
@@ -740,20 +753,94 @@ namespace BossRush
         /// </summary>
         private void UpdateDragonDash()
         {
-            // 只在标准龙套装激活时检测（龙王套装不触发冲刺）
-            if (!dragonSetActive || dragonKingSetActive) return;
+            // 龙套装或龙王套装激活时都检测冲刺
+            if (!dragonSetActive) return;
             
-            // 检查配置是否启用冲刺
-            if (config == null || !config.enableDragonDash) return;
+            // 检查配置是否启用冲刺（龙套装需要配置，龙王套装始终启用）
+            if (!dragonKingSetActive && (config == null || !config.enableDragonDash)) return;
             
-            // 冷却中不检测
-            if (Time.time - lastDashTime < DASH_COOLDOWN) return;
+            // 冷却中不检测（但龙王套装连续冲刺窗口期内可以触发）
+            // 龙王套装使用独立的冷却时间
+            float currentCooldown = dragonKingSetActive ? DRAGON_KING_DASH_COOLDOWN : DASH_COOLDOWN;
+            if (!isInChainDashWindow && Time.time - lastDashTime < currentCooldown) return;
             
             // 冲刺中不检测新输入
             if (isDragonDashing) return;
             
+            // 龙王套装：检测连续冲刺窗口期
+            if (dragonKingSetActive && isInChainDashWindow)
+            {
+                // 窗口期已过
+                if (Time.time > chainDashWindowEndTime)
+                {
+                    isInChainDashWindow = false;
+                    hasUsedChainDash = false;
+                }
+                else
+                {
+                    // 窗口期内检测单次方向键按下
+                    CheckChainDashInput();
+                    return;
+                }
+            }
+            
             // 检测双击
             CheckDoubleTapDash();
+        }
+        
+        /// <summary>
+        /// 检测龙王套装连续冲刺输入（窗口期内单次按下方向键）
+        /// </summary>
+        private void CheckChainDashInput()
+        {
+            if (hasUsedChainDash) return;
+            
+            // 获取当前移动输入
+            InputManager inputManager = LevelManager.Instance?.InputManager;
+            if (inputManager == null) return;
+            
+            Vector2 moveInput = inputManager.MoveAxisInput;
+            
+            // 检测当前帧各方向是否按下（超过阈值）
+            bool isForwardPressed = moveInput.y > INPUT_THRESHOLD;
+            bool isBackPressed = moveInput.y < -INPUT_THRESHOLD;
+            bool isRightPressed = moveInput.x > INPUT_THRESHOLD;
+            bool isLeftPressed = moveInput.x < -INPUT_THRESHOLD;
+            
+            // 检测按下瞬间（从未按下变为按下）
+            Vector3 dashDir = Vector3.zero;
+            
+            if (isForwardPressed && !wasForwardPressed)
+            {
+                dashDir = Vector3.forward;
+            }
+            else if (isBackPressed && !wasBackPressed)
+            {
+                dashDir = Vector3.back;
+            }
+            else if (isLeftPressed && !wasLeftPressed)
+            {
+                dashDir = Vector3.left;
+            }
+            else if (isRightPressed && !wasRightPressed)
+            {
+                dashDir = Vector3.right;
+            }
+            
+            // 更新上一帧状态
+            wasForwardPressed = isForwardPressed;
+            wasBackPressed = isBackPressed;
+            wasLeftPressed = isLeftPressed;
+            wasRightPressed = isRightPressed;
+            
+            // 触发连续冲刺
+            if (dashDir != Vector3.zero)
+            {
+                hasUsedChainDash = true;
+                isInChainDashWindow = false;
+                lastDoubleTapDirection = dashDir;
+                TriggerDragonKingChainDash();
+            }
         }
         
         /// <summary>
@@ -854,10 +941,36 @@ namespace BossRush
             Vector3 dashDirection = GetCameraRelativeDirection(lastDoubleTapDirection);
             if (dashDirection == Vector3.zero) return;
             
-            DevLog("[DragonSet] 龙影冲刺触发！方向: " + dashDirection);
-            lastDashTime = Time.time;
+            // 龙王套装使用不同的冲刺逻辑
+            if (dragonKingSetActive)
+            {
+                DevLog("[DragonKingSet] 龙王冲刺触发！方向: " + dashDirection);
+                lastDashTime = Time.time;
+                StartCoroutine(DragonKingDashCoroutine(main, dashDirection, DRAGON_KING_DASH_DISTANCE_FIRST, true));
+            }
+            else
+            {
+                DevLog("[DragonSet] 龙影冲刺触发！方向: " + dashDirection);
+                lastDashTime = Time.time;
+                StartCoroutine(DragonDashCoroutine(main, dashDirection));
+            }
+        }
+        
+        /// <summary>
+        /// 触发龙王套装连续冲刺（第二次冲刺）
+        /// </summary>
+        private void TriggerDragonKingChainDash()
+        {
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null) return;
             
-            StartCoroutine(DragonDashCoroutine(main, dashDirection));
+            // 获取相机朝向，将方向键方向转换为世界坐标方向
+            Vector3 dashDirection = GetCameraRelativeDirection(lastDoubleTapDirection);
+            if (dashDirection == Vector3.zero) return;
+            
+            DevLog("[DragonKingSet] 龙王连续冲刺触发！方向: " + dashDirection);
+            lastDashTime = Time.time;
+            StartCoroutine(DragonKingDashCoroutine(main, dashDirection, DRAGON_KING_DASH_DISTANCE_SECOND, false));
         }
         
         /// <summary>
@@ -940,6 +1053,180 @@ namespace BossRush
             
             // 延迟清理残影
             StartCoroutine(ClearAfterimagesDelayed(0.5f));
+        }
+        
+        /// <summary>
+        /// 龙王套装冲刺协程 - 带熔浆效果
+        /// </summary>
+        /// <param name="main">玩家角色</param>
+        /// <param name="direction">冲刺方向</param>
+        /// <param name="distance">冲刺距离</param>
+        /// <param name="enableChainWindow">是否开启连续冲刺窗口</param>
+        private System.Collections.IEnumerator DragonKingDashCoroutine(CharacterMainControl main, Vector3 direction, float distance, bool enableChainWindow)
+        {
+            isDragonDashing = true;
+            
+            Vector3 startPos = main.transform.position;
+            
+            // 清理旧残影
+            ClearAfterimages();
+            
+            // 计算冲刺速度（距离/时间）
+            float dashSpeed = distance / DRAGON_KING_DASH_DURATION;
+            
+            float elapsed = 0f;
+            int afterimageIndex = 0;
+            float afterimageInterval = DRAGON_KING_DASH_DURATION / AFTERIMAGE_COUNT;
+            float nextAfterimageTime = 0f;
+            
+            // 熔浆生成间隔
+            float lavaInterval = 0.05f;
+            float nextLavaTime = 0f;
+            
+            // 播放冲刺音效
+            PlaySoundEffect(DragonKingConfig.Sound_DashBurst);
+            
+            // 使用原版的 SetForceMoveVelocity 方式移动，让物理系统处理碰撞
+            while (elapsed < DRAGON_KING_DASH_DURATION)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / DRAGON_KING_DASH_DURATION);
+                
+                // 使用缓动曲线计算当前速度倍率（ease-out）
+                float speedMultiplier = 1f - Mathf.Pow(t, 2f); // 开始快，结束慢
+                speedMultiplier = Mathf.Max(0.3f, speedMultiplier); // 最低保持 30% 速度
+                
+                // 设置强制移动速度，让物理系统处理碰撞
+                main.SetForceMoveVelocity(direction * dashSpeed * speedMultiplier);
+                
+                // 生成残影（在当前位置）- 使用龙王特效颜色
+                if (elapsed >= nextAfterimageTime && afterimageIndex < AFTERIMAGE_COUNT)
+                {
+                    CreateDragonKingAfterimageAtPosition(main, main.transform.position);
+                    afterimageIndex++;
+                    nextAfterimageTime += afterimageInterval;
+                }
+                
+                // 生成熔浆区域
+                if (elapsed >= nextLavaTime)
+                {
+                    CreateLavaZone(main.transform.position);
+                    nextLavaTime += lavaInterval;
+                }
+                
+                yield return null;
+            }
+            
+            // 冲刺结束，恢复正常移动
+            main.SetForceMoveVelocity(Vector3.zero);
+            
+            isDragonDashing = false;
+            
+            // 如果是第一次冲刺，开启连续冲刺窗口
+            if (enableChainWindow)
+            {
+                isInChainDashWindow = true;
+                chainDashWindowEndTime = Time.time + DRAGON_KING_CHAIN_WINDOW;
+                hasUsedChainDash = false;
+                DevLog("[DragonKingSet] 连续冲刺窗口开启，持续 " + DRAGON_KING_CHAIN_WINDOW + " 秒");
+            }
+            
+            // 延迟清理残影
+            StartCoroutine(ClearAfterimagesDelayed(0.5f));
+        }
+        
+        /// <summary>
+        /// 创建熔浆区域（玩家版本 - 不伤害玩家和友方单位，只伤害敌人）
+        /// 使用龙王Boss的DashTrailPrefab预制体作为视觉特效
+        /// </summary>
+        private void CreateLavaZone(Vector3 position)
+        {
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                
+                // 使用龙王Boss的冲刺轨迹预制体作为视觉特效
+                var effect = DragonKingAssetManager.InstantiateEffect(
+                    DragonKingConfig.DashTrailPrefab,
+                    position,
+                    main != null ? main.transform.rotation : Quaternion.identity
+                );
+                
+                if (effect != null)
+                {
+                    // 添加玩家版熔浆区域组件（不伤害玩家和友方单位）
+                    PlayerLavaZone lavaComponent = effect.AddComponent<PlayerLavaZone>();
+                    lavaComponent.Initialize(
+                        DragonKingConfig.LavaDamage,
+                        DragonKingConfig.LavaDamageInterval,
+                        DragonKingConfig.LavaDuration,
+                        DragonKingConfig.LavaRadius
+                    );
+                    
+                    // 特效持续时间与熔浆区域一致
+                    UnityEngine.Object.Destroy(effect, DragonKingConfig.LavaDuration);
+                }
+                else
+                {
+                    // 如果预制体加载失败，使用简单的备用方案
+                    GameObject lavaZone = new GameObject("PlayerLavaZone");
+                    lavaZone.transform.position = position;
+                    
+                    PlayerLavaZone lavaComponent = lavaZone.AddComponent<PlayerLavaZone>();
+                    lavaComponent.Initialize(
+                        DragonKingConfig.LavaDamage,
+                        DragonKingConfig.LavaDamageInterval,
+                        DragonKingConfig.LavaDuration,
+                        DragonKingConfig.LavaRadius
+                    );
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonKingSet] CreateLavaZone 异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 创建龙王套装残影（金色/橙色）
+        /// </summary>
+        private void CreateDragonKingAfterimageAtPosition(CharacterMainControl main, Vector3 position)
+        {
+            try
+            {
+                // 创建简单的残影精灵
+                GameObject afterimage = new GameObject("DragonKingAfterimage");
+                afterimage.transform.position = position + Vector3.up * 1f; // 角色中心高度
+                afterimage.transform.rotation = main.transform.rotation;
+                
+                // 添加精灵渲染器
+                SpriteRenderer sr = afterimage.AddComponent<SpriteRenderer>();
+                
+                // 使用内置的白色圆形精灵
+                sr.sprite = CreateSimpleCircleSprite();
+                sr.color = new Color(1f, 0.6f, 0.1f, 0.7f); // 金橙色半透明（龙王特色）
+                sr.sortingOrder = 100;
+                
+                // 设置适中的尺寸
+                afterimage.transform.localScale = new Vector3(2f, 3f, 1f);
+                
+                // 添加光源增强视觉效果
+                Light light = afterimage.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(1f, 0.5f, 0.1f); // 金橙色
+                light.intensity = 3f;
+                light.range = 2f;
+                light.shadows = LightShadows.None;
+                
+                afterimages.Add(afterimage);
+                
+                // 启动淡出协程
+                StartCoroutine(FadeOutAfterimageLight(afterimage, sr, light, 0.5f));
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonKingSet] CreateDragonKingAfterimageAtPosition 异常: " + e.Message);
+            }
         }
         
         // [性能优化] 缓存残影材质，避免重复创建
@@ -1097,5 +1384,143 @@ namespace BossRush
         }
         
         #endregion
+    }
+    
+    /// <summary>
+    /// 玩家版熔浆区域组件 - 只伤害敌人，不伤害玩家和友方单位
+    /// 使用 Team.IsEnemy 判断敌友关系
+    /// </summary>
+    public class PlayerLavaZone : MonoBehaviour
+    {
+        // ========== 配置参数 ==========
+        private float damage = 5f;
+        private float damageInterval = 0.5f;
+        private float duration = 3f;
+        private float radius = 1f;
+        
+        // ========== 状态 ==========
+        private float createTime = 0f;
+        private float lastDamageTime = 0f;
+        
+        // ========== 缓存 ==========
+        private static Duckov.Buffs.Buff cachedBurnBuff = null;
+        private static int characterLayerMask = -1;
+        private Collider[] hitBuffer = new Collider[16];
+        
+        /// <summary>
+        /// 初始化熔浆区域
+        /// </summary>
+        public void Initialize(float dmg, float interval, float dur, float rad)
+        {
+            damage = dmg;
+            damageInterval = interval;
+            duration = dur;
+            radius = rad;
+            createTime = Time.time;
+            
+            // 缓存点燃Buff
+            if (cachedBurnBuff == null)
+            {
+                cachedBurnBuff = Duckov.Utilities.GameplayDataSettings.Buffs.Burn;
+            }
+            
+            // 缓存LayerMask
+            if (characterLayerMask == -1)
+            {
+                characterLayerMask = LayerMask.GetMask("Character");
+            }
+        }
+        
+        void Update()
+        {
+            // 检查是否超时
+            float elapsed = Time.time - createTime;
+            if (elapsed > duration)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            
+            // 检测并伤害敌人
+            if (Time.time - lastDamageTime >= damageInterval)
+            {
+                DamageEnemiesInRange();
+                lastDamageTime = Time.time;
+            }
+        }
+        
+        /// <summary>
+        /// 伤害范围内的敌人（不伤害玩家和友方单位）
+        /// 使用 Team.IsEnemy 判断敌友关系
+        /// </summary>
+        private void DamageEnemiesInRange()
+        {
+            int hitCount = Physics.OverlapSphereNonAlloc(transform.position, radius, hitBuffer, characterLayerMask);
+            
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider col = hitBuffer[i];
+                if (col == null) continue;
+                
+                // 获取角色组件
+                CharacterMainControl character = col.GetComponentInParent<CharacterMainControl>();
+                if (character == null) continue;
+                
+                // 获取Health组件
+                Health health = character.Health;
+                if (health == null) continue;
+                
+                // 跳过已死亡的
+                if (health.IsDead) continue;
+                
+                // 使用 Team.IsEnemy 判断敌友关系
+                // 玩家阵营是 Teams.player，宠物和雇佣兵也是 Teams.player
+                // 只对敌人造成伤害
+                Teams targetTeam = character.Team;
+                if (!Team.IsEnemy(Teams.player, targetTeam))
+                {
+                    // 不是敌人，跳过（包括玩家、宠物、雇佣兵等友方单位）
+                    continue;
+                }
+                
+                // 造成伤害
+                ApplyLavaDamageToEnemy(health);
+            }
+        }
+        
+        /// <summary>
+        /// 对敌人造成熔浆伤害
+        /// </summary>
+        private void ApplyLavaDamageToEnemy(Health enemyHealth)
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                
+                // 创建伤害信息（来源为玩家）
+                DamageInfo damageInfo = new DamageInfo(player);
+                damageInfo.damageValue = damage;
+                damageInfo.damageType = DamageTypes.normal;
+                damageInfo.damagePoint = enemyHealth.transform.position;
+                damageInfo.AddElementFactor(ElementTypes.fire, 1f);
+                
+                // 造成伤害
+                enemyHealth.Hurt(damageInfo);
+                
+                // 施加点燃Buff
+                if (cachedBurnBuff != null)
+                {
+                    CharacterMainControl enemy = enemyHealth.TryGetCharacter();
+                    if (enemy != null)
+                    {
+                        enemy.AddBuff(cachedBurnBuff, player, 0);
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[PlayerLavaZone] 伤害敌人失败: " + e.Message);
+            }
+        }
     }
 }
