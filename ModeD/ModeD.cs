@@ -131,8 +131,8 @@ namespace BossRush
                 Item characterItem = main.CharacterItem;
                 if (characterItem == null) return false;
 
-                // 检查装备槽是否全空
-                string[] equipmentSlots = new string[] { "Armor", "Helmat", "FaceMask", "Backpack", "Headset" };
+                // 检查装备槽是否全空（包括图腾槽位）
+                string[] equipmentSlots = new string[] { "Armor", "Helmat", "FaceMask", "Backpack", "Headset", "Totem1", "Totem2" };
                 foreach (string slotName in equipmentSlots)
                 {
                     try
