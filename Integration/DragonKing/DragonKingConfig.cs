@@ -46,12 +46,12 @@ namespace BossRush
         /// <summary>
         /// 基础血量
         /// </summary>
-        public const float BaseHealth = 5000f;
+        public const float BaseHealth = 800f;
         
         /// <summary>
         /// 伤害倍率
         /// </summary>
-        public const float DamageMultiplier = 0.5f;
+        public const float DamageMultiplier = 0.3f;
         
         /// <summary>
         /// Boss名称本地化键
@@ -61,12 +61,12 @@ namespace BossRush
         /// <summary>
         /// Boss中文名称
         /// </summary>
-        public const string BossNameCN = "龙王";
+        public const string BossNameCN = "焚天龙皇";
         
         /// <summary>
         /// Boss英文名称
         /// </summary>
-        public const string BossNameEN = "Dragon King";
+        public const string BossNameEN = "Skyburner Dragon Lord";
         
         // ========== 阶段参数 ==========
         
@@ -604,9 +604,29 @@ namespace BossRush
         public const int DRAGON_KING_LOOT_TYPE_ID = FlightConfig.TotemTypeIdBase;
         
         /// <summary>
-        /// 龙王掉落物掉落概率 (100% - 龙王必掉飞行图腾)
+        /// 逆鳞图腾TypeID
         /// </summary>
-        public const float DROP_CHANCE = 1.0f;
+        public const int REVERSE_SCALE_TYPE_ID = 500013;
+        
+        /// <summary>
+        /// 飞行图腾掉落概率（20%）
+        /// </summary>
+        public const float DROP_CHANCE_FLIGHT_TOTEM = 0.2f;
+        
+        /// <summary>
+        /// 龙王之冕掉落概率（20%）
+        /// </summary>
+        public const float DROP_CHANCE_CROWN = 0.2f;
+        
+        /// <summary>
+        /// 龙王鳞铠掉落概率（20%）
+        /// </summary>
+        public const float DROP_CHANCE_ARMOR = 0.2f;
+        
+        /// <summary>
+        /// 逆鳞掉落概率（40%）
+        /// </summary>
+        public const float DROP_CHANCE_REVERSE_SCALE = 0.4f;
         
         // ========== 装备配置 ==========
         
@@ -646,6 +666,16 @@ namespace BossRush
         /// 飞升速度（米/秒）
         /// </summary>
         public const float ChildProtectionFlySpeed = 3f;
+        
+        /// <summary>
+        /// 召唤的龙裔遗族属性倍率（相对于正常龙裔遗族）
+        /// </summary>
+        public const float ChildProtectionDescendantStatMultiplier = 0.5f;
+        
+        /// <summary>
+        /// 孩儿护我阶段棱彩弹发射间隔（秒）
+        /// </summary>
+        public const float ChildProtectionBoltInterval = 3f;
         
         /// <summary>
         /// 龙王对话内容（中文）

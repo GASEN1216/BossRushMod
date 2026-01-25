@@ -48,6 +48,10 @@ namespace BossRush
         
         #region 龙王套装本地化数据
         
+        // 焚天龙皇Boss名称（红色显示）
+        private static readonly string DragonKingBossNameCN = "<color=red>焚天龙皇</color>";
+        private static readonly string DragonKingBossNameEN = "<color=red>Skyburner Dragon Lord</color>";
+        
         // 龙王之冕（龙王专属头盔）
         private static readonly string DragonKingHelmNameCN = "龙王之冕";
         private static readonly string DragonKingHelmNameEN = "Dragon King's Crown";
@@ -155,12 +159,44 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 注入龙王套装本地化（龙王之冕 + 龙王鳞铠）
+        /// 注入龙王套装本地化（龙王之冕 + 龙王鳞铠 + Boss名称）
         /// </summary>
         public static void InjectDragonKingSetLocalization()
         {
+            InjectDragonKingBossLocalization();
             InjectDragonKingHelmLocalization(0);
             InjectDragonKingArmorLocalization(0);
+        }
+        
+        /// <summary>
+        /// 注入焚天龙皇Boss名称本地化
+        /// </summary>
+        public static void InjectDragonKingBossLocalization()
+        {
+            try
+            {
+                string displayName = L10n.T(DragonKingBossNameCN, DragonKingBossNameEN);
+                
+                // 注入Boss名称键（与DragonKingConfig.BossNameKey一致）
+                LocalizationHelper.InjectLocalization("boss_dragonking", displayName);
+                // 也注入旧名称键以保持兼容
+                LocalizationHelper.InjectLocalization("龙王", displayName);
+                LocalizationHelper.InjectLocalization("Dragon King", displayName);
+                
+                ModBehaviour.DevLog("[EquipmentLocalization] 焚天龙皇Boss本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入焚天龙皇Boss本地化失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 获取焚天龙皇Boss显示名称
+        /// </summary>
+        public static string GetDragonKingBossName()
+        {
+            return L10n.T(DragonKingBossNameCN, DragonKingBossNameEN);
         }
         
         /// <summary>

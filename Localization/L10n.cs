@@ -136,38 +136,38 @@ namespace BossRush
                           "Takes 0.1% max HP + 1 true fire damage per second per layer, stacks up to 10, lasts 10 seconds"); }
         }
         
-        // ========== 龙王Boss本地化 ==========
+        // ========== 焚天龙皇Boss本地化 ==========
         
         /// <summary>
-        /// 获取龙王Boss名称
+        /// 获取焚天龙皇Boss名称
         /// </summary>
         public static string DragonKingName
         {
-            get { return T("龙王", "Dragon King"); }
+            get { return T("<color=red>焚天龙皇</color>", "<color=red>Skyburner Dragon Lord</color>"); }
         }
         
         /// <summary>
-        /// 获取龙王出现消息
+        /// 获取焚天龙皇出现消息
         /// </summary>
         public static string DragonKingAppeared
         {
-            get { return T("龙王 出现了！", "Dragon King has appeared!"); }
+            get { return T("焚天龙皇 出现了！", "Skyburner Dragon Lord has appeared!"); }
         }
         
         /// <summary>
-        /// 获取龙王被击败消息
+        /// 获取焚天龙皇被击败消息
         /// </summary>
         public static string DragonKingDefeated
         {
-            get { return T("龙王被击败了！", "Dragon King has been defeated!"); }
+            get { return T("焚天龙皇被击败了！", "Skyburner Dragon Lord has been defeated!"); }
         }
         
         /// <summary>
-        /// 获取龙王进入狂暴状态消息
+        /// 获取焚天龙皇进入狂暴状态消息
         /// </summary>
         public static string DragonKingEnraged
         {
-            get { return T("龙王进入狂暴状态！", "Dragon King enters rage mode!"); }
+            get { return T("焚天龙皇进入狂暴状态！", "Skyburner Dragon Lord enters rage mode!"); }
         }
         
     }

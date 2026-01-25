@@ -238,9 +238,19 @@ namespace BossRush
         private Coroutine childProtectionCoroutine = null;
         
         /// <summary>
+        /// 孩儿护我阶段棱彩弹发射协程引用
+        /// </summary>
+        private Coroutine childProtectionBoltCoroutine = null;
+        
+        /// <summary>
         /// 飞升云雾特效引用
         /// </summary>
         private FlightCloudEffect flightCloudEffect = null;
+        
+        /// <summary>
+        /// 三阶段起飞前的位置（用于死亡时掉落物生成）
+        /// </summary>
+        private Vector3 preFlyPosition = Vector3.zero;
         
         // ========== 自定义射击系统（替代原版AI射击） ==========
         
@@ -3903,6 +3913,10 @@ namespace BossRush
         {
             if (bossCharacter == null) yield break;
             
+            // 记录起飞前的位置（用于死亡时掉落物生成）
+            preFlyPosition = bossCharacter.transform.position;
+            ModBehaviour.DevLog($"[DragonKing] 记录起飞前位置: {preFlyPosition}");
+            
             ModBehaviour.DevLog($"[DragonKing] 开始飞升到 {targetHeight} 米高度");
             
             // 创建飞行平台（防止下落）
@@ -4080,6 +4094,9 @@ namespace BossRush
                 yield break;
             }
             
+            // 降低龙裔遗族属性（50%）
+            ApplyDescendantStatReduction(spawnedDescendant);
+            
             // 显示龙裔遗族对话气泡
             ShowDescendantDialogue();
             
@@ -4088,6 +4105,127 @@ namespace BossRush
             {
                 spawnedDescendant.Health.OnDeadEvent.AddListener(OnDescendantDeath);
                 ModBehaviour.DevLog("[DragonKing] 已订阅龙裔遗族死亡事件");
+            }
+            
+            // 启动孩儿护我阶段的棱彩弹发射协程
+            childProtectionBoltCoroutine = StartCoroutine(ChildProtectionBoltLoop());
+        }
+        
+        /// <summary>
+        /// 降低召唤的龙裔遗族属性（第三阶段专用）
+        /// </summary>
+        private void ApplyDescendantStatReduction(CharacterMainControl descendant)
+        {
+            try
+            {
+                if (descendant == null || descendant.CharacterItem == null) return;
+                
+                float multiplier = DragonKingConfig.ChildProtectionDescendantStatMultiplier;
+                var item = descendant.CharacterItem;
+                
+                // 降低血量
+                var healthStat = item.GetStat("MaxHealth");
+                if (healthStat != null)
+                {
+                    float newHealth = healthStat.BaseValue * multiplier;
+                    healthStat.BaseValue = newHealth;
+                    
+                    // 同步设置当前血量
+                    if (descendant.Health != null)
+                    {
+                        descendant.Health.SetHealth(newHealth);
+                    }
+                    
+                    ModBehaviour.DevLog($"[DragonKing] 龙裔遗族血量降低至: {newHealth}");
+                }
+                
+                // 降低伤害倍率
+                var gunDmgStat = item.GetStat("GunDamageMultiplier");
+                if (gunDmgStat != null)
+                {
+                    gunDmgStat.BaseValue *= multiplier;
+                    ModBehaviour.DevLog($"[DragonKing] 龙裔遗族枪械伤害倍率降低至: {gunDmgStat.BaseValue}");
+                }
+                
+                var meleeDmgStat = item.GetStat("MeleeDamageMultiplier");
+                if (meleeDmgStat != null)
+                {
+                    meleeDmgStat.BaseValue *= multiplier;
+                    ModBehaviour.DevLog($"[DragonKing] 龙裔遗族近战伤害倍率降低至: {meleeDmgStat.BaseValue}");
+                }
+                
+                ModBehaviour.DevLog($"[DragonKing] 龙裔遗族属性已降低 {(1 - multiplier) * 100}%");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 降低龙裔遗族属性失败: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 孩儿护我阶段棱彩弹发射循环
+        /// </summary>
+        private IEnumerator ChildProtectionBoltLoop()
+        {
+            ModBehaviour.DevLog("[DragonKing] 开始孩儿护我阶段棱彩弹发射循环");
+            
+            WaitForSeconds waitInterval = new WaitForSeconds(DragonKingConfig.ChildProtectionBoltInterval);
+            
+            while (isInChildProtection && bossCharacter != null && bossHealth != null && !bossHealth.IsDead)
+            {
+                yield return waitInterval;
+                
+                // 再次检查状态（等待期间可能已结束）
+                if (!isInChildProtection || bossCharacter == null || bossHealth == null || bossHealth.IsDead) break;
+                
+                // 发射单个棱彩弹
+                FireChildProtectionBolt();
+            }
+            
+            ModBehaviour.DevLog("[DragonKing] 孩儿护我阶段棱彩弹发射循环结束");
+        }
+        
+        /// <summary>
+        /// 发射孩儿护我阶段的棱彩弹
+        /// </summary>
+        private void FireChildProtectionBolt()
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                
+                // 获取玩家位置
+                UpdatePlayerReference();
+                if (playerCharacter == null) return;
+                
+                Vector3 bossPos = bossCharacter.transform.position + Vector3.up * DragonKingConfig.BossChestHeightOffset;
+                Vector3 playerPos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
+                Vector3 direction = (playerPos - bossPos).normalized;
+                
+                // 创建棱彩弹
+                GameObject bolt = DragonKingAssetManager.InstantiateEffect(
+                    DragonKingConfig.PrismaticBoltPrefab,
+                    bossPos,
+                    Quaternion.LookRotation(direction)
+                );
+                
+                if (bolt != null)
+                {
+                    // 设置缩放
+                    bolt.transform.localScale = Vector3.one * DragonKingConfig.PrismaticBoltScale;
+                    
+                    // 启动追踪协程（使用统一的追踪弹幕方法）
+                    StartTrackedCoroutine(TrackingProjectile(bolt, DragonKingConfig.PrismaticBoltLifetime));
+                    
+                    // 播放音效
+                    ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltSpawn);
+                    
+                    ModBehaviour.DevLog("[DragonKing] 孩儿护我阶段发射棱彩弹");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 孩儿护我阶段发射棱彩弹失败: {e.Message}");
             }
         }
         
@@ -4198,6 +4336,13 @@ namespace BossRush
             // 清理飞行平台
             DestroyFlightPlatform();
             
+            // 将龙王传送回起飞前的位置（确保掉落物生成在地面）
+            if (preFlyPosition != Vector3.zero)
+            {
+                bossCharacter.transform.position = preFlyPosition;
+                ModBehaviour.DevLog($"[DragonKing] 已将龙王传送回起飞前位置: {preFlyPosition}");
+            }
+            
             // 设置血量为0触发死亡
             bossHealth.SetHealth(0f);
             
@@ -4226,6 +4371,13 @@ namespace BossRush
                 childProtectionCoroutine = null;
             }
             
+            // 停止孩儿护我阶段棱彩弹发射协程
+            if (childProtectionBoltCoroutine != null)
+            {
+                StopCoroutine(childProtectionBoltCoroutine);
+                childProtectionBoltCoroutine = null;
+            }
+            
             // 销毁飞行平台
             DestroyFlightPlatform();
             
@@ -4236,6 +4388,7 @@ namespace BossRush
             childProtectionTriggered = false;
             isInChildProtection = false;
             lockedMinY = float.MinValue;
+            preFlyPosition = Vector3.zero;
             
             ModBehaviour.DevLog("[DragonKing] 孩儿护我状态已清理");
         }

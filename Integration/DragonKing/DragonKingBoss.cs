@@ -35,6 +35,11 @@ namespace BossRush
         private DragonKingAbilityController dragonKingAbilities;
         
         /// <summary>
+        /// 龙王掉落事件委托（用于正确取消订阅，避免Lambda内存泄漏）
+        /// </summary>
+        private Action<DamageInfo> dragonKingLootEventHandler;
+        
+        /// <summary>
         /// 龙王是否已注册到预设列表 - 用于防止重复注册
         /// </summary>
         #pragma warning disable CS0414
@@ -185,7 +190,15 @@ namespace BossRush
                 {
                     bossSpawnTimes[character] = Time.time;
                     bossOriginalLootCounts[character] = 5; // 龙王掉落更多
-                    character.BeforeCharacterSpawnLootOnDead += (dmgInfo) => OnBossBeforeSpawnLoot(character, dmgInfo);
+                    
+                    // 使用命名委托替代Lambda，以便后续可以正确取消订阅（避免内存泄漏）
+                    dragonKingLootEventHandler = (dmgInfo) => {
+                        DevLog("[DragonKing] BeforeCharacterSpawnLootOnDead 事件触发");
+                        OnBossBeforeSpawnLoot(character, dmgInfo);
+                    };
+                    character.BeforeCharacterSpawnLootOnDead += dragonKingLootEventHandler;
+                    
+                    DevLog("[DragonKing] 已订阅掉落事件，bossSpawnTimes.Count=" + bossSpawnTimes.Count);
                 }
                 catch (Exception recordEx)
                 {
@@ -389,10 +402,22 @@ namespace BossRush
             ShowMessage(L10n.DragonKingDefeated);
 
             // 移除事件监听（防止内存泄漏）
-            // 使用缓存的实例引用，因为DamageInfo是结构体且可能没有victim属性
-            if (dragonKingInstance != null && dragonKingInstance.Health != null)
+            // 注意：不要在这里取消 BeforeCharacterSpawnLootOnDead 订阅！
+            // 因为 OnDeadEvent 和 BeforeCharacterSpawnLootOnDead 的触发顺序不确定，
+            // 如果在这里取消订阅，可能导致掉落随机化逻辑无法执行。
+            // BeforeCharacterSpawnLootOnDead 事件会在 OnBossBeforeSpawnLoot_LootAndRewards 中
+            // 通过 bossSpawnTimes.Remove(bossMain) 自动清理。
+            if (dragonKingInstance != null)
             {
-                dragonKingInstance.Health.OnDeadEvent.RemoveListener(OnDragonKingDeath);
+                // 取消死亡事件订阅
+                if (dragonKingInstance.Health != null)
+                {
+                    dragonKingInstance.Health.OnDeadEvent.RemoveListener(OnDragonKingDeath);
+                }
+                
+                // 注意：掉落事件订阅由 OnBossBeforeSpawnLoot_LootAndRewards 处理后自动清理
+                // 这里只清理委托引用，不取消订阅
+                dragonKingLootEventHandler = null;
             }
 
             // 清理能力控制器

@@ -481,7 +481,7 @@ namespace BossRush
                         StartCoroutine(TrackingBolt(bolt, direction));
 
                         // 播放音效
-                        ModBehaviour.Instance?.PlaySoundEffectWithVolume(DragonKingConfig.Sound_BoltSpawn, DragonKingConfig.Volume_BoltSpawn);
+                        ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltSpawn);
                     }
                 }
             }
@@ -590,7 +590,7 @@ namespace BossRush
                         ModBehaviour.DevLog($"{config.LogPrefix} 棱彩弹命中敌人，伤害: {damage}");
 
                         // 播放命中音效
-                        ModBehaviour.Instance?.PlaySoundEffectWithVolume(DragonKingConfig.Sound_BoltHit, DragonKingConfig.Volume_BoltHit);
+                        ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltHit);
 
                         // 命中后销毁
                         UnityEngine.Object.Destroy(bolt);

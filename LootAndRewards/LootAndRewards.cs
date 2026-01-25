@@ -1348,17 +1348,39 @@ namespace BossRush
         {
             try
             {
-                // 仅在BossRush激活时生效
-                if (!IsActive || bossMain == null)
+                // [调试] 记录事件触发
+                string bossName = bossMain != null ? bossMain.gameObject.name : "null";
+                DevLog("[BossRush] OnBossBeforeSpawnLoot_LootAndRewards 被调用: bossName=" + bossName + ", IsActive=" + IsActive);
+                
+                // 空检查
+                if (bossMain == null)
                 {
+                    DevLog("[BossRush] 掉落事件跳过: bossMain=null");
                     return;
+                }
+
+                // 龙王Boss特殊处理：即使IsActive=false，只要在bossSpawnTimes中有记录就继续处理
+                // 原因：龙王第三阶段召唤龙裔遗族，龙裔死亡会先触发OnAllEnemiesDefeated设置IsActive=false
+                // 然后龙王联动死亡才触发此事件，此时需要允许龙王的掉落逻辑执行
+                bool isDragonKing = IsDragonKingBoss(bossMain);
+                if (!IsActive && !isDragonKing)
+                {
+                    DevLog("[BossRush] 掉落事件跳过: IsActive=False 且不是龙王Boss");
+                    return;
+                }
+                if (!IsActive && isDragonKing)
+                {
+                    DevLog("[BossRush] 龙王Boss联动死亡特殊处理: 允许继续执行掉落逻辑");
                 }
 
                 // 只处理由 BossRush 生成且被追踪的 Boss
                 if (!bossSpawnTimes.ContainsKey(bossMain))
                 {
+                    DevLog("[BossRush] 掉落事件跳过: bossSpawnTimes 不包含此Boss, 当前追踪数量=" + bossSpawnTimes.Count);
                     return;
                 }
+                
+                DevLog("[BossRush] 掉落事件通过检查，开始处理Boss掉落: " + bossName);
 
                 // 双保险：基于掉落事件再做一次死亡判定（HandleBossDeath 内部会去重）
                 HandleBossDeath(bossMain, dmgInfo);
@@ -2615,7 +2637,7 @@ namespace BossRush
             }
             else if (IsDragonKingBoss(bossMain))
             {
-                // 龙王：100%掉落飞行图腾
+                // 龙王：按概率掉落专属物品（飞行图腾20%、龙王之冕20%、龙王鳞铠20%、逆鳞40%）
                 yield return AddDragonKingLoot(inv);
             }
             // 未来新增Boss在此添加 else if 分支
@@ -2686,21 +2708,45 @@ namespace BossRush
         
         /// <summary>
         /// 添加龙王专属掉落物到Inventory
+        /// 共享掉落格子：飞行图腾20%、龙王之冕20%、龙王鳞铠20%、逆鳞40%
         /// </summary>
         private IEnumerator AddDragonKingLoot(Inventory inv)
         {
-            // 按概率掉落飞行图腾
+            // 按概率随机选择掉落物品：飞行图腾20%、龙王之冕20%、龙王鳞铠20%、逆鳞40%
             float roll = UnityEngine.Random.Range(0f, 1f);
-            if (roll > DragonKingConfig.DROP_CHANCE)
+            int selectedTypeId;
+            string itemName;
+            
+            float threshold1 = DragonKingConfig.DROP_CHANCE_FLIGHT_TOTEM;
+            float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;
+            float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;
+            
+            if (roll < threshold1)
             {
-                DevLog("[DragonKing] 未触发掉落 (roll=" + roll.ToString("F3") + ")");
-                yield break;
+                // 20% 飞行图腾
+                selectedTypeId = DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID;
+                itemName = "腾云驾雾 I";
+            }
+            else if (roll < threshold2)
+            {
+                // 20% 龙王之冕
+                selectedTypeId = DragonKingConfig.DRAGON_KING_HELM_TYPE_ID;
+                itemName = "龙王之冕";
+            }
+            else if (roll < threshold3)
+            {
+                // 20% 龙王鳞铠
+                selectedTypeId = DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID;
+                itemName = "龙王鳞铠";
+            }
+            else
+            {
+                // 40% 逆鳞
+                selectedTypeId = DragonKingConfig.REVERSE_SCALE_TYPE_ID;
+                itemName = "逆鳞";
             }
 
-            int selectedTypeId = DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID;
-            string itemName = "腾云驾雾 I";
-
-            DevLog("[DragonKing] 龙王掉落: " + itemName + " (TypeID=" + selectedTypeId + ")");
+            DevLog("[DragonKing] 随机选择龙王掉落: " + itemName + " (TypeID=" + selectedTypeId + ", roll=" + roll.ToString("F3") + ")");
 
             try
             {
