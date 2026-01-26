@@ -1109,16 +1109,29 @@ namespace BossRush
                 }
             }
             
-            // 调试快捷键 F4：输出玩家装备的两把武器的详细信息
+            // 调试快捷键 F4：清空所有成就数据（DevMode专用测试功能）
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F4))
             {
                 try
                 {
-                    LogPlayerWeaponsDetailedInfo();
+                    DevLog("[BossRush] F4 按下，清空所有成就数据");
+                    BossRushAchievementManager.DebugResetAll();
+                    AchievementEntryUI.ClearIconCache();
+                    
+                    // 如果成就页面打开则刷新
+                    if (AchievementView.Instance != null && AchievementView.Instance.IsOpen)
+                    {
+                        AchievementView.Instance.RefreshAll();
+                    }
+                    
+                    NotificationText.Push(AchievementUIStrings.IsChinese() 
+                        ? "[调试] 已清空所有成就数据" 
+                        : "[Debug] All achievement data cleared");
+                    DevLog("[BossRush] 成就数据已清空");
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] F4 武器信息输出失败: " + e.Message);
+                    DevLog("[BossRush] F4 清空成就失败: " + e.Message);
                 }
             }
 

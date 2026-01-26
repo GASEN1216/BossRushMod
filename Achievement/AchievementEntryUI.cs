@@ -2,14 +2,16 @@
 // AchievementEntryUI.cs - 成就条目UI组件
 // ============================================================================
 // 模块说明：
-//   单个成就条目的UI组件，显示成就图标、名称、描述、难度和奖励信息
+//   单个成就条目的UI组件，使用LayoutElement指定高度
 //   支持四种状态：未解锁、隐藏未解锁、已解锁未领取、已解锁已领取
 // ============================================================================
 
 using System;
 using System.IO;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace BossRush
 {
@@ -25,42 +27,56 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 成就条目UI组件
+    /// 成就条目UI组件 - 使用LayoutElement，带图标缓存
     /// </summary>
     public class AchievementEntryUI : MonoBehaviour
     {
+        #region 图标缓存
+
+        private static Dictionary<string, Texture2D> iconCache = new Dictionary<string, Texture2D>();
+        private static bool cacheInitialized = false;
+
+        public static void ClearIconCache()
+        {
+            foreach (var tex in iconCache.Values)
+            {
+                if (tex != null) UnityEngine.Object.Destroy(tex);
+            }
+            iconCache.Clear();
+            cacheInitialized = false;
+        }
+
+        #endregion
+
         #region UI布局常量
 
-        // 条目尺寸
-        public const float EntryHeight = 90f;
-        public const float EntryPadding = 12f;
-        public const float IconSize = 70f;
+        public const float EntryHeight = 70f;
+        public const float Padding = 8f;
 
-        // 颜色
-        public static readonly Color BgColor = new Color32(40, 44, 52, 255);
-        public static readonly Color BgColorUnlocked = new Color32(45, 55, 50, 255);
-        public static readonly Color TextColor = new Color32(240, 240, 240, 255);
-        public static readonly Color DescColor = new Color32(180, 180, 180, 255);
-        public static readonly Color DisabledColor = new Color32(100, 100, 100, 255);
-        public static readonly Color HighlightColor = new Color32(76, 175, 80, 255);
-        public static readonly Color GoldColor = new Color32(255, 215, 0, 255);
-        public static readonly Color LockedBgColor = new Color32(30, 32, 38, 255);
-        public static readonly Color BorderColor = new Color32(60, 65, 75, 255);
+        private static readonly Color BgColor = new Color32(30, 33, 40, 255);
+        private static readonly Color BgColorUnlocked = new Color32(40, 50, 45, 255);
+        private static readonly Color BgColorLocked = new Color32(25, 27, 32, 255);
+        private static readonly Color BorderColor = new Color32(60, 65, 75, 255);
+        private static readonly Color BorderColorUnlocked = new Color32(76, 175, 80, 255);
+        private static readonly Color TextColor = new Color32(240, 240, 240, 255);
+        private static readonly Color DescColor = new Color32(180, 180, 180, 255);
+        private static readonly Color DisabledColor = new Color32(100, 100, 100, 255);
+        private static readonly Color GoldColor = new Color32(255, 215, 0, 255);
+        private static readonly Color ButtonColor = new Color32(76, 175, 80, 255);
+        private static readonly Color ButtonDisabledColor = new Color32(60, 60, 60, 255);
 
         #endregion
 
         #region UI组件引用
 
-        private RectTransform rectTransform;
         private Image backgroundImage;
         private Image borderImage;
         private RawImage iconImage;
-        private Text nameText;
-        private Text descText;
-        private Text difficultyText;
-        private Text rewardText;
+        private TextMeshProUGUI nameText;
+        private TextMeshProUGUI descText;
+        private TextMeshProUGUI rewardText;
         private Button claimButton;
-        private Text claimButtonText;
+        private TextMeshProUGUI claimButtonText;
         private Image claimButtonImage;
 
         #endregion
@@ -69,34 +85,20 @@ namespace BossRush
 
         private BossRushAchievementDef achievement;
         private AchievementEntryState currentState;
-        private Texture2D loadedIcon;
+        private string currentIconFile;
 
         #endregion
 
         #region 事件
 
-        /// <summary>
-        /// 奖励领取成功事件
-        /// </summary>
         public event Action<AchievementEntryUI> OnRewardClaimed;
 
         #endregion
 
         #region 公共属性
 
-        /// <summary>
-        /// 当前成就定义
-        /// </summary>
         public BossRushAchievementDef Achievement => achievement;
-
-        /// <summary>
-        /// 当前状态
-        /// </summary>
         public AchievementEntryState State => currentState;
-
-        /// <summary>
-        /// 是否可以领取奖励
-        /// </summary>
         public bool CanClaim => currentState == AchievementEntryState.UnlockedUnclaimed;
 
         #endregion
@@ -104,7 +106,7 @@ namespace BossRush
         #region 初始化
 
         /// <summary>
-        /// 创建成就条目UI
+        /// 创建成就条目UI - 参考BossFilter的Toggle创建方式
         /// </summary>
         public static AchievementEntryUI Create(Transform parent, BossRushAchievementDef def)
         {
@@ -118,35 +120,18 @@ namespace BossRush
             GameObject entryObj = new GameObject("AchievementEntry_" + def.id);
             entryObj.transform.SetParent(parent, false);
 
-            AchievementEntryUI entry = entryObj.AddComponent<AchievementEntryUI>();
-            entry.CreateUI();
-            entry.Setup(def);
-
-            return entry;
-        }
-
-        /// <summary>
-        /// 创建UI元素
-        /// </summary>
-        private void CreateUI()
-        {
-            // 设置 RectTransform
-            rectTransform = gameObject.AddComponent<RectTransform>();
-            rectTransform.sizeDelta = new Vector2(0, EntryHeight);
-
-            // 添加 LayoutElement 用于 VerticalLayoutGroup
-            LayoutElement layoutElement = gameObject.AddComponent<LayoutElement>();
-            layoutElement.minHeight = EntryHeight;
+            // 添加LayoutElement来指定高度（关键！）
+            LayoutElement layoutElement = entryObj.AddComponent<LayoutElement>();
             layoutElement.preferredHeight = EntryHeight;
             layoutElement.flexibleWidth = 1f;
 
-            // 边框背景
-            borderImage = gameObject.AddComponent<Image>();
-            borderImage.color = BorderColor;
+            // 背景图片
+            Image bgImage = entryObj.AddComponent<Image>();
+            bgImage.color = BgColor;
 
-            // 内部背景容器
+            // 内边距容器
             GameObject innerObj = new GameObject("Inner");
-            innerObj.transform.SetParent(transform, false);
+            innerObj.transform.SetParent(entryObj.transform, false);
 
             RectTransform innerRect = innerObj.AddComponent<RectTransform>();
             innerRect.anchorMin = Vector2.zero;
@@ -154,21 +139,37 @@ namespace BossRush
             innerRect.offsetMin = new Vector2(2f, 2f);
             innerRect.offsetMax = new Vector2(-2f, -2f);
 
-            backgroundImage = innerObj.AddComponent<Image>();
-            backgroundImage.color = BgColor;
+            Image innerBg = innerObj.AddComponent<Image>();
+            innerBg.color = BgColorLocked;
 
-            // 创建图标区域
-            CreateIconArea(innerObj.transform);
+            AchievementEntryUI entry = entryObj.AddComponent<AchievementEntryUI>();
+            entry.InitializeComponents(innerObj.transform);
+            entry.Setup(def);
 
-            // 创建文本区域
-            CreateTextArea(innerObj.transform);
-
-            // 创建奖励和按钮区域
-            CreateRewardArea(innerObj.transform);
+            return entry;
         }
 
         /// <summary>
-        /// 创建图标区域（左侧）
+        /// 初始化UI组件
+        /// </summary>
+        private void InitializeComponents(Transform parent)
+        {
+            // 保存背景引用
+            borderImage = GetComponent<Image>();
+            backgroundImage = parent.GetComponent<Image>();
+
+            // 创建图标区域
+            CreateIconArea(parent);
+
+            // 创建文本区域
+            CreateTextArea(parent);
+
+            // 创建按钮区域
+            CreateButtonArea(parent);
+        }
+
+        /// <summary>
+        /// 创建图标区域
         /// </summary>
         private void CreateIconArea(Transform parent)
         {
@@ -177,15 +178,15 @@ namespace BossRush
             iconContainer.transform.SetParent(parent, false);
 
             RectTransform containerRect = iconContainer.AddComponent<RectTransform>();
-            containerRect.anchorMin = new Vector2(0, 0.5f);
-            containerRect.anchorMax = new Vector2(0, 0.5f);
-            containerRect.pivot = new Vector2(0, 0.5f);
-            containerRect.anchoredPosition = new Vector2(EntryPadding, 0);
-            containerRect.sizeDelta = new Vector2(IconSize, IconSize);
+            containerRect.anchorMin = new Vector2(0f, 0.5f);
+            containerRect.anchorMax = new Vector2(0f, 0.5f);
+            containerRect.pivot = new Vector2(0f, 0.5f);
+            containerRect.anchoredPosition = new Vector2(Padding, 0);
+            containerRect.sizeDelta = new Vector2(60f, 60f);
 
             // 图标背景
             Image iconBg = iconContainer.AddComponent<Image>();
-            iconBg.color = new Color32(25, 27, 32, 255);
+            iconBg.color = new Color32(20, 22, 28, 255);
 
             // 图标
             GameObject iconObj = new GameObject("Icon");
@@ -202,29 +203,27 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 创建文本区域（中间）
+        /// 创建文本区域
         /// </summary>
         private void CreateTextArea(Transform parent)
         {
-            float textStartX = EntryPadding + IconSize + 15f;
+            float textStartX = Padding + 60f + 12f;
 
             // 名称文本
             GameObject nameObj = new GameObject("NameText");
             nameObj.transform.SetParent(parent, false);
 
             RectTransform nameRect = nameObj.AddComponent<RectTransform>();
-            nameRect.anchorMin = new Vector2(0, 0.5f);
-            nameRect.anchorMax = new Vector2(0.65f, 1);
-            nameRect.offsetMin = new Vector2(textStartX, 5f);
-            nameRect.offsetMax = new Vector2(0, -8f);
+            nameRect.anchorMin = new Vector2(0f, 0.5f);
+            nameRect.anchorMax = new Vector2(1f, 1f);
+            nameRect.offsetMin = new Vector2(textStartX, 2f);
+            nameRect.offsetMax = new Vector2(-100f, -2f);
 
-            nameText = nameObj.AddComponent<Text>();
-            nameText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            nameText.fontSize = 18;
-            nameText.fontStyle = FontStyle.Bold;
+            nameText = nameObj.AddComponent<TextMeshProUGUI>();
+            nameText.fontSize = 20;
+            nameText.fontStyle = FontStyles.Bold;
             nameText.color = TextColor;
-            nameText.alignment = TextAnchor.LowerLeft;
-            nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            nameText.alignment = TextAlignmentOptions.Left;
             nameText.raycastTarget = false;
 
             // 描述文本
@@ -232,59 +231,39 @@ namespace BossRush
             descObj.transform.SetParent(parent, false);
 
             RectTransform descRect = descObj.AddComponent<RectTransform>();
-            descRect.anchorMin = new Vector2(0, 0);
-            descRect.anchorMax = new Vector2(0.65f, 0.5f);
-            descRect.offsetMin = new Vector2(textStartX, 8f);
-            descRect.offsetMax = new Vector2(0, -5f);
+            descRect.anchorMin = new Vector2(0f, 0f);
+            descRect.anchorMax = new Vector2(1f, 0.5f);
+            descRect.offsetMin = new Vector2(textStartX, 2f);
+            descRect.offsetMax = new Vector2(-100f, -2f);
 
-            descText = descObj.AddComponent<Text>();
-            descText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            descText.fontSize = 13;
+            descText = descObj.AddComponent<TextMeshProUGUI>();
+            descText.fontSize = 15;
             descText.color = DescColor;
-            descText.alignment = TextAnchor.UpperLeft;
-            descText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            descText.verticalOverflow = VerticalWrapMode.Truncate;
+            descText.alignment = TextAlignmentOptions.Left;
             descText.raycastTarget = false;
-
-            // 难度星级
-            GameObject diffObj = new GameObject("DifficultyText");
-            diffObj.transform.SetParent(parent, false);
-
-            RectTransform diffRect = diffObj.AddComponent<RectTransform>();
-            diffRect.anchorMin = new Vector2(0.65f, 0);
-            diffRect.anchorMax = new Vector2(0.75f, 0.5f);
-            diffRect.offsetMin = new Vector2(5f, 8f);
-            diffRect.offsetMax = new Vector2(-5f, -5f);
-
-            difficultyText = diffObj.AddComponent<Text>();
-            difficultyText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            difficultyText.fontSize = 14;
-            difficultyText.color = GoldColor;
-            difficultyText.alignment = TextAnchor.UpperLeft;
-            difficultyText.raycastTarget = false;
         }
 
         /// <summary>
-        /// 创建奖励和按钮区域（右侧）
+        /// 创建按钮区域
         /// </summary>
-        private void CreateRewardArea(Transform parent)
+        private void CreateButtonArea(Transform parent)
         {
-            // 奖励金额文本
+            // 奖励文本
             GameObject rewardObj = new GameObject("RewardText");
             rewardObj.transform.SetParent(parent, false);
 
             RectTransform rewardRect = rewardObj.AddComponent<RectTransform>();
-            rewardRect.anchorMin = new Vector2(0.65f, 0.5f);
-            rewardRect.anchorMax = new Vector2(0.85f, 1);
-            rewardRect.offsetMin = new Vector2(5f, 5f);
-            rewardRect.offsetMax = new Vector2(-5f, -8f);
+            rewardRect.anchorMin = new Vector2(1f, 0.5f);
+            rewardRect.anchorMax = new Vector2(1f, 0.5f);
+            rewardRect.pivot = new Vector2(1f, 0.5f);
+            rewardRect.anchoredPosition = new Vector2(-90f, 5f);
+            rewardRect.sizeDelta = new Vector2(80f, 20f);
 
-            rewardText = rewardObj.AddComponent<Text>();
-            rewardText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            rewardText.fontSize = 16;
-            rewardText.fontStyle = FontStyle.Bold;
+            rewardText = rewardObj.AddComponent<TextMeshProUGUI>();
+            rewardText.fontSize = 17;
+            rewardText.fontStyle = FontStyles.Bold;
             rewardText.color = GoldColor;
-            rewardText.alignment = TextAnchor.LowerRight;
+            rewardText.alignment = TextAlignmentOptions.Right;
             rewardText.raycastTarget = false;
 
             // 领取按钮
@@ -292,14 +271,14 @@ namespace BossRush
             buttonObj.transform.SetParent(parent, false);
 
             RectTransform buttonRect = buttonObj.AddComponent<RectTransform>();
-            buttonRect.anchorMin = new Vector2(0.85f, 0.5f);
-            buttonRect.anchorMax = new Vector2(1, 0.5f);
-            buttonRect.pivot = new Vector2(1, 0.5f);
-            buttonRect.anchoredPosition = new Vector2(-EntryPadding, 0);
-            buttonRect.sizeDelta = new Vector2(90f, 36f);
+            buttonRect.anchorMin = new Vector2(1f, 0.5f);
+            buttonRect.anchorMax = new Vector2(1f, 0.5f);
+            buttonRect.pivot = new Vector2(1f, 0.5f);
+            buttonRect.anchoredPosition = new Vector2(-Padding, 0);
+            buttonRect.sizeDelta = new Vector2(75f, 30f);
 
             claimButtonImage = buttonObj.AddComponent<Image>();
-            claimButtonImage.color = HighlightColor;
+            claimButtonImage.color = ButtonColor;
 
             claimButton = buttonObj.AddComponent<Button>();
             claimButton.targetGraphic = claimButtonImage;
@@ -315,12 +294,11 @@ namespace BossRush
             buttonTextRect.offsetMin = Vector2.zero;
             buttonTextRect.offsetMax = Vector2.zero;
 
-            claimButtonText = buttonTextObj.AddComponent<Text>();
-            claimButtonText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            claimButtonText.fontSize = 14;
-            claimButtonText.fontStyle = FontStyle.Bold;
+            claimButtonText = buttonTextObj.AddComponent<TextMeshProUGUI>();
+            claimButtonText.fontSize = 15;
+            claimButtonText.fontStyle = FontStyles.Bold;
             claimButtonText.color = Color.white;
-            claimButtonText.alignment = TextAnchor.MiddleCenter;
+            claimButtonText.alignment = TextAlignmentOptions.Center;
             claimButtonText.raycastTarget = false;
         }
 
@@ -350,7 +328,6 @@ namespace BossRush
         {
             if (achievement == null) return;
 
-            // 确定当前状态
             bool isUnlocked = BossRushAchievementManager.IsUnlocked(achievement.id);
             bool isClaimed = BossRushAchievementManager.IsRewardClaimed(achievement.id);
 
@@ -384,15 +361,11 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 清理资源
+        /// 清理资源（不再销毁图标，因为使用缓存）
         /// </summary>
         public void Cleanup()
         {
-            if (loadedIcon != null)
-            {
-                UnityEngine.Object.Destroy(loadedIcon);
-                loadedIcon = null;
-            }
+            currentIconFile = null;
         }
 
         #endregion
@@ -400,24 +373,49 @@ namespace BossRush
         #region 内部方法
 
         /// <summary>
+        /// 获取带进度的描述文本（用于累计击杀成就）
+        /// </summary>
+        private string GetDescriptionWithProgress(bool isChinese)
+        {
+            string baseDesc = isChinese ? achievement.descCN : achievement.descEN;
+            
+            // 累计击杀成就显示实时进度
+            if (achievement.id == "kill_100_bosses")
+            {
+                int current = AchievementTracker.TotalBossKills;
+                return baseDesc + " (" + current + "/100)";
+            }
+            else if (achievement.id == "kill_500_bosses")
+            {
+                int current = AchievementTracker.TotalBossKills;
+                return baseDesc + " (" + current + "/500)";
+            }
+            
+            return baseDesc;
+        }
+
+        /// <summary>
         /// 更新视觉显示
         /// </summary>
         private void UpdateVisuals()
         {
+            if (nameText == null || descText == null || rewardText == null)
+            {
+                Debug.LogError("[AchievementEntryUI] Text组件未初始化!");
+                return;
+            }
+
             bool isChinese = AchievementUIStrings.IsChinese();
 
             switch (currentState)
             {
                 case AchievementEntryState.Locked:
-                    // 未解锁：灰色显示
-                    backgroundImage.color = LockedBgColor;
-                    borderImage.color = new Color32(50, 52, 58, 255);
+                    backgroundImage.color = BgColorLocked;
+                    borderImage.color = new Color32(45, 48, 55, 255);
                     nameText.text = isChinese ? achievement.nameCN : achievement.nameEN;
                     nameText.color = DisabledColor;
-                    descText.text = isChinese ? achievement.descCN : achievement.descEN;
+                    descText.text = GetDescriptionWithProgress(isChinese);
                     descText.color = DisabledColor;
-                    difficultyText.text = GetDifficultyStars(achievement.difficultyRating);
-                    difficultyText.color = DisabledColor;
                     rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = DisabledColor;
                     claimButton.gameObject.SetActive(false);
@@ -425,107 +423,70 @@ namespace BossRush
                     break;
 
                 case AchievementEntryState.LockedHidden:
-                    // 隐藏成就未解锁：显示 ???
-                    backgroundImage.color = LockedBgColor;
-                    borderImage.color = new Color32(50, 52, 58, 255);
+                    backgroundImage.color = BgColorLocked;
+                    borderImage.color = new Color32(45, 48, 55, 255);
                     nameText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_HiddenName, AchievementUIStrings.EN_HiddenName);
                     nameText.color = DisabledColor;
                     descText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_HiddenDesc, AchievementUIStrings.EN_HiddenDesc);
                     descText.color = DisabledColor;
-                    difficultyText.text = "?";
-                    difficultyText.color = DisabledColor;
                     rewardText.text = "???";
                     rewardText.color = DisabledColor;
                     claimButton.gameObject.SetActive(false);
-                    LoadIcon("default.png", false);
+                    LoadIcon("default.png", true);
                     break;
 
                 case AchievementEntryState.UnlockedUnclaimed:
-                    // 已解锁未领取：高亮显示，可领取
                     backgroundImage.color = BgColorUnlocked;
-                    borderImage.color = HighlightColor;
+                    borderImage.color = BorderColorUnlocked;
                     nameText.text = isChinese ? achievement.nameCN : achievement.nameEN;
                     nameText.color = TextColor;
-                    descText.text = isChinese ? achievement.descCN : achievement.descEN;
+                    descText.text = GetDescriptionWithProgress(isChinese);
                     descText.color = DescColor;
-                    difficultyText.text = GetDifficultyStars(achievement.difficultyRating);
-                    difficultyText.color = GoldColor;
                     rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = GoldColor;
                     claimButton.gameObject.SetActive(true);
                     claimButton.interactable = true;
-                    claimButtonImage.color = HighlightColor;
+                    claimButtonImage.color = ButtonColor;
                     claimButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Claim, AchievementUIStrings.EN_Claim);
                     LoadIcon(achievement.iconFile, false);
                     break;
 
                 case AchievementEntryState.UnlockedClaimed:
-                    // 已解锁已领取：正常显示，按钮禁用
                     backgroundImage.color = BgColor;
                     borderImage.color = BorderColor;
                     nameText.text = isChinese ? achievement.nameCN : achievement.nameEN;
                     nameText.color = TextColor;
-                    descText.text = isChinese ? achievement.descCN : achievement.descEN;
+                    descText.text = GetDescriptionWithProgress(isChinese);
                     descText.color = DescColor;
-                    difficultyText.text = GetDifficultyStars(achievement.difficultyRating);
-                    difficultyText.color = GoldColor;
                     rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
-                    rewardText.color = new Color32(120, 120, 120, 255);
+                    rewardText.color = DisabledColor;
                     claimButton.gameObject.SetActive(true);
                     claimButton.interactable = false;
-                    claimButtonImage.color = new Color32(60, 60, 60, 255);
+                    claimButtonImage.color = ButtonDisabledColor;
                     claimButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Claimed, AchievementUIStrings.EN_Claimed);
                     LoadIcon(achievement.iconFile, false);
                     break;
             }
         }
 
-        /// <summary>
-        /// 按钮点击处理
-        /// </summary>
         private void OnClaimClicked()
         {
             TryClaim();
         }
 
         /// <summary>
-        /// 加载成就图标
+        /// 加载成就图标（使用缓存）
         /// </summary>
         private void LoadIcon(string iconFile, bool grayscale)
         {
             try
             {
-                // 清理之前的纹理
-                if (loadedIcon != null)
+                currentIconFile = iconFile;
+                Texture2D tex = GetCachedIcon(iconFile);
+                
+                if (tex != null)
                 {
-                    UnityEngine.Object.Destroy(loadedIcon);
-                    loadedIcon = null;
-                }
-
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath))
-                {
-                    SetDefaultIcon(grayscale);
-                    return;
-                }
-
-                string iconPath = Path.Combine(modPath, "Assets", "achievement", iconFile);
-                if (!File.Exists(iconPath))
-                {
-                    // 尝试加载默认图标
-                    iconPath = Path.Combine(modPath, "Assets", "achievement", "default.png");
-                    if (!File.Exists(iconPath))
-                    {
-                        SetDefaultIcon(grayscale);
-                        return;
-                    }
-                }
-
-                byte[] data = File.ReadAllBytes(iconPath);
-                loadedIcon = new Texture2D(64, 64);
-                if (loadedIcon.LoadImage(data))
-                {
-                    iconImage.texture = loadedIcon;
+                    iconImage.texture = tex;
                     iconImage.color = grayscale ? new Color(0.4f, 0.4f, 0.4f, 1f) : Color.white;
                 }
                 else
@@ -535,38 +496,47 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[AchievementEntryUI] Failed to load icon {iconFile}: {e.Message}");
+                Debug.LogWarning("[AchievementEntryUI] Failed to load icon " + iconFile + ": " + e.Message);
                 SetDefaultIcon(grayscale);
             }
         }
 
-        /// <summary>
-        /// 设置默认图标
-        /// </summary>
+        private static Texture2D GetCachedIcon(string iconFile)
+        {
+            if (string.IsNullOrEmpty(iconFile)) return null;
+
+            if (iconCache.ContainsKey(iconFile))
+            {
+                return iconCache[iconFile];
+            }
+
+            string modPath = ModBehaviour.GetModPath();
+            if (string.IsNullOrEmpty(modPath)) return null;
+
+            string iconPath = Path.Combine(modPath, "Assets", "achievement", iconFile);
+            if (!File.Exists(iconPath))
+            {
+                iconPath = Path.Combine(modPath, "Assets", "achievement", "default.png");
+                if (!File.Exists(iconPath)) return null;
+            }
+
+            byte[] data = File.ReadAllBytes(iconPath);
+            Texture2D tex = new Texture2D(64, 64, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+            if (tex.LoadImage(data))
+            {
+                iconCache[iconFile] = tex;
+                return tex;
+            }
+
+            UnityEngine.Object.Destroy(tex);
+            return null;
+        }
+
         private void SetDefaultIcon(bool grayscale)
         {
             iconImage.texture = null;
             iconImage.color = grayscale ? new Color(0.15f, 0.15f, 0.15f, 1f) : new Color(0.25f, 0.25f, 0.25f, 1f);
-        }
-
-        /// <summary>
-        /// 获取难度星级字符串
-        /// </summary>
-        private string GetDifficultyStars(int rating)
-        {
-            if (rating <= 0) return "";
-            if (rating > 5) rating = 5;
-
-            string stars = "";
-            for (int i = 0; i < rating; i++)
-            {
-                stars += "★";
-            }
-            for (int i = rating; i < 5; i++)
-            {
-                stars += "☆";
-            }
-            return stars;
         }
 
         #endregion

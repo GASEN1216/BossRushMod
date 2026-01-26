@@ -16,6 +16,7 @@ namespace BossRush
         #region 常量
 
         private const string SAVE_KEY_STATS = "BossRush_AchievementStats";
+        private const float AUTO_SAVE_INTERVAL = 30f;
 
         #endregion
 
@@ -41,6 +42,9 @@ namespace BossRush
         #region 私有字段
 
         private static bool isInitialized = false;
+        private static float lastSaveTime = 0f;
+        private static int lastSavedBossKills = 0;
+        private static int lastSavedClears = 0;
 
         #endregion
 
@@ -55,7 +59,7 @@ namespace BossRush
 
             LoadStats();
             isInitialized = true;
-            Debug.Log($"[Achievement] 追踪器初始化完成 - 累计击杀: {TotalBossKills}, 累计通关: {TotalClears}");
+            Debug.Log("[Achievement] 追踪器初始化完成 - 累计击杀: " + TotalBossKills + ", 累计通关: " + TotalClears);
         }
 
         /// <summary>
@@ -116,7 +120,7 @@ namespace BossRush
             else if (bossType == "DragonKing")
                 KilledDragonKing = true;
 
-            SaveStats();
+            TryAutoSave();
         }
 
         /// <summary>
@@ -126,6 +130,49 @@ namespace BossRush
         {
             TotalClears++;
             SaveStats();
+        }
+
+        /// <summary>
+        /// 尝试自动保存（定期保存，避免每次击杀都保存）
+        /// </summary>
+        public static void TryAutoSave()
+        {
+            float currentTime = Time.realtimeSinceStartup;
+            bool hasChanges = (TotalBossKills != lastSavedBossKills) || (TotalClears != lastSavedClears);
+            
+            if (hasChanges && (currentTime - lastSaveTime >= AUTO_SAVE_INTERVAL))
+            {
+                SaveStats();
+                lastSaveTime = currentTime;
+                lastSavedBossKills = TotalBossKills;
+                lastSavedClears = TotalClears;
+            }
+        }
+
+        /// <summary>
+        /// 强制保存（用于退出游戏或离开BossRush时调用）
+        /// </summary>
+        public static void ForceSave()
+        {
+            if ((TotalBossKills != lastSavedBossKills) || (TotalClears != lastSavedClears))
+            {
+                SaveStats();
+                lastSavedBossKills = TotalBossKills;
+                lastSavedClears = TotalClears;
+            }
+        }
+
+        /// <summary>
+        /// 重置所有统计数据（用于调试）
+        /// </summary>
+        public static void ResetAllStats()
+        {
+            TotalBossKills = 0;
+            TotalClears = 0;
+            lastSavedBossKills = 0;
+            lastSavedClears = 0;
+            SaveStats();
+            Debug.Log("[Achievement] 统计数据已重置");
         }
 
         #endregion
@@ -160,7 +207,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[Achievement] 保存统计失败: {e.Message}");
+                Debug.LogError("[Achievement] 保存统计失败: " + e.Message);
             }
         }
 

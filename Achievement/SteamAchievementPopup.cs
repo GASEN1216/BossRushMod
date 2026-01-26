@@ -504,7 +504,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[Achievement] 加载纹理失败 {filename}: {e.Message}");
+                Debug.LogError("[Achievement] 加载纹理失败 " + filename + ": " + e.Message);
             }
             return null;
         }
@@ -533,12 +533,12 @@ namespace BossRush
                 }
                 else
                 {
-                    Debug.LogWarning($"[Achievement] 图标文件不存在: {iconPath}");
+                    Debug.LogWarning("[Achievement] 图标文件不存在: " + iconPath);
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[Achievement] 加载图标异常: {e.Message}");
+                Debug.LogError("[Achievement] 加载图标异常: " + e.Message);
             }
             return null;
         }
