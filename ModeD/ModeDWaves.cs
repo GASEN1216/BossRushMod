@@ -1124,6 +1124,12 @@ namespace BossRush
 
                 DevLog("[ModeD] 第 " + modeDWaveIndex + " 波完成！");
 
+                // Mode D 完成10波视为"通关"，触发成就检查
+                if (modeDWaveIndex >= 10)
+                {
+                    CheckModeDClearAchievements();
+                }
+
                 ShowBigBanner(L10n.T(
                     "第 <color=yellow>" + modeDWaveIndex + "</color> 波完成！",
                     "Wave <color=yellow>" + modeDWaveIndex + "</color> completed!"

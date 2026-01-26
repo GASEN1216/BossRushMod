@@ -918,12 +918,21 @@ namespace BossRush
             
             // 监听玩家死亡事件
             Health.OnDead += OnPlayerDeathInBossRush;
+            
+            // 监听玩家受伤事件（用于无伤成就追踪）
+            Health.OnHurt += OnPlayerHurtForAchievement;
 
             // 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
             RegisterInteractDebugListener();
             
             // 注册开枪调试监听（仅在 DevModeEnabled = true 时生效）
             RegisterShootDebugListener();
+            
+            // 初始化成就系统
+            InitializeAchievementSystem();
+            
+            // 初始化成就页面UI（确保实例存在，DontDestroyOnLoad 已在 AchievementView 内部处理）
+            AchievementView.EnsureInstance();
         }
 
         void OnGUI()
@@ -1045,6 +1054,59 @@ namespace BossRush
             else
             {
                 daXingXingCleanTimer = 0f;
+            }
+            
+            // L键：打开/关闭成就页面
+            if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.L))
+            {
+                try
+                {
+                    // 检查是否有其他UI打开（如暂停菜单、商店等）
+                    if (Duckov.UI.View.ActiveView == null)
+                    {
+                        AchievementView.Instance.Toggle();
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] L键打开成就页面失败: " + e.Message);
+                }
+            }
+            
+            // 调试快捷键 F3：测试成就弹窗
+            if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F3))
+            {
+                try
+                {
+                    DevLog("[BossRush] F3 按下，测试成就弹窗");
+                    
+                    // 确保成就系统已初始化
+                    BossRushAchievementManager.Initialize();
+                    
+                    // 确保弹窗实例存在
+                    SteamAchievementPopup.EnsureInstance();
+                    
+                    // 显示测试成就弹窗
+                    var testAchievement = new BossRushAchievementDef(
+                        "test_achievement",
+                        "测试成就",
+                        "Test Achievement",
+                        "这是一个测试成就弹窗",
+                        "This is a test achievement popup",
+                        AchievementCategory.Basic,
+                        1000,
+                        1
+                    );
+                    // 使用 default.png 作为测试图标
+                    testAchievement.iconFile = "default.png";
+                    SteamAchievementPopup.Show(testAchievement);
+                    
+                    DevLog("[BossRush] 成就弹窗已触发");
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] F3 成就弹窗测试失败: " + e.Message + "\n" + e.StackTrace);
+                }
             }
             
             // 调试快捷键 F4：输出玩家装备的两把武器的详细信息
@@ -1378,6 +1440,12 @@ namespace BossRush
             
             // 注销开枪调试监听
             UnregisterShootDebugListener();
+            
+            // 取消订阅玩家受伤事件（成就追踪）
+            Health.OnHurt -= OnPlayerHurtForAchievement;
+            
+            // 取消订阅成就追踪事件（物品拾取、血量变化）
+            UnsubscribeAchievementEvents();
 
             // 卸载实体模型工厂资源
             try

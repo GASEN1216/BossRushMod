@@ -253,6 +253,9 @@ namespace BossRush
                 // 增加波次
                 infiniteHellWaveIndex++;
 
+                // 检查无间炼狱波次成就
+                CheckInfiniteHellAchievements(infiniteHellWaveIndex);
+
                 long cashThisWave = infiniteHellWaveCashThisWave;
                 infiniteHellWaveCashThisWave = 0L;
 
@@ -655,6 +658,9 @@ namespace BossRush
 
             // 取消敌人死亡监听
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
+            
+            // 触发通关成就检查
+            CheckClearAchievements();
             
             // 通知快递员 BossRush 通关
             NotifyCourierBossRushCompleted();

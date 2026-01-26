@@ -266,6 +266,9 @@ namespace BossRush
             ShowMessage(L10n.T("开始BossRush模式，正在前往竞技场...", "Starting BossRush, heading to arena..."));
             DevLog("[BossRush] 开始BossRush模式，正在前往竞技场...");
             
+            // 重置本局成就追踪状态
+            ResetAchievementTracking();
+            
             try
             {
                 if (MultiSceneCore.Instance != null)
@@ -1879,6 +1882,10 @@ namespace BossRush
                 }
 
                 countedDeadBosses.Add(bossMain);
+
+                // 识别 Boss 类型并触发成就
+                string bossType = IdentifyBossType(bossMain);
+                CheckBossKillAchievements(bossType);
 
                 // 无间炼狱：先累加现金池
                 if (infiniteHellMode)
