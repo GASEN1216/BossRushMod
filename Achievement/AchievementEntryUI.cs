@@ -373,25 +373,34 @@ namespace BossRush
         #region 内部方法
 
         /// <summary>
-        /// 获取带进度的描述文本（用于累计击杀成就）
+        /// 获取带进度的描述文本（用于累计成就）
         /// </summary>
         private string GetDescriptionWithProgress(bool isChinese)
         {
             string baseDesc = isChinese ? achievement.descCN : achievement.descEN;
             
             // 累计击杀成就显示实时进度
-            if (achievement.id == "kill_100_bosses")
+            switch (achievement.id)
             {
-                int current = AchievementTracker.TotalBossKills;
-                return baseDesc + " (" + current + "/100)";
+                case "kill_50_bosses":
+                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/50)";
+                case "kill_100_bosses":
+                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/100)";
+                case "kill_500_bosses":
+                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/500)";
+                case "kill_1000_bosses":
+                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/1000)";
+                case "dragon_slayer_master":
+                    return baseDesc + " (" + AchievementTracker.TotalDragonKingKills + "/10)";
+                case "clear_10_times":
+                    return baseDesc + " (" + AchievementTracker.TotalClears + "/10)";
+                case "clear_50_times":
+                    return baseDesc + " (" + AchievementTracker.TotalClears + "/50)";
+                case "clear_100_times":
+                    return baseDesc + " (" + AchievementTracker.TotalClears + "/100)";
+                default:
+                    return baseDesc;
             }
-            else if (achievement.id == "kill_500_bosses")
-            {
-                int current = AchievementTracker.TotalBossKills;
-                return baseDesc + " (" + current + "/500)";
-            }
-            
-            return baseDesc;
         }
 
         /// <summary>

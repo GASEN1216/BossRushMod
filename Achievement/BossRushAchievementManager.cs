@@ -66,79 +66,142 @@ namespace BossRush
         {
             allAchievements.Clear();
 
-            // 基础通关成就
+            // ========== 基础通关成就 ==========
             Register("first_clear", "初出茅庐", "First Steps",
                 "首次在 BossRush 中成功撤离", "Complete BossRush for the first time",
-                AchievementCategory.Basic, 1000, 1);
+                AchievementCategory.Basic, 500, 1);
 
             Register("easy_clear", "弹指可灭", "Easy Peasy",
                 "在[弹指可灭]难度成功撤离", "Complete BossRush on Easy difficulty",
-                AchievementCategory.Basic, 2000, 1);
+                AchievementCategory.Basic, 1000, 1);
 
             Register("normal_clear", "有点意思", "Getting Serious",
                 "在[有点意思]难度成功撤离", "Complete BossRush on Normal difficulty",
-                AchievementCategory.Basic, 3000, 2);
-
-            Register("hell_10", "无间炼狱·十", "Hell Wave 10",
-                "在无间炼狱模式完成10波后撤离", "Survive 10 waves in Infinite Hell mode",
-                AchievementCategory.Basic, 5000, 3);
-
-            Register("hell_100", "无间炼狱·百", "Hell Wave 100",
-                "在无间炼狱模式完成100波后撤离", "Survive 100 waves in Infinite Hell mode",
-                AchievementCategory.Basic, 10000, 5);
+                AchievementCategory.Basic, 2500, 2);
 
             Register("mode_d_clear", "白手起家", "From Nothing",
                 "在白手起家模式成功撤离", "Complete Mode D (start with nothing)",
                 AchievementCategory.Basic, 3000, 2);
 
-            // 无伤通关成就
+            // ========== 累计通关成就 ==========
+            Register("clear_10_times", "常客", "Regular",
+                "累计通关10次", "Complete BossRush 10 times in total",
+                AchievementCategory.Cumulative, 5000, 2);
+
+            Register("clear_50_times", "资深挑战者", "Seasoned Challenger",
+                "累计通关50次", "Complete BossRush 50 times in total",
+                AchievementCategory.Cumulative, 25000, 3);
+
+            Register("clear_100_times", "传奇猎人", "Legendary Hunter",
+                "累计通关100次", "Complete BossRush 100 times in total",
+                AchievementCategory.Cumulative, 80000, 4);
+
+            // ========== 无间炼狱成就 ==========
+            Register("hell_10", "无间炼狱·十", "Hell Wave 10",
+                "在无间炼狱模式完成10波", "Survive 10 waves in Infinite Hell mode",
+                AchievementCategory.Basic, 5000, 3);
+
+            Register("hell_25", "无间炼狱·廿五", "Hell Wave 25",
+                "在无间炼狱模式完成25波", "Survive 25 waves in Infinite Hell mode",
+                AchievementCategory.Basic, 15000, 3);
+
+            Register("hell_50", "无间炼狱·五十", "Hell Wave 50",
+                "在无间炼狱模式完成50波", "Survive 50 waves in Infinite Hell mode",
+                AchievementCategory.Basic, 35000, 4);
+
+            Register("hell_100", "无间炼狱·百", "Hell Wave 100",
+                "在无间炼狱模式完成100波", "Survive 100 waves in Infinite Hell mode",
+                AchievementCategory.Basic, 80000, 5);
+
+            Register("hell_200", "无间炼狱·双百", "Hell Wave 200",
+                "在无间炼狱模式完成200波", "Survive 200 waves in Infinite Hell mode",
+                AchievementCategory.Ultimate, 200000, 5);
+
+            // ========== 无伤通关成就 ==========
             Register("flawless_easy", "完美弹指", "Flawless Easy",
                 "在[弹指可灭]难度无伤通关", "Complete Easy difficulty without taking damage",
-                AchievementCategory.Flawless, 5000, 3);
+                AchievementCategory.Flawless, 8000, 3);
 
             Register("flawless_normal", "完美有点意思", "Flawless Normal",
                 "在[有点意思]难度无伤通关", "Complete Normal difficulty without taking damage",
-                AchievementCategory.Flawless, 8000, 4);
+                AchievementCategory.Flawless, 25000, 4);
 
-            // 速通成就
+            Register("flawless_mode_d", "完美白手", "Flawless Mode D",
+                "在白手起家模式无伤通关", "Complete Mode D without taking damage",
+                AchievementCategory.Flawless, 35000, 4);
+
+            Register("flawless_hell_10", "钢铁意志", "Iron Will",
+                "在无间炼狱无伤完成10波", "Survive 10 waves in Infinite Hell without taking damage",
+                AchievementCategory.Flawless, 50000, 5);
+
+            // ========== 速通成就 ==========
             Register("speedrun_5min", "闪电战", "Lightning Run",
                 "5分钟内完成任意模式", "Complete any mode within 5 minutes",
-                AchievementCategory.Speedrun, 4000, 2);
+                AchievementCategory.Speedrun, 3000, 2);
 
             Register("speedrun_3min", "光速通关", "Speed Demon",
                 "3分钟内完成任意模式", "Complete any mode within 3 minutes",
-                AchievementCategory.Speedrun, 8000, 4);
+                AchievementCategory.Speedrun, 12000, 4);
 
-            // Boss击杀成就
+            Register("speedrun_2min", "时间刺客", "Time Assassin",
+                "2分钟内完成任意模式", "Complete any mode within 2 minutes",
+                AchievementCategory.Speedrun, 40000, 5);
+
+            // ========== Boss击杀成就 ==========
             Register("kill_dragon_descendant", "龙裔猎手", "Dragon Slayer",
                 "首次击杀龙裔遗族", "Defeat the Dragon Descendant for the first time",
                 AchievementCategory.BossKill, 3000, 2);
 
+            Register("kill_dragon_descendant_flawless", "完美猎龙", "Perfect Dragon Hunt",
+                "无伤击杀龙裔遗族", "Defeat the Dragon Descendant without taking damage",
+                AchievementCategory.BossKill, 20000, 4);
+
             Register("kill_dragon_king", "弑龙者", "Kingslayer",
                 "首次击杀焚天龙皇", "Defeat the Dragon King for the first time",
-                AchievementCategory.BossKill, 6000, 3);
+                AchievementCategory.BossKill, 10000, 3);
 
             Register("kill_dragon_king_flawless", "完美弑龙", "Perfect Kingslayer",
                 "无伤击杀焚天龙皇", "Defeat the Dragon King without taking damage",
-                AchievementCategory.BossKill, 15000, 5);
+                AchievementCategory.BossKill, 50000, 5);
 
-            // 累计击杀成就
+            Register("dragon_slayer_master", "屠龙大师", "Dragon Slayer Master",
+                "累计击杀焚天龙皇10次", "Defeat the Dragon King 10 times in total",
+                AchievementCategory.BossKill, 60000, 4);
+
+            // ========== 累计击杀成就 ==========
+            Register("kill_50_bosses", "新手猎人", "Novice Hunter",
+                "累计击杀50个Boss", "Defeat 50 bosses in total",
+                AchievementCategory.Cumulative, 2000, 1);
+
             Register("kill_100_bosses", "百战老兵", "Veteran",
                 "累计击杀100个Boss", "Defeat 100 bosses in total",
-                AchievementCategory.Cumulative, 5000, 2);
+                AchievementCategory.Cumulative, 8000, 2);
 
             Register("kill_500_bosses", "屠龙勇士", "Dragon Hunter",
                 "累计击杀500个Boss", "Defeat 500 bosses in total",
-                AchievementCategory.Cumulative, 20000, 4);
+                AchievementCategory.Cumulative, 50000, 4);
 
-            // 特殊挑战成就（隐藏）
+            Register("kill_1000_bosses", "不死战神", "Immortal Warlord",
+                "累计击杀1000个Boss", "Defeat 1000 bosses in total",
+                AchievementCategory.Ultimate, 150000, 5);
+
+            // ========== 特殊挑战成就（隐藏）==========
             Register("mode_d_no_pickup", "极简主义", "Minimalist",
-                "Mode D中不拾取任何装备通关", "Complete Mode D without picking up any equipment",
-                AchievementCategory.Special, 10000, 4, true);
+                "在白手起家模式不拾取任何装备通关", "Complete Mode D without picking up any equipment",
+                AchievementCategory.Special, 30000, 4, true);
 
             Register("hell_no_heal", "铁人挑战", "Iron Man",
-                "无间炼狱中不使用治疗物品完成10波", "Survive 10 waves in Infinite Hell without using healing items",
-                AchievementCategory.Special, 8000, 4, true);
+                "在无间炼狱不使用治疗物品完成10波", "Survive 10 waves in Infinite Hell without using healing items",
+                AchievementCategory.Special, 25000, 4, true);
+
+            Register("speedrun_1min", "瞬杀", "Instant Kill",
+                "1分钟内完成任意模式", "Complete any mode within 1 minute",
+                AchievementCategory.Special, 80000, 5, true);
+
+            // ========== 终极成就 ==========
+            Register("completionist", "成就收集者", "Completionist",
+                "解锁所有非隐藏成就", "Unlock all non-hidden achievements",
+                AchievementCategory.Ultimate, 500000, 5);
 
             Debug.Log("[Achievement] 已注册 " + allAchievements.Count + " 个成就定义");
         }

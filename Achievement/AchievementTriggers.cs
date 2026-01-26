@@ -83,7 +83,20 @@ namespace BossRush
 
                 // 速通成就
                 float elapsedTime = AchievementTracker.GetElapsedTime();
-                if (elapsedTime <= 180f)
+                if (elapsedTime <= 60f)
+                {
+                    BossRushAchievementManager.TryUnlock("speedrun_1min");
+                    BossRushAchievementManager.TryUnlock("speedrun_2min");
+                    BossRushAchievementManager.TryUnlock("speedrun_3min");
+                    BossRushAchievementManager.TryUnlock("speedrun_5min");
+                }
+                else if (elapsedTime <= 120f)
+                {
+                    BossRushAchievementManager.TryUnlock("speedrun_2min");
+                    BossRushAchievementManager.TryUnlock("speedrun_3min");
+                    BossRushAchievementManager.TryUnlock("speedrun_5min");
+                }
+                else if (elapsedTime <= 180f)
                 {
                     BossRushAchievementManager.TryUnlock("speedrun_3min");
                     BossRushAchievementManager.TryUnlock("speedrun_5min");
@@ -92,6 +105,17 @@ namespace BossRush
                 {
                     BossRushAchievementManager.TryUnlock("speedrun_5min");
                 }
+
+                // 累计通关成就
+                if (AchievementTracker.TotalClears >= 10)
+                    BossRushAchievementManager.TryUnlock("clear_10_times");
+                if (AchievementTracker.TotalClears >= 50)
+                    BossRushAchievementManager.TryUnlock("clear_50_times");
+                if (AchievementTracker.TotalClears >= 100)
+                    BossRushAchievementManager.TryUnlock("clear_100_times");
+
+                // 检查成就收集者成就
+                CheckCompletionistAchievement();
             }
             catch (Exception e)
             {
@@ -112,15 +136,29 @@ namespace BossRush
 
             try
             {
+                // 记录最高波次
+                AchievementTracker.OnInfiniteHellWaveComplete(waveNumber);
+
                 if (waveNumber >= 10)
                 {
                     BossRushAchievementManager.TryUnlock("hell_10");
                     if (!AchievementTracker.HasUsedHealItem)
                         BossRushAchievementManager.TryUnlock("hell_no_heal");
+                    if (!AchievementTracker.HasTakenDamage)
+                        BossRushAchievementManager.TryUnlock("flawless_hell_10");
                 }
+
+                if (waveNumber >= 25)
+                    BossRushAchievementManager.TryUnlock("hell_25");
+
+                if (waveNumber >= 50)
+                    BossRushAchievementManager.TryUnlock("hell_50");
 
                 if (waveNumber >= 100)
                     BossRushAchievementManager.TryUnlock("hell_100");
+
+                if (waveNumber >= 200)
+                    BossRushAchievementManager.TryUnlock("hell_200");
             }
             catch (Exception e)
             {
@@ -144,6 +182,8 @@ namespace BossRush
                 BossRushAchievementManager.TryUnlock("mode_d_clear");
                 if (!AchievementTracker.HasPickedUpItem)
                     BossRushAchievementManager.TryUnlock("mode_d_no_pickup");
+                if (!AchievementTracker.HasTakenDamage)
+                    BossRushAchievementManager.TryUnlock("flawless_mode_d");
             }
             catch (Exception e)
             {
@@ -167,19 +207,31 @@ namespace BossRush
                 AchievementTracker.OnBossKilled(bossType);
 
                 if (bossType == "DragonDescendant")
+                {
                     BossRushAchievementManager.TryUnlock("kill_dragon_descendant");
+                    // 龙裔遗族无伤击杀（检查本局是否受伤）
+                    if (!AchievementTracker.HasTakenDamage)
+                        BossRushAchievementManager.TryUnlock("kill_dragon_descendant_flawless");
+                }
                 else if (bossType == "DragonKing")
                 {
                     BossRushAchievementManager.TryUnlock("kill_dragon_king");
                     if (AchievementTracker.DragonKingKilledFlawless)
                         BossRushAchievementManager.TryUnlock("kill_dragon_king_flawless");
+                    // 累计龙王击杀成就
+                    if (AchievementTracker.TotalDragonKingKills >= 10)
+                        BossRushAchievementManager.TryUnlock("dragon_slayer_master");
                 }
 
                 // 累计击杀成就
+                if (AchievementTracker.TotalBossKills >= 50)
+                    BossRushAchievementManager.TryUnlock("kill_50_bosses");
                 if (AchievementTracker.TotalBossKills >= 100)
                     BossRushAchievementManager.TryUnlock("kill_100_bosses");
                 if (AchievementTracker.TotalBossKills >= 500)
                     BossRushAchievementManager.TryUnlock("kill_500_bosses");
+                if (AchievementTracker.TotalBossKills >= 1000)
+                    BossRushAchievementManager.TryUnlock("kill_1000_bosses");
             }
             catch (Exception e)
             {
@@ -336,6 +388,42 @@ namespace BossRush
                 lastPlayerHealth = currentHealth;
             }
             catch { }
+        }
+
+        /// <summary>
+        /// 检查成就收集者成就（解锁所有非隐藏成就）
+        /// </summary>
+        private void CheckCompletionistAchievement()
+        {
+            if (!achievementSystemInitialized) return;
+
+            try
+            {
+                var allAchievements = BossRushAchievementManager.GetAllAchievements();
+                int nonHiddenCount = 0;
+                int unlockedNonHiddenCount = 0;
+
+                foreach (var achievement in allAchievements)
+                {
+                    // 跳过隐藏成就和成就收集者本身
+                    if (achievement.isHidden || achievement.id == "completionist")
+                        continue;
+
+                    nonHiddenCount++;
+                    if (BossRushAchievementManager.IsUnlocked(achievement.id))
+                        unlockedNonHiddenCount++;
+                }
+
+                // 如果解锁了所有非隐藏成就（不包括成就收集者本身）
+                if (unlockedNonHiddenCount >= nonHiddenCount && nonHiddenCount > 0)
+                {
+                    BossRushAchievementManager.TryUnlock("completionist");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] 检查成就收集者失败: " + e.Message);
+            }
         }
 
         /// <summary>

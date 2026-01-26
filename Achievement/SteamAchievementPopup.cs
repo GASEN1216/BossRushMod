@@ -55,6 +55,7 @@ namespace BossRush
         private static SteamAchievementPopup instance;
         private static Canvas sharedCanvas;
         private static List<PopupInstance> activePopups = new List<PopupInstance>();
+        private static List<PopupInstance> toRemoveBuffer = new List<PopupInstance>(); // 复用缓冲区避免每帧分配
         private static Texture2D glowTexture;
 
         // 音效反射缓存
@@ -381,7 +382,7 @@ namespace BossRush
         private void UpdateAllPopups()
         {
             float dt = Time.unscaledDeltaTime;
-            List<PopupInstance> toRemove = new List<PopupInstance>();
+            toRemoveBuffer.Clear(); // 复用缓冲区
 
             foreach (var popup in activePopups)
             {
@@ -403,7 +404,7 @@ namespace BossRush
                     popup.slideProgress += dt / SLIDE_OUT_DURATION;
                     if (popup.slideProgress >= 1f)
                     {
-                        toRemove.Add(popup);
+                        toRemoveBuffer.Add(popup);
                         continue;
                     }
                     float t = popup.slideProgress * popup.slideProgress * popup.slideProgress;
@@ -434,7 +435,7 @@ namespace BossRush
             }
 
             // 移除已完成的弹窗
-            foreach (var popup in toRemove)
+            foreach (var popup in toRemoveBuffer)
             {
                 activePopups.Remove(popup);
                 Destroy(popup.panelObj);
@@ -509,31 +510,54 @@ namespace BossRush
             return null;
         }
 
+        // 图标缓存（避免重复加载）
+        private static Dictionary<string, Texture2D> popupIconCache = new Dictionary<string, Texture2D>();
+
         /// <summary>
-        /// 加载成就图标
+        /// 加载成就图标（带缓存和默认图标回退）
         /// </summary>
         private Texture2D LoadAchievementIcon(string iconFile)
         {
-            if (string.IsNullOrEmpty(iconFile)) return null;
+            // 检查缓存
+            if (!string.IsNullOrEmpty(iconFile) && popupIconCache.ContainsKey(iconFile))
+            {
+                return popupIconCache[iconFile];
+            }
 
             try
             {
                 string modPath = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(modPath)) return null;
 
-                string iconPath = System.IO.Path.Combine(modPath, "Assets", "achievement", iconFile);
+                string iconPath = null;
+                
+                // 尝试加载指定图标
+                if (!string.IsNullOrEmpty(iconFile))
+                {
+                    iconPath = System.IO.Path.Combine(modPath, "Assets", "achievement", iconFile);
+                }
+
+                // 如果指定图标不存在，尝试加载默认图标
+                if (string.IsNullOrEmpty(iconPath) || !System.IO.File.Exists(iconPath))
+                {
+                    iconPath = System.IO.Path.Combine(modPath, "Assets", "achievement", "default.png");
+                }
+
                 if (System.IO.File.Exists(iconPath))
                 {
                     byte[] data = System.IO.File.ReadAllBytes(iconPath);
-                    Texture2D tex = new Texture2D(64, 64);
+                    Texture2D tex = new Texture2D(64, 64, TextureFormat.RGBA32, false);
+                    tex.filterMode = FilterMode.Bilinear;
                     if (tex.LoadImage(data))
                     {
+                        // 缓存图标
+                        if (!string.IsNullOrEmpty(iconFile))
+                        {
+                            popupIconCache[iconFile] = tex;
+                        }
                         return tex;
                     }
-                }
-                else
-                {
-                    Debug.LogWarning("[Achievement] 图标文件不存在: " + iconPath);
+                    UnityEngine.Object.Destroy(tex);
                 }
             }
             catch (System.Exception e)
@@ -541,6 +565,14 @@ namespace BossRush
                 Debug.LogError("[Achievement] 加载图标异常: " + e.Message);
             }
             return null;
+        }
+
+        /// <summary>
+        /// 清除图标缓存（供外部调用）
+        /// </summary>
+        public static void ClearIconCache()
+        {
+            popupIconCache.Clear();
         }
 
         #endregion

@@ -1117,6 +1117,7 @@ namespace BossRush
                     DevLog("[BossRush] F4 按下，清空所有成就数据");
                     BossRushAchievementManager.DebugResetAll();
                     AchievementEntryUI.ClearIconCache();
+                    SteamAchievementPopup.ClearIconCache();
                     
                     // 如果成就页面打开则刷新
                     if (AchievementView.Instance != null && AchievementView.Instance.IsOpen)

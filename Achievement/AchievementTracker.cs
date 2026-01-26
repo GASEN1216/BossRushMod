@@ -34,8 +34,10 @@ namespace BossRush
 
         #region 持久化统计（存档保存）
 
-        public static int TotalBossKills = 0;   // 累计击杀Boss数量
-        public static int TotalClears = 0;      // 累计通关次数
+        public static int TotalBossKills = 0;       // 累计击杀Boss数量
+        public static int TotalClears = 0;          // 累计通关次数
+        public static int TotalDragonKingKills = 0; // 累计击杀龙王次数
+        public static int MaxInfiniteHellWave = 0;  // 最高无间炼狱波次
 
         #endregion
 
@@ -118,9 +120,24 @@ namespace BossRush
             if (bossType == "DragonDescendant")
                 KilledDragonDescendant = true;
             else if (bossType == "DragonKing")
+            {
                 KilledDragonKing = true;
+                TotalDragonKingKills++;
+            }
 
             TryAutoSave();
+        }
+
+        /// <summary>
+        /// 记录无间炼狱波次
+        /// </summary>
+        public static void OnInfiniteHellWaveComplete(int waveNumber)
+        {
+            if (waveNumber > MaxInfiniteHellWave)
+            {
+                MaxInfiniteHellWave = waveNumber;
+                TryAutoSave();
+            }
         }
 
         /// <summary>
@@ -169,6 +186,8 @@ namespace BossRush
         {
             TotalBossKills = 0;
             TotalClears = 0;
+            TotalDragonKingKills = 0;
+            MaxInfiniteHellWave = 0;
             lastSavedBossKills = 0;
             lastSavedClears = 0;
             SaveStats();
@@ -201,7 +220,9 @@ namespace BossRush
                 var stats = new Dictionary<string, int>
                 {
                     { "TotalBossKills", TotalBossKills },
-                    { "TotalClears", TotalClears }
+                    { "TotalClears", TotalClears },
+                    { "TotalDragonKingKills", TotalDragonKingKills },
+                    { "MaxInfiniteHellWave", MaxInfiniteHellWave }
                 };
                 SavesSystem.SaveGlobal(SAVE_KEY_STATS, stats);
             }
@@ -225,11 +246,15 @@ namespace BossRush
 
                 TotalBossKills = stats.ContainsKey("TotalBossKills") ? stats["TotalBossKills"] : 0;
                 TotalClears = stats.ContainsKey("TotalClears") ? stats["TotalClears"] : 0;
+                TotalDragonKingKills = stats.ContainsKey("TotalDragonKingKills") ? stats["TotalDragonKingKills"] : 0;
+                MaxInfiniteHellWave = stats.ContainsKey("MaxInfiniteHellWave") ? stats["MaxInfiniteHellWave"] : 0;
             }
             catch
             {
                 TotalBossKills = 0;
                 TotalClears = 0;
+                TotalDragonKingKills = 0;
+                MaxInfiniteHellWave = 0;
             }
         }
 
