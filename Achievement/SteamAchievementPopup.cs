@@ -512,9 +512,14 @@ namespace BossRush
 
         // 图标缓存（避免重复加载）
         private static Dictionary<string, Texture2D> popupIconCache = new Dictionary<string, Texture2D>();
+        
+        // AssetBundle 缓存
+        private static object achievementIconBundle = null;
+        private static bool bundleLoadAttempted = false;
 
         /// <summary>
         /// 加载成就图标（带缓存和默认图标回退）
+        /// 优先从 AssetBundle 加载，回退到 PNG 文件
         /// </summary>
         private Texture2D LoadAchievementIcon(string iconFile)
         {
@@ -524,45 +529,93 @@ namespace BossRush
                 return popupIconCache[iconFile];
             }
 
+            Texture2D tex = null;
+            string iconName = !string.IsNullOrEmpty(iconFile) ? System.IO.Path.GetFileNameWithoutExtension(iconFile) : null;
+
+            // 从 AssetBundle 加载
+            tex = LoadIconFromAssetBundle(iconName);
+            
+            // 回退到默认图标
+            if (tex == null)
+            {
+                tex = LoadIconFromAssetBundle("default");
+            }
+
+            // 缓存结果
+            if (tex != null && !string.IsNullOrEmpty(iconFile))
+            {
+                popupIconCache[iconFile] = tex;
+            }
+
+            return tex;
+        }
+
+        /// <summary>
+        /// 从 AssetBundle 加载图标
+        /// </summary>
+        private Texture2D LoadIconFromAssetBundle(string iconName)
+        {
+            if (string.IsNullOrEmpty(iconName)) return null;
+
             try
             {
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-
-                string iconPath = null;
-                
-                // 尝试加载指定图标
-                if (!string.IsNullOrEmpty(iconFile))
+                // 延迟加载 AssetBundle
+                if (!bundleLoadAttempted)
                 {
-                    iconPath = System.IO.Path.Combine(modPath, "Assets", "achievement", iconFile);
-                }
-
-                // 如果指定图标不存在，尝试加载默认图标
-                if (string.IsNullOrEmpty(iconPath) || !System.IO.File.Exists(iconPath))
-                {
-                    iconPath = System.IO.Path.Combine(modPath, "Assets", "achievement", "default.png");
-                }
-
-                if (System.IO.File.Exists(iconPath))
-                {
-                    byte[] data = System.IO.File.ReadAllBytes(iconPath);
-                    Texture2D tex = new Texture2D(64, 64, TextureFormat.RGBA32, false);
-                    tex.filterMode = FilterMode.Bilinear;
-                    if (tex.LoadImage(data))
+                    bundleLoadAttempted = true;
+                    string modPath = ModBehaviour.GetModPath();
+                    if (!string.IsNullOrEmpty(modPath))
                     {
-                        // 缓存图标
-                        if (!string.IsNullOrEmpty(iconFile))
+                        string bundlePath = System.IO.Path.Combine(modPath, "Assets", "achievement", "achievement_icons");
+                        if (System.IO.File.Exists(bundlePath))
                         {
-                            popupIconCache[iconFile] = tex;
+                            // 通过反射加载 AssetBundle
+                            System.Type abType = System.Type.GetType("UnityEngine.AssetBundle, UnityEngine.AssetBundleModule");
+                            if (abType == null)
+                                abType = System.Type.GetType("UnityEngine.AssetBundle, UnityEngine");
+                            
+                            if (abType != null)
+                            {
+                                var loadMethod = abType.GetMethod("LoadFromFile", new System.Type[] { typeof(string) });
+                                if (loadMethod != null)
+                                {
+                                    achievementIconBundle = loadMethod.Invoke(null, new object[] { bundlePath });
+                                    if (achievementIconBundle != null)
+                                    {
+                                        Debug.Log("[Achievement] 已加载成就图标 AssetBundle");
+                                    }
+                                }
+                            }
                         }
-                        return tex;
                     }
-                    UnityEngine.Object.Destroy(tex);
+                }
+
+                // 从 bundle 加载纹理
+                if (achievementIconBundle != null)
+                {
+                    System.Type abType = achievementIconBundle.GetType();
+                    var loadAssetMethod = abType.GetMethod("LoadAsset", new System.Type[] { typeof(string), typeof(System.Type) });
+                    if (loadAssetMethod != null)
+                    {
+                        // 尝试加载 Sprite
+                        object asset = loadAssetMethod.Invoke(achievementIconBundle, new object[] { iconName, typeof(Sprite) });
+                        if (asset is Sprite sprite && sprite.texture != null)
+                        {
+                            return sprite.texture;
+                        }
+
+                        // 尝试加载 Texture2D
+                        asset = loadAssetMethod.Invoke(achievementIconBundle, new object[] { iconName, typeof(Texture2D) });
+                        if (asset is Texture2D tex)
+                        {
+                            return tex;
+                        }
+                    }
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[Achievement] 加载图标异常: " + e.Message);
+                Debug.LogWarning("[Achievement] AssetBundle 加载图标失败: " + e.Message);
             }
             return null;
         }

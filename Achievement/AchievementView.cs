@@ -741,6 +741,7 @@ namespace BossRush
 
         /// <summary>
         /// 填充成就条目 - 使用LayoutElement
+        /// 排序规则：已完成的成就排在前面，未完成的排在后面
         /// </summary>
         private void PopulateEntries()
         {
@@ -770,7 +771,29 @@ namespace BossRush
                 return;
             }
 
-            ModBehaviour.DevLog("[AchievementView] 准备创建 " + achievements.Count + " 个成就条目");
+            // 排序：已完成的成就排在前面，隐藏成就排在最后，其余按分类和难度排序
+            achievements.Sort((a, b) =>
+            {
+                bool aUnlocked = BossRushAchievementManager.IsUnlocked(a.id);
+                bool bUnlocked = BossRushAchievementManager.IsUnlocked(b.id);
+                
+                // 已完成的排前面
+                if (aUnlocked && !bUnlocked) return -1;
+                if (!aUnlocked && bUnlocked) return 1;
+                
+                // 隐藏成就排最后
+                if (a.isHidden && !b.isHidden) return 1;
+                if (!a.isHidden && b.isHidden) return -1;
+                
+                // 同为已完成或未完成时，按分类排序
+                if (a.category != b.category)
+                    return ((int)a.category).CompareTo((int)b.category);
+                
+                // 同分类时，按难度排序
+                return a.difficultyRating.CompareTo(b.difficultyRating);
+            });
+
+            ModBehaviour.DevLog("[AchievementView] 准备创建 " + achievements.Count + " 个成就条目（已排序）");
 
             // 创建条目
             foreach (var achievement in achievements)

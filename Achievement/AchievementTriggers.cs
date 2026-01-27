@@ -391,7 +391,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 检查成就收集者成就（解锁所有非隐藏成就）
+        /// 检查成就收集者成就（解锁所有成就）
         /// </summary>
         private void CheckCompletionistAchievement()
         {
@@ -400,22 +400,22 @@ namespace BossRush
             try
             {
                 var allAchievements = BossRushAchievementManager.GetAllAchievements();
-                int nonHiddenCount = 0;
-                int unlockedNonHiddenCount = 0;
+                int totalCount = 0;
+                int unlockedCount = 0;
 
                 foreach (var achievement in allAchievements)
                 {
-                    // 跳过隐藏成就和成就收集者本身
-                    if (achievement.isHidden || achievement.id == "completionist")
+                    // 跳过成就收集者本身
+                    if (achievement.id == "completionist")
                         continue;
 
-                    nonHiddenCount++;
+                    totalCount++;
                     if (BossRushAchievementManager.IsUnlocked(achievement.id))
-                        unlockedNonHiddenCount++;
+                        unlockedCount++;
                 }
 
-                // 如果解锁了所有非隐藏成就（不包括成就收集者本身）
-                if (unlockedNonHiddenCount >= nonHiddenCount && nonHiddenCount > 0)
+                // 如果解锁了所有成就（不包括成就收集者本身）
+                if (unlockedCount >= totalCount && totalCount > 0)
                 {
                     BossRushAchievementManager.TryUnlock("completionist");
                 }

@@ -2703,6 +2703,14 @@ namespace BossRush
 
                 inv.AddItem(newItem);
                 DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱");
+                
+                // 记录收藏龙裔掉落物（用于成就追踪）
+                try
+                {
+                    AchievementTracker.OnCollectDragonDescendantLoot(selectedTypeId);
+                    CheckDragonDescendantCollectionAchievement();
+                }
+                catch { }
             }
             catch (Exception addEx)
             {
@@ -2773,6 +2781,14 @@ namespace BossRush
 
                 inv.AddItem(newItem);
                 DevLog("[DragonKing] 已将 " + itemName + " 添加到掉落箱");
+                
+                // 记录收藏龙王掉落物（用于成就追踪）
+                try
+                {
+                    AchievementTracker.OnCollectDragonKingLoot(selectedTypeId);
+                    CheckDragonKingCollectionAchievement();
+                }
+                catch { }
             }
             catch (Exception addEx)
             {
@@ -2780,6 +2796,65 @@ namespace BossRush
             }
             
             yield break;
+        }
+        
+        /// <summary>
+        /// 检查龙裔收藏成就
+        /// </summary>
+        private void CheckDragonDescendantCollectionAchievement()
+        {
+            // 龙裔专属掉落物列表：龙息、龙头、龙甲
+            int[] requiredItems = new int[]
+            {
+                DragonDescendantConfig.DRAGON_BREATH_TYPE_ID,
+                DragonDescendantConfig.DRAGON_HELM_TYPE_ID,
+                DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID
+            };
+            
+            bool allCollected = true;
+            foreach (int typeId in requiredItems)
+            {
+                if (!AchievementTracker.CollectedDragonDescendantLoot.Contains(typeId))
+                {
+                    allCollected = false;
+                    break;
+                }
+            }
+            
+            if (allCollected)
+            {
+                BossRushAchievementManager.TryUnlock("collect_dragon_descendant_loot");
+            }
+        }
+        
+        /// <summary>
+        /// 检查龙王收藏成就
+        /// </summary>
+        private void CheckDragonKingCollectionAchievement()
+        {
+            // 龙王专属掉落物列表：飞行图腾、龙王之冕、龙王鳞铠、逆鳞
+            int[] requiredItems = new int[]
+            {
+                DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID,
+                DragonKingConfig.DRAGON_KING_HELM_TYPE_ID,
+                DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID,
+                DragonKingConfig.REVERSE_SCALE_TYPE_ID
+            };
+            
+            bool allCollected = true;
+            foreach (int typeId in requiredItems)
+            {
+                if (!AchievementTracker.CollectedDragonKingLoot.Contains(typeId))
+                {
+                    allCollected = false;
+                    break;
+                }
+            }
+            
+            if (allCollected)
+            {
+                BossRushAchievementManager.TryUnlock("collect_dragon_king_loot");
+            }
         }
     }
 }

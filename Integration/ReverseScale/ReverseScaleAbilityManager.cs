@@ -419,6 +419,14 @@ namespace BossRush
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null) return;
 
+                // 触发逆鳞成就
+                try
+                {
+                    AchievementTracker.OnTriggerReverseScale();
+                    BossRushAchievementManager.TryUnlock("reverse_scale_triggered");
+                }
+                catch { }
+
                 // 1. 计算恢复量并恢复血量
                 // 修复：当血量为负数或0时，先设为1血再恢复，避免恢复后仍然死亡
                 float currentHealth = health.CurrentHealth;

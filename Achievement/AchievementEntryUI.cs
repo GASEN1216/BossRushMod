@@ -510,6 +510,10 @@ namespace BossRush
             }
         }
 
+        // AssetBundle 缓存（与 SteamAchievementPopup 共享逻辑）
+        private static object achievementIconBundle = null;
+        private static bool bundleLoadAttempted = false;
+
         private static Texture2D GetCachedIcon(string iconFile)
         {
             if (string.IsNullOrEmpty(iconFile)) return null;
@@ -519,26 +523,83 @@ namespace BossRush
                 return iconCache[iconFile];
             }
 
-            string modPath = ModBehaviour.GetModPath();
-            if (string.IsNullOrEmpty(modPath)) return null;
+            string iconName = Path.GetFileNameWithoutExtension(iconFile);
+            Texture2D tex = null;
 
-            string iconPath = Path.Combine(modPath, "Assets", "achievement", iconFile);
-            if (!File.Exists(iconPath))
+            // 从 AssetBundle 加载
+            tex = LoadIconFromAssetBundle(iconName);
+
+            // 回退到默认图标
+            if (tex == null)
             {
-                iconPath = Path.Combine(modPath, "Assets", "achievement", "default.png");
-                if (!File.Exists(iconPath)) return null;
+                tex = LoadIconFromAssetBundle("default");
             }
 
-            byte[] data = File.ReadAllBytes(iconPath);
-            Texture2D tex = new Texture2D(64, 64, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Bilinear;
-            if (tex.LoadImage(data))
+            // 缓存结果
+            if (tex != null)
             {
                 iconCache[iconFile] = tex;
-                return tex;
             }
 
-            UnityEngine.Object.Destroy(tex);
+            return tex;
+        }
+
+        private static Texture2D LoadIconFromAssetBundle(string iconName)
+        {
+            if (string.IsNullOrEmpty(iconName)) return null;
+
+            try
+            {
+                // 延迟加载 AssetBundle
+                if (!bundleLoadAttempted)
+                {
+                    bundleLoadAttempted = true;
+                    string modPath = ModBehaviour.GetModPath();
+                    if (!string.IsNullOrEmpty(modPath))
+                    {
+                        string bundlePath = Path.Combine(modPath, "Assets", "achievement", "achievement_icons");
+                        if (File.Exists(bundlePath))
+                        {
+                            Type abType = Type.GetType("UnityEngine.AssetBundle, UnityEngine.AssetBundleModule");
+                            if (abType == null)
+                                abType = Type.GetType("UnityEngine.AssetBundle, UnityEngine");
+                            
+                            if (abType != null)
+                            {
+                                var loadMethod = abType.GetMethod("LoadFromFile", new Type[] { typeof(string) });
+                                if (loadMethod != null)
+                                {
+                                    achievementIconBundle = loadMethod.Invoke(null, new object[] { bundlePath });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 从 bundle 加载纹理
+                if (achievementIconBundle != null)
+                {
+                    Type abType = achievementIconBundle.GetType();
+                    var loadAssetMethod = abType.GetMethod("LoadAsset", new Type[] { typeof(string), typeof(Type) });
+                    if (loadAssetMethod != null)
+                    {
+                        // 尝试加载 Sprite
+                        object asset = loadAssetMethod.Invoke(achievementIconBundle, new object[] { iconName, typeof(Sprite) });
+                        if (asset is Sprite sprite && sprite.texture != null)
+                        {
+                            return sprite.texture;
+                        }
+
+                        // 尝试加载 Texture2D
+                        asset = loadAssetMethod.Invoke(achievementIconBundle, new object[] { iconName, typeof(Texture2D) });
+                        if (asset is Texture2D tex)
+                        {
+                            return tex;
+                        }
+                    }
+                }
+            }
+            catch { }
             return null;
         }
 

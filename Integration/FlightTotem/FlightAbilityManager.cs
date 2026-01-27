@@ -143,6 +143,14 @@ namespace BossRush
             if (success)
             {
                 LogIfVerbose("能力动作已启动（并行模式）");
+                
+                // 触发飞天成就
+                try
+                {
+                    AchievementTracker.OnUseFlightTotem();
+                    BossRushAchievementManager.TryUnlock("first_flight");
+                }
+                catch { }
             }
 
             return success;

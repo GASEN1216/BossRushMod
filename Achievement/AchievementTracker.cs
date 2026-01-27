@@ -38,6 +38,14 @@ namespace BossRush
         public static int TotalClears = 0;          // 累计通关次数
         public static int TotalDragonKingKills = 0; // 累计击杀龙王次数
         public static int MaxInfiniteHellWave = 0;  // 最高无间炼狱波次
+        
+        // ========== 收藏类成就追踪 ==========
+        public static HashSet<int> CollectedDragonDescendantLoot = new HashSet<int>(); // 已收集的龙裔掉落物
+        public static HashSet<int> CollectedDragonKingLoot = new HashSet<int>();       // 已收集的龙王掉落物
+        
+        // ========== 特殊成就追踪 ==========
+        public static bool HasUsedFlightTotem = false;        // 是否使用过腾云驾雾图腾
+        public static bool HasTriggeredReverseScale = false;  // 是否触发过逆鳞效果
 
         #endregion
 
@@ -76,6 +84,7 @@ namespace BossRush
             DragonKingKilledFlawless = true;
             KilledDragonDescendant = false;
             KilledDragonKing = false;
+            // 注意：收藏类和特殊成就追踪不重置，因为它们是累计的
         }
 
         #endregion
@@ -188,10 +197,64 @@ namespace BossRush
             TotalClears = 0;
             TotalDragonKingKills = 0;
             MaxInfiniteHellWave = 0;
+            CollectedDragonDescendantLoot.Clear();
+            CollectedDragonKingLoot.Clear();
+            HasUsedFlightTotem = false;
+            HasTriggeredReverseScale = false;
             lastSavedBossKills = 0;
             lastSavedClears = 0;
             SaveStats();
             Debug.Log("[Achievement] 统计数据已重置");
+        }
+        
+        /// <summary>
+        /// 记录收集龙裔掉落物
+        /// </summary>
+        public static void OnCollectDragonDescendantLoot(int itemTypeId)
+        {
+            if (CollectedDragonDescendantLoot.Add(itemTypeId))
+            {
+                Debug.Log("[Achievement] 收集龙裔掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonDescendantLoot.Count);
+                TryAutoSave();
+            }
+        }
+        
+        /// <summary>
+        /// 记录收集龙王掉落物
+        /// </summary>
+        public static void OnCollectDragonKingLoot(int itemTypeId)
+        {
+            if (CollectedDragonKingLoot.Add(itemTypeId))
+            {
+                Debug.Log("[Achievement] 收集龙王掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonKingLoot.Count);
+                TryAutoSave();
+            }
+        }
+        
+        /// <summary>
+        /// 记录使用腾云驾雾图腾
+        /// </summary>
+        public static void OnUseFlightTotem()
+        {
+            if (!HasUsedFlightTotem)
+            {
+                HasUsedFlightTotem = true;
+                Debug.Log("[Achievement] 首次使用腾云驾雾图腾");
+                SaveStats();
+            }
+        }
+        
+        /// <summary>
+        /// 记录触发逆鳞效果
+        /// </summary>
+        public static void OnTriggerReverseScale()
+        {
+            if (!HasTriggeredReverseScale)
+            {
+                HasTriggeredReverseScale = true;
+                Debug.Log("[Achievement] 首次触发逆鳞效果");
+                SaveStats();
+            }
         }
 
         #endregion
@@ -222,9 +285,15 @@ namespace BossRush
                     { "TotalBossKills", TotalBossKills },
                     { "TotalClears", TotalClears },
                     { "TotalDragonKingKills", TotalDragonKingKills },
-                    { "MaxInfiniteHellWave", MaxInfiniteHellWave }
+                    { "MaxInfiniteHellWave", MaxInfiniteHellWave },
+                    { "HasUsedFlightTotem", HasUsedFlightTotem ? 1 : 0 },
+                    { "HasTriggeredReverseScale", HasTriggeredReverseScale ? 1 : 0 }
                 };
                 SavesSystem.SaveGlobal(SAVE_KEY_STATS, stats);
+                
+                // 保存收藏类数据
+                SavesSystem.SaveGlobal(SAVE_KEY_STATS + "_DragonDescendantLoot", new List<int>(CollectedDragonDescendantLoot));
+                SavesSystem.SaveGlobal(SAVE_KEY_STATS + "_DragonKingLoot", new List<int>(CollectedDragonKingLoot));
             }
             catch (System.Exception e)
             {
@@ -248,6 +317,23 @@ namespace BossRush
                 TotalClears = stats.ContainsKey("TotalClears") ? stats["TotalClears"] : 0;
                 TotalDragonKingKills = stats.ContainsKey("TotalDragonKingKills") ? stats["TotalDragonKingKills"] : 0;
                 MaxInfiniteHellWave = stats.ContainsKey("MaxInfiniteHellWave") ? stats["MaxInfiniteHellWave"] : 0;
+                HasUsedFlightTotem = stats.ContainsKey("HasUsedFlightTotem") && stats["HasUsedFlightTotem"] == 1;
+                HasTriggeredReverseScale = stats.ContainsKey("HasTriggeredReverseScale") && stats["HasTriggeredReverseScale"] == 1;
+                
+                // 加载收藏类数据
+                try
+                {
+                    var ddLoot = SavesSystem.LoadGlobal<List<int>>(SAVE_KEY_STATS + "_DragonDescendantLoot", new List<int>());
+                    CollectedDragonDescendantLoot = new HashSet<int>(ddLoot);
+                }
+                catch { CollectedDragonDescendantLoot = new HashSet<int>(); }
+                
+                try
+                {
+                    var dkLoot = SavesSystem.LoadGlobal<List<int>>(SAVE_KEY_STATS + "_DragonKingLoot", new List<int>());
+                    CollectedDragonKingLoot = new HashSet<int>(dkLoot);
+                }
+                catch { CollectedDragonKingLoot = new HashSet<int>(); }
             }
             catch
             {
@@ -255,6 +341,10 @@ namespace BossRush
                 TotalClears = 0;
                 TotalDragonKingKills = 0;
                 MaxInfiniteHellWave = 0;
+                HasUsedFlightTotem = false;
+                HasTriggeredReverseScale = false;
+                CollectedDragonDescendantLoot = new HashSet<int>();
+                CollectedDragonKingLoot = new HashSet<int>();
             }
         }
 
