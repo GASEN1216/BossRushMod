@@ -43,7 +43,7 @@ namespace BossRush
 
         // ========== 动画常量 ==========
         private const float SLIDE_IN_DURATION = 0.5f;
-        private const float DISPLAY_DURATION = 5.0f;
+        private const float DISPLAY_DURATION = 3.0f;
         private const float SLIDE_OUT_DURATION = 0.5f;
         private const float STACK_MOVE_DURATION = 0.25f;
         private const float GLOW_PULSE_SPEED = 3.0f;
