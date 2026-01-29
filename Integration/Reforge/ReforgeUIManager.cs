@@ -1229,7 +1229,10 @@ namespace BossRush
             }
             
             ModBehaviour.DevLog("[ReforgeUI] 点击重铸按钮: " + selectedItem.DisplayName + ", 投入: " + currentMoney);
-            
+
+            // 播放重铸音效
+            BossRushAudioManager.Instance.PlayReforgeSFX();
+
             isReforging = true;
             
             try

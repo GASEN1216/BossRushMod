@@ -207,6 +207,9 @@ namespace BossRush
                 
                 DevLog("[DragonKing] 龙王Boss生成完成");
                 ShowMessage(L10n.DragonKingAppeared);
+
+                // 播放龙王BGM
+                BossRushAudioManager.Instance.PlayDragonKingBGM();
                 
                 return character;
             }

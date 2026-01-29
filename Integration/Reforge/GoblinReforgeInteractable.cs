@@ -58,6 +58,9 @@ namespace BossRush
             {
                 base.OnInteractStart(interactCharacter);
                 ModBehaviour.DevLog("[GoblinNPC] 玩家选择重铸服务");
+
+                // 播放哥布林交互音效
+                BossRushAudioManager.Instance.PlayGoblinInteractSFX();
                 
                 // 让哥布林进入对话状态
                 if (controller != null)
@@ -188,6 +191,9 @@ namespace BossRush
             try
             {
                 ModBehaviour.DevLog("[GoblinNPC] 玩家选择重铸服务");
+
+                // 播放哥布林交互音效
+                BossRushAudioManager.Instance.PlayGoblinInteractSFX();
                 
                 // 让哥布林进入对话状态
                 if (controller != null)
