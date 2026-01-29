@@ -107,8 +107,9 @@ namespace BossRush.Common.Equipment
         {
             // 订阅全局装备槽位变化事件
             CharacterMainControl.OnMainCharacterSlotContentChangedEvent += OnMainCharacterSlotContentChanged;
-            // 订阅场景加载事件，用于场景切换保护
+            // 订阅场景加载/卸载事件，用于场景切换保护
             UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneUnloaded += OnSceneUnloaded;
             LogIfVerbose("已订阅 OnMainCharacterSlotContentChangedEvent");
         }
 
@@ -117,6 +118,7 @@ namespace BossRush.Common.Equipment
             // 取消订阅
             CharacterMainControl.OnMainCharacterSlotContentChangedEvent -= OnMainCharacterSlotContentChanged;
             UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneUnloaded -= OnSceneUnloaded;
             DeactivateAbility();
         }
 
@@ -125,6 +127,7 @@ namespace BossRush.Common.Equipment
             // 取消订阅
             CharacterMainControl.OnMainCharacterSlotContentChangedEvent -= OnMainCharacterSlotContentChanged;
             UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneUnloaded -= OnSceneUnloaded;
             DeactivateAbility();
 
             if (_instance == this)
@@ -133,6 +136,19 @@ namespace BossRush.Common.Equipment
             }
         }
 
+        /// <summary>
+        /// 场景卸载时调用 - 设置场景切换保护
+        /// </summary>
+        protected virtual void OnSceneUnloaded(UnityEngine.SceneManagement.Scene scene)
+        {
+            // 场景卸载时设置保护标记，防止误停用能力
+            if (abilityActivated)
+            {
+                sceneTransitionProtection = true;
+                LogIfVerbose($"场景卸载: {scene.name}，启用场景切换保护");
+            }
+        }
+        
         /// <summary>
         /// 场景加载完成时调用 - 清除场景切换保护
         /// </summary>
@@ -270,33 +286,19 @@ namespace BossRush.Common.Equipment
             }
             else if (!foundMatchingItem && abilityActivated)
             {
-                // 检查是否是场景切换导致的误检测
-                // 如果槽位为空但能力已激活，可能是场景切换中物品暂时不可见
-                // 只有当明确检测到槽位有其他物品时才停用
-                bool hasAnyTotemSlotContent = false;
-                foreach (Slot slot in characterItem.Slots)
+                // 检查是否在场景切换保护期间
+                if (sceneTransitionProtection)
                 {
-                    if (slot != null && slot.Key.StartsWith("Totem") && slot.Content != null)
-                    {
-                        hasAnyTotemSlotContent = true;
-                        break;
-                    }
+                    LogIfVerbose("场景切换保护中，保持能力激活状态");
+                    return;
                 }
                 
-                if (hasAnyTotemSlotContent)
-                {
-                    // 图腾槽位有内容但不是我们的装备，说明玩家换了其他图腾
-                    LogIfVerbose("检测到图腾槽位有其他物品，停用能力");
-                    equippedItem = null;
-                    lastRegisteredCharacter = null;
-                    DeactivateAbility();
-                    OnAfterDeactivate();
-                }
-                else
-                {
-                    // 图腾槽位为空，可能是场景切换或物品暂时不可见，保持能力激活
-                    LogIfVerbose("图腾槽位为空，可能是场景切换，保持能力激活状态");
-                }
+                // 没有找到匹配的装备，停用能力
+                LogIfVerbose("未找到匹配装备，停用能力");
+                equippedItem = null;
+                lastRegisteredCharacter = null;
+                DeactivateAbility();
+                OnAfterDeactivate();
             }
         }
 

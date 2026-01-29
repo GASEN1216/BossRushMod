@@ -1408,17 +1408,23 @@ namespace BossRush
                 }
             }
             
-            // 调试快捷键 F12：传送到快递员NPC身边
+            // 调试快捷键 F12：打开NPC传送UI
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F12))
             {
                 try
                 {
-                    TeleportToCourierNPC();
+                    ToggleNPCTeleportUI();
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] F12 传送到快递员失败: " + e.Message);
+                    DevLog("[BossRush] F12 打开NPC传送UI失败: " + e.Message);
                 }
+            }
+            
+            // ESC键关闭NPC传送UI
+            if (npcTeleportUIVisible && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Escape))
+            {
+                HideNPCTeleportUI();
             }
         }
 
@@ -1426,6 +1432,9 @@ namespace BossRush
         {
             // Boss 池窗口的暂停和鼠标状态控制（在所有 Update 之后执行，确保覆盖游戏的设置）
             BossPoolLateUpdate();
+            
+            // NPC传送UI的暂停和鼠标状态控制
+            NPCTeleportUILateUpdate();
         }
         
         private static void InjectBossRushTicketLocalization()

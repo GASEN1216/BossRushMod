@@ -123,6 +123,44 @@ namespace BossRush
         private const string STORAGE_DEPOSIT_DISCARDED_EN = "All deposited items discarded";
         
         // ============================================================================
+        // 哥布林NPC本地化数据
+        // ============================================================================
+        private const string GOBLIN_NAME_CN = "叮当";
+        private const string GOBLIN_NAME_EN = "Dingdang";
+        private const string GOBLIN_TALK_CN = "交谈";
+        private const string GOBLIN_TALK_EN = "Talk";
+        private const string GOBLIN_GREETING_CN = "嘿嘿，有啥需要的？";
+        private const string GOBLIN_GREETING_EN = "Hehe, need something?";
+        
+        // 重铸服务本地化数据
+        private const string REFORGE_SERVICE_CN = "重铸服务";
+        private const string REFORGE_SERVICE_EN = "Reforge Service";
+        private const string REFORGE_TITLE_CN = "叮当的重铸工坊";
+        private const string REFORGE_TITLE_EN = "Dingdang's Reforge Workshop";
+        private const string REFORGE_DESC_CN = "选择一件装备进行重铸，投入更多金钱可以提高重铸品质。\n品质越高的装备，获得高属性的概率越大。";
+        private const string REFORGE_DESC_EN = "Select an equipment to reforge. Invest more money for better quality.\nHigher quality equipment has better chances for high stats.";
+        private const string REFORGE_NO_ITEM_SELECTED_CN = "请先选择一件装备";
+        private const string REFORGE_NO_ITEM_SELECTED_EN = "Please select an equipment first";
+        private const string REFORGE_SELECTED_CN = "已选择";
+        private const string REFORGE_SELECTED_EN = "Selected";
+        private const string REFORGE_MODIFIERS_CN = "属性数量";
+        private const string REFORGE_MODIFIERS_EN = "Modifiers";
+        private const string REFORGE_COST_CN = "投入金额";
+        private const string REFORGE_COST_EN = "Cost";
+        private const string REFORGE_BUTTON_CN = "重铸";
+        private const string REFORGE_BUTTON_EN = "Reforge";
+        private const string REFORGE_CLOSE_CN = "关闭";
+        private const string REFORGE_CLOSE_EN = "Close";
+        private const string REFORGE_SUCCESS_CN = "重铸成功";
+        private const string REFORGE_SUCCESS_EN = "Reforge successful";
+        private const string REFORGE_SELECT_FIRST_CN = "请先选择装备";
+        private const string REFORGE_SELECT_FIRST_EN = "Please select equipment first";
+        private const string REFORGE_NOT_ENOUGH_MONEY_CN = "金钱不足";
+        private const string REFORGE_NOT_ENOUGH_MONEY_EN = "Not enough money";
+        private const string REFORGE_NO_EQUIPMENT_CN = "没有可重铸的装备";
+        private const string REFORGE_NO_EQUIPMENT_EN = "No reforgeable equipment";
+        
+        // ============================================================================
         // 快递员首次见面对话（大对话系统）
         // ============================================================================
         private static readonly string[][] COURIER_FIRST_MEET_DIALOGUES = new string[][]
@@ -176,6 +214,7 @@ namespace BossRush
                 InjectWikiBookLocalization(wikiBookTypeId);
                 InjectDragonDescendantLocalization();
                 InjectCourierNPCLocalization();
+                InjectGoblinNPCLocalization();
                 InjectUILocalization();
                 InjectMapNameLocalizations();
                 EquipmentLocalization.InjectAllEquipmentLocalizations();
@@ -423,6 +462,88 @@ namespace BossRush
             LocalizationHelper.InjectLocalization("BossRush_CourierGive", giveText);
             
             ModBehaviour.DevLog("[LocalizationInjector] 快递员NPC本地化注入完成");
+        }
+        
+        /// <summary>
+        /// 注入哥布林NPC本地化
+        /// </summary>
+        public static void InjectGoblinNPCLocalization()
+        {
+            // 哥布林名称
+            string goblinName = L10n.T(GOBLIN_NAME_CN, GOBLIN_NAME_EN);
+            LocalizationHelper.InjectLocalization("BossRush_GoblinName", goblinName);
+            LocalizationHelper.InjectLocalization(GOBLIN_NAME_CN, goblinName);
+            
+            // 哥布林交谈选项
+            string goblinTalk = L10n.T(GOBLIN_TALK_CN, GOBLIN_TALK_EN);
+            LocalizationHelper.InjectLocalization("BossRush_GoblinTalk", goblinTalk);
+            
+            // 哥布林问候语
+            string goblinGreeting = L10n.T(GOBLIN_GREETING_CN, GOBLIN_GREETING_EN);
+            LocalizationHelper.InjectLocalization("BossRush_GoblinGreeting", goblinGreeting);
+            
+            // 重铸服务选项
+            string reforgeService = L10n.T(REFORGE_SERVICE_CN, REFORGE_SERVICE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_Reforge", reforgeService);
+            LocalizationHelper.InjectLocalization(REFORGE_SERVICE_CN, reforgeService);
+            
+            // 重铸UI标题
+            string reforgeTitle = L10n.T(REFORGE_TITLE_CN, REFORGE_TITLE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeTitle", reforgeTitle);
+            
+            // 重铸说明
+            string reforgeDesc = L10n.T(REFORGE_DESC_CN, REFORGE_DESC_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeDesc", reforgeDesc);
+            
+            // 未选择物品提示
+            string noItemSelected = L10n.T(REFORGE_NO_ITEM_SELECTED_CN, REFORGE_NO_ITEM_SELECTED_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeNoItemSelected", noItemSelected);
+            
+            // 已选择
+            string selected = L10n.T(REFORGE_SELECTED_CN, REFORGE_SELECTED_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeSelected", selected);
+            
+            // 属性数量
+            string modifiers = L10n.T(REFORGE_MODIFIERS_CN, REFORGE_MODIFIERS_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeModifiers", modifiers);
+            
+            // 投入金额
+            string cost = L10n.T(REFORGE_COST_CN, REFORGE_COST_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeCost", cost);
+            
+            // 重铸按钮
+            string reforgeButton = L10n.T(REFORGE_BUTTON_CN, REFORGE_BUTTON_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeButton", reforgeButton);
+            
+            // 关闭按钮
+            string closeButton = L10n.T(REFORGE_CLOSE_CN, REFORGE_CLOSE_EN);
+            LocalizationHelper.InjectLocalization("BossRush_Close", closeButton);
+            
+            // 重铸成功
+            string success = L10n.T(REFORGE_SUCCESS_CN, REFORGE_SUCCESS_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeSuccess", success);
+            
+            // 请先选择装备
+            string selectFirst = L10n.T(REFORGE_SELECT_FIRST_CN, REFORGE_SELECT_FIRST_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeSelectFirst", selectFirst);
+            
+            // 金钱不足
+            string notEnoughMoney = L10n.T(REFORGE_NOT_ENOUGH_MONEY_CN, REFORGE_NOT_ENOUGH_MONEY_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeNotEnoughMoney", notEnoughMoney);
+            
+            // 没有可重铸的装备
+            string noEquipment = L10n.T(REFORGE_NO_EQUIPMENT_CN, REFORGE_NO_EQUIPMENT_EN);
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeNoEquipment", noEquipment);
+            
+            // 选择物品（左栏标题）
+            string selectItem = L10n.T("选择物品", "Select Item");
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeSelectItem", selectItem);
+            
+            // 概率标签
+            string probability = L10n.T("重铸概率", "Reforge Probability");
+            LocalizationHelper.InjectLocalization("BossRush_ReforgeProbability", probability);
+            
+            ModBehaviour.DevLog("[LocalizationInjector] 哥布林NPC本地化注入完成");
         }
         
         /// <summary>

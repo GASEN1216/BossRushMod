@@ -435,9 +435,12 @@ namespace BossRush
                     health.SetHealth(1f);
                     ModBehaviour.DevLog($"{config.LogPrefix} 血量为{currentHealth}，先设为1血");
                 }
-                float healAmount = health.MaxHealth * config.HealPercent;
+                // 从Variables读取恢复比例（存储为百分比整数50=50%，需要除以100）
+                float healPercentRaw = GetVariableFloat(ReverseScaleConfig.VAR_HEAL_PERCENT, config.HealPercent * 100f);
+                float healPercent = healPercentRaw / 100f; // 50 -> 0.5
+                float healAmount = health.MaxHealth * healPercent;
                 health.AddHealth(healAmount);
-                ModBehaviour.DevLog($"{config.LogPrefix} 恢复血量: +{healAmount}, 当前血量: {health.CurrentHealth}");
+                ModBehaviour.DevLog($"{config.LogPrefix} 恢复血量: +{healAmount} ({healPercent*100}%), 当前血量: {health.CurrentHealth}");
 
                 // 2. 触发棱彩弹攻击（触之必怒！）
                 FirePrismaticBolts(main);
@@ -462,7 +465,8 @@ namespace BossRush
             try
             {
                 Vector3 playerPos = player.transform.position;
-                int boltCount = config.PrismaticBoltCount;
+                // 从Variables读取棱彩弹数量（支持重铸修改）
+                int boltCount = Mathf.RoundToInt(GetVariableFloat(ReverseScaleConfig.VAR_BOLT_COUNT, config.PrismaticBoltCount));
                 float angleStep = 360f / boltCount;
                 float scale = config.PrismaticBoltScale;
 
@@ -721,6 +725,28 @@ namespace BossRush
             {
                 ModBehaviour.DevLog($"{config.LogPrefix} DestroyTotem 出错: {e.Message}");
             }
+        }
+        
+        /// <summary>
+        /// 从装备的逆鳞图腾Variables中读取Float值
+        /// </summary>
+        private float GetVariableFloat(string key, float defaultValue)
+        {
+            try
+            {
+                if (equippedItem == null || equippedItem.Variables == null)
+                {
+                    return defaultValue;
+                }
+                
+                // CustomDataCollection直接提供GetFloat方法
+                return equippedItem.Variables.GetFloat(key, defaultValue);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"{config.LogPrefix} 读取Variable[{key}]失败: {e.Message}");
+            }
+            return defaultValue;
         }
     }
 }

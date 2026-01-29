@@ -609,6 +609,7 @@ namespace BossRush
             LocalizationInjector.InjectUILocalization();
             LocalizationInjector.InjectMapNameLocalizations();
             LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
+            LocalizationInjector.InjectGoblinNPCLocalization();   // 哥布林NPC本地化（重铸服务）
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             DevLog("[BossRush] 扩展本地化注入完成");
@@ -1034,6 +1035,10 @@ namespace BossRush
             // 生成快递员
             DevLog("[CourierNPC] 普通模式场景初始化完成，开始生成快递员");
             SpawnCourierNPC();
+            
+            // 生成哥布林
+            DevLog("[GoblinNPC] 普通模式场景初始化完成，开始生成哥布林");
+            SpawnGoblinNPC();
         }
 
         /// <summary>
@@ -1349,6 +1354,9 @@ namespace BossRush
             
             // 11. 生成快递员 NPC
             SpawnCourierNPC();
+            
+            // 12. 生成哥布林 NPC
+            SpawnGoblinNPC();
         }
         
         /// <summary>

@@ -75,7 +75,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 配置飞行图腾装备属性（使用 CustomData 字符对字符样式）
+        /// 配置飞行图腾装备属性（使用 Float 存储以支持重铸）
         /// </summary>
         private void ConfigureFlightTotemEquipment(Item item)
         {
@@ -86,39 +86,35 @@ namespace BossRush
                 var config = FlightConfig.Instance;
                 DevLog("[FlightTotem] 配置飞行图腾属性...");
 
-                // 翻滚键：腾云
-                item.Variables.Set(FlightConfig.VAR_ABILITY_KEY, L10n.IsChinese ? "腾云" : "Soar", true);
-                item.Variables.SetDisplay(FlightConfig.VAR_ABILITY_KEY, true);
-
-                // 最大向上速度
-                item.Variables.Set(FlightConfig.VAR_MAX_UPWARD_SPEED, config.MaxUpwardSpeed.ToString("0.#"), true);
+                // 最大向上速度（Float存储，支持重铸）
+                item.Variables.Set(FlightConfig.VAR_MAX_UPWARD_SPEED, config.MaxUpwardSpeed);
                 item.Variables.SetDisplay(FlightConfig.VAR_MAX_UPWARD_SPEED, true);
 
-                // 加速时间
-                item.Variables.Set(FlightConfig.VAR_ACCELERATION_TIME, config.AccelerationTime.ToString("0.#") + "s", true);
+                // 加速时间（Float存储，支持重铸）
+                item.Variables.Set(FlightConfig.VAR_ACCELERATION_TIME, config.AccelerationTime);
                 item.Variables.SetDisplay(FlightConfig.VAR_ACCELERATION_TIME, true);
 
-                // 滑翔水平系数
-                item.Variables.Set(FlightConfig.VAR_GLIDING_MULTIPLIER, config.GlidingHorizontalSpeedMultiplier.ToString("0.#"), true);
+                // 滑翔水平系数（Float存储，支持重铸）
+                item.Variables.Set(FlightConfig.VAR_GLIDING_MULTIPLIER, config.GlidingHorizontalSpeedMultiplier);
                 item.Variables.SetDisplay(FlightConfig.VAR_GLIDING_MULTIPLIER, true);
 
-                // 缓慢下落速度
-                item.Variables.Set(FlightConfig.VAR_DESCENT_SPEED, config.SlowDescentSpeed.ToString("0.#"), true);
+                // 缓慢下落速度（Float存储，取绝对值便于显示）
+                item.Variables.Set(FlightConfig.VAR_DESCENT_SPEED, Mathf.Abs(config.SlowDescentSpeed));
                 item.Variables.SetDisplay(FlightConfig.VAR_DESCENT_SPEED, true);
 
-                // 启动体力消耗
-                item.Variables.Set(FlightConfig.VAR_STARTUP_STAMINA, config.StartupStaminaCost.ToString("0.#"), true);
+                // 启动体力消耗（Float存储，支持重铸）
+                item.Variables.Set(FlightConfig.VAR_STARTUP_STAMINA, config.StartupStaminaCost);
                 item.Variables.SetDisplay(FlightConfig.VAR_STARTUP_STAMINA, true);
 
-                // 飞行体力消耗
-                item.Variables.Set(FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, config.StaminaDrainPerSecond.ToString("0.#") + "/s", true);
+                // 飞行体力消耗（Float存储，支持重铸）
+                item.Variables.Set(FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, config.StaminaDrainPerSecond);
                 item.Variables.SetDisplay(FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, true);
 
-                // 滑翔体力消耗
-                item.Variables.Set(FlightConfig.VAR_GLIDING_STAMINA_DRAIN, config.SlowDescentStaminaDrainPerSecond.ToString("0.#") + "/s", true);
+                // 滑翔体力消耗（Float存储，支持重铸）
+                item.Variables.Set(FlightConfig.VAR_GLIDING_STAMINA_DRAIN, config.SlowDescentStaminaDrainPerSecond);
                 item.Variables.SetDisplay(FlightConfig.VAR_GLIDING_STAMINA_DRAIN, true);
 
-                DevLog("[FlightTotem] 属性配置完成");
+                DevLog("[FlightTotem] 属性配置完成（Float存储，支持重铸）");
             }
             catch (Exception e)
             {

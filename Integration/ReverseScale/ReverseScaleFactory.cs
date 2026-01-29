@@ -135,17 +135,16 @@ namespace BossRush
                 // 设置物品的 displayName 字段（用于本地化）
                 item.DisplayNameRaw = ReverseScaleConfig.LOC_KEY_DISPLAY;
 
-                // 恢复生命值：50%
-                string healValue = (config.HealPercent * 100).ToString("0") + "%";
-                item.Variables.Set(ReverseScaleConfig.VAR_HEAL_PERCENT, healValue, true);
+                // 恢复生命值：存储为百分比整数（50 = 50%），便于显示和重铸
+                float healPercentDisplay = config.HealPercent * 100f; // 0.5 -> 50
+                item.Variables.Set(ReverseScaleConfig.VAR_HEAL_PERCENT, healPercentDisplay);
                 item.Variables.SetDisplay(ReverseScaleConfig.VAR_HEAL_PERCENT, true);
 
-                // 棱彩弹数量：8
-                string boltValue = config.PrismaticBoltCount.ToString();
-                item.Variables.Set(ReverseScaleConfig.VAR_BOLT_COUNT, boltValue, true);
+                // 棱彩弹数量：使用Float存储，支持重铸修改
+                item.Variables.Set(ReverseScaleConfig.VAR_BOLT_COUNT, (float)config.PrismaticBoltCount);
                 item.Variables.SetDisplay(ReverseScaleConfig.VAR_BOLT_COUNT, true);
 
-                DevLog("[ReverseScale] 逆鳞图腾配置完成");
+                DevLog("[ReverseScale] 逆鳞图腾配置完成 - HealPercent=" + config.HealPercent + ", BoltCount=" + config.PrismaticBoltCount);
             }
             catch (Exception e)
             {

@@ -277,22 +277,102 @@ namespace BossRush
         }
         
         // ============================================================================
-        // 未来NPC扩展区域
+        // 哥布林NPC刷新点配置
         // ============================================================================
         
-        // 示例：添加新NPC类型
-        // #region 商人NPC刷新点配置
-        // 
-        // private static readonly Vector3[] GroundZeroMerchantSpawnPoints = new Vector3[] { ... };
-        // 
-        // public static readonly Dictionary<string, NPCSceneSpawnConfig> MerchantNormalModeConfigs = 
-        //     new Dictionary<string, NPCSceneSpawnConfig>
-        // {
-        //     { "Level_GroundZero_1", new NPCSceneSpawnConfig("Level_GroundZero_1", GroundZeroMerchantSpawnPoints, true) }
-        // };
-        // 
-        // public static bool TryGetMerchantNormalModePosition(string sceneName, out Vector3 position) { ... }
-        // 
-        // #endregion
+        #region 哥布林 - 刷新点配置（复用快递员刷新点）
+        
+        /// <summary>
+        /// 哥布林刷新配置（直接引用快递员的刷新点配置）
+        /// 哥布林和快递员使用相同的刷新点池，但初始化时会避免重复位置
+        /// </summary>
+        public static readonly Dictionary<string, NPCSceneSpawnConfig> GoblinSpawnConfigs = CourierNormalModeConfigs;
+        
+        #endregion
+        
+        // ============================================================================
+        // 哥布林刷新点查询方法
+        // ============================================================================
+        
+        /// <summary>
+        /// 获取哥布林的随机刷新位置（避开快递员位置）
+        /// </summary>
+        /// <param name="sceneName">场景名称</param>
+        /// <param name="position">输出位置（随机选择）</param>
+        /// <param name="courierPosition">快递员位置（用于避开）</param>
+        /// <param name="minDistance">与快递员的最小距离，默认10米</param>
+        /// <returns>是否找到配置</returns>
+        public static bool TryGetGoblinSpawnPosition(string sceneName, out Vector3 position, Vector3 courierPosition = default(Vector3), float minDistance = 10f)
+        {
+            position = Vector3.zero;
+            
+            if (GoblinSpawnConfigs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
+            {
+                if (config.spawnPoints != null && config.spawnPoints.Length > 0)
+                {
+                    // 如果提供了快递员位置，尝试找到远离快递员的刷新点
+                    if (courierPosition != default(Vector3))
+                    {
+                        // 先收集所有满足距离要求的刷新点
+                        List<Vector3> validPoints = new List<Vector3>();
+                        foreach (Vector3 point in config.spawnPoints)
+                        {
+                            Vector3 diff = point - courierPosition;
+                            diff.y = 0;  // 只计算水平距离
+                            if (diff.magnitude >= minDistance)
+                            {
+                                validPoints.Add(point);
+                            }
+                        }
+                        
+                        // 如果有满足条件的点，从中随机选择
+                        if (validPoints.Count > 0)
+                        {
+                            int randomIndex = Random.Range(0, validPoints.Count);
+                            position = validPoints[randomIndex];
+                            return true;
+                        }
+                    }
+                    
+                    // 如果没有提供快递员位置，或没有找到满足距离的点，使用默认随机选择
+                    if (config.useRandomSpawn)
+                    {
+                        int randomIndex = Random.Range(0, config.spawnPoints.Length);
+                        position = config.spawnPoints[randomIndex];
+                    }
+                    else
+                    {
+                        position = config.spawnPoints[0];
+                    }
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// 检查场景是否配置了哥布林刷新点
+        /// </summary>
+        /// <param name="sceneName">场景名称</param>
+        /// <returns>是否有配置</returns>
+        public static bool HasGoblinConfig(string sceneName)
+        {
+            return GoblinSpawnConfigs.ContainsKey(sceneName);
+        }
+        
+        /// <summary>
+        /// 获取哥布林刷新点数量（用于日志）
+        /// </summary>
+        /// <param name="sceneName">场景名称</param>
+        /// <returns>刷新点数量，未配置返回0</returns>
+        public static int GetGoblinSpawnPointCount(string sceneName)
+        {
+            if (GoblinSpawnConfigs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
+            {
+                return config.spawnPoints?.Length ?? 0;
+            }
+            return 0;
+        }
     }
 }
