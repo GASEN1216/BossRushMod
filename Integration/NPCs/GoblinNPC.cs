@@ -1202,10 +1202,12 @@ namespace BossRush
                 try
                 {
                     animator.SetFloat(hash_MoveSpeed, speed);
+                    // 当速度为0时，设置 IsIdle 为 true，避免原地播放走路动画
+                    animator.SetBool("IsIdle", speed < 0.01f);
                 }
                 catch { }
             }
-            
+
             // 通知控制器更新动画
             if (controller != null)
             {
