@@ -166,9 +166,9 @@ namespace BossRush
         private static System.Collections.IEnumerator ModifyUIDelayed()
         {
             yield return new WaitForSeconds(0.1f);
-            
+
             ModifyDecomposeUI();
-            
+
             // 创建UI监控器
             if (decomposeView != null)
             {
@@ -180,12 +180,220 @@ namespace BossRush
                 }
                 uiMonitor.SetWatchedView(decomposeView);
             }
-            
+
             // 再等一帧，确保原版OnOpen已经执行完毕，然后再次应用我们的修改
             yield return null;
             ReapplyModifications();
+
+            // DevMode: 输出UI详细信息
+            if (ModBehaviour.DevModeEnabled)
+            {
+                DumpUIInfo();
+            }
         }
         
+        /// <summary>
+        /// [DevMode] 输出UI详细信息，用于调试和查找需要修改的文本
+        /// </summary>
+        private static void DumpUIInfo()
+        {
+            if (decomposeView == null)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] decomposeView 为空，无法输出UI信息");
+                return;
+            }
+
+            ModBehaviour.DevLog("================================================================================");
+            ModBehaviour.DevLog("[ReforgeUI] [DUMP] 开始输出重铸UI详细信息");
+            ModBehaviour.DevLog("================================================================================");
+
+            try
+            {
+                // 1. 输出UI根节点信息
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] UI根节点: " + decomposeView.gameObject.name);
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] UI路径: " + GetGameObjectPath(decomposeView.transform));
+
+                // 2. 输出所有反射获取的字段
+                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === 反射字段信息 ===");
+                DumpReflectionFields();
+
+                // 3. 输出所有文本组件（重点）
+                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === 所有文本组件 (TextMeshProUGUI) ===");
+                DumpAllTexts(decomposeView.transform, 0);
+
+                // 4. 输出所有按钮
+                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === 所有按钮 (Button) ===");
+                DumpAllButtons(decomposeView.transform);
+
+                // 5. 输出UI层级结构
+                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === UI层级结构 ===");
+                DumpUIHierarchy(decomposeView.transform, 0);
+
+                ModBehaviour.DevLog("================================================================================");
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] UI信息输出完成");
+                ModBehaviour.DevLog("================================================================================");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] [DUMP] [ERROR] 输出UI信息失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 获取GameObject的完整路径
+        /// </summary>
+        private static string GetGameObjectPath(Transform transform)
+        {
+            string path = transform.name;
+            while (transform.parent != null)
+            {
+                transform = transform.parent;
+                path = transform.name + "/" + path;
+            }
+            return path;
+        }
+
+        /// <summary>
+        /// [DevMode] 输出反射获取的字段信息
+        /// </summary>
+        private static void DumpReflectionFields()
+        {
+            Type viewType = typeof(ItemDecomposeView);
+            BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
+
+            FieldInfo[] fields = viewType.GetFields(flags);
+            foreach (var field in fields)
+            {
+                try
+                {
+                    object value = field.GetValue(decomposeView);
+                    string valueStr = value == null ? "null" : value.ToString();
+
+                    // 如果是Unity组件，尝试获取更多信息
+                    if (value is Component comp)
+                    {
+                        valueStr = string.Format("{0} (GameObject: {1})", value.GetType().Name, comp.gameObject.name);
+                    }
+                    else if (value is GameObject go)
+                    {
+                        valueStr = string.Format("GameObject: {0}", go.name);
+                    }
+
+                    ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]   {0} ({1}): {2}", field.Name, field.FieldType.Name, valueStr));
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]   {0}: [读取失败: {1}]", field.Name, e.Message));
+                }
+            }
+        }
+
+        /// <summary>
+        /// [DevMode] 递归输出所有文本组件
+        /// </summary>
+        private static void DumpAllTexts(Transform parent, int depth)
+        {
+            string indent = new string(' ', depth * 2);
+
+            // 检查TMP文本
+            var tmp = parent.GetComponent<TextMeshProUGUI>();
+            if (tmp != null)
+            {
+                string text = string.IsNullOrEmpty(tmp.text) ? "[空]" : tmp.text;
+                bool isActive = tmp.gameObject.activeInHierarchy;
+                string activeStr = isActive ? "" : " [隐藏]";
+                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}[TMP] {1}{2}: \"{3}\"",
+                    indent, parent.name, activeStr, text));
+                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}       路径: {1}",
+                    indent, GetGameObjectPath(parent)));
+            }
+
+            // 检查普通Text
+            var uiText = parent.GetComponent<Text>();
+            if (uiText != null)
+            {
+                string text = string.IsNullOrEmpty(uiText.text) ? "[空]" : uiText.text;
+                bool isActive = uiText.gameObject.activeInHierarchy;
+                string activeStr = isActive ? "" : " [隐藏]";
+                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}[Text] {1}{2}: \"{3}\"",
+                    indent, parent.name, activeStr, text));
+                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}       路径: {1}",
+                    indent, GetGameObjectPath(parent)));
+            }
+
+            // 递归子物体
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                DumpAllTexts(parent.GetChild(i), depth + 1);
+            }
+        }
+
+        /// <summary>
+        /// [DevMode] 输出所有按钮
+        /// </summary>
+        private static void DumpAllButtons(Transform parent)
+        {
+            Button[] buttons = parent.GetComponentsInChildren<Button>(true);
+            foreach (var btn in buttons)
+            {
+                string btnName = btn.gameObject.name;
+                bool isActive = btn.gameObject.activeInHierarchy;
+                bool isInteractable = btn.interactable;
+                string activeStr = isActive ? "激活" : "隐藏";
+                string interactStr = isInteractable ? "可交互" : "不可交互";
+
+                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]   按钮: {0} [{1}, {2}]",
+                    btnName, activeStr, interactStr));
+                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]         路径: {0}",
+                    GetGameObjectPath(btn.transform)));
+
+                // 输出按钮下的文本
+                var btnTexts = btn.GetComponentsInChildren<TextMeshProUGUI>(true);
+                foreach (var t in btnTexts)
+                {
+                    if (!string.IsNullOrEmpty(t.text))
+                    {
+                        ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]         文本: \"{0}\" (组件: {1})",
+                            t.text, t.gameObject.name));
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// [DevMode] 输出UI层级结构（简化版，只输出前3层）
+        /// </summary>
+        private static void DumpUIHierarchy(Transform parent, int depth)
+        {
+            if (depth > 3) return; // 限制深度避免输出过多
+
+            string indent = new string(' ', depth * 2);
+            bool isActive = parent.gameObject.activeSelf;
+            string activeStr = isActive ? "" : " [inactive]";
+
+            // 收集组件信息
+            List<string> components = new List<string>();
+            if (parent.GetComponent<Button>() != null) components.Add("Button");
+            if (parent.GetComponent<TextMeshProUGUI>() != null) components.Add("TMP");
+            if (parent.GetComponent<Text>() != null) components.Add("Text");
+            if (parent.GetComponent<Image>() != null) components.Add("Image");
+            if (parent.GetComponent<Slider>() != null) components.Add("Slider");
+
+            string compStr = components.Count > 0 ? " [" + string.Join(", ", components.ToArray()) + "]" : "";
+
+            ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}{1}{2}{3}",
+                indent, parent.name, activeStr, compStr));
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                DumpUIHierarchy(parent.GetChild(i), depth + 1);
+            }
+        }
+
         /// <summary>
         /// 重新应用所有修改（在原版OnOpen之后调用）
         /// </summary>
@@ -846,14 +1054,18 @@ namespace BossRush
                 {
                     bool canReforge = ReforgeSystem.CanReforge(selectedItem);
                     reforgeButton.gameObject.SetActive(canReforge);
-                    
-                    TextMeshProUGUI buttonText = reforgeButton.GetComponentInChildren<TextMeshProUGUI>();
-                    if (buttonText != null && buttonText.text != "重铸")
+
+                    // 修复按钮下所有文本组件（按钮有两个文本：主文本和InputIndicator中的文本）
+                    TextMeshProUGUI[] buttonTexts = reforgeButton.GetComponentsInChildren<TextMeshProUGUI>(true);
+                    foreach (var buttonText in buttonTexts)
                     {
-                        buttonText.text = "重铸";
+                        if (buttonText != null && (buttonText.text == "分解" || buttonText.text == "Decompose"))
+                        {
+                            buttonText.text = "重铸";
+                        }
                     }
-                    
-                    // 隐藏原版"无法分解"提示
+
+                    // 隐藏原版"无法分解"提示，并修复其文本
                     try
                     {
                         var cannotField = CannotDecomposeField;
@@ -863,6 +1075,16 @@ namespace BossRush
                             if (indicator != null)
                             {
                                 indicator.SetActive(!canReforge);
+
+                                // 修复"无法分解"文本
+                                TextMeshProUGUI[] indicatorTexts = indicator.GetComponentsInChildren<TextMeshProUGUI>(true);
+                                foreach (var t in indicatorTexts)
+                                {
+                                    if (t.text.Contains("分解"))
+                                    {
+                                        t.text = t.text.Replace("分解", "重铸");
+                                    }
+                                }
                             }
                         }
                     }
@@ -873,7 +1095,20 @@ namespace BossRush
                     reforgeButton.gameObject.SetActive(false);
                 }
             }
-            
+
+            // 修复"请选择要分解的物品"文本
+            if (noItemSelectedIndicator != null)
+            {
+                TextMeshProUGUI[] noItemTexts = noItemSelectedIndicator.GetComponentsInChildren<TextMeshProUGUI>(true);
+                foreach (var t in noItemTexts)
+                {
+                    if (t.text.Contains("分解"))
+                    {
+                        t.text = t.text.Replace("分解", "重铸");
+                    }
+                }
+            }
+
             // 确保结果显示被隐藏，概率显示可见
             if (resultDisplayObj != null)
             {
@@ -883,7 +1118,7 @@ namespace BossRush
             {
                 probabilityText.gameObject.SetActive(true);
             }
-            
+
             UpdateProbabilityDisplay();
         }
         
@@ -921,46 +1156,62 @@ namespace BossRush
         private static void UpdateProbabilityDisplay()
         {
             if (probabilityText == null) return;
-            
+
             if (selectedItem == null)
             {
                 probabilityText.text = "请选择物品";
                 probabilityText.color = Color.gray;
                 return;
             }
-            
+
             if (!ReforgeSystem.CanReforge(selectedItem))
             {
                 probabilityText.text = "该物品无法重铸";
                 probabilityText.color = new Color(1f, 0.5f, 0.5f);
                 return;
             }
-            
+
             // 使用新概率公式计算
             int rarity = GetItemQuality(selectedItem);
             float itemValue = ReforgeSystem.GetItemValue(selectedItem);
-            float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney);
-            
-            // 计算基础概率（不含金钱加成）
-            float pBase = 0.20f * ReforgeSystem.RarityFactor(rarity) * ReforgeSystem.ValueFactor(itemValue);
+
+            // 计算各个系数
+            float rarityFactor = ReforgeSystem.RarityFactor(rarity);      // 品质系数
+            float valueFactor = ReforgeSystem.ValueFactor(itemValue);     // 价值系数
+            float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney);    // 金钱加成
+
+            // 计算最终概率
             float p = ReforgeSystem.FinalProbability(rarity, itemValue, currentMoney);
-            
-            // 显示完整公式: 基础概率+金钱加成=最终概率
-            // 格式：概率：0.xx+0.xx=xx%
-            probabilityText.text = string.Format(
-                "概率：{0:F2}+{1:F2}={2:P0}",
-                pBase, moneyBonus, p
-            );
-            
-            // 根据概率调整颜色
+
+            // 根据概率获取颜色
+            string probColorHex;
             if (p >= 0.8f)
-                probabilityText.color = new Color(0.3f, 1f, 0.3f);
+                probColorHex = "#4DFF4D";  // 绿色
             else if (p >= 0.5f)
-                probabilityText.color = new Color(1f, 1f, 0.3f);
+                probColorHex = "#FFFF4D";  // 黄色
             else if (p >= 0.3f)
-                probabilityText.color = new Color(1f, 0.6f, 0.3f);
+                probColorHex = "#FF994D";  // 橙色
             else
-                probabilityText.color = new Color(1f, 0.3f, 0.3f);
+                probColorHex = "#FF4D4D";  // 红色
+
+            // 显示详细公式（每行一个参数，白字显示参数，最后概率公式带颜色）
+            // 品质: X (系数: X.XX)
+            // 价值: XXXX (系数: X.XX)
+            // 投入: XXXX (加成: X.XX)
+            // 概率: 0.20×X.XX×X.XX+X.XX = XX%
+            probabilityText.text = string.Format(
+                "品质: {0} (系数: {1:F2})\n" +
+                "价值: {2:F0} (系数: {3:F2})\n" +
+                "投入: {4} (加成: {5:F2})\n" +
+                "<color={6}>概率: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>",
+                rarity, rarityFactor,
+                itemValue, valueFactor,
+                currentMoney, moneyBonus,
+                probColorHex, p
+            );
+
+            // 整体文本使用白色
+            probabilityText.color = Color.white;
         }
         
         /// <summary>
