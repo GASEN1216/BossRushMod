@@ -465,8 +465,8 @@ namespace BossRush
                     statInfo.AdjustmentFactor = delta;
                     result.ModifiedStats.Add(statInfo);
                     
-                    // 应用修改
-                    ApplyPropertyChange(prop, newValue);
+                    // 应用修改并保存重铸数据
+                    ApplyPropertyChange(prop, newValue, item, prefab);
                 }
                 
                 // 更新重铸计数
@@ -630,9 +630,9 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 应用属性修改
+        /// 应用属性修改并保存重铸数据
         /// </summary>
-        private static void ApplyPropertyChange(ReforgeableProperty prop, float newValue)
+        private static void ApplyPropertyChange(ReforgeableProperty prop, float newValue, Item item, Item prefab)
         {
             try
             {
@@ -640,6 +640,9 @@ namespace BossRush
                 {
                     case PropertyType.Modifier:
                         ApplyModifierValueChange(prop.Source as ModifierDescription, newValue);
+                        // 保存重铸数据到 Variables（用于场景切换后恢复）
+                        float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, prop.Value);
+                        ReforgeDataPersistence.SaveReforgeData(item, prop.Key, prefabValue, newValue);
                         break;
                     case PropertyType.Stat:
                         ApplyStatValueChange(prop.Source as Stat, newValue);
@@ -725,6 +728,14 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ReforgeSystem] 修改属性值失败: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 公开的修改 Modifier 值方法（供持久化系统 ReforgeDataPersistence 使用）
+        /// </summary>
+        public static void ApplyModifierValueChangePublic(ModifierDescription mod, float newValue)
+        {
+            ApplyModifierValueChange(mod, newValue);
         }
         
         /// <summary>

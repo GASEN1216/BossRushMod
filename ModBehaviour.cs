@@ -16,6 +16,7 @@ using Duckov.UI.DialogueBubbles;
 using Duckov.UI;
 using UnityEngine.AI;
 using Duckov.ItemBuilders;
+using HarmonyLib;
 
 namespace BossRush
 {
@@ -894,7 +895,19 @@ namespace BossRush
             DevLog("[BossRush] 正在加载 Boss Rush Mod...");
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            
+
+            // 初始化 Harmony Patch（物品激活时自动恢复重铸属性）
+            try
+            {
+                var harmony = new Harmony("com.bossrush.mod");
+                harmony.PatchAll();
+                DevLog("[BossRush] Harmony Patch 已应用（Item.OnEnable）");
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] Harmony Patch 应用失败: " + e.Message);
+            }
+
             // 初始化实体模型工厂（加载 Assets/entity/ 目录下的 AssetBundle）
             try
             {
