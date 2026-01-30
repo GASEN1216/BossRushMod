@@ -6,6 +6,11 @@
 //   2. 物品重新应用修改器前自动恢复重铸属性
 //   3. Patch ModifierDescriptionCollection.ReapplyModifiers 的 Prefix
 //
+// 前缀规范：
+//   - RF_MOD_xxx  : Modifier 类型属性
+//   - RF_STAT_xxx : Stat 类型属性
+//   - RF_VAR_xxx  : Variable 类型属性
+//
 // 兼容性：
 //   - 使用 Prefix + void 返回，不阻断原方法，与其他mod兼容
 //   - RF_ 前缀确保数据隔离，不会与其他mod的Variables冲突
@@ -25,9 +30,19 @@ namespace BossRush
     public static class ReforgeDataPersistence
     {
         /// <summary>
-        /// 重铸数据变量前缀
+        /// Modifier 重铸数据前缀
         /// </summary>
-        public const string REFORGE_PREFIX = "RF_";
+        public const string MODIFIER_PREFIX = "RF_MOD_";
+
+        /// <summary>
+        /// Stat 重铸数据前缀
+        /// </summary>
+        public const string STAT_PREFIX = "RF_STAT_";
+
+        /// <summary>
+        /// Variable 重铸数据前缀
+        /// </summary>
+        public const string VARIABLE_PREFIX = "RF_VAR_";
 
         /// <summary>
         /// 已恢复物品的追踪（防止重复恢复）
@@ -55,9 +70,33 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 保存重铸数据到物品的 Variables
+        /// 保存 Modifier 重铸数据到物品的 Variables
         /// </summary>
         public static void SaveReforgeData(Item item, string modifierKey, float prefabValue, float newValue)
+        {
+            SaveReforgeDataInternal(item, MODIFIER_PREFIX, modifierKey, prefabValue, newValue);
+        }
+
+        /// <summary>
+        /// 保存 Stat 重铸数据到物品的 Variables
+        /// </summary>
+        public static void SaveReforgeDataStat(Item item, string statKey, float prefabValue, float newValue)
+        {
+            SaveReforgeDataInternal(item, STAT_PREFIX, statKey, prefabValue, newValue);
+        }
+
+        /// <summary>
+        /// 保存 Variable 重铸数据到物品的 Variables
+        /// </summary>
+        public static void SaveReforgeDataVariable(Item item, string variableKey, float prefabValue, float newValue)
+        {
+            SaveReforgeDataInternal(item, VARIABLE_PREFIX, variableKey, prefabValue, newValue);
+        }
+
+        /// <summary>
+        /// 内部方法：保存重铸数据到物品的 Variables
+        /// </summary>
+        private static void SaveReforgeDataInternal(Item item, string prefix, string propertyKey, float prefabValue, float newValue)
         {
             if (item == null || item.Variables == null) return;
 
@@ -69,7 +108,7 @@ namespace BossRush
                 delta = 0f;
             }
 
-            string key = REFORGE_PREFIX + modifierKey;
+            string key = prefix + propertyKey;
             try
             {
                 item.SetFloat(key, delta, true);
@@ -83,7 +122,7 @@ namespace BossRush
 
                 if (Mathf.Abs(delta) > 0.001f)
                 {
-                    ModBehaviour.DevLog($"[ReforgeData] 保存: {item.DisplayName}.{modifierKey} delta={delta:F2}");
+                    ModBehaviour.DevLog($"[ReforgeData] 保存: {item.DisplayName}.{key} delta={delta:F2}");
                 }
             }
             catch (Exception e)
@@ -94,11 +133,12 @@ namespace BossRush
 
         /// <summary>
         /// 尝试恢复物品的重铸数据（合并检查和恢复，只遍历一次）
+        /// 支持 Modifier、Stat、Variable 三种属性类型
         /// </summary>
         /// <returns>是否有恢复操作</returns>
         public static bool TryRestoreReforgeData(Item item)
         {
-            if (item == null || item.Variables == null || item.Modifiers == null) return false;
+            if (item == null || item.Variables == null) return false;
 
             // 快速检查：已恢复的物品直接跳过
             int itemId = item.GetInstanceID();
@@ -109,7 +149,7 @@ namespace BossRush
             // 只遍历一次 Variables
             foreach (var variable in item.Variables)
             {
-                // 快速跳过非重铸数据
+                // 快速跳过非重铸数据（检查 RF_ 前缀）
                 if (variable.Key == null || variable.Key.Length <= 3) continue;
                 if (variable.Key[0] != 'R' || variable.Key[1] != 'F' || variable.Key[2] != '_') continue;
 
@@ -118,22 +158,32 @@ namespace BossRush
                     float delta = variable.GetFloat();
                     if (Mathf.Abs(delta) < 0.001f) continue;
 
-                    string modifierKey = variable.Key.Substring(3); // "RF_".Length = 3
-
-                    // 查找对应的 Modifier
-                    foreach (var mod in item.Modifiers)
+                    // 判断属性类型并恢复
+                    if (variable.Key.StartsWith(MODIFIER_PREFIX))
                     {
-                        if (mod.Key == modifierKey)
+                        // RF_MOD_ 前缀 - 恢复 Modifier
+                        string modifierKey = variable.Key.Substring(MODIFIER_PREFIX.Length);
+                        if (TryRestoreModifier(item, modifierKey, delta))
                         {
-                            float currentValue = mod.Value;
-                            float newValue = currentValue + delta;
-
-                            // 使用反射修改值
-                            ReforgeSystem.ApplyModifierValueChangePublic(mod, newValue);
                             restored++;
-
-                            ModBehaviour.DevLog($"[ReforgeData] 恢复: {item.DisplayName}.{modifierKey} = {currentValue:F2} + {delta:F2} = {newValue:F2}");
-                            break;
+                        }
+                    }
+                    else if (variable.Key.StartsWith(STAT_PREFIX))
+                    {
+                        // RF_STAT_ 前缀 - 恢复 Stat
+                        string statKey = variable.Key.Substring(STAT_PREFIX.Length);
+                        if (TryRestoreStat(item, statKey, delta))
+                        {
+                            restored++;
+                        }
+                    }
+                    else if (variable.Key.StartsWith(VARIABLE_PREFIX))
+                    {
+                        // RF_VAR_ 前缀 - 恢复 Variable
+                        string varKey = variable.Key.Substring(VARIABLE_PREFIX.Length);
+                        if (TryRestoreVariable(item, varKey, delta))
+                        {
+                            restored++;
                         }
                     }
                 }
@@ -149,6 +199,73 @@ namespace BossRush
                 return true;
             }
 
+            return false;
+        }
+
+        /// <summary>
+        /// 恢复 Modifier 属性
+        /// </summary>
+        private static bool TryRestoreModifier(Item item, string modifierKey, float delta)
+        {
+            if (item.Modifiers == null) return false;
+
+            foreach (var mod in item.Modifiers)
+            {
+                if (mod.Key == modifierKey)
+                {
+                    float currentValue = mod.Value;
+                    float newValue = currentValue + delta;
+                    ReforgeSystem.ApplyModifierValueChangePublic(mod, newValue);
+                    ModBehaviour.DevLog($"[ReforgeData] 恢复Modifier: {item.DisplayName}.{modifierKey} = {currentValue:F2} + {delta:F2} = {newValue:F2}");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 恢复 Stat 属性
+        /// </summary>
+        private static bool TryRestoreStat(Item item, string statKey, float delta)
+        {
+            if (item.Stats == null) return false;
+
+            foreach (var stat in item.Stats)
+            {
+                if (stat.Key == statKey)
+                {
+                    float currentValue = stat.BaseValue;
+                    float newValue = currentValue + delta;
+                    ReforgeSystem.ApplyStatValueChangePublic(stat, newValue);
+                    ModBehaviour.DevLog($"[ReforgeData] 恢复Stat: {item.DisplayName}.{statKey} = {currentValue:F2} + {delta:F2} = {newValue:F2}");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 恢复 Variable 属性
+        /// </summary>
+        private static bool TryRestoreVariable(Item item, string varKey, float delta)
+        {
+            if (item.Variables == null) return false;
+
+            foreach (var variable in item.Variables)
+            {
+                if (variable.Key == varKey)
+                {
+                    try
+                    {
+                        float currentValue = variable.GetFloat();
+                        float newValue = currentValue + delta;
+                        variable.SetFloat(newValue);
+                        ModBehaviour.DevLog($"[ReforgeData] 恢复Variable: {item.DisplayName}.{varKey} = {currentValue:F2} + {delta:F2} = {newValue:F2}");
+                        return true;
+                    }
+                    catch { }
+                }
+            }
             return false;
         }
     }
@@ -173,21 +290,9 @@ namespace BossRush
 
             try
             {
-                // 获取所属的 Item（ModifierDescriptionCollection 是 Item 的字段，不是组件）
-                // 需要通过反射或遍历找到
-                Item item = null;
-
-                // 方法1：尝试作为组件获取
-                var component = __instance as Component;
-                if (component != null)
-                {
-                    item = component.GetComponentInParent<Item>();
-                    if (item == null)
-                    {
-                        item = component.GetComponent<Item>();
-                    }
-                }
-
+                // 正确方式：ModifierDescriptionCollection 继承自 ItemComponent，直接使用 Master 属性
+                Item item = __instance.Master;
+                
                 if (item == null) return;
 
                 // 直接尝试恢复（内部会检查是否有RF_数据和是否已恢复）

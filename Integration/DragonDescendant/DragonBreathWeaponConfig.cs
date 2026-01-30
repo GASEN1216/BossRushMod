@@ -521,10 +521,87 @@ namespace BossRush
                     }
                 }
                 ModBehaviour.DevLog("[DragonBreathWeapon] 已设置 " + WEAPON_STATS.Count + " 个武器Stats，显示 " + DISPLAY_STATS.Count + " 个");
+                
+                // 同时添加 Modifiers（用于重铸系统的持久化恢复）
+                // 只为需要显示的属性添加 Modifier，target 设为 Self（作用于武器自身）
+                AddWeaponModifiers(item);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonBreathWeapon] SetWeaponStats异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 为龙息武器添加 Modifiers（用于重铸系统的持久化恢复）
+        /// 原版武器同时使用 Stats 和 Modifiers，我们也需要这样做
+        /// </summary>
+        private static void AddWeaponModifiers(Item item)
+        {
+            try
+            {
+                // 确保有 Modifiers 组件
+                if (item.Modifiers == null)
+                {
+                    item.CreateModifiersComponent();
+                }
+                
+                if (item.Modifiers == null)
+                {
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 无法创建 Modifiers 组件");
+                    return;
+                }
+                
+                // 为需要显示的属性添加 Modifier（target = Self，作用于武器自身的 Stats）
+                int modifierCount = 0;
+                foreach (var kvp in WEAPON_STATS)
+                {
+                    // 只为显示的属性添加 Modifier
+                    if (!DISPLAY_STATS.Contains(kvp.Key)) continue;
+                    
+                    // 检查是否已存在该 Modifier
+                    bool exists = false;
+                    foreach (var mod in item.Modifiers)
+                    {
+                        if (mod.Key == kvp.Key)
+                        {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (exists) continue;
+                    
+                    // 创建 ModifierDescription（target = Self，作用于武器自身）
+                    // 使用 Add 类型，值为 0（不改变基础值，只是为了让重铸系统能够追踪）
+                    ModifierDescription modDesc = new ModifierDescription(
+                        ModifierTarget.Self,           // 目标：自身
+                        kvp.Key,                       // 属性键名
+                        ItemStatsSystem.Stats.ModifierType.Add,  // 加法类型
+                        0f,                            // 初始值为0（不影响基础属性）
+                        false,                         // 不覆盖顺序
+                        0                              // 顺序值
+                    );
+                    
+                    // 设置 display 字段
+                    FieldInfo displayField = typeof(ModifierDescription).GetField("display", 
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (displayField != null)
+                    {
+                        displayField.SetValue(modDesc, false);  // 不显示（Stats已经显示了）
+                    }
+                    
+                    item.Modifiers.Add(modDesc);
+                    modifierCount++;
+                }
+                
+                if (modifierCount > 0)
+                {
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 已添加 " + modifierCount + " 个 Modifiers（用于重铸持久化）");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] AddWeaponModifiers异常: " + e.Message);
             }
         }
         

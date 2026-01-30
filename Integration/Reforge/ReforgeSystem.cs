@@ -636,19 +636,24 @@ namespace BossRush
         {
             try
             {
+                float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, prop.Value);
+                
                 switch (prop.Type)
                 {
                     case PropertyType.Modifier:
                         ApplyModifierValueChange(prop.Source as ModifierDescription, newValue);
                         // 保存重铸数据到 Variables（用于场景切换后恢复）
-                        float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, prop.Value);
                         ReforgeDataPersistence.SaveReforgeData(item, prop.Key, prefabValue, newValue);
                         break;
                     case PropertyType.Stat:
                         ApplyStatValueChange(prop.Source as Stat, newValue);
+                        // 保存 Stat 重铸数据到 Variables（修复：枪械/近战武器场景切换后属性丢失）
+                        ReforgeDataPersistence.SaveReforgeDataStat(item, prop.Key, prefabValue, newValue);
                         break;
                     case PropertyType.Variable:
                         ApplyVariableValueChange(prop.Source as CustomData, newValue);
+                        // 保存 Variable 重铸数据到 Variables
+                        ReforgeDataPersistence.SaveReforgeDataVariable(item, prop.Key, prefabValue, newValue);
                         break;
                 }
             }
@@ -736,6 +741,14 @@ namespace BossRush
         public static void ApplyModifierValueChangePublic(ModifierDescription mod, float newValue)
         {
             ApplyModifierValueChange(mod, newValue);
+        }
+
+        /// <summary>
+        /// 公开的修改 Stat 值方法（供持久化系统 ReforgeDataPersistence 使用）
+        /// </summary>
+        public static void ApplyStatValueChangePublic(Stat stat, float newValue)
+        {
+            ApplyStatValueChange(stat, newValue);
         }
         
         /// <summary>
