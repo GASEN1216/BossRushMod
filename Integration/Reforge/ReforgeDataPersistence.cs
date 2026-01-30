@@ -204,19 +204,25 @@ namespace BossRush
 
         /// <summary>
         /// 恢复 Modifier 属性
+        /// 使用覆盖模式：prefabValue + delta = 最终值
         /// </summary>
         private static bool TryRestoreModifier(Item item, string modifierKey, float delta)
         {
             if (item.Modifiers == null) return false;
 
+            // 获取预制体原始值
+            Item prefab = GetItemPrefab(item);
+            float prefabValue = GetPrefabModifierValue(prefab, modifierKey);
+
             foreach (var mod in item.Modifiers)
             {
                 if (mod.Key == modifierKey)
                 {
+                    // 覆盖模式：最终值 = 预制体原值 + delta
+                    float newValue = prefabValue + delta;
                     float currentValue = mod.Value;
-                    float newValue = currentValue + delta;
                     ReforgeSystem.ApplyModifierValueChangePublic(mod, newValue);
-                    ModBehaviour.DevLog($"[ReforgeData] 恢复Modifier: {item.DisplayName}.{modifierKey} = {currentValue:F2} + {delta:F2} = {newValue:F2}");
+                    ModBehaviour.DevLog($"[ReforgeData] 恢复Modifier: {item.DisplayName}.{modifierKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
                     return true;
                 }
             }
@@ -225,19 +231,25 @@ namespace BossRush
 
         /// <summary>
         /// 恢复 Stat 属性
+        /// 使用覆盖模式：prefabValue + delta = 最终值
         /// </summary>
         private static bool TryRestoreStat(Item item, string statKey, float delta)
         {
             if (item.Stats == null) return false;
 
+            // 获取预制体原始值
+            Item prefab = GetItemPrefab(item);
+            float prefabValue = GetPrefabStatValue(prefab, statKey);
+
             foreach (var stat in item.Stats)
             {
                 if (stat.Key == statKey)
                 {
+                    // 覆盖模式：最终值 = 预制体原值 + delta
+                    float newValue = prefabValue + delta;
                     float currentValue = stat.BaseValue;
-                    float newValue = currentValue + delta;
                     ReforgeSystem.ApplyStatValueChangePublic(stat, newValue);
-                    ModBehaviour.DevLog($"[ReforgeData] 恢复Stat: {item.DisplayName}.{statKey} = {currentValue:F2} + {delta:F2} = {newValue:F2}");
+                    ModBehaviour.DevLog($"[ReforgeData] 恢复Stat: {item.DisplayName}.{statKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
                     return true;
                 }
             }
@@ -246,10 +258,15 @@ namespace BossRush
 
         /// <summary>
         /// 恢复 Variable 属性
+        /// 使用覆盖模式：prefabValue + delta = 最终值
         /// </summary>
         private static bool TryRestoreVariable(Item item, string varKey, float delta)
         {
             if (item.Variables == null) return false;
+
+            // 获取预制体原始值
+            Item prefab = GetItemPrefab(item);
+            float prefabValue = GetPrefabVariableValue(prefab, varKey);
 
             foreach (var variable in item.Variables)
             {
@@ -257,16 +274,77 @@ namespace BossRush
                 {
                     try
                     {
+                        // 覆盖模式：最终值 = 预制体原值 + delta
+                        float newValue = prefabValue + delta;
                         float currentValue = variable.GetFloat();
-                        float newValue = currentValue + delta;
                         variable.SetFloat(newValue);
-                        ModBehaviour.DevLog($"[ReforgeData] 恢复Variable: {item.DisplayName}.{varKey} = {currentValue:F2} + {delta:F2} = {newValue:F2}");
+                        ModBehaviour.DevLog($"[ReforgeData] 恢复Variable: {item.DisplayName}.{varKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
                         return true;
                     }
                     catch { }
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// 获取物品的预制体
+        /// </summary>
+        private static Item GetItemPrefab(Item item)
+        {
+            if (item == null) return null;
+            try
+            {
+                int typeId = item.TypeID;
+                if (typeId <= 0) return null;
+                return ItemAssetsCollection.GetPrefab(typeId);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 获取预制体的 Modifier 值
+        /// </summary>
+        private static float GetPrefabModifierValue(Item prefab, string key)
+        {
+            if (prefab == null || prefab.Modifiers == null) return 0f;
+            foreach (var mod in prefab.Modifiers)
+            {
+                if (mod.Key == key) return mod.Value;
+            }
+            return 0f;
+        }
+
+        /// <summary>
+        /// 获取预制体的 Stat 值
+        /// </summary>
+        private static float GetPrefabStatValue(Item prefab, string key)
+        {
+            if (prefab == null || prefab.Stats == null) return 0f;
+            foreach (var stat in prefab.Stats)
+            {
+                if (stat.Key == key) return stat.BaseValue;
+            }
+            return 0f;
+        }
+
+        /// <summary>
+        /// 获取预制体的 Variable 值
+        /// </summary>
+        private static float GetPrefabVariableValue(Item prefab, string key)
+        {
+            if (prefab == null || prefab.Variables == null) return 0f;
+            foreach (var variable in prefab.Variables)
+            {
+                if (variable.Key == key)
+                {
+                    try { return variable.GetFloat(); } catch { }
+                }
+            }
+            return 0f;
         }
     }
 

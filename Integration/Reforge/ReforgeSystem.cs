@@ -384,12 +384,15 @@ namespace BossRush
                     }
                 }
                 
-                // 3. 收集Variables（跳过Count和ReforgeCount）
+                // 3. 收集Variables（跳过Count、ReforgeCount和重铸数据RF_前缀）
                 if (item.Variables != null)
                 {
                     foreach (var variable in item.Variables)
                     {
+                        // 跳过系统变量
                         if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
+                        // 跳过重铸数据（RF_MOD_、RF_STAT_、RF_VAR_ 前缀）
+                        if (variable.Key.StartsWith("RF_")) continue;
                         float varValue = 0f;
                         try { varValue = variable.GetFloat(); } catch { continue; }
                         allProperties.Add(new ReforgeableProperty
