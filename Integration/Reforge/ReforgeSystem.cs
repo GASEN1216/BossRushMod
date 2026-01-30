@@ -5,10 +5,12 @@
 //   管理装备重铸的核心算法，包括：
 //   - 概率p同时影响：是否修改 + 幅度大小
 //   - 基础概率由稀有度和物品价值决定（基准r=8,v=10000时p=0.20）
-//   - 金钱增益：10万+10%，100万+30%，1000万+100%
+//   - 金钱增益：基于物品价值的倍数（1倍+10%，10倍+30%，100倍+100%）
 //   - 幅度抽取：u^expo（p越大expo越小，幅度越大）
 //   - 正负号由概率p决定（p越大越保持原符号，增强效果）
 //   - 百分比制，最大±100%原值
+//   - 每次重铸保证至少有一个属性被修改
+//   - 基础重铸费用为物品价值的1/10
 // ============================================================================
 
 using System;
@@ -139,33 +141,51 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 计算金钱增益：10万+10%，100万+30%，1000万+100%
+        /// 计算金钱增益：基于物品价值的倍数
+        /// 1倍物品价值 → +10%
+        /// 10倍物品价值 → +30%
+        /// 100倍物品价值 → +100%
         /// </summary>
-        public static float MoneyBonus(int money)
+        /// <param name="money">投入的金钱</param>
+        /// <param name="itemValue">物品价值（用于计算动态阈值）</param>
+        public static float MoneyBonus(int money, float itemValue)
         {
             if (money <= 0) return 0f;
+            if (itemValue <= 0) itemValue = BASE_ITEM_VALUE;
             
             float m = (float)money;
             float B;
             
-            if (m <= 1e5f)
+            // 动态阈值：基于物品价值的倍数
+            float tier1 = itemValue;        // 1倍物品价值
+            float tier2 = itemValue * 10f;  // 10倍物品价值
+            float tier3 = itemValue * 100f; // 100倍物品价值
+            
+            // 计算log阈值（用于分段计算）
+            float logTier1 = Mathf.Log10(tier1);
+            float logTier2 = Mathf.Log10(tier2);
+            float logTier3 = Mathf.Log10(tier3);
+            
+            if (m <= tier1)
             {
-                // 0 ~ 10万：线性 0 → 0.10
-                B = 0.10f * (m / 1e5f);
+                // 0 ~ 1倍物品价值：线性 0 → 0.10
+                B = 0.10f * (m / tier1);
             }
-            else if (m <= 1e6f)
+            else if (m <= tier2)
             {
-                // 10万 ~ 100万：log分段 0.10 → 0.30
-                B = 0.10f + 0.20f * (Mathf.Log10(m) - 5f);
+                // 1倍 ~ 10倍物品价值：log分段 0.10 → 0.30
+                float logM = Mathf.Log10(m);
+                B = 0.10f + 0.20f * (logM - logTier1) / (logTier2 - logTier1);
             }
-            else if (m <= 1e7f)
+            else if (m <= tier3)
             {
-                // 100万 ~ 1000万：log分段 0.30 → 1.00
-                B = 0.30f + 0.70f * (Mathf.Log10(m) - 6f);
+                // 10倍 ~ 100倍物品价值：log分段 0.30 → 1.00
+                float logM = Mathf.Log10(m);
+                B = 0.30f + 0.70f * (logM - logTier2) / (logTier3 - logTier2);
             }
             else
             {
-                // 超过1000万：上限1.00
+                // 超过100倍物品价值：上限1.00
                 B = 1.00f;
             }
             
@@ -173,13 +193,33 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 计算基础重铸费用（物品价值的1/10，最低100）
+        /// </summary>
+        public static int GetBaseCost(Item item)
+        {
+            if (item == null) return MIN_REFORGE_COST;
+            float itemValue = GetItemValue(item);
+            int baseCost = Mathf.RoundToInt(itemValue / 10f);
+            return Mathf.Max(MIN_REFORGE_COST, baseCost);
+        }
+        
+        /// <summary>
+        /// 计算基础重铸费用（基于物品价值）
+        /// </summary>
+        public static int GetBaseCost(float itemValue)
+        {
+            int baseCost = Mathf.RoundToInt(itemValue / 10f);
+            return Mathf.Max(MIN_REFORGE_COST, baseCost);
+        }
+        
+        /// <summary>
         /// 计算最终概率p（用于判定是否修改 + 幅度抽取）
-        /// p = clamp(0, 1, p_item + B(m))
+        /// p = clamp(0, 1, p_item + B(m, itemValue))
         /// </summary>
         public static float FinalProbability(int rarity, float itemValue, int moneyInvested)
         {
             float pItem = BASE_PROBABILITY * RarityFactor(rarity) * ValueFactor(itemValue);
-            float p = pItem + MoneyBonus(moneyInvested);
+            float p = pItem + MoneyBonus(moneyInvested, itemValue);
             return Mathf.Clamp01(p);
         }
         
@@ -284,7 +324,7 @@ namespace BossRush
             float fr = RarityFactor(rarity);
             float fv = ValueFactor(itemValue);
             float pItem = BASE_PROBABILITY * fr * fv;
-            float bonus = MoneyBonus(moneyInvested);
+            float bonus = MoneyBonus(moneyInvested, itemValue);
             float p = FinalProbability(rarity, itemValue, moneyInvested);
             
             // 格式：基础(稀有度×价值) + 金钱增益 = 最终概率
@@ -311,10 +351,12 @@ namespace BossRush
         
         /// <summary>
         /// 执行重铸 - 新概率系统
-        /// 1. 每个属性独立判定是否修改（rand < p）
-        /// 2. 触发后用 u^expo 抽幅度
-        /// 3. 时间+玩家ID决定正负号
-        /// 4. 百分比制，最大±100%原值
+        /// 1. 检查基础费用（物品价值的1/10）
+        /// 2. 每个属性独立判定是否修改（rand < p）
+        /// 3. 保证至少有一个属性被修改
+        /// 4. 触发后用 u^expo 抽幅度
+        /// 5. 时间+玩家ID决定正负号
+        /// 6. 百分比制，最大±100%原值
         /// </summary>
         public static ReforgeResult Reforge(Item item, int moneyInvested, string userId)
         {
@@ -328,9 +370,13 @@ namespace BossRush
                 return result;
             }
             
-            if (moneyInvested < MIN_REFORGE_COST)
+            // 计算基础费用（物品价值的1/10）
+            float itemValue = GetItemValue(item);
+            int baseCost = GetBaseCost(itemValue);
+            
+            if (moneyInvested < baseCost)
             {
-                result.ErrorMessage = "投入金额不足（最低 " + MIN_REFORGE_COST + "）";
+                result.ErrorMessage = string.Format("投入金额不足（最低 {0}）", baseCost);
                 return result;
             }
             
@@ -338,7 +384,6 @@ namespace BossRush
             {
                 // 获取物品属性
                 int rarity = item.Quality;
-                float itemValue = GetItemValue(item);
                 int itemId = item.GetInstanceID();
                 
                 // 计算最终概率p
@@ -411,16 +456,32 @@ namespace BossRush
                     return result;
                 }
                 
+                // 记录哪些属性被选中修改
+                List<int> selectedIndices = new List<int>();
+                
                 // 对每个属性独立判定是否修改
                 for (int i = 0; i < allProperties.Count; i++)
                 {
-                    ReforgeableProperty prop = allProperties[i];
-                    
                     // Step 1: 判定是否修改（rand < p）
-                    if (random.NextDouble() >= p)
+                    if (random.NextDouble() < p)
                     {
-                        continue; // 不修改此属性
+                        selectedIndices.Add(i);
                     }
+                }
+                
+                // 保证至少有一个属性被修改
+                if (selectedIndices.Count == 0 && allProperties.Count > 0)
+                {
+                    // 随机选择一个属性强制修改
+                    int forcedIndex = random.Next(allProperties.Count);
+                    selectedIndices.Add(forcedIndex);
+                    ModBehaviour.DevLog("[ReforgeSystem] 所有属性都未命中，强制选择属性: " + allProperties[forcedIndex].Key);
+                }
+                
+                // 对选中的属性执行修改
+                foreach (int i in selectedIndices)
+                {
+                    ReforgeableProperty prop = allProperties[i];
                     
                     // Step 2: 抽幅度（0~1，绝对值）
                     float mag01 = RollMagnitude(p, random);
@@ -436,8 +497,6 @@ namespace BossRush
                     // Step 5: 限制最终值范围（基于预制体原始值的±100%）
                     float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, originalValue);
                     float minValue, maxValue;
-                    
-                    // 特殊处理：当预制体原值为0时，使用固定的绝对范围
                     if (Mathf.Approximately(prefabValue, 0f))
                     {
                         minValue = -ZERO_VALUE_RANGE;

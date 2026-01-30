@@ -758,11 +758,12 @@ namespace BossRush
                 
                 if (moneySlider != null)
                 {
-                    // 设置滑块范围为玩家金钱
+                    // 设置滑块范围为玩家金钱，最小值为基础费用
                     int playerMoney = GetPlayerMoney();
-                    moneySlider.minValue = 0;
-                    moneySlider.maxValue = playerMoney;
-                    moneySlider.value = 0;
+                    int baseCost = ReforgeSystem.MIN_REFORGE_COST; // 初始时没有选中物品，使用最低费用
+                    moneySlider.minValue = baseCost;
+                    moneySlider.maxValue = Mathf.Max(baseCost, playerMoney);
+                    moneySlider.value = baseCost;
                     moneySlider.wholeNumbers = true;
                     
                     // 移除原有监听器，添加新的
@@ -771,13 +772,13 @@ namespace BossRush
                     
                     // 设置文本显示
                     if (sliderValueText != null)
-                        sliderValueText.text = "0";
+                        sliderValueText.text = baseCost.ToString();
                     if (sliderMinText != null)
-                        sliderMinText.text = "0";
+                        sliderMinText.text = baseCost.ToString();
                     if (sliderMaxText != null)
                         sliderMaxText.text = playerMoney.ToString();
                     
-                    ModBehaviour.DevLog("[ReforgeUI] 滑块已修改为金钱滑块，最大值: " + playerMoney);
+                    ModBehaviour.DevLog("[ReforgeUI] 滑块已修改为金钱滑块，最大值: " + playerMoney + "，基础费用: " + baseCost);
                 }
             }
             catch (Exception e)
@@ -1061,12 +1062,14 @@ namespace BossRush
             }
             
             // 延迟重置UI状态（原版会在选择后重置滑块，我们需要在之后再次设置）
+            // 滑块最小值设为基础费用
             if (ModBehaviour.Instance != null)
             {
                 ModBehaviour.Instance.StartCoroutine(ResetUIStateDelayed(GetPlayerMoney()));
             }
             
             UpdateProbabilityDisplay();
+            UpdateReforgeButtonInteractable();
         }
         
         /// <summary>
@@ -1074,19 +1077,22 @@ namespace BossRush
         /// </summary>
         private static void ResetUIState(int maxMoney)
         {
+            // 计算基础费用（物品价值的1/10）
+            int baseCost = selectedItem != null ? ReforgeSystem.GetBaseCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
+            
             // 重置滑块
             if (moneySlider != null)
             {
-                moneySlider.minValue = 0;
-                moneySlider.maxValue = maxMoney;
-                moneySlider.value = 0;
+                moneySlider.minValue = baseCost;
+                moneySlider.maxValue = Mathf.Max(baseCost, maxMoney);
+                moneySlider.value = baseCost;
                 moneySlider.wholeNumbers = true;
-                currentMoney = 0;
+                currentMoney = baseCost;
                 
                 if (sliderValueText != null)
-                    sliderValueText.text = "0";
+                    sliderValueText.text = baseCost.ToString();
                 if (sliderMinText != null)
-                    sliderMinText.text = "0";
+                    sliderMinText.text = baseCost.ToString();
                 if (sliderMaxText != null)
                     sliderMaxText.text = maxMoney.ToString();
             }
@@ -1099,18 +1105,27 @@ namespace BossRush
         /// </summary>
         private static void UpdateUIStateKeepSlider(int maxMoney)
         {
+            // 计算基础费用（物品价值的1/10）
+            int baseCost = selectedItem != null ? ReforgeSystem.GetBaseCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
+            
             if (moneySlider != null)
             {
                 // 保留当前滑块值，只更新最大值
                 float currentValue = moneySlider.value;
-                moneySlider.minValue = 0;
-                moneySlider.maxValue = maxMoney;
+                moneySlider.minValue = baseCost;
+                moneySlider.maxValue = Mathf.Max(baseCost, maxMoney);
                 
                 // 如果当前值超过新的最大值，则调整为最大值
                 if (currentValue > maxMoney)
                 {
                     moneySlider.value = maxMoney;
                     currentMoney = maxMoney;
+                }
+                else if (currentValue < baseCost)
+                {
+                    // 如果当前值低于基础费用，调整为基础费用
+                    moneySlider.value = baseCost;
+                    currentMoney = baseCost;
                 }
                 else
                 {
@@ -1121,7 +1136,7 @@ namespace BossRush
                 if (sliderValueText != null)
                     sliderValueText.text = currentMoney.ToString();
                 if (sliderMinText != null)
-                    sliderMinText.text = "0";
+                    sliderMinText.text = baseCost.ToString();
                 if (sliderMaxText != null)
                     sliderMaxText.text = maxMoney.ToString();
             }
@@ -1135,6 +1150,36 @@ namespace BossRush
         private static void UpdateUIStateCommon()
         {
             ResetButtonState();
+            UpdateReforgeButtonInteractable();
+        }
+        
+        /// <summary>
+        /// 更新重铸按钮的可交互状态（金钱不足时禁用）
+        /// </summary>
+        private static void UpdateReforgeButtonInteractable()
+        {
+            if (reforgeButton == null) return;
+            
+            if (selectedItem == null)
+            {
+                reforgeButton.interactable = false;
+                return;
+            }
+            
+            // 计算基础费用
+            int baseCost = ReforgeSystem.GetBaseCost(selectedItem);
+            int playerMoney = GetPlayerMoney();
+            
+            // 检查玩家金钱是否足够支付基础费用
+            bool canAfford = playerMoney >= baseCost;
+            reforgeButton.interactable = canAfford;
+            
+            // 如果金钱不足，更新概率显示提示
+            if (!canAfford && probabilityText != null)
+            {
+                probabilityText.text = string.Format("<color=#FF4D4D>金钱不足！\n基础费用: {0}\n当前金钱: {1}</color>", baseCost, playerMoney);
+                probabilityText.color = Color.white;
+            }
         }
         
         /// <summary>
@@ -1242,6 +1287,7 @@ namespace BossRush
             }
             
             UpdateProbabilityDisplay();
+            UpdateReforgeButtonInteractable();
         }
         
         /// <summary>
@@ -1272,7 +1318,7 @@ namespace BossRush
             // 计算各个系数
             float rarityFactor = ReforgeSystem.RarityFactor(rarity);      // 品质系数
             float valueFactor = ReforgeSystem.ValueFactor(itemValue);     // 价值系数
-            float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney);    // 金钱加成
+            float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney, itemValue);    // 金钱加成（基于物品价值）
 
             // 计算最终概率
             float p = ReforgeSystem.FinalProbability(rarity, itemValue, currentMoney);
