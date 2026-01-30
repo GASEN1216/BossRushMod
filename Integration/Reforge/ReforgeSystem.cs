@@ -751,20 +751,6 @@ namespace BossRush
             ApplyStatValueChange(stat, newValue);
         }
         
-        /// <summary>
-        /// 随机打乱列表
-        /// </summary>
-        private static void ShuffleList<T>(List<T> list, System.Random random)
-        {
-            int n = list.Count;
-            for (int i = n - 1; i > 0; i--)
-            {
-                int j = random.Next(0, i + 1);
-                T temp = list[i];
-                list[i] = list[j];
-                list[j] = temp;
-            }
-        }
     }
     
     /// <summary>

@@ -28,11 +28,44 @@ namespace BossRush
     public static class ReforgeUIManager
     {
         // ============================================================================
+        // 常量定义（避免魔法数字）
+        // ============================================================================
+        private const float UI_INIT_DELAY = 0.1f;
+        private const int DEFAULT_FRAME_DELAY = 1;
+        private const int REFORGE_REFRESH_FRAME_DELAY = 2;
+        private const float DIFF_THRESHOLD = 0.01f;
+        private const float SMALL_DIFF_THRESHOLD = 0.001f;
+        
+        // ============================================================================
         // 缓存的反射 FieldInfo（性能优化）
         // ============================================================================
         private static FieldInfo _detailsDisplayField;
         private static FieldInfo _propertiesParentField;
         private static FieldInfo _cannotDecomposeField;
+        
+        // ItemModifierEntry 反射缓存
+        private static FieldInfo _modEntryTargetField;
+        private static FieldInfo _modEntryValueField;
+        private static PropertyInfo _modDescKeyProp;
+        private static PropertyInfo _modDescValueProp;
+        
+        // ItemVariableEntry 反射缓存
+        private static FieldInfo _varEntryTargetField;
+        private static FieldInfo _varEntryValueField;
+        private static PropertyInfo _customDataKeyProp;
+        
+        // ItemStatEntry 反射缓存
+        private static FieldInfo _statEntryTargetField;
+        private static FieldInfo _statEntryValueField;
+        private static PropertyInfo _statKeyProp;
+        
+        // 反射缓存初始化标志
+        private static bool _reflectionCacheInitialized = false;
+        
+        // 复用的字典对象（避免频繁分配）
+        private static readonly Dictionary<string, float> _reusablePlayerModifiers = new Dictionary<string, float>();
+        private static readonly Dictionary<string, float> _reusablePlayerStats = new Dictionary<string, float>();
+        private static readonly Dictionary<string, float> _reusablePlayerVariables = new Dictionary<string, float>();
         
         private static FieldInfo DetailsDisplayField
         {
@@ -61,6 +94,64 @@ namespace BossRush
                 if (_cannotDecomposeField == null)
                     _cannotDecomposeField = typeof(ItemDecomposeView).GetField("cannotDecomposeIndicator", BindingFlags.NonPublic | BindingFlags.Instance);
                 return _cannotDecomposeField;
+            }
+        }
+        
+        /// <summary>
+        /// 初始化反射缓存（只执行一次）
+        /// </summary>
+        private static void InitializeReflectionCache()
+        {
+            if (_reflectionCacheInitialized) return;
+            
+            try
+            {
+                // 获取 ItemModifierEntry 类型
+                Type modEntryType = Type.GetType("ItemStatsSystem.ItemModifierEntry, ItemStatsSystem") 
+                    ?? Type.GetType("ItemModifierEntry, Assembly-CSharp");
+                if (modEntryType != null)
+                {
+                    _modEntryTargetField = modEntryType.GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                    _modEntryValueField = modEntryType.GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+                
+                // 获取 ModifierDescription 类型的属性
+                Type modDescType = typeof(ModifierDescription);
+                _modDescKeyProp = modDescType.GetProperty("Key");
+                _modDescValueProp = modDescType.GetProperty("Value");
+                
+                // 获取 ItemVariableEntry 类型
+                Type varEntryType = Type.GetType("ItemStatsSystem.ItemVariableEntry, ItemStatsSystem")
+                    ?? Type.GetType("ItemVariableEntry, Assembly-CSharp");
+                if (varEntryType != null)
+                {
+                    _varEntryTargetField = varEntryType.GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                    _varEntryValueField = varEntryType.GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+                
+                // 获取 CustomData 类型的属性
+                Type customDataType = typeof(Duckov.Utilities.CustomData);
+                _customDataKeyProp = customDataType.GetProperty("Key");
+                
+                // 获取 ItemStatEntry 类型
+                Type statEntryType = Type.GetType("ItemStatsSystem.ItemStatEntry, ItemStatsSystem")
+                    ?? Type.GetType("ItemStatEntry, Assembly-CSharp");
+                if (statEntryType != null)
+                {
+                    _statEntryTargetField = statEntryType.GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                    _statEntryValueField = statEntryType.GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+                
+                // 获取 Stat 类型的属性
+                Type statType = typeof(Stat);
+                _statKeyProp = statType.GetProperty("Key");
+                
+                _reflectionCacheInitialized = true;
+                ModBehaviour.DevLog("[ReforgeUI] 反射缓存初始化完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] [WARNING] 反射缓存初始化失败: " + e.Message);
             }
         }
         
@@ -165,7 +256,7 @@ namespace BossRush
         /// </summary>
         private static System.Collections.IEnumerator ModifyUIDelayed()
         {
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(UI_INIT_DELAY);
 
             ModifyDecomposeUI();
 
@@ -443,6 +534,9 @@ namespace BossRush
                 }
                 
                 ModBehaviour.DevLog("[ReforgeUI] 开始修改UI");
+                
+                // 初始化反射缓存（只执行一次）
+                InitializeReflectionCache();
                 
                 // 0. 修改物品过滤条件 - 只有可重铸物品才能点击
                 ModifyInventoryFilter();
@@ -1522,23 +1616,23 @@ namespace BossRush
                         cachedPrefabModifiers.Count, cachedPrefabStats.Count, cachedPrefabVariables.Count));
                 }
                 
-                // 3. 收集玩家物品的最新属性值（每次都需要重新获取）
-                Dictionary<string, float> playerModifiers = new Dictionary<string, float>();
-                Dictionary<string, float> playerStats = new Dictionary<string, float>();
-                Dictionary<string, float> playerVariables = new Dictionary<string, float>();
+                // 3. 收集玩家物品的最新属性值（复用字典对象，避免频繁分配）
+                _reusablePlayerModifiers.Clear();
+                _reusablePlayerStats.Clear();
+                _reusablePlayerVariables.Clear();
                 
                 if (playerItem.Modifiers != null)
                 {
                     foreach (var mod in playerItem.Modifiers)
                     {
-                        playerModifiers[mod.Key] = mod.Value;
+                        _reusablePlayerModifiers[mod.Key] = mod.Value;
                     }
                 }
                 if (playerItem.Stats != null)
                 {
                     foreach (var stat in playerItem.Stats)
                     {
-                        playerStats[stat.Key] = stat.Value;
+                        _reusablePlayerStats[stat.Key] = stat.Value;
                     }
                 }
                 if (playerItem.Variables != null)
@@ -1547,7 +1641,7 @@ namespace BossRush
                     {
                         if (variable.DataType == Duckov.Utilities.CustomDataType.Float)
                         {
-                            try { playerVariables[variable.Key] = variable.GetFloat(); } catch { }
+                            try { _reusablePlayerVariables[variable.Key] = variable.GetFloat(); } catch { }
                         }
                     }
                 }
@@ -1577,11 +1671,11 @@ namespace BossRush
                     }
                 }
                 
-                // 5. 延迟修改属性文本以显示差异（使用缓存的预制体属性）
+                // 5. 延迟修改属性文本以显示差异（使用缓存的预制体属性和复用的玩家属性字典）
                 if (ModBehaviour.Instance != null)
                 {
                     currentDiffCoroutine = ModBehaviour.Instance.StartCoroutine(ModifyPropertyTextsDelayed(
-                        playerModifiers, playerStats, playerVariables,
+                        _reusablePlayerModifiers, _reusablePlayerStats, _reusablePlayerVariables,
                         cachedPrefabModifiers, cachedPrefabStats, cachedPrefabVariables));
                 }
                 
@@ -1600,7 +1694,7 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 延迟修改属性文本以显示差异（使用传入的预制体属性值而非从UI读取）
+        /// 延迟修改属性文本以显示差异（使用缓存的反射字段，避免重复反射）
         /// </summary>
         private static System.Collections.IEnumerator ModifyPropertyTextsDelayed(
             Dictionary<string, float> playerModifiers,
@@ -1627,8 +1721,8 @@ namespace BossRush
                     yield break;
                 }
                 
-                // 获取propertiesParent
-                FieldInfo propsParentField = typeof(ItemDetailsDisplay).GetField("propertiesParent", BindingFlags.NonPublic | BindingFlags.Instance);
+                // 获取propertiesParent（使用缓存的字段）
+                var propsParentField = PropertiesParentField;
                 if (propsParentField == null)
                 {
                     ModBehaviour.DevLog("[ReforgeUI] propertiesParent 字段未找到");
@@ -1644,7 +1738,7 @@ namespace BossRush
                 
                 ModBehaviour.DevLog(string.Format("[ReforgeUI] propertiesParent 子对象数: {0}", propsParent.childCount));
                 
-                // 遍历所有属性条目，只获取key和valueText，预制体值从传入参数获取
+                // 遍历所有属性条目，使用缓存的反射字段
                 foreach (Transform child in propsParent)
                 {
                     if (!child.gameObject.activeInHierarchy) continue;
@@ -1652,80 +1746,111 @@ namespace BossRush
                     string key = null;
                     TextMeshProUGUI valueText = null;
                     
-                    // 1. 尝试ItemModifierEntry
+                    // 1. 尝试ItemModifierEntry（使用缓存的反射字段）
                     Component modEntry = child.GetComponent("ItemModifierEntry");
                     if (modEntry != null)
                     {
-                        FieldInfo targetField = modEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (targetField != null)
+                        // 动态获取反射字段（如果缓存未初始化）
+                        if (_modEntryTargetField == null)
                         {
-                            var modDesc = targetField.GetValue(modEntry);
+                            _modEntryTargetField = modEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                        }
+                        if (_modEntryValueField == null)
+                        {
+                            _modEntryValueField = modEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                        }
+                        
+                        if (_modEntryTargetField != null)
+                        {
+                            var modDesc = _modEntryTargetField.GetValue(modEntry);
                             if (modDesc != null)
                             {
-                                PropertyInfo keyProp = modDesc.GetType().GetProperty("Key");
-                                if (keyProp != null)
+                                if (_modDescKeyProp == null)
                                 {
-                                    key = keyProp.GetValue(modDesc, null) as string;
+                                    _modDescKeyProp = modDesc.GetType().GetProperty("Key");
+                                }
+                                if (_modDescKeyProp != null)
+                                {
+                                    key = _modDescKeyProp.GetValue(modDesc, null) as string;
                                 }
                             }
                         }
-                        FieldInfo valueTextField = modEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (valueTextField != null)
+                        if (_modEntryValueField != null)
                         {
-                            valueText = valueTextField.GetValue(modEntry) as TextMeshProUGUI;
+                            valueText = _modEntryValueField.GetValue(modEntry) as TextMeshProUGUI;
                         }
                     }
                     
-                    // 2. 尝试ItemVariableEntry
+                    // 2. 尝试ItemVariableEntry（使用缓存的反射字段）
                     if (key == null)
                     {
                         Component varEntry = child.GetComponent("ItemVariableEntry");
                         if (varEntry != null)
                         {
-                            FieldInfo targetField = varEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (targetField != null)
+                            if (_varEntryTargetField == null)
                             {
-                                var customData = targetField.GetValue(varEntry);
+                                _varEntryTargetField = varEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                            }
+                            if (_varEntryValueField == null)
+                            {
+                                _varEntryValueField = varEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                            }
+                            
+                            if (_varEntryTargetField != null)
+                            {
+                                var customData = _varEntryTargetField.GetValue(varEntry);
                                 if (customData != null)
                                 {
-                                    PropertyInfo keyProp = customData.GetType().GetProperty("Key");
-                                    if (keyProp != null)
+                                    if (_customDataKeyProp == null)
                                     {
-                                        key = keyProp.GetValue(customData, null) as string;
+                                        _customDataKeyProp = customData.GetType().GetProperty("Key");
+                                    }
+                                    if (_customDataKeyProp != null)
+                                    {
+                                        key = _customDataKeyProp.GetValue(customData, null) as string;
                                     }
                                 }
                             }
-                            FieldInfo valueTextField = varEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (valueTextField != null)
+                            if (_varEntryValueField != null)
                             {
-                                valueText = valueTextField.GetValue(varEntry) as TextMeshProUGUI;
+                                valueText = _varEntryValueField.GetValue(varEntry) as TextMeshProUGUI;
                             }
                         }
                     }
                     
-                    // 3. 尝试ItemStatEntry
+                    // 3. 尝试ItemStatEntry（使用缓存的反射字段）
                     if (key == null)
                     {
                         Component statEntry = child.GetComponent("ItemStatEntry");
                         if (statEntry != null)
                         {
-                            FieldInfo targetField = statEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (targetField != null)
+                            if (_statEntryTargetField == null)
                             {
-                                var stat = targetField.GetValue(statEntry);
+                                _statEntryTargetField = statEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                            }
+                            if (_statEntryValueField == null)
+                            {
+                                _statEntryValueField = statEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                            }
+                            
+                            if (_statEntryTargetField != null)
+                            {
+                                var stat = _statEntryTargetField.GetValue(statEntry);
                                 if (stat != null)
                                 {
-                                    PropertyInfo keyProp = stat.GetType().GetProperty("Key");
-                                    if (keyProp != null)
+                                    if (_statKeyProp == null)
                                     {
-                                        key = keyProp.GetValue(stat, null) as string;
+                                        _statKeyProp = stat.GetType().GetProperty("Key");
+                                    }
+                                    if (_statKeyProp != null)
+                                    {
+                                        key = _statKeyProp.GetValue(stat, null) as string;
                                     }
                                 }
                             }
-                            FieldInfo valueTextField = statEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (valueTextField != null)
+                            if (_statEntryValueField != null)
                             {
-                                valueText = valueTextField.GetValue(statEntry) as TextMeshProUGUI;
+                                valueText = _statEntryValueField.GetValue(statEntry) as TextMeshProUGUI;
                             }
                         }
                     }
@@ -1780,7 +1905,7 @@ namespace BossRush
                     ModBehaviour.DevLog(string.Format("[ReforgeUI] 属性 {0}: player={1}, prefab={2}, diff={3}", 
                         key, playerValue, prefabValue, diff));
                     
-                    if (Mathf.Abs(diff) < 0.01f) continue;
+                    if (Mathf.Abs(diff) < DIFF_THRESHOLD) continue;
                     
                     // 获取基础文本（移除旧的差异标记）
                     string baseText = valueText.text;
@@ -1987,26 +2112,39 @@ namespace BossRush
             cachedPrefabModifiers.Clear();
             cachedPrefabStats.Clear();
             cachedPrefabVariables.Clear();
+            
+            // 清理复用的玩家属性字典
+            _reusablePlayerModifiers.Clear();
+            _reusablePlayerStats.Clear();
+            _reusablePlayerVariables.Clear();
         }
     }
     
     /// <summary>
-    /// UI状态监控器 - 检测UI关闭
+    /// UI状态监控器 - 检测UI关闭（优化：减少Update调用频率）
     /// </summary>
     public class ReforgeUIMonitor : MonoBehaviour
     {
         private ItemDecomposeView watchedView;
         private bool wasOpen = false;
+        private float checkInterval = 0.1f;  // 检查间隔（秒）
+        private float nextCheckTime = 0f;
         
         public void SetWatchedView(ItemDecomposeView view)
         {
             watchedView = view;
             wasOpen = view != null && view.open;
+            nextCheckTime = Time.time + checkInterval;
         }
         
         void Update()
         {
+            // 不在重铸模式时跳过
             if (!ReforgeUIManager.IsReforgeMode) return;
+            
+            // 降低检查频率（每0.1秒检查一次，而非每帧）
+            if (Time.time < nextCheckTime) return;
+            nextCheckTime = Time.time + checkInterval;
             
             if (watchedView != null)
             {

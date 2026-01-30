@@ -298,9 +298,13 @@ namespace BossRush
                 // 直接尝试恢复（内部会检查是否有RF_数据和是否已恢复）
                 ReforgeDataPersistence.TryRestoreReforgeData(item);
             }
-            catch
+            catch (NullReferenceException)
             {
-                // 静默处理，避免影响游戏
+                // 物品可能已被销毁，静默处理
+            }
+            catch (InvalidOperationException)
+            {
+                // 集合可能正在被修改，静默处理
             }
         }
     }
