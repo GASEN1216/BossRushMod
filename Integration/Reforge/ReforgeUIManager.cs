@@ -1314,14 +1314,17 @@ namespace BossRush
             // 使用新概率公式计算
             int rarity = GetItemQuality(selectedItem);
             float itemValue = ReforgeSystem.GetItemValue(selectedItem);
+            int itemId = selectedItem.GetInstanceID();
 
             // 计算各个系数
             float rarityFactor = ReforgeSystem.RarityFactor(rarity);      // 品质系数
             float valueFactor = ReforgeSystem.ValueFactor(itemValue);     // 价值系数
             float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney, itemValue);    // 金钱加成（基于物品价值）
+            float pityBonus = ReforgeSystem.GetPityBonus(itemId);         // 保底加成
+            int pityCount = ReforgeSystem.GetPityCount(itemId);           // 保底计数
 
-            // 计算最终概率
-            float p = ReforgeSystem.FinalProbability(rarity, itemValue, currentMoney);
+            // 计算最终概率（含保底）
+            float p = ReforgeSystem.FinalProbabilityWithPity(rarity, itemValue, currentMoney, itemId);
 
             // 根据概率获取颜色
             string probColorHex;
@@ -1338,16 +1341,27 @@ namespace BossRush
             // 品质: X (系数: X.XX)
             // 价值: XXXX (系数: X.XX)
             // 投入: XXXX (加成: X.XX)
-            // 概率: 0.20×X.XX×X.XX+X.XX = XX%
+            // 保底: X次 (加成: X.XX)  -- 仅当有保底时显示
+            // 概率: 0.20×X.XX×X.XX+X.XX+X.XX = XX%
+            string pityLine = "";
+            string pityFormula = "";
+            if (pityCount > 0)
+            {
+                pityLine = string.Format("<color=#FFD700>保底: {0}次 (加成: {1:F2})</color>\n", pityCount, pityBonus);
+                pityFormula = string.Format("+{0:F2}", pityBonus);
+            }
+            
             probabilityText.text = string.Format(
                 "品质: {0} (系数: {1:F2})\n" +
                 "价值: {2:F0} (系数: {3:F2})\n" +
                 "投入: {4} (加成: {5:F2})\n" +
-                "<color={6}>概率: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>",
+                "{6}" +
+                "<color={7}>概率: 0.20×{1:F2}×{3:F2}+{5:F2}{8}={9:P0}</color>",
                 rarity, rarityFactor,
                 itemValue, valueFactor,
                 currentMoney, moneyBonus,
-                probColorHex, p
+                pityLine,
+                probColorHex, pityFormula, p
             );
 
             // 整体文本使用白色
