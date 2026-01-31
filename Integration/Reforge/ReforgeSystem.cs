@@ -362,35 +362,63 @@ namespace BossRush
         
         /// <summary>
         /// 检查物品是否可以重铸
-        /// 可重铸条件：只要有可修改的属性（Modifiers/Stats/Variables）就可以重铸
+        /// 可重铸条件：只要有可修改的属性（Display=true的Modifiers/Stats/Variables）就可以重铸
         /// </summary>
         public static bool CanReforge(Item item)
         {
             if (item == null) return false;
             
-            // 取消Tag过滤，只要有可修改属性就可以重铸
-            // 检查物品是否有任意属性（Modifiers 或 Stats 或 Variables）
-            bool hasModifiers = item.Modifiers != null && item.Modifiers.Count > 0;
-            bool hasStats = item.Stats != null && item.Stats.Count > 0;
-            bool hasVariables = HasReforgeableVariables(item);
+            // 只检查Display=true的属性，与UI显示保持一致
+            bool hasDisplayModifiers = HasDisplayableModifiers(item);
+            bool hasDisplayStats = HasDisplayableStats(item);
+            bool hasDisplayVariables = HasDisplayableVariables(item);
             
-            return hasModifiers || hasStats || hasVariables;
+            return hasDisplayModifiers || hasDisplayStats || hasDisplayVariables;
         }
         
         /// <summary>
-        /// 检查物品是否有可重铸的Variables（排除Count等不可修改项）
+        /// 检查物品是否有可显示的Modifiers（Display=true）
         /// </summary>
-        private static bool HasReforgeableVariables(Item item)
+        private static bool HasDisplayableModifiers(Item item)
+        {
+            if (item == null || item.Modifiers == null) return false;
+            
+            foreach (var mod in item.Modifiers)
+            {
+                if (mod.Display) return true;
+            }
+            return false;
+        }
+        
+        /// <summary>
+        /// 检查物品是否有可显示的Stats（Display=true）
+        /// </summary>
+        private static bool HasDisplayableStats(Item item)
+        {
+            if (item == null || item.Stats == null) return false;
+            
+            foreach (var stat in item.Stats)
+            {
+                if (stat.Display) return true;
+            }
+            return false;
+        }
+        
+        /// <summary>
+        /// 检查物品是否有可显示的Variables（Display=true，排除系统变量）
+        /// </summary>
+        private static bool HasDisplayableVariables(Item item)
         {
             if (item == null || item.Variables == null) return false;
             
             foreach (var variable in item.Variables)
             {
-                // 跳过不可重铸的变量
-                if (variable.Key == "Count") continue;
+                // 跳过系统变量
+                if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
+                if (variable.Key.StartsWith("RF_")) continue;
                 
-                // 只处理Float类型的变量
-                if (variable.DataType == Duckov.Utilities.CustomDataType.Float)
+                // 只处理Display=true且为Float类型的变量
+                if (variable.Display && variable.DataType == Duckov.Utilities.CustomDataType.Float)
                 {
                     return true;
                 }
@@ -399,16 +427,42 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 获取物品的可重铸属性数量
+        /// 获取物品的可重铸属性数量（只计算Display=true的属性）
         /// </summary>
         public static int GetReforgeablePropertyCount(Item item)
         {
             if (item == null) return 0;
             
             int count = 0;
-            if (item.Modifiers != null) count += item.Modifiers.Count;
-            if (item.Stats != null) count += item.Stats.Count;
-            if (item.Variables != null) count += item.Variables.Count;
+            
+            // 只计算Display=true的Modifiers
+            if (item.Modifiers != null)
+            {
+                foreach (var mod in item.Modifiers)
+                {
+                    if (mod.Display) count++;
+                }
+            }
+            
+            // 只计算Display=true的Stats
+            if (item.Stats != null)
+            {
+                foreach (var stat in item.Stats)
+                {
+                    if (stat.Display) count++;
+                }
+            }
+            
+            // 只计算Display=true的Variables（排除系统变量）
+            if (item.Variables != null)
+            {
+                foreach (var variable in item.Variables)
+                {
+                    if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
+                    if (variable.Key.StartsWith("RF_")) continue;
+                    if (variable.Display && variable.DataType == Duckov.Utilities.CustomDataType.Float) count++;
+                }
+            }
             
             return count;
         }
@@ -498,14 +552,17 @@ namespace BossRush
                 // 获取预制体（用于范围限制）
                 Item prefab = GetItemPrefab(item);
                 
-                // 收集所有可调整的属性
+                // 收集所有可调整的属性（只收集 Display=true 的属性，与UI显示保持一致）
                 List<ReforgeableProperty> allProperties = new List<ReforgeableProperty>();
                 
-                // 1. 收集Modifiers
+                // 1. 收集Modifiers（只收集Display=true的）
                 if (item.Modifiers != null)
                 {
                     foreach (ModifierDescription mod in item.Modifiers)
                     {
+                        // 只收集在UI上显示的属性
+                        if (!mod.Display) continue;
+                        
                         allProperties.Add(new ReforgeableProperty
                         {
                             Key = mod.Key,
@@ -516,11 +573,14 @@ namespace BossRush
                     }
                 }
                 
-                // 2. 收集Stats
+                // 2. 收集Stats（只收集Display=true的）
                 if (item.Stats != null)
                 {
                     foreach (var stat in item.Stats)
                     {
+                        // 只收集在UI上显示的属性
+                        if (!stat.Display) continue;
+                        
                         allProperties.Add(new ReforgeableProperty
                         {
                             Key = stat.Key,
@@ -531,11 +591,13 @@ namespace BossRush
                     }
                 }
                 
-                // 3. 收集Variables（跳过Count、ReforgeCount和重铸数据RF_前缀）
+                // 3. 收集Variables（只收集Display=true的，跳过系统变量）
                 if (item.Variables != null)
                 {
                     foreach (var variable in item.Variables)
                     {
+                        // 只收集在UI上显示的属性
+                        if (!variable.Display) continue;
                         // 跳过系统变量
                         if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
                         // 跳过重铸数据（RF_MOD_、RF_STAT_、RF_VAR_ 前缀）
