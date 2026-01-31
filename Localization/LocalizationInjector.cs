@@ -212,6 +212,7 @@ namespace BossRush
                 InjectTicketLocalization(ticketTypeId);
                 InjectCakeLocalization(cakeTypeId);
                 InjectWikiBookLocalization(wikiBookTypeId);
+                InjectColdQuenchFluidLocalization();
                 InjectDragonDescendantLocalization();
                 InjectCourierNPCLocalization();
                 InjectGoblinNPCLocalization();
@@ -711,6 +712,43 @@ namespace BossRush
         public static string GetWikiBookDescription()
         {
             return L10n.T(WIKI_BOOK_DESC_CN, WIKI_BOOK_DESC_EN);
+        }
+        
+        /// <summary>
+        /// 注入冷淬液物品本地化
+        /// </summary>
+        public static void InjectColdQuenchFluidLocalization()
+        {
+            string displayName = ColdQuenchFluidConfig.GetDisplayName();
+            string description = ColdQuenchFluidConfig.GetDescription();
+            
+            // 注入中英文键
+            LocalizationHelper.InjectLocalization(ColdQuenchFluidConfig.DISPLAY_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(ColdQuenchFluidConfig.DISPLAY_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization(ColdQuenchFluidConfig.LOC_KEY_DISPLAY, displayName);
+            
+            LocalizationHelper.InjectLocalization(ColdQuenchFluidConfig.DISPLAY_NAME_CN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(ColdQuenchFluidConfig.DISPLAY_NAME_EN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(ColdQuenchFluidConfig.LOC_KEY_DISPLAY + "_Desc", description);
+            
+            // 注入物品 ID 键
+            string itemKey = "Item_" + ColdQuenchFluidConfig.TYPE_ID;
+            LocalizationHelper.InjectLocalization(itemKey, displayName);
+            LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+            
+            // 注入标签本地化（格式：Tag_{name} 和 Tag_{name}_Desc）
+            string tagDisplayName = L10n.T(ColdQuenchFluidConfig.TAG_DISPLAY_CN, ColdQuenchFluidConfig.TAG_DISPLAY_EN);
+            string tagDescription = L10n.T(ColdQuenchFluidConfig.TAG_DESC_CN, ColdQuenchFluidConfig.TAG_DESC_EN);
+            LocalizationHelper.InjectLocalization("Tag_" + ColdQuenchFluidConfig.TAG_NAME, tagDisplayName);
+            LocalizationHelper.InjectLocalization("Tag_" + ColdQuenchFluidConfig.TAG_NAME + "_Desc", tagDescription);
+            
+            // 注入 UI 提示文本
+            LocalizationHelper.InjectLocalization("BossRush_ColdQuench_LockHint", ColdQuenchFluidConfig.GetLockHint());
+            LocalizationHelper.InjectLocalization("BossRush_ColdQuench_LockedHint", ColdQuenchFluidConfig.GetLockedHint());
+            LocalizationHelper.InjectLocalization("BossRush_ColdQuench_NoFluidHint", ColdQuenchFluidConfig.GetNoFluidHint());
+            LocalizationHelper.InjectLocalization("BossRush_ColdQuench_LockSuccess", ColdQuenchFluidConfig.GetLockSuccessHint());
+            
+            ModBehaviour.DevLog("[LocalizationInjector] 冷淬液本地化注入完成");
         }
     }
 }

@@ -151,6 +151,23 @@ namespace BossRush
             {
                 DevLog("[BossRush] InitializeDynamicItems 出错: " + e.Message);
             }
+            
+            // 初始化 ItemFactory（加载消耗品等非装备类物品）
+            try
+            {
+                // 注册物品配置器（必须在 LoadAllItems 之前）
+                ColdQuenchFluidConfig.RegisterConfigurator();
+                
+                int itemCount = ItemFactory.LoadAllItems();
+                if (itemCount > 0)
+                {
+                    DevLog("[BossRush] ItemFactory 加载完成，共 " + itemCount + " 个物品");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] ItemFactory 初始化失败: " + e.Message);
+            }
         }
 
         /// <summary>
@@ -610,6 +627,7 @@ namespace BossRush
             LocalizationInjector.InjectMapNameLocalizations();
             LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
             LocalizationInjector.InjectGoblinNPCLocalization();   // 哥布林NPC本地化（重铸服务）
+            LocalizationInjector.InjectColdQuenchFluidLocalization();  // 冷淬液物品本地化
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             DevLog("[BossRush] 扩展本地化注入完成");
