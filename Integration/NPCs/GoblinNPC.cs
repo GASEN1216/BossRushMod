@@ -708,13 +708,22 @@ namespace BossRush
         
         /// <summary>
         /// 显示裂开的心气泡
+        /// 优先使用序列帧动画，如果没有则使用文字气泡
         /// </summary>
         private void ShowBrokenHeartBubble()
         {
             try
             {
-                // 使用中文文字代替emoji（游戏字体不支持emoji）
-                string brokenHeart = "♡";  // 使用空心爱心符号，游戏字体应该支持
+                // 尝试使用序列帧动画
+                if (TryShowBrokenHeartAnimation())
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 显示心裂开动画");
+                    return;
+                }
+                
+                // 回退：使用文字气泡
+                // 使用中文"心碎"代替emoji（游戏字体不支持emoji）
+                string brokenHeart = "心碎";
                 DialogueBubblesManager.Show(
                     brokenHeart, 
                     transform, 
@@ -724,11 +733,67 @@ namespace BossRush
                     -1f,    // 默认速度
                     2.5f    // 显示2.5秒
                 );
-                ModBehaviour.DevLog("[GoblinNPC] 显示气泡");
+                ModBehaviour.DevLog("[GoblinNPC] 显示文字气泡（回退方案）");
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[GoblinNPC] [WARNING] 显示气泡失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 尝试显示心裂开的序列帧动画
+        /// </summary>
+        /// <returns>是否成功显示</returns>
+        private bool TryShowBrokenHeartAnimation()
+        {
+            try
+            {
+                // 尝试从AssetBundle加载序列帧
+                string modDir = System.IO.Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
+                string bundlePath = System.IO.Path.Combine(modDir, "Assets", "ui", "broken_heart");
+                
+                if (!System.IO.File.Exists(bundlePath))
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 心裂开动画资源不存在: " + bundlePath);
+                    return false;
+                }
+                
+                AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
+                if (bundle == null)
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 加载心裂开动画Bundle失败");
+                    return false;
+                }
+                
+                // 加载所有Sprite
+                Sprite[] frames = bundle.LoadAllAssets<Sprite>();
+                bundle.Unload(false);
+                
+                if (frames == null || frames.Length == 0)
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 心裂开动画没有Sprite");
+                    return false;
+                }
+                
+                // 按名称排序（确保帧顺序正确）
+                System.Array.Sort(frames, (a, b) => string.Compare(a.name, b.name));
+                
+                // 创建动画
+                NPCBubbleAnimator.Create(
+                    transform,
+                    frames,
+                    NAME_TAG_HEIGHT + 0.8f,  // 在名字标签上方，避免遮挡
+                    2.5f,   // 显示2.5秒
+                    false   // 不循环
+                );
+                
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[GoblinNPC] 加载心裂开动画失败: " + e.Message);
+                return false;
             }
         }
         
