@@ -280,13 +280,29 @@ namespace BossRush
         // 哥布林NPC刷新点配置
         // ============================================================================
         
-        #region 哥布林 - 刷新点配置（复用快递员刷新点）
+        #region 哥布林 - 刷新点配置（仅限特定场景）
         
         /// <summary>
-        /// 哥布林刷新配置（直接引用快递员的刷新点配置）
-        /// 哥布林和快递员使用相同的刷新点池，但初始化时会避免重复位置
+        /// 哥布林刷新配置
+        /// 哥布林只在以下三个场景刷新：GroundZero、HiddenWarehouse、Farm
+        /// 复用快递员的刷新点，但初始化时会避免重复位置
         /// </summary>
-        public static readonly Dictionary<string, NPCSceneSpawnConfig> GoblinSpawnConfigs = CourierNormalModeConfigs;
+        public static readonly Dictionary<string, NPCSceneSpawnConfig> GoblinSpawnConfigs = 
+            new Dictionary<string, NPCSceneSpawnConfig>
+        {
+            {
+                "Level_GroundZero_1",
+                new NPCSceneSpawnConfig("Level_GroundZero_1", GroundZeroCourierSpawnPoints, true)
+            },
+            {
+                "Level_HiddenWarehouse",
+                new NPCSceneSpawnConfig("Level_HiddenWarehouse", HiddenWarehouseCourierSpawnPoints, true)
+            },
+            {
+                "Level_Farm_01",
+                new NPCSceneSpawnConfig("Level_Farm_01", FarmCourierSpawnPoints, true)
+            }
+        };
         
         #endregion
         
