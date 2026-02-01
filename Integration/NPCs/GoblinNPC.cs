@@ -406,7 +406,7 @@ namespace BossRush
         private const float NAME_TAG_HEIGHT = 2.3f;  // 名字标签高度（头顶上方，与快递员一致）
         
         // 距离阈值（米）
-        private const float BRAKE_ANIMATION_DISTANCE = 3f;  // 距离玩家3米时播放急停动画
+        private const float BRAKE_ANIMATION_DISTANCE = 4f;  // 距离玩家4米时播放急停动画
         private const float STOP_DISTANCE = 1f;  // 距离玩家1米时真正停下
         
         // 状态
@@ -636,20 +636,28 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 开始播放急停动画（但继续移动）
+        /// 开始播放急停动画（距离10米时触发）
+        /// 设置 IsRunning=false，触发 DoStop，然后设置 IsIdle=true
         /// </summary>
         private void StartBrakeAnimation()
         {
             isBraking = true;
             
-            // 触发急停动画（DoStop trigger）
+            // 1. 先停止跑步动画
+            SafeSetBool(hash_IsRunning, false);
+            
+            // 2. 触发急停动画（DoStop trigger）
             SafeSetTrigger(hash_DoStop);
             
-            ModBehaviour.DevLog("[GoblinNPC] 距离3米，播放急停动画（继续移动）");
+            // 3. 设置待机状态
+            SafeSetBool(hash_IsIdle, true);
+            
+            ModBehaviour.DevLog("[GoblinNPC] 距离4米，播放急停动画（IsRunning=false, DoStop触发, IsIdle=true）");
         }
         
         /// <summary>
-        /// 到达玩家1米范围内，真正停下来并进入待机
+        /// 到达玩家1米范围内，真正停下来
+        /// 注意：IsIdle 已在 StartBrakeAnimation 中设置为 true
         /// </summary>
         private void StopAndIdle()
         {
@@ -665,24 +673,28 @@ namespace BossRush
             // 面向玩家
             FacePlayer();
             
-            // 停止跑步动画
+            // 确保动画状态正确（IsRunning=false, IsIdle=true 应该已经设置）
             SafeSetBool(hash_IsRunning, false);
+            SafeSetBool(hash_IsIdle, true);
             
             ModBehaviour.DevLog("[GoblinNPC] 到达玩家1米范围，停止移动");
             
-            // 进入待机并显示气泡
+            // 进入待机并显示气泡，3秒后恢复
             StartCoroutine(IdleAndShowBubble());
         }
         
         /// <summary>
         /// 待机3秒并显示气泡
+        /// 3秒后设置 IsIdle=false 并恢复走路
         /// </summary>
         private IEnumerator IdleAndShowBubble()
         {
-            // 进入待机状态
-            StartIdleAnimation();
+            // 进入待机状态（确保 IsIdle=true）
+            isIdling = true;
+            SafeSetBool(hash_IsIdle, true);
+            SafeSetBool(hash_IsRunning, false);
             
-            // 显示裂开的心气泡（使用文字代替emoji）
+            // 显示裂开的心气泡
             ShowBrokenHeartBubble();
             
             ModBehaviour.DevLog("[GoblinNPC] 进入待机状态，显示气泡，持续3秒");
@@ -690,19 +702,23 @@ namespace BossRush
             // 待机3秒
             yield return new WaitForSeconds(IDLE_DURATION_AFTER_STOP);
             
+            // 3秒后设置 IsIdle=false
+            isIdling = false;
+            SafeSetBool(hash_IsIdle, false);
+            ModBehaviour.DevLog("[GoblinNPC] 待机3秒结束，设置 IsIdle=false");
+            
             // 如果不在对话中，恢复走路
             if (!isInDialogue)
             {
-                StopIdleAnimation();
                 if (movement != null)
                 {
                     movement.ResumeWalking();
                 }
-                ModBehaviour.DevLog("[GoblinNPC] 待机结束，恢复走路");
+                ModBehaviour.DevLog("[GoblinNPC] 恢复走路");
             }
             else
             {
-                ModBehaviour.DevLog("[GoblinNPC] 待机结束但在对话中，继续待机");
+                ModBehaviour.DevLog("[GoblinNPC] 在对话中，继续待机");
             }
         }
         
@@ -731,7 +747,7 @@ namespace BossRush
                     false,  // 不需要交互
                     false,  // 不可跳过
                     -1f,    // 默认速度
-                    2.5f    // 显示2.5秒
+                    2f      // 显示2秒
                 );
                 ModBehaviour.DevLog("[GoblinNPC] 显示文字气泡（回退方案）");
             }
@@ -779,12 +795,12 @@ namespace BossRush
                 // 按名称排序（确保帧顺序正确）
                 System.Array.Sort(frames, (a, b) => string.Compare(a.name, b.name));
                 
-                // 创建动画
+                // 创建动画，显示时间改为2秒
                 NPCBubbleAnimator.Create(
                     transform,
                     frames,
                     NAME_TAG_HEIGHT + 0.8f,  // 在名字标签上方，避免遮挡
-                    2.5f,   // 显示2.5秒
+                    2f,     // 显示2秒
                     false   // 不循环
                 );
                 
@@ -1133,6 +1149,14 @@ namespace BossRush
             
             // 如果在对话中，停止所有移动
             if (controller != null && controller.IsInDialogue)
+            {
+                UpdateMoveAnimation(0f);
+                ApplyGravity();
+                return;
+            }
+            
+            // 如果在待机中（急停后的3秒待机），不做任何移动
+            if (controller != null && controller.IsIdling)
             {
                 UpdateMoveAnimation(0f);
                 ApplyGravity();

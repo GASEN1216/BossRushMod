@@ -44,6 +44,7 @@ namespace BossRush
         
         /// <summary>
         /// 使用物品时的逻辑
+        /// 注意：物品消耗由游戏框架自动处理（CA_UseItem.OnFinish），这里不需要手动消耗
         /// </summary>
         protected override void OnUse(Item item, object user)
         {
@@ -58,17 +59,16 @@ namespace BossRush
                 
                 if (goblinController == null)
                 {
-                    // 无哥布林：显示气泡提示，不消耗物品
+                    // 无哥布林：显示气泡提示
+                    // 注意：即使没有哥布林，物品也会被消耗（由框架处理）
                     ShowNoGoblinHint(player);
                     return;
                 }
                 
-                // 有哥布林：消耗物品并召唤
-                if (ConsumeOneItem(item, player))
-                {
-                    goblinController.RunToPlayer();
-                    ModBehaviour.DevLog("[BrickStone] 成功召唤哥布林");
-                }
+                // 有哥布林：召唤哥布林跑向玩家
+                // 物品消耗由游戏框架自动处理，这里只需要触发召唤逻辑
+                goblinController.RunToPlayer();
+                ModBehaviour.DevLog("[BrickStone] 成功召唤哥布林");
             }
             catch (Exception e)
             {
@@ -87,34 +87,6 @@ namespace BossRush
                 DialogueBubblesManager.Show(hint, player.transform, 2.5f, false, false, -1f, 2f);
             }
             catch { }
-        }
-        
-        /// <summary>
-        /// 消耗一个物品
-        /// </summary>
-        private bool ConsumeOneItem(Item item, CharacterMainControl player)
-        {
-            try
-            {
-                if (item == null || player == null) return false;
-                
-                var inventory = player.CharacterItem?.Inventory;
-                if (inventory == null) return false;
-                
-                if (item.Stackable && item.StackCount > 1)
-                {
-                    item.StackCount -= 1;
-                }
-                else
-                {
-                    inventory.RemoveItem(item);
-                }
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
         }
     }
 }
