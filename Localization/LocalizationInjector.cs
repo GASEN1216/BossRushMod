@@ -213,6 +213,7 @@ namespace BossRush
                 InjectCakeLocalization(cakeTypeId);
                 InjectWikiBookLocalization(wikiBookTypeId);
                 InjectColdQuenchFluidLocalization();
+                InjectBrickStoneLocalization();
                 InjectDragonDescendantLocalization();
                 InjectCourierNPCLocalization();
                 InjectGoblinNPCLocalization();
@@ -749,6 +750,34 @@ namespace BossRush
             LocalizationHelper.InjectLocalization("BossRush_ColdQuench_LockSuccess", ColdQuenchFluidConfig.GetLockSuccessHint());
             
             ModBehaviour.DevLog("[LocalizationInjector] 冷淬液本地化注入完成");
+        }
+        
+        /// <summary>
+        /// 注入砖石物品本地化
+        /// </summary>
+        public static void InjectBrickStoneLocalization()
+        {
+            string displayName = BrickStoneConfig.GetDisplayName();
+            string description = BrickStoneConfig.GetDescription();
+            
+            // 注入中英文键
+            LocalizationHelper.InjectLocalization(BrickStoneConfig.DISPLAY_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(BrickStoneConfig.DISPLAY_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization(BrickStoneConfig.LOC_KEY_DISPLAY, displayName);
+            
+            LocalizationHelper.InjectLocalization(BrickStoneConfig.DISPLAY_NAME_CN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(BrickStoneConfig.DISPLAY_NAME_EN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(BrickStoneConfig.LOC_KEY_DISPLAY + "_Desc", description);
+            
+            // 注入物品 ID 键
+            string itemKey = "Item_" + BrickStoneConfig.TYPE_ID;
+            LocalizationHelper.InjectLocalization(itemKey, displayName);
+            LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+            
+            // 注入无哥布林提示
+            LocalizationHelper.InjectLocalization("BossRush_BrickStone_NoGoblin", BrickStoneConfig.GetNoGoblinHint());
+            
+            ModBehaviour.DevLog("[LocalizationInjector] 砖石本地化注入完成");
         }
     }
 }

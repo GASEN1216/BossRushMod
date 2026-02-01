@@ -157,6 +157,7 @@ namespace BossRush
             {
                 // 注册物品配置器（必须在 LoadAllItems 之前）
                 ColdQuenchFluidConfig.RegisterConfigurator();
+                BrickStoneConfig.RegisterConfigurator();
                 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
@@ -628,6 +629,7 @@ namespace BossRush
             LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
             LocalizationInjector.InjectGoblinNPCLocalization();   // 哥布林NPC本地化（重铸服务）
             LocalizationInjector.InjectColdQuenchFluidLocalization();  // 冷淬液物品本地化
+            LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             DevLog("[BossRush] 扩展本地化注入完成");

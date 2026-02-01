@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using Pathfinding;
+using Duckov.UI.DialogueBubbles;
 
 namespace BossRush
 {
@@ -405,12 +406,14 @@ namespace BossRush
         private const float NAME_TAG_HEIGHT = 2.3f;  // 名字标签高度（头顶上方，与快递员一致）
         
         // 距离阈值（米）
-        private const float STOP_DISTANCE = 2f;  // 距离玩家多近时急停
+        private const float BRAKE_ANIMATION_DISTANCE = 3f;  // 距离玩家3米时播放急停动画
+        private const float STOP_DISTANCE = 1f;  // 距离玩家1米时真正停下
         
         // 状态
         private bool isRunningToPlayer = false;
         private bool isInDialogue = false;  // 是否在对话中
         private bool isIdling = false;  // 是否在待机
+        private bool isBraking = false;  // 是否正在播放急停动画（但还在移动）
         private GoblinMovement movement;
         
         // 待机时间配置
@@ -568,15 +571,22 @@ namespace BossRush
             {
                 float distance = Vector3.Distance(transform.position, playerTransform.position);
                 
-                // 快到玩家面前时触发急停
+                // 距离3米时播放急停动画（但继续移动）
+                if (!isBraking && distance <= BRAKE_ANIMATION_DISTANCE)
+                {
+                    StartBrakeAnimation();
+                }
+                
+                // 距离1米时真正停下来
                 if (distance <= STOP_DISTANCE)
                 {
-                    StopAndBrake();
+                    StopAndIdle();
                 }
                 // 如果移动已停止但距离玩家还较远，说明玩家移动了，需要重新寻路
-                else if (movement != null && !movement.IsMoving && !movement.IsWaitingForPath)
+                else if (movement != null && !movement.IsMoving && !movement.IsWaitingForPath && !isIdling)
                 {
                     ModBehaviour.DevLog("[GoblinNPC] 玩家移动了，重新寻路到玩家位置");
+                    isBraking = false;  // 重置急停状态
                     movement.RunToPlayer(playerTransform.position);
                 }
             }
@@ -626,11 +636,25 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 急停并播放急停动画
+        /// 开始播放急停动画（但继续移动）
         /// </summary>
-        private void StopAndBrake()
+        private void StartBrakeAnimation()
+        {
+            isBraking = true;
+            
+            // 触发急停动画（DoStop trigger）
+            SafeSetTrigger(hash_DoStop);
+            
+            ModBehaviour.DevLog("[GoblinNPC] 距离3米，播放急停动画（继续移动）");
+        }
+        
+        /// <summary>
+        /// 到达玩家1米范围内，真正停下来并进入待机
+        /// </summary>
+        private void StopAndIdle()
         {
             isRunningToPlayer = false;
+            isBraking = false;
             
             // 停止移动
             if (movement != null)
@@ -641,27 +665,27 @@ namespace BossRush
             // 面向玩家
             FacePlayer();
             
-            // 触发急停动画
-            SafeSetTrigger(hash_DoStop);
+            // 停止跑步动画
             SafeSetBool(hash_IsRunning, false);
             
-            ModBehaviour.DevLog("[GoblinNPC] 急停，触发 DoStop 动画");
+            ModBehaviour.DevLog("[GoblinNPC] 到达玩家1米范围，停止移动");
             
-            // 延迟后恢复走路状态
-            StartCoroutine(ResumeWalkingAfterStop());
+            // 进入待机并显示气泡
+            StartCoroutine(IdleAndShowBubble());
         }
         
         /// <summary>
-        /// 急停动画播放完后进入待机，然后恢复走路
+        /// 待机3秒并显示气泡
         /// </summary>
-        private IEnumerator ResumeWalkingAfterStop()
+        private IEnumerator IdleAndShowBubble()
         {
-            // 等待急停动画播放完（根据实际动画长度调整）
-            yield return new WaitForSeconds(1f);
-            
             // 进入待机状态
             StartIdleAnimation();
-            ModBehaviour.DevLog("[GoblinNPC] 急停动画结束，进入待机状态");
+            
+            // 显示裂开的心气泡（使用文字代替emoji）
+            ShowBrokenHeartBubble();
+            
+            ModBehaviour.DevLog("[GoblinNPC] 进入待机状态，显示气泡，持续3秒");
             
             // 待机3秒
             yield return new WaitForSeconds(IDLE_DURATION_AFTER_STOP);
@@ -679,6 +703,32 @@ namespace BossRush
             else
             {
                 ModBehaviour.DevLog("[GoblinNPC] 待机结束但在对话中，继续待机");
+            }
+        }
+        
+        /// <summary>
+        /// 显示裂开的心气泡
+        /// </summary>
+        private void ShowBrokenHeartBubble()
+        {
+            try
+            {
+                // 使用中文文字代替emoji（游戏字体不支持emoji）
+                string brokenHeart = "♡";  // 使用空心爱心符号，游戏字体应该支持
+                DialogueBubblesManager.Show(
+                    brokenHeart, 
+                    transform, 
+                    NAME_TAG_HEIGHT + 0.3f,  // 在名字标签上方
+                    false,  // 不需要交互
+                    false,  // 不可跳过
+                    -1f,    // 默认速度
+                    2.5f    // 显示2.5秒
+                );
+                ModBehaviour.DevLog("[GoblinNPC] 显示气泡");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[GoblinNPC] [WARNING] 显示气泡失败: " + e.Message);
             }
         }
         
