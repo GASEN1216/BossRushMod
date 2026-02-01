@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 using Duckov;
 using Duckov.UI;
@@ -12,6 +13,108 @@ using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
+    /// <summary>
+    /// 属性条目交互组件 - 通过文字颜色变化实现固定功能
+    /// 白色=普通，蓝色=悬停可固定，金色=已固定
+    /// </summary>
+    public class PropertyEntryInteractable : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+    {
+        public string PropertyKey { get; set; }
+        public PropertyType PropType { get; set; }
+        public Item TargetItem { get; set; }
+        public TextMeshProUGUI[] TextComponents { get; set; }  // 属性条目的所有文本组件
+        public bool IsLocked { get; set; }
+        public bool CanLock { get; set; }  // 是否可以固定（有冷淬液）
+        
+        // 颜色定义
+        private static readonly Color normalColor = Color.white;  // 白色 - 普通状态
+        private static readonly Color hoverColor = new Color(0.4f, 0.7f, 1f, 1f);  // 蓝色 - 悬停可固定
+        private static readonly Color lockedColor = new Color(1f, 0.84f, 0f, 1f);  // 金色 - 已固定
+        
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (IsLocked || !CanLock) return;
+            
+            ModBehaviour.DevLog("[PropertyEntry] 点击固定属性: " + PropertyKey);
+            
+            if (TargetItem == null) return;
+            
+            // 检查冷淬液数量
+            int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
+            if (fluidCount <= 0) return;
+            
+            // 消耗冷淬液
+            if (!ItemFactory.ConsumeItem(ColdQuenchFluidConfig.TYPE_ID, 1))
+            {
+                ModBehaviour.DevLog("[PropertyEntry] 消耗冷淬液失败");
+                return;
+            }
+            
+            // 固定属性
+            if (PropertyLockSystem.LockProperty(TargetItem, PropertyKey, PropType))
+            {
+                ModBehaviour.DevLog("[PropertyEntry] 属性已固定: " + PropertyKey);
+                IsLocked = true;
+                CanLock = false;
+                
+                // 更新为金色
+                SetTextColor(lockedColor);
+                
+                // 通知UI刷新
+                ReforgeUIManager.NotifyPropertyLocked();
+            }
+        }
+        
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (IsLocked) return;  // 已固定不变色
+            
+            if (CanLock)
+            {
+                // 有冷淬液，显示蓝色表示可固定
+                SetTextColor(hoverColor);
+            }
+        }
+        
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            if (IsLocked) return;  // 已固定保持金色
+            
+            // 恢复白色
+            SetTextColor(normalColor);
+        }
+        
+        /// <summary>
+        /// 设置所有文本组件的颜色
+        /// </summary>
+        private void SetTextColor(Color color)
+        {
+            if (TextComponents == null) return;
+            foreach (var text in TextComponents)
+            {
+                if (text != null)
+                {
+                    text.color = color;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 初始化颜色状态
+        /// </summary>
+        public void InitializeColor()
+        {
+            if (IsLocked)
+            {
+                SetTextColor(lockedColor);
+            }
+            else
+            {
+                SetTextColor(normalColor);
+            }
+        }
+    }
+
     /// <summary>
     /// 属性快照，用于记录重铸前的属性值
     /// </summary>
@@ -24,6 +127,7 @@ namespace BossRush
 
     /// <summary>
     /// 重铸UI管理器 - 通过修改原版分解UI实现
+    /// 性能优化版本：添加预制体缓存、协程合并、UI组件缓存
     /// </summary>
     public static class ReforgeUIManager
     {
@@ -34,7 +138,71 @@ namespace BossRush
         private const int DEFAULT_FRAME_DELAY = 1;
         private const int REFORGE_REFRESH_FRAME_DELAY = 2;
         private const float DIFF_THRESHOLD = 0.01f;
-        private const float SMALL_DIFF_THRESHOLD = 0.001f;
+        
+        // 冷淬液UI常量
+        private const float COLD_QUENCH_UI_OFFSET_Y = -10f;
+        private const int COLD_QUENCH_ICON_SIZE = 56;
+        private const int COLD_QUENCH_CONTAINER_WIDTH = 200;
+        private const int COLD_QUENCH_CONTAINER_HEIGHT = 70;
+        private const int COLD_QUENCH_SPACING = 10;
+        private const int COLD_QUENCH_FONT_SIZE = 32;
+        private const int COLD_QUENCH_ICON_FONT_SIZE = 40;
+        
+        // 预制体缓存常量
+        private const int MAX_PREFAB_CACHE_SIZE = 10;
+        
+        // ============================================================================
+        // 预制体缓存（性能优化：避免重复实例化）
+        // ============================================================================
+        private static Dictionary<int, Item> _prefabCache = new Dictionary<int, Item>();
+        
+        /// <summary>
+        /// 获取缓存的预制体（避免重复实例化）
+        /// </summary>
+        private static Item GetCachedPrefab(int typeId)
+        {
+            // 检查缓存
+            if (_prefabCache.TryGetValue(typeId, out Item cached))
+            {
+                if (cached != null && cached.gameObject != null)
+                {
+                    return cached;
+                }
+                // 缓存失效，移除
+                _prefabCache.Remove(typeId);
+            }
+            
+            // 缓存满时清理
+            if (_prefabCache.Count >= MAX_PREFAB_CACHE_SIZE)
+            {
+                ClearPrefabCache();
+            }
+            
+            // 实例化新预制体
+            Item prefab = ItemAssetsCollection.InstantiateSync(typeId);
+            if (prefab != null)
+            {
+                _prefabCache[typeId] = prefab;
+                // 配置自定义装备
+                ConfigureCustomEquipmentPrefab(prefab);
+            }
+            return prefab;
+        }
+        
+        /// <summary>
+        /// 清理预制体缓存
+        /// </summary>
+        private static void ClearPrefabCache()
+        {
+            foreach (var kvp in _prefabCache)
+            {
+                if (kvp.Value != null && kvp.Value.gameObject != null)
+                {
+                    UnityEngine.Object.Destroy(kvp.Value.gameObject);
+                }
+            }
+            _prefabCache.Clear();
+        }
         
         // ============================================================================
         // 缓存的反射 FieldInfo（性能优化）
@@ -191,6 +359,29 @@ namespace BossRush
         private static Dictionary<string, float> cachedPrefabModifiers = new Dictionary<string, float>();
         private static Dictionary<string, float> cachedPrefabStats = new Dictionary<string, float>();
         private static Dictionary<string, float> cachedPrefabVariables = new Dictionary<string, float>();
+        
+        // ============================================================================
+        // 冷淬液UI相关变量
+        // ============================================================================
+        
+        // 冷淬液数量显示容器
+        private static GameObject coldQuenchFluidContainer;
+        // 冷淬液数量文本
+        private static TextMeshProUGUI coldQuenchFluidCountText;
+        // 属性锁定图标列表（key: 属性条目Transform的InstanceID）
+        private static Dictionary<int, PropertyLockIcon> propertyLockIcons = new Dictionary<int, PropertyLockIcon>();
+        
+        /// <summary>
+        /// 属性交互信息（用于跟踪已设置交互的属性条目）
+        /// </summary>
+        private class PropertyLockIcon
+        {
+            public GameObject IconObject;      // 属性条目GameObject
+            public Image IconImage;            // 用于接收点击的Image组件
+            public string PropertyKey;         // 属性键名
+            public PropertyType PropertyType;  // 属性类型
+            public bool IsLocked;              // 是否已固定
+        }
         
         /// <summary>
         /// 打开重铸UI（复用原版分解UI）
@@ -561,6 +752,9 @@ namespace BossRush
                 
                 // 7. 订阅我们自己的物品选择事件
                 ItemUIUtilities.OnSelectionChanged += OnItemSelectionChanged;
+                
+                // 8. 创建冷淬液数量显示UI
+                CreateColdQuenchFluidUI();
                 
                 ModBehaviour.DevLog("[ReforgeUI] UI修改完成");
             }
@@ -972,34 +1166,6 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 递归输出所有文本组件
-        /// </summary>
-        private static void LogAllTextsRecursive(Transform parent, int depth)
-        {
-            string indent = new string(' ', depth * 2);
-            
-            // 检查TMP文本
-            var tmp = parent.GetComponent<TextMeshProUGUI>();
-            if (tmp != null && !string.IsNullOrEmpty(tmp.text))
-            {
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] {0}[TMP] {1}: \"{2}\"", indent, parent.name, tmp.text));
-            }
-            
-            // 检查普通Text
-            var text = parent.GetComponent<Text>();
-            if (text != null && !string.IsNullOrEmpty(text.text))
-            {
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] {0}[Text] {1}: \"{2}\"", indent, parent.name, text.text));
-            }
-            
-            // 递归子物体
-            for (int i = 0; i < parent.childCount; i++)
-            {
-                LogAllTextsRecursive(parent.GetChild(i), depth + 1);
-            }
-        }
-        
-        /// <summary>
         /// 物品选择改变
         /// </summary>
         private static void OnItemSelectionChanged()
@@ -1008,8 +1174,9 @@ namespace BossRush
             
             Item newItem = ItemUIUtilities.SelectedItem;
             
-            // 切换了物品，清除原属性快照
+            // 切换了物品，清除原属性快照和锁定图标
             originalProperties.Clear();
+            ClearPropertyLockIcons();
             selectedItem = newItem;
             
             if (selectedItem != null)
@@ -1036,6 +1203,8 @@ namespace BossRush
                 if (ModBehaviour.Instance != null)
                 {
                     currentDiffCoroutine = ModBehaviour.Instance.StartCoroutine(SetupDetailsWithPrefabComparisonDelayed(selectedItem));
+                    // 延迟添加锁定图标（等待属性条目创建完成）
+                    ModBehaviour.Instance.StartCoroutine(AddPropertyLockIconsDelayed());
                 }
                 
                 // 隐藏"请选择物品"提示
@@ -1068,8 +1237,22 @@ namespace BossRush
                 ModBehaviour.Instance.StartCoroutine(ResetUIStateDelayed(GetPlayerMoney()));
             }
             
+            // 更新冷淬液数量显示
+            UpdateColdQuenchFluidCount();
+            
             UpdateProbabilityDisplay();
             UpdateReforgeButtonInteractable();
+        }
+        
+        /// <summary>
+        /// 延迟添加锁定图标（等待属性条目创建完成）
+        /// </summary>
+        private static System.Collections.IEnumerator AddPropertyLockIconsDelayed()
+        {
+            // 等待2帧，确保属性条目已创建
+            yield return null;
+            yield return null;
+            AddPropertyLockIcons();
         }
         
         /// <summary>
@@ -1420,10 +1603,10 @@ namespace BossRush
                 int newMax = GetPlayerMoney();
                 UpdateUIStateKeepSlider(newMax);
                 
-                // 延迟刷新物品详情显示（等待属性值同步后再刷新，2帧延迟）
+                // 合并协程：延迟刷新物品详情和锁定图标（性能优化：减少协程调度开销）
                 if (ModBehaviour.Instance != null)
                 {
-                    ModBehaviour.Instance.StartCoroutine(RefreshItemDetailsDisplayDelayed(2));
+                    ModBehaviour.Instance.StartCoroutine(RefreshUIAfterReforgeDelayed());
                 }
                 
                 ModBehaviour.DevLog("[ReforgeUI] 重铸完成，已更新UI");
@@ -1615,6 +1798,7 @@ namespace BossRush
         
         /// <summary>
         /// 设置物品详情显示 - 显示预制体属性并标记与玩家物品的差异
+        /// 性能优化：减少预制体实例化次数
         /// </summary>
         /// <param name="playerItem">玩家物品</param>
         /// <param name="cachePrefab">是否缓存预制体属性（首次选择物品时为true，重铸后刷新时为false使用缓存）</param>
@@ -1629,8 +1813,8 @@ namespace BossRush
                 // 根据是否需要缓存决定是否获取预制体
                 if (cachePrefab || cachedPrefabModifiers.Count == 0)
                 {
-                    // 1. 获取预制体物品
-                    prefabItem = ItemAssetsCollection.InstantiateSync(playerItem.TypeID);
+                    // 1. 获取预制体物品（使用缓存）
+                    prefabItem = GetCachedPrefab(playerItem.TypeID);
                     if (prefabItem == null)
                     {
                         ModBehaviour.DevLog("[ReforgeUI] 无法获取预制体，使用玩家物品显示");
@@ -1639,8 +1823,7 @@ namespace BossRush
                         return;
                     }
                     
-                    // 1.5 对自定义装备预制体进行配置（因为预制体没有经过Mod配置）
-                    ConfigureCustomEquipmentPrefab(prefabItem);
+                    // 注意：GetCachedPrefab 已经调用了 ConfigureCustomEquipmentPrefab
                     
                     // 2. 缓存预制体属性
                     cachedPrefabModifiers.Clear();
@@ -1706,14 +1889,11 @@ namespace BossRush
                     }
                 }
                 
-                // 4. 使用预制体设置详情显示（如果有预制体实例则用它，否则需要重新获取一个用于显示）
+                // 4. 使用预制体设置详情显示
+                // 如果之前没有获取预制体（cachePrefab=false且有缓存），需要获取一个用于UI显示
                 if (prefabItem == null)
                 {
-                    prefabItem = ItemAssetsCollection.InstantiateSync(playerItem.TypeID);
-                    if (prefabItem != null)
-                    {
-                        ConfigureCustomEquipmentPrefab(prefabItem);
-                    }
+                    prefabItem = GetCachedPrefab(playerItem.TypeID);
                 }
                 
                 if (prefabItem != null)
@@ -1724,11 +1904,8 @@ namespace BossRush
                         setup.Invoke(detailsDisplayObj, new object[] { prefabItem });
                     }
                     
-                    // 销毁临时预制体实例
-                    if (prefabItem.gameObject != null)
-                    {
-                        UnityEngine.Object.Destroy(prefabItem.gameObject);
-                    }
+                    // 注意：不再销毁预制体，因为它被缓存了
+                    // 缓存会在 Cleanup() 时统一清理
                 }
                 
                 // 5. 延迟修改属性文本以显示差异（使用缓存的预制体属性和复用的玩家属性字典）
@@ -2105,6 +2282,27 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 合并协程：重铸后延迟刷新UI（性能优化：减少协程调度开销）
+        /// 合并了 RefreshItemDetailsDisplayDelayed 和 RefreshLockIconsDelayed 的功能
+        /// </summary>
+        private static System.Collections.IEnumerator RefreshUIAfterReforgeDelayed()
+        {
+            // 等待2帧让属性值同步
+            yield return null;
+            yield return null;
+            
+            // 刷新物品详情显示
+            RefreshItemDetailsDisplay();
+            
+            // 再等1帧确保UI更新完成
+            yield return null;
+            
+            // 刷新锁定图标
+            ClearPropertyLockIcons();
+            AddPropertyLockIcons();
+        }
+        
+        /// <summary>
         /// 是否处于重铸模式
         /// </summary>
         public static bool IsReforgeMode
@@ -2127,6 +2325,7 @@ namespace BossRush
         
         /// <summary>
         /// 清理（当UI关闭时调用）
+        /// 性能优化：添加预制体缓存清理
         /// </summary>
         public static void Cleanup()
         {
@@ -2177,6 +2376,438 @@ namespace BossRush
             _reusablePlayerModifiers.Clear();
             _reusablePlayerStats.Clear();
             _reusablePlayerVariables.Clear();
+            
+            // 清理预制体缓存（性能优化：释放内存）
+            ClearPrefabCache();
+            
+            // 清理冷淬液UI
+            CleanupColdQuenchFluidUI();
+        }
+        
+        // ============================================================================
+        // 冷淬液UI相关方法
+        // ============================================================================
+        
+        /// <summary>
+        /// 创建冷淬液数量显示UI（在属性栏上方）
+        /// 代码规范优化：使用常量替代魔法数字
+        /// </summary>
+        private static void CreateColdQuenchFluidUI()
+        {
+            try
+            {
+                if (decomposeView == null)
+                {
+                    ModBehaviour.DevLog("[ReforgeUI] 无法创建冷淬液UI: decomposeView 为空");
+                    return;
+                }
+                
+                // 在 ItemDecomposeView 的顶部创建冷淬液显示
+                Transform contentTransform = decomposeView.transform.Find("Content");
+                if (contentTransform == null)
+                {
+                    contentTransform = decomposeView.transform;
+                }
+                
+                ModBehaviour.DevLog("[ReforgeUI] 创建冷淬液UI - parent: " + contentTransform.name);
+                
+                // 检查是否已存在
+                Transform existing = decomposeView.transform.Find("ColdQuenchFluidDisplay");
+                if (existing != null)
+                {
+                    coldQuenchFluidContainer = existing.gameObject;
+                    coldQuenchFluidCountText = coldQuenchFluidContainer.GetComponentInChildren<TextMeshProUGUI>();
+                    UpdateColdQuenchFluidCount();
+                    ModBehaviour.DevLog("[ReforgeUI] 冷淬液UI已存在，复用");
+                    return;
+                }
+                
+                // 创建容器
+                coldQuenchFluidContainer = new GameObject("ColdQuenchFluidDisplay");
+                coldQuenchFluidContainer.transform.SetParent(decomposeView.transform, false);
+                
+                // 设置RectTransform - 使用常量
+                RectTransform containerRect = coldQuenchFluidContainer.AddComponent<RectTransform>();
+                containerRect.anchorMin = new Vector2(0.5f, 1);
+                containerRect.anchorMax = new Vector2(0.5f, 1);
+                containerRect.pivot = new Vector2(0.5f, 1);
+                containerRect.anchoredPosition = new Vector2(0, COLD_QUENCH_UI_OFFSET_Y);
+                containerRect.sizeDelta = new Vector2(COLD_QUENCH_CONTAINER_WIDTH, COLD_QUENCH_CONTAINER_HEIGHT);
+                
+                // 添加水平布局
+                HorizontalLayoutGroup layout = coldQuenchFluidContainer.AddComponent<HorizontalLayoutGroup>();
+                layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.spacing = COLD_QUENCH_SPACING;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
+                layout.padding = new RectOffset(5, 5, 5, 5);
+                
+                // 创建图标 - 使用常量
+                GameObject iconObj = new GameObject("FluidIcon");
+                iconObj.transform.SetParent(coldQuenchFluidContainer.transform, false);
+                RectTransform iconRect = iconObj.AddComponent<RectTransform>();
+                iconRect.sizeDelta = new Vector2(COLD_QUENCH_ICON_SIZE, COLD_QUENCH_ICON_SIZE);
+                
+                // 添加 LayoutElement 确保尺寸
+                LayoutElement iconLayout = iconObj.AddComponent<LayoutElement>();
+                iconLayout.minWidth = COLD_QUENCH_ICON_SIZE;
+                iconLayout.minHeight = COLD_QUENCH_ICON_SIZE;
+                iconLayout.preferredWidth = COLD_QUENCH_ICON_SIZE;
+                iconLayout.preferredHeight = COLD_QUENCH_ICON_SIZE;
+                
+                // 尝试加载图标
+                Sprite iconSprite = ItemFactory.GetSprite(ColdQuenchFluidConfig.BUNDLE_NAME, ColdQuenchFluidConfig.ICON_NAME);
+                
+                if (iconSprite != null)
+                {
+                    Image iconImage = iconObj.AddComponent<Image>();
+                    iconImage.sprite = iconSprite;
+                    iconImage.preserveAspect = true;
+                }
+                else
+                {
+                    // 使用文本作为后备
+                    TextMeshProUGUI iconText = iconObj.AddComponent<TextMeshProUGUI>();
+                    iconText.text = "❄";
+                    iconText.fontSize = COLD_QUENCH_ICON_FONT_SIZE;
+                    iconText.color = new Color(0.5f, 0.8f, 1f);
+                    iconText.alignment = TextAlignmentOptions.Center;
+                    ModBehaviour.DevLog("[ReforgeUI] 冷淬液图标加载失败，使用文本图标");
+                }
+                
+                // 创建数量文本
+                GameObject countObj = new GameObject("FluidCount");
+                countObj.transform.SetParent(coldQuenchFluidContainer.transform, false);
+                coldQuenchFluidCountText = countObj.AddComponent<TextMeshProUGUI>();
+                coldQuenchFluidCountText.text = "x0";
+                coldQuenchFluidCountText.fontSize = COLD_QUENCH_FONT_SIZE;
+                coldQuenchFluidCountText.color = Color.white;
+                coldQuenchFluidCountText.alignment = TextAlignmentOptions.Left;
+                RectTransform countRect = countObj.GetComponent<RectTransform>();
+                countRect.sizeDelta = new Vector2(80, COLD_QUENCH_ICON_SIZE);
+                
+                // 更新数量显示
+                UpdateColdQuenchFluidCount();
+                
+                ModBehaviour.DevLog("[ReforgeUI] 冷淬液UI已创建");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] 创建冷淬液UI失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+        
+        /// <summary>
+        /// 更新冷淬液数量显示
+        /// </summary>
+        private static void UpdateColdQuenchFluidCount()
+        {
+            if (coldQuenchFluidCountText == null) return;
+            
+            int count = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
+            coldQuenchFluidCountText.text = "x" + count;
+            
+            // 根据数量改变颜色
+            if (count > 0)
+            {
+                coldQuenchFluidCountText.color = new Color(0.5f, 1f, 0.5f);  // 绿色
+            }
+            else
+            {
+                coldQuenchFluidCountText.color = new Color(0.7f, 0.7f, 0.7f);  // 灰色
+            }
+        }
+        
+        /// <summary>
+        /// 为属性条目添加交互功能（通过文字颜色变化实现固定）
+        /// </summary>
+        private static void AddPropertyLockIcons()
+        {
+            ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons 开始执行");
+            
+            if (selectedItem == null)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: selectedItem 为空");
+                return;
+            }
+            
+            if (detailsDisplayObj == null)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: detailsDisplayObj 为空");
+                return;
+            }
+            
+            try
+            {
+                // 清理旧的交互组件
+                ClearPropertyLockIcons();
+                
+                var detailsDisplay = detailsDisplayObj as ItemDetailsDisplay;
+                if (detailsDisplay == null)
+                {
+                    ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: detailsDisplay 转换失败");
+                    return;
+                }
+                
+                var propsParentField = PropertiesParentField;
+                if (propsParentField == null)
+                {
+                    ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: PropertiesParentField 为空");
+                    return;
+                }
+                
+                Transform propsParent = propsParentField.GetValue(detailsDisplay) as Transform;
+                if (propsParent == null)
+                {
+                    ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: propsParent 为空");
+                    return;
+                }
+                
+                // 获取冷淬液数量（决定是否可以固定）
+                int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
+                bool canLock = fluidCount > 0;
+                
+                ModBehaviour.DevLog("[ReforgeUI] 冷淬液数量: " + fluidCount + ", 可固定: " + canLock);
+                
+                int addedCount = 0;
+                
+                // 遍历所有属性条目
+                foreach (Transform child in propsParent)
+                {
+                    if (!child.gameObject.activeInHierarchy) continue;
+                    
+                    string key = null;
+                    PropertyType propType = PropertyType.Modifier;
+                    bool hasNumericValue = false;
+                    
+                    // 尝试获取属性键名和类型
+                    Component modEntry = child.GetComponent("ItemModifierEntry");
+                    if (modEntry != null)
+                    {
+                        key = GetPropertyKeyFromEntry(modEntry, "ItemModifierEntry");
+                        propType = PropertyType.Modifier;
+                        hasNumericValue = true;
+                    }
+                    
+                    if (key == null)
+                    {
+                        Component statEntry = child.GetComponent("ItemStatEntry");
+                        if (statEntry != null)
+                        {
+                            key = GetPropertyKeyFromEntry(statEntry, "ItemStatEntry");
+                            propType = PropertyType.Stat;
+                            hasNumericValue = true;
+                        }
+                    }
+                    
+                    // 跳过无效条目
+                    if (string.IsNullOrEmpty(key) || !hasNumericValue) continue;
+                    
+                    // 跳过系统变量
+                    if (key == "Count" || key == "ReforgeCount" || key.StartsWith("RF_")) continue;
+                    
+                    // 为属性条目添加交互功能
+                    SetupPropertyEntryInteraction(child, key, propType, canLock);
+                    addedCount++;
+                }
+                
+                ModBehaviour.DevLog("[ReforgeUI] 已设置 " + addedCount + " 个属性条目的交互功能");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] 添加属性交互失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+        
+        /// <summary>
+        /// 为属性条目设置交互功能（文字颜色变化方案）
+        /// 白色=普通，蓝色=悬停可固定，金色=已固定
+        /// </summary>
+        private static void SetupPropertyEntryInteraction(Transform propertyEntry, string propertyKey, PropertyType propType, bool canLock)
+        {
+            try
+            {
+                int entryId = propertyEntry.GetInstanceID();
+                
+                // 检查是否已存在
+                if (propertyLockIcons.ContainsKey(entryId)) return;
+                
+                // 检查属性是否已固定
+                bool isLocked = PropertyLockSystem.IsPropertyLocked(selectedItem, propertyKey, propType);
+                
+                // 获取属性条目上的所有文本组件
+                TextMeshProUGUI[] textComponents = propertyEntry.GetComponentsInChildren<TextMeshProUGUI>(true);
+                if (textComponents == null || textComponents.Length == 0)
+                {
+                    ModBehaviour.DevLog("[ReforgeUI] 属性条目没有文本组件: " + propertyKey);
+                    return;
+                }
+                
+                // 确保属性条目有Image组件用于接收点击（如果没有则添加）
+                Image entryImage = propertyEntry.GetComponent<Image>();
+                if (entryImage == null)
+                {
+                    entryImage = propertyEntry.gameObject.AddComponent<Image>();
+                    entryImage.color = new Color(0, 0, 0, 0);  // 完全透明
+                }
+                entryImage.raycastTarget = true;  // 确保可以接收点击
+                
+                // 添加交互组件
+                PropertyEntryInteractable interactable = propertyEntry.gameObject.AddComponent<PropertyEntryInteractable>();
+                interactable.PropertyKey = propertyKey;
+                interactable.PropType = propType;
+                interactable.TargetItem = selectedItem;
+                interactable.TextComponents = textComponents;
+                interactable.IsLocked = isLocked;
+                interactable.CanLock = canLock && !isLocked;  // 有冷淬液且未固定才能固定
+                
+                // 初始化颜色
+                interactable.InitializeColor();
+                
+                // 保存引用
+                PropertyLockIcon lockIcon = new PropertyLockIcon
+                {
+                    IconObject = propertyEntry.gameObject,
+                    IconImage = entryImage,
+                    PropertyKey = propertyKey,
+                    PropertyType = propType,
+                    IsLocked = isLocked
+                };
+                propertyLockIcons[entryId] = lockIcon;
+                
+                ModBehaviour.DevLog("[ReforgeUI] 属性交互已设置: " + propertyKey + ", isLocked=" + isLocked + ", canLock=" + interactable.CanLock);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] 设置属性交互失败: " + propertyKey + " - " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 从属性条目获取属性键名
+        /// </summary>
+        private static string GetPropertyKeyFromEntry(Component entry, string entryType)
+        {
+            try
+            {
+                FieldInfo targetField = entry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (targetField == null) return null;
+                
+                object target = targetField.GetValue(entry);
+                if (target == null) return null;
+                
+                PropertyInfo keyProp = target.GetType().GetProperty("Key");
+                if (keyProp == null) return null;
+                
+                return keyProp.GetValue(target, null) as string;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 刷新所有锁定高亮效果（重新添加）
+        /// </summary>
+        private static void RefreshPropertyLockIcons()
+        {
+            if (ModBehaviour.Instance != null)
+            {
+                ModBehaviour.Instance.StartCoroutine(RefreshLockIconsDelayed());
+            }
+        }
+        
+        /// <summary>
+        /// 通知属性已被锁定，刷新UI
+        /// </summary>
+        public static void NotifyPropertyLocked()
+        {
+            // 更新冷淬液数量显示
+            UpdateColdQuenchFluidCount();
+            
+            // 延迟刷新交互组件
+            if (ModBehaviour.Instance != null)
+            {
+                ModBehaviour.Instance.StartCoroutine(RefreshLockIconsDelayed());
+            }
+        }
+        
+        /// <summary>
+        /// 延迟刷新属性交互（等待属性条目更新完成）
+        /// </summary>
+        private static System.Collections.IEnumerator RefreshLockIconsDelayed()
+        {
+            ModBehaviour.DevLog("[ReforgeUI] RefreshLockIconsDelayed 开始执行...");
+            
+            // 等待3帧，确保属性条目已更新
+            yield return null;
+            yield return null;
+            yield return null;
+            
+            ModBehaviour.DevLog("[ReforgeUI] 等待完成，开始刷新属性交互...");
+            
+            // 重新添加交互组件
+            ClearPropertyLockIcons();
+            AddPropertyLockIcons();
+            
+            ModBehaviour.DevLog("[ReforgeUI] 属性交互刷新完成，共 " + propertyLockIcons.Count + " 个属性");
+        }
+        
+        /// <summary>
+        /// 清理属性条目的交互组件
+        /// </summary>
+        private static void ClearPropertyLockIcons()
+        {
+            foreach (var kvp in propertyLockIcons)
+            {
+                if (kvp.Value != null && kvp.Value.IconObject != null)
+                {
+                    // 移除交互组件（不销毁属性条目本身）
+                    PropertyEntryInteractable interactable = kvp.Value.IconObject.GetComponent<PropertyEntryInteractable>();
+                    if (interactable != null)
+                    {
+                        // 恢复文字颜色为白色
+                        if (interactable.TextComponents != null)
+                        {
+                            foreach (var text in interactable.TextComponents)
+                            {
+                                if (text != null)
+                                {
+                                    text.color = Color.white;
+                                }
+                            }
+                        }
+                        GameObject.Destroy(interactable);
+                    }
+                    
+                    // 移除我们添加的透明Image（如果有）
+                    // 注意：只移除我们添加的，不要移除原有的
+                    Image img = kvp.Value.IconObject.GetComponent<Image>();
+                    if (img != null && img.color.a == 0)  // 只移除完全透明的（我们添加的）
+                    {
+                        GameObject.Destroy(img);
+                    }
+                }
+            }
+            propertyLockIcons.Clear();
+        }
+        
+        /// <summary>
+        /// 清理冷淬液UI
+        /// </summary>
+        private static void CleanupColdQuenchFluidUI()
+        {
+            // 清理属性交互组件
+            ClearPropertyLockIcons();
+            
+            // 清理冷淬液数量显示
+            if (coldQuenchFluidContainer != null)
+            {
+                GameObject.Destroy(coldQuenchFluidContainer);
+                coldQuenchFluidContainer = null;
+            }
+            coldQuenchFluidCountText = null;
         }
     }
     
@@ -2222,4 +2853,5 @@ namespace BossRush
             }
         }
     }
+    
 }

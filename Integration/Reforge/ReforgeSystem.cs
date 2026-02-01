@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
+using System.Reflection;
 using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
@@ -26,37 +28,89 @@ namespace BossRush
 {
     /// <summary>
     /// 重铸系统核心逻辑
+    /// 性能优化版本：使用委托缓存替代反射调用
     /// </summary>
     public static class ReforgeSystem
     {
         // ============================================================================
         // 缓存的反射 FieldInfo（性能优化）
         // ============================================================================
-        private static System.Reflection.FieldInfo _modifierValueField;
-        private static System.Reflection.FieldInfo _statBaseValueField;
+        private static FieldInfo _modifierValueField;
+        private static FieldInfo _statBaseValueField;
         
-        private static System.Reflection.FieldInfo ModifierValueField
+        // ============================================================================
+        // 委托缓存（性能优化：比反射快约10倍）
+        // ============================================================================
+        private static Action<ModifierDescription, float> _setModifierValue;
+        private static Action<Stat, float> _setStatValue;
+        private static bool _delegatesInitialized = false;
+        
+        /// <summary>
+        /// 初始化委托缓存（只执行一次）
+        /// </summary>
+        private static void InitializeSetterDelegates()
+        {
+            if (_delegatesInitialized) return;
+            
+            try
+            {
+                // 初始化 ModifierDescription.value 的 setter 委托
+                var modField = typeof(ModifierDescription).GetField("value", 
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (modField != null)
+                {
+                    var param1 = Expression.Parameter(typeof(ModifierDescription), "mod");
+                    var param2 = Expression.Parameter(typeof(float), "value");
+                    var fieldAccess = Expression.Field(param1, modField);
+                    var assign = Expression.Assign(fieldAccess, param2);
+                    _setModifierValue = Expression.Lambda<Action<ModifierDescription, float>>(
+                        assign, param1, param2).Compile();
+                    _modifierValueField = modField;
+                }
+                
+                // 初始化 Stat.baseValue 的 setter 委托
+                var statField = typeof(Stat).GetField("baseValue", 
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (statField != null)
+                {
+                    var param1 = Expression.Parameter(typeof(Stat), "stat");
+                    var param2 = Expression.Parameter(typeof(float), "value");
+                    var fieldAccess = Expression.Field(param1, statField);
+                    var assign = Expression.Assign(fieldAccess, param2);
+                    _setStatValue = Expression.Lambda<Action<Stat, float>>(
+                        assign, param1, param2).Compile();
+                    _statBaseValueField = statField;
+                }
+                
+                _delegatesInitialized = true;
+                ModBehaviour.DevLog("[ReforgeSystem] 委托缓存初始化完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeSystem] 委托缓存初始化失败，回退到反射: " + e.Message);
+                // 回退到反射方式
+                _modifierValueField = typeof(ModifierDescription).GetField("value", 
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _statBaseValueField = typeof(Stat).GetField("baseValue", 
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _delegatesInitialized = true;
+            }
+        }
+        
+        private static FieldInfo ModifierValueField
         {
             get
             {
-                if (_modifierValueField == null)
-                {
-                    _modifierValueField = typeof(ModifierDescription).GetField("value", 
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                }
+                InitializeSetterDelegates();
                 return _modifierValueField;
             }
         }
         
-        private static System.Reflection.FieldInfo StatBaseValueField
+        private static FieldInfo StatBaseValueField
         {
             get
             {
-                if (_statBaseValueField == null)
-                {
-                    _statBaseValueField = typeof(Stat).GetField("baseValue", 
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                }
+                InitializeSetterDelegates();
                 return _statBaseValueField;
             }
         }
@@ -555,13 +609,20 @@ namespace BossRush
                 // 收集所有可调整的属性（只收集 Display=true 的属性，与UI显示保持一致）
                 List<ReforgeableProperty> allProperties = new List<ReforgeableProperty>();
                 
-                // 1. 收集Modifiers（只收集Display=true的）
+                // 1. 收集Modifiers（只收集Display=true的，跳过已固定的属性）
                 if (item.Modifiers != null)
                 {
                     foreach (ModifierDescription mod in item.Modifiers)
                     {
                         // 只收集在UI上显示的属性
                         if (!mod.Display) continue;
+                        
+                        // 跳过已固定的属性（冷淬液功能）
+                        if (PropertyLockSystem.IsPropertyLocked(item, mod.Key, PropertyType.Modifier))
+                        {
+                            ModBehaviour.DevLog("[ReforgeSystem] 跳过已固定属性: " + mod.Key + " (Modifier)");
+                            continue;
+                        }
                         
                         allProperties.Add(new ReforgeableProperty
                         {
@@ -573,13 +634,20 @@ namespace BossRush
                     }
                 }
                 
-                // 2. 收集Stats（只收集Display=true的）
+                // 2. 收集Stats（只收集Display=true的，跳过已固定的属性）
                 if (item.Stats != null)
                 {
                     foreach (var stat in item.Stats)
                     {
                         // 只收集在UI上显示的属性
                         if (!stat.Display) continue;
+                        
+                        // 跳过已固定的属性（冷淬液功能）
+                        if (PropertyLockSystem.IsPropertyLocked(item, stat.Key, PropertyType.Stat))
+                        {
+                            ModBehaviour.DevLog("[ReforgeSystem] 跳过已固定属性: " + stat.Key + " (Stat)");
+                            continue;
+                        }
                         
                         allProperties.Add(new ReforgeableProperty
                         {
@@ -591,7 +659,7 @@ namespace BossRush
                     }
                 }
                 
-                // 3. 收集Variables（只收集Display=true的，跳过系统变量）
+                // 3. 收集Variables（只收集Display=true的，跳过系统变量和已固定的属性）
                 if (item.Variables != null)
                 {
                     foreach (var variable in item.Variables)
@@ -602,6 +670,14 @@ namespace BossRush
                         if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
                         // 跳过重铸数据（RF_MOD_、RF_STAT_、RF_VAR_ 前缀）
                         if (variable.Key.StartsWith("RF_")) continue;
+                        
+                        // 跳过已固定的属性（冷淬液功能）
+                        if (PropertyLockSystem.IsPropertyLocked(item, variable.Key, PropertyType.Variable))
+                        {
+                            ModBehaviour.DevLog("[ReforgeSystem] 跳过已固定属性: " + variable.Key + " (Variable)");
+                            continue;
+                        }
+                        
                         float varValue = 0f;
                         try { varValue = variable.GetFloat(); } catch { continue; }
                         allProperties.Add(new ReforgeableProperty
@@ -867,8 +943,7 @@ namespace BossRush
             }
         }
         
-        // 属性类型枚举
-        private enum PropertyType { Modifier, Stat, Variable }
+        // 注意：PropertyType 枚举已移至 PropertyLockSystem.cs 中定义为公开枚举
         
         // 可重铸属性结构
         private class ReforgeableProperty
@@ -981,17 +1056,26 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 修改Stat的基础值
+        /// 修改Stat的基础值（使用委托缓存优化性能）
         /// </summary>
         private static void ApplyStatValueChange(Stat stat, float newValue)
         {
             if (stat == null) return;
             try
             {
-                var field = StatBaseValueField;
-                if (field != null)
+                // 优先使用委托（性能更好）
+                if (_setStatValue != null)
                 {
-                    field.SetValue(stat, newValue);
+                    _setStatValue(stat, newValue);
+                }
+                else
+                {
+                    // 回退到反射
+                    var field = StatBaseValueField;
+                    if (field != null)
+                    {
+                        field.SetValue(stat, newValue);
+                    }
                 }
             }
             catch (Exception e)
@@ -1034,16 +1118,25 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 通过反射修改ModifierDescription的value字段
+        /// 通过委托或反射修改ModifierDescription的value字段（性能优化版本）
         /// </summary>
         private static void ApplyModifierValueChange(ModifierDescription mod, float newValue)
         {
             try
             {
-                var field = ModifierValueField;
-                if (field != null)
+                // 优先使用委托（性能更好，约10倍提升）
+                if (_setModifierValue != null)
                 {
-                    field.SetValue(mod, newValue);
+                    _setModifierValue(mod, newValue);
+                }
+                else
+                {
+                    // 回退到反射
+                    var field = ModifierValueField;
+                    if (field != null)
+                    {
+                        field.SetValue(mod, newValue);
+                    }
                 }
             }
             catch (Exception e)

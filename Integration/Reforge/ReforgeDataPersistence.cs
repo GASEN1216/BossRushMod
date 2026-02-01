@@ -134,6 +134,7 @@ namespace BossRush
         /// <summary>
         /// 尝试恢复物品的重铸数据（合并检查和恢复，只遍历一次）
         /// 支持 Modifier、Stat、Variable 三种属性类型
+        /// 性能优化：添加快速路径检查，减少不必要的遍历
         /// </summary>
         /// <returns>是否有恢复操作</returns>
         public static bool TryRestoreReforgeData(Item item)
@@ -143,6 +144,22 @@ namespace BossRush
             // 快速检查：已恢复的物品直接跳过
             int itemId = item.GetInstanceID();
             if (_restoredItems.Contains(itemId)) return false;
+            
+            // 快速路径检查：先扫描是否有 RF_ 前缀的变量
+            // 大多数物品没有重铸数据，这个检查可以快速跳过
+            bool hasRFData = false;
+            foreach (var variable in item.Variables)
+            {
+                if (variable.Key != null && variable.Key.Length > 3 &&
+                    variable.Key[0] == 'R' && variable.Key[1] == 'F' && variable.Key[2] == '_')
+                {
+                    hasRFData = true;
+                    break;
+                }
+            }
+            
+            // 没有重铸数据，快速返回
+            if (!hasRFData) return false;
 
             int restored = 0;
 
