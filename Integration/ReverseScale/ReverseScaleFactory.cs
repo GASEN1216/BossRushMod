@@ -86,8 +86,8 @@ namespace BossRush
         {
             var config = ReverseScaleConfig.Instance;
 
-            // 恢复生命值
-            LocalizationHelper.InjectLocalization("Var_" + ReverseScaleConfig.VAR_HEAL_PERCENT, L10n.T("恢复生命值", "Health Restore"));
+            // 恢复生命百分比
+            LocalizationHelper.InjectLocalization("Var_" + ReverseScaleConfig.VAR_HEAL_PERCENT, L10n.T("恢复生命百分比", "Health Restore %"));
 
             // 棱彩弹数量
             LocalizationHelper.InjectLocalization("Var_" + ReverseScaleConfig.VAR_BOLT_COUNT, L10n.T("棱彩弹数量", "Prismatic Bolts"));

@@ -2601,7 +2601,19 @@ namespace BossRush
                             hasNumericValue = true;
                         }
                     }
-                    
+
+                    // 检查 ItemVariableEntry（用于逆鳞等自定义装备的 Variables 属性）
+                    if (key == null)
+                    {
+                        Component varEntry = child.GetComponent("ItemVariableEntry");
+                        if (varEntry != null)
+                        {
+                            key = GetPropertyKeyFromEntry(varEntry, "ItemVariableEntry");
+                            propType = PropertyType.Variable;
+                            hasNumericValue = true;
+                        }
+                    }
+
                     // 跳过无效条目
                     if (string.IsNullOrEmpty(key) || !hasNumericValue) continue;
                     
