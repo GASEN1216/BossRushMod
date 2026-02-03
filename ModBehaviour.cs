@@ -946,6 +946,86 @@ namespace BossRush
             
             // 初始化成就页面UI（确保实例存在，DontDestroyOnLoad 已在 AchievementView 内部处理）
             AchievementView.EnsureInstance();
+            
+            // 初始化好感度系统
+            InitializeAffinitySystem();
+        }
+        
+        /// <summary>
+        /// 初始化好感度系统
+        /// </summary>
+        private void InitializeAffinitySystem()
+        {
+            try
+            {
+                // 初始化好感度管理器
+                AffinityManager.Initialize();
+                
+                // 注册哥布林NPC配置
+                AffinityManager.RegisterNPC(new GoblinAffinityConfig());
+                
+                // 订阅好感度变化事件（显示UI动画）
+                AffinityManager.OnAffinityChanged += OnAffinityChanged;
+                
+                // 订阅等级提升事件（显示通知）
+                AffinityManager.OnLevelUp += OnAffinityLevelUp;
+                
+                DevLog("[BossRush] 好感度系统初始化完成");
+                
+                // 添加好感度系统测试工具（DevMode下F11打开）
+                gameObject.AddComponent<AffinitySystemTest>();
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 好感度系统初始化失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 好感度变化事件处理
+        /// </summary>
+        private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)
+        {
+            int delta = newPoints - oldPoints;
+            AffinityUIManager.ShowAffinityChange(npcId, delta);
+        }
+        
+        /// <summary>
+        /// 好感度等级提升事件处理
+        /// </summary>
+        private void OnAffinityLevelUp(string npcId, int newLevel)
+        {
+            AffinityUIManager.ShowLevelUpNotification(npcId, newLevel);
+            
+            // 检查是否需要触发故事对话（哥布林叮当5级和10级）
+            if (npcId == GoblinAffinityConfig.NPC_ID)
+            {
+                if (newLevel == 5 || newLevel == 10)
+                {
+                    // 延迟触发故事对话，等待等级提升通知显示完成
+                    StartCoroutine(TriggerGoblinStoryDelayed(newLevel));
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 延迟触发哥布林故事对话
+        /// </summary>
+        private System.Collections.IEnumerator TriggerGoblinStoryDelayed(int storyLevel)
+        {
+            // 等待2秒，让等级提升通知显示完成
+            yield return new WaitForSeconds(2f);
+            
+            // 查找哥布林NPC控制器并触发故事对话
+            if (goblinNPCInstance != null)
+            {
+                GoblinNPCController controller = goblinNPCInstance.GetComponent<GoblinNPCController>();
+                if (controller != null)
+                {
+                    controller.TriggerStoryDialogue(storyLevel);
+                    DevLog("[BossRush] 触发哥布林 " + storyLevel + " 级故事对话");
+                }
+            }
         }
 
         void OnGUI()
@@ -966,6 +1046,9 @@ namespace BossRush
             
             // 更新UI消息
             UpdateMessage();
+            
+            // 更新好感度系统延迟保存
+            AffinityManager.UpdateDeferredSave();
             
             // 龙套装冲刺检测
             UpdateDragonDash();
@@ -1407,19 +1490,7 @@ namespace BossRush
                 }
             }
             
-            // 调试快捷键 F11：给予生日蛋糕并显示祝福横幅
-            if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F11))
-            {
-                try
-                {
-                    DevLog("[BossRush] F11 调试：给予生日蛋糕");
-                    DebugGiveBirthdayCake();
-                }
-                catch (Exception e)
-                {
-                    DevLog("[BossRush] F11 调试给予生日蛋糕失败: " + e.Message);
-                }
-            }
+            // F11 已分配给 AffinitySystemTest（好感度系统测试UI）
             
             // 调试快捷键 F12：打开NPC传送UI
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F12))
@@ -1482,6 +1553,16 @@ namespace BossRush
             
             // 取消订阅成就追踪事件（物品拾取、血量变化）
             UnsubscribeAchievementEvents();
+            
+            // 取消订阅好感度系统事件并保存数据
+            try
+            {
+                AffinityManager.OnAffinityChanged -= OnAffinityChanged;
+                AffinityManager.OnLevelUp -= OnAffinityLevelUp;
+                AffinityManager.FlushSave();  // 强制保存未保存的数据
+                AffinityUIManager.Cleanup();
+            }
+            catch { }
 
             // 卸载实体模型工厂资源
             try
@@ -1507,6 +1588,10 @@ namespace BossRush
             
             // [性能优化] 场景加载时刷新对象缓存（BoxCollider、NotificationText 等）
             ObjectCache.RefreshIfNeeded();
+            
+            // 场景切换时清理好感度系统UI缓存
+            AffinityUIManager.OnSceneUnload();
+            AffinityManager.OnSceneUnload();
             
             OnSceneLoaded_Integration(scene, mode);
         }
@@ -3825,7 +3910,7 @@ namespace BossRush
         /// <summary>
         /// 显示大横幅（使用游戏通知系统）
         /// </summary>
-        private void ShowBigBanner(string text)
+        public void ShowBigBanner(string text)
         {
             ShowBigBanner_UIAndSigns(text);
         }

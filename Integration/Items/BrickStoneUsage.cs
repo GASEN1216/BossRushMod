@@ -8,6 +8,7 @@
 // ============================================================================
 
 using System;
+using System.Collections;
 using UnityEngine;
 using ItemStatsSystem;
 using Duckov.UI.DialogueBubbles;
@@ -67,8 +68,13 @@ namespace BossRush
                 
                 // 有哥布林：召唤哥布林跑向玩家
                 // 物品消耗由游戏框架自动处理，这里只需要触发召唤逻辑
-                goblinController.RunToPlayer();
-                ModBehaviour.DevLog("[BrickStone] 成功召唤哥布林");
+                // 使用新的召唤方法，会在到达后先停下来再显示对话
+                goblinController.RunToPlayerWithDialogue();
+                
+                // 降低好感度（砖石是假钻石，哥布林会生气）- 使用新的通用API
+                AffinityManager.AddPoints(GoblinAffinityConfig.NPC_ID, GoblinAffinityConfig.BRICK_STONE_PENALTY);
+                
+                ModBehaviour.DevLog("[BrickStone] 成功召唤哥布林，好感度降低: " + GoblinAffinityConfig.BRICK_STONE_PENALTY);
             }
             catch (Exception e)
             {

@@ -171,6 +171,32 @@ namespace BossRush
             new string[] { "有什么需要寄存的东西也可以找我，收费公道童叟无欺！", "If you need to store anything, come find me. Fair prices, no tricks!" }
         };
         
+        // ============================================================================
+        // 哥布林叮当5级故事对话（大对话系统）- 叮当的过去
+        // ============================================================================
+        private static readonly string[][] GOBLIN_STORY_LEVEL5_DIALOGUES = new string[][]
+        {
+            new string[] { "...你想知道叮当的故事吗？叮当从来没跟别人说过...", "...Do you want to know Dingdang's story? Dingdang has never told anyone..." },
+            new string[] { "叮当是在J-Lab被'创造'出来的，他们叫叮当'智慧哥布林实验体007号'。", "Dingdang was 'created' in J-Lab, they called Dingdang 'Intelligent Goblin Test Subject 007'." },
+            new string[] { "叮当的脸...这张永远在笑的脸，也是他们做的。他们说笑脸更容易被接受...", "Dingdang's face... this forever smiling face, they did this too. They said a smile is more acceptable..." },
+            new string[] { "叮当想哭的时候...也哭不出来...你能理解吗？", "When Dingdang wants to cry... Dingdang can't... can you understand?" },
+            new string[] { "后来叮当逃出来了，但那些哥布林说叮当是'怪胎'，他们欺负叮当...", "Later Dingdang escaped, but those goblins called Dingdang a 'freak', they bullied Dingdang..." },
+            new string[] { "...谢谢你愿意听叮当说这些。你是第一个愿意听的人...", "...Thank you for listening. You're the first person willing to listen..." }
+        };
+        
+        // ============================================================================
+        // 哥布林叮当10级故事对话（大对话系统）- 叮当的心愿
+        // ============================================================================
+        private static readonly string[][] GOBLIN_STORY_LEVEL10_DIALOGUES = new string[][]
+        {
+            new string[] { "...叮当有件事想告诉你。", "...Dingdang has something to tell you." },
+            new string[] { "在鸭科夫这个世界里，每个人都在为了生存而挣扎。叮当也是一样...", "In this world of Duckov, everyone struggles to survive. Dingdang is the same..." },
+            new string[] { "叮当见过很多人，但他们都只是路过...只有你愿意停下来...", "Dingdang has met many people, but they all just passed by... only you were willing to stop..." },
+            new string[] { "叮当一直在想，这个世界的'真相'是什么？为什么会有J-Lab？", "Dingdang always wonders, what is the 'truth' of this world? Why is there J-Lab?" },
+            new string[] { "叮当有一个心愿...叮当希望有一天，能和你一起找到答案。", "Dingdang has a wish... Dingdang hopes that one day, we can find the answer together." },
+            new string[] { "因为你是叮当...叮当最好的朋友。这次叮当的笑脸...是真心的。谢谢你。", "Because you are Dingdang's... Dingdang's best friend. This time Dingdang's smile... is genuine. Thank you." }
+        };
+        
         // 快递员随机对话（中英文对照）
         private static readonly string[][] COURIER_DIALOGUES = new string[][]
         {
@@ -545,6 +571,37 @@ namespace BossRush
             string probability = L10n.T("重铸概率", "Reforge Probability");
             LocalizationHelper.InjectLocalization("BossRush_ReforgeProbability", probability);
             
+            // 聊天选项
+            string chatOption = L10n.T("聊天", "Chat");
+            LocalizationHelper.InjectLocalization("BossRush_Chat", chatOption);
+            
+            // 赠送礼物选项
+            string giftOption = L10n.T("赠送礼物", "Give Gift");
+            LocalizationHelper.InjectLocalization("BossRush_GiveGift", giftOption);
+            
+            // 商店选项
+            string shopOption = L10n.T("商店", "Shop");
+            LocalizationHelper.InjectLocalization("BossRush_GoblinShop", shopOption);
+            LocalizationHelper.InjectLocalization("BossRush_NPCShop", shopOption);  // 通用NPC商店交互键
+            
+            // 哥布林主交互选项（交互组名称）
+            string goblinNPC = L10n.T("叮当", "Dingdang");
+            LocalizationHelper.InjectLocalization("BossRush_GoblinNPC", goblinNPC);
+            
+            // 哥布林5级故事对话（大对话系统）
+            for (int i = 0; i < GOBLIN_STORY_LEVEL5_DIALOGUES.Length; i++)
+            {
+                string dialogue = L10n.T(GOBLIN_STORY_LEVEL5_DIALOGUES[i][0], GOBLIN_STORY_LEVEL5_DIALOGUES[i][1]);
+                LocalizationHelper.InjectLocalization("BossRush_GoblinStory5_" + i, dialogue);
+            }
+            
+            // 哥布林10级故事对话（大对话系统）
+            for (int i = 0; i < GOBLIN_STORY_LEVEL10_DIALOGUES.Length; i++)
+            {
+                string dialogue = L10n.T(GOBLIN_STORY_LEVEL10_DIALOGUES[i][0], GOBLIN_STORY_LEVEL10_DIALOGUES[i][1]);
+                LocalizationHelper.InjectLocalization("BossRush_GoblinStory10_" + i, dialogue);
+            }
+            
             ModBehaviour.DevLog("[LocalizationInjector] 哥布林NPC本地化注入完成");
         }
         
@@ -575,6 +632,32 @@ namespace BossRush
         public static int GetCourierDialogueCount()
         {
             return COURIER_DIALOGUES.Length;
+        }
+        
+        /// <summary>
+        /// 获取哥布林5级故事对话的本地化键数组
+        /// </summary>
+        public static string[] GetGoblinStory5DialogueKeys()
+        {
+            string[] keys = new string[GOBLIN_STORY_LEVEL5_DIALOGUES.Length];
+            for (int i = 0; i < GOBLIN_STORY_LEVEL5_DIALOGUES.Length; i++)
+            {
+                keys[i] = "BossRush_GoblinStory5_" + i;
+            }
+            return keys;
+        }
+        
+        /// <summary>
+        /// 获取哥布林10级故事对话的本地化键数组
+        /// </summary>
+        public static string[] GetGoblinStory10DialogueKeys()
+        {
+            string[] keys = new string[GOBLIN_STORY_LEVEL10_DIALOGUES.Length];
+            for (int i = 0; i < GOBLIN_STORY_LEVEL10_DIALOGUES.Length; i++)
+            {
+                keys[i] = "BossRush_GoblinStory10_" + i;
+            }
+            return keys;
         }
 
         /// <summary>

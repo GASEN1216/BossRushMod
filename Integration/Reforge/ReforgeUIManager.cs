@@ -429,10 +429,10 @@ namespace BossRush
                 decomposeView.Close();
             }
             
-            // 通知哥布林对话结束
+            // 通知哥布林对话结束，显示告别对话
             if (currentController != null)
             {
-                currentController.EndDialogue();
+                currentController.EndDialogueWithStay(10f, true);  // 重铸UI关闭时显示告别对话
                 currentController = null;
             }
             
@@ -2315,10 +2315,10 @@ namespace BossRush
         /// </summary>
         public static void NotifyUIClosed()
         {
-            // 通知哥布林对话结束
+            // 通知哥布林对话结束，显示告别对话
             if (currentController != null)
             {
-                currentController.EndDialogue();
+                currentController.EndDialogueWithStay(10f, true);  // 重铸UI关闭时显示告别对话
                 currentController = null;
             }
         }
