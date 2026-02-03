@@ -447,6 +447,9 @@ namespace BossRush
         /// </summary>
         private async UniTaskVoid TriggerStoryDialogueAsync(int storyLevel)
         {
+            // 记录是否是10级故事（用于决定结束后的停留时间）
+            bool isLevel10Story = (storyLevel == 10);
+            
             try
             {
                 isInStoryDialogue = true;
@@ -526,17 +529,28 @@ namespace BossRush
             {
                 isInStoryDialogue = false;
                 
-                // 【修复】重置对话状态
-                isInDialogue = false;
-                isIdling = false;
-                
                 // 恢复待机状态
                 StopIdleAnimation();
                 
-                // 恢复移动
-                if (movement != null)
+                // 【修复】10级故事对话后，停留10秒再恢复走路
+                if (isLevel10Story)
                 {
-                    movement.ResumeWalking();
+                    ModBehaviour.DevLog("[GoblinNPC] 10级故事对话结束，停留10秒后再离开");
+                    // 使用 EndDialogueWithStay 来处理停留和恢复走路
+                    // 不显示告别对话（showFarewell=false），因为已经有礼物对话了
+                    EndDialogueWithStay(10f, false);
+                }
+                else
+                {
+                    // 非10级故事，直接重置状态并恢复走路
+                    isInDialogue = false;
+                    isIdling = false;
+                    
+                    // 恢复移动
+                    if (movement != null)
+                    {
+                        movement.ResumeWalking();
+                    }
                 }
             }
         }
