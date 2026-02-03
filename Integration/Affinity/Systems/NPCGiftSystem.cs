@@ -110,52 +110,69 @@ namespace BossRush
         public static int CalculateGiftValue(string npcId, Item item)
         {
             if (item == null) return 0;
-            
+
             var config = AffinityManager.GetNPCConfig(npcId);
             var giftConfig = config as INPCGiftConfig;
-            
+
             int typeId = GetItemTypeId(item);
-            
+
             // 检查负向物品列表
             if (giftConfig?.NegativeItems != null && giftConfig.NegativeItems.TryGetValue(typeId, out int penalty))
             {
                 return -penalty;
             }
-            
+
             // 检查正向物品列表
             if (giftConfig?.PositiveItems != null && giftConfig.PositiveItems.TryGetValue(typeId, out int bonus))
             {
                 return bonus;
             }
-            
+
+            // 检查正向标签列表（哥布林特殊：喜欢配方和蓝图）
+            if (HasPositiveTag(npcId, item))
+            {
+                // 使用默认喜欢值
+                if (config?.GiftValues != null && config.GiftValues.TryGetValue("Liked", out int likedValue))
+                {
+                    return likedValue;
+                }
+                return 80; // 默认喜欢值
+            }
+
             // 使用基础计算
             return GetBaseGiftValue(item, config);
         }
-        
+
         /// <summary>
         /// 获取物品的反应类型
         /// </summary>
         public static GiftReactionType GetGiftReactionType(string npcId, Item item)
         {
             if (item == null) return GiftReactionType.Normal;
-            
+
             var config = AffinityManager.GetNPCConfig(npcId);
             var giftConfig = config as INPCGiftConfig;
-            
+
             if (giftConfig == null) return GiftReactionType.Normal;
-            
+
             int typeId = GetItemTypeId(item);
-            
+
             if (giftConfig.NegativeItems != null && giftConfig.NegativeItems.ContainsKey(typeId))
             {
                 return GiftReactionType.Negative;
             }
-            
+
             if (giftConfig.PositiveItems != null && giftConfig.PositiveItems.ContainsKey(typeId))
             {
                 return GiftReactionType.Positive;
             }
-            
+
+            // 检查正向标签列表
+            if (HasPositiveTag(npcId, item))
+            {
+                return GiftReactionType.Positive;
+            }
+
             return GiftReactionType.Normal;
         }
         
@@ -247,7 +264,7 @@ namespace BossRush
         private static int GetItemTypeId(Item item)
         {
             if (item == null) return 0;
-            
+
             try
             {
                 if (!_typeIdFieldCached)
@@ -256,17 +273,47 @@ namespace BossRush
                         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     _typeIdFieldCached = true;
                 }
-                
+
                 if (_typeIdField != null)
                 {
                     return (int)_typeIdField.GetValue(item);
                 }
             }
             catch { }
-            
+
             return 0;
         }
-        
+
+        /// <summary>
+        /// 检查物品是否拥有NPC喜欢的标签
+        /// </summary>
+        private static bool HasPositiveTag(string npcId, Item item)
+        {
+            if (item == null || item.Tags == null || item.Tags.Count == 0)
+                return false;
+
+            // 目前只有哥布林支持标签偏好
+            if (npcId == GoblinAffinityConfig.NPC_ID)
+            {
+                var goblinConfig = new GoblinAffinityConfig();
+                var positiveTags = goblinConfig.PositiveTags;
+
+                if (positiveTags != null && positiveTags.Count > 0)
+                {
+                    foreach (var tag in item.Tags)
+                    {
+                        if (tag != null && positiveTags.Contains(tag.name))
+                        {
+                            ModBehaviour.DevLog("[NPCGift] 物品拥有喜欢的标签: " + tag.name);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// 获取物品基础好感度增益
         /// </summary>

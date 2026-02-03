@@ -137,12 +137,31 @@ namespace BossRush
                 {
                     _positiveItems = new Dictionary<int, int>
                     {
-                        // 在这里添加叮当喜欢的物品TypeID
-                        // 格式: { TypeID, 额外加成 }
-                        // 例如: { 12345, 0 } 表示使用默认喜欢值80点
+                        // 所有NPC都喜欢的物品
+                        { 1254, 500 },      // +500好感度
+                        { 500002, 150 }     // +150好感度
                     };
                 }
                 return _positiveItems;
+            }
+        }
+
+        // 喜欢的物品标签列表
+        // 拥有这些标签的物品都会被视为喜欢的礼物
+        private static HashSet<string> _positiveTags;
+        public HashSet<string> PositiveTags
+        {
+            get
+            {
+                if (_positiveTags == null)
+                {
+                    _positiveTags = new HashSet<string>
+                    {
+                        "Formula",           // 配方
+                        "Formula_Blueprint"  // 高级工作台蓝图
+                    };
+                }
+                return _positiveTags;
             }
         }
         
@@ -157,7 +176,10 @@ namespace BossRush
                 {
                     _negativeItems = new Dictionary<int, int>
                     {
-                        { BrickStoneConfig.TYPE_ID, 0 }  // 砖石（假钻石）- 使用默认不喜欢值
+                        { BrickStoneConfig.TYPE_ID, 0 },  // 砖石（假钻石）- 使用默认不喜欢值
+                        { 115, 0 },   // 不喜欢的物品
+                        { 878, 0 },   // 不喜欢的物品
+                        { 1283, 0 }   // 不喜欢的物品
                     };
                 }
                 return _negativeItems;
