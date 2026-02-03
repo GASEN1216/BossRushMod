@@ -498,7 +498,7 @@ namespace BossRush
                 {
                     await DialogueManager.ShowDialogueSequence(dialogueActor, dialogueKeys);
                     ModBehaviour.DevLog("[GoblinNPC] 故事对话序列完成");
-                    
+
                     // 对话完成后，标记故事已触发（持久化保存）
                     if (storyLevel == 5)
                     {
@@ -507,6 +507,9 @@ namespace BossRush
                     else if (storyLevel == 10)
                     {
                         AffinityManager.MarkStory10Triggered(GoblinAffinityConfig.NPC_ID);
+
+                        // 10级故事对话完成后，赠送叮当涂鸦礼物
+                        GiveDrawingGift();
                     }
                 }
                 else
@@ -544,6 +547,38 @@ namespace BossRush
         public bool IsInStoryDialogue
         {
             get { return isInStoryDialogue; }
+        }
+
+        /// <summary>
+        /// 10级故事对话完成后赠送叮当涂鸦礼物
+        /// 显示气泡对话、冒爱心特效，然后在脚下掉落礼物
+        /// </summary>
+        private void GiveDrawingGift()
+        {
+            try
+            {
+                // 1. 显示冒爱心特效
+                ShowLoveHeartBubble();
+
+                // 2. 显示气泡对话 "叮当送给你一份礼物！"
+                string giftMessage = L10n.T("叮当送给你一份礼物！", "Dingdang gives you a gift!");
+                NPCDialogueSystem.ShowDialogue(GoblinAffinityConfig.NPC_ID, transform, giftMessage);
+
+                // 3. 在哥布林脚下掉落叮当涂鸦
+                Vector3 dropPosition = transform.position;
+                if (DingdangDrawingConfig.SpawnAtPosition(dropPosition))
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 10级礼物已掉落：叮当涂鸦");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] [WARNING] 叮当涂鸦掉落失败");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[GoblinNPC] [ERROR] 赠送礼物失败: " + e.Message);
+            }
         }
     }
 }
