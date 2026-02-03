@@ -1260,8 +1260,8 @@ namespace BossRush
         /// </summary>
         private static void ResetUIState(int maxMoney)
         {
-            // 计算基础费用（物品价值的1/10）
-            int baseCost = selectedItem != null ? ReforgeSystem.GetBaseCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
+            // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
+            int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
             
             // 重置滑块
             if (moneySlider != null)
@@ -1288,8 +1288,8 @@ namespace BossRush
         /// </summary>
         private static void UpdateUIStateKeepSlider(int maxMoney)
         {
-            // 计算基础费用（物品价值的1/10）
-            int baseCost = selectedItem != null ? ReforgeSystem.GetBaseCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
+            // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
+            int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
             
             if (moneySlider != null)
             {
@@ -1342,25 +1342,27 @@ namespace BossRush
         private static void UpdateReforgeButtonInteractable()
         {
             if (reforgeButton == null) return;
-            
+
             if (selectedItem == null)
             {
                 reforgeButton.interactable = false;
                 return;
             }
-            
-            // 计算基础费用
-            int baseCost = ReforgeSystem.GetBaseCost(selectedItem);
+
+            // 计算基础费用（应用哥布林好感度折扣）
+            int baseCost = ReforgeSystem.GetDiscountedCost(selectedItem);
             int playerMoney = GetPlayerMoney();
-            
+            float discount = ReforgeSystem.GetCurrentDiscount();
+
             // 检查玩家金钱是否足够支付基础费用
             bool canAfford = playerMoney >= baseCost;
             reforgeButton.interactable = canAfford;
-            
+
             // 如果金钱不足，更新概率显示提示
             if (!canAfford && probabilityText != null)
             {
-                probabilityText.text = string.Format("<color=#FF4D4D>金钱不足！\n基础费用: {0}\n当前金钱: {1}</color>", baseCost, playerMoney);
+                string discountInfo = discount > 0 ? string.Format(" ({0:P0}折扣)", discount) : "";
+                probabilityText.text = string.Format("<color=#FF4D4D>金钱不足！\n基础费用: {0}{1}\n当前金钱: {2}</color>", baseCost, discountInfo, playerMoney);
                 probabilityText.color = Color.white;
             }
         }

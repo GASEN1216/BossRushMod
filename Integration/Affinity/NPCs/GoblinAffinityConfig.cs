@@ -91,8 +91,10 @@ namespace BossRush
                     _unlocksByLevel = new Dictionary<int, string[]>
                     {
                         { 2, new[] { L10n.T("冷萃液", "Cold Quench Fluid") } },
+                        { 3, new[] { L10n.T("10%折扣", "10% Discount") } },
                         { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
-                        { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)") } }
+                        { 6, new[] { L10n.T("15%折扣", "15% Discount") } },
+                        { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount") } }
                     };
                 }
                 return _unlocksByLevel;
@@ -109,8 +111,9 @@ namespace BossRush
                 {
                     _discountsByLevel = new Dictionary<int, float>
                     {
-                        { 3, 0.05f },
-                        { 7, 0.10f }
+                        { 3, 0.10f },
+                        { 6, 0.15f },
+                        { 10, 0.20f }
                     };
                 }
                 return _discountsByLevel;

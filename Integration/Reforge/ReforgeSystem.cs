@@ -291,6 +291,25 @@ namespace BossRush
             int baseCost = Mathf.RoundToInt(itemValue / 10f);
             return Mathf.Max(MIN_REFORGE_COST, baseCost);
         }
+
+        /// <summary>
+        /// 计算带哥布林好感度折扣的重铸费用
+        /// </summary>
+        public static int GetDiscountedCost(Item item)
+        {
+            int baseCost = GetBaseCost(item);
+            float discount = AffinityManager.GetDiscount(GoblinAffinityConfig.NPC_ID);
+            int discountedCost = Mathf.RoundToInt(baseCost * (1f - discount));
+            return Mathf.Max(MIN_REFORGE_COST, discountedCost);
+        }
+
+        /// <summary>
+        /// 获取当前哥布林好感度折扣率（用于UI显示）
+        /// </summary>
+        public static float GetCurrentDiscount()
+        {
+            return AffinityManager.GetDiscount(GoblinAffinityConfig.NPC_ID);
+        }
         
         /// <summary>
         /// 计算最终概率p（用于判定是否修改 + 幅度抽取）
