@@ -807,6 +807,7 @@ namespace BossRush
         
         /// <summary>
         /// 立即保存所有好感度数据
+        /// 使用游戏原生 Saves.SavesSystem，与快递员首次见面等功能一致
         /// </summary>
         private static void SaveImmediate()
         {
@@ -818,44 +819,52 @@ namespace BossRush
                 {
                     allData.npcDataList.Add(kvp.Value.Clone());
                 }
-                
+
                 // 序列化为JSON
                 string json = JsonUtility.ToJson(allData);
-                
-                // 使用 ModConfigAPI 保存
-                ModConfigAPI.SafeSave(AffinityConfig.MOD_NAME, AffinityConfig.SAVE_KEY, json);
-                
+
+                // 使用游戏原生存档系统保存（与快递员首次见面一致）
+                Saves.SavesSystem.Save<string>(AffinityConfig.SAVE_KEY, json);
+
                 // 重置脏标记和保存时间
                 isDirty = false;
                 lastSaveTime = Time.realtimeSinceStartup;
-                
-                ModBehaviour.DevLog("[Affinity] 好感度数据已保存");
+
+                ModBehaviour.DevLog("[Affinity] 好感度数据已保存（使用SavesSystem）");
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[Affinity] [WARNING] 保存好感度数据失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 加载所有好感度数据
+        /// 使用游戏原生 Saves.SavesSystem，与快递员首次见面等功能一致
         /// </summary>
         public static void Load()
         {
             try
             {
-                // 使用 ModConfigAPI 加载
-                string json = ModConfigAPI.SafeLoad(AffinityConfig.MOD_NAME, AffinityConfig.SAVE_KEY, "");
-                
-                if (string.IsNullOrEmpty(json))
+                // 检查是否存在存档数据
+                if (!Saves.SavesSystem.KeyExisits(AffinityConfig.SAVE_KEY))
                 {
                     ModBehaviour.DevLog("[Affinity] 没有找到存档数据，使用默认值");
                     return;
                 }
-                
+
+                // 使用游戏原生存档系统加载（与快递员首次见面一致）
+                string json = Saves.SavesSystem.Load<string>(AffinityConfig.SAVE_KEY);
+
+                if (string.IsNullOrEmpty(json))
+                {
+                    ModBehaviour.DevLog("[Affinity] 存档数据为空，使用默认值");
+                    return;
+                }
+
                 // 反序列化
                 AllAffinityData allData = JsonUtility.FromJson<AllAffinityData>(json);
-                
+
                 if (allData != null && allData.npcDataList != null)
                 {
                     npcDataMap.Clear();
@@ -866,7 +875,7 @@ namespace BossRush
                             npcDataMap[data.npcId] = data;
                         }
                     }
-                    ModBehaviour.DevLog("[Affinity] 好感度数据已加载，NPC数量: " + npcDataMap.Count);
+                    ModBehaviour.DevLog("[Affinity] 好感度数据已加载（使用SavesSystem），NPC数量: " + npcDataMap.Count);
                 }
             }
             catch (Exception e)
