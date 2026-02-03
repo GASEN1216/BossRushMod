@@ -1,15 +1,15 @@
 // ============================================================================
-// GoblinAffinityConfig.cs - 哥布林"叮当"好感度配置（重构版）
+// GoblinAffinityConfig.cs - 哥布林"叮当"好感度配置
 // ============================================================================
-// 模块说明：
-//   哥布林NPC"叮当"的专属好感度配置。
-//   实现所有NPC配置接口：INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, INPCShopConfig
-//   好感度系统参考星露谷物语设计，每心250点，最高10心2500点。
+// 哥布林NPC"叮当"的专属好感度配置。
+// 实现所有NPC配置接口：INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, 
+//                      INPCShopConfig, INPCGiftContainerConfig
+// 好感度系统参考星露谷物语设计，每心250点，最高10心2500点。
 //   
-//   叮当的背景故事：
-//   叮当是J-Lab实验室创造的有智慧的哥布林，因为不够野蛮而被其他哥布林欺负。
-//   他的笑脸是实验室强制刻上去的，即使难过也无法哭泣。
-//   在Duckov这个危险的鸭子世界中，他渴望找到真正的朋友。
+// 叮当的背景故事：
+// 叮当是J-Lab实验室创造的有智慧的哥布林，因为不够野蛮而被其他哥布林欺负。
+// 他的笑脸是实验室强制刻上去的，即使难过也无法哭泣。
+// 在Duckov这个危险的鸭子世界中，他渴望找到真正的朋友。
 // ============================================================================
 
 using System.Collections.Generic;
@@ -19,7 +19,7 @@ namespace BossRush
     /// <summary>
     /// 哥布林"叮当"好感度配置
     /// </summary>
-    public class GoblinAffinityConfig : INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, INPCShopConfig
+    public class GoblinAffinityConfig : INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, INPCShopConfig, INPCGiftContainerConfig
     {
         // ============================================================================
         // 常量定义
@@ -415,6 +415,37 @@ namespace BossRush
                 };
             }
         }
+        
+        // ============================================================================
+        // INPCGiftContainerConfig 实现
+        // ============================================================================
+        // 容器式礼物赠送UI配置
+        // 使用单格容器UI替代确认对话框，提供更好的礼物赠送体验
+        // ============================================================================
+        
+        /// <summary>
+        /// 容器标题本地化键
+        /// <para>显示在容器UI顶部："赠送礼物给叮当"</para>
+        /// </summary>
+        public string ContainerTitleKey => "BossRush_GoblinGift_ContainerTitle";
+        
+        /// <summary>
+        /// 赠送按钮文本本地化键
+        /// <para>显示在赠送按钮上："赠送"</para>
+        /// </summary>
+        public string GiftButtonTextKey => "BossRush_GoblinGift_GiftButton";
+        
+        /// <summary>
+        /// 空槽位提示文本本地化键
+        /// <para>当容器为空时显示："放入礼物"</para>
+        /// </summary>
+        public string EmptySlotTextKey => "BossRush_GoblinGift_EmptySlot";
+        
+        /// <summary>
+        /// 是否使用容器式UI
+        /// <para>true: 使用新的容器式UI</para>
+        /// </summary>
+        public bool UseContainerUI => true;
         
         // ============================================================================
         // INPCDialogueConfig 实现

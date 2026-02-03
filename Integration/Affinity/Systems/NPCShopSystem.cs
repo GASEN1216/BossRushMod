@@ -220,6 +220,17 @@ namespace BossRush
             return shopConfig.GetDiscountForLevel(level);
         }
         
+        /// <summary>
+        /// 获取指定NPC的卖出加成率
+        /// 返回实际的 sellFactor（原版0.5，有折扣时更高）
+        /// </summary>
+        public static float GetSellFactor(string npcId)
+        {
+            float discount = GetDiscount(npcId);
+            // 卖出加成 = 基础0.5 + 折扣的一半
+            return 0.5f + (discount / 2f);
+        }
+        
         // ============================================================================
         // 私有方法 - 初始化
         // ============================================================================
@@ -255,12 +266,47 @@ namespace BossRush
             // 配置商品
             ConfigureShopEntries(npcId);
             
+            // 配置卖出加成（好感度折扣也影响卖出价格）
+            ConfigureSellBonus(npcId);
+            
             // 关键：手动缓存物品实例到 itemInstances 字典
             // 游戏原生商店在 Start() 中异步调用 CacheItemInstances()
             // 但我们是动态创建的商店，需要在 ShowUI() 之前手动填充
             CacheItemInstancesManually(npcId);
             
             ModBehaviour.DevLog("[NPCShop] 商店创建成功: " + npcId);
+        }
+        
+        /// <summary>
+        /// 配置卖出加成 - 好感度折扣也影响卖出价格
+        /// 原版 sellFactor = 0.5（卖出获得50%价值）
+        /// 有折扣时：sellFactor = 0.5 + discount/2（折扣的一半作为卖出加成）
+        /// 例如：20%折扣 → sellFactor = 0.6（卖出获得60%价值）
+        /// </summary>
+        private static void ConfigureSellBonus(string npcId)
+        {
+            if (currentShop == null) return;
+            
+            var config = AffinityManager.GetNPCConfig(npcId);
+            var shopConfig = config as INPCShopConfig;
+            
+            if (shopConfig == null) return;
+            
+            int level = AffinityManager.GetLevel(npcId);
+            float discount = shopConfig.GetDiscountForLevel(level);
+            
+            // 计算卖出加成：基础0.5 + 折扣的一半
+            // 这样20%折扣 = 卖出获得60%价值（比原版50%多10%）
+            float sellBonus = discount / 2f;
+            float newSellFactor = 0.5f + sellBonus;
+            
+            // 通过反射设置 sellFactor（公共字段）
+            currentShop.sellFactor = newSellFactor;
+            
+            if (discount > 0)
+            {
+                ModBehaviour.DevLog("[NPCShop] 卖出加成已配置: 折扣=" + (discount * 100) + "%, sellFactor=" + newSellFactor);
+            }
         }
         
         /// <summary>

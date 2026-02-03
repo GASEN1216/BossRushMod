@@ -602,6 +602,38 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization("BossRush_GoblinStory10_" + i, dialogue);
             }
             
+            // ============================================================================
+            // 礼物容器UI本地化（哥布林专属）
+            // ============================================================================
+            
+            // 哥布林礼物容器标题
+            string goblinGiftContainerTitle = L10n.T("赠送礼物给叮当", "Give Gift to Dingdang");
+            LocalizationHelper.InjectLocalization("BossRush_GoblinGift_ContainerTitle", goblinGiftContainerTitle);
+            
+            // 哥布林礼物赠送按钮
+            string goblinGiftButton = L10n.T("赠送", "Give");
+            LocalizationHelper.InjectLocalization("BossRush_GoblinGift_GiftButton", goblinGiftButton);
+            
+            // 哥布林礼物空槽位提示
+            string goblinGiftEmptySlot = L10n.T("放入礼物", "Place Gift");
+            LocalizationHelper.InjectLocalization("BossRush_GoblinGift_EmptySlot", goblinGiftEmptySlot);
+            
+            // ============================================================================
+            // 礼物容器UI本地化（通用默认值）
+            // ============================================================================
+            
+            // 默认礼物容器标题
+            string defaultGiftContainerTitle = L10n.T("赠送礼物", "Give Gift");
+            LocalizationHelper.InjectLocalization("BossRush_GiftContainer_DefaultTitle", defaultGiftContainerTitle);
+            
+            // 默认礼物赠送按钮
+            string defaultGiftButton = L10n.T("赠送", "Give");
+            LocalizationHelper.InjectLocalization("BossRush_GiftContainer_DefaultButton", defaultGiftButton);
+            
+            // 默认礼物空槽位提示
+            string defaultGiftEmptySlot = L10n.T("放入礼物", "Place Gift");
+            LocalizationHelper.InjectLocalization("BossRush_GiftContainer_DefaultEmptySlot", defaultGiftEmptySlot);
+            
             ModBehaviour.DevLog("[LocalizationInjector] 哥布林NPC本地化注入完成");
         }
         

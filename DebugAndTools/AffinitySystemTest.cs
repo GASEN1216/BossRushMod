@@ -25,6 +25,9 @@ namespace BossRush
         private string testLog = "";
         private Vector2 scrollPosition;
         
+        // UI窗口配置（可拖动）
+        private Rect windowRect = new Rect(10, 10, 420, 750);
+        
         // ============================================================================
         // Unity生命周期
         // ============================================================================
@@ -68,13 +71,17 @@ namespace BossRush
             // 仅在DevMode开启且测试UI可见时显示
             if (!ModBehaviour.DevModeEnabled || !testUIVisible) return;
             
-            // 绘制测试UI
-            GUILayout.BeginArea(new Rect(10, 10, 400, 600));
-            GUILayout.BeginVertical("box");
-            
-            GUILayout.Label("=== 好感度系统测试工具 (DevMode) ===", GUILayout.Height(25));
+            // 使用GUI.Window实现可拖动窗口
+            windowRect = GUI.Window(19870611, windowRect, DrawTestWindow, "好感度系统测试工具 (DevMode) - 可拖动");
+        }
+        
+        /// <summary>
+        /// 绘制测试窗口内容
+        /// </summary>
+        private void DrawTestWindow(int windowId)
+        {
             GUILayout.Label("按 F11 关闭此窗口", GUILayout.Height(20));
-            GUILayout.Space(10);
+            GUILayout.Space(5);
             
             // 当前状态
             GUILayout.Label("--- 当前状态 ---");
@@ -84,8 +91,8 @@ namespace BossRush
             float discount = AffinityManager.GetDiscount(TEST_NPC_ID);
             
             GUILayout.Label($"NPC: {TEST_NPC_ID}");
-            GUILayout.Label($"等级: {level} / 10");
-            GUILayout.Label($"点数: {points} / 1000");
+            GUILayout.Label($"等级: {level} / {AffinityManager.UNIFIED_MAX_LEVEL}");
+            GUILayout.Label($"点数: {points} / {AffinityManager.UNIFIED_MAX_POINTS}");
             GUILayout.Label($"进度: {progress:P1}");
             GUILayout.Label($"折扣: {discount:P0}");
             GUILayout.Space(10);
@@ -104,12 +111,12 @@ namespace BossRush
             if (GUILayout.Button("[0] 延迟保存测试")) TestDeferredSave();
             if (GUILayout.Button("[R] 重置今日聊天")) ResetTodayChat();
             if (GUILayout.Button("[D] 测试每日衰减")) TestDailyDecay();
-            if (GUILayout.Button("[F] 模拟衰减(跳过1天)")) SimulateDecay();
+            if (GUILayout.Button("[F] 模拟衰减(跳过2天)")) SimulateDecay();
             GUILayout.Space(10);
             
             // 测试日志
             GUILayout.Label("--- 测试日志 ---");
-            scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(200));
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(250));
             GUILayout.Label(testLog);
             GUILayout.EndScrollView();
             
@@ -118,8 +125,8 @@ namespace BossRush
                 testLog = "";
             }
             
-            GUILayout.EndVertical();
-            GUILayout.EndArea();
+            // 使窗口可拖动（拖动标题栏区域）
+            GUI.DragWindow(new Rect(0, 0, windowRect.width, 25));
         }
         
         // ============================================================================
@@ -172,8 +179,8 @@ namespace BossRush
             Log($"点数: {oldPoints} -> {newPoints} (+{TEST_POINTS_AMOUNT})");
             Log($"等级: {oldLevel} -> {newLevel}");
             
-            // 验证
-            int expectedPoints = Math.Min(1000, oldPoints + TEST_POINTS_AMOUNT);
+            // 验证（使用统一配置的最大点数）
+            int expectedPoints = Math.Min(AffinityManager.UNIFIED_MAX_POINTS, oldPoints + TEST_POINTS_AMOUNT);
             if (newPoints == expectedPoints)
             {
                 Log("✓ 点数增加正确");
@@ -218,7 +225,8 @@ namespace BossRush
         {
             Log("=== 测试: 设置满级 ===");
             
-            AffinityManager.SetPoints(TEST_NPC_ID, 1000);
+            // 使用统一配置的最大点数
+            AffinityManager.SetPoints(TEST_NPC_ID, AffinityManager.UNIFIED_MAX_POINTS);
             
             int level = AffinityManager.GetLevel(TEST_NPC_ID);
             int points = AffinityManager.GetPoints(TEST_NPC_ID);
@@ -228,7 +236,7 @@ namespace BossRush
             Log($"点数: {points}");
             Log($"折扣: {discount:P0}");
             
-            if (level == 10 && points == 1000)
+            if (level == AffinityManager.UNIFIED_MAX_LEVEL && points == AffinityManager.UNIFIED_MAX_POINTS)
             {
                 Log("✓ 满级设置正确");
             }
@@ -253,9 +261,10 @@ namespace BossRush
             Log($"等级: {level}");
             Log($"点数: {points}");
             
-            if (level == 0 && points == 0)
+            // 注意：0点对应1级（起始等级），不是0级
+            if (level == 1 && points == 0)
             {
-                Log("✓ 重置正确");
+                Log("✓ 重置正确（0点=1级）");
             }
             else
             {
@@ -303,10 +312,12 @@ namespace BossRush
             
             bool isUnlocked = NPCShopSystem.IsShopUnlocked(TEST_NPC_ID);
             float discount = NPCShopSystem.GetDiscount(TEST_NPC_ID);
+            float sellFactor = NPCShopSystem.GetSellFactor(TEST_NPC_ID);
             int level = AffinityManager.GetLevel(TEST_NPC_ID);
             
             Log($"商店解锁: {isUnlocked}");
             Log($"当前折扣: {discount:P0}");
+            Log($"卖出系数: {sellFactor:P0} (原版50%)");
             Log($"当前等级: {level}");
             
             // 验证解锁逻辑
@@ -318,6 +329,17 @@ namespace BossRush
             else
             {
                 Log($"✗ 商店解锁逻辑错误! 期望: {expectedUnlock}, 实际: {isUnlocked}");
+            }
+            
+            // 验证卖出加成逻辑
+            float expectedSellFactor = 0.5f + (discount / 2f);
+            if (Mathf.Approximately(sellFactor, expectedSellFactor))
+            {
+                Log("✓ 卖出加成逻辑正确");
+            }
+            else
+            {
+                Log($"✗ 卖出加成逻辑错误! 期望: {expectedSellFactor:P0}, 实际: {sellFactor:P0}");
             }
         }
         
