@@ -159,6 +159,15 @@ namespace BossRush
         /// 小数值属性阈值：预制体值≤此值时使用0~1范围，>此值时使用百分比范围
         /// </summary>
         private const float SMALL_VALUE_THRESHOLD = 1.0f;
+
+        /// <summary>
+        /// 强制使用0~1绝对范围的属性Key列表（如护甲值）
+        /// </summary>
+        private static readonly HashSet<string> FORCE_ABSOLUTE_RANGE_KEYS = new HashSet<string>
+        {
+            "HeadArmor",  // 头盔护甲值
+            "BodyArmor"   // 身体护甲值
+        };
         
         // ============================================================================
         // 保底机制常量
@@ -745,7 +754,9 @@ namespace BossRush
                     // 获取预制体原始值（用于范围限制和整数判定）
                     float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, prop.Value);
                     bool isInteger = IsIntegerProperty(prefabValue);
-                    bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD;
+                    // 判断是否为小数值属性，或者是强制使用0~1范围的属性（如护甲值）
+                    bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD ||
+                                        FORCE_ABSOLUTE_RANGE_KEYS.Contains(prop.Key);
                     
                     // Step 2: 抽幅度（使用原始概率baseP，保底不影响幅度）
                     float mag01 = RollMagnitude(baseP, random);
@@ -769,11 +780,20 @@ namespace BossRush
                     }
                     else if (isSmallValue)
                     {
-                        // 小数值属性（预制体值≤1）：使用0~1绝对范围
+                        // 小数值属性或强制绝对范围属性：使用0~1绝对范围
                         delta = sign * mag01 * MAX_DELTA_ABSOLUTE;
                         newValue = originalValue + delta;
-                        
-                        if (prefabValue > 0)
+
+                        // 检查是否为强制绝对范围的属性（如护甲值）
+                        bool isForceAbsolute = FORCE_ABSOLUTE_RANGE_KEYS.Contains(prop.Key);
+
+                        if (isForceAbsolute)
+                        {
+                            // 强制绝对范围属性：范围为 prefabValue-1 ~ prefabValue+1
+                            minValue = Mathf.Max(0f, prefabValue - MAX_DELTA_ABSOLUTE);
+                            maxValue = prefabValue + MAX_DELTA_ABSOLUTE;
+                        }
+                        else if (prefabValue > 0)
                         {
                             // 正数小值：范围0~2（预制体值的0%~200%）
                             minValue = 0f;
