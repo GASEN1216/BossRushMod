@@ -58,6 +58,11 @@ namespace BossRush
         public bool hasTriggeredStory10;
         
         /// <summary>
+        /// 上次衰减检查的游戏日期（用于每日衰减计算）
+        /// </summary>
+        public int lastDecayCheckDay;
+        
+        /// <summary>
         /// 创建默认数据
         /// </summary>
         public AffinityData()
@@ -70,6 +75,7 @@ namespace BossRush
             hasMet = false;
             hasTriggeredStory5 = false;
             hasTriggeredStory10 = false;
+            lastDecayCheckDay = -1;
         }
         
         /// <summary>
@@ -85,6 +91,7 @@ namespace BossRush
             this.hasMet = false;
             this.hasTriggeredStory5 = false;
             this.hasTriggeredStory10 = false;
+            this.lastDecayCheckDay = -1;
         }
         
         /// <summary>
@@ -101,7 +108,8 @@ namespace BossRush
                 lastChatDay = this.lastChatDay,
                 hasMet = this.hasMet,
                 hasTriggeredStory5 = this.hasTriggeredStory5,
-                hasTriggeredStory10 = this.hasTriggeredStory10
+                hasTriggeredStory10 = this.hasTriggeredStory10,
+                lastDecayCheckDay = this.lastDecayCheckDay
             };
         }
     }

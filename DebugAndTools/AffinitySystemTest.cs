@@ -59,6 +59,8 @@ namespace BossRush
             if (Input.GetKeyDown(KeyCode.Alpha9)) TestStoryTriggerStatus();
             if (Input.GetKeyDown(KeyCode.Alpha0)) TestDeferredSave();
             if (Input.GetKeyDown(KeyCode.R)) ResetTodayChat();
+            if (Input.GetKeyDown(KeyCode.D)) TestDailyDecay();
+            if (Input.GetKeyDown(KeyCode.F)) SimulateDecay();
         }
         
         void OnGUI()
@@ -101,6 +103,8 @@ namespace BossRush
             if (GUILayout.Button("[9] 故事触发状态")) TestStoryTriggerStatus();
             if (GUILayout.Button("[0] 延迟保存测试")) TestDeferredSave();
             if (GUILayout.Button("[R] 重置今日聊天")) ResetTodayChat();
+            if (GUILayout.Button("[D] 测试每日衰减")) TestDailyDecay();
+            if (GUILayout.Button("[F] 模拟衰减(跳过1天)")) SimulateDecay();
             GUILayout.Space(10);
             
             // 测试日志
@@ -451,6 +455,144 @@ namespace BossRush
             int newLastChatDay = AffinityManager.GetLastChatDay(TEST_NPC_ID);
             Log($"重置后聊天日: {newLastChatDay}");
             Log("✓ 今日聊天状态已重置，下次聊天可获得好感度");
+        }
+        
+        /// <summary>
+        /// 测试每日衰减系统（累积衰减版本）
+        /// </summary>
+        private void TestDailyDecay()
+        {
+            Log("=== 测试: 每日累积衰减系统 ===");
+            
+            int currentDay = NPCGiftSystem.GetCurrentGameDay();
+            int lastDecayDay = AffinityManager.GetLastDecayCheckDay(TEST_NPC_ID);
+            int lastChatDay = AffinityManager.GetLastChatDay(TEST_NPC_ID);
+            int lastGiftDay = AffinityManager.GetLastGiftDay(TEST_NPC_ID);
+            int points = AffinityManager.GetPoints(TEST_NPC_ID);
+            
+            Log($"当前游戏日: {currentDay}");
+            Log($"上次衰减检查日: {lastDecayDay}");
+            Log($"上次聊天日: {lastChatDay}");
+            Log($"上次送礼日: {lastGiftDay}");
+            Log($"当前好感度: {points}");
+            Log($"每日衰减值: {AffinityConfig.DAILY_DECAY_AMOUNT}");
+            Log($"衰减启用: {AffinityConfig.ENABLE_DAILY_DECAY}");
+            
+            // 计算需要检查的天数范围
+            if (lastDecayDay >= 0 && lastDecayDay < currentDay)
+            {
+                int startDay = lastDecayDay + 1;
+                int endDay = currentDay - 1;  // 当天不算
+                
+                if (startDay <= endDay)
+                {
+                    Log($"待检查范围: 第{startDay}天 ~ 第{endDay}天");
+                    
+                    // 计算这些天中有多少天没有互动
+                    int daysWithoutInteraction = 0;
+                    for (int day = startDay; day <= endDay; day++)
+                    {
+                        bool hadInteraction = (lastChatDay == day) || (lastGiftDay == day);
+                        if (!hadInteraction)
+                        {
+                            daysWithoutInteraction++;
+                        }
+                    }
+                    
+                    int potentialDecay = daysWithoutInteraction * AffinityConfig.DAILY_DECAY_AMOUNT;
+                    Log($"未互动天数: {daysWithoutInteraction}");
+                    Log($"预计衰减: {potentialDecay}点");
+                    
+                    if (daysWithoutInteraction > 0 && points > 0)
+                    {
+                        Log($"⚠ 警告: 有{daysWithoutInteraction}天未互动，下次遇到NPC将衰减{potentialDecay}点！");
+                    }
+                }
+                else
+                {
+                    Log("✓ 连续两天都来了，无需衰减");
+                }
+            }
+            else if (lastDecayDay >= currentDay)
+            {
+                Log("✓ 今天已检查过，不会重复衰减");
+            }
+            else
+            {
+                Log("ℹ 首次检查，将初始化日期");
+            }
+            
+            // 检查今天是否有互动（影响明天的衰减）
+            bool hadInteractionToday = (lastChatDay == currentDay) || (lastGiftDay == currentDay);
+            if (hadInteractionToday)
+            {
+                Log("✓ 今日已互动，明天不会因今天而衰减");
+            }
+            else if (points > 0)
+            {
+                Log("⚠ 今日未互动，如果明天不来，后天会衰减！");
+            }
+            else
+            {
+                Log("✓ 好感度为0，不会衰减");
+            }
+        }
+        
+        /// <summary>
+        /// 模拟衰减（将上次检查日期设为多天前，触发累积衰减）
+        /// </summary>
+        private void SimulateDecay()
+        {
+            Log("=== 模拟: 跳过2天触发累积衰减 ===");
+            
+            int currentDay = NPCGiftSystem.GetCurrentGameDay();
+            int oldPoints = AffinityManager.GetPoints(TEST_NPC_ID);
+            
+            Log($"当前游戏日: {currentDay}");
+            Log($"衰减前好感度: {oldPoints}");
+            
+            // 模拟场景：第1天互动，第2、3天没互动，第4天（今天）遇到NPC
+            // 应该衰减2次（第2、3天各扣一次），当天不算
+            int daysToSkip = 3;  // 上次检查日设为3天前
+            int lastCheckDay = currentDay - daysToSkip;
+            
+            AffinityManager.SetLastDecayCheckDay(TEST_NPC_ID, lastCheckDay);
+            
+            // 设置上次互动日为检查日当天（模拟那天有互动）
+            AffinityManager.SetLastChatDay(TEST_NPC_ID, lastCheckDay);
+            AffinityManager.SetLastGiftDay(TEST_NPC_ID, -1);
+            
+            // 计算期望衰减：从 lastCheckDay+1 到 currentDay-1 的天数
+            // 即第2天和第3天，共2天未互动
+            int expectedDaysWithoutInteraction = daysToSkip - 1;  // 当天不算，所以是3-1=2天
+            int expectedDecay = expectedDaysWithoutInteraction * AffinityConfig.DAILY_DECAY_AMOUNT;
+            
+            Log($"已设置: 上次检查日={lastCheckDay}, 上次聊天日={lastCheckDay}");
+            Log($"检查范围: 第{lastCheckDay + 1}天 ~ 第{currentDay - 1}天 (共{expectedDaysWithoutInteraction}天)");
+            Log($"期望衰减: {expectedDecay}点 ({expectedDaysWithoutInteraction}天 × {AffinityConfig.DAILY_DECAY_AMOUNT}点/天)");
+            
+            // 触发衰减检查
+            int decayAmount = AffinityManager.CheckAndApplyDailyDecay(TEST_NPC_ID);
+            
+            int newPoints = AffinityManager.GetPoints(TEST_NPC_ID);
+            
+            Log($"衰减后好感度: {newPoints}");
+            Log($"实际衰减: {decayAmount}");
+            
+            if (decayAmount == expectedDecay)
+            {
+                Log("✓ 累积衰减正确执行");
+            }
+            else if (decayAmount == 0 && oldPoints == 0)
+            {
+                Log("✓ 好感度为0，无需衰减");
+            }
+            else
+            {
+                Log($"⚠ 衰减值异常，期望: {expectedDecay}, 实际: {decayAmount}");
+            }
+            
+            AffinityManager.FlushSave();
         }
         
         // ============================================================================

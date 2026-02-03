@@ -203,6 +203,14 @@ namespace BossRush
         {
             DevLog("[GoblinNPC] 开始生成哥布林...");
             
+            // 懒加载：在哥布林生成时检查并应用每日好感度衰减
+            // 这样只有玩家真正遇到哥布林时才会触发衰减计算
+            int decayAmount = AffinityManager.CheckAndApplyDailyDecay(GoblinAffinityConfig.NPC_ID);
+            if (decayAmount > 0)
+            {
+                DevLog("[GoblinNPC] 好感度衰减已应用: -" + decayAmount);
+            }
+            
             // 如果已经存在，不重复生成
             if (goblinNPCInstance != null)
             {

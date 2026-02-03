@@ -570,6 +570,174 @@ namespace BossRush
         }
         
         // ============================================================================
+        // 每日衰减系统
+        // ============================================================================
+        
+        /// <summary>
+        /// 检查并应用每日好感度衰减（累积衰减版本）
+        /// 如果玩家多天没有与NPC互动（聊天或送礼），则累积扣除好感度
+        /// 当天有聊天机会，所以当天不计入衰减
+        /// 应在游戏加载或新的一天开始时调用
+        /// </summary>
+        /// <param name="npcId">NPC标识符</param>
+        /// <returns>衰减的点数（0表示没有衰减）</returns>
+        public static int CheckAndApplyDailyDecay(string npcId)
+        {
+            // 检查是否启用衰减
+            if (!AffinityConfig.ENABLE_DAILY_DECAY) return 0;
+            if (string.IsNullOrEmpty(npcId)) return 0;
+            
+            // 确保数据存在
+            if (!npcDataMap.ContainsKey(npcId))
+            {
+                npcDataMap[npcId] = new AffinityData(npcId);
+            }
+            
+            AffinityData data = npcDataMap[npcId];
+            int currentDay = GetCurrentGameDay();
+            
+            // 如果是第一次检查（lastDecayCheckDay == -1），初始化为当前日期，不衰减
+            if (data.lastDecayCheckDay < 0)
+            {
+                data.lastDecayCheckDay = currentDay;
+                MarkDirty();
+                ModBehaviour.DevLog("[Affinity] " + npcId + " 首次衰减检查，初始化日期: " + currentDay);
+                return 0;
+            }
+            
+            // 如果今天已经检查过，不重复衰减
+            if (data.lastDecayCheckDay >= currentDay)
+            {
+                return 0;
+            }
+            
+            // 计算需要检查的天数范围：从上次检查日+1 到 昨天（当天不算，因为当天有聊天机会）
+            // 例如：上次检查日=1，今天=4，需要检查第2、3天是否有互动
+            int startDay = data.lastDecayCheckDay + 1;
+            int endDay = currentDay - 1;  // 当天不算衰减
+            
+            // 防止异常情况：限制最大衰减天数为30天
+            if (endDay - startDay + 1 > 30)
+            {
+                ModBehaviour.DevLog("[Affinity] " + npcId + " 衰减天数异常(" + (endDay - startDay + 1) + ")，限制为30天");
+                startDay = endDay - 29;
+            }
+            
+            // 如果没有需要检查的天数（例如今天=昨天+1，即连续两天都来了）
+            if (startDay > endDay)
+            {
+                // 更新检查日期
+                data.lastDecayCheckDay = currentDay;
+                MarkDirty();
+                return 0;
+            }
+            
+            // 计算累积衰减
+            // 逻辑：检查从 startDay 到 endDay 每一天是否有互动
+            // 如果某天没有互动，则累积一次衰减
+            int totalDecay = 0;
+            int daysWithoutInteraction = 0;
+            
+            for (int day = startDay; day <= endDay; day++)
+            {
+                // 检查这一天是否有互动
+                bool hadInteractionOnDay = (data.lastChatDay == day) || (data.lastGiftDay == day);
+                
+                if (!hadInteractionOnDay)
+                {
+                    daysWithoutInteraction++;
+                }
+            }
+            
+            // 计算总衰减量
+            if (daysWithoutInteraction > 0 && data.points > 0)
+            {
+                totalDecay = daysWithoutInteraction * AffinityConfig.DAILY_DECAY_AMOUNT;
+            }
+            
+            // 应用衰减
+            if (totalDecay > 0)
+            {
+                int oldPoints = data.points;
+                data.points = Math.Max(0, data.points - totalDecay);
+                
+                ModBehaviour.DevLog("[Affinity] " + npcId + " 好感度累积衰减: " + oldPoints + " -> " + data.points + 
+                    " (衰减" + totalDecay + "点, " + daysWithoutInteraction + "天未互动)");
+                
+                // 触发事件
+                OnAffinityChanged?.Invoke(npcId, oldPoints, data.points);
+            }
+            else
+            {
+                ModBehaviour.DevLog("[Affinity] " + npcId + " 无需衰减 (检查范围: 第" + startDay + "天~第" + endDay + "天)");
+            }
+            
+            // 更新检查日期
+            data.lastDecayCheckDay = currentDay;
+            MarkDirty();
+            
+            return totalDecay;
+        }
+        
+        /// <summary>
+        /// 检查所有已注册NPC的每日衰减
+        /// </summary>
+        /// <returns>总衰减点数</returns>
+        public static int CheckAndApplyAllDailyDecay()
+        {
+            int totalDecay = 0;
+            foreach (var npcId in npcConfigMap.Keys)
+            {
+                totalDecay += CheckAndApplyDailyDecay(npcId);
+            }
+            return totalDecay;
+        }
+        
+        /// <summary>
+        /// 获取指定NPC上次衰减检查的日期
+        /// </summary>
+        public static int GetLastDecayCheckDay(string npcId)
+        {
+            if (npcDataMap.TryGetValue(npcId, out AffinityData data))
+            {
+                return data.lastDecayCheckDay;
+            }
+            return -1;
+        }
+        
+        /// <summary>
+        /// 设置指定NPC上次衰减检查的日期（调试用）
+        /// </summary>
+        public static void SetLastDecayCheckDay(string npcId, int day)
+        {
+            if (string.IsNullOrEmpty(npcId)) return;
+            
+            if (!npcDataMap.ContainsKey(npcId))
+            {
+                npcDataMap[npcId] = new AffinityData(npcId);
+            }
+            
+            npcDataMap[npcId].lastDecayCheckDay = day;
+            MarkDirty();
+        }
+        
+        /// <summary>
+        /// 获取当前游戏日期
+        /// </summary>
+        private static int GetCurrentGameDay()
+        {
+            try
+            {
+                return (int)GameClock.Day;
+            }
+            catch
+            {
+                // 如果无法获取游戏日期，使用系统日期
+                return DateTime.Now.DayOfYear;
+            }
+        }
+        
+        // ============================================================================
         // 配置获取
         // ============================================================================
         
