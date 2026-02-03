@@ -126,7 +126,10 @@ namespace BossRush
                     usageField.SetValue(item, usageUtils);
                 }
 
-                // 6. 添加"叮当"标签（绿色显示）
+                // 6. 添加 Special 标签（防止物品进入随机搜集池）
+                AddSpecialTag(item);
+
+                // 7. 添加"叮当"标签（绿色显示）
                 AddDingdangTag(item);
 
                 ModBehaviour.DevLog("[DingdangDrawing] 物品配置完成");
@@ -199,6 +202,31 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DingdangDrawing] 添加标签失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 添加 Special 标签到物品（防止进入随机搜集池）
+        /// </summary>
+        private static void AddSpecialTag(Item item)
+        {
+            try
+            {
+                // 获取游戏内置的 Special 标签
+                Tag specialTag = GameplayDataSettings.Tags.Special;
+                if (specialTag != null && !item.Tags.Contains(specialTag))
+                {
+                    item.Tags.Add(specialTag);
+                    ModBehaviour.DevLog("[DingdangDrawing] 已添加 Special 标签（防止进入搜集池）");
+                }
+                else if (specialTag == null)
+                {
+                    ModBehaviour.DevLog("[DingdangDrawing] 警告: 无法获取 Special 标签");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DingdangDrawing] 添加 Special 标签失败: " + e.Message);
             }
         }
 
