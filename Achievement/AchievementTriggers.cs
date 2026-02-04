@@ -180,8 +180,6 @@ namespace BossRush
             try
             {
                 BossRushAchievementManager.TryUnlock("mode_d_clear");
-                if (!AchievementTracker.HasPickedUpItem)
-                    BossRushAchievementManager.TryUnlock("mode_d_no_pickup");
                 if (!AchievementTracker.HasTakenDamage)
                     BossRushAchievementManager.TryUnlock("flawless_mode_d");
             }

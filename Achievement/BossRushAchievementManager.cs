@@ -186,10 +186,6 @@ namespace BossRush
                 AchievementCategory.Ultimate, 1500000, 5);
 
             // ========== 特殊挑战成就（隐藏）==========
-            Register("mode_d_no_pickup", "极简主义", "Minimalist",
-                "在白手起家模式不拾取任何装备通关", "Complete Mode D without picking up any equipment",
-                AchievementCategory.Special, 300000, 4, true);
-
             Register("hell_no_heal", "铁人挑战", "Iron Man",
                 "在无间炼狱不使用治疗物品完成10波", "Survive 10 waves in Infinite Hell without using healing items",
                 AchievementCategory.Special, 250000, 4, true);
