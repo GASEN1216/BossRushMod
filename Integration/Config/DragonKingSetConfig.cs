@@ -29,12 +29,12 @@ namespace BossRush
         private const float DRAGON_KING_HELM_DURABILITY = 200f; // 耐久度
         
         // 龙王之冕属性（无负面效果）
-        private const float DRAGON_KING_HELM_PHYSICS_RESIST = -0.1f;   // 物理减伤10%
+        private const float DRAGON_KING_HELM_PHYSICS_RESIST = -0.15f;   // 物理减伤15%
         private const float DRAGON_KING_HELM_STORM_PROTECTION = 1f;    // 风暴防护+1
         private const float DRAGON_KING_HELM_COLD_PROTECTION = 1f;     // 寒冷防护+1
-        private const float DRAGON_KING_HELM_CRIT_DAMAGE_GAIN = 0.1f;  // 枪械爆头伤害+10%
-        private const float DRAGON_KING_HELM_FIRE_FACTOR = -0.15f;     // 火承伤倍率-15%
-        private const float DRAGON_KING_HELM_ELECTRIC_FACTOR = -0.15f; // 电承伤倍率-15%
+        private const float DRAGON_KING_HELM_CRIT_DAMAGE_GAIN = 0.15f;  // 枪械爆头伤害+15%
+        private const float DRAGON_KING_HELM_FIRE_FACTOR = -0.2f;     // 火承伤倍率-20%
+        private const float DRAGON_KING_HELM_ELECTRIC_FACTOR = -0.2f; // 电承伤倍率-20%
         // 移除：毒承伤倍率、视野角度减少
 
         // ========== 龙王鳞铠配置 ==========
@@ -42,11 +42,11 @@ namespace BossRush
         private const float DRAGON_KING_ARMOR_DURABILITY = 200f; // 耐久度
         
         // 龙王鳞铠属性（无负面效果）
-        private const float DRAGON_KING_ARMOR_PHYSICS_RESIST = -0.2f;   // 物理减伤20%
+        private const float DRAGON_KING_ARMOR_PHYSICS_RESIST = -0.25f;   // 物理减伤25%
         private const float DRAGON_KING_ARMOR_STORM_PROTECTION = 1f;    // 风暴防护+1
         private const float DRAGON_KING_ARMOR_COLD_PROTECTION = 1f;     // 寒冷防护+1
-        private const float DRAGON_KING_ARMOR_FIRE_FACTOR = -0.2f;      // 火承伤倍率-20%
-        private const float DRAGON_KING_ARMOR_ELECTRIC_FACTOR = -0.2f;  // 电承伤倍率-20%
+        private const float DRAGON_KING_ARMOR_FIRE_FACTOR = -0.25f;      // 火承伤倍率-25%
+        private const float DRAGON_KING_ARMOR_ELECTRIC_FACTOR = -0.25f;  // 电承伤倍率-25%
         // 移除：毒承伤倍率
 
         /// <summary>
