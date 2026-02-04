@@ -780,7 +780,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = true;
+        internal const bool DevModeEnabled = false;
 
         private StockShop ammoShop;
 

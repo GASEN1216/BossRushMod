@@ -51,6 +51,10 @@ namespace BossRush
         private static int cachedJournalStock = -1;  // -1 表示未初始化，需要从存档读取
         private static StockShop.Entry injectedJournalEntry = null;  // 缓存注入的冒险家日志条目引用
         
+        // 砖石库存持久化相关
+        private static int cachedBrickStoneStock = -1;  // -1 表示未初始化，需要从存档读取
+        private static StockShop.Entry injectedBrickStoneEntry = null;  // 缓存注入的砖石条目引用
+        
         // [性能优化] 商店注入完成标记，避免每次场景加载都重复扫描
         private static bool _shopInjectionCompleted = false;
         
@@ -534,6 +538,187 @@ namespace BossRush
             injectedJournalEntry = null;
             DevLog("[BossRush] 检测到读档，重置冒险家日志库存缓存");
         }
+        
+        // ============================================================================
+        // 砖石商店注入
+        // ============================================================================
+        
+        /// <summary>
+        /// 将砖石注入到商店
+        /// </summary>
+        private void InjectBrickStoneIntoShops(string targetSceneName = null)
+        {
+            // 如果不在基地场景，跳过扫描
+            string currentScene = targetSceneName;
+            if (string.IsNullOrEmpty(currentScene))
+            {
+                try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
+            }
+            if (currentScene != "Base_SceneV2")
+            {
+                return;
+            }
+            
+            try
+            {
+                StockShop[] shops = UnityEngine.Object.FindObjectsOfType<StockShop>();
+                if (shops == null || shops.Length == 0)
+                {
+                    return;
+                }
+
+                int addedCount = 0;
+                foreach (StockShop shop in shops)
+                {
+                    if (shop == null) continue;
+
+                    bool isNpcShop = false;
+                    try
+                    {
+                        if (shop.GetComponentInParent<CharacterMainControl>() != null)
+                        {
+                            isNpcShop = true;
+                        }
+                    }
+                    catch { }
+
+                    string sceneName = "";
+                    string merchantId = "";
+                    try { sceneName = shop.gameObject != null ? shop.gameObject.scene.name : ""; } catch { }
+                    try { merchantId = shop.MerchantID; } catch { }
+
+                    // 只注入到基地的普通售货机
+                    bool isTargetShop = (!isNpcShop && merchantId == "Merchant_Normal" && sceneName == "Base_SceneV2");
+
+                    if (isTargetShop && shop.entries != null)
+                    {
+                        bool alreadyExists = false;
+                        foreach (StockShop.Entry entry in shop.entries)
+                        {
+                            if (entry != null && entry.ItemTypeID == BrickStoneConfig.TYPE_ID)
+                            {
+                                alreadyExists = true;
+                                injectedBrickStoneEntry = entry;
+                                break;
+                            }
+                        }
+
+                        if (!alreadyExists)
+                        {
+                            // 计算 priceFactor 使价格为1块钱
+                            float priceFactor = 1f;
+                            try
+                            {
+                                Item itemPrefab = ItemAssetsCollection.GetPrefab(BrickStoneConfig.TYPE_ID);
+                                if (itemPrefab != null)
+                                {
+                                    int rawValue = itemPrefab.GetTotalRawValue();
+                                    if (rawValue > 0)
+                                    {
+                                        priceFactor = 1f / rawValue;
+                                    }
+                                }
+                            }
+                            catch { }
+                            
+                            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+                            itemEntry.typeID = BrickStoneConfig.TYPE_ID;
+                            itemEntry.maxStock = BrickStoneConfig.DEFAULT_MAX_STOCK;
+                            itemEntry.forceUnlock = true;
+                            itemEntry.priceFactor = priceFactor;
+                            itemEntry.possibility = 1f;
+                            itemEntry.lockInDemo = false;
+
+                            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
+                            
+                            // 从存档读取库存
+                            int stockToSet = LoadBrickStoneStockFromSave();
+                            wrapped.CurrentStock = stockToSet;
+                            wrapped.Show = true;
+                            
+                            injectedBrickStoneEntry = wrapped;
+                            shop.entries.Add(wrapped);
+                            addedCount++;
+                            
+                            DevLog("[BrickStone] 砖石注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
+                        }
+                    }
+                }
+
+                if (addedCount > 0)
+                {
+                    DevLog("[BrickStone] 砖石商店注入完成，新增: " + addedCount);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BrickStone] InjectBrickStoneIntoShops 出错: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 从存档读取砖石库存
+        /// </summary>
+        private int LoadBrickStoneStockFromSave()
+        {
+            try
+            {
+                if (cachedBrickStoneStock >= 0)
+                {
+                    return cachedBrickStoneStock;
+                }
+                
+                if (SavesSystem.KeyExisits(BrickStoneConfig.STOCK_SAVE_KEY))
+                {
+                    cachedBrickStoneStock = SavesSystem.Load<int>(BrickStoneConfig.STOCK_SAVE_KEY);
+                    DevLog("[BrickStone] 从存档读取砖石库存: " + cachedBrickStoneStock);
+                    return cachedBrickStoneStock;
+                }
+                
+                cachedBrickStoneStock = BrickStoneConfig.DEFAULT_MAX_STOCK;
+                return cachedBrickStoneStock;
+            }
+            catch (Exception e)
+            {
+                DevLog("[BrickStone] 读取砖石库存失败: " + e.Message);
+                cachedBrickStoneStock = BrickStoneConfig.DEFAULT_MAX_STOCK;
+                return cachedBrickStoneStock;
+            }
+        }
+        
+        /// <summary>
+        /// 存档时保存砖石库存
+        /// </summary>
+        private void OnCollectSaveData_BrickStoneStock()
+        {
+            try
+            {
+                int stockToSave = BrickStoneConfig.DEFAULT_MAX_STOCK;
+                
+                if (injectedBrickStoneEntry != null)
+                {
+                    stockToSave = injectedBrickStoneEntry.CurrentStock;
+                }
+                
+                SavesSystem.Save<int>(BrickStoneConfig.STOCK_SAVE_KEY, stockToSave);
+                cachedBrickStoneStock = stockToSave;
+                DevLog("[BrickStone] 保存砖石库存: " + stockToSave);
+            }
+            catch (Exception e)
+            {
+                DevLog("[BrickStone] 保存砖石库存失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 读档时重置砖石缓存
+        /// </summary>
+        private void OnSetFile_BrickStoneStock()
+        {
+            cachedBrickStoneStock = -1;
+            injectedBrickStoneEntry = null;
+            DevLog("[BrickStone] 检测到读档，重置砖石库存缓存");
+        }
 
         /// <summary>
         /// 从存档读取船票库存
@@ -672,6 +857,7 @@ namespace BossRush
             // InitializeAchievementMedalItem();  // 配置器已移至 LoadAllItems 之前
             InjectAchievementMedalLocalization();
             InjectAchievementMedalIntoShops();  // 将成就勋章注入到售货机（排在最前面）
+            InjectBrickStoneIntoShops();  // 将砖石注入到售货机
             
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
             int equipCount = EquipmentFactory.LoadAllEquipment();
@@ -708,6 +894,10 @@ namespace BossRush
             // 注册存档系统事件，用于持久化成就勋章库存
             SavesSystem.OnCollectSaveData += OnCollectSaveData_MedalStock;
             SavesSystem.OnSetFile += OnSetFile_MedalStock;
+            
+            // 注册存档系统事件，用于持久化砖石库存
+            SavesSystem.OnCollectSaveData += OnCollectSaveData_BrickStoneStock;
+            SavesSystem.OnSetFile += OnSetFile_BrickStoneStock;
             
             // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
@@ -830,6 +1020,7 @@ namespace BossRush
                 InjectBossRushTicketIntoShops_Integration(scene.name);
                 InjectAdventureJournalIntoShops_Integration(scene.name);
                 InjectAchievementMedalIntoShops(scene.name);  // 注入成就勋章
+                InjectBrickStoneIntoShops(scene.name);  // 注入砖石
                 // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
                 
                 // 在基地场景检查并赠送12月份生日蛋糕
