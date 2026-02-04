@@ -214,7 +214,8 @@ namespace BossRush
                 else if (bossType == "DragonKing")
                 {
                     BossRushAchievementManager.TryUnlock("kill_dragon_king");
-                    if (AchievementTracker.DragonKingKilledFlawless)
+                    // 龙王无伤击杀（与龙裔遗族使用相同的判定逻辑）
+                    if (!AchievementTracker.HasTakenDamage)
                         BossRushAchievementManager.TryUnlock("kill_dragon_king_flawless");
                     // 累计龙王击杀成就
                     if (AchievementTracker.TotalDragonKingKills >= 10)

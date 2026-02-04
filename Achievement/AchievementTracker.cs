@@ -26,7 +26,6 @@ namespace BossRush
         public static float ArenaEnterTime = 0f;                // 进入竞技场的时间戳
         public static bool HasPickedUpItem = false;             // 是否拾取过装备（Mode D专用）
         public static bool HasUsedHealItem = false;             // 是否使用过治疗物品
-        public static bool DragonKingKilledFlawless = true;     // 击杀龙王时是否无伤
         public static bool KilledDragonDescendant = false;      // 是否击杀过龙裔遗族
         public static bool KilledDragonKing = false;            // 是否击杀过龙王
 
@@ -81,7 +80,6 @@ namespace BossRush
             ArenaEnterTime = Time.time;
             HasPickedUpItem = false;
             HasUsedHealItem = false;
-            DragonKingKilledFlawless = true;
             KilledDragonDescendant = false;
             KilledDragonKing = false;
             // 注意：收藏类和特殊成就追踪不重置，因为它们是累计的
@@ -99,7 +97,6 @@ namespace BossRush
             if (damage > 0)
             {
                 HasTakenDamage = true;
-                DragonKingKilledFlawless = false;
             }
         }
 
