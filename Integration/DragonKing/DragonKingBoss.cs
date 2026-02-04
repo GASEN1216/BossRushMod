@@ -404,6 +404,17 @@ namespace BossRush
             DevLog("[DragonKing] 龙王被击败");
             ShowMessage(L10n.DragonKingDefeated);
 
+            // 直接触发龙王击杀成就（作为保险措施，防止三阶段联动死亡时成就未触发）
+            try
+            {
+                CheckBossKillAchievements("DragonKing");
+                DevLog("[DragonKing] 已触发龙王击杀成就检测");
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[DragonKing] 触发成就检测失败: " + e.Message);
+            }
+
             // 移除事件监听（防止内存泄漏）
             // 注意：不要在这里取消 BeforeCharacterSpawnLootOnDead 订阅！
             // 因为 OnDeadEvent 和 BeforeCharacterSpawnLootOnDead 的触发顺序不确定，
