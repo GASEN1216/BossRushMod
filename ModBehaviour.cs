@@ -1559,7 +1559,7 @@ namespace BossRush
             {
                 AffinityManager.OnAffinityChanged -= OnAffinityChanged;
                 AffinityManager.OnLevelUp -= OnAffinityLevelUp;
-                AffinityManager.FlushSave();  // 强制保存未保存的数据
+                AffinityManager.Shutdown();  // 关闭好感度管理器（取消事件订阅并保存数据）
                 AffinityUIManager.Cleanup();
             }
             catch { }

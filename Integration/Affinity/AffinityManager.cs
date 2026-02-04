@@ -88,6 +88,7 @@ namespace BossRush
         
         /// <summary>
         /// 初始化好感度管理器
+        /// 订阅游戏存档系统事件，确保数据在正确时机加载和保存
         /// </summary>
         public static void Initialize()
         {
@@ -95,19 +96,76 @@ namespace BossRush
             
             ModBehaviour.DevLog("[Affinity] 初始化好感度管理器...");
             
-            // 清空数据
-            npcDataMap.Clear();
+            // 清空配置（数据不清空，等待存档加载）
             npcConfigMap.Clear();
             
             // 重置脏标记
             isDirty = false;
             lastSaveTime = Time.realtimeSinceStartup;
             
-            // 加载存档
+            // 订阅游戏存档系统事件（与 CommonVariables 一致）
+            Saves.SavesSystem.OnSetFile += OnSetSaveFile;
+            Saves.SavesSystem.OnCollectSaveData += OnCollectSaveData;
+            
+            // 立即尝试加载数据（如果存档已经加载）
             Load();
             
             isInitialized = true;
             ModBehaviour.DevLog("[Affinity] 好感度管理器初始化完成");
+        }
+        
+        /// <summary>
+        /// 清理资源（Mod卸载时调用）
+        /// </summary>
+        public static void Shutdown()
+        {
+            // 取消订阅事件
+            Saves.SavesSystem.OnSetFile -= OnSetSaveFile;
+            Saves.SavesSystem.OnCollectSaveData -= OnCollectSaveData;
+            
+            // 强制保存并写入磁盘
+            // 注意：SaveImmediate() 只保存到 ES3 缓存，需要调用 SaveFile() 才能写入磁盘
+            // 在 Mod 卸载时强制写入，确保数据不会因游戏关闭而丢失
+            try
+            {
+                SaveImmediate();
+                // 强制将缓存写入磁盘文件（不更新保存时间戳）
+                Saves.SavesSystem.SaveFile(false);
+                ModBehaviour.DevLog("[Affinity] 好感度数据已强制写入磁盘");
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[Affinity] [WARNING] 强制写入磁盘失败: " + e.Message);
+            }
+            
+            isInitialized = false;
+            ModBehaviour.DevLog("[Affinity] 好感度管理器已关闭");
+        }
+        
+        /// <summary>
+        /// 存档文件切换时调用（加载数据）
+        /// </summary>
+        private static void OnSetSaveFile()
+        {
+            ModBehaviour.DevLog("[Affinity] 检测到存档切换，重新加载数据...");
+            Load();
+        }
+        
+        /// <summary>
+        /// 游戏收集保存数据时调用（保存数据）
+        /// </summary>
+        private static void OnCollectSaveData()
+        {
+            ModBehaviour.DevLog("[Affinity] 检测到存档收集，保存数据...");
+            SaveImmediate();
+        }
+        
+        /// <summary>
+        /// 从存档加载好感度数据（公开方法，供外部调用）
+        /// </summary>
+        public static void LoadFromSave()
+        {
+            Load();
         }
         
         /// <summary>
@@ -763,19 +821,6 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 获取指定NPC的每级点数（已废弃，保留兼容性）
-        /// </summary>
-        [System.Obsolete("使用递增式等级配置，此方法仅保留兼容性")]
-        private static int GetPointsPerLevel(string npcId)
-        {
-            if (npcConfigMap.TryGetValue(npcId, out INPCAffinityConfig config))
-            {
-                return config.PointsPerLevel;
-            }
-            return AffinityConfig.DEFAULT_POINTS_PER_LEVEL;
-        }
-        
-        /// <summary>
         /// 获取指定NPC的最大等级（使用统一配置）
         /// </summary>
         private static int GetMaxLevel(string npcId)
@@ -807,30 +852,23 @@ namespace BossRush
         
         /// <summary>
         /// 立即保存所有好感度数据
-        /// 使用游戏原生 Saves.SavesSystem，与快递员首次见面等功能一致
+        /// 使用游戏原生 Saves.SavesSystem 保存到缓存
         /// </summary>
         private static void SaveImmediate()
         {
             try
             {
-                // 构建存档数据
-                AllAffinityData allData = new AllAffinityData();
-                foreach (var kvp in npcDataMap)
-                {
-                    allData.npcDataList.Add(kvp.Value.Clone());
-                }
+                // 使用专用序列化器
+                string json = AffinityJsonSerializer.Serialize(npcDataMap);
 
-                // 序列化为JSON
-                string json = JsonUtility.ToJson(allData);
-
-                // 使用游戏原生存档系统保存（与快递员首次见面一致）
+                // 保存到游戏存档系统（只保存到缓存，由游戏在适当时机写入磁盘）
                 Saves.SavesSystem.Save<string>(AffinityConfig.SAVE_KEY, json);
 
                 // 重置脏标记和保存时间
                 isDirty = false;
                 lastSaveTime = Time.realtimeSinceStartup;
 
-                ModBehaviour.DevLog("[Affinity] 好感度数据已保存（使用SavesSystem）");
+                ModBehaviour.DevLog("[Affinity] 好感度数据已保存，NPC数量: " + npcDataMap.Count);
             }
             catch (Exception e)
             {
@@ -840,7 +878,7 @@ namespace BossRush
 
         /// <summary>
         /// 加载所有好感度数据
-        /// 使用游戏原生 Saves.SavesSystem，与快递员首次见面等功能一致
+        /// 使用游戏原生 Saves.SavesSystem 从存档加载
         /// </summary>
         public static void Load()
         {
@@ -853,7 +891,7 @@ namespace BossRush
                     return;
                 }
 
-                // 使用游戏原生存档系统加载（与快递员首次见面一致）
+                // 加载JSON字符串
                 string json = Saves.SavesSystem.Load<string>(AffinityConfig.SAVE_KEY);
 
                 if (string.IsNullOrEmpty(json))
@@ -862,20 +900,15 @@ namespace BossRush
                     return;
                 }
 
-                // 反序列化
-                AllAffinityData allData = JsonUtility.FromJson<AllAffinityData>(json);
-
-                if (allData != null && allData.npcDataList != null)
+                // 使用专用序列化器反序列化
+                npcDataMap.Clear();
+                if (AffinityJsonSerializer.Deserialize(json, npcDataMap))
                 {
-                    npcDataMap.Clear();
-                    foreach (var data in allData.npcDataList)
-                    {
-                        if (!string.IsNullOrEmpty(data.npcId))
-                        {
-                            npcDataMap[data.npcId] = data;
-                        }
-                    }
-                    ModBehaviour.DevLog("[Affinity] 好感度数据已加载（使用SavesSystem），NPC数量: " + npcDataMap.Count);
+                    ModBehaviour.DevLog("[Affinity] 好感度数据已加载，NPC数量: " + npcDataMap.Count);
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[Affinity] [WARNING] JSON解析失败");
                 }
             }
             catch (Exception e)
