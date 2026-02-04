@@ -478,15 +478,19 @@ namespace BossRush
                 // 播放待机动画
                 StartIdleAnimation();
                 
-                // 获取对话键数组
+                // 获取对话键数组，并立即标记故事已触发（防止好感度波动时重复触发）
                 string[] dialogueKeys;
                 if (storyLevel == 5)
                 {
+                    // 【重要】在对话开始前就标记已触发，防止重复触发
+                    AffinityManager.MarkStory5Triggered(GoblinAffinityConfig.NPC_ID);
                     dialogueKeys = LocalizationInjector.GetGoblinStory5DialogueKeys();
                     ModBehaviour.DevLog("[GoblinNPC] 开始5级故事对话，共 " + dialogueKeys.Length + " 条");
                 }
                 else if (storyLevel == 10)
                 {
+                    // 【重要】在对话开始前就标记已触发，防止重复触发
+                    AffinityManager.MarkStory10Triggered(GoblinAffinityConfig.NPC_ID);
                     dialogueKeys = LocalizationInjector.GetGoblinStory10DialogueKeys();
                     ModBehaviour.DevLog("[GoblinNPC] 开始10级故事对话，共 " + dialogueKeys.Length + " 条");
                 }
@@ -502,16 +506,9 @@ namespace BossRush
                     await DialogueManager.ShowDialogueSequence(dialogueActor, dialogueKeys);
                     ModBehaviour.DevLog("[GoblinNPC] 故事对话序列完成");
 
-                    // 对话完成后，标记故事已触发（持久化保存）
-                    if (storyLevel == 5)
+                    // 10级故事对话完成后，赠送叮当涂鸦礼物
+                    if (storyLevel == 10)
                     {
-                        AffinityManager.MarkStory5Triggered(GoblinAffinityConfig.NPC_ID);
-                    }
-                    else if (storyLevel == 10)
-                    {
-                        AffinityManager.MarkStory10Triggered(GoblinAffinityConfig.NPC_ID);
-
-                        // 10级故事对话完成后，赠送叮当涂鸦礼物
                         GiveDrawingGift();
                     }
                 }

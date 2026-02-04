@@ -356,7 +356,7 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 检查今日是否可以对话
+        /// 检查今日是否可以获得聊天好感度
         /// </summary>
         private bool CanChatToday()
         {

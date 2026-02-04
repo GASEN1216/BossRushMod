@@ -63,6 +63,48 @@ namespace BossRush
             var config = AffinityManager.GetNPCConfig(npcId);
             var giftConfig = config as INPCGiftConfig;
             
+            // ============================================================================
+            // 特殊礼物处理：叮当涂鸦
+            // 如果玩家把叮当送的礼物送回去，叮当会很伤心
+            // ============================================================================
+            int itemTypeId = GetItemTypeId(item);
+            if (npcId == GoblinAffinityConfig.NPC_ID && itemTypeId == DingdangDrawingConfig.TYPE_ID)
+            {
+                // 叮当涂鸦特殊处理：扣除300好感度，显示伤心对话，播放心碎特效
+                const int DINGDANG_DRAWING_PENALTY = 300;
+                
+                // 扣除好感度
+                AffinityManager.AddPoints(npcId, -DINGDANG_DRAWING_PENALTY);
+                
+                // 更新上次赠送日期和反应类型（负面反应）
+                int currentDay = GetCurrentGameDay();
+                AffinityManager.SetLastGiftDay(npcId, currentDay);
+                AffinityManager.SetLastGiftReaction(npcId, (int)GiftReactionType.Negative);
+                
+                // 显示特殊伤心对话
+                if (npcTransform != null)
+                {
+                    string sadDialogue = L10n.T("诶，你不喜欢这个吗...", "Eh, you don't like this...");
+                    NPCDialogueSystem.ShowDialogue(npcId, npcTransform, sadDialogue);
+                }
+                
+                // 播放心碎特效
+                if (npcController != null)
+                {
+                    npcController.ShowBrokenHeartBubble();
+                }
+                
+                // 显示好感度变化通知
+                ShowAffinityNotification(npcId, -DINGDANG_DRAWING_PENALTY);
+                
+                ModBehaviour.DevLog("[NPCGift] 叮当涂鸦特殊处理：扣除" + DINGDANG_DRAWING_PENALTY + "好感度");
+                return true;
+            }
+            
+            // ============================================================================
+            // 普通礼物处理
+            // ============================================================================
+            
             // 计算好感度增益
             int giftValue = CalculateGiftValue(npcId, item);
             
@@ -73,8 +115,8 @@ namespace BossRush
             AffinityManager.AddPoints(npcId, giftValue);
             
             // 更新上次赠送日期和反应类型
-            int currentDay = GetCurrentGameDay();
-            AffinityManager.SetLastGiftDay(npcId, currentDay);
+            int currentDay2 = GetCurrentGameDay();
+            AffinityManager.SetLastGiftDay(npcId, currentDay2);
             AffinityManager.SetLastGiftReaction(npcId, (int)reactionType);
             
             // 显示反应气泡

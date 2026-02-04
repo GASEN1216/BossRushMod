@@ -152,12 +152,21 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 游戏收集保存数据时调用（保存数据）
+        /// 游戏收集保存数据时调用（保存数据并写入磁盘）
         /// </summary>
         private static void OnCollectSaveData()
         {
-            ModBehaviour.DevLog("[Affinity] 检测到存档收集，保存数据...");
             SaveImmediate();
+            
+            // 强制写入磁盘，确保返回主菜单再进入存档时数据不丢失
+            try
+            {
+                Saves.SavesSystem.SaveFile(false);
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[Affinity] [WARNING] 写入磁盘失败: " + e.Message);
+            }
         }
         
         /// <summary>
@@ -861,7 +870,7 @@ namespace BossRush
                 // 使用专用序列化器
                 string json = AffinityJsonSerializer.Serialize(npcDataMap);
 
-                // 保存到游戏存档系统（只保存到缓存，由游戏在适当时机写入磁盘）
+                // 保存到游戏存档系统
                 Saves.SavesSystem.Save<string>(AffinityConfig.SAVE_KEY, json);
 
                 // 重置脏标记和保存时间
@@ -872,7 +881,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[Affinity] [WARNING] 保存好感度数据失败: " + e.Message);
+                ModBehaviour.DevLog("[Affinity] [WARNING] 保存失败: " + e.Message);
             }
         }
 
@@ -882,6 +891,9 @@ namespace BossRush
         /// </summary>
         public static void Load()
         {
+            // 先清空数据，确保存档隔离
+            npcDataMap.Clear();
+            
             try
             {
                 // 检查是否存在存档数据
@@ -901,7 +913,6 @@ namespace BossRush
                 }
 
                 // 使用专用序列化器反序列化
-                npcDataMap.Clear();
                 if (AffinityJsonSerializer.Deserialize(json, npcDataMap))
                 {
                     ModBehaviour.DevLog("[Affinity] 好感度数据已加载，NPC数量: " + npcDataMap.Count);
@@ -913,7 +924,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[Affinity] [WARNING] 加载好感度数据失败: " + e.Message);
+                ModBehaviour.DevLog("[Affinity] [WARNING] 加载失败: " + e.Message);
             }
         }
         

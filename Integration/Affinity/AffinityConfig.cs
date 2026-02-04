@@ -35,7 +35,7 @@ namespace BossRush
         /// <summary>
         /// 默认礼物好感度增益
         /// </summary>
-        public const int DEFAULT_GIFT_VALUE = 5;
+        public const int DEFAULT_GIFT_VALUE = 20;
         
         // ============================================================================
         // 每日衰减配置

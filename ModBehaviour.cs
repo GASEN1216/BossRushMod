@@ -997,35 +997,6 @@ namespace BossRush
         {
             AffinityUIManager.ShowLevelUpNotification(npcId, newLevel);
             
-            // 检查是否需要触发故事对话（哥布林叮当5级和10级）
-            if (npcId == GoblinAffinityConfig.NPC_ID)
-            {
-                if (newLevel == 5 || newLevel == 10)
-                {
-                    // 延迟触发故事对话，等待等级提升通知显示完成
-                    StartCoroutine(TriggerGoblinStoryDelayed(newLevel));
-                }
-            }
-        }
-        
-        /// <summary>
-        /// 延迟触发哥布林故事对话
-        /// </summary>
-        private System.Collections.IEnumerator TriggerGoblinStoryDelayed(int storyLevel)
-        {
-            // 等待2秒，让等级提升通知显示完成
-            yield return new WaitForSeconds(2f);
-            
-            // 查找哥布林NPC控制器并触发故事对话
-            if (goblinNPCInstance != null)
-            {
-                GoblinNPCController controller = goblinNPCInstance.GetComponent<GoblinNPCController>();
-                if (controller != null)
-                {
-                    controller.TriggerStoryDialogue(storyLevel);
-                    DevLog("[BossRush] 触发哥布林 " + storyLevel + " 级故事对话");
-                }
-            }
         }
 
         void OnGUI()

@@ -73,7 +73,7 @@ namespace BossRush
                     {
                         { "Liked", 80 },      // 喜欢的物品 +80点
                         { "Disliked", -40 },  // 不喜欢的物品 -40点
-                        { "Normal", 20 }      // 一般物品 +20点
+                        { "Default", 20 }     // 默认/普通物品 +20点
                     };
                 }
                 return _giftValues;
