@@ -1123,10 +1123,16 @@ namespace BossRush
                 daXingXingCleanTimer = 0f;
             }
             
-            // L键：打开/关闭成就页面
-            if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.L))
+            // 成就界面快捷键（可配置，默认L键）
+            try
             {
-                try
+                UnityEngine.KeyCode achievementKey = UnityEngine.KeyCode.L;
+                if (config != null && config.achievementHotkey > 0)
+                {
+                    achievementKey = (UnityEngine.KeyCode)config.achievementHotkey;
+                }
+                
+                if (UnityEngine.Input.GetKeyDown(achievementKey))
                 {
                     // 检查是否有其他UI打开（如暂停菜单、商店等）
                     if (Duckov.UI.View.ActiveView == null)
@@ -1134,10 +1140,10 @@ namespace BossRush
                         AchievementView.Instance.Toggle();
                     }
                 }
-                catch (Exception e)
-                {
-                    DevLog("[BossRush] L键打开成就页面失败: " + e.Message);
-                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
             }
             
             // 调试快捷键 F3：测试成就弹窗

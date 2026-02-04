@@ -160,6 +160,7 @@ namespace BossRush
                 BrickStoneConfig.RegisterConfigurator();
                 DiamondConfig.RegisterConfigurator();
                 DingdangDrawingConfig.RegisterConfigurator();
+                AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
                 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
@@ -667,6 +668,11 @@ namespace BossRush
             InjectWikiBookLocalization();
             InjectAdventureJournalIntoShops_Integration();  // 将冒险家日志注入到售货机
             
+            // 初始化成就勋章物品（配置器已在 ItemFactory.LoadAllItems 之前注册）
+            // InitializeAchievementMedalItem();  // 配置器已移至 LoadAllItems 之前
+            InjectAchievementMedalLocalization();
+            InjectAchievementMedalIntoShops();  // 将成就勋章注入到售货机（排在最前面）
+            
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
@@ -698,6 +704,10 @@ namespace BossRush
             // 注册存档系统事件，用于持久化冒险家日志库存
             SavesSystem.OnCollectSaveData += OnCollectSaveData_JournalStock;
             SavesSystem.OnSetFile += OnSetFile_JournalStock;
+            
+            // 注册存档系统事件，用于持久化成就勋章库存
+            SavesSystem.OnCollectSaveData += OnCollectSaveData_MedalStock;
+            SavesSystem.OnSetFile += OnSetFile_MedalStock;
             
             // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
@@ -819,6 +829,7 @@ namespace BossRush
             {
                 InjectBossRushTicketIntoShops_Integration(scene.name);
                 InjectAdventureJournalIntoShops_Integration(scene.name);
+                InjectAchievementMedalIntoShops(scene.name);  // 注入成就勋章
                 // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
                 
                 // 在基地场景检查并赠送12月份生日蛋糕

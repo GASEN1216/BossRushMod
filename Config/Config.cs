@@ -53,6 +53,9 @@ namespace BossRush
 
             /// <summary>龙套装冲刺功能开关（默认开启）</summary>
             public bool enableDragonDash = true;
+
+            /// <summary>成就界面快捷键（默认L键，索引对应KeyCode枚举）</summary>
+            public int achievementHotkey = (int)UnityEngine.KeyCode.L;
         }
         
         #endregion
@@ -309,7 +312,14 @@ namespace BossRush
                     bool loadedDragonDash = (bool)dragonDashResult;
                     config.enableDragonDash = loadedDragonDash;
 
-                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash);
+                    // 加载成就界面快捷键
+                    string achievementHotkeyKey = ModName + "_AchievementHotkey";
+                    int currentHotkey = (config != null) ? config.achievementHotkey : (int)UnityEngine.KeyCode.L;
+                    object hotkeyResult = intLoadMethod.Invoke(null, new object[] { achievementHotkeyKey, currentHotkey });
+                    int loadedHotkey = (int)hotkeyResult;
+                    config.achievementHotkey = loadedHotkey;
+
+                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey);
                 }
                 else
                 {
@@ -341,8 +351,9 @@ namespace BossRush
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
                 string modeDKey = ModName + "_ModeDEnemiesPerWave";
+                string achievementHotkeyKey = ModName + "_AchievementHotkey";
                 
-                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == modeDKey)
+                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
                 {
                     DevLog("[BossRush] 检测到配置变更: " + changedKey);
                     LoadConfigFromModConfig();
@@ -555,6 +566,42 @@ namespace BossRush
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册白手起家敌人数配置项失败: " + ex.Message);
+                }
+
+                // ========== 按键配置 ==========
+                
+                // 成就界面快捷键
+                try
+                {
+                    MethodInfo addDropdownMethod = modBehaviourType.GetMethod("AddDropdownList", BindingFlags.Public | BindingFlags.Static);
+                    if (addDropdownMethod != null)
+                    {
+                        string hotkeyLabel = L10n.T("成就界面快捷键", "Achievement Hotkey");
+                        string hotkeyKey = ModName + "_AchievementHotkey";
+                        
+                        // 创建按键选项列表
+                        var hotkeyOptions = new System.Collections.Generic.SortedDictionary<string, object>();
+                        hotkeyOptions.Add("L", (int)UnityEngine.KeyCode.L);
+                        hotkeyOptions.Add("K", (int)UnityEngine.KeyCode.K);
+                        hotkeyOptions.Add("J", (int)UnityEngine.KeyCode.J);
+                        hotkeyOptions.Add("H", (int)UnityEngine.KeyCode.H);
+                        hotkeyOptions.Add("G", (int)UnityEngine.KeyCode.G);
+                        hotkeyOptions.Add("Y", (int)UnityEngine.KeyCode.Y);
+                        hotkeyOptions.Add("U", (int)UnityEngine.KeyCode.U);
+                        hotkeyOptions.Add("O", (int)UnityEngine.KeyCode.O);
+                        hotkeyOptions.Add("P", (int)UnityEngine.KeyCode.P);
+                        hotkeyOptions.Add("F5", (int)UnityEngine.KeyCode.F5);
+                        hotkeyOptions.Add("F6", (int)UnityEngine.KeyCode.F6);
+                        hotkeyOptions.Add("F7", (int)UnityEngine.KeyCode.F7);
+                        hotkeyOptions.Add("F8", (int)UnityEngine.KeyCode.F8);
+                        
+                        addDropdownMethod.Invoke(null, new object[] { ModName, hotkeyKey, hotkeyLabel, hotkeyOptions, typeof(int), config.achievementHotkey });
+                        DevLog("[BossRush] 成就界面快捷键配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册成就界面快捷键配置项失败: " + ex.Message);
                 }
                 
             }
