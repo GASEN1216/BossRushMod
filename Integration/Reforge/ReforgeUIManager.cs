@@ -2603,6 +2603,7 @@ namespace BossRush
                     }
 
                     // 检查 ItemVariableEntry（用于逆鳞等自定义装备的 Variables 属性）
+                    // 只有数字类型（Float）的 Variable 才能被固定
                     if (key == null)
                     {
                         Component varEntry = child.GetComponent("ItemVariableEntry");
@@ -2610,7 +2611,8 @@ namespace BossRush
                         {
                             key = GetPropertyKeyFromEntry(varEntry, "ItemVariableEntry");
                             propType = PropertyType.Variable;
-                            hasNumericValue = true;
+                            // 检查 Variable 是否为数字类型（Float）
+                            hasNumericValue = IsVariableNumeric(selectedItem, key);
                         }
                     }
 
@@ -2719,6 +2721,39 @@ namespace BossRush
             {
                 return null;
             }
+        }
+        
+        /// <summary>
+        /// 检查 Variable 是否为数字类型（Float）
+        /// 只有数字类型的属性才能被固定
+        /// </summary>
+        /// <param name="item">物品</param>
+        /// <param name="variableKey">Variable 键名</param>
+        /// <returns>是否为数字类型</returns>
+        private static bool IsVariableNumeric(Item item, string variableKey)
+        {
+            if (item == null || item.Variables == null || string.IsNullOrEmpty(variableKey))
+            {
+                return false;
+            }
+            
+            try
+            {
+                foreach (var variable in item.Variables)
+                {
+                    if (variable.Key == variableKey)
+                    {
+                        // 只有 Float 类型才是数字类型
+                        return variable.DataType == Duckov.Utilities.CustomDataType.Float;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] 检查 Variable 类型失败: " + e.Message);
+            }
+            
+            return false;
         }
         
         /// <summary>
