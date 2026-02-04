@@ -158,6 +158,7 @@ namespace BossRush
                 // 注册物品配置器（必须在 LoadAllItems 之前）
                 ColdQuenchFluidConfig.RegisterConfigurator();
                 BrickStoneConfig.RegisterConfigurator();
+                DiamondConfig.RegisterConfigurator();
                 DingdangDrawingConfig.RegisterConfigurator();
                 
                 int itemCount = ItemFactory.LoadAllItems();
@@ -631,6 +632,7 @@ namespace BossRush
             LocalizationInjector.InjectGoblinNPCLocalization();   // 哥布林NPC本地化（重铸服务）
             LocalizationInjector.InjectColdQuenchFluidLocalization();  // 冷淬液物品本地化
             LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
+            LocalizationInjector.InjectDiamondLocalization();     // 钻石物品本地化
             DingdangDrawingConfig.InjectLocalization();  // 叮当涂鸦物品本地化
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化

@@ -31,8 +31,11 @@ namespace BossRush
         /// <summary>砖石惩罚值</summary>
         public const int BRICK_STONE_PENALTY = -20;
         
+        /// <summary>钻石解锁等级</summary>
+        public const int DIAMOND_UNLOCK_LEVEL = 2;
+        
         /// <summary>冷萃液解锁等级</summary>
-        public const int COLD_QUENCH_UNLOCK_LEVEL = 2;
+        public const int COLD_QUENCH_UNLOCK_LEVEL = 4;
         
         /// <summary>每日对话好感度增加值</summary>
         public const int DAILY_CHAT_AFFINITY = 40;
@@ -90,8 +93,9 @@ namespace BossRush
                 {
                     _unlocksByLevel = new Dictionary<int, string[]>
                     {
-                        { 2, new[] { L10n.T("冷萃液", "Cold Quench Fluid") } },
+                        { 2, new[] { L10n.T("钻石", "Diamond") } },
                         { 3, new[] { L10n.T("10%折扣", "10% Discount") } },
+                        { 4, new[] { L10n.T("冷萃液", "Cold Quench Fluid") } },
                         { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
                         { 6, new[] { L10n.T("15%折扣", "15% Discount") } },
                         { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount") } }
@@ -139,7 +143,8 @@ namespace BossRush
                     {
                         // 所有NPC都喜欢的物品
                         { 1254, 500 },      // +500好感度
-                        { 500002, 150 }     // +150好感度
+                        { 500002, 150 },    // +150好感度
+                        { DiamondConfig.TYPE_ID, 80 }  // 钻石 +80好感度
                     };
                 }
                 return _positiveItems;
@@ -501,7 +506,7 @@ namespace BossRush
         
         public string GetSpecialDialogue(string eventKey, int level)
         {
-            // 哥布林特殊事件：砖石召唤
+            // 哥布林特殊事件：砖石召唤（负面反应）
             if (eventKey == "AfterBrickStone")
             {
                 if (level >= 5)
@@ -511,6 +516,19 @@ namespace BossRush
                 else
                 {
                     return L10n.T("这不是真钻石！叮当生气了！", "This is not real diamond! Dingdang is angry!");
+                }
+            }
+            
+            // 哥布林特殊事件：钻石召唤（正面反应）
+            if (eventKey == "AfterDiamond")
+            {
+                if (level >= 5)
+                {
+                    return L10n.T("真钻石！叮当最喜欢你了！", "Real diamond! Dingdang loves you the most!");
+                }
+                else
+                {
+                    return L10n.T("哇！真钻石！叮当好开心！", "Wow! Real diamond! Dingdang is so happy!");
                 }
             }
             
@@ -541,6 +559,7 @@ namespace BossRush
         {
             return new List<ShopItemEntry>
             {
+                new ShopItemEntry(DiamondConfig.TYPE_ID, DIAMOND_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5)
             };
         }

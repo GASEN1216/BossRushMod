@@ -240,6 +240,7 @@ namespace BossRush
                 InjectWikiBookLocalization(wikiBookTypeId);
                 InjectColdQuenchFluidLocalization();
                 InjectBrickStoneLocalization();
+                InjectDiamondLocalization();
                 InjectDragonDescendantLocalization();
                 InjectCourierNPCLocalization();
                 InjectGoblinNPCLocalization();
@@ -893,6 +894,34 @@ namespace BossRush
             LocalizationHelper.InjectLocalization("BossRush_BrickStone_NoGoblin", BrickStoneConfig.GetNoGoblinHint());
             
             ModBehaviour.DevLog("[LocalizationInjector] 砖石本地化注入完成");
+        }
+        
+        /// <summary>
+        /// 注入钻石物品本地化
+        /// </summary>
+        public static void InjectDiamondLocalization()
+        {
+            string displayName = DiamondConfig.GetDisplayName();
+            string description = DiamondConfig.GetDescription();
+            
+            // 注入中英文键
+            LocalizationHelper.InjectLocalization(DiamondConfig.DISPLAY_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(DiamondConfig.DISPLAY_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization(DiamondConfig.LOC_KEY_DISPLAY, displayName);
+            
+            LocalizationHelper.InjectLocalization(DiamondConfig.DISPLAY_NAME_CN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(DiamondConfig.DISPLAY_NAME_EN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(DiamondConfig.LOC_KEY_DISPLAY + "_Desc", description);
+            
+            // 注入物品 ID 键
+            string itemKey = "Item_" + DiamondConfig.TYPE_ID;
+            LocalizationHelper.InjectLocalization(itemKey, displayName);
+            LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+            
+            // 注入无哥布林提示
+            LocalizationHelper.InjectLocalization("BossRush_Diamond_NoGoblin", DiamondConfig.GetNoGoblinHint());
+            
+            ModBehaviour.DevLog("[LocalizationInjector] 钻石本地化注入完成");
         }
     }
 }

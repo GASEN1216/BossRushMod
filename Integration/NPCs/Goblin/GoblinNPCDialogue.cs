@@ -120,7 +120,7 @@ namespace BossRush
         /// <summary>
         /// 待机3秒并显示气泡
         /// 3秒后设置 IsIdle=false 并恢复走路
-        /// 如果是砖石召唤，先停下来再显示对话气泡
+        /// 根据召唤类型显示不同反应（钻石=爱心，砖石=碎心）
         /// </summary>
         private IEnumerator IdleAndShowBubble()
         {
@@ -129,21 +129,40 @@ namespace BossRush
             SafeSetBool(hash_IsIdle, true);
             SafeSetBool(hash_IsRunning, false);
             
-            // 如果是砖石召唤，先停下来再显示对话
+            // 如果需要显示对话
             if (showDialogueOnArrival)
             {
                 showDialogueOnArrival = false;  // 重置标志
                 
-                // 先显示心碎动画
-                ShowBrokenHeartBubble();
+                // 根据召唤类型显示不同反应
+                if (isPositiveSummon)
+                {
+                    // 钻石召唤：显示爱心动画
+                    ShowLoveHeartBubble();
+                    
+                    // 等待0.5秒让哥布林完全停下来
+                    yield return new WaitForSeconds(0.5f);
+                    
+                    // 显示正面对话气泡
+                    ShowDiamondDialogue();
+                    
+                    ModBehaviour.DevLog("[GoblinNPC] 钻石召唤：显示爱心和正面对话");
+                }
+                else
+                {
+                    // 砖石召唤：显示心碎动画
+                    ShowBrokenHeartBubble();
+                    
+                    // 等待0.5秒让哥布林完全停下来
+                    yield return new WaitForSeconds(0.5f);
+                    
+                    // 显示负面对话气泡
+                    ShowBrickStoneDialogue();
+                    
+                    ModBehaviour.DevLog("[GoblinNPC] 砖石召唤：显示碎心和负面对话");
+                }
                 
-                // 等待0.5秒让哥布林完全停下来
-                yield return new WaitForSeconds(0.5f);
-                
-                // 然后显示对话气泡
-                ShowBrickStoneDialogue();
-                
-                ModBehaviour.DevLog("[GoblinNPC] 砖石召唤：先停下来，再显示对话气泡");
+                isPositiveSummon = false;  // 重置标志
             }
             else
             {
@@ -248,6 +267,26 @@ namespace BossRush
                     ModBehaviour.DevLog("[GoblinNPC] 显示砖石召唤对话: " + dialogue);
                 }
             }, "GoblinNPCDialogue.ShowBrickStoneDialogue");
+        }
+        
+        /// <summary>
+        /// 显示钻石召唤后的开心对话
+        /// </summary>
+        private void ShowDiamondDialogue()
+        {
+            NPCExceptionHandler.TryExecute(() =>
+            {
+                // 使用通用对话系统的特殊事件API
+                int level = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
+                string dialogue = NPCDialogueSystem.GetSpecialDialogue(GoblinAffinityConfig.NPC_ID, "AfterDiamond", level);
+                
+                // 显示对话气泡
+                if (!string.IsNullOrEmpty(dialogue))
+                {
+                    DialogueBubblesManager.Show(dialogue, transform, GoblinNPCConstants.NAME_TAG_HEIGHT, false, false, -1f, 3f);
+                    ModBehaviour.DevLog("[GoblinNPC] 显示钻石召唤对话: " + dialogue);
+                }
+            }, "GoblinNPCDialogue.ShowDiamondDialogue");
         }
     }
 }

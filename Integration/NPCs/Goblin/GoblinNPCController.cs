@@ -54,7 +54,8 @@ namespace BossRush
         private bool isInDialogue = false;      // 是否在对话中
         private bool isIdling = false;          // 是否在待机
         private bool isBraking = false;         // 是否正在播放急停动画（但还在移动）
-        private bool showDialogueOnArrival = false;  // 砖石召唤时，到达后是否显示对话
+        private bool showDialogueOnArrival = false;  // 召唤时，到达后是否显示对话
+        private bool isPositiveSummon = false;       // 是否是正面召唤（钻石=true，砖石=false）
         
         // ============================================================================
         // 协程引用
@@ -302,9 +303,18 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 砖石召唤哥布林 - 哥布林跑向玩家，到达后先停下来再显示对话
+        /// 砖石召唤哥布林 - 哥布林跑向玩家，到达后先停下来再显示对话（负面反应）
         /// </summary>
         public void RunToPlayerWithDialogue()
+        {
+            RunToPlayerWithDialogue(false);  // 砖石召唤，负面反应
+        }
+        
+        /// <summary>
+        /// 召唤哥布林 - 哥布林跑向玩家，到达后先停下来再显示对话
+        /// </summary>
+        /// <param name="positive">是否是正面召唤（钻石=true显示爱心，砖石=false显示碎心）</param>
+        public void RunToPlayerWithDialogue(bool positive)
         {
             if (playerTransform == null)
             {
@@ -313,7 +323,8 @@ namespace BossRush
             }
             
             isRunningToPlayer = true;
-            showDialogueOnArrival = true;  // 砖石召唤需要显示对话
+            showDialogueOnArrival = true;  // 需要显示对话
+            isPositiveSummon = positive;   // 记录召唤类型
             
             // 设置跑步动画
             SafeSetBool(hash_IsRunning, true);
@@ -324,7 +335,7 @@ namespace BossRush
                 movement.RunToPlayer(playerTransform.position);
             }
             
-            ModBehaviour.DevLog("[GoblinNPC] 开始跑向玩家（砖石召唤，到达后显示对话）");
+            ModBehaviour.DevLog("[GoblinNPC] 开始跑向玩家（" + (positive ? "钻石" : "砖石") + "召唤，到达后显示对话）");
         }
         
         /// <summary>
