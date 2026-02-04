@@ -299,6 +299,7 @@ namespace BossRush
         /// 执行对话逻辑（从 GoblinChatInteractable 移植）
         /// 聊天不限制次数，每次都从话语库随机选一条
         /// 但好感度增加每天只有一次
+        /// 好感度等级 >= 8 时每次聊天都会冒爱心
         /// </summary>
         private void DoChat()
         {
@@ -319,6 +320,14 @@ namespace BossRush
                     AffinityManager.SetLastChatDay(GoblinAffinityConfig.NPC_ID, currentDay);
                     
                     ModBehaviour.DevLog("[GoblinNPC] 今日首次对话，好感度增加: " + affinityGain);
+                }
+                
+                // 好感度等级 >= 8 时每次聊天都显示冒爱心特效
+                int currentLevel = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
+                if (currentLevel >= 8 && controller != null)
+                {
+                    controller.ShowLoveHeartBubble();
+                    ModBehaviour.DevLog("[GoblinNPC] 好感度等级 " + currentLevel + " >= 8，显示冒爱心特效");
                 }
                 
                 // 每次聊天都显示好感度进度横幅（无论是否获得好感度）
