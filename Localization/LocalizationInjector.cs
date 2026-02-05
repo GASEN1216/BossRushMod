@@ -198,30 +198,68 @@ namespace BossRush
         };
         
         // 快递员随机对话（中英文对照）
+        // 包含：快递业务、世界观、龙皇Boss、叮当NPC、好感度系统、重铸系统、飞行图腾、成就系统、火龙相关
         private static readonly string[][] COURIER_DIALOGUES = new string[][]
         {
+            // ============ 快递业务相关 ============
             new string[] { "补给到了……先把伞可乐灌了，灵魂别掉地上。", "Supplies arrived... drink your Umbrella Cola first, don't let your soul drop." },
-            new string[] { "这地方路况真差，比拎着XO钥匙去洗脚房还折磨。", "The roads here are terrible, worse than carrying XO keys to a foot spa." },
-            new string[] { "别盯着我背包看，都是J-Lab登记过的，少一件杰夫要开会。", "Stop staring at my backpack, everything's registered with J-Lab. Jeff will call a meeting if anything's missing." },
-            new string[] { "Boss也得排队，先去祭坛交羽毛，图腾按流程发。", "Even bosses have to queue. Go to the altar with feathers first, totems are distributed by procedure." },
-            new string[] { "哎，这里谁点了'急件'？紫色空间能量都溢出来了。", "Hey, who ordered 'express delivery' here? Purple space energy is overflowing." },
-            new string[] { "星球都快崩了还要准点，J-Lab的KPI不讲情面。", "The planet's about to collapse and we still need to be on time. J-Lab's KPIs show no mercy." },
+            new string[] { "有什么需要寄存的尽管找我，收费公道童叟无欺！", "Need to store anything? Come find me, fair prices for all!" },
+            new string[] { "有时候送的快也很重要，直接就把钱拿过来，概不赊账！", "Sometimes speed matters, just hand over the money, no credit!" },
             new string[] { "你要是能活到下一波，我给你盖个章，再塞你一瓶'有糖的'——有灵魂那种。", "If you survive the next wave, I'll stamp your card and slip you a 'sugared' one - the kind with soul." },
-            new string[] { "别吵，听见没？那边在打碟……蓝皮人可能又在看热闹。", "Quiet, hear that? Someone's DJing over there... the blue guys are probably watching again." },
             new string[] { "我这把年纪了还在跑单，外星水熊虫母舰来了都得排队签收。", "At my age still running deliveries. Even alien tardigrade motherships have to queue for pickup." },
-            new string[] { "箱子里是什么？浓缩浆质、绷带，还有一张'无糖可乐慎用'的说明。", "What's in the box? Concentrated plasma, bandages, and a 'use sugar-free cola with caution' note." },
-            new string[] { "你要投诉？可以，去找蓝皮人，他一个响指就能把你的工单传送走。", "Want to complain? Sure, find the blue guy. One snap and he'll teleport your ticket away." },
-            new string[] { "路线规划又被风暴改了……行，绕开机器蜘蛛，走那条最紫的。", "Route changed by the storm again... fine, avoid the mech spiders, take the most purple path." },
-            new string[] { "我不怕Boss，我怕紫毒把快递标签腐蚀了——到时候谁也别想对账。", "I'm not afraid of bosses. I'm afraid the purple poison will corrode the delivery labels - then no one can reconcile accounts." },
             new string[] { "签收方式：按爪印、按羽毛、或者交一块蓝色方块当押金。", "Sign for delivery: paw print, feather, or leave a blue cube as deposit." },
-            new string[] { "别跟我讲热血，我只认单号、撤离路线，以及'有糖才有灵魂'。", "Don't talk passion to me. I only care about order numbers, evacuation routes, and 'sugar means soul'." },
+            
+            // ============ 焚天龙皇Boss相关 ============
+            new string[] { "听说了吗？有人在深处见到了焚天龙皇...那可是龙族的王！", "Heard the news? Someone spotted the Dragon King in the depths... the king of all dragons!" },
+            new string[] { "焚天龙皇的鳞片能做成顶级装备，不过你得先活着把它打下来。", "Dragon King's scales make top-tier gear, but you gotta survive taking it down first." },
+            new string[] { "龙皇发怒的时候整个天都是红的，我的快递差点被烧成灰。", "When the Dragon King rages, the whole sky turns red. My deliveries almost got burned to ash." },
+            new string[] { "龙皇掉落的装备？飞行图腾、龙王之冕、龙王鳞铠、还有逆鳞...都是好东西。", "Dragon King drops? Flight Totem, Dragon Crown, Dragon Scale Armor, and Reverse Scale... all good stuff." },
+            new string[] { "别小看龙皇，它可是有好几个阶段的，每个阶段都够你喝一壶的。", "Don't underestimate the Dragon King, it has multiple phases, each one's a handful." },
+            
+            // ============ 火龙相关（保留） ============
             new string[] { "看到那只到处乱创的火龙了吗？", "See that fire dragon causing chaos everywhere?" },
             new string[] { "嗯...火龙怕毒，哪天毒死它", "Hmm... fire dragons fear poison. Maybe poison it someday." },
             new string[] { "你知道火龙也怕冰吗？我有一次都把它打坠机了哈哈哈哈", "Did you know fire dragons also fear ice? I once made it crash land hahaha" },
             new string[] { "这该死的火龙把我的快递都创飞了", "That damn fire dragon knocked all my deliveries flying" },
             new string[] { "那头火龙在叽里咕噜的时候最好跑远点", "When that fire dragon starts gurgling, you better run far away" },
             new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" },
-            new string[] { "有时候送的快也很重要，直接就把钱拿过来，概不赊账！", "Sometimes speed matters, just hand over the money, no credit!" }
+            
+            // ============ 叮当NPC相关 ============
+            new string[] { "那个哥布林叮当？别看它长得怪，重铸手艺可是一绝。", "That goblin Dingdang? Don't let the looks fool you, its reforging skills are top-notch." },
+            new string[] { "叮当那家伙总是笑嘻嘻的，不过我总觉得那笑容背后藏着什么故事。", "Dingdang's always grinning, but I feel there's a story behind that smile." },
+            new string[] { "想重铸装备就去找叮当，多送点礼物说不定能打折呢。", "Want to reforge gear? Find Dingdang. Send some gifts and maybe you'll get a discount." },
+            new string[] { "叮当收集的那些涂鸦...据说是它自己画的，挺有意思。", "Those graffiti Dingdang collects... heard it draws them itself, pretty interesting." },
+            
+            // ============ 好感度系统相关 ============
+            new string[] { "多跟NPC打好关系，好感度高了说不定有惊喜。", "Build good relations with NPCs, high affinity might bring surprises." },
+            new string[] { "送礼物能提升好感度，不过得送对东西，别乱送。", "Gifts raise affinity, but send the right stuff, don't just give random things." },
+            new string[] { "听说好感度满了会有特殊剧情？我也想知道是什么。", "Heard there's special story at max affinity? I wanna know what it is too." },
+            
+            // ============ 重铸系统相关 ============
+            new string[] { "装备属性不满意？去找叮当重铸，投入越多品质越好。", "Not happy with gear stats? Go reforge at Dingdang's, more investment means better quality." },
+            new string[] { "重铸需要钱，不过比起打到一件完美装备，这点钱算什么。", "Reforging costs money, but compared to finding perfect gear, it's nothing." },
+            new string[] { "叮当的重铸工坊生意不错，我经常给它送材料。", "Dingdang's reforge workshop does good business, I deliver materials there often." },
+            
+            // ============ 飞行图腾相关 ============
+            new string[] { "腾云驾雾图腾？那玩意儿能让你飞起来，送快递要是有这个就好了。", "Cloud Riding Totem? That thing lets you fly. Wish I had one for deliveries." },
+            new string[] { "飞行图腾是好东西，不过别飞太高，摔下来可不是闹着玩的。", "Flight totem's great, but don't fly too high, falling's no joke." },
+            new string[] { "有了飞行图腾，躲Boss技能就方便多了，强烈推荐。", "With the flight totem, dodging boss skills is way easier. Highly recommend." },
+            
+            // ============ 成就系统相关 ============
+            new string[] { "成就勋章收集得怎么样了？按L键可以查看进度。", "How's the achievement medal collection going? Press L to check progress." },
+            new string[] { "听说集齐所有成就有特殊奖励，我也在努力呢。", "Heard there's special rewards for all achievements, I'm working on it too." },
+            new string[] { "有些成就挺难拿的，不过挑战不就是乐趣所在吗？", "Some achievements are tough to get, but isn't challenge the fun part?" },
+            
+            // ============ 新物品相关 ============
+            new string[] { "砖石和钻石？那是召唤叮当用的，想找它帮忙就得先准备好。", "Brickstone and diamonds? Those are for summoning Dingdang, gotta prepare them if you want its help." },
+            new string[] { "冷淬液是好东西，能把装备属性固定住，重铸的时候不怕洗掉好词条。", "Cold Quench Fluid is great stuff, locks equipment stats so you won't lose good modifiers when reforging." },
+            new string[] { "叮当涂鸦是那小家伙的心血之作，收集起来挺有意思。", "Dingdang Graffiti is that little guy's masterpiece, fun to collect." },
+            
+            // ============ 世界观/日常 ============
+            new string[] { "这地方路况真差，不过习惯了也就那样。", "Roads here are terrible, but you get used to it." },
+            new string[] { "别跟我讲热血，我只认单号、撤离路线，以及'有糖才有灵魂'。", "Don't talk passion to me. I only care about order numbers, evacuation routes, and 'sugar means soul'." },
+            new string[] { "星球都快崩了还要准点，KPI不讲情面啊。", "Planet's about to collapse and we still need to be on time. KPIs show no mercy." },
+            new string[] { "我不怕Boss，我怕紫毒把快递标签腐蚀了——到时候谁也别想对账。", "I'm not afraid of bosses. I'm afraid the purple poison will corrode the delivery labels - then no one can reconcile accounts." }
         };
         
         // ============================================================================
