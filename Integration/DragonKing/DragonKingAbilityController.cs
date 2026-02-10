@@ -1011,8 +1011,8 @@ namespace BossRush
             
             while (CurrentPhase != DragonKingPhase.Dead && bossCharacter != null)
             {
-                // 阶段转换中暂停攻击
-                if (CurrentPhase == DragonKingPhase.Transitioning)
+                // 阶段转换中或孩儿护我期间暂停攻击
+                if (CurrentPhase == DragonKingPhase.Transitioning || isInChildProtection)
                 {
                     yield return wait05s;
                     continue;
@@ -1653,8 +1653,8 @@ namespace BossRush
             
             while (isCustomShootingActive && bossCharacter != null && CurrentPhase != DragonKingPhase.Dead)
             {
-                // 转阶段时暂停射击但不退出循环
-                if (CurrentPhase == DragonKingPhase.Transitioning)
+                // 转阶段或孩儿护我期间暂停射击但不退出循环
+                if (CurrentPhase == DragonKingPhase.Transitioning || isInChildProtection)
                 {
                     yield return wait01s;
                     continue;
@@ -3835,40 +3835,99 @@ namespace BossRush
                 bossHealth.SetInvincible(true);
             }
             
-            // 2. 停止所有攻击和射击
-            isAttacking = false;
-            isCustomShootingActive = false;
-            if (customShootingCoroutine != null)
+            // 2. 【关键】立即禁用角色组件，彻底阻止所有行为（参考二阶段转换）
+            if (bossCharacter != null)
             {
-                StopCoroutine(customShootingCoroutine);
-                customShootingCoroutine = null;
+                bossCharacter.enabled = false;
+                
+                // 清除手持物品
+                if (bossCharacter.CurrentHoldItemAgent != null)
+                {
+                    bossCharacter.ChangeHoldItem(null);
+                }
             }
+            
+            // 3. 停止所有攻击和射击
+            isAttacking = false;
+            
+            // 停止自定义射击循环
+            StopCustomShooting();
+            
+            // 停止当前攻击协程
+            if (currentAttackCoroutine != null)
+            {
+                StopCoroutine(currentAttackCoroutine);
+                currentAttackCoroutine = null;
+            }
+            
+            // 停止攻击循环
             if (attackLoopCoroutine != null)
             {
                 StopCoroutine(attackLoopCoroutine);
                 attackLoopCoroutine = null;
             }
             
-            // 3. 暂停AI
-            if (aiController != null)
+            // 停止太阳舞弹幕（如果正在进行）
+            isSunDanceActive = false;
+            if (sunDanceBarrageCoroutine != null)
             {
-                aiController.Pause();
+                StopCoroutine(sunDanceBarrageCoroutine);
+                sunDanceBarrageCoroutine = null;
             }
             
-            // 4. 显示龙王对话气泡
+            // 清理当前攻击的特效
+            CleanupAllEffects();
+            
+            // 4. 暂停AI（禁用AI控制器、路径控制、行为树）
+            StopBossMovementAndShooting();
+            
+            // 5. 禁用碰撞检测器
+            if (collisionDetector != null)
+            {
+                collisionDetector.enabled = false;
+            }
+            
+            // 6. 停止角色移动输入（双重保险）
+            if (bossCharacter != null)
+            {
+                bossCharacter.SetMoveInput(Vector2.zero);
+                bossCharacter.SetRunInput(false);
+                bossCharacter.Trigger(false, false, false);
+            }
+            
+            // 7. 显示龙王对话气泡
             ShowDragonKingDialogue();
             
             yield return wait1s;
             
-            // 5. 飞升到指定高度
+            // 8. 飞升到指定高度
             yield return StartCoroutine(FlyToHeight(DragonKingConfig.ChildProtectionFlyHeight));
+            
+            // 8.5 【关键】飞升完成后，从底层禁用移动系统
+            // 使用原版Movement.MovementEnabled属性，从根源阻断所有移动
+            if (bossCharacter != null)
+            {
+                // 禁用Movement组件（阻断UpdateMovement中的所有移动逻辑）
+                if (bossCharacter.movementControl != null)
+                {
+                    bossCharacter.movementControl.MovementEnabled = false;
+                }
+                
+                // 禁用Seeker组件（阻止A*寻路异步回调设置新路径）
+                var seeker = bossCharacter.GetComponentInChildren<Pathfinding.Seeker>();
+                if (seeker != null)
+                {
+                    seeker.CancelCurrentPathRequest();
+                    seeker.enabled = false;
+                }
+            }
             
             yield return wait05s;
             
-            // 6. 召唤龙裔遗族
+            // 9. 召唤龙裔遗族
             yield return StartCoroutine(SpawnDescendantForProtection());
             
-            // 7. 等待龙裔遗族死亡（由OnDescendantDeath回调处理）
+            // 10. 等待龙裔遗族死亡（由OnDescendantDeath回调处理）
             // 协程在此结束，后续由回调处理
             ModBehaviour.DevLog("[DragonKing] 孩儿护我序列完成，等待龙裔遗族死亡");
         }
@@ -4383,6 +4442,21 @@ namespace BossRush
             
             // 销毁云雾特效
             DestroyFlightCloudEffect();
+            
+            // 恢复移动系统（清理时恢复，确保不影响其他逻辑）
+            if (bossCharacter != null)
+            {
+                if (bossCharacter.movementControl != null)
+                {
+                    bossCharacter.movementControl.MovementEnabled = true;
+                }
+                
+                var seeker = bossCharacter.GetComponentInChildren<Pathfinding.Seeker>();
+                if (seeker != null)
+                {
+                    seeker.enabled = true;
+                }
+            }
             
             // 重置状态
             childProtectionTriggered = false;
