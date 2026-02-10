@@ -41,6 +41,7 @@ namespace BossRush
         // StockShop 私有字段
         public static readonly FieldInfo StockShop_MerchantID;
         public static readonly FieldInfo StockShop_ItemInstances;
+        public static readonly FieldInfo StockShop_AccountAvaliable;
         
         // CharacterRandomPreset.characterIconType (私有字段)
         public static readonly FieldInfo CharacterRandomPreset_CharacterIconType;
@@ -77,6 +78,8 @@ namespace BossRush
                     "merchantID", privateInstance);
                 StockShop_ItemInstances = typeof(StockShop).GetField(
                     "itemInstances", privateInstance);
+                StockShop_AccountAvaliable = typeof(StockShop).GetField(
+                    "accountAvaliable", privateInstance);
                 
                 // CharacterRandomPreset.characterIconType
                 CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(

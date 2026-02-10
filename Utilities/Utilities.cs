@@ -58,6 +58,17 @@ namespace BossRush
 
                 try
                 {
+                    // 设置 accountAvaliable = true，允许直接扣银行余额而非消耗现金物品
+                    var fAccount = ReflectionCache.StockShop_AccountAvaliable;
+                    if (fAccount != null)
+                    {
+                        fAccount.SetValue(ammoShop, true);
+                    }
+                }
+                catch {}
+
+                try
+                {
                     if (ammoShop.entries == null)
                     {
                         ammoShop.entries = new List<StockShop.Entry>();
