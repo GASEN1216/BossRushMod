@@ -155,9 +155,9 @@ namespace BossRush
         // ========== 预设名称 ==========
         
         /// <summary>
-        /// 基础预设的nameKey（原版"???"敌人）
+        /// 基础预设的nameKey（原版Boss_Red敌人预制体）
         /// </summary>
-        public const string BasePresetNameKey = "???";
+        public const string BasePresetNameKey = "Cname_Boss_Red";
         
         // ========== 装备名称 ==========
         

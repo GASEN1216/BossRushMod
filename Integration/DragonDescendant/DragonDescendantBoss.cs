@@ -238,12 +238,12 @@ namespace BossRush
         // 避免每次生成Boss时都调用Resources.FindObjectsOfTypeAll
         
         /// <summary>
-        /// 缓存的???敌人预设
+        /// 缓存的Boss_Red敌人预设（龙裔/龙皇基础预制体）
         /// </summary>
         private static CharacterRandomPreset cachedQuestionMarkPreset = null;
         
         /// <summary>
-        /// 是否已搜索过???预设
+        /// 是否已搜索过Boss_Red预设
         /// </summary>
         private static bool questionMarkPresetSearched = false;
         
@@ -265,39 +265,53 @@ namespace BossRush
                 // 此方法仅在Boss生成时调用一次，不影响战斗性能
                 var presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
                 
-                // 遍历查找???预设
+                // 优先查找 Cname_Boss_Red 预设（龙裔/龙皇使用的Boss预制体）
                 foreach (var preset in presets)
                 {
                     if (preset == null) continue;
                     
-                    // 通过nameKey匹配
+                    // 通过nameKey精确匹配 Cname_Boss_Red
                     if (preset.nameKey == DragonDescendantConfig.BasePresetNameKey ||
-                        preset.nameKey == "???" ||
-                        preset.Name == "???" ||
-                        preset.DisplayName == "???")
+                        preset.nameKey == "Cname_Boss_Red")
                     {
                         cachedQuestionMarkPreset = preset;
+                        DevLog("[DragonDescendant] 找到 Cname_Boss_Red 预设: " + preset.name + " (nameKey=" + preset.nameKey + ")");
                         return preset;
                     }
                 }
                 
-                // 尝试通过名称模糊匹配
+                // 后备：通过预设名称模糊匹配 Boss_Red
                 foreach (var preset in presets)
                 {
                     if (preset == null) continue;
                     
-                    if (preset.name.Contains("???") || 
-                        preset.name.Contains("Question") ||
-                        preset.name.Contains("Unknown"))
+                    if (preset.name.Contains("Boss_Red") || 
+                        preset.name.Contains("BossRed"))
                     {
                         cachedQuestionMarkPreset = preset;
+                        DevLog("[DragonDescendant] 通过名称匹配找到 Boss_Red 预设: " + preset.name);
+                        return preset;
+                    }
+                }
+                
+                // 最终后备：查找???预设（兼容旧版本）
+                foreach (var preset in presets)
+                {
+                    if (preset == null) continue;
+                    
+                    if (preset.nameKey == "???" ||
+                        preset.Name == "???" ||
+                        preset.DisplayName == "???")
+                    {
+                        cachedQuestionMarkPreset = preset;
+                        DevLog("[DragonDescendant] [WARNING] 未找到 Cname_Boss_Red，回退到???预设: " + preset.name);
                         return preset;
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog("[DragonDescendant] [WARNING] 查找???预设失败: " + e.Message);
+                DevLog("[DragonDescendant] [WARNING] 查找基础预设失败: " + e.Message);
             }
             
             return null;
