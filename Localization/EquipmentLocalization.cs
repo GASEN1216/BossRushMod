@@ -23,14 +23,14 @@ namespace BossRush
         // 赤龙首（原龙头）
         private static readonly string DragonHelmNameCN = "赤龙首";
         private static readonly string DragonHelmNameEN = "Crimson Dragon Helm";
-        private static readonly string DragonHelmDescCN = "由旧时代火龙残骸锻造而成的头盔，鳞片依然散发着微弱的热量。据说与焰鳞甲一同穿戴时，会产生神秘的共鸣，获得火龙的祝福。";
-        private static readonly string DragonHelmDescEN = "A helmet forged from the remains of an ancient fire dragon. The scales still emit faint warmth. Legend says wearing it with Flame Scale Armor creates a mysterious resonance, granting the fire dragon's blessing.";
+        private static readonly string DragonHelmDescCN = "由旧时代火龙残骸锻造而成的头盔，鳞片依然散发着微弱的热量。据说与焰鳞甲一同穿戴时，会产生神秘的共鸣，获得火龙的祝福。\n<color=#FF4500>【龙之套装】</color>与焰鳞甲同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
+        private static readonly string DragonHelmDescEN = "A helmet forged from the remains of an ancient fire dragon. The scales still emit faint warmth. Legend says wearing it with Flame Scale Armor creates a mysterious resonance, granting the fire dragon's blessing.\n<color=#FF4500>[Dragon Set]</color> When worn with Flame Scale Armor: double-tap movement to Dragon Dash (3m); fire damage heals you.";
         
         // 焰鳞甲（原龙甲）
         private static readonly string DragonArmorNameCN = "焰鳞甲";
         private static readonly string DragonArmorNameEN = "Flame Scale Armor";
-        private static readonly string DragonArmorDescCN = "以旧时代火龙的胸甲残片为核心打造的护甲，触摸时能感受到沉睡的龙焰。与赤龙首一同穿戴时，会唤醒其中蕴含的远古力量。";
-        private static readonly string DragonArmorDescEN = "Armor crafted around chest plate fragments of an ancient fire dragon. You can feel dormant dragon flames when touching it. Wearing it with Crimson Dragon Helm awakens the ancient power within.";
+        private static readonly string DragonArmorDescCN = "以旧时代火龙的胸甲残片为核心打造的护甲，触摸时能感受到沉睡的龙焰。与赤龙首一同穿戴时，会唤醒其中蕴含的远古力量。\n<color=#FF4500>【龙之套装】</color>与赤龙首同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
+        private static readonly string DragonArmorDescEN = "Armor crafted around chest plate fragments of an ancient fire dragon. You can feel dormant dragon flames when touching it. Wearing it with Crimson Dragon Helm awakens the ancient power within.\n<color=#FF4500>[Dragon Set]</color> When worn with Crimson Dragon Helm: double-tap movement to Dragon Dash (3m); fire damage heals you.";
         
         #endregion
         
@@ -55,14 +55,14 @@ namespace BossRush
         // 龙王之冕（龙王专属头盔）
         private static readonly string DragonKingHelmNameCN = "龙王之冕";
         private static readonly string DragonKingHelmNameEN = "Dragon King's Crown";
-        private static readonly string DragonKingHelmDescCN = "真正的龙王遗冠，其上镌刻着远古龙族的王权印记。当你戴上它的那一刻，会感受到一股毁灭一切的力量在血脉中觉醒。唯有配得上这份力量的人，才能承受它的重量。";
-        private static readonly string DragonKingHelmDescEN = "The true crown of the Dragon King, etched with the royal sigils of an ancient dragon lineage. The moment you don it, you feel an overwhelming power awaken in your veins. Only those worthy of this power can bear its weight.";
+        private static readonly string DragonKingHelmDescCN = "真正的龙王遗冠，其上镌刻着远古龙族的王权印记。当你戴上它的那一刻，会感受到一股毁灭一切的力量在血脉中觉醒。唯有配得上这份力量的人，才能承受它的重量。\n<color=#FFD700>【龙王套装】</color>与龙王鳞铠同时穿戴：双击方向键发动龙王冲刺(6米)，可连续追加第二次冲刺(3米)，冲刺路径留下熔浆灼烧敌人；火焰伤害转化为治疗。";
+        private static readonly string DragonKingHelmDescEN = "The true crown of the Dragon King, etched with the royal sigils of an ancient dragon lineage. The moment you don it, you feel an overwhelming power awaken in your veins. Only those worthy of this power can bear its weight.\n<color=#FFD700>[Dragon King Set]</color> When worn with Dragon King's Scale Mail: double-tap movement to Dragon King Dash (6m), chain a second dash (3m), leaving lava trails that burn enemies; fire damage heals you.";
         
         // 龙王鳞铠（龙王专属护甲）
         private static readonly string DragonKingArmorNameCN = "龙王鳞铠";
         private static readonly string DragonKingArmorNameEN = "Dragon King's Scale Mail";
-        private static readonly string DragonKingArmorDescCN = "由龙王心脏区域的核心鳞甲锻造而成，据说仍有微弱的心跳声在其中回响。与龙王之冕一同穿戴时会产生神秘的共鸣，获得龙王的庇护，但也将被烙上龙族的灵魂印记，永远无法逃离火焰的宿命。";
-        private static readonly string DragonKingArmorDescEN = "Forged from the core scales near the Dragon King's heart, a faint heartbeat still echoes within. When worn with the Dragon King's Crown, a mysterious resonance occurs, granting the Dragon King's protection, but forever marking you with the dragon's soul, bound to the fate of flames.";
+        private static readonly string DragonKingArmorDescCN = "由龙王心脏区域的核心鳞甲锻造而成，据说仍有微弱的心跳声在其中回响。与龙王之冕一同穿戴时会产生神秘的共鸣，获得龙王的庇护，但也将被烙上龙族的灵魂印记，永远无法逃离火焰的宿命。\n<color=#FFD700>【龙王套装】</color>与龙王之冕同时穿戴：双击方向键发动龙王冲刺(6米)，可连续追加第二次冲刺(3米)，冲刺路径留下熔浆灼烧敌人；火焰伤害转化为治疗。";
+        private static readonly string DragonKingArmorDescEN = "Forged from the core scales near the Dragon King's heart, a faint heartbeat still echoes within. When worn with the Dragon King's Crown, a mysterious resonance occurs, granting the Dragon King's protection, but forever marking you with the dragon's soul, bound to the fate of flames.\n<color=#FFD700>[Dragon King Set]</color> When worn with Dragon King's Crown: double-tap movement to Dragon King Dash (6m), chain a second dash (3m), leaving lava trails that burn enemies; fire damage heals you.";
         
         #endregion
         

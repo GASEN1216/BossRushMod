@@ -361,12 +361,9 @@ namespace BossRush
                 dragonKingSetActive = isDragonKing;
                 DevLog(isDragonKing ? "[DragonSet] 龙王套装效果激活！" : "[DragonSet] 龙套装效果激活！");
                 
-                // 龙王套装不触发火焰转治疗（由用户要求只保留红眼）
-                if (!isDragonKing)
-                {
-                    // 注册伤害事件（用于火焰伤害转治疗）
-                    RegisterDragonHurtEvent();
-                }
+                // 龙王套装作为龙裔套装的上位，同样触发火焰转治疗
+                // 注册伤害事件（用于火焰伤害转治疗）
+                RegisterDragonHurtEvent();
                 
                 // 创建眼睛红光特效
                 CreateDragonEyeEffect(character);
@@ -431,8 +428,8 @@ namespace BossRush
         {
             try
             {
-                // 只处理主角的伤害，且龙王套装不触发此效果
-                if (!dragonSetActive || dragonKingSetActive || health == null || !health.IsMainCharacterHealth) return;
+                // 只处理主角的伤害（龙王套装和龙裔套装都触发火焰转治疗）
+                if (!dragonSetActive || health == null || !health.IsMainCharacterHealth) return;
                 
                 // 检查是否有火焰伤害
                 if (damageInfo.elementFactors == null || damageInfo.elementFactors.Count == 0) return;
