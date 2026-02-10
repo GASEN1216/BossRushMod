@@ -372,8 +372,8 @@ namespace BossRush
                 StartDragonEyeEffectCoroutine();
                 
                 // 显示提示（物理减伤已通过装备属性实现，会显示在装备详情中）
-                string titleCN = isDragonKing ? "<color=#FFD700>【龙王之庇护】</color>" : "<color=#FF4500>【龙之庇护】</color>";
-                string titleEN = isDragonKing ? "<color=#FFD700>[Dragon King's Protection]</color>" : "<color=#FF4500>[Dragon's Protection]</color>";
+                string titleCN = isDragonKing ? "<color=#FFD700>【龙王之庇护】</color>" : "<color=#FFD700>【龙之庇护】</color>";
+                string titleEN = isDragonKing ? "<color=#FFD700>[Dragon King's Protection]</color>" : "<color=#FFD700>[Dragon's Protection]</color>";
                 
                 ShowMessage(L10n.T(
                     titleCN + " 套装效果激活！\n火焰伤害转化为治疗",

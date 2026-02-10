@@ -23,14 +23,14 @@ namespace BossRush
         // 赤龙首（原龙头）
         private static readonly string DragonHelmNameCN = "赤龙首";
         private static readonly string DragonHelmNameEN = "Crimson Dragon Helm";
-        private static readonly string DragonHelmDescCN = "由旧时代火龙残骸锻造而成的头盔，鳞片依然散发着微弱的热量。据说与焰鳞甲一同穿戴时，会产生神秘的共鸣，获得火龙的祝福。\n<color=#FF4500>【龙之套装】</color>与焰鳞甲同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
-        private static readonly string DragonHelmDescEN = "A helmet forged from the remains of an ancient fire dragon. The scales still emit faint warmth. Legend says wearing it with Flame Scale Armor creates a mysterious resonance, granting the fire dragon's blessing.\n<color=#FF4500>[Dragon Set]</color> When worn with Flame Scale Armor: double-tap movement to Dragon Dash (3m); fire damage heals you.";
+        private static readonly string DragonHelmDescCN = "由旧时代火龙残骸锻造而成的头盔，鳞片依然散发着微弱的热量。据说与焰鳞甲一同穿戴时，会产生神秘的共鸣，获得火龙的祝福。\n<color=#FFD700>【龙之套装】</color>与焰鳞甲同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
+        private static readonly string DragonHelmDescEN = "A helmet forged from the remains of an ancient fire dragon. The scales still emit faint warmth. Legend says wearing it with Flame Scale Armor creates a mysterious resonance, granting the fire dragon's blessing.\n<color=#FFD700>[Dragon Set]</color> When worn with Flame Scale Armor: double-tap movement to Dragon Dash (3m); fire damage heals you.";
         
         // 焰鳞甲（原龙甲）
         private static readonly string DragonArmorNameCN = "焰鳞甲";
         private static readonly string DragonArmorNameEN = "Flame Scale Armor";
-        private static readonly string DragonArmorDescCN = "以旧时代火龙的胸甲残片为核心打造的护甲，触摸时能感受到沉睡的龙焰。与赤龙首一同穿戴时，会唤醒其中蕴含的远古力量。\n<color=#FF4500>【龙之套装】</color>与赤龙首同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
-        private static readonly string DragonArmorDescEN = "Armor crafted around chest plate fragments of an ancient fire dragon. You can feel dormant dragon flames when touching it. Wearing it with Crimson Dragon Helm awakens the ancient power within.\n<color=#FF4500>[Dragon Set]</color> When worn with Crimson Dragon Helm: double-tap movement to Dragon Dash (3m); fire damage heals you.";
+        private static readonly string DragonArmorDescCN = "以旧时代火龙的胸甲残片为核心打造的护甲，触摸时能感受到沉睡的龙焰。与赤龙首一同穿戴时，会唤醒其中蕴含的远古力量。\n<color=#FFD700>【龙之套装】</color>与赤龙首同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
+        private static readonly string DragonArmorDescEN = "Armor crafted around chest plate fragments of an ancient fire dragon. You can feel dormant dragon flames when touching it. Wearing it with Crimson Dragon Helm awakens the ancient power within.\n<color=#FFD700>[Dragon Set]</color> When worn with Crimson Dragon Helm: double-tap movement to Dragon Dash (3m); fire damage heals you.";
         
         #endregion
         
