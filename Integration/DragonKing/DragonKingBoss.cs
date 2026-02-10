@@ -46,6 +46,18 @@ namespace BossRush
         private static bool dragonKingRegistered = false;
         #pragma warning restore CS0414
         
+        // ========== 龙王套装效果状态 ==========
+        
+        /// <summary>
+        /// 龙王Boss套装效果是否已注册
+        /// </summary>
+        private bool dragonKingSetBonusRegistered = false;
+        
+        /// <summary>
+        /// 缓存的龙王Boss Health引用（用于快速身份验证，独立于龙裔Boss的cachedBossHealth）
+        /// </summary>
+        private Health cachedDragonKingBossHealth;
+        
         // ========== 性能优化：预设缓存 ==========
         
         /// <summary>
@@ -184,6 +196,9 @@ namespace BossRush
                 {
                     character.Health.OnDeadEvent.AddListener(OnDragonKingDeath);
                 }
+                
+                // 注册龙王套装效果（火焰伤害免疫并转化为治疗）
+                RegisterDragonKingSetBonus();
                 
                 // 记录Boss生成信息
                 try
@@ -404,6 +419,9 @@ namespace BossRush
             DevLog("[DragonKing] 龙王被击败");
             ShowMessage(L10n.DragonKingDefeated);
 
+            // 取消注册龙王套装效果
+            UnregisterDragonKingSetBonus();
+
             // 直接触发龙王击杀成就（作为保险措施，防止三阶段联动死亡时成就未触发）
             try
             {
@@ -510,6 +528,151 @@ namespace BossRush
             dragonKingRegistered = true;
             
             DevLog("[DragonKing] 龙王Boss已注册到敌人预设列表");
+        }
+        
+        // ========== 龙王套装效果（火焰免疫 + 火焰转治疗）==========
+        
+        /// <summary>
+        /// 注册龙王Boss套装效果（火焰伤害免疫并转化为治疗）
+        /// 实现方式与龙裔Boss一致，但使用独立的状态变量避免冲突
+        /// </summary>
+        private void RegisterDragonKingSetBonus()
+        {
+            if (dragonKingSetBonusRegistered) return;
+            
+            try
+            {
+                // 缓存Health引用用于快速身份验证
+                if (dragonKingInstance != null && dragonKingInstance.Health != null)
+                {
+                    cachedDragonKingBossHealth = dragonKingInstance.Health;
+                    Health.OnHurt += OnDragonKingBossHurt;
+                    dragonKingSetBonusRegistered = true;
+                    DevLog("[DragonKing] 已注册龙王套装效果（火焰免疫），Health引用已缓存");
+                }
+                else
+                {
+                    DevLog("[DragonKing] [WARNING] 注册龙王套装效果失败：Boss实例或Health为空");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonKing] [ERROR] 注册龙王套装效果失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 取消注册龙王Boss套装效果
+        /// </summary>
+        private void UnregisterDragonKingSetBonus()
+        {
+            if (!dragonKingSetBonusRegistered) return;
+            
+            try
+            {
+                Health.OnHurt -= OnDragonKingBossHurt;
+                cachedDragonKingBossHealth = null;
+                dragonKingSetBonusRegistered = false;
+                DevLog("[DragonKing] 已取消注册龙王套装效果");
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonKing] [ERROR] 取消注册龙王套装效果失败: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 龙王Boss伤害事件回调 - 火焰伤害免疫并转化为治疗
+        /// [性能优化] 使用缓存的Health引用进行快速身份验证
+        /// </summary>
+        private void OnDragonKingBossHurt(Health health, DamageInfo damageInfo)
+        {
+            // [性能优化] 快速过滤：使用缓存引用直接比较
+            if (cachedDragonKingBossHealth == null || health != cachedDragonKingBossHealth) return;
+            
+            try
+            {
+                // 检查是否有火焰伤害（快速路径）
+                if (damageInfo.elementFactors == null || damageInfo.elementFactors.Count == 0) return;
+                
+                // 使用 finalDamage 计算火焰伤害占比
+                float totalFinalDamage = damageInfo.finalDamage;
+                if (totalFinalDamage <= 0f) return;
+                
+                // 计算火焰伤害占比
+                float fireFactor = 0f;
+                float totalFactor = 0f;
+                var factors = damageInfo.elementFactors;
+                int count = factors.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    var ef = factors[i];
+                    if (ef.factor > 0f)
+                    {
+                        totalFactor += ef.factor;
+                        if (ef.elementType == ElementTypes.fire)
+                        {
+                            fireFactor += ef.factor;
+                        }
+                    }
+                }
+                
+                // 没有火焰伤害则跳过
+                if (fireFactor <= 0f || totalFactor <= 0f) return;
+                
+                // 计算火焰伤害在最终伤害中的占比，全部转化为治疗
+                float fireRatio = fireFactor / totalFactor;
+                float actualFireDamage = totalFinalDamage * fireRatio;
+                float fireHealAmount = actualFireDamage; // 100% 转化为治疗
+                
+                // 将火焰伤害因子设为0（免疫火焰伤害）
+                for (int i = 0; i < count; i++)
+                {
+                    var ef = factors[i];
+                    if (ef.elementType == ElementTypes.fire && ef.factor > 0f)
+                    {
+                        factors[i] = new ElementFactor(ElementTypes.fire, 0f);
+                    }
+                }
+                
+                DevLog("[DragonKing] Boss火焰伤害吸收: " + actualFireDamage.ToString("F1") + " -> 治疗: " + fireHealAmount.ToString("F1"));
+                
+                // 延迟治疗（在伤害计算完成后）
+                if (fireHealAmount > 0f)
+                {
+                    StartCoroutine(DelayedDragonKingBossHeal(health, fireHealAmount));
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonKing] [ERROR] OnDragonKingBossHurt 出错: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 延迟治疗龙王Boss（在伤害计算完成后）
+        /// </summary>
+        private System.Collections.IEnumerator DelayedDragonKingBossHeal(Health health, float amount)
+        {
+            yield return null; // 等待一帧
+            
+            if (health != null && !health.IsDead)
+            {
+                health.AddHealth(amount);
+                DevLog("[DragonKing] Boss火焰能量治疗: +" + amount.ToString("F1"));
+                
+                // 显示治疗数字
+                try
+                {
+                    if (dragonKingInstance != null)
+                    {
+                        FX.PopText.Pop("+" + amount.ToString("F0"), 
+                            dragonKingInstance.transform.position + Vector3.up * 2.5f, 
+                            new Color(0.2f, 1f, 0.2f), 1.2f, null);
+                    }
+                }
+                catch { }
+            }
         }
     }
 }
