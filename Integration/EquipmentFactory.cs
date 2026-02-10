@@ -693,10 +693,20 @@ namespace BossRush
                 }
             }
             
-            // 注入 EquipmentModel（如果有模型）
-            if (modelAgent != null && !HasEquipmentModel(itemPrefab))
+            // 注入模型
+            if (modelAgent != null)
             {
-                InjectEquipmentModel(itemPrefab, modelAgent);
+                // 注入 EquipmentModel（装备栏显示）
+                if (!HasEquipmentModel(itemPrefab))
+                {
+                    InjectEquipmentModel(itemPrefab, modelAgent);
+                }
+                
+                // 为枪械注入 ItemGraphic（手持和掉落显示的核心依赖）
+                // 游戏原版通过 item.ItemGraphic 来：
+                //   1. CreateHandheldAgent: IsGun + ItemGraphic != null → ItemAgent_Gun.BuildAgent(ItemGraphic.gameObject)
+                //   2. CreatePickupAgent: 默认 PickupAgentPrefab → CreateGraphic() → ItemGraphicInfo.CreateAGraphic(item) → 用 ItemGraphic 实例化3D模型
+                InjectItemGraphic(itemPrefab, modelAgent);
             }
         }
 
@@ -965,5 +975,154 @@ namespace BossRush
                 ModBehaviour.DevLog("[EquipmentFactory] 注入 EquipmentModel 失败: " + e.Message);
             }
         }
+
+        /// <summary>
+        /// 为枪械注入 ItemGraphic（ItemGraphicInfo_Gun），使游戏原版的手持和掉落显示路径正常工作
+        /// 手持路径：CreateHandheldAgent → IsGun + ItemGraphic != null → ItemAgent_Gun.BuildAgent(ItemGraphic.gameObject)
+        /// 掉落路径：CreatePickupAgent → 默认 PickupAgentPrefab → CreateGraphic() → ItemGraphicInfo.CreateAGraphic(item)
+        /// </summary>
+        private static void InjectItemGraphic(Item item, ItemAgent modelAgent)
+        {
+            try
+            {
+                // 检查已有的 ItemGraphic 是否有效
+                // AssetBundle 中的 ItemGraphic 引用可能在游戏更新后丢失（序列化引用断裂）
+                ItemGraphicInfo existingGraphic = item.ItemGraphic;
+                if (existingGraphic != null)
+                {
+                    // 验证已有 ItemGraphic 的 GameObject 是否有效
+                    bool isValid = false;
+                    try
+                    {
+                        // 检查 GameObject 是否存在且有实际的渲染内容
+                        GameObject existingGo = existingGraphic.gameObject;
+                        if (existingGo != null)
+                        {
+                            // 检查是否有 Renderer 或子对象（空壳 ItemGraphic 无法正常显示）
+                            Renderer[] renderers = existingGo.GetComponentsInChildren<Renderer>(true);
+                            isValid = renderers != null && renderers.Length > 0;
+                            
+                            string graphicType = existingGraphic.GetType().Name;
+                            int childCount = existingGo.transform.childCount;
+                            int rendererCount = renderers != null ? renderers.Length : 0;
+                            ModBehaviour.DevLog("[EquipmentFactory] 已有 ItemGraphic 检查: " + item.name + 
+                                " type=" + graphicType + 
+                                " children=" + childCount + 
+                                " renderers=" + rendererCount +
+                                " valid=" + isValid);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[EquipmentFactory] 已有 ItemGraphic 检查异常: " + e.Message);
+                        isValid = false;
+                    }
+                    
+                    if (isValid)
+                    {
+                        ModBehaviour.DevLog("[EquipmentFactory] 物品已有有效 ItemGraphic，跳过注入: " + item.name);
+                        return;
+                    }
+                    else
+                    {
+                        ModBehaviour.DevLog("[EquipmentFactory] 物品已有 ItemGraphic 但无效（无渲染器），将强制替换: " + item.name);
+                    }
+                }
+
+                GameObject modelGo = modelAgent.gameObject;
+
+                // 在模型 GameObject 上创建 ItemGraphicInfo_Gun 组件
+                // ItemGraphicInfo_Gun 继承自 ItemGraphicInfo，是枪械专用的图形信息组件
+                ItemGraphicInfo_Gun graphicInfo = modelGo.GetComponent<ItemGraphicInfo_Gun>();
+                if (graphicInfo == null)
+                {
+                    graphicInfo = modelGo.AddComponent<ItemGraphicInfo_Gun>();
+                }
+
+                // 设置枪械动画类型为 gun（默认是 normal，会导致 BuildAgent 读取后覆盖为错误值）
+                graphicInfo.handAnimationType = HandheldAnimationType.gun;
+
+                // 设置 groundPoint（掉落在地面时的定位点）
+                if (graphicInfo.groundPoint == null)
+                {
+                    Transform existingGround = modelGo.transform.Find("GroundPoint");
+                    if (existingGround != null)
+                    {
+                        graphicInfo.groundPoint = existingGround;
+                    }
+                    else
+                    {
+                        GameObject groundPointGo = new GameObject("GroundPoint");
+                        groundPointGo.transform.SetParent(modelGo.transform);
+                        groundPointGo.transform.localPosition = Vector3.zero;
+                        groundPointGo.transform.localRotation = Quaternion.identity;
+                        groundPointGo.transform.localScale = Vector3.one;
+                        graphicInfo.groundPoint = groundPointGo.transform;
+                    }
+                }
+
+                // 确保 Sockets 父节点存在，并将 Muzzle/Tec 等关键节点移入其中
+                // BuildAgent 会在 Sockets 下查找 Muzzle 和 Tec，如果找不到会创建默认位置 (0,0,0) 的节点
+                // 导致枪口火焰出现在手上而不是枪口位置
+                Transform socketsParent = modelGo.transform.Find("Sockets");
+                if (socketsParent == null)
+                {
+                    // 创建 Sockets 父节点
+                    GameObject socketsGo = new GameObject("Sockets");
+                    socketsGo.transform.SetParent(modelGo.transform);
+                    socketsGo.transform.localPosition = Vector3.zero;
+                    socketsGo.transform.localRotation = Quaternion.identity;
+                    socketsGo.transform.localScale = Vector3.one;
+                    socketsParent = socketsGo.transform;
+                }
+
+                // 将根节点下的 Muzzle、Muzzle2、Tec 移入 Sockets 下
+                // 这些节点可能直接在模型根节点下（AssetBundle 导出时的结构）
+                string[] socketNodeNames = { "Muzzle", "Muzzle2", "Tec" };
+                foreach (string nodeName in socketNodeNames)
+                {
+                    // 先检查是否已在 Sockets 下
+                    Transform existingInSockets = socketsParent.Find(nodeName);
+                    if (existingInSockets != null) continue;
+                    
+                    // 查找根节点下的同名节点并移入 Sockets
+                    Transform nodeInRoot = modelGo.transform.Find(nodeName);
+                    if (nodeInRoot != null)
+                    {
+                        nodeInRoot.SetParent(socketsParent);
+                        ModBehaviour.DevLog("[EquipmentFactory] 将 " + nodeName + " 移入 Sockets: " + item.name);
+                    }
+                }
+
+                // 设置 sockets（配件插槽，用于显示枪口、瞄准镜等附件模型）
+                if (socketsParent.childCount > 0)
+                {
+                    var socketTransforms = new List<Transform>();
+                    foreach (Transform child in socketsParent)
+                    {
+                        socketTransforms.Add(child);
+                    }
+                    graphicInfo.SetSockets(socketTransforms);
+                }
+
+                // 通过反射设置 item.itemGraphic 私有字段
+                FieldInfo itemGraphicField = typeof(Item).GetField("itemGraphic",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (itemGraphicField != null)
+                {
+                    itemGraphicField.SetValue(item, graphicInfo);
+                    ModBehaviour.DevLog("[EquipmentFactory] 成功注入 ItemGraphic (ItemGraphicInfo_Gun): " + item.name);
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[EquipmentFactory] 未找到 itemGraphic 字段: " + item.name);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 注入 ItemGraphic 失败: " + item.name + " - " + e.Message);
+            }
+        }
+
     }
 }

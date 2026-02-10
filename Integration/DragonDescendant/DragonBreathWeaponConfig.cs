@@ -924,33 +924,16 @@ namespace BossRush
                     return null;
                 }
                 
-                // 使用正确的API获取EquipmentModel预制体
-                var agentUtilities = prefab.AgentUtilities;
-                if (agentUtilities == null)
+                // 通过 ItemGraphic 获取模型（游戏更新后的标准方式，与 CreateHandheldAgent 逻辑一致）
+                ItemGraphicInfo itemGraphic = prefab.ItemGraphic;
+                if (itemGraphic != null)
                 {
-                    ModBehaviour.DevLog("[DragonBreathWeapon] 带火AK-47的AgentUtilities为null");
-                    return null;
-                }
-                
-                // 使用GetPrefab方法获取EquipmentModel（与游戏源码一致）
-                ItemAgent equipmentModelAgent = agentUtilities.GetPrefab("EquipmentModel");
-                if (equipmentModelAgent != null)
-                {
-                    cachedFireAK47Model = equipmentModelAgent.gameObject;
-                    ModBehaviour.DevLog("[DragonBreathWeapon] 找到带火AK-47的EquipmentModel: " + cachedFireAK47Model.name);
+                    cachedFireAK47Model = itemGraphic.gameObject;
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 通过 ItemGraphic 找到带火AK-47模型: " + cachedFireAK47Model.name);
                     return cachedFireAK47Model;
                 }
                 
-                // 如果没有EquipmentModel，尝试获取Handheld模型
-                ItemAgent handheldAgent = agentUtilities.GetPrefab("Handheld");
-                if (handheldAgent != null)
-                {
-                    cachedFireAK47Model = handheldAgent.gameObject;
-                    ModBehaviour.DevLog("[DragonBreathWeapon] 找到带火AK-47的Handheld模型: " + cachedFireAK47Model.name);
-                    return cachedFireAK47Model;
-                }
-                
-                ModBehaviour.DevLog("[DragonBreathWeapon] 带火AK-47预制体中未找到EquipmentModel或Handheld");
+                ModBehaviour.DevLog("[DragonBreathWeapon] 带火AK-47预制体中未找到 ItemGraphic");
             }
             catch (Exception e)
             {
