@@ -91,11 +91,8 @@ namespace BossRush
         // 保留兼容性的单个条目引用
         private static GameObject bossRushEntryObject = null;
         
-        // 动态创建的右侧容器（用于放置超出左侧容器的地图选项）
-        private static GameObject rightColumnContainer = null;
-        
-        // 左侧容器最大显示的地图数量（超出的放到右侧）
-        private const int LEFT_COLUMN_MAX_ENTRIES = 6;
+        // 动态创建的溢出容器（兜底，正常情况不使用）
+        private static GameObject overflowColumnContainer = null;
         
         /// <summary>
         /// 获取 BossRush 船票的 TypeID
@@ -306,7 +303,7 @@ namespace BossRush
         
         /// <summary>
         /// 注入 BossRush 目的地条目到 MapSelectionView（支持多个地图）
-        /// 当地图数量超过 LEFT_COLUMN_MAX_ENTRIES 时，会创建右侧容器放置额外的地图选项
+        /// 自适应原版 UI 的列容器结构，按 sceneID 匹配模板
         /// </summary>
         private static bool InjectBossRushEntry(MapSelectionView mapView)
         {
@@ -335,35 +332,60 @@ namespace BossRush
                 }
                 bossRushEntryObjects.Clear();
                 
-                // 销毁之前创建的右侧容器
-                if (rightColumnContainer != null)
+                // 销毁之前创建的溢出容器
+                if (overflowColumnContainer != null)
                 {
-                    UnityEngine.Object.Destroy(rightColumnContainer);
-                    rightColumnContainer = null;
+                    UnityEngine.Object.Destroy(overflowColumnContainer);
+                    overflowColumnContainer = null;
                 }
                 
-                // 收集所有非 BossRush 条目作为模板候选
+                // ============================================================
+                // 第一步：收集原版条目，按 parent 分组发现所有列容器
+                // ============================================================
                 List<MapSelectionEntry> templateCandidates = new List<MapSelectionEntry>();
+                // 按 sceneID 索引模板，用于精确匹配
+                Dictionary<string, MapSelectionEntry> templateBySceneID = new Dictionary<string, MapSelectionEntry>();
+                // 按 parent 分组，发现所有列容器及其容量
+                Dictionary<Transform, List<MapSelectionEntry>> columnGroups = new Dictionary<Transform, List<MapSelectionEntry>>();
+                // 保持列容器的发现顺序
+                List<Transform> columnOrder = new List<Transform>();
+                
                 foreach (MapSelectionEntry entry in existingEntries)
                 {
                     if (entry == null) continue;
                     
-                    // 检查是否是我们之前创建的 BossRush 条目
-                    bool isBossRushEntry = entry.gameObject.name.StartsWith("BossRush_");
-                    
-                    if (!isBossRushEntry)
+                    // 跳过我们之前创建的 BossRush 条目
+                    if (entry.gameObject.name.StartsWith("BossRush_"))
                     {
-                        // 保存为模板候选
-                        templateCandidates.Add(entry);
-                        // 隐藏原有条目
-                        entry.gameObject.SetActive(false);
-                        hiddenEntries.Add(entry.gameObject);
-                    }
-                    else
-                    {
-                        // 销毁之前创建的 BossRush 条目
                         UnityEngine.Object.Destroy(entry.gameObject);
+                        continue;
                     }
+                    
+                    // 保存为模板候选
+                    templateCandidates.Add(entry);
+                    
+                    // 按 sceneID 索引（用于后续精确匹配模板）
+                    string sid = entry.SceneID;
+                    if (!string.IsNullOrEmpty(sid) && !templateBySceneID.ContainsKey(sid))
+                    {
+                        templateBySceneID[sid] = entry;
+                    }
+                    
+                    // 按 parent 分组
+                    Transform parent = entry.transform.parent;
+                    if (parent != null)
+                    {
+                        if (!columnGroups.ContainsKey(parent))
+                        {
+                            columnGroups[parent] = new List<MapSelectionEntry>();
+                            columnOrder.Add(parent);
+                        }
+                        columnGroups[parent].Add(entry);
+                    }
+                    
+                    // 隐藏原有条目
+                    entry.gameObject.SetActive(false);
+                    hiddenEntries.Add(entry.gameObject);
                 }
                 
                 // 没有可用的模板
@@ -373,20 +395,16 @@ namespace BossRush
                     return false;
                 }
                 
-                // 默认模板（第一个）
-                MapSelectionEntry defaultTemplate = templateCandidates[0];
-                // 第二个模板（用于仓库区，索引3，如果存在）
-                MapSelectionEntry secondTemplate = templateCandidates.Count > 1 ? templateCandidates[1] : defaultTemplate;
-                // 第三个模板（用于农场镇，索引4，如果存在）
-                MapSelectionEntry thirdTemplate = templateCandidates.Count > 2 ? templateCandidates[2] : secondTemplate;
-                // 第五个模板（用于J-Lab实验室，索引5，如果存在）
-                MapSelectionEntry fifthTemplate = templateCandidates.Count > 4 ? templateCandidates[4] : thirdTemplate;
-                // 第六个模板（用于风暴区地下，索引6，如果存在）
-                MapSelectionEntry sixthTemplate = templateCandidates.Count > 5 ? templateCandidates[5] : fifthTemplate;
+                ModBehaviour.DevLog("[BossRush] 发现 " + columnOrder.Count + " 个列容器，共 " + templateCandidates.Count + " 个原版条目");
+                for (int c = 0; c < columnOrder.Count; c++)
+                {
+                    Transform col = columnOrder[c];
+                    ModBehaviour.DevLog("[BossRush] 列容器[" + c + "]: " + col.name + ", 条目数: " + columnGroups[col].Count);
+                }
                 
-                ModBehaviour.DevLog("[BossRush] 模板候选数量: " + templateCandidates.Count + ", 默认模板: " + defaultTemplate.gameObject.name + ", 第二模板: " + secondTemplate.gameObject.name + ", 第三模板: " + thirdTemplate.gameObject.name + ", 第五模板: " + fifthTemplate.gameObject.name + ", 第六模板: " + sixthTemplate.gameObject.name);
-                
-                // 使用统一配置系统获取地图列表
+                // ============================================================
+                // 第二步：获取 BossRush 地图配置
+                // ============================================================
                 ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
                 if (mapConfigs == null || mapConfigs.Length == 0)
                 {
@@ -394,52 +412,31 @@ namespace BossRush
                     return false;
                 }
                 
-                // 获取左侧容器（原有条目的父对象）
-                Transform leftColumnParent = defaultTemplate.transform.parent;
-                Transform rightColumnParent = null;
+                // ============================================================
+                // 第三步：确定目标容器，所有条目放到同一个容器中
+                // 原版使用单个 Content 容器 + GridLayoutGroup 自动排列成多列
+                // ============================================================
                 
-                // 如果地图数量超过左侧容器最大数量，创建右侧容器
-                if (mapConfigs.Length > LEFT_COLUMN_MAX_ENTRIES)
-                {
-                    rightColumnParent = CreateRightColumnContainer(leftColumnParent);
-                    if (rightColumnParent != null)
-                    {
-                        ModBehaviour.DevLog("[BossRush] 已创建右侧容器用于放置额外的地图选项");
-                    }
-                }
+                // 默认模板（第一个原版条目）
+                MapSelectionEntry defaultTemplate = templateCandidates[0];
                 
-                // 为每个地图条目创建 UI 条目
+                // 所有条目放到第一个（也是唯一的）列容器中，由原版布局组件自动排列
+                Transform targetParent = columnOrder.Count > 0 ? columnOrder[0] : viewTransform;
+                ModBehaviour.DevLog("[BossRush] 所有条目将放入容器: " + targetParent.name + "，由原版布局组件自动排列");
+                
+                // ============================================================
+                // 第四步：为每个 BossRush 地图创建条目
+                // ============================================================
                 for (int i = 0; i < mapConfigs.Length; i++)
                 {
                     ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[i];
                     
-                    // 选择模板：仓库区（索引3）使用第二个模板，农场镇（索引4）使用第三个模板，J-Lab（索引5）使用第五个模板，风暴区地下（索引6）使用第六个模板，其他使用默认模板
-                    MapSelectionEntry templateToUse;
-                    if (i == 3)
+                    // 选择模板：优先按 sceneID 精确匹配原版模板（继承缩略图等样式）
+                    MapSelectionEntry templateToUse = defaultTemplate;
+                    if (!string.IsNullOrEmpty(mapConfig.sceneID) && templateBySceneID.ContainsKey(mapConfig.sceneID))
                     {
-                        templateToUse = secondTemplate;
+                        templateToUse = templateBySceneID[mapConfig.sceneID];
                     }
-                    else if (i == 4)
-                    {
-                        templateToUse = thirdTemplate;
-                    }
-                    else if (i == 5)
-                    {
-                        templateToUse = fifthTemplate;
-                    }
-                    else if (i == 6)
-                    {
-                        templateToUse = sixthTemplate;
-                    }
-                    else
-                    {
-                        templateToUse = defaultTemplate;
-                    }
-                    
-                    // 决定放置到哪个容器：前6个放左侧，第7个及以后放右侧
-                    Transform targetParent = (i < LEFT_COLUMN_MAX_ENTRIES || rightColumnParent == null) 
-                        ? leftColumnParent 
-                        : rightColumnParent;
                     
                     // 克隆模板（先保持禁用状态，避免 OnEnable 触发 Refresh 使用原模板的 cost）
                     GameObject cloned = UnityEngine.Object.Instantiate(templateToUse.gameObject, targetParent);
@@ -470,8 +467,8 @@ namespace BossRush
                                          (sceneInfo != null ? sceneInfo.DisplayName : "未知地图");
                     SetEntryDisplayNameDirect(cloned, displayName);
                     
-                    string columnInfo = (i < LEFT_COLUMN_MAX_ENTRIES) ? "左侧" : "右侧";
-                    ModBehaviour.DevLog("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ", 使用模板: " + templateToUse.gameObject.name + ", 位置: " + columnInfo + ")");
+                    string columnInfo = "容器=" + targetParent.name;
+                    ModBehaviour.DevLog("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ", 模板=" + templateToUse.gameObject.name + ", " + columnInfo + ")");
                     
                     // 更新缩略图（如果有自定义预览图）
                     if (!string.IsNullOrEmpty(mapConfig.previewImageName))
@@ -489,9 +486,8 @@ namespace BossRush
                     }
                 }
                 
-                // 将左侧容器中的 BossRush 条目移到最前面（按顺序）
-                // 只处理左侧容器中的条目
-                for (int i = Math.Min(bossRushEntryObjects.Count, LEFT_COLUMN_MAX_ENTRIES) - 1; i >= 0; i--)
+                // 将 BossRush 条目移到容器最前面（按顺序）
+                for (int i = bossRushEntryObjects.Count - 1; i >= 0; i--)
                 {
                     if (bossRushEntryObjects[i] != null)
                     {
@@ -521,71 +517,63 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 创建右侧容器用于放置额外的地图选项
-        /// 克隆左侧容器并调整位置到右侧
+        /// 创建溢出容器（仅当原版列容器放不下时使用）
+        /// 克隆指定列容器并调整位置到其右侧
         /// </summary>
-        private static Transform CreateRightColumnContainer(Transform leftColumnParent)
+        private static Transform CreateOverflowContainer(Transform referenceColumn)
         {
             try
             {
-                if (leftColumnParent == null)
+                if (referenceColumn == null)
                 {
-                    ModBehaviour.DevLog("[BossRush] 左侧容器为 null，无法创建右侧容器");
+                    ModBehaviour.DevLog("[BossRush] 参考列容器为 null，无法创建溢出容器");
                     return null;
                 }
                 
-                // 克隆左侧容器
-                GameObject rightColumn = UnityEngine.Object.Instantiate(leftColumnParent.gameObject, leftColumnParent.parent);
-                rightColumn.name = "BossRush_RightColumn";
-                rightColumnContainer = rightColumn;
+                // 克隆参考列容器
+                GameObject overflow = UnityEngine.Object.Instantiate(referenceColumn.gameObject, referenceColumn.parent);
+                overflow.name = "BossRush_OverflowColumn";
+                overflowColumnContainer = overflow;
                 
-                // 清空右侧容器中的所有子对象（克隆时会复制所有子对象）
-                for (int i = rightColumn.transform.childCount - 1; i >= 0; i--)
+                // 清空溢出容器中的所有子对象（克隆时会复制所有子对象）
+                for (int i = overflow.transform.childCount - 1; i >= 0; i--)
                 {
-                    UnityEngine.Object.DestroyImmediate(rightColumn.transform.GetChild(i).gameObject);
+                    UnityEngine.Object.DestroyImmediate(overflow.transform.GetChild(i).gameObject);
                 }
                 
-                // 调整右侧容器的位置
-                RectTransform leftRect = leftColumnParent as RectTransform;
-                RectTransform rightRect = rightColumn.transform as RectTransform;
+                // 调整溢出容器的位置
+                RectTransform refRect = referenceColumn as RectTransform;
+                RectTransform overflowRect = overflow.transform as RectTransform;
                 
-                if (leftRect != null && rightRect != null)
+                if (refRect != null && overflowRect != null)
                 {
-                    // 获取左侧容器的宽度，将右侧容器放到左侧容器的右边
-                    float leftWidth = leftRect.rect.width;
-                    float spacing = 20f; // 左右容器之间的间距
+                    float refWidth = refRect.rect.width;
+                    float spacing = 20f;
                     
-                    // 复制左侧容器的锚点和轴心设置
-                    rightRect.anchorMin = leftRect.anchorMin;
-                    rightRect.anchorMax = leftRect.anchorMax;
-                    rightRect.pivot = leftRect.pivot;
-                    rightRect.sizeDelta = leftRect.sizeDelta;
+                    overflowRect.anchorMin = refRect.anchorMin;
+                    overflowRect.anchorMax = refRect.anchorMax;
+                    overflowRect.pivot = refRect.pivot;
+                    overflowRect.sizeDelta = refRect.sizeDelta;
                     
-                    // 将右侧容器移动到左侧容器的右边
-                    Vector3 newPos = leftRect.localPosition;
-                    newPos.x += leftWidth + spacing;
-                    rightRect.localPosition = newPos;
+                    Vector3 newPos = refRect.localPosition;
+                    newPos.x += refWidth + spacing;
+                    overflowRect.localPosition = newPos;
                     
-                    ModBehaviour.DevLog("[BossRush] 右侧容器位置: " + rightRect.localPosition + ", 左侧容器位置: " + leftRect.localPosition + ", 左侧宽度: " + leftWidth);
+                    ModBehaviour.DevLog("[BossRush] 溢出容器位置: " + overflowRect.localPosition + ", 参考容器: " + referenceColumn.name);
                 }
                 else
                 {
-                    // 如果不是 RectTransform，使用普通 Transform 调整位置
-                    Vector3 newPos = leftColumnParent.localPosition;
-                    newPos.x += 300f; // 默认偏移量
-                    rightColumn.transform.localPosition = newPos;
-                    
-                    ModBehaviour.DevLog("[BossRush] 右侧容器位置（非RectTransform）: " + rightColumn.transform.localPosition);
+                    Vector3 newPos = referenceColumn.localPosition;
+                    newPos.x += 300f;
+                    overflow.transform.localPosition = newPos;
                 }
                 
-                // 确保右侧容器激活
-                rightColumn.SetActive(true);
-                
-                return rightColumn.transform;
+                overflow.SetActive(true);
+                return overflow.transform;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[BossRush] CreateRightColumnContainer 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] CreateOverflowContainer 失败: " + e.Message);
                 return null;
             }
         }
@@ -1435,14 +1423,14 @@ namespace BossRush
                 bossRushEntryObjects.Clear();
                 bossRushEntryObject = null;
                 
-                // 销毁右侧容器
-                if (rightColumnContainer != null)
+                // 销毁溢出容器
+                if (overflowColumnContainer != null)
                 {
-                    UnityEngine.Object.Destroy(rightColumnContainer);
-                    rightColumnContainer = null;
+                    UnityEngine.Object.Destroy(overflowColumnContainer);
+                    overflowColumnContainer = null;
                 }
                 
-                ModBehaviour.DevLog("[BossRush] 已恢复所有隐藏的条目并清理 BossRush 条目和右侧容器");
+                ModBehaviour.DevLog("[BossRush] 已恢复所有隐藏的条目并清理 BossRush 条目和溢出容器");
             }
             catch (Exception e)
             {
@@ -1471,11 +1459,11 @@ namespace BossRush
                 bossRushEntryObjects.Clear();
                 bossRushEntryObject = null;
                 
-                // 销毁右侧容器
-                if (rightColumnContainer != null)
+                // 销毁溢出容器
+                if (overflowColumnContainer != null)
                 {
-                    UnityEngine.Object.Destroy(rightColumnContainer);
-                    rightColumnContainer = null;
+                    UnityEngine.Object.Destroy(overflowColumnContainer);
+                    overflowColumnContainer = null;
                 }
                 
                 // 清除待处理的地图索引
