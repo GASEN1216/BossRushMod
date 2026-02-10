@@ -2,6 +2,15 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.10 21:00
+- Added Goblin Artisan NPC
+- Added Dragon Emperor boss (drops 4 exclusive equipment pieces)
+- Added NPC affinity system (currently only Goblin Artisan)
+- Added equipment reforge system (at Goblin Artisan)
+- Added flight system — "Cloud Riding I" totem
+- Added 5 new items (Brick Stone, Diamond, Cold Quench Fluid, Dingdang Doodle, Achievement Medal)
+- Added achievement system, viewable via Achievement Medal / L key
+
 ### 2026.1.20 23:00
 - Fixed Courier Awen's delivery function failing in some situations
 - Reduced Dragon Descendant's phase transition duration
