@@ -182,11 +182,6 @@ namespace BossRush
         /// </summary>
         private float cachedWeaponBulletSpeed = 30f;
 
-        /// <summary>
-        /// 太阳舞音效播放计数器（每N发子弹播放一次音效）
-        /// </summary>
-        private int sunDanceSoundCounter = 0;
-
         // ========== 反射缓存（避免重复反射） ==========
 
         /// <summary>
@@ -194,11 +189,6 @@ namespace BossRush
         /// </summary>
         private static System.Reflection.MethodInfo cachedAudioPostMethod = null;
 
-
-        /// <summary>
-        /// 太阳舞音效播放间隔（每多少发子弹播放一次）
-        /// </summary>
-        private const int SUN_DANCE_SOUND_INTERVAL = 24; // 每24发子弹播放一次音效（每秒10次）
 
         /// <summary>
         /// 太阳舞期间Boss锁定位置（用于弹幕发射位置）
@@ -1717,6 +1707,9 @@ namespace BossRush
                 // 计算发射位置（Boss胸口位置）
                 Vector3 muzzlePos = bossCharacter.transform.position + Vector3.up * DragonKingConfig.BossChestHeightOffset;
                 
+                // 播放射击音效（与龙裔一致，每发都播放）
+                PlayWeaponShootSound();
+                
                 // 从BulletPool获取子弹
                 Projectile bullet = LevelManager.Instance.BulletPool.GetABullet(cachedWeaponBullet);
                 if (bullet == null) return;
@@ -2690,9 +2683,6 @@ namespace BossRush
         {
             ModBehaviour.DevLog("[DragonKing] 执行太阳舞攻击");
 
-            // 重置音效计数器
-            sunDanceSoundCounter = 0;
-
             if (bossCharacter == null || playerCharacter == null) yield break;
             
             // 计算目标位置（玩家同一平面，偏移一定距离）
@@ -2944,14 +2934,7 @@ namespace BossRush
                     return;
                 }
 
-                // 只在每隔N发子弹时播放音效，避免音效重叠
-                sunDanceSoundCounter++;
-                if (sunDanceSoundCounter % SUN_DANCE_SOUND_INTERVAL != 0)
-                {
-                    return;
-                }
-
-                // 直接使用缓存shootKey，不做额外处理
+                // 每发子弹都播放音效（与龙裔一致，不做节流）
                 string eventName = $"SFX/Combat/Gun/Shoot/{cachedWeaponShootKey.ToLower()}";
 
                 // 使用缓存的反射方法（只反射一次）
