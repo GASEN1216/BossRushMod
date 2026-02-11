@@ -165,6 +165,7 @@ namespace BossRush
                 DiamondConfig.RegisterConfigurator();
                 DingdangDrawingConfig.RegisterConfigurator();
                 AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
+                WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
                 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
@@ -820,6 +821,7 @@ namespace BossRush
             LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
             LocalizationInjector.InjectDiamondLocalization();     // 钻石物品本地化
             DingdangDrawingConfig.InjectLocalization();  // 叮当涂鸦物品本地化
+            WildHornConfig.InjectLocalization();  // 荒野号角物品本地化
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             DevLog("[BossRush] 扩展本地化注入完成");
@@ -1007,6 +1009,9 @@ namespace BossRush
             
             // [内存优化] 场景切换时清理龙王相关的静态缓存
             ClearDragonKingStaticCache();
+            
+            // [内存优化] 场景切换时清理荒野号角坐骑缓存
+            WildHornUsage.ClearMountCache();
             
             // 在任何场景加载后都尝试订阅龙息武器事件
             // 使用延迟调用确保玩家角色已初始化
