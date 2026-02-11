@@ -42,6 +42,40 @@ namespace BossRush
         public const float COOLDOWN_SECONDS = 3f;
 
         // ============================================================================
+        // 狼坐骑模型配置
+        // ============================================================================
+
+        /// <summary>狼模型 Prefab 名称（对应 Assets/entity/ 下的 AssetBundle）</summary>
+        public const string WOLF_PREFAB_NAME = "wolf_mount";
+
+        /// <summary>狼模型 Animator 中步行动画状态名</summary>
+        public const string WOLF_ANIM_WALK = "Walk";
+
+        /// <summary>狼模型正常步行动画速度</summary>
+        public const float WOLF_ANIM_WALK_SPEED = 1.0f;
+
+        /// <summary>狼模型奔跑时动画速度倍率（相对于游戏原生的2.0倍，再乘以此倍率）</summary>
+        public const float WOLF_ANIM_RUN_SPEED_MULTIPLIER = 1.5f;
+
+        /// <summary>判定坐骑"正在移动"的速度阈值</summary>
+        public const float WOLF_MOVE_THRESHOLD = 0.3f;
+
+        /// <summary>狼坐骑喂食物品ID（饺子）</summary>
+        public const int WOLF_FEED_ITEM_ID = 449;
+
+        // ============================================================================
+        // 狼坐骑骑乘位置配置
+        // ============================================================================
+
+        /// <summary>狼坐骑骑乘点相对于马匹原始骑乘点的位置偏移</summary>
+        public static readonly Vector3 WOLF_RIDE_POSITION_OFFSET = new Vector3(0f, -0.2f, 0.3f);
+
+        /// <summary>狼坐骑骑乘点相对于马匹原始骑乘点的旋转偏移（欧拉角）</summary>
+        public static readonly Vector3 WOLF_RIDE_ROTATION_OFFSET = new Vector3(0f, 0f, 0f);
+
+
+
+        // ============================================================================
         // 本地化常量 - 物品名称与描述
         // ============================================================================
 
