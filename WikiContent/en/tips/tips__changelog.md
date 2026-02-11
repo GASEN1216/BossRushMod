@@ -2,6 +2,9 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.12 00:00
+- Added "Wild Horn" item that can summon a wolf mount
+
 ### 2026.2.10 21:00
 - Added Goblin Artisan NPC
 - Added Dragon Emperor boss (drops 4 exclusive equipment pieces)
