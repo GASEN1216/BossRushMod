@@ -633,6 +633,13 @@ namespace BossRush
             {
                 InjectEquipmentModel(itemPrefab, modelAgent);
             }
+            
+            // 为所有装备类型注入 ItemGraphic（备用显示路径，修复假人显示问题）
+            // 假人的 CharacterEquipmentController 可能需要 ItemGraphic 作为备用显示路径
+            if (modelAgent != null)
+            {
+                InjectItemGraphicForEquipment(itemPrefab, modelAgent);
+            }
         }
 
         // ========== 武器处理 ==========
@@ -976,6 +983,79 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 为装备类型注入 ItemGraphic（通用版本，用于头盔、护甲等）
+        /// 修复假人显示问题：假人的 CharacterEquipmentController 可能需要 ItemGraphic 作为备用显示路径
+        /// </summary>
+        private static void InjectItemGraphicForEquipment(Item item, ItemAgent modelAgent)
+        {
+            try
+            {
+                // 检查已有的 ItemGraphic 是否有效
+                ItemGraphicInfo existingGraphic = item.ItemGraphic;
+                if (existingGraphic != null)
+                {
+                    bool isValid = false;
+                    try
+                    {
+                        GameObject existingGo = existingGraphic.gameObject;
+                        if (existingGo != null)
+                        {
+                            Renderer[] renderers = existingGo.GetComponentsInChildren<Renderer>(true);
+                            isValid = renderers != null && renderers.Length > 0;
+                        }
+                    }
+                    catch { isValid = false; }
+                    
+                    if (isValid)
+                    {
+                        return; // 已有有效的 ItemGraphic，跳过
+                    }
+                }
+
+                GameObject modelGo = modelAgent.gameObject;
+
+                // 为装备创建通用的 ItemGraphicInfo 组件
+                ItemGraphicInfo graphicInfo = modelGo.GetComponent<ItemGraphicInfo>();
+                if (graphicInfo == null)
+                {
+                    graphicInfo = modelGo.AddComponent<ItemGraphicInfo>();
+                }
+
+                // 设置 groundPoint（掉落在地面时的定位点）
+                if (graphicInfo.groundPoint == null)
+                {
+                    Transform existingGround = modelGo.transform.Find("GroundPoint");
+                    if (existingGround != null)
+                    {
+                        graphicInfo.groundPoint = existingGround;
+                    }
+                    else
+                    {
+                        GameObject groundPointGo = new GameObject("GroundPoint");
+                        groundPointGo.transform.SetParent(modelGo.transform);
+                        groundPointGo.transform.localPosition = Vector3.zero;
+                        groundPointGo.transform.localRotation = Quaternion.identity;
+                        groundPointGo.transform.localScale = Vector3.one;
+                        graphicInfo.groundPoint = groundPointGo.transform;
+                    }
+                }
+
+                // 通过反射设置 item.itemGraphic 私有字段
+                FieldInfo itemGraphicField = typeof(Item).GetField("itemGraphic",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (itemGraphicField != null)
+                {
+                    itemGraphicField.SetValue(item, graphicInfo);
+                    ModBehaviour.DevLog("[EquipmentFactory] 成功注入 ItemGraphic (装备): " + item.name);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 注入装备 ItemGraphic 失败: " + item.name + " - " + e.Message);
+            }
+        }
+        
         /// <summary>
         /// 为枪械注入 ItemGraphic（ItemGraphicInfo_Gun），使游戏原版的手持和掉落显示路径正常工作
         /// 手持路径：CreateHandheldAgent → IsGun + ItemGraphic != null → ItemAgent_Gun.BuildAgent(ItemGraphic.gameObject)

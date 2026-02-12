@@ -18,8 +18,10 @@
 
 using System;
 using System.Collections.Generic;
+using Duckov.Buildings;
 using HarmonyLib;
 using ItemStatsSystem;
+using ItemStatsSystem.Items;
 using UnityEngine;
 
 namespace BossRush
@@ -400,6 +402,103 @@ namespace BossRush
             catch (InvalidOperationException)
             {
                 // 集合可能正在被修改，静默处理
+            }
+        }
+    }
+
+    /// <summary>
+    /// Harmony Patch: 修复 ItemAgent_Gun.Update 在展示家具上的 NullReferenceException
+    ///
+    /// 问题分析：
+    /// - 枪械放在人体模特或武器展示柜上时，ItemAgent_Gun 组件仍会每帧执行 Update()
+    /// - Update() -> UpdateGun() -> MaxScatter -> base.Item.GetStatValue()
+    /// - 此时 base.Item 为 null（展示代理不持有 Item 引用），导致 NRE 每帧刷屏
+    ///
+    /// 修复方案：
+    /// - 使用 Harmony Prefix，当 Item 为 null 时返回 false 跳过原方法
+    /// - 这是安全的，因为 Update() 只执行散布/后坐力计算，对非手持武器无意义
+    /// </summary>
+    [HarmonyPatch(typeof(ItemAgent_Gun), "Update")]
+    public static class ItemAgentGunUpdatePatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(ItemAgent_Gun __instance)
+        {
+            // Item 为 null 时跳过 Update（展示家具上的枪械）
+            return __instance.Item != null;
+        }
+    }
+
+    /// <summary>
+    /// Harmony Patch: 在 Showcase.RefreshSlot 后为展示中的龙息武器添加火焰特效
+    ///
+    /// 设计说明：
+    /// - 展示家具（假人、武器展示柜）使用 Showcase.RefreshSlot 创建物品视觉模型
+    /// - RefreshSlot -> ItemGraphicInfo.CreateAGraphic -> 视觉模型
+    /// - 重要：RefreshSlot 先调用 Object.Destroy(旧图形)，再创建新图形
+    ///   但 Object.Destroy 是延迟销毁（当前帧结束才销毁），所以 Postfix 执行时
+    ///   旧对象和新对象同时存在。需要延迟1帧，等旧对象真正销毁后再操作
+    /// </summary>
+    [HarmonyPatch(typeof(Duckov.Buildings.Showcase), "RefreshSlot")]
+    public static class ShowcaseRefreshSlotFireEffectsPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Duckov.Buildings.Showcase __instance, Transform slotDisplayParent)
+        {
+            if (__instance == null || slotDisplayParent == null) return;
+            
+            try
+            {
+                // 获取 Slot
+                var slots = __instance.Slots;
+                if (slots == null) return;
+                
+                string slotName = slotDisplayParent.name;
+                var slot = slots[slotName];
+                if (slot == null) return;
+                
+                // 获取 Slot 中的物品
+                Item content = slot.Content;
+                if (content == null) return;
+                
+                // 快速检查：只处理龙息武器
+                if (content.TypeID != DragonBreathWeaponConfig.WEAPON_TYPE_ID) return;
+                
+                // 延迟1帧执行，等待 Object.Destroy 完成旧对象销毁
+                __instance.StartCoroutine(DelayedAddFireEffects(slotDisplayParent));
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] Showcase 展示火焰特效失败: " + e.Message);
+            }
+        }
+        
+        private static System.Collections.IEnumerator DelayedAddFireEffects(Transform slotDisplayParent)
+        {
+            // 等待1帧，确保 Object.Destroy 销毁旧对象
+            yield return null;
+            
+            if (slotDisplayParent == null) yield break;
+            
+            try
+            {
+                // 现在旧对象已销毁，只剩新创建的 ItemGraphicInfo
+                for (int i = 0; i < slotDisplayParent.childCount; i++)
+                {
+                    var child = slotDisplayParent.GetChild(i);
+                    if (child == null) continue;
+                    
+                    var graphic = child.GetComponent<ItemGraphicInfo>();
+                    if (graphic == null) continue;
+                    
+                    // 找到视觉模型，添加火焰特效
+                    DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(graphic.gameObject);
+                    break;
+                }
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] Showcase 延迟添加火焰特效失败: " + e.Message);
             }
         }
     }

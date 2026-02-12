@@ -502,7 +502,19 @@ namespace BossRush
         {
             try
             {
-                if (item.Stats == null) item.CreateStatsComponent();
+                // 确保 Stats 组件存在
+                if (item.Stats == null)
+                {
+                    item.CreateStatsComponent();
+                    if (item.Stats == null)
+                    {
+                        ModBehaviour.DevLog("[DragonBreathWeapon] 错误：无法创建 Stats 组件");
+                        return;
+                    }
+                }
+                
+                int addedCount = 0;
+                int updatedCount = 0;
                 
                 foreach (var kvp in WEAPON_STATS)
                 {
@@ -514,13 +526,20 @@ namespace BossRush
                     {
                         SetStatBaseValue(existingStat, kvp.Value);
                         SetStatDisplay(existingStat, shouldDisplay);
+                        updatedCount++;
                     }
                     else
                     {
-                        item.Stats.Add(new Stat(kvp.Key, kvp.Value, shouldDisplay));
+                        Stat newStat = new Stat(kvp.Key, kvp.Value, shouldDisplay);
+                        item.Stats.Add(newStat);
+                        addedCount++;
                     }
                 }
-                ModBehaviour.DevLog("[DragonBreathWeapon] 已设置 " + WEAPON_STATS.Count + " 个武器Stats，显示 " + DISPLAY_STATS.Count + " 个");
+                
+                // 验证关键 Stats 是否正确设置（用于调试）
+                VerifyCriticalStats(item);
+                
+                ModBehaviour.DevLog("[DragonBreathWeapon] Stats设置完成: 新增=" + addedCount + ", 更新=" + updatedCount);
                 
                 // 同时添加 Modifiers（用于重铸系统的持久化恢复）
                 // 只为需要显示的属性添加 Modifier，target 设为 Self（作用于武器自身）
@@ -529,6 +548,33 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonBreathWeapon] SetWeaponStats异常: " + e.Message);
+                ModBehaviour.DevLog("[DragonBreathWeapon] 堆栈: " + e.StackTrace);
+            }
+        }
+        
+        /// <summary>
+        /// 验证关键 Stats 是否正确设置（用于调试 MaxScatter 空引用问题）
+        /// </summary>
+        private static void VerifyCriticalStats(Item item)
+        {
+            try
+            {
+                // 验证 ItemAgent_Gun.MaxScatter 依赖的关键 Stats
+                string[] criticalStatKeys = { "MaxScatter", "MaxScatterADS", "ScatterFactor", "ScatterFactorADS" };
+                
+                foreach (string statKey in criticalStatKeys)
+                {
+                    int statHash = statKey.GetHashCode();
+                    float value = item.GetStatValue(statHash);
+                    if (value == 0f)
+                    {
+                        ModBehaviour.DevLog("[DragonBreathWeapon] 警告: 关键Stat '" + statKey + "' 值为0");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] VerifyCriticalStats异常: " + e.Message);
             }
         }
         
@@ -716,10 +762,14 @@ namespace BossRush
                             if (defaultBullet != null && gunSetting.bulletPfb == null)
                             {
                                 gunSetting.bulletPfb = defaultBullet;
+                                ModBehaviour.DevLog("[DragonBreathWeapon] bulletPfb -> DefaultBullet (回退)");
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[DragonBreathWeapon] 设置子弹预制体失败: " + e.Message);
+                    }
                 }
                 
                 // 设置枪口火焰（使用火焰枪口 MuzzleFlash_Fire，与带火AK-47相同）
@@ -734,10 +784,63 @@ namespace BossRush
                             ModBehaviour.DevLog("[DragonBreathWeapon] muzzleFxPfb -> MuzzleFlash_Fire");
                         }
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[DragonBreathWeapon] 设置枪口火焰失败: " + e.Message);
+                    }
+                }
+                
+                // 确保 ItemSetting_Gun 的 Stats 引用正确（修复 MaxScatter 空引用问题）
+                // ItemSetting_Gun 需要引用 Item.Stats 来计算散布等属性
+                EnsureGunSettingStatsReference(gunSetting, item);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] ConfigureGunSettings异常: " + e.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 确保 ItemSetting_Gun 正确引用 Item.Stats（修复 MaxScatter 空引用问题）
+        /// ItemSetting_Gun.MaxScatter 等属性需要从 Item.Stats 读取
+        /// </summary>
+        private static void EnsureGunSettingStatsReference(ItemSetting_Gun gunSetting, Item item)
+        {
+            try
+            {
+                // 使用反射检查 ItemSetting_Gun 的 stats 字段
+                FieldInfo statsField = typeof(ItemSetting_Gun).GetField("stats", 
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                
+                if (statsField != null)
+                {
+                    var currentStats = statsField.GetValue(gunSetting);
+                    if (currentStats == null && item.Stats != null)
+                    {
+                        // 如果 gunSetting.stats 为 null，设置为 item.Stats
+                        statsField.SetValue(gunSetting, item.Stats);
+                        ModBehaviour.DevLog("[DragonBreathWeapon] 已设置 ItemSetting_Gun.stats 引用");
+                    }
+                }
+                
+                // 同时检查 item 字段
+                FieldInfo itemField = typeof(ItemSetting_Gun).GetField("item", 
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                
+                if (itemField != null)
+                {
+                    var currentItem = itemField.GetValue(gunSetting);
+                    if (currentItem == null)
+                    {
+                        itemField.SetValue(gunSetting, item);
+                        ModBehaviour.DevLog("[DragonBreathWeapon] 已设置 ItemSetting_Gun.item 引用");
+                    }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] EnsureGunSettingStatsReference异常: " + e.Message);
+            }
         }
         
         /// <summary>
@@ -899,6 +1002,101 @@ namespace BossRush
                 ModBehaviour.DevLog("[DragonBreathWeapon] 添加火焰特效失败: " + e.Message);
             }
         }
+        
+        /// <summary>
+        /// 为展示家具（人体模特、武器展示柜等）上的龙息武器添加火焰特效
+        /// 通过 Item 的 ActiveAgent 或 ItemGraphic 找到视觉模型，复用 CopyFireEffects 逻辑
+        /// 在 Item.OnEnable 时调用
+        /// </summary>
+        public static void TryAddFireEffectsToDisplay(Item item)
+        {
+            if (item == null) return;
+            if (item.TypeID != WEAPON_TYPE_ID) return;
+            
+            // 查找目标视觉对象
+            GameObject targetVisual = null;
+            
+            // 优先使用 ActiveAgent（展示家具通常会创建一个 ItemAgent）
+            if (item.AgentUtilities != null && item.AgentUtilities.ActiveAgent != null)
+            {
+                var agent = item.AgentUtilities.ActiveAgent;
+                int agentInstanceId = agent.GetInstanceID();
+                
+                // 检查是否已添加过特效
+                if (effectsAddedAgents.Contains(agentInstanceId)) return;
+                
+                targetVisual = agent.gameObject;
+                
+                try
+                {
+                    GameObject sourceModel = GetFireAK47Model();
+                    if (sourceModel == null) return;
+                    
+                    CopyFireEffects(sourceModel, targetVisual);
+                    effectsAddedAgents.Add(agentInstanceId);
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 已为展示中的龙息武器添加火焰特效 (Agent: " + agent.name + ")");
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 展示火焰特效添加失败 (Agent): " + e.Message);
+                }
+                return;
+            }
+            
+            // 备选：使用 ItemGraphic（某些展示方式可能直接用 ItemGraphic）
+            if (item.ItemGraphic != null)
+            {
+                targetVisual = item.ItemGraphic.gameObject;
+                int graphicInstanceId = targetVisual.GetInstanceID();
+                
+                // 检查是否已添加过特效
+                if (effectsAddedAgents.Contains(graphicInstanceId)) return;
+                
+                try
+                {
+                    GameObject sourceModel = GetFireAK47Model();
+                    if (sourceModel == null) return;
+                    
+                    CopyFireEffects(sourceModel, targetVisual);
+                    effectsAddedAgents.Add(graphicInstanceId);
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 已为展示中的龙息武器添加火焰特效 (Graphic: " + targetVisual.name + ")");
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonBreathWeapon] 展示火焰特效添加失败 (Graphic): " + e.Message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 为展示家具创建的 ItemGraphic 视觉模型添加火焰特效
+        /// Showcase.RefreshSlot 通过 ItemGraphicInfo.CreateAGraphic 创建视觉模型，
+        /// 不经过 ItemAgent 系统，所以需要直接对 GameObject 操作
+        /// </summary>
+        public static void TryAddFireEffectsToGraphic(GameObject targetVisual)
+        {
+            if (targetVisual == null) return;
+            
+            int instanceId = targetVisual.GetInstanceID();
+            
+            // 检查是否已添加过特效
+            if (effectsAddedAgents.Contains(instanceId)) return;
+            
+            try
+            {
+                GameObject sourceModel = GetFireAK47Model();
+                if (sourceModel == null) return;
+                
+                CopyFireEffects(sourceModel, targetVisual);
+                effectsAddedAgents.Add(instanceId);
+                ModBehaviour.DevLog("[DragonBreathWeapon] 已为展示家具中的龙息武器添加火焰特效: " + targetVisual.name);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] 展示家具火焰特效添加失败: " + e.Message);
+            }
+        }
+
         
         /// <summary>
         /// 获取带火AK-47的模型（从预制体，带缓存）
