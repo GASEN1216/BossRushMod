@@ -807,15 +807,20 @@ namespace BossRush
                 string modPath = GetModPath();
                 if (string.IsNullOrEmpty(modPath)) return null;
                 
-                // 尝试 Assets 子目录
-                string imagePath = System.IO.Path.Combine(modPath, "Assets", imageName);
+                // 尝试 Assets/preview 子目录
+                string imagePath = System.IO.Path.Combine(modPath, "Assets", "preview", imageName);
                 if (!System.IO.File.Exists(imagePath))
                 {
-                    // 回退到根目录
-                    imagePath = System.IO.Path.Combine(modPath, imageName);
+                    // 回退到 Assets 目录
+                    imagePath = System.IO.Path.Combine(modPath, "Assets", imageName);
                     if (!System.IO.File.Exists(imagePath))
                     {
-                        return null;
+                        // 回退到根目录
+                        imagePath = System.IO.Path.Combine(modPath, imageName);
+                        if (!System.IO.File.Exists(imagePath))
+                        {
+                            return null;
+                        }
                     }
                 }
                 
@@ -971,16 +976,21 @@ namespace BossRush
                     return null;
                 }
                 
-                // 尝试加载背景图片（先尝试 Assets 子目录，再尝试根目录）
-                string imagePath = System.IO.Path.Combine(modPath, "Assets", "demo-preview.png");
+                // 尝试加载背景图片（先尝试 Assets/preview 子目录，再尝试 Assets，最后尝试根目录）
+                string imagePath = System.IO.Path.Combine(modPath, "Assets", "preview", "demo-preview.png");
                 if (!System.IO.File.Exists(imagePath))
                 {
-                    // 回退到根目录
-                    imagePath = System.IO.Path.Combine(modPath, "demo-preview.png");
+                    // 回退到 Assets 目录
+                    imagePath = System.IO.Path.Combine(modPath, "Assets", "demo-preview.png");
                     if (!System.IO.File.Exists(imagePath))
                     {
-                        ModBehaviour.DevLog("[BossRush] 背景图片不存在: " + imagePath);
-                        return null;
+                        // 回退到根目录
+                        imagePath = System.IO.Path.Combine(modPath, "demo-preview.png");
+                        if (!System.IO.File.Exists(imagePath))
+                        {
+                            ModBehaviour.DevLog("[BossRush] 背景图片不存在: " + imagePath);
+                            return null;
+                        }
                     }
                 }
                 
