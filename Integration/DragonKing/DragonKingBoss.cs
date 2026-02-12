@@ -83,6 +83,9 @@ namespace BossRush
 
             // 清理能力控制器缓存
             DragonKingAbilityController.ClearStaticCache();
+
+            // 重置BGM播放状态
+            BossRushAudioManager.Instance?.ResetDragonKingBGMState();
         }
 
         /// <summary>
@@ -418,6 +421,9 @@ namespace BossRush
         {
             DevLog("[DragonKing] 龙王被击败");
             ShowMessage(L10n.DragonKingDefeated);
+
+            // 重置BGM播放状态
+            BossRushAudioManager.Instance?.ResetDragonKingBGMState();
 
             // 取消注册龙王套装效果
             UnregisterDragonKingSetBonus();

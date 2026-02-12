@@ -68,7 +68,9 @@ namespace BossRush
             { "Level_HiddenWarehouse", new Vector3(129.37f, 0.02f, 186.54f) },
             { "Level_Farm_01", new Vector3(383.43f, 0.04f, 585.01f) },
             { "Level_JLab_1", new Vector3(-35.53f, 0.09f, -56.07f) },
-            { "Level_StormZone_B0", new Vector3(109.99f, 0.02f, 489.79f) }
+            { "Level_StormZone_B0", new Vector3(109.99f, 0.02f, 489.79f) },
+            { "Level_SnowMilitaryBase", new Vector3(469.11f, 0.04f, 549.42f) },
+            { "Level_SnowMilitaryBase_ColdStorage", new Vector3(9.09f, 0.02f, -37.73f) }
         };
         
         #endregion

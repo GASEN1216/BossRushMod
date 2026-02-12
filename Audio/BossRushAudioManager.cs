@@ -58,10 +58,17 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 播放龙王BGM
+        /// 龙王BGM是否正在播放（防止多Boss时重复播放）
+        /// </summary>
+        private bool isDragonKingBGMPlaying = false;
+
+        /// <summary>
+        /// 播放龙王BGM（防止重复播放）
         /// </summary>
         public void PlayDragonKingBGM()
         {
+            if (isDragonKingBGMPlaying) return;
+
             string modPath = ModBehaviour.GetModPath();
             if (string.IsNullOrEmpty(modPath)) return;
 
@@ -69,7 +76,16 @@ namespace BossRush
             if (File.Exists(path))
             {
                 ModBehaviour.Instance?.PlaySoundEffect(path);
+                isDragonKingBGMPlaying = true;
             }
+        }
+
+        /// <summary>
+        /// 重置龙王BGM播放状态（龙王死亡或场景切换时调用）
+        /// </summary>
+        public void ResetDragonKingBGMState()
+        {
+            isDragonKingBGMPlaying = false;
         }
 
         /// <summary>

@@ -1107,6 +1107,12 @@ namespace BossRush
                         // 使用 MultiSceneCore.LoadAndTeleport 强制传送到地下场景
                         StartCoroutine(ForceTeleportToSubScene(targetSubScene, customPos.Value));
                     }
+                    // 特殊处理：迷宫冷藏区 - 如果加载了雪地军事基地主场景，强制传送到冷藏区子场景
+                    else if (targetSubScene == "Level_SnowMilitaryBase_ColdStorage" && scene.name == "Level_SnowMilitaryBase" && customPos.HasValue)
+                    {
+                        DevLog("[BossRush] 检测到加载了错误的子场景: " + scene.name + " (期望: " + targetSubScene + "), 强制传送到冷藏区");
+                        StartCoroutine(ForceTeleportToSubScene(targetSubScene, customPos.Value));
+                    }
                     else
                     {
                         // 其他场景，重置标记
@@ -1858,6 +1864,30 @@ namespace BossRush
                 configs.Add(new MapObjectCloneConfig("Pfb_BarbedWire_01_03", "BarbedWire_Line", new Vector3(116.46f, 0.00f, 454.04f), "BossRush_Barrier_7", 345f));
                 
                 // 撤离点使用 CreateBossRushExit 方法创建（不再复制模板）
+            }
+            else if (sceneName == "Level_SnowMilitaryBase")
+            {
+                // 37号实验区地图的围栏配置（使用 Pfb_Car_02 汽车作为障碍物）
+                // 模板路径: Pfb_MilitaryBase/Indoor/Pfb_Car_02
+                
+                configs.Add(new MapObjectCloneConfig("Pfb_Car_02", "Indoor", new Vector3(471.95f, -0.01f, 525.12f), "BossRush_Barrier_1", 276f));
+                configs.Add(new MapObjectCloneConfig("Pfb_Car_02", "Indoor", new Vector3(477.32f, -0.01f, 523.98f), "BossRush_Barrier_2", 276f));
+                configs.Add(new MapObjectCloneConfig("Pfb_Car_02", "Indoor", new Vector3(520.18f, -0.01f, 537.38f), "BossRush_Barrier_3", 276f));
+                configs.Add(new MapObjectCloneConfig("Pfb_Car_02", "Indoor", new Vector3(521.07f, -0.01f, 541.55f), "BossRush_Barrier_4", 261f));
+                configs.Add(new MapObjectCloneConfig("Pfb_Car_02", "Indoor", new Vector3(520.36f, -0.01f, 562.45f), "BossRush_Barrier_5", 261f));
+                configs.Add(new MapObjectCloneConfig("Pfb_Car_02", "Indoor", new Vector3(494.75f, 0.75f, 576.29f), "BossRush_Barrier_6", 291f));
+                configs.Add(new MapObjectCloneConfig("Pfb_Car_02", "Indoor", new Vector3(476.92f, 0.02f, 574.87f), "BossRush_Barrier_7", 276f));
+            }
+            else if (sceneName == "Level_SnowMilitaryBase_ColdStorage")
+            {
+                // 迷宫地图的围栏配置（使用 Pfb_RoadblockGRP_3 路障组合）
+                // 模板路径: Pfb_RoadblockGRP_3/Col_Wall_FowBlock_1
+                // 根对象: Pfb_RoadblockGRP_3（场景根级对象，parentNamePrefix 留空）
+                
+                configs.Add(new MapObjectCloneConfig("Pfb_RoadblockGRP_3", "", new Vector3(-11.28f, 0.00f, -34.97f), "BossRush_Barrier_1", 272f));
+                configs.Add(new MapObjectCloneConfig("Pfb_RoadblockGRP_3", "", new Vector3(-11.13f, 0.00f, -30.67f), "BossRush_Barrier_2", 272f));
+                configs.Add(new MapObjectCloneConfig("Pfb_RoadblockGRP_3", "", new Vector3(7.31f, 0.00f, -65.16f), "BossRush_Barrier_3", 182f));
+                configs.Add(new MapObjectCloneConfig("Pfb_RoadblockGRP_3", "", new Vector3(11.50f, 0.00f, -65.29f), "BossRush_Barrier_4", 182f));
             }
             // 后续可以添加其他地图的配置
             

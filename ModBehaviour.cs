@@ -400,6 +400,46 @@ namespace BossRush
             new Vector3(99.41f, 0.02f, 508.61f),
         };
         
+        // 37号实验区刷新点（Level_SnowMilitaryBase）- 基于竞技场范围分布
+        private static readonly Vector3[] Zone37SpawnPoints = new Vector3[]
+        {
+            new Vector3(475.00f, 0.04f, 530.00f),   // 南偏西
+            new Vector3(485.00f, 0.04f, 528.00f),   // 南
+            new Vector3(495.00f, 0.04f, 530.00f),   // 南偏东
+            new Vector3(505.00f, 0.04f, 535.00f),   // 东南
+            new Vector3(515.00f, 0.04f, 540.00f),   // 东
+            new Vector3(518.00f, 0.04f, 550.00f),   // 东偏北
+            new Vector3(515.00f, 0.04f, 558.00f),   // 东北
+            new Vector3(505.00f, 0.04f, 563.00f),   // 北偏东
+            new Vector3(495.00f, 0.04f, 565.00f),   // 北
+            new Vector3(485.00f, 0.04f, 563.00f),   // 北偏西
+            new Vector3(475.00f, 0.04f, 558.00f),   // 西北
+            new Vector3(470.00f, 0.04f, 548.00f),   // 西
+            new Vector3(470.00f, 0.04f, 540.00f),   // 西南
+            new Vector3(490.00f, 0.04f, 545.00f),   // 中央偏东
+            new Vector3(480.00f, 0.04f, 550.00f),   // 中央偏西
+            new Vector3(500.00f, 0.04f, 550.00f),   // 中央偏东北
+        };
+        
+        // 迷宫刷新点（Level_SnowMilitaryBase_ColdStorage）- 基于竞技场范围分布
+        private static readonly Vector3[] MazeColdStorageSpawnPoints = new Vector3[]
+        {
+            new Vector3(-3.09f, 0.02f, -30.26f),
+            new Vector3(-7.73f, 0.02f, -39.74f),
+            new Vector3(-8.09f, 0.02f, -50.61f),
+            new Vector3(-6.74f, -0.01f, -60.41f),
+            new Vector3(-1.35f, 0.02f, -63.17f),
+            new Vector3(8.19f, 0.12f, -64.54f),
+            new Vector3(24.16f, 0.02f, -57.13f),
+            new Vector3(25.95f, 0.02f, -38.05f),
+            new Vector3(26.39f, 0.50f, -30.19f),
+            new Vector3(1.80f, 0.02f, -28.30f),
+            new Vector3(14.58f, 0.02f, -34.74f),
+            new Vector3(18.02f, 0.02f, -51.04f),
+            new Vector3(3.40f, 0.02f, -54.87f),
+            new Vector3(-0.22f, 0.02f, -39.43f),
+        };
+        
         /// <summary>
         /// 所有支持的 BossRush 地图配置（添加新地图只需在此处添加配置）
         /// </summary>
@@ -495,6 +535,32 @@ namespace BossRush
                 0,                            // 信标索引
                 null,                         // 预览图（使用原版传送UI第六个选项的图）
                 new Vector3(0f, 0f, 1f)       // 地图北方（风暴区地下：Z+ 方向）
+            ),
+            // 37号实验区（第八位）
+            new BossRushMapConfig(
+                "Level_SnowMilitaryBase",      // 运行时场景名
+                "Level_SnowMilitaryBase_Main", // 加载用场景ID
+                "37号实验区",                   // 显示名称（中文）
+                "Zone 37 Experimental Area",   // 显示名称（英文）
+                Zone37SpawnPoints,             // 刷新点
+                new Vector3(463.83f, 0.04f, 549.50f),  // 玩家传送位置
+                new Vector3(463.83f, 0.04f, 549.50f),  // 路牌位置（与玩家传送位置相同）
+                0,                            // 信标索引
+                null,                         // 预览图（使用原版传送UI第六个选项的图）
+                new Vector3(0f, 0f, 1f)       // 地图北方（37号实验区：Z+ 方向）
+            ),
+            // 迷宫（第九位）- 雪地军事基地冷藏区
+            new BossRushMapConfig(
+                "Level_SnowMilitaryBase_ColdStorage",      // 运行时场景名
+                "Level_SnowMilitaryBase_ColdStorage_Main", // 加载用场景ID
+                "迷宫",                                    // 显示名称（中文）
+                "Maze",                                    // 显示名称（英文）
+                MazeColdStorageSpawnPoints,                 // 刷新点
+                new Vector3(9.08f, 0.02f, -44.54f),        // 玩家传送位置
+                new Vector3(9.08f, 0.02f, -44.54f),        // 路牌位置（与玩家传送位置相同）
+                0,                                         // 信标索引
+                "maze-preview.png",                        // 预览图
+                new Vector3(0f, 0f, 1f)                    // 地图北方（迷宫：Z+ 方向）
             ),
             // 后续添加新地图只需在此处添加 BossRushMapConfig
         };
