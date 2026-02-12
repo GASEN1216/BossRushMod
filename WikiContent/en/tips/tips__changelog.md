@@ -2,6 +2,9 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.12 22:00
+- Added "Lab 37" and "Maze" map options
+
 ### 2026.2.12 14:30
 - Equipment and weapons now compatible with mannequins and weapon display cases
 
