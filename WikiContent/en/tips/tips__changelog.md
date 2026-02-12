@@ -2,6 +2,9 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.12 14:30
+- Equipment and weapons now compatible with mannequins and weapon display cases
+
 ### 2026.2.12 00:00
 - Added "Wild Horn" item that can summon a wolf mount
 
