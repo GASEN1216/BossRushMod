@@ -2099,6 +2099,16 @@ namespace BossRush
             {
                 CreateBossRushExit(new Vector3(109.92f, 0.02f, 503.95f), "BossRush_Exit_StormZone");
             }
+            // 37号实验区撤离点
+            else if (sceneName == "Level_SnowMilitaryBase")
+            {
+                CreateBossRushExit(new Vector3(511.32f, 0.04f, 558.61f), "BossRush_Exit_Zone37");
+            }
+            // 迷宫撤离点
+            else if (sceneName == "Level_SnowMilitaryBase_ColdStorage")
+            {
+                CreateBossRushExit(new Vector3(24.78f, 0.02f, -60.28f), "BossRush_Exit_Maze");
+            }
             // 其他需要自定义撤离点的场景可以在这里添加
         }
         
