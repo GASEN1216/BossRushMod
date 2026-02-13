@@ -69,7 +69,7 @@ namespace BossRush
             { "Level_Farm_01", new Vector3(383.43f, 0.04f, 585.01f) },
             { "Level_JLab_1", new Vector3(-35.53f, 0.09f, -56.07f) },
             { "Level_StormZone_B0", new Vector3(109.99f, 0.02f, 489.79f) },
-            { "Level_SnowMilitaryBase", new Vector3(469.11f, 0.04f, 549.42f) },
+            { "Level_SnowMilitaryBase", new Vector3(455.69f, 0.04f, 548.97f) },  // 37号实验区快递员阿稳刷新点
             { "Level_SnowMilitaryBase_ColdStorage", new Vector3(9.09f, 0.02f, -37.73f) }
         };
         

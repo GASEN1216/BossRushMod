@@ -403,22 +403,14 @@ namespace BossRush
         // 37号实验区刷新点（Level_SnowMilitaryBase）- 基于竞技场范围分布
         private static readonly Vector3[] Zone37SpawnPoints = new Vector3[]
         {
-            new Vector3(475.00f, 0.04f, 530.00f),   // 南偏西
-            new Vector3(485.00f, 0.04f, 528.00f),   // 南
-            new Vector3(495.00f, 0.04f, 530.00f),   // 南偏东
-            new Vector3(505.00f, 0.04f, 535.00f),   // 东南
-            new Vector3(515.00f, 0.04f, 540.00f),   // 东
-            new Vector3(518.00f, 0.04f, 550.00f),   // 东偏北
-            new Vector3(515.00f, 0.04f, 558.00f),   // 东北
-            new Vector3(505.00f, 0.04f, 563.00f),   // 北偏东
-            new Vector3(495.00f, 0.04f, 565.00f),   // 北
-            new Vector3(485.00f, 0.04f, 563.00f),   // 北偏西
-            new Vector3(475.00f, 0.04f, 558.00f),   // 西北
-            new Vector3(470.00f, 0.04f, 548.00f),   // 西
-            new Vector3(470.00f, 0.04f, 540.00f),   // 西南
-            new Vector3(490.00f, 0.04f, 545.00f),   // 中央偏东
-            new Vector3(480.00f, 0.04f, 550.00f),   // 中央偏西
-            new Vector3(500.00f, 0.04f, 550.00f),   // 中央偏东北
+            new Vector3(453.19f, 0.04f, 565.47f),
+            new Vector3(454.82f, 0.04f, 531.44f),
+            new Vector3(477.00f, 0.04f, 529.72f),
+            new Vector3(497.34f, 0.04f, 532.45f),
+            new Vector3(509.67f, 0.04f, 559.08f),
+            new Vector3(494.19f, 0.04f, 568.55f),
+            new Vector3(475.98f, 0.04f, 569.06f),
+            new Vector3(462.51f, 0.04f, 564.18f),
         };
         
         // 迷宫刷新点（Level_SnowMilitaryBase_ColdStorage）- 基于竞技场范围分布
@@ -2684,7 +2676,7 @@ namespace BossRush
                 try
                 {
                     CharacterMainControl main = CharacterMainControl.Main;
-                    if (main != null)
+                    if (main != null && main.gameObject.activeInHierarchy)
                     {
                         target = main.gameObject;
                     }

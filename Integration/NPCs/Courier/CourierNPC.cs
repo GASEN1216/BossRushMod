@@ -271,9 +271,9 @@ namespace BossRush
                 }
             }
             
-            // 使用 Raycast 修正落点到地面
+            // 使用 Raycast 修正落点到地面（从配置坐标上方1米开始，避免打到屋顶等空中碰撞体）
             RaycastHit hit;
-            if (Physics.Raycast(spawnPos + Vector3.up * 5f, Vector3.down, out hit, 20f))
+            if (Physics.Raycast(spawnPos + Vector3.up * 1f, Vector3.down, out hit, 10f))
             {
                 spawnPos = hit.point + new Vector3(0f, 0.1f, 0f);
                 DevLog("[CourierNPC] Raycast修正后位置: " + spawnPos);

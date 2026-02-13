@@ -739,6 +739,14 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 检查玩家是否已死亡或不可用（用于协程中快速判断，避免对已死亡玩家继续攻击）
+        /// </summary>
+        private bool IsPlayerDead()
+        {
+            return playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead;
+        }
+
         // ========== 生命周期 ==========
         
         /// <summary>
@@ -777,6 +785,43 @@ namespace BossRush
             CleanupAllEffects();
             
             ModBehaviour.DevLog("[DragonKing] Boss死亡，清理完成");
+        }
+
+        /// <summary>
+        /// 玩家死亡时调用 - 立即停止所有攻击协程和清理弹幕
+        /// 避免对已死亡/不活跃的玩家对象持续操作导致掉帧
+        /// 采用一次性清理而非每帧检查，零持续开销，低端机友好
+        /// </summary>
+        public void OnPlayerDeath()
+        {
+            ModBehaviour.DevLog("[DragonKing] 检测到玩家死亡，停止所有攻击");
+            
+            // 停止自定义射击
+            isCustomShootingActive = false;
+            if (customShootingCoroutine != null)
+            {
+                StopCoroutine(customShootingCoroutine);
+                customShootingCoroutine = null;
+            }
+            
+            // 停止太阳舞弹幕
+            isSunDanceActive = false;
+            if (sunDanceBarrageCoroutine != null)
+            {
+                StopCoroutine(sunDanceBarrageCoroutine);
+                sunDanceBarrageCoroutine = null;
+            }
+            
+            // 停止所有协程（包括AttackLoop、MoveLance、TrackingProjectileCore等）
+            StopAllCoroutines();
+            
+            // 清理所有活跃特效和弹幕
+            CleanupAllEffects();
+            
+            // 恢复AI行为（防止Boss卡在暂停状态）
+            ResumeBossMovementAndShooting();
+            
+            ModBehaviour.DevLog("[DragonKing] 玩家死亡清理完成");
         }
 
         /// <summary>
@@ -1013,8 +1058,9 @@ namespace BossRush
                 
                 if (playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead)
                 {
-                    yield return wait1s;
-                    continue;
+                    // 玩家死亡时一次性清理所有攻击协程和弹幕，然后退出循环
+                    OnPlayerDeath();
+                    yield break;
                 }
                 
                 // 调试模式下跳过阶段转换检查
@@ -1951,7 +1997,7 @@ namespace BossRush
         /// </summary>
         private bool CheckProjectileHit(Vector3 position, float damage)
         {
-            if (playerCharacter == null) return false;
+            if (playerCharacter == null || IsPlayerDead()) return false;
             
             // 性能优化：使用sqrMagnitude避免开方运算
             // 使用配置中的常量
@@ -1978,7 +2024,8 @@ namespace BossRush
         /// </summary>
         private void ApplyDamageToPlayer(float damage)
         {
-            if (playerCharacter == null || playerCharacter.Health == null) return;
+            // 玩家已死亡时跳过伤害，避免对不活跃对象操作
+            if (IsPlayerDead()) return;
             
             try
             {
@@ -1993,6 +2040,14 @@ namespace BossRush
                 // 添加火元素伤害，让原版受伤系统显示伤害数字
                 dmgInfo.AddElementFactor(ElementTypes.fire, 1f);
                 playerCharacter.Health.Hurt(dmgInfo);
+                
+                // 检测玩家是否被这次伤害杀死，如果是则立即清理所有攻击
+                // 一次性清理，避免后续协程继续对已死亡玩家操作导致掉帧
+                if (playerCharacter.Health.IsDead)
+                {
+                    OnPlayerDeath();
+                    return;
+                }
                 
                 // 播放玩家受伤音效
                 PlayHurtSound();
@@ -3530,7 +3585,7 @@ namespace BossRush
         /// </summary>
         private bool CheckLanceHit(GameObject lance)
         {
-            if (playerCharacter == null || lance == null) return false;
+            if (playerCharacter == null || lance == null || IsPlayerDead()) return false;
 
             Vector3 lancePos = lance.transform.position;
             Vector3 playerPos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
@@ -4642,7 +4697,7 @@ namespace BossRush
             
             // 检查碰撞对象是否是玩家
             var character = other.GetComponentInParent<CharacterMainControl>();
-            if (character != null && character == CharacterMainControl.Main)
+            if (character != null && character == CharacterMainControl.Main && !character.Health.IsDead)
             {
                 lastDamageTime = Time.time;
                 controller.ApplySunBeamDamage();
@@ -5189,7 +5244,7 @@ namespace BossRush
         /// </summary>
         private void ApplyLavaDamage(CharacterMainControl player)
         {
-            if (player == null || player.Health == null) return;
+            if (player == null || player.Health == null || player.Health.IsDead) return;
             
             try
             {
