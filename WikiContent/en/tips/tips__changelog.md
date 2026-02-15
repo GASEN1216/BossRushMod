@@ -2,6 +2,14 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.15 21:00
+- Added Mode E: Faction Battle
+- Added 7 faction flags to vending machine
+- Reforge bonus stat sign is now 50% random positive/negative instead of inheriting the original stat's sign
+- Death no longer drops all items from your body
+- Raycast detection changed to 1m to reduce getting stuck in mid-air
+- Fixed state confusion when multiple Dragon Emperor bosses appear
+
 ### 2026.2.12 22:00
 - Added "Lab 37" and "Maze" map options
 

@@ -22,22 +22,19 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour
     {
-        // ========== 龙王Boss实例引用 ==========
+        // ========== 龙王Boss实例引用（多实例支持） ==========
         
         /// <summary>
-        /// 龙王Boss实例
+        /// 所有活跃的龙王Boss实例及其能力控制器（支持多Boss模式）
         /// </summary>
-        private CharacterMainControl dragonKingInstance;
+        private Dictionary<CharacterMainControl, DragonKingAbilityController> dragonKingInstances 
+            = new Dictionary<CharacterMainControl, DragonKingAbilityController>();
         
         /// <summary>
-        /// 龙王能力控制器
+        /// 龙王掉落事件委托映射（每个实例独立的委托，用于正确取消订阅）
         /// </summary>
-        private DragonKingAbilityController dragonKingAbilities;
-        
-        /// <summary>
-        /// 龙王掉落事件委托（用于正确取消订阅，避免Lambda内存泄漏）
-        /// </summary>
-        private Action<DamageInfo> dragonKingLootEventHandler;
+        private Dictionary<CharacterMainControl, Action<DamageInfo>> dragonKingLootEventHandlers
+            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
         
         /// <summary>
         /// 龙王是否已注册到预设列表 - 用于防止重复注册
@@ -46,17 +43,17 @@ namespace BossRush
         private static bool dragonKingRegistered = false;
         #pragma warning restore CS0414
         
-        // ========== 龙王套装效果状态 ==========
+        // ========== 龙王套装效果状态（多实例支持） ==========
         
         /// <summary>
-        /// 龙王Boss套装效果是否已注册
+        /// 龙王Boss套装效果是否已注册（全局静态事件只需注册一次）
         /// </summary>
         private bool dragonKingSetBonusRegistered = false;
         
         /// <summary>
-        /// 缓存的龙王Boss Health引用（用于快速身份验证，独立于龙裔Boss的cachedBossHealth）
+        /// 所有活跃龙王的Health引用集合（用于OnHurt回调中快速判断是否为龙王）
         /// </summary>
-        private Health cachedDragonKingBossHealth;
+        private HashSet<Health> activeDragonKingHealths = new HashSet<Health>();
         
         // ========== 性能优化：预设缓存 ==========
         
@@ -135,7 +132,7 @@ namespace BossRush
                     return null;
                 }
                 
-                dragonKingInstance = character;
+                dragonKingInstances[character] = null; // 先占位，后面赋值控制器
                 character.gameObject.name = "BossRush_DragonKing";
                 
                 // 设置为当前Boss
@@ -179,8 +176,9 @@ namespace BossRush
                 DisableDragonKingOriginalAI(character);
                 
                 // 添加能力控制器
-                dragonKingAbilities = character.gameObject.AddComponent<DragonKingAbilityController>();
-                dragonKingAbilities.Initialize(character);
+                var abilities = character.gameObject.AddComponent<DragonKingAbilityController>();
+                abilities.Initialize(character);
+                dragonKingInstances[character] = abilities;
                 
                 // 激活角色
                 character.gameObject.SetActive(true);
@@ -194,14 +192,16 @@ namespace BossRush
                 // 设置AI仇恨
                 SetupAIAggro(character);
                 
-                // 订阅死亡事件
+                // 订阅死亡事件（使用闭包捕获当前character引用，支持多实例）
                 if (character.Health != null)
                 {
-                    character.Health.OnDeadEvent.AddListener(OnDragonKingDeath);
+                    // 使用局部变量捕获，确保每个龙皇的死亡回调指向正确的实例
+                    CharacterMainControl capturedChar = character;
+                    character.Health.OnDeadEvent.AddListener((dmgInfo) => OnDragonKingDeath(capturedChar, dmgInfo));
                 }
                 
                 // 注册龙王套装效果（火焰伤害免疫并转化为治疗）
-                RegisterDragonKingSetBonus();
+                RegisterDragonKingSetBonus(character);
                 
                 // 记录Boss生成信息
                 try
@@ -210,11 +210,14 @@ namespace BossRush
                     bossOriginalLootCounts[character] = 5; // 龙王掉落更多
                     
                     // 使用命名委托替代Lambda，以便后续可以正确取消订阅（避免内存泄漏）
-                    dragonKingLootEventHandler = (dmgInfo) => {
+                    // 每个龙皇实例独立的掉落事件处理器
+                    CharacterMainControl capturedCharForLoot = character;
+                    Action<DamageInfo> lootHandler = (dmgInfo) => {
                         DevLog("[DragonKing] BeforeCharacterSpawnLootOnDead 事件触发");
-                        OnBossBeforeSpawnLoot(character, dmgInfo);
+                        OnBossBeforeSpawnLoot(capturedCharForLoot, dmgInfo);
                     };
-                    character.BeforeCharacterSpawnLootOnDead += dragonKingLootEventHandler;
+                    dragonKingLootEventHandlers[character] = lootHandler;
+                    character.BeforeCharacterSpawnLootOnDead += lootHandler;
                     
                     DevLog("[DragonKing] 已订阅掉落事件，bossSpawnTimes.Count=" + bossSpawnTimes.Count);
                 }
@@ -397,8 +400,8 @@ namespace BossRush
                     // 保持AI启用
                     aiController.enabled = true;
                     
-                    // 设置AI仇恨玩家
-                    if (CharacterMainControl.Main != null && CharacterMainControl.Main.mainDamageReceiver != null)
+                    // 设置AI仇恨玩家（Mode E 同阵营时不设置，避免友方龙王攻击玩家）
+                    if (!IsModeEActive && CharacterMainControl.Main != null && CharacterMainControl.Main.mainDamageReceiver != null)
                     {
                         aiController.searchedEnemy = CharacterMainControl.Main.mainDamageReceiver;
                     }
@@ -417,7 +420,10 @@ namespace BossRush
         /// <summary>
         /// 龙王死亡回调
         /// </summary>
-        private void OnDragonKingDeath(DamageInfo damageInfo)
+        /// <summary>
+        /// 龙王死亡回调（支持多实例，通过参数识别具体龙皇）
+        /// </summary>
+        private void OnDragonKingDeath(CharacterMainControl deadKing, DamageInfo damageInfo)
         {
             DevLog("[DragonKing] 龙王被击败");
             ShowMessage(L10n.DragonKingDefeated);
@@ -425,8 +431,8 @@ namespace BossRush
             // 重置BGM播放状态
             BossRushAudioManager.Instance?.ResetDragonKingBGMState();
 
-            // 取消注册龙王套装效果
-            UnregisterDragonKingSetBonus();
+            // 取消注册该龙皇的套装效果
+            UnregisterDragonKingSetBonus(deadKing);
 
             // 直接触发龙王击杀成就（作为保险措施，防止三阶段联动死亡时成就未触发）
             try
@@ -439,34 +445,18 @@ namespace BossRush
                 DevLog("[DragonKing] 触发成就检测失败: " + e.Message);
             }
 
-            // 移除事件监听（防止内存泄漏）
-            // 注意：不要在这里取消 BeforeCharacterSpawnLootOnDead 订阅！
-            // 因为 OnDeadEvent 和 BeforeCharacterSpawnLootOnDead 的触发顺序不确定，
-            // 如果在这里取消订阅，可能导致掉落随机化逻辑无法执行。
-            // BeforeCharacterSpawnLootOnDead 事件会在 OnBossBeforeSpawnLoot_LootAndRewards 中
-            // 通过 bossSpawnTimes.Remove(bossMain) 自动清理。
-            if (dragonKingInstance != null)
+            // 清理该实例的能力控制器
+            DragonKingAbilityController abilities = null;
+            if (dragonKingInstances.TryGetValue(deadKing, out abilities) && abilities != null)
             {
-                // 取消死亡事件订阅
-                if (dragonKingInstance.Health != null)
-                {
-                    dragonKingInstance.Health.OnDeadEvent.RemoveListener(OnDragonKingDeath);
-                }
-                
-                // 注意：掉落事件订阅由 OnBossBeforeSpawnLoot_LootAndRewards 处理后自动清理
-                // 这里只清理委托引用，不取消订阅
-                dragonKingLootEventHandler = null;
+                abilities.OnBossDeath();
             }
 
-            // 清理能力控制器
-            if (dragonKingAbilities != null)
-            {
-                dragonKingAbilities.OnBossDeath();
-            }
-
-            // 清理实例引用
-            dragonKingInstance = null;
-            dragonKingAbilities = null;
+            // 从实例字典中移除
+            dragonKingInstances.Remove(deadKing);
+            
+            // 清理掉落事件委托引用
+            dragonKingLootEventHandlers.Remove(deadKing);
 
             // 释放Boss实例资源（使用引用计数）
             ReleaseDragonKingInstance();
@@ -522,7 +512,7 @@ namespace BossRush
             {
                 name = DragonKingConfig.BossNameKey,
                 displayName = L10n.T(DragonKingConfig.BossNameCN, DragonKingConfig.BossNameEN),
-                team = 2, // 敌人阵营
+                team = (int)Teams.wolf, // 狼群阵营（Mode E 阵营体系统一）
                 baseHealth = DragonKingConfig.BaseHealth,
                 baseDamage = 50f,
                 healthMultiplier = 1f,
@@ -540,21 +530,25 @@ namespace BossRush
         
         /// <summary>
         /// 注册龙王Boss套装效果（火焰伤害免疫并转化为治疗）
-        /// 实现方式与龙裔Boss一致，但使用独立的状态变量避免冲突
+        /// 支持多实例：每个龙皇的Health加入集合，全局事件只注册一次
         /// </summary>
-        private void RegisterDragonKingSetBonus()
+        private void RegisterDragonKingSetBonus(CharacterMainControl kingInstance)
         {
-            if (dragonKingSetBonusRegistered) return;
-            
             try
             {
-                // 缓存Health引用用于快速身份验证
-                if (dragonKingInstance != null && dragonKingInstance.Health != null)
+                if (kingInstance != null && kingInstance.Health != null)
                 {
-                    cachedDragonKingBossHealth = dragonKingInstance.Health;
-                    Health.OnHurt += OnDragonKingBossHurt;
-                    dragonKingSetBonusRegistered = true;
-                    DevLog("[DragonKing] 已注册龙王套装效果（火焰免疫），Health引用已缓存");
+                    // 将该龙皇的Health加入活跃集合
+                    activeDragonKingHealths.Add(kingInstance.Health);
+                    
+                    // 全局静态事件只注册一次
+                    if (!dragonKingSetBonusRegistered)
+                    {
+                        Health.OnHurt += OnDragonKingBossHurt;
+                        dragonKingSetBonusRegistered = true;
+                    }
+                    
+                    DevLog("[DragonKing] 已注册龙王套装效果（火焰免疫），活跃龙皇数: " + activeDragonKingHealths.Count);
                 }
                 else
                 {
@@ -568,18 +562,30 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 取消注册龙王Boss套装效果
+        /// 取消注册指定龙王的套装效果
+        /// 当所有龙皇都死亡后，才取消全局事件订阅
         /// </summary>
-        private void UnregisterDragonKingSetBonus()
+        private void UnregisterDragonKingSetBonus(CharacterMainControl kingInstance)
         {
-            if (!dragonKingSetBonusRegistered) return;
-            
             try
             {
-                Health.OnHurt -= OnDragonKingBossHurt;
-                cachedDragonKingBossHealth = null;
-                dragonKingSetBonusRegistered = false;
-                DevLog("[DragonKing] 已取消注册龙王套装效果");
+                // 从活跃集合中移除该龙皇
+                if (kingInstance != null && kingInstance.Health != null)
+                {
+                    activeDragonKingHealths.Remove(kingInstance.Health);
+                }
+                
+                // 所有龙皇都死亡后，取消全局事件订阅
+                if (activeDragonKingHealths.Count == 0 && dragonKingSetBonusRegistered)
+                {
+                    Health.OnHurt -= OnDragonKingBossHurt;
+                    dragonKingSetBonusRegistered = false;
+                    DevLog("[DragonKing] 所有龙皇已死亡，已取消注册龙王套装效果");
+                }
+                else
+                {
+                    DevLog("[DragonKing] 取消一个龙皇套装效果，剩余活跃龙皇数: " + activeDragonKingHealths.Count);
+                }
             }
             catch (Exception e)
             {
@@ -593,8 +599,8 @@ namespace BossRush
         /// </summary>
         private void OnDragonKingBossHurt(Health health, DamageInfo damageInfo)
         {
-            // [性能优化] 快速过滤：使用缓存引用直接比较
-            if (cachedDragonKingBossHealth == null || health != cachedDragonKingBossHealth) return;
+            // [性能优化] 快速过滤：使用活跃龙皇Health集合判断
+            if (activeDragonKingHealths.Count == 0 || !activeDragonKingHealths.Contains(health)) return;
             
             try
             {
@@ -667,13 +673,13 @@ namespace BossRush
                 health.AddHealth(amount);
                 DevLog("[DragonKing] Boss火焰能量治疗: +" + amount.ToString("F1"));
                 
-                // 显示治疗数字
+                // 显示治疗数字（使用Health组件的transform获取位置，不依赖单实例引用）
                 try
                 {
-                    if (dragonKingInstance != null)
+                    if (health != null && health.gameObject != null)
                     {
                         FX.PopText.Pop("+" + amount.ToString("F0"), 
-                            dragonKingInstance.transform.position + Vector3.up * 2.5f, 
+                            health.transform.position + Vector3.up * 2.5f, 
                             new Color(0.2f, 1f, 0.2f), 1.2f, null);
                     }
                 }

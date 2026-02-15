@@ -528,7 +528,7 @@ namespace BossRush
             
             // 使用 Raycast 修正落点到地面
             RaycastHit hit;
-            if (Physics.Raycast(targetPos + Vector3.up * 5f, Vector3.down, out hit, 20f))
+            if (Physics.Raycast(targetPos + Vector3.up * 1f, Vector3.down, out hit, 5f))
             {
                 targetPos = hit.point + new Vector3(0f, 0.1f, 0f);
             }
@@ -1753,8 +1753,8 @@ namespace BossRush
         {
             // 从当前位置向下发射射线，找到地面
             RaycastHit hit;
-            Vector3 rayStart = transform.position + Vector3.up * 2f;
-            if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f))
+            Vector3 rayStart = transform.position + Vector3.up * 1f;
+            if (Physics.Raycast(rayStart, Vector3.down, out hit, 5f))
             {
                 // 临时禁用 CharacterController 以直接设置位置
                 if (characterController != null)
@@ -1835,11 +1835,11 @@ namespace BossRush
         private Vector3 CorrectTargetHeight(Vector3 pos)
         {
             RaycastHit hit;
-            // [修复] 从更高位置发射射线（50米），确保能穿过多层建筑
-            Vector3 rayStart = pos + Vector3.up * 50f;
+            // [修复] 从更高位置发射射线（1米，防止卡到屋顶）
+            Vector3 rayStart = pos + Vector3.up * 1f;
             
             // 使用 RaycastAll 获取所有碰撞点，然后选择最低的地面点
-            RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 100f);
+            RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 5f);
             if (hits != null && hits.Length > 0)
             {
                 // 找到最低的碰撞点（最接近配置的 Y 坐标）
@@ -1867,7 +1867,7 @@ namespace BossRush
             }
             
             // 如果没有碰撞，使用单次射线检测
-            if (Physics.Raycast(rayStart, Vector3.down, out hit, 100f))
+            if (Physics.Raycast(rayStart, Vector3.down, out hit, 5f))
             {
                 return new Vector3(pos.x, hit.point.y + 0.1f, pos.z);
             }

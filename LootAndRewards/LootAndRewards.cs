@@ -777,14 +777,14 @@ namespace BossRush
                 // 使用射线向下投射，优先只打地面层，避免命中玩家碰撞体；如果投射失败则保持轻微抬高
                 try
                 {
-                    Vector3 rayStart = pos + Vector3.up * 10f;
+                    Vector3 rayStart = pos + Vector3.up * 1f;
                     UnityEngine.RaycastHit hit = default(UnityEngine.RaycastHit);
                     // 优先只打地面层，避免玩家或其他碰撞体干扰
                     bool hitGround = false;
                     try
                     {
                         var groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
-                        hitGround = UnityEngine.Physics.Raycast(rayStart, Vector3.down, out hit, 50f, groundMask, UnityEngine.QueryTriggerInteraction.Ignore);
+                        hitGround = UnityEngine.Physics.Raycast(rayStart, Vector3.down, out hit, 5f, groundMask, UnityEngine.QueryTriggerInteraction.Ignore);
                     }
                     catch
                     {
@@ -794,7 +794,7 @@ namespace BossRush
                     if (!hitGround)
                     {
                         // 退回到旧逻辑：打所有非触发层，保证兼容性
-                        if (UnityEngine.Physics.Raycast(rayStart, Vector3.down, out hit, 50f, ~0, UnityEngine.QueryTriggerInteraction.Ignore))
+                        if (UnityEngine.Physics.Raycast(rayStart, Vector3.down, out hit, 5f, ~0, UnityEngine.QueryTriggerInteraction.Ignore))
                         {
                             hitGround = true;
                         }
@@ -1178,83 +1178,7 @@ namespace BossRush
 
                 if (!isPlayer) return;
 
-                DevLog("[BossRush] 检测到玩家死亡，掉落玩家全部物品");
-
-                // 掉落玩家身上的全部物品
-                try
-                {
-                    CharacterMainControl main = CharacterMainControl.Main;
-                    if (main != null && main.CharacterItem != null)
-                    {
-                        Vector3 dropPos = main.transform.position;
-                        Vector3 dropDir = main.CurrentAimDirection;
-                        int droppedCount = 0;
-
-                        // 1. 掉落背包中的所有物品
-                        try
-                        {
-                            List<Item> inventoryItems = new List<Item>();
-                            foreach (Item item in main.CharacterItem.Inventory)
-                            {
-                                if (item != null)
-                                {
-                                    inventoryItems.Add(item);
-                                }
-                            }
-                            foreach (Item item in inventoryItems)
-                            {
-                                try
-                                {
-                                    item.Drop(dropPos, true, dropDir, 360f);
-                                    droppedCount++;
-                                }
-                                catch (Exception dropEx)
-                                {
-                                    DevLog("[BossRush] 掉落背包物品失败: " + dropEx.Message);
-                                }
-                            }
-                        }
-                        catch (Exception invEx)
-                        {
-                            DevLog("[BossRush] 遍历背包失败: " + invEx.Message);
-                        }
-
-                        // 2. 掉落装备槽位中的所有物品
-                        try
-                        {
-                            List<Item> slotItems = new List<Item>();
-                            foreach (ItemStatsSystem.Items.Slot slot in main.CharacterItem.Slots)
-                            {
-                                if (slot != null && slot.Content != null)
-                                {
-                                    slotItems.Add(slot.Content);
-                                }
-                            }
-                            foreach (Item item in slotItems)
-                            {
-                                try
-                                {
-                                    item.Drop(dropPos, true, dropDir, 360f);
-                                    droppedCount++;
-                                }
-                                catch (Exception dropEx)
-                                {
-                                    DevLog("[BossRush] 掉落装备物品失败: " + dropEx.Message);
-                                }
-                            }
-                        }
-                        catch (Exception slotEx)
-                        {
-                            DevLog("[BossRush] 遍历装备槽位失败: " + slotEx.Message);
-                        }
-
-                        DevLog("[BossRush] 玩家死亡，已掉落 " + droppedCount + " 件物品");
-                    }
-                }
-                catch (Exception dropAllEx)
-                {
-                    DevLog("[BossRush] 掉落玩家物品时出错: " + dropAllEx.Message);
-                }
+                DevLog("[BossRush] 检测到玩家死亡，不再掉落物品，直接结束BossRush");
 
                 // 结束BossRush
                 SetBossRushRuntimeActive(false);
@@ -1284,6 +1208,12 @@ namespace BossRush
                 if (modeDActive)
                 {
                     EndModeD();
+                }
+
+                // 如果是 Mode E 模式，结束 Mode E
+                if (modeEActive)
+                {
+                    EndModeE();
                 }
 
                 ShowMessage(L10n.T("BossRush挑战失败！", "BossRush challenge failed!"));

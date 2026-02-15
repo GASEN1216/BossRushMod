@@ -339,7 +339,8 @@ namespace BossRush
             }
 
             // 第6-10波（首次出Boss的波次）：过滤掉强力Boss
-            if (modeDWaveIndex <= 10)
+            // Mode E 不使用波次系统，直接走完整池
+            if (!modeEActive && modeDWaveIndex <= 10)
             {
                 // 使用复用缓存避免 GC
                 presetFilterCache.Clear();
@@ -547,139 +548,40 @@ namespace BossRush
 
         /// <summary>
         /// 生成 Mode D 敌人（带最多 5 次重试）
+        /// 使用 SpawnEnemyCore 通用方法，外层包装波次守卫逻辑
         /// </summary>
-        private async void SpawnModeDEnemy(EnemyPresetInfo preset, Vector3 position, bool isBoss)
+        private void SpawnModeDEnemy(EnemyPresetInfo preset, Vector3 position, bool isBoss)
         {
             // 防止跨波迟到敌人污染下一波
             int waveToken = modeDWaveIndex;
 
-            try
-            {
-                const int maxAttempts = 5;
-                EnemyPresetInfo currentPresetInfo = preset;
-
-                for (int attempt = 0; attempt < maxAttempts; attempt++)
+            // 使用通用生成核心方法，通过回调注入 Mode D 差异化逻辑
+            // onFailed 回调确保生成失败时也能递增 resolved 计数，防止波次卡住
+            SpawnEnemyCore(
+                preset,
+                position,
+                isBoss,
+                isActiveCheck: () => modeDActive && modeDWaveIndex == waveToken,
+                onSpawned: (ctx) =>
                 {
                     try
                     {
-                        if (currentPresetInfo == null)
-                        {
-                            currentPresetInfo = isBoss ? GetRandomBossPreset() : GetRandomMinionPreset();
-                        }
+                        CharacterMainControl character = ctx.character;
 
-                        if (currentPresetInfo == null)
-                        {
-                            DevLog("[ModeD] SpawnModeDEnemy: 预设为空, attempt=" + attempt + ", isBoss=" + isBoss);
-                            continue;
-                        }
-
-                        DevLog("[ModeD] 生成敌人尝试: " + currentPresetInfo.displayName + " (isBoss=" + isBoss + ", attempt=" + attempt + ")");
-
-                        // 生成敌人
-                        int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
-                        CharacterMainControl character = null;
-
-                        // 检查是否是龙裔遗族Boss（自定义Boss，没有原生CharacterRandomPreset）
-                        if (IsDragonDescendantPreset(currentPresetInfo))
-                        {
-                            DevLog("[ModeD] 检测到龙裔遗族Boss，使用专用生成方法");
-                            try
-                            {
-                                character = await SpawnDragonDescendant(position);
-                                if (character != null)
-                                {
-                                    DevLog("[ModeD] 龙裔遗族Boss生成成功");
-                                }
-                                else
-                                {
-                                    DevLog("[ModeD] 龙裔遗族Boss生成失败，重新随机");
-                                    currentPresetInfo = null;
-                                    continue;
-                                }
-                            }
-                            catch (Exception dragonEx)
-                            {
-                                DevLog("[ModeD] 龙裔遗族Boss生成异常: " + dragonEx.Message);
-                                currentPresetInfo = null;
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            // 查找预设（使用缓存字典 O(1)，避免每次 FindObjectsOfTypeAll）
-                            CharacterRandomPreset targetPreset = null;
-                            if (cachedCharacterPresets != null)
-                            {
-                                cachedCharacterPresets.TryGetValue(currentPresetInfo.name, out targetPreset);
-                            }
-
-                            if (targetPreset == null)
-                            {
-                                DevLog("[ModeD] 未找到预设: " + currentPresetInfo.name + " (attempt=" + attempt + ")");
-                                currentPresetInfo = null;
-                                continue;
-                            }
-
-                            try
-                            {
-                                character = await targetPreset.CreateCharacterAsync(position, Vector3.forward, relatedScene, null, false);
-                            }
-                            catch (Exception createEx)
-                            {
-                                DevLog("[ModeD] 生成敌人异常: " + currentPresetInfo.displayName + " - " + createEx.Message);
-                                currentPresetInfo = null;
-                                continue;
-                            }
-
-                            if (character == null)
-                            {
-                                DevLog("[ModeD] 生成敌人失败: " + currentPresetInfo.displayName + " (attempt=" + attempt + ")");
-                                currentPresetInfo = null;
-                                continue;
-                            }
-                        }
-
-                        // 如果波次已经变化或模式结束，销毁并退出，避免污染下一波
+                        // 再次检查波次一致性
                         if (!modeDActive || modeDWaveIndex != waveToken)
                         {
                             UnityEngine.Object.Destroy(character.gameObject);
-                            DevLog("[ModeD] 敌人生成完成但波次已变化，销毁敌人");
+                            DevLog("[ModeD] 敌人配置完成但波次已变化，销毁敌人");
                             return;
                         }
 
-                        character.gameObject.name = "ModeD_" + currentPresetInfo.displayName;
-                        
-                        // 标记由 Mode D 生成的大兴兴，防止被 TryCleanNonBossRushDaXingXing 误清理
-                        try
-                        {
-                            if (IsDaXingXingPreset(currentPresetInfo))
-                            {
-                                if (bossRushOwnedDaXingXing != null && !bossRushOwnedDaXingXing.Contains(character))
-                                {
-                                    bossRushOwnedDaXingXing.Add(character);
-                                    DevLog("[ModeD] 已标记大兴兴到 bossRushOwnedDaXingXing 集合");
-                                }
-                            }
-                        }
-                        catch {}
-                        
-                        // 统一伤害倍率为1，避免不同Boss预设的damageMultiplier差异导致伤害过高
-                        NormalizeDamageMultiplier(character);
-
-                        // 应用 Mode D 配装（Boss保留原有头盔和护甲）
-                        EquipEnemyForModeD(character, modeDWaveIndex, currentPresetInfo.baseHealth, isBoss);
-
-                        // 应用全局 Boss 数值倍率（使用统一方法）
-                        ApplyBossStatMultiplier(character);
+                        character.gameObject.name = "ModeD_" + ctx.preset.displayName;
 
                         // 渐进式难度：按波次提升敌人属性
                         ApplyModeDWaveScaling(character, modeDWaveIndex);
 
-                        // 激活敌人
-                        character.gameObject.SetActive(true);
-
                         // 强制设置 AI 仇恨到玩家
-                        // 设置 forceTracePlayerDistance 为较大值，确保远距离生成的敌人也会追踪玩家
                         try
                         {
                             CharacterMainControl playerMain = CharacterMainControl.Main;
@@ -696,9 +598,9 @@ namespace BossRush
                                 }
                             }
                         }
-                        catch {}
+                        catch { }
 
-                        // 如果波次已经变化，销毁并退出
+                        // 再次检查波次一致性
                         if (!modeDActive || modeDWaveIndex != waveToken)
                         {
                             UnityEngine.Object.Destroy(character.gameObject);
@@ -712,39 +614,42 @@ namespace BossRush
                         // 注册死亡事件
                         RegisterModeDEnemyDeath(character);
 
-                        DevLog("[ModeD] 敌人生成成功: " + currentPresetInfo.displayName + " (attempt=" + attempt + ")");
-                        return;
+                        DevLog("[ModeD] 敌人生成成功: " + ctx.preset.displayName);
                     }
                     catch (Exception e)
                     {
-                        DevLog("[ModeD] [ERROR] SpawnModeDEnemy 尝试失败: " + e.Message);
-                        // 下次重试时重新随机预设
-                        currentPresetInfo = null;
+                        DevLog("[ModeD] [ERROR] OnModeDEnemySpawned 失败: " + e.Message);
                     }
-                }
-
-                DevLog("[ModeD] [ERROR] SpawnModeDEnemy 多次尝试仍然失败 (isBoss=" + isBoss + ")");
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] SpawnModeDEnemy 异常: " + e.Message);
-            }
-            finally
-            {
-                // 波次一致性守卫：只有当前波的任务才计数，防止跨波异步回流污染
-                if (modeDActive && modeDWaveIndex == waveToken)
+                    finally
+                    {
+                        // 波次一致性守卫：只有当前波的任务才计数
+                        ResolveModeDSpawnCount(waveToken);
+                    }
+                },
+                onFailed: () =>
                 {
-                    // 结案：成功或失败都算 +1
-                    modeDSpawnResolvedInCurrentWave++;
-                    DevLog("[ModeD] 生成结案: resolved=" + modeDSpawnResolvedInCurrentWave + "/" + modeDExpectedEnemiesInCurrentWave);
+                    // 生成失败也必须递增 resolved 计数，防止波次卡住
+                    DevLog("[ModeD] 敌人生成最终失败，执行兜底结案");
+                    ResolveModeDSpawnCount(waveToken);
+                },
+                waveIndex: modeDWaveIndex
+            );
+        }
 
-                    // 尝试解析波次是否完成
-                    TryResolveModeDWaveComplete();
-                }
-                else
-                {
-                    DevLog("[ModeD] 生成任务完成但波次已变化(waveToken=" + waveToken + ", current=" + modeDWaveIndex + ")，跳过结案计数");
-                }
+        /// <summary>
+        /// Mode D 生成结案计数（成功和失败共用，防止波次卡住）
+        /// </summary>
+        private void ResolveModeDSpawnCount(int waveToken)
+        {
+            if (modeDActive && modeDWaveIndex == waveToken)
+            {
+                modeDSpawnResolvedInCurrentWave++;
+                DevLog("[ModeD] 生成结案: resolved=" + modeDSpawnResolvedInCurrentWave + "/" + modeDExpectedEnemiesInCurrentWave);
+                TryResolveModeDWaveComplete();
+            }
+            else
+            {
+                DevLog("[ModeD] 生成任务完成但波次已变化(waveToken=" + waveToken + ", current=" + modeDWaveIndex + ")，跳过结案计数");
             }
         }
 

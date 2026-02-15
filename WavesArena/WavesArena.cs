@@ -1163,9 +1163,9 @@ namespace BossRush
             string method = "原始";
             try
             {
-                // 从更高的位置向下射线检测地面高度
-                Vector3 origin = rawPosition + Vector3.up * 15f;
-                float maxDistance = 30f;
+                // 从略高的位置向下射线检测地面高度（1m，防止卡到屋顶）
+                Vector3 origin = rawPosition + Vector3.up * 1f;
+                float maxDistance = 5f;
                 LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
                 RaycastHit hit;
                 if (Physics.Raycast(origin, Vector3.down, out hit, maxDistance, groundMask))
@@ -1228,10 +1228,10 @@ namespace BossRush
                     return;
                 }
                 
-                // 从高处向下检测，确认Boss脚下有地面
-                Vector3 abovePos = currentPos + Vector3.up * 15f;
+                // 从略高处向下检测，确认Boss脚下有地面（1m，防止卡到屋顶）
+                Vector3 abovePos = currentPos + Vector3.up * 1f;
                 RaycastHit hitDown;
-                if (Physics.Raycast(abovePos, Vector3.down, out hitDown, 30f, groundMask))
+                if (Physics.Raycast(abovePos, Vector3.down, out hitDown, 5f, groundMask))
                 {
                     float groundY = hitDown.point.y;
                     // 如果Boss的Y坐标比地面低超过0.5米，修正位置

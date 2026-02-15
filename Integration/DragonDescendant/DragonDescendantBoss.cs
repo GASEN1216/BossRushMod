@@ -1171,16 +1171,26 @@ namespace BossRush
         
         /// <summary>
         /// 设置AI仇恨
+        /// Mode E 模式下不强制追踪玩家，让 AI 自然寻敌
         /// </summary>
         private void SetupAIAggro(CharacterMainControl character)
         {
             try
             {
+                var ai = character.GetComponentInChildren<AICharacterController>();
+                if (ai == null) return;
+
+                // Mode E 模式：不主动设置目标，让 AI 自然感知范围内的敌人后再开打
+                if (modeEActive)
+                {
+                    return;
+                }
+
+                // 非 Mode E：强制追踪玩家
                 var main = CharacterMainControl.Main;
                 if (main == null) return;
-                
-                var ai = character.GetComponentInChildren<AICharacterController>();
-                if (ai != null && main.mainDamageReceiver != null)
+
+                if (main.mainDamageReceiver != null)
                 {
                     ai.forceTracePlayerDistance = 500f;
                     ai.searchedEnemy = main.mainDamageReceiver;
@@ -1289,7 +1299,7 @@ namespace BossRush
                 {
                     name = DragonDescendantConfig.BOSS_NAME_KEY,
                     displayName = DragonDescendantConfig.BOSS_NAME_CN,
-                    team = (int)Teams.scav,
+                    team = (int)Teams.wolf, // 狼群阵营（Mode E 阵营体系统一）
                     baseHealth = DragonDescendantConfig.BaseHealth,
                     baseDamage = 50f,
                     healthMultiplier = 1f,

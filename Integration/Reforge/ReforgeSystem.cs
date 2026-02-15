@@ -423,12 +423,8 @@ namespace BossRush
             // 原值的符号：正数返回+1，负数返回-1，零返回+1
             int originalSign = originalValue >= 0 ? 1 : -1;
             
-            // 保持原符号的概率 = 0.5 + 0.5 * p
-            // p=0 → 50%保持原符号（纯随机）
-            // p=1 → 100%保持原符号（必定增强）
-            float keepSignProb = 0.5f + 0.5f * p;
-            
-            if (UnityEngine.Random.value < keepSignProb)
+            // 纯50/50随机，不受概率p影响
+            if (UnityEngine.Random.value < 0.5f)
             {
                 return originalSign;  // 保持原符号（增强效果）
             }

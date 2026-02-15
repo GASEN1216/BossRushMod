@@ -247,7 +247,7 @@ namespace BossRush
             
             // 使用 Raycast 修正落点到地面
             RaycastHit hit;
-            if (Physics.Raycast(spawnPos + Vector3.up * 5f, Vector3.down, out hit, 20f))
+            if (Physics.Raycast(spawnPos + Vector3.up * 1f, Vector3.down, out hit, 5f))
             {
                 spawnPos = hit.point + new Vector3(0f, 0.1f, 0f);
                 DevLog("[GoblinNPC] Raycast修正后位置: " + spawnPos);

@@ -718,6 +718,7 @@ namespace BossRush
         
         /// <summary>
         /// 更新玩家引用（带节流，避免每帧调用）
+        /// Mode E 下从原版AI的 searchedEnemy 获取攻击目标，而非固定锁定玩家
         /// </summary>
         private void UpdatePlayerReference()
         {
@@ -731,7 +732,33 @@ namespace BossRush
             
             try
             {
-                playerCharacter = CharacterMainControl.Main;
+                var inst = ModBehaviour.Instance;
+                if (inst != null && inst.IsModeEActive)
+                {
+                    // 【Mode E】从原版AI的 searchedEnemy 获取攻击目标
+                    var ai = aiController != null ? aiController.GetAI() : null;
+                    if (ai != null && ai.searchedEnemy != null)
+                    {
+                        // searchedEnemy 是 DamageReceiver，通过 Health 获取 CharacterMainControl
+                        var targetHealth = ai.searchedEnemy.health;
+                        if (targetHealth != null)
+                        {
+                            var targetChar = targetHealth.TryGetCharacter();
+                            if (targetChar != null)
+                            {
+                                playerCharacter = targetChar;
+                                return;
+                            }
+                        }
+                    }
+                    // Mode E 下无仇恨目标时清空 playerCharacter，防止锁定玩家
+                    playerCharacter = null;
+                }
+                else
+                {
+                    // 非 Mode E：始终锁定玩家（原有逻辑）
+                    playerCharacter = CharacterMainControl.Main;
+                }
             }
             catch (Exception e)
             {
@@ -745,6 +772,26 @@ namespace BossRush
         private bool IsPlayerDead()
         {
             return playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead;
+        }
+
+        /// <summary>
+        /// 【Mode E 专用】检查原版AI是否有仇恨目标
+        /// Mode E 下龙皇的自定义射击和技能释放前必须检查此条件，
+        /// 只有原版AI搜索到敌人时才允许攻击，避免无仇恨目标时远距离锁定其他阵营Boss
+        /// 非 Mode E 模式下始终返回 true（不影响原有逻辑）
+        /// </summary>
+        private bool HasValidTargetForModeE()
+        {
+            var inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive)
+                return true; // 非 Mode E，不限制
+
+            // 检查原版AI的 searchedEnemy
+            var ai = aiController != null ? aiController.GetAI() : null;
+            if (ai == null)
+                return false; // AI不可用，不攻击
+
+            return ai.searchedEnemy != null;
         }
 
         // ========== 生命周期 ==========
@@ -1056,11 +1103,31 @@ namespace BossRush
                 // 更新玩家引用
                 UpdatePlayerReference();
                 
+                // 【Mode E】无仇恨目标时跳过本轮，等待原版AI搜索到敌人
+                // 必须在 playerCharacter 空检查之前，否则 Mode E 下临时无目标会触发 OnPlayerDeath 永久退出循环
+                if (!HasValidTargetForModeE())
+                {
+                    yield return wait05s;
+                    continue;
+                }
+                
                 if (playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead)
                 {
-                    // 玩家死亡时一次性清理所有攻击协程和弹幕，然后退出循环
-                    OnPlayerDeath();
-                    yield break;
+                    var inst = ModBehaviour.Instance;
+                    if (inst != null && inst.IsModeEActive)
+                    {
+                        // 【Mode E】仇恨目标死亡或丢失，清空引用等待AI搜索下一个目标
+                        // 不调用 OnPlayerDeath，避免 StopAllCoroutines 永久终止攻击循环
+                        playerCharacter = null;
+                        yield return wait05s;
+                        continue;
+                    }
+                    else
+                    {
+                        // 非 Mode E：玩家死亡，一次性清理所有攻击协程和弹幕，然后退出循环
+                        OnPlayerDeath();
+                        yield break;
+                    }
                 }
                 
                 // 调试模式下跳过阶段转换检查
@@ -1699,6 +1766,13 @@ namespace BossRush
                 // 更新玩家引用
                 UpdatePlayerReference();
                 
+                // 【Mode E】无仇恨目标时跳过射击，等待原版AI搜索到敌人
+                if (!HasValidTargetForModeE())
+                {
+                    yield return wait01s;
+                    continue;
+                }
+                
                 // 只有玩家存活时才射击
                 if (playerCharacter != null && playerCharacter.Health != null && !playerCharacter.Health.IsDead)
                 {
@@ -2041,11 +2115,22 @@ namespace BossRush
                 dmgInfo.AddElementFactor(ElementTypes.fire, 1f);
                 playerCharacter.Health.Hurt(dmgInfo);
                 
-                // 检测玩家是否被这次伤害杀死，如果是则立即清理所有攻击
-                // 一次性清理，避免后续协程继续对已死亡玩家操作导致掉帧
+                // 检测目标是否被这次伤害杀死
                 if (playerCharacter.Health.IsDead)
                 {
-                    OnPlayerDeath();
+                    var inst = ModBehaviour.Instance;
+                    if (inst != null && inst.IsModeEActive)
+                    {
+                        // 【Mode E】仇恨目标被击杀，清空引用等待AI搜索下一个目标
+                        // 不调用 OnPlayerDeath，避免 StopAllCoroutines 永久终止攻击循环
+                        playerCharacter = null;
+                        ModBehaviour.DevLog("[DragonKing] [Mode E] 仇恨目标已击杀，等待AI搜索下一个目标");
+                    }
+                    else
+                    {
+                        // 非 Mode E：玩家死亡，一次性清理所有攻击
+                        OnPlayerDeath();
+                    }
                     return;
                 }
                 
@@ -2198,6 +2283,8 @@ namespace BossRush
             // 获取起始位置和目标位置
             Vector3 startPos = bossCharacter.transform.position;
             UpdatePlayerReference();
+            // 【Mode E】UpdatePlayerReference 可能将 playerCharacter 置空，需要空检查
+            if (playerCharacter == null) yield break;
             Vector3 targetPos = playerCharacter.transform.position;
             
             // 计算冲刺方向（水平方向）
@@ -2837,12 +2924,22 @@ namespace BossRush
 
         /// <summary>
         /// 恢复Boss移动和射击
+        /// Mode E 下不传玩家引用，避免将玩家设为 searchedEnemy
         /// </summary>
         private void ResumeBossMovementAndShooting()
         {
             if (aiController != null)
             {
-                aiController.Resume(playerCharacter);
+                var inst = ModBehaviour.Instance;
+                if (inst != null && inst.IsModeEActive)
+                {
+                    // 【Mode E】不传目标，让原版AI自行通过行为树搜索敌人
+                    aiController.Resume(null);
+                }
+                else
+                {
+                    aiController.Resume(playerCharacter);
+                }
             }
         }
         

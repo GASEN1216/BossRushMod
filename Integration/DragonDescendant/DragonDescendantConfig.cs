@@ -138,6 +138,11 @@ namespace BossRush
         public const float CollisionCooldown = 0.5f;
         
         /// <summary>
+        /// Mode E 脱战距离（米）：玩家超过此距离时龙裔停止追逐/攻击玩家
+        /// </summary>
+        public const float LeashDistance = 30f;
+        
+        /// <summary>
         /// 对话气泡Y轴偏移（米）
         /// </summary>
         public const float DialogueBubbleYOffset = 2.5f;

@@ -196,6 +196,33 @@ namespace BossRush
         /// 是否处于无敌状态
         /// </summary>
         public bool IsInvulnerable { get { return isInvulnerable; } }
+
+        // ========== Mode E 阵营感知 ==========
+
+        /// <summary>
+        /// 检查玩家是否为友方（Mode E 同阵营时不攻击玩家）
+        /// </summary>
+        private bool IsPlayerAlly()
+        {
+            if (bossCharacter == null) return false;
+            var inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive) return false;
+            // 同阵营 = 友方
+            return bossCharacter.Team == inst.ModeEPlayerFaction;
+        }
+
+        /// <summary>
+        /// Mode E 脱战距离检查：玩家超过配置距离时停止追逐/攻击
+        /// 仅在 Mode E 激活且玩家非友方时生效
+        /// </summary>
+        private bool IsPlayerOutOfLeashRange()
+        {
+            if (bossCharacter == null || playerCharacter == null) return false;
+            var inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive) return false;
+            float dist = Vector3.Distance(bossCharacter.transform.position, playerCharacter.transform.position);
+            return dist > DragonDescendantConfig.LeashDistance;
+        }
         
         // ========== 初始化 ==========
         
@@ -512,7 +539,11 @@ namespace BossRush
             {
                 if (bossCharacter == null || playerCharacter == null) return;
                 
-                // 获取玩家位置作为爆炸点
+                // Mode E 同阵营不攻击玩家
+                if (IsPlayerAlly()) return;
+                
+                // Mode E 脱战距离检查
+                if (IsPlayerOutOfLeashRange()) return;
                 Vector3 explosionPos = playerCharacter.transform.position;
                 
                 // 检查玩家是否在Boss 2米范围内，只有在范围内才爆炸
@@ -618,6 +649,12 @@ namespace BossRush
                 }
                 
                 if (playerCharacter == null) return;
+                
+                // Mode E 同阵营不攻击玩家
+                if (IsPlayerAlly()) return;
+                
+                // Mode E 脱战距离检查
+                if (IsPlayerOutOfLeashRange()) return;
                 
                 // 始终投向玩家脚下（不再区分血量阶段）
                 Vector3 targetPos = playerCharacter.transform.position;
@@ -1235,6 +1272,27 @@ namespace BossRush
                     continue;
                 }
                 
+                // Mode E 同阵营不追逐玩家，等待直到阵营变化
+                if (IsPlayerAlly())
+                {
+                    yield return wait05s;
+                    continue;
+                }
+                
+                // Mode E 脱战距离检查：超出距离时跳过本轮攻击循环
+                if (IsPlayerOutOfLeashRange())
+                {
+                    // 清除AI仇恨，让龙裔自然寻找其他敌人
+                    var leashAi = aiController?.GetAI();
+                    if (leashAi != null)
+                    {
+                        leashAi.searchedEnemy = null;
+                        leashAi.noticed = false;
+                    }
+                    yield return wait05s;
+                    continue;
+                }
+                
                 // ========== 阶段1：停止并射击10发直线子弹 ==========
                 ModBehaviour.DevLog("[DragonDescendant] 阶段1：停止射击");
                 SetMoveability(1f);
@@ -1262,18 +1320,22 @@ namespace BossRush
                     var ai = aiController?.GetAI();
                     if (playerCharacter != null && ai != null)
                     {
-                        // 朝玩家方向冲刺
-                        Vector3 targetPos = playerCharacter.transform.position;
-                        ai.MoveToPos(targetPos);
-
-                        if (playerCharacter.mainDamageReceiver != null)
+                        // Mode E 同阵营时不朝玩家冲刺
+                        if (!IsPlayerAlly())
                         {
-                            ai.searchedEnemy = playerCharacter.mainDamageReceiver;
-                            ai.SetTarget(playerCharacter.mainDamageReceiver.transform);
-                            ai.noticed = true;
-                        }
+                            // 朝玩家方向冲刺
+                            Vector3 targetPos = playerCharacter.transform.position;
+                            ai.MoveToPos(targetPos);
 
-                        bossCharacter.SetRunInput(true);
+                            if (playerCharacter.mainDamageReceiver != null)
+                            {
+                                ai.searchedEnemy = playerCharacter.mainDamageReceiver;
+                                ai.SetTarget(playerCharacter.mainDamageReceiver.transform);
+                                ai.noticed = true;
+                            }
+
+                            bossCharacter.SetRunInput(true);
+                        }
                     }
                     
                     chargeTime += Time.deltaTime;
@@ -1760,6 +1822,17 @@ namespace BossRush
             var ai = aiController?.GetAI();
             if (!isEnraged || bossCharacter == null || ai == null) return;
 
+            // Mode E 同阵营不追逐玩家
+            if (IsPlayerAlly()) return;
+
+            // Mode E 脱战距离检查：超出距离时清除仇恨，让AI自然寻敌
+            if (IsPlayerOutOfLeashRange())
+            {
+                ai.searchedEnemy = null;
+                ai.noticed = false;
+                return;
+            }
+
             // 确保AI保持追逐状态
             if (playerCharacter != null && playerCharacter.mainDamageReceiver != null)
             {
@@ -1778,6 +1851,9 @@ namespace BossRush
         {
             if (!isEnraged) return;
             if (player == null) return;
+            
+            // Mode E 同阵营不对玩家造成碰撞伤害
+            if (IsPlayerAlly()) return;
             
             // 检查冷却
             if (Time.time - lastCollisionTime < COLLISION_COOLDOWN) return;

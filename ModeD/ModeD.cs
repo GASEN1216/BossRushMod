@@ -185,8 +185,14 @@ namespace BossRush
                         }
                         catch {}
 
-                        // 仅允许 BossRush 船票存在于背包中
+                        // 允许 BossRush 船票存在于背包中
                         if (typeId == allowedTicketTypeId)
+                        {
+                            continue;
+                        }
+
+                        // 允许 Mode E 营旗存在于背包中（营旗也是裸装入场凭证）
+                        if (IsFactionFlagTypeId(typeId))
                         {
                             continue;
                         }
@@ -284,6 +290,13 @@ namespace BossRush
         {
             try
             {
+                // 互斥保护：Mode E 已激活时不启动 Mode D
+                if (modeEActive)
+                {
+                    DevLog("[ModeD] Mode E 已激活，跳过 Mode D 启动");
+                    return false;
+                }
+
                 // 检查是否满足 Mode D 条件
                 if (!IsPlayerNaked())
                 {
@@ -675,6 +688,24 @@ namespace BossRush
             }
         }
         
+        #endregion
+
+        #region Mode D/E 共用辅助方法
+
+        /// <summary>
+        /// 判断指定 TypeID 是否为 Mode E 营旗物品（裸装检测时豁免用）
+        /// </summary>
+        private static bool IsFactionFlagTypeId(int typeId)
+        {
+            if (typeId <= 0) return false;
+            int[] flagIds = FactionFlagConfig.ALL_FLAG_TYPE_IDS;
+            for (int i = 0; i < flagIds.Length; i++)
+            {
+                if (flagIds[i] == typeId) return true;
+            }
+            return false;
+        }
+
         #endregion
     }
 }

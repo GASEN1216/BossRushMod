@@ -879,6 +879,8 @@ namespace BossRush
         // 波次完整性自检计时器
         private float waveIntegrityCheckTimer = 0f;
         private const float WaveIntegrityCheckInterval = 10f;
+        // Mode E 独立自检计时器（Mode E 不激活 IsActive，需要单独计时）
+        private float modeEIntegrityTimer = 0f;
         // 大兴兴清理定时器（只在 BossRush 进行期间启用）
         private float daXingXingCleanTimer = 0f;
         private const float DaXingXingCleanInterval = 0.5f;
@@ -1167,6 +1169,21 @@ namespace BossRush
             else
             {
                 waveIntegrityCheckTimer = 0f;
+            }
+
+            // Mode E 独立自检（Mode E 不激活 IsActive，需要单独的自检循环）
+            if (modeEActive)
+            {
+                modeEIntegrityTimer += Time.deltaTime;
+                if (modeEIntegrityTimer >= WaveIntegrityCheckInterval)
+                {
+                    modeEIntegrityTimer = 0f;
+                    ModeEIntegrityCheck();
+                }
+            }
+            else
+            {
+                modeEIntegrityTimer = 0f;
             }
 
             // BossRush 期间，定期清理任何非 BossRush 召唤的“大兴兴”Boss
@@ -1727,6 +1744,45 @@ namespace BossRush
             // 等待场景初始化（缩短等待时间，尽快传送玩家）
             yield return new UnityEngine.WaitForSeconds(0.5f);
             
+            // 提前检测 Mode E / Mode D 条件（Mode E 优先：需要营旗+裸装，Mode D 仅需裸装）
+            // 必须在禁用 spawner 之前检测，因为 Mode E 需要先扫描 CharacterSpawnerRoot 位置
+            bool shouldStartModeD = false;
+            bool shouldStartModeE = false;
+            try
+            {
+                var (modeEFaction, modeEFlag) = DetectFactionFlag();
+                if (modeEFaction.HasValue && modeEFlag != null && IsPlayerNaked())
+                {
+                    shouldStartModeE = true;
+                    DevLog("[BossRush] 检测到营旗+裸装入场，将启动 Mode E");
+                }
+                else if (IsPlayerNaked())
+                {
+                    shouldStartModeD = true;
+                    DevLog("[BossRush] 检测到裸体入场（无营旗），将启动 Mode D");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 检测 Mode E/D 条件失败: " + e.Message);
+            }
+
+            // Mode E 提前分支：先扫描刷怪点，再禁用spawner和清理敌人，跳过路牌/气泡/快递员
+            if (shouldStartModeE)
+            {
+                // Mode E 需要先扫描 CharacterSpawnerRoot 位置作为刷怪点（必须在 DisableAllSpawners 之前）
+                // AllocateSpawnPoints 内部会调用 ScanMapSpawnerPositions
+                
+                // 禁用 spawner 和清理敌人（Mode E 仍需要）
+                DisableAllSpawners();
+                DevLog("[BossRush] Mode E: 已禁用竞技场范围内的敌怪生成器");
+                ClearEnemiesForBossRush();
+                
+                yield return new UnityEngine.WaitForSeconds(0.5f);
+                TryStartModeE();
+                yield break;
+            }
+            
             // [修复] spawner 已在 OnSceneLoaded 中立即禁用，这里再次调用确保万无一失
             // 由于 spawnersDisabled 标志，重复调用会直接返回
             DisableAllSpawners();
@@ -1819,26 +1875,11 @@ namespace BossRush
             }
             catch {}
 
-            // 检测 Mode D 条件：玩家裸体入场
-            bool shouldStartModeD = false;
-            try
-            {
-                shouldStartModeD = IsPlayerNaked();
-                if (shouldStartModeD)
-                {
-                    DevLog("[BossRush] 检测到玩家裸体入场，将启动 Mode D");
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 检测 Mode D 条件失败: " + e.Message);
-            }
-
             // 在 DEMO 场景中创建 BossRush 难度入口
             TryCreateArenaDifficultyEntryPoint();
             StartCoroutine(EnsureArenaEntryPointCreated());
 
-            // 如果满足 Mode D 条件，延迟启动 Mode D（等待路牌创建完成）
+            // 延迟启动 Mode D
             if (shouldStartModeD)
             {
                 yield return new UnityEngine.WaitForSeconds(0.5f);
@@ -2145,6 +2186,12 @@ namespace BossRush
                         continue;
                     }
 
+                    // [Mode E] 跳过 Mode E 存活敌人列表中的单位，避免误清理阵营 Boss
+                    if (modeEActive && modeEAliveEnemies.Contains(c))
+                    {
+                        continue;
+                    }
+
                     // 检查队伍 - 只清理敌对队伍 (scav, usec, bear, lab, wolf)
                     bool isEnemy = false;
                     try
@@ -2224,7 +2271,7 @@ namespace BossRush
             // [性能优化] 只在前几次循环中尝试禁用 spawner，之后假设已全部禁用
             const int MAX_SPAWNER_DISABLE_ATTEMPTS = 5;
             
-            while (!IsActive && bossRushArenaActive)
+            while (!IsActive && bossRushArenaActive && !modeEActive)
             {
                 loopCount++;
                 

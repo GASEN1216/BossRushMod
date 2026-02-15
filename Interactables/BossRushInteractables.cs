@@ -1646,9 +1646,9 @@ namespace BossRush
                         fwd.Normalize();
 
                         Vector3 baseForwardPos = this.carrier.transform.position + fwd * 1.0f;
-                        Vector3 origin = baseForwardPos + Vector3.up * 3f;
+                        Vector3 origin = baseForwardPos + Vector3.up * 1f;
                         Vector3 dir = Vector3.down;
-                        float maxDist = 10f;
+                        float maxDist = 5f;
 
                         // 只使用地面层，避免命中高处的墙体等碰撞体导致箱子出现在半空/天上
                         LayerMask mask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;

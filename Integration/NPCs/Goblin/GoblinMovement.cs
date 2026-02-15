@@ -480,9 +480,9 @@ namespace BossRush
         private Vector3 CorrectTargetHeight(Vector3 pos)
         {
             RaycastHit hit;
-            Vector3 rayStart = pos + Vector3.up * 50f;
+            Vector3 rayStart = pos + Vector3.up * 1f;
             
-            RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 100f);
+            RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 5f);
             if (hits != null && hits.Length > 0)
             {
                 float lowestY = float.MaxValue;
@@ -506,7 +506,7 @@ namespace BossRush
                 return new Vector3(pos.x, bestY, pos.z);
             }
             
-            if (Physics.Raycast(rayStart, Vector3.down, out hit, 100f))
+            if (Physics.Raycast(rayStart, Vector3.down, out hit, 5f))
             {
                 return new Vector3(pos.x, hit.point.y + 0.1f, pos.z);
             }
