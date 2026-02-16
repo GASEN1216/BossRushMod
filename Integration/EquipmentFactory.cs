@@ -1174,6 +1174,26 @@ namespace BossRush
                     }
                 }
 
+                // [龙息武器] 手动调整 Tec（配件）和 Muzzle（枪口）的位置，整体往左偏移
+                if (item.TypeID == DragonBreathConfig.WEAPON_TYPE_ID)
+                {
+                    float xOffset = -0.05f; // 往左偏移0.05单位
+                    Transform tecNode = socketsParent.Find("Tec");
+                    if (tecNode != null)
+                    {
+                        Vector3 pos = tecNode.localPosition;
+                        tecNode.localPosition = new Vector3(pos.x + xOffset, pos.y, pos.z);
+                        ModBehaviour.DevLog("[EquipmentFactory] 龙息武器 Tec 位置调整: x " + (pos.x + xOffset));
+                    }
+                    Transform muzzleNode = socketsParent.Find("Muzzle");
+                    if (muzzleNode != null)
+                    {
+                        Vector3 pos = muzzleNode.localPosition;
+                        muzzleNode.localPosition = new Vector3(pos.x + xOffset, pos.y, pos.z);
+                        ModBehaviour.DevLog("[EquipmentFactory] 龙息武器 Muzzle 位置调整: x " + (pos.x + xOffset));
+                    }
+                }
+
                 // 设置 sockets（配件插槽，用于显示枪口、瞄准镜等附件模型）
                 if (socketsParent.childCount > 0)
                 {
