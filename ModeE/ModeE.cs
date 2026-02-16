@@ -43,6 +43,13 @@ namespace BossRush
         /// <summary>各阵营死亡计数，用于计算独立缩放倍率</summary>
         private Dictionary<Teams, int> modeEFactionDeathCount = new Dictionary<Teams, int>();
 
+        /// <summary>
+        /// [P4性能优化] 按阵营维护的独立存活敌人列表，避免缩放时全量遍历 modeEAliveEnemies
+        /// Key = 阵营, Value = 该阵营的存活敌人列表
+        /// </summary>
+        private readonly Dictionary<Teams, List<CharacterMainControl>> modeEFactionAliveMap
+            = new Dictionary<Teams, List<CharacterMainControl>>();
+
         #endregion
 
         #region Mode E 配置
@@ -224,6 +231,7 @@ namespace BossRush
                 modeEPlayerFaction = faction;
                 modeEAliveEnemies.Clear();
                 modeEFactionDeathCount.Clear();
+                modeEFactionAliveMap.Clear();
 
                 // 重置龙裔/龙王全局限制标记
                 modeEDragonDescendantSpawned = false;
@@ -249,9 +257,6 @@ namespace BossRush
                     {
                         DevLog("[ModeE] 爷的营旗：玩家保持 player 阵营，所有Boss均为敌对");
                     }
-
-                    // 给玩家头顶也加阵营标签
-                    CreateFactionLabel(player, faction);
                 }
 
                 // 显示阵营气泡
@@ -271,7 +276,7 @@ namespace BossRush
                 // 分配刷怪点给各阵营（优先使用地图配置的 Mode E 专用刷怪点，无配置时兜底使用原地图 spawner 位置）
                 AllocateSpawnPoints();
 
-                // 传送玩家到独狼安全位置（无论任何阵营，统一传送到远离Boss的安全点）
+                // 传送玩家到安全位置（远离Boss的安全点）
                 TeleportPlayerToSafePosition();
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）
@@ -280,8 +285,16 @@ namespace BossRush
                 // 零度挑战地图：额外发放保暖装备（头盔 ID:1312 + 护甲 ID:1307）
                 ModeEGiveColdWeatherGear();
 
-                // 一次性生成所有阵营的 Boss
+                // 独狼阵营：额外发放补给物品（3个id=881 + 3个id=660）
+                if (faction == Teams.player)
+                {
+                    ModeEGiveLoneWolfSupplies();
+                }
+
+                // 一次性生成所有阵营的 Boss（UniTaskVoid fire-and-forget，抑制 CS4014 警告）
+                #pragma warning disable CS4014
                 ModeESpawnAllBosses();
+                #pragma warning restore CS4014
 
                 ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
@@ -356,6 +369,7 @@ namespace BossRush
                 }
 
                 // 清理所有存活的 Mode E 敌人（优先使用游戏API触发正常死亡流程）
+                // [L4修复] 清理前先阻止所有敌人掉落战利品箱子，防止模式结束时友军Boss掉落一堆箱子
                 for (int i = modeEAliveEnemies.Count - 1; i >= 0; i--)
                 {
                     try
@@ -363,7 +377,10 @@ namespace BossRush
                         CharacterMainControl enemy = modeEAliveEnemies[i];
                         if (enemy != null && enemy.gameObject != null)
                         {
-                            // 使用 Health.Hurt() 造成致命伤害，触发正常死亡流程（掉落、动画等）
+                            // 阻止掉落战利品箱子（模式结束清理，不应产生掉落物）
+                            enemy.dropBoxOnDead = false;
+
+                            // 使用 Health.Hurt() 造成致命伤害，触发正常死亡流程（动画等）
                             Health health = enemy.Health;
                             if (health != null && !health.IsDead)
                             {
@@ -386,9 +403,13 @@ namespace BossRush
                 modeEPlayerFaction = Teams.player;
                 modeEAliveEnemies.Clear();
                 modeEFactionDeathCount.Clear();
+                modeEFactionAliveMap.Clear();
                 modeEScalingModifiers.Clear();
+                modeEPendingScalingFactions.Clear();
+                modeEScalingBatchTimer = 0f;
                 modeESpawnAllocation = null;
                 modeECachedSpawnerPositions = null;
+                modeEIntegrityTimer = 0f;
 
                 // 重置龙裔/龙王全局限制标记
                 modeEDragonDescendantSpawned = false;
@@ -396,6 +417,9 @@ namespace BossRush
 
                 // 清理虚拟 CharacterSpawnerRoot（BossLiveMapMod 集成）
                 CleanupModeEVirtualSpawnerRoot();
+
+                // 清理龙息Buff处理器（防止非 BossRush 场景中意外触发龙焰灼烧）
+                DragonBreathBuffHandler.Cleanup();
 
                 ShowMessage(L10n.T(
                     "划地为营模式已结束！",
@@ -429,18 +453,21 @@ namespace BossRush
                     if (enemy == null || enemy.gameObject == null || enemy.Health == null || enemy.Health.IsDead)
                     {
                         // 补偿丢失的死亡事件：递增该阵营死亡计数
-                        if (enemy != null)
+                        // [修复] 使用 try-catch 保护 Team 访问，防止 Unity 已销毁对象的假 non-null 引用
+                        try
                         {
-                            try
+                            if (enemy != null)
                             {
                                 Teams faction = enemy.Team;
                                 if (modeEFactionDeathCount.ContainsKey(faction))
                                 {
                                     modeEFactionDeathCount[faction]++;
                                 }
+                                // 从阵营独立列表中移除
+                                RemoveFromFactionAliveList(faction, enemy);
                             }
-                            catch { }
                         }
+                        catch { /* Unity 已销毁对象，无法读取 Team，跳过计数补偿 */ }
 
                         modeEAliveEnemies.RemoveAt(i);
                         modeEScalingModifiers.Remove(enemy);
@@ -472,7 +499,8 @@ namespace BossRush
             try
             {
                 string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (currentScene != "Level_ChallengeSnow") return;
+                // 零度挑战地图和37号实验区都需要发放保暖装备
+                if (currentScene != "Level_ChallengeSnow" && currentScene != "Level_SnowMilitaryBase") return;
 
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null) return;
@@ -504,6 +532,46 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 独狼阵营专属补给：发放3个id=881和3个id=660的物品到玩家背包
+        /// </summary>
+        private void ModeEGiveLoneWolfSupplies()
+        {
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null) return;
+
+                DevLog("[ModeE] 独狼阵营：发放专属补给物品...");
+
+                // 发放3个 id=881 的物品
+                for (int i = 0; i < 3; i++)
+                {
+                    Item item881 = ItemAssetsCollection.InstantiateSync(881);
+                    if (item881 != null)
+                    {
+                        ItemUtilities.SendToPlayerCharacterInventory(item881, false);
+                        DevLog("[ModeE] 独狼补给：发放物品 881 - " + item881.DisplayName);
+                    }
+                }
+
+                // 发放3个 id=660 的物品
+                for (int i = 0; i < 3; i++)
+                {
+                    Item item660 = ItemAssetsCollection.InstantiateSync(660);
+                    if (item660 != null)
+                    {
+                        ItemUtilities.SendToPlayerCharacterInventory(item660, false);
+                        DevLog("[ModeE] 独狼补给：发放物品 660 - " + item660.DisplayName);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] ModeEGiveLoneWolfSupplies 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
         /// 获取阵营的中文显示名称
         /// </summary>
         private string GetFactionDisplayName(Teams faction)
@@ -519,6 +587,60 @@ namespace BossRush
                 default:            return faction.ToString();
             }
         }
+
+        /// <summary>
+        /// 获取阵营后缀字符串（供 Harmony 补丁在 HealthBar 名字后追加）
+        /// 格式：" - 阵营名"，非 Mode E 阵营返回 null
+        /// </summary>
+        public string GetModeEFactionSuffix(Teams faction)
+        {
+            string name = GetFactionDisplayName(faction);
+            if (string.IsNullOrEmpty(name)) return null;
+            return " - " + name;
+        }
+
+        #region Mode E 阵营存活列表管理（P4性能优化）
+
+        /// <summary>
+        /// 将敌人添加到阵营独立存活列表
+        /// </summary>
+        private void AddToFactionAliveList(Teams faction, CharacterMainControl enemy)
+        {
+            List<CharacterMainControl> list;
+            if (!modeEFactionAliveMap.TryGetValue(faction, out list))
+            {
+                list = new List<CharacterMainControl>();
+                modeEFactionAliveMap[faction] = list;
+            }
+            list.Add(enemy);
+        }
+
+        /// <summary>
+        /// 从阵营独立存活列表中移除敌人
+        /// </summary>
+        private void RemoveFromFactionAliveList(Teams faction, CharacterMainControl enemy)
+        {
+            List<CharacterMainControl> list;
+            if (modeEFactionAliveMap.TryGetValue(faction, out list))
+            {
+                list.Remove(enemy);
+            }
+        }
+
+        /// <summary>
+        /// 获取指定阵营的存活敌人列表（只读访问，用于缩放遍历）
+        /// </summary>
+        private List<CharacterMainControl> GetFactionAliveList(Teams faction)
+        {
+            List<CharacterMainControl> list;
+            if (modeEFactionAliveMap.TryGetValue(faction, out list))
+            {
+                return list;
+            }
+            return null;
+        }
+
+        #endregion
 
         #endregion
     }

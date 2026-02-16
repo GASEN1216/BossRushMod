@@ -2108,6 +2108,9 @@ namespace BossRush
                     modeEIntegrityTimer = 0f;
                     ModeEIntegrityCheck();
                 }
+
+                // Mode E 延迟批量缩放更新（每 5 秒统一应用阵营死亡缩放）
+                ModeEScalingBatchUpdate();
             }
             else
             {

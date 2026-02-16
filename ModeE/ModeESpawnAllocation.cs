@@ -318,46 +318,6 @@ namespace BossRush
             return new List<Vector3>();
         }
 
-        /// <summary>
-        /// 普通营旗：将玩家传送到其阵营的第一个刷怪点附近
-        /// 使用自定义刷怪点时，玩家不再天然在自己阵营Boss旁边，需要主动传送
-        /// </summary>
-        private void TeleportPlayerToFactionSpawnArea(Teams faction)
-        {
-            try
-            {
-                CharacterMainControl player = CharacterMainControl.Main;
-                if (player == null) return;
-
-                List<Vector3> factionPoints = GetFactionSpawnPoints(faction);
-                if (factionPoints == null || factionPoints.Count == 0)
-                {
-                    DevLog("[ModeE] TeleportPlayerToFactionSpawnArea: 阵营 " + faction + " 无刷怪点，跳过传送");
-                    return;
-                }
-
-                // 选择该阵营的第一个刷怪点（距离最近的，因为分配时已按距离排序）
-                Vector3 targetPos = factionPoints[0];
-
-                // 偏移几米，避免和Boss重叠
-                Vector3 offset = new Vector3(UnityEngine.Random.Range(-3f, 3f), 0f, UnityEngine.Random.Range(-3f, 3f));
-                targetPos += offset;
-
-                // NavMesh 采样确保落点可行走
-                UnityEngine.AI.NavMeshHit navHit;
-                if (UnityEngine.AI.NavMesh.SamplePosition(targetPos, out navHit, 5f, UnityEngine.AI.NavMesh.AllAreas))
-                {
-                    targetPos = navHit.position;
-                }
-
-                player.transform.position = targetPos;
-                DevLog("[ModeE] 玩家已传送到阵营 " + faction + " 的刷怪区域: " + targetPos);
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeE] [ERROR] TeleportPlayerToFactionSpawnArea 失败: " + e.Message);
-            }
-        }
 
 
         /// <summary>

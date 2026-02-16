@@ -281,25 +281,29 @@ namespace BossRush
 
                     if (merchantId != "Merchant_Normal" || sceneName != "Base_SceneV2") continue;
 
+                    // 收集已存在的营旗 TypeID（避免重复注入）
+                    HashSet<int> existingFlagIds = new HashSet<int>();
+                    foreach (StockShop.Entry entry in shop.entries)
+                    {
+                        if (entry != null)
+                        {
+                            for (int i = 0; i < ALL_FLAG_TYPE_IDS.Length; i++)
+                            {
+                                if (entry.ItemTypeID == ALL_FLAG_TYPE_IDS[i])
+                                {
+                                    existingFlagIds.Add(ALL_FLAG_TYPE_IDS[i]);
+                                    injectedFlagEntries[ALL_FLAG_TYPE_IDS[i]] = entry;
+                                }
+                            }
+                        }
+                    }
+
                     // 逐个注入营旗
                     for (int i = 0; i < ALL_FLAG_TYPE_IDS.Length; i++)
                     {
                         int typeId = ALL_FLAG_TYPE_IDS[i];
 
-                        // 检查是否已存在
-                        bool exists = false;
-                        foreach (StockShop.Entry entry in shop.entries)
-                        {
-                            if (entry != null && entry.ItemTypeID == typeId)
-                            {
-                                exists = true;
-                                // 更新缓存引用
-                                injectedFlagEntries[typeId] = entry;
-                                break;
-                            }
-                        }
-
-                        if (!exists)
+                        if (!existingFlagIds.Contains(typeId))
                         {
                             StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
                             itemEntry.typeID = typeId;

@@ -14,8 +14,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 using Cysharp.Threading.Tasks;
@@ -52,7 +50,7 @@ namespace BossRush
         /// 在所有阵营的刷怪点一次性生成全部 Boss
         /// 按距离玩家由近到远分批生成，每批之间让出一帧，避免卡顿
         /// </summary>
-        public async void ModeESpawnAllBosses()
+        public async UniTaskVoid ModeESpawnAllBosses()
         {
             try
             {
@@ -93,8 +91,6 @@ namespace BossRush
                 });
 
                 // 分批生成：每个boss让出一帧，分散到多帧执行，避免开局卡顿
-                // 允许拉长到5秒完全加载完
-                const int BATCH_SIZE = 1;
                 for (int i = 0; i < spawnTasks.Count; i++)
                 {
                     if (!modeEActive) break; // 模式已结束，停止生成
@@ -105,8 +101,8 @@ namespace BossRush
                     // 每个boss让出多帧，把生成压力分散到更长时间
                     if (i + 1 < spawnTasks.Count)
                     {
-                        // 每个boss之间等待0.15秒，让角色创建和配装有时间完成
-                        await UniTask.Delay(150);
+                        // 每个boss之间等待0.25秒，给角色创建和配装充足时间完成，减少帧率尖刺
+                        await UniTask.Delay(250);
                     }
                 }
 
@@ -187,13 +183,7 @@ namespace BossRush
                 bool isBoss = true;
 
                 // 第1优先：从该阵营的 Boss 池中抽取
-                for (int attempt = 0; attempt < 10; attempt++)
-                {
-                    bossPreset = GetBossPresetForFaction(faction);
-                    if (bossPreset != null) break;
-                    // 该阵营 Boss 池已耗尽（龙裔/龙王被过滤后可能为空），直接跳出
-                    break;
-                }
+                bossPreset = GetBossPresetForFaction(faction);
 
                 // 第2优先：该阵营没有 Boss，从该阵营的小怪池补充
                 if (bossPreset == null)
@@ -304,6 +294,9 @@ namespace BossRush
                 // 加入存活敌人列表
                 modeEAliveEnemies.Add(character);
 
+                // [P4] 加入阵营独立存活列表（缩放时只遍历同阵营列表，避免全量遍历）
+                AddToFactionAliveList(faction, character);
+
                 // 注册到虚拟 CharacterSpawnerRoot，使 BossLiveMapMod 能检测到
                 RegisterModeEEnemyToSpawnerRoot(character);
 
@@ -323,9 +316,6 @@ namespace BossRush
                     }
                 };
 
-                // 在 Boss 名字上方显示阵营标签（白色文字）
-                CreateFactionLabel(character, faction);
-
                 // 更新生成计数
                 modeESpawnResolved++;
                 DevLog("[ModeE] 生成结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
@@ -336,48 +326,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 查找距离指定角色最近的敌对阵营单位（用于 AI 初始目标设置）
-        /// </summary>
-        private CharacterMainControl FindNearestEnemyForFaction(CharacterMainControl self, Teams selfFaction)
-        {
-            try
-            {
-                CharacterMainControl nearest = null;
-                float nearestDist = float.MaxValue;
-
-                for (int i = 0; i < modeEAliveEnemies.Count; i++)
-                {
-                    CharacterMainControl other = modeEAliveEnemies[i];
-                    if (other == null || other == self) continue;
-                    if (other.Team == selfFaction) continue; // 跳过同阵营
-
-                    float dist = Vector3.Distance(self.transform.position, other.transform.position);
-                    if (dist < nearestDist)
-                    {
-                        nearestDist = dist;
-                        nearest = other;
-                    }
-                }
-
-                // 也考虑玩家作为潜在目标（如果玩家不是同阵营）
-                CharacterMainControl player = CharacterMainControl.Main;
-                if (player != null && player.Team != selfFaction)
-                {
-                    float playerDist = Vector3.Distance(self.transform.position, player.transform.position);
-                    if (playerDist < nearestDist)
-                    {
-                        nearest = player;
-                    }
-                }
-
-                return nearest;
-            }
-            catch
-            {
-                return null;
-            }
-        }
 
         #endregion
 
@@ -389,6 +337,15 @@ namespace BossRush
         /// </summary>
         private readonly Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg, Modifier meleeDmg)> modeEScalingModifiers
             = new Dictionary<CharacterMainControl, (Modifier, Modifier, Modifier)>();
+
+        /// <summary>需要延迟批量缩放的阵营集合（死亡时记录，定时批量应用）</summary>
+        private readonly HashSet<Teams> modeEPendingScalingFactions = new HashSet<Teams>();
+
+        /// <summary>缩放批量应用计时器</summary>
+        private float modeEScalingBatchTimer = 0f;
+
+        /// <summary>缩放批量应用间隔（秒）- 每 5 秒统一应用一次，避免连锁死亡时的帧率尖刺</summary>
+        private const float MODE_E_SCALING_BATCH_INTERVAL = 5f;
 
         /// <summary>
         /// 注册敌人死亡事件，触发按阵营的动态缩放
@@ -411,6 +368,8 @@ namespace BossRush
 
         /// <summary>
         /// Mode E 敌人死亡回调
+        /// [性能优化] 死亡时只记录计数和标记脏阵营，不立即遍历应用缩放
+        /// 缩放由 ModeEScalingBatchUpdate() 定时批量执行
         /// </summary>
         private void OnModeEEnemyDeath(CharacterMainControl enemy)
         {
@@ -421,8 +380,9 @@ namespace BossRush
                 // 获取死亡敌人的阵营
                 Teams enemyFaction = enemy.Team;
 
-                // 从存活列表移除
+                // 从存活列表移除（全局 + 阵营独立列表）
                 modeEAliveEnemies.Remove(enemy);
+                RemoveFromFactionAliveList(enemyFaction, enemy);
 
                 // 清理死亡敌人的 Modifier 缓存
                 modeEScalingModifiers.Remove(enemy);
@@ -440,8 +400,8 @@ namespace BossRush
                 int deathCount = modeEFactionDeathCount[enemyFaction];
                 DevLog("[ModeE] 阵营 " + enemyFaction + " 单位阵亡，累计死亡: " + deathCount);
 
-                // 对该阵营存活单位应用缩放
-                ApplyFactionDeathScaling(enemyFaction);
+                // 标记该阵营需要延迟缩放（不立即执行，等批量定时器触发）
+                modeEPendingScalingFactions.Add(enemyFaction);
             }
             catch (Exception e)
             {
@@ -450,9 +410,32 @@ namespace BossRush
         }
 
         /// <summary>
+        /// Mode E 缩放批量更新（由 Update 定时调用）
+        /// 将累积的阵营死亡缩放一次性批量应用，避免每次死亡都遍历全列表
+        /// </summary>
+        public void ModeEScalingBatchUpdate()
+        {
+            if (!modeEActive) return;
+
+            modeEScalingBatchTimer += Time.deltaTime;
+            if (modeEScalingBatchTimer < MODE_E_SCALING_BATCH_INTERVAL) return;
+            modeEScalingBatchTimer = 0f;
+
+            if (modeEPendingScalingFactions.Count == 0) return;
+
+            // 批量应用所有待处理阵营的缩放
+            foreach (Teams faction in modeEPendingScalingFactions)
+            {
+                ApplyFactionDeathScaling(faction);
+            }
+            modeEPendingScalingFactions.Clear();
+        }
+
+        /// <summary>
         /// 对指定阵营的所有存活单位应用属性缩放（生命值 + 伤害）
         /// 倍率 = 1.0 + 该阵营已死亡单位数 × 0.05
         /// 每次先移除旧 Modifier 再添加新的，避免累积叠加
+        /// [P4性能优化] 使用阵营独立存活列表，只遍历同阵营单位，避免全量遍历
         /// </summary>
         private void ApplyFactionDeathScaling(Teams faction)
         {
@@ -461,18 +444,21 @@ namespace BossRush
                 float multiplier = GetFactionScaleMultiplier(faction);
                 DevLog("[ModeE] 应用阵营缩放: " + faction + " 倍率=" + multiplier);
 
-                for (int i = modeEAliveEnemies.Count - 1; i >= 0; i--)
+                // [P4] 使用阵营独立列表，只遍历该阵营的存活单位
+                List<CharacterMainControl> factionList = GetFactionAliveList(faction);
+                if (factionList == null || factionList.Count == 0) return;
+
+                for (int i = factionList.Count - 1; i >= 0; i--)
                 {
-                    CharacterMainControl enemy = modeEAliveEnemies[i];
+                    CharacterMainControl enemy = factionList[i];
                     if (enemy == null || enemy.gameObject == null)
                     {
-                        modeEAliveEnemies.RemoveAt(i);
+                        // 清理无效引用
+                        factionList.RemoveAt(i);
+                        modeEAliveEnemies.Remove(enemy);
                         modeEScalingModifiers.Remove(enemy);
                         continue;
                     }
-
-                    // 只对同阵营的存活单位应用缩放
-                    if (enemy.Team != faction) continue;
 
                     try
                     {
@@ -480,6 +466,7 @@ namespace BossRush
                         if (characterItem == null) continue;
 
                         // 移除该敌人上一次的缩放 Modifier
+                        // [安全改进] 移除失败时清空引用，防止后续 AddModifier 导致属性只增不减
                         if (modeEScalingModifiers.TryGetValue(enemy, out var oldMods))
                         {
                             try
@@ -487,19 +474,19 @@ namespace BossRush
                                 Stat oldHpStat = characterItem.GetStat("MaxHealth");
                                 if (oldHpStat != null && oldMods.hp != null) oldHpStat.RemoveModifier(oldMods.hp);
                             }
-                            catch { }
+                            catch { oldMods.hp = null; }
                             try
                             {
                                 Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
                                 if (oldGunStat != null && oldMods.gunDmg != null) oldGunStat.RemoveModifier(oldMods.gunDmg);
                             }
-                            catch { }
+                            catch { oldMods.gunDmg = null; }
                             try
                             {
                                 Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
                                 if (oldMeleeStat != null && oldMods.meleeDmg != null) oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
                             }
-                            catch { }
+                            catch { oldMods.meleeDmg = null; }
                         }
 
                         // 计算新的增量（基于 BaseValue，不受 Modifier 影响）
@@ -652,139 +639,5 @@ namespace BossRush
         }
 
         #endregion
-
-        #region Mode E 阵营标签
-
-        /// <summary>
-        /// 阵营标签 UI 的 Screen Space Canvas 容器（所有标签共用）
-        /// </summary>
-        private static Canvas modeEFactionLabelCanvas;
-
-        /// <summary>
-        /// 获取或创建阵营标签的 Screen Space Overlay Canvas
-        /// 复用游戏原生 HealthBar 的渲染方式，确保文字清晰
-        /// </summary>
-        private static Canvas GetOrCreateFactionLabelCanvas()
-        {
-            if (modeEFactionLabelCanvas != null) return modeEFactionLabelCanvas;
-
-            GameObject canvasObj = new GameObject("ModeE_FactionLabelCanvas");
-            UnityEngine.Object.DontDestroyOnLoad(canvasObj);
-
-            modeEFactionLabelCanvas = canvasObj.AddComponent<Canvas>();
-            modeEFactionLabelCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            modeEFactionLabelCanvas.sortingOrder = 90; // 略低于 HealthBar，避免遮挡血条
-
-            CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-
-            canvasObj.AddComponent<GraphicRaycaster>();
-
-            return modeEFactionLabelCanvas;
-        }
-
-        /// <summary>
-        /// 在 Boss 头顶创建阵营标签（Screen Space UI，复用游戏原生 HealthBar 的定位方式）
-        /// </summary>
-        private void CreateFactionLabel(CharacterMainControl character, Teams faction)
-        {
-            try
-            {
-                if (character == null || character.transform == null) return;
-
-                string factionName = GetFactionDisplayName(faction);
-                Canvas canvas = GetOrCreateFactionLabelCanvas();
-
-                // 创建标签 UI 元素
-                GameObject labelObj = new GameObject("ModeE_FactionLabel_" + character.GetInstanceID());
-                labelObj.transform.SetParent(canvas.transform, false);
-
-                // 添加 RectTransform（SetParent 到 Canvas 下会自动添加）
-                RectTransform rect = labelObj.GetComponent<RectTransform>();
-                if (rect == null) rect = labelObj.AddComponent<RectTransform>();
-                rect.sizeDelta = new Vector2(200f, 30f);
-
-                // 使用 TextMeshProUGUI，和游戏原生 HealthBar 的 nameText 一致
-                TextMeshProUGUI tmpText = labelObj.AddComponent<TextMeshProUGUI>();
-                tmpText.text = factionName;
-                tmpText.fontSize = 16f;
-                tmpText.color = new Color(1f, 1f, 1f, 1f); // 纯白色，和游戏原生名字一致
-                tmpText.fontStyle = FontStyles.Bold;
-                tmpText.alignment = TextAlignmentOptions.Center;
-                tmpText.enableWordWrapping = false;
-                tmpText.overflowMode = TextOverflowModes.Overflow;
-                tmpText.raycastTarget = false; // 不拦截点击
-
-                // 添加跟踪组件，负责将世界坐标映射到屏幕坐标
-                ModeEFactionLabelTracker tracker = labelObj.AddComponent<ModeEFactionLabelTracker>();
-                tracker.target = character.transform;
-                // 计算头顶偏移（复用 HealthBar 的逻辑：头盔位置 + 额外偏移）
-                float headHeight = 1.5f;
-                if (character.characterModel != null)
-                {
-                    Transform helmetSocket = character.characterModel.HelmatSocket;
-                    if (helmetSocket != null)
-                    {
-                        headHeight = Vector3.Distance(character.transform.position, helmetSocket.position) + 0.5f;
-                    }
-                }
-                // 在 HealthBar 名字上方再偏移一点
-                tracker.worldOffset = Vector3.up * (headHeight + 0.3f);
-                // 屏幕 Y 额外偏移（HealthBar 用 0.02，我们用更大值让标签在名字和血条上方）
-                tracker.screenYOffset = 0.055f;
-
-                DevLog("[ModeE] 阵营标签已创建(UI): " + factionName + " -> " + character.gameObject.name);
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeE] [ERROR] CreateFactionLabel 失败: " + e.Message);
-            }
-        }
-
-        #endregion
-    }
-
-    /// <summary>
-    /// Mode E 阵营标签跟踪组件 - 将世界坐标映射到屏幕坐标（复用 HealthBar 的定位方式）
-    /// </summary>
-    public class ModeEFactionLabelTracker : MonoBehaviour
-    {
-        /// <summary>跟踪的目标 Transform（敌人角色）</summary>
-        public Transform target;
-        /// <summary>世界空间偏移（头顶高度）</summary>
-        public Vector3 worldOffset = Vector3.up * 2f;
-        /// <summary>屏幕 Y 方向额外偏移比例（相对于屏幕高度）</summary>
-        public float screenYOffset = 0.035f;
-
-        void LateUpdate()
-        {
-            // 目标已销毁，清理自身
-            if (target == null)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            Camera cam = Camera.main;
-            if (cam == null) return;
-
-            // 检查目标是否在相机前方
-            Vector3 worldPos = target.position + worldOffset;
-            Vector3 toTarget = worldPos - cam.transform.position;
-            if (Vector3.Dot(toTarget, cam.transform.forward) <= 0f)
-            {
-                // 在相机背后，隐藏
-                gameObject.SetActive(false);
-                return;
-            }
-
-            if (!gameObject.activeSelf) gameObject.SetActive(true);
-
-            // 世界坐标转屏幕坐标（和 HealthBar.UpdatePosition 完全一致的方式）
-            Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
-            screenPos.y += screenYOffset * Screen.height;
-            transform.position = screenPos;
-        }
     }
 }

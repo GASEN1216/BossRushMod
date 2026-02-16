@@ -4,11 +4,13 @@
 // 包含：
 //   1. SetTeam 阵营保护 Patch：阻止原版防作弊逻辑篡改玩家阵营
 //   2. HealthBar 友方血条绿色 Patch：同阵营单位血条显示为绿色
+//   3. HealthBar 名字追加阵营后缀 Patch：在原版名字右边显示 " - 阵营名"
 // ============================================================================
 
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using Duckov.UI;
 
 namespace BossRush
@@ -40,6 +42,7 @@ namespace BossRush
     /// <summary>
     /// Patch HealthBar.Refresh：
     /// Mode E 中将同阵营友方单位的血条颜色覆盖为绿色
+    /// [性能优化] 缓存 ModBehaviour.Instance 引用，减少每帧属性访问
     /// </summary>
     [HarmonyPatch(typeof(HealthBar), "Refresh")]
     public static class ModeEHealthBarColorPatch
@@ -47,12 +50,24 @@ namespace BossRush
         /// <summary>友方血条绿色（鲜明的绿色，易于辨识）</summary>
         private static readonly Color AllyHealthBarColor = new Color(0.2f, 0.9f, 0.2f, 1f);
 
+        /// <summary>缓存的 ModBehaviour 实例引用</summary>
+        private static ModBehaviour cachedInstance;
+        /// <summary>上次刷新缓存的帧号（用帧号代替计数器，避免多 HealthBar 实例竞态导致刷新频率不稳定）</summary>
+        private static int lastRefreshFrame = -1;
+
         [HarmonyPostfix]
         public static void Postfix(HealthBar __instance, Image ___fill)
         {
-            // 非 Mode E 时跳过
-            var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive)
+            // 每 60 帧刷新一次缓存（约每秒一次，不受多实例并发影响）
+            int currentFrame = Time.frameCount;
+            if (cachedInstance == null || currentFrame - lastRefreshFrame >= 60)
+            {
+                lastRefreshFrame = currentFrame;
+                cachedInstance = ModBehaviour.Instance;
+            }
+
+            // 非 Mode E 时跳过（快速路径）
+            if (cachedInstance == null || !cachedInstance.IsModeEActive)
                 return;
 
             // 获取血条绑定的 Health 目标
@@ -64,13 +79,60 @@ namespace BossRush
             if (character == null || character.IsMainCharacter) return;
 
             // 判断是否与玩家同阵营
-            if (character.Team == inst.ModeEPlayerFaction)
+            if (character.Team == cachedInstance.ModeEPlayerFaction)
             {
                 // 同阵营友方：覆盖血条颜色为绿色
                 if (___fill != null)
                 {
                     ___fill.color = AllyHealthBarColor;
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Patch HealthBar.RefreshCharacterIcon：
+    /// Mode E 中在原版名字右边追加 " - 阵营名"，完全交给游戏原版渲染
+    /// </summary>
+    [HarmonyPatch(typeof(HealthBar), "RefreshCharacterIcon")]
+    public static class ModeEHealthBarFactionNamePatch
+    {
+        /// <summary>缓存的 ModBehaviour 实例引用</summary>
+        private static ModBehaviour cachedInstance;
+        /// <summary>上次刷新缓存的帧号</summary>
+        private static int lastRefreshFrame = -1;
+
+        [HarmonyPostfix]
+        public static void Postfix(HealthBar __instance, TextMeshProUGUI ___nameText)
+        {
+            // 每 60 帧刷新一次缓存
+            int currentFrame = Time.frameCount;
+            if (cachedInstance == null || currentFrame - lastRefreshFrame >= 60)
+            {
+                lastRefreshFrame = currentFrame;
+                cachedInstance = ModBehaviour.Instance;
+            }
+
+            // 非 Mode E 时跳过
+            if (cachedInstance == null || !cachedInstance.IsModeEActive)
+                return;
+
+            // nameText 不可用或未激活时跳过
+            if (___nameText == null || !___nameText.gameObject.activeSelf)
+                return;
+
+            // 获取角色阵营
+            Health target = __instance.target;
+            if (target == null) return;
+
+            CharacterMainControl character = target.TryGetCharacter();
+            if (character == null) return;
+
+            // 获取阵营显示名并追加到原版名字后面
+            string factionSuffix = cachedInstance.GetModeEFactionSuffix(character.Team);
+            if (factionSuffix != null)
+            {
+                ___nameText.text += factionSuffix;
             }
         }
     }

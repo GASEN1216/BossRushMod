@@ -2,6 +2,10 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.16 19:30
+- Optimized Mode E code
+- Lone Wolf start now comes with 3 smoke grenades and 3 cardboard boxes
+
 ### 2026.2.15 21:00
 - Added Mode E: Faction Battle
 - Added 7 faction flags to vending machine
