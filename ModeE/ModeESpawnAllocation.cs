@@ -2,14 +2,20 @@
 // ModeESpawnAllocation.cs - 刷怪点扫描与阵营分配算法
 // ============================================================================
 // 模块说明：
-//   负责将地图刷怪点平均分配给所有参战阵营，
-//   以及将玩家传送到其阵营的随机刷怪点。
+//   负责将刷怪点平均分配给所有参战阵营，
+//   以及将玩家传送到其阵营的刷怪区域或独狼安全位置。
+//
+// 刷怪点来源优先级：
+//   1. BossRushMapConfig.modeESpawnPoints（自定义 Mode E 专用刷怪点）
+//   2. 原地图 CharacterSpawnerRoot 的 Points 组件（兜底）
+//   3. 基于玩家位置生成的备用点（最终兜底）
 //
 // 分配算法：
-//   1. 获取地图所有刷怪点
-//   2. Fisher-Yates 洗牌
-//   3. 轮询分配：spawnPoints[i] → factions[i % factionCount]
-//   4. 余数刷怪点依次分配，确保差异不超过 1
+//   1. 获取刷怪点
+//   2. 按距离玩家由近到远排序
+//   3. 间隔过滤（每个点与已选点距离 >= 10m）
+//   4. 轮询分配：spawnPoints[i] → factions[i % factionCount]
+//   5. 余数刷怪点依次分配，确保差异不超过 1
 // ============================================================================
 
 using System;
@@ -39,7 +45,9 @@ namespace BossRush
         private const float MODE_E_SPAWN_MIN_DISTANCE = 10f;
 
         /// <summary>
-        /// 将地图全部刷怪点按间隔过滤后，循环依次分配给各阵营
+        /// 将刷怪点按间隔过滤后，循环依次分配给各阵营
+        /// 优先使用 BossRushMapConfig.modeESpawnPoints 自定义刷怪点，
+        /// 无自定义配置时兜底使用原地图 CharacterSpawnerRoot 位置
         /// 玩家阵营优先分配距离玩家最近的刷怪点
         /// 特殊：爷的营旗（player阵营）不参与分配，所有刷怪点分给5个NPC阵营
         /// </summary>
@@ -56,10 +64,23 @@ namespace BossRush
                     modeESpawnAllocation[ModeEAvailableFactions[i]] = new List<Vector3>();
                 }
 
-                // 扫描原地图的 CharacterSpawnerRoot 位置作为刷怪点
-                Vector3[] spawnPoints = ScanMapSpawnerPositions();
+                // 优先使用当前地图配置的 Mode E 专用刷怪点
+                Vector3[] spawnPoints = null;
+                BossRushMapConfig mapConfig = GetCurrentMapConfig();
+                if (mapConfig != null && mapConfig.modeESpawnPoints != null && mapConfig.modeESpawnPoints.Length > 0)
+                {
+                    spawnPoints = mapConfig.modeESpawnPoints;
+                    DevLog("[ModeE] 使用地图配置的 Mode E 专用刷怪点，数量: " + spawnPoints.Length);
+                }
 
-                // 兜底：如果刷怪点为空，基于玩家位置生成备用点
+                // 兜底：扫描原地图的 CharacterSpawnerRoot 位置
+                if (spawnPoints == null || spawnPoints.Length == 0)
+                {
+                    spawnPoints = ScanMapSpawnerPositions();
+                    DevLog("[ModeE] 无自定义刷怪点配置，兜底使用原地图 spawner 位置");
+                }
+
+                // 最终兜底：基于玩家位置生成备用点
                 if (spawnPoints == null || spawnPoints.Length == 0)
                 {
                     CharacterMainControl player = CharacterMainControl.Main;
@@ -182,9 +203,9 @@ namespace BossRush
 
 
         /// <summary>
-        /// 爷的营旗专用：将玩家传送到远离所有Boss刷怪点的安全位置
-        /// 策略：从地图已缓存的全部实际出生点中，选出离所有已分配刷怪点最远的那个点
-        /// 这些出生点本身就在地图 NavMesh 上，不会出界
+        /// 爷的营旗专用：将玩家传送到安全位置
+        /// 优先使用 BossRushMapConfig.modeEPlayerSpawnPos 自定义落点，
+        /// 无自定义配置时兜底从地图出生点中选出离所有Boss最远的点
         /// </summary>
         private void TeleportPlayerToSafePosition()
         {
@@ -197,55 +218,66 @@ namespace BossRush
                     return;
                 }
 
-                // 收集所有已分配给NPC阵营的刷怪点（即Boss会出现的位置）
-                List<Vector3> bossSpawnPoints = new List<Vector3>();
-                if (modeESpawnAllocation != null)
-                {
-                    foreach (var kvp in modeESpawnAllocation)
-                    {
-                        bossSpawnPoints.AddRange(kvp.Value);
-                    }
-                }
-
-                if (bossSpawnPoints.Count == 0)
-                {
-                    DevLog("[ModeE] [WARNING] TeleportPlayerToSafePosition: 无刷怪点数据，跳过传送");
-                    return;
-                }
-
-                // 从地图全部缓存出生点中，找到离所有Boss刷怪点"最近距离"最大的那个点
-                // 即：对每个候选点，计算它到最近Boss刷怪点的距离，选距离最大的候选点
                 Vector3 bestPos = player.transform.position;
-                float bestMinDist = 0f;
 
-                if (modeECachedSpawnerPositions != null && modeECachedSpawnerPositions.Length > 0)
+                // 优先使用地图配置的 Mode E 独狼玩家落点
+                BossRushMapConfig mapConfig = GetCurrentMapConfig();
+                if (mapConfig != null && mapConfig.modeEPlayerSpawnPos.HasValue)
                 {
-                    for (int i = 0; i < modeECachedSpawnerPositions.Length; i++)
-                    {
-                        Vector3 candidate = modeECachedSpawnerPositions[i];
-
-                        // 计算该候选点到最近Boss刷怪点的距离
-                        float minDist = float.MaxValue;
-                        for (int j = 0; j < bossSpawnPoints.Count; j++)
-                        {
-                            float dist = Vector3.Distance(candidate, bossSpawnPoints[j]);
-                            if (dist < minDist) minDist = dist;
-                        }
-
-                        // 选"离最近Boss最远"的候选点
-                        if (minDist > bestMinDist)
-                        {
-                            bestMinDist = minDist;
-                            bestPos = candidate;
-                        }
-                    }
-
-                    DevLog("[ModeE] 从 " + modeECachedSpawnerPositions.Length + " 个地图出生点中选出安全位置，距最近Boss " + bestMinDist.ToString("F1") + "m");
+                    bestPos = mapConfig.modeEPlayerSpawnPos.Value;
+                    DevLog("[ModeE] 使用地图配置的 Mode E 独狼玩家落点: " + bestPos);
                 }
                 else
                 {
-                    // 缓存为空（不应发生），保持玩家原位
-                    DevLog("[ModeE] [WARNING] 地图出生点缓存为空，玩家保持原位");
+                    // 兜底：从地图出生点中选出离所有Boss最远的点
+                    DevLog("[ModeE] 无自定义独狼落点配置，兜底使用远离Boss的安全位置");
+
+                    // 收集所有已分配给NPC阵营的刷怪点（即Boss会出现的位置）
+                    List<Vector3> bossSpawnPoints = new List<Vector3>();
+                    if (modeESpawnAllocation != null)
+                    {
+                        foreach (var kvp in modeESpawnAllocation)
+                        {
+                            bossSpawnPoints.AddRange(kvp.Value);
+                        }
+                    }
+
+                    if (bossSpawnPoints.Count == 0)
+                    {
+                        DevLog("[ModeE] [WARNING] TeleportPlayerToSafePosition: 无刷怪点数据，跳过传送");
+                        return;
+                    }
+
+                    float bestMinDist = 0f;
+
+                    if (modeECachedSpawnerPositions != null && modeECachedSpawnerPositions.Length > 0)
+                    {
+                        for (int i = 0; i < modeECachedSpawnerPositions.Length; i++)
+                        {
+                            Vector3 candidate = modeECachedSpawnerPositions[i];
+
+                            // 计算该候选点到最近Boss刷怪点的距离
+                            float minDist = float.MaxValue;
+                            for (int j = 0; j < bossSpawnPoints.Count; j++)
+                            {
+                                float dist = Vector3.Distance(candidate, bossSpawnPoints[j]);
+                                if (dist < minDist) minDist = dist;
+                            }
+
+                            // 选"离最近Boss最远"的候选点
+                            if (minDist > bestMinDist)
+                            {
+                                bestMinDist = minDist;
+                                bestPos = candidate;
+                            }
+                        }
+
+                        DevLog("[ModeE] 从 " + modeECachedSpawnerPositions.Length + " 个地图出生点中选出安全位置，距最近Boss " + bestMinDist.ToString("F1") + "m");
+                    }
+                    else
+                    {
+                        DevLog("[ModeE] [WARNING] 地图出生点缓存为空，玩家保持原位");
+                    }
                 }
 
                 // 用 NavMesh 采样微调，确保落点精确在可行走区域上
@@ -257,7 +289,7 @@ namespace BossRush
 
                 // 执行传送
                 player.transform.position = bestPos;
-                DevLog("[ModeE] 爷的营旗：玩家已传送到安全位置 " + bestPos + "，距最近Boss刷怪点 " + bestMinDist.ToString("F1") + "m");
+                DevLog("[ModeE] 爷的营旗：玩家已传送到安全位置 " + bestPos);
 
                 ShowMessage(L10n.T(
                     "你已被传送到安全区域，准备好迎战所有阵营的Boss吧！",
@@ -284,6 +316,47 @@ namespace BossRush
                 }
             }
             return new List<Vector3>();
+        }
+
+        /// <summary>
+        /// 普通营旗：将玩家传送到其阵营的第一个刷怪点附近
+        /// 使用自定义刷怪点时，玩家不再天然在自己阵营Boss旁边，需要主动传送
+        /// </summary>
+        private void TeleportPlayerToFactionSpawnArea(Teams faction)
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null) return;
+
+                List<Vector3> factionPoints = GetFactionSpawnPoints(faction);
+                if (factionPoints == null || factionPoints.Count == 0)
+                {
+                    DevLog("[ModeE] TeleportPlayerToFactionSpawnArea: 阵营 " + faction + " 无刷怪点，跳过传送");
+                    return;
+                }
+
+                // 选择该阵营的第一个刷怪点（距离最近的，因为分配时已按距离排序）
+                Vector3 targetPos = factionPoints[0];
+
+                // 偏移几米，避免和Boss重叠
+                Vector3 offset = new Vector3(UnityEngine.Random.Range(-3f, 3f), 0f, UnityEngine.Random.Range(-3f, 3f));
+                targetPos += offset;
+
+                // NavMesh 采样确保落点可行走
+                UnityEngine.AI.NavMeshHit navHit;
+                if (UnityEngine.AI.NavMesh.SamplePosition(targetPos, out navHit, 5f, UnityEngine.AI.NavMesh.AllAreas))
+                {
+                    targetPos = navHit.position;
+                }
+
+                player.transform.position = targetPos;
+                DevLog("[ModeE] 玩家已传送到阵营 " + faction + " 的刷怪区域: " + targetPos);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] TeleportPlayerToFactionSpawnArea 失败: " + e.Message);
+            }
         }
 
 

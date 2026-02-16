@@ -268,19 +268,17 @@ namespace BossRush
                 // 仅订阅龙息Buff处理器，确保龙裔遗族Boss的龙息能触发龙焰灼烧
                 DragonBreathBuffHandler.Subscribe();
 
-                // 分配刷怪点给各阵营（使用原地图 CharacterSpawnerRoot 位置）
-                // 玩家阵营优先分配距玩家最近的刷怪点，因此玩家天然在自己阵营Boss旁边，无需二次传送
+                // 分配刷怪点给各阵营（优先使用地图配置的 Mode E 专用刷怪点，无配置时兜底使用原地图 spawner 位置）
                 AllocateSpawnPoints();
 
-                // 爷的营旗：玩家阵营为 player，不参与刷怪点分配
-                // 需要将玩家传送到远离所有刷怪点的安全位置
-                if (faction == Teams.player)
-                {
-                    TeleportPlayerToSafePosition();
-                }
+                // 传送玩家到独狼安全位置（无论任何阵营，统一传送到远离Boss的安全点）
+                TeleportPlayerToSafePosition();
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）
                 GivePlayerStarterKit();
+
+                // 零度挑战地图：额外发放保暖装备（头盔 ID:1312 + 护甲 ID:1307）
+                ModeEGiveColdWeatherGear();
 
                 // 一次性生成所有阵营的 Boss
                 ModeESpawnAllBosses();
@@ -464,6 +462,46 @@ namespace BossRush
         #endregion
 
         #region Mode E 辅助方法
+
+        /// <summary>
+        /// 零度挑战地图专用：发放保暖装备（头盔 + 护甲）
+        /// 仅在 Level_ChallengeSnow 场景下生效，硬编码物品ID
+        /// </summary>
+        private void ModeEGiveColdWeatherGear()
+        {
+            try
+            {
+                string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (currentScene != "Level_ChallengeSnow") return;
+
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null) return;
+
+                DevLog("[ModeE] 零度挑战地图：发放保暖装备...");
+
+                // 头盔 ID:1312
+                Item helmet = ItemAssetsCollection.InstantiateSync(1312);
+                if (helmet != null)
+                {
+                    bool equipped = main.CharacterItem.TryPlug(helmet, true, null, 0);
+                    if (!equipped) ItemUtilities.SendToPlayerCharacterInventory(helmet, false);
+                    DevLog("[ModeE] 发放保暖头盔: " + helmet.DisplayName);
+                }
+
+                // 护甲 ID:1307
+                Item armor = ItemAssetsCollection.InstantiateSync(1307);
+                if (armor != null)
+                {
+                    bool equipped = main.CharacterItem.TryPlug(armor, true, null, 0);
+                    if (!equipped) ItemUtilities.SendToPlayerCharacterInventory(armor, false);
+                    DevLog("[ModeE] 发放保暖护甲: " + armor.DisplayName);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] ModeEGiveColdWeatherGear 失败: " + e.Message);
+            }
+        }
 
         /// <summary>
         /// 获取阵营的中文显示名称

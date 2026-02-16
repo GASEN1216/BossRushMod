@@ -1854,5 +1854,97 @@ namespace BossRush
             string fpsText = "FPS: " + currentFps.ToString("F1");
             GUI.Label(new Rect(10, 10, 120, 30), fpsText, fpsLabelStyle);
         }
+
+        // ============================================================================
+        // 地图点击坐标输出（DevMode 专用）
+        // ============================================================================
+        // 在打开地图时，鼠标左键点击地图即可输出对应的世界坐标
+        // 省去跑图按 F7 的麻烦，方便采集刷怪点坐标
+        // ============================================================================
+
+        /// <summary>
+        /// 缓存的 MiniMapDisplay 反射字段（display 是 MiniMapView 的 private 字段）
+        /// </summary>
+        private static FieldInfo cachedDisplayField = null;
+
+        /// <summary>
+        /// 检测地图打开时的鼠标点击，输出对应世界坐标
+        /// 仅在 DevModeEnabled = true 时生效
+        /// </summary>
+        internal void UpdateMapClickDebug()
+        {
+            if (!DevModeEnabled) return;
+
+            // 仅在鼠标左键按下时处理
+            if (!UnityEngine.Input.GetMouseButtonDown(0)) return;
+
+            try
+            {
+                // 获取 MiniMapView 实例，检查地图是否打开
+                var mapView = Duckov.MiniMaps.UI.MiniMapView.Instance;
+                if (mapView == null || !mapView.open) return;
+
+                // 通过反射获取 private 的 display 字段
+                if (cachedDisplayField == null)
+                {
+                    cachedDisplayField = typeof(Duckov.MiniMaps.UI.MiniMapView).GetField(
+                        "display",
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    );
+                    if (cachedDisplayField == null)
+                    {
+                        DevLog("[地图坐标] 反射获取 display 字段失败");
+                        return;
+                    }
+                }
+
+                var display = cachedDisplayField.GetValue(mapView) as Duckov.MiniMaps.UI.MiniMapDisplay;
+                if (display == null) return;
+
+                // 将鼠标屏幕坐标转换为 display 的世界坐标（UI 空间）
+                RectTransform displayRect = display.transform as RectTransform;
+                if (displayRect == null) return;
+
+                // 获取用于 UI 射线检测的相机
+                Canvas canvas = mapView.GetComponentInParent<Canvas>();
+                Camera uiCamera = null;
+                if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                {
+                    uiCamera = canvas.worldCamera;
+                }
+
+                // 屏幕坐标转 display 世界坐标
+                if (!RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                    displayRect,
+                    UnityEngine.Input.mousePosition,
+                    uiCamera,
+                    out Vector3 worldPoint))
+                {
+                    return;
+                }
+
+                // 调用原版的坐标转换方法：display 世界坐标 → 游戏世界坐标
+                Vector3 worldPos;
+                if (!display.TryConvertToWorldPosition(worldPoint, out worldPos))
+                {
+                    DevLog("[地图坐标] 坐标转换失败（可能当前场景无地图数据）");
+                    return;
+                }
+
+                // 输出世界坐标，格式方便直接复制到代码中
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                DevLog("[地图坐标] 场景=" + sceneName +
+                    " | 世界坐标=(" + worldPos.x.ToString("F2") + "f, " +
+                    worldPos.y.ToString("F2") + "f, " +
+                    worldPos.z.ToString("F2") + "f)" +
+                    " | new Vector3(" + worldPos.x.ToString("F2") + "f, " +
+                    worldPos.y.ToString("F2") + "f, " +
+                    worldPos.z.ToString("F2") + "f)");
+            }
+            catch (Exception e)
+            {
+                DevLog("[地图坐标] 异常: " + e.Message);
+            }
+        }
     }
 }

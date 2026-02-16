@@ -136,9 +136,9 @@ namespace BossRush
                 if (boss == null || string.IsNullOrEmpty(boss.name)) continue;
                 if (boss.team != targetTeam) continue;
 
-                // 龙裔/龙王全局限制各1个
+                // 龙裔全局限制1个；龙皇在 Mode E 中完全排除
                 if (IsDragonDescendantPreset(boss) && modeEDragonDescendantSpawned) continue;
-                if (IsDragonKingPreset(boss) && modeEDragonKingSpawned) continue;
+                if (IsDragonKingPreset(boss)) continue;
 
                 presetFilterCache.Add(boss);
             }
@@ -184,7 +184,6 @@ namespace BossRush
             {
                 EnemyPresetInfo bossPreset = null;
                 bool isThisDragonDescendant = false;
-                bool isThisDragonKing = false;
                 bool isBoss = true;
 
                 // 第1优先：从该阵营的 Boss 池中抽取
@@ -213,19 +212,17 @@ namespace BossRush
                         bossPreset = GetRandomBossPreset();
                         if (bossPreset == null) continue;
                         if (IsDragonDescendantPreset(bossPreset) && modeEDragonDescendantSpawned) { bossPreset = null; continue; }
-                        if (IsDragonKingPreset(bossPreset) && modeEDragonKingSpawned) { bossPreset = null; continue; }
+                        if (IsDragonKingPreset(bossPreset)) { bossPreset = null; continue; }
                         break;
                     }
                     isBoss = true;
                 }
 
-                // 记录龙裔/龙王标记
+                // 记录龙裔标记（龙皇在 Mode E 中已被完全排除，无需追踪）
                 if (bossPreset != null)
                 {
                     isThisDragonDescendant = IsDragonDescendantPreset(bossPreset);
-                    isThisDragonKing = IsDragonKingPreset(bossPreset);
                     if (isThisDragonDescendant) modeEDragonDescendantSpawned = true;
-                    if (isThisDragonKing) modeEDragonKingSpawned = true;
                 }
 
                 if (bossPreset != null)
@@ -235,13 +232,13 @@ namespace BossRush
 
                     Teams capturedFaction = faction;
 
-                    // skipDragonDescendant/skipDragonKing：防止 SpawnEnemyCore 重试时意外生成额外的龙裔/龙王
+                    // skipDragonDescendant：防止 SpawnEnemyCore 重试时意外生成额外的龙裔
+                    // skipDragonKing：Mode E 完全排除龙皇，始终跳过
                     bool skipDragon = !isThisDragonDescendant && modeEDragonDescendantSpawned;
-                    bool skipKing = !isThisDragonKing && modeEDragonKingSpawned;
+                    bool skipKing = true; // Mode E 完全排除龙皇
 
-                    // 捕获龙裔/龙王标记，用于生成失败时回退
+                    // 捕获龙裔标记，用于生成失败时回退
                     bool capturedIsDD = isThisDragonDescendant;
-                    bool capturedIsDK = isThisDragonKing;
 
                     DevLog("[ModeE] 阵营 " + faction + " 生成: " + bossPreset.displayName + " (预设team=" + bossPreset.team + ", isBoss=" + isBoss + ")");
 
@@ -253,16 +250,11 @@ namespace BossRush
                         onSpawned: (ctx) => OnModeEEnemySpawned(ctx, capturedFaction),
                         onFailed: () =>
                         {
-                            // 龙裔/龙王生成失败时回退全局标记，允许后续刷怪点再次尝试
+                            // 龙裔生成失败时回退全局标记，允许后续刷怪点再次尝试
                             if (capturedIsDD)
                             {
                                 modeEDragonDescendantSpawned = false;
                                 DevLog("[ModeE] 龙裔遗族生成失败，回退全局标记");
-                            }
-                            if (capturedIsDK)
-                            {
-                                modeEDragonKingSpawned = false;
-                                DevLog("[ModeE] 龙王生成失败，回退全局标记");
                             }
                         },
                         waveIndex: 1,

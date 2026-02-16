@@ -1,13 +1,15 @@
 // ============================================================================
-// ModeEHarmonyPatch.cs - Mode E 阵营保护 Harmony Patch
+// ModeEHarmonyPatch.cs - Mode E Harmony Patches
 // ============================================================================
-// 修复原版 ItemAgent_Gun.ShootOneBullet 中的防作弊逻辑：
-//   当玩家阵营非 player 时，开枪触发 SetTeam(Teams.all)。
-//   Mode E 中玩家阵营是 scav/usec 等，导致阵营永久变为 all。
-// 修复：Patch SetTeam，Mode E 中阻止主角被设为 Teams.all。
+// 包含：
+//   1. SetTeam 阵营保护 Patch：阻止原版防作弊逻辑篡改玩家阵营
+//   2. HealthBar 友方血条绿色 Patch：同阵营单位血条显示为绿色
 // ============================================================================
 
 using HarmonyLib;
+using UnityEngine;
+using UnityEngine.UI;
+using Duckov.UI;
 
 namespace BossRush
 {
@@ -32,6 +34,44 @@ namespace BossRush
 
             // 阻止 SetTeam(Teams.all)，保持玩家正确阵营
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Patch HealthBar.Refresh：
+    /// Mode E 中将同阵营友方单位的血条颜色覆盖为绿色
+    /// </summary>
+    [HarmonyPatch(typeof(HealthBar), "Refresh")]
+    public static class ModeEHealthBarColorPatch
+    {
+        /// <summary>友方血条绿色（鲜明的绿色，易于辨识）</summary>
+        private static readonly Color AllyHealthBarColor = new Color(0.2f, 0.9f, 0.2f, 1f);
+
+        [HarmonyPostfix]
+        public static void Postfix(HealthBar __instance, Image ___fill)
+        {
+            // 非 Mode E 时跳过
+            var inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive)
+                return;
+
+            // 获取血条绑定的 Health 目标
+            Health target = __instance.target;
+            if (target == null) return;
+
+            // 获取角色
+            CharacterMainControl character = target.TryGetCharacter();
+            if (character == null || character.IsMainCharacter) return;
+
+            // 判断是否与玩家同阵营
+            if (character.Team == inst.ModeEPlayerFaction)
+            {
+                // 同阵营友方：覆盖血条颜色为绿色
+                if (___fill != null)
+                {
+                    ___fill.color = AllyHealthBarColor;
+                }
+            }
         }
     }
 }
