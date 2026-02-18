@@ -2155,39 +2155,66 @@ namespace BossRush
                 DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
             }
             
-            // 调试快捷键 F3：测试成就弹窗
+            // 调试快捷键 F3：输出背包全部物品的详细信息（包括 Tag）
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F3))
             {
                 try
                 {
-                    DevLog("[BossRush] F3 按下，测试成就弹窗");
+                    DevLog("[BossRush] F3 按下，输出背包物品详细信息");
                     
-                    // 确保成就系统已初始化
-                    BossRushAchievementManager.Initialize();
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player == null || player.CharacterItem == null)
+                    {
+                        DevLog("[BossRush] F3: 玩家或 CharacterItem 为空");
+                        return;
+                    }
                     
-                    // 确保弹窗实例存在
-                    SteamAchievementPopup.EnsureInstance();
+                    var inventory = player.CharacterItem.Inventory;
+                    if (inventory == null)
+                    {
+                        DevLog("[BossRush] F3: 背包为空");
+                        return;
+                    }
                     
-                    // 显示测试成就弹窗
-                    var testAchievement = new BossRushAchievementDef(
-                        "test_achievement",
-                        "测试成就",
-                        "Test Achievement",
-                        "这是一个测试成就弹窗",
-                        "This is a test achievement popup",
-                        AchievementCategory.Basic,
-                        1000,
-                        1
-                    );
-                    // 使用 default.png 作为测试图标
-                    testAchievement.iconFile = "default.png";
-                    SteamAchievementPopup.Show(testAchievement);
+                    DevLog("========== 背包物品详细信息 ==========");
+                    int index = 0;
+                    foreach (var item in inventory)
+                    {
+                        if (item == null) continue;
+                        
+                        // 获取物品基本信息
+                        int typeID = item.TypeID;
+                        string displayName = item.DisplayName ?? "(无名称)";
+                        
+                        // 获取物品 Tags
+                        string tagsStr = "(无Tags)";
+                        try
+                        {
+                            var tags = item.Tags;
+                            if (tags != null && tags.Count > 0)
+                            {
+                                var tagNames = new List<string>();
+                                foreach (var tag in tags)
+                                {
+                                    if (tag != null)
+                                        tagNames.Add(tag.name);
+                                }
+                                tagsStr = string.Join(", ", tagNames.ToArray());
+                            }
+                        }
+                        catch { }
+                        
+                        DevLog(string.Format("[{0}] TypeID={1}, Name={2}, Tags=[{3}]", 
+                            index, typeID, displayName, tagsStr));
+                        index++;
+                    }
+                    DevLog("========== 共 " + index + " 个物品 ==========");
                     
-                    DevLog("[BossRush] 成就弹窗已触发");
+                    NotificationText.Push("[调试] 背包物品信息已输出到日志");
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] F3 成就弹窗测试失败: " + e.Message + "\n" + e.StackTrace);
+                    DevLog("[BossRush] F3 输出背包信息失败: " + e.Message + "\n" + e.StackTrace);
                 }
             }
             

@@ -5,6 +5,7 @@
 //   1. SetTeam 阵营保护 Patch：阻止原版防作弊逻辑篡改玩家阵营
 //   2. HealthBar 友方血条绿色 Patch：同阵营单位血条显示为绿色
 //   3. HealthBar 名字追加阵营后缀 Patch：在原版名字右边显示 " - 阵营名"
+//   4. InteractableBase.OnTimeOut Patch：拦截商人主交互，执行召唤煤球
 // ============================================================================
 
 using HarmonyLib;
@@ -35,6 +36,33 @@ namespace BossRush
                 return true;
 
             // 阻止 SetTeam(Teams.all)，保持玩家正确阵营
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Patch InteractableBase.OnTimeOut：
+    /// Mode E 中拦截神秘商人主交互，执行召唤煤球逻辑
+    /// </summary>
+    [HarmonyPatch(typeof(InteractableBase), "OnTimeOut")]
+    public static class ModeEMerchantInteractPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(InteractableBase __instance)
+        {
+            // 非 Mode E 时放行
+            var inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive)
+                return true;
+
+            // 检查是否是商人主交互
+            if (inst.ModeEMerchantMainInteract == null || __instance != inst.ModeEMerchantMainInteract)
+                return true;
+
+            // 拦截并执行召唤煤球
+            ModeEPetSpawner.SpawnPet();
+
+            // 返回 false 阻止原版 OnTimeOut 执行
             return false;
         }
     }

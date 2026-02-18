@@ -56,11 +56,13 @@ namespace BossRush
         /// <summary>
         /// 生成龙裔遗族Boss
         /// </summary>
-        public async UniTask<CharacterMainControl> SpawnDragonDescendant(Vector3 position)
+        /// <param name="position">生成位置</param>
+        /// <param name="isChildProtectionSummon">是否为孩儿护我阶段召唤（true时不加入波次追踪系统）</param>
+        public async UniTask<CharacterMainControl> SpawnDragonDescendant(Vector3 position, bool isChildProtectionSummon = false)
         {
             try
             {
-                DevLog("[DragonDescendant] 开始生成龙裔遗族Boss at " + position);
+                DevLog("[DragonDescendant] 开始生成龙裔遗族Boss at " + position + (isChildProtectionSummon ? " (孩儿护我召唤)" : ""));
                 
                 // 查找基础敌人预设
                 CharacterRandomPreset basePreset = FindQuestionMarkPreset();
@@ -74,25 +76,28 @@ namespace BossRush
                 if (basePreset == null)
                 {
                     DevLog("[DragonDescendant] [ERROR] 无法找到任何可用预设");
-                    // 通知BossRush系统生成失败，以便推进波次
-                    try
+                    // 通知BossRush系统生成失败，以便推进波次（孩儿护我召唤失败不通知）
+                    if (!isChildProtectionSummon)
                     {
-                        // 查找龙裔遗族的预设信息
-                        EnemyPresetInfo dragonPreset = null;
-                        if (enemyPresets != null)
+                        try
                         {
-                            foreach (var p in enemyPresets)
+                            // 查找龙裔遗族的预设信息
+                            EnemyPresetInfo dragonPreset = null;
+                            if (enemyPresets != null)
                             {
-                                if (p != null && p.name == DragonDescendantConfig.BOSS_NAME_KEY)
+                                foreach (var p in enemyPresets)
                                 {
-                                    dragonPreset = p;
-                                    break;
+                                    if (p != null && p.name == DragonDescendantConfig.BOSS_NAME_KEY)
+                                    {
+                                        dragonPreset = p;
+                                        break;
+                                    }
                                 }
                             }
+                            OnBossSpawnFailed(dragonPreset);
                         }
-                        OnBossSpawnFailed(dragonPreset);
+                        catch {}
                     }
-                    catch {}
                     return null;
                 }
                 
@@ -106,37 +111,48 @@ namespace BossRush
                 if (character == null)
                 {
                     DevLog("[DragonDescendant] [ERROR] 生成角色失败");
-                    // 通知BossRush系统生成失败，以便推进波次
-                    try
+                    // 通知BossRush系统生成失败，以便推进波次（孩儿护我召唤失败不通知）
+                    if (!isChildProtectionSummon)
                     {
-                        EnemyPresetInfo dragonPreset = null;
-                        if (enemyPresets != null)
+                        try
                         {
-                            foreach (var p in enemyPresets)
+                            EnemyPresetInfo dragonPreset = null;
+                            if (enemyPresets != null)
                             {
-                                if (p != null && p.name == DragonDescendantConfig.BOSS_NAME_KEY)
+                                foreach (var p in enemyPresets)
                                 {
-                                    dragonPreset = p;
-                                    break;
+                                    if (p != null && p.name == DragonDescendantConfig.BOSS_NAME_KEY)
+                                    {
+                                        dragonPreset = p;
+                                        break;
+                                    }
                                 }
                             }
+                            OnBossSpawnFailed(dragonPreset);
                         }
-                        OnBossSpawnFailed(dragonPreset);
+                        catch {}
                     }
-                    catch {}
                     return null;
                 }
                 
                 dragonDescendantInstance = character;
                 character.gameObject.name = "BossRush_DragonDescendant";
                 
-                // 关键：将龙裔遗族设置为当前Boss，以便BossRush系统能够追踪死亡事件
-                currentBoss = character;
-                
-                // 多Boss模式下，将龙裔遗族加入当前波列表
-                if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
+                // 孩儿护我召唤的龙裔不加入波次追踪系统，避免死亡时误触发下一波
+                if (!isChildProtectionSummon)
                 {
-                    currentWaveBosses.Add(character);
+                    // 关键：将龙裔遗族设置为当前Boss，以便BossRush系统能够追踪死亡事件
+                    currentBoss = character;
+                    
+                    // 多Boss模式下，将龙裔遗族加入当前波列表
+                    if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
+                    {
+                        currentWaveBosses.Add(character);
+                    }
+                }
+                else
+                {
+                    DevLog("[DragonDescendant] 孩儿护我召唤：跳过波次追踪系统注册");
                 }
                 
                 // 为该角色创建独立的预设副本，避免修改原版预设
@@ -193,16 +209,28 @@ namespace BossRush
                 // 设置AI仇恨
                 SetupAIAggro(character);
                 
-                // 订阅死亡事件（使用实例事件）
-                if (character.Health != null)
+                // 孩儿护我召唤的龙裔：跳过死亡事件订阅和波次追踪，但保留掉落系统
+                // 这些龙裔的死亡由龙王的OnDescendantDeath处理，不走BossRush标准流程
+                if (!isChildProtectionSummon)
                 {
-                    character.Health.OnDeadEvent.AddListener(OnDragonDescendantDeath);
+                    // 订阅死亡事件（使用实例事件）- 仅普通龙裔Boss
+                    if (character.Health != null)
+                    {
+                        character.Health.OnDeadEvent.AddListener(OnDragonDescendantDeath);
+                    }
+                    
+                    // 注册龙套装效果（火焰伤害免疫）- 仅普通龙裔Boss
+                    RegisterDragonDescendantSetBonus();
+                    
+                    DevLog("[DragonDescendant] 龙裔遗族Boss生成完成");
+                    ShowMessage(L10n.T("龙裔遗族 出现了！", "Dragon Descendant has appeared!"));
+                }
+                else
+                {
+                    DevLog("[DragonDescendant] 孩儿护我召唤的龙裔生成完成（跳过波次追踪，保留掉落）");
                 }
                 
-                // 注册龙套装效果（火焰伤害免疫）
-                RegisterDragonDescendantSetBonus();
-                
-                // 记录 Boss 生成时间和原始掉落数量（用于掉落随机化）
+                // 记录 Boss 生成时间和原始掉落数量（用于掉落随机化）- 所有龙裔都有掉落
                 try
                 {
                     bossSpawnTimes[character] = Time.time + 1f;
@@ -214,15 +242,12 @@ namespace BossRush
                     // 关键：订阅 Boss 的掉落事件（使用lambda捕获Boss引用）
                     character.BeforeCharacterSpawnLootOnDead += (dmgInfo) => OnBossBeforeSpawnLoot(character, dmgInfo);
                     
-                    DevLog("[DragonDescendant] 记录 Boss 生成信息并订阅掉落事件 - 时间: " + Time.time + ", 原始掉落数量: " + originalLootCount);
+                    DevLog("[DragonDescendant] 记录 Boss 生成信息并订阅掉落事件 - 时间: " + Time.time + ", 原始掉落数量: " + originalLootCount + (isChildProtectionSummon ? " (孩儿护我召唤)" : ""));
                 }
                 catch (Exception recordEx)
                 {
                     DevLog("[DragonDescendant] [WARNING] 记录 Boss 生成信息失败: " + recordEx.Message);
                 }
-                
-                DevLog("[DragonDescendant] 龙裔遗族Boss生成完成");
-                ShowMessage(L10n.T("龙裔遗族 出现了！", "Dragon Descendant has appeared!"));
                 
                 // 返回生成的角色引用，供BossRush系统验证
                 return character;

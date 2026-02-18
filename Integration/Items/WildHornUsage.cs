@@ -157,14 +157,24 @@ namespace BossRush
                     ModBehaviour.DevLog("[WildHorn] 警告: 生成的角色缺少 AISpecialAttachment_Horse 组件");
                 }
 
-                // 修改喂食物品ID为饺子（TypeID 449）
-                ChangeHorseFeedItem(horse.gameObject);
+                // 根据配置决定是否使用狼模型
+                bool useWolfModel = ModBehaviour.Instance != null && ModBehaviour.Instance.GetUseWolfModelForWildHorn();
+                
+                if (useWolfModel)
+                {
+                    // 修改喂食物品ID为饺子（TypeID 449）- 仅狼模型时生效
+                    ChangeHorseFeedItem(horse.gameObject);
 
-                // 调整狼坐骑的骑乘位置
-                AdjustWolfRidePosition(horse.gameObject);
+                    // 调整狼坐骑的骑乘位置
+                    AdjustWolfRidePosition(horse.gameObject);
 
-                // 替换马匹模型为狼模型
-                ReplaceWithWolfModel(horse.gameObject);
+                    // 替换马匹模型为狼模型
+                    ReplaceWithWolfModel(horse.gameObject);
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[WildHorn] 配置关闭狼模型，保持原版马匹外观");
+                }
 
                 // 显示召唤成功提示（需求 2.4）
                 ShowBubbleHint(player, WildHornConfig.GetSummonSuccessHint());

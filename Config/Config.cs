@@ -56,6 +56,9 @@ namespace BossRush
 
             /// <summary>成就界面快捷键（默认L键，索引对应KeyCode枚举）</summary>
             public int achievementHotkey = (int)UnityEngine.KeyCode.L;
+
+            /// <summary>荒野号角使用狼模型替换坐骑（默认开启）</summary>
+            public bool useWolfModelForWildHorn = true;
         }
         
         #endregion
@@ -319,7 +322,13 @@ namespace BossRush
                     int loadedHotkey = (int)hotkeyResult;
                     config.achievementHotkey = loadedHotkey;
 
-                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey);
+                    // 加载荒野号角狼模型开关
+                    string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
+                    object wolfModelResult = boolLoadMethod.Invoke(null, new object[] { wolfModelKey, config.useWolfModelForWildHorn });
+                    bool loadedWolfModel = (bool)wolfModelResult;
+                    config.useWolfModelForWildHorn = loadedWolfModel;
+
+                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel);
                 }
                 else
                 {
@@ -373,6 +382,15 @@ namespace BossRush
                 if (changedKey == dragonDashKey)
                 {
                     DevLog("[BossRush] 检测到龙套装冲刺配置变更");
+                    LoadConfigFromModConfig();
+                    SaveConfigToFile();
+                }
+
+                // 荒野号角狼模型开关
+                string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
+                if (changedKey == wolfModelKey)
+                {
+                    DevLog("[BossRush] 检测到荒野号角狼模型配置变更");
                     LoadConfigFromModConfig();
                     SaveConfigToFile();
                 }
@@ -484,6 +502,23 @@ namespace BossRush
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册龙套装冲刺配置项失败: " + ex.Message);
+                }
+
+                // 荒野号角使用狼模型
+                try
+                {
+                    string wolfModelLabel = L10n.T("荒野号角：使用狼模型", "Wild Horn: Use Wolf Model");
+                    string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
+                    
+                    if (addBoolMethod != null)
+                    {
+                        addBoolMethod.Invoke(null, new object[] { ModName, wolfModelKey, wolfModelLabel, config.useWolfModelForWildHorn });
+                        DevLog("[BossRush] 荒野号角狼模型配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册荒野号角狼模型配置项失败: " + ex.Message);
                 }
 
                 // ========== 数值滑条类配置 ==========
@@ -603,7 +638,7 @@ namespace BossRush
                 {
                     DevLog("[BossRush] 注册成就界面快捷键配置项失败: " + ex.Message);
                 }
-                
+
             }
             catch (Exception ex)
             {
@@ -639,6 +674,19 @@ namespace BossRush
             }
 
             return value;
+        }
+
+        /// <summary>
+        /// 获取荒野号角是否使用狼模型
+        /// </summary>
+        /// <returns>true 使用狼模型，false 使用原版马匹模型</returns>
+        public bool GetUseWolfModelForWildHorn()
+        {
+            if (config != null)
+            {
+                return config.useWolfModelForWildHorn;
+            }
+            return true; // 默认开启
         }
         
         #endregion

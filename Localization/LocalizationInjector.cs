@@ -790,6 +790,22 @@ namespace BossRush
                 // 快递员NPC
                 { "BossRush_CourierService", L10n.T("快递服务", "Courier Service") },
                 
+                // Mode E 神秘商人分类商店
+                { "BossRush_ModeE_Shop_Title", L10n.T("神秘商人", "Mysterious Merchant") },
+                { "BossRush_ModeE_SummonPet", L10n.T("召唤煤球", "Summon Coalball") },
+                { "BossRush_ModeE_Shop_Gun", L10n.T("枪械", "Guns") },
+                { "BossRush_ModeE_Shop_Melee", L10n.T("近战武器", "Melee Weapons") },
+                { "BossRush_ModeE_Shop_Accessory", L10n.T("配件模组", "Accessories & Mods") },
+                { "BossRush_ModeE_Shop_Bullet", L10n.T("子弹", "Ammo") },
+                { "BossRush_ModeE_Shop_Helmat", L10n.T("头盔", "Helmets") },
+                { "BossRush_ModeE_Shop_Armor", L10n.T("护甲", "Armor") },
+                { "BossRush_ModeE_Shop_Backpack", L10n.T("背包", "Backpacks") },
+                { "BossRush_ModeE_Shop_Totem", L10n.T("图腾", "Totems") },
+                { "BossRush_ModeE_Shop_Mask", L10n.T("面具", "Masks") },
+                { "BossRush_ModeE_Shop_Medical", L10n.T("医疗品", "Medical") },
+                { "BossRush_ModeE_Shop_Bait", L10n.T("诱饵", "Bait") },
+                { "BossRush_ModeE_Shop_Other", L10n.T("其他", "Other") },
+                
                 // 旧版中文键（兼容）
                 { "加油！", "<color=#FFD700>加油！</color>" },
                 { "哎哟~你干嘛~", "<color=#FFD700>哎哟~你干嘛~</color>" },

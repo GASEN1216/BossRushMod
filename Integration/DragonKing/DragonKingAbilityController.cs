@@ -4453,6 +4453,7 @@ namespace BossRush
         
         /// <summary>
         /// 异步生成龙裔遗族（辅助方法，用于协程中调用异步方法）
+        /// 孩儿护我阶段召唤的龙裔不加入波次追踪系统
         /// </summary>
         private async void SpawnDescendantAsync(Vector3 position, System.Action<CharacterMainControl> callback)
         {
@@ -4461,7 +4462,8 @@ namespace BossRush
                 CharacterMainControl result = null;
                 if (ModBehaviour.Instance != null)
                 {
-                    result = await ModBehaviour.Instance.SpawnDragonDescendant(position);
+                    // 传入 isChildProtectionSummon: true，避免龙裔被加入波次追踪系统
+                    result = await ModBehaviour.Instance.SpawnDragonDescendant(position, isChildProtectionSummon: true);
                 }
                 callback?.Invoke(result);
             }

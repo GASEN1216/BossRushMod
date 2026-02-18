@@ -1318,8 +1318,41 @@ namespace BossRush
                 
                 DevLog("[BossRush] 掉落事件通过检查，开始处理Boss掉落: " + bossName);
 
+                // 检查是否是孩儿护我召唤的龙裔（不在currentWaveBosses中但在bossSpawnTimes中）
+                // 这类龙裔只需要掉落，不参与波次计数
+                bool isChildProtectionDescendant = false;
+                if (bossesPerWave > 1 && currentWaveBosses != null)
+                {
+                    // 多Boss模式：检查是否在当前波Boss列表中
+                    bool foundInWave = false;
+                    for (int i = 0; i < currentWaveBosses.Count; i++)
+                    {
+                        if (currentWaveBosses[i] == bossMain)
+                        {
+                            foundInWave = true;
+                            break;
+                        }
+                    }
+                    // 如果不在当前波列表中，且名字包含DragonDescendant，则是孩儿护我召唤的龙裔
+                    if (!foundInWave && bossName.Contains("DragonDescendant"))
+                    {
+                        isChildProtectionDescendant = true;
+                        DevLog("[BossRush] 检测到孩儿护我召唤的龙裔，跳过波次计数");
+                    }
+                }
+                else if (bossesPerWave <= 1 && currentBoss != bossMain && bossName.Contains("DragonDescendant"))
+                {
+                    // 单Boss模式：如果不是当前Boss且是龙裔，则是孩儿护我召唤的
+                    isChildProtectionDescendant = true;
+                    DevLog("[BossRush] 检测到孩儿护我召唤的龙裔（单Boss模式），跳过波次计数");
+                }
+
                 // 双保险：基于掉落事件再做一次死亡判定（HandleBossDeath 内部会去重）
-                HandleBossDeath(bossMain, dmgInfo);
+                // 孩儿护我召唤的龙裔跳过此调用，避免错误递增波次计数
+                if (!isChildProtectionDescendant)
+                {
+                    HandleBossDeath(bossMain, dmgInfo);
+                }
 
                 // 注意：龙裔遗族特殊掉落已移至 RandomizeBossLoot_LootAndRewards 方法中
                 // 在掉落箱创建并填充物品后，直接添加到掉落箱的Inventory中

@@ -296,6 +296,11 @@ namespace BossRush
                 ModeESpawnAllBosses();
                 #pragma warning restore CS4014
 
+                // 生成神秘商人 NPC（fire-and-forget）
+                #pragma warning disable CS4014
+                SpawnModeEMerchant();
+                #pragma warning restore CS4014
+
                 ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
                     "Faction Battle activated! Faction: " + faction.ToString()
@@ -399,6 +404,9 @@ namespace BossRush
                     catch { }
                 }
 
+                // 清理神秘商人 NPC
+                CleanupModeEMerchant();
+
                 // 重置所有状态（modeEActive 已在清理前置为 false）
                 modeEPlayerFaction = Teams.player;
                 modeEAliveEnemies.Clear();
@@ -414,6 +422,10 @@ namespace BossRush
                 // 重置龙裔/龙王全局限制标记
                 modeEDragonDescendantSpawned = false;
                 modeEDragonKingSpawned = false;
+
+                // 重置狼阵营 Boss 计数
+                modeEWolfBossCount = 0;
+                modeEWolfBossAssigned = 0;
 
                 // 清理虚拟 CharacterSpawnerRoot（BossLiveMapMod 集成）
                 CleanupModeEVirtualSpawnerRoot();

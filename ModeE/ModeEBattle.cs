@@ -46,6 +46,12 @@ namespace BossRush
 
         #region Mode E Boss 生成方法
 
+        /// <summary>狼阵营可用的不重复 Boss 预设数量（在 ModeESpawnAllBosses 开始时预计算）</summary>
+        private int modeEWolfBossCount = 0;
+
+        /// <summary>狼阵营已分配的 Boss 刷怪点计数（每分配一个 Boss 递增，超过 modeEWolfBossCount 后出小怪）</summary>
+        private int modeEWolfBossAssigned = 0;
+
         /// <summary>
         /// 在所有阵营的刷怪点一次性生成全部 Boss
         /// 按距离玩家由近到远分批生成，每批之间让出一帧，避免卡顿
@@ -89,6 +95,24 @@ namespace BossRush
                     float distB = Vector3.SqrMagnitude(b.pos - playerPos);
                     return distA.CompareTo(distB);
                 });
+
+                // 预计算狼阵营可用的不重复 Boss 数量（用于"先刷完所有 Boss 再出小怪"逻辑）
+                modeEWolfBossCount = 0;
+                modeEWolfBossAssigned = 0;
+                if (modeDBossPool != null)
+                {
+                    int wolfTeam = (int)Teams.wolf;
+                    for (int i = 0; i < modeDBossPool.Count; i++)
+                    {
+                        EnemyPresetInfo boss = modeDBossPool[i];
+                        if (boss == null || string.IsNullOrEmpty(boss.name)) continue;
+                        if (boss.team != wolfTeam) continue;
+                        // 排除龙皇（Mode E 完全排除）
+                        if (IsDragonKingPreset(boss)) continue;
+                        modeEWolfBossCount++;
+                    }
+                    DevLog("[ModeE] 狼阵营可用 Boss 预设数量: " + modeEWolfBossCount);
+                }
 
                 // 分批生成：每个boss让出一帧，分散到多帧执行，避免开局卡顿
                 for (int i = 0; i < spawnTasks.Count; i++)
@@ -166,13 +190,61 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 从小怪池中获取属于指定阵营的加权随机小怪预设（高血量优先但保持随机性）
+        /// 权重 = baseHealth，血量越高被选中概率越大，但不保证每次都是最高血量的
+        /// 用于狼阵营混入小怪时优先选择较强的小怪
+        /// </summary>
+        private EnemyPresetInfo GetWeightedMinionPresetForFaction(Teams faction)
+        {
+            if (modeDMinionPool == null || modeDMinionPool.Count == 0) return null;
+
+            int targetTeam = (int)faction;
+
+            // 筛选该阵营的小怪
+            presetFilterCache.Clear();
+            for (int i = 0; i < modeDMinionPool.Count; i++)
+            {
+                EnemyPresetInfo minion = modeDMinionPool[i];
+                if (minion == null || string.IsNullOrEmpty(minion.name)) continue;
+                if (minion.team != targetTeam) continue;
+                presetFilterCache.Add(minion);
+            }
+
+            if (presetFilterCache.Count == 0) return null;
+            if (presetFilterCache.Count == 1) return presetFilterCache[0];
+
+            // 按 baseHealth 加权随机：血量越高权重越大
+            float totalWeight = 0f;
+            for (int i = 0; i < presetFilterCache.Count; i++)
+            {
+                float w = Mathf.Max(presetFilterCache[i].baseHealth, 1f);
+                totalWeight += w;
+            }
+
+            float roll = UnityEngine.Random.Range(0f, totalWeight);
+            float cumulative = 0f;
+            for (int i = 0; i < presetFilterCache.Count; i++)
+            {
+                cumulative += Mathf.Max(presetFilterCache[i].baseHealth, 1f);
+                if (roll <= cumulative)
+                {
+                    return presetFilterCache[i];
+                }
+            }
+
+            // 兜底（浮点精度问题时返回最后一个）
+            return presetFilterCache[presetFilterCache.Count - 1];
+        }
+
+        /// <summary>
         /// 生成单个 Mode E Boss（从 ModeESpawnAllBosses 分批调用）
         /// 
         /// 阵营匹配设计：
         ///   Boss 的阵营由其预设中的 EnemyPresetInfo.team 决定（来自游戏原版 CharacterRandomPreset.team）。
         ///   每个阵营的刷怪点只从该阵营的 Boss 池中抽取，不随机覆盖阵营。
-        ///   如果该阵营没有 Boss，则从该阵营的小怪池补充。
-        ///   如果该阵营连小怪都没有，则从全局 Boss 池随机抽取并用 SetTeam 覆盖（兜底）。
+        ///   如果该阵营没有 Boss，则从该阵营的小怪池补充（提升为Boss，克隆预设设 showName=true）。
+        ///   如果该阵营连小怪都没有，直接跳过该刷怪点（不从全局池抽取，避免阵营混乱）。
+        ///   狼阵营特殊：先刷完所有 wolf Boss，剩余刷怪点才出小怪。
         /// </summary>
         private void SpawnSingleModeEBoss(Teams faction, Vector3 spawnPoint)
         {
@@ -181,81 +253,101 @@ namespace BossRush
                 EnemyPresetInfo bossPreset = null;
                 bool isThisDragonDescendant = false;
                 bool isBoss = true;
+                // 标记：该敌人是否为小怪被提升为 Boss（需要在生成后克隆预设设 showName）
+                bool isMinionPromotedToBoss = false;
 
-                // 第1优先：从该阵营的 Boss 池中抽取
-                bossPreset = GetBossPresetForFaction(faction);
+                // 狼阵营特殊逻辑：先把所有 wolf Boss 刷完，剩余刷怪点出小怪（提升为Boss）
+                if (faction == Teams.wolf)
+                {
+                    if (modeEWolfBossAssigned < modeEWolfBossCount)
+                    {
+                        // 还有 Boss 没刷完，优先出 Boss
+                        bossPreset = GetBossPresetForFaction(faction);
+                        if (bossPreset != null)
+                        {
+                            modeEWolfBossAssigned++;
+                            DevLog("[ModeE] 狼阵营出Boss (" + modeEWolfBossAssigned + "/" + modeEWolfBossCount + "): " + bossPreset.displayName);
+                        }
+                    }
 
-                // 第2优先：该阵营没有 Boss，从该阵营的小怪池补充
+                    // Boss 已刷完或 Boss 池为空：出小怪（提升为Boss）
+                    if (bossPreset == null)
+                    {
+                        bossPreset = GetWeightedMinionPresetForFaction(faction);
+                        if (bossPreset != null)
+                        {
+                            // 小怪提升为 Boss：isBoss 保持 true（走 Boss 配装流程），标记需要克隆预设
+                            isMinionPromotedToBoss = true;
+                            DevLog("[ModeE] 狼阵营Boss已刷完，出小怪(提升为Boss): " + bossPreset.displayName);
+                        }
+                    }
+                }
+                else
+                {
+                    // 非狼阵营：原有逻辑，优先 Boss 池
+                    bossPreset = GetBossPresetForFaction(faction);
+                }
+
+                // 第2优先：该阵营没有 Boss（非狼阵营）或狼阵营连小怪都没有，从该阵营的小怪池补充（提升为Boss）
                 if (bossPreset == null)
                 {
                     DevLog("[ModeE] 阵营 " + faction + " 无匹配Boss，尝试小怪池");
                     bossPreset = GetMinionPresetForFaction(faction);
-                    if (bossPreset != null) isBoss = false;
+                    if (bossPreset != null)
+                    {
+                        isMinionPromotedToBoss = true;
+                    }
                 }
 
-                // 第3优先（兜底）：该阵营连小怪都没有，从全局 Boss 池随机抽取
+                // 该阵营无任何匹配预设（Boss池和小怪池都为空），直接跳过该刷怪点
+                // 不从全局 Boss 池抽取，避免混入其他阵营的 Boss 导致阵营混乱
                 if (bossPreset == null)
                 {
-                    DevLog("[ModeE] [WARNING] 阵营 " + faction + " 无任何匹配预设，从全局池兜底");
-                    for (int attempt = 0; attempt < 10; attempt++)
-                    {
-                        bossPreset = GetRandomBossPreset();
-                        if (bossPreset == null) continue;
-                        if (IsDragonDescendantPreset(bossPreset) && modeEDragonDescendantSpawned) { bossPreset = null; continue; }
-                        if (IsDragonKingPreset(bossPreset)) { bossPreset = null; continue; }
-                        break;
-                    }
-                    isBoss = true;
+                    DevLog("[ModeE] [WARNING] 阵营 " + faction + " 无任何匹配预设（Boss池+小怪池均为空），跳过该刷怪点");
+                    return;
                 }
 
                 // 记录龙裔标记（龙皇在 Mode E 中已被完全排除，无需追踪）
-                if (bossPreset != null)
-                {
-                    isThisDragonDescendant = IsDragonDescendantPreset(bossPreset);
-                    if (isThisDragonDescendant) modeEDragonDescendantSpawned = true;
-                }
+                isThisDragonDescendant = IsDragonDescendantPreset(bossPreset);
+                if (isThisDragonDescendant) modeEDragonDescendantSpawned = true;
 
-                if (bossPreset != null)
-                {
-                    Vector3 spawnPos = GetSafeBossSpawnPosition(spawnPoint);
-                    modeETotalSpawnExpected++;
+                Vector3 spawnPos = GetSafeBossSpawnPosition(spawnPoint);
+                modeETotalSpawnExpected++;
 
-                    Teams capturedFaction = faction;
+                Teams capturedFaction = faction;
 
-                    // skipDragonDescendant：防止 SpawnEnemyCore 重试时意外生成额外的龙裔
-                    // skipDragonKing：Mode E 完全排除龙皇，始终跳过
-                    bool skipDragon = !isThisDragonDescendant && modeEDragonDescendantSpawned;
-                    bool skipKing = true; // Mode E 完全排除龙皇
+                // skipDragonDescendant：防止 SpawnEnemyCore 重试时意外生成额外的龙裔
+                // skipDragonKing：Mode E 完全排除龙皇，始终跳过
+                bool skipDragon = !isThisDragonDescendant && modeEDragonDescendantSpawned;
+                bool skipKing = true; // Mode E 完全排除龙皇
 
-                    // 捕获龙裔标记，用于生成失败时回退
-                    bool capturedIsDD = isThisDragonDescendant;
+                // 捕获龙裔标记，用于生成失败时回退
+                bool capturedIsDD = isThisDragonDescendant;
 
-                    DevLog("[ModeE] 阵营 " + faction + " 生成: " + bossPreset.displayName + " (预设team=" + bossPreset.team + ", isBoss=" + isBoss + ")");
+                DevLog("[ModeE] 阵营 " + faction + " 生成: " + bossPreset.displayName + " (预设team=" + bossPreset.team + ", isBoss=" + isBoss + ", promoted=" + isMinionPromotedToBoss + ")");
 
-                    SpawnEnemyCore(
-                        bossPreset,
-                        spawnPos,
-                        isBoss,
-                        isActiveCheck: () => modeEActive,
-                        onSpawned: (ctx) => OnModeEEnemySpawned(ctx, capturedFaction),
-                        onFailed: () =>
+                // 捕获小怪提升标记，传递给生成回调
+                bool capturedPromoted = isMinionPromotedToBoss;
+
+                SpawnEnemyCore(
+                    bossPreset,
+                    spawnPos,
+                    isBoss,
+                    isActiveCheck: () => modeEActive,
+                    onSpawned: (ctx) => OnModeEEnemySpawned(ctx, capturedFaction, capturedPromoted),
+                    onFailed: () =>
+                    {
+                        // 龙裔生成失败时回退全局标记，允许后续刷怪点再次尝试
+                        if (capturedIsDD)
                         {
-                            // 龙裔生成失败时回退全局标记，允许后续刷怪点再次尝试
-                            if (capturedIsDD)
-                            {
-                                modeEDragonDescendantSpawned = false;
-                                DevLog("[ModeE] 龙裔遗族生成失败，回退全局标记");
-                            }
-                        },
-                        waveIndex: 1,
-                        skipDragonDescendant: skipDragon,
-                        skipDragonKing: skipKing
-                    );
-                }
-                else
-                {
-                    DevLog("[ModeE] [WARNING] 阵营 " + faction + " 无法获取任何预设，跳过");
-                }
+                            modeEDragonDescendantSpawned = false;
+                            DevLog("[ModeE] 龙裔遗族生成失败，回退全局标记");
+                        }
+                    },
+                    waveIndex: 1,
+                    skipDragonDescendant: skipDragon,
+                    skipDragonKing: skipKing
+                );
             }
             catch (Exception e)
             {
@@ -267,11 +359,23 @@ namespace BossRush
         /// Mode E 敌人生成成功后的回调：设置阵营、命名、AI配置、死亡注册
         /// 阵营来自 Boss 预设的原始 team，通过 SetTeam 确保运行时一致性
         /// </summary>
-        private void OnModeEEnemySpawned(EnemySpawnContext ctx, Teams faction)
+        /// <param name="promotedToBoss">是否为小怪被提升为 Boss（需要克隆预设设 showName=true）</param>
+        private void OnModeEEnemySpawned(EnemySpawnContext ctx, Teams faction, bool promotedToBoss = false)
         {
             try
             {
                 CharacterMainControl character = ctx.character;
+
+                // 小怪提升为 Boss：克隆 characterPreset 副本，设置 showName=true 使血条显示名字
+                // 参考龙裔/龙王的做法：Instantiate 创建独立副本，避免修改原版 ScriptableObject
+                if (promotedToBoss && character.characterPreset != null)
+                {
+                    CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(character.characterPreset);
+                    customPreset.showName = true;
+                    customPreset.showHealthBar = true;
+                    character.characterPreset = customPreset;
+                    DevLog("[ModeE] 小怪提升为Boss，已克隆预设并设置 showName=true: " + ctx.preset.displayName);
+                }
 
                 // 命名
                 character.gameObject.name = "ModeE_" + faction + "_" + ctx.preset.displayName;
@@ -290,6 +394,9 @@ namespace BossRush
                 {
                     ai.forceTracePlayerDistance = 0f;
                 }
+
+                // Mode E 基础血量提升：所有敌人血量 × 1.5
+                ApplyModeEBaseHealthBoost(character);
 
                 // 加入存活敌人列表
                 modeEAliveEnemies.Add(character);
@@ -635,6 +742,48 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [WARNING] CleanupModeEVirtualSpawnerRoot 失败: " + e.Message);
+            }
+        }
+
+        #endregion
+
+        #region Mode E 基础血量提升
+
+        /// <summary>
+        /// Mode E 基础血量提升：非狼阵营敌人血量 × 1.5
+        /// 在敌人生成时一次性应用，不影响后续阵营死亡缩放机制
+        /// 狼阵营（玩家可能加入的阵营）不应用此提升
+        /// </summary>
+        private void ApplyModeEBaseHealthBoost(CharacterMainControl character)
+        {
+            try
+            {
+                // 狼阵营不应用血量提升
+                if (character.Team == Teams.wolf) return;
+
+                var characterItem = character.CharacterItem;
+                if (characterItem == null) return;
+
+                Stat maxHealthStat = characterItem.GetStat("MaxHealth");
+                if (maxHealthStat == null) return;
+
+                // 增加 50% 血量（等效于 × 1.5）
+                float hpBoost = maxHealthStat.BaseValue * 0.5f;
+                Modifier boostMod = new Modifier(ModifierType.Add, hpBoost, this);
+                maxHealthStat.AddModifier(boostMod);
+
+                // 同步当前血量到新上限
+                Health health = character.Health;
+                if (health != null)
+                {
+                    health.CurrentHealth = maxHealthStat.Value;
+                }
+
+                DevLog("[ModeE] 基础血量提升: " + character.gameObject.name + " HP × 1.5 (+" + hpBoost + ")");
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] ApplyModeEBaseHealthBoost 失败: " + e.Message);
             }
         }
 

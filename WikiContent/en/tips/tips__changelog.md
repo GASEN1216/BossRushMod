@@ -2,6 +2,12 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.18 21:30
+- Faction Battle now has a merchant selling various weapons/equipment and summon/hire Coalball pets
+- Reduced Lion Head boss spawn count for Wolf faction
+- Added config option for Wild Horn: use wolf model
+- Fixed bug where Dragon Descendants summoned by Dragon Emperor would spawn in the next wave
+
 ### 2026.2.16 19:30
 - Optimized Mode E code
 - Lone Wolf start now comes with 3 smoke grenades and 3 cardboard boxes
