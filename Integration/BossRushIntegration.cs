@@ -167,6 +167,7 @@ namespace BossRush
                 AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
                 FactionFlagConfig.RegisterConfigurators();  // 营旗配置器（Mode E）
+                RespawnItemConfig.RegisterConfigurators();  // 刷怪消耗品配置器（Mode E）
                 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
@@ -824,6 +825,7 @@ namespace BossRush
             DingdangDrawingConfig.InjectLocalization();  // 叮当涂鸦物品本地化
             WildHornConfig.InjectLocalization();  // 荒野号角物品本地化
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
+            RespawnItemConfig.InjectLocalization();  // 刷怪消耗品本地化（Mode E）
             FactionFlagConfig.InjectIntoShops();  // 将营旗注入到售货机
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化

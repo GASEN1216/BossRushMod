@@ -509,6 +509,9 @@ namespace BossRush
 
                 // 标记该阵营需要延迟缩放（不立即执行，等批量定时器触发）
                 modeEPendingScalingFactions.Add(enemyFaction);
+
+                // 累计击杀计数，每10次自动发放挑衅烟雾弹
+                CheckRespawnItemAutoGrant();
             }
             catch (Exception e)
             {

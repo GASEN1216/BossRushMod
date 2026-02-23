@@ -467,7 +467,13 @@ namespace BossRush
                     else
                         otherShop.entries.Clear();
 
-                    int[] otherItemIds = new int[] { 388 };
+                    // 388=原版物品，500027=挑衅烟雾弹，500028=混沌引爆器
+                    int[] otherItemIds = new int[]
+                    {
+                        388,
+                        RespawnItemConfig.TAUNT_SMOKE_TYPE_ID,
+                        RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID
+                    };
                     foreach (int id in otherItemIds)
                     {
                         try

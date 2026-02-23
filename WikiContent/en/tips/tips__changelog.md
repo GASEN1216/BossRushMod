@@ -2,6 +2,11 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.23 20:30
+- Faction Battle now spawns Courier Awen at the spawn point
+- Faction Battle merchant's "Other" shop now sells Taunt Smoke Grenade and Chaos Detonator
+- Faction Battle awards one Taunt Smoke Grenade for every 10 bosses killed
+
 ### 2026.2.18 21:30
 - Faction Battle now has a merchant selling various weapons/equipment and summon/hire Coalball pets
 - Reduced Lion Head boss spawn count for Wolf faction

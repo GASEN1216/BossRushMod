@@ -433,6 +433,9 @@ namespace BossRush
                 modeEWolfBossCount = 0;
                 modeEWolfBossAssigned = 0;
 
+                // 重置刷怪消耗品击杀计数器
+                modeERespawnKillCounter = 0;
+
                 // 清理虚拟 CharacterSpawnerRoot（BossLiveMapMod 集成）
                 CleanupModeEVirtualSpawnerRoot();
 
