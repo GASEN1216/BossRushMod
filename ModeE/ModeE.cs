@@ -301,6 +301,9 @@ namespace BossRush
                 SpawnModeEMerchant();
                 #pragma warning restore CS4014
 
+                // 在玩家出生点生成快递员阿稳（站在原地不移动）
+                SpawnCourierNPC();
+
                 ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
                     "Faction Battle activated! Faction: " + faction.ToString()
@@ -406,6 +409,9 @@ namespace BossRush
 
                 // 清理神秘商人 NPC
                 CleanupModeEMerchant();
+
+                // 清理快递员阿稳 NPC
+                DestroyCourierNPC();
 
                 // 重置所有状态（modeEActive 已在清理前置为 false）
                 modeEPlayerFaction = Teams.player;

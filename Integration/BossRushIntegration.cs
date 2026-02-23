@@ -1280,7 +1280,7 @@ namespace BossRush
             }
             
             // 检查是否已进入 BossRush 模式（玩家可能在等待期间启动了 BossRush）
-            if (IsActive || IsModeDActive || IsBossRushArenaActive)
+            if (IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive)
             {
                 DevLog("[CourierNPC] 已进入 BossRush 模式，跳过普通模式快递员生成");
                 yield break;

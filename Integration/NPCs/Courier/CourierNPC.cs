@@ -231,21 +231,39 @@ namespace BossRush
             Vector3 spawnPos;
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             
-            // 检测是否为BossRush模式（包括ModeD和竞技场激活状态）
-            bool isBossRushMode = IsActive || IsModeDActive || IsBossRushArenaActive;
-            DevLog("[CourierNPC] 模式检测: IsActive=" + IsActive + ", IsModeDActive=" + IsModeDActive + ", IsBossRushArenaActive=" + IsBossRushArenaActive + " => BossRush模式=" + isBossRushMode);
+            // 检测是否为BossRush模式（包括ModeD、ModeE和竞技场激活状态）
+            bool isBossRushMode = IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive;
+            DevLog("[CourierNPC] 模式检测: IsActive=" + IsActive + ", IsModeDActive=" + IsModeDActive + ", IsBossRushArenaActive=" + IsBossRushArenaActive + ", IsModeEActive=" + IsModeEActive + " => BossRush模式=" + isBossRushMode);
             
             if (isBossRushMode)
             {
-                // BossRush模式：使用竞技场固定位置
-                spawnPos = GetBossRushArenaSpawnPosition(currentSceneName);
-                DevLog("[CourierNPC] BossRush模式，场景: " + currentSceneName + ", 位置: " + spawnPos);
-                
-                // 检查是否获取到有效位置
-                if (spawnPos == Vector3.zero)
+                if (IsModeEActive)
                 {
-                    DevLog("[CourierNPC] BossRush模式无法获取刷新点，跳过生成");
-                    return;
+                    // Mode E：在玩家当前位置生成快递员
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player != null)
+                    {
+                        spawnPos = player.transform.position;
+                        DevLog("[CourierNPC] Mode E 模式，在玩家出生点生成，位置: " + spawnPos);
+                    }
+                    else
+                    {
+                        DevLog("[CourierNPC] Mode E 模式但玩家为空，跳过生成");
+                        return;
+                    }
+                }
+                else
+                {
+                    // BossRush模式：使用竞技场固定位置
+                    spawnPos = GetBossRushArenaSpawnPosition(currentSceneName);
+                    DevLog("[CourierNPC] BossRush模式，场景: " + currentSceneName + ", 位置: " + spawnPos);
+                    
+                    // 检查是否获取到有效位置
+                    if (spawnPos == Vector3.zero)
+                    {
+                        DevLog("[CourierNPC] BossRush模式无法获取刷新点，跳过生成");
+                        return;
+                    }
                 }
             }
             else
@@ -311,8 +329,14 @@ namespace BossRush
                 CourierMovement movement = courierNPCInstance.AddComponent<CourierMovement>();
                 DevLog("[CourierNPC] 移动组件添加成功");
                 
-                // 设置移动模式：普通模式使用 NPCSpawnConfig 刷新点，BossRush模式使用 Boss 刷新点
-                if (!isBossRushMode)
+                // 设置移动模式
+                if (IsModeEActive)
+                {
+                    // Mode E：设置固定模式，快递员站在玩家出生点不移动
+                    movement.SetStationary(true);
+                    DevLog("[CourierNPC] Mode E 模式，已设置固定模式，快递员将站在原地");
+                }
+                else if (!isBossRushMode)
                 {
                     movement.SetNormalMode(true, currentSceneName);
                     DevLog("[CourierNPC] 设置为普通模式，使用场景 " + currentSceneName + " 的刷新点");
@@ -549,6 +573,17 @@ namespace BossRush
         private Animator animator;
         private Transform playerTransform;
         private bool hasAnimator = false;
+        
+        // Mode E 固定模式标志（站在原地，IsTalking 始终为 true）
+        private bool isStationary = false;
+        
+        /// <summary>
+        /// 设置固定模式（Mode E 使用，IsTalking 始终保持 true）
+        /// </summary>
+        public void SetStationary(bool stationary)
+        {
+            isStationary = stationary;
+        }
         
         // 名字标签
         private GameObject nameTagObject;
@@ -1096,6 +1131,9 @@ namespace BossRush
         /// </summary>
         public void StopTalking()
         {
+            // Mode E 固定模式下保持 IsTalking = true，不允许关闭
+            if (isStationary) return;
+            
             if (hasAnimator)
             {
                 SafeSetBool(hash_IsTalking, false);
@@ -1159,10 +1197,14 @@ namespace BossRush
         {
             if (hasAnimator)
             {
-                SafeSetBool(hash_IsTalking, false);
+                // Mode E 固定模式下保持 IsTalking = true
+                if (!isStationary)
+                {
+                    SafeSetBool(hash_IsTalking, false);
+                }
                 SafeSetBool(hash_IsBossFight, false);
                 SafeSetBool(hash_IsCompleted, false);
-                ModBehaviour.DevLog("[CourierNPC] 重置状态");
+                ModBehaviour.DevLog("[CourierNPC] 重置状态" + (isStationary ? "（固定模式，保持IsTalking）" : ""));
             }
         }
     }
@@ -1235,6 +1277,23 @@ namespace BossRush
         
         // 延迟恢复移动的协程引用（用于取消）
         private Coroutine delayedResumeCoroutine = null;
+        
+        // Mode E 固定模式（站在原地不移动）
+        private bool isStationary = false;
+        private float stationaryFaceTimer = 0f;
+        
+        /// <summary>
+        /// 设置固定模式（Mode E 使用，快递员站在原地不移动）
+        /// </summary>
+        public void SetStationary(bool stationary)
+        {
+            isStationary = stationary;
+            if (stationary)
+            {
+                StopMove();
+                ModBehaviour.DevLog("[CourierNPC] 已设置为固定模式，不会移动");
+            }
+        }
         
         /// <summary>
         /// 设置普通模式（非BossRush模式）
@@ -1411,6 +1470,18 @@ namespace BossRush
             isInitialized = true;
             ModBehaviour.DevLog("[CourierNPC] 移动系统初始化完成（使用 A* Seeker）");
             
+            // 固定模式下设置 IsTalking 并跳过寻路测试
+            if (isStationary)
+            {
+                if (controller != null)
+                {
+                    controller.SetStationary(true);
+                    controller.StartTalking();
+                }
+                ModBehaviour.DevLog("[CourierNPC] 固定模式，已设置 IsTalking=true，跳过寻路测试");
+                yield break;
+            }
+            
             // 立即尝试一次寻路测试
             yield return new WaitForSeconds(0.5f);
             if (seeker != null && AstarPath.active != null)
@@ -1481,6 +1552,13 @@ namespace BossRush
         void Update()
         {
             if (!isInitialized) return;
+            
+            // Mode E 固定模式：跳过所有移动逻辑，定期面向玩家
+            if (isStationary)
+            {
+                FacePlayer();
+                return;
+            }
             
             // 快递服务期间停止所有移动逻辑
             if (isInService)
