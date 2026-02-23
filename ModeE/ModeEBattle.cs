@@ -366,15 +366,21 @@ namespace BossRush
             {
                 CharacterMainControl character = ctx.character;
 
-                // 小怪提升为 Boss：克隆 characterPreset 副本，设置 showName=true 使血条显示名字
-                // 参考龙裔/龙王的做法：Instantiate 创建独立副本，避免修改原版 ScriptableObject
-                if (promotedToBoss && character.characterPreset != null)
+                // 克隆 characterPreset 副本，避免修改原版 ScriptableObject
+                // 1) 统一设置 aiCombatFactor=1，使 AI 互相攻击时伤害不被缩放
+                // 2) 小怪提升为 Boss 时额外设置 showName/showHealthBar
+                if (character.characterPreset != null)
                 {
                     CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(character.characterPreset);
-                    customPreset.showName = true;
-                    customPreset.showHealthBar = true;
+                    // AI打AI伤害系数统一为1，确保各阵营Boss互殴时伤害公平
+                    customPreset.aiCombatFactor = 1f;
+                    if (promotedToBoss)
+                    {
+                        customPreset.showName = true;
+                        customPreset.showHealthBar = true;
+                    }
                     character.characterPreset = customPreset;
-                    DevLog("[ModeE] 小怪提升为Boss，已克隆预设并设置 showName=true: " + ctx.preset.displayName);
+                    DevLog("[ModeE] 已克隆预设并设置 aiCombatFactor=1" + (promotedToBoss ? ", showName=true" : "") + ": " + ctx.preset.displayName);
                 }
 
                 // 命名
