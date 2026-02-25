@@ -2,6 +2,9 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.25 20:30
+- Infinite Hell: progressive milestone reward every 100 waves (wave 100: 1 Crown + 10M cash, wave 200: 2 Crowns + 20M, wave 300: 4 Crowns + 40M, doubling each time)
+
 ### 2026.2.23 23:30
 - Faction Battle: all bosses now have AI combat factor set to 1
 - Infinite Hell: player auto-attracts nearby cash drops; wave 100 bonus now includes an extra 10 million cash

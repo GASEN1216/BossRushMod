@@ -18,7 +18,11 @@
 
 ### Extra Rewards
 - **Every 5 waves**: one extra reward drop near the signpost
-- **At wave 100**: a one-time special reward drop + **10 million bonus cash** near the signpost
+- **Every 100 waves**: progressive milestone reward (crowns + cash), doubling each time:
+  - Wave 100: 1 Crown + 10 million cash
+  - Wave 200: 2 Crowns + 20 million cash
+  - Wave 300: 4 Crowns + 40 million cash
+  - And so on...
 
 ### Tips
 - **If you're lucky enough to spawn bosses from different factions**, a little strategy can let you reap the benefits of their infighting
