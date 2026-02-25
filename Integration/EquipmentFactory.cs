@@ -879,6 +879,10 @@ namespace BossRush
                 // 设置 Layer
                 SetLayerRecursively(runtimeCopy, CHARACTER_LAYER);
                 
+                // [Bug修复] 将模板移到极远处，防止装备模型（如龙王之冕）在场景中被渲染
+                // Instantiate 出来的副本会被游戏装备系统放到正确位置（挂载到角色骨骼），不受影响
+                runtimeCopy.transform.position = new Vector3(0f, -9999f, 0f);
+                
                 // 不要销毁，让它作为 prefab 使用
                 UnityEngine.Object.DontDestroyOnLoad(runtimeCopy);
                 
