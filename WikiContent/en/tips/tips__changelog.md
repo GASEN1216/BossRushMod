@@ -2,6 +2,11 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.26 00:30
+- Boss pool config now includes Infinite Hell boss factor settings
+- Fixed Dragon Emperor phase 3 lift affecting other enemies
+- Faction Battle Farm Town now has more bosses
+
 ### 2026.2.25 20:30
 - Infinite Hell: progressive milestone reward every 100 waves (wave 100: 1 Crown + 10M cash, wave 200: 2 Crowns + 20M, wave 300: 4 Crowns + 40M, doubling each time)
 
