@@ -2,6 +2,10 @@
  
 ![Changelog](TODO.png)
 
+### 2026.2.23 23:30
+- Faction Battle: all bosses now have AI combat factor set to 1
+- Infinite Hell: player auto-attracts nearby cash drops; wave 100 bonus now includes an extra 10 million cash
+
 ### 2026.2.23 20:30
 - Faction Battle now spawns Courier Awen at the spawn point
 - Faction Battle merchant's "Other" shop now sells Taunt Smoke Grenade and Chaos Detonator

@@ -1683,7 +1683,7 @@ namespace BossRush
             {
                 infiniteHellWaveIndex = 0;
                 infiniteHellCashPool = 0L;
-                infiniteHell100WaveRewardGiven = false;
+                infiniteHellMilestoneRewardTier = 0;
 
                 try
                 {
@@ -1748,6 +1748,12 @@ namespace BossRush
             if (active)
             {
                 DragonBreathBuffHandler.Subscribe();
+            }
+            
+            // 模式结束时清理现金磁铁飞行状态
+            if (!active)
+            {
+                ClearCashMagnetState();
             }
         }
         
@@ -2014,6 +2020,9 @@ namespace BossRush
             
             // 龙套装冲刺检测
             UpdateDragonDash();
+            
+            // 无间炼狱现金磁铁吸附更新
+            UpdateCashMagnet();
             
             // 检测 Boss 池窗口快捷键（Ctrl+F10）
             // 注：热键检测使用 GetKeyDown，必须每帧检测，否则会丢失按键
@@ -2605,6 +2614,9 @@ namespace BossRush
             // 场景切换时清理好感度系统UI缓存
             AffinityUIManager.OnSceneUnload();
             AffinityManager.OnSceneUnload();
+            
+            // 场景切换时清理现金磁铁飞行状态
+            try { ClearCashMagnetState(); } catch (System.Exception ex) { DevLog($"[CashMagnet] 场景切换清理异常: {ex.Message}"); }
             
             OnSceneLoaded_Integration(scene, mode);
         }

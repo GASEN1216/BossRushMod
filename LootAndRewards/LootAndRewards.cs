@@ -96,7 +96,8 @@ namespace BossRush
         private bool infiniteHellMode = false;
         private int infiniteHellWaveIndex = 0;
         private long infiniteHellCashPool = 0L;
-        private bool infiniteHell100WaveRewardGiven = false;
+        // 已发放的最高里程碑阶数（每100波递进，0表示尚未发放任何里程碑奖励）
+        private int infiniteHellMilestoneRewardTier = 0;
         private long infiniteHellWaveCashThisWave = 0L;
         private List<int> infiniteHellHighQualityItemPool = null;
         private bool infiniteHellHighQualityItemPoolInitialized = false;
@@ -389,43 +390,62 @@ namespace BossRush
                 }
                 catch {}
 
-                // 100 波一次性奖励（在路牌位置掉落）
+                // 每100波递进式里程碑奖励（在路牌位置掉落）
                 try
                 {
-                    if (!infiniteHell100WaveRewardGiven && infiniteHellWaveIndex >= 100)
+                    int currentTier = infiniteHellWaveIndex / 100;
+                    if (infiniteHellWaveIndex > 0 && infiniteHellWaveIndex % 100 == 0 && currentTier > infiniteHellMilestoneRewardTier)
                     {
-                        infiniteHell100WaveRewardGiven = true;
+                        // 递进倍率：2^(tier-1)，使用位运算
+                        int multiplier = 1 << (currentTier - 1);
+                        int crownCount = multiplier;                  // 皇冠数量：1, 2, 4, 8...
+                        long totalCash = 10000000L * multiplier;      // 现金总额：1000万, 2000万, 4000万...
+                        long cashPerStack = totalCash / 100;          // 每叠金额
 
-                        Item special = null;
+                        // 获取掉落基准位置
+                        Vector3 basePos = GetCurrentSceneDefaultPosition();
                         try
                         {
-                            special = ItemAssetsCollection.InstantiateSync(1254);
+                            if (_bossRushSignGameObject != null)
+                            {
+                                basePos = _bossRushSignGameObject.transform.position + Vector3.up * 0.3f;
+                            }
                         }
                         catch {}
 
-                        if (special != null)
+                        // 掉落皇冠（TypeID 1254）
+                        for (int ci = 0; ci < crownCount; ci++)
                         {
                             try
                             {
-                                // 从配置系统获取当前地图的默认位置作为兜底
-                                Vector3 basePos = GetCurrentSceneDefaultPosition();
-                                try
+                                Item crown = ItemAssetsCollection.InstantiateSync(1254);
+                                if (crown != null)
                                 {
-                                    if (_bossRushSignGameObject != null)
-                                    {
-                                        basePos = _bossRushSignGameObject.transform.position + Vector3.up * 0.3f;
-                                    }
+                                    Vector3 dir = UnityEngine.Random.insideUnitSphere.normalized;
+                                    crown.Drop(basePos, true, dir, UnityEngine.Random.Range(30f, 60f));
                                 }
-                                catch {}
-
-                                try
-                                {
-                                    special.Drop(basePos, true, UnityEngine.Random.insideUnitSphere.normalized, 45f);
-                                }
-                                catch {}
                             }
                             catch {}
                         }
+
+                        // 掉落现金（100叠，每叠 cashPerStack）
+                        for (int ci = 0; ci < 100; ci++)
+                        {
+                            try
+                            {
+                                Item cashReward = ItemAssetsCollection.InstantiateSync(EconomyManager.CashItemID);
+                                if (cashReward != null)
+                                {
+                                    cashReward.StackCount = (int)cashPerStack;
+                                    Vector3 dir = UnityEngine.Random.insideUnitSphere.normalized;
+                                    cashReward.Drop(basePos, true, dir, UnityEngine.Random.Range(30f, 60f));
+                                }
+                            }
+                            catch {}
+                        }
+
+                        // 更新已发放里程碑阶数
+                        infiniteHellMilestoneRewardTier = currentTier;
                     }
                 }
                 catch {}
