@@ -51,6 +51,9 @@ namespace BossRush
             /// <summary>被禁用的 Boss 名称列表（用于 Boss 池筛选）</summary>
             public List<string> disabledBosses = new List<string>();
 
+            /// <summary>Boss 无间炼狱刷新因子（key: boss name, value: factor）</summary>
+            public Dictionary<string, float> bossInfiniteHellFactors = new Dictionary<string, float>();
+
             /// <summary>龙套装冲刺功能开关（默认开启）</summary>
             public bool enableDragonDash = true;
 

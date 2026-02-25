@@ -59,6 +59,27 @@ namespace BossRush
         /// <summary>Boss 池 UI 统计文本</summary>
         private TextMeshProUGUI statsText = null;
 
+        /// <summary>是否处于无间炼狱因子编辑模式</summary>
+        private bool isInfiniteHellFactorMode = false;
+
+        /// <summary>无间炼狱因子等级定义</summary>
+        private static readonly string[] factorLevelNames = { "极低", "低", "中", "高", "极高" };
+        private static readonly string[] factorLevelNamesEn = { "Very Low", "Low", "Medium", "High", "Very High" };
+        private static readonly float[] factorLevelValues = { 0.2f, 0.5f, 1.0f, 1.5f, 2.0f };
+
+        /// <summary>Boss 无间炼狱刷新因子字典 (key: boss name, value: factor)</summary>
+        private Dictionary<string, float> bossInfiniteHellFactors = new Dictionary<string, float>();
+
+        /// <summary>工具栏按钮引用</summary>
+        private Button selectAllButton = null;
+        private Button deselectAllButton = null;
+        private Button infiniteHellFactorButton = null;
+        private TextMeshProUGUI selectAllButtonText = null;
+        private TextMeshProUGUI infiniteHellFactorButtonText = null;
+
+        /// <summary>Boss 因子选择器 UI 字典</summary>
+        private Dictionary<string, GameObject> bossFactorSelectors = new Dictionary<string, GameObject>();
+
         #endregion
 
         #region Boss 池筛选初始化
@@ -102,6 +123,24 @@ namespace BossRush
                         {
                             bossEnabledStates[disabledBoss] = false;
                         }
+                    }
+                }
+
+                // 从配置中加载无间炼狱因子
+                bossInfiniteHellFactors.Clear();
+                if (config != null && config.bossInfiniteHellFactors != null)
+                {
+                    foreach (var kv in config.bossInfiniteHellFactors)
+                    {
+                        bossInfiniteHellFactors[kv.Key] = kv.Value;
+                    }
+                }
+                // 为没有配置的 Boss 设置默认因子（中 = 1.0）
+                foreach (var preset in enemyPresets)
+                {
+                    if (preset != null && !string.IsNullOrEmpty(preset.name) && !bossInfiniteHellFactors.ContainsKey(preset.name))
+                    {
+                        bossInfiniteHellFactors[preset.name] = 1.0f;
                     }
                 }
 
@@ -249,13 +288,51 @@ namespace BossRush
                     }
                 }
 
+                // 同步无间炼狱因子
+                if (config.bossInfiniteHellFactors == null)
+                {
+                    config.bossInfiniteHellFactors = new Dictionary<string, float>();
+                }
+                else
+                {
+                    config.bossInfiniteHellFactors.Clear();
+                }
+
+                foreach (var kv in bossInfiniteHellFactors)
+                {
+                    // 只保存非默认值（非1.0）的因子
+                    if (!Mathf.Approximately(kv.Value, 1.0f))
+                    {
+                        config.bossInfiniteHellFactors[kv.Key] = kv.Value;
+                    }
+                }
+
                 SaveConfigToFile();
-                DevLog("[BossRush] Boss 池配置已保存，禁用 " + config.disabledBosses.Count + " 个 Boss");
+                DevLog("[BossRush] Boss 池配置已保存，禁用 " + config.disabledBosses.Count + " 个 Boss，自定义因子 " + config.bossInfiniteHellFactors.Count + " 个");
             }
             catch (Exception ex)
             {
                 DevLog("[BossRush] SyncBossPoolToConfig 失败: " + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 获取 Boss 的无间炼狱刷新因子
+        /// </summary>
+        public float GetBossInfiniteHellFactor(string bossName)
+        {
+            if (string.IsNullOrEmpty(bossName))
+            {
+                return 1.0f;
+            }
+
+            float factor;
+            if (bossInfiniteHellFactors.TryGetValue(bossName, out factor))
+            {
+                return factor;
+            }
+
+            return 1.0f;
         }
 
         #endregion
@@ -280,6 +357,9 @@ namespace BossRush
                 InitializeBossPoolFilter();
             }
 
+            // 重置为普通模式
+            isInfiniteHellFactorMode = false;
+
             // 创建或显示 UI
             if (bossPoolCanvas == null)
             {
@@ -288,6 +368,19 @@ namespace BossRush
             else
             {
                 bossPoolCanvas.SetActive(true);
+                // 确保按钮状态正确
+                if (selectAllButtonText != null)
+                {
+                    selectAllButtonText.text = L10n.T("全选", "Select All");
+                }
+                if (infiniteHellFactorButtonText != null)
+                {
+                    infiniteHellFactorButtonText.text = L10n.T("无间炼狱因子", "Infinite Hell Factor");
+                }
+                if (deselectAllButton != null)
+                {
+                    deselectAllButton.gameObject.SetActive(true);
+                }
                 RefreshBossPoolUI();
             }
 
@@ -402,7 +495,7 @@ namespace BossRush
             GameObject titleTextObj = new GameObject("TitleText");
             titleTextObj.transform.SetParent(titleBar.transform, false);
             TextMeshProUGUI titleText = titleTextObj.AddComponent<TextMeshProUGUI>();
-            titleText.text = L10n.T("Boss池设置 (Ctrl+F10)", "Boss Pool Settings (Ctrl+F10)");
+            titleText.text = L10n.T("Boss池设置", "Boss Pool Settings");
             titleText.fontSize = 24;
             titleText.alignment = TextAlignmentOptions.Center;
             titleText.color = Color.white;
@@ -461,23 +554,387 @@ namespace BossRush
             if (buttonPrefab != null)
             {
                 // 全选按钮
-                Button selectAllBtn = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
-                LayoutElement le1 = selectAllBtn.gameObject.AddComponent<LayoutElement>();
+                selectAllButton = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
+                LayoutElement le1 = selectAllButton.gameObject.AddComponent<LayoutElement>();
                 le1.preferredWidth = 100f;
                 le1.preferredHeight = 35f;
-                TextMeshProUGUI txt1 = selectAllBtn.GetComponentInChildren<TextMeshProUGUI>();
-                if (txt1 != null) txt1.text = L10n.T("全选", "Select All");
-                selectAllBtn.onClick.AddListener(() => EnableAllBosses());
+                selectAllButtonText = selectAllButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (selectAllButtonText != null) selectAllButtonText.text = L10n.T("全选", "Select All");
+                selectAllButton.onClick.AddListener(() => OnSelectAllButtonClicked());
 
                 // 全不选按钮
-                Button deselectAllBtn = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
-                LayoutElement le2 = deselectAllBtn.gameObject.AddComponent<LayoutElement>();
+                deselectAllButton = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
+                LayoutElement le2 = deselectAllButton.gameObject.AddComponent<LayoutElement>();
                 le2.preferredWidth = 100f;
                 le2.preferredHeight = 35f;
-                TextMeshProUGUI txt2 = deselectAllBtn.GetComponentInChildren<TextMeshProUGUI>();
+                TextMeshProUGUI txt2 = deselectAllButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (txt2 != null) txt2.text = L10n.T("全不选", "Deselect All");
-                deselectAllBtn.onClick.AddListener(() => DisableAllBosses());
+                deselectAllButton.onClick.AddListener(() => DisableAllBosses());
+
+                // 分隔空间
+                GameObject spacer = new GameObject("Spacer");
+                spacer.transform.SetParent(toolbar.transform, false);
+                LayoutElement spacerLE = spacer.AddComponent<LayoutElement>();
+                spacerLE.flexibleWidth = 1f;
+
+                // 无间炼狱因子按钮（最右边）
+                infiniteHellFactorButton = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
+                LayoutElement le3 = infiniteHellFactorButton.gameObject.AddComponent<LayoutElement>();
+                le3.preferredWidth = 160f;
+                le3.preferredHeight = 35f;
+                infiniteHellFactorButtonText = infiniteHellFactorButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (infiniteHellFactorButtonText != null) infiniteHellFactorButtonText.text = L10n.T("无间炼狱因子", "Infinite Hell Factor");
+                infiniteHellFactorButton.onClick.AddListener(() => OnInfiniteHellFactorButtonClicked());
             }
+        }
+
+        /// <summary>
+        /// 全选按钮点击处理（根据模式不同执行不同操作）
+        /// </summary>
+        private void OnSelectAllButtonClicked()
+        {
+            if (isInfiniteHellFactorMode)
+            {
+                // 重置所有因子为默认值（中 = 1.0）
+                ResetAllBossFactors();
+            }
+            else
+            {
+                EnableAllBosses();
+            }
+        }
+
+        /// <summary>
+        /// 无间炼狱因子按钮点击处理
+        /// </summary>
+        private void OnInfiniteHellFactorButtonClicked()
+        {
+            if (isInfiniteHellFactorMode)
+            {
+                // 退出因子编辑模式
+                ExitInfiniteHellFactorMode();
+            }
+            else
+            {
+                // 进入因子编辑模式
+                EnterInfiniteHellFactorMode();
+            }
+        }
+
+        /// <summary>
+        /// 进入无间炼狱因子编辑模式
+        /// </summary>
+        private void EnterInfiniteHellFactorMode()
+        {
+            isInfiniteHellFactorMode = true;
+
+            // 更新按钮文本
+            if (selectAllButtonText != null)
+            {
+                selectAllButtonText.text = L10n.T("重置", "Reset");
+            }
+            if (infiniteHellFactorButtonText != null)
+            {
+                infiniteHellFactorButtonText.text = L10n.T("返回", "Back");
+            }
+
+            // 隐藏全不选按钮
+            if (deselectAllButton != null)
+            {
+                deselectAllButton.gameObject.SetActive(false);
+            }
+
+            // 切换 Boss 列表显示
+            RefreshBossListForFactorMode();
+        }
+
+        /// <summary>
+        /// 退出无间炼狱因子编辑模式
+        /// </summary>
+        private void ExitInfiniteHellFactorMode()
+        {
+            isInfiniteHellFactorMode = false;
+
+            // 恢复按钮文本
+            if (selectAllButtonText != null)
+            {
+                selectAllButtonText.text = L10n.T("全选", "Select All");
+            }
+            if (infiniteHellFactorButtonText != null)
+            {
+                infiniteHellFactorButtonText.text = L10n.T("无间炼狱因子", "Infinite Hell Factor");
+            }
+
+            // 显示全不选按钮
+            if (deselectAllButton != null)
+            {
+                deselectAllButton.gameObject.SetActive(true);
+            }
+
+            // 切换回 Toggle 列表
+            PopulateBossList();
+        }
+
+        /// <summary>
+        /// 重置所有 Boss 因子为默认值
+        /// </summary>
+        private void ResetAllBossFactors()
+        {
+            var keys = bossInfiniteHellFactors.Keys.ToList();
+            foreach (string key in keys)
+            {
+                bossInfiniteHellFactors[key] = 1.0f;
+            }
+            RefreshBossListForFactorMode();
+        }
+
+        /// <summary>
+        /// 刷新 Boss 列表为因子编辑模式
+        /// </summary>
+        private void RefreshBossListForFactorMode()
+        {
+            if (bossPoolContent == null) return;
+
+            // 清空现有内容
+            bossToggles.Clear();
+            bossFactorSelectors.Clear();
+            foreach (Transform child in bossPoolContent)
+            {
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
+
+            if (enemyPresets == null || enemyPresets.Count == 0)
+            {
+                // 显示提示信息
+                GameObject tipObj = new GameObject("Tip");
+                tipObj.transform.SetParent(bossPoolContent, false);
+                TextMeshProUGUI tipText = tipObj.AddComponent<TextMeshProUGUI>();
+                tipText.text = L10n.T("暂无 Boss 数据，请先进入游戏", "No Boss data available, please enter the game first");
+                tipText.fontSize = 16;
+                tipText.alignment = TextAlignmentOptions.Center;
+                tipText.color = new Color(0.7f, 0.7f, 0.7f);
+                LayoutElement le = tipObj.AddComponent<LayoutElement>();
+                le.preferredHeight = 40f;
+                return;
+            }
+
+            // 为每个 Boss 创建因子选择器
+            foreach (var preset in enemyPresets)
+            {
+                if (preset == null || string.IsNullOrEmpty(preset.name)) continue;
+                CreateBossFactorSelector(preset);
+            }
+
+            UpdateStatsTextForFactorMode();
+        }
+
+        /// <summary>
+        /// 创建单个 Boss 因子选择器
+        /// </summary>
+        private void CreateBossFactorSelector(EnemyPresetInfo preset)
+        {
+            GameObject selectorObj = new GameObject("FactorSelector_" + preset.name);
+            selectorObj.transform.SetParent(bossPoolContent, false);
+
+            // 背景
+            Image bgImage = selectorObj.AddComponent<Image>();
+            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+
+            // 布局
+            HorizontalLayoutGroup hlg = selectorObj.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 10f;
+            hlg.padding = new RectOffset(15, 15, 8, 8);
+            hlg.childAlignment = TextAnchor.MiddleLeft;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = false;
+
+            LayoutElement selectorLE = selectorObj.AddComponent<LayoutElement>();
+            selectorLE.preferredHeight = 40f;
+
+            // Boss 名称标签
+            GameObject labelObj = new GameObject("Label");
+            labelObj.transform.SetParent(selectorObj.transform, false);
+            TextMeshProUGUI labelText = labelObj.AddComponent<TextMeshProUGUI>();
+            string displayName = !string.IsNullOrEmpty(preset.displayName) ? preset.displayName : preset.name;
+            labelText.text = displayName;
+            labelText.fontSize = 18;
+            labelText.alignment = TextAlignmentOptions.MidlineLeft;
+            labelText.color = Color.white;
+            LayoutElement labelLE = labelObj.AddComponent<LayoutElement>();
+            labelLE.flexibleWidth = 1f;
+
+            // 获取当前因子
+            float currentFactor = 1.0f;
+            if (bossInfiniteHellFactors.ContainsKey(preset.name))
+            {
+                currentFactor = bossInfiniteHellFactors[preset.name];
+            }
+            int currentIndex = GetFactorLevelIndex(currentFactor);
+
+            // 因子选择器容器
+            GameObject factorContainer = new GameObject("FactorContainer");
+            factorContainer.transform.SetParent(selectorObj.transform, false);
+            HorizontalLayoutGroup factorHlg = factorContainer.AddComponent<HorizontalLayoutGroup>();
+            factorHlg.spacing = 5f;
+            factorHlg.childAlignment = TextAnchor.MiddleCenter;
+            factorHlg.childForceExpandWidth = false;
+            factorHlg.childForceExpandHeight = false;
+            LayoutElement factorContainerLE = factorContainer.AddComponent<LayoutElement>();
+            factorContainerLE.preferredWidth = 180f;
+
+            Button buttonPrefab = GameplayDataSettings.UIPrefabs.Button;
+            string bossName = preset.name;
+
+            // 左箭头按钮 <
+            if (buttonPrefab != null)
+            {
+                Button leftBtn = UnityEngine.Object.Instantiate(buttonPrefab, factorContainer.transform);
+                LayoutElement leftLE = leftBtn.gameObject.AddComponent<LayoutElement>();
+                leftLE.preferredWidth = 30f;
+                leftLE.preferredHeight = 30f;
+                TextMeshProUGUI leftTxt = leftBtn.GetComponentInChildren<TextMeshProUGUI>();
+                if (leftTxt != null) leftTxt.text = "<";
+                leftBtn.onClick.AddListener(() => DecreaseBossFactor(bossName));
+            }
+
+            // 因子等级文本
+            GameObject factorTextObj = new GameObject("FactorText");
+            factorTextObj.transform.SetParent(factorContainer.transform, false);
+            TextMeshProUGUI factorText = factorTextObj.AddComponent<TextMeshProUGUI>();
+            factorText.text = GetFactorLevelDisplayText(currentIndex);
+            factorText.fontSize = 16;
+            factorText.alignment = TextAlignmentOptions.Center;
+            factorText.color = GetFactorLevelColor(currentIndex);
+            LayoutElement factorTextLE = factorTextObj.AddComponent<LayoutElement>();
+            factorTextLE.preferredWidth = 100f;
+
+            // 右箭头按钮 >
+            if (buttonPrefab != null)
+            {
+                Button rightBtn = UnityEngine.Object.Instantiate(buttonPrefab, factorContainer.transform);
+                LayoutElement rightLE = rightBtn.gameObject.AddComponent<LayoutElement>();
+                rightLE.preferredWidth = 30f;
+                rightLE.preferredHeight = 30f;
+                TextMeshProUGUI rightTxt = rightBtn.GetComponentInChildren<TextMeshProUGUI>();
+                if (rightTxt != null) rightTxt.text = ">";
+                rightBtn.onClick.AddListener(() => IncreaseBossFactor(bossName));
+            }
+
+            bossFactorSelectors[preset.name] = selectorObj;
+        }
+
+        /// <summary>
+        /// 获取因子等级索引
+        /// </summary>
+        private int GetFactorLevelIndex(float factor)
+        {
+            for (int i = 0; i < factorLevelValues.Length; i++)
+            {
+                if (Mathf.Approximately(factor, factorLevelValues[i]))
+                {
+                    return i;
+                }
+            }
+            // 默认返回中等
+            return 2;
+        }
+
+        /// <summary>
+        /// 获取因子等级显示文本
+        /// </summary>
+        private string GetFactorLevelDisplayText(int index)
+        {
+            if (index < 0 || index >= factorLevelNames.Length)
+            {
+                index = 2;
+            }
+            string levelName = L10n.T(factorLevelNames[index], factorLevelNamesEn[index]);
+            return levelName;
+        }
+
+        /// <summary>
+        /// 获取因子等级颜色
+        /// </summary>
+        private Color GetFactorLevelColor(int index)
+        {
+            switch (index)
+            {
+                case 0: return new Color(0.5f, 0.5f, 0.5f); // 极低 - 灰色
+                case 1: return new Color(0.3f, 0.7f, 0.3f); // 低 - 绿色
+                case 2: return Color.white;                  // 中 - 白色
+                case 3: return new Color(1f, 0.7f, 0.3f);   // 高 - 橙色
+                case 4: return new Color(1f, 0.3f, 0.3f);   // 极高 - 红色
+                default: return Color.white;
+            }
+        }
+
+        /// <summary>
+        /// 减少 Boss 因子
+        /// </summary>
+        private void DecreaseBossFactor(string bossName)
+        {
+            if (!bossInfiniteHellFactors.ContainsKey(bossName)) return;
+
+            float currentFactor = bossInfiniteHellFactors[bossName];
+            int currentIndex = GetFactorLevelIndex(currentFactor);
+            if (currentIndex > 0)
+            {
+                bossInfiniteHellFactors[bossName] = factorLevelValues[currentIndex - 1];
+                UpdateBossFactorDisplay(bossName);
+            }
+        }
+
+        /// <summary>
+        /// 增加 Boss 因子
+        /// </summary>
+        private void IncreaseBossFactor(string bossName)
+        {
+            if (!bossInfiniteHellFactors.ContainsKey(bossName)) return;
+
+            float currentFactor = bossInfiniteHellFactors[bossName];
+            int currentIndex = GetFactorLevelIndex(currentFactor);
+            if (currentIndex < factorLevelValues.Length - 1)
+            {
+                bossInfiniteHellFactors[bossName] = factorLevelValues[currentIndex + 1];
+                UpdateBossFactorDisplay(bossName);
+            }
+        }
+
+        /// <summary>
+        /// 更新单个 Boss 因子显示
+        /// </summary>
+        private void UpdateBossFactorDisplay(string bossName)
+        {
+            if (!bossFactorSelectors.ContainsKey(bossName)) return;
+
+            GameObject selectorObj = bossFactorSelectors[bossName];
+            if (selectorObj == null) return;
+
+            // 找到因子文本组件
+            Transform factorContainer = selectorObj.transform.Find("FactorContainer");
+            if (factorContainer == null) return;
+
+            Transform factorTextTransform = factorContainer.Find("FactorText");
+            if (factorTextTransform == null) return;
+
+            TextMeshProUGUI factorText = factorTextTransform.GetComponent<TextMeshProUGUI>();
+            if (factorText == null) return;
+
+            float currentFactor = bossInfiniteHellFactors[bossName];
+            int currentIndex = GetFactorLevelIndex(currentFactor);
+            factorText.text = GetFactorLevelDisplayText(currentIndex);
+            factorText.color = GetFactorLevelColor(currentIndex);
+        }
+
+        /// <summary>
+        /// 更新因子模式下的统计文本
+        /// </summary>
+        private void UpdateStatsTextForFactorMode()
+        {
+            if (statsText == null) return;
+
+            // 因子模式下不显示统计文本
+            statsText.text = "";
         }
 
         /// <summary>
@@ -865,7 +1322,14 @@ namespace BossRush
                 bossPoolContent = null;
                 bossPoolScrollRect = null;
                 bossToggles.Clear();
+                bossFactorSelectors.Clear();
                 statsText = null;
+                selectAllButton = null;
+                deselectAllButton = null;
+                infiniteHellFactorButton = null;
+                selectAllButtonText = null;
+                infiniteHellFactorButtonText = null;
+                isInfiniteHellFactorMode = false;
             }
         }
 

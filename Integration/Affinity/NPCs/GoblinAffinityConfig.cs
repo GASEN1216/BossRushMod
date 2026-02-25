@@ -31,8 +31,11 @@ namespace BossRush
         /// <summary>砖石惩罚值</summary>
         public const int BRICK_STONE_PENALTY = -20;
         
-        /// <summary>钻石解锁等级</summary>
+        /// <summary>钻石解锁等级（同时也是商店解锁等级）</summary>
         public const int DIAMOND_UNLOCK_LEVEL = 2;
+        
+        /// <summary>商店解锁等级（与钻石解锁等级一致）</summary>
+        public const int SHOP_UNLOCK_LEVEL = 2;
         
         /// <summary>冷萃液解锁等级</summary>
         public const int COLD_QUENCH_UNLOCK_LEVEL = 4;
@@ -93,7 +96,7 @@ namespace BossRush
                 {
                     _unlocksByLevel = new Dictionary<int, string[]>
                     {
-                        { 2, new[] { L10n.T("钻石", "Diamond") } },
+                        { 2, new[] { L10n.T("商店", "Shop"), L10n.T("钻石", "Diamond") } },
                         { 3, new[] { L10n.T("10%折扣", "10% Discount") } },
                         { 4, new[] { L10n.T("冷萃液", "Cold Quench Fluid") } },
                         { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
@@ -552,7 +555,7 @@ namespace BossRush
         // ============================================================================
         
         public bool ShopEnabled => true;
-        public int ShopUnlockLevel => COLD_QUENCH_UNLOCK_LEVEL;
+        public int ShopUnlockLevel => SHOP_UNLOCK_LEVEL;  // 2级解锁商店，与钻石解锁等级一致
         public string ShopName => L10n.T("叮当的小店", "Dingdang's Shop");
         
         public List<ShopItemEntry> GetShopItems()

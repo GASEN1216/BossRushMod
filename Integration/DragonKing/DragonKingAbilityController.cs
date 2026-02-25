@@ -4168,6 +4168,8 @@ namespace BossRush
         
         /// <summary>
         /// 创建飞行平台（防止下落）
+        /// [修复] 改为Trigger模式，不产生物理碰撞，避免其他Boss被抬升
+        /// 龙皇的悬浮由LateUpdate中的Y坐标锁定逻辑保证
         /// </summary>
         private void CreateFlightPlatform()
         {
@@ -4176,21 +4178,12 @@ namespace BossRush
             flightPlatform = new GameObject("DragonKing_FlightPlatform");
             flightPlatform.hideFlags = HideFlags.HideInHierarchy;
             
-            var boxCollider = flightPlatform.AddComponent<BoxCollider>();
-            boxCollider.isTrigger = false;
-            boxCollider.center = Vector3.zero;
-            boxCollider.size = new Vector3(5f, 0.1f, 5f);
-            
-            // 设置层级为Ground
-            int groundLayer = LayerMask.NameToLayer("Ground");
-            if (groundLayer >= 0)
-            {
-                flightPlatform.layer = groundLayer;
-            }
+            // [修复] 不再添加碰撞器，改用代码直接锁定Y坐标
+            // 这样其他Boss不会被飞行平台抬升
             
             UpdateFlightPlatformPosition();
             
-            ModBehaviour.DevLog("[DragonKing] 创建飞行平台");
+            ModBehaviour.DevLog("[DragonKing] 创建飞行平台（无物理碰撞模式）");
         }
         
         /// <summary>
@@ -4214,6 +4207,25 @@ namespace BossRush
                 Destroy(flightPlatform);
                 flightPlatform = null;
                 ModBehaviour.DevLog("[DragonKing] 销毁飞行平台");
+            }
+        }
+        
+        /// <summary>
+        /// LateUpdate - 在孩儿护我阶段持续锁定龙皇Y坐标
+        /// [修复] 替代物理飞行平台，确保只有龙皇被锁定在高空，其他Boss不受影响
+        /// </summary>
+        private void LateUpdate()
+        {
+            // 只在孩儿护我阶段且有有效锁定高度时执行
+            if (!isInChildProtection || lockedMinY <= float.MinValue + 1f) return;
+            if (bossCharacter == null) return;
+            
+            // 锁定龙皇Y坐标，防止下落
+            Vector3 pos = bossCharacter.transform.position;
+            if (pos.y < lockedMinY - 0.01f)
+            {
+                pos.y = lockedMinY;
+                bossCharacter.transform.position = pos;
             }
         }
         

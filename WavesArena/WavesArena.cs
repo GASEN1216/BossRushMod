@@ -2135,6 +2135,7 @@ namespace BossRush
         /// <summary>
         /// 无间炼狱模式下按权重随机选取一个敌人预设
         /// 权重根据基础血量与波次线性放大，高血量Boss在后期权重更高
+        /// 同时应用用户设置的无间炼狱因子作为权重乘数
         /// </summary>
         private EnemyPresetInfo PickRandomEnemyForInfiniteHell()
         {
@@ -2148,11 +2149,36 @@ namespace BossRush
             float refMin = minBossBaseHealth;
             float refMax = maxBossBaseHealth;
 
-            // 如果没有有效范围，退化为等概率随机
+            // 如果没有有效范围，退化为按因子权重随机
             if (!(refMax > refMin && refMin > 0f))
             {
-                int idx = UnityEngine.Random.Range(0, filteredPresets.Count);
-                return filteredPresets[idx];
+                // 即使没有血量范围，也应用用户设置的因子
+                float totalFactorWeight = 0f;
+                float[] factorWeights = new float[filteredPresets.Count];
+                for (int i = 0; i < filteredPresets.Count; i++)
+                {
+                    float factor = GetBossInfiniteHellFactor(filteredPresets[i].name);
+                    factorWeights[i] = factor;
+                    totalFactorWeight += factor;
+                }
+                
+                if (totalFactorWeight <= 0f)
+                {
+                    int idx = UnityEngine.Random.Range(0, filteredPresets.Count);
+                    return filteredPresets[idx];
+                }
+                
+                float rFactor = UnityEngine.Random.value * totalFactorWeight;
+                float accFactor = 0f;
+                for (int i = 0; i < filteredPresets.Count; i++)
+                {
+                    accFactor += factorWeights[i];
+                    if (rFactor <= accFactor)
+                    {
+                        return filteredPresets[i];
+                    }
+                }
+                return filteredPresets[filteredPresets.Count - 1];
             }
 
             // 计算每个Boss的权重
@@ -2176,6 +2202,10 @@ namespace BossRush
                 {
                     w = 0.01f;
                 }
+
+                // 应用用户设置的无间炼狱因子作为权重乘数
+                float userFactor = GetBossInfiniteHellFactor(filteredPresets[i].name);
+                w *= userFactor;
 
                 weights[i] = w;
                 totalWeight += w;
