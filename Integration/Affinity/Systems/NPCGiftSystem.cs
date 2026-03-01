@@ -64,10 +64,35 @@ namespace BossRush
             var giftConfig = config as INPCGiftConfig;
             
             // ============================================================================
+            // 特殊礼物处理：钻石戒指
+            // 只有好感度达到10级的NPC才能接受钻石戒指
+            // ============================================================================
+            int itemTypeId = GetItemTypeId(item);
+            if (itemTypeId == DiamondRingConfig.TYPE_ID)
+            {
+                int currentLevel = AffinityManager.GetLevel(npcId);
+                if (currentLevel < DiamondRingConfig.GIFT_REQUIRED_LEVEL)
+                {
+                    // NPC拒绝接受钻石戒指
+                    if (npcTransform != null)
+                    {
+                        string rejectDialogue = DiamondRingConfig.GetRandomRejectDialogue();
+                        NPCDialogueSystem.ShowDialogue(npcId, npcTransform, rejectDialogue);
+                    }
+                    
+                    ModBehaviour.DevLog("[NPCGift] 钻石戒指被拒绝：NPC好感度未达到10级 (当前: " + currentLevel + ")");
+                    return false; // 拒绝接受，物品不会被消耗
+                }
+                
+                // 好感度达到10级，可以接受钻石戒指
+                ModBehaviour.DevLog("[NPCGift] 钻石戒指被接受：NPC好感度已达到10级");
+                // 继续正常的礼物处理流程
+            }
+            
+            // ============================================================================
             // 特殊礼物处理：叮当涂鸦
             // 如果玩家把叮当送的礼物送回去，叮当会很伤心
             // ============================================================================
-            int itemTypeId = GetItemTypeId(item);
             if (npcId == GoblinAffinityConfig.NPC_ID && itemTypeId == DingdangDrawingConfig.TYPE_ID)
             {
                 // 叮当涂鸦特殊处理：扣除300好感度，显示伤心对话，播放心碎特效

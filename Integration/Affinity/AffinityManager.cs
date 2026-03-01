@@ -420,6 +420,41 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 检查是否有任意一个已注册的NPC达到指定等级
+        /// 注意：此方法检查的是当前点数，可能受每日衰减影响
+        /// 如需检查"历史上是否达到过"，请使用 HasAnyNPCEverReachedMaxLevel()
+        /// </summary>
+        public static bool IsAnyNPCAtLevel(int requiredLevel)
+        {
+            foreach (var kvp in npcDataMap)
+            {
+                int level = GetLevelFromPoints(kvp.Value.points);
+                if (level >= requiredLevel)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        /// <summary>
+        /// 检查是否有任意一个NPC曾经达到过满级（10级）
+        /// 基于持久化标记 hasTriggeredStory10，不受每日衰减影响
+        /// 用于婚礼建筑等需要"历史上任意NPC达到过满好感度"才解锁的功能
+        /// </summary>
+        public static bool HasAnyNPCEverReachedMaxLevel()
+        {
+            foreach (var kvp in npcDataMap)
+            {
+                if (kvp.Value.hasTriggeredStory10)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        /// <summary>
         /// 获取指定NPC的当前折扣率
         /// </summary>
         public static float GetDiscount(string npcId)

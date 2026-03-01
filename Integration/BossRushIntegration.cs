@@ -163,6 +163,7 @@ namespace BossRush
                 ColdQuenchFluidConfig.RegisterConfigurator();
                 BrickStoneConfig.RegisterConfigurator();
                 DiamondConfig.RegisterConfigurator();
+                DiamondRingConfig.RegisterConfigurator();  // 钻石戒指配置器
                 DingdangDrawingConfig.RegisterConfigurator();
                 AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
@@ -822,6 +823,7 @@ namespace BossRush
             LocalizationInjector.InjectColdQuenchFluidLocalization();  // 冷淬液物品本地化
             LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
             LocalizationInjector.InjectDiamondLocalization();     // 钻石物品本地化
+            LocalizationInjector.InjectDiamondRingLocalization(); // 钻石戒指物品本地化
             DingdangDrawingConfig.InjectLocalization();  // 叮当涂鸦物品本地化
             WildHornConfig.InjectLocalization();  // 荒野号角物品本地化
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
@@ -829,6 +831,7 @@ namespace BossRush
             FactionFlagConfig.InjectIntoShops();  // 将营旗注入到售货机
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
+            LocalizationInjector.InjectWeddingBuildingLocalization();  // 婚礼教堂建筑本地化
             DevLog("[BossRush] 扩展本地化注入完成");
         }
 
@@ -945,6 +948,9 @@ namespace BossRush
             // 清理飞行图腾系统
             CleanupFlightTotemSystem();
             
+            // 清理婚礼教堂建筑系统
+            CleanupWeddingBuilding();
+            
             // [性能优化] 重置商店注入标记
             _shopInjectionCompleted = false;
             
@@ -1038,6 +1044,10 @@ namespace BossRush
                 if (scene.name == "Base_SceneV2")
                 {
                     StartCoroutine(DelayedBirthdayCakeGift());
+                    
+                    // 初始化婚礼教堂建筑系统（注入建筑数据 + 恢复已放置建筑的NPC）
+                    InitWeddingBuilding();
+                    RestoreWeddingBuildingNPC();
                 }
 
                 // 使用配置系统检查是否是有效的 BossRush 竞技场场景

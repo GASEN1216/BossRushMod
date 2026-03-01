@@ -279,6 +279,7 @@ namespace BossRush
                 InjectColdQuenchFluidLocalization();
                 InjectBrickStoneLocalization();
                 InjectDiamondLocalization();
+                InjectDiamondRingLocalization();  // 钻石戒指本地化
                 InjectDragonDescendantLocalization();
                 InjectCourierNPCLocalization();
                 InjectGoblinNPCLocalization();
@@ -976,6 +977,57 @@ namespace BossRush
             LocalizationHelper.InjectLocalization("BossRush_Diamond_NoGoblin", DiamondConfig.GetNoGoblinHint());
             
             ModBehaviour.DevLog("[LocalizationInjector] 钻石本地化注入完成");
+        }
+        
+        /// <summary>
+        /// 注入钻石戒指物品本地化
+        /// </summary>
+        public static void InjectDiamondRingLocalization()
+        {
+            string displayName = DiamondRingConfig.GetDisplayName();
+            string description = DiamondRingConfig.GetDescription();
+            
+            // 注入中英文键
+            LocalizationHelper.InjectLocalization(DiamondRingConfig.DISPLAY_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(DiamondRingConfig.DISPLAY_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization(DiamondRingConfig.LOC_KEY_DISPLAY, displayName);
+            
+            LocalizationHelper.InjectLocalization(DiamondRingConfig.DISPLAY_NAME_CN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(DiamondRingConfig.DISPLAY_NAME_EN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(DiamondRingConfig.LOC_KEY_DISPLAY + "_Desc", description);
+            
+            // 注入物品 ID 键（这是最重要的，游戏通过这个键查找物品名称）
+            string itemKey = "Item_" + DiamondRingConfig.TYPE_ID;
+            LocalizationHelper.InjectLocalization(itemKey, displayName);
+            LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+            
+            ModBehaviour.DevLog("[LocalizationInjector] 钻石戒指本地化注入完成");
+        }
+        
+        // ============================================================================
+        // 婚礼教堂建筑本地化
+        // ============================================================================
+        
+        // 婚礼教堂本地化数据
+        private const string WEDDING_BUILDING_NAME_CN = "婚礼教堂";
+        private const string WEDDING_BUILDING_NAME_EN = "Wedding Chapel";
+        private const string WEDDING_BUILDING_DESC_CN = "一座温馨的小教堂，可以在这里举办婚礼仪式。";
+        private const string WEDDING_BUILDING_DESC_EN = "A cozy little chapel where wedding ceremonies can be held.";
+        
+        /// <summary>
+        /// 注入婚礼教堂建筑本地化
+        /// 游戏建筑系统使用 "Building_{id}" 和 "Building_{id}_Desc" 作为本地化键
+        /// </summary>
+        public static void InjectWeddingBuildingLocalization()
+        {
+            string displayName = L10n.T(WEDDING_BUILDING_NAME_CN, WEDDING_BUILDING_NAME_EN);
+            string description = L10n.T(WEDDING_BUILDING_DESC_CN, WEDDING_BUILDING_DESC_EN);
+            
+            // 注入建筑系统使用的标准键（Building_{id} 格式）
+            LocalizationHelper.InjectLocalization("Building_wedding_chapel", displayName);
+            LocalizationHelper.InjectLocalization("Building_wedding_chapel_Desc", description);
+            
+            ModBehaviour.DevLog("[LocalizationInjector] 婚礼教堂建筑本地化注入完成");
         }
     }
 }

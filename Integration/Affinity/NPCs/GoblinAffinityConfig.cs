@@ -101,6 +101,7 @@ namespace BossRush
                         { 4, new[] { L10n.T("冷萃液", "Cold Quench Fluid") } },
                         { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
                         { 6, new[] { L10n.T("15%折扣", "15% Discount") } },
+                        { 7, new[] { L10n.T("钻石戒指", "Diamond Ring") } },
                         { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount") } }
                     };
                 }
@@ -147,7 +148,8 @@ namespace BossRush
                         // 所有NPC都喜欢的物品
                         { 1254, 500 },      // +500好感度
                         { 500002, 150 },    // +150好感度
-                        { DiamondConfig.TYPE_ID, 80 }  // 钻石 +80好感度
+                        { DiamondConfig.TYPE_ID, 80 },  // 钻石 +80好感度
+                        { DiamondRingConfig.TYPE_ID, DiamondRingConfig.AFFINITY_BONUS }  // 钻石戒指 +500好感度
                     };
                 }
                 return _positiveItems;
@@ -563,7 +565,8 @@ namespace BossRush
             return new List<ShopItemEntry>
             {
                 new ShopItemEntry(DiamondConfig.TYPE_ID, DIAMOND_UNLOCK_LEVEL, 5),
-                new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5)
+                new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5),
+                new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1)  // 钻石戒指，7级解锁，限量1个
             };
         }
         
