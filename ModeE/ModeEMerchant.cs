@@ -409,7 +409,7 @@ namespace BossRush
                             raw.typeID = id;
                             raw.maxStock = 9999;
                             raw.forceUnlock = true;
-                            raw.priceFactor = 10.0f; // 价格 ×10
+                            raw.priceFactor = 1.0f; // 原价
                             raw.possibility = 1.0f;
                             raw.lockInDemo = false;
 
