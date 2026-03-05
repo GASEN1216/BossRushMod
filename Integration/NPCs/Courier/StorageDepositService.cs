@@ -22,6 +22,7 @@ using Duckov.UI;
 using ItemStatsSystem;
 using ItemStatsSystem.Data;
 using Cysharp.Threading.Tasks;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -2273,7 +2274,10 @@ namespace BossRush
                 
                 priceText.text = fee.ToString("n0");
             }
-            catch { }
+            catch (Exception e)
+            {
+                NPCExceptionHandler.LogAndIgnore(e, "StorageDepositService.UpdatePriceDisplay");
+            }
         }
         
         /// <summary>

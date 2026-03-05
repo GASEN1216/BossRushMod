@@ -28,6 +28,10 @@ namespace BossRush
         {
             NPCExceptionHandler.TryExecute(() =>
             {
+                string giftText = L10n.T("赠送礼物", "Give Gift");
+                LocalizationHelper.InjectLocalization("BossRush_GiveGift", giftText);
+                LocalizationHelper.InjectLocalization(giftText, giftText);
+
                 this.overrideInteractName = true;
                 this._overrideInteractNameKey = "BossRush_GiveGift";
                 this.InteractName = "BossRush_GiveGift";
@@ -64,7 +68,7 @@ namespace BossRush
             
             // 打开容器式UI
             ModBehaviour.DevLog("[NPCGift] 打开礼物容器UI，NPC: " + npcId);
-            NPCGiftContainerService.OpenService(npcId, npcController?.transform, containerConfig, npcController);
+            NPCGiftContainerService.OpenService(npcId, npcController?.NpcTransform, containerConfig, npcController);
         }
         
         /// <summary>
@@ -73,7 +77,7 @@ namespace BossRush
         private void ShowAlreadyGiftedDialogue()
         {
             string dialogue = NPCGiftSystem.GetAlreadyGiftedDialogue(npcId);
-            NPCDialogueSystem.ShowDialogue(npcId, npcController?.transform, dialogue);
+            NPCDialogueSystem.ShowDialogue(npcId, npcController?.NpcTransform, dialogue);
             
             ModBehaviour.DevLog("[NPCGift] 今日已赠送，显示对话: " + dialogue);
             EndNPCDialogue();

@@ -60,7 +60,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[GoblinNPC] 玩家选择重铸服务");
 
                 // 播放哥布林交互音效
-                BossRushAudioManager.Instance.PlayGoblinInteractSFX();
+                BossRushAudioManager.Instance?.PlayGoblinInteractSFX();
                 
                 // 让哥布林进入对话状态
                 if (controller != null)
@@ -114,16 +114,7 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] GoblinInteractable.Awake 设置属性失败: " + e.Message);
             }
-            
-            try
-            {
-                base.Awake();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[GoblinNPC] [WARNING] GoblinInteractable base.Awake 异常: " + e.Message);
-            }
-            
+
             // 确保有 Collider
             try
             {
@@ -152,6 +143,16 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] GoblinInteractable 设置 Collider 失败: " + e.Message);
+            }
+
+            // 在确保 Collider 就绪后再调用基类 Awake，避免 InteractableBase 内部空引用
+            try
+            {
+                base.Awake();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[GoblinNPC] [WARNING] GoblinInteractable base.Awake 异常: " + e.Message);
             }
             
             // 获取控制器
@@ -191,51 +192,48 @@ namespace BossRush
         {
             try
             {
-                // 获取或创建 otherInterablesInGroup 列表（与快递员阿稳一致的方式）
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field == null)
-                {
-                    ModBehaviour.DevLog("[GoblinNPC] [ERROR] 无法获取 otherInterablesInGroup 字段");
-                    return;
-                }
-                
-                var list = field.GetValue(this) as System.Collections.Generic.List<InteractableBase>;
+                // 获取或创建 otherInterablesInGroup 列表（统一走公用助手）
+                var list = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[GoblinNPC]");
                 if (list == null)
                 {
-                    list = new System.Collections.Generic.List<InteractableBase>();
-                    field.SetValue(this, list);
+                    return;
                 }
-                
+
                 // 主选项是"对话"（由 OnTimeOut 处理）
                 // 子选项：商店、礼物、重铸
-                
+
                 // 1. 创建商店交互选项（好感度等级≥2才显示，使用通用组件）
-                GameObject shopObj = new GameObject("ShopInteractable");
-                shopObj.transform.SetParent(transform);
-                shopObj.transform.localPosition = Vector3.zero;
-                shopInteractable = shopObj.AddComponent<NPCShopInteractable>();
-                shopInteractable.NpcId = GoblinAffinityConfig.NPC_ID;  // 设置NPC ID
-                list.Add(shopInteractable);
-                ModBehaviour.DevLog("[GoblinNPC] 创建商店交互选项并注入到交互组（使用通用组件）");
-                
+                shopInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCShopInteractable>(
+                    transform,
+                    "ShopInteractable",
+                    list,
+                    component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+                if (shopInteractable != null)
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 创建商店交互选项并注入到交互组（使用通用组件）");
+                }
+
                 // 2. 创建礼物赠送交互选项（使用通用组件）
-                GameObject giftObj = new GameObject("GiftInteractable");
-                giftObj.transform.SetParent(transform);
-                giftObj.transform.localPosition = Vector3.zero;
-                giftInteractable = giftObj.AddComponent<NPCGiftInteractable>();
-                giftInteractable.NpcId = GoblinAffinityConfig.NPC_ID;  // 设置NPC ID
-                list.Add(giftInteractable);
-                ModBehaviour.DevLog("[GoblinNPC] 创建礼物赠送交互选项并注入到交互组（使用通用组件）");
-                
+                giftInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCGiftInteractable>(
+                    transform,
+                    "GiftInteractable",
+                    list,
+                    component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+                if (giftInteractable != null)
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 创建礼物赠送交互选项并注入到交互组（使用通用组件）");
+                }
+
                 // 3. 创建重铸交互选项
-                GameObject reforgeObj = new GameObject("ReforgeInteractable");
-                reforgeObj.transform.SetParent(transform);
-                reforgeObj.transform.localPosition = Vector3.zero;
-                reforgeInteractable = reforgeObj.AddComponent<GoblinReforgeInteractable>();
-                list.Add(reforgeInteractable);
-                ModBehaviour.DevLog("[GoblinNPC] 创建重铸交互选项并注入到交互组");
-                
+                reforgeInteractable = NPCInteractionGroupHelper.AddSubInteractable<GoblinReforgeInteractable>(
+                    transform,
+                    "ReforgeInteractable",
+                    list);
+                if (reforgeInteractable != null)
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] 创建重铸交互选项并注入到交互组");
+                }
+
                 ModBehaviour.DevLog("[GoblinNPC] 所有子交互选项已注入到 otherInterablesInGroup，共 " + list.Count + " 个（主选项=对话）");
             }
             catch (Exception e)
@@ -272,7 +270,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[GoblinNPC] 玩家选择对话（主选项）");
                 
                 // 播放哥布林交互音效
-                BossRushAudioManager.Instance.PlayGoblinInteractSFX();
+                BossRushAudioManager.Instance?.PlayGoblinInteractSFX();
                 
                 // 获取控制器
                 if (controller == null)
@@ -305,33 +303,18 @@ namespace BossRush
         {
             try
             {
-                // 检查今日是否已获得好感度
-                bool canGainAffinity = CanChatToday();
-                int affinityGain = 0;
-                
-                if (canGainAffinity)
-                {
-                    // 今日首次聊天，增加好感度
-                    affinityGain = GoblinAffinityConfig.DAILY_CHAT_AFFINITY;
-                    AffinityManager.AddPoints(GoblinAffinityConfig.NPC_ID, affinityGain);
-                    
-                    // 更新上次对话日期
-                    int currentDay = NPCGiftSystem.GetCurrentGameDay();
-                    AffinityManager.SetLastChatDay(GoblinAffinityConfig.NPC_ID, currentDay);
-                    
-                    ModBehaviour.DevLog("[GoblinNPC] 今日首次对话，好感度增加: " + affinityGain);
-                }
-                
-                // 好感度等级 >= 8 时每次聊天都显示冒爱心特效
-                int currentLevel = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
-                if (currentLevel >= 8 && controller != null)
-                {
-                    controller.ShowLoveHeartBubble();
-                    ModBehaviour.DevLog("[GoblinNPC] 好感度等级 " + currentLevel + " >= 8，显示冒爱心特效");
-                }
-                
-                // 每次聊天都显示好感度进度横幅（无论是否获得好感度）
-                ShowAffinityBubble(affinityGain);
+                NPCAffinityInteractionHelper.ProcessChatAffinityAndFeedback(
+                    GoblinAffinityConfig.NPC_ID,
+                    GoblinAffinityConfig.DAILY_CHAT_AFFINITY,
+                    8,
+                    () =>
+                    {
+                        if (controller != null)
+                        {
+                            controller.ShowLoveHeartBubble();
+                        }
+                    },
+                    "[GoblinNPC]");
                 
                 // 无论是否已聊天，都从问候对话库随机选一条显示
                 string dialogue = NPCDialogueSystem.GetDialogue(GoblinAffinityConfig.NPC_ID, DialogueCategory.Greeting);
@@ -353,16 +336,6 @@ namespace BossRush
                     controller.EndDialogueWithStay(10f);
                 }
             }
-        }
-        
-        /// <summary>
-        /// 检查今日是否可以获得聊天好感度
-        /// </summary>
-        private bool CanChatToday()
-        {
-            int currentDay = NPCGiftSystem.GetCurrentGameDay();
-            int lastChatDay = AffinityManager.GetLastChatDay(GoblinAffinityConfig.NPC_ID);
-            return currentDay != lastChatDay;
         }
         
         /// <summary>
@@ -403,58 +376,5 @@ namespace BossRush
             }
         }
         
-        /// <summary>
-        /// 显示好感度进度通知（横幅样式）
-        /// 格式：叮当好感度 Lv.x 进度 xx/xxx
-        /// 使用 AffinityManager 统一的递增式等级配置
-        /// </summary>
-        private void ShowAffinityBubble(int change)
-        {
-            try
-            {
-                // 获取当前好感度信息
-                int currentLevel = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
-                int maxLevel = AffinityManager.UNIFIED_MAX_LEVEL;
-                
-                string notificationText;
-                
-                // 满级时显示特殊文本
-                if (currentLevel >= maxLevel)
-                {
-                    notificationText = L10n.T(
-                        "叮当好感度 Lv." + currentLevel + " (MAX)",
-                        "Dingdang Affinity Lv." + currentLevel + " (MAX)"
-                    );
-                }
-                else
-                {
-                    // 使用 AffinityManager 的统一方法获取进度详情
-                    int currentLevelProgress, pointsNeededForNextLevel;
-                    AffinityManager.GetLevelProgressDetails(GoblinAffinityConfig.NPC_ID, out currentLevelProgress, out pointsNeededForNextLevel);
-                    
-                    // 构建通知文本（只显示进度，不显示增加量）
-                    notificationText = L10n.T(
-                        "叮当好感度 Lv." + currentLevel + " 进度 " + currentLevelProgress + "/" + pointsNeededForNextLevel,
-                        "Dingdang Affinity Lv." + currentLevel + " Progress " + currentLevelProgress + "/" + pointsNeededForNextLevel
-                    );
-                }
-                
-                // 使用 ModBehaviour 的横幅显示方法（确保至少显示2秒）
-                if (ModBehaviour.Instance != null)
-                {
-                    ModBehaviour.Instance.ShowBigBanner(notificationText);
-                }
-                else
-                {
-                    Duckov.UI.NotificationText.Push(notificationText);
-                }
-                
-                ModBehaviour.DevLog("[GoblinNPC] 显示好感度通知: " + notificationText);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[GoblinNPC] [WARNING] 显示好感度通知失败: " + e.Message);
-            }
-        }
     }
 }

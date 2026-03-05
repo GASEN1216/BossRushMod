@@ -10,6 +10,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 using ItemStatsSystem;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -21,6 +22,8 @@ namespace BossRush
         // 反射缓存
         private static FieldInfo _typeIdField;
         private static bool _typeIdFieldCached = false;
+        private static bool _typeIdErrorLogged = false;
+        private static bool _itemTypeErrorLogged = false;
         
         // ============================================================================
         // 公共方法
@@ -44,7 +47,7 @@ namespace BossRush
         /// <param name="npcTransform">NPC的Transform（用于显示气泡）</param>
         /// <param name="npcController">NPC控制器（可选，用于播放动画）</param>
         /// <returns>是否赠送成功</returns>
-        public static bool GiveGift(string npcId, Item item, Transform npcTransform = null, GoblinNPCController npcController = null)
+        public static bool GiveGift(string npcId, Item item, Transform npcTransform = null, INPCController npcController = null)
         {
             if (string.IsNullOrEmpty(npcId) || item == null)
             {
@@ -186,7 +189,17 @@ namespace BossRush
             // 检查负向物品列表
             if (giftConfig?.NegativeItems != null && giftConfig.NegativeItems.TryGetValue(typeId, out int penalty))
             {
-                return -penalty;
+                // 约定：NegativeItems 的值为 0 时，使用配置中的默认厌恶值（通常为 -40）
+                if (penalty == 0)
+                {
+                    if (config?.GiftValues != null && config.GiftValues.TryGetValue("Disliked", out int dislikedValue))
+                    {
+                        return dislikedValue > 0 ? -dislikedValue : dislikedValue;
+                    }
+                    return -40;
+                }
+
+                return penalty > 0 ? -penalty : penalty;
             }
 
             // 检查正向物品列表
@@ -346,35 +359,40 @@ namespace BossRush
                     return (int)_typeIdField.GetValue(item);
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                if (!_typeIdErrorLogged)
+                {
+                    _typeIdErrorLogged = true;
+                    NPCExceptionHandler.LogAndIgnore(e, "NPCGiftSystem.GetItemTypeId");
+                }
+            }
 
             return 0;
         }
 
         /// <summary>
         /// 检查物品是否拥有NPC喜欢的标签
+        /// 通用实现：从 AffinityManager 获取NPC配置，检查其 PositiveTags
         /// </summary>
         private static bool HasPositiveTag(string npcId, Item item)
         {
             if (item == null || item.Tags == null || item.Tags.Count == 0)
                 return false;
 
-            // 目前只有哥布林支持标签偏好
-            if (npcId == GoblinAffinityConfig.NPC_ID)
-            {
-                var goblinConfig = new GoblinAffinityConfig();
-                var positiveTags = goblinConfig.PositiveTags;
+            var config = AffinityManager.GetNPCConfig(npcId);
+            var giftConfig = config as INPCGiftConfig;
+            if (giftConfig == null) return false;
 
-                if (positiveTags != null && positiveTags.Count > 0)
+            var positiveTags = giftConfig.PositiveTags;
+            if (positiveTags == null || positiveTags.Count == 0) return false;
+
+            foreach (var tag in item.Tags)
+            {
+                if (tag != null && positiveTags.Contains(tag.name))
                 {
-                    foreach (var tag in item.Tags)
-                    {
-                        if (tag != null && positiveTags.Contains(tag.name))
-                        {
-                            ModBehaviour.DevLog("[NPCGift] 物品拥有喜欢的标签: " + tag.name);
-                            return true;
-                        }
-                    }
+                    ModBehaviour.DevLog("[NPCGift] " + npcId + " 物品拥有喜欢的标签: " + tag.name);
+                    return true;
                 }
             }
 
@@ -441,7 +459,14 @@ namespace BossRush
                     return "Gem";
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                if (!_itemTypeErrorLogged)
+                {
+                    _itemTypeErrorLogged = true;
+                    NPCExceptionHandler.LogAndIgnore(e, "NPCGiftSystem.GetItemType");
+                }
+            }
             
             return "Default";
         }

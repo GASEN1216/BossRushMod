@@ -61,6 +61,9 @@ namespace BossRush
         /// 龙王BGM是否正在播放（防止多Boss时重复播放）
         /// </summary>
         private bool isDragonKingBGMPlaying = false;
+        private string cachedNurseInteractSfxPath = null;
+        private bool nurseInteractSfxChecked = false;
+        private bool nurseInteractSfxExists = false;
 
         /// <summary>
         /// 播放龙王BGM（防止重复播放）
@@ -86,6 +89,60 @@ namespace BossRush
         public void ResetDragonKingBGMState()
         {
             isDragonKingBGMPlaying = false;
+        }
+
+        /// <summary>
+        /// 按 NPC ID 播放交互音效
+        /// </summary>
+        public void PlayNPCInteractSFX(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return;
+
+            // 哥布林：保留现有语音音效
+            if (npcId == GoblinAffinityConfig.NPC_ID)
+            {
+                PlayGoblinInteractSFX();
+                return;
+            }
+
+            // 护士：仅在存在专属音效文件时播放，避免误播哥布林音效
+            if (npcId == NurseAffinityConfig.NPC_ID)
+            {
+                if (TryGetNurseInteractSfxPath(out string path))
+                {
+                    ModBehaviour.Instance?.PlaySoundEffect(path);
+                }
+            }
+        }
+
+        private bool TryGetNurseInteractSfxPath(out string path)
+        {
+            path = null;
+
+            if (!nurseInteractSfxChecked)
+            {
+                nurseInteractSfxChecked = true;
+
+                string modPath = ModBehaviour.GetModPath();
+                if (!string.IsNullOrEmpty(modPath))
+                {
+                    cachedNurseInteractSfxPath = Path.Combine(modPath, "Assets", "Sounds", "Nurse", "nurse.mp3");
+                    nurseInteractSfxExists = File.Exists(cachedNurseInteractSfxPath);
+                }
+                else
+                {
+                    cachedNurseInteractSfxPath = null;
+                    nurseInteractSfxExists = false;
+                }
+            }
+
+            if (!nurseInteractSfxExists || string.IsNullOrEmpty(cachedNurseInteractSfxPath))
+            {
+                return false;
+            }
+
+            path = cachedNurseInteractSfxPath;
+            return true;
         }
 
         /// <summary>

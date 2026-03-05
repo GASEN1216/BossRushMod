@@ -9,6 +9,7 @@
 
 using System;
 using UnityEngine;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -20,6 +21,7 @@ namespace BossRush
         // 缓存的可见性状态，避免重复计算
         private bool cachedVisibility = false;
         private bool visibilityCached = false;
+        private bool listenersRegistered = false;
         
         // ============================================================================
         // 交互设置
@@ -27,20 +29,20 @@ namespace BossRush
         
         protected override void SetupInteractName()
         {
-            try
+            NPCExceptionHandler.TryExecute(() =>
             {
                 this.overrideInteractName = true;
                 this._overrideInteractNameKey = "BossRush_NPCShop";
                 this.InteractName = "BossRush_NPCShop";
-            }
-            catch { }
+            }, "NPCShopInteractable.SetupInteractName", false);
         }
         
         protected override void Awake()
         {
             base.Awake();
-            
-            // 初始化时检查好感度，决定是否显示
+
+            // 在首次可见性判定前先注册事件，避免初始隐藏后丢失解锁事件
+            RegisterAffinityListeners();
             UpdateVisibility();
         }
         
@@ -52,16 +54,32 @@ namespace BossRush
         
         protected virtual void OnEnable()
         {
-            // 订阅好感度变化事件（事件驱动，避免每帧轮询）
+            RegisterAffinityListeners();
+            UpdateVisibility();
+        }
+
+        protected override void OnDestroy()
+        {
+            UnregisterAffinityListeners();
+            base.OnDestroy();
+        }
+
+        private void RegisterAffinityListeners()
+        {
+            if (listenersRegistered) return;
+
             AffinityManager.OnAffinityChanged += OnAffinityChanged;
             AffinityManager.OnLevelUp += OnLevelUp;
+            listenersRegistered = true;
         }
-        
-        protected virtual void OnDisable()
+
+        private void UnregisterAffinityListeners()
         {
-            // 取消订阅事件，防止内存泄漏
+            if (!listenersRegistered) return;
+
             AffinityManager.OnAffinityChanged -= OnAffinityChanged;
             AffinityManager.OnLevelUp -= OnLevelUp;
+            listenersRegistered = false;
         }
         
         /// <summary>
@@ -96,15 +114,19 @@ namespace BossRush
             if (string.IsNullOrEmpty(npcId)) return;
             
             bool shouldBeVisible = NPCShopSystem.IsShopUnlocked(npcId);
-            
-            // 更新缓存
+            bool changed = !visibilityCached || cachedVisibility != shouldBeVisible;
+
+            // 按产品要求：未解锁时隐藏，解锁后显示
             cachedVisibility = shouldBeVisible;
             visibilityCached = true;
-            
-            // 只在状态变化时设置，避免频繁调用
+
             if (gameObject.activeSelf != shouldBeVisible)
             {
                 gameObject.SetActive(shouldBeVisible);
+            }
+
+            if (changed)
+            {
                 ModBehaviour.DevLog("[NPCShop] 商店选项可见性更新: " + shouldBeVisible + " (NPC: " + npcId + ")");
             }
         }

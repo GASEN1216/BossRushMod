@@ -14,6 +14,7 @@ using Duckov.Economy;
 using Duckov.Economy.UI;
 using Duckov.UI;
 using ItemStatsSystem;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -31,7 +32,7 @@ namespace BossRush
         private static GameObject shopObject = null;
         private static StockShop currentShop = null;
         private static Transform currentNpcTransform = null;
-        private static GoblinNPCController currentController = null;
+        private static INPCController currentController = null;
         private static bool isServiceActive = false;
         
         // 反射缓存
@@ -81,7 +82,7 @@ namespace BossRush
         /// <summary>
         /// 打开指定NPC的商店
         /// </summary>
-        public static void OpenShop(string npcId, Transform npcTransform, GoblinNPCController controller = null)
+        public static void OpenShop(string npcId, Transform npcTransform, INPCController controller = null)
         {
             if (isServiceActive)
             {
@@ -120,7 +121,10 @@ namespace BossRush
                             )
                         );
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        NPCExceptionHandler.LogAndIgnore(e, "NPCShopSystem.OpenShop.ShowHintBubble");
+                    }
                 }
                 return;
             }

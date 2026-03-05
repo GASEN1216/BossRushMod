@@ -7,7 +7,10 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -34,7 +37,7 @@ namespace BossRush
         /// <summary>
         /// NPC控制器引用（可选）
         /// </summary>
-        protected GoblinNPCController npcController;
+        protected INPCController npcController;
         
         // ============================================================================
         // 公共属性
@@ -61,13 +64,22 @@ namespace BossRush
                 SetupInteractName();
                 
                 // 设置交互标记偏移
-                try { this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f); } catch { }
+                NPCExceptionHandler.TryExecute(
+                    () => this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f),
+                    "NPCInteractableBase.Awake.SetInteractMarkerOffset",
+                    false);
                 
                 // 调用基类
-                try { base.Awake(); } catch { }
+                NPCExceptionHandler.TryExecute(
+                    () => base.Awake(),
+                    "NPCInteractableBase.Awake.BaseAwake",
+                    false);
                 
-                // 获取NPC控制器
-                try { npcController = GetComponentInParent<GoblinNPCController>(); } catch { }
+                // 获取NPC控制器（通用接口）
+                NPCExceptionHandler.TryExecute(
+                    () => npcController = GetComponentInParent<INPCController>(),
+                    "NPCInteractableBase.Awake.GetController",
+                    false);
                 
                 // 尝试从父对象获取NPC ID
                 if (string.IsNullOrEmpty(npcId))
@@ -76,7 +88,10 @@ namespace BossRush
                 }
                 
                 // 子选项不需要自己的 Collider，隐藏交互标记
-                try { this.MarkerActive = false; } catch { }
+                NPCExceptionHandler.TryExecute(
+                    () => this.MarkerActive = false,
+                    "NPCInteractableBase.Awake.SetMarkerInactive",
+                    false);
                 
                 isInitialized = true;
             }
@@ -88,7 +103,10 @@ namespace BossRush
         
         protected override void Start()
         {
-            try { base.Start(); } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => base.Start(),
+                "NPCInteractableBase.Start.BaseStart",
+                false);
         }
         
         // ============================================================================
@@ -120,13 +138,13 @@ namespace BossRush
             {
                 base.OnInteractStart(interactCharacter);
                 
-                // 播放交互音效
-                BossRushAudioManager.Instance?.PlayGoblinInteractSFX();
+                // 按 NPC ID 分发交互音效，避免跨 NPC 误播
+                BossRushAudioManager.Instance?.PlayNPCInteractSFX(npcId);
                 
                 // 获取控制器
                 if (npcController == null)
                 {
-                    npcController = GetComponentInParent<GoblinNPCController>();
+                    npcController = GetComponentInParent<INPCController>();
                 }
                 
                 // 执行具体交互逻辑
@@ -141,7 +159,10 @@ namespace BossRush
         
         protected override void OnInteractStop()
         {
-            try { base.OnInteractStop(); } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => base.OnInteractStop(),
+                "NPCInteractableBase.OnInteractStop.BaseStop",
+                false);
         }
         
         // ============================================================================
@@ -164,10 +185,10 @@ namespace BossRush
                 }
             }
             
-            // 尝试从 GoblinNPCController 获取（如果是哥布林）
+            // 尝试从控制器获取NPC ID
             if (npcController != null)
             {
-                npcId = GoblinAffinityConfig.NPC_ID;
+                npcId = npcController.NpcId;
             }
         }
         
@@ -215,6 +236,79 @@ namespace BossRush
         protected int GetCurrentLevel()
         {
             return AffinityManager.GetLevel(npcId);
+        }
+    }
+
+    /// <summary>
+    /// NPC交互组构建辅助（主交互 + 子交互注入）
+    /// </summary>
+    public static class NPCInteractionGroupHelper
+    {
+        private static readonly BindingFlags GroupFieldBindingFlags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+        /// <summary>
+        /// 获取或创建交互组子项列表 otherInterablesInGroup
+        /// </summary>
+        public static List<InteractableBase> GetOrCreateGroupList(InteractableBase owner, string logPrefix)
+        {
+            if (owner == null)
+            {
+                ModBehaviour.DevLog(logPrefix + " [ERROR] 交互组构建失败：owner 为空");
+                return null;
+            }
+
+            try
+            {
+                FieldInfo field = typeof(InteractableBase).GetField("otherInterablesInGroup", GroupFieldBindingFlags);
+                if (field == null)
+                {
+                    ModBehaviour.DevLog(logPrefix + " [ERROR] 无法获取 otherInterablesInGroup 字段");
+                    return null;
+                }
+
+                var list = field.GetValue(owner) as List<InteractableBase>;
+                if (list == null)
+                {
+                    list = new List<InteractableBase>();
+                    field.SetValue(owner, list);
+                }
+
+                return list;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(logPrefix + " [ERROR] 获取交互组列表失败: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 向交互组添加子交互组件
+        /// </summary>
+        public static T AddSubInteractable<T>(
+            Transform parent,
+            string childName,
+            List<InteractableBase> groupList,
+            Action<T> setup = null)
+            where T : InteractableBase
+        {
+            if (parent == null || groupList == null)
+            {
+                return null;
+            }
+
+            GameObject childObj = new GameObject(childName);
+            childObj.transform.SetParent(parent);
+            childObj.transform.localPosition = Vector3.zero;
+
+            T component = childObj.AddComponent<T>();
+            if (setup != null)
+            {
+                setup(component);
+            }
+
+            groupList.Add(component);
+            return component;
         }
     }
 }

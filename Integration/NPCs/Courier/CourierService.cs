@@ -23,6 +23,7 @@ using UnityEngine.UI;
 using TMPro;
 using ItemStatsSystem;
 using Duckov.UI;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -1240,7 +1241,10 @@ namespace BossRush
                 {
                     player = CharacterMainControl.Main;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    NPCExceptionHandler.LogAndIgnore(ex, "CourierService.ReturnItemsToPlayer.GetMainCharacter");
+                }
                 DropItemsToGround(player);
             }
         }
@@ -1290,7 +1294,10 @@ namespace BossRush
                             {
                                 mainPlayer = CharacterMainControl.Main;
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                NPCExceptionHandler.LogAndIgnore(ex, "CourierService.DropItemsToGround.GetMainCharacter");
+                            }
                             
                             if (mainPlayer != null)
                             {

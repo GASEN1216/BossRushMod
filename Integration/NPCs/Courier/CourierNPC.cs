@@ -13,9 +13,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using System.Threading.Tasks;
 using UnityEngine;
 using Duckov.Utilities;
 using Pathfinding;
@@ -25,6 +23,7 @@ using ItemStatsSystem;
 using Dialogues;
 using NodeCanvas.DialogueTrees;
 using SodaCraft.Localizations;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -50,106 +49,12 @@ namespace BossRush
         /// </summary>
         private bool LoadCourierAssetBundle()
         {
-            if (courierPrefab != null)
-            {
-                DevLog("[CourierNPC] 预制体已缓存，跳过加载");
-                return true;
-            }
-            
-            try
-            {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = System.IO.Path.GetDirectoryName(assemblyLocation);
-                string bundlePath = System.IO.Path.Combine(modDir, "Assets", "npcs", "couriernpc");
-                
-                DevLog("[CourierNPC] 尝试加载 AssetBundle: " + bundlePath);
-                
-                if (!File.Exists(bundlePath))
-                {
-                    DevLog("[CourierNPC] 错误：未找到 couriernpc AssetBundle 文件: " + bundlePath);
-                    return false;
-                }
-                
-                // 如果之前加载过但预制体为空，先卸载
-                if (courierAssetBundle != null)
-                {
-                    courierAssetBundle.Unload(false);
-                    courierAssetBundle = null;
-                }
-                
-                // 直接使用 AssetBundle API 加载
-                courierAssetBundle = AssetBundle.LoadFromFile(bundlePath);
-                if (courierAssetBundle == null)
-                {
-                    DevLog("[CourierNPC] 错误：加载 AssetBundle 失败（可能已被加载或文件损坏）: " + bundlePath);
-                    return false;
-                }
-                
-                DevLog("[CourierNPC] AssetBundle 加载成功，开始查找预制体...");
-                
-                // 列出所有资源名称用于调试
-                string[] assetNames = courierAssetBundle.GetAllAssetNames();
-                DevLog("[CourierNPC] AssetBundle 包含 " + assetNames.Length + " 个资源:");
-                foreach (string name in assetNames)
-                {
-                    DevLog("[CourierNPC]   - " + name);
-                }
-                
-                // 尝试加载名为 CourierNPC 的预制体
-                courierPrefab = courierAssetBundle.LoadAsset<GameObject>("CourierNPC");
-                
-                // 如果没找到，尝试其他常见名称
-                if (courierPrefab == null)
-                {
-                    DevLog("[CourierNPC] 未找到 'CourierNPC'，尝试其他名称...");
-                    courierPrefab = courierAssetBundle.LoadAsset<GameObject>("couriernpc");
-                }
-                
-                // 如果还是没找到，加载第一个 GameObject
-                if (courierPrefab == null)
-                {
-                    DevLog("[CourierNPC] 尝试加载所有 GameObject...");
-                    GameObject[] allPrefabs = courierAssetBundle.LoadAllAssets<GameObject>();
-                    if (allPrefabs != null && allPrefabs.Length > 0)
-                    {
-                        courierPrefab = allPrefabs[0];
-                        DevLog("[CourierNPC] 使用第一个 GameObject: " + courierPrefab.name);
-                    }
-                }
-                
-                if (courierPrefab == null)
-                {
-                    DevLog("[CourierNPC] 错误：AssetBundle 中未找到任何 GameObject 预制体");
-                    return false;
-                }
-                
-                // 检查预制体的组件
-                DevLog("[CourierNPC] 成功加载快递员预制体: " + courierPrefab.name);
-                Animator animator = courierPrefab.GetComponentInChildren<Animator>();
-                if (animator != null)
-                {
-                    DevLog("[CourierNPC] 预制体包含 Animator 组件");
-                    if (animator.runtimeAnimatorController != null)
-                    {
-                        DevLog("[CourierNPC] Animator Controller: " + animator.runtimeAnimatorController.name);
-                    }
-                    else
-                    {
-                        DevLog("[CourierNPC] 警告：Animator 没有 Controller！动画可能无法播放");
-                    }
-                }
-                else
-                {
-                    DevLog("[CourierNPC] 警告：预制体没有 Animator 组件！");
-                }
-                
-                return true;
-            }
-            catch (Exception e)
-            {
-                DevLog("[CourierNPC] 加载 AssetBundle 出错: " + e.Message + "\n" + e.StackTrace);
-                return false;
-            }
+            return NPCAssetBundleHelper.LoadNPCPrefab(
+                "couriernpc",
+                "CourierNPC",
+                "[CourierNPC]",
+                ref courierAssetBundle,
+                ref courierPrefab);
         }
         
         // ============================================================================
@@ -573,6 +478,10 @@ namespace BossRush
         private Animator animator;
         private Transform playerTransform;
         private bool hasAnimator = false;
+        private readonly HashSet<int> floatParams = new HashSet<int>();
+        private readonly HashSet<int> boolParams = new HashSet<int>();
+        private readonly HashSet<int> intParams = new HashSet<int>();
+        private bool animatorParamsCached = false;
         
         // Mode E 固定模式标志（站在原地，IsTalking 始终为 true）
         private bool isStationary = false;
@@ -690,6 +599,8 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog("[CourierNPC] [WARNING] 警告：Animator 没有 RuntimeAnimatorController！");
                 }
+
+                CacheAnimatorParameters();
             }
             else
             {
@@ -770,43 +681,33 @@ namespace BossRush
         /// </summary>
         private void CreateNameTag()
         {
+            string courierName = "阿稳";
             try
             {
-                // 创建名字标签对象
-                nameTagObject = new GameObject("CourierNameTag");
-                nameTagObject.transform.SetParent(transform);
-                nameTagObject.transform.localPosition = new Vector3(0f, NAME_TAG_HEIGHT, 0f);
-                
-                // 添加 TextMeshPro 组件
-                nameTagText = nameTagObject.AddComponent<TMPro.TextMeshPro>();
                 // 直接使用 L10n.T 获取本地化名称（不依赖注入）
-                string courierName = L10n.T("阿稳", "Awen");
-                nameTagText.text = courierName;
-                nameTagText.fontSize = 4f;  // 字号大一点
-                nameTagText.alignment = TMPro.TextAlignmentOptions.Center;
-                nameTagText.color = Color.white;  // 白色
-                
-                // 设置文字始终面向相机
-                nameTagText.enableAutoSizing = false;
-                
-                // 设置排序层级确保可见
-                nameTagText.sortingOrder = 100;
-                
-                ModBehaviour.DevLog("[CourierNPC] 名字标签创建成功: " + courierName);
+                courierName = L10n.T("阿稳", "Awen");
             }
-            catch (Exception e)
+            catch
             {
-                ModBehaviour.DevLog("[CourierNPC] [WARNING] 创建名字标签失败: " + e.Message);
+                // 本地化失败时使用默认中文名
+            }
+
+            if (NPCNameTagHelper.CreateNameTag(
+                transform,
+                "CourierNameTag",
+                courierName,
+                NAME_TAG_HEIGHT,
+                out nameTagObject,
+                out nameTagText,
+                "[CourierNPC]"))
+            {
+                ModBehaviour.DevLog("[CourierNPC] 名字标签创建成功: " + courierName);
             }
         }
         
         void LateUpdate()
         {
-            // 让名字标签始终面向相机
-            if (nameTagObject != null && Camera.main != null)
-            {
-                nameTagObject.transform.rotation = Camera.main.transform.rotation;
-            }
+            NPCNameTagHelper.UpdateNameTagRotation(nameTagObject);
         }
         
         /// <summary>
@@ -818,6 +719,11 @@ namespace BossRush
             
             try
             {
+                if (!animatorParamsCached)
+                {
+                    CacheAnimatorParameters();
+                }
+
                 // 安全地设置参数（检查参数是否存在）
                 SafeSetFloat(hash_MoveSpeed, 0f);
                 SafeSetFloat(hash_MoveDirX, 0f);
@@ -841,21 +747,72 @@ namespace BossRush
                 ModBehaviour.DevLog("[CourierNPC] [WARNING] 初始化动画参数出错: " + e.Message);
             }
         }
+
+        /// <summary>
+        /// 缓存 Animator 参数类型，避免每次 Set 都走异常路径
+        /// </summary>
+        private void CacheAnimatorParameters()
+        {
+            if (!hasAnimator || animator == null || animatorParamsCached) return;
+
+            floatParams.Clear();
+            boolParams.Clear();
+            intParams.Clear();
+
+            foreach (var param in animator.parameters)
+            {
+                if (param.type == AnimatorControllerParameterType.Float)
+                {
+                    floatParams.Add(param.nameHash);
+                }
+                else if (param.type == AnimatorControllerParameterType.Bool)
+                {
+                    boolParams.Add(param.nameHash);
+                }
+                else if (param.type == AnimatorControllerParameterType.Int)
+                {
+                    intParams.Add(param.nameHash);
+                }
+            }
+
+            animatorParamsCached = true;
+        }
         
         // 安全设置参数的辅助方法
         private void SafeSetFloat(int hash, float value)
         {
-            try { animator.SetFloat(hash, value); } catch { }
+            if (!hasAnimator || animator == null) return;
+            if (!animatorParamsCached) CacheAnimatorParameters();
+            if (!floatParams.Contains(hash)) return;
+
+            NPCExceptionHandler.TryExecute(
+                () => animator.SetFloat(hash, value),
+                "CourierNPCController.SafeSetFloat",
+                false);
         }
         
         private void SafeSetBool(int hash, bool value)
         {
-            try { animator.SetBool(hash, value); } catch { }
+            if (!hasAnimator || animator == null) return;
+            if (!animatorParamsCached) CacheAnimatorParameters();
+            if (!boolParams.Contains(hash)) return;
+
+            NPCExceptionHandler.TryExecute(
+                () => animator.SetBool(hash, value),
+                "CourierNPCController.SafeSetBool",
+                false);
         }
         
         private void SafeSetInteger(int hash, int value)
         {
-            try { animator.SetInteger(hash, value); } catch { }
+            if (!hasAnimator || animator == null) return;
+            if (!animatorParamsCached) CacheAnimatorParameters();
+            if (!intParams.Contains(hash)) return;
+
+            NPCExceptionHandler.TryExecute(
+                () => animator.SetInteger(hash, value),
+                "CourierNPCController.SafeSetInteger",
+                false);
         }
         
         void Update()
@@ -882,8 +839,8 @@ namespace BossRush
             if (playerTransform == null) return;
             
             // 检测玩家距离
-            float distance = Vector3.Distance(transform.position, playerTransform.position);
-            if (distance <= NEAR_DISTANCE)
+            float nearDistanceSqr = NEAR_DISTANCE * NEAR_DISTANCE;
+            if ((transform.position - playerTransform.position).sqrMagnitude <= nearDistanceSqr)
             {
                 // 触发首次见面对话
                 ModBehaviour.DevLog("[CourierNPC] 玩家进入范围，触发首次见面对话");
@@ -982,8 +939,8 @@ namespace BossRush
         private void FacePlayer()
         {
             if (playerTransform == null) return;
-            
-            try
+
+            NPCExceptionHandler.TryExecute(() =>
             {
                 Vector3 direction = playerTransform.position - transform.position;
                 direction.y = 0;  // 只在水平面上旋转
@@ -991,8 +948,7 @@ namespace BossRush
                 {
                     transform.rotation = Quaternion.LookRotation(direction);
                 }
-            }
-            catch { }
+            }, "CourierNPCController.FacePlayer", false);
         }
         
         /// <summary>
@@ -1031,21 +987,19 @@ namespace BossRush
         {
             if (playerTransform == null)
             {
-                // 尝试重新获取玩家引用
-                try
+                NPCExceptionHandler.TryExecute(() =>
                 {
                     if (CharacterMainControl.Main != null)
                     {
                         playerTransform = CharacterMainControl.Main.transform;
                     }
-                }
-                catch { }
+                }, "CourierNPCController.UpdateDistanceState.RefreshPlayer", false);
             }
             
             if (playerTransform == null || !hasAnimator) return;
             
-            float distance = Vector3.Distance(transform.position, playerTransform.position);
-            bool isNear = distance <= NEAR_DISTANCE;
+            float nearDistanceSqr = NEAR_DISTANCE * NEAR_DISTANCE;
+            bool isNear = (transform.position - playerTransform.position).sqrMagnitude <= nearDistanceSqr;
             
             SafeSetBool(hash_IsNearPlayer, isNear);
         }
@@ -1091,39 +1045,31 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 获取随机快递员对话（直接使用 L10n.T，不依赖注入）
+        /// 获取随机快递员对话（优先使用 LocalizationInjector 注入的索引键）
         /// </summary>
         private string GetRandomCourierDialogue()
         {
-            // 快递员随机对话列表
-            string[][] dialogues = new string[][]
+            try
             {
-                new string[] { "补给到了……先把伞可乐灌了，灵魂别掉地上。", "Supplies arrived... drink your Umbrella Cola first, don't let your soul drop." },
-                new string[] { "这地方路况真差，比拎着XO钥匙去洗脚房还折磨。", "The roads here are terrible, worse than carrying XO keys to a foot spa." },
-                new string[] { "别盯着我背包看，都是J-Lab登记过的，少一件杰夫要开会。", "Stop staring at my backpack, everything's registered with J-Lab. Jeff will call a meeting if anything's missing." },
-                new string[] { "Boss也得排队，先去祭坛交羽毛，图腾按流程发。", "Even bosses have to queue. Go to the altar with feathers first, totems are distributed by procedure." },
-                new string[] { "哎，这里谁点了'急件'？紫色空间能量都溢出来了。", "Hey, who ordered 'express delivery' here? Purple space energy is overflowing." },
-                new string[] { "星球都快崩了还要准点，J-Lab的KPI不讲情面。", "The planet's about to collapse and we still need to be on time. J-Lab's KPIs show no mercy." },
-                new string[] { "你要是能活到下一波，我给你盖个章，再塞你一瓶'有糖的'——有灵魂那种。", "If you survive the next wave, I'll stamp your card and slip you a 'sugared' one - the kind with soul." },
-                new string[] { "别吵，听见没？那边在打碟……蓝皮人可能又在看热闘。", "Quiet, hear that? Someone's DJing over there... the blue guys are probably watching again." },
-                new string[] { "我这把年纪了还在跑单，外星水熊虫母舰来了都得排队签收。", "At my age still running deliveries. Even alien tardigrade motherships have to queue for pickup." },
-                new string[] { "箱子里是什么？浓缩浆质、绷带，还有一张'无糖可乐慎用'的说明。", "What's in the box? Concentrated plasma, bandages, and a 'use sugar-free cola with caution' note." },
-                new string[] { "你要投诉？可以，去找蓝皮人，他一个响指就能把你的工单传送走。", "Want to complain? Sure, find the blue guy. One snap and he'll teleport your ticket away." },
-                new string[] { "路线规划又被风暴改了……行，绕开机器蜘蛛，走那条最紫的。", "Route changed by the storm again... fine, avoid the mech spiders, take the most purple path." },
-                new string[] { "我不怕Boss，我怕紫毒把快递标签腐蚀了——到时候谁也别想对账。", "I'm not afraid of bosses. I'm afraid the purple poison will corrode the delivery labels - then no one can reconcile accounts." },
-                new string[] { "签收方式：按爪印、按羽毛、或者交一块蓝色方块当押金。", "Sign for delivery: paw print, feather, or leave a blue cube as deposit." },
-                new string[] { "别跟我讲热血，我只认单号、撤离路线，以及'有糖才有灵魂'。", "Don't talk passion to me. I only care about order numbers, evacuation routes, and 'sugar means soul'." },
-                new string[] { "看到那只到处乱创的火龙了吗？", "See that fire dragon causing chaos everywhere?" },
-                new string[] { "嗯...火龙怕毒，哪天毒死它", "Hmm... fire dragons fear poison. Maybe poison it someday." },
-                new string[] { "你知道火龙也怕冰吗？我有一次都把它打坠机了哈哈哈哈", "Did you know fire dragons also fear ice? I once made it crash land hahaha" },
-                new string[] { "这该死的火龙把我的快递都创飞了", "That damn fire dragon knocked all my deliveries flying" },
-                new string[] { "那头火龙在叽里咕噜的时候最好跑远点", "When that fire dragon starts gurgling, you better run far away" },
-                new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" },
-                new string[] { "有时候送的快也很重要，直接就把钱拿过来，概不赊账！", "Sometimes speed matters, just hand over the money, no credit!" }
-            };
-            
-            int index = UnityEngine.Random.Range(0, dialogues.Length);
-            return L10n.T(dialogues[index][0], dialogues[index][1]);
+                int dialogueCount = LocalizationInjector.GetCourierDialogueCount();
+                if (dialogueCount > 0)
+                {
+                    int index = UnityEngine.Random.Range(0, dialogueCount);
+                    string key = "BossRush_CourierDialogue_" + index;
+                    string localized = LocalizationHelper.GetLocalizedText(key);
+                    if (!string.IsNullOrEmpty(localized) && localized != key)
+                    {
+                        return localized;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 读取随机对话键失败: " + e.Message);
+            }
+
+            // 回退：保证在本地化注入异常时依然有可显示内容
+            return L10n.T("补给到了……先把伞可乐灌了，灵魂别掉地上。", "Supplies arrived... drink your Umbrella Cola first, don't let your soul drop.");
         }
         
         /// <summary>
@@ -1218,6 +1164,8 @@ namespace BossRush
         private CourierNPCController controller;
         private Transform playerTransform;
         private Animator animator;
+        private bool hasMoveSpeedParam = false;
+        private bool animatorParamsChecked = false;
         
         // A* Pathfinding 组件（与原版 AI_PathControl 完全一致）
         public Seeker seeker;
@@ -1383,6 +1331,7 @@ namespace BossRush
             
             controller = GetComponent<CourierNPCController>();
             animator = GetComponentInChildren<Animator>();
+            CacheAnimatorParameters();
             
             // 获取玩家引用
             try
@@ -1524,18 +1473,18 @@ namespace BossRush
         /// </summary>
         public void OnPathComplete(Pathfinding.Path p)
         {
-            if (!p.error)
-            {
-                path = p;
-                currentWaypoint = 0;
-                moving = true;
-                ModBehaviour.DevLog("[CourierNPC] 路径计算成功，路点数: " + p.vectorPath.Count);
-            }
-            else
-            {
-                ModBehaviour.DevLog("[CourierNPC] [WARNING] 路径计算失败: " + p.errorLog);
-            }
-            waitingForPathResult = false;
+            bool shouldDiscard = isInService || isStationary || isCompleted;
+
+            NPCPathingHelper.HandlePathComplete(
+                p,
+                shouldDiscard,
+                "NPC处于服务/固定/通关状态",
+                ref path,
+                ref currentWaypoint,
+                ref moving,
+                ref waitingForPathResult,
+                UpdateMoveAnimation,
+                "[CourierNPC]");
         }
         
         /// <summary>
@@ -1543,10 +1492,12 @@ namespace BossRush
         /// </summary>
         public void StopMove()
         {
-            path = null;
-            moving = false;
-            waitingForPathResult = false;
-            UpdateMoveAnimation(0f);
+            NPCPathingHelper.StopMovement(
+                ref path,
+                ref currentWaypoint,
+                ref moving,
+                ref waitingForPathResult,
+                UpdateMoveAnimation);
         }
         
         void Update()
@@ -1584,14 +1535,13 @@ namespace BossRush
             // 更新玩家引用
             if (playerTransform == null)
             {
-                try
+                NPCExceptionHandler.TryExecute(() =>
                 {
                     if (CharacterMainControl.Main != null)
                     {
                         playerTransform = CharacterMainControl.Main.transform;
                     }
-                }
-                catch { }
+                }, "CourierMovement.Update.RefreshPlayer", false);
             }
             
             // 更新移动决策（决定去哪里）
@@ -1638,8 +1588,8 @@ namespace BossRush
             if (isBossFight && playerTransform != null)
             {
                 // 打Boss时：保持安全距离，如果玩家太近则跑到远离玩家的 Boss 刷新点
-                float distance = Vector3.Distance(transform.position, playerTransform.position);
-                if (distance < safeDistance)
+                float safeDistanceSqr = safeDistance * safeDistance;
+                if ((transform.position - playerTransform.position).sqrMagnitude < safeDistanceSqr)
                 {
                     // 触发逃跑，显示逃跑气泡
                     ShowBubble(LocalizationHelper.GetLocalizedText("BossRush_CourierFlee"), 3f);
@@ -1862,13 +1812,31 @@ namespace BossRush
         /// </summary>
         private void UpdateMoveAnimation(float speed)
         {
-            if (animator != null)
+            if (animator == null) return;
+            if (!animatorParamsChecked) CacheAnimatorParameters();
+            if (!hasMoveSpeedParam) return;
+
+            NPCExceptionHandler.TryExecute(
+                () => animator.SetFloat(hash_MoveSpeed, speed),
+                "CourierMovement.UpdateMoveAnimation",
+                false);
+        }
+
+        private void CacheAnimatorParameters()
+        {
+            animatorParamsChecked = true;
+            hasMoveSpeedParam = false;
+
+            if (animator == null) return;
+
+            foreach (var param in animator.parameters)
             {
-                try
+                if (param.type == AnimatorControllerParameterType.Float &&
+                    param.nameHash == hash_MoveSpeed)
                 {
-                    animator.SetFloat(hash_MoveSpeed, speed);
+                    hasMoveSpeedParam = true;
+                    break;
                 }
-                catch { }
             }
         }
         
@@ -2078,11 +2046,12 @@ namespace BossRush
                     // 计算该点到玩家的水平距离
                     Vector3 diff = point - playerTransform.position;
                     diff.y = 0;
-                    float distToPlayer = diff.magnitude;
+                    float distToPlayerSqr = diff.sqrMagnitude;
                     
                     // 找到第一个距离玩家大于12米的点就返回
-                    if (distToPlayer > 12f)
+                    if (distToPlayerSqr > 12f * 12f)
                     {
+                        float distToPlayer = Mathf.Sqrt(distToPlayerSqr);
                         ModBehaviour.DevLog("[CourierNPC] Boss战逃跑：选择刷新点 [" + i + "]，距离玩家: " + distToPlayer.ToString("F1") + "米");
                         return point;
                     }
@@ -2115,29 +2084,43 @@ namespace BossRush
         {
             // 子选项不需要设置 interactableGroup，它们是被主交互组件管理的
             
-            try
+            NPCExceptionHandler.TryExecute(() =>
             {
                 this.overrideInteractName = true;
                 this._overrideInteractNameKey = "BossRush_StorageService";
                 this.InteractName = "BossRush_StorageService";
-            }
-            catch { }
+            }, "CourierStorageInteractable.Awake.SetupInteractName", false);
             
-            try { this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f); } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f),
+                "CourierStorageInteractable.Awake.SetMarkerOffset",
+                false);
             
-            try { base.Awake(); } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => base.Awake(),
+                "CourierStorageInteractable.Awake.BaseAwake",
+                false);
             
-            try { controller = GetComponentInParent<CourierNPCController>(); } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => controller = GetComponentInParent<CourierNPCController>(),
+                "CourierStorageInteractable.Awake.GetController",
+                false);
             
             // 子选项不需要自己的 Collider，隐藏交互标记
-            try { this.MarkerActive = false; } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => this.MarkerActive = false,
+                "CourierStorageInteractable.Awake.SetMarkerInactive",
+                false);
             
             isInitialized = true;
         }
         
         protected override void Start()
         {
-            try { base.Start(); } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => base.Start(),
+                "CourierStorageInteractable.Start.BaseStart",
+                false);
         }
         
         protected override bool IsInteractable()
@@ -2163,7 +2146,10 @@ namespace BossRush
         
         protected override void OnInteractStop()
         {
-            try { base.OnInteractStop(); } catch { }
+            NPCExceptionHandler.TryExecute(
+                () => base.OnInteractStop(),
+                "CourierStorageInteractable.OnInteractStop.BaseStop",
+                false);
         }
     }
     

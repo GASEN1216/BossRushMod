@@ -22,7 +22,7 @@ namespace BossRush
     /// 哥布林NPC动画控制器
     /// 管理 Walking、Running、Stop 三种动画状态
     /// </summary>
-    public partial class GoblinNPCController : MonoBehaviour
+    public partial class GoblinNPCController : MonoBehaviour, INPCController
     {
         // ============================================================================
         // 组件引用
@@ -147,11 +147,7 @@ namespace BossRush
         
         void LateUpdate()
         {
-            // 让名字标签始终面向相机
-            if (nameTagObject != null && Camera.main != null)
-            {
-                nameTagObject.transform.rotation = Camera.main.transform.rotation;
-            }
+            NPCNameTagHelper.UpdateNameTagRotation(nameTagObject);
         }
         
         void Update()
@@ -171,16 +167,18 @@ namespace BossRush
             // 如果正在跑向玩家，检查距离
             if (isRunningToPlayer && playerTransform != null)
             {
-                float distance = Vector3.Distance(transform.position, playerTransform.position);
+                float distanceSqr = (transform.position - playerTransform.position).sqrMagnitude;
+                float brakeDistanceSqr = GoblinNPCConstants.BRAKE_ANIMATION_DISTANCE * GoblinNPCConstants.BRAKE_ANIMATION_DISTANCE;
+                float stopDistanceSqr = GoblinNPCConstants.STOP_DISTANCE * GoblinNPCConstants.STOP_DISTANCE;
                 
                 // 距离4米时播放急停动画（但继续移动）
-                if (!isBraking && distance <= GoblinNPCConstants.BRAKE_ANIMATION_DISTANCE)
+                if (!isBraking && distanceSqr <= brakeDistanceSqr)
                 {
                     StartBrakeAnimation();
                 }
                 
                 // 距离1米时真正停下来
-                if (distance <= GoblinNPCConstants.STOP_DISTANCE)
+                if (distanceSqr <= stopDistanceSqr)
                 {
                     StopAndIdle();
                 }
@@ -218,8 +216,8 @@ namespace BossRush
             if (isRunningToPlayer) return;
             
             // 检查玩家距离（3米内）
-            float distance = Vector3.Distance(transform.position, playerTransform.position);
-            if (distance > GoblinNPCConstants.STORY_DIALOGUE_TRIGGER_DISTANCE) return;
+            float storyTriggerDistanceSqr = GoblinNPCConstants.STORY_DIALOGUE_TRIGGER_DISTANCE * GoblinNPCConstants.STORY_DIALOGUE_TRIGGER_DISTANCE;
+            if ((transform.position - playerTransform.position).sqrMagnitude > storyTriggerDistanceSqr) return;
             
             // 检查是否有UI打开（使用游戏的 View 系统）
             if (IsAnyUIOpen()) return;
@@ -369,6 +367,16 @@ namespace BossRush
         {
             get { return isIdling; }
         }
+
+        // ============================================================================
+        // INPCController 接口实现
+        // ============================================================================
+
+        /// <summary>NPC标识符</summary>
+        public string NpcId => GoblinAffinityConfig.NPC_ID;
+
+        /// <summary>NPC的Transform</summary>
+        public Transform NpcTransform => transform;
         
         // ============================================================================
         // 私有辅助方法

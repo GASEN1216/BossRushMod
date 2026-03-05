@@ -8,11 +8,11 @@
 
 using System;
 using System.Collections;
-using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Duckov.UI;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -353,58 +353,13 @@ namespace BossRush
             
             try
             {
-                string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
-                string bundlePath = Path.Combine(modDir, "Assets", "ui", "broken_heart");
-                
-                if (!File.Exists(bundlePath))
-                {
-                    ModBehaviour.DevLog("[AffinityUI] 红心图标AssetBundle不存在: " + bundlePath);
-                    return;
-                }
-                
-                AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
-                if (bundle == null)
-                {
-                    ModBehaviour.DevLog("[AffinityUI] 加载红心图标AssetBundle失败");
-                    return;
-                }
-                
-                // 加载 heart_0 作为红心图标
-                heartSprite = bundle.LoadAsset<Sprite>("heart_0");
-                
-                if (heartSprite == null)
-                {
-                    // 尝试其他可能的名称
-                    heartSprite = bundle.LoadAsset<Sprite>("heart_0.png");
-                }
-                
-                if (heartSprite == null)
-                {
-                    // 尝试从 Texture2D 创建
-                    Texture2D texture = bundle.LoadAsset<Texture2D>("heart_0");
-                    if (texture == null)
-                    {
-                        texture = bundle.LoadAsset<Texture2D>("heart_0.png");
-                    }
-                    if (texture != null)
-                    {
-                        heartSprite = Sprite.Create(
-                            texture,
-                            new Rect(0, 0, texture.width, texture.height),
-                            new Vector2(0.5f, 0.5f)
-                        );
-                    }
-                }
-                
-                bundle.Unload(false);
-                
-                if (heartSprite != null)
+                if (NPCUIAssetCache.TryGetSprite("broken_heart", out heartSprite, "heart_0", "heart_0.png"))
                 {
                     ModBehaviour.DevLog("[AffinityUI] 红心图标加载成功");
                 }
                 else
                 {
-                    ModBehaviour.DevLog("[AffinityUI] 未能加载红心图标 heart_0");
+                    ModBehaviour.DevLog("[AffinityUI] 未能加载红心图标 heart_0（broken_heart）");
                 }
             }
             catch (Exception e)

@@ -13,6 +13,7 @@ using UnityEngine.UI;
 using TMPro;
 using ItemStatsSystem;
 using Duckov.UI;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -49,7 +50,7 @@ namespace BossRush
         private static INPCGiftContainerConfig currentConfig;
         
         /// <summary>当前NPC的控制器（用于播放动画）</summary>
-        private static GoblinNPCController currentNpcController;
+        private static INPCController currentNpcController;
 
         // ============================================================================
         // 私有字段 - UI组件
@@ -109,7 +110,7 @@ namespace BossRush
         /// <param name="npcTransformParam">NPC的Transform</param>
         /// <param name="config">NPC礼物容器配置</param>
         /// <param name="npcController">NPC控制器（可选）</param>
-        public static void OpenService(string npcId, Transform npcTransformParam, INPCGiftContainerConfig config, GoblinNPCController npcController = null)
+        public static void OpenService(string npcId, Transform npcTransformParam, INPCGiftContainerConfig config, INPCController npcController = null)
         {
             // 防止重复调用
             if (isServiceActive)
@@ -130,7 +131,7 @@ namespace BossRush
             // 如果没有传入控制器，尝试从 Transform 获取
             if (currentNpcController == null && npcTransform != null)
             {
-                currentNpcController = npcTransform.GetComponent<GoblinNPCController>();
+                currentNpcController = npcTransform.GetComponent<INPCController>();
             }
             
             // 开始对话时播放对话动画
@@ -280,12 +281,18 @@ namespace BossRush
                 giftLootbox = null;
             }
             
-            // 创建容器游戏对象
+            // 创建容器游戏对象（先置为 inactive，避免 InteractableLootbox.Awake 在字段未赋值时触发空引用）
             containerObject = new GameObject("NPCGiftContainer");
+            containerObject.SetActive(false);
             
             // 添加 Inventory 组件
             giftInventory = containerObject.AddComponent<Inventory>();
             giftInventory.SetCapacity(CONTAINER_CAPACITY);
+
+            // InteractableBase.Awake 依赖 Collider，补一个最小碰撞体避免空引用报错
+            BoxCollider boxCollider = containerObject.AddComponent<BoxCollider>();
+            boxCollider.isTrigger = true;
+            boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
             
             // 添加 InteractableLootbox 组件
             giftLootbox = containerObject.AddComponent<InteractableLootbox>();
@@ -299,6 +306,9 @@ namespace BossRush
             // 设置容器显示名称
             string displayNameKey = NPCGiftContainerConfigDefaults.GetContainerTitleKey(currentConfig);
             SetLootboxDisplayNameKey(giftLootbox, displayNameKey);
+
+            // 字段准备完成后再激活对象，降低 Awake 时序导致的空引用风险
+            containerObject.SetActive(true);
             
             // 订阅容器内容变化事件
             giftInventory.onContentChanged += OnContainerContentChanged;
@@ -653,7 +663,10 @@ namespace BossRush
             {
                 InteractableLootbox.OnStopLoot -= OnLootboxStopLoot;
             }
-            catch { }
+            catch (Exception e)
+            {
+                NPCExceptionHandler.LogAndIgnore(e, "NPCGiftContainerService.ExecuteGift.UnsubscribeOnStopLoot");
+            }
             
             try
             {
@@ -716,8 +729,8 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[NPCGiftContainerService] [ERROR] ExecuteGift() 异常: " + e.Message);
-                try { CloseLootView(); } catch { }
-                try { CleanupResources(); } catch { }
+                NPCExceptionHandler.TryExecute(CloseLootView, "NPCGiftContainerService.ExecuteGift.CloseLootViewAfterError", false);
+                NPCExceptionHandler.TryExecute(CleanupResources, "NPCGiftContainerService.ExecuteGift.CleanupResourcesAfterError", false);
             }
         }
 
@@ -891,13 +904,25 @@ namespace BossRush
                 // 取消容器内容变化事件订阅
                 if (giftInventory != null)
                 {
-                    try { giftInventory.onContentChanged -= OnContainerContentChanged; }
-                    catch { }
+                    try
+                    {
+                        giftInventory.onContentChanged -= OnContainerContentChanged;
+                    }
+                    catch (Exception e)
+                    {
+                        NPCExceptionHandler.LogAndIgnore(e, "NPCGiftContainerService.Cleanup.UnsubscribeContentChanged");
+                    }
                 }
                 
                 // 取消 OnStopLoot 事件订阅
-                try { InteractableLootbox.OnStopLoot -= OnLootboxStopLoot; }
-                catch { }
+                try
+                {
+                    InteractableLootbox.OnStopLoot -= OnLootboxStopLoot;
+                }
+                catch (Exception e)
+                {
+                    NPCExceptionHandler.LogAndIgnore(e, "NPCGiftContainerService.Cleanup.UnsubscribeOnStopLoot");
+                }
                 
                 CleanupResources();
             }
@@ -939,8 +964,10 @@ namespace BossRush
                 // 恢复NPC状态
                 if (currentNpcController != null)
                 {
-                    try { currentNpcController.EndDialogueWithStay(5f); }
-                    catch { }
+                    NPCExceptionHandler.TryExecute(
+                        () => currentNpcController.EndDialogueWithStay(5f),
+                        "NPCGiftContainerService.CleanupResources.EndDialogueWithStay",
+                        false);
                 }
                 
                 // 清空引用

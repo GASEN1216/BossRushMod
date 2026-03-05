@@ -127,9 +127,12 @@ namespace BossRush
             if (seeker == null) return;
             
             // 强制停止当前移动
-            path = null;
-            moving = false;
-            waitingForPathResult = false;
+            NPCPathingHelper.StopMovement(
+                ref path,
+                ref currentWaypoint,
+                ref moving,
+                ref waitingForPathResult,
+                UpdateMoveAnimation);
             
             // 开始寻路到玩家位置
             reachedEndOfPath = false;
@@ -144,10 +147,12 @@ namespace BossRush
         /// </summary>
         public void StopMove()
         {
-            path = null;
-            moving = false;
-            waitingForPathResult = false;
-            UpdateMoveAnimation(0f);
+            NPCPathingHelper.StopMovement(
+                ref path,
+                ref currentWaypoint,
+                ref moving,
+                ref waitingForPathResult,
+                UpdateMoveAnimation);
         }
         
         /// <summary>
@@ -298,21 +303,19 @@ namespace BossRush
         /// </summary>
         public void OnPathComplete(Pathfinding.Path p)
         {
-            if (!p.error)
-            {
-                path = p;
-                currentWaypoint = 0;
-                moving = true;
-                ModBehaviour.DevLog("[GoblinNPC] 路径计算成功，路点数: " + p.vectorPath.Count);
-            }
-            else
-            {
-                NPCExceptionHandler.LogAndIgnore(
-                    new Exception(p.errorLog),
-                    "GoblinMovement.OnPathComplete - 路径计算失败"
-                );
-            }
-            waitingForPathResult = false;
+            bool shouldDiscard = controller != null &&
+                (controller.IsInDialogue || controller.IsIdling || controller.IsInStoryDialogue);
+
+            NPCPathingHelper.HandlePathComplete(
+                p,
+                shouldDiscard,
+                "NPC处于剧情/聊天/待机状态",
+                ref path,
+                ref currentWaypoint,
+                ref moving,
+                ref waitingForPathResult,
+                UpdateMoveAnimation,
+                "[GoblinNPC]");
         }
         
         /// <summary>

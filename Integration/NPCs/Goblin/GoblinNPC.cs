@@ -42,106 +42,9 @@ namespace BossRush
         /// </summary>
         private bool LoadGoblinAssetBundle()
         {
-            if (goblinPrefab != null)
-            {
-                DevLog("[GoblinNPC] 预制体已缓存，跳过加载");
-                return true;
-            }
-            
-            try
-            {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = System.IO.Path.GetDirectoryName(assemblyLocation);
-                string bundlePath = System.IO.Path.Combine(modDir, "Assets", "npcs", "goblinnpc");
-                
-                DevLog("[GoblinNPC] 尝试加载 AssetBundle: " + bundlePath);
-                
-                if (!File.Exists(bundlePath))
-                {
-                    DevLog("[GoblinNPC] 错误：未找到 goblinnpc AssetBundle 文件: " + bundlePath);
-                    return false;
-                }
-                
-                // 如果之前加载过但预制体为空，先卸载
-                if (goblinAssetBundle != null)
-                {
-                    goblinAssetBundle.Unload(false);
-                    goblinAssetBundle = null;
-                }
-                
-                // 直接使用 AssetBundle API 加载
-                goblinAssetBundle = AssetBundle.LoadFromFile(bundlePath);
-                if (goblinAssetBundle == null)
-                {
-                    DevLog("[GoblinNPC] 错误：加载 AssetBundle 失败（可能已被加载或文件损坏）: " + bundlePath);
-                    return false;
-                }
-                
-                DevLog("[GoblinNPC] AssetBundle 加载成功，开始查找预制体...");
-                
-                // 列出所有资源名称用于调试
-                string[] assetNames = goblinAssetBundle.GetAllAssetNames();
-                DevLog("[GoblinNPC] AssetBundle 包含 " + assetNames.Length + " 个资源:");
-                foreach (string name in assetNames)
-                {
-                    DevLog("[GoblinNPC]   - " + name);
-                }
-                
-                // 尝试加载名为 GoblinNPC 的预制体
-                goblinPrefab = goblinAssetBundle.LoadAsset<GameObject>("GoblinNPC");
-                
-                // 如果没找到，尝试其他常见名称
-                if (goblinPrefab == null)
-                {
-                    DevLog("[GoblinNPC] 未找到 'GoblinNPC'，尝试其他名称...");
-                    goblinPrefab = goblinAssetBundle.LoadAsset<GameObject>("goblinnpc");
-                }
-                
-                // 如果还是没找到，加载第一个 GameObject
-                if (goblinPrefab == null)
-                {
-                    DevLog("[GoblinNPC] 尝试加载所有 GameObject...");
-                    GameObject[] allPrefabs = goblinAssetBundle.LoadAllAssets<GameObject>();
-                    if (allPrefabs != null && allPrefabs.Length > 0)
-                    {
-                        goblinPrefab = allPrefabs[0];
-                        DevLog("[GoblinNPC] 使用第一个 GameObject: " + goblinPrefab.name);
-                    }
-                }
-                
-                if (goblinPrefab == null)
-                {
-                    DevLog("[GoblinNPC] 错误：AssetBundle 中未找到任何 GameObject 预制体");
-                    return false;
-                }
-                
-                // 检查预制体的组件
-                DevLog("[GoblinNPC] 成功加载哥布林预制体: " + goblinPrefab.name);
-                Animator animator = goblinPrefab.GetComponentInChildren<Animator>();
-                if (animator != null)
-                {
-                    DevLog("[GoblinNPC] 预制体包含 Animator 组件");
-                    if (animator.runtimeAnimatorController != null)
-                    {
-                        DevLog("[GoblinNPC] Animator Controller: " + animator.runtimeAnimatorController.name);
-                    }
-                    else
-                    {
-                        DevLog("[GoblinNPC] 警告：Animator 没有 Controller！动画可能无法播放");
-                    }
-                }
-                else
-                {
-                    DevLog("[GoblinNPC] 警告：预制体没有 Animator 组件！");
-                }
-                
-                return true;
-            }
-            catch (Exception e)
-            {
-                NPCExceptionHandler.LogAndIgnore(e, "ModBehaviour.LoadGoblinAssetBundle");
-                return false;
-            }
+            return NPCAssetBundleHelper.LoadNPCPrefab(
+                "goblinnpc", "GoblinNPC", "[GoblinNPC]",
+                ref goblinAssetBundle, ref goblinPrefab);
         }
         
         // ============================================================================
@@ -203,13 +106,8 @@ namespace BossRush
         {
             DevLog("[GoblinNPC] 开始生成哥布林...");
             
-            // 懒加载：在哥布林生成时检查并应用每日好感度衰减
-            // 这样只有玩家真正遇到哥布林时才会触发衰减计算
-            int decayAmount = AffinityManager.CheckAndApplyDailyDecay(GoblinAffinityConfig.NPC_ID);
-            if (decayAmount > 0)
-            {
-                DevLog("[GoblinNPC] 好感度衰减已应用: -" + decayAmount);
-            }
+            // 懒加载：在NPC生成时统一检查并应用每日好感度衰减
+            NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(GoblinAffinityConfig.NPC_ID, "[GoblinNPC]");
             
             // 如果已经存在，不重复生成
             if (goblinNPCInstance != null)
