@@ -2260,9 +2260,10 @@ namespace BossRush
             {
                 // 初始化好感度管理器
                 AffinityManager.Initialize();
-                
-                // 注册哥布林NPC配置
-                AffinityManager.RegisterNPC(new GoblinAffinityConfig());
+
+                // 通过 NPC 模块注册中心统一注册可用 NPC 好感度配置
+                int affinityNpcCount = NPCModuleRegistry.RegisterAffinityConfigs();
+                DevLog("[BossRush] NPC 好感度配置注册完成，数量: " + affinityNpcCount);
                 
                 // 订阅好感度变化事件（显示UI动画）
                 AffinityManager.OnAffinityChanged += OnAffinityChanged;
@@ -3162,8 +3163,16 @@ namespace BossRush
                 TryStartModeD();
             }
             
-            // 生成快递员 NPC
-            SpawnCourierNPC();
+            SpawnCommonNPCs("DEMO场景初始化完成");
+        }
+
+        /// <summary>
+        /// 统一生成公共NPC（快递员、哥布林、护士）
+        /// </summary>
+        private void SpawnCommonNPCs(string context)
+        {
+            int count = NPCModuleRegistry.SpawnForCurrentScene(this, context);
+            DevLog("[NPCSpawn] " + context + "，已触发模块数量: " + count);
         }
 
         private void CreateRescueTeleportBubble()

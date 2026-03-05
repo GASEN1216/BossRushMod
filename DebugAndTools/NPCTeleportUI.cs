@@ -10,6 +10,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -253,15 +255,47 @@ namespace BossRush
             }
         }
         
+        // NPC字段名 → 显示名称的映射（已知NPC的友好名称）
+        private static readonly Dictionary<string, string> npcDisplayNames = new Dictionary<string, string>
+        {
+            { "courierNPCInstance", "快递员 (阿稳)" },
+            { "goblinNPCInstance", "哥布林 (叮当)" },
+            { "nurseNPCInstance", "护士 (羽织)" },
+        };
+
         /// <summary>
-        /// 刷新NPC列表
+        /// 根据字段名生成NPC显示名称
+        /// 优先使用已知映射，未知的则从字段名提取（去掉NPCInstance后缀，首字母大写）
+        /// </summary>
+        private static string GetNPCDisplayName(string fieldName)
+        {
+            if (npcDisplayNames.TryGetValue(fieldName, out string displayName))
+            {
+                return displayName;
+            }
+            // 从字段名提取: 例如 "someNewNPCInstance" → "SomeNew"
+            string name = fieldName;
+            if (name.EndsWith("NPCInstance"))
+            {
+                name = name.Substring(0, name.Length - "NPCInstance".Length);
+            }
+            if (name.Length > 0)
+            {
+                name = char.ToUpper(name[0]) + name.Substring(1);
+            }
+            return name + " NPC";
+        }
+
+        /// <summary>
+        /// 动态刷新NPC列表 - 通过反射扫描所有以NPCInstance结尾的GameObject字段
+        /// 新增NPC只需遵循 xxxNPCInstance 命名约定即可自动出现
         /// </summary>
         private void RefreshNPCList()
         {
             try
             {
                 if (npcTeleportUIRoot == null) return;
-                
+
                 // 查找Content容器
                 Transform content = npcTeleportUIRoot.transform.Find("Panel/ScrollView/Content");
                 if (content == null)
@@ -269,22 +303,43 @@ namespace BossRush
                     DevLog("[NPCTeleportUI] 未找到Content容器");
                     return;
                 }
-                
+
                 // 清空现有按钮
                 foreach (Transform child in content)
                 {
                     Destroy(child.gameObject);
                 }
-                
-                // 添加快递员NPC按钮
-                bool courierExists = courierNPCInstance != null;
-                CreateNPCButton(content, "快递员 (阿稳)", courierExists, () => TeleportToCourierNPC());
-                
-                // 添加哥布林NPC按钮
-                bool goblinExists = goblinNPCInstance != null;
-                CreateNPCButton(content, "哥布林 (叮当)", goblinExists, () => TeleportToGoblinNPC());
-                
-                DevLog("[NPCTeleportUI] NPC列表已刷新 - 快递员:" + courierExists + ", 哥布林:" + goblinExists);
+
+                // 通过反射动态查找所有 *NPCInstance 字段
+                FieldInfo[] fields = typeof(ModBehaviour).GetFields(
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+                int totalCount = 0;
+                int activeCount = 0;
+
+                foreach (FieldInfo field in fields.OrderBy(f => f.Name))
+                {
+                    // 匹配命名约定: xxxNPCInstance，类型为 GameObject
+                    if (!field.Name.EndsWith("NPCInstance")) continue;
+                    if (field.FieldType != typeof(GameObject)) continue;
+
+                    GameObject npcObj = field.GetValue(this) as GameObject;
+                    bool exists = npcObj != null;
+                    string displayName = GetNPCDisplayName(field.Name);
+
+                    // 捕获当前循环变量，避免闭包问题
+                    GameObject capturedObj = npcObj;
+                    string capturedName = displayName;
+
+                    CreateNPCButton(content, displayName, exists, () => TeleportToNPC(capturedObj, capturedName));
+
+                    totalCount++;
+                    if (exists) activeCount++;
+
+                    DevLog("[NPCTeleportUI] 检测到NPC: " + displayName + " (" + field.Name + ") - " + (exists ? "存在" : "未刷新"));
+                }
+
+                DevLog("[NPCTeleportUI] NPC列表已刷新 - 共" + totalCount + "个NPC，" + activeCount + "个在线");
             }
             catch (Exception e)
             {
@@ -335,45 +390,45 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 传送到哥布林NPC身边
+        /// 通用传送方法 - 传送玩家到指定NPC身边
         /// </summary>
-        private void TeleportToGoblinNPC()
+        private void TeleportToNPC(GameObject npcInstance, string npcName)
         {
             try
             {
-                if (goblinNPCInstance == null)
+                if (npcInstance == null)
                 {
-                    DevLog("[NPCTeleportUI] 哥布林NPC不存在");
+                    DevLog("[NPCTeleportUI] " + npcName + " NPC不存在");
                     return;
                 }
-                
+
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null)
                 {
                     DevLog("[NPCTeleportUI] 未找到玩家 CharacterMainControl");
                     return;
                 }
-                
-                // 获取哥布林位置
-                Vector3 goblinPos = goblinNPCInstance.transform.position;
-                
-                // 计算传送位置（哥布林前方2米）
-                Vector3 targetPos = goblinPos + goblinNPCInstance.transform.forward * 2f;
-                
+
+                // 获取NPC位置
+                Vector3 npcPos = npcInstance.transform.position;
+
+                // 计算传送位置（NPC前方2米）
+                Vector3 targetPos = npcPos + npcInstance.transform.forward * 2f;
+
                 // 使用Raycast修正到地面
                 RaycastHit hit;
                 if (Physics.Raycast(targetPos + Vector3.up * 1f, Vector3.down, out hit, 5f))
                 {
                     targetPos = hit.point + new Vector3(0f, 0.1f, 0f);
                 }
-                
+
                 // 执行传送
                 main.transform.position = targetPos;
-                DevLog("[NPCTeleportUI] 已将玩家传送到哥布林身边，位置: " + targetPos);
+                DevLog("[NPCTeleportUI] 已将玩家传送到" + npcName + "身边，位置: " + targetPos);
             }
             catch (Exception e)
             {
-                DevLog("[NPCTeleportUI] 传送到哥布林失败: " + e.Message);
+                DevLog("[NPCTeleportUI] 传送到" + npcName + "失败: " + e.Message);
             }
         }
         

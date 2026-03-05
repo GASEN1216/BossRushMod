@@ -818,8 +818,10 @@ namespace BossRush
             // 统一调用 LocalizationInjector 注入所有本地化
             LocalizationInjector.InjectUILocalization();
             LocalizationInjector.InjectMapNameLocalizations();
+            LocalizationInjector.InjectCommonNPCLocalization();   // 通用NPC交互键（聊天/赠礼/商店）
             LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
             LocalizationInjector.InjectGoblinNPCLocalization();   // 哥布林NPC本地化（重铸服务）
+            LocalizationInjector.InjectNurseNPCLocalization();    // 护士NPC本地化
             LocalizationInjector.InjectColdQuenchFluidLocalization();  // 冷淬液物品本地化
             LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
             LocalizationInjector.InjectDiamondLocalization();     // 钻石物品本地化
@@ -932,6 +934,9 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_JournalStock;
             Health.OnDead -= OnPlayerDeathInBossRush;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
+
+            // 统一销毁公共 NPC，避免卸载时残留引用
+            NPCModuleRegistry.DestroyAll(this, "Mod 卸载");
             
             // 取消注册龙套装事件
             UnregisterDragonSetEvents();
@@ -1197,8 +1202,8 @@ namespace BossRush
                         bossRushArenaPlanned = false;
                         currentBoss = null;
                         
-                        // 销毁快递员 NPC
-                        DestroyCourierNPC();
+                        // 统一销毁公共 NPC（快递员/哥布林/护士）
+                        NPCModuleRegistry.DestroyAll(this, "离开竞技场场景");
                         
                         // 重置 spawner 禁用标志，以便下次进入竞技场时能重新禁用
                         spawnersDisabled = false;
@@ -1235,12 +1240,11 @@ namespace BossRush
                         }
                     }
                     
-                    // 普通模式下：检查是否需要在当前场景生成快递员NPC
-                    // 使用 NPCSpawnConfig 配置系统判断
-                    if (NPCSpawnConfig.HasCourierNormalModeConfig(scene.name))
+                    // 普通模式下：若当前场景有任意公共 NPC 模块可生成，则延迟统一生成
+                    if (NPCModuleRegistry.ShouldSpawnAnyInScene(this, scene.name))
                     {
-                        DevLog("[CourierNPC] 普通模式检测到配置场景: " + scene.name + ", 延迟生成快递员");
-                        StartCoroutine(DelayedSpawnCourierInNormalMode(scene.name));
+                        DevLog("[NPCSpawn] 普通模式检测到可生成公共NPC场景: " + scene.name + ", 延迟统一生成");
+                        StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(scene.name));
                     }
                     
                     // 其他场景：注入传送到竞技场的交互选项
@@ -1251,10 +1255,10 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 普通模式下延迟生成快递员NPC
+        /// 普通模式下延迟生成公共NPC
         /// 等待场景完全初始化后再生成，确保地面碰撞体等已加载
         /// </summary>
-        private System.Collections.IEnumerator DelayedSpawnCourierInNormalMode(string sceneName)
+        private System.Collections.IEnumerator DelayedSpawnCommonNPCsInNormalMode(string sceneName)
         {
             // 等待场景完全加载
             const float maxWait = 10f;
@@ -1287,31 +1291,18 @@ namespace BossRush
             
             if (currentScene != sceneName)
             {
-                DevLog("[CourierNPC] 场景已切换，取消普通模式快递员生成");
+                DevLog("[NPCSpawn] 场景已切换，取消普通模式公共NPC生成");
                 yield break;
             }
             
             // 检查是否已进入 BossRush 模式（玩家可能在等待期间启动了 BossRush）
             if (IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive)
             {
-                DevLog("[CourierNPC] 已进入 BossRush 模式，跳过普通模式快递员生成");
+                DevLog("[NPCSpawn] 已进入 BossRush 模式，跳过普通模式公共NPC生成");
                 yield break;
             }
             
-            // 检查快递员是否已存在
-            if (courierNPCInstance != null)
-            {
-                DevLog("[CourierNPC] 快递员已存在，跳过生成");
-                yield break;
-            }
-            
-            // 生成快递员
-            DevLog("[CourierNPC] 普通模式场景初始化完成，开始生成快递员");
-            SpawnCourierNPC();
-            
-            // 生成哥布林
-            DevLog("[GoblinNPC] 普通模式场景初始化完成，开始生成哥布林");
-            SpawnGoblinNPC();
+            SpawnCommonNPCs("普通模式场景初始化完成");
         }
 
         /// <summary>
@@ -1674,11 +1665,8 @@ namespace BossRush
                 TryStartModeD();
             }
             
-            // 10. 生成快递员 NPC
-            SpawnCourierNPC();
-            
-            // 11. 生成哥布林 NPC
-            SpawnGoblinNPC();
+            // 10. 统一生成公共NPC（快递员、哥布林、护士）
+            SpawnCommonNPCs("GroundZero场景初始化完成");
         }
         
         /// <summary>
