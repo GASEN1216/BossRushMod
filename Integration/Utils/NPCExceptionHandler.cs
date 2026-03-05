@@ -8,6 +8,7 @@
 // ============================================================================
 
 using System;
+using System.Runtime.ExceptionServices;
 
 namespace BossRush.Utils
 {
@@ -62,7 +63,7 @@ namespace BossRush.Utils
             ModBehaviour.DevLog($"{ERROR_PREFIX} {context}: {ex.Message}\n{ex.StackTrace}");
             
             // 重新抛出异常，保留原始堆栈信息
-            throw ex;
+            ExceptionDispatchInfo.Capture(ex).Throw();
         }
         
         // ============================================================================
@@ -76,7 +77,7 @@ namespace BossRush.Utils
         /// <param name="action">要执行的操作</param>
         /// <param name="context">操作描述，用于异常日志</param>
         /// <returns>是否执行成功</returns>
-        public static bool TryExecute(Action action, string context)
+        public static bool TryExecute(Action action, string context, bool logException = true)
         {
             if (action == null) return false;
             
@@ -87,7 +88,10 @@ namespace BossRush.Utils
             }
             catch (Exception ex)
             {
-                LogAndIgnore(ex, context);
+                if (logException)
+                {
+                    LogAndIgnore(ex, context);
+                }
                 return false;
             }
         }
@@ -101,7 +105,7 @@ namespace BossRush.Utils
         /// <param name="context">操作描述，用于异常日志</param>
         /// <param name="defaultValue">失败时的默认值</param>
         /// <returns>执行结果或默认值</returns>
-        public static T TryExecute<T>(Func<T> func, string context, T defaultValue = default)
+        public static T TryExecute<T>(Func<T> func, string context, T defaultValue = default, bool logException = true)
         {
             if (func == null) return defaultValue;
             
@@ -111,7 +115,10 @@ namespace BossRush.Utils
             }
             catch (Exception ex)
             {
-                LogAndIgnore(ex, context);
+                if (logException)
+                {
+                    LogAndIgnore(ex, context);
+                }
                 return defaultValue;
             }
         }

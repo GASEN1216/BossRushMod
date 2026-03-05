@@ -51,6 +51,11 @@ namespace BossRush
         /// 讨厌的物品列表（TypeID -> 好感度减少值，正数会被转为负数）
         /// </summary>
         Dictionary<int, int> NegativeItems { get; }
+
+        /// <summary>
+        /// 喜欢的物品标签集合（拥有这些标签的物品视为喜欢）
+        /// </summary>
+        HashSet<string> PositiveTags { get; }
         
         // ============================================================================
         // 反应对话配置
