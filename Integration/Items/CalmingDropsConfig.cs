@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using ItemStatsSystem;
 using UnityEngine;
 
@@ -41,6 +41,9 @@ namespace BossRush
         {
             try
             {
+                LocalizationHelper.InjectLocalization(LOC_KEY_DISPLAY, GetDisplayName());
+                LocalizationHelper.InjectLocalization(LOC_KEY_DISPLAY + "_Desc", GetDescription());
+
                 if (ItemAssetsCollection.GetPrefab(TYPE_ID) != null)
                 {
                     return true;
