@@ -173,7 +173,17 @@ namespace BossRush
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
                 {
-                    DevLog("[BossRush] ItemFactory 加载完成，共 " + itemCount + " 个物品");
+                    DevLog("[BossRush] ItemFactory loaded " + itemCount + " items");
+                }
+
+                if (!CalmingDropsConfig.RegisterDynamicItem())
+                {
+                    DevLog("[BossRush] [WARNING] Failed to register Calming Drops");
+                }
+
+                if (!PeaceCharmConfig.RegisterDynamicItem())
+                {
+                    DevLog("[BossRush] [WARNING] Failed to register Peace Charm");
                 }
             }
             catch (Exception e)
