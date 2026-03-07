@@ -45,6 +45,7 @@ namespace BossRush
         // 反射缓存：DialogueUI 的私有字段
         private static FieldInfo mainFadeGroupField = null;
         private static FieldInfo textAreaFadeGroupField = null;
+        private static FieldInfo dialogueStatusChangedEventField = null;
         private static bool reflectionInitialized = false;
         
         /// <summary>
@@ -64,6 +65,7 @@ namespace BossRush
                 Type dialogueUIType = typeof(DialogueUI);
                 mainFadeGroupField = dialogueUIType.GetField("mainFadeGroup", BindingFlags.NonPublic | BindingFlags.Instance);
                 textAreaFadeGroupField = dialogueUIType.GetField("textAreaFadeGroup", BindingFlags.NonPublic | BindingFlags.Instance);
+                dialogueStatusChangedEventField = dialogueUIType.GetField("OnDialogueStatusChanged", BindingFlags.NonPublic | BindingFlags.Static);
                 
                 if (mainFadeGroupField != null && textAreaFadeGroupField != null)
                 {
@@ -137,6 +139,29 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(LOG_TAG + " [WARNING] 隐藏对话 UI 面板失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 手动广播 DialogueUI 状态变化事件（兼容 RequestSubtitles 路径）
+        /// 原版 HUDManager 依赖该事件刷新 HUD 显隐。
+        /// </summary>
+        private static void NotifyDialogueStatusChanged()
+        {
+            try
+            {
+                InitializeReflection();
+                if (dialogueStatusChangedEventField == null) return;
+
+                Action handler = dialogueStatusChangedEventField.GetValue(null) as Action;
+                if (handler != null)
+                {
+                    handler.Invoke();
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LOG_TAG + " [WARNING] 触发 OnDialogueStatusChanged 失败: " + e.Message);
             }
         }
         
@@ -532,6 +557,7 @@ namespace BossRush
                 
                 // 显示对话 UI 主面板（通过反射）
                 ShowDialogueUIPanel();
+                NotifyDialogueStatusChanged();
                 
                 ModBehaviour.DevLog(LOG_TAG + " 已禁用玩家输入并显示对话UI");
             }
@@ -560,6 +586,7 @@ namespace BossRush
                 {
                     InputManager.ActiveInput(inputDisableToken);
                 }
+                NotifyDialogueStatusChanged();
                 
                 ModBehaviour.DevLog(LOG_TAG + " 已恢复玩家输入并隐藏对话UI");
             }

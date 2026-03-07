@@ -8,6 +8,7 @@
 // ============================================================================
 
 using System;
+using System.IO;
 using System.Collections.Generic;
 using ItemStatsSystem;
 using UnityEngine;
@@ -100,6 +101,46 @@ namespace BossRush
             "Isn't this a bit too fast...",
             "This is too sudden, I... I'm not ready yet"
         };
+
+        /// <summary>
+        /// 玩家已婚后向其他NPC送戒指的“花心”对话（中文）
+        /// </summary>
+        public static readonly string[] CHEATER_DIALOGUES_CN = new string[]
+        {
+            "你不应该如此花心。",
+            "戒指可不是这样送的。",
+            "请先对你的承诺负责。"
+        };
+
+        /// <summary>
+        /// 玩家已婚后向其他NPC送戒指的“花心”对话（英文）
+        /// </summary>
+        public static readonly string[] CHEATER_DIALOGUES_EN = new string[]
+        {
+            "You shouldn't be so fickle.",
+            "A ring is not something you give around.",
+            "Please honor your promise first."
+        };
+
+        /// <summary>
+        /// 玩家已婚后再次给同一配偶送戒指时的拒绝对话（中文）
+        /// </summary>
+        public static readonly string[] SPOUSE_RING_REJECT_DIALOGUES_CN = new string[]
+        {
+            "好啦，我不需要这么多戒指，有你就足够了~",
+            "你的心意我已经收到了，这枚戒指你留着吧。",
+            "戒指一枚就够啦，我们的约定不会变。"
+        };
+
+        /// <summary>
+        /// 玩家已婚后再次给同一配偶送戒指时的拒绝对话（英文）
+        /// </summary>
+        public static readonly string[] SPOUSE_RING_REJECT_DIALOGUES_EN = new string[]
+        {
+            "Alright, I don't need so many rings. Having you is enough~",
+            "I've already received your heart. Keep this ring with you.",
+            "One ring is enough. Our promise won't change."
+        };
         
         // ============================================================================
         // 好感度配置
@@ -109,6 +150,16 @@ namespace BossRush
         /// 成功赠送钻石戒指增加的好感度
         /// </summary>
         public const int AFFINITY_BONUS = 500;
+
+        /// <summary>
+        /// 玩家已婚后给其他NPC送戒指时的惩罚（每次）
+        /// </summary>
+        public const int CHEATER_PENALTY_AFFINITY = 120;
+
+        /// <summary>
+        /// 结婚视频默认文件名（放在 Assets/cutscenes/ 下）
+        /// </summary>
+        public const string MARRIAGE_VIDEO_FILE = "marriage.mp4";
         
         // ============================================================================
         // 辅助方法
@@ -137,6 +188,54 @@ namespace BossRush
         {
             int index = UnityEngine.Random.Range(0, REJECT_DIALOGUES_CN.Length);
             return L10n.T(REJECT_DIALOGUES_CN[index], REJECT_DIALOGUES_EN[index]);
+        }
+
+        /// <summary>
+        /// 获取随机“花心惩罚”对话
+        /// </summary>
+        public static string GetRandomCheaterDialogue()
+        {
+            int index = UnityEngine.Random.Range(0, CHEATER_DIALOGUES_CN.Length);
+            return L10n.T(CHEATER_DIALOGUES_CN[index], CHEATER_DIALOGUES_EN[index]);
+        }
+
+        /// <summary>
+        /// 获取随机“已婚同配偶重复送戒指”拒绝对话
+        /// </summary>
+        public static string GetRandomSpouseRingRejectDialogue()
+        {
+            int index = UnityEngine.Random.Range(0, SPOUSE_RING_REJECT_DIALOGUES_CN.Length);
+            return L10n.T(SPOUSE_RING_REJECT_DIALOGUES_CN[index], SPOUSE_RING_REJECT_DIALOGUES_EN[index]);
+        }
+
+        /// <summary>
+        /// 获取结婚过场视频路径（优先NPC专属，其次通用文件）
+        /// </summary>
+        /// <param name="npcId">NPC ID</param>
+        /// <returns>存在的视频绝对路径，不存在则返回空字符串</returns>
+        public static string GetMarriageVideoPath(string npcId)
+        {
+            try
+            {
+                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
+                string modDir = Path.GetDirectoryName(assemblyLocation);
+                if (string.IsNullOrEmpty(modDir)) return string.Empty;
+
+                string cutsceneDir = Path.Combine(modDir, "Assets", "cutscenes");
+
+                if (!string.IsNullOrEmpty(npcId))
+                {
+                    string npcSpecific = Path.Combine(cutsceneDir, "marriage_" + npcId + ".mp4");
+                    if (File.Exists(npcSpecific)) return npcSpecific;
+                }
+
+                string common = Path.Combine(cutsceneDir, MARRIAGE_VIDEO_FILE);
+                return File.Exists(common) ? common : string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
         
         /// <summary>

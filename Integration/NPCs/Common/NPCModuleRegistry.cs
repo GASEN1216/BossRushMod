@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // NPCModuleRegistry.cs - NPC模块注册中心
 // ============================================================================
 // 模块说明：
@@ -82,7 +82,21 @@ namespace BossRush
             if (registered)
             {
                 modules.Sort((a, b) => a.SpawnOrder.CompareTo(b.SpawnOrder));
-                ModBehaviour.DevLog("[NPCRegistry] 外部模块注册成功: " + module.NpcId + "，模块数量: " + modules.Count);
+
+                try
+                {
+                    INPCAffinityConfig config = module.CreateAffinityConfig();
+                    if (config != null)
+                    {
+                        AffinityManager.RegisterNPC(config);
+                    }
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[NPCRegistry] [WARNING] Register affinity config failed: " + module.NpcId + " - " + e.Message);
+                }
+
+                ModBehaviour.DevLog("[NPCRegistry] External module registered: " + module.NpcId + ", total=" + modules.Count);
             }
             return registered;
         }
@@ -191,6 +205,18 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 重置注册中心状态（热重载/Mod卸载时调用）
+        /// </summary>
+        public static void Reset()
+        {
+            modules.Clear();
+            registeredTypes.Clear();
+            registeredNpcIds.Clear();
+            initialized = false;
+            ModBehaviour.DevLog("[NPCRegistry] 注册中心已重置");
+        }
+
+        /// <summary>
         /// 销毁全部已注册模块对应的NPC实例
         /// </summary>
         public static int DestroyAll(ModBehaviour mod, string reason)
@@ -199,11 +225,18 @@ namespace BossRush
 
             Initialize();
             int destroyCount = 0;
+            string currentScene = SceneManager.GetActiveScene().name;
 
             for (int i = 0; i < modules.Count; i++)
             {
                 INPCModule module = modules[i];
                 if (module == null) continue;
+
+                if (ShouldSkipDestroyForMarriedNpc(reason, currentScene, module.NpcId))
+                {
+                    ModBehaviour.DevLog("[NPCRegistry] Keep married NPC alive: " + module.NpcId + ", reason=" + reason);
+                    continue;
+                }
 
                 try
                 {
@@ -212,12 +245,37 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    ModBehaviour.DevLog("[NPCRegistry] [WARNING] Destroy 异常: " + module.NpcId + " - " + e.Message);
+                    ModBehaviour.DevLog("[NPCRegistry] [WARNING] Destroy failed: " + module.NpcId + " - " + e.Message);
                 }
             }
 
-            ModBehaviour.DevLog("[NPCRegistry] 已执行统一销毁，原因=" + reason + "，模块数: " + destroyCount);
+            ModBehaviour.DevLog("[NPCRegistry] DestroyAll completed, reason=" + reason + ", count=" + destroyCount);
             return destroyCount;
+        }
+
+        private static bool ShouldSkipDestroyForMarriedNpc(string reason, string sceneName, string npcId)
+        {
+            if (!string.Equals(reason, "LeaveBossRushScene", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(sceneName, "Base_SceneV2", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(npcId))
+            {
+                return false;
+            }
+
+            if (npcId == GoblinAffinityConfig.NPC_ID || npcId == NurseAffinityConfig.NPC_ID)
+            {
+                return AffinityManager.IsMarriedToPlayer(npcId);
+            }
+
+            return false;
         }
 
         private static bool RegisterInternal(INPCModule module)
@@ -324,10 +382,14 @@ namespace BossRush
     {
         public string NpcId { get { return GoblinAffinityConfig.NPC_ID; } }
         public int SpawnOrder { get { return 20; } }
-        public INPCAffinityConfig CreateAffinityConfig() { return new GoblinAffinityConfig(); }
+        public INPCAffinityConfig CreateAffinityConfig() { return GoblinAffinityConfig.Instance; }
 
         public bool ShouldSpawnInScene(ModBehaviour mod, string sceneName)
         {
+            if (AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
+            {
+                return false;
+            }
             return !string.IsNullOrEmpty(sceneName) && NPCSpawnConfig.HasGoblinConfig(sceneName);
         }
 
@@ -349,10 +411,14 @@ namespace BossRush
     {
         public string NpcId { get { return NurseAffinityConfig.NPC_ID; } }
         public int SpawnOrder { get { return 30; } }
-        public INPCAffinityConfig CreateAffinityConfig() { return new NurseAffinityConfig(); }
+        public INPCAffinityConfig CreateAffinityConfig() { return NurseAffinityConfig.Instance; }
 
         public bool ShouldSpawnInScene(ModBehaviour mod, string sceneName)
         {
+            if (AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID))
+            {
+                return false;
+            }
             return !string.IsNullOrEmpty(sceneName) && NPCSpawnConfig.HasNurseConfig(sceneName);
         }
 

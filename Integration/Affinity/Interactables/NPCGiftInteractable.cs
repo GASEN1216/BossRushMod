@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // NPCGiftInteractable.cs - 通用NPC礼物赠送交互组件
 // ============================================================================
 // 通用的NPC礼物赠送交互组件，支持任意配置了好感度系统的NPC。
@@ -56,7 +56,7 @@ namespace BossRush
             StartNPCDialogue();
             
             // 检查今日是否已赠送
-            if (!NPCGiftSystem.CanGiftToday(npcId))
+            if (!CanOpenGiftContainer())
             {
                 ShowAlreadyGiftedDialogue();
                 return;
@@ -81,6 +81,55 @@ namespace BossRush
             
             ModBehaviour.DevLog("[NPCGift] 今日已赠送，显示对话: " + dialogue);
             EndNPCDialogue();
+        }
+
+        private bool CanOpenGiftContainer()
+        {
+            if (NPCGiftSystem.CanGiftToday(npcId))
+            {
+                return true;
+            }
+
+            return !string.IsNullOrEmpty(AffinityManager.GetCurrentSpouseNpcId());
+        }
+    }
+
+    /// <summary>
+    /// 通用NPC离婚交互组件（仅婚礼教堂中的当前配偶可见）
+    /// </summary>
+    public class NPCDivorceInteractable : NPCInteractableBase
+    {
+        protected override void SetupInteractName()
+        {
+            NPCExceptionHandler.TryExecute(() =>
+            {
+                string divorceText = L10n.T("离婚", "Divorce");
+                LocalizationHelper.InjectLocalization("BossRush_Divorce", divorceText);
+                LocalizationHelper.InjectLocalization(divorceText, divorceText);
+
+                this.overrideInteractName = true;
+                this._overrideInteractNameKey = "BossRush_Divorce";
+                this.InteractName = "BossRush_Divorce";
+            }, "NPCDivorceInteractable.SetupInteractName");
+        }
+
+        protected override bool IsInteractable()
+        {
+            if (!base.IsInteractable()) return false;
+            if (!AffinityManager.IsMarriedToPlayer(npcId)) return false;
+            string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+            if (string.IsNullOrEmpty(spouseNpcId) || spouseNpcId != npcId) return false;
+            if (ModBehaviour.Instance == null) return false;
+
+            Transform npcTransform = npcController?.NpcTransform ?? transform.root;
+            return ModBehaviour.Instance.IsWeddingNpcInstance(npcTransform);
+        }
+
+        protected override void DoInteract(CharacterMainControl character)
+        {
+            ModBehaviour.DevLog("[NPCDivorce] 玩家请求离婚: npc=" + npcId);
+            StartNPCDialogue();
+            NPCMarriageSystem.HandleDivorceRequested(npcId, npcController?.NpcTransform, npcController);
         }
     }
 }

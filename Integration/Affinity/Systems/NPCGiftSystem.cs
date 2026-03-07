@@ -54,14 +54,23 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCGift] 赠送失败：参数无效");
                 return false;
             }
-            
+
+            int itemTypeId = GetItemTypeId(item);
+            bool isDiamondRingGift = (itemTypeId == DiamondRingConfig.TYPE_ID);
+            string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+
+            // 已婚状态下的“戒指特殊分支”不受每日赠礼限制：
+            // - 同配偶重复送戒指：拒绝且返还
+            // - 向其他NPC送戒指：每次都触发花心惩罚并消耗戒指
+            bool shouldBypassDailyGiftLimit = isDiamondRingGift && !string.IsNullOrEmpty(spouseNpcId);
+
             // 检查今日是否已赠送
-            if (!CanGiftToday(npcId))
+            if (!shouldBypassDailyGiftLimit && !CanGiftToday(npcId))
             {
                 ModBehaviour.DevLog("[NPCGift] 赠送失败：今日已赠送");
                 return false;
             }
-            
+
             // 获取NPC配置
             var config = AffinityManager.GetNPCConfig(npcId);
             var giftConfig = config as INPCGiftConfig;
@@ -70,9 +79,65 @@ namespace BossRush
             // 特殊礼物处理：钻石戒指
             // 只有好感度达到10级的NPC才能接受钻石戒指
             // ============================================================================
-            int itemTypeId = GetItemTypeId(item);
-            if (itemTypeId == DiamondRingConfig.TYPE_ID)
+            if (isDiamondRingGift)
             {
+                // 玩家只能结婚一次
+                // 1) 已婚且对同一配偶重复送戒指：拒绝，不消耗戒指
+                // 2) 已婚且对其他NPC送戒指：视为“花心惩罚”（消耗戒指）
+                if (!string.IsNullOrEmpty(spouseNpcId))
+                {
+                    if (spouseNpcId == npcId)
+                    {
+                        if (npcTransform != null)
+                        {
+                            string spouseRejectDialogue = DiamondRingConfig.GetRandomSpouseRingRejectDialogue();
+                            NPCDialogueSystem.ShowDialogue(npcId, npcTransform, spouseRejectDialogue);
+                        }
+
+                        ModBehaviour.DevLog("[NPCGift] 已婚后重复给同一配偶送戒指，已拒绝且不消耗: npc=" + npcId);
+                        return false;
+                    }
+
+                    int penalty = DiamondRingConfig.CHEATER_PENALTY_AFFINITY;
+                    AffinityManager.AddPoints(npcId, -penalty);
+
+                    int currentDay = GetCurrentGameDay();
+                    AffinityManager.SetLastGiftDay(npcId, currentDay);
+                    AffinityManager.SetLastGiftReaction(npcId, (int)GiftReactionType.Negative);
+
+                    if (npcTransform != null)
+                    {
+                        string cheaterDialogue = DiamondRingConfig.GetRandomCheaterDialogue();
+                        NPCDialogueSystem.ShowDialogue(npcId, npcTransform, cheaterDialogue);
+                    }
+
+                    if (npcController != null)
+                    {
+                        npcController.ShowBrokenHeartBubble();
+                    }
+
+                    ShowAffinityNotification(npcId, -penalty);
+                    AffinityManager.RecordCheatingIncidentForSpouse(spouseNpcId);
+                    ModBehaviour.DevLog("[NPCGift] 已婚后向其他NPC送戒指，触发惩罚: npc=" + npcId + ", penalty=" + penalty);
+                    return true; // 视为赠送成功（消耗戒指）
+                }
+
+                // 新增前置条件：未建婚礼教堂时不可求婚（不消耗戒指）
+                bool hasWeddingBuilding = ModBehaviour.Instance != null && ModBehaviour.Instance.HasWeddingBuildingPlaced();
+                if (!hasWeddingBuilding)
+                {
+                    if (npcTransform != null)
+                    {
+                        string buildingRequiredDialogue = L10n.T(
+                            "嘻嘻，我们先建个婚礼教堂来个正式点的吧",
+                            "Hehe, let's build a wedding chapel first and make it official.");
+                        NPCDialogueSystem.ShowDialogue(npcId, npcTransform, buildingRequiredDialogue);
+                    }
+
+                    ModBehaviour.DevLog("[NPCGift] 钻石戒指被拒绝：未建造婚礼教堂");
+                    return false;
+                }
+
                 int currentLevel = AffinityManager.GetLevel(npcId);
                 if (currentLevel < DiamondRingConfig.GIFT_REQUIRED_LEVEL)
                 {
@@ -150,7 +215,7 @@ namespace BossRush
             // 显示反应气泡
             if (npcTransform != null && giftConfig != null)
             {
-                string bubble = GetReactionBubble(giftConfig, reactionType);
+                string bubble = GetReactionBubble(npcId, giftConfig, reactionType);
                 NPCDialogueSystem.ShowDialogue(npcId, npcTransform, bubble);
                 
                 // 播放动画（如果有控制器）
@@ -169,6 +234,12 @@ namespace BossRush
             
             // 显示好感度进度通知
             ShowAffinityNotification(npcId, giftValue);
+
+            // 钻石戒指赠送成功：触发结婚流程
+            if (isDiamondRingGift)
+            {
+                NPCMarriageSystem.HandleRingGiftAccepted(npcId, npcTransform, npcController);
+            }
             
             ModBehaviour.DevLog("[NPCGift] 赠送成功，NPC: " + npcId + ", 好感度变化: " + giftValue + ", 反应: " + reactionType);
             return true;
@@ -259,10 +330,30 @@ namespace BossRush
         /// <summary>
         /// 获取反应对话气泡
         /// </summary>
-        public static string GetReactionBubble(INPCGiftConfig config, GiftReactionType reactionType)
+        public static string GetReactionBubble(string npcId, INPCGiftConfig config, GiftReactionType reactionType)
         {
             if (config == null) return L10n.T("谢谢你的礼物~", "Thanks for the gift~");
             
+            string relationshipKey;
+            switch (reactionType)
+            {
+                case GiftReactionType.Positive:
+                    relationshipKey = "gift_positive_married";
+                    break;
+                case GiftReactionType.Negative:
+                    relationshipKey = "gift_negative_married";
+                    break;
+                default:
+                    relationshipKey = "gift_normal_married";
+                    break;
+            }
+
+            string relationshipBubble = NPCDialogueSystem.GetRelationshipDialogue(npcId, relationshipKey);
+            if (!string.IsNullOrEmpty(relationshipBubble))
+            {
+                return relationshipBubble;
+            }
+
             string[] bubbles;
             switch (reactionType)
             {
@@ -300,6 +391,26 @@ namespace BossRush
             
             int lastReaction = AffinityManager.GetLastGiftReaction(npcId);
             GiftReactionType reactionType = (GiftReactionType)lastReaction;
+
+            string relationshipKey;
+            switch (reactionType)
+            {
+                case GiftReactionType.Positive:
+                    relationshipKey = "gift_already_positive_married";
+                    break;
+                case GiftReactionType.Negative:
+                    relationshipKey = "gift_already_negative_married";
+                    break;
+                default:
+                    relationshipKey = "gift_already_normal_married";
+                    break;
+            }
+
+            string relationshipDialogue = NPCDialogueSystem.GetRelationshipDialogue(npcId, relationshipKey);
+            if (!string.IsNullOrEmpty(relationshipDialogue))
+            {
+                return relationshipDialogue;
+            }
             
             string[] dialogues = giftConfig.GetAlreadyGiftedDialogues(reactionType);
             if (dialogues == null || dialogues.Length == 0)

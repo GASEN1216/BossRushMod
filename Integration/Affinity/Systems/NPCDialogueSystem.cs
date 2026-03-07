@@ -40,6 +40,12 @@ namespace BossRush
         public static string GetDialogue(string npcId, DialogueCategory category, int level)
         {
             var config = AffinityManager.GetNPCConfig(npcId);
+            string relationshipDialogue = GetRelationshipDialogue(npcId, GetRelationshipKey(category), level);
+            if (!string.IsNullOrEmpty(relationshipDialogue))
+            {
+                return relationshipDialogue;
+            }
+
             var dialogueConfig = config as INPCDialogueConfig;
             
             if (dialogueConfig != null)
@@ -65,6 +71,12 @@ namespace BossRush
         public static string GetSpecialDialogue(string npcId, string eventKey, int level)
         {
             var config = AffinityManager.GetNPCConfig(npcId);
+            string relationshipDialogue = GetRelationshipDialogue(npcId, eventKey + "_married", level);
+            if (!string.IsNullOrEmpty(relationshipDialogue))
+            {
+                return relationshipDialogue;
+            }
+
             var dialogueConfig = config as INPCDialogueConfig;
             
             if (dialogueConfig != null)
@@ -220,6 +232,66 @@ namespace BossRush
                     return L10n.T("再见！", "Goodbye!");
                 default:
                     return "";
+            }
+        }
+
+        public static string GetRelationshipDialogue(string npcId, string eventKey)
+        {
+            int level = AffinityManager.GetLevel(npcId);
+            return GetRelationshipDialogue(npcId, eventKey, level);
+        }
+
+        public static string GetRelationshipDialogue(string npcId, string eventKey, int level)
+        {
+            if (string.IsNullOrEmpty(npcId) || string.IsNullOrEmpty(eventKey))
+            {
+                return null;
+            }
+
+            if (!IsCurrentSpouse(npcId))
+            {
+                return null;
+            }
+
+            var config = AffinityManager.GetNPCConfig(npcId);
+            var relationshipConfig = config as INPCRelationshipDialogueConfig;
+            if (relationshipConfig == null)
+            {
+                return null;
+            }
+
+            return relationshipConfig.GetRelationshipDialogue(eventKey, level);
+        }
+
+        private static bool IsCurrentSpouse(string npcId)
+        {
+            string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+            return !string.IsNullOrEmpty(spouseNpcId)
+                && string.Equals(spouseNpcId, npcId, StringComparison.Ordinal)
+                && AffinityManager.IsMarriedToPlayer(npcId);
+        }
+
+        private static string GetRelationshipKey(DialogueCategory category)
+        {
+            switch (category)
+            {
+                case DialogueCategory.Greeting:
+                    return "dialogue_greeting_married";
+                case DialogueCategory.AfterGift:
+                    return "dialogue_after_gift_married";
+                case DialogueCategory.LevelUp:
+                    return "dialogue_level_up_married";
+                case DialogueCategory.Shopping:
+                    return "dialogue_shopping_married";
+                case DialogueCategory.AlreadyGifted:
+                    return "dialogue_already_gifted_married";
+                case DialogueCategory.Idle:
+                    return "dialogue_idle_married";
+                case DialogueCategory.Farewell:
+                    return "dialogue_farewell_married";
+                case DialogueCategory.Special:
+                default:
+                    return null;
             }
         }
     }

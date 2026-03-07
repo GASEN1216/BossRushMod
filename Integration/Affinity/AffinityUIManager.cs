@@ -8,6 +8,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -172,6 +173,30 @@ namespace BossRush
             {
                 INPCAffinityConfig config = AffinityManager.GetNPCConfig(npcId);
                 string npcName = config?.DisplayName ?? npcId;
+                HashSet<string> shownMessages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                Action<string> pushUnique = (notification) =>
+                {
+                    if (string.IsNullOrWhiteSpace(notification))
+                    {
+                        return;
+                    }
+
+                    string normalized = notification.Trim();
+                    if (!shownMessages.Add(normalized))
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        NotificationText.Push(normalized);
+                    }
+                    catch
+                    {
+                        ModBehaviour.DevLog("[AffinityUI] " + normalized);
+                    }
+                };
                 
                 string message = L10n.T(
                     npcName + " 好感度提升到 Lv." + newLevel + "！",
@@ -181,12 +206,22 @@ namespace BossRush
                 // 使用游戏的通知系统
                 try
                 {
-                    NotificationText.Push(message);
+                    pushUnique(message);
                 }
                 catch
                 {
                     // 回退：使用Debug日志
                     ModBehaviour.DevLog("[AffinityUI] " + message);
+                }
+
+                bool story3AlreadyTriggered = newLevel == 3 && AffinityManager.HasTriggeredStory(npcId, 3);
+                bool story5AlreadyTriggered = newLevel == 5 && AffinityManager.HasTriggeredStory(npcId, 5);
+                bool story8AlreadyTriggered = newLevel == 8 && AffinityManager.HasTriggeredStory(npcId, 8);
+                bool story10AlreadyTriggered = newLevel == 10 && AffinityManager.HasTriggeredStory(npcId, 10);
+                int? discountPercent = null;
+                if (config?.DiscountsByLevel != null && config.DiscountsByLevel.TryGetValue(newLevel, out float discount))
+                {
+                    discountPercent = (int)(discount * 100);
                 }
                 
                 // 检查是否有解锁内容
@@ -194,10 +229,27 @@ namespace BossRush
                 {
                     foreach (string unlock in unlocks)
                     {
+                        if (string.IsNullOrWhiteSpace(unlock))
+                        {
+                            continue;
+                        }
+
+                        if (discountPercent.HasValue && unlock.Contains(discountPercent.Value + "%"))
+                        {
+                            continue;
+                        }
+
+                        if ((newLevel == 3 && story3AlreadyTriggered)
+                            || (newLevel == 5 && story5AlreadyTriggered)
+                            || (newLevel == 8 && story8AlreadyTriggered)
+                            || (newLevel == 10 && story10AlreadyTriggered))
+                        {
+                            continue;
+                        }
                         string unlockMsg = L10n.T("解锁: " + unlock, "Unlocked: " + unlock);
                         try
                         {
-                            NotificationText.Push(unlockMsg);
+                            pushUnique(unlockMsg);
                         }
                         catch
                         {
@@ -207,16 +259,15 @@ namespace BossRush
                 }
                 
                 // 检查是否有折扣
-                if (config?.DiscountsByLevel != null && config.DiscountsByLevel.TryGetValue(newLevel, out float discount))
+                if (discountPercent.HasValue)
                 {
-                    int discountPercent = (int)(discount * 100);
                     string discountMsg = L10n.T(
-                        "获得 " + discountPercent + "% 折扣！",
-                        "Got " + discountPercent + "% discount!"
+                        "获得 " + discountPercent.Value + "% 折扣！",
+                        "Got " + discountPercent.Value + "% discount!"
                     );
                     try
                     {
-                        NotificationText.Push(discountMsg);
+                        pushUnique(discountMsg);
                     }
                     catch
                     {

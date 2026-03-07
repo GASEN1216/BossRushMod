@@ -131,7 +131,7 @@ namespace BossRush
             // 如果没有传入控制器，尝试从 Transform 获取
             if (currentNpcController == null && npcTransform != null)
             {
-                currentNpcController = npcTransform.GetComponent<INPCController>();
+                currentNpcController = npcTransform.GetComponentInParent<INPCController>();
             }
             
             // 开始对话时播放对话动画

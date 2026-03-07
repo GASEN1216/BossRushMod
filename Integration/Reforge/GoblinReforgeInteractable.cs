@@ -8,6 +8,7 @@
 
 using System;
 using UnityEngine;
+using BossRush.Utils;
 
 namespace BossRush
 {
@@ -94,6 +95,7 @@ namespace BossRush
         private GoblinReforgeInteractable reforgeInteractable;
         private NPCShopInteractable shopInteractable;  // 使用通用商店交互组件
         private NPCGiftInteractable giftInteractable;  // 使用通用礼物交互组件
+        private NPCDivorceInteractable divorceInteractable;  // 离婚选项（仅配偶可见）
         
         protected override void Awake()
         {
@@ -183,7 +185,7 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 创建子交互选项（商店、礼物、重铸）
+        /// 创建子交互选项（商店、礼物、重铸、离婚）
         /// 使用反射将子选项注入到 otherInterablesInGroup 列表中（与快递员阿稳一致）
         /// 主选项为"对话"（由 OnTimeOut 处理）
         /// 子选项顺序：1.商店(好感度≥2级才显示) 2.赠送礼物 3.重铸服务
@@ -200,7 +202,7 @@ namespace BossRush
                 }
 
                 // 主选项是"对话"（由 OnTimeOut 处理）
-                // 子选项：商店、礼物、重铸
+                // 子选项：商店、礼物、重铸、离婚
 
                 // 1. 创建商店交互选项（好感度等级≥2才显示，使用通用组件）
                 shopInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCShopInteractable>(
@@ -234,12 +236,51 @@ namespace BossRush
                     ModBehaviour.DevLog("[GoblinNPC] 创建重铸交互选项并注入到交互组");
                 }
 
+                // 4. 创建离婚交互选项（仅"婚礼教堂中的当前配偶"才加入交互组）
+                if (ShouldAddDivorceOption())
+                {
+                    divorceInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCDivorceInteractable>(
+                        transform,
+                        "DivorceInteractable",
+                        list,
+                        component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+                    if (divorceInteractable != null)
+                    {
+                        ModBehaviour.DevLog("[GoblinNPC] 创建离婚交互选项并注入到交互组");
+                    }
+                }
+
                 ModBehaviour.DevLog("[GoblinNPC] 所有子交互选项已注入到 otherInterablesInGroup，共 " + list.Count + " 个（主选项=对话）");
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] 创建子交互选项失败: " + e.Message + "\n" + e.StackTrace);
             }
+        }
+
+        /// <summary>
+        /// 只有当前配偶且该NPC实例由婚礼教堂刷出时，才允许添加离婚选项
+        /// </summary>
+        private bool ShouldAddDivorceOption()
+        {
+            if (!AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
+            {
+                return false;
+            }
+
+            string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+            if (string.IsNullOrEmpty(spouseNpcId) || spouseNpcId != GoblinAffinityConfig.NPC_ID)
+            {
+                return false;
+            }
+
+            if (ModBehaviour.Instance == null)
+            {
+                return false;
+            }
+
+            Transform npcTransform = controller != null ? controller.NpcTransform : transform;
+            return ModBehaviour.Instance.IsWeddingNpcInstance(npcTransform);
         }
         
         protected override bool IsInteractable()
@@ -303,6 +344,45 @@ namespace BossRush
         {
             try
             {
+                if (NPCAffinityInteractionHelper.TryHandleSpouseCheatingRebuke(
+                    GoblinAffinityConfig.NPC_ID,
+                    controller?.transform,
+                    () =>
+                    {
+                        if (controller != null)
+                        {
+                            controller.ShowBrokenHeartBubble();
+                        }
+                    },
+                    "[GoblinNPC]"))
+                {
+                    if (controller != null)
+                    {
+                        controller.EndDialogueWithStay(10f);
+                    }
+                    return;
+                }
+
+                // 兜底：若达到剧情等级但因状态窗口错过了自动触发，则在本次"聊天"时优先触发大对话。
+                // 叙事顺序优先：先5级再10级
+                int currentLevel = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
+                if (currentLevel >= 5 && !AffinityManager.HasTriggeredStory5(GoblinAffinityConfig.NPC_ID))
+                {
+                    if (controller != null)
+                    {
+                        controller.TriggerStoryDialogue(5);
+                        return;
+                    }
+                }
+                if (currentLevel >= 10 && !AffinityManager.HasTriggeredStory10(GoblinAffinityConfig.NPC_ID))
+                {
+                    if (controller != null)
+                    {
+                        controller.TriggerStoryDialogue(10);
+                        return;
+                    }
+                }
+
                 NPCAffinityInteractionHelper.ProcessChatAffinityAndFeedback(
                     GoblinAffinityConfig.NPC_ID,
                     GoblinAffinityConfig.DAILY_CHAT_AFFINITY,

@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // GoblinAffinityConfig.cs - 哥布林"叮当"好感度配置
 // ============================================================================
 // 哥布林NPC"叮当"的专属好感度配置。
@@ -19,8 +19,11 @@ namespace BossRush
     /// <summary>
     /// 哥布林"叮当"好感度配置
     /// </summary>
-    public class GoblinAffinityConfig : INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, INPCShopConfig, INPCGiftContainerConfig
+    public class GoblinAffinityConfig : INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, INPCShopConfig, INPCGiftContainerConfig, INPCRelationshipDialogueConfig
     {
+        /// <summary>Shared singleton to avoid rebuilding config instances.</summary>
+        public static readonly GoblinAffinityConfig Instance = new GoblinAffinityConfig();
+
         // ============================================================================
         // 常量定义
         // ============================================================================
@@ -550,6 +553,76 @@ namespace BossRush
             }
             
             return null;
+        }
+
+        public string GetRelationshipDialogue(string eventKey, int level)
+        {
+            switch (eventKey)
+            {
+                case "dialogue_greeting_married":
+                case "dialogue_idle_married":
+                    return GetRandomRelationshipDialogue(new string[]
+                    {
+                        L10n.T("你来啦！叮当刚刚还在想你今天会不会来找我！", "You're here! Dingdang was just wondering if you'd come see me today!"),
+                        L10n.T("嘿嘿，配偶大人到场！叮当今天心情直接变好了！", "Hehe, spouse reporting in! Dingdang's mood just got way better!"),
+                        L10n.T("别站那么远嘛，叮当又不会咬你。今天最多只是想黏着你一点。", "Don't stand so far away. Dingdang won't bite you. At most, Dingdang just wants to stick close to you today."),
+                        L10n.T("你一出现，叮当就不想理别的人类了。", "Once you show up, Dingdang doesn't want to deal with any other humans."),
+                    });
+                case "gift_positive_married":
+                    return GetRandomRelationshipDialogue(new string[]
+                    {
+                        L10n.T("哇！这是给叮当的？配偶果然最懂叮当了！", "Wow! This is for Dingdang? Of course spouse understands Dingdang best!"),
+                        L10n.T("叮当要把它藏到最安全的地方，谁都不给看！", "Dingdang is going to hide this in the safest place. Nobody else gets to see it!"),
+                        L10n.T("你送的东西，叮当会一直留着。一直一直留着！", "If it's from you, Dingdang will keep it forever. Forever forever!"),
+                        L10n.T("嘿嘿，这种被偏爱的感觉，叮当超喜欢！", "Hehe, Dingdang really loves this feeling of being specially cherished!"),
+                    });
+                case "gift_normal_married":
+                    return GetRandomRelationshipDialogue(new string[]
+                    {
+                        L10n.T("给叮当的礼物就是好礼物！这是配偶特权！", "Any gift for Dingdang is a good gift! That's spouse privilege!"),
+                        L10n.T("叮当收下啦！你来找我，顺便带礼物，完美！", "Dingdang accepts! You came to see me and brought a gift too—perfect!"),
+                        L10n.T("嗯嗯，叮当会好好放起来的。因为是你送的。", "Mm-hmm, Dingdang will store it carefully. Because it's from you."),
+                    });
+                case "gift_negative_married":
+                    return GetRandomRelationshipDialogue(new string[]
+                    {
+                        L10n.T("这个不太对味...不过叮当知道你不是故意的。", "This isn't quite Dingdang's taste... but Dingdang knows you didn't mean it badly."),
+                        L10n.T("唔，今天挑得有点失手。没关系，下次再来！", "Mm, your pick was a little off today. That's okay, try again next time!"),
+                        L10n.T("叮当不喜欢这个，但还是更喜欢送它来的你。", "Dingdang doesn't like this, but still likes the one who brought it more."),
+                    });
+                case "gift_already_positive_married":
+                    return GetRandomRelationshipDialogue(new string[]
+                    {
+                        L10n.T("今天的礼物已经让叮当开心到转圈圈了，明天再来！", "Today's gift already made Dingdang happy enough to spin in circles. Come again tomorrow!"),
+                        L10n.T("先停一下！再送下去，叮当就要把你抱住不放了！", "Hold it right there! If you keep going, Dingdang might hug you and refuse to let go!"),
+                        L10n.T("叮当今天已经被你哄得超开心了，额度用完啦！", "You've already spoiled Dingdang super happy today. That's the limit for now!"),
+                    });
+                case "gift_already_normal_married":
+                    return GetRandomRelationshipDialogue(new string[]
+                    {
+                        L10n.T("一天一份就行啦，剩下的留到明天继续宠叮当！", "One gift a day is enough—save the rest for tomorrow and keep spoiling Dingdang then!"),
+                        L10n.T("礼物先欠着，今天多陪叮当说说话。", "Put the gift on hold. Spend today talking with Dingdang a little more instead."),
+                        L10n.T("叮当已经收到了，接下来你的人留下就行！", "Dingdang already got the gift. Now all that's left is for you to stay!"),
+                    });
+                case "gift_already_negative_married":
+                    return GetRandomRelationshipDialogue(new string[]
+                    {
+                        L10n.T("今天先别继续试啦，不然叮当怕你越来越紧张。", "Let's stop trying for today, or Dingdang worries you'll only get more nervous."),
+                        L10n.T("没挑对也没关系，明天再重新来一次！", "It's okay if you missed the mark. Try again tomorrow!"),
+                    });
+                default:
+                    return null;
+            }
+        }
+
+        private string GetRandomRelationshipDialogue(string[] dialogues)
+        {
+            if (dialogues == null || dialogues.Length == 0)
+            {
+                return null;
+            }
+
+            return dialogues[UnityEngine.Random.Range(0, dialogues.Length)];
         }
         
         // ============================================================================

@@ -7,8 +7,6 @@
 // ============================================================================
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using BossRush.Utils;
 
@@ -236,79 +234,6 @@ namespace BossRush
         protected int GetCurrentLevel()
         {
             return AffinityManager.GetLevel(npcId);
-        }
-    }
-
-    /// <summary>
-    /// NPC交互组构建辅助（主交互 + 子交互注入）
-    /// </summary>
-    public static class NPCInteractionGroupHelper
-    {
-        private static readonly BindingFlags GroupFieldBindingFlags = BindingFlags.NonPublic | BindingFlags.Instance;
-
-        /// <summary>
-        /// 获取或创建交互组子项列表 otherInterablesInGroup
-        /// </summary>
-        public static List<InteractableBase> GetOrCreateGroupList(InteractableBase owner, string logPrefix)
-        {
-            if (owner == null)
-            {
-                ModBehaviour.DevLog(logPrefix + " [ERROR] 交互组构建失败：owner 为空");
-                return null;
-            }
-
-            try
-            {
-                FieldInfo field = typeof(InteractableBase).GetField("otherInterablesInGroup", GroupFieldBindingFlags);
-                if (field == null)
-                {
-                    ModBehaviour.DevLog(logPrefix + " [ERROR] 无法获取 otherInterablesInGroup 字段");
-                    return null;
-                }
-
-                var list = field.GetValue(owner) as List<InteractableBase>;
-                if (list == null)
-                {
-                    list = new List<InteractableBase>();
-                    field.SetValue(owner, list);
-                }
-
-                return list;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(logPrefix + " [ERROR] 获取交互组列表失败: " + e.Message);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 向交互组添加子交互组件
-        /// </summary>
-        public static T AddSubInteractable<T>(
-            Transform parent,
-            string childName,
-            List<InteractableBase> groupList,
-            Action<T> setup = null)
-            where T : InteractableBase
-        {
-            if (parent == null || groupList == null)
-            {
-                return null;
-            }
-
-            GameObject childObj = new GameObject(childName);
-            childObj.transform.SetParent(parent);
-            childObj.transform.localPosition = Vector3.zero;
-
-            T component = childObj.AddComponent<T>();
-            if (setup != null)
-            {
-                setup(component);
-            }
-
-            groupList.Add(component);
-            return component;
         }
     }
 }

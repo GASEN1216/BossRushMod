@@ -8,6 +8,7 @@
 
 using System;
 using Duckov.UI;
+using UnityEngine;
 
 namespace BossRush
 {
@@ -99,6 +100,7 @@ namespace BossRush
             string logPrefix)
         {
             int gainedPoints = 0;
+            int levelBeforeChat = AffinityManager.GetLevel(npcId);
 
             try
             {
@@ -127,8 +129,89 @@ namespace BossRush
                 ModBehaviour.DevLog(logPrefix + " [WARNING] 处理聊天好感度逻辑失败: " + e.Message);
             }
 
-            ShowChatProgressBanner(npcId, gainedPoints);
+            int levelAfterChat = AffinityManager.GetLevel(npcId);
+            if (levelAfterChat <= levelBeforeChat)
+            {
+                ShowChatProgressBanner(npcId, gainedPoints);
+            }
             return gainedPoints;
+        }
+
+        /// <summary>
+        /// 若存在“花心后待谴责”状态，则在本次与配偶对话时触发谴责逻辑
+        /// </summary>
+        /// <returns>是否已拦截并处理本次对话（true 表示外层应直接 return）</returns>
+        public static bool TryHandleSpouseCheatingRebuke(
+            string npcId,
+            Transform dialogueTarget,
+            Action showBrokenHeartAction,
+            string logPrefix)
+        {
+            try
+            {
+                int cheatingCount;
+                if (!AffinityManager.TryConsumePendingCheatingRebuke(npcId, out cheatingCount))
+                {
+                    return false;
+                }
+
+                int penalty = Math.Max(0, cheatingCount - 1) * AffinityManager.SPOUSE_CHEATING_STACK_PENALTY;
+                if (penalty > 0)
+                {
+                    AffinityManager.AddPoints(npcId, -penalty);
+                }
+
+                // 这次“谴责对话”视作当天已聊天，避免同日再刷一次日常聊天好感。
+                AffinityManager.SetLastChatDay(npcId, NPCGiftSystem.GetCurrentGameDay());
+
+                string dialogue;
+                if (penalty <= 0)
+                {
+                    dialogue = L10n.T(
+                        "你不该这样花心...这次我先原谅你，但别再有下次。",
+                        "You shouldn't be so fickle... I'll forgive you this once, but don't do it again.");
+                }
+                else
+                {
+                    dialogue = L10n.T(
+                        "你又让我失望了...这次我真的很难过。",
+                        "You let me down again... this time it really hurts.");
+                }
+
+                NPCDialogueSystem.ShowDialogue(npcId, dialogueTarget, dialogue, 4.5f);
+
+                if (showBrokenHeartAction != null)
+                {
+                    try { showBrokenHeartAction(); }
+                    catch (System.Exception e) { ModBehaviour.DevLog("[AffinityHelper] [WARNING] 心碎反馈执行失败: " + e.Message); }
+                }
+
+                if (penalty > 0)
+                {
+                    var config = AffinityManager.GetNPCConfig(npcId);
+                    string npcName = config != null ? config.DisplayName : npcId;
+                    string penaltyText = L10n.T(
+                        npcName + "好感度 -" + penalty + "（花心惩罚）",
+                        npcName + " Affinity -" + penalty + " (Cheating Penalty)");
+
+                    if (ModBehaviour.Instance != null)
+                    {
+                        ModBehaviour.Instance.ShowBigBanner(penaltyText);
+                    }
+                    else
+                    {
+                        NotificationText.Push(penaltyText);
+                    }
+                }
+
+                ModBehaviour.DevLog(logPrefix + " 触发配偶谴责对话，cheatingCount=" + cheatingCount + ", penalty=" + penalty);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(logPrefix + " [WARNING] 处理配偶谴责对话失败: " + e.Message);
+                return false;
+            }
         }
 
         /// <summary>

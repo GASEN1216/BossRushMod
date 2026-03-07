@@ -1,28 +1,15 @@
-// ============================================================================
-// AffinityJsonSerializer.cs - 好感度数据JSON序列化器
-// ============================================================================
-// 模块说明：
-//   好感度数据的专用序列化器，基于 SimpleJsonHelper 实现。
-// ============================================================================
-
 using System.Collections.Generic;
 using System.Text;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 好感度数据JSON序列化器
-    /// </summary>
     public static class AffinityJsonSerializer
     {
-        /// <summary>
-        /// 将好感度数据字典序列化为JSON字符串
-        /// </summary>
         public static string Serialize(Dictionary<string, AffinityData> dataMap)
         {
             var sb = SimpleJsonHelper.GetBuilder();
             sb.Append("{\"npcDataList\":[");
-            
+
             bool first = true;
             foreach (var kvp in dataMap)
             {
@@ -30,19 +17,16 @@ namespace BossRush
                 first = false;
                 SerializeAffinityData(sb, kvp.Value);
             }
-            
+
             sb.Append("]}");
             return sb.ToString();
         }
-        
-        /// <summary>
-        /// 从JSON字符串反序列化好感度数据
-        /// </summary>
+
         public static bool Deserialize(string json, Dictionary<string, AffinityData> dataMap)
         {
             if (!SimpleJsonHelper.FindArrayBounds(json, out int arrayStart, out int arrayEnd))
                 return false;
-            
+
             SimpleJsonHelper.ForEachObject(json, arrayStart, arrayEnd, (j, start, end) =>
             {
                 var data = ParseAffinityData(j, start, end);
@@ -51,13 +35,10 @@ namespace BossRush
                     dataMap[data.npcId] = data;
                 }
             });
-            
+
             return true;
         }
-        
-        /// <summary>
-        /// 序列化单个 AffinityData 对象
-        /// </summary>
+
         private static void SerializeAffinityData(StringBuilder sb, AffinityData data)
         {
             sb.Append('{');
@@ -69,13 +50,16 @@ namespace BossRush
             SimpleJsonHelper.AppendBool(sb, "hasMet", data.hasMet);
             SimpleJsonHelper.AppendBool(sb, "hasTriggeredStory5", data.hasTriggeredStory5);
             SimpleJsonHelper.AppendBool(sb, "hasTriggeredStory10", data.hasTriggeredStory10);
+            SimpleJsonHelper.AppendString(sb, "triggeredEventKeys", data.triggeredEventKeys ?? string.Empty);
+            SimpleJsonHelper.AppendString(sb, "claimedRewardKeys", data.claimedRewardKeys ?? string.Empty);
+            SimpleJsonHelper.AppendBool(sb, "isMarriedToPlayer", data.isMarriedToPlayer);
+            SimpleJsonHelper.AppendString(sb, "marriageDateText", data.marriageDateText ?? string.Empty);
+            SimpleJsonHelper.AppendInt(sb, "cheatingIncidentCount", data.cheatingIncidentCount);
+            SimpleJsonHelper.AppendBool(sb, "hasPendingCheatingRebuke", data.hasPendingCheatingRebuke);
             SimpleJsonHelper.AppendInt(sb, "lastDecayCheckDay", data.lastDecayCheckDay, addComma: false);
             sb.Append('}');
         }
-        
-        /// <summary>
-        /// 解析单个 AffinityData 对象
-        /// </summary>
+
         private static AffinityData ParseAffinityData(string json, int start, int end)
         {
             return new AffinityData
@@ -88,6 +72,12 @@ namespace BossRush
                 hasMet = SimpleJsonHelper.ExtractBool(json, "hasMet", start, end),
                 hasTriggeredStory5 = SimpleJsonHelper.ExtractBool(json, "hasTriggeredStory5", start, end),
                 hasTriggeredStory10 = SimpleJsonHelper.ExtractBool(json, "hasTriggeredStory10", start, end),
+                triggeredEventKeys = SimpleJsonHelper.ExtractString(json, "triggeredEventKeys", start, end),
+                claimedRewardKeys = SimpleJsonHelper.ExtractString(json, "claimedRewardKeys", start, end),
+                isMarriedToPlayer = SimpleJsonHelper.ExtractBool(json, "isMarriedToPlayer", start, end),
+                marriageDateText = SimpleJsonHelper.ExtractString(json, "marriageDateText", start, end),
+                cheatingIncidentCount = SimpleJsonHelper.ExtractInt(json, "cheatingIncidentCount", start, end),
+                hasPendingCheatingRebuke = SimpleJsonHelper.ExtractBool(json, "hasPendingCheatingRebuke", start, end),
                 lastDecayCheckDay = SimpleJsonHelper.ExtractInt(json, "lastDecayCheckDay", start, end)
             };
         }
