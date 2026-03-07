@@ -10,8 +10,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -296,7 +294,6 @@ namespace BossRush
             {
                 if (npcTeleportUIRoot == null) return;
 
-                // 查找Content容器
                 Transform content = npcTeleportUIRoot.transform.Find("Panel/ScrollView/Content");
                 if (content == null)
                 {
@@ -304,39 +301,41 @@ namespace BossRush
                     return;
                 }
 
-                // 清空现有按钮
                 foreach (Transform child in content)
                 {
                     Destroy(child.gameObject);
                 }
 
-                // 通过反射动态查找所有 *NPCInstance 字段
-                FieldInfo[] fields = typeof(ModBehaviour).GetFields(
-                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                string[] npcKeys =
+                {
+                    "courierNPCInstance",
+                    "goblinNPCInstance",
+                    "nurseNPCInstance"
+                };
 
-                int totalCount = 0;
+                GameObject[] npcObjects =
+                {
+                    courierNPCInstance,
+                    goblinNPCInstance,
+                    nurseNPCInstance
+                };
+
+                int totalCount = npcKeys.Length;
                 int activeCount = 0;
 
-                foreach (FieldInfo field in fields.OrderBy(f => f.Name))
+                for (int i = 0; i < npcKeys.Length; i++)
                 {
-                    // 匹配命名约定: xxxNPCInstance，类型为 GameObject
-                    if (!field.Name.EndsWith("NPCInstance")) continue;
-                    if (field.FieldType != typeof(GameObject)) continue;
-
-                    GameObject npcObj = field.GetValue(this) as GameObject;
+                    string fieldName = npcKeys[i];
+                    GameObject npcObj = npcObjects[i];
                     bool exists = npcObj != null;
-                    string displayName = GetNPCDisplayName(field.Name);
+                    string displayName = GetNPCDisplayName(fieldName);
 
-                    // 捕获当前循环变量，避免闭包问题
                     GameObject capturedObj = npcObj;
                     string capturedName = displayName;
-
                     CreateNPCButton(content, displayName, exists, () => TeleportToNPC(capturedObj, capturedName));
 
-                    totalCount++;
                     if (exists) activeCount++;
-
-                    DevLog("[NPCTeleportUI] 检测到NPC: " + displayName + " (" + field.Name + ") - " + (exists ? "存在" : "未刷新"));
+                    DevLog("[NPCTeleportUI] NPC入口: " + displayName + " (" + fieldName + ") - " + (exists ? "存在" : "未刷新"));
                 }
 
                 DevLog("[NPCTeleportUI] NPC列表已刷新 - 共" + totalCount + "个NPC，" + activeCount + "个在线");

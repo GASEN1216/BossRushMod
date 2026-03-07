@@ -440,9 +440,6 @@ namespace BossRush
         private static readonly Vector3[] ChallengeSnowModeESpawnPoints = new Vector3[]
         {
             new Vector3(254.61f, 0.22f, 81.68f),
-            new Vector3(256.78f, 0.06f, 102.40f),
-            new Vector3(231.05f, 0.01f, 85.73f),
-            new Vector3(244.62f, 0.01f, 126.82f),
             new Vector3(258.92f, 0.01f, 125.49f),
             new Vector3(219.83f, 0.01f, 133.52f),
             new Vector3(207.69f, 0.01f, 133.61f),
@@ -649,7 +646,6 @@ namespace BossRush
         // 注意：独狼玩家落点 (438.18, 0.02, 127.38) 已从刷怪点中移除，避免 boss 刷在玩家脚下
         private static readonly Vector3[] HiddenWarehouseModeESpawnPoints = new Vector3[]
         {
-            new Vector3(440.84f, 0.02f, 146.18f),
             new Vector3(455.00f, 0.02f, 152.47f),
             new Vector3(468.85f, 0.09f, 148.62f),
             new Vector3(467.68f, 0.02f, 166.94f),
@@ -826,7 +822,6 @@ namespace BossRush
             new Vector3(542.45f, 0.00f, 567.09f),
             new Vector3(503.28f, 0.00f, 626.16f),
             new Vector3(521.52f, 0.00f, 526.26f),
-            new Vector3(534.62f, 0.00f, 409.89f),
             new Vector3(464.84f, 0.00f, 344.23f),
             new Vector3(28.51f, 0.00f, 248.37f),
             new Vector3(610.49f, 0.00f, 223.46f),
@@ -1061,7 +1056,6 @@ namespace BossRush
             new Vector3(462.73f, 0.00f, 217.17f),
             new Vector3(716.14f, 0.00f, 441.78f),
             new Vector3(569.67f, 0.00f, 624.26f),
-            new Vector3(498.82f, 0.00f, 417.15f),
             new Vector3(878.21f, 0.00f, 320.14f),
             new Vector3(508.85f, 0.00f, 351.96f),
             new Vector3(470.68f, 0.00f, 660.07f),
@@ -1078,7 +1072,6 @@ namespace BossRush
             new Vector3(709.65f, 0.00f, 364.23f),
             new Vector3(490.04f, 0.00f, 199.13f),
             new Vector3(845.72f, 0.00f, 438.85f),
-            new Vector3(526.04f, 0.00f, 418.79f),
             new Vector3(600.99f, 0.00f, 506.57f),
             new Vector3(459.75f, 0.00f, 627.28f),
             new Vector3(462.08f, 0.00f, 228.06f),
@@ -2078,7 +2071,13 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
+
+        // F3 婚姻系统测试面板（仅 DevMode）
+        private bool marriageTestUIVisible = false;
+        private Rect marriageTestWindowRect = new Rect(430f, 40f, 560f, 760f);
+        private Vector2 marriageTestLogScroll = Vector2.zero;
+        private string marriageTestLog = "";
 
         private StockShop ammoShop;
 
@@ -2273,8 +2272,8 @@ namespace BossRush
                 
                 DevLog("[BossRush] 好感度系统初始化完成");
                 
-                // 添加好感度系统测试工具（DevMode下F11打开）
-                gameObject.AddComponent<AffinitySystemTest>();
+                // 添加背包物品检查工具（DevMode下F11打开）
+                gameObject.AddComponent<InventoryInspector>();
             }
             catch (Exception e)
             {
@@ -2306,9 +2305,411 @@ namespace BossRush
             
             // 绘制物品生成器 UI（F1 呼出）
             DrawItemSpawnerUI();
+
+            // 绘制婚姻系统测试面板（F3 呼出，DevMode）
+            DrawMarriageTestUI();
             
             // 绘制帧率显示（DevMode）
             DrawFpsCounter();
+        }
+
+        private void DrawMarriageTestUI()
+        {
+            if (!DevModeEnabled || !marriageTestUIVisible) return;
+            marriageTestWindowRect = GUI.Window(
+                19870613,
+                marriageTestWindowRect,
+                DrawMarriageTestWindow,
+                "婚姻系统测试面板 (DevMode / F3)");
+        }
+
+        private void DrawMarriageTestWindow(int windowId)
+        {
+            GUILayout.BeginVertical();
+
+            string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+            string spouseText = string.IsNullOrEmpty(spouseNpcId) ? "无" : spouseNpcId;
+            GUILayout.Label("当前配偶: " + spouseText);
+            GUILayout.Label("哥布林: Lv." + AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID)
+                + " / 点数 " + AffinityManager.GetPoints(GoblinAffinityConfig.NPC_ID)
+                + " / 已婚=" + AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID)
+                + " / 5级剧情=" + AffinityManager.HasTriggeredStory5(GoblinAffinityConfig.NPC_ID)
+                + " / 10级剧情=" + AffinityManager.HasTriggeredStory10(GoblinAffinityConfig.NPC_ID));
+            GUILayout.Label("护士: Lv." + AffinityManager.GetLevel(NurseAffinityConfig.NPC_ID)
+                + " / 点数 " + AffinityManager.GetPoints(NurseAffinityConfig.NPC_ID)
+                + " / 已婚=" + AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID)
+                + " / 5级剧情=" + AffinityManager.HasTriggeredStory5(NurseAffinityConfig.NPC_ID)
+                + " / 10级剧情=" + AffinityManager.HasTriggeredStory10(NurseAffinityConfig.NPC_ID));
+
+            GUILayout.Space(8);
+            GUILayout.Label("--- 基础工具 ---");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("给玩家1枚戒指", GUILayout.Height(28)))
+            {
+                SpawnDebugItemForMarriageTest(DiamondRingConfig.TYPE_ID, 1);
+            }
+            if (GUILayout.Button("给玩家5枚戒指", GUILayout.Height(28)))
+            {
+                SpawnDebugItemForMarriageTest(DiamondRingConfig.TYPE_ID, 5);
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("输出背包详细日志", GUILayout.Height(28)))
+            {
+                LogInventoryDetailsForF3Debug();
+            }
+            if (GUILayout.Button("统计背包戒指数量", GUILayout.Height(28)))
+            {
+                int ringCount = CountItemInPlayerInventory(DiamondRingConfig.TYPE_ID);
+                AppendMarriageTestLog("背包钻石戒指数量: " + ringCount);
+                NotificationText.Push("[MarriageTest] 钻石戒指 x" + ringCount);
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8);
+            GUILayout.Label("--- 好感与每日限制 ---");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("哥布林=10级", GUILayout.Height(28)))
+            {
+                AffinityManager.SetPoints(GoblinAffinityConfig.NPC_ID, AffinityManager.UNIFIED_MAX_POINTS);
+                AppendMarriageTestLog("已设置哥布林为 10 级");
+            }
+            if (GUILayout.Button("哥布林=1级", GUILayout.Height(28)))
+            {
+                AffinityManager.SetPoints(GoblinAffinityConfig.NPC_ID, 0);
+                AppendMarriageTestLog("已设置哥布林为 1 级");
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("护士=10级", GUILayout.Height(28)))
+            {
+                AffinityManager.SetPoints(NurseAffinityConfig.NPC_ID, AffinityManager.UNIFIED_MAX_POINTS);
+                AppendMarriageTestLog("已设置护士为 10 级");
+            }
+            if (GUILayout.Button("护士=1级", GUILayout.Height(28)))
+            {
+                AffinityManager.SetPoints(NurseAffinityConfig.NPC_ID, 0);
+                AppendMarriageTestLog("已设置护士为 1 级");
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("重置今日礼物限制", GUILayout.Height(28)))
+            {
+                AffinityManager.SetLastGiftDay(GoblinAffinityConfig.NPC_ID, -1);
+                AffinityManager.SetLastGiftDay(NurseAffinityConfig.NPC_ID, -1);
+                AppendMarriageTestLog("已重置哥布林/护士今日赠礼限制");
+            }
+            if (GUILayout.Button("重置今日聊天限制", GUILayout.Height(28)))
+            {
+                AffinityManager.SetLastChatDay(GoblinAffinityConfig.NPC_ID, -1);
+                AffinityManager.SetLastChatDay(NurseAffinityConfig.NPC_ID, -1);
+                AppendMarriageTestLog("已重置哥布林/护士今日聊天限制");
+            }
+            GUILayout.EndHorizontal();
+
+            if (GUILayout.Button("重置故事大对话标记(允许重新触发5/10级大对话)", GUILayout.Height(28)))
+            {
+                AffinityManager.ResetStoryTriggers(GoblinAffinityConfig.NPC_ID);
+                AffinityManager.ResetStoryTriggers(NurseAffinityConfig.NPC_ID);
+                AffinityManager.FlushSave();
+                AppendMarriageTestLog("已重置哥布林/护士的5级和10级故事大对话触发标记");
+            }
+
+            GUILayout.Space(8);
+            GUILayout.Label("--- NPC与婚礼教堂 ---");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("强制刷新哥布林", GUILayout.Height(28)))
+            {
+                SpawnGoblinNPC(null, false, true);
+                AppendMarriageTestLog("请求强制刷新哥布林");
+            }
+            if (GUILayout.Button("强制刷新护士", GUILayout.Height(28)))
+            {
+                SpawnNurseNPC(null, false, true);
+                AppendMarriageTestLog("请求强制刷新护士");
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("恢复婚礼教堂NPC", GUILayout.Height(28)))
+            {
+                RestoreWeddingBuildingNPC();
+                AppendMarriageTestLog("已请求恢复婚礼教堂配偶刷新");
+            }
+            if (GUILayout.Button("关闭面板", GUILayout.Height(28)))
+            {
+                marriageTestUIVisible = false;
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8);
+            GUILayout.Label("--- 婚姻与花心流程 ---");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("强制与哥布林结婚", GUILayout.Height(28)))
+            {
+                TriggerMarriageSequenceForNpc(GoblinAffinityConfig.NPC_ID);
+            }
+            if (GUILayout.Button("强制与护士结婚", GUILayout.Height(28)))
+            {
+                TriggerMarriageSequenceForNpc(NurseAffinityConfig.NPC_ID);
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("给当前配偶+1花心事件", GUILayout.Height(28)))
+            {
+                string spouseId = AffinityManager.GetCurrentSpouseNpcId();
+                if (string.IsNullOrEmpty(spouseId))
+                {
+                    AppendMarriageTestLog("操作失败：当前没有配偶");
+                }
+                else
+                {
+                    AffinityManager.RecordCheatingIncidentForSpouse(spouseId);
+                    AppendMarriageTestLog("已记录花心事件，配偶=" + spouseId);
+                }
+            }
+            if (GUILayout.Button("与当前配偶离婚", GUILayout.Height(28)))
+            {
+                TriggerDivorceForCurrentSpouse();
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8);
+            GUILayout.Label("--- 测试日志 ---");
+            marriageTestLogScroll = GUILayout.BeginScrollView(marriageTestLogScroll, GUILayout.Height(180));
+            GUILayout.Label(string.IsNullOrEmpty(marriageTestLog) ? "(无日志)" : marriageTestLog);
+            GUILayout.EndScrollView();
+            if (GUILayout.Button("清空日志", GUILayout.Height(24)))
+            {
+                marriageTestLog = "";
+            }
+
+            GUILayout.EndVertical();
+            GUI.DragWindow(new Rect(0f, 0f, marriageTestWindowRect.width, 24f));
+        }
+
+        private void AppendMarriageTestLog(string message)
+        {
+            string line = "[" + DateTime.Now.ToString("HH:mm:ss") + "] " + message;
+            if (string.IsNullOrEmpty(marriageTestLog))
+            {
+                marriageTestLog = line;
+            }
+            else
+            {
+                marriageTestLog += "\n" + line;
+            }
+
+            const int maxLogChars = 14000;
+            if (marriageTestLog.Length > maxLogChars)
+            {
+                marriageTestLog = marriageTestLog.Substring(marriageTestLog.Length - maxLogChars);
+            }
+        }
+
+        private void SpawnDebugItemForMarriageTest(int typeId, int count)
+        {
+            if (count <= 0) return;
+
+            int successCount = 0;
+            for (int i = 0; i < count; i++)
+            {
+                try
+                {
+                    Item item = ItemAssetsCollection.InstantiateSync(typeId);
+                    if (item == null) continue;
+                    ItemUtilities.SendToPlayer(item);
+                    successCount++;
+                }
+                catch (Exception e)
+                {
+                    AppendMarriageTestLog("生成物品失败(typeId=" + typeId + "): " + e.Message);
+                    break;
+                }
+            }
+
+            AppendMarriageTestLog("已发放物品 typeId=" + typeId + " x" + successCount);
+            NotificationText.Push("[MarriageTest] 已发放 typeId=" + typeId + " x" + successCount);
+        }
+
+        private int CountItemInPlayerInventory(int typeId)
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.CharacterItem == null) return 0;
+
+                Inventory inventory = player.CharacterItem.Inventory;
+                if (inventory == null) return 0;
+
+                int count = 0;
+                foreach (Item item in inventory)
+                {
+                    if (item != null && item.TypeID == typeId)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private void TriggerMarriageSequenceForNpc(string npcId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(npcId))
+                {
+                    AppendMarriageTestLog("触发结婚失败：npcId 为空");
+                    return;
+                }
+
+                if (npcId == GoblinAffinityConfig.NPC_ID && goblinNPCInstance == null)
+                {
+                    SpawnGoblinNPC(null, false, true);
+                }
+                else if (npcId == NurseAffinityConfig.NPC_ID && nurseNPCInstance == null)
+                {
+                    SpawnNurseNPC(null, false, true);
+                }
+
+                Transform npcTransform = GetNpcTransformForMarriageTest(npcId);
+                INPCController npcController = GetNpcControllerForMarriageTest(npcId, npcTransform);
+                NPCMarriageSystem.HandleRingGiftAccepted(npcId, npcTransform, npcController);
+                AppendMarriageTestLog("已触发结婚流程: " + npcId);
+            }
+            catch (Exception e)
+            {
+                AppendMarriageTestLog("触发结婚流程异常: " + e.Message);
+            }
+        }
+
+        private void TriggerDivorceForCurrentSpouse()
+        {
+            try
+            {
+                string spouseId = AffinityManager.GetCurrentSpouseNpcId();
+                if (string.IsNullOrEmpty(spouseId))
+                {
+                    AppendMarriageTestLog("离婚失败：当前没有配偶");
+                    return;
+                }
+
+                Transform npcTransform = GetNpcTransformForMarriageTest(spouseId);
+                INPCController npcController = GetNpcControllerForMarriageTest(spouseId, npcTransform);
+                NPCMarriageSystem.HandleDivorceRequested(spouseId, npcTransform, npcController);
+                AppendMarriageTestLog("已触发离婚流程: " + spouseId);
+            }
+            catch (Exception e)
+            {
+                AppendMarriageTestLog("触发离婚流程异常: " + e.Message);
+            }
+        }
+
+        private Transform GetNpcTransformForMarriageTest(string npcId)
+        {
+            if (npcId == GoblinAffinityConfig.NPC_ID)
+            {
+                return goblinNPCInstance != null ? goblinNPCInstance.transform : null;
+            }
+
+            if (npcId == NurseAffinityConfig.NPC_ID)
+            {
+                return nurseNPCInstance != null ? nurseNPCInstance.transform : null;
+            }
+
+            return null;
+        }
+
+        private INPCController GetNpcControllerForMarriageTest(string npcId, Transform fallbackTransform)
+        {
+            if (npcId == GoblinAffinityConfig.NPC_ID)
+            {
+                if (goblinController != null) return goblinController;
+                if (fallbackTransform != null) return fallbackTransform.GetComponent<INPCController>();
+                return null;
+            }
+
+            if (npcId == NurseAffinityConfig.NPC_ID)
+            {
+                if (nurseController != null) return nurseController;
+                if (fallbackTransform != null) return fallbackTransform.GetComponent<INPCController>();
+                return null;
+            }
+
+            if (fallbackTransform != null)
+            {
+                return fallbackTransform.GetComponent<INPCController>();
+            }
+
+            return null;
+        }
+
+        private void LogInventoryDetailsForF3Debug()
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.CharacterItem == null)
+                {
+                    AppendMarriageTestLog("输出背包失败：玩家或 CharacterItem 为空");
+                    return;
+                }
+
+                var inventory = player.CharacterItem.Inventory;
+                if (inventory == null)
+                {
+                    AppendMarriageTestLog("输出背包失败：背包为空");
+                    return;
+                }
+
+                DevLog("========== 背包物品详细信息 ==========");
+                int index = 0;
+                foreach (var item in inventory)
+                {
+                    if (item == null) continue;
+
+                    int typeID = item.TypeID;
+                    string displayName = item.DisplayName ?? "(无名称)";
+
+                    string tagsStr = "(无Tags)";
+                    try
+                    {
+                        var tags = item.Tags;
+                        if (tags != null && tags.Count > 0)
+                        {
+                            var tagNames = new List<string>();
+                            foreach (var tag in tags)
+                            {
+                                if (tag != null) tagNames.Add(tag.name);
+                            }
+                            tagsStr = string.Join(", ", tagNames.ToArray());
+                        }
+                    }
+                    catch { }
+
+                    DevLog(string.Format("[{0}] TypeID={1}, Name={2}, Tags=[{3}]",
+                        index, typeID, displayName, tagsStr));
+                    index++;
+                }
+
+                DevLog("========== 共 " + index + " 个物品 ==========");
+                AppendMarriageTestLog("背包详情已输出到日志，共 " + index + " 个物品");
+                NotificationText.Push("[MarriageTest] 背包物品信息已输出到日志");
+            }
+            catch (Exception e)
+            {
+                AppendMarriageTestLog("输出背包详情异常: " + e.Message);
+            }
         }
         
         void Update()
@@ -2471,66 +2872,17 @@ namespace BossRush
                 DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
             }
             
-            // 调试快捷键 F3：输出背包全部物品的详细信息（包括 Tag）
+            // 调试快捷键 F3：切换“婚姻系统测试面板”
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F3))
             {
                 try
                 {
-                    DevLog("[BossRush] F3 按下，输出背包物品详细信息");
-                    
-                    CharacterMainControl player = CharacterMainControl.Main;
-                    if (player == null || player.CharacterItem == null)
-                    {
-                        DevLog("[BossRush] F3: 玩家或 CharacterItem 为空");
-                        return;
-                    }
-                    
-                    var inventory = player.CharacterItem.Inventory;
-                    if (inventory == null)
-                    {
-                        DevLog("[BossRush] F3: 背包为空");
-                        return;
-                    }
-                    
-                    DevLog("========== 背包物品详细信息 ==========");
-                    int index = 0;
-                    foreach (var item in inventory)
-                    {
-                        if (item == null) continue;
-                        
-                        // 获取物品基本信息
-                        int typeID = item.TypeID;
-                        string displayName = item.DisplayName ?? "(无名称)";
-                        
-                        // 获取物品 Tags
-                        string tagsStr = "(无Tags)";
-                        try
-                        {
-                            var tags = item.Tags;
-                            if (tags != null && tags.Count > 0)
-                            {
-                                var tagNames = new List<string>();
-                                foreach (var tag in tags)
-                                {
-                                    if (tag != null)
-                                        tagNames.Add(tag.name);
-                                }
-                                tagsStr = string.Join(", ", tagNames.ToArray());
-                            }
-                        }
-                        catch { }
-                        
-                        DevLog(string.Format("[{0}] TypeID={1}, Name={2}, Tags=[{3}]", 
-                            index, typeID, displayName, tagsStr));
-                        index++;
-                    }
-                    DevLog("========== 共 " + index + " 个物品 ==========");
-                    
-                    NotificationText.Push("[调试] 背包物品信息已输出到日志");
+                    marriageTestUIVisible = !marriageTestUIVisible;
+                    AppendMarriageTestLog("测试面板已" + (marriageTestUIVisible ? "打开" : "关闭"));
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] F3 输出背包信息失败: " + e.Message + "\n" + e.StackTrace);
+                    DevLog("[BossRush] F3 切换婚姻测试面板失败: " + e.Message + "\n" + e.StackTrace);
                 }
             }
             
@@ -2819,7 +3171,7 @@ namespace BossRush
                 }
             }
             
-            // F11 已分配给 AffinitySystemTest（好感度系统测试UI）
+            // F11 已分配给 InventoryInspector（背包物品详细信息查看）
             
             // 调试快捷键 F12：打开NPC传送UI
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F12))

@@ -1457,6 +1457,15 @@ namespace BossRush
                                 ammo.StackCount = UnityEngine.Random.Range(30, 60);
                                 enemyInventory.AddAndMerge(ammo, 0);
                             }
+
+                            Item randomAmmo = CreateRandomAmmo(
+                                Mathf.Max(1, qualityLevel - 1),
+                                Mathf.Min(8, qualityLevel + 2));
+                            if (randomAmmo != null)
+                            {
+                                randomAmmo.StackCount = UnityEngine.Random.Range(60, 121);
+                                enemyInventory.AddAndMerge(randomAmmo, 0);
+                            }
                         }
                     }
                 }

@@ -5,7 +5,7 @@
 //   在 Mode E（划地为营）模式启动时生成神秘商人 NPC，提供全品类商店。
 //   - 优先通过 nameKey 匹配商人预设（MerchantName_Myst），回退到 iconType==4
 //   - 注入原版商人交互点，每个物品分类创建独立商店交互选项
-//   - 所有物品价格 ×10，商人生命值设为 999999
+//   - 除子弹外所有物品价格 ×10，商人生命值设为 999999
 //   - Mode E 结束时安全清理商人及商店引用
 // ============================================================================
 
@@ -338,14 +338,26 @@ namespace BossRush
                     categories.Add(System.Tuple.Create(
                         new List<Duckov.Utilities.Tag> { maskTag },
                         "BossRush_ModeE_Shop_Mask", "Mask"));
-                // 医疗品
+                // 医疗品（含注射器）
                 var medTag = FindTagByNameInInit("Medical");
                 if (medTag == null) medTag = FindTagByNameInInit("Consumable");
                 if (medTag == null) medTag = FindTagByNameInInit("Healing");
                 if (medTag != null)
+                {
+                    var medTags = new List<Duckov.Utilities.Tag> { medTag };
+                    var injectorTag = FindTagByNameInInit("Injector");
+                    if (injectorTag != null)
+                        medTags.Add(injectorTag);
                     categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { medTag },
+                        medTags,
                         "BossRush_ModeE_Shop_Medical", "Medical"));
+                }
+                // 食物
+                var foodTag = FindTagByNameInInit("Food");
+                if (foodTag != null)
+                    categories.Add(System.Tuple.Create(
+                        new List<Duckov.Utilities.Tag> { foodTag },
+                        "BossRush_ModeE_Shop_Food", "Food"));
                 // 诱饵
                 if (tagsData.Bait != null)
                     categories.Add(System.Tuple.Create(
@@ -394,8 +406,9 @@ namespace BossRush
                     }
                     catch { }
 
-                    // 填充商品（价格 ×10）
+                    // 填充商品（子弹原价，其余 ×10）
                     // 注意：不预缓存 itemInstances，由 StockShop 按需加载，节省内存
+                    float shopPriceFactor = (suffix == "Bullet") ? 1.0f : 10.0f;
                     if (shop.entries == null)
                         shop.entries = new List<StockShop.Entry>();
                     else
@@ -409,7 +422,7 @@ namespace BossRush
                             raw.typeID = id;
                             raw.maxStock = 9999;
                             raw.forceUnlock = true;
-                            raw.priceFactor = 1.0f; // 原价
+                            raw.priceFactor = shopPriceFactor;
                             raw.possibility = 1.0f;
                             raw.lockInDemo = false;
 
@@ -482,7 +495,7 @@ namespace BossRush
                             raw.typeID = id;
                             raw.maxStock = 9999;
                             raw.forceUnlock = true;
-                            raw.priceFactor = 1.0f; // 原价
+                            raw.priceFactor = 1.0f;
                             raw.possibility = 1.0f;
                             raw.lockInDemo = false;
 

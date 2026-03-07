@@ -48,6 +48,15 @@ namespace BossRush
         
         /// <summary>消息显示计时器</summary>
         private float messageTimer = 0f;
+
+        /// <summary>涓婁竴鏉″ぇ妯箙鏂囨湰锛堢敤浜庣煭鏃堕棿鍘婚噸锛?/summary>
+        private string lastBigBannerText = "";
+
+        /// <summary>涓婁竴鏉″ぇ妯箙鏄剧ず鏃堕棿锛堝疄鏃舵椂闂达級</summary>
+        private float lastBigBannerRealtime = -999f;
+
+        /// <summary>鐩稿悓妯箙鐭椂闂村幓閲嶇獥鍙?/summary>
+        private const float BIG_BANNER_DEDUP_WINDOW = 1.25f;
         
         #endregion
         
@@ -554,6 +563,18 @@ namespace BossRush
         {
             try
             {
+                string normalizedText = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
+                float now = Time.realtimeSinceStartup;
+                if (!string.IsNullOrEmpty(normalizedText)
+                    && string.Equals(lastBigBannerText, normalizedText, StringComparison.Ordinal)
+                    && now - lastBigBannerRealtime <= BIG_BANNER_DEDUP_WINDOW)
+                {
+                    DevLog("[BossRush] 跳过重复横幅: " + normalizedText);
+                    return;
+                }
+
+                lastBigBannerText = normalizedText;
+                lastBigBannerRealtime = now;
                 EnsureNotificationDurationAtLeastTwoSeconds();
                 // 使用游戏的通知系统显示横幅
                 NotificationText.Push(text);

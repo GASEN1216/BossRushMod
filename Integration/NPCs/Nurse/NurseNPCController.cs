@@ -406,10 +406,11 @@ namespace BossRush
             if (IsAnyUIOpen()) return;
 
             int level = AffinityManager.GetLevel(NurseAffinityConfig.NPC_ID);
-            if (level >= 5 && !AffinityManager.HasTriggeredStory5(NurseAffinityConfig.NPC_ID))
+            int pendingStoryLevel = GetNextPendingStoryLevel(level);
+            if (pendingStoryLevel > 0)
             {
-                ModBehaviour.DevLog("[NurseNPC] 触发5级故事对话，等级: " + level);
-                TriggerStoryDialogue(5);
+                ModBehaviour.DevLog("[NurseNPC] ?????????: " + level + ", storyLevel=" + pendingStoryLevel);
+                TriggerStoryDialogue(pendingStoryLevel);
             }
         }
 
