@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // LocalizationInjector.cs - 统一本地化注入器
 // ============================================================================
 // 模块说明：
@@ -835,6 +835,59 @@ namespace BossRush
             {
                 keys[i] = "BossRush_NurseStory5_" + i;
             }
+            return keys;
+        }
+
+        public static string[] GetNurseStory3DialogueKeys()
+        {
+            return BuildDynamicDialogueKeys(
+                "BossRush_NurseStory3_",
+                new string[][]
+                {
+                    new string[] { "别乱动，我先帮你把伤口处理好。", "Don't move. Let me patch your wound first." },
+                    new string[] { "这些安神滴剂是我自己调的，晚上实在睡不着时再用。", "I mixed these calming drops myself. Use them only when you really can't sleep." },
+                    new string[] { "别误会，我只是觉得像你这样的人，不该总是硬撑着。", "Don't get the wrong idea. I just think someone like you shouldn't keep forcing themself to endure everything." },
+                    new string[] { "拿着吧，算是我这个医生的一点私心。", "Take them. Call it a small selfish favor from your doctor." }
+                });
+        }
+
+        public static string[] GetNurseStory8DialogueKeys()
+        {
+            return BuildDynamicDialogueKeys(
+                "BossRush_NurseStory8_",
+                new string[][]
+                {
+                    new string[] { "最近外面越来越乱了，我总担心你会不会哪天回不来了。", "Things have been getting worse out there. I keep worrying that one day you might not come back." },
+                    new string[] { "所以我做了这个平安护身符。它未必真能挡灾，但至少能让我安心一点。", "So I made this peace charm. It may not truly protect you, but it helps me breathe a little easier." },
+                    new string[] { "如果你愿意的话，就把它带在身上。", "If you're willing, keep it with you." },
+                    new string[] { "等你平安回来，再把今天发生的事讲给我听。", "When you come back safe, tell me everything that happened today." }
+                });
+        }
+
+        public static string[] GetNurseStory10DialogueKeys()
+        {
+            return BuildDynamicDialogueKeys(
+                "BossRush_NurseStory10_",
+                new string[][]
+                {
+                    new string[] { "我以前一直以为，自己只需要留在这里，替别人处理伤口就够了。", "I used to think staying here and tending other people's wounds was all I needed to do." },
+                    new string[] { "可是你一次次回来，让我开始认真去想‘以后’这种事。", "But every time you came back, I started thinking seriously about something called 'the future.'" },
+                    new string[] { "我会担心你，会期待你，会在你站到门口时觉得整间医务室都亮了一点。", "I worry about you, wait for you, and every time you appear at the doorway, this whole clinic feels a little brighter." },
+                    new string[] { "如果你愿意的话……以后也让我继续这样等你吧。", "If you're willing... let me keep waiting for you like this from now on." },
+                    new string[] { "这一次，我说的不是医生对病人，而是羽织对你。", "This time, I'm not speaking as a doctor to a patient. I'm speaking as Yu Zhi to you." }
+                });
+        }
+
+        private static string[] BuildDynamicDialogueKeys(string prefix, string[][] dialogues)
+        {
+            string[] keys = new string[dialogues.Length];
+            for (int i = 0; i < dialogues.Length; i++)
+            {
+                string key = prefix + i;
+                keys[i] = key;
+                LocalizationHelper.InjectLocalization(key, L10n.T(dialogues[i][0], dialogues[i][1]));
+            }
+
             return keys;
         }
 

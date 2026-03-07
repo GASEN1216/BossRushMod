@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // AffinityManager.cs - 好感度管理器
 // ============================================================================
 // 模块说明：
@@ -8,6 +8,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using ReplaceThisWithYourModNameSpace;
 
@@ -45,6 +46,9 @@ namespace BossRush
         
         /// <summary>统一最大点数（10级所需点数）</summary>
         public const int UNIFIED_MAX_POINTS = 2300;
+
+        /// <summary>配偶谴责时每次追加的额外惩罚</summary>
+        public const int SPOUSE_CHEATING_STACK_PENALTY = 40;
         
         // ============================================================================
         // 状态
@@ -669,6 +673,260 @@ namespace BossRush
                 MarkDirty();
                 ModBehaviour.DevLog("[Affinity] " + npcId + " 10级故事已标记为触发");
             }
+        }
+
+        public static bool IsMarriedToPlayer(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return false;
+            return npcDataMap.TryGetValue(npcId, out AffinityData data) && data != null && data.isMarriedToPlayer;
+        }
+
+        public static string GetCurrentSpouseNpcId()
+        {
+            foreach (var kvp in npcDataMap)
+            {
+                if (kvp.Value != null && kvp.Value.isMarriedToPlayer)
+                {
+                    return kvp.Key;
+                }
+            }
+
+            return null;
+        }
+
+        public static string GetMarriageDateText(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return string.Empty;
+            return npcDataMap.TryGetValue(npcId, out AffinityData data) && data != null
+                ? data.marriageDateText ?? string.Empty
+                : string.Empty;
+        }
+
+        public static bool MarkMarriedToPlayer(string npcId, string marriageDateText)
+        {
+            if (string.IsNullOrEmpty(npcId)) return false;
+
+            AffinityData data = GetOrCreateAffinityData(npcId);
+            string currentSpouseNpcId = GetCurrentSpouseNpcId();
+            if (!string.IsNullOrEmpty(currentSpouseNpcId) && currentSpouseNpcId != npcId)
+            {
+                return false;
+            }
+
+            string normalizedDateText = marriageDateText ?? string.Empty;
+            if (data.isMarriedToPlayer)
+            {
+                if (string.IsNullOrEmpty(data.marriageDateText) && !string.IsNullOrEmpty(normalizedDateText))
+                {
+                    data.marriageDateText = normalizedDateText;
+                    MarkDirty();
+                    return true;
+                }
+
+                return false;
+            }
+
+            data.isMarriedToPlayer = true;
+            data.marriageDateText = normalizedDateText;
+            MarkDirty();
+            return true;
+        }
+
+        public static bool DivorceFromPlayer(string npcId, bool resetAffinityToZero = true)
+        {
+            if (string.IsNullOrEmpty(npcId)) return false;
+            if (!npcDataMap.TryGetValue(npcId, out AffinityData data) || data == null || !data.isMarriedToPlayer)
+            {
+                return false;
+            }
+
+            data.isMarriedToPlayer = false;
+            data.marriageDateText = string.Empty;
+            data.cheatingIncidentCount = 0;
+            data.hasPendingCheatingRebuke = false;
+            data.lastGiftDay = -1;
+            data.lastGiftReaction = 0;
+            data.lastChatDay = -1;
+
+            if (resetAffinityToZero && data.points != 0)
+            {
+                SetPoints(npcId, 0);
+            }
+
+            MarkDirty();
+            return true;
+        }
+
+        public static void RecordCheatingIncidentForSpouse(string spouseNpcId)
+        {
+            if (string.IsNullOrEmpty(spouseNpcId)) return;
+
+            AffinityData data = GetOrCreateAffinityData(spouseNpcId);
+            if (!data.isMarriedToPlayer)
+            {
+                return;
+            }
+
+            data.cheatingIncidentCount = Math.Max(0, data.cheatingIncidentCount) + 1;
+            data.hasPendingCheatingRebuke = true;
+            MarkDirty();
+        }
+
+        public static bool TryConsumePendingCheatingRebuke(string spouseNpcId, out int cheatingIncidentCount)
+        {
+            cheatingIncidentCount = 0;
+            if (string.IsNullOrEmpty(spouseNpcId)) return false;
+
+            if (!npcDataMap.TryGetValue(spouseNpcId, out AffinityData data) || data == null)
+            {
+                return false;
+            }
+
+            if (!data.isMarriedToPlayer || !data.hasPendingCheatingRebuke)
+            {
+                return false;
+            }
+
+            data.hasPendingCheatingRebuke = false;
+            cheatingIncidentCount = Math.Max(0, data.cheatingIncidentCount);
+            MarkDirty();
+            return true;
+        }
+
+        public static bool HasTriggeredStory(string npcId, int storyLevel)
+        {
+            if (!npcDataMap.TryGetValue(npcId, out AffinityData data))
+            {
+                return false;
+            }
+
+            switch (storyLevel)
+            {
+                case 5:
+                    return data.hasTriggeredStory5 || ContainsKeyToken(data.triggeredEventKeys, "story_5");
+                case 10:
+                    return data.hasTriggeredStory10 || ContainsKeyToken(data.triggeredEventKeys, "story_10");
+                default:
+                    return ContainsKeyToken(data.triggeredEventKeys, "story_" + storyLevel);
+            }
+        }
+
+        public static void MarkStoryTriggered(string npcId, int storyLevel)
+        {
+            if (string.IsNullOrEmpty(npcId)) return;
+
+            if (storyLevel == 5)
+            {
+                MarkStory5Triggered(npcId);
+            }
+            else if (storyLevel == 10)
+            {
+                MarkStory10Triggered(npcId);
+            }
+
+            AffinityData data = GetOrCreateAffinityData(npcId);
+            string updated = AddKeyToken(data.triggeredEventKeys, "story_" + storyLevel);
+            if (!string.Equals(updated, data.triggeredEventKeys, StringComparison.Ordinal))
+            {
+                data.triggeredEventKeys = updated;
+                MarkDirty();
+            }
+        }
+
+        public static void ResetStoryTriggers(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return;
+
+            AffinityData data = GetOrCreateAffinityData(npcId);
+            data.hasTriggeredStory5 = false;
+            data.hasTriggeredStory10 = false;
+
+            string updated = RemoveTokensByPrefix(data.triggeredEventKeys, "story_");
+            if (!string.Equals(updated, data.triggeredEventKeys, StringComparison.Ordinal))
+            {
+                data.triggeredEventKeys = updated;
+            }
+
+            MarkDirty();
+        }
+
+        public static bool HasClaimedReward(string npcId, string rewardKey)
+        {
+            if (string.IsNullOrEmpty(npcId) || string.IsNullOrEmpty(rewardKey)) return false;
+            return npcDataMap.TryGetValue(npcId, out AffinityData data) && data != null && ContainsKeyToken(data.claimedRewardKeys, rewardKey);
+        }
+
+        public static void MarkRewardClaimed(string npcId, string rewardKey)
+        {
+            if (string.IsNullOrEmpty(npcId) || string.IsNullOrEmpty(rewardKey)) return;
+
+            AffinityData data = GetOrCreateAffinityData(npcId);
+            string updated = AddKeyToken(data.claimedRewardKeys, rewardKey);
+            if (!string.Equals(updated, data.claimedRewardKeys, StringComparison.Ordinal))
+            {
+                data.claimedRewardKeys = updated;
+                MarkDirty();
+            }
+        }
+
+        private static AffinityData GetOrCreateAffinityData(string npcId)
+        {
+            if (!npcDataMap.TryGetValue(npcId, out AffinityData data) || data == null)
+            {
+                data = new AffinityData(npcId);
+                npcDataMap[npcId] = data;
+            }
+
+            return data;
+        }
+
+        private static bool ContainsKeyToken(string csv, string key)
+        {
+            if (string.IsNullOrEmpty(csv) || string.IsNullOrEmpty(key)) return false;
+
+            string[] parts = csv.Split(',');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (string.Equals(parts[i].Trim(), key, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string AddKeyToken(string csv, string key)
+        {
+            if (string.IsNullOrEmpty(key)) return csv ?? string.Empty;
+            if (ContainsKeyToken(csv, key)) return csv ?? string.Empty;
+            if (string.IsNullOrEmpty(csv)) return key;
+            return csv + "," + key;
+        }
+
+        private static string RemoveTokensByPrefix(string csv, string prefix)
+        {
+            if (string.IsNullOrEmpty(csv) || string.IsNullOrEmpty(prefix)) return csv ?? string.Empty;
+
+            StringBuilder builder = new StringBuilder();
+            string[] parts = csv.Split(',');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string token = parts[i].Trim();
+                if (token.Length == 0 || token.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (builder.Length > 0)
+                {
+                    builder.Append(',');
+                }
+
+                builder.Append(token);
+            }
+
+            return builder.ToString();
         }
         
         // ============================================================================
