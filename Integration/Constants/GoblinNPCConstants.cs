@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // GoblinNPCConstants.cs - 哥布林NPC相关常量
 // ============================================================================
 // 模块说明：
@@ -41,6 +41,16 @@ namespace BossRush.Constants
         /// 故事对话触发距离（玩家在此距离内时触发故事对话）
         /// </summary>
         public const float STORY_DIALOGUE_TRIGGER_DISTANCE = 3f;
+
+        /// <summary>
+        /// 故事对话轮询间隔（秒）
+        /// </summary>
+        public const float STORY_DIALOGUE_CHECK_INTERVAL = 0.5f;
+
+        /// <summary>
+        /// 故事对话重试间隔（秒）
+        /// </summary>
+        public const float STORY_DIALOGUE_RETRY_INTERVAL = 30f;
         
         // ============================================================================
         // 待机时间配置（单位：秒）
