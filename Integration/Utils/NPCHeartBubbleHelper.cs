@@ -83,8 +83,8 @@ namespace BossRush.Utils
                     return false;
                 }
 
-                NPCBubbleAnimator.Create(npcTransform, frames, height, duration, false);
-                return true;
+                var animator = NPCBubbleAnimator.Create(npcTransform, frames, height, duration, false);
+                return animator != null;
             }, "NPCHeartBubbleHelper.TryShowHeartAnimation", false, false);
         }
     }

@@ -312,6 +312,8 @@ namespace BossRush
         // 通用刷新点查询方法
         // ============================================================================
 
+        private static readonly List<Vector3> _validPointsBuffer = new List<Vector3>(32);
+
         /// <summary>
         /// 通用：从指定配置字典中获取随机刷新位置（避开指定的NPC位置列表）
         /// </summary>
@@ -321,7 +323,7 @@ namespace BossRush
         /// <param name="avoidPositions">需要避开的位置列表（忽略 default(Vector3)）</param>
         /// <param name="minDistance">与其他NPC的最小距离，默认10米</param>
         /// <returns>是否找到配置</returns>
-        private static bool TryGetSpawnPosition(Dictionary<string, NPCSceneSpawnConfig> configs, string sceneName, out Vector3 position, Vector3[] avoidPositions, float minDistance = 10f)
+        private static bool TryGetSpawnPosition(Dictionary<string, NPCSceneSpawnConfig> configs, string sceneName, out Vector3 position, Vector3[] avoidPositions, float minDistance = 10f, bool requireAvoidance = false)
         {
             position = Vector3.zero;
 
@@ -331,10 +333,9 @@ namespace BossRush
             if (config.spawnPoints == null || config.spawnPoints.Length == 0)
                 return false;
 
-            // 如果有需要避开的位置，先过滤
             if (avoidPositions != null && avoidPositions.Length > 0)
             {
-                List<Vector3> validPoints = new List<Vector3>();
+                _validPointsBuffer.Clear();
                 foreach (Vector3 point in config.spawnPoints)
                 {
                     bool tooClose = false;
@@ -349,13 +350,18 @@ namespace BossRush
                             break;
                         }
                     }
-                    if (!tooClose) validPoints.Add(point);
+                    if (!tooClose) _validPointsBuffer.Add(point);
                 }
 
-                if (validPoints.Count > 0)
+                if (_validPointsBuffer.Count > 0)
                 {
-                    position = validPoints[Random.Range(0, validPoints.Count)];
+                    position = _validPointsBuffer[Random.Range(0, _validPointsBuffer.Count)];
                     return true;
+                }
+
+                if (requireAvoidance)
+                {
+                    return false;
                 }
             }
 
@@ -448,7 +454,7 @@ namespace BossRush
         public static bool TryGetNurseSpawnPosition(string sceneName, out Vector3 position, Vector3 courierPosition = default(Vector3), Vector3 goblinPosition = default(Vector3), float minDistance = 10f)
         {
             return TryGetSpawnPosition(NurseSpawnConfigs, sceneName, out position,
-                new[] { courierPosition, goblinPosition }, minDistance);
+                new[] { courierPosition, goblinPosition }, minDistance, requireAvoidance: true);
         }
 
         /// <summary>

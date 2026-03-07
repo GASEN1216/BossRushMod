@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // GoblinNPC.cs - 哥布林NPC系统（ModBehaviour partial）
 // ============================================================================
 // 模块说明：
@@ -102,12 +102,22 @@ namespace BossRush
         /// <summary>
         /// 生成哥布林 NPC
         /// </summary>
-        public void SpawnGoblinNPC()
+        /// <param name="overrideSpawnPos">强制刷新位置（用于婚礼教堂等特殊场景）</param>
+        /// <param name="stayStillOnSpawn">刷新后是否保持不动</param>
+        /// <param name="forceSpawn">是否忽略普通模式刷新条件</param>
+        public void SpawnGoblinNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
         {
             DevLog("[GoblinNPC] 开始生成哥布林...");
             
             // 懒加载：在NPC生成时统一检查并应用每日好感度衰减
             NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(GoblinAffinityConfig.NPC_ID, "[GoblinNPC]");
+
+            // 已婚后不再参与普通地图刷新（仅婚礼教堂强制生成）
+            if (!forceSpawn && AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
+            {
+                DevLog("[GoblinNPC] 已与玩家结婚，跳过普通地图刷新");
+                return;
+            }
             
             // 如果已经存在，不重复生成
             if (goblinNPCInstance != null)
@@ -127,13 +137,15 @@ namespace BossRush
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             
             // 检查场景是否配置了哥布林刷新点
-            if (!ShouldSpawnGoblin(currentSceneName))
+            if (!forceSpawn && !ShouldSpawnGoblin(currentSceneName))
             {
                 DevLog("[GoblinNPC] 场景 " + currentSceneName + " 未配置哥布林刷新点，跳过生成");
                 return;
             }
             
-            Vector3 spawnPos = GetGoblinSpawnPosition(currentSceneName);
+            Vector3 spawnPos = overrideSpawnPos.HasValue
+                ? overrideSpawnPos.Value
+                : GetGoblinSpawnPosition(currentSceneName);
             DevLog("[GoblinNPC] 场景: " + currentSceneName + ", 位置: " + spawnPos);
             
             // 检查是否获取到有效位置
@@ -169,11 +181,8 @@ namespace BossRush
                     child.gameObject.SetActive(true);
                 }
                 
-                // 修复 Shader（从 Standard 替换为游戏使用的 Shader）
-                FixGoblinShaders(goblinNPCInstance);
-                
-                // 设置 Layer（确保渲染正确）
-                SetGoblinLayerRecursively(goblinNPCInstance, LayerMask.NameToLayer("Default"));
+                NPCCommonUtils.FixShaders(goblinNPCInstance, "[GoblinNPC]");
+                NPCCommonUtils.SetLayerRecursively(goblinNPCInstance, LayerMask.NameToLayer("Default"));
                 
                 // 添加控制器组件
                 goblinController = goblinNPCInstance.AddComponent<GoblinNPCController>();
@@ -183,6 +192,14 @@ namespace BossRush
                 GoblinMovement movement = goblinNPCInstance.AddComponent<GoblinMovement>();
                 movement.SetSceneName(currentSceneName);
                 DevLog("[GoblinNPC] 移动组件添加成功");
+
+                // 婚礼教堂中的已婚NPC暂时站桩不动
+                if (stayStillOnSpawn)
+                {
+                    movement.StopMove();
+                    movement.enabled = false;
+                    DevLog("[GoblinNPC] 已设置为站桩模式（不移动）");
+                }
                 
                 // 添加交互组件（重铸服务）
                 GoblinInteractable interactable = goblinNPCInstance.AddComponent<GoblinInteractable>();
@@ -192,59 +209,13 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                NPCExceptionHandler.LogAndIgnore(e, "ModBehaviour.SpawnGoblinNPC - 生成哥布林");
-            }
-        }
-        
-        /// <summary>
-        /// 修复哥布林模型的 Shader（从 Standard 替换为游戏 Shader）
-        /// </summary>
-        private void FixGoblinShaders(GameObject obj)
-        {
-            NPCExceptionHandler.TryExecute(() =>
-            {
-                // 尝试获取游戏使用的 Shader
-                Shader gameShader = Shader.Find("SodaCraft/SodaCharacter");
-                if (gameShader == null)
+                NPCExceptionHandler.LogAndIgnore(e, "ModBehaviour.SpawnGoblinNPC - spawn goblin");
+                if (goblinNPCInstance != null)
                 {
-                    gameShader = Shader.Find("Standard");
+                    UnityEngine.Object.Destroy(goblinNPCInstance);
+                    goblinNPCInstance = null;
                 }
-                
-                Renderer[] renderers = obj.GetComponentsInChildren<Renderer>(true);
-                foreach (Renderer renderer in renderers)
-                {
-                    if (renderer.materials != null)
-                    {
-                        foreach (Material mat in renderer.materials)
-                        {
-                            if (mat != null && mat.shader != null)
-                            {
-                                string shaderName = mat.shader.name;
-                                // 如果是 Standard shader，替换为游戏 shader
-                                if (shaderName == "Standard" || shaderName.Contains("Standard"))
-                                {
-                                    if (gameShader != null)
-                                    {
-                                        mat.shader = gameShader;
-                                        DevLog("[GoblinNPC] 替换 Shader: " + shaderName + " -> " + gameShader.name);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }, "ModBehaviour.FixGoblinShaders");
-        }
-        
-        /// <summary>
-        /// 递归设置 Layer
-        /// </summary>
-        private void SetGoblinLayerRecursively(GameObject obj, int layer)
-        {
-            obj.layer = layer;
-            foreach (Transform child in obj.transform)
-            {
-                SetGoblinLayerRecursively(child.gameObject, layer);
+                goblinController = null;
             }
         }
         

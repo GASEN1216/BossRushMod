@@ -1,22 +1,18 @@
 // ============================================================================
 // BossRushAudioManager.cs - Boss Rush 音效管理器
 // ============================================================================
-// 模块说明：
-//   集中管理音效播放
-//   使用 ModBehaviour.PlaySoundEffect 播放音效
-// ============================================================================
 
+using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>
-    /// Boss Rush 音效管理器
-    /// </summary>
     public class BossRushAudioManager : MonoBehaviour
     {
         private static BossRushAudioManager _instance;
+
         public static BossRushAudioManager Instance
         {
             get
@@ -38,9 +34,20 @@ namespace BossRush
                         DontDestroyOnLoad(go);
                     }
                 }
+
                 return _instance;
             }
         }
+
+        private bool isDragonKingBGMPlaying = false;
+        private string cachedNurseInteractSfxPath = null;
+        private bool nurseInteractSfxChecked = false;
+        private bool nurseInteractSfxExists = false;
+        private string cachedGoblinInteractSfxPath = null;
+        private bool goblinInteractSfxChecked = false;
+        private bool goblinInteractSfxExists = false;
+        private readonly Dictionary<string, Action> npcInteractSfxHandlers = new Dictionary<string, Action>(StringComparer.Ordinal);
+        private bool npcInteractHandlersInitialized = false;
 
         void Awake()
         {
@@ -49,31 +56,31 @@ namespace BossRush
                 Destroy(this);
                 return;
             }
+
             _instance = this;
+            EnsureNPCInteractSfxHandlers();
         }
 
         void OnDestroy()
         {
-            if (_instance == this) _instance = null;
+            if (_instance == this)
+            {
+                _instance = null;
+            }
         }
 
-        /// <summary>
-        /// 龙王BGM是否正在播放（防止多Boss时重复播放）
-        /// </summary>
-        private bool isDragonKingBGMPlaying = false;
-        private string cachedNurseInteractSfxPath = null;
-        private bool nurseInteractSfxChecked = false;
-        private bool nurseInteractSfxExists = false;
-
-        /// <summary>
-        /// 播放龙王BGM（防止重复播放）
-        /// </summary>
         public void PlayDragonKingBGM()
         {
-            if (isDragonKingBGMPlaying) return;
+            if (isDragonKingBGMPlaying)
+            {
+                return;
+            }
 
             string modPath = ModBehaviour.GetModPath();
-            if (string.IsNullOrEmpty(modPath)) return;
+            if (string.IsNullOrEmpty(modPath))
+            {
+                return;
+            }
 
             string path = Path.Combine(modPath, "Assets", "Sounds", "DragonKing", "dragonking.mp3");
             if (File.Exists(path))
@@ -83,35 +90,63 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 重置龙王BGM播放状态（龙王死亡或场景切换时调用）
-        /// </summary>
         public void ResetDragonKingBGMState()
         {
             isDragonKingBGMPlaying = false;
         }
 
-        /// <summary>
-        /// 按 NPC ID 播放交互音效
-        /// </summary>
         public void PlayNPCInteractSFX(string npcId)
         {
-            if (string.IsNullOrEmpty(npcId)) return;
-
-            // 哥布林：保留现有语音音效
-            if (npcId == GoblinAffinityConfig.NPC_ID)
+            if (string.IsNullOrEmpty(npcId))
             {
-                PlayGoblinInteractSFX();
                 return;
             }
 
-            // 护士：仅在存在专属音效文件时播放，避免误播哥布林音效
-            if (npcId == NurseAffinityConfig.NPC_ID)
+            EnsureNPCInteractSfxHandlers();
+            if (npcInteractSfxHandlers.TryGetValue(npcId, out Action handler))
             {
-                if (TryGetNurseInteractSfxPath(out string path))
-                {
-                    ModBehaviour.Instance?.PlaySoundEffect(path);
-                }
+                handler?.Invoke();
+            }
+        }
+
+        public void RegisterNPCInteractSFXHandler(string npcId, Action handler)
+        {
+            if (string.IsNullOrEmpty(npcId) || handler == null)
+            {
+                return;
+            }
+
+            EnsureNPCInteractSfxHandlers();
+            npcInteractSfxHandlers[npcId] = handler;
+        }
+
+        public void UnregisterNPCInteractSFXHandler(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId))
+            {
+                return;
+            }
+
+            npcInteractSfxHandlers.Remove(npcId);
+        }
+
+        private void EnsureNPCInteractSfxHandlers()
+        {
+            if (npcInteractHandlersInitialized)
+            {
+                return;
+            }
+
+            npcInteractHandlersInitialized = true;
+            npcInteractSfxHandlers[GoblinAffinityConfig.NPC_ID] = PlayGoblinInteractSFX;
+            npcInteractSfxHandlers[NurseAffinityConfig.NPC_ID] = PlayNurseInteractSFX;
+        }
+
+        private void PlayNurseInteractSFX()
+        {
+            if (TryGetNurseInteractSfxPath(out string path))
+            {
+                ModBehaviour.Instance?.PlaySoundEffect(path);
             }
         }
 
@@ -122,7 +157,6 @@ namespace BossRush
             if (!nurseInteractSfxChecked)
             {
                 nurseInteractSfxChecked = true;
-
                 string modPath = ModBehaviour.GetModPath();
                 if (!string.IsNullOrEmpty(modPath))
                 {
@@ -145,28 +179,50 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>
-        /// 播放哥布林交互音效
-        /// </summary>
         public void PlayGoblinInteractSFX()
         {
-            string modPath = ModBehaviour.GetModPath();
-            if (string.IsNullOrEmpty(modPath)) return;
-
-            string path = Path.Combine(modPath, "Assets", "Sounds", "Goblin", "goblin.wav");
-            if (File.Exists(path))
+            if (TryGetGoblinInteractSfxPath(out string path))
             {
                 ModBehaviour.Instance?.PlaySoundEffect(path);
             }
         }
 
-        /// <summary>
-        /// 播放重铸音效
-        /// </summary>
+        private bool TryGetGoblinInteractSfxPath(out string path)
+        {
+            path = null;
+
+            if (!goblinInteractSfxChecked)
+            {
+                goblinInteractSfxChecked = true;
+                string modPath = ModBehaviour.GetModPath();
+                if (!string.IsNullOrEmpty(modPath))
+                {
+                    cachedGoblinInteractSfxPath = Path.Combine(modPath, "Assets", "Sounds", "Goblin", "goblin.wav");
+                    goblinInteractSfxExists = File.Exists(cachedGoblinInteractSfxPath);
+                }
+                else
+                {
+                    cachedGoblinInteractSfxPath = null;
+                    goblinInteractSfxExists = false;
+                }
+            }
+
+            if (!goblinInteractSfxExists || string.IsNullOrEmpty(cachedGoblinInteractSfxPath))
+            {
+                return false;
+            }
+
+            path = cachedGoblinInteractSfxPath;
+            return true;
+        }
+
         public void PlayReforgeSFX()
         {
             string modPath = ModBehaviour.GetModPath();
-            if (string.IsNullOrEmpty(modPath)) return;
+            if (string.IsNullOrEmpty(modPath))
+            {
+                return;
+            }
 
             string path = Path.Combine(modPath, "Assets", "Sounds", "Goblin", "reforge.wav");
             if (File.Exists(path))

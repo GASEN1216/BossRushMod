@@ -20,9 +20,7 @@ namespace BossRush
     public class NurseMovement : MonoBehaviour
     {
         private NurseNPCController controller;
-        private Transform playerTransform;
         private Animator animator;
-        private float nextPlayerLookupTime = 0f;
         private bool hasMoveSpeedParam = false;
         private bool hasIsRunningParam = false;
         private bool hasIsIdleParam = false;
@@ -36,6 +34,7 @@ namespace BossRush
         private bool reachedEndOfPath;
         private bool moving;
         private bool waitingForPathResult;
+        private int activePathRequestId;
 
         /// <summary>是否正在移动</summary>
         public bool IsMoving { get { return moving; } }
@@ -83,7 +82,6 @@ namespace BossRush
             controller = GetComponent<NurseNPCController>();
             animator = GetComponentInChildren<Animator>();
             CacheAnimatorParameters();
-            TryRefreshPlayerTransform(true);
 
             StartCoroutine(InitializeDelayed());
         }
@@ -92,20 +90,21 @@ namespace BossRush
         {
             if (!isInitialized) return;
 
-            // 对话中停止移动
+            UpdateGravityVelocity();
+
             if (controller != null && controller.IsInDialogue)
             {
                 UpdateMoveAnimation(0f);
-                ApplyGravity();
+                ApplyGravityOnly();
                 return;
             }
 
-            // 更新玩家引用（节流，避免每帧查找）
-            TryRefreshPlayerTransform();
-
             UpdateWanderDecision();
-            UpdatePathFollowing();
-            ApplyGravity();
+
+            if (!UpdatePathFollowing())
+            {
+                ApplyGravityOnly();
+            }
         }
 
         private IEnumerator InitializeDelayed()
@@ -168,33 +167,31 @@ namespace BossRush
             }
         }
 
-        private void UpdatePathFollowing()
+        /// <returns>true 表示本帧已通过 CharacterController.Move 应用了水平移动（含重力）</returns>
+        private bool UpdatePathFollowing()
         {
-            if (waitingForPathResult) return;
+            if (waitingForPathResult) return false;
 
             if (path == null || path.vectorPath == null || path.vectorPath.Count == 0)
             {
-                moving = false;
-                path = null;
-                UpdateMoveAnimation(0f);
-                return;
+                NPCPathingHelper.StopMovement(
+                    ref path, ref currentWaypoint, ref moving,
+                    ref waitingForPathResult, UpdateMoveAnimation);
+                return false;
+            }
+
+            if (currentWaypoint >= path.vectorPath.Count)
+            {
+                reachedEndOfPath = true;
+                NPCPathingHelper.StopMovement(
+                    ref path, ref currentWaypoint, ref moving,
+                    ref waitingForPathResult, UpdateMoveAnimation,
+                    "[NurseNPC]");
+                return false;
             }
 
             moving = true;
             reachedEndOfPath = false;
-
-            if (currentWaypoint >= path.vectorPath.Count)
-            {
-                if (!reachedEndOfPath)
-                {
-                    reachedEndOfPath = true;
-                    path = null;
-                    moving = false;
-                    UpdateMoveAnimation(0f);
-                    ModBehaviour.DevLog("[NurseNPC] 到达目标点");
-                }
-                return;
-            }
 
             Vector3 direction = path.vectorPath[currentWaypoint] - transform.position;
             direction.y = 0f;
@@ -203,7 +200,7 @@ namespace BossRush
             if (direction.sqrMagnitude < nextWaypointDistanceSqr)
             {
                 currentWaypoint++;
-                return;
+                return false;
             }
 
             Vector3 moveDirection = direction.normalized;
@@ -213,9 +210,12 @@ namespace BossRush
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
             }
 
+            Vector3 moveVector = moveDirection * walkSpeed * Time.deltaTime;
+            moveVector.y = verticalVelocity * Time.deltaTime;
+
             if (characterController != null)
             {
-                characterController.Move(moveDirection * walkSpeed * Time.deltaTime);
+                characterController.Move(moveVector);
             }
             else
             {
@@ -223,6 +223,7 @@ namespace BossRush
             }
 
             UpdateMoveAnimation(walkSpeed);
+            return true;
         }
 
         /// <summary>
@@ -242,8 +243,9 @@ namespace BossRush
             }
 
             reachedEndOfPath = false;
-            seeker.StartPath(transform.position, pos, new OnPathDelegate(OnPathComplete));
+            int requestId = ++activePathRequestId;
             waitingForPathResult = true;
+            seeker.StartPath(transform.position, pos, p => OnPathComplete(p, requestId));
             ModBehaviour.DevLog("[NurseNPC] 开始寻路到: " + pos);
         }
 
@@ -253,6 +255,7 @@ namespace BossRush
         public void StopMove()
         {
             reachedEndOfPath = true;
+            activePathRequestId++;
             NPCPathingHelper.StopMovement(
                 ref path,
                 ref currentWaypoint,
@@ -264,13 +267,15 @@ namespace BossRush
         /// <summary>
         /// 寻路回调
         /// </summary>
-        public void OnPathComplete(Pathfinding.Path p)
+        private void OnPathComplete(Pathfinding.Path p, int requestId)
         {
             bool shouldDiscard = controller != null &&
                 (controller.IsInDialogue || controller.IsInStoryDialogue);
 
             NPCPathingHelper.HandlePathComplete(
                 p,
+                requestId,
+                activePathRequestId,
                 shouldDiscard,
                 "NPC处于剧情/聊天状态",
                 ref path,
@@ -347,7 +352,7 @@ namespace BossRush
             }, "NurseMovement.CorrectTargetHeight", point, false);
         }
 
-        private void ApplyGravity()
+        private void UpdateGravityVelocity()
         {
             if (characterController == null) return;
 
@@ -359,8 +364,12 @@ namespace BossRush
             {
                 verticalVelocity += GRAVITY * Time.deltaTime;
             }
+        }
 
-            characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
+        private void ApplyGravityOnly()
+        {
+            if (characterController == null) return;
+            characterController.Move(new Vector3(0f, verticalVelocity * Time.deltaTime, 0f));
         }
 
         private void UpdateMoveAnimation(float speed)
@@ -390,30 +399,6 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[NurseNPC] [WARNING] UpdateMoveAnimation 失败: " + e.Message);
-            }
-        }
-
-        private void TryRefreshPlayerTransform(bool force = false)
-        {
-            if (playerTransform != null) return;
-
-            float now = Time.realtimeSinceStartup;
-            if (!force && now < nextPlayerLookupTime) return;
-
-            nextPlayerLookupTime = now + BossRush.Constants.NurseNPCConstants.PLAYER_LOOKUP_INTERVAL;
-
-            if (CharacterMainControl.Main != null)
-            {
-                playerTransform = CharacterMainControl.Main.transform;
-                ModBehaviour.DevLog("[NurseNPC] 获取到玩家引用");
-                return;
-            }
-
-            var player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
-            {
-                playerTransform = player.transform;
-                ModBehaviour.DevLog("[NurseNPC] 通过 Tag 获取到玩家引用");
             }
         }
 

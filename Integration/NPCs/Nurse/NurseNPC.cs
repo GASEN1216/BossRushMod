@@ -78,6 +78,12 @@ namespace BossRush
             {
                 return position;
             }
+
+            if (NPCSpawnConfig.HasNurseConfig(sceneName))
+            {
+                DevLog("[NurseNPC] 所有护士刷新点都与其他NPC过近，跳过本次生成");
+                return Vector3.zero;
+            }
             
             // 未配置的场景使用随机刷新点
             Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
@@ -101,12 +107,22 @@ namespace BossRush
         /// <summary>
         /// 生成护士 NPC
         /// </summary>
-        public void SpawnNurseNPC()
+        /// <param name="overrideSpawnPos">强制刷新位置（用于婚礼教堂等特殊场景）</param>
+        /// <param name="stayStillOnSpawn">刷新后是否保持不动</param>
+        /// <param name="forceSpawn">是否忽略普通模式刷新条件</param>
+        public void SpawnNurseNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
         {
             DevLog("[NurseNPC] 开始生成护士...");
             
             // 懒加载：在NPC生成时统一检查并应用每日好感度衰减
             NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(NurseAffinityConfig.NPC_ID, "[NurseNPC]");
+
+            // 已婚后不再参与普通地图刷新（仅婚礼教堂强制生成）
+            if (!forceSpawn && AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID))
+            {
+                DevLog("[NurseNPC] 已与玩家结婚，跳过普通地图刷新");
+                return;
+            }
             
             // 如果已经存在，不重复生成
             if (nurseNPCInstance != null)
@@ -126,13 +142,15 @@ namespace BossRush
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             
             // 检查场景是否配置了护士刷新点
-            if (!ShouldSpawnNurse(currentSceneName))
+            if (!forceSpawn && !ShouldSpawnNurse(currentSceneName))
             {
                 DevLog("[NurseNPC] 场景 " + currentSceneName + " 未配置护士刷新点，跳过生成");
                 return;
             }
             
-            Vector3 spawnPos = GetNurseSpawnPosition(currentSceneName);
+            Vector3 spawnPos = overrideSpawnPos.HasValue
+                ? overrideSpawnPos.Value
+                : GetNurseSpawnPosition(currentSceneName);
             DevLog("[NurseNPC] 场景: " + currentSceneName + ", 位置: " + spawnPos);
             
             // 检查是否获取到有效位置
@@ -164,11 +182,8 @@ namespace BossRush
                     child.gameObject.SetActive(true);
                 }
 
-                // 修复材质 Shader（与哥布林一致），避免粉模/不可见
-                FixNurseShaders(nurseNPCInstance);
-
-                // 统一 Layer，确保渲染与交互层级稳定
-                SetNurseLayerRecursively(nurseNPCInstance, LayerMask.NameToLayer("Default"));
+                NPCCommonUtils.FixShaders(nurseNPCInstance, "[NurseNPC]");
+                NPCCommonUtils.SetLayerRecursively(nurseNPCInstance, LayerMask.NameToLayer("Default"));
                 
                 // 添加控制器组件
                 nurseController = nurseNPCInstance.GetComponent<NurseNPCController>();
@@ -185,6 +200,14 @@ namespace BossRush
                 }
                 nurseMovement.SetSceneName(currentSceneName);
                 DevLog("[NurseNPC] 移动组件添加成功");
+
+                // 婚礼教堂中的已婚NPC暂时站桩不动
+                if (stayStillOnSpawn)
+                {
+                    nurseMovement.StopMove();
+                    nurseMovement.enabled = false;
+                    DevLog("[NurseNPC] 已设置为站桩模式（不移动）");
+                }
                 
                 // 添加交互组件（使用游戏原生 interactableGroup 模式）
                 NurseInteractable interactable = nurseNPCInstance.GetComponent<NurseInteractable>();
@@ -204,55 +227,6 @@ namespace BossRush
                     nurseNPCInstance = null;
                 }
                 nurseController = null;
-            }
-        }
-
-        /// <summary>
-        /// 修复护士模型的 Shader（从 Standard 替换为游戏 Shader）
-        /// </summary>
-        private void FixNurseShaders(GameObject obj)
-        {
-            NPCExceptionHandler.TryExecute(() =>
-            {
-                Shader gameShader = Shader.Find("SodaCraft/SodaCharacter");
-                if (gameShader == null)
-                {
-                    gameShader = Shader.Find("Standard");
-                }
-
-                Renderer[] renderers = obj.GetComponentsInChildren<Renderer>(true);
-                foreach (Renderer renderer in renderers)
-                {
-                    if (renderer.materials == null) continue;
-
-                    foreach (Material mat in renderer.materials)
-                    {
-                        if (mat == null || mat.shader == null) continue;
-
-                        string shaderName = mat.shader.name;
-                        if (shaderName == "Standard" || shaderName.Contains("Standard"))
-                        {
-                            if (gameShader != null)
-                            {
-                                mat.shader = gameShader;
-                                DevLog("[NurseNPC] 替换 Shader: " + shaderName + " -> " + gameShader.name);
-                            }
-                        }
-                    }
-                }
-            }, "ModBehaviour.FixNurseShaders");
-        }
-
-        /// <summary>
-        /// 递归设置 Layer
-        /// </summary>
-        private void SetNurseLayerRecursively(GameObject obj, int layer)
-        {
-            if (obj == null) return;
-            obj.layer = layer;
-            foreach (Transform child in obj.transform)
-            {
-                SetNurseLayerRecursively(child.gameObject, layer);
             }
         }
 

@@ -56,15 +56,7 @@ namespace BossRush
             Buff.BuffExclusiveTags.Freeze
         };
 
-        private static NurseAffinityConfig _cachedConfig;
-        private static NurseAffinityConfig cachedConfig
-        {
-            get
-            {
-                if (_cachedConfig == null) _cachedConfig = new NurseAffinityConfig();
-                return _cachedConfig;
-            }
-        }
+        private static NurseAffinityConfig cachedConfig => NurseAffinityConfig.Instance;
 
         private static float _nextDebuffRefreshTime = -1f;
         private static bool _cachedHasDebuffs;
@@ -432,12 +424,34 @@ namespace BossRush
                     return false;
                 }
 
+                bool shouldClearDebuffs = quote.HasDebuffs;
                 float oldHealth = player.Health.CurrentHealth;
                 float maxHealth = player.Health.MaxHealth;
+
                 player.Health.SetHealth(maxHealth);
-                treatmentApplied = true;
+                if (player.Health.CurrentHealth + HEALTH_EPSILON < maxHealth)
+                {
+                    ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 血量未成功恢复到上限，尝试退款");
+                    if (paymentDeducted && finalCost > 0)
+                    {
+                        TryRefundMoney(finalCost, "治疗回血未生效");
+                    }
+                    return false;
+                }
 
                 int debuffsCleared = ClearAllDebuffs(player);
+                if (shouldClearDebuffs && HasDebuffsInternal(player))
+                {
+                    player.Health.SetHealth(oldHealth);
+                    ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: Debuff 未清除干净，尝试退款");
+                    if (paymentDeducted && finalCost > 0)
+                    {
+                        TryRefundMoney(finalCost, "Debuff清除失败");
+                    }
+                    return false;
+                }
+
+                treatmentApplied = true;
 
                 ModBehaviour.DevLog(
                     LOG_PREFIX + "治疗成功! 费用: " + finalCost +
@@ -713,11 +727,11 @@ namespace BossRush
             switch (status)
             {
                 case HealingStatus.FullHealthNoDebuff:
-                    return config.GetSpecialDialogue("heal_full_hp", level);
+                    return NPCDialogueSystem.GetSpecialDialogue(NurseAffinityConfig.NPC_ID, "heal_full_hp", level);
                 case HealingStatus.InsufficientFunds:
-                    return config.GetSpecialDialogue("heal_no_money", level);
+                    return NPCDialogueSystem.GetSpecialDialogue(NurseAffinityConfig.NPC_ID, "heal_no_money", level);
                 case HealingStatus.DebuffOnly:
-                    return config.GetSpecialDialogue("heal_debuff_only", level);
+                    return NPCDialogueSystem.GetSpecialDialogue(NurseAffinityConfig.NPC_ID, "heal_debuff_only", level);
                 default:
                     return null;
             }

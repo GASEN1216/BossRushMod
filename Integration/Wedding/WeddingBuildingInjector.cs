@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // WeddingBuildingInjector.cs - 婚礼教堂建筑注入器
 // ============================================================================
 // 模块说明：
@@ -1039,11 +1039,20 @@ namespace BossRush
                 
                 if (npcPosition == Vector3.zero)
                 {
-                    DevLog("[WeddingBuilding] 未找到婚礼建筑的NPC站位点");
+                    DevLog("[WeddingBuilding] ????????NPC???");
                     yield break;
                 }
-                
-                SpawnWeddingNPCAtPosition(npcPosition);
+
+                if (TrySpawnMarriedNpcAtWeddingPoint() != null)
+                {
+                    yield break;
+                }
+
+                if (weddingNPCInstance != null)
+                {
+                    UnityEngine.Object.Destroy(weddingNPCInstance);
+                    weddingNPCInstance = null;
+                }
             }
             catch (Exception e)
             {
@@ -1319,9 +1328,20 @@ namespace BossRush
             yield return new WaitForSeconds(1f);
             
             Vector3 npcPos = FindWeddingBuildingNPCPosition();
-            if (npcPos != Vector3.zero)
+            if (npcPos == Vector3.zero)
             {
-                SpawnWeddingNPCAtPosition(npcPos);
+                yield break;
+            }
+
+            if (TrySpawnMarriedNpcAtWeddingPoint() != null)
+            {
+                yield break;
+            }
+
+            if (weddingNPCInstance != null)
+            {
+                UnityEngine.Object.Destroy(weddingNPCInstance);
+                weddingNPCInstance = null;
             }
         }
     }

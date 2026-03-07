@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // NurseNPCController.cs - 护士NPC控制器（核心控制）
 // ============================================================================
 // 模块说明：
@@ -16,6 +16,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using ItemStatsSystem;
 using Duckov.UI.DialogueBubbles;
 using BossRush.Constants;
 using BossRush.Utils;
@@ -100,7 +101,7 @@ namespace BossRush
         {
             get
             {
-                if (_config == null) _config = new NurseAffinityConfig();
+                if (_config == null) _config = NurseAffinityConfig.Instance;
                 return _config;
             }
         }
@@ -467,7 +468,7 @@ namespace BossRush
                 {
                     StopCoroutine(currentStayCoroutine);
                     currentStayCoroutine = null;
-                    ModBehaviour.DevLog("[NurseNPC] TriggerStoryDialogue: 停止之前的停留协程");
+                    ModBehaviour.DevLog("[NurseNPC] TriggerStoryDialogue: stop previous stay coroutine");
                 }
 
                 if (movement != null)
@@ -478,49 +479,44 @@ namespace BossRush
                 FacePlayer();
                 StartIdleAnimation();
 
-                if (storyLevel != 5)
-                {
-                    ModBehaviour.DevLog("[NurseNPC] 无效的故事等级: " + storyLevel);
-                    storyDialogueCheckCooldown = NurseNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
-                    return;
-                }
-
-                string[] dialogueKeys = LocalizationInjector.GetNurseStory5DialogueKeys();
+                string[] dialogueKeys = GetStoryDialogueKeys(storyLevel);
                 if (dialogueKeys == null || dialogueKeys.Length <= 0)
                 {
-                    ModBehaviour.DevLog("[NurseNPC] [WARNING] 故事对话键为空，暂不触发");
+                    ModBehaviour.DevLog("[NurseNPC] [WARNING] Story dialogue keys missing, storyLevel=" + storyLevel);
                     storyDialogueCheckCooldown = NurseNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
                     return;
                 }
 
-                ModBehaviour.DevLog("[NurseNPC] 开始5级故事对话，共 " + dialogueKeys.Length + " 条");
+                ModBehaviour.DevLog("[NurseNPC] Start story dialogue, level=" + storyLevel + ", lines=" + dialogueKeys.Length);
 
                 if (dialogueActor != null)
                 {
                     await DialogueManager.ShowDialogueSequence(dialogueActor, dialogueKeys);
                     storyPlayed = true;
 
-                    // 仅在对话完整播放后标记，避免中途异常导致剧情永久丢失。
                     bool marked = NPCExceptionHandler.TryExecute(
-                        () => AffinityManager.MarkStory5Triggered(NurseAffinityConfig.NPC_ID),
-                        "NurseNPCController.TriggerStoryDialogue.MarkStory5Triggered");
+                        () => AffinityManager.MarkStoryTriggered(NurseAffinityConfig.NPC_ID, storyLevel),
+                        GetStoryMarkLogKey(storyLevel));
                     if (!marked)
                     {
-                        // 持久化失败时延迟重试，避免短时间内重复触发。
                         storyDialogueCheckCooldown = NurseNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
                     }
+                    else
+                    {
+                        TryGrantStoryReward(storyLevel);
+                    }
 
-                    ModBehaviour.DevLog("[NurseNPC] 5级故事对话序列完成");
+                    ModBehaviour.DevLog("[NurseNPC] Story dialogue finished, level=" + storyLevel);
                 }
                 else
                 {
-                    ModBehaviour.DevLog("[NurseNPC] [WARNING] dialogueActor 为空，无法显示故事对话");
+                    ModBehaviour.DevLog("[NurseNPC] [WARNING] dialogueActor is null, cannot show story dialogue");
                     storyDialogueCheckCooldown = NurseNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
                 }
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[NurseNPC] [ERROR] 故事对话出错: " + e.Message);
+                ModBehaviour.DevLog("[NurseNPC] [ERROR] Story dialogue failed: " + e.Message);
                 storyDialogueCheckCooldown = NurseNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
                 DialogueManager.ForceEndDialogue();
             }
@@ -532,15 +528,137 @@ namespace BossRush
                     : NurseNPCConstants.SHORT_DIALOGUE_STAY_DURATION);
             }
         }
-        
-        // ============================================================================
-        // 对话管理（供 NurseInteractable 调用）
-        // ============================================================================
-        
-        /// <summary>
-        /// 开始对话（玩家打开了UI）
-        /// 护士进入待机状态
-        /// </summary>
+
+        private static int GetNextPendingStoryLevel(int level)
+        {
+            if (level >= 3 && !AffinityManager.HasTriggeredStory(NurseAffinityConfig.NPC_ID, 3))
+            {
+                return 3;
+            }
+
+            if (level >= 5 && !AffinityManager.HasTriggeredStory(NurseAffinityConfig.NPC_ID, 5))
+            {
+                return 5;
+            }
+
+            if (level >= 8 && !AffinityManager.HasTriggeredStory(NurseAffinityConfig.NPC_ID, 8))
+            {
+                return 8;
+            }
+
+            if (level >= 10 && !AffinityManager.HasTriggeredStory(NurseAffinityConfig.NPC_ID, 10))
+            {
+                return 10;
+            }
+
+            return 0;
+        }
+
+        private static string[] GetStoryDialogueKeys(int storyLevel)
+        {
+            switch (storyLevel)
+            {
+                case 3:
+                    return LocalizationInjector.GetNurseStory3DialogueKeys();
+                case 5:
+                    return LocalizationInjector.GetNurseStory5DialogueKeys();
+                case 8:
+                    return LocalizationInjector.GetNurseStory8DialogueKeys();
+                case 10:
+                    return LocalizationInjector.GetNurseStory10DialogueKeys();
+                default:
+                    return null;
+            }
+        }
+
+        private static string GetStoryMarkLogKey(int storyLevel)
+        {
+            return "NurseNPCController.TriggerStoryDialogue.MarkStoryTriggered_" + storyLevel;
+        }
+
+        private void TryGrantStoryReward(int storyLevel)
+        {
+            string rewardKey = null;
+            int rewardTypeId = 0;
+            int rewardCount = 1;
+            string rewardDialogue = null;
+
+            switch (storyLevel)
+            {
+                case 3:
+                    rewardKey = NurseAffinityConfig.LEVEL3_REWARD_KEY;
+                    rewardTypeId = CalmingDropsConfig.TYPE_ID;
+                    rewardCount = CalmingDropsConfig.REWARD_COUNT;
+                    rewardDialogue = L10n.T("这些安神滴剂你拿着，撑不住的时候记得用。", "Take these calming drops. Use them when things become too much.");
+                    break;
+                case 8:
+                    rewardKey = NurseAffinityConfig.LEVEL8_REWARD_KEY;
+                    rewardTypeId = PeaceCharmConfig.TYPE_ID;
+                    rewardDialogue = L10n.T("这个平安护身符给你。别嫌我多事，我只是想让你平安回来。", "This peace charm is for you. Call me overprotective if you want, I just want you to come back safe.");
+                    break;
+                default:
+                    return;
+            }
+
+            if (AffinityManager.HasClaimedReward(NurseAffinityConfig.NPC_ID, rewardKey))
+            {
+                return;
+            }
+
+            if (!GiveRewardItem(rewardTypeId, rewardCount))
+            {
+                ModBehaviour.DevLog("[NurseNPC] [WARNING] Failed to grant story reward: storyLevel=" + storyLevel + ", typeId=" + rewardTypeId);
+                return;
+            }
+
+            AffinityManager.MarkRewardClaimed(NurseAffinityConfig.NPC_ID, rewardKey);
+            ShowLoveHeartBubble();
+            if (!string.IsNullOrEmpty(rewardDialogue))
+            {
+                NPCDialogueSystem.ShowDialogue(NurseAffinityConfig.NPC_ID, transform, rewardDialogue, 4f);
+            }
+        }
+
+        private bool GiveRewardItem(int typeId, int stackCount)
+        {
+            try
+            {
+                Item rewardItem = ItemAssetsCollection.InstantiateSync(typeId);
+                if (rewardItem == null)
+                {
+                    return false;
+                }
+
+                if (stackCount > 1)
+                {
+                    int maxStackCount = rewardItem.MaxStackCount > 0 ? rewardItem.MaxStackCount : stackCount;
+                    rewardItem.StackCount = Mathf.Clamp(stackCount, 1, maxStackCount);
+                }
+
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.CharacterItem != null && player.CharacterItem.Inventory != null)
+                {
+                    bool added = player.CharacterItem.Inventory.AddAndMerge(rewardItem, 0);
+                    if (added)
+                    {
+                        return true;
+                    }
+
+                    rewardItem.Drop(player, true);
+                    return true;
+                }
+
+                rewardItem.transform.position = transform.position;
+                rewardItem.gameObject.SetActive(true);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[NurseNPC] [ERROR] Failed to grant story reward: " + e.Message);
+                return false;
+            }
+        }
+
         public void StartDialogue()
         {
             // 停止之前的停留协程

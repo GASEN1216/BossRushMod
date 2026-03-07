@@ -49,6 +49,8 @@ namespace BossRush.Utils
         /// </summary>
         public static void HandlePathComplete(
             Path resultPath,
+            int callbackRequestId,
+            int activeRequestId,
             bool shouldDiscard,
             string discardReason,
             ref Path currentPath,
@@ -58,6 +60,17 @@ namespace BossRush.Utils
             Action<float> updateMoveAnimation,
             string logPrefix)
         {
+            if (callbackRequestId != activeRequestId)
+            {
+                if (!string.IsNullOrEmpty(logPrefix))
+                {
+                    ModBehaviour.DevLog(logPrefix + " Ignore stale path callback: callback=" + callbackRequestId + ", active=" + activeRequestId);
+                }
+                return;
+            }
+
+            waitingForPathResult = false;
+
             if (shouldDiscard)
             {
                 StopMovement(
@@ -70,7 +83,7 @@ namespace BossRush.Utils
                 if (!string.IsNullOrEmpty(logPrefix))
                 {
                     string reason = string.IsNullOrEmpty(discardReason) ? "状态不允许接收路径" : discardReason;
-                    ModBehaviour.DevLog(logPrefix + " 丢弃旧路径回调: " + reason);
+                    ModBehaviour.DevLog(logPrefix + " 丢弃路径回调: " + reason);
                 }
                 return;
             }
@@ -87,7 +100,7 @@ namespace BossRush.Utils
                 moving = true;
                 if (!string.IsNullOrEmpty(logPrefix))
                 {
-                    ModBehaviour.DevLog(logPrefix + " 路径计算成功，路点数: " + resultPath.vectorPath.Count);
+                    ModBehaviour.DevLog(logPrefix + " 路径计算成功，路径点数: " + resultPath.vectorPath.Count);
                 }
             }
             else
@@ -105,8 +118,6 @@ namespace BossRush.Utils
                     ModBehaviour.DevLog(logPrefix + " [WARNING] 路径计算失败: " + error);
                 }
             }
-
-            waitingForPathResult = false;
         }
     }
 }
