@@ -309,6 +309,8 @@ namespace BossRush
                 InjectBrickStoneLocalization();
                 InjectDiamondLocalization();
                 InjectDiamondRingLocalization();  // 钻石戒指本地化
+                InjectCalmingDropsLocalization();
+                InjectPeaceCharmLocalization();
                 InjectDragonDescendantLocalization();
                 InjectCommonNPCLocalization();
                 InjectCourierNPCLocalization();
@@ -1161,6 +1163,52 @@ namespace BossRush
             LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
 
             ModBehaviour.DevLog("[LocalizationInjector] 钻石戒指本地化注入完成");
+        }
+
+        /// <summary>
+        /// 注入安神滴剂物品本地化
+        /// </summary>
+        public static void InjectCalmingDropsLocalization()
+        {
+            string displayName = CalmingDropsConfig.GetDisplayName();
+            string description = CalmingDropsConfig.GetDescription();
+
+            LocalizationHelper.InjectLocalization(CalmingDropsConfig.DISPLAY_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(CalmingDropsConfig.DISPLAY_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization(CalmingDropsConfig.LOC_KEY_DISPLAY, displayName);
+
+            LocalizationHelper.InjectLocalization(CalmingDropsConfig.DISPLAY_NAME_CN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(CalmingDropsConfig.DISPLAY_NAME_EN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(CalmingDropsConfig.LOC_KEY_DISPLAY + "_Desc", description);
+
+            string itemKey = "Item_" + CalmingDropsConfig.TYPE_ID;
+            LocalizationHelper.InjectLocalization(itemKey, displayName);
+            LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+
+            ModBehaviour.DevLog("[LocalizationInjector] 安神滴剂本地化注入完成");
+        }
+
+        /// <summary>
+        /// 注入平安护身符物品本地化
+        /// </summary>
+        public static void InjectPeaceCharmLocalization()
+        {
+            string displayName = PeaceCharmConfig.GetDisplayName();
+            string description = PeaceCharmConfig.GetDescription();
+
+            LocalizationHelper.InjectLocalization(PeaceCharmConfig.DISPLAY_NAME_CN, displayName);
+            LocalizationHelper.InjectLocalization(PeaceCharmConfig.DISPLAY_NAME_EN, displayName);
+            LocalizationHelper.InjectLocalization(PeaceCharmConfig.LOC_KEY_DISPLAY, displayName);
+
+            LocalizationHelper.InjectLocalization(PeaceCharmConfig.DISPLAY_NAME_CN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(PeaceCharmConfig.DISPLAY_NAME_EN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(PeaceCharmConfig.LOC_KEY_DISPLAY + "_Desc", description);
+
+            string itemKey = "Item_" + PeaceCharmConfig.TYPE_ID;
+            LocalizationHelper.InjectLocalization(itemKey, displayName);
+            LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+
+            ModBehaviour.DevLog("[LocalizationInjector] 平安护身符本地化注入完成");
         }
 
         // ============================================================================
