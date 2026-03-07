@@ -624,9 +624,12 @@ namespace BossRush
         {
             try
             {
+                EnsureRewardItemLoaded(typeId);
+
                 Item rewardItem = ItemAssetsCollection.InstantiateSync(typeId);
                 if (rewardItem == null)
                 {
+                    ModBehaviour.DevLog("[NurseNPC] [WARNING] Reward item instantiate returned null: typeId=" + typeId);
                     return false;
                 }
 
@@ -645,19 +648,64 @@ namespace BossRush
                         return true;
                     }
 
-                    rewardItem.Drop(player, true);
-                    return true;
+                    return DropRewardItemAtNpc(rewardItem);
                 }
 
-                rewardItem.transform.position = transform.position;
-                rewardItem.gameObject.SetActive(true);
-                return true;
+                return DropRewardItemAtNpc(rewardItem);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[NurseNPC] [ERROR] Failed to grant story reward: " + e.Message);
                 return false;
             }
+        }
+
+        private static void EnsureRewardItemLoaded(int typeId)
+        {
+            if (typeId <= 0 || ItemFactory.IsCustomItem(typeId))
+            {
+                return;
+            }
+
+            string bundleName = null;
+            switch (typeId)
+            {
+                case CalmingDropsConfig.TYPE_ID:
+                    bundleName = CalmingDropsConfig.BUNDLE_NAME;
+                    break;
+                case PeaceCharmConfig.TYPE_ID:
+                    bundleName = PeaceCharmConfig.BUNDLE_NAME;
+                    break;
+            }
+
+            if (string.IsNullOrEmpty(bundleName))
+            {
+                return;
+            }
+
+            int loadedCount = ItemFactory.LoadBundle(bundleName);
+            ModBehaviour.DevLog("[NurseNPC] EnsureRewardItemLoaded: typeId=" + typeId + ", bundle=" + bundleName + ", loadedCount=" + loadedCount);
+        }
+
+        private bool DropRewardItemAtNpc(Item rewardItem)
+        {
+            if (rewardItem == null)
+            {
+                return false;
+            }
+
+            Vector3 dropDirection = transform.forward;
+            if (dropDirection.sqrMagnitude <= 0.001f)
+            {
+                dropDirection = Vector3.forward;
+            }
+
+            Vector3 dropPosition = transform.position + Vector3.up * 0.15f;
+            rewardItem.Drop(dropPosition, true, dropDirection.normalized, 0f);
+
+            NotificationText.Push(L10n.T("背包已满，奖励已掉落在羽织脚边。", "Inventory full. The reward was dropped at Yu Zhi's feet."));
+            ModBehaviour.DevLog("[NurseNPC] Reward dropped near nurse: typeId=" + rewardItem.TypeID + ", position=" + dropPosition);
+            return true;
         }
 
         public void StartDialogue()
