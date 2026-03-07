@@ -164,6 +164,8 @@ namespace BossRush
                 BrickStoneConfig.RegisterConfigurator();
                 DiamondConfig.RegisterConfigurator();
                 DiamondRingConfig.RegisterConfigurator();  // 钻石戒指配置器
+                CalmingDropsConfig.RegisterConfigurator();  // 安神滴剂配置器
+                PeaceCharmConfig.RegisterConfigurator();  // 平安护身符配置器
                 DingdangDrawingConfig.RegisterConfigurator();
                 AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
@@ -174,16 +176,6 @@ namespace BossRush
                 if (itemCount > 0)
                 {
                     DevLog("[BossRush] ItemFactory loaded " + itemCount + " items");
-                }
-
-                if (!CalmingDropsConfig.RegisterDynamicItem())
-                {
-                    DevLog("[BossRush] [WARNING] Failed to register Calming Drops");
-                }
-
-                if (!PeaceCharmConfig.RegisterDynamicItem())
-                {
-                    DevLog("[BossRush] [WARNING] Failed to register Peace Charm");
                 }
             }
             catch (Exception e)

@@ -1,13 +1,14 @@
-﻿using System.Reflection;
+using System;
+using System.Reflection;
 using ItemStatsSystem;
-using UnityEngine;
 
 namespace BossRush
 {
     public static class PeaceCharmConfig
     {
         public const int TYPE_ID = 500031;
-        public const int TEMPLATE_TYPE_ID = DiamondRingConfig.TYPE_ID;
+        public const string BUNDLE_NAME = "peace_charm";
+        public const string ICON_NAME = "PeaceCharm";
         public const string LOC_KEY_DISPLAY = "BossRush_PeaceCharm";
         public const string DISPLAY_NAME_CN = "平安护身符";
         public const string DISPLAY_NAME_EN = "Peace Charm";
@@ -28,55 +29,27 @@ namespace BossRush
         {
             if (item == null) return;
 
-            item.DisplayNameRaw = LOC_KEY_DISPLAY;
-            item.MaxStackCount = 1;
-            item.StackCount = 1;
-            item.name = DISPLAY_NAME_EN;
-            SetHiddenMember(item, "description", GetDescription());
-            SetHiddenMember(item, "DescriptionRaw", GetDescription());
-        }
-
-        public static bool RegisterDynamicItem()
-        {
             try
             {
-                LocalizationHelper.InjectLocalization(LOC_KEY_DISPLAY, GetDisplayName());
-                LocalizationHelper.InjectLocalization(LOC_KEY_DISPLAY + "_Desc", GetDescription());
+                item.DisplayNameRaw = LOC_KEY_DISPLAY;
+                item.MaxStackCount = 1;
+                item.StackCount = 1;
+                item.name = DISPLAY_NAME_EN;
+                SetHiddenMember(item, "description", GetDescription());
+                SetHiddenMember(item, "DescriptionRaw", GetDescription());
 
-                if (ItemAssetsCollection.GetPrefab(TYPE_ID) != null)
-                {
-                    return true;
-                }
-
-                Item template = ItemAssetsCollection.GetPrefab(TEMPLATE_TYPE_ID);
-                if (template == null)
-                {
-                    ModBehaviour.DevLog("[PeaceCharmConfig] [WARNING] Template item not found: " + TEMPLATE_TYPE_ID);
-                    return false;
-                }
-
-                Item item = Object.Instantiate(template);
-                if (item == null)
-                {
-                    return false;
-                }
-
-                item.gameObject.name = "BossRush_PeaceCharm";
-                item.gameObject.SetActive(false);
-                Object.DontDestroyOnLoad(item.gameObject);
-
-                SetHiddenMember(item, "typeID", TYPE_ID);
-                SetHiddenMember(item, "TypeID", TYPE_ID);
-                ConfigureItem(item);
-
-                ItemAssetsCollection.AddDynamicEntry(item);
-                return true;
+                ModBehaviour.DevLog("[PeaceCharmConfig] Item configured: TypeID=" + TYPE_ID);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                ModBehaviour.DevLog("[PeaceCharmConfig] [ERROR] RegisterDynamicItem failed: " + e.Message);
-                return false;
+                ModBehaviour.DevLog("[PeaceCharmConfig] ConfigureItem failed: " + e.Message);
             }
+        }
+
+        public static void RegisterConfigurator()
+        {
+            ItemFactory.RegisterConfigurator(TYPE_ID, ConfigureItem);
+            ModBehaviour.DevLog("[PeaceCharmConfig] Registered item configurator");
         }
 
         private static void SetHiddenMember(object target, string memberName, object value)
