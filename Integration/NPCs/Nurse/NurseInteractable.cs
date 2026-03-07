@@ -55,6 +55,8 @@ namespace BossRush
                 {
                     gameObject.layer = interactableLayer;
                 }
+
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[NurseNPC]");
             }
             catch (Exception ex)
             {

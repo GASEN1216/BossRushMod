@@ -316,16 +316,9 @@ namespace BossRush
         /// 创建婚礼建筑的 Building 预制体
         /// 结构：WeddingChapel → Graphics(视觉) + Function(功能/NPC站位)
         /// 
-        /// 重要：不能使用 SetActive(false) 隐藏预制体！
-        /// 原因：通过反射设置的字段引用（graphicsContainer, functionContainer）
-        /// 不会被 Unity 的 Instantiate 自动重映射到克隆体的子物体上。
-        /// 游戏的 Building.Awake() 会在克隆体激活时检查这些字段是否为 null，
-        /// 如果不为 null 就不会执行 Find("Graphics") 回退逻辑。
-        /// 但这些引用实际指向的是原始预制体的子物体，不是克隆体的。
-        /// 
-        /// 解决方案：不设置 graphicsContainer/functionContainer 字段，
-        /// 让 Building.Awake() 通过 Find("Graphics")/Find("Function") 自动查找。
-        /// 预制体通过移到极远位置来"隐藏"，避免 SetActive(false) 导致的问题。
+        /// 重要：预制体构建阶段先保持 inactive，等容器/字段补齐后再激活。
+        /// 这样可以避免 Building.Awake() 在 Graphics/Function 尚未准备好时提前执行。
+        /// 对实例化出的克隆体，则预先填充容器字段，避免再次出现错误引用。
         /// </summary>
         private void CreateWeddingBuildingPrefab()
         {
@@ -335,10 +328,11 @@ namespace BossRush
                 return;
             }
             
-            // 创建根物体（不使用 SetActive(false)，改用远距离隐藏）
+            // 创建根物体（先保持 inactive，避免 Building.Awake 在字段尚未补齐时提前触发）
             weddingBuildingPrefabGO = new GameObject(WEDDING_PREFAB_NAME);
             UnityEngine.Object.DontDestroyOnLoad(weddingBuildingPrefabGO);
             weddingBuildingPrefabGO.transform.position = new Vector3(0f, -9999f, 0f);
+            weddingBuildingPrefabGO.SetActive(false);
             
             // 创建 Graphics 容器（视觉模型）
             // 名称必须是 "Graphics"，Building.Awake() 会通过 Find("Graphics") 查找
@@ -498,8 +492,9 @@ namespace BossRush
             interactPoint.transform.SetParent(functionContainer.transform, false);
             interactPoint.transform.localPosition = WEDDING_INTERACT_OFFSET;
             
-            // 添加 Building 组件（只设置 id 和 dimensions，不设置容器引用）
+            // 添加 Building 组件，并在激活前补齐容器引用
             AddBuildingComponent(weddingBuildingPrefabGO);
+            weddingBuildingPrefabGO.SetActive(true);
             
             DevLog("[WeddingBuilding] 预制体创建完成，尺寸: " + WEDDING_BUILDING_SIZE);
         }
@@ -624,9 +619,8 @@ namespace BossRush
                 return;
             }
             
-            // 添加组件（由于 GO 是激活状态，Awake() 会立即触发）
-            // Awake() 会通过 Find("Graphics")/Find("Function") 找到子物体并设置引用
-            // 同时会调用 CreateAreaMesh()（在 y=-9999 位置，不影响游戏）
+            // 根物体当前保持 inactive，这里添加组件不会立刻触发 Awake，
+            // 可以先把 Building 依赖字段补齐，再统一激活。
             Component buildingComp = go.AddComponent(buildingType);
             
             // 设置私有字段
@@ -640,34 +634,58 @@ namespace BossRush
             FieldInfo dimField = buildingType.GetField("dimensions", privateFlags);
             if (dimField != null) dimField.SetValue(buildingComp, WEDDING_BUILDING_SIZE);
             
-            // 关键：将 graphicsContainer 和 functionContainer 强制置 null
-            // 原因：Awake() 已经在原始预制体上设置了这些引用指向原始子物体，
-            // 但 Instantiate 克隆时不会重映射运行时设置的引用（只重映射序列化引用）。
-            // 置 null 后，克隆体的 Awake() 会重新通过 Find() 找到自己的子物体。
             FieldInfo graphicsField = buildingType.GetField("graphicsContainer", privateFlags);
-            if (graphicsField != null) graphicsField.SetValue(buildingComp, null);
+            if (graphicsField != null)
+            {
+                AssignBuildingContainerField(graphicsField, buildingComp, go.transform.Find("Graphics"));
+            }
             
             FieldInfo functionField = buildingType.GetField("functionContainer", privateFlags);
-            if (functionField != null) functionField.SetValue(buildingComp, null);
-            
-            // 同时将 areaMesh 置 null，让克隆体的 Awake 重新创建
-            FieldInfo areaMeshField = buildingType.GetField("areaMesh", privateFlags);
-            if (areaMeshField != null)
+            if (functionField != null)
             {
-                // 获取 Awake 创建的 areaMesh 并销毁它
-                GameObject existingAreaMesh = areaMeshField.GetValue(buildingComp) as GameObject;
-                if (existingAreaMesh != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(existingAreaMesh);
-                    DevLog("[WeddingBuilding] 已销毁原始预制体上的 areaMesh");
-                }
-                areaMeshField.SetValue(buildingComp, null);
+                AssignBuildingContainerField(functionField, buildingComp, go.transform.Find("Function"));
             }
+            
+            // areaMesh 维持为空，让实例在自己的 Awake 中按需创建
+            FieldInfo areaMeshField = buildingType.GetField("areaMesh", privateFlags);
+            if (areaMeshField != null) areaMeshField.SetValue(buildingComp, null);
             
             // 诊断：打印预制体完整层级树
             DumpGameObjectHierarchy(go, 0);
             
-            DevLog("[WeddingBuilding] Building 组件已添加，ID=" + WEDDING_BUILDING_ID + "（容器引用已置null，由克隆体Awake自动查找）");
+            DevLog("[WeddingBuilding] Building 组件已添加，ID=" + WEDDING_BUILDING_ID + "（容器引用已预填充）");
+        }
+
+        private void AssignBuildingContainerField(FieldInfo field, Component buildingComp, Transform container)
+        {
+            if (field == null || buildingComp == null)
+            {
+                return;
+            }
+
+            if (container == null)
+            {
+                field.SetValue(buildingComp, null);
+                return;
+            }
+
+            Type fieldType = field.FieldType;
+            if (typeof(Transform).IsAssignableFrom(fieldType))
+            {
+                field.SetValue(buildingComp, container);
+            }
+            else if (typeof(GameObject).IsAssignableFrom(fieldType))
+            {
+                field.SetValue(buildingComp, container.gameObject);
+            }
+            else if (typeof(Component).IsAssignableFrom(fieldType))
+            {
+                field.SetValue(buildingComp, container.GetComponent(fieldType));
+            }
+            else
+            {
+                field.SetValue(buildingComp, container);
+            }
         }
         
         /// <summary>
@@ -1300,7 +1318,27 @@ namespace BossRush
                 WeddingChapelInteractable interactable = interactPoint.GetComponent<WeddingChapelInteractable>();
                 if (interactable == null)
                 {
+                    bool restoreActive = interactPoint.gameObject.activeSelf;
+                    if (restoreActive)
+                    {
+                        interactPoint.gameObject.SetActive(false);
+                    }
+
+                    if (interactPoint.GetComponent<Collider>() == null)
+                    {
+                        SphereCollider sphere = interactPoint.gameObject.AddComponent<SphereCollider>();
+                        sphere.radius = 0.75f;
+                        sphere.center = Vector3.zero;
+                        sphere.isTrigger = false;
+                    }
+
                     interactable = interactPoint.gameObject.AddComponent<WeddingChapelInteractable>();
+
+                    if (restoreActive)
+                    {
+                        interactPoint.gameObject.SetActive(true);
+                    }
+
                     DevLog("[WeddingBuilding] 已附加 WeddingChapelInteractable");
                 }
             }

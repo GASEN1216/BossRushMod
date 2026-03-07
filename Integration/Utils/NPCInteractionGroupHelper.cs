@@ -68,8 +68,26 @@ namespace BossRush.Utils
             childObj.transform.SetParent(parent, false);
             childObj.transform.localPosition = Vector3.zero;
 
+            bool restoreActive = childObj.activeSelf;
+            if (restoreActive)
+            {
+                childObj.SetActive(false);
+            }
+
+            if (childObj.GetComponent<Collider>() == null)
+            {
+                BoxCollider boxCollider = childObj.AddComponent<BoxCollider>();
+                boxCollider.isTrigger = false;
+                boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
+            }
+
             T component = childObj.AddComponent<T>();
             setup?.Invoke(component);
+
+            if (restoreActive)
+            {
+                childObj.SetActive(true);
+            }
 
             groupList.Add(component);
             return component;

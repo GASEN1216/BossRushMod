@@ -61,6 +61,14 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 确保管理器实例存在
+        /// </summary>
+        public new static void EnsureInstance()
+        {
+            var _ = Instance;
+        }
+
         protected override void Awake()
         {
             if (_instance != null && _instance != this)

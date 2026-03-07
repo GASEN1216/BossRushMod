@@ -147,6 +147,15 @@ namespace BossRush
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] GoblinInteractable 设置 Collider 失败: " + e.Message);
             }
 
+            try
+            {
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[GoblinNPC]");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[GoblinNPC] [ERROR] GoblinInteractable 预创建交互组失败: " + e.Message);
+            }
+
             // 在确保 Collider 就绪后再调用基类 Awake，避免 InteractableBase 内部空引用
             try
             {

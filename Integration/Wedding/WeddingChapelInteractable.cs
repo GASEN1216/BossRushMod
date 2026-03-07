@@ -52,6 +52,8 @@ namespace BossRush
                     gameObject.layer = interactableLayer;
                 }
 
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[WeddingChapel]");
+
                 RefreshTogetherDaysDisplay(force: true);
             }
             catch (Exception e)
@@ -208,18 +210,25 @@ namespace BossRush
 
         protected override void Awake()
         {
+            Collider replayCollider = null;
+
             try
             {
                 LocalizationHelper.InjectLocalization(ReplayKey, L10n.T("回忆当天", "Relive the Moment"));
                 overrideInteractName = true;
                 _overrideInteractNameKey = ReplayKey;
                 InteractName = ReplayKey;
-                interactCollider = GetComponent<Collider>();
-                if (interactCollider != null)
+
+                replayCollider = GetComponent<Collider>();
+                if (replayCollider == null)
                 {
-                    interactCollider.enabled = false;
+                    BoxCollider box = gameObject.AddComponent<BoxCollider>();
+                    box.size = new Vector3(0.2f, 0.2f, 0.2f);
+                    box.isTrigger = false;
+                    replayCollider = box;
                 }
-                MarkerActive = false;
+
+                interactCollider = replayCollider;
             }
             catch (Exception e)
             {
@@ -233,6 +242,20 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[WeddingChapel] Replay base.Awake failed: " + e.Message);
+            }
+
+            try
+            {
+                if (replayCollider != null)
+                {
+                    replayCollider.enabled = false;
+                }
+
+                MarkerActive = false;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WeddingChapel] Replay post-Awake setup failed: " + e.Message);
             }
         }
 

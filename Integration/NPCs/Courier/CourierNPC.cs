@@ -2140,16 +2140,6 @@ namespace BossRush
                 ModBehaviour.DevLog("[CourierNPC] [ERROR] CourierInteractable.Awake 设置属性失败: " + e.Message);
             }
 
-            try
-            {
-                base.Awake();
-            }
-            catch (Exception e)
-            {
-                // 捕获可能的异常，确保 Mod 能继续运行
-                ModBehaviour.DevLog("[CourierNPC] [WARNING] CourierInteractable base.Awake 异常: " + e.Message);
-            }
-
             // 确保有 Collider
             try
             {
@@ -2178,6 +2168,25 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[CourierNPC] [ERROR] CourierInteractable 设置 Collider 失败: " + e.Message);
+            }
+
+            try
+            {
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[CourierNPC]");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] CourierInteractable 预创建交互组失败: " + e.Message);
+            }
+
+            try
+            {
+                base.Awake();
+            }
+            catch (Exception e)
+            {
+                // 捕获可能的异常，确保 Mod 能继续运行
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] CourierInteractable base.Awake 异常: " + e.Message);
             }
 
             ModBehaviour.DevLog("[CourierNPC] CourierInteractable.Awake 完成");
@@ -2210,29 +2219,24 @@ namespace BossRush
             {
                 optionsInjected = true;
 
-                // 获取或创建 otherInterablesInGroup 列表
-                var field = typeof(InteractableBase).GetField("otherInterablesInGroup",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field == null)
-                {
-                    ModBehaviour.DevLog("[CourierNPC] [ERROR] 无法获取 otherInterablesInGroup 字段");
-                    return;
-                }
-
-                var list = field.GetValue(this) as List<InteractableBase>;
+                var list = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[CourierNPC]");
                 if (list == null)
                 {
-                    list = new List<InteractableBase>();
-                    field.SetValue(this, list);
+                    return;
                 }
 
                 // 主选项是"快递服务"（由 OnTimeOut 处理）
                 // 子选项只有"寄存服务"
-                GameObject storageObj = new GameObject("CourierOption_Storage");
-                storageObj.transform.SetParent(transform);
-                storageObj.transform.localPosition = Vector3.zero;
-                var storageInteract = storageObj.AddComponent<CourierStorageInteractable>();
-                list.Add(storageInteract);
+                var storageInteract = NPCInteractionGroupHelper.AddSubInteractable<CourierStorageInteractable>(
+                    transform,
+                    "CourierOption_Storage",
+                    list);
+                if (storageInteract == null)
+                {
+                    ModBehaviour.DevLog("[CourierNPC] [ERROR] 寄存服务子交互创建失败");
+                    return;
+                }
+
                 groupOptions.Add(storageInteract);
 
                 ModBehaviour.DevLog("[CourierNPC] CourierInteractable: 已注入选项（主选项=快递服务，子选项=寄存服务）");

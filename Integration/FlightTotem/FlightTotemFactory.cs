@@ -44,28 +44,37 @@ namespace BossRush
             {
                 // 使用 EquipmentFactory 加载飞行图腾 AssetBundle
                 int count = EquipmentFactory.LoadBundle("flight_totem");
-                
-                if (count > 0)
-                {
-                    // 获取加载的图腾物品
-                    flightTotemPrefab = GetLoadedFlightTotem();
-                    
-                    if (flightTotemPrefab != null)
-                    {
-                        flightTotemTypeId = flightTotemPrefab.TypeID;
-                        DevLog($"[FlightTotem] 成功加载飞行图腾: TypeID={flightTotemTypeId}");
 
-                        // 配置飞行图腾属性
-                        ConfigureFlightTotemEquipment(flightTotemPrefab);
+                // flight_totem 也可能已经被 LoadAllEquipment 自动加载
+                // 此时 LoadBundle 会返回 0，但资源本身是可用的
+                flightTotemPrefab = GetLoadedFlightTotem();
+
+                if (flightTotemPrefab != null)
+                {
+                    flightTotemTypeId = flightTotemPrefab.TypeID;
+
+                    if (count > 0)
+                    {
+                        DevLog($"[FlightTotem] 成功加载飞行图腾: TypeID={flightTotemTypeId}");
                     }
                     else
                     {
-                        DevLog("[FlightTotem] 未找到飞行图腾物品，请检查 Unity Prefab 配置");
+                        DevLog($"[FlightTotem] 飞行图腾已由自动扫描加载，复用现有资源: TypeID={flightTotemTypeId}");
                     }
+
+                    // 保持原有初始化流程，确保运行时属性最新
+                    ConfigureFlightTotemEquipment(flightTotemPrefab);
                 }
                 else
                 {
-                    DevLog("[FlightTotem] 加载飞行图腾 AssetBundle 失败，请检查 Assets/Equipment/flight_totem 是否存在");
+                    if (count > 0)
+                    {
+                        DevLog("[FlightTotem] 已加载 flight_totem Bundle，但未找到图腾物品，请检查 Unity Prefab 配置");
+                    }
+                    else
+                    {
+                        DevLog("[FlightTotem] 加载飞行图腾 AssetBundle 失败，请检查 Assets/Equipment/flight_totem 是否存在");
+                    }
                 }
             }
             catch (Exception e)
@@ -128,23 +137,21 @@ namespace BossRush
         private Item GetLoadedFlightTotem()
         {
             var config = FlightConfig.Instance;
-            
-            // 尝试从 EquipmentFactory 缓存中获取
-            if (EquipmentFactory.IsCustomEquipment(config.ItemTypeId))
+
+            try
             {
-                // 检查是否是武器类型（虽然图腾不是武器，但使用统一接口）
-                Item totem = EquipmentFactory.GetLoadedGun(config.ItemTypeId);
-                if (totem != null) return totem;
-                
-                // 检查模型缓存（图腾可能只有 Item 没有 Model）
-                var models = EquipmentFactory.GetLoadedModels();
-                if (models.ContainsKey(config.ItemTypeId))
+                // 图腾由 EquipmentFactory 注册到 ItemAssetsCollection 后，
+                // 直接按 TypeID 获取最稳妥，兼容“首次加载”和“已自动加载”两种情况
+                Item totem = ItemAssetsCollection.InstantiateSync(config.ItemTypeId);
+                if (totem != null)
                 {
-                    // 从 ItemAssetsCollection 获取
-                    return ItemAssetsCollection.InstantiateSync(config.ItemTypeId);
+                    return totem;
                 }
             }
-            
+            catch
+            {
+            }
+
             return null;
         }
 
