@@ -50,7 +50,10 @@ namespace BossRush
         private const int WEDDING_BUILDING_REQUIRED_AFFINITY_LEVEL = 10;
         
         /// <summary>NPC站位相对于建筑中心的偏移量</summary>
-        private static readonly Vector3 WEDDING_NPC_OFFSET = new Vector3(0f, 0f, 0f);
+        private static readonly Vector3 WEDDING_NPC_OFFSET = new Vector3(0f, 0f, 2f);
+
+        /// <summary>婚礼教堂交互点相对于建筑中心的偏移量</summary>
+        private static readonly Vector3 WEDDING_INTERACT_OFFSET = new Vector3(0f, 0f, 1f);
 
         // ============================================================================
         // 状态追踪
@@ -489,6 +492,11 @@ namespace BossRush
             GameObject npcSpawnPoint = new GameObject("NPCSpawnPoint");
             npcSpawnPoint.transform.SetParent(functionContainer.transform, false);
             npcSpawnPoint.transform.localPosition = WEDDING_NPC_OFFSET;
+
+            // 创建教堂交互点
+            GameObject interactPoint = new GameObject("WeddingChapelInteractPoint");
+            interactPoint.transform.SetParent(functionContainer.transform, false);
+            interactPoint.transform.localPosition = WEDDING_INTERACT_OFFSET;
             
             // 添加 Building 组件（只设置 id 和 dimensions，不设置容器引用）
             AddBuildingComponent(weddingBuildingPrefabGO);
@@ -1222,6 +1230,8 @@ namespace BossRush
                     
                     if (id == WEDDING_BUILDING_ID)
                     {
+                        EnsureWeddingBuildingFunctionPoints(building.gameObject);
+
                         // 找到婚礼建筑，查找 NPCSpawnPoint 子物体
                         Transform spawnPoint = building.transform.Find("Function/NPCSpawnPoint");
                         if (spawnPoint != null)
@@ -1230,8 +1240,8 @@ namespace BossRush
                             return spawnPoint.position;
                         }
                         
-                        // 备用：使用建筑中心位置 + 偏移
-                        Vector3 fallbackPos = building.transform.position + WEDDING_NPC_OFFSET;
+                        // 备用：使用建筑局部偏移换算出的世界坐标，确保随建筑旋转
+                        Vector3 fallbackPos = building.transform.TransformPoint(WEDDING_NPC_OFFSET);
                         DevLog("[WeddingBuilding] 使用建筑中心位置作为NPC站位: " + fallbackPos);
                         return fallbackPos;
                     }
@@ -1243,6 +1253,61 @@ namespace BossRush
             }
             
             return Vector3.zero;
+        }
+
+        private void EnsureWeddingBuildingFunctionPoints(GameObject buildingGO)
+        {
+            if (buildingGO == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Transform functionContainer = buildingGO.transform.Find("Function");
+                if (functionContainer == null)
+                {
+                    GameObject functionObject = new GameObject("Function");
+                    functionContainer = functionObject.transform;
+                    functionContainer.SetParent(buildingGO.transform, false);
+                    DevLog("[WeddingBuilding] 运行时补建 Function 容器: " + buildingGO.name);
+                }
+
+                Transform npcSpawnPoint = functionContainer.Find("NPCSpawnPoint");
+                if (npcSpawnPoint == null)
+                {
+                    GameObject npcPointObject = new GameObject("NPCSpawnPoint");
+                    npcSpawnPoint = npcPointObject.transform;
+                    npcSpawnPoint.SetParent(functionContainer, false);
+                    DevLog("[WeddingBuilding] 运行时补建 NPCSpawnPoint");
+                }
+
+                npcSpawnPoint.localPosition = WEDDING_NPC_OFFSET;
+                npcSpawnPoint.localRotation = Quaternion.identity;
+
+                Transform interactPoint = functionContainer.Find("WeddingChapelInteractPoint");
+                if (interactPoint == null)
+                {
+                    GameObject interactPointObject = new GameObject("WeddingChapelInteractPoint");
+                    interactPoint = interactPointObject.transform;
+                    interactPoint.SetParent(functionContainer, false);
+                    DevLog("[WeddingBuilding] 运行时补建 WeddingChapelInteractPoint");
+                }
+
+                interactPoint.localPosition = WEDDING_INTERACT_OFFSET;
+                interactPoint.localRotation = Quaternion.identity;
+
+                WeddingChapelInteractable interactable = interactPoint.GetComponent<WeddingChapelInteractable>();
+                if (interactable == null)
+                {
+                    interactable = interactPoint.gameObject.AddComponent<WeddingChapelInteractable>();
+                    DevLog("[WeddingBuilding] 已附加 WeddingChapelInteractable");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[WeddingBuilding] 修复 Function 点位失败: " + e.Message);
+            }
         }
 
         /// <summary>

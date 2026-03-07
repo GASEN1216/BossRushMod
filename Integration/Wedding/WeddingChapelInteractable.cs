@@ -31,6 +31,27 @@ namespace BossRush
                 overrideInteractName = true;
                 _overrideInteractNameKey = TogetherKey;
                 InteractName = TogetherKey;
+
+                Collider existingCollider = GetComponent<Collider>();
+                if (existingCollider == null)
+                {
+                    SphereCollider sphere = gameObject.AddComponent<SphereCollider>();
+                    sphere.radius = 0.75f;
+                    sphere.center = Vector3.zero;
+                    sphere.isTrigger = false;
+                    interactCollider = sphere;
+                }
+                else
+                {
+                    interactCollider = existingCollider;
+                }
+
+                int interactableLayer = LayerMask.NameToLayer("Interactable");
+                if (interactableLayer != -1)
+                {
+                    gameObject.layer = interactableLayer;
+                }
+
                 RefreshTogetherDaysDisplay(force: true);
             }
             catch (Exception e)
