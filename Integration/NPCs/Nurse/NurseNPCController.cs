@@ -409,7 +409,7 @@ namespace BossRush
             int pendingStoryLevel = GetNextPendingStoryLevel(level);
             if (pendingStoryLevel > 0)
             {
-                ModBehaviour.DevLog("[NurseNPC] ?????????: " + level + ", storyLevel=" + pendingStoryLevel);
+                ModBehaviour.DevLog("[NurseNPC] Triggering story dialogue: level=" + level + ", storyLevel=" + pendingStoryLevel);
                 TriggerStoryDialogue(pendingStoryLevel);
             }
         }
