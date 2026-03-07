@@ -828,6 +828,8 @@ namespace BossRush
             LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
             LocalizationInjector.InjectDiamondLocalization();     // 钻石物品本地化
             LocalizationInjector.InjectDiamondRingLocalization(); // 钻石戒指物品本地化
+            LocalizationInjector.InjectCalmingDropsLocalization(); // 安神滴剂物品本地化
+            LocalizationInjector.InjectPeaceCharmLocalization();   // 平安护身符物品本地化
             DingdangDrawingConfig.InjectLocalization();  // 叮当涂鸦物品本地化
             WildHornConfig.InjectLocalization();  // 荒野号角物品本地化
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
