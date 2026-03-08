@@ -392,6 +392,7 @@ namespace BossRush
                     }
                 }
 
+                bool dailyChatGranted;
                 NPCAffinityInteractionHelper.ProcessChatAffinityAndFeedback(
                     GoblinAffinityConfig.NPC_ID,
                     GoblinAffinityConfig.DAILY_CHAT_AFFINITY,
@@ -403,7 +404,17 @@ namespace BossRush
                             controller.ShowLoveHeartBubble();
                         }
                     },
-                    "[GoblinNPC]");
+                    "[GoblinNPC]",
+                    out dailyChatGranted);
+
+                // 结婚后每日聊天赠送冷凝液（参考护士赠送安神滴剂）
+                bool isMarriedToGoblin = AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID);
+                if (isMarriedToGoblin && dailyChatGranted && controller != null)
+                {
+                    string successBanner = L10n.T("叮当递给了你一瓶冷淬液", "Dingdang gives you a bottle of Cold Quench Fluid");
+                    string fullInventoryBanner = L10n.T("背包已满，冷淬液掉落在叮当脚边。", "Inventory full. The Cold Quench Fluid was dropped at Dingdang's feet.");
+                    controller.TryGiveRewardItem(ColdQuenchFluidConfig.TYPE_ID, 1, successBanner, fullInventoryBanner);
+                }
                 
                 // 无论是否已聊天，都从问候对话库随机选一条显示
                 string dialogue = NPCDialogueSystem.GetDialogue(GoblinAffinityConfig.NPC_ID, DialogueCategory.Greeting);

@@ -198,6 +198,10 @@ namespace BossRush
                 {
                     movement.StopMove();
                     movement.enabled = false;
+                    if (goblinController != null)
+                    {
+                        goblinController.EnterStationaryIdleState();
+                    }
                     DevLog("[GoblinNPC] 已设置为站桩模式（不移动）");
                 }
                 

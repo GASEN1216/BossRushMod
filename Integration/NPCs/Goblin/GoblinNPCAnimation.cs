@@ -66,6 +66,41 @@ namespace BossRush
         // ============================================================================
         
         /// <summary>
+        /// 初始化默认动画参数
+        /// 默认保持待机，避免静止刷出时错误进入走路动画
+        /// </summary>
+        private void InitializeDefaultAnimatorParams()
+        {
+            SafeSetFloat(hash_MoveSpeed, 0f);
+            SafeSetBool(hash_IsRunning, false);
+            SafeSetBool(hash_IsIdle, true);
+        }
+
+        /// <summary>
+        /// 强制进入原地待机状态
+        /// 用于婚礼教堂等必须站桩的场景
+        /// </summary>
+        public void EnterStationaryIdleState()
+        {
+            isRunningToPlayer = false;
+            isBraking = false;
+            isIdling = true;
+
+            if (movement == null)
+            {
+                movement = GetComponent<GoblinMovement>();
+            }
+
+            if (movement != null)
+            {
+                movement.StopMove();
+                movement.enabled = false;
+            }
+
+            InitializeDefaultAnimatorParams();
+        }
+
+        /// <summary>
         /// 开始播放急停动画（距离4米时触发）
         /// 设置 IsRunning=false，触发 DoStop，然后设置 IsIdle=true
         /// </summary>
@@ -91,8 +126,7 @@ namespace BossRush
         private void StartIdleAnimation()
         {
             isIdling = true;
-            SafeSetBool(hash_IsIdle, true);
-            SafeSetBool(hash_IsRunning, false);
+            InitializeDefaultAnimatorParams();
         }
         
         /// <summary>

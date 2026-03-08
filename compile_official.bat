@@ -8,8 +8,8 @@ echo.
 
 set OUTPUT_DIR=Build
 set MOD_NAME=BossRush
-set GAME_PATH=E:\SteamLibrary\steamapps\common\Escape from Duckov
-set WORKSHOP_PATH=E:\SteamLibrary\steamapps\workshop\content\3167020
+set GAME_PATH=D:\sofrware\steam\steamapps\common\Escape from Duckov
+set WORKSHOP_PATH=D:\sofrware\steam\steamapps\workshop\content\3167020
 :: HarmonyLoadMod 閸撳秶鐤唌od (閸掓稒鍓板銉ユ綉ID: 3588386576)
 :: 閻劍鍩涢棁鈧憰浣筋吂闂冨懏顒漨od: https://steamcommunity.com/sharedfiles/filedetails/?id=3588386576
 set HARMONY_MOD_ID=3588386576
@@ -160,6 +160,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\NPCs\Goblin\GoblinNPCController.cs ^
     Integration\NPCs\Goblin\GoblinNPCAnimation.cs ^
     Integration\NPCs\Goblin\GoblinNPCDialogue.cs ^
+    Integration\NPCs\Goblin\GoblinNPCReward.cs ^
     Integration\NPCs\Goblin\GoblinMovement.cs ^
     Integration\NPCs\Courier\CourierService.cs ^
     Integration\NPCs\Courier\DepositDataManager.cs ^

@@ -136,9 +136,8 @@ namespace BossRush
             // 获取移动组件引用
             movement = GetComponent<GoblinMovement>();
 
-            // 初始化动画参数（初始为走路状态）
-            SafeSetBool(hash_IsRunning, false);
-            SafeSetBool(hash_IsIdle, false);
+            // 初始化动画参数（默认保持待机，避免婚礼教堂站桩时误播走路动画）
+            InitializeDefaultAnimatorParams();
 
             // 创建名字标签
             CreateNameTag();
@@ -168,6 +167,11 @@ namespace BossRush
             }
 
             // 如果正在跑向玩家，检查距离
+            if (ShouldFacePlayerAtWeddingChapel())
+            {
+                FacePlayer();
+            }
+
             if (isRunningToPlayer && playerTransform != null)
             {
                 float distanceSqr = (transform.position - playerTransform.position).sqrMagnitude;
@@ -364,6 +368,21 @@ namespace BossRush
         /// <summary>
         /// 到达玩家1米范围内，真正停下来
         /// </summary>
+        private bool ShouldFacePlayerAtWeddingChapel()
+        {
+            if (playerTransform == null || isRunningToPlayer)
+            {
+                return false;
+            }
+
+            if (ModBehaviour.Instance == null || !ModBehaviour.Instance.IsWeddingNpcInstance(transform))
+            {
+                return false;
+            }
+
+            return movement == null || (!movement.IsMoving && !movement.IsWaitingForPath);
+        }
+
         private void StopAndIdle()
         {
             isRunningToPlayer = false;

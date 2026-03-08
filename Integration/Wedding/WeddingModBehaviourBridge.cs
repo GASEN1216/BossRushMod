@@ -196,11 +196,23 @@ namespace BossRush
                 goblinMovement.enabled = false;
             }
 
+            GoblinNPCController goblinController = spouseInstance.GetComponent<GoblinNPCController>();
+            if (goblinController != null)
+            {
+                goblinController.EnterStationaryIdleState();
+            }
+
             NurseMovement nurseMovement = spouseInstance.GetComponent<NurseMovement>();
             if (nurseMovement != null)
             {
                 nurseMovement.StopMove();
                 nurseMovement.enabled = false;
+            }
+
+            NurseNPCController nurseController = spouseInstance.GetComponent<NurseNPCController>();
+            if (nurseController != null)
+            {
+                nurseController.StartIdleAnimation();
             }
         }
 

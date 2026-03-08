@@ -116,6 +116,18 @@ namespace BossRush
                 }
             }, "GoblinNPCDialogue.FacePlayer");
         }
+
+        private bool ShouldRemainStationaryAtWeddingChapel()
+        {
+            return ModBehaviour.Instance != null && ModBehaviour.Instance.IsWeddingNpcInstance(transform);
+        }
+
+        private void KeepWeddingChapelIdle()
+        {
+            EnterStationaryIdleState();
+            FacePlayer();
+            ModBehaviour.DevLog("[GoblinNPC] 婚礼教堂中保持站桩待机");
+        }
         
         /// <summary>
         /// 待机3秒并显示气泡
@@ -174,6 +186,12 @@ namespace BossRush
             
             // 待机3秒
             yield return new WaitForSeconds(GoblinNPCConstants.IDLE_DURATION_AFTER_STOP);
+
+            if (ShouldRemainStationaryAtWeddingChapel())
+            {
+                KeepWeddingChapelIdle();
+                yield break;
+            }
             
             // 3秒后设置 IsIdle=false
             isIdling = false;
@@ -233,6 +251,13 @@ namespace BossRush
             
             // 等待结束后，标记对话结束
             isInDialogue = false;
+            currentStayCoroutine = null;
+
+            if (ShouldRemainStationaryAtWeddingChapel())
+            {
+                KeepWeddingChapelIdle();
+                yield break;
+            }
             
             // 停止待机动画
             StopIdleAnimation();

@@ -267,6 +267,21 @@ namespace BossRush
             shopObject = new GameObject("NPCShop_" + npcId);
             currentShop = shopObject.AddComponent<StockShop>();
             
+            // 设置 accountAvaliable = true，允许使用银行账户付款（而不仅仅是现金物品）
+            try
+            {
+                var fAccount = ReflectionCache.StockShop_AccountAvaliable;
+                if (fAccount != null)
+                {
+                    fAccount.SetValue(currentShop, true);
+                    ModBehaviour.DevLog("[NPCShop] 已设置 accountAvaliable = true，允许使用银行账户付款");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                ModBehaviour.DevLog("[NPCShop] [ERROR] 设置 accountAvaliable 失败: " + ex.Message);
+            }
+            
             // 配置商品
             ConfigureShopEntries(npcId);
             

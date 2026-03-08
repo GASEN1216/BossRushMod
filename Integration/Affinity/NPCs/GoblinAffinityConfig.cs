@@ -561,58 +561,211 @@ namespace BossRush
             {
                 case "dialogue_greeting_married":
                 case "dialogue_idle_married":
-                    return GetRandomRelationshipDialogue(new string[]
-                    {
-                        L10n.T("你来啦！叮当刚刚还在想你今天会不会来找我！", "You're here! Dingdang was just wondering if you'd come see me today!"),
-                        L10n.T("嘿嘿，配偶大人到场！叮当今天心情直接变好了！", "Hehe, spouse reporting in! Dingdang's mood just got way better!"),
-                        L10n.T("别站那么远嘛，叮当又不会咬你。今天最多只是想黏着你一点。", "Don't stand so far away. Dingdang won't bite you. At most, Dingdang just wants to stick close to you today."),
-                        L10n.T("你一出现，叮当就不想理别的人类了。", "Once you show up, Dingdang doesn't want to deal with any other humans."),
-                    });
+                    return GetMarriedGreetingOrIdleDialogue();
                 case "gift_positive_married":
-                    return GetRandomRelationshipDialogue(new string[]
-                    {
-                        L10n.T("哇！这是给叮当的？配偶果然最懂叮当了！", "Wow! This is for Dingdang? Of course spouse understands Dingdang best!"),
-                        L10n.T("叮当要把它藏到最安全的地方，谁都不给看！", "Dingdang is going to hide this in the safest place. Nobody else gets to see it!"),
-                        L10n.T("你送的东西，叮当会一直留着。一直一直留着！", "If it's from you, Dingdang will keep it forever. Forever forever!"),
-                        L10n.T("嘿嘿，这种被偏爱的感觉，叮当超喜欢！", "Hehe, Dingdang really loves this feeling of being specially cherished!"),
-                    });
+                    return GetMarriedPositiveGiftDialogue();
                 case "gift_normal_married":
-                    return GetRandomRelationshipDialogue(new string[]
-                    {
-                        L10n.T("给叮当的礼物就是好礼物！这是配偶特权！", "Any gift for Dingdang is a good gift! That's spouse privilege!"),
-                        L10n.T("叮当收下啦！你来找我，顺便带礼物，完美！", "Dingdang accepts! You came to see me and brought a gift too—perfect!"),
-                        L10n.T("嗯嗯，叮当会好好放起来的。因为是你送的。", "Mm-hmm, Dingdang will store it carefully. Because it's from you."),
-                    });
+                    return GetMarriedNormalGiftDialogue();
                 case "gift_negative_married":
-                    return GetRandomRelationshipDialogue(new string[]
-                    {
-                        L10n.T("这个不太对味...不过叮当知道你不是故意的。", "This isn't quite Dingdang's taste... but Dingdang knows you didn't mean it badly."),
-                        L10n.T("唔，今天挑得有点失手。没关系，下次再来！", "Mm, your pick was a little off today. That's okay, try again next time!"),
-                        L10n.T("叮当不喜欢这个，但还是更喜欢送它来的你。", "Dingdang doesn't like this, but still likes the one who brought it more."),
-                    });
+                    return GetMarriedNegativeGiftDialogue();
                 case "gift_already_positive_married":
-                    return GetRandomRelationshipDialogue(new string[]
-                    {
-                        L10n.T("今天的礼物已经让叮当开心到转圈圈了，明天再来！", "Today's gift already made Dingdang happy enough to spin in circles. Come again tomorrow!"),
-                        L10n.T("先停一下！再送下去，叮当就要把你抱住不放了！", "Hold it right there! If you keep going, Dingdang might hug you and refuse to let go!"),
-                        L10n.T("叮当今天已经被你哄得超开心了，额度用完啦！", "You've already spoiled Dingdang super happy today. That's the limit for now!"),
-                    });
+                    return GetMarriedGiftAlreadyPositiveDialogue();
                 case "gift_already_normal_married":
-                    return GetRandomRelationshipDialogue(new string[]
-                    {
-                        L10n.T("一天一份就行啦，剩下的留到明天继续宠叮当！", "One gift a day is enough—save the rest for tomorrow and keep spoiling Dingdang then!"),
-                        L10n.T("礼物先欠着，今天多陪叮当说说话。", "Put the gift on hold. Spend today talking with Dingdang a little more instead."),
-                        L10n.T("叮当已经收到了，接下来你的人留下就行！", "Dingdang already got the gift. Now all that's left is for you to stay!"),
-                    });
+                    return GetMarriedGiftAlreadyNormalDialogue();
                 case "gift_already_negative_married":
-                    return GetRandomRelationshipDialogue(new string[]
-                    {
-                        L10n.T("今天先别继续试啦，不然叮当怕你越来越紧张。", "Let's stop trying for today, or Dingdang worries you'll only get more nervous."),
-                        L10n.T("没挑对也没关系，明天再重新来一次！", "It's okay if you missed the mark. Try again tomorrow!"),
-                    });
+                    return GetMarriedGiftAlreadyNegativeDialogue();
                 default:
                     return null;
             }
+        }
+
+        private string GetMarriedGreetingOrIdleDialogue()
+        {
+            return GetRandomRelationshipDialogue(new string[]
+            {
+                L10n.T("你来啦！叮当刚刚还在想你今天会不会来找我！", "You're here! Dingdang was just wondering if you'd come see me today!"),
+                L10n.T("嘿嘿，配偶大人到场！叮当今天心情直接变好了！", "Hehe, spouse reporting in! Dingdang's mood just got way better!"),
+                L10n.T("别站那么远嘛，叮当又不会咬你。今天最多只是想黏着你一点。", "Don't stand so far away. Dingdang won't bite you. At most, Dingdang just wants to stick close to you today."),
+                L10n.T("你一出现，叮当就不想理别的人类了。", "Once you show up, Dingdang doesn't want to deal with any other humans."),
+                L10n.T("教堂里一下子就亮起来了……不是灯，是你来了。", "The chapel lit up all at once... not because of the lamps, but because you arrived."),
+                L10n.T("叮当刚把手边的活收好，就猜你会过来。", "Dingdang had just put the work aside and already guessed you'd come over."),
+                L10n.T("今天也让叮当好好看看你，好不好？", "Let Dingdang get a good look at you today too, okay?"),
+                L10n.T("你靠近一点，叮当就安心一点。", "The closer you are, the calmer Dingdang feels."),
+                L10n.T("有你在这里，叮当连那些乱糟糟的记忆都没那么吵了。", "With you here, even those messy memories don't feel so loud anymore."),
+                L10n.T("叮当刚刚还在数屋顶木纹，现在改成数你眨了几次眼。", "Dingdang was counting the wood grain on the ceiling just now. Now Dingdang is counting how many times you blink."),
+                L10n.T("你来了就好，叮当今天不想装得很坚强。", "It's enough that you're here. Dingdang doesn't want to pretend to be strong today."),
+                L10n.T("叮当记得你的脚步声，跟别人都不一样。", "Dingdang remembers your footsteps. They never sound like anyone else's."),
+                L10n.T("教堂真安静……安静到叮当能听见自己因为你在偷笑。", "The chapel is so quiet... quiet enough for Dingdang to hear the secret smile because of you."),
+                L10n.T("叮当以前最怕等人，现在等你倒觉得甜甜的。", "Dingdang used to hate waiting for people. Waiting for you feels sweet instead."),
+                L10n.T("如果今天哪儿都不去，陪叮当站一会儿也很好。", "If we go nowhere today, just standing here with Dingdang would already be nice."),
+                L10n.T("叮当把最软的位置留给你了，谁来也不给。", "Dingdang saved the softest spot for you. Nobody else gets it."),
+                L10n.T("你别总让叮当先开口呀……虽然叮当其实很愿意。", "Don't always make Dingdang speak first... even though Dingdang actually doesn't mind."),
+                L10n.T("每次你一回头看叮当，叮当都会想再靠近一点。", "Every time you look back at Dingdang, Dingdang wants to move a little closer."),
+                L10n.T("以前叮当讨厌别人盯着脸看，只有你看过来时不难受。", "Dingdang used to hate people staring at the face. You're the only one who doesn't make it hurt."),
+                L10n.T("来吧，今天的第一句好话，叮当想先听你说。", "Come on, Dingdang wants the first nice thing of today to come from you.")
+            });
+        }
+
+        private string GetMarriedPositiveGiftDialogue()
+        {
+            return GetRandomRelationshipDialogue(new string[]
+            {
+                L10n.T("哇！这是给叮当的？配偶果然最懂叮当了！", "Wow! This is for Dingdang? Of course spouse understands Dingdang best!"),
+                L10n.T("叮当要把它藏到最安全的地方，谁都不给看！", "Dingdang is going to hide this in the safest place. Nobody else gets to see it!"),
+                L10n.T("你送的东西，叮当会一直留着。一直一直留着！", "If it's from you, Dingdang will keep it forever. Forever forever!"),
+                L10n.T("嘿嘿，这种被偏爱的感觉，叮当超喜欢！", "Hehe, Dingdang really loves this feeling of being specially cherished!"),
+                L10n.T("你怎么这么会哄叮当……再这样叮当会越来越贪心的。", "How are you so good at making Dingdang happy... keep this up and Dingdang will only get greedier for it."),
+                L10n.T("这个礼物就像在说“我知道你喜欢什么”，叮当听见了。", "This gift feels like it's saying, 'I know what you like.' Dingdang heard that clearly."),
+                L10n.T("叮当要给它做个专门的小盒子，还要写上“配偶限定”。", "Dingdang is making a special little box for this, with 'Spouse Only' written on it."),
+                L10n.T("被你放在心上，叮当连笑脸都没那么假了。", "Being kept in your heart makes even Dingdang's smile feel less fake."),
+                L10n.T("这东西亮晶晶的，像你看叮当时的眼神。", "This thing sparkles, just like the way you look at Dingdang."),
+                L10n.T("叮当今天可以开心很久很久了，都是你害的。", "Now Dingdang gets to stay happy for a very long time today. That's your fault."),
+                L10n.T("收到这个以后，叮当想把今天记成节日。", "After getting this, Dingdang wants to mark today as a holiday."),
+                L10n.T("如果有人敢碰它，叮当就咬人。真的。", "If anyone dares to touch it, Dingdang will bite. Really."),
+                L10n.T("你总能把礼物挑到叮当心尖上，太犯规了。", "You always pick gifts that land right on Dingdang's heart. That's unfair."),
+                L10n.T("叮当要炫耀一下……不对，只给自己偷偷看。", "Dingdang wants to show it off... no, Dingdang will keep it for private admiring."),
+                L10n.T("连J-Lab都没教过叮当这种“被珍惜”的感觉。", "Not even J-Lab ever taught Dingdang what it feels like to be treasured like this."),
+                L10n.T("你一出手就这么厉害，叮当根本招架不住。", "When you go all out like this, Dingdang doesn't stand a chance."),
+                L10n.T("叮当现在想亲你一下……咳，先记账！", "Dingdang kind of wants to kiss you right now... ahem, putting that on the tab first!"),
+                L10n.T("好喜欢……喜欢礼物，也喜欢送礼物的你。", "Dingdang likes this so much... likes the gift, and likes you for giving it."),
+                L10n.T("叮当会把它和最重要的宝贝放在一起，你也是。", "Dingdang will keep this with the most important treasures. You belong there too."),
+                L10n.T("今天不许别人惹叮当生气，叮当已经被你宠满了。", "Nobody is allowed to ruin Dingdang's mood today. You've already filled Dingdang up with affection.")
+            });
+        }
+
+        private string GetMarriedNormalGiftDialogue()
+        {
+            return GetRandomRelationshipDialogue(new string[]
+            {
+                L10n.T("给叮当的礼物就是好礼物！这是配偶特权！", "Any gift for Dingdang is a good gift! That's spouse privilege!"),
+                L10n.T("叮当收下啦！你来找我，顺便带礼物，完美！", "Dingdang accepts! You came to see me and brought a gift too—perfect!"),
+                L10n.T("嗯嗯，叮当会好好放起来的。因为是你送的。", "Mm-hmm, Dingdang will store it carefully. Because it's from you."),
+                L10n.T("只要是你挑的，叮当都会认真看一眼，再认真喜欢一下。", "If you picked it, Dingdang will look at it seriously—and then like it seriously too."),
+                L10n.T("你每次带东西来，叮当都会觉得今天没白等。", "Whenever you bring something, Dingdang feels the waiting was worth it today."),
+                L10n.T("这个很好呀，像你一样，安安稳稳地让叮当高兴。", "This is nice, just like you—quietly and steadily making Dingdang happy."),
+                L10n.T("叮当喜欢这种小小的惊喜，暖暖的。", "Dingdang likes little surprises like this. They feel warm."),
+                L10n.T("谢谢啦，配偶大人今天也很会照顾叮当。", "Thanks, spouse. You're really good at taking care of Dingdang today too."),
+                L10n.T("收到啦~叮当决定今天对你更温柔一点。", "Received~ Dingdang decides to be a little gentler with you today."),
+                L10n.T("你送的不一定最贵，但一定会被叮当放在前面。", "It may not be the most expensive thing, but Dingdang will always put it up front."),
+                L10n.T("嗯，叮当闻一下就知道这是“你来过”的味道。", "Mm. One sniff and Dingdang can tell this carries the smell of 'you were here.'"),
+                L10n.T("叮当喜欢你边说话边递给我的样子。", "Dingdang likes the way you hand things over while talking."),
+                L10n.T("这种礼物最适合现在了，叮当会好好用。", "This kind of gift suits today perfectly. Dingdang will use it well."),
+                L10n.T("你总会记得给叮当带点什么，真好。", "You always remember to bring something for Dingdang. That's nice."),
+                L10n.T("叮当先收着，晚上还要拿出来再看一遍。", "Dingdang will keep it for now, then take it out again tonight for another look."),
+                L10n.T("这是今天的小奖励吗？叮当接受。", "Is this today's little reward? Dingdang accepts."),
+                L10n.T("有你惦记着，连普通礼物都变得特别了。", "When it comes from your care, even an ordinary gift becomes special."),
+                L10n.T("叮当会把它放到手边，想你的时候就看一眼。", "Dingdang will keep it close at hand and glance at it whenever missing you."),
+                L10n.T("谢谢你呀，今天的心情又往上升了一点点。", "Thank you. Dingdang's mood just climbed another little step upward today."),
+                L10n.T("配偶送来的东西，叮当才舍不得随便乱放。", "Things from spouse are the ones Dingdang refuses to toss around carelessly.")
+            });
+        }
+
+        private string GetMarriedNegativeGiftDialogue()
+        {
+            return GetRandomRelationshipDialogue(new string[]
+            {
+                L10n.T("这个不太对味...不过叮当知道你不是故意的。", "This isn't quite Dingdang's taste... but Dingdang knows you didn't mean it badly."),
+                L10n.T("唔，今天挑得有点失手。没关系，下次再来！", "Mm, your pick was a little off today. That's okay, try again next time!"),
+                L10n.T("叮当不喜欢这个，但还是更喜欢送它来的你。", "Dingdang doesn't like this, but still likes the one who brought it more."),
+                L10n.T("这次礼物不太行，幸好你的表情很可爱，勉强抵消了。", "This gift isn't really it, but your expression is cute enough to almost make up for it."),
+                L10n.T("嗯...这个会让叮当想皱眉，但叮当不想对你皱眉。", "Mm... this makes Dingdang want to frown, but Dingdang doesn't want to frown at you."),
+                L10n.T("你是不是太急着来见叮当，才拿错了？", "Were you in too much of a hurry to see Dingdang and grabbed the wrong thing?"),
+                L10n.T("这东西留着也行，就当提醒你下次要更懂叮当一点。", "Keeping this is fine. It'll just remind you to understand Dingdang a little better next time."),
+                L10n.T("叮当先收下，但要记你一笔“补偿抱抱”。", "Dingdang will take it anyway, but this goes on your 'compensation hug' tab."),
+                L10n.T("礼物有点失败，心意倒是送到了。", "The gift missed a bit, but the intention made it through."),
+                L10n.T("唔，不喜欢这个味道...不过喜欢你站在这儿解释。", "Mm, Dingdang doesn't like the feel of this... but does like you standing here trying to explain."),
+                L10n.T("这次不算满分，可叮当还是愿意给你及格。", "This isn't a full score, but Dingdang is still willing to let you pass."),
+                L10n.T("叮当会诚实告诉你：下次别选这个啦。", "Dingdang will be honest with you: don't pick this one next time."),
+                L10n.T("要不是看在你亲手送来的份上，叮当早就嫌弃出声了。", "If this hadn't come from your own hands, Dingdang would have complained out loud already."),
+                L10n.T("没挑中也没关系，你继续学，叮当继续等。", "It's okay that you missed. You keep learning, Dingdang will keep waiting."),
+                L10n.T("这份礼物像走错了路，但送礼的人没走错。", "This gift took the wrong path, but the one bringing it didn't."),
+                L10n.T("叮当现在有一点点失望，只有一点点，别怕。", "Dingdang is a tiny bit disappointed right now. Just a tiny bit, don't panic."),
+                L10n.T("这次不合口味，回头叮当给你列个喜欢清单？", "Not Dingdang's taste this time. Want Dingdang to make you a favorites list later?"),
+                L10n.T("别露出那种紧张表情，叮当不会因为一次失手就生气。", "Don't make that nervous face. Dingdang isn't going to get mad over one miss."),
+                L10n.T("礼物不合适，但你愿意花心思来，叮当看见了。", "The gift isn't right, but Dingdang sees that you put thought into coming here."),
+                L10n.T("下次陪叮当多说几句好话，就当把分数补回来。", "Next time, just stay and say a few more nice things to Dingdang. We'll call the score restored.")
+            });
+        }
+
+        private string GetMarriedGiftAlreadyPositiveDialogue()
+        {
+            return GetRandomRelationshipDialogue(new string[]
+            {
+                L10n.T("今天的礼物已经让叮当开心到转圈圈了，明天再来！", "Today's gift already made Dingdang happy enough to spin in circles. Come again tomorrow!"),
+                L10n.T("先停一下！再送下去，叮当就要把你抱住不放了！", "Hold it right there! If you keep going, Dingdang might hug you and refuse to let go!"),
+                L10n.T("叮当今天已经被你哄得超开心了，额度用完啦！", "You've already spoiled Dingdang super happy today. That's the limit for now!"),
+                L10n.T("不许再加码了，叮当的心已经被塞得满满的。", "No more adding to it. Dingdang's heart is already stuffed full."),
+                L10n.T("今天这份已经是大成功，再送就要溢出来了。", "Today's one was already a huge success. Any more and it'll overflow."),
+                L10n.T("叮当要留一点期待到明天，不然今晚会兴奋得睡不着。", "Dingdang needs to save some anticipation for tomorrow or Dingdang won't be able to sleep tonight."),
+                L10n.T("够啦够啦，今天的宠爱指标已经爆表了。", "That's enough, enough. Today's affection meter already broke the scale."),
+                L10n.T("你再送，叮当就会以为自己在做梦。", "If you give Dingdang more, Dingdang will think this is all a dream."),
+                L10n.T("今天这一下已经把叮当哄到晕乎乎了，暂停！", "That last one already made Dingdang dizzy with happiness. Pause!"),
+                L10n.T("收手吧配偶大人，叮当现在连尾巴都想摇起来了。", "Stop right there, spouse. Dingdang is already at the point of wanting to wag a tail."),
+                L10n.T("今天的好感储物箱已经装满，明天再投喂。", "Today's affection storage box is full. Feed Dingdang more tomorrow."),
+                L10n.T("叮当得先消化一下这份开心，不然会傻笑一整晚。", "Dingdang has to digest all this happiness first, or the silly smile will last all night."),
+                L10n.T("你想把今天变成纪念日吗？已经差不多成功了。", "Are you trying to turn today into an anniversary? You're almost succeeding."),
+                L10n.T("先别送啦，叮当要腾出手来牵你。", "No more gifts for now. Dingdang needs both hands free to hold yours."),
+                L10n.T("再继续的话，叮当会开始怀疑你是不是打算把我宠坏。", "If you keep going, Dingdang will start thinking you're trying to spoil Dingdang rotten."),
+                L10n.T("今天份的“最懂叮当奖”已经发给你了，明天再参赛。", "Today's 'Understands Dingdang Best' award already goes to you. Come compete again tomorrow."),
+                L10n.T("已经足够好了，叮当想把这份开心慢慢回味。", "It's already more than enough. Dingdang wants to savor this happiness slowly."),
+                L10n.T("暂停一下，让叮当先把这份礼物抱够再说。", "Pause a little. Let Dingdang hug this gift enough first."),
+                L10n.T("今天的惊喜次数达到上限，系统保护叮当心脏中。", "Today's surprise count hit the cap. System is now protecting Dingdang's heart."),
+                L10n.T("明天再来，叮当想把想你的时间也留一点出来。", "Come again tomorrow. Dingdang wants to leave some room to miss you too.")
+            });
+        }
+
+        private string GetMarriedGiftAlreadyNormalDialogue()
+        {
+            return GetRandomRelationshipDialogue(new string[]
+            {
+                L10n.T("一天一份就行啦，剩下的留到明天继续宠叮当！", "One gift a day is enough—save the rest for tomorrow and keep spoiling Dingdang then!"),
+                L10n.T("礼物先欠着，今天多陪叮当说说话。", "Put the gift on hold. Spend today talking with Dingdang a little more instead."),
+                L10n.T("叮当已经收到了，接下来你的人留下就行！", "Dingdang already got the gift. Now all that's left is for you to stay!"),
+                L10n.T("今天的份额够了，再送就变成作弊宠爱了。", "Today's quota is enough. Any more would count as cheating with affection."),
+                L10n.T("先停一停，让叮当把今天的开心整理好。", "Pause for a bit and let Dingdang sort through today's happiness."),
+                L10n.T("你坐近一点，比再递一份东西更有用。", "Sit a little closer. That helps more than handing over another gift."),
+                L10n.T("礼物额度满了，但陪伴额度永远没满。", "The gift quota is full, but the companionship quota never is."),
+                L10n.T("今天先这样，明天记得继续想叮当。", "Let's leave it here for today. Just remember to keep thinking about Dingdang tomorrow."),
+                L10n.T("叮当先把这一份珍藏好，下一份明天再收。", "Dingdang will treasure this one first. The next one can wait until tomorrow."),
+                L10n.T("不急不急，慢慢来，叮当喜欢你天天来一点点。", "No rush. Take it slow. Dingdang likes you coming a little bit every day."),
+                L10n.T("今天这次已经足够暖了，再多就太贪心啦。", "This was warm enough for one day. Any more would be too greedy."),
+                L10n.T("留点机会给明天的叮当，不然明天会空落落的。", "Save a little for tomorrow's Dingdang, or tomorrow will feel empty."),
+                L10n.T("先把礼物省下来，陪叮当站一会儿。", "Save the gift for later and just stand here with Dingdang for a while."),
+                L10n.T("嗯，今天收工啦，接下来轮到你陪聊。", "Mm, gift work is done for today. Now it's your turn to stay and chat."),
+                L10n.T("叮当不缺下一份，叮当现在更想要你多待一会儿。", "Dingdang doesn't need the next gift right now. Dingdang wants you to stay a little longer instead."),
+                L10n.T("今天的赠礼按钮关掉了，陪伴按钮还开着。", "Today's gift button is closed. The companionship button is still open."),
+                L10n.T("把东西留到明天吧，叮当想多赚一天期待。", "Leave the next thing for tomorrow. Dingdang wants to earn one more day of anticipation."),
+                L10n.T("现在再送也不会更加分，不如摸摸叮当的头。", "Another gift right now won't score extra points. Better pat Dingdang's head instead."),
+                L10n.T("叮当已经很满足了，别一次把明天的份也用掉。", "Dingdang is already satisfied. Don't spend tomorrow's share all at once."),
+                L10n.T("够啦，今天的礼物流程结束，接下来是相处时间。", "That's enough. Today's gift procedure is over. Now it's time to just be together.")
+            });
+        }
+
+        private string GetMarriedGiftAlreadyNegativeDialogue()
+        {
+            return GetRandomRelationshipDialogue(new string[]
+            {
+                L10n.T("今天先别继续试啦，不然叮当怕你越来越紧张。", "Let's stop trying for today, or Dingdang worries you'll only get more nervous."),
+                L10n.T("没挑对也没关系，明天再重新来一次！", "It's okay if you missed the mark. Try again tomorrow!"),
+                L10n.T("今天的手感不好就先收工，叮当不想看你自责。", "If today just isn't your day, let's call it here. Dingdang doesn't want to watch you blame yourself."),
+                L10n.T("别急着补救啦，越慌越容易选错。", "Don't rush to fix it. The more flustered you get, the easier it is to pick wrong again."),
+                L10n.T("先暂停，叮当给你保留明天翻盘的机会。", "Pause for now. Dingdang is saving you a comeback chance for tomorrow."),
+                L10n.T("再试下去只会让你眉毛越皱越紧，叮当不喜欢看。", "If you keep trying now, you'll only frown harder, and Dingdang doesn't like seeing that."),
+                L10n.T("今天先记作“练习局”，明天再认真发挥。", "Let's mark today as a practice round and do the real thing tomorrow."),
+                L10n.T("没关系，坏手气也会过去的。", "It's okay. Bad luck passes too."),
+                L10n.T("先休息一下吧，叮当不想你为了礼物搞得比打仗还累。", "Take a break. Dingdang doesn't want you more exhausted over gifts than after a battle."),
+                L10n.T("叮当知道你在努力，所以今天到这里就好。", "Dingdang knows you're trying, so today's enough."),
+                L10n.T("再送也不会马上变对，不如明天带着好心情来。", "Sending more right now won't magically make it right. Come back tomorrow in a better mood instead."),
+                L10n.T("今天先放过这个礼物话题，陪叮当待会儿就行。", "Let's let the gift topic go for today. Just stay with Dingdang for a bit."),
+                L10n.T("你别老想着补分，叮当没给你判死刑呢。", "Stop acting like you need to recover points immediately. Dingdang didn't sentence you to death."),
+                L10n.T("暂停一下，叮当想先把你安抚好。", "Pause for a moment. Dingdang wants to calm you down first."),
+                L10n.T("继续硬试的话，叮当怕你把自己都绕晕了。", "If you keep forcing it, Dingdang worries you'll just spin yourself dizzy."),
+                L10n.T("今天先收手，明天叮当再给你一次机会。", "Let's stop here for today. Dingdang will give you another chance tomorrow."),
+                L10n.T("你已经够紧张了，再试只会更乱。", "You're tense enough already. Trying again now will only make it messier."),
+                L10n.T("叮当宁愿你明天笑着来，也不想看你今天硬撑。", "Dingdang would rather see you come tomorrow with a smile than watch you force it today."),
+                L10n.T("先把错误停在这里，别让今天越搞越糟。", "Let's stop the mistake right here before today gets any worse."),
+                L10n.T("今天的结果不代表你不懂叮当，明天再来证明一次。", "Today's result doesn't mean you don't understand Dingdang. Come prove it again tomorrow.")
+            });
         }
 
         private string GetRandomRelationshipDialogue(string[] dialogues)
