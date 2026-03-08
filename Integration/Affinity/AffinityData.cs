@@ -10,6 +10,7 @@ namespace BossRush
         public int lastGiftDay = -1;
         public int lastGiftReaction = 0;
         public int lastChatDay = -1;
+        public string interactionHistoryDays = "";
         public bool hasMet = false;
         public bool hasTriggeredStory5 = false;
         public bool hasTriggeredStory10 = false;
@@ -39,6 +40,7 @@ namespace BossRush
                 lastGiftDay = this.lastGiftDay,
                 lastGiftReaction = this.lastGiftReaction,
                 lastChatDay = this.lastChatDay,
+                interactionHistoryDays = this.interactionHistoryDays,
                 hasMet = this.hasMet,
                 hasTriggeredStory5 = this.hasTriggeredStory5,
                 hasTriggeredStory10 = this.hasTriggeredStory10,

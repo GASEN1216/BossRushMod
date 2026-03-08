@@ -47,6 +47,9 @@ namespace BossRush
         /// <summary>统一最大点数（10级所需点数）</summary>
         public const int UNIFIED_MAX_POINTS = 2300;
 
+        /// <summary>每日衰减回溯时保留的互动日数量上限</summary>
+        private const int MAX_INTERACTION_HISTORY_DAYS = 30;
+
         /// <summary>配偶谴责时每次追加的额外惩罚</summary>
         public const int SPOUSE_CHEATING_STACK_PENALTY = 40;
         
@@ -513,8 +516,9 @@ namespace BossRush
             {
                 npcDataMap[npcId] = new AffinityData(npcId);
             }
-            
+
             npcDataMap[npcId].lastGiftDay = day;
+            RecordInteractionDay(npcDataMap[npcId], day);
             MarkDirty();
         }
         
@@ -571,9 +575,115 @@ namespace BossRush
             {
                 npcDataMap[npcId] = new AffinityData(npcId);
             }
-            
+
             npcDataMap[npcId].lastChatDay = day;
+            RecordInteractionDay(npcDataMap[npcId], day);
             MarkDirty();
+        }
+
+        private static void RecordInteractionDay(AffinityData data, int day)
+        {
+            if (data == null || day < 0)
+            {
+                return;
+            }
+
+            var uniqueDays = new List<int>();
+            bool hasCurrentDay = false;
+
+            if (!string.IsNullOrEmpty(data.interactionHistoryDays))
+            {
+                string[] tokens = data.interactionHistoryDays.Split(',');
+                for (int i = 0; i < tokens.Length; i++)
+                {
+                    if (!int.TryParse(tokens[i], out int parsedDay) || parsedDay < 0)
+                    {
+                        continue;
+                    }
+
+                    bool alreadyAdded = false;
+                    for (int j = 0; j < uniqueDays.Count; j++)
+                    {
+                        if (uniqueDays[j] == parsedDay)
+                        {
+                            alreadyAdded = true;
+                            break;
+                        }
+                    }
+
+                    if (!alreadyAdded)
+                    {
+                        uniqueDays.Add(parsedDay);
+                    }
+
+                    if (parsedDay == day)
+                    {
+                        hasCurrentDay = true;
+                    }
+                }
+            }
+
+            if (!hasCurrentDay)
+            {
+                uniqueDays.Add(day);
+            }
+
+            uniqueDays.Sort();
+
+            int minDayToKeep = day - MAX_INTERACTION_HISTORY_DAYS;
+            var builder = new StringBuilder();
+            for (int i = 0; i < uniqueDays.Count; i++)
+            {
+                int trackedDay = uniqueDays[i];
+                if (trackedDay < minDayToKeep)
+                {
+                    continue;
+                }
+
+                if (builder.Length > 0)
+                {
+                    builder.Append(',');
+                }
+
+                builder.Append(trackedDay);
+            }
+
+            data.interactionHistoryDays = builder.ToString();
+        }
+
+        private static bool HasAnyRecordedInteraction(AffinityData data)
+        {
+            return data != null &&
+                (data.lastChatDay >= 0 || data.lastGiftDay >= 0 || !string.IsNullOrEmpty(data.interactionHistoryDays));
+        }
+
+        private static bool HasInteractionOnDay(AffinityData data, int day)
+        {
+            if (data == null || day < 0)
+            {
+                return false;
+            }
+
+            if (data.lastChatDay == day || data.lastGiftDay == day)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(data.interactionHistoryDays))
+            {
+                return false;
+            }
+
+            string[] tokens = data.interactionHistoryDays.Split(',');
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                if (int.TryParse(tokens[i], out int trackedDay) && trackedDay == day)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
         
         /// <summary>
@@ -747,6 +857,7 @@ namespace BossRush
             data.lastGiftDay = -1;
             data.lastGiftReaction = 0;
             data.lastChatDay = -1;
+            data.interactionHistoryDays = string.Empty;
 
             if (resetAffinityToZero && data.points != 0)
             {
@@ -955,6 +1066,20 @@ namespace BossRush
             
             AffinityData data = npcDataMap[npcId];
             int currentDay = GetCurrentGameDay();
+
+            // 如果今天已经检查过，不重复衰减
+            if (data.lastDecayCheckDay >= currentDay)
+            {
+                return 0;
+            }
+
+            if (!HasAnyRecordedInteraction(data))
+            {
+                data.lastDecayCheckDay = currentDay;
+                MarkDirty();
+                ModBehaviour.DevLog("[Affinity] " + npcId + " 尚未发生有效互动，跳过衰减检查: " + currentDay);
+                return 0;
+            }
             
             // 如果是第一次检查（lastDecayCheckDay == -1），初始化为当前日期，不衰减
             if (data.lastDecayCheckDay < 0)
@@ -965,15 +1090,10 @@ namespace BossRush
                 return 0;
             }
             
-            // 如果今天已经检查过，不重复衰减
-            if (data.lastDecayCheckDay >= currentDay)
-            {
-                return 0;
-            }
-            
-            // 计算需要检查的天数范围：从上次检查日+1 到 昨天（当天不算，因为当天有聊天机会）
-            // 例如：上次检查日=1，今天=4，需要检查第2、3天是否有互动
-            int startDay = data.lastDecayCheckDay + 1;
+            // 计算需要检查的天数范围：从上次检查日 到 昨天（当天不算，因为当天有聊天机会）
+            // 例如：上次检查日=1，今天=4，需要检查第1、2、3天里尚未结算的部分；
+            // 在按天进入场景的常规流程下，会表现为“第二天检查第一天，第三天检查第二天”。
+            int startDay = data.lastDecayCheckDay;
             int endDay = currentDay - 1;  // 当天不算衰减
             
             // 防止异常情况：限制最大衰减天数为30天
@@ -1001,7 +1121,7 @@ namespace BossRush
             for (int day = startDay; day <= endDay; day++)
             {
                 // 检查这一天是否有互动
-                bool hadInteractionOnDay = (data.lastChatDay == day) || (data.lastGiftDay == day);
+                bool hadInteractionOnDay = HasInteractionOnDay(data, day);
                 
                 if (!hadInteractionOnDay)
                 {

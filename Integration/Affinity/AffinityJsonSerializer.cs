@@ -47,6 +47,7 @@ namespace BossRush
             SimpleJsonHelper.AppendInt(sb, "lastGiftDay", data.lastGiftDay);
             SimpleJsonHelper.AppendInt(sb, "lastGiftReaction", data.lastGiftReaction);
             SimpleJsonHelper.AppendInt(sb, "lastChatDay", data.lastChatDay);
+            SimpleJsonHelper.AppendString(sb, "interactionHistoryDays", data.interactionHistoryDays ?? string.Empty);
             SimpleJsonHelper.AppendBool(sb, "hasMet", data.hasMet);
             SimpleJsonHelper.AppendBool(sb, "hasTriggeredStory5", data.hasTriggeredStory5);
             SimpleJsonHelper.AppendBool(sb, "hasTriggeredStory10", data.hasTriggeredStory10);
@@ -69,6 +70,7 @@ namespace BossRush
                 lastGiftDay = SimpleJsonHelper.ExtractInt(json, "lastGiftDay", start, end),
                 lastGiftReaction = SimpleJsonHelper.ExtractInt(json, "lastGiftReaction", start, end),
                 lastChatDay = SimpleJsonHelper.ExtractInt(json, "lastChatDay", start, end),
+                interactionHistoryDays = SimpleJsonHelper.ExtractString(json, "interactionHistoryDays", start, end),
                 hasMet = SimpleJsonHelper.ExtractBool(json, "hasMet", start, end),
                 hasTriggeredStory5 = SimpleJsonHelper.ExtractBool(json, "hasTriggeredStory5", start, end),
                 hasTriggeredStory10 = SimpleJsonHelper.ExtractBool(json, "hasTriggeredStory10", start, end),
