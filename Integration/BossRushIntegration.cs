@@ -177,6 +177,8 @@ namespace BossRush
                 {
                     DevLog("[BossRush] ItemFactory loaded " + itemCount + " items");
                 }
+
+                PeaceCharmRuntime.InitializeRuntime();
             }
             catch (Exception e)
             {
@@ -956,7 +958,10 @@ namespace BossRush
             
             // 清理飞行图腾系统
             CleanupFlightTotemSystem();
-            
+
+            // 清理平安护身符运行时事件
+            PeaceCharmRuntime.ShutdownRuntime();
+
             // 清理婚礼教堂建筑系统
             CleanupWeddingBuilding();
             
@@ -1032,7 +1037,10 @@ namespace BossRush
             
             // [内存优化] 场景切换时清理荒野号角坐骑缓存
             WildHornUsage.ClearMountCache();
-            
+
+            // 平安护身符在每个场景仅可触发一次，切图时重置
+            PeaceCharmRuntime.ResetSceneTrigger();
+
             // 在任何场景加载后都尝试订阅龙息武器事件
             // 使用延迟调用确保玩家角色已初始化
             StartCoroutine(DelayedSubscribeDragonBreathEvents());

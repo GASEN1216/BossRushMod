@@ -215,6 +215,8 @@ namespace BossRush
                     return;
                 }
 
+                bool isMarriedToNurse = AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID);
+
                 int level = AffinityManager.GetLevel(NurseAffinityConfig.NPC_ID);
                 if (controller != null)
                 {
@@ -243,6 +245,7 @@ namespace BossRush
                     }
                 }
 
+                bool dailyChatGranted;
                 NPCAffinityInteractionHelper.ProcessChatAffinityAndFeedback(
                     NurseAffinityConfig.NPC_ID,
                     30,
@@ -254,7 +257,15 @@ namespace BossRush
                             controller.ShowLoveHeartBubble();
                         }
                     },
-                    "[NurseNPC]");
+                    "[NurseNPC]",
+                    out dailyChatGranted);
+
+                if (isMarriedToNurse && dailyChatGranted && controller != null)
+                {
+                    string successBanner = L10n.T("羽织递给了你一瓶安神滴剂", "Yu Zhi gives you a bottle of Calming Drops");
+                    string fullInventoryBanner = L10n.T("背包已满，安神滴剂掉落在羽织脚边。", "Inventory full. The Calming Drops were dropped at Yu Zhi's feet.");
+                    controller.TryGiveRewardItem(CalmingDropsConfig.TYPE_ID, 1, successBanner, fullInventoryBanner);
+                }
 
                 string dialogue = NPCDialogueSystem.GetDialogue(NurseAffinityConfig.NPC_ID, DialogueCategory.Greeting);
                 NPCDialogueSystem.ShowDialogue(NurseAffinityConfig.NPC_ID, dialogueTarget, dialogue);

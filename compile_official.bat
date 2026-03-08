@@ -183,7 +183,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Items\DiamondUsage.cs ^
     Integration\Items\DiamondRingConfig.cs ^
     Integration\Items\CalmingDropsConfig.cs ^
+    Integration\Items\CalmingDropsUsage.cs ^
     Integration\Items\PeaceCharmConfig.cs ^
+    Integration\Items\PeaceCharmRuntime.cs ^
     Integration\Items\DingdangDrawingConfig.cs ^
     Integration\Items\DingdangDrawingUsage.cs ^
     Integration\Items\WildHornConfig.cs ^

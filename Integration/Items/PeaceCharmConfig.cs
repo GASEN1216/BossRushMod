@@ -12,8 +12,12 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_PeaceCharm";
         public const string DISPLAY_NAME_CN = "平安护身符";
         public const string DISPLAY_NAME_EN = "Peace Charm";
-        public const string DESCRIPTION_CN = "羽织偷偷替你缝好的平安护身符。也许挡不住子弹，但至少装着一个人盼你平安回来的心意。";
-        public const string DESCRIPTION_EN = "A peace charm Yu Zhi secretly made for you. It may not stop bullets, but it carries someone's wish for your safe return.";
+        public const string DESCRIPTION_CN = "一枚平安护身符。也许挡不住子弹，但至少承着平安归来的心意。";
+        public const string DESCRIPTION_EN = "A peace charm. It may not stop bullets, but it carries a heartfelt wish for your safe return.";
+        public const float TRIGGER_HEALTH_RATIO = 0.5f;
+        public const float TRIGGER_CHANCE = 0.1f;
+        public const string WARMTH_BUBBLE_TEXT_CN = "感受到一股暖意...";
+        public const string WARMTH_BUBBLE_TEXT_EN = "A warm feeling washes over you...";
 
         public static string GetDisplayName()
         {
@@ -23,6 +27,11 @@ namespace BossRush
         public static string GetDescription()
         {
             return L10n.T(DESCRIPTION_CN, DESCRIPTION_EN);
+        }
+
+        public static string GetWarmthBubbleText()
+        {
+            return L10n.T(WARMTH_BUBBLE_TEXT_CN, WARMTH_BUBBLE_TEXT_EN);
         }
 
         public static void ConfigureItem(Item item)
@@ -37,6 +46,7 @@ namespace BossRush
                 item.name = DISPLAY_NAME_EN;
                 SetHiddenMember(item, "description", GetDescription());
                 SetHiddenMember(item, "DescriptionRaw", GetDescription());
+                EquipmentHelper.AddTagToItem(item, "Special");
 
                 ModBehaviour.DevLog("[PeaceCharmConfig] Item configured: TypeID=" + TYPE_ID);
             }

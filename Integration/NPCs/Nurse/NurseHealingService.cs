@@ -204,6 +204,29 @@ namespace BossRush
             }
         }
 
+        public static bool HasDebuffs(CharacterMainControl player)
+        {
+            try
+            {
+                if (player == null)
+                {
+                    return false;
+                }
+
+                if (player == CharacterMainControl.Main)
+                {
+                    return HasDebuffs();
+                }
+
+                return HasDebuffsInternal(player);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LOG_PREFIX + "检查指定角色 Debuff 失败: " + e.Message);
+                return false;
+            }
+        }
+
         private static bool HasDebuffsInternal(CharacterMainControl player)
         {
             if (player == null) return false;
@@ -538,7 +561,12 @@ namespace BossRush
             return ClearAllDebuffs(CharacterMainControl.Main);
         }
 
-        private static int ClearAllDebuffs(CharacterMainControl player)
+        public static int ClearAllDebuffs(CharacterMainControl player)
+        {
+            return ClearAllDebuffsInternal(player);
+        }
+
+        private static int ClearAllDebuffsInternal(CharacterMainControl player)
         {
             int cleared = 0;
             try

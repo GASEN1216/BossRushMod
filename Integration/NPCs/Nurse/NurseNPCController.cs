@@ -620,7 +620,7 @@ namespace BossRush
             }
         }
 
-        private bool GiveRewardItem(int typeId, int stackCount)
+        public bool TryGiveRewardItem(int typeId, int stackCount, string successBanner = null, string fullInventoryBanner = null)
         {
             try
             {
@@ -645,19 +645,25 @@ namespace BossRush
                     bool added = player.CharacterItem.Inventory.AddAndMerge(rewardItem, 0);
                     if (added)
                     {
+                        ShowRewardBanner(successBanner);
                         return true;
                     }
 
-                    return DropRewardItemAtNpc(rewardItem);
+                    return DropRewardItemAtNpc(rewardItem, fullInventoryBanner);
                 }
 
-                return DropRewardItemAtNpc(rewardItem);
+                return DropRewardItemAtNpc(rewardItem, fullInventoryBanner);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[NurseNPC] [ERROR] Failed to grant story reward: " + e.Message);
                 return false;
             }
+        }
+
+        private bool GiveRewardItem(int typeId, int stackCount)
+        {
+            return TryGiveRewardItem(typeId, stackCount, null, null);
         }
 
         private static void EnsureRewardItemLoaded(int typeId)
@@ -687,7 +693,7 @@ namespace BossRush
             ModBehaviour.DevLog("[NurseNPC] EnsureRewardItemLoaded: typeId=" + typeId + ", bundle=" + bundleName + ", loadedCount=" + loadedCount);
         }
 
-        private bool DropRewardItemAtNpc(Item rewardItem)
+        private bool DropRewardItemAtNpc(Item rewardItem, string fullInventoryBanner = null)
         {
             if (rewardItem == null)
             {
@@ -703,9 +709,41 @@ namespace BossRush
             Vector3 dropPosition = transform.position + Vector3.up * 0.15f;
             rewardItem.Drop(dropPosition, true, dropDirection.normalized, 0f);
 
-            NotificationText.Push(L10n.T("背包已满，奖励已掉落在羽织脚边。", "Inventory full. The reward was dropped at Yu Zhi's feet."));
+            string fallbackMessage = L10n.T("背包已满，奖励已掉落在羽织脚边。", "Inventory full. The reward was dropped at Yu Zhi's feet.");
+            if (string.IsNullOrEmpty(fullInventoryBanner))
+            {
+                NotificationText.Push(fallbackMessage);
+            }
+            else
+            {
+                ShowRewardBanner(fullInventoryBanner);
+            }
             ModBehaviour.DevLog("[NurseNPC] Reward dropped near nurse: typeId=" + rewardItem.TypeID + ", position=" + dropPosition);
             return true;
+        }
+
+        private void ShowRewardBanner(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            try
+            {
+                if (ModBehaviour.Instance != null)
+                {
+                    ModBehaviour.Instance.ShowBigBanner(text);
+                }
+                else
+                {
+                    NotificationText.Push(text);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[NurseNPC] ShowRewardBanner failed: " + e.Message);
+            }
         }
 
         public void StartDialogue()
