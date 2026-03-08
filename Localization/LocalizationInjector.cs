@@ -965,6 +965,7 @@ namespace BossRush
                 { "BossRush_ModeE_Shop_Totem", L10n.T("图腾", "Totems") },
                 { "BossRush_ModeE_Shop_Mask", L10n.T("面具", "Masks") },
                 { "BossRush_ModeE_Shop_Medical", L10n.T("医疗品", "Medical") },
+                { "BossRush_ModeE_Shop_Food", L10n.T("食物", "Food") },
                 { "BossRush_ModeE_Shop_Bait", L10n.T("诱饵", "Bait") },
                 { "BossRush_ModeE_Shop_Other", L10n.T("其他", "Other") },
 

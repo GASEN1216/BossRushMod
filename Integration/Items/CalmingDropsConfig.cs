@@ -12,7 +12,7 @@ namespace BossRush
         public const string ICON_NAME = "CalmingDrops";
         public const int REWARD_COUNT = 5;
         public const string LOC_KEY_DISPLAY = "BossRush_CalmingDrops";
-        public const string DISPLAY_NAME_CN = "瀹夌婊村墏";
+        public const string DISPLAY_NAME_CN = "安神滴剂";
         public const string DISPLAY_NAME_EN = "Calming Drops";
         public const string DESCRIPTION_CN = "羽织亲手调配的安神滴剂，带着淡淡草药香。使用后可清除大部分负面buff。";
         public const string DESCRIPTION_EN = "A calming tincture blended by Yu Zhi. Use it to clear most negative buffs on you.";
