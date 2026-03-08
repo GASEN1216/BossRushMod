@@ -28,7 +28,7 @@ namespace BossRush
                 return new DisplaySettingsData
                 {
                     display = true,
-                    description = L10n.T("使用：召唤Boss", "Use: Summon Bosses")
+                    description = L10n.T("使用：触发战术效果", "Use: Trigger tactical effect")
                 };
             }
         }
@@ -76,6 +76,14 @@ namespace BossRush
                 else if (typeId == RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID)
                 {
                     inst.UseChaosDetonator();
+                }
+                else if (typeId == RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID)
+                {
+                    inst.UseBosscallWhistle();
+                }
+                else if (typeId == RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID)
+                {
+                    inst.UseAllKingsBanner();
                 }
             }
             catch (Exception e)

@@ -30,11 +30,19 @@ namespace BossRush
         /// <summary>混沌引爆器 TypeID</summary>
         public const int CHAOS_DETONATOR_TYPE_ID = 500028;
 
+        /// <summary>猎王响哨 TypeID</summary>
+        public const int BOSSCALL_WHISTLE_TYPE_ID = 500032;
+
+        /// <summary>血狩烽火 TypeID</summary>
+        public const int ALL_KINGS_BANNER_TYPE_ID = 500033;
+
         /// <summary>所有刷怪消耗品 TypeID 列表</summary>
         public static readonly int[] ALL_RESPAWN_ITEM_TYPE_IDS = new int[]
         {
             TAUNT_SMOKE_TYPE_ID,
-            CHAOS_DETONATOR_TYPE_ID
+            CHAOS_DETONATOR_TYPE_ID,
+            BOSSCALL_WHISTLE_TYPE_ID,
+            ALL_KINGS_BANNER_TYPE_ID
         };
 
         // ============================================================================
@@ -54,6 +62,20 @@ namespace BossRush
         public const string CHAOS_DETONATOR_NAME_EN = "Chaos Detonator";
         public const string CHAOS_DETONATOR_DESC_CN = "一个充满混沌能量的引爆装置。使用后在全图所有刷怪点重新生成随机阵营Boss。";
         public const string CHAOS_DETONATOR_DESC_EN = "A detonator charged with chaotic energy. Respawns random faction Bosses at every spawn point on the map.";
+
+        // --- 猎王响哨 ---
+        public const string BOSSCALL_WHISTLE_LOC_KEY = "BossRush_BosscallWhistle";
+        public const string BOSSCALL_WHISTLE_NAME_CN = "猎王响哨";
+        public const string BOSSCALL_WHISTLE_NAME_EN = "Bosscall Whistle";
+        public const string BOSSCALL_WHISTLE_DESC_CN = "一枚刻着营地图腾的铜哨。使用后，玩家周围50米内所有非同阵营Boss都会把你视作首要目标。";
+        public const string BOSSCALL_WHISTLE_DESC_EN = "A bronze whistle engraved with faction totems. Enemy Bosses within 50 meters will focus on you after use.";
+
+        // --- 血狩烽火 ---
+        public const string ALL_KINGS_BANNER_LOC_KEY = "BossRush_BloodhuntBeacon";
+        public const string ALL_KINGS_BANNER_NAME_CN = "血狩烽火";
+        public const string ALL_KINGS_BANNER_NAME_EN = "Bloodhunt Beacon";
+        public const string ALL_KINGS_BANNER_DESC_CN = "一支封着暗红树脂的信号烽火。点燃后，气息会传遍整张地图，全图所有非同阵营Boss都会把你视作首要猎物。";
+        public const string ALL_KINGS_BANNER_DESC_EN = "A signal beacon sealed with dark crimson resin. Once lit, every enemy Boss on the map will treat you as prime prey.";
 
         // ============================================================================
         // 物品信息结构（内部使用）
@@ -88,6 +110,24 @@ namespace BossRush
                 nameEN = CHAOS_DETONATOR_NAME_EN,
                 descCN = CHAOS_DETONATOR_DESC_CN,
                 descEN = CHAOS_DETONATOR_DESC_EN
+            },
+            new RespawnItemInfo
+            {
+                typeId = BOSSCALL_WHISTLE_TYPE_ID,
+                locKey = BOSSCALL_WHISTLE_LOC_KEY,
+                nameCN = BOSSCALL_WHISTLE_NAME_CN,
+                nameEN = BOSSCALL_WHISTLE_NAME_EN,
+                descCN = BOSSCALL_WHISTLE_DESC_CN,
+                descEN = BOSSCALL_WHISTLE_DESC_EN
+            },
+            new RespawnItemInfo
+            {
+                typeId = ALL_KINGS_BANNER_TYPE_ID,
+                locKey = ALL_KINGS_BANNER_LOC_KEY,
+                nameCN = ALL_KINGS_BANNER_NAME_CN,
+                nameEN = ALL_KINGS_BANNER_NAME_EN,
+                descCN = ALL_KINGS_BANNER_DESC_CN,
+                descEN = ALL_KINGS_BANNER_DESC_EN
             }
         };
 
@@ -105,14 +145,32 @@ namespace BossRush
             try
             {
                 int typeId = item.TypeID;
+                RespawnItemInfo matchedInfo = default(RespawnItemInfo);
+                bool hasMatchedInfo = false;
 
                 // 查找对应的物品信息，设置本地化键
                 for (int i = 0; i < AllItems.Length; i++)
                 {
                     if (AllItems[i].typeId == typeId)
                     {
-                        item.DisplayNameRaw = AllItems[i].locKey;
+                        matchedInfo = AllItems[i];
+                        hasMatchedInfo = true;
+                        item.DisplayNameRaw = matchedInfo.locKey;
                         break;
+                    }
+                }
+
+                if (hasMatchedInfo)
+                {
+                    string description = L10n.T(matchedInfo.descCN, matchedInfo.descEN);
+
+                    item.name = matchedInfo.nameEN;
+                    SetHiddenMember(item, "description", description);
+                    SetHiddenMember(item, "DescriptionRaw", description);
+
+                    if (item.StackCount <= 0)
+                    {
+                        item.StackCount = 1;
                     }
                 }
 
@@ -126,6 +184,16 @@ namespace BossRush
                 {
                     item.Quality = 5;
                     item.Value = 3500;
+                }
+                else if (typeId == BOSSCALL_WHISTLE_TYPE_ID)
+                {
+                    item.Quality = 4;
+                    item.Value = 2400;
+                }
+                else if (typeId == ALL_KINGS_BANNER_TYPE_ID)
+                {
+                    item.Quality = 5;
+                    item.Value = 4800;
                 }
 
                 // 添加 Special 标签（防止进入随机搜集池）
@@ -148,8 +216,8 @@ namespace BossRush
                 if (usageUtils == null)
                 {
                     usageUtils = item.gameObject.AddComponent<UsageUtilities>();
-                    SetUsageUtilitiesMaster(usageUtils, item);
                 }
+                SetUsageUtilitiesMaster(usageUtils, item);
 
                 // 添加 RespawnItemUsage 使用行为组件（如果没有）
                 RespawnItemUsage usage = item.GetComponent<RespawnItemUsage>();
@@ -157,6 +225,7 @@ namespace BossRush
                 {
                     usage = item.gameObject.AddComponent<RespawnItemUsage>();
                 }
+                SetUsageBehaviorMaster(usage, item);
 
                 // 将使用行为添加到 behaviors 列表
                 if (usageUtils.behaviors == null)
@@ -184,11 +253,39 @@ namespace BossRush
         /// </summary>
         private static void SetUsageUtilitiesMaster(UsageUtilities usageUtils, Item item)
         {
+            SetItemComponentMaster(usageUtils, item);
+        }
+
+        /// <summary>
+        /// 设置 UsageBehavior 的 Master 字段（通过反射）
+        /// </summary>
+        private static void SetUsageBehaviorMaster(UsageBehavior usageBehavior, Item item)
+        {
+            SetItemComponentMaster(usageBehavior as Component, item);
+        }
+
+        /// <summary>
+        /// 为物品组件补齐 Master 引用（兼容字段位于基类或派生类）
+        /// </summary>
+        private static void SetItemComponentMaster(Component component, Item item)
+        {
+            if (component == null || item == null) return;
+
             try
             {
-                var masterField = typeof(UsageUtilities).BaseType.GetField("master",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                masterField?.SetValue(usageUtils, item);
+                Type currentType = component.GetType();
+                while (currentType != null)
+                {
+                    FieldInfo masterField = currentType.GetField("master",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (masterField != null)
+                    {
+                        masterField.SetValue(component, item);
+                        return;
+                    }
+
+                    currentType = currentType.BaseType;
+                }
             }
             catch { }
         }
@@ -201,8 +298,35 @@ namespace BossRush
             try
             {
                 var field = typeof(Item).GetField("usageUtilities",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 field?.SetValue(item, usageUtils);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 设置物品隐藏字段/属性（兼容不同版本字段名可见性）
+        /// </summary>
+        private static void SetHiddenMember(object target, string memberName, object value)
+        {
+            if (target == null) return;
+
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+
+            try
+            {
+                PropertyInfo property = target.GetType().GetProperty(memberName, flags);
+                if (property != null && property.SetMethod != null)
+                {
+                    property.SetValue(target, value);
+                    return;
+                }
+
+                FieldInfo field = target.GetType().GetField(memberName, flags);
+                if (field != null)
+                {
+                    field.SetValue(target, value);
+                }
             }
             catch { }
         }

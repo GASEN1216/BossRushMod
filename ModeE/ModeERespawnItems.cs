@@ -312,6 +312,186 @@ namespace BossRush
             }
         }
 
+        private bool IsValidModeEEnemyTarget(CharacterMainControl enemy)
+        {
+            if (enemy == null) return false;
+            if (enemy.gameObject == null) return false;
+            if (enemy.Health == null) return false;
+            if (enemy.Health.IsDead) return false;
+            if (enemy.Health.CurrentHealth <= 0f) return false;
+
+            return true;
+        }
+
+        private List<CharacterMainControl> GetEnemyBossesInRange(float radius)
+        {
+            List<CharacterMainControl> enemies = new List<CharacterMainControl>();
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null) return enemies;
+
+            float radiusSqr = radius * radius;
+            Vector3 playerPos = player.transform.position;
+
+            for (int i = 0; i < modeEAliveEnemies.Count; i++)
+            {
+                CharacterMainControl enemy = modeEAliveEnemies[i];
+                if (!IsValidModeEEnemyTarget(enemy)) continue;
+                if (enemy.Team == modeEPlayerFaction) continue;
+
+                Vector3 offset = enemy.transform.position - playerPos;
+                if (offset.sqrMagnitude <= radiusSqr)
+                {
+                    enemies.Add(enemy);
+                }
+            }
+
+            return enemies;
+        }
+
+        private List<CharacterMainControl> GetAllEnemyBosses()
+        {
+            List<CharacterMainControl> enemies = new List<CharacterMainControl>();
+
+            for (int i = 0; i < modeEAliveEnemies.Count; i++)
+            {
+                CharacterMainControl enemy = modeEAliveEnemies[i];
+                if (!IsValidModeEEnemyTarget(enemy)) continue;
+                if (enemy.Team == modeEPlayerFaction) continue;
+
+                enemies.Add(enemy);
+            }
+
+            return enemies;
+        }
+
+        private bool ForceBossAggroToPlayer(CharacterMainControl enemy, CharacterMainControl player, float traceDistance)
+        {
+            if (!IsValidModeEEnemyTarget(enemy) || player == null || player.mainDamageReceiver == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>();
+                if (ai == null)
+                {
+                    return false;
+                }
+
+                // 直接设置 searchedEnemy,确保立即生效
+                ai.searchedEnemy = player.mainDamageReceiver;
+
+                // 设置 forceTracePlayerDistance 确保持续追踪
+                ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, traceDistance);
+
+                // 设置目标和通知信息
+                ai.SetTarget(player.mainDamageReceiver.transform);
+                ai.SetNoticedToTarget(player.mainDamageReceiver);
+                ai.noticed = true;
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] ForceBossAggroToPlayer 失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private int ForceBossAggroToPlayer(List<CharacterMainControl> enemies, float traceDistance)
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null) return 0;
+
+            int affected = 0;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (ForceBossAggroToPlayer(enemies[i], player, traceDistance))
+                {
+                    affected++;
+                }
+            }
+
+            return affected;
+        }
+
+        public void UseBosscallWhistle()
+        {
+            try
+            {
+                List<CharacterMainControl> nearbyEnemies = GetEnemyBossesInRange(50f);
+                if (nearbyEnemies.Count == 0)
+                {
+                    // 使用横幅提示玩家
+                    ShowBigBanner(L10n.T(
+                        "<color=yellow>猎王响哨</color>：50米内没有可被引来的敌对Boss！",
+                        "<color=yellow>Bosscall Whistle</color>: No enemy Bosses within 50 meters to provoke!"
+                    ));
+                    return;
+                }
+
+                int affected = ForceBossAggroToPlayer(nearbyEnemies, 80f);
+                if (affected <= 0)
+                {
+                    // 使用横幅提示玩家
+                    ShowBigBanner(L10n.T(
+                        "<color=yellow>猎王响哨</color>：敌对Boss未能锁定你为目标！",
+                        "<color=yellow>Bosscall Whistle</color>: Enemy Bosses failed to lock onto you!"
+                    ));
+                    return;
+                }
+
+                PlaySmokeVFX();
+                ShowBigBanner(L10n.T(
+                    "<color=yellow>猎王响哨</color>已吹响！附近 <color=red>" + affected + "</color> 名敌对Boss正朝你袭来！",
+                    "<color=yellow>Bosscall Whistle</color> blown! <color=red>" + affected + "</color> nearby enemy Bosses are coming for you!"
+                ));
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] UseBosscallWhistle 失败: " + e.Message);
+            }
+        }
+
+        public void UseAllKingsBanner()
+        {
+            try
+            {
+                List<CharacterMainControl> allEnemies = GetAllEnemyBosses();
+                if (allEnemies.Count == 0)
+                {
+                    // 使用横幅提示玩家
+                    ShowBigBanner(L10n.T(
+                        "<color=red>血狩烽火</color>：当前没有可被引来的敌对Boss！",
+                        "<color=red>Bloodhunt Beacon</color>: There are no enemy Bosses to provoke right now!"
+                    ));
+                    return;
+                }
+
+                int affected = ForceBossAggroToPlayer(allEnemies, 9999f);
+                if (affected <= 0)
+                {
+                    // 使用横幅提示玩家
+                    ShowBigBanner(L10n.T(
+                        "<color=red>血狩烽火</color>：敌对Boss未能锁定你为目标！",
+                        "<color=red>Bloodhunt Beacon</color>: Enemy Bosses failed to lock onto you!"
+                    ));
+                    return;
+                }
+
+                PlaySmokeVFX();
+                ShowBigBanner(L10n.T(
+                    "<color=red>血狩烽火</color>已点燃！全图 <color=red>" + affected + "</color> 名敌对Boss都将你视作首要猎物！",
+                    "<color=red>Bloodhunt Beacon</color> ignited! <color=red>" + affected + "</color> enemy Bosses across the map now hunt you first!"
+                ));
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] UseAllKingsBanner 失败: " + e.Message);
+            }
+        }
+
         #endregion
 
         #region 自动发放机制

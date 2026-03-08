@@ -565,7 +565,16 @@ namespace BossRush
             {
                 string normalizedText = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
                 float now = Time.realtimeSinceStartup;
-                if (!string.IsNullOrEmpty(normalizedText)
+
+                // 检查是否包含动态内容(数字、颜色标签等)
+                // 包含 <color=red>数字</color> 这样的动态内容时不进行去重
+                bool hasDynamicContent = normalizedText.Contains("<color=red>") ||
+                                        normalizedText.Contains("<color=yellow>") ||
+                                        System.Text.RegularExpressions.Regex.IsMatch(normalizedText, @"\d+");
+
+                // 只对静态文本进行去重检查
+                if (!hasDynamicContent
+                    && !string.IsNullOrEmpty(normalizedText)
                     && string.Equals(lastBigBannerText, normalizedText, StringComparison.Ordinal)
                     && now - lastBigBannerRealtime <= BIG_BANNER_DEDUP_WINDOW)
                 {

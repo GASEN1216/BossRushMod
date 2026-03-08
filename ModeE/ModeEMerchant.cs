@@ -428,6 +428,7 @@ namespace BossRush
 
                             StockShop.Entry entry = new StockShop.Entry(raw);
                             entry.CurrentStock = entry.MaxStock;
+                            entry.Show = true;
                             shop.entries.Add(entry);
                         }
                         catch { }
@@ -480,12 +481,14 @@ namespace BossRush
                     else
                         otherShop.entries.Clear();
 
-                    // 388=原版物品，500027=挑衅烟雾弹，500028=混沌引爆器
+                    // 388=原版物品；其余为 Mode E 专属消耗品
                     int[] otherItemIds = new int[]
                     {
                         388,
                         RespawnItemConfig.TAUNT_SMOKE_TYPE_ID,
-                        RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID
+                        RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID,
+                        RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID,
+                        RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID
                     };
                     foreach (int id in otherItemIds)
                     {
@@ -501,6 +504,7 @@ namespace BossRush
 
                             StockShop.Entry entry = new StockShop.Entry(raw);
                             entry.CurrentStock = entry.MaxStock;
+                            entry.Show = true;
                             otherShop.entries.Add(entry);
                         }
                         catch { }
