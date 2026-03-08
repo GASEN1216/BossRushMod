@@ -521,7 +521,7 @@ namespace BossRush
                 Item ammo = ItemAssetsCollection.InstantiateSync(targetBulletId);
                 if (ammo != null)
                 {
-                    ammo.StackCount = UnityEngine.Random.Range(60, 121);
+                    ammo.StackCount = UnityEngine.Random.Range(120, 181);
                     ItemUtilities.SendToPlayerCharacterInventory(ammo, false);
                     DevLog("[ModeD] 发放弹药: " + ammo.DisplayName + " x" + ammo.StackCount);
                 }
