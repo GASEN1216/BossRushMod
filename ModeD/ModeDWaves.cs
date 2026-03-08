@@ -71,6 +71,11 @@ namespace BossRush
                     modeDAutoNextWaveCoroutine = null;
                 }
 
+                if (modeDWaveIndex <= 0)
+                {
+                    BeginAchievementSession("ModeD");
+                }
+
                 SetBossRushRuntimeActive(true);
 
                 // P0-2 修复：显式隐藏"冲下一波"选项（调用当前 ModBehaviour 的方法，而非路牌的）
@@ -1030,6 +1035,11 @@ namespace BossRush
                 DevLog("[ModeD] 第 " + modeDWaveIndex + " 波完成！");
 
                 // Mode D 完成10波视为"通关"，触发成就检查
+                if (modeDWaveIndex >= 5)
+                {
+                    CheckModeDFlawlessAchievement();
+                }
+
                 if (modeDWaveIndex >= 10)
                 {
                     CheckModeDClearAchievements();

@@ -266,9 +266,6 @@ namespace BossRush
             ShowMessage(L10n.T("开始BossRush模式，正在前往竞技场...", "Starting BossRush, heading to arena..."));
             DevLog("[BossRush] 开始BossRush模式，正在前往竞技场...");
             
-            // 重置本局成就追踪状态
-            ResetAchievementTracking();
-            
             try
             {
                 if (MultiSceneCore.Instance != null)
@@ -1121,6 +1118,7 @@ namespace BossRush
                 // 清理场景中现有的敌人，准备开始BossRush
                 ClearEnemiesForBossRush();
                 
+                BeginAchievementSession(infiniteHellMode ? "InfiniteHell" : "BossRush");
                 ShowMessage(L10n.T("开始BossRush挑战！", "BossRush challenge started!"));
                 SetBossRushRuntimeActive(true);
                 currentEnemyIndex = 0;

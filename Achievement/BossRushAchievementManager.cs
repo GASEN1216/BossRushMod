@@ -80,7 +80,7 @@ namespace BossRush
                 AchievementCategory.Basic, 25000, 2);
 
             Register("mode_d_clear", "白手起家", "From Nothing",
-                "在白手起家模式成功撤离", "Complete Mode D (start with nothing)",
+                "在白手起家模式完成10波", "Complete 10 waves in Mode D (start with nothing)",
                 AchievementCategory.Basic, 30000, 2);
 
             // ========== 累计通关成就 ==========
@@ -127,7 +127,7 @@ namespace BossRush
                 AchievementCategory.Flawless, 250000, 4);
 
             Register("flawless_mode_d", "完美白手", "Flawless Mode D",
-                "在白手起家模式无伤通关", "Complete Mode D without taking damage",
+                "在白手起家模式无伤完成5波", "Complete 5 waves in Mode D without taking damage",
                 AchievementCategory.Flawless, 350000, 4);
 
             Register("flawless_hell_10", "钢铁意志", "Iron Will",
@@ -136,15 +136,15 @@ namespace BossRush
 
             // ========== 速通成就 ==========
             Register("speedrun_5min", "闪电战", "Lightning Run",
-                "5分钟内完成任意模式", "Complete any mode within 5 minutes",
+                "5分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 5 minutes",
                 AchievementCategory.Speedrun, 30000, 2);
 
             Register("speedrun_3min", "光速通关", "Speed Demon",
-                "3分钟内完成任意模式", "Complete any mode within 3 minutes",
+                "3分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 3 minutes",
                 AchievementCategory.Speedrun, 120000, 4);
 
             Register("speedrun_2min", "时间刺客", "Time Assassin",
-                "2分钟内完成任意模式", "Complete any mode within 2 minutes",
+                "2分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 2 minutes",
                 AchievementCategory.Speedrun, 400000, 5);
 
             // ========== Boss击杀成就 ==========
@@ -191,7 +191,7 @@ namespace BossRush
                 AchievementCategory.Special, 250000, 4, true);
 
             Register("speedrun_1min", "瞬杀", "Instant Kill",
-                "1分钟内完成任意模式", "Complete any mode within 1 minute",
+                "1分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 1 minute",
                 AchievementCategory.Special, 800000, 5, true);
 
             // ========== 收藏类成就 ==========

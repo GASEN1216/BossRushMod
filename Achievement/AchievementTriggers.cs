@@ -51,6 +51,94 @@ namespace BossRush
             catch { }
         }
 
+        /// <summary>
+        /// 在真正开始一局挑战时重置会话状态。
+        /// </summary>
+        private void BeginAchievementSession(string sessionName)
+        {
+            if (!achievementSystemInitialized) return;
+
+            try
+            {
+                ResetAchievementTracking();
+
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.Health != null)
+                {
+                    lastPlayerHealth = player.Health.CurrentHealth;
+                }
+                else
+                {
+                    lastPlayerHealth = -1f;
+                }
+
+                DevLog("[Achievement] 成就会话开始: " + sessionName + ", startTime=" + AchievementTracker.ArenaEnterTime);
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] 成就会话初始化失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 按当前会话耗时解锁速通成就。
+        /// </summary>
+        private void TryUnlockSpeedrunAchievements(string source)
+        {
+            if (!achievementSystemInitialized) return;
+
+            try
+            {
+                float elapsedTime = AchievementTracker.GetElapsedTime();
+                DevLog("[Achievement] 检查速通成就: source=" + source + ", elapsed=" + elapsedTime);
+
+                if (elapsedTime <= 60f)
+                {
+                    BossRushAchievementManager.TryUnlock("speedrun_1min");
+                    BossRushAchievementManager.TryUnlock("speedrun_2min");
+                    BossRushAchievementManager.TryUnlock("speedrun_3min");
+                    BossRushAchievementManager.TryUnlock("speedrun_5min");
+                }
+                else if (elapsedTime <= 120f)
+                {
+                    BossRushAchievementManager.TryUnlock("speedrun_2min");
+                    BossRushAchievementManager.TryUnlock("speedrun_3min");
+                    BossRushAchievementManager.TryUnlock("speedrun_5min");
+                }
+                else if (elapsedTime <= 180f)
+                {
+                    BossRushAchievementManager.TryUnlock("speedrun_3min");
+                    BossRushAchievementManager.TryUnlock("speedrun_5min");
+                }
+                else if (elapsedTime <= 300f)
+                {
+                    BossRushAchievementManager.TryUnlock("speedrun_5min");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] 速通成就检查失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 检查 Mode D 无伤成就。
+        /// </summary>
+        private void CheckModeDFlawlessAchievement()
+        {
+            if (!achievementSystemInitialized) return;
+
+            try
+            {
+                if (!AchievementTracker.HasTakenDamage)
+                    BossRushAchievementManager.TryUnlock("flawless_mode_d");
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] Mode D 无伤成就检查失败: " + e.Message);
+            }
+        }
+
         #endregion
 
         #region 通关成就
@@ -82,29 +170,7 @@ namespace BossRush
                 }
 
                 // 速通成就
-                float elapsedTime = AchievementTracker.GetElapsedTime();
-                if (elapsedTime <= 60f)
-                {
-                    BossRushAchievementManager.TryUnlock("speedrun_1min");
-                    BossRushAchievementManager.TryUnlock("speedrun_2min");
-                    BossRushAchievementManager.TryUnlock("speedrun_3min");
-                    BossRushAchievementManager.TryUnlock("speedrun_5min");
-                }
-                else if (elapsedTime <= 120f)
-                {
-                    BossRushAchievementManager.TryUnlock("speedrun_2min");
-                    BossRushAchievementManager.TryUnlock("speedrun_3min");
-                    BossRushAchievementManager.TryUnlock("speedrun_5min");
-                }
-                else if (elapsedTime <= 180f)
-                {
-                    BossRushAchievementManager.TryUnlock("speedrun_3min");
-                    BossRushAchievementManager.TryUnlock("speedrun_5min");
-                }
-                else if (elapsedTime <= 300f)
-                {
-                    BossRushAchievementManager.TryUnlock("speedrun_5min");
-                }
+                TryUnlockSpeedrunAchievements("BossRushClear");
 
                 // 累计通关成就
                 if (AchievementTracker.TotalClears >= 10)
@@ -146,6 +212,7 @@ namespace BossRush
                         BossRushAchievementManager.TryUnlock("hell_no_heal");
                     if (!AchievementTracker.HasTakenDamage)
                         BossRushAchievementManager.TryUnlock("flawless_hell_10");
+                    TryUnlockSpeedrunAchievements("InfiniteHellWave10");
                 }
 
                 if (waveNumber >= 25)
@@ -180,8 +247,7 @@ namespace BossRush
             try
             {
                 BossRushAchievementManager.TryUnlock("mode_d_clear");
-                if (!AchievementTracker.HasTakenDamage)
-                    BossRushAchievementManager.TryUnlock("flawless_mode_d");
+                TryUnlockSpeedrunAchievements("ModeDClear");
             }
             catch (Exception e)
             {
@@ -303,7 +369,7 @@ namespace BossRush
         private void OnPlayerHurtForAchievement(Health health, DamageInfo damageInfo)
         {
             // 仅在 BossRush 激活时追踪
-            if (!IsActive && !bossRushArenaActive) return;
+            if (!IsActive) return;
             if (!achievementSystemInitialized) return;
 
             try
