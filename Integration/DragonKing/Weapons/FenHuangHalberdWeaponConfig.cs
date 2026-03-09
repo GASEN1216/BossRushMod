@@ -1,0 +1,264 @@
+// ============================================================================
+// FenHuangHalberdWeaponConfig.cs - 焚皇断界戟装备工厂配置器
+// ============================================================================
+// 模块说明：
+//   在 EquipmentFactory 加载 AssetBundle 后，自动为焚皇断界戟 Prefab 配置：
+//   - ItemAgent_MeleeWeapon 组件（手持插槽、动画类型）
+//   - ItemSetting_MeleeWeapon 组件（火属性）
+//   - 全部 11 个近战 Stats
+//   - 物品标签（Weapon/MeleeWeapon/DontDropOnDeadInSlot/Special）
+//   - 本地化注入
+//
+//   Unity Prefab 只需配置 Item 组件（TypeID=500034）+ 3D 模型即可
+// ============================================================================
+
+using System;
+using System.Reflection;
+using UnityEngine;
+using ItemStatsSystem;
+
+namespace BossRush
+{
+    /// <summary>
+    /// 焚皇断界戟装备工厂配置器
+    /// </summary>
+    public static class FenHuangHalberdWeaponConfig
+    {
+        // ========== 基础名匹配 ==========
+        private const string HALBERD_BASE_NAME = "FenHuangHalberd";
+
+        // ========== 近战 Stats 数值 ==========
+        private const float STAT_DAMAGE = 55f;
+        private const float STAT_BLOCK_BULLET = 1f;
+        private const float STAT_CRIT_RATE = 0.10f;
+        private const float STAT_CRIT_DAMAGE_FACTOR = 2.0f;
+        private const float STAT_ARMOR_PIERCING = 6f;
+        private const float STAT_ATTACK_SPEED = 1.4f;
+        private const float STAT_ATTACK_RANGE = 2.5f;
+        private const float STAT_DEAL_DAMAGE_TIME = 0.12f;
+        private const float STAT_STAMINA_COST = 10f;
+        private const float STAT_BLEED_CHANCE = 0.15f;
+        private const float STAT_MOVE_SPEED_MULTIPLIER = 1.1f;
+
+        /// <summary>
+        /// 尝试配置焚皇断界戟（由 EquipmentFactory 在加载 AssetBundle 后调用）
+        /// </summary>
+        public static bool TryConfigure(Item item, string baseName)
+        {
+            if (item == null || string.IsNullOrEmpty(baseName)) return false;
+            if (!baseName.Equals(HALBERD_BASE_NAME, StringComparison.OrdinalIgnoreCase)) return false;
+
+            try
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] 开始配置焚皇断界戟...");
+
+                // 1. 创建 StatCollection 并添加近战 Stats
+                ConfigureStats(item);
+
+                // 2. 添加 ItemAgent_MeleeWeapon 组件
+                ConfigureMeleeAgent(item);
+
+                // 3. 添加 ItemSetting_MeleeWeapon 组件
+                ConfigureMeleeSetting(item);
+
+                // 4. 添加标签
+                ConfigureTags(item);
+
+                // 5. 注入本地化
+                InjectLocalization(item);
+
+                ModBehaviour.DevLog("[FenHuangHalberd] 焚皇断界戟配置完成 (TypeID=" + item.TypeID + ")");
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] 配置失败: " + e.Message + "\n" + e.StackTrace);
+                return false;
+            }
+        }
+
+        // ========== Stats 配置 ==========
+
+        /// <summary>
+        /// 创建并配置近战武器所需的全部 Stats
+        /// </summary>
+        private static void ConfigureStats(Item item)
+        {
+            // 获取或创建 StatCollection
+            StatCollection stats = item.Stats;
+            if (stats == null)
+            {
+                // 使用 Item.CreateStatsComponent() 创建
+                item.CreateStatsComponent();
+                stats = item.Stats;
+            }
+
+            if (stats == null)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] [WARNING] 无法获取或创建 StatCollection");
+                return;
+            }
+
+            // 添加全部 11 个近战 Stats
+            // Stat 构造函数: Stat(string key, float value, bool display = false)
+            stats.Add(new Stat("Damage", STAT_DAMAGE, true));
+            stats.Add(new Stat("BlockBullet", STAT_BLOCK_BULLET, false));
+            stats.Add(new Stat("CritRate", STAT_CRIT_RATE, true));
+            stats.Add(new Stat("CritDamageFactor", STAT_CRIT_DAMAGE_FACTOR, true));
+            stats.Add(new Stat("ArmorPiercing", STAT_ARMOR_PIERCING, true));
+            stats.Add(new Stat("AttackSpeed", STAT_ATTACK_SPEED, true));
+            stats.Add(new Stat("AttackRange", STAT_ATTACK_RANGE, true));
+            stats.Add(new Stat("DealDamageTime", STAT_DEAL_DAMAGE_TIME, false));
+            stats.Add(new Stat("StaminaCost", STAT_STAMINA_COST, true));
+            stats.Add(new Stat("BleedChance", STAT_BLEED_CHANCE, true));
+            stats.Add(new Stat("MoveSpeedMultiplier", STAT_MOVE_SPEED_MULTIPLIER, false));
+
+            ModBehaviour.DevLog("[FenHuangHalberd] 已添加 11 个近战 Stats");
+        }
+
+        // ========== 组件配置 ==========
+
+        /// <summary>
+        /// 添加并配置 ItemAgent_MeleeWeapon 组件
+        /// </summary>
+        private static void ConfigureMeleeAgent(Item item)
+        {
+            ItemAgent_MeleeWeapon meleeAgent = item.GetComponent<ItemAgent_MeleeWeapon>();
+            if (meleeAgent == null)
+            {
+                meleeAgent = item.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
+            }
+
+            // 设置手持插槽 = meleeWeapon（枚举值 2，挂到 MeleeWeaponSocket）
+            meleeAgent.handheldSocket = HandheldSocketTypes.meleeWeapon;
+
+            // 设置动画类型 = meleeWeapon（枚举值 3，播放近战挥砍动画）
+            meleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
+
+            // 设置音效键
+            try
+            {
+                FieldInfo soundKeyField = typeof(ItemAgent_MeleeWeapon).GetField("soundKey",
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                if (soundKeyField != null)
+                {
+                    soundKeyField.SetValue(meleeAgent, "Default");
+                }
+            }
+            catch { }
+
+            // 设置斩击特效延迟
+            try
+            {
+                FieldInfo slashDelayField = typeof(ItemAgent_MeleeWeapon).GetField("slashFxDelayTime",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (slashDelayField != null)
+                {
+                    slashDelayField.SetValue(meleeAgent, 0.06f);
+                }
+            }
+            catch { }
+
+            // hitFx 和 slashFx 留空，使用原版默认
+
+            // 确保 socketsList 被初始化（DuckovItemAgent 基类需要）
+            try
+            {
+                FieldInfo socketsField = typeof(DuckovItemAgent).GetField("socketsList",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (socketsField != null)
+                {
+                    var socketsList = socketsField.GetValue(meleeAgent);
+                    if (socketsList == null)
+                    {
+                        socketsField.SetValue(meleeAgent, new System.Collections.Generic.List<Transform>());
+                    }
+                }
+            }
+            catch { }
+
+            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=meleeWeapon, anim=meleeWeapon)");
+        }
+
+        /// <summary>
+        /// 添加并配置 ItemSetting_MeleeWeapon 组件
+        /// </summary>
+        private static void ConfigureMeleeSetting(Item item)
+        {
+            ItemSetting_MeleeWeapon meleeSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
+            if (meleeSetting == null)
+            {
+                meleeSetting = item.gameObject.AddComponent<ItemSetting_MeleeWeapon>();
+            }
+
+            // 设置火属性
+            meleeSetting.element = ElementTypes.fire;
+
+            // 不使用爆炸伤害
+            meleeSetting.dealExplosionDamage = false;
+
+            // 不通过 ItemSetting 触发 Buff（连招代码单独处理）
+            meleeSetting.buffChance = 0f;
+
+            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemSetting_MeleeWeapon (element=Fire)");
+        }
+
+        // ========== 标签配置 ==========
+
+        /// <summary>
+        /// 添加物品标签
+        /// </summary>
+        private static void ConfigureTags(Item item)
+        {
+            // 近战武器标签
+            EquipmentHelper.AddTagToItem(item, "Weapon");
+            EquipmentHelper.AddTagToItem(item, "MeleeWeapon");
+
+            // 绑定装备（死亡不掉落）
+            EquipmentHelper.AddTagToItem(item, "DontDropOnDeadInSlot");
+
+            // 特殊物品
+            EquipmentHelper.AddTagToItem(item, "Special");
+
+            // 设置 IsMeleeWeapon 布尔标记（ItemSetting_MeleeWeapon.SetMarkerParam 的逻辑）
+            try
+            {
+                item.SetBool("IsMeleeWeapon", true, true);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] SetBool IsMeleeWeapon 失败: " + e.Message);
+            }
+
+            ModBehaviour.DevLog("[FenHuangHalberd] 已添加标签: Weapon/MeleeWeapon/DontDropOnDeadInSlot/Special");
+        }
+
+        // ========== 本地化 ==========
+
+        /// <summary>
+        /// 注入焚皇断界戟本地化文本
+        /// </summary>
+        private static void InjectLocalization(Item item)
+        {
+            try
+            {
+                var config = new FenHuangHalberdConfig();
+                string displayName = L10n.T(config.DisplayNameCN, config.DisplayNameEN);
+                string description = L10n.T(config.DescriptionCN, config.DescriptionEN);
+
+                // 使用多种键注入，确保游戏各处都能正确显示
+                string itemKey = "Item_" + item.TypeID;
+                LocalizationHelper.InjectLocalization(itemKey, displayName);
+                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
+                LocalizationHelper.InjectLocalization("fenhuang_halberd", displayName);
+                LocalizationHelper.InjectLocalization("fenhuang_halberd_desc", description);
+
+                ModBehaviour.DevLog("[FenHuangHalberd] 本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] 本地化注入失败: " + e.Message);
+            }
+        }
+    }
+}

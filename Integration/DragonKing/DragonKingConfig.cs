@@ -614,19 +614,19 @@ namespace BossRush
         public const float DROP_CHANCE_FLIGHT_TOTEM = 0.2f;
         
         /// <summary>
-        /// 龙王之冕掉落概率（20%）
+        /// 龙王之冕掉落概率（15%）
         /// </summary>
-        public const float DROP_CHANCE_CROWN = 0.2f;
+        public const float DROP_CHANCE_CROWN = 0.15f;
         
         /// <summary>
-        /// 龙王鳞铠掉落概率（20%）
+        /// 龙王鳞铠掉落概率（15%）
         /// </summary>
-        public const float DROP_CHANCE_ARMOR = 0.2f;
+        public const float DROP_CHANCE_ARMOR = 0.15f;
         
         /// <summary>
-        /// 逆鳞掉落概率（40%）
+        /// 逆鳞掉落概率（35%）
         /// </summary>
-        public const float DROP_CHANCE_REVERSE_SCALE = 0.4f;
+        public const float DROP_CHANCE_REVERSE_SCALE = 0.35f;
         
         // ========== 装备配置 ==========
         
@@ -649,6 +649,21 @@ namespace BossRush
         /// 龙王鳞铠资源名称
         /// </summary>
         public const string DRAGON_KING_ARMOR_NAME = "dragonking_Armor_Item";
+        
+        /// <summary>
+        /// 焚皇断界戟TypeID
+        /// </summary>
+        public const int FEN_HUANG_HALBERD_TYPE_ID = 500034;
+        
+        /// <summary>
+        /// 焚皇断界戟资源名称
+        /// </summary>
+        public const string FEN_HUANG_HALBERD_NAME = "FenHuangHalberd_Item";
+        
+        /// <summary>
+        /// 焚皇断界戟掉落概率（15%）
+        /// </summary>
+        public const float DROP_CHANCE_HALBERD = 0.15f;
         
         // ========== 孩儿护我配置 ==========
         

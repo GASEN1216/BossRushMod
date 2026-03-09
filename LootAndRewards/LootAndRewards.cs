@@ -2705,18 +2705,19 @@ namespace BossRush
         
         /// <summary>
         /// 添加龙王专属掉落物到Inventory
-        /// 共享掉落格子：飞行图腾20%、龙王之冕20%、龙王鳞铠20%、逆鳞40%
+        /// 共享掉落格子：飞行图腾20%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、逆鳞35%
         /// </summary>
         private IEnumerator AddDragonKingLoot(Inventory inv)
         {
-            // 按概率随机选择掉落物品：飞行图腾20%、龙王之冕20%、龙王鳞铠20%、逆鳞40%
+            // 按概率随机选择掉落物品
             float roll = UnityEngine.Random.Range(0f, 1f);
             int selectedTypeId;
             string itemName;
             
-            float threshold1 = DragonKingConfig.DROP_CHANCE_FLIGHT_TOTEM;
-            float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;
-            float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;
+            float threshold1 = DragonKingConfig.DROP_CHANCE_FLIGHT_TOTEM;           // 0.20
+            float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;      // 0.35
+            float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;      // 0.50
+            float threshold4 = threshold3 + DragonKingConfig.DROP_CHANCE_HALBERD;    // 0.65
             
             if (roll < threshold1)
             {
@@ -2726,19 +2727,25 @@ namespace BossRush
             }
             else if (roll < threshold2)
             {
-                // 20% 龙王之冕
+                // 15% 龙王之冕
                 selectedTypeId = DragonKingConfig.DRAGON_KING_HELM_TYPE_ID;
                 itemName = "龙王之冕";
             }
             else if (roll < threshold3)
             {
-                // 20% 龙王鳞铠
+                // 15% 龙王鳞铠
                 selectedTypeId = DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID;
                 itemName = "龙王鳞铠";
             }
+            else if (roll < threshold4)
+            {
+                // 15% 焚皇断界戟
+                selectedTypeId = DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID;
+                itemName = "焚皇断界戟";
+            }
             else
             {
-                // 40% 逆鳞
+                // 35% 逆鳞
                 selectedTypeId = DragonKingConfig.REVERSE_SCALE_TYPE_ID;
                 itemName = "逆鳞";
             }

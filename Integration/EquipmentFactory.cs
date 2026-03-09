@@ -122,7 +122,8 @@ namespace BossRush
         FaceMask,   // 面罩 - 使用 "FaceMask" Tag
         Headset,    // 耳机 - 使用 "Headset" Tag
         Gun,        // 枪械 - 使用 "Gun" Tag
-        Totem       // 图腾 - 使用 "Totem" Tag（新增）
+        Totem,      // 图腾 - 使用 "Totem" Tag
+        MeleeWeapon // 近战武器 - 使用 "Weapon" Tag
     }
 
     /// <summary>
@@ -334,6 +335,7 @@ namespace BossRush
                 case EquipmentType.Headset: return "Headset";
                 case EquipmentType.Gun: return "Gun";
                 case EquipmentType.Totem: return "Totem";
+                case EquipmentType.MeleeWeapon: return "Weapon";
                 default: return "Helmat";
             }
         }
@@ -354,7 +356,13 @@ namespace BossRush
             if (nameLower.Contains("_shotgun_")) return EquipmentType.Gun;
             if (nameLower.Contains("_smg_")) return EquipmentType.Gun;
             
-            // 图腾类型（新增）
+            // 近战武器类型
+            if (nameLower.Contains("_melee_")) return EquipmentType.MeleeWeapon;
+            if (nameLower.Contains("halberd")) return EquipmentType.MeleeWeapon;
+            if (nameLower.Contains("_sword_")) return EquipmentType.MeleeWeapon;
+            if (nameLower.Contains("_axe_")) return EquipmentType.MeleeWeapon;
+            
+            // 图腾类型
             if (nameLower.Contains("_totem_")) return EquipmentType.Totem;
             if (nameLower.Contains("totem")) return EquipmentType.Totem;
             
@@ -558,6 +566,15 @@ namespace BossRush
                             ProcessGunItem(itemPrefab, baseName, modelAgent, gunSettingsByBaseName, buffsByPrefix, bulletsByPrefix);
                             loadedGuns[itemPrefab.TypeID] = itemPrefab;
                         }
+                        else if (equipType == EquipmentType.MeleeWeapon)
+                        {
+                            // 近战武器处理：只添加基础 Tag，具体组件/Stats 由配置器完成
+                            EquipmentHelper.AddTagToItem(itemPrefab, "Weapon");
+                            if (modelAgent != null)
+                            {
+                                InjectItemGraphicForEquipment(itemPrefab, modelAgent);
+                            }
+                        }
                         else
                         {
                             // 装备处理
@@ -584,6 +601,9 @@ namespace BossRush
 
                         // 配置龙息武器（配件槽位、弹药类型、耐久度、标签）
                         DragonBreathWeaponConfig.TryConfigure(itemPrefab, baseName);
+
+                        // 配置焚皇断界戟（近战组件、Stats、标签）
+                        FenHuangHalberdWeaponConfig.TryConfigure(itemPrefab, baseName);
 
                         // 注册到游戏物品系统
                         ItemAssetsCollection.AddDynamicEntry(itemPrefab);

@@ -923,6 +923,9 @@ namespace BossRush
             // 初始化逆鳞图腾系统（新架构）
             InitializeReverseScaleSystem();
             
+            // 初始化焚皇断界戟系统（三段连招 + 右键龙皇裂地）
+            InitializeFenHuangHalberdSystem();
+            
             // 如果当前已经在场景中，立即执行一次
             if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
             {
@@ -949,6 +952,9 @@ namespace BossRush
 
             // 清理逆鳞图腾系统（新架构）
             CleanupReverseScaleSystem();
+            
+            // 清理焚皇断界戟系统
+            CleanupFenHuangHalberdSystem();
             
             // 取消订阅龙息武器火焰特效事件
             UnsubscribeDragonBreathEffectEvent();
@@ -1047,6 +1053,9 @@ namespace BossRush
             
             // 设置飞行图腾系统（注入商店、Hook Dash等）
             SetupFlightTotemForScene(scene);
+            
+            // 设置焚皇断界戟系统（场景切换重绑定）
+            SetupFenHuangHalberdForScene(scene);
 
             try
             {

@@ -136,6 +136,14 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\DragonKing\DragonKingAbilityController.cs ^
     Integration\DragonKing\DragonKingShockwaveEffect.cs ^
     Integration\DragonKing\DragonKingBoss.cs ^
+    Integration\DragonKing\Weapons\FenHuangHalberdIds.cs ^
+    Integration\DragonKing\Weapons\FenHuangHalberdConfig.cs ^
+    Integration\DragonKing\Weapons\DragonFlameMarkTracker.cs ^
+    Integration\DragonKing\Weapons\FenHuangHalberdAction.cs ^
+    Integration\DragonKing\Weapons\FenHuangHalberdAbilityManager.cs ^
+    Integration\DragonKing\Weapons\FenHuangComboManager.cs ^
+    Integration\DragonKing\Weapons\FenHuangHalberdBootstrap.cs ^
+    Integration\DragonKing\Weapons\FenHuangHalberdWeaponConfig.cs ^
     Integration\FlightTotem\FlightConfig.cs ^
     Integration\FlightTotem\FlightTotemFactory.cs ^
     Integration\FlightTotem\FlightTotemBootstrap.cs ^
