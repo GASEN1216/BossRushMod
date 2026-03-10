@@ -67,6 +67,9 @@ namespace BossRush
                 // 5. 注入本地化
                 InjectLocalization(item);
 
+                // 6. 修复运动模糊（禁用 MotionVector 使武器不会在移动时模糊）
+                DisableMotionBlur(item.gameObject);
+
                 ModBehaviour.DevLog("[FenHuangHalberd] 焚皇断界戟配置完成 (TypeID=" + item.TypeID + ")");
                 return true;
             }
@@ -259,6 +262,24 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[FenHuangHalberd] 本地化注入失败: " + e.Message);
             }
+        }
+        /// <summary>
+        /// 禁用武器模型的运动模糊，使其与原版武器表现一致
+        /// </summary>
+        private static void DisableMotionBlur(GameObject go)
+        {
+            try
+            {
+                Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+                foreach (Renderer r in renderers)
+                {
+                    if (r != null)
+                    {
+                        r.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                    }
+                }
+            }
+            catch { }
         }
     }
 }

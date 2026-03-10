@@ -36,47 +36,24 @@ namespace BossRush
                     DevLog("[FenHuangHalberd] 连招管理器已创建");
                 }
 
-                // 2. 确保右键能力管理器实例存在
-                FenHuangHalberdAbilityManager.EnsureInstance();
-                DevLog("[FenHuangHalberd] 右键能力管理器已创建");
+                // 2. 创建右键能力管理器（使用具体子类，不走抽象基类的 Instance 属性）
+                if (FenHuangHalberdAbilityManager.Instance == null)
+                {
+                    GameObject mgrObj = new GameObject("FenHuangHalberdAbilityManager");
+                    DontDestroyOnLoad(mgrObj);
+                    mgrObj.AddComponent<FenHuangHalberdAbilityManager>();
+                    DevLog("[FenHuangHalberd] 右键能力管理器已创建");
+                }
 
-                // 3. 延迟注册能力到玩家（等待玩家角色可用）
-                StartCoroutine(DelayedRegisterHalberdAbility());
+                // 注意：不在这里注册能力到玩家！
+                // 初始化时通常在主菜单场景，还没有玩家角色
+                // 能力注册由 SetupFenHuangHalberdForScene 在游戏场景加载时执行
 
                 DevLog("[FenHuangHalberd] 系统初始化完成");
             }
             catch (Exception e)
             {
                 DevLog("[FenHuangHalberd] 系统初始化失败: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 延迟注册焚皇断界戟能力到玩家
-        /// </summary>
-        private IEnumerator DelayedRegisterHalberdAbility()
-        {
-            // 等待玩家角色可用
-            float waitTime = 0f;
-            while (CharacterMainControl.Main == null && waitTime < 10f)
-            {
-                yield return new WaitForSeconds(0.5f);
-                waitTime += 0.5f;
-            }
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player != null)
-            {
-                var mgr = FenHuangHalberdAbilityManager.Instance;
-                if (mgr != null)
-                {
-                    mgr.RegisterAbility(player);
-                    DevLog("[FenHuangHalberd] 右键能力已注册到玩家");
-                }
-            }
-            else
-            {
-                DevLog("[FenHuangHalberd] [WARNING] 等待玩家角色超时，右键能力未注册");
             }
         }
 
@@ -96,13 +73,14 @@ namespace BossRush
                 }
 
                 // 通知右键能力管理器场景已切换
-                if (FenHuangHalberdAbilityManager.Instance != null)
+                var abilityMgr = FenHuangHalberdAbilityManager.Instance;
+                if (abilityMgr != null)
                 {
-                    FenHuangHalberdAbilityManager.Instance.OnSceneChanged();
+                    abilityMgr.OnSceneChanged();
                 }
 
-                // 延迟重新绑定到新场景的玩家角色
-                StartCoroutine(DelayedRebindHalberdAbility());
+                // 延迟注册/重新绑定能力到玩家角色
+                StartCoroutine(DelayedSetupHalberdAbility());
             }
             catch (Exception e)
             {
@@ -111,20 +89,45 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 延迟重新绑定焚皇断界戟能力到新场景的玩家角色
+        /// 延迟设置焚皇断界戟能力（统一处理首次注册和场景切换重绑定）
         /// </summary>
-        private IEnumerator DelayedRebindHalberdAbility()
+        private IEnumerator DelayedSetupHalberdAbility()
         {
-            yield return new WaitForSeconds(0.5f);
+            // 等待玩家角色可用（游戏场景加载需要时间）
+            float waitTime = 0f;
+            while (CharacterMainControl.Main == null && waitTime < 15f)
+            {
+                yield return new WaitForSeconds(0.5f);
+                waitTime += 0.5f;
+            }
 
             CharacterMainControl player = CharacterMainControl.Main;
-            if (player != null)
+            if (player == null)
             {
-                var mgr = FenHuangHalberdAbilityManager.Instance;
-                if (mgr != null)
-                {
-                    mgr.RebindToCharacter(player);
-                }
+                // 可能是主菜单等非游戏场景，跳过即可
+                DevLog("[FenHuangHalberd] 当前场景无玩家角色，跳过能力注册");
+                yield break;
+            }
+
+            var mgr = FenHuangHalberdAbilityManager.Instance;
+            if (mgr == null)
+            {
+                DevLog("[FenHuangHalberd] [WARNING] 右键能力管理器不存在");
+                yield break;
+            }
+
+            // 根据当前状态决定：首次注册 或 重新绑定
+            if (!mgr.IsAbilityEnabled)
+            {
+                // 首次注册（之前从未成功注册过，或者注册被注销了）
+                mgr.RegisterAbility(player);
+                DevLog("[FenHuangHalberd] 右键能力已注册到玩家");
+            }
+            else
+            {
+                // 已注册过，重新绑定到新场景的角色
+                mgr.RebindToCharacter(player);
+                DevLog("[FenHuangHalberd] 右键能力已重新绑定到玩家");
             }
         }
 

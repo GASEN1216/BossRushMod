@@ -1414,17 +1414,25 @@ namespace BossRush
             duration = dur;
             radius = rad;
             createTime = Time.time;
-            
+
             // 缓存点燃Buff
             if (cachedBurnBuff == null)
             {
-                cachedBurnBuff = Duckov.Utilities.GameplayDataSettings.Buffs.Burn;
+                try
+                {
+                    cachedBurnBuff = Duckov.Utilities.GameplayDataSettings.Buffs.Burn;
+                }
+                catch { }
             }
-            
+
             // 缓存LayerMask
             if (characterLayerMask == -1)
             {
                 characterLayerMask = LayerMask.GetMask("Character");
+                if (characterLayerMask == 0)
+                {
+                    characterLayerMask = ~0;
+                }
             }
         }
         

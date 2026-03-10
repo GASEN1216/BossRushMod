@@ -21,7 +21,7 @@ namespace BossRush
         public override int ItemTypeId => FenHuangHalberdIds.WeaponTypeId;
         public override string DisplayNameCN => "焚皇断界戟";
         public override string DisplayNameEN => "Inferno Emperor's Realm-Breaking Halberd";
-        public override string DescriptionCN => "焚天龙皇亲铸之戟，戟刃藏龙焰，一击裂地碎界";
+        public override string DescriptionCN => "焚天龙皇亲铸之戟，戟刃藏龙焰，一击裂地焚界。";
         public override string DescriptionEN => "A halberd forged by the Skyburner Dragon Lord.";
         public override int ItemQuality => 7;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special", "DragonKing" };
@@ -47,13 +47,35 @@ namespace BossRush
         /// <summary>
         /// 前摇时间（秒）
         /// </summary>
-        public const float FissureCastTime = 0.3f;
+        public const float FissureCastTime = 0.18f;
+
+        public const float FissureLength = 8f;
+
+        public const float LeapPreviewMaxRange = FissureLength;
+
+        public const float LeapVerticalSpeed = 13f;
+
+        public const float LeapTakeoffDelay = FissureCastTime;
+
+        public const float LeapLandingRecoverTime = 0.15f;
+
+        public const float LandingFireRingRadius = 1.8f;
+
+        /// <summary>
+        /// 砸落范围伤害
+        /// </summary>
+        public const float LandingImpactDamage = 80f;
+
+        /// <summary>
+        /// 砸落伤害半径
+        /// </summary>
+        public const float LandingImpactRadius = 3.5f;
+
+        public const float LandingFireSpawnInterval = FirePillarInterval;
 
         /// <summary>
         /// 裂隙总长度（米）
         /// </summary>
-        public const float FissureLength = 8f;
-
         /// <summary>
         /// 火柱数量
         /// </summary>
@@ -62,7 +84,7 @@ namespace BossRush
         /// <summary>
         /// 火柱生成间隔时间（秒）
         /// </summary>
-        public const float FirePillarInterval = 0.25f;
+        public const float FirePillarInterval = 0.08f;
 
         /// <summary>
         /// 每个火柱的伤害
@@ -87,7 +109,15 @@ namespace BossRush
         /// <summary>
         /// 技能总持续时间（前摇 + 火柱释放时间）
         /// </summary>
-        public const float TotalActionDuration = FissureCastTime + FirePillarCount * FirePillarInterval + 0.2f;
+        public const float MaxLeapTravelTime = 1.2f;
+
+        public static float TotalActionDuration =>
+            FissureCastTime +
+            MaxLeapTravelTime +
+            FirePillarCount * FirePillarInterval +
+            LeapLandingRecoverTime;
+
+        public const float ComboHitConfirmWindow = 0.45f;
 
         // ========== 爆燃参数 ==========
 

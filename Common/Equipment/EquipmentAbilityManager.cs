@@ -33,12 +33,8 @@ namespace BossRush.Common.Equipment
                 if (_instance == null)
                 {
                     _instance = FindObjectOfType<EquipmentAbilityManager<TConfig, TAction>>();
-                    if (_instance == null)
-                    {
-                        GameObject go = new GameObject($"Manager_{typeof(TConfig).Name}");
-                        _instance = go.AddComponent<EquipmentAbilityManager<TConfig, TAction>>();
-                        DontDestroyOnLoad(go);
-                    }
+                    // 不在这里创建实例 — 抽象泛型类无法 AddComponent
+                    // 具体实例由 EnsureInstance() 或 Bootstrap 创建
                 }
                 return _instance;
             }
@@ -406,6 +402,12 @@ namespace BossRush.Common.Equipment
                 LogIfVerbose("TryExecuteAbility: targetCharacter is null");
                 return false;
             }
+
+            if (abilityAction.characterController != targetCharacter)
+            {
+                abilityAction.characterController = targetCharacter;
+            }
+
             if (!abilityAction.IsReady())
             {
                 return false;
@@ -468,6 +470,8 @@ namespace BossRush.Common.Equipment
 
             LogIfVerbose($"RebindToCharacter: 重新绑定到角色 {character.name}");
 
+            CleanupAbilityAction();
+
             targetCharacter = character;
             SetupAbilityAction();
 
@@ -490,6 +494,11 @@ namespace BossRush.Common.Equipment
 
             // 添加动作组件
             abilityAction = CreateAbilityAction();
+
+            if (abilityAction != null)
+            {
+                abilityAction.characterController = targetCharacter;
+            }
 
             LogIfVerbose("能力动作组件已创建");
         }
@@ -542,7 +551,10 @@ namespace BossRush.Common.Equipment
         /// </summary>
         public static void EnsureInstance()
         {
-            var _ = Instance;
+            // 不再通过 Instance 属性创建 — 抽象泛型类无法 AddComponent
+            // 具体实例由各自的 Bootstrap 手动创建
+            // 例如：FenHuangHalberdBootstrap 创建 FenHuangHalberdAbilityManager
+            var _ = Instance; // 仅检查是否已存在
         }
 
         /// <summary>
