@@ -119,12 +119,9 @@ namespace BossRush
             }
 
             leapDirection = flatDirection.normalized;
-            leapVelocity = FenHuangLeapMath.CalculateLaunchVelocityWithFixedTime(
-                leapStartPoint,
-                leapTargetPoint,
-                1.0f
-            );
-            leapTravelTime = 1.0f;
+            // No longer using FenHuangLeapMath for the 0.3s jump, we will use a manual lerp with sine wave in UpdateLeaping
+            leapVelocity = Vector3.zero; 
+            leapTravelTime = 0.3f;
 
             if (leapTravelTime <= 0.01f || float.IsNaN(leapTravelTime) || float.IsInfinity(leapTravelTime))
             {
@@ -228,7 +225,19 @@ namespace BossRush
             }
 
             float flightTime = Mathf.Min(phaseTime, leapTravelTime);
-            Vector3 position = FenHuangLeapMath.EvaluatePosition(leapStartPoint, leapVelocity, flightTime);
+            float t = flightTime / leapTravelTime;
+            
+            // Linear horizontal interpolation
+            Vector3 startFlat = leapStartPoint; startFlat.y = 0f;
+            Vector3 targetFlat = leapTargetPoint; targetFlat.y = 0f;
+            Vector3 currentFlat = Vector3.Lerp(startFlat, targetFlat, t);
+            
+            // Sine wave vertical interpolation for a forced 3.5 meter jump height
+            float baseHeight = Mathf.Lerp(leapStartPoint.y, leapTargetPoint.y, t);
+            float jumpOffset = Mathf.Sin(t * Mathf.PI) * 3.5f;
+            
+            Vector3 position = currentFlat + Vector3.up * (baseHeight + jumpOffset);
+
             characterController.SetPosition(position);
             characterController.movementControl.ForceTurnTo(leapDirection);
 
@@ -523,73 +532,59 @@ namespace BossRush
                 GameObject fx = new GameObject("FenHuang_Detonation");
                 fx.transform.position = position + Vector3.up * 0.8f;
 
-                Light light = fx.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = new Color(1f, 0.45f, 0.05f);
-                light.intensity = 10f;
-                light.range = 5f;
-                light.shadows = LightShadows.None;
+                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(fx);
 
-                // Add Particle System
-                ParticleSystem ps = fx.AddComponent<ParticleSystem>();
-                ParticleSystemRenderer psRenderer = fx.GetComponent<ParticleSystemRenderer>();
-                
-                // Configure Material
-                Material mat = new Material(Shader.Find("Sprites/Default"));
-                mat.color = new Color(1f, 0.35f, 0.05f, 1f);
-                psRenderer.material = mat;
-                psRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+                ParticleSystem[] particles = fx.GetComponentsInChildren<ParticleSystem>(true);
+                foreach (var ps in particles)
+                {
+                    var main = ps.main;
+                    main.loop = false;
+                    main.duration = 0.5f;
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(10f, 25f);
+                    main.startSizeMultiplier *= 3f;
 
-                // Configure Main Module
-                var main = ps.main;
-                main.duration = 0.5f;
-                main.loop = false;
-                main.startLifetime = 0.6f;
-                main.startSpeed = new ParticleSystem.MinMaxCurve(5f, 12f);
-                main.startSize = new ParticleSystem.MinMaxCurve(0.2f, 0.5f);
-                main.startColor = new Color(1f, 0.4f, 0.05f, 1f);
-                main.playOnAwake = true;
+                    var em = ps.emission;
+                    em.rateOverDistance = 0;
+                    em.rateOverTime = 0;
+                    em.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 60) });
 
-                // Configure Emission Module
-                var emission = ps.emission;
-                emission.rateOverTime = 0;
-                emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 40) });
+                    var shape = ps.shape;
+                    shape.shapeType = ParticleSystemShapeType.Sphere;
+                    shape.radius = 1.5f;
 
-                // Configure Shape Module
-                var shape = ps.shape;
-                shape.shapeType = ParticleSystemShapeType.Sphere;
-                shape.radius = 0.5f;
+                    var limitVelocity = ps.limitVelocityOverLifetime;
+                    limitVelocity.enabled = true;
+                    limitVelocity.limit = 0;
+                    limitVelocity.dampen = 0.15f;
+                    
+                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    ps.Play(true);
+                }
 
-                // Configure Color Over Lifetime
-                var colorOverLifetime = ps.colorOverLifetime;
-                colorOverLifetime.enabled = true;
-                Gradient gradient = new Gradient();
-                gradient.SetKeys(
-                    new GradientColorKey[] { new GradientColorKey(new Color(1f, 0.6f, 0.1f), 0.0f), new GradientColorKey(new Color(1f, 0.1f, 0f), 1.0f) },
-                    new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0.0f), new GradientAlphaKey(1.0f, 0.7f), new GradientAlphaKey(0.0f, 1.0f) }
-                );
-                colorOverLifetime.color = gradient;
+                Light[] lights = fx.GetComponentsInChildren<Light>(true);
+                Light light = null;
+                foreach (var l in lights)
+                {
+                    l.intensity = 8f;
+                    l.range = 6f;
+                    l.color = new Color(1f, 0.45f, 0.05f);
+                    light = l;
+                }
 
-                // Configure Size Over Lifetime
-                var sizeOverLifetime = ps.sizeOverLifetime;
-                sizeOverLifetime.enabled = true;
-                AnimationCurve curve = new AnimationCurve();
-                curve.AddKey(0.0f, 1.0f);
-                curve.AddKey(1.0f, 0.0f);
-                sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1.0f, curve);
-
-                // Configure Limit Velocity over Lifetime (Drag)
-                var limitVelocity = ps.limitVelocityOverLifetime;
-                limitVelocity.enabled = true;
-                limitVelocity.limit = 0;
-                limitVelocity.dampen = 0.2f;
+                if (light == null)
+                {
+                    light = fx.AddComponent<Light>();
+                    light.type = LightType.Point;
+                    light.color = new Color(1f, 0.45f, 0.05f);
+                    light.intensity = 8f;
+                    light.range = 6f;
+                }
 
                 DetonationFader fader = fx.AddComponent<DetonationFader>();
-                // SpriteRenderer is no longer used for the explosion, pass null
                 fader.Initialize(FenHuangHalberdConfig.DetonationEffectDuration, light, null);
                 
-                // Destroy object after particles finish
-                UnityEngine.Object.Destroy(fx, 1.0f);
+                UnityEngine.Object.Destroy(fx, 1.5f);
             }
             catch
             {
@@ -786,8 +781,6 @@ namespace BossRush
         private float elapsed;
         private Transform coreRoot;
         private Light pointLight;
-        private Material coreMaterial;
-        private Material auraMaterial;
 
         public void Initialize(float lifeTime)
         {
@@ -806,58 +799,48 @@ namespace BossRush
             coreRoot = new GameObject("FenHuangFireVisual").transform;
             coreRoot.SetParent(transform, false);
 
-            GameObject inner = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            inner.name = "InnerCore";
-            inner.transform.SetParent(coreRoot, false);
-            inner.transform.localPosition = new Vector3(0f, 0.9f, 0f);
-            inner.transform.localScale = new Vector3(0.55f, 0.95f, 0.55f);
-            Destroy(inner.GetComponent<Collider>());
+            DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(coreRoot.gameObject);
 
-            GameObject outer = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            outer.name = "OuterAura";
-            outer.transform.SetParent(coreRoot, false);
-            outer.transform.localPosition = new Vector3(0f, 0.75f, 0f);
-            outer.transform.localScale = new Vector3(0.95f, 0.75f, 0.95f);
-            Destroy(outer.GetComponent<Collider>());
-
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null)
+            ParticleSystem[] particles = coreRoot.GetComponentsInChildren<ParticleSystem>(true);
+            foreach (var ps in particles)
             {
-                shader = Shader.Find("Unlit/Color");
-            }
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
-            }
+                var main = ps.main;
+                main.loop = true;
+                main.startSpeed = new ParticleSystem.MinMaxCurve(5f, 9f);
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.25f, 0.4f);
+                main.startSizeMultiplier = 1.2f;
+                
+                var shape = ps.shape;
+                shape.shapeType = ParticleSystemShapeType.Cone;
+                shape.angle = 10f;
+                shape.radius = 0.5f;
+                
+                ps.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
 
-            coreMaterial = new Material(shader);
-            coreMaterial.color = new Color(1f, 0.45f, 0.05f, 0.92f);
+                var em = ps.emission;
+                em.rateOverDistance = 0;
+                em.rateOverTime = new ParticleSystem.MinMaxCurve(50f);
 
-            auraMaterial = new Material(shader);
-            auraMaterial.color = new Color(1f, 0.2f, 0.02f, 0.38f);
-
-            Renderer innerRenderer = inner.GetComponent<Renderer>();
-            if (innerRenderer != null)
-            {
-                innerRenderer.material = coreMaterial;
-                innerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                innerRenderer.receiveShadows = false;
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                ps.Play(true);
             }
 
-            Renderer outerRenderer = outer.GetComponent<Renderer>();
-            if (outerRenderer != null)
+            Light[] lights = coreRoot.GetComponentsInChildren<Light>(true);
+            if (lights.Length > 0)
             {
-                outerRenderer.material = auraMaterial;
-                outerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                outerRenderer.receiveShadows = false;
+                pointLight = lights[0];
+                pointLight.intensity = 4f;
+                pointLight.range = 4f;
+                pointLight.color = new Color(1f, 0.42f, 0.08f);
             }
-
-            pointLight = gameObject.AddComponent<Light>();
-            pointLight.type = LightType.Point;
-            pointLight.color = new Color(1f, 0.42f, 0.08f);
-            pointLight.intensity = 3.6f;
-            pointLight.range = 3.2f;
-            pointLight.shadows = LightShadows.None;
+            else
+            {
+                pointLight = gameObject.AddComponent<Light>();
+                pointLight.type = LightType.Point;
+                pointLight.color = new Color(1f, 0.42f, 0.08f);
+                pointLight.intensity = 4f;
+                pointLight.range = 4f;
+            }
         }
 
         private void Update()
@@ -869,41 +852,25 @@ namespace BossRush
 
             elapsed += Time.deltaTime;
             float normalized = Mathf.Clamp01(elapsed / duration);
-            float pulse = 1f + Mathf.Sin(Time.time * 12f) * 0.08f;
-
-            coreRoot.localScale = new Vector3(pulse, 1f + normalized * 0.15f, pulse);
 
             if (pointLight != null)
             {
-                pointLight.intensity = Mathf.Lerp(3.6f, 0.8f, normalized);
+                pointLight.intensity = Mathf.Lerp(4f, 0f, normalized);
             }
 
-            if (coreMaterial != null)
+            if (normalized >= 0.8f)
             {
-                Color color = coreMaterial.color;
-                color.a = Mathf.Lerp(0.92f, 0.2f, normalized);
-                coreMaterial.color = color;
-            }
-
-            if (auraMaterial != null)
-            {
-                Color color = auraMaterial.color;
-                color.a = Mathf.Lerp(0.38f, 0.08f, normalized);
-                auraMaterial.color = color;
+                ParticleSystem[] particles = coreRoot.GetComponentsInChildren<ParticleSystem>(true);
+                foreach (var ps in particles)
+                {
+                    var em = ps.emission;
+                    em.enabled = false;
+                }
             }
         }
 
         private void OnDestroy()
         {
-            if (coreMaterial != null)
-            {
-                Destroy(coreMaterial);
-            }
-
-            if (auraMaterial != null)
-            {
-                Destroy(auraMaterial);
-            }
         }
     }
 }

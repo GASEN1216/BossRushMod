@@ -109,7 +109,7 @@ namespace BossRush
         /// <summary>
         /// 技能总持续时间（前摇 + 火柱释放时间）
         /// </summary>
-        public const float MaxLeapTravelTime = 1.2f;
+        public const float MaxLeapTravelTime = 0.3f;
 
         public static float TotalActionDuration =>
             FissureCastTime +
