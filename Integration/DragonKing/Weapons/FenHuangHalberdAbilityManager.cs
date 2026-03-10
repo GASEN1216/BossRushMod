@@ -257,28 +257,91 @@ namespace BossRush
 
             Vector3 aimPoint = GetClampedAimPoint(targetCharacter);
             Vector3 resolvedLandingPoint = ResolveGroundPoint(aimPoint, targetCharacter.transform.position.y);
-            Vector3 hitPoint = resolvedLandingPoint;
             Vector3 previewOrigin = GetPreviewOrigin(targetCharacter);
 
-            Vector3[] previewPoints = FenHuangLeapMath.BuildTrajectory(
+            // 使用和实际飞行完全一致的 lerp + sine wave 弧线来构建预览轨迹
+            Vector3[] previewPoints = BuildSineTrajectory(
                 previewOrigin,
                 resolvedLandingPoint,
-                FenHuangHalberdConfig.LeapVerticalSpeed,
-                PreviewFragmentCount,
-                GetPreviewObstacleLayers(),
-                ref hitPoint,
-                out bool hitObstacle,
-                out float travelTime
+                PreviewFragmentCount
             );
 
-            previewLandingPoint = resolvedLandingPoint;
-            previewValid = !hitObstacle && travelTime > 0.05f && IsLandingPointValid(previewLandingPoint);
+            // 沿实际飞行弧线检测障碍物
+            Vector3 hitPoint = resolvedLandingPoint;
+            bool hitObstacle = CheckTrajectoryObstacles(previewPoints, GetPreviewObstacleLayers(), ref hitPoint);
 
-            Vector3 markerPoint = hitObstacle ? hitPoint : previewLandingPoint;
+            previewLandingPoint = resolvedLandingPoint;
+
+            float horizontalDist = Vector3.Distance(
+                new Vector3(previewOrigin.x, 0f, previewOrigin.z),
+                new Vector3(resolvedLandingPoint.x, 0f, resolvedLandingPoint.z)
+            );
+            previewValid = !hitObstacle && horizontalDist > 0.3f && IsLandingPointValid(previewLandingPoint);
+
+            // 始终在目标终点显示标记（光效、圆环、ban 图标），而非障碍物碰撞点
+            Vector3 markerPoint = previewLandingPoint;
             if (previewController != null)
             {
                 previewController.UpdatePreview(previewPoints, markerPoint, previewValid);
             }
+        }
+
+        /// <summary>
+        /// 构建与实际飞行一致的 sine wave 弧线轨迹点
+        /// 和 FenHuangHalberdAction.UpdateLeaping 使用完全相同的计算方式
+        /// </summary>
+        private static Vector3[] BuildSineTrajectory(Vector3 start, Vector3 target, int fragmentCount)
+        {
+            Vector3[] points = new Vector3[fragmentCount + 1];
+
+            Vector3 startFlat = start;
+            startFlat.y = 0f;
+            Vector3 targetFlat = target;
+            targetFlat.y = 0f;
+
+            for (int i = 0; i <= fragmentCount; i++)
+            {
+                float t = (float)i / fragmentCount;
+                Vector3 currentFlat = Vector3.Lerp(startFlat, targetFlat, t);
+                float baseHeight = Mathf.Lerp(start.y, target.y, t);
+                float jumpOffset = Mathf.Sin(t * Mathf.PI) * 3.5f;
+                points[i] = currentFlat + Vector3.up * (baseHeight + jumpOffset);
+            }
+
+            return points;
+        }
+
+        /// <summary>
+        /// 沿轨迹点做 SphereCast 检测障碍物（跳过首尾点）
+        /// </summary>
+        private static bool CheckTrajectoryObstacles(Vector3[] points, int obstacleLayers, ref Vector3 hitPoint)
+        {
+            if (points == null || points.Length < 2)
+            {
+                return false;
+            }
+
+            RaycastHit hit;
+            for (int i = 1; i < points.Length - 1; i++)
+            {
+                Vector3 from = points[i - 1];
+                Vector3 to = points[i];
+                Vector3 direction = to - from;
+                float distance = direction.magnitude;
+                if (distance <= 0.001f)
+                {
+                    continue;
+                }
+
+                direction /= distance;
+                if (Physics.SphereCast(from, 0.2f, direction, out hit, distance, obstacleLayers))
+                {
+                    hitPoint = hit.point;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static Vector3 GetPreviewOrigin(CharacterMainControl player)
@@ -334,7 +397,7 @@ namespace BossRush
                 new Vector3(origin.x, 0f, origin.z),
                 new Vector3(aimPoint.x, 0f, aimPoint.z)
             );
-            distance = Mathf.Min(distance, FenHuangHalberdConfig.LeapPreviewMaxRange);
+            // 不限制距离，允许玩家跳到屏幕上任意位置
 
             Vector3 result = origin + flatOffset * distance;
             result.y = aimPoint.y;
@@ -621,12 +684,22 @@ namespace BossRush
         private Material trajectoryMaterial;
         private Material ringMaterial;
         private float pulseTime;
+        private bool currentValid = true;
+
+        // 禁止图标（ban.png）
+        private GameObject banIconObject;
+        private SpriteRenderer banIconRenderer;
+        private Texture2D banTexture;
+        private static Texture2D cachedBanTexture;
 
         public void Initialize()
         {
             trajectoryLine = CreateLineRenderer("Trajectory", 0.12f, 0.05f);
             landingRing = CreateLineRenderer("LandingRing", 0.06f, 0.06f);
             landingRing.loop = true;
+
+            // 创建禁止图标
+            InitBanIcon();
 
             markerLight = gameObject.AddComponent<Light>();
             markerLight.type = LightType.Point;
@@ -658,7 +731,9 @@ namespace BossRush
             landingRing.startColor = color;
             landingRing.endColor = color;
 
+            currentValid = valid;
             UpdateLandingRing(landingPoint, valid);
+            UpdateBanIcon(landingPoint, valid);
 
             if (markerLight != null)
             {
@@ -675,6 +750,19 @@ namespace BossRush
             if (landingRing != null)
             {
                 landingRing.widthMultiplier = 0.06f * pulse;
+            }
+
+            // 禁止图标脉冲动画 + billboard 面向摄像机
+            if (!currentValid && banIconObject != null)
+            {
+                float iconScale = 1.2f * pulse;
+                banIconObject.transform.localScale = new Vector3(iconScale, iconScale, iconScale);
+
+                Camera cam = Camera.main;
+                if (cam != null)
+                {
+                    banIconObject.transform.rotation = cam.transform.rotation;
+                }
             }
 
             if (markerLight != null)
@@ -698,6 +786,99 @@ namespace BossRush
                 float angle = 360f * i / MarkerSegments;
                 Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * radius;
                 landingRing.SetPosition(i, landingPoint + offset + Vector3.up * 0.05f);
+            }
+        }
+
+        private void InitBanIcon()
+        {
+            banIconObject = new GameObject("BanIcon");
+            banIconObject.transform.SetParent(transform, false);
+
+            banIconRenderer = banIconObject.AddComponent<SpriteRenderer>();
+            banIconRenderer.sortingOrder = 100;
+
+            // 加载 ban.png 贴图
+            LoadBanTexture();
+
+            if (banTexture != null)
+            {
+                Sprite sprite = Sprite.Create(
+                    banTexture,
+                    new Rect(0f, 0f, banTexture.width, banTexture.height),
+                    new Vector2(0.5f, 0.5f),
+                    banTexture.width // 1 像素 = 1 单位，后续用 localScale 控制大小
+                );
+                banIconRenderer.sprite = sprite;
+            }
+
+            banIconObject.SetActive(false);
+        }
+
+        private void LoadBanTexture()
+        {
+            // 优先使用缓存
+            if (cachedBanTexture != null)
+            {
+                banTexture = cachedBanTexture;
+                return;
+            }
+
+            try
+            {
+                string modPath = ModBehaviour.GetModPath();
+                if (string.IsNullOrEmpty(modPath))
+                {
+                    return;
+                }
+
+                string banPath = System.IO.Path.Combine(modPath, "Assets", "ban.png");
+                if (!System.IO.File.Exists(banPath))
+                {
+                    ModBehaviour.DevLog("[FenHuangHalberd] ban.png 未找到: " + banPath);
+                    return;
+                }
+
+                byte[] data = System.IO.File.ReadAllBytes(banPath);
+                banTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                banTexture.filterMode = FilterMode.Bilinear;
+                if (ImageConversion.LoadImage(banTexture, data))
+                {
+                    cachedBanTexture = banTexture;
+                }
+                else
+                {
+                    Destroy(banTexture);
+                    banTexture = null;
+                }
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] 加载 ban.png 失败: " + e.Message);
+            }
+        }
+
+        private void UpdateBanIcon(Vector3 landingPoint, bool valid)
+        {
+            if (banIconObject == null)
+            {
+                return;
+            }
+
+            if (valid)
+            {
+                banIconObject.SetActive(false);
+                return;
+            }
+
+            banIconObject.SetActive(true);
+            banIconObject.transform.position = landingPoint + Vector3.up * 1.2f;
+            banIconObject.transform.localScale = Vector3.one * 1.2f;
+
+            // 面向摄像机
+            Camera cam = Camera.main;
+            if (cam != null)
+            {
+                banIconObject.transform.rotation = cam.transform.rotation;
             }
         }
 
@@ -753,6 +934,11 @@ namespace BossRush
             if (ringMaterial != null)
             {
                 Destroy(ringMaterial);
+            }
+
+            if (banTexture != null && banTexture != cachedBanTexture)
+            {
+                Destroy(banTexture);
             }
         }
     }
