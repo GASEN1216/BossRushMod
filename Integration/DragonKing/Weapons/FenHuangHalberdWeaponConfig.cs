@@ -112,6 +112,7 @@ namespace BossRush
             // 添加全部 11 个近战 Stats
             // Stat 构造函数: Stat(string key, float value, bool display = false)
             stats.Add(new Stat("Damage", STAT_DAMAGE, true));
+            stats.Add(new Stat("MoveSpeedMultiplier", STAT_MOVE_SPEED_MULTIPLIER, true));
             stats.Add(new Stat("BlockBullet", STAT_BLOCK_BULLET, false));
             stats.Add(new Stat("CritRate", STAT_CRIT_RATE, true));
             stats.Add(new Stat("CritDamageFactor", STAT_CRIT_DAMAGE_FACTOR, true));
@@ -121,7 +122,6 @@ namespace BossRush
             stats.Add(new Stat("DealDamageTime", STAT_DEAL_DAMAGE_TIME, false));
             stats.Add(new Stat("StaminaCost", STAT_STAMINA_COST, true));
             stats.Add(new Stat("BleedChance", STAT_BLEED_CHANCE, true));
-            stats.Add(new Stat("MoveSpeedMultiplier", STAT_MOVE_SPEED_MULTIPLIER, true));
 
             ModBehaviour.DevLog("[FenHuangHalberd] 已添加 11 个近战 Stats");
         }
@@ -261,7 +261,7 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization(itemKey, displayName);
                 LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
                 LocalizationHelper.InjectLocalization("fenhuang_halberd", displayName);
-                LocalizationHelper.InjectLocalization("fenhuang_halberd_desc", description);
+                LocalizationHelper.InjectLocalization("fenhuang_halberd_Desc", description);
 
                 ModBehaviour.DevLog("[FenHuangHalberd] 本地化注入完成");
             }
