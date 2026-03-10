@@ -32,7 +32,7 @@ namespace BossRush
         /// <summary>
         /// 右键技能冷却（秒）
         /// </summary>
-        public override float CooldownTime => 8f;
+        public override float CooldownTime => 5f;
 
         /// <summary>
         /// 右键技能体力消耗
@@ -57,7 +57,7 @@ namespace BossRush
 
         public const float LeapTakeoffDelay = FissureCastTime;
 
-        public const float LeapLandingRecoverTime = 0.15f;
+        public const float LeapLandingRecoverTime = 0f;
 
         public const float LandingFireRingRadius = 1.8f;
 

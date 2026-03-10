@@ -119,16 +119,12 @@ namespace BossRush
             }
 
             leapDirection = flatDirection.normalized;
-            leapVelocity = FenHuangLeapMath.CalculateLaunchVelocity(
+            leapVelocity = FenHuangLeapMath.CalculateLaunchVelocityWithFixedTime(
                 leapStartPoint,
                 leapTargetPoint,
-                FenHuangHalberdConfig.LeapVerticalSpeed
+                1.0f
             );
-            leapTravelTime = FenHuangLeapMath.CalculateTravelTime(
-                leapStartPoint,
-                leapTargetPoint,
-                FenHuangHalberdConfig.LeapVerticalSpeed
-            );
+            leapTravelTime = 1.0f;
 
             if (leapTravelTime <= 0.01f || float.IsNaN(leapTravelTime) || float.IsInfinity(leapTravelTime))
             {
@@ -529,53 +525,75 @@ namespace BossRush
 
                 Light light = fx.AddComponent<Light>();
                 light.type = LightType.Point;
-                light.color = new Color(1f, 0.4f, 0.05f);
-                light.intensity = 8f;
-                light.range = 4f;
+                light.color = new Color(1f, 0.45f, 0.05f);
+                light.intensity = 10f;
+                light.range = 5f;
                 light.shadows = LightShadows.None;
 
-                SpriteRenderer sr = fx.AddComponent<SpriteRenderer>();
-                sr.sprite = CreateExplosionSprite();
-                sr.color = new Color(1f, 0.35f, 0.05f, 0.9f);
-                sr.sortingOrder = 200;
-                fx.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
+                // Add Particle System
+                ParticleSystem ps = fx.AddComponent<ParticleSystem>();
+                ParticleSystemRenderer psRenderer = fx.GetComponent<ParticleSystemRenderer>();
+                
+                // Configure Material
+                Material mat = new Material(Shader.Find("Sprites/Default"));
+                mat.color = new Color(1f, 0.35f, 0.05f, 1f);
+                psRenderer.material = mat;
+                psRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+
+                // Configure Main Module
+                var main = ps.main;
+                main.duration = 0.5f;
+                main.loop = false;
+                main.startLifetime = 0.6f;
+                main.startSpeed = new ParticleSystem.MinMaxCurve(5f, 12f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.2f, 0.5f);
+                main.startColor = new Color(1f, 0.4f, 0.05f, 1f);
+                main.playOnAwake = true;
+
+                // Configure Emission Module
+                var emission = ps.emission;
+                emission.rateOverTime = 0;
+                emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 40) });
+
+                // Configure Shape Module
+                var shape = ps.shape;
+                shape.shapeType = ParticleSystemShapeType.Sphere;
+                shape.radius = 0.5f;
+
+                // Configure Color Over Lifetime
+                var colorOverLifetime = ps.colorOverLifetime;
+                colorOverLifetime.enabled = true;
+                Gradient gradient = new Gradient();
+                gradient.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(new Color(1f, 0.6f, 0.1f), 0.0f), new GradientColorKey(new Color(1f, 0.1f, 0f), 1.0f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0.0f), new GradientAlphaKey(1.0f, 0.7f), new GradientAlphaKey(0.0f, 1.0f) }
+                );
+                colorOverLifetime.color = gradient;
+
+                // Configure Size Over Lifetime
+                var sizeOverLifetime = ps.sizeOverLifetime;
+                sizeOverLifetime.enabled = true;
+                AnimationCurve curve = new AnimationCurve();
+                curve.AddKey(0.0f, 1.0f);
+                curve.AddKey(1.0f, 0.0f);
+                sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1.0f, curve);
+
+                // Configure Limit Velocity over Lifetime (Drag)
+                var limitVelocity = ps.limitVelocityOverLifetime;
+                limitVelocity.enabled = true;
+                limitVelocity.limit = 0;
+                limitVelocity.dampen = 0.2f;
 
                 DetonationFader fader = fx.AddComponent<DetonationFader>();
-                fader.Initialize(FenHuangHalberdConfig.DetonationEffectDuration, light, sr);
+                // SpriteRenderer is no longer used for the explosion, pass null
+                fader.Initialize(FenHuangHalberdConfig.DetonationEffectDuration, light, null);
+                
+                // Destroy object after particles finish
+                UnityEngine.Object.Destroy(fx, 1.0f);
             }
             catch
             {
             }
-        }
-
-        private static Sprite CreateExplosionSprite()
-        {
-            if (cachedExplosionSprite != null)
-            {
-                return cachedExplosionSprite;
-            }
-
-            int size = 64;
-            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            Color[] pixels = new Color[size * size];
-            float center = size / 2f;
-            float maxDist = center;
-
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
-                    float alpha = Mathf.Clamp01(1f - dist / maxDist);
-                    alpha = Mathf.Pow(alpha, 0.5f);
-                    pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-            cachedExplosionSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
-            return cachedExplosionSprite;
         }
     }
 
@@ -614,6 +632,37 @@ namespace BossRush
             }
 
             float horizontalSpeed = distance / totalTime;
+            return direction * horizontalSpeed + Vector3.up * verticalSpeed;
+        }
+
+        public static Vector3 CalculateLaunchVelocityWithFixedTime(Vector3 start, Vector3 target, float fixedTime)
+        {
+            float gravity = Mathf.Max(Physics.gravity.magnitude, 0.001f);
+
+            Vector3 startFlat = start;
+            startFlat.y = 0f;
+
+            Vector3 targetFlat = target;
+            targetFlat.y = 0f;
+
+            Vector3 direction = targetFlat - startFlat;
+            float distance = direction.magnitude;
+            if (distance > 0.001f)
+            {
+                direction /= distance;
+            }
+            else
+            {
+                direction = Vector3.zero;
+            }
+
+            float horizontalSpeed = distance / fixedTime;
+            
+            // h = v0*t + 0.5*a*t^2 => v0 = (h - 0.5*a*t^2)/t
+            float heightDiff = target.y - start.y;
+            // gravity is positive magnitude, but acts negatively on y
+            float verticalSpeed = (heightDiff - 0.5f * (-gravity) * fixedTime * fixedTime) / fixedTime;
+
             return direction * horizontalSpeed + Vector3.up * verticalSpeed;
         }
 

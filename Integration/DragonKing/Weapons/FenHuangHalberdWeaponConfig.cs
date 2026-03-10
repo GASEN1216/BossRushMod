@@ -69,6 +69,13 @@ namespace BossRush
 
                 // 6. 修复运动模糊（禁用 MotionVector 使武器不会在移动时模糊）
                 DisableMotionBlur(item.gameObject);
+                
+                // 获取实际的 3D 模型 Agent 并修复它的渲染属性
+                if (EquipmentFactory.GetLoadedModels().TryGetValue(item.TypeID, out ItemAgent modelAgent))
+                {
+                    DisableMotionBlur(modelAgent.gameObject);
+                    FixModelGraphics(modelAgent.gameObject);
+                }
 
                 ModBehaviour.DevLog("[FenHuangHalberd] 焚皇断界戟配置完成 (TypeID=" + item.TypeID + ")");
                 return true;
@@ -280,6 +287,62 @@ namespace BossRush
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// 强制设置近战武器模型的 Layer 和 Shader，使其与原版武器表现一致
+        /// </summary>
+        private static void FixModelGraphics(GameObject go)
+        {
+            try
+            {
+                // 设置 Layer 为第一人称角色层（通常是 9）
+                SetLayerRecursively(go, 9);
+                
+                // 强制使用游戏原版 Shader
+                Shader gameShader = Shader.Find("SodaCraft/SodaCharacter");
+                if (gameShader != null)
+                {
+                    Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+                    foreach (Renderer r in renderers)
+                    {
+                        if (r.sharedMaterials != null)
+                        {
+                            foreach (Material mat in r.sharedMaterials)
+                            {
+                                if (mat != null && mat.shader != null)
+                                {
+                                    string oldShaderName = mat.shader.name;
+                                    // 替换常见的标准或者 lit shader
+                                    if (oldShaderName.Contains("Standard") || 
+                                        oldShaderName.Contains("Lit") ||
+                                        oldShaderName.Contains("Universal"))
+                                    {
+                                        mat.shader = gameShader;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] FixModelGraphics 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 递归设置 GameObject 及其子物体的 Layer
+        /// </summary>
+        private static void SetLayerRecursively(GameObject go, int layer)
+        {
+            if (go == null) return;
+            go.layer = layer;
+            foreach (Transform child in go.transform)
+            {
+                SetLayerRecursively(child.gameObject, layer);
+            }
         }
     }
 }

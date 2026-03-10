@@ -533,7 +533,8 @@ namespace BossRush
                 forward.Normalize();
 
                 Vector3 spawnPos = socket != null ? socket.position : character.transform.position + Vector3.up * 1.1f;
-                spawnPos += forward * 0.6f;
+                // 将特效往后挪，原先是 0.6f，现在改为 0.15f，使其更靠近玩家
+                spawnPos += forward * 0.15f;
 
                 Quaternion rotation = Quaternion.LookRotation(forward);
                 GameObject fx = new GameObject("FenHuang_SwingFX");
@@ -797,54 +798,101 @@ namespace BossRush
     {
         private float elapsed;
         private float duration = 0.2f;
-        private Light pointLight;
-        private Material coreMaterial;
-        private Transform coreRoot;
+        private Transform trailRoot;
+        private GameObject blurObj; // 保存运动节点的引用，用于在 Update 中控制粒子
+        private ParticleSystem[] injectedParticles;
+        
+        // Parameters for swing motion
+        private float startAngle;
+        private float sweepAngle;
 
         public void Initialize(int step)
         {
-            duration = 0.2f;
+            duration = 0.22f; // Matches Destroy delay
             Color color = GetStepColor(step);
 
-            if (coreRoot == null)
+            // Determine sweep angles per combo step
+            switch (step)
             {
-                coreRoot = new GameObject("SwingCore").transform;
-                coreRoot.SetParent(transform, false);
-
-                GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                sphere.transform.SetParent(coreRoot, false);
-                sphere.transform.localPosition = Vector3.zero;
-                sphere.transform.localScale = new Vector3(1.4f, 0.35f, 1.9f);
-                UnityEngine.Object.Destroy(sphere.GetComponent<Collider>());
-
-                Shader shader = Shader.Find("Sprites/Default");
-                if (shader == null)
-                {
-                    shader = Shader.Find("Unlit/Color");
-                }
-                if (shader == null)
-                {
-                    shader = Shader.Find("Standard");
-                }
-
-                coreMaterial = new Material(shader);
-                Renderer renderer = sphere.GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.material = coreMaterial;
-                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                    renderer.receiveShadows = false;
-                }
-
-                pointLight = gameObject.AddComponent<Light>();
-                pointLight.type = LightType.Point;
-                pointLight.range = 2.4f;
-                pointLight.shadows = LightShadows.None;
+                case 1: // Step 2: Uppercut
+                    startAngle = -45f;
+                    sweepAngle = FenHuangHalberdConfig.Combo2Angle;
+                    break;
+                case 2: // Step 3: Heavy Chop
+                    startAngle = -60f;
+                    sweepAngle = FenHuangHalberdConfig.Combo3Angle;
+                    break;
+                default: // Step 1: Sweep
+                    startAngle = -75f;
+                    sweepAngle = FenHuangHalberdConfig.Combo1Angle;
+                    break;
             }
 
-            coreMaterial.color = color;
-            pointLight.color = color;
-            pointLight.intensity = 4.5f;
+            if (trailRoot == null)
+            {
+                trailRoot = new GameObject("SwingTrailPivot").transform;
+                trailRoot.SetParent(transform, false);
+                trailRoot.localPosition = Vector3.zero;
+                
+                // Set initial rotation based on start angle
+                trailRoot.localRotation = Quaternion.Euler(0f, startAngle, 0f);
+
+                blurObj = new GameObject("TrailNode");
+                blurObj.transform.SetParent(trailRoot, false);
+                
+                // 将拖尾特效节点稍微往后拉，也就是减小它相对角色前方的 Z 轴偏移。
+                // 这样特效轨迹就会更加贴合武器的实际攻击判定范围，不会出现“火烧到怪了但没掉血”的情况
+                blurObj.transform.localPosition = new Vector3(0f, 0f, 1.5f);
+
+                // =========== 核心复用：使用龙息武器的火焰特效投射到挥击节点 ===========
+                // DragonBreathWeaponConfig.TryAddFireEffectsToGraphic 会自动找到火 AK-47，
+                // 并将 Smoke, Spark 和 SodaPointLight 复制并作为 blurObj 的子物体
+                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(blurObj);
+
+                // 修改粒子的模拟空间为 World，这样才能挥击出拖尾效果（而不是一坨火跟着转）
+                // 并且将颜色染成对应的段数颜色
+                injectedParticles = blurObj.GetComponentsInChildren<ParticleSystem>(true);
+                foreach (var ps in injectedParticles)
+                {
+                    var main = ps.main;
+                    main.simulationSpace = ParticleSystemSimulationSpace.World;
+                    
+                    // 强制覆盖颜色，同时保持粒子的亮度
+                    main.startColor = new ParticleSystem.MinMaxGradient(color);
+                    
+                    // 为了让原生枪械的“环境小火苗”变成巨大的“挥击特效拖尾”，必须魔改参数：
+                    // 1. 停留时间缩短，符合挥击动作
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(0.15f, 0.35f);
+                    
+                    // 2. 移除初始速度，让火焰留在挥砍轨迹上，而不是向外喷射
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 0.8f);
+                    
+                    // 3. 放大粒子体积，但避免过于遮挡视线
+                    main.startSizeMultiplier *= 1.8f;
+
+                    // 4. 最重要：原版火焰是靠时间生成的 (rateOverTime)。
+                    // 我们挥砍极快（0.2秒），必须改为根据移动距离生成 (rateOverDistance)！
+                    // 降低密度，否则太密会遮挡屏幕
+                    var em = ps.emission;
+                    em.rateOverDistance = new ParticleSystem.MinMaxCurve(15f);
+                    // 稍微保留一点时间生成，防止停顿时断火
+                    em.rateOverTime = new ParticleSystem.MinMaxCurve(10f);
+
+                    // 重新播放
+                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    ps.Play(true);
+                }
+
+                // 尝试抓取刚才注入的 SodaPointLight 改变颜色并适当缩减范围避免过曝
+                Light[] injectedLights = blurObj.GetComponentsInChildren<Light>(true);
+                foreach (var l in injectedLights)
+                {
+                    l.color = color;
+                    l.range = 3.0f;
+                    l.intensity = 2.0f;
+                }
+            }
+            
             elapsed = 0f;
         }
 
@@ -852,33 +900,30 @@ namespace BossRush
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-            float scale = Mathf.Lerp(0.7f, 1.7f, t);
 
-            if (coreRoot != null)
+            // Rotate the pivot to move the trail in an arc
+            if (trailRoot != null)
             {
-                coreRoot.localScale = new Vector3(scale, 1f, scale);
+                // Ease out cubic
+                float easeT = 1f - Mathf.Pow(1f - t, 3f);
+                float currentAngle = startAngle + sweepAngle * easeT;
+                trailRoot.localRotation = Quaternion.Euler(0f, currentAngle, 0f);
             }
 
-            if (coreMaterial != null)
+            if (injectedParticles != null && t >= 0.8f) // 动作接近尾声时停止发射
             {
-                Color color = coreMaterial.color;
-                color.a = Mathf.Lerp(0.85f, 0f, t);
-                coreMaterial.color = color;
-            }
-
-            if (pointLight != null)
-            {
-                pointLight.intensity = Mathf.Lerp(4.5f, 0f, t);
-            }
-        }
-
-        private void OnDestroy()
-        {
-            if (coreMaterial != null)
-            {
-                UnityEngine.Object.Destroy(coreMaterial);
+                foreach (var ps in injectedParticles)
+                {
+                    if (ps != null && ps.isPlaying)
+                    {
+                        var em = ps.emission;
+                        em.enabled = false;
+                    }
+                }
             }
         }
+
+            // Fire effect components will be destroyed automatically with the GameObject
 
         private static Color GetStepColor(int step)
         {
