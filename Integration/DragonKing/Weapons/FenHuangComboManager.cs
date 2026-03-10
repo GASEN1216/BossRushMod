@@ -284,13 +284,19 @@ namespace BossRush
 
             DragonFlameMarkTracker.AddMark(receiver);
 
+            // 所有段数都施加火焰伤害 + 灼烧 Buff
+            ApplyFireDamage(receiver, attacker);
+            ApplyBurnBuff(receiver, attacker);
+
             if (state.Step == 1)
             {
-                ApplyKnockback(receiver.transform, attacker, FenHuangHalberdConfig.Combo2KnockbackDistance);
+                // 第二段：向上挑飞
+                ApplyLaunch(receiver.transform, attacker, FenHuangHalberdConfig.Combo2LaunchHeight);
             }
             else if (state.Step == 2)
             {
-                ApplyBurnBuff(receiver, attacker);
+                // 第三段：向玩家拉扯
+                ApplyPull(receiver.transform, attacker, FenHuangHalberdConfig.Combo3PullDistance);
             }
         }
 
@@ -311,43 +317,98 @@ namespace BossRush
             return health.GetComponentInChildren<DamageReceiver>();
         }
 
-        internal static float GetComboConfiguredDamage(int step)
+        internal static float GetComboConfiguredDamage(int step, float baseDamage)
         {
             switch (step)
             {
                 case 0:
-                    return FenHuangHalberdConfig.Combo1Damage;
+                    return baseDamage;
                 case 1:
-                    return FenHuangHalberdConfig.Combo2Damage;
+                    return baseDamage * 1.3f; // 1.3倍伤害
                 case 2:
-                    return FenHuangHalberdConfig.Combo3Damage;
+                    return baseDamage * 1.8f; // 1.8倍伤害并且有火
                 default:
-                    return FenHuangHalberdConfig.Combo1Damage;
+                    return baseDamage;
             }
         }
 
-        private static void ApplyKnockback(Transform target, CharacterMainControl holder, float distance)
+        internal static float GetComboConfiguredRange(int step, float baseRange)
+        {
+            switch (step)
+            {
+                case 0:
+                    return FenHuangHalberdConfig.Combo1Range;
+                case 1:
+                    return FenHuangHalberdConfig.Combo2Range;
+                case 2:
+                    return FenHuangHalberdConfig.Combo3Range;
+                default:
+                    return baseRange;
+            }
+        }
+
+        private static void ApplyPull(Transform target, CharacterMainControl holder, float distance)
         {
             try
             {
-                Vector3 knockDir = target.position - holder.transform.position;
-                knockDir.y = 0f;
-                knockDir.Normalize();
-
                 CharacterMainControl targetChar = target.GetComponentInParent<CharacterMainControl>();
-                if (targetChar != null)
+                if (targetChar == null)
                 {
-                    targetChar.SetForceMoveVelocity(knockDir * distance * 5f);
-                    if (FenHuangComboManager.Instance != null)
-                    {
-                        FenHuangComboManager.Instance.StartCoroutine(
-                            StopKnockbackCoroutine(targetChar, 0.2f)
-                        );
-                    }
+                    return;
+                }
+
+                // 方向：从目标指向玩家（拉扯）
+                Vector3 pullDir = holder.transform.position - target.position;
+                pullDir.y = 0f;
+                pullDir.Normalize();
+
+                if (FenHuangComboManager.Instance != null)
+                {
+                    FenHuangComboManager.Instance.StartCoroutine(
+                        PullCoroutine(targetChar, distance, pullDir)
+                    );
                 }
             }
             catch
             {
+            }
+        }
+
+        private static System.Collections.IEnumerator PullCoroutine(
+            CharacterMainControl target, float distance, Vector3 direction)
+        {
+            if (target == null) yield break;
+
+            float duration = 0.2f; // 快速拉扯
+            float elapsed = 0f;
+            Vector3 startPos = target.transform.position;
+
+            while (elapsed < duration && target != null)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // 使用缓动函数，一开始快，后面慢（Ease Out）
+                float easeT = 1f - Mathf.Pow(1f - t, 3f);
+                float currentDist = distance * easeT;
+
+                Vector3 newPos = startPos + direction * currentDist;
+
+                try
+                {
+                    target.SetPosition(newPos);
+                }
+                catch
+                {
+                    target.transform.position = newPos;
+                }
+
+                yield return null;
+            }
+
+            if (target != null)
+            {
+                target.SetForceMoveVelocity(Vector3.zero);
             }
         }
 
@@ -357,6 +418,136 @@ namespace BossRush
             if (target != null)
             {
                 target.SetForceMoveVelocity(Vector3.zero);
+            }
+        }
+
+        private static void ApplyLaunch(Transform target, CharacterMainControl holder, float height)
+        {
+            try
+            {
+                CharacterMainControl targetChar = target.GetComponentInParent<CharacterMainControl>();
+                if (targetChar == null)
+                {
+                    return;
+                }
+
+                // 尝试暂停敌人的地面约束，防止移动系统每帧把它拉回地面
+                TryPauseEnemyGroundConstraint(targetChar, 0.8f);
+
+                if (FenHuangComboManager.Instance != null)
+                {
+                    Vector3 knockDir = target.position - holder.transform.position;
+                    knockDir.y = 0f;
+                    knockDir.Normalize();
+
+                    FenHuangComboManager.Instance.StartCoroutine(
+                        LaunchCoroutine(targetChar, height, knockDir)
+                    );
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        /// <summary>
+        /// 通过直接操纵位置实现挑飞效果（抛物线轨迹）
+        /// </summary>
+        private static System.Collections.IEnumerator LaunchCoroutine(
+            CharacterMainControl target, float height, Vector3 horizontalDir)
+        {
+            if (target == null) yield break;
+
+            float duration = 0.6f; // 挑飞总时长
+            float elapsed = 0f;
+            Vector3 startPos = target.transform.position;
+            float horizontalDist = 1.0f; // 向前推一小段距离
+
+            while (elapsed < duration && target != null)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // 抛物线：y = 4h * t * (1-t)，在 t=0.5 时达到最高点 h
+                float yOffset = 4f * height * t * (1f - t);
+                float xOffset = horizontalDist * t;
+
+                Vector3 newPos = startPos + Vector3.up * yOffset + horizontalDir * xOffset;
+
+                // 直接设置目标位置
+                try
+                {
+                    target.SetPosition(newPos);
+                }
+                catch
+                {
+                    target.transform.position = newPos;
+                }
+
+                yield return null;
+            }
+
+            // 落地后清零速度
+            if (target != null)
+            {
+                target.SetForceMoveVelocity(Vector3.zero);
+            }
+        }
+
+        /// <summary>
+        /// 通过反射暂停敌人的地面约束（缓存 MethodInfo 避免重复反射）
+        /// </summary>
+        private static MethodInfo cachedPauseGroundConstraintMethod;
+        private static bool pauseMethodCached;
+
+        private static void TryPauseEnemyGroundConstraint(CharacterMainControl character, float duration)
+        {
+            try
+            {
+                if (character == null || character.movementControl == null)
+                {
+                    return;
+                }
+
+                var movementControl = character.movementControl;
+
+                if (!pauseMethodCached)
+                {
+                    cachedPauseGroundConstraintMethod = movementControl.GetType().GetMethod(
+                        "PauseGroundConstraint",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    pauseMethodCached = true;
+                }
+
+                if (cachedPauseGroundConstraintMethod != null)
+                {
+                    cachedPauseGroundConstraintMethod.Invoke(movementControl, new object[] { duration });
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static void ApplyFireDamage(DamageReceiver receiver, CharacterMainControl fromCharacter)
+        {
+            try
+            {
+                if (receiver.health == null || receiver.health.IsDead)
+                {
+                    return;
+                }
+
+                DamageInfo fireDmg = new DamageInfo(fromCharacter);
+                fireDmg.damageValue = FenHuangHalberdConfig.ComboFireDamageBonus;
+                fireDmg.damageType = DamageTypes.normal;
+                fireDmg.damagePoint = receiver.transform.position;
+                fireDmg.isFromBuffOrEffect = true;
+                fireDmg.AddElementFactor(ElementTypes.fire, 1f);
+                receiver.health.Hurt(fireDmg);
+            }
+            catch
+            {
             }
         }
 
@@ -389,7 +580,7 @@ namespace BossRush
             }
 
             combo3BurnBuff = UnityEngine.Object.Instantiate(baseBurn);
-            ApplyBuffLifetime(combo3BurnBuff, FenHuangHalberdConfig.Combo3BurnDuration);
+            ApplyBuffLifetime(combo3BurnBuff, FenHuangHalberdConfig.ComboBurnDuration);
             return combo3BurnBuff;
         }
 
@@ -503,9 +694,47 @@ namespace BossRush
                 combo.RegisterAttack(character, effectStep);
                 combo.AdvanceCombo();
                 SpawnSwingEffect(character, effectStep);
+                ApplyAnimationTilt(character, effectStep);
             }
             catch
             {
+            }
+        }
+
+        private static void ApplyAnimationTilt(CharacterMainControl character, int step)
+        {
+            if (character == null || character.CurrentHoldItemAgent == null) return;
+            
+            // 每次攻击时附加动画补偿器
+            FenHuangAnimationModifier modifier = character.CurrentHoldItemAgent.gameObject.GetComponent<FenHuangAnimationModifier>();
+            if (modifier == null)
+            {
+                modifier = character.CurrentHoldItemAgent.gameObject.AddComponent<FenHuangAnimationModifier>();
+            }
+
+            // 不改模型根节点，只改变武器模型本地的空间扭曲
+            Transform targetBone = character.CurrentHoldItemAgent.transform;
+
+            if (targetBone == null)
+            {
+                return;
+            }
+
+            // 原始动画是水平挥击 (Yaw轴)
+            // step 0: 正常横扫，无需倾斜
+            if (step == 0)
+            {
+                modifier.ApplyTilt(targetBone, Vector3.zero, 0.25f);
+            }
+            // step 1: 变成垂直下劈 (原先是第三段)
+            else if (step == 1)
+            {
+                modifier.ApplyTilt(targetBone, new Vector3(-80f, 0f, 60f), 0.35f);
+            }
+            // step 2: 变成右下到左上斜劈 (原先是第二段)
+            else if (step == 2)
+            {
+                modifier.ApplyTilt(targetBone, new Vector3(-35f, 0f, -40f), 0.35f);
             }
         }
 
@@ -513,16 +742,9 @@ namespace BossRush
         {
             try
             {
-                Transform socket = null;
-                if (character.characterModel != null)
-                {
-                    socket = character.characterModel.MeleeWeaponSocket;
-                    if (socket == null)
-                    {
-                        socket = character.characterModel.RightHandSocket;
-                    }
-                }
-
+                // 固定特效生成中心点：人物坐标 + 高度偏移 + 向前少许偏移。
+                // 彻底不依赖武器Socket的位置，因为武器会在不同段数被倾斜，Socket会乱跑
+                // 保证三段式特效围绕统一个圆心爆发，视觉上才是一个完美的定点连招
                 Vector3 forward = character.CurrentAimDirection;
                 forward.y = 0f;
                 if (forward.sqrMagnitude < 0.001f)
@@ -532,11 +754,24 @@ namespace BossRush
                 }
                 forward.Normalize();
 
-                Vector3 spawnPos = socket != null ? socket.position : character.transform.position + Vector3.up * 1.1f;
-                // 将特效往后挪，原先是 0.6f，现在改为 0.15f，使其更靠近玩家
-                spawnPos += forward * 0.15f;
+                // 统一的特效发生位置：胸口高度，稍微靠前
+                Vector3 spawnPos = character.transform.position + Vector3.up * 1.1f + forward * 0.15f;
+                // 第二段和第三段高度下降 1.1m（即贴地）
+                if (step == 1 || step == 2)
+                {
+                    spawnPos.y -= 1.1f;
+                }
 
                 Quaternion rotation = Quaternion.LookRotation(forward);
+                Vector3 currentTilt = Vector3.zero;
+                
+                // 将特效的角度跟随着武器段数的互换一起互换
+                if (step == 1) currentTilt = new Vector3(-80f, 0f, 60f);       // 垂直下劈
+                else if (step == 2) currentTilt = new Vector3(-35f, 0f, -40f); // 右下到左上
+                
+                // 将特效的整体旋转也加上这个倾斜角 (应用在局部空间)
+                rotation = rotation * Quaternion.Euler(currentTilt);
+
                 GameObject fx = new GameObject("FenHuang_SwingFX");
                 fx.transform.position = spawnPos;
                 fx.transform.rotation = rotation;
@@ -556,54 +791,53 @@ namespace BossRush
     /// 焚皇断界戟命中后根据当前连招段数施加附加效果
     /// 性能：非焚皇断界戟时直接返回，不影响其他近战武器
     /// </summary>
-        [HarmonyPatch(typeof(ItemAgent_MeleeWeapon), "CheckAndDealDamage")]
+    [HarmonyPatch(typeof(ItemAgent_MeleeWeapon), "CheckAndDealDamage")]
     public static class FenHuangComboDamagePatch
     {
         private static readonly Dictionary<int, float> originalDamageValues = new Dictionary<int, float>();
+        private static readonly Dictionary<int, float> originalRangeValues = new Dictionary<int, float>();
         private static readonly int damageStatHash = "Damage".GetHashCode();
+        private static readonly int attackRangeStatHash = "AttackRange".GetHashCode();
 
         [HarmonyPrefix]
         public static void Prefix(ItemAgent_MeleeWeapon __instance)
         {
             try
             {
-                if (__instance == null)
-                {
-                    return;
-                }
-
+                if (__instance == null) return;
                 Item item = __instance.Item;
-                if (item == null || item.TypeID != FenHuangHalberdIds.WeaponTypeId)
-                {
-                    return;
-                }
+                if (item == null || item.TypeID != FenHuangHalberdIds.WeaponTypeId) return;
 
                 CharacterMainControl holder = __instance.Holder;
                 FenHuangComboManager combo = FenHuangComboManager.Instance;
-                if (holder == null || combo == null)
-                {
-                    return;
-                }
+                if (holder == null || combo == null) return;
 
                 int step;
-                if (!combo.TryGetActiveAttackStep(holder, out step))
-                {
-                    return;
-                }
-
-                Stat damageStat = item.GetStat(damageStatHash);
-                if (damageStat == null)
-                {
-                    return;
-                }
+                if (!combo.TryGetActiveAttackStep(holder, out step)) return;
 
                 int meleeId = __instance.GetInstanceID();
-                if (!originalDamageValues.ContainsKey(meleeId))
+
+                // 动态修改基础伤害
+                Stat damageStat = item.GetStat(damageStatHash);
+                if (damageStat != null)
                 {
-                    originalDamageValues[meleeId] = damageStat.BaseValue;
+                    if (!originalDamageValues.ContainsKey(meleeId))
+                    {
+                        originalDamageValues[meleeId] = damageStat.BaseValue;
+                    }
+                    damageStat.BaseValue = FenHuangComboManager.GetComboConfiguredDamage(step, originalDamageValues[meleeId]);
                 }
 
-                damageStat.BaseValue = FenHuangComboManager.GetComboConfiguredDamage(step);
+                // 动态修改攻击范围
+                Stat rangeStat = item.GetStat(attackRangeStatHash);
+                if (rangeStat != null)
+                {
+                    if (!originalRangeValues.ContainsKey(meleeId))
+                    {
+                        originalRangeValues[meleeId] = rangeStat.BaseValue;
+                    }
+                    rangeStat.BaseValue = FenHuangComboManager.GetComboConfiguredRange(step, originalRangeValues[meleeId]);
+                }
             }
             catch
             {
@@ -618,35 +852,33 @@ namespace BossRush
 
         private static void RestoreDamage(ItemAgent_MeleeWeapon melee)
         {
-            if (melee == null)
-            {
-                return;
-            }
+            if (melee == null) return;
 
             int meleeId = melee.GetInstanceID();
-            float originalDamage;
-            if (!originalDamageValues.TryGetValue(meleeId, out originalDamage))
-            {
-                return;
-            }
-
-            originalDamageValues.Remove(meleeId);
-
             try
             {
                 Item item = melee.Item;
-                if (item == null)
+                if (item == null) return;
+
+                if (originalDamageValues.TryGetValue(meleeId, out float originalDamage))
                 {
-                    return;
+                    Stat damageStat = item.GetStat(damageStatHash);
+                    if (damageStat != null)
+                    {
+                        damageStat.BaseValue = originalDamage;
+                    }
+                    originalDamageValues.Remove(meleeId);
                 }
 
-                Stat damageStat = item.GetStat(damageStatHash);
-                if (damageStat == null)
+                if (originalRangeValues.TryGetValue(meleeId, out float originalRange))
                 {
-                    return;
+                    Stat rangeStat = item.GetStat(attackRangeStatHash);
+                    if (rangeStat != null)
+                    {
+                        rangeStat.BaseValue = originalRange;
+                    }
+                    originalRangeValues.Remove(meleeId);
                 }
-
-                damageStat.BaseValue = originalDamage;
             }
             catch
             {
@@ -814,13 +1046,13 @@ namespace BossRush
             // Determine sweep angles per combo step
             switch (step)
             {
-                case 1: // Step 2: Uppercut
-                    startAngle = -45f;
-                    sweepAngle = FenHuangHalberdConfig.Combo2Angle;
-                    break;
-                case 2: // Step 3: Heavy Chop
+                case 1: // Step 2: Heavy Chop (was Step 3)
                     startAngle = -60f;
                     sweepAngle = FenHuangHalberdConfig.Combo3Angle;
+                    break;
+                case 2: // Step 3: Uppercut (was Step 2)
+                    startAngle = -45f;
+                    sweepAngle = FenHuangHalberdConfig.Combo2Angle;
                     break;
                 default: // Step 1: Sweep
                     startAngle = -75f;
@@ -923,18 +1155,76 @@ namespace BossRush
             }
         }
 
-            // Fire effect components will be destroyed automatically with the GameObject
-
         private static Color GetStepColor(int step)
         {
             switch (step)
             {
-                case 1:
-                    return new Color(1f, 0.6f, 0.18f, 0.85f);
+                case 1: 
+                    return new Color(1f, 0.25f, 0.08f, 0.9f); // 原本 case 2 的颜色
                 case 2:
-                    return new Color(1f, 0.25f, 0.08f, 0.9f);
+                    return new Color(1f, 0.6f, 0.18f, 0.85f); // 原本 case 1 的颜色
                 default:
                     return new Color(1f, 0.45f, 0.12f, 0.85f);
+            }
+        }
+    }
+
+    // ========================================================================
+    // 新增：动态修改连招动画角度的组件
+    // ========================================================================
+    /// <summary>
+    /// 用于动态修改连招动画角度的组件
+    /// </summary>
+    public class FenHuangAnimationModifier : MonoBehaviour
+    {
+        private Vector3 targetTiltEuler;
+        private float duration;
+        private float elapsed;
+
+        private Transform targetBone;
+        private Coroutine tiltCoroutine;
+
+        public void ApplyTilt(Transform bone, Vector3 eulerOffset, float dur)
+        {
+            if (bone == null) return;
+            this.targetBone = bone;
+            this.targetTiltEuler = eulerOffset;
+            this.duration = dur;
+            this.elapsed = 0f;
+
+            if (tiltCoroutine != null) StopCoroutine(tiltCoroutine);
+            tiltCoroutine = StartCoroutine(TiltRoutine());
+        }
+
+        // 使用 Coroutine 和 WaitForEndOfFrame 确保在 Animator 和所有 IK 结算之后强压动作
+        private System.Collections.IEnumerator TiltRoutine()
+        {
+            while (elapsed <= duration)
+            {
+                // 等待当前帧所有的 Update, LateUpdate, 动画计算, IK结算全部完成
+                yield return new WaitForEndOfFrame();
+                
+                if (targetBone == null) yield break;
+
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                if (t > 1f) t = 1f;
+
+                // 使用简易的抛物线 f(t) = 4 * t * (1 - t)
+                float weight = 4f * t * (1f - t);
+
+                if (targetTiltEuler.sqrMagnitude < 0.1f)
+                {
+                    continue;
+                }
+
+                // 计算当前该有的偏移旋转
+                Quaternion targetOffset = Quaternion.Euler(targetTiltEuler);
+                Quaternion currentOffset = Quaternion.Slerp(Quaternion.identity, targetOffset, weight);
+
+                // 在当前实际被动画系统结算完了的 localRotation 之上强行扭转
+                // 因为是 WaitForEndOfFrame，这个修改会直接被提交给渲染管线，必定视觉生效
+                targetBone.localRotation = targetBone.localRotation * currentOffset;
             }
         }
     }

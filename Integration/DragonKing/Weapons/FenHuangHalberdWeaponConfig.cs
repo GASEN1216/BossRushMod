@@ -33,7 +33,7 @@ namespace BossRush
         private const float STAT_CRIT_RATE = 0.10f;
         private const float STAT_CRIT_DAMAGE_FACTOR = 2.0f;
         private const float STAT_ARMOR_PIERCING = 6f;
-        private const float STAT_ATTACK_SPEED = 1.4f;
+        private const float STAT_ATTACK_SPEED = 2.2f;
         private const float STAT_ATTACK_RANGE = 2.5f;
         private const float STAT_DEAL_DAMAGE_TIME = 0.12f;
         private const float STAT_STAMINA_COST = 10f;
@@ -121,7 +121,7 @@ namespace BossRush
             stats.Add(new Stat("DealDamageTime", STAT_DEAL_DAMAGE_TIME, false));
             stats.Add(new Stat("StaminaCost", STAT_STAMINA_COST, true));
             stats.Add(new Stat("BleedChance", STAT_BLEED_CHANCE, true));
-            stats.Add(new Stat("MoveSpeedMultiplier", STAT_MOVE_SPEED_MULTIPLIER, false));
+            stats.Add(new Stat("MoveSpeedMultiplier", STAT_MOVE_SPEED_MULTIPLIER, true));
 
             ModBehaviour.DevLog("[FenHuangHalberd] 已添加 11 个近战 Stats");
         }

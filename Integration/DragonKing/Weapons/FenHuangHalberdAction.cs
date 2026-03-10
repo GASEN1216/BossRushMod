@@ -18,7 +18,6 @@ namespace BossRush
 
         private static readonly Collider[] hitBuffer = new Collider[24];
         private static FenHuangHalberdConfig configInstance;
-        private static Sprite cachedExplosionSprite;
 
         private readonly HashSet<int> detonatedTargets = new HashSet<int>();
 
