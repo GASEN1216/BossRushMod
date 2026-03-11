@@ -16,6 +16,7 @@ namespace BossRush
             Recovery
         }
 
+        private const float LeapArcHeight = 3.5f;
         private static readonly Collider[] hitBuffer = new Collider[24];
         private static FenHuangHalberdConfig configInstance;
 
@@ -70,19 +71,7 @@ namespace BossRush
                 return false;
             }
 
-            ItemAgent_MeleeWeapon melee = characterController.GetMeleeWeapon();
-            if (melee != null && melee.Item != null)
-            {
-                return melee.Item.TypeID == FenHuangHalberdIds.WeaponTypeId;
-            }
-
-            var holdItemAgent = characterController.CurrentHoldItemAgent;
-            if (holdItemAgent != null && holdItemAgent.Item != null)
-            {
-                return holdItemAgent.Item.TypeID == FenHuangHalberdIds.WeaponTypeId;
-            }
-
-            return leapTargetPrepared;
+            return IsHoldingHalberd(characterController);
         }
 
         protected override bool OnAbilityStart()
@@ -230,7 +219,7 @@ namespace BossRush
             
             // Sine wave vertical interpolation for a forced 3.5 meter jump height
             float baseHeight = Mathf.Lerp(leapStartPoint.y, leapTargetPoint.y, t);
-            float jumpOffset = Mathf.Sin(t * Mathf.PI) * 3.5f;
+            float jumpOffset = Mathf.Sin(t * Mathf.PI) * LeapArcHeight;
             
             Vector3 position = currentFlat + Vector3.up * (baseHeight + jumpOffset);
 
@@ -365,13 +354,13 @@ namespace BossRush
                         continue;
                     }
 
-                    DamageReceiver receiver = col.GetComponent<DamageReceiver>();
+                    DamageReceiver receiver = TryGetDamageReceiver(col);
                     if (receiver == null)
                     {
                         continue;
                     }
 
-                    if (!Team.IsEnemy(Teams.player, receiver.Team))
+                    if (!IsEnemyReceiver(receiver))
                     {
                         continue;
                     }
@@ -382,13 +371,12 @@ namespace BossRush
                         continue;
                     }
 
-                    int markCount = DragonFlameMarkTracker.GetMarkCount(receiver);
-                    if (markCount <= 0)
+                    if (DragonFlameMarkTracker.GetMarkCount(receiver) <= 0)
                     {
                         continue;
                     }
 
-                    TriggerDetonation(receiver, markCount);
+                    TriggerDetonation(receiver);
                     detonatedTargets.Add(targetId);
                 }
             }
@@ -398,7 +386,7 @@ namespace BossRush
             }
         }
 
-        private void TriggerDetonation(DamageReceiver target, int markCount)
+        private void TriggerDetonation(DamageReceiver target)
         {
             try
             {
@@ -465,10 +453,10 @@ namespace BossRush
                     Collider col = hitBuffer[i];
                     if (col == null) continue;
 
-                    DamageReceiver receiver = col.GetComponent<DamageReceiver>();
+                    DamageReceiver receiver = TryGetDamageReceiver(col);
                     if (receiver == null) continue;
 
-                    if (!Team.IsEnemy(Teams.player, receiver.Team)) continue;
+                    if (!IsEnemyReceiver(receiver)) continue;
 
                     if (receiver.health == null || receiver.health.IsDead) continue;
 
@@ -521,6 +509,58 @@ namespace BossRush
             {
                 LogIfVerbose("加载龙王特效资源失败: " + e.Message);
             }
+        }
+
+        private bool IsEnemyReceiver(DamageReceiver receiver)
+        {
+            if (receiver == null)
+            {
+                return false;
+            }
+
+            Teams attackerTeam = characterController != null ? characterController.Team : Teams.player;
+            return Team.IsEnemy(attackerTeam, receiver.Team);
+        }
+
+        private static bool IsHoldingHalberd(CharacterMainControl character)
+        {
+            if (character == null)
+            {
+                return false;
+            }
+
+            ItemAgent_MeleeWeapon melee = character.GetMeleeWeapon();
+            if (melee != null && melee.Item != null && melee.Item.TypeID == FenHuangHalberdIds.WeaponTypeId)
+            {
+                return true;
+            }
+
+            var holdItemAgent = character.CurrentHoldItemAgent;
+            return holdItemAgent != null &&
+                   holdItemAgent.Item != null &&
+                   holdItemAgent.Item.TypeID == FenHuangHalberdIds.WeaponTypeId;
+        }
+
+        private static DamageReceiver TryGetDamageReceiver(Collider col)
+        {
+            if (col == null)
+            {
+                return null;
+            }
+
+            DamageReceiver receiver = col.GetComponent<DamageReceiver>();
+            if (receiver != null)
+            {
+                return receiver;
+            }
+
+            receiver = col.GetComponentInParent<DamageReceiver>();
+            if (receiver != null)
+            {
+                return receiver;
+            }
+
+            return col.GetComponentInChildren<DamageReceiver>();
         }
 
         private static void CreateDetonationEffect(Vector3 position)

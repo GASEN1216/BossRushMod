@@ -257,9 +257,7 @@ namespace BossRush
 
             if (previewObject != null)
             {
-                Destroy(previewObject);
-                previewObject = null;
-                previewController = null;
+                previewObject.SetActive(false);
             }
         }
 
@@ -267,6 +265,7 @@ namespace BossRush
         {
             if (previewObject != null && previewController != null)
             {
+                previewObject.SetActive(true);
                 return;
             }
 
@@ -720,6 +719,7 @@ namespace BossRush
         private SpriteRenderer banIconRenderer;
         private Texture2D banTexture;
         private static Texture2D cachedBanTexture;
+        private static bool banTextureLoadAttempted;
 
         public void Initialize()
         {
@@ -852,6 +852,11 @@ namespace BossRush
                 return;
             }
 
+            if (banTextureLoadAttempted)
+            {
+                return;
+            }
+
             try
             {
                 string modPath = ModBehaviour.GetModPath();
@@ -859,6 +864,8 @@ namespace BossRush
                 {
                     return;
                 }
+
+                banTextureLoadAttempted = true;
 
                 string banPath = System.IO.Path.Combine(modPath, "Assets", "ban.png");
                 if (!System.IO.File.Exists(banPath))

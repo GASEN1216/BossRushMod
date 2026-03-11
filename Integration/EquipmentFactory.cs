@@ -159,6 +159,7 @@ namespace BossRush
         
         // Character Layer 常量（游戏中 Character 层为 9）
         private const int CHARACTER_LAYER = 9;
+        private const string HANDHELD_AGENT_KEY = "Handheld";
         
         // 游戏使用的 Shader 名称
         private const string GAME_SHADER_NAME = "SodaCraft/SodaCharacter";
@@ -579,6 +580,14 @@ namespace BossRush
                         {
                             modelAgent = modelsByBaseName[baseName];
                         }
+                        if (equipType == EquipmentType.MeleeWeapon && modelAgent == null)
+                        {
+                            modelAgent = TryCreateEmbeddedMeleeModel(itemPrefab, baseName);
+                            if (modelAgent != null)
+                            {
+                                modelsByBaseName[baseName] = modelAgent;
+                            }
+                        }
 
                         // 根据类型处理
                         if (equipType == EquipmentType.Gun)
@@ -627,6 +636,11 @@ namespace BossRush
                         FenHuangHalberdWeaponConfig.TryConfigure(itemPrefab, baseName);
 
                         // 注册到游戏物品系统
+                        if (equipType == EquipmentType.MeleeWeapon)
+                        {
+                            FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, baseName);
+                        }
+
                         ItemAssetsCollection.AddDynamicEntry(itemPrefab);
                         loadedCount++;
 
@@ -940,6 +954,79 @@ namespace BossRush
         /// <summary>
         /// 递归设置 Layer
         /// </summary>
+        private static ItemAgent TryCreateEmbeddedMeleeModel(Item itemPrefab, string baseName)
+        {
+            if (itemPrefab == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                Renderer[] renderers = itemPrefab.GetComponentsInChildren<Renderer>(true);
+                bool has3DRenderer = false;
+                foreach (Renderer renderer in renderers)
+                {
+                    if (renderer != null && !(renderer is SpriteRenderer))
+                    {
+                        has3DRenderer = true;
+                        break;
+                    }
+                }
+
+                if (!has3DRenderer)
+                {
+                    ModBehaviour.DevLog("[EquipmentFactory] 近战物品缺少可用渲染节点，无法创建内嵌模型: " + itemPrefab.name);
+                    return null;
+                }
+
+                GameObject runtimeCopy = UnityEngine.Object.Instantiate(itemPrefab.gameObject);
+                runtimeCopy.name = baseName + "_EmbeddedMeleeModel";
+                runtimeCopy.hideFlags = HideFlags.HideAndDontSave;
+
+                Item copiedItem = runtimeCopy.GetComponent<Item>();
+                if (copiedItem != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(copiedItem);
+                }
+
+                ItemGraphicInfo copiedGraphic = runtimeCopy.GetComponent<ItemGraphicInfo>();
+                if (copiedGraphic != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(copiedGraphic);
+                }
+
+                DuckovItemAgent[] existingAgents = runtimeCopy.GetComponents<DuckovItemAgent>();
+                foreach (DuckovItemAgent existingAgent in existingAgents)
+                {
+                    if (existingAgent != null)
+                    {
+                        UnityEngine.Object.DestroyImmediate(existingAgent);
+                    }
+                }
+
+                ItemAgent_MeleeWeapon embeddedAgent = runtimeCopy.GetComponent<ItemAgent_MeleeWeapon>();
+                if (embeddedAgent == null)
+                {
+                    embeddedAgent = runtimeCopy.AddComponent<ItemAgent_MeleeWeapon>();
+                }
+
+                EnsureSocketsListInitialized(embeddedAgent);
+                SetLayerRecursively(runtimeCopy, CHARACTER_LAYER);
+                FixModelLayerAndShader(runtimeCopy);
+                runtimeCopy.transform.position = new Vector3(0f, -9999f, 0f);
+                UnityEngine.Object.DontDestroyOnLoad(runtimeCopy);
+
+                ModBehaviour.DevLog("[EquipmentFactory] 已为近战物品创建内嵌模型 Handheld 源: " + itemPrefab.name);
+                return embeddedAgent;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 创建近战内嵌模型失败: " + itemPrefab.name + " - " + e.Message);
+                return null;
+            }
+        }
+
         private static void SetLayerRecursively(GameObject go, int layer)
         {
             go.layer = layer;
@@ -1266,6 +1353,286 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[EquipmentFactory] 注入 ItemGraphic 失败: " + item.name + " - " + e.Message);
+            }
+        }
+
+        private static void FinalizeCustomMeleeWeapon(Item itemPrefab, ItemAgent modelAgent, string baseName)
+        {
+            try
+            {
+                EquipmentHelper.AddTagToItem(itemPrefab, "Weapon");
+                EquipmentHelper.AddTagToItem(itemPrefab, "MeleeWeapon");
+
+                try
+                {
+                    itemPrefab.SetBool("IsMeleeWeapon", true, true);
+                }
+                catch
+                {
+                }
+
+                if (itemPrefab.GetComponent<ItemSetting_MeleeWeapon>() == null)
+                {
+                    itemPrefab.gameObject.AddComponent<ItemSetting_MeleeWeapon>();
+                    ModBehaviour.DevLog("[EquipmentFactory] 自动补齐 ItemSetting_MeleeWeapon: " + itemPrefab.name);
+                }
+
+                if (modelAgent == null)
+                {
+                    ModBehaviour.DevLog("[EquipmentFactory] 近战武器缺少模型，跳过 Handheld 注入: " + itemPrefab.name);
+                    return;
+                }
+
+                ItemAgent_MeleeWeapon meleeTemplate = itemPrefab.GetComponent<ItemAgent_MeleeWeapon>();
+                if (meleeTemplate == null)
+                {
+                    meleeTemplate = itemPrefab.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
+                }
+
+                ApplyMeleeAgentDefaults(meleeTemplate, null);
+
+                ItemAgent_MeleeWeapon handheldPrefab =
+                    CreateMeleeHandheldPrefab(itemPrefab, modelAgent, meleeTemplate, baseName);
+                if (handheldPrefab == null)
+                {
+                    ModBehaviour.DevLog("[EquipmentFactory] 近战 Handheld prefab 创建失败: " + itemPrefab.name);
+                    return;
+                }
+
+                SetAgentUtilityPrefab(itemPrefab, HANDHELD_AGENT_KEY, handheldPrefab);
+                ModBehaviour.DevLog("[EquipmentFactory] 已从工厂源头注册近战 Handheld: " + itemPrefab.name);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] FinalizeCustomMeleeWeapon 失败: " + itemPrefab.name + " - " + e.Message);
+            }
+        }
+
+        private static ItemAgent_MeleeWeapon CreateMeleeHandheldPrefab(
+            Item itemPrefab,
+            ItemAgent modelAgent,
+            ItemAgent_MeleeWeapon meleeTemplate,
+            string baseName)
+        {
+            try
+            {
+                GameObject runtimeCopy = UnityEngine.Object.Instantiate(modelAgent.gameObject);
+                runtimeCopy.name = baseName + "_Handheld_Model";
+                runtimeCopy.hideFlags = HideFlags.HideAndDontSave;
+                runtimeCopy.transform.position = new Vector3(0f, -9999f, 0f);
+                SetLayerRecursively(runtimeCopy, CHARACTER_LAYER);
+                UnityEngine.Object.DontDestroyOnLoad(runtimeCopy);
+
+                DuckovItemAgent[] existingAgents = runtimeCopy.GetComponents<DuckovItemAgent>();
+                foreach (DuckovItemAgent existingAgent in existingAgents)
+                {
+                    if (existingAgent != null && existingAgent.GetType() == typeof(DuckovItemAgent))
+                    {
+                        UnityEngine.Object.DestroyImmediate(existingAgent);
+                    }
+                }
+
+                ItemAgent_MeleeWeapon handheldPrefab = runtimeCopy.GetComponent<ItemAgent_MeleeWeapon>();
+                if (handheldPrefab == null)
+                {
+                    handheldPrefab = runtimeCopy.AddComponent<ItemAgent_MeleeWeapon>();
+                }
+
+                ApplyMeleeAgentDefaults(handheldPrefab, meleeTemplate);
+                return handheldPrefab;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] 创建近战 Handheld prefab 失败: " + itemPrefab.name + " - " + e.Message);
+                return null;
+            }
+        }
+
+        private static void ApplyMeleeAgentDefaults(ItemAgent_MeleeWeapon target, ItemAgent_MeleeWeapon template)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            target.handheldSocket = template != null ? template.handheldSocket : HandheldSocketTypes.meleeWeapon;
+            target.handAnimationType = template != null ? template.handAnimationType : HandheldAnimationType.meleeWeapon;
+
+            EnsureSocketsListInitialized(target);
+
+            try
+            {
+                FieldInfo soundKeyField = typeof(ItemAgent_MeleeWeapon).GetField("soundKey",
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                if (soundKeyField != null)
+                {
+                    string soundKey = "Default";
+                    if (template != null)
+                    {
+                        object rawValue = soundKeyField.GetValue(template);
+                        if (rawValue is string templateKey && !string.IsNullOrWhiteSpace(templateKey))
+                        {
+                            soundKey = templateKey;
+                        }
+                    }
+
+                    soundKeyField.SetValue(target, soundKey);
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                FieldInfo slashDelayField = typeof(ItemAgent_MeleeWeapon).GetField("slashFxDelayTime",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (slashDelayField != null)
+                {
+                    float delay = 0.05f;
+                    if (template != null)
+                    {
+                        object rawValue = slashDelayField.GetValue(template);
+                        if (rawValue is float templateDelay)
+                        {
+                            delay = templateDelay;
+                        }
+                    }
+
+                    slashDelayField.SetValue(target, delay);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static void EnsureSocketsListInitialized(DuckovItemAgent agent)
+        {
+            if (agent == null)
+            {
+                return;
+            }
+
+            try
+            {
+                FieldInfo socketsField = typeof(DuckovItemAgent).GetField("socketsList",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (socketsField == null)
+                {
+                    return;
+                }
+
+                object socketsList = socketsField.GetValue(agent);
+                if (socketsList == null)
+                {
+                    socketsField.SetValue(agent, new List<Transform>());
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static void SetAgentUtilityPrefab(Item item, string key, ItemAgent prefab)
+        {
+            if (item == null || prefab == null || string.IsNullOrEmpty(key))
+            {
+                return;
+            }
+
+            try
+            {
+                FieldInfo agentUtilitiesField = typeof(Item).GetField("agentUtilities",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (agentUtilitiesField == null)
+                {
+                    return;
+                }
+
+                object agentUtilities = agentUtilitiesField.GetValue(item);
+                if (agentUtilities == null)
+                {
+                    return;
+                }
+
+                FieldInfo agentsField = agentUtilities.GetType().GetField("agents",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (agentsField == null)
+                {
+                    return;
+                }
+
+                Type agentKeyPairType = null;
+                foreach (Type nestedType in agentUtilities.GetType().GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
+                {
+                    if (nestedType.Name == "AgentKeyPair")
+                    {
+                        agentKeyPairType = nestedType;
+                        break;
+                    }
+                }
+
+                if (agentKeyPairType == null)
+                {
+                    agentKeyPairType = Type.GetType("ItemStatsSystem.ItemAgentUtilities+AgentKeyPair, ItemStatsSystem");
+                }
+
+                if (agentKeyPairType == null)
+                {
+                    return;
+                }
+
+                object agentsList = agentsField.GetValue(agentUtilities);
+                if (agentsList == null)
+                {
+                    Type listType = typeof(List<>).MakeGenericType(agentKeyPairType);
+                    agentsList = Activator.CreateInstance(listType);
+                    agentsField.SetValue(agentUtilities, agentsList);
+                }
+
+                FieldInfo keyField = agentKeyPairType.GetField("key",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                FieldInfo agentPrefabField = agentKeyPairType.GetField("agentPrefab",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (keyField == null || agentPrefabField == null)
+                {
+                    return;
+                }
+
+                PropertyInfo countProperty = agentsList.GetType().GetProperty("Count");
+                PropertyInfo itemProperty = agentsList.GetType().GetProperty("Item");
+                object existingEntry = null;
+                int count = countProperty != null ? (int)countProperty.GetValue(agentsList) : 0;
+                for (int i = 0; i < count; i++)
+                {
+                    object entry = itemProperty.GetValue(agentsList, new object[] { i });
+                    if ((keyField.GetValue(entry) as string) == key)
+                    {
+                        existingEntry = entry;
+                        break;
+                    }
+                }
+
+                if (existingEntry == null)
+                {
+                    existingEntry = Activator.CreateInstance(agentKeyPairType);
+                    keyField.SetValue(existingEntry, key);
+                    agentsList.GetType().GetMethod("Add").Invoke(agentsList, new object[] { existingEntry });
+                }
+
+                agentPrefabField.SetValue(existingEntry, prefab);
+
+                FieldInfo cacheField = agentUtilities.GetType().GetField("hashedAgentsCache",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (cacheField != null)
+                {
+                    cacheField.SetValue(agentUtilities, null);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentFactory] SetAgentUtilityPrefab 失败: " + item.name + " / " + key + " - " + e.Message);
             }
         }
 

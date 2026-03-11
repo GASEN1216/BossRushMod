@@ -245,6 +245,7 @@ namespace BossRush
         ///   如果该阵营没有 Boss，则从该阵营的小怪池补充（提升为Boss，克隆预设设 showName=true）。
         ///   如果该阵营连小怪都没有，直接跳过该刷怪点（不从全局池抽取，避免阵营混乱）。
         ///   狼阵营特殊：先刷完所有 wolf Boss，剩余刷怪点才出小怪。
+        ///   BEAR阵营特殊：原版游戏无 bear 预设，从全阵营小怪池兜底，并提升150%属性。
         /// </summary>
         private void SpawnSingleModeEBoss(Teams faction, Vector3 spawnPoint)
         {
@@ -293,6 +294,17 @@ namespace BossRush
                 {
                     DevLog("[ModeE] 阵营 " + faction + " 无匹配Boss，尝试小怪池");
                     bossPreset = GetMinionPresetForFaction(faction);
+                    if (bossPreset != null)
+                    {
+                        isMinionPromotedToBoss = true;
+                    }
+                }
+
+                // BEAR阵营兜底：原版游戏无 bear 预设，从全阵营小怪池随机抽取
+                if (bossPreset == null && faction == Teams.bear)
+                {
+                    DevLog("[ModeE] bear 阵营无匹配预设，从全阵营小怪池兜底");
+                    bossPreset = GetAllFactionMinionPreset();
                     if (bossPreset != null)
                     {
                         isMinionPromotedToBoss = true;
@@ -401,8 +413,14 @@ namespace BossRush
                     ai.forceTracePlayerDistance = 0f;
                 }
 
-                // Mode E 基础血量提升：所有敌人血量 × 1.5
+                // Mode E 基础血量提升：所有敌人血量 × 1.5（跳过玩家所属阵营）
                 ApplyModeEBaseHealthBoost(character);
+
+                // BEAR阵营属性提升：血量和伤害提升150%（× 2.5），补偿小怪基础数值偏低
+                if (faction == Teams.bear)
+                {
+                    ApplyBearFactionStatBoost(character);
+                }
 
                 // 加入存活敌人列表
                 modeEAliveEnemies.Add(character);
@@ -759,41 +777,92 @@ namespace BossRush
         #region Mode E 基础血量提升
 
         /// <summary>
-        /// Mode E 基础血量提升：非狼阵营敌人血量 × 1.5
+        /// Mode E 基础血量提升：非玩家阵营敌人血量 × 1.5
         /// 在敌人生成时一次性应用，不影响后续阵营死亡缩放机制
-        /// 狼阵营（玩家可能加入的阵营）不应用此提升
+        /// 玩家所属阵营不应用（bear 阵营由 ApplyBearFactionStatBoost 独立处理）
         /// </summary>
         private void ApplyModeEBaseHealthBoost(CharacterMainControl character)
         {
             try
             {
-                // 狼阵营不应用血量提升
-                if (character.Team == Teams.wolf) return;
+                // 玩家所属阵营不应用血量提升（避免友方Boss被额外加强）
+                if (character.Team == modeEPlayerFaction) return;
 
-                var characterItem = character.CharacterItem;
-                if (characterItem == null) return;
-
-                Stat maxHealthStat = characterItem.GetStat("MaxHealth");
-                if (maxHealthStat == null) return;
-
-                // 增加 50% 血量（等效于 × 1.5）
-                float hpBoost = maxHealthStat.BaseValue * 0.5f;
-                Modifier boostMod = new Modifier(ModifierType.Add, hpBoost, this);
-                maxHealthStat.AddModifier(boostMod);
-
-                // 同步当前血量到新上限
-                Health health = character.Health;
-                if (health != null)
-                {
-                    health.CurrentHealth = maxHealthStat.Value;
-                }
-
-                DevLog("[ModeE] 基础血量提升: " + character.gameObject.name + " HP × 1.5 (+" + hpBoost + ")");
+                ApplyStatBoostPercent(character, "MaxHealth", 0.5f, true);
+                DevLog("[ModeE] 基础血量提升: " + character.gameObject.name + " HP × 1.5");
             }
             catch (Exception e)
             {
                 DevLog("[ModeE] [WARNING] ApplyModeEBaseHealthBoost 失败: " + e.Message);
             }
+        }
+
+        #endregion
+
+        #region Mode E BEAR阵营兜底
+
+        /// <summary>
+        /// 从全阵营小怪池随机抽取一个预设（不限阵营过滤）
+        /// 用于 bear 阵营兜底（原版游戏无 bear 预设）
+        /// </summary>
+        private EnemyPresetInfo GetAllFactionMinionPreset()
+        {
+            if (modeDMinionPool == null || modeDMinionPool.Count == 0) return null;
+            return modeDMinionPool[UnityEngine.Random.Range(0, modeDMinionPool.Count)];
+        }
+
+        /// <summary>
+        /// BEAR阵营专属属性提升：血量和伤害提升150%（最终为原始值的 2.5 倍）
+        /// 补偿小怪基础数值偏低，使其达到 Boss 级强度
+        /// </summary>
+        private void ApplyBearFactionStatBoost(CharacterMainControl character)
+        {
+            try
+            {
+                ApplyStatBoostPercent(character, "MaxHealth", 1.5f, true);
+                ApplyStatBoostPercent(character, "GunDamageMultiplier", 1.5f, false);
+                ApplyStatBoostPercent(character, "MeleeDamageMultiplier", 1.5f, false);
+                DevLog("[ModeE] BEAR阵营属性提升: " + character.gameObject.name + " HP/Dmg × 2.5");
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] ApplyBearFactionStatBoost 失败: " + e.Message);
+            }
+        }
+
+        #endregion
+
+        #region Mode E 属性提升工具方法
+
+        /// <summary>
+        /// 通用属性百分比提升：给角色的指定 Stat 增加 (BaseValue × percent) 的加法 Modifier
+        /// <para>例如 percent=0.5 表示提升50%（最终 BaseValue × 1.5），percent=1.5 表示提升150%（最终 BaseValue × 2.5）</para>
+        /// </summary>
+        /// <param name="syncHealth">如果为 true 且 statName 为 MaxHealth，则同步当前血量到新上限</param>
+        private void ApplyStatBoostPercent(CharacterMainControl character, string statName, float percent, bool syncHealth)
+        {
+            try
+            {
+                var characterItem = character.CharacterItem;
+                if (characterItem == null) return;
+
+                Stat stat = characterItem.GetStat(statName);
+                if (stat == null) return;
+
+                float boostAmount = stat.BaseValue * percent;
+                Modifier mod = new Modifier(ModifierType.Add, boostAmount, this);
+                stat.AddModifier(mod);
+
+                if (syncHealth)
+                {
+                    Health health = character.Health;
+                    if (health != null)
+                    {
+                        health.CurrentHealth = stat.Value;
+                    }
+                }
+            }
+            catch {}
         }
 
         #endregion

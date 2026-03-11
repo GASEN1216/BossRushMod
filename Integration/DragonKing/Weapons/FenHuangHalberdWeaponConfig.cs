@@ -13,6 +13,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using ItemStatsSystem;
@@ -39,6 +40,34 @@ namespace BossRush
         private const float STAT_STAMINA_COST = 10f;
         private const float STAT_BLEED_CHANCE = 0.15f;
         private const float STAT_MOVE_SPEED_MULTIPLIER = 1.1f;
+
+        private static readonly Dictionary<string, float> WEAPON_STATS = new Dictionary<string, float>
+        {
+            { "Damage", STAT_DAMAGE },
+            { "MoveSpeedMultiplier", STAT_MOVE_SPEED_MULTIPLIER },
+            { "BlockBullet", STAT_BLOCK_BULLET },
+            { "CritRate", STAT_CRIT_RATE },
+            { "CritDamageFactor", STAT_CRIT_DAMAGE_FACTOR },
+            { "ArmorPiercing", STAT_ARMOR_PIERCING },
+            { "AttackSpeed", STAT_ATTACK_SPEED },
+            { "AttackRange", STAT_ATTACK_RANGE },
+            { "DealDamageTime", STAT_DEAL_DAMAGE_TIME },
+            { "StaminaCost", STAT_STAMINA_COST },
+            { "BleedChance", STAT_BLEED_CHANCE }
+        };
+
+        private static readonly HashSet<string> DISPLAY_STATS = new HashSet<string>
+        {
+            "Damage",
+            "MoveSpeedMultiplier",
+            "CritRate",
+            "CritDamageFactor",
+            "ArmorPiercing",
+            "AttackSpeed",
+            "AttackRange",
+            "StaminaCost",
+            "BleedChance"
+        };
 
         /// <summary>
         /// 尝试配置焚皇断界戟（由 EquipmentFactory 在加载 AssetBundle 后调用）
@@ -125,17 +154,24 @@ namespace BossRush
 
             // 添加全部 11 个近战 Stats
             // Stat 构造函数: Stat(string key, float value, bool display = false)
-            stats.Add(new Stat("Damage", STAT_DAMAGE, true));
-            stats.Add(new Stat("MoveSpeedMultiplier", STAT_MOVE_SPEED_MULTIPLIER, true));
-            stats.Add(new Stat("BlockBullet", STAT_BLOCK_BULLET, false));
-            stats.Add(new Stat("CritRate", STAT_CRIT_RATE, true));
-            stats.Add(new Stat("CritDamageFactor", STAT_CRIT_DAMAGE_FACTOR, true));
-            stats.Add(new Stat("ArmorPiercing", STAT_ARMOR_PIERCING, true));
-            stats.Add(new Stat("AttackSpeed", STAT_ATTACK_SPEED, true));
-            stats.Add(new Stat("AttackRange", STAT_ATTACK_RANGE, true));
-            stats.Add(new Stat("DealDamageTime", STAT_DEAL_DAMAGE_TIME, false));
-            stats.Add(new Stat("StaminaCost", STAT_STAMINA_COST, true));
-            stats.Add(new Stat("BleedChance", STAT_BLEED_CHANCE, true));
+            int addedCount = 0;
+            int updatedCount = 0;
+
+            foreach (KeyValuePair<string, float> kvp in WEAPON_STATS)
+            {
+                bool shouldDisplay = DISPLAY_STATS.Contains(kvp.Key);
+                Stat existingStat = stats.GetStat(kvp.Key);
+                if (existingStat != null)
+                {
+                    existingStat.BaseValue = kvp.Value;
+                    updatedCount++;
+                }
+                else
+                {
+                    stats.Add(new Stat(kvp.Key, kvp.Value, shouldDisplay));
+                    addedCount++;
+                }
+            }
 
             ModBehaviour.DevLog("[FenHuangHalberd] 已添加 11 个近战 Stats");
         }
@@ -153,8 +189,8 @@ namespace BossRush
                 meleeAgent = item.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
             }
 
-            // Handheld socket = normalHandheld (RightHandSocket, follow body)
-            meleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
+            // Use the native melee socket path so the factory can create a real melee handheld prefab.
+            meleeAgent.handheldSocket = HandheldSocketTypes.meleeWeapon;
 
             // 设置动画类型 = meleeWeapon（枚举值 3，播放近战挥砍动画）
             meleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
@@ -209,11 +245,11 @@ namespace BossRush
                 {
                     modelMeleeAgent = modelAgent.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
                 }
-                modelMeleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
+                modelMeleeAgent.handheldSocket = HandheldSocketTypes.meleeWeapon;
                 modelMeleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
             }
 
-            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=normalHandheld, anim=meleeWeapon)");
+            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=meleeWeapon, anim=meleeWeapon)");
         }
 
         /// <summary>
@@ -255,6 +291,7 @@ namespace BossRush
 
             // 特殊物品
             EquipmentHelper.AddTagToItem(item, "Special");
+            EquipmentHelper.AddTagToItem(item, "DragonKing");
 
             // 设置 IsMeleeWeapon 布尔标记（ItemSetting_MeleeWeapon.SetMarkerParam 的逻辑）
             try
@@ -266,7 +303,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[FenHuangHalberd] SetBool IsMeleeWeapon 失败: " + e.Message);
             }
 
-            ModBehaviour.DevLog("[FenHuangHalberd] 已添加标签: Weapon/MeleeWeapon/DontDropOnDeadInSlot/Special");
+            ModBehaviour.DevLog("[FenHuangHalberd] 已添加标签: Weapon/MeleeWeapon/DontDropOnDeadInSlot/Special/DragonKing");
         }
 
         // ========== 本地化 ==========
