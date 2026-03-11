@@ -328,6 +328,8 @@ namespace BossRush
         
         // 当前哥布林控制器
         private static GoblinNPCController currentController;
+        private const bool EnableDetailedUIDump = false;
+        private static Coroutine delayedUiBuildCoroutine;
         
         // 原始属性快照
         private static List<PropertySnapshot> originalProperties = new List<PropertySnapshot>();
@@ -353,6 +355,7 @@ namespace BossRush
         private static GameObject noItemSelectedIndicator;
         
         // 倾向滑块控件
+        private static GameObject tendencySliderRoot;
         private static Slider tendencySlider;
         private static TextMeshProUGUI tendencyText;
         private static float currentTendencyChance = 0.5f;
@@ -471,9 +474,10 @@ namespace BossRush
             // 再等一帧，确保原版OnOpen已经执行完毕，然后再次应用我们的修改
             yield return null;
             ReapplyModifications();
+            ScheduleDelayedUIBuild();
 
             // DevMode: 输出UI详细信息
-            if (ModBehaviour.DevModeEnabled)
+            if (EnableDetailedUIDump)
             {
                 DumpUIInfo();
             }
@@ -714,6 +718,39 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 重新应用修改失败: " + e.Message);
             }
         }
+
+        private static void ScheduleDelayedUIBuild()
+        {
+            if (ModBehaviour.Instance == null)
+            {
+                return;
+            }
+
+            if (delayedUiBuildCoroutine != null)
+            {
+                ModBehaviour.Instance.StopCoroutine(delayedUiBuildCoroutine);
+            }
+
+            delayedUiBuildCoroutine = ModBehaviour.Instance.StartCoroutine(BuildDelayedUIElements());
+        }
+
+        private static System.Collections.IEnumerator BuildDelayedUIElements()
+        {
+            yield return new WaitForEndOfFrame();
+            yield return null;
+
+            delayedUiBuildCoroutine = null;
+
+            if (!isReforgeMode || decomposeView == null || !decomposeView.open)
+            {
+                yield break;
+            }
+
+            CreateTendencySliderUI();
+            CreateColdQuenchFluidUI();
+            UpdateProbabilityDisplay();
+            UpdateColdQuenchFluidCount();
+        }
         
         /// <summary>
         /// 修改分解UI为重铸UI
@@ -744,7 +781,6 @@ namespace BossRush
                 ModifyResultDisplay();
                 
                 // 3. 创建倾向滑块
-                CreateTendencySliderUI();
 
                 // 4. 修改分解按钮为重铸按钮
                 ModifyDecomposeButton();
@@ -762,7 +798,6 @@ namespace BossRush
                 ItemUIUtilities.OnSelectionChanged += OnItemSelectionChanged;
                 
                 // 9. 创建冷淬液数量显示UI
-                CreateColdQuenchFluidUI();
                 
                 ModBehaviour.DevLog("[ReforgeUI] UI修改完成");
             }
@@ -1013,6 +1048,7 @@ namespace BossRush
                         if (existingProb != null)
                         {
                             probabilityText = existingProb.GetComponent<TextMeshProUGUI>();
+                            existingProb.gameObject.SetActive(true);
                         }
                         else
                         {
@@ -1079,70 +1115,69 @@ namespace BossRush
             try
             {
                 if (moneySlider == null || probabilityText == null) return;
-
-                // 深拷贝moneySlider的父物体 (DecomposeSlider)
                 Transform moneySliderParent = moneySlider.transform.parent;
                 if (moneySliderParent == null) return;
-
-                GameObject tendencyObj = GameObject.Instantiate(moneySliderParent.gameObject, moneySliderParent.parent);
-                tendencyObj.name = "ReforgeTendencySlider";
-
-                // 调整位置，使其放在金钱滑块和概率显示之间
-                tendencyObj.transform.SetSiblingIndex(probabilityText.transform.GetSiblingIndex());
-
-                // 强制销毁克隆对象上遗留的所有脚本组件，防止干扰
-                // 只保留必要的UI基础组件
-                MonoBehaviour[] allScripts = tendencyObj.GetComponentsInChildren<MonoBehaviour>(true);
-                foreach (var script in allScripts)
+                Transform tendencyParent = moneySliderParent.parent;
+                if (tendencyParent == null) return;
+                Transform existingTendency = tendencyParent.Find("ReforgeTendencySlider");
+                GameObject tendencyObj;
+                bool reusedExisting = existingTendency != null;
+                if (reusedExisting)
                 {
-                    // 排除掉Slider, Image, TextMeshProUGUI等基础UI组件
-                    if (script is Slider || script is UnityEngine.UI.Image || script is TextMeshProUGUI)
-                        continue;
-                    
-                    // 销毁其他所有自定义逻辑脚本
-                    GameObject.DestroyImmediate(script);
+                    tendencyObj = existingTendency.gameObject;
+                    tendencyObj.SetActive(true);
                 }
-
-                // 获取新的Slider组件
-                Slider newSlider = tendencyObj.GetComponentInChildren<Slider>();
+                else
+                {
+                    tendencyObj = GameObject.Instantiate(moneySliderParent.gameObject);
+                    tendencyObj.name = "ReforgeTendencySlider";
+                    tendencyObj.SetActive(false);
+                    tendencyObj.transform.SetParent(tendencyParent, false);
+                    // Remove cloned gameplay scripts so the custom slider only keeps UI components.
+                    MonoBehaviour[] allScripts = tendencyObj.GetComponentsInChildren<MonoBehaviour>(true);
+                    foreach (var script in allScripts)
+                    {
+                        if (script is Slider || script is UnityEngine.UI.Image || script is TextMeshProUGUI)
+                        {
+                            continue;
+                        }
+                        GameObject.DestroyImmediate(script);
+                    }
+                }
+                tendencySliderRoot = tendencyObj;
+                tendencyObj.transform.SetSiblingIndex(probabilityText.transform.GetSiblingIndex());
+                Slider newSlider = tendencyObj.GetComponentInChildren<Slider>(true);
                 if (newSlider != null)
                 {
                     tendencySlider = newSlider;
-                    
-                    // 设置倾向滑块范围 -50 到 50 
                     tendencySlider.minValue = -50f;
                     tendencySlider.maxValue = 50f;
-                    tendencySlider.value = 0f; // 初始为0
                     tendencySlider.wholeNumbers = true;
-                    currentTendencyChance = 0.5f;
-
                     tendencySlider.onValueChanged.RemoveAllListeners();
                     tendencySlider.onValueChanged.AddListener(OnTendencySliderChanged);
+                    tendencySlider.SetValueWithoutNotify(0f);
+                    currentTendencyChance = 0.5f;
                 }
-
-                // 找到新Slider下面的Text组件并修改文本
+                tendencyText = null;
                 TextMeshProUGUI[] texts = tendencyObj.GetComponentsInChildren<TextMeshProUGUI>(true);
                 foreach (var txt in texts)
                 {
-                    // 仅替换说明文本和数值，清除原版Min/Max和滑动条上方的数值指示
-                    if (txt.gameObject.name.Contains("Title") || txt.text.Contains("投入") || txt.text.Contains("分解") || txt.text.Contains("Decompose") || txt.text == "投入" || txt.text == "正负极性倾向")
+                    if (txt.gameObject.name.Contains("Title") || txt.text.Contains("\u6295\u5165") || txt.text.Contains("\u5206\u89e3") || txt.text.Contains("Decompose") || txt.text == "\u6295\u5165" || txt.text == "\u6b63\u8d1f\u6781\u6027\u503e\u5411")
                     {
-                        txt.text = "正负极性倾向";
-                        tendencyText = txt; // 如果自己创建了一个文本专门用于显示倾向
+                        txt.text = "\u6b63\u8d1f\u6781\u6027\u503e\u5411";
+                        txt.gameObject.SetActive(true);
+                        tendencyText = txt;
                     }
                     else if (txt.gameObject.name.IndexOf("value", StringComparison.OrdinalIgnoreCase) >= 0 || txt.text == "100")
                     {
-                        // 用户要求隐藏滑块上方的100数值
                         txt.gameObject.SetActive(false);
                         txt.text = "";
                     }
                     else if (txt.gameObject.name.Contains("Min") || txt.gameObject.name.Contains("Max"))
                     {
-                        txt.gameObject.SetActive(false); // 隐藏最大最小值文本
+                        txt.gameObject.SetActive(false);
                     }
                 }
-                
-                // 如果找不到专门用来显示倾向文本的控件，我们在Title上显示
                 if (tendencyText == null)
                 {
                     foreach (var txt in texts)
@@ -1154,21 +1189,17 @@ namespace BossRush
                         }
                     }
                 }
-                
-                // 强制触发一次变更，应用初始值到文本框以及总计费用上
                 OnTendencySliderChanged(0f);
-
-                ModBehaviour.DevLog("[ReforgeUI] 倾向滑块已创建");
+                tendencyObj.SetActive(true);
+                ModBehaviour.DevLog(reusedExisting
+                    ? "[ReforgeUI] Tendency slider reused"
+                    : "[ReforgeUI] Tendency slider created");
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[ReforgeUI] [ERROR] 创建倾向滑块失败: " + e.Message);
+                ModBehaviour.DevLog("[ReforgeUI] [ERROR] Failed to create tendency slider: " + e.Message);
             }
         }
-
-        /// <summary>
-        /// 倾向滑块值改变
-        /// </summary>
         private static void OnTendencySliderChanged(float value)
         {
             currentTendencyChance = (value + 50f) / 100f; // 转换为 0.0 ~ 1.0 的几率
@@ -2561,11 +2592,18 @@ namespace BossRush
             
             // 停止正在运行的协程
             StopCurrentDiffCoroutine();
+            StopCurrentDiffCoroutine();
+            if (delayedUiBuildCoroutine != null && ModBehaviour.Instance != null)
+            {
+                ModBehaviour.Instance.StopCoroutine(delayedUiBuildCoroutine);
+                delayedUiBuildCoroutine = null;
+            }
             
             // 恢复原版事件监听器
             RestoreOriginalEventListeners();
             
             // 恢复原版结果显示
+            RestoreOriginalEventListeners();
             if (resultDisplayObj != null)
             {
                 resultDisplayObj.SetActive(true);
@@ -2574,16 +2612,25 @@ namespace BossRush
             // 清理概率显示
             if (probabilityText != null && probabilityText.gameObject != null)
             {
-                GameObject.Destroy(probabilityText.gameObject);
-                probabilityText = null;
+                probabilityText.gameObject.SetActive(false);
             }
+            if (tendencySliderRoot != null)
+            {
+                tendencySliderRoot.SetActive(false);
+            }
+            
             
             originalProperties.Clear();
             selectedItem = null;
             decomposeView = null;
             countSliderObj = null;
             moneySlider = null;
+            probabilityText = null;
             reforgeButton = null;
+            tendencySliderRoot = null;
+            tendencySlider = null;
+            tendencyText = null;
+            currentTendencyChance = 0.5f;
             sliderValueText = null;
             sliderMinText = null;
             sliderMaxText = null;
@@ -2640,6 +2687,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     coldQuenchFluidContainer = existing.gameObject;
+                    coldQuenchFluidContainer.SetActive(true);
                     coldQuenchFluidCountText = coldQuenchFluidContainer.GetComponentInChildren<TextMeshProUGUI>();
                     UpdateColdQuenchFluidCount();
                     ModBehaviour.DevLog("[ReforgeUI] 冷淬液UI已存在，复用");
@@ -3075,8 +3123,7 @@ namespace BossRush
             // 清理冷淬液数量显示
             if (coldQuenchFluidContainer != null)
             {
-                GameObject.Destroy(coldQuenchFluidContainer);
-                coldQuenchFluidContainer = null;
+                coldQuenchFluidContainer.SetActive(false);
             }
             coldQuenchFluidCountText = null;
         }
