@@ -212,13 +212,42 @@ namespace BossRush
                 LogIfVerbose("检测到 ADS 松开，尝试执行能力...");
                 bool success = TryExecuteAbility();
                 LogIfVerbose("能力执行结果: " + (success ? "成功" : "失败"));
+                if (!success)
+                {
+                    ShowInvalidLeapBubble();
+                }
             }
             else if (isPreviewing)
             {
                 LogIfVerbose("检测到 ADS 松开，但落点无效或轨迹被阻挡");
+                ShowInvalidLeapBubble();
             }
 
             StopPreview();
+        }
+
+        private void ShowInvalidLeapBubble()
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.transform != null)
+                {
+                    Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                        "这里过不去哦",
+                        player.transform,
+                        2.5f,
+                        false,
+                        false,
+                        -1f,
+                        2f
+                    );
+                }
+            }
+            catch (System.Exception e)
+            {
+                LogIfVerbose("显示过不去气泡异常: " + e.Message);
+            }
         }
 
         private void StopPreview()

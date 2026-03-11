@@ -74,9 +74,6 @@ namespace BossRush
         public const float LandingFireSpawnInterval = FirePillarInterval;
 
         /// <summary>
-        /// 裂隙总长度（米）
-        /// </summary>
-        /// <summary>
         /// 火柱数量
         /// </summary>
         public const int FirePillarCount = 6;

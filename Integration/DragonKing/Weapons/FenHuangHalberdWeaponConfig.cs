@@ -52,11 +52,15 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[FenHuangHalberd] 开始配置焚皇断界戟...");
 
+                // 获取实际的 3D 模型 Agent 并修复它的渲染属性
+                ItemAgent modelAgent = null;
+                EquipmentFactory.GetLoadedModels().TryGetValue(item.TypeID, out modelAgent);
+
                 // 1. 创建 StatCollection 并添加近战 Stats
                 ConfigureStats(item);
 
-                // 2. 添加 ItemAgent_MeleeWeapon 组件
-                ConfigureMeleeAgent(item);
+                // 2. 添加 ItemAgent_MeleeWeapon 组件，并注入到模型 Agent
+                ConfigureMeleeAgent(item, modelAgent);
 
                 // 3. 添加 ItemSetting_MeleeWeapon 组件
                 ConfigureMeleeSetting(item);
@@ -69,12 +73,22 @@ namespace BossRush
 
                 // 6. 修复运动模糊（禁用 MotionVector 使武器不会在移动时模糊）
                 DisableMotionBlur(item.gameObject);
-                
-                // 获取实际的 3D 模型 Agent 并修复它的渲染属性
-                if (EquipmentFactory.GetLoadedModels().TryGetValue(item.TypeID, out ItemAgent modelAgent))
+
+                if (modelAgent != null)
                 {
                     DisableMotionBlur(modelAgent.gameObject);
                     FixModelGraphics(modelAgent.gameObject);
+                }
+
+                // 7. 禁用 Item prefab 自身的渲染器
+                // 焚皇断界戟的 prefab 将 3D 模型（Mesh）直接放在 Item 的子节点上，
+                // 没有单独的 _Model prefab，也没有 ItemGraphic 来管理显示/隐藏。
+                // 当游戏实例化物品放入装备槽时，这些渲染器会一直可见，
+                // 导致玩家身上多出一个戟的模型，且换武器后仍然残留。
+                // 实际的手持显示由 Handheld Agent 系统负责，这里只需禁用 Item 上的渲染器。
+                if (modelAgent != null)
+                {
+                    DisableItemRenderers(item.gameObject);
                 }
 
                 ModBehaviour.DevLog("[FenHuangHalberd] 焚皇断界戟配置完成 (TypeID=" + item.TypeID + ")");
@@ -131,7 +145,7 @@ namespace BossRush
         /// <summary>
         /// 添加并配置 ItemAgent_MeleeWeapon 组件
         /// </summary>
-        private static void ConfigureMeleeAgent(Item item)
+        private static void ConfigureMeleeAgent(Item item, ItemAgent modelAgent)
         {
             ItemAgent_MeleeWeapon meleeAgent = item.GetComponent<ItemAgent_MeleeWeapon>();
             if (meleeAgent == null)
@@ -139,8 +153,8 @@ namespace BossRush
                 meleeAgent = item.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
             }
 
-            // 设置手持插槽 = meleeWeapon（枚举值 2，挂到 MeleeWeaponSocket）
-            meleeAgent.handheldSocket = HandheldSocketTypes.meleeWeapon;
+            // Handheld socket = normalHandheld (RightHandSocket, follow body)
+            meleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
 
             // 设置动画类型 = meleeWeapon（枚举值 3，播放近战挥砍动画）
             meleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
@@ -187,7 +201,19 @@ namespace BossRush
             }
             catch { }
 
-            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=meleeWeapon, anim=meleeWeapon)");
+            // 为 3D 模型 Agent 也注入相同的 Socket 设置，确保真正生成的 Handheld Agent 绑定到正确的插槽
+            if (modelAgent != null)
+            {
+                ItemAgent_MeleeWeapon modelMeleeAgent = modelAgent.gameObject.GetComponent<ItemAgent_MeleeWeapon>();
+                if (modelMeleeAgent == null)
+                {
+                    modelMeleeAgent = modelAgent.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
+                }
+                modelMeleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
+                modelMeleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
+            }
+
+            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=normalHandheld, anim=meleeWeapon)");
         }
 
         /// <summary>
@@ -248,13 +274,16 @@ namespace BossRush
         /// <summary>
         /// 注入焚皇断界戟本地化文本
         /// </summary>
+        // 缓存配置实例，避免每次本地化注入都创建新对象
+        private static FenHuangHalberdConfig _cachedConfig;
+
         private static void InjectLocalization(Item item)
         {
             try
             {
-                var config = new FenHuangHalberdConfig();
-                string displayName = L10n.T(config.DisplayNameCN, config.DisplayNameEN);
-                string description = L10n.T(config.DescriptionCN, config.DescriptionEN);
+                if (_cachedConfig == null) _cachedConfig = new FenHuangHalberdConfig();
+                string displayName = L10n.T(_cachedConfig.DisplayNameCN, _cachedConfig.DisplayNameEN);
+                string description = L10n.T(_cachedConfig.DescriptionCN, _cachedConfig.DescriptionEN);
 
                 // 使用多种键注入，确保游戏各处都能正确显示
                 string itemKey = "Item_" + item.TypeID;
@@ -270,6 +299,26 @@ namespace BossRush
                 ModBehaviour.DevLog("[FenHuangHalberd] 本地化注入失败: " + e.Message);
             }
         }
+        /// <summary>
+        /// 禁用 Item prefab 自身的所有渲染器，防止物品实例在玩家身上多渲染一个模型
+        /// </summary>
+        private static void DisableItemRenderers(GameObject go)
+        {
+            try
+            {
+                Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+                foreach (Renderer r in renderers)
+                {
+                    if (r != null)
+                    {
+                        r.enabled = false;
+                    }
+                }
+                ModBehaviour.DevLog("[FenHuangHalberd] 已禁用 Item prefab 上的 " + renderers.Length + " 个渲染器");
+            }
+            catch { }
+        }
+
         /// <summary>
         /// 禁用武器模型的运动模糊，使其与原版武器表现一致
         /// </summary>
@@ -296,8 +345,8 @@ namespace BossRush
         {
             try
             {
-                // 设置 Layer 为第一人称角色层（通常是 9）
-                SetLayerRecursively(go, 9);
+                // 设置 Layer 为 0 (Default)，因为它是跟随身体的近战武器，使用人物主摄像机渲染，而不是第一人称 FPS 摄像机(Layer 9)
+                SetLayerRecursively(go, 0);
                 
                 // 强制使用游戏原版 Shader
                 Shader gameShader = Shader.Find("SodaCraft/SodaCharacter");

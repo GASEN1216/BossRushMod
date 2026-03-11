@@ -23,7 +23,6 @@ namespace BossRush
 
         private Vector3 leapStartPoint;
         private Vector3 leapTargetPoint;
-        private Vector3 leapVelocity;
         private Vector3 leapDirection;
         private float leapTravelTime;
         private bool leapTargetPrepared;
@@ -118,8 +117,6 @@ namespace BossRush
             }
 
             leapDirection = flatDirection.normalized;
-            // No longer using FenHuangLeapMath for the 0.3s jump, we will use a manual lerp with sine wave in UpdateLeaping
-            leapVelocity = Vector3.zero; 
             leapTravelTime = 0.3f;
 
             if (leapTravelTime <= 0.01f || float.IsNaN(leapTravelTime) || float.IsInfinity(leapTravelTime))
@@ -262,6 +259,8 @@ namespace BossRush
 
             CreateDetonationEffect(leapTargetPoint);
             DealLandingImpactDamage(leapTargetPoint);
+
+            BossRushAudioManager.Instance.PlayHalberdZadiSFX();
 
             leapState = LeapState.LandingFire;
             phaseTime = 0f;
@@ -591,142 +590,6 @@ namespace BossRush
         }
     }
 
-    internal static class FenHuangLeapMath
-    {
-        private static readonly RaycastHit[] hitCache = new RaycastHit[4];
-
-        public static float CalculateTravelTime(Vector3 start, Vector3 target, float verticalSpeed)
-        {
-            float gravity = Mathf.Max(Physics.gravity.magnitude, 0.001f);
-            float upTime = verticalSpeed / gravity;
-            float discriminant = upTime * verticalSpeed * 0.5f + start.y - target.y;
-            float downTime = Mathf.Sqrt(Mathf.Max(0.001f, 2f * Mathf.Abs(discriminant) / gravity));
-            return Mathf.Max(0.001f, upTime + downTime);
-        }
-
-        public static Vector3 CalculateLaunchVelocity(Vector3 start, Vector3 target, float verticalSpeed)
-        {
-            float totalTime = CalculateTravelTime(start, target, verticalSpeed);
-
-            Vector3 startFlat = start;
-            startFlat.y = 0f;
-
-            Vector3 targetFlat = target;
-            targetFlat.y = 0f;
-
-            Vector3 direction = targetFlat - startFlat;
-            float distance = direction.magnitude;
-            if (distance > 0.001f)
-            {
-                direction /= distance;
-            }
-            else
-            {
-                direction = Vector3.zero;
-            }
-
-            float horizontalSpeed = distance / totalTime;
-            return direction * horizontalSpeed + Vector3.up * verticalSpeed;
-        }
-
-        public static Vector3 CalculateLaunchVelocityWithFixedTime(Vector3 start, Vector3 target, float fixedTime)
-        {
-            float gravity = Mathf.Max(Physics.gravity.magnitude, 0.001f);
-
-            Vector3 startFlat = start;
-            startFlat.y = 0f;
-
-            Vector3 targetFlat = target;
-            targetFlat.y = 0f;
-
-            Vector3 direction = targetFlat - startFlat;
-            float distance = direction.magnitude;
-            if (distance > 0.001f)
-            {
-                direction /= distance;
-            }
-            else
-            {
-                direction = Vector3.zero;
-            }
-
-            float horizontalSpeed = distance / fixedTime;
-            
-            // h = v0*t + 0.5*a*t^2 => v0 = (h - 0.5*a*t^2)/t
-            float heightDiff = target.y - start.y;
-            // gravity is positive magnitude, but acts negatively on y
-            float verticalSpeed = (heightDiff - 0.5f * (-gravity) * fixedTime * fixedTime) / fixedTime;
-
-            return direction * horizontalSpeed + Vector3.up * verticalSpeed;
-        }
-
-        public static Vector3 EvaluatePosition(Vector3 start, Vector3 velocity, float time)
-        {
-            return start + velocity * time + 0.5f * Physics.gravity * time * time;
-        }
-
-        public static Vector3[] BuildTrajectory(
-            Vector3 start,
-            Vector3 target,
-            float verticalSpeed,
-            int fragmentCount,
-            int obstacleLayers,
-            ref Vector3 hitPoint,
-            out bool hitObstacle,
-            out float travelTime)
-        {
-            travelTime = CalculateTravelTime(start, target, verticalSpeed);
-            Vector3 velocity = CalculateLaunchVelocity(start, target, verticalSpeed);
-            Vector3[] points = new Vector3[fragmentCount + 1];
-
-            hitObstacle = false;
-
-            for (int i = 0; i <= fragmentCount; i++)
-            {
-                float time = travelTime * i / fragmentCount;
-                points[i] = EvaluatePosition(start, velocity, time);
-
-                if (i > 0 && i < points.Length - 1 && !hitObstacle)
-                {
-                    Vector3 from = points[i - 1];
-                    Vector3 to = points[i];
-                    if (CheckObstacle(from, to, obstacleLayers, ref hitPoint))
-                    {
-                        hitObstacle = true;
-                        hitPoint = from + (to - from).normalized * (hitPoint - from).magnitude;
-                    }
-                }
-
-                if (hitObstacle)
-                {
-                    points[i] = hitPoint;
-                }
-            }
-
-            return points;
-        }
-
-        private static bool CheckObstacle(Vector3 from, Vector3 to, int obstacleLayers, ref Vector3 hitPoint)
-        {
-            Vector3 direction = to - from;
-            float distance = direction.magnitude;
-            if (distance <= 0.001f)
-            {
-                return false;
-            }
-
-            direction /= distance;
-            int hitCount = Physics.SphereCastNonAlloc(from, 0.2f, direction, hitCache, distance, obstacleLayers);
-            if (hitCount > 0)
-            {
-                hitPoint = hitCache[0].point;
-                return true;
-            }
-
-            return false;
-        }
-    }
-
     public class DetonationFader : MonoBehaviour
     {
         private float duration;
@@ -754,7 +617,7 @@ namespace BossRush
             float t = Mathf.Clamp01(elapsed / duration);
 
             float scale = Mathf.Lerp(1f, 2f, t);
-            transform.localScale = new Vector3(startScale.x * scale, startScale.y * scale, 1f);
+            transform.localScale = new Vector3(startScale.x * scale, startScale.y * scale, startScale.z * scale);
 
             float alpha = Mathf.Lerp(startColor.a, 0f, t * t);
             if (spriteRenderer != null)
@@ -780,6 +643,8 @@ namespace BossRush
         private float elapsed;
         private Transform coreRoot;
         private Light pointLight;
+        private ParticleSystem[] cachedParticles;
+        private bool emissionStopped;
 
         public void Initialize(float lifeTime)
         {
@@ -801,6 +666,7 @@ namespace BossRush
             DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(coreRoot.gameObject);
 
             ParticleSystem[] particles = coreRoot.GetComponentsInChildren<ParticleSystem>(true);
+            cachedParticles = particles;
             foreach (var ps in particles)
             {
                 var main = ps.main;
@@ -857,13 +723,16 @@ namespace BossRush
                 pointLight.intensity = Mathf.Lerp(4f, 0f, normalized);
             }
 
-            if (normalized >= 0.8f)
+            if (normalized >= 0.8f && !emissionStopped)
             {
-                ParticleSystem[] particles = coreRoot.GetComponentsInChildren<ParticleSystem>(true);
-                foreach (var ps in particles)
+                emissionStopped = true;
+                if (cachedParticles != null)
                 {
-                    var em = ps.emission;
-                    em.enabled = false;
+                    foreach (var ps in cachedParticles)
+                    {
+                        var em = ps.emission;
+                        em.enabled = false;
+                    }
                 }
             }
         }

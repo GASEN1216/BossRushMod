@@ -230,5 +230,20 @@ namespace BossRush
                 ModBehaviour.Instance?.PlaySoundEffect(path);
             }
         }
+
+        public void PlayHalberdZadiSFX()
+        {
+            string modPath = ModBehaviour.GetModPath();
+            if (string.IsNullOrEmpty(modPath))
+            {
+                return;
+            }
+
+            string path = Path.Combine(modPath, "Assets", "Sounds", "items", "zadi.mp3");
+            if (File.Exists(path))
+            {
+                ModBehaviour.Instance?.PlaySoundEffect(path);
+            }
+        }
     }
 }

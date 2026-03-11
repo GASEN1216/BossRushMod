@@ -125,9 +125,17 @@ namespace BossRush
             }
             else
             {
-                // 已注册过，重新绑定到新场景的角色
-                mgr.RebindToCharacter(player);
-                DevLog("[FenHuangHalberd] 右键能力已重新绑定到玩家");
+                // 已注册过，OnSceneChanged 已经重建了动作，
+                // 这里只需更新角色引用（如果角色实例变了）
+                if (mgr.TargetCharacter != player)
+                {
+                    mgr.RebindToCharacter(player);
+                    DevLog("[FenHuangHalberd] 右键能力已重新绑定到新玩家实例");
+                }
+                else
+                {
+                    DevLog("[FenHuangHalberd] 右键能力已由 OnSceneChanged 重建，跳过重复绑定");
+                }
             }
         }
 
