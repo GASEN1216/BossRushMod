@@ -7,11 +7,11 @@
 //   - 基础概率由稀有度和物品价值决定（基准r=8,v=10000时p=0.20）
 //   - 金钱增益：基于物品价值的倍数（1倍+10%，10倍+30%，100倍+100%）
 //   - 幅度抽取：u^expo（p越大expo越小，幅度越大）
-//   - 正负号由概率p决定（p越大越保持原符号，增强效果）
+//   - 正负号由倾向滑块决定（0=必定负，1=必定正，0.5=各50%）
 //   - 属性范围：预制体值≤1时用0~1，>1时用0~100%预制体值
 //   - 整数属性保持整数
 //   - 每次重铸保证至少有一个属性被修改
-//   - 基础重铸费用为物品价值的1/10
+//   - 基础重铸费用为物品价值的1/1000
 //   - 保底机制：连续失败后提升成功率
 // ============================================================================
 
@@ -282,22 +282,22 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 计算基础重铸费用（物品价值的1/10，最低100）
+        /// 计算基础重铸费用（物品价值的1/1000，最低100）
         /// </summary>
         public static int GetBaseCost(Item item)
         {
             if (item == null) return MIN_REFORGE_COST;
             float itemValue = GetItemValue(item);
-            int baseCost = Mathf.RoundToInt(itemValue / 10f);
+            int baseCost = Mathf.RoundToInt(itemValue / 1000f);
             return Mathf.Max(MIN_REFORGE_COST, baseCost);
         }
-        
+
         /// <summary>
         /// 计算基础重铸费用（基于物品价值）
         /// </summary>
         public static int GetBaseCost(float itemValue)
         {
-            int baseCost = Mathf.RoundToInt(itemValue / 10f);
+            int baseCost = Mathf.RoundToInt(itemValue / 1000f);
             return Mathf.Max(MIN_REFORGE_COST, baseCost);
         }
 
@@ -414,23 +414,19 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 决定正负号（基于概率p和原值符号）
-        /// p越大越倾向于保持原符号（增强效果），p越小越可能反转符号
+        /// 决定绝对正负号（基于tendencyChance: 0为必定负，1为必定正，0.5为各50%）
+        /// tendencyChance通过滑动条进行设置，范围为0.0f - 1.0f。
         /// 使用 UnityEngine.Random 确保真正随机，不依赖种子
         /// </summary>
-        public static int RollSign(float p, float originalValue)
+        public static int RollSign(float tendencyChance)
         {
-            // 原值的符号：正数返回+1，负数返回-1，零返回+1
-            int originalSign = originalValue >= 0 ? 1 : -1;
-            
-            // 纯50/50随机，不受概率p影响
-            if (UnityEngine.Random.value < 0.5f)
+            if (UnityEngine.Random.value < tendencyChance)
             {
-                return originalSign;  // 保持原符号（增强效果）
+                return 1;  // 生成正值
             }
             else
             {
-                return -originalSign; // 反转符号（削弱效果）
+                return -1; // 生成负值
             }
         }
         
@@ -580,16 +576,16 @@ namespace BossRush
         
         /// <summary>
         /// 执行重铸 - 新概率系统
-        /// 1. 检查基础费用（物品价值的1/10）
+        /// 1. 检查基础费用（物品价值的1/1000）
         /// 2. 每个属性独立判定是否修改（rand < p + 保底加成）
         /// 3. 保证至少有一个属性被修改
         /// 4. 触发后用 u^expo 抽幅度
-        /// 5. 时间+玩家ID决定正负号
-        /// 6. 属性范围：预制体值≤1时用0~1，>1时用0~100%预制体值
+        /// 5. 正负号由 tendencyChance 倾向绝对控制（0~1）
+        /// 6. 属性范围：预制体值≤1时用0~1，>1时用预制体值的30%~200%（针对非强制值）
         /// 7. 整数属性保持整数
         /// 8. 保底机制：连续失败后提升成功率
         /// </summary>
-        public static ReforgeResult Reforge(Item item, int moneyInvested, string userId)
+        public static ReforgeResult Reforge(Item item, int moneyInvested, string userId, float tendencyChance = 0.5f)
         {
             ReforgeResult result = new ReforgeResult();
             result.Success = false;
@@ -601,7 +597,7 @@ namespace BossRush
                 return result;
             }
             
-            // 计算基础费用（物品价值的1/10）
+            // 计算基础费用（物品价值的1/1000）
             float itemValue = GetItemValue(item);
             int baseCost = GetBaseCost(itemValue);
             
@@ -726,22 +722,20 @@ namespace BossRush
                 // 对每个属性独立判定是否修改（使用带保底的概率）
                 for (int i = 0; i < allProperties.Count; i++)
                 {
-                    // Step 1: 判定是否修改（rand < pWithPity，保底只影响选中概率）
                     if (random.NextDouble() < pWithPity)
                     {
                         selectedIndices.Add(i);
                     }
                 }
-                
-                // 保证至少有一个属性被修改
+
+                // 保证至少有一个属性被修改，避免投入金钱后没有结果
                 if (selectedIndices.Count == 0 && allProperties.Count > 0)
                 {
-                    // 随机选择一个属性强制修改
                     int forcedIndex = random.Next(allProperties.Count);
                     selectedIndices.Add(forcedIndex);
                     ModBehaviour.DevLog("[ReforgeSystem] 所有属性都未命中，强制选择属性: " + allProperties[forcedIndex].Key);
                 }
-                
+
                 // 对选中的属性执行修改
                 foreach (int i in selectedIndices)
                 {
@@ -757,9 +751,9 @@ namespace BossRush
                     // Step 2: 抽幅度（使用原始概率baseP，保底不影响幅度）
                     float mag01 = RollMagnitude(baseP, random);
                     
-                    // Step 3: 决定正负号（使用原始概率baseP，保底不影响方向）
+                    // Step 3: 决定正负号（由滑动条控制绝对正负倾向）
                     float originalValue = prop.Value;
-                    int sign = RollSign(baseP, originalValue);
+                    int sign = RollSign(tendencyChance);
                     
                     // Step 4: 计算delta和新值
                     float delta, newValue;
@@ -812,15 +806,15 @@ namespace BossRush
                         
                         if (prefabValue > 0)
                         {
-                            // 正数属性：范围为预制体值的0%~200%
-                            minValue = 0f;
+                            // 正数属性：范围为预制体值的30%~200%
+                            minValue = prefabValue * 0.3f;
                             maxValue = prefabValue * (1f + MAX_VALUE_OFFSET_PERCENT);
                         }
                         else
                         {
                             // 负数属性：范围反转
                             minValue = prefabValue * (1f + MAX_VALUE_OFFSET_PERCENT);
-                            maxValue = 0f;
+                            maxValue = prefabValue * 0.3f;
                         }
                         newValue = Mathf.Clamp(newValue, minValue, maxValue);
                     }

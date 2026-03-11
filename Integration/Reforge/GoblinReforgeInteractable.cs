@@ -437,44 +437,6 @@ namespace BossRush
                 }
             }
         }
-        
-        /// <summary>
-        /// 获取随机对话内容
-        /// </summary>
-        private string GetRandomChatDialogue()
-        {
-            int level = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
-            
-            // 根据好感度等级选择不同风格的对话
-            if (level >= 8)
-            {
-                return L10n.T("老朋友！叮当超级开心见到你！", "Old friend! Dingdang is super happy to see you!");
-            }
-            else if (level >= 5)
-            {
-                return L10n.T("嘿！今天也来找叮当玩啦？", "Hey! Coming to play with Dingdang today too?");
-            }
-            else if (level >= 2)
-            {
-                // 随机选择
-                string[] chatDialogues = new string[]
-                {
-                    "叮当今天心情不错！",
-                    "你来找叮当玩啦？",
-                    "叮当最喜欢闪闪发光的东西了！",
-                    "嘿嘿，叮当有好多宝贝~",
-                    "你是叮当的朋友吗？",
-                    "叮当的锤子可厉害了！",
-                    "今天天气真好呀~"
-                };
-                int index = UnityEngine.Random.Range(0, chatDialogues.Length);
-                return L10n.T(chatDialogues[index], chatDialogues[index]);
-            }
-            else
-            {
-                return L10n.T("嗯...你好。", "Hmm... hello.");
-            }
-        }
-        
+
     }
 }
