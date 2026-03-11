@@ -83,7 +83,7 @@ namespace BossRush
 
                 // 获取实际的 3D 模型 Agent 并修复它的渲染属性
                 ItemAgent modelAgent = null;
-                EquipmentFactory.GetLoadedModels().TryGetValue(item.TypeID, out modelAgent);
+                EquipmentFactory.TryGetLoadedModel(FenHuangHalberdIds.ModelBaseName, out modelAgent);
 
                 // 1. 创建 StatCollection 并添加近战 Stats
                 ConfigureStats(item);
@@ -96,6 +96,11 @@ namespace BossRush
 
                 // 4. 添加标签
                 ConfigureTags(item);
+
+                if (modelAgent != null)
+                {
+                    EquipmentFactory.TryBindLoadedMeleeModel(item, FenHuangHalberdIds.ModelBaseName, HALBERD_BASE_NAME);
+                }
 
                 // 5. 注入本地化
                 InjectLocalization(item);
@@ -189,8 +194,8 @@ namespace BossRush
                 meleeAgent = item.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
             }
 
-            // Use the native melee socket path so the factory can create a real melee handheld prefab.
-            meleeAgent.handheldSocket = HandheldSocketTypes.meleeWeapon;
+            // 原版近战武器用 normalHandheld 挂在 RightHandSocket（受攻击动画骨骼驱动）
+            meleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
 
             // 设置动画类型 = meleeWeapon（枚举值 3，播放近战挥砍动画）
             meleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
@@ -245,11 +250,11 @@ namespace BossRush
                 {
                     modelMeleeAgent = modelAgent.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
                 }
-                modelMeleeAgent.handheldSocket = HandheldSocketTypes.meleeWeapon;
+                modelMeleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
                 modelMeleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
             }
 
-            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=meleeWeapon, anim=meleeWeapon)");
+            ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=normalHandheld, anim=meleeWeapon)");
         }
 
         /// <summary>

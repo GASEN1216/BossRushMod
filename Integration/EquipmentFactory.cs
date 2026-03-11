@@ -135,6 +135,10 @@ namespace BossRush
         
         // 已加载的模型缓存（TypeID -> ItemAgent）
         private static Dictionary<int, ItemAgent> loadedModels = new Dictionary<int, ItemAgent>();
+
+        // 已加载的模型缓存（BaseName -> ItemAgent），支持模型与物品分桶加载
+        private static Dictionary<string, ItemAgent> loadedModelsByBaseName =
+            new Dictionary<string, ItemAgent>(StringComparer.OrdinalIgnoreCase);
         
         // 已加载的Buff缓存（基础名 -> Buff预制体）
         private static Dictionary<string, Buff> loadedBuffs = new Dictionary<string, Buff>();
@@ -308,6 +312,42 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 通过模型基础名获取已加载的 3D 模型
+        /// </summary>
+        public static bool TryGetLoadedModel(string baseName, out ItemAgent modelAgent)
+        {
+            modelAgent = null;
+            if (string.IsNullOrEmpty(baseName))
+            {
+                return false;
+            }
+
+            return loadedModelsByBaseName.TryGetValue(baseName, out modelAgent);
+        }
+
+        /// <summary>
+        /// 将已加载的近战模型绑定到物品 prefab，并补齐 Handheld 代理。
+        /// </summary>
+        public static bool TryBindLoadedMeleeModel(Item itemPrefab, string modelBaseName, string handheldBaseName)
+        {
+            if (itemPrefab == null)
+            {
+                return false;
+            }
+
+            ItemAgent modelAgent;
+            if (!TryGetLoadedModel(modelBaseName, out modelAgent) || modelAgent == null)
+            {
+                return false;
+            }
+
+            loadedModels[itemPrefab.TypeID] = modelAgent;
+            InjectItemGraphicForEquipment(itemPrefab, modelAgent);
+            FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, handheldBaseName);
+            return true;
+        }
+
+        /// <summary>
         /// 检查 TypeID 是否是已加载的自定义物品
         /// </summary>
         public static bool IsCustomEquipment(int typeId)
@@ -371,7 +411,6 @@ namespace BossRush
             
             // 近战武器类型
             if (nameLower.Contains("_melee_")) return EquipmentType.MeleeWeapon;
-            if (nameLower.Contains("halberd")) return EquipmentType.MeleeWeapon;
             if (nameLower.Contains("_sword_")) return EquipmentType.MeleeWeapon;
             if (nameLower.Contains("_axe_")) return EquipmentType.MeleeWeapon;
             
@@ -547,6 +586,7 @@ namespace BossRush
                         }
                         FixModelLayerAndShader(agent.gameObject);
                         modelsByBaseName[baseName] = agent;
+                        loadedModelsByBaseName[baseName] = agent;
                         
                         EquipmentType? detectedType = ParseEquipmentTypeFromName(goName);
                         if (detectedType.HasValue && !typesByBaseName.ContainsKey(baseName))
@@ -559,6 +599,15 @@ namespace BossRush
 
                 // 第二遍：处理每个 Item，关联相关资源
                 int loadedCount = 0;
+                int standaloneModelCount = 0;
+
+                foreach (var modelEntry in modelsByBaseName)
+                {
+                    if (!itemsByBaseName.ContainsKey(modelEntry.Key))
+                    {
+                        standaloneModelCount++;
+                    }
+                }
                 
                 foreach (var kvp in itemsByBaseName)
                 {
@@ -632,9 +681,6 @@ namespace BossRush
                         // 配置龙息武器（配件槽位、弹药类型、耐久度、标签）
                         DragonBreathWeaponConfig.TryConfigure(itemPrefab, baseName);
 
-                        // 配置焚皇断界戟（近战组件、Stats、标签）
-                        FenHuangHalberdWeaponConfig.TryConfigure(itemPrefab, baseName);
-
                         // 注册到游戏物品系统
                         if (equipType == EquipmentType.MeleeWeapon)
                         {
@@ -653,7 +699,9 @@ namespace BossRush
                     }
                 }
 
-                ModBehaviour.DevLog("[EquipmentFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个物品");
+                loadedCount += standaloneModelCount;
+
+                ModBehaviour.DevLog("[EquipmentFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个条目");
                 return loadedCount;
             }
             catch (Exception e)
@@ -1455,7 +1503,9 @@ namespace BossRush
                 return;
             }
 
-            target.handheldSocket = template != null ? template.handheldSocket : HandheldSocketTypes.meleeWeapon;
+            // 原版近战武器的 handheldSocket 是 normalHandheld（挂在 RightHandSocket，受攻击动画骨骼驱动）
+            // 而不是 meleeWeapon（挂在 MeleeWeaponSocketFixed，固定位置不受动画驱动）
+            target.handheldSocket = template != null ? template.handheldSocket : HandheldSocketTypes.normalHandheld;
             target.handAnimationType = template != null ? template.handAnimationType : HandheldAnimationType.meleeWeapon;
 
             EnsureSocketsListInitialized(target);

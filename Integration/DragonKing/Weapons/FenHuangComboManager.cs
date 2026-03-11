@@ -249,7 +249,7 @@ namespace BossRush
                 return;
             }
 
-            DamageReceiver receiver = TryGetReceiver(health);
+            DamageReceiver receiver = FenHuangHalberdRuntime.TryGetDamageReceiver(health);
             if (receiver == null)
             {
                 return;
@@ -298,23 +298,6 @@ namespace BossRush
                 // 第三段：向玩家拉扯
                 ApplyPull(receiver.transform, attacker, FenHuangHalberdConfig.Combo3PullDistance);
             }
-        }
-
-        private static DamageReceiver TryGetReceiver(Health health)
-        {
-            DamageReceiver receiver = health.GetComponent<DamageReceiver>();
-            if (receiver != null)
-            {
-                return receiver;
-            }
-
-            receiver = health.GetComponentInParent<DamageReceiver>();
-            if (receiver != null)
-            {
-                return receiver;
-            }
-
-            return health.GetComponentInChildren<DamageReceiver>();
         }
 
         internal static float GetComboConfiguredDamage(int step, float baseDamage)
@@ -406,15 +389,6 @@ namespace BossRush
                 yield return null;
             }
 
-            if (target != null)
-            {
-                target.SetForceMoveVelocity(Vector3.zero);
-            }
-        }
-
-        private static System.Collections.IEnumerator StopKnockbackCoroutine(CharacterMainControl target, float delay)
-        {
-            yield return new WaitForSeconds(delay);
             if (target != null)
             {
                 target.SetForceMoveVelocity(Vector3.zero);
@@ -657,6 +631,9 @@ namespace BossRush
     [HarmonyPatch(typeof(CA_Attack), "OnStart")]
     public static class FenHuangComboAttackPatch
     {
+        private static FieldInfo _holdAgentField;
+        private static bool _holdAgentFieldCached;
+
         [HarmonyPostfix]
         public static void Postfix(CA_Attack __instance, bool __result)
         {
@@ -690,6 +667,14 @@ namespace BossRush
                     return;
                 }
 
+                // 强制确保 CharacterAnimationControl 的 holdAgent 指向当前武器代理，
+                // 并触发攻击动画。原版的事件链 CA_Attack.OnAttack → CharacterModel →
+                // CharacterAnimationControl.OnAttack 依赖 holdAgent 缓存，
+                // 但 holdAgent 只在为 null/destroyed 时才在 Update 中更新，
+                // 如果 OnAttack 事件在同帧的 Update 之前触发，holdAgent 可能还未指向
+                // 新的断界戟代理，导致 handAnimationType 检查失败，攻击动画不播放。
+                ForceAttackAnimation(character);
+
                 int effectStep = combo.ComboStep;
                 combo.RegisterAttack(character, effectStep);
                 combo.AdvanceCombo();
@@ -698,6 +683,58 @@ namespace BossRush
             }
             catch
             {
+            }
+        }
+
+        private static void ForceAttackAnimation(CharacterMainControl character)
+        {
+            try
+            {
+                if (character.characterModel == null)
+                {
+                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: characterModel 为 null");
+                    return;
+                }
+
+                CharacterAnimationControl animControl =
+                    character.characterModel.GetComponentInChildren<CharacterAnimationControl>();
+                if (animControl == null)
+                {
+                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: CharacterAnimationControl 为 null");
+                    return;
+                }
+
+                // 缓存反射字段
+                if (!_holdAgentFieldCached)
+                {
+                    _holdAgentField = typeof(CharacterAnimationControl).GetField("holdAgent",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    _holdAgentFieldCached = true;
+                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: holdAgent 字段缓存=" + (_holdAgentField != null));
+                }
+
+                // 强制将 holdAgent 更新为当前手持代理
+                DuckovItemAgent currentAgent = character.CurrentHoldItemAgent;
+                if (currentAgent != null && _holdAgentField != null)
+                {
+                    DuckovItemAgent oldAgent = _holdAgentField.GetValue(animControl) as DuckovItemAgent;
+                    _holdAgentField.SetValue(animControl, currentAgent);
+                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: holdAgent 已更新"
+                        + " old=" + (oldAgent != null ? oldAgent.name + " animType=" + (int)oldAgent.handAnimationType : "null")
+                        + " new=" + currentAgent.name + " animType=" + (int)currentAgent.handAnimationType);
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: currentAgent=" + (currentAgent != null) + " holdAgentField=" + (_holdAgentField != null));
+                }
+
+                // 通过 CharacterModel 的公开方法触发攻击动画
+                character.characterModel.ForcePlayAttackAnimation();
+                ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: 已调用 ForcePlayAttackAnimation");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation 异常: " + e.Message);
             }
         }
 
@@ -958,20 +995,24 @@ namespace BossRush
 
                 // 同步近战挂点与动画类型
                 meleeComp.handheldSocket = HandheldSocketTypes.normalHandheld;
-                meleeComp.handAnimationType = HandheldAnimationType.normal;
+                meleeComp.handAnimationType = HandheldAnimationType.meleeWeapon;
 
                 // 绑定 Holder，确保角色控制和归属关系正确
                 meleeComp.SetHolder(__result.Holder);
 
                 // 同步返回代理的挂点、动画类型和实际父节点，确保 CurrentHoldItemAgent 表现正确
                 __result.handheldSocket = HandheldSocketTypes.normalHandheld;
-                __result.handAnimationType = HandheldAnimationType.normal;
+                __result.handAnimationType = HandheldAnimationType.meleeWeapon;
 
                 Transform meleeSocket = null;
                 if (__instance.characterController != null && __instance.characterController.characterModel != null)
                 {
-                    // 改用 RightHandSocket，与原版刀具保持一致，防止使用特殊的近战挂点导致 IK 异常
+                    // 原版近战武器挂在 RightHandSocket（受攻击动画骨骼驱动）
                     meleeSocket = __instance.characterController.characterModel.RightHandSocket;
+                    if (meleeSocket == null)
+                    {
+                        meleeSocket = __instance.characterController.characterModel.MeleeWeaponSocket;
+                    }
                 }
 
                 if (meleeSocket != null)
@@ -1214,49 +1255,110 @@ namespace BossRush
 
         private Transform targetBone;
         private Coroutine tiltCoroutine;
+        private Quaternion baselineLocalRotation = Quaternion.identity;
+        private bool hasBaselineRotation;
+        private bool refreshBaselineOnFirstFrame;
 
         public void ApplyTilt(Transform bone, Vector3 eulerOffset, float dur)
         {
             if (bone == null) return;
-            this.targetBone = bone;
-            this.targetTiltEuler = eulerOffset;
-            this.duration = dur;
-            this.elapsed = 0f;
 
-            if (tiltCoroutine != null) StopCoroutine(tiltCoroutine);
+            RestoreBaselineRotation();
+
+            targetBone = bone;
+            targetTiltEuler = eulerOffset;
+            duration = dur;
+            elapsed = 0f;
+            baselineLocalRotation = bone.localRotation;
+            hasBaselineRotation = true;
+            refreshBaselineOnFirstFrame = true;
+
+            if (tiltCoroutine != null)
+            {
+                StopCoroutine(tiltCoroutine);
+            }
+
             tiltCoroutine = StartCoroutine(TiltRoutine());
         }
 
-        // 使用 Coroutine 和 WaitForEndOfFrame 确保在 Animator 和所有 IK 结算之后强压动作
         private System.Collections.IEnumerator TiltRoutine()
         {
             while (elapsed <= duration)
             {
-                // 等待当前帧所有的 Update, LateUpdate, 动画计算, IK结算全部完成
                 yield return new WaitForEndOfFrame();
-                
-                if (targetBone == null) yield break;
+
+                if (targetBone == null)
+                {
+                    tiltCoroutine = null;
+                    yield break;
+                }
+
+                if (refreshBaselineOnFirstFrame)
+                {
+                    baselineLocalRotation = targetBone.localRotation;
+                    refreshBaselineOnFirstFrame = false;
+                }
 
                 elapsed += Time.deltaTime;
                 float t = elapsed / duration;
                 if (t > 1f) t = 1f;
 
-                // 使用简易的抛物线 f(t) = 4 * t * (1 - t)
-                float weight = 4f * t * (1f - t);
-
                 if (targetTiltEuler.sqrMagnitude < 0.1f)
                 {
+                    targetBone.localRotation = baselineLocalRotation;
                     continue;
                 }
 
-                // 计算当前该有的偏移旋转
+                float weight = 4f * t * (1f - t);
                 Quaternion targetOffset = Quaternion.Euler(targetTiltEuler);
                 Quaternion currentOffset = Quaternion.Slerp(Quaternion.identity, targetOffset, weight);
 
-                // 在当前实际被动画系统结算完了的 localRotation 之上强行扭转
-                // 因为是 WaitForEndOfFrame，这个修改会直接被提交给渲染管线，必定视觉生效
-                targetBone.localRotation = targetBone.localRotation * currentOffset;
+                // Apply the tilt from the captured baseline so repeated attacks cannot accumulate drift.
+                targetBone.localRotation = baselineLocalRotation * currentOffset;
             }
+
+            RestoreBaselineRotation();
+            tiltCoroutine = null;
+        }
+
+        private void OnDisable()
+        {
+            if (tiltCoroutine != null)
+            {
+                StopCoroutine(tiltCoroutine);
+                tiltCoroutine = null;
+            }
+
+            RestoreBaselineRotation();
+        }
+
+        private void OnDestroy()
+        {
+            RestoreBaselineRotation();
+        }
+
+        private void RestoreBaselineRotation()
+        {
+            if (targetBone != null && hasBaselineRotation)
+            {
+                targetBone.localRotation = baselineLocalRotation;
+            }
+        }
+
+        /// <summary>
+        /// 外部调用：立即停止 tilt 协程并恢复到基线旋转。
+        /// 用于右键跳跃前确保武器 pose 干净，防止缓存到被 tilt 扭曲的值。
+        /// </summary>
+        public void ForceRestore()
+        {
+            if (tiltCoroutine != null)
+            {
+                StopCoroutine(tiltCoroutine);
+                tiltCoroutine = null;
+            }
+
+            RestoreBaselineRotation();
+            hasBaselineRotation = false;
         }
     }
 }

@@ -16,7 +16,6 @@ namespace BossRush
             Recovery
         }
 
-        private const float LeapArcHeight = 3.5f;
         private static readonly Collider[] hitBuffer = new Collider[24];
         private static FenHuangHalberdConfig configInstance;
 
@@ -32,6 +31,10 @@ namespace BossRush
         private bool movementWasEnabled = true;
         private int landingPillarIndex;
         private float nextLandingPillarTime;
+        private DuckovItemAgent cachedHoldItemAgent;
+        private Vector3 cachedHoldLocalPosition;
+        private Quaternion cachedHoldLocalRotation = Quaternion.identity;
+        private Vector3 cachedHoldLocalScale = Vector3.one;
 
         public static void SetConfig(FenHuangHalberdConfig cfg)
         {
@@ -87,9 +90,14 @@ namespace BossRush
                 return false;
             }
 
-            EnsureDragonKingAssetsLoaded();
+            FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
 
             leapStartPoint = SnapToGround(characterController.transform.position, characterController.transform.position.y);
+            leapTargetPoint = FenHuangHalberdRuntime.ClampHorizontalTarget(
+                leapStartPoint,
+                leapTargetPoint,
+                FenHuangHalberdConfig.LeapPreviewMaxRange
+            );
             leapTargetPoint = SnapToGround(leapTargetPoint, leapStartPoint.y);
 
             Vector3 flatDirection = leapTargetPoint - leapStartPoint;
@@ -106,7 +114,7 @@ namespace BossRush
             }
 
             leapDirection = flatDirection.normalized;
-            leapTravelTime = 0.3f;
+            leapTravelTime = FenHuangHalberdConfig.MaxLeapTravelTime;
 
             if (leapTravelTime <= 0.01f || float.IsNaN(leapTravelTime) || float.IsInfinity(leapTravelTime))
             {
@@ -117,11 +125,7 @@ namespace BossRush
             characterController.SetMoveInput(Vector3.zero);
             characterController.SetForceMoveVelocity(Vector3.zero);
             characterController.movementControl.ForceTurnTo(leapDirection);
-
-            if (characterController.characterModel != null)
-            {
-                characterController.characterModel.ForcePlayAttackAnimation();
-            }
+            CacheHoldItemPose();
 
             movementWasEnabled = characterController.movementControl.MovementEnabled;
             characterController.movementControl.MovementEnabled = false;
@@ -139,6 +143,7 @@ namespace BossRush
 
         protected override void OnAbilityUpdate(float deltaTime)
         {
+            MaintainHoldItemPose();
             phaseTime += deltaTime;
 
             switch (leapState)
@@ -164,6 +169,7 @@ namespace BossRush
         protected override void OnAbilityStop()
         {
             RestoreMovementControl();
+            RestoreHoldItemPose();
             leapState = LeapState.None;
             leapTargetPrepared = false;
             phaseTime = 0f;
@@ -211,17 +217,8 @@ namespace BossRush
 
             float flightTime = Mathf.Min(phaseTime, leapTravelTime);
             float t = flightTime / leapTravelTime;
-            
-            // Linear horizontal interpolation
-            Vector3 startFlat = leapStartPoint; startFlat.y = 0f;
-            Vector3 targetFlat = leapTargetPoint; targetFlat.y = 0f;
-            Vector3 currentFlat = Vector3.Lerp(startFlat, targetFlat, t);
-            
-            // Sine wave vertical interpolation for a forced 3.5 meter jump height
-            float baseHeight = Mathf.Lerp(leapStartPoint.y, leapTargetPoint.y, t);
-            float jumpOffset = Mathf.Sin(t * Mathf.PI) * LeapArcHeight;
-            
-            Vector3 position = currentFlat + Vector3.up * (baseHeight + jumpOffset);
+
+            Vector3 position = FenHuangHalberdRuntime.EvaluateTrajectoryPoint(leapStartPoint, leapTargetPoint, t);
 
             characterController.SetPosition(position);
             characterController.movementControl.ForceTurnTo(leapDirection);
@@ -329,21 +326,11 @@ namespace BossRush
         {
             try
             {
-                int layerMask = -1;
-                try
-                {
-                    layerMask = Duckov.Utilities.GameplayDataSettings.Layers.damageReceiverLayerMask;
-                }
-                catch
-                {
-                    layerMask = ~0;
-                }
-
                 int hitCount = Physics.OverlapSphereNonAlloc(
                     position,
                     FenHuangHalberdConfig.FirePillarRadius + 0.5f,
                     hitBuffer,
-                    layerMask
+                    FenHuangHalberdRuntime.DamageReceiverLayerMask
                 );
 
                 for (int i = 0; i < hitCount; i++)
@@ -427,25 +414,83 @@ namespace BossRush
             characterController.movementControl.MovementEnabled = movementWasEnabled;
         }
 
+        private void CacheHoldItemPose()
+        {
+            cachedHoldItemAgent = characterController != null ? characterController.CurrentHoldItemAgent : null;
+            if (cachedHoldItemAgent == null)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] CacheHoldItemPose: 无手持代理");
+                return;
+            }
+
+            // 先停止 FenHuangAnimationModifier 的 tilt 协程，
+            // 恢复武器到未被 tilt 修改的原始 pose，再缓存。
+            FenHuangAnimationModifier modifier =
+                cachedHoldItemAgent.gameObject.GetComponent<FenHuangAnimationModifier>();
+            if (modifier != null)
+            {
+                modifier.ForceRestore();
+                ModBehaviour.DevLog("[FenHuangHalberd] CacheHoldItemPose: 已 ForceRestore tilt");
+            }
+
+            Transform holdTransform = cachedHoldItemAgent.transform;
+            cachedHoldLocalPosition = holdTransform.localPosition;
+            cachedHoldLocalRotation = holdTransform.localRotation;
+            cachedHoldLocalScale = holdTransform.localScale;
+
+            ModBehaviour.DevLog("[FenHuangHalberd] CacheHoldItemPose: pos=" + cachedHoldLocalPosition
+                + " rot=" + cachedHoldLocalRotation.eulerAngles + " parent=" + (holdTransform.parent != null ? holdTransform.parent.name : "null"));
+        }
+
+        private void MaintainHoldItemPose()
+        {
+            if (cachedHoldItemAgent == null)
+            {
+                return;
+            }
+
+            Transform holdTransform = cachedHoldItemAgent.transform;
+            if (holdTransform == null)
+            {
+                cachedHoldItemAgent = null;
+                return;
+            }
+
+            holdTransform.localPosition = cachedHoldLocalPosition;
+            holdTransform.localRotation = cachedHoldLocalRotation;
+            holdTransform.localScale = cachedHoldLocalScale;
+        }
+
+        private void RestoreHoldItemPose()
+        {
+            if (cachedHoldItemAgent == null)
+            {
+                return;
+            }
+
+            Transform holdTransform = cachedHoldItemAgent.transform;
+            if (holdTransform != null)
+            {
+                holdTransform.localPosition = cachedHoldLocalPosition;
+                holdTransform.localRotation = cachedHoldLocalRotation;
+                holdTransform.localScale = cachedHoldLocalScale;
+                ModBehaviour.DevLog("[FenHuangHalberd] RestoreHoldItemPose: 已恢复 pos=" + cachedHoldLocalPosition
+                    + " rot=" + cachedHoldLocalRotation.eulerAngles
+                    + " 当前parent=" + (holdTransform.parent != null ? holdTransform.parent.name : "null"));
+            }
+
+            cachedHoldItemAgent = null;
+        }
+
         private void DealLandingImpactDamage(Vector3 center)
         {
             try
             {
-                int layerMask = -1;
-                try
-                {
-                    layerMask = Duckov.Utilities.GameplayDataSettings.Layers.damageReceiverLayerMask;
-                }
-                catch
-                {
-                    layerMask = ~0;
-                }
-
                 int hitCount = Physics.OverlapSphereNonAlloc(
                     center,
                     FenHuangHalberdConfig.LandingImpactRadius,
                     hitBuffer,
-                    layerMask
+                    FenHuangHalberdRuntime.DamageReceiverLayerMask
                 );
 
                 for (int i = 0; i < hitCount; i++)
@@ -478,16 +523,7 @@ namespace BossRush
 
         private Vector3 SnapToGround(Vector3 position, float fallbackY)
         {
-            RaycastHit hit;
-            Vector3 sample = position + Vector3.up * 8f;
-
-            if (Physics.Raycast(sample, Vector3.down, out hit, 30f, Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask))
-            {
-                return hit.point;
-            }
-
-            position.y = fallbackY;
-            return position;
+            return FenHuangHalberdRuntime.SnapToGround(position, fallbackY);
         }
 
         private void EnsureDragonKingAssetsLoaded()
@@ -524,43 +560,12 @@ namespace BossRush
 
         private static bool IsHoldingHalberd(CharacterMainControl character)
         {
-            if (character == null)
-            {
-                return false;
-            }
-
-            ItemAgent_MeleeWeapon melee = character.GetMeleeWeapon();
-            if (melee != null && melee.Item != null && melee.Item.TypeID == FenHuangHalberdIds.WeaponTypeId)
-            {
-                return true;
-            }
-
-            var holdItemAgent = character.CurrentHoldItemAgent;
-            return holdItemAgent != null &&
-                   holdItemAgent.Item != null &&
-                   holdItemAgent.Item.TypeID == FenHuangHalberdIds.WeaponTypeId;
+            return FenHuangHalberdRuntime.IsHoldingHalberd(character);
         }
 
         private static DamageReceiver TryGetDamageReceiver(Collider col)
         {
-            if (col == null)
-            {
-                return null;
-            }
-
-            DamageReceiver receiver = col.GetComponent<DamageReceiver>();
-            if (receiver != null)
-            {
-                return receiver;
-            }
-
-            receiver = col.GetComponentInParent<DamageReceiver>();
-            if (receiver != null)
-            {
-                return receiver;
-            }
-
-            return col.GetComponentInChildren<DamageReceiver>();
+            return FenHuangHalberdRuntime.TryGetDamageReceiver(col);
         }
 
         private static void CreateDetonationEffect(Vector3 position)

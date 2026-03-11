@@ -9,8 +9,11 @@ namespace BossRush
         : EquipmentAbilityManager<FenHuangHalberdConfig, FenHuangHalberdAction>
     {
         private const int PreviewFragmentCount = 20;
+        private const float LandingValidationRadius = 0.5f;
+        private const float LandingValidationHeight = 2f;
 
         private readonly FenHuangHalberdConfig configInstance = new FenHuangHalberdConfig();
+        private readonly Vector3[] previewPointsBuffer = new Vector3[PreviewFragmentCount + 1];
         private MethodInfo cachedReadValueAsButtonMethod;
         private MethodInfo cachedWasReleasedThisFrameMethod;
 
@@ -19,6 +22,8 @@ namespace BossRush
         private Vector3 previewLandingPoint;
         private GameObject previewObject;
         private FenHuangLeapPreview previewController;
+
+        private static readonly Collider[] landingValidationBuffer = new Collider[8];
 
         protected override void Update()
         {
@@ -60,13 +65,13 @@ namespace BossRush
 
         protected override bool OnBeforeTryExecute()
         {
-            return IsHoldingHalberd(CharacterMainControl.Main);
+            return FenHuangHalberdRuntime.IsHoldingHalberd(CharacterMainControl.Main);
         }
 
         protected override void OnManagerInitialized()
         {
             FenHuangHalberdAction.SetConfig(configInstance);
-            EnsureDragonKingAssetsLoaded();
+            FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
             LogIfVerbose("焚皇断界戟右键技能管理器已初始化");
         }
 
@@ -79,7 +84,7 @@ namespace BossRush
         public override void OnSceneChanged()
         {
             StopPreview();
-            EnsureDragonKingAssetsLoaded();
+            FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
             base.OnSceneChanged();
         }
 
@@ -118,7 +123,7 @@ namespace BossRush
                 return;
             }
 
-            if (!IsHoldingHalberd(player))
+            if (!FenHuangHalberdRuntime.IsHoldingHalberd(player))
             {
                 LogIfVerbose("预览期间检测到武器不再是焚皇断界戟，取消跃击预览");
                 StopPreview();
@@ -164,23 +169,6 @@ namespace BossRush
             released = IsAdsReleasedThisFrame();
         }
 
-        private static bool IsHoldingHalberd(CharacterMainControl player)
-        {
-            if (player == null)
-            {
-                return false;
-            }
-
-            ItemAgent_MeleeWeapon melee = player.GetMeleeWeapon();
-            if (melee != null && melee.Item != null && melee.Item.TypeID == FenHuangHalberdIds.WeaponTypeId)
-            {
-                return true;
-            }
-
-            var holdItemAgent = player.CurrentHoldItemAgent;
-            return holdItemAgent != null && holdItemAgent.Item != null && holdItemAgent.Item.TypeID == FenHuangHalberdIds.WeaponTypeId;
-        }
-
         private bool CanStartPreview()
         {
             if (!abilityEnabled || abilityAction == null || targetCharacter == null || IsActionRunning)
@@ -188,7 +176,7 @@ namespace BossRush
                 return false;
             }
 
-            EnsureDragonKingAssetsLoaded();
+            FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
             return abilityAction.IsReady();
         }
 
@@ -283,20 +271,26 @@ namespace BossRush
                 return;
             }
 
-            Vector3 aimPoint = GetClampedAimPoint(targetCharacter);
-            Vector3 resolvedLandingPoint = ResolveGroundPoint(aimPoint, targetCharacter.transform.position.y);
-            Vector3 previewOrigin = GetPreviewOrigin(targetCharacter);
+            Vector3 aimPoint = FenHuangHalberdRuntime.GetClampedAimPoint(
+                targetCharacter,
+                FenHuangHalberdConfig.LeapPreviewMaxRange
+            );
+            Vector3 resolvedLandingPoint = FenHuangHalberdRuntime.SnapToGround(
+                aimPoint,
+                targetCharacter.transform.position.y
+            );
+            Vector3 previewOrigin = FenHuangHalberdRuntime.GetPreviewOrigin(targetCharacter);
 
             // 使用和实际飞行完全一致的 lerp + sine wave 弧线来构建预览轨迹
-            Vector3[] previewPoints = BuildSineTrajectory(
-                previewOrigin,
-                resolvedLandingPoint,
-                PreviewFragmentCount
-            );
+            FenHuangHalberdRuntime.FillTrajectory(previewPointsBuffer, previewOrigin, resolvedLandingPoint);
 
             // 沿实际飞行弧线检测障碍物
             Vector3 hitPoint = resolvedLandingPoint;
-            bool hitObstacle = CheckTrajectoryObstacles(previewPoints, GetPreviewObstacleLayers(), ref hitPoint);
+            bool hitObstacle = CheckTrajectoryObstacles(
+                previewPointsBuffer,
+                FenHuangHalberdRuntime.PreviewObstacleLayerMask,
+                ref hitPoint
+            );
 
             previewLandingPoint = resolvedLandingPoint;
 
@@ -310,7 +304,7 @@ namespace BossRush
             Vector3 markerPoint = previewLandingPoint;
             if (previewController != null)
             {
-                previewController.UpdatePreview(previewPoints, markerPoint, previewValid);
+                previewController.UpdatePreview(previewPointsBuffer, markerPoint, previewValid);
             }
         }
 
@@ -318,27 +312,6 @@ namespace BossRush
         /// 构建与实际飞行一致的 sine wave 弧线轨迹点
         /// 和 FenHuangHalberdAction.UpdateLeaping 使用完全相同的计算方式
         /// </summary>
-        private static Vector3[] BuildSineTrajectory(Vector3 start, Vector3 target, int fragmentCount)
-        {
-            Vector3[] points = new Vector3[fragmentCount + 1];
-
-            Vector3 startFlat = start;
-            startFlat.y = 0f;
-            Vector3 targetFlat = target;
-            targetFlat.y = 0f;
-
-            for (int i = 0; i <= fragmentCount; i++)
-            {
-                float t = (float)i / fragmentCount;
-                Vector3 currentFlat = Vector3.Lerp(startFlat, targetFlat, t);
-                float baseHeight = Mathf.Lerp(start.y, target.y, t);
-                float jumpOffset = Mathf.Sin(t * Mathf.PI) * 3.5f;
-                points[i] = currentFlat + Vector3.up * (baseHeight + jumpOffset);
-            }
-
-            return points;
-        }
-
         /// <summary>
         /// 沿轨迹点做 SphereCast 检测障碍物（跳过首尾点）
         /// </summary>
@@ -370,34 +343,6 @@ namespace BossRush
             }
 
             return false;
-        }
-
-        private static Vector3 GetPreviewOrigin(CharacterMainControl player)
-        {
-            if (player == null)
-            {
-                return Vector3.zero;
-            }
-
-            if (player.CurrentUsingAimSocket != null)
-            {
-                return player.CurrentUsingAimSocket.position;
-            }
-
-            if (player.characterModel != null)
-            {
-                if (player.characterModel.MeleeWeaponSocket != null)
-                {
-                    return player.characterModel.MeleeWeaponSocket.position;
-                }
-
-                if (player.characterModel.RightHandSocket != null)
-                {
-                    return player.characterModel.RightHandSocket.position;
-                }
-            }
-
-            return player.transform.position + Vector3.up * 1.1f;
         }
 
         private Vector3 GetClampedAimPoint(CharacterMainControl player)
@@ -450,32 +395,24 @@ namespace BossRush
         private bool IsLandingPointValid(Vector3 position)
         {
             // 只检测墙壁等不可通过的障碍物，不检测角色、地面、触发器
-            int wallMask;
-            try
-            {
-                wallMask = GameplayDataSettings.Layers.wallLayerMask;
-            }
-            catch
-            {
-                wallMask = LayerMask.GetMask("Wall");
-            }
+            int wallMask = FenHuangHalberdRuntime.WallLayerMask;
 
             if (wallMask == 0)
             {
                 return true;
             }
 
-            float checkRadius = 0.5f;
-            float checkHeight = 2f;
-            Collider[] hitColliders = Physics.OverlapCapsule(
+            int hitCount = Physics.OverlapCapsuleNonAlloc(
                 position,
-                position + Vector3.up * checkHeight,
-                checkRadius,
+                position + Vector3.up * LandingValidationHeight,
+                LandingValidationRadius,
+                landingValidationBuffer,
                 wallMask
             );
 
-            foreach (Collider col in hitColliders)
+            for (int i = 0; i < hitCount; i++)
             {
+                Collider col = landingValidationBuffer[i];
                 if (col == null)
                 {
                     continue;
@@ -500,7 +437,7 @@ namespace BossRush
                 return;
             }
 
-            bool holdingHalberd = IsHoldingHalberd(player);
+            bool holdingHalberd = FenHuangHalberdRuntime.IsHoldingHalberd(player);
             if (!holdingHalberd && !IsActionRunning && !isPreviewing)
             {
                 return;
@@ -635,71 +572,7 @@ namespace BossRush
             }
         }
 
-        private void EnsureDragonKingAssetsLoaded()
-        {
-            if (DragonKingAssetManager.IsLoaded)
-            {
-                return;
-            }
 
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (!string.IsNullOrEmpty(modPath))
-                {
-                    DragonKingAssetManager.LoadAssetBundleSync(modPath);
-                }
-            }
-            catch (System.Exception e)
-            {
-                LogIfVerbose("加载龙王特效资源失败: " + e.Message);
-            }
-        }
-
-        private static int GetPreviewObstacleLayers()
-        {
-            // 只检测墙壁和迷雾遮挡，不检测地面
-            // 抛物线下降段必然穿过地面层，如果包含 groundLayerMask 会导致 hitObstacle 始终为 true
-            try
-            {
-                return GameplayDataSettings.Layers.wallLayerMask |
-                       GameplayDataSettings.Layers.fowBlockLayers;
-            }
-            catch
-            {
-                return LayerMask.GetMask("Wall", "Default");
-            }
-        }
-
-        private static int GetGroundObstacleLayerMask()
-        {
-            // 排除 Ground 层和 Character 层，只检测真正的障碍物（墙壁等）
-            int excludeMask = 0;
-            int groundLayer = LayerMask.NameToLayer("Ground");
-            if (groundLayer >= 0)
-            {
-                excludeMask |= (1 << groundLayer);
-            }
-            int characterLayer = LayerMask.NameToLayer("Character");
-            if (characterLayer >= 0)
-            {
-                excludeMask |= (1 << characterLayer);
-            }
-            int triggerLayer = LayerMask.NameToLayer("Ignore Raycast");
-            if (triggerLayer >= 0)
-            {
-                excludeMask |= (1 << triggerLayer);
-            }
-            // 只保留墙壁等实体障碍物
-            try
-            {
-                return GameplayDataSettings.Layers.wallLayerMask;
-            }
-            catch
-            {
-                return LayerMask.GetMask("Wall", "Default");
-            }
-        }
     }
 
     internal class FenHuangLeapPreview : MonoBehaviour

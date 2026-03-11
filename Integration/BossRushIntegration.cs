@@ -171,6 +171,7 @@ namespace BossRush
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
                 FactionFlagConfig.RegisterConfigurators();  // 营旗配置器（Mode E）
                 RespawnItemConfig.RegisterConfigurators();  // 刷怪消耗品配置器（Mode E）
+                ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
                 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
@@ -193,6 +194,11 @@ namespace BossRush
         {
             LocalizationInjector.InjectTicketLocalization(bossRushTicketTypeId);
             DevLog("[BossRush] 船票本地化注入完成");
+        }
+
+        private void OnFenHuangHalberdLoaded(Item itemPrefab)
+        {
+            FenHuangHalberdWeaponConfig.TryConfigure(itemPrefab, "FenHuangHalberd");
         }
 
         /// <summary>
@@ -878,9 +884,21 @@ namespace BossRush
             InjectBrickStoneIntoShops();  // 将砖石注入到售货机
             
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
-            EquipmentFactory.RegisterMeleeWeapon(FenHuangHalberdIds.WeaponTypeId);
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
+
+            try
+            {
+                Item fenHuangHalberd = ItemFactory.GetLoadedItem(FenHuangHalberdIds.WeaponTypeId);
+                if (fenHuangHalberd != null)
+                {
+                    FenHuangHalberdWeaponConfig.TryConfigure(fenHuangHalberd, "FenHuangHalberd");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 绑定焚皇断界戟模型失败: " + e.Message);
+            }
             
             // 初始化飞行图腾系统
             InitializeFlightTotemSystem();

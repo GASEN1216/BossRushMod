@@ -53,10 +53,6 @@ namespace BossRush
 
         public const float LeapPreviewMaxRange = FissureLength;
 
-        public const float LeapVerticalSpeed = 13f;
-
-        public const float LeapTakeoffDelay = FissureCastTime;
-
         public const float LeapLandingRecoverTime = 0f;
 
         public const float LandingFireRingRadius = 1.8f;
@@ -70,8 +66,6 @@ namespace BossRush
         /// 砸落伤害半径
         /// </summary>
         public const float LandingImpactRadius = 3.5f;
-
-        public const float LandingFireSpawnInterval = FirePillarInterval;
 
         /// <summary>
         /// 火柱数量
