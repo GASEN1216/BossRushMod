@@ -165,4 +165,56 @@ namespace BossRush
         }
     }
 
+    /// <summary>
+    /// Patch StockShop.GetItemInstanceDirect：
+    /// Mode E 子弹商店：修改用于 UI 显示的示例对象的 StackCount，让界面上算对整组金额、并显示数量
+    /// </summary>
+    [HarmonyPatch(typeof(Duckov.Economy.StockShop), "GetItemInstanceDirect")]
+    public static class ModeEBulletShopUIDisplayPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Duckov.Economy.StockShop __instance, ref ItemStatsSystem.Item __result)
+        {
+            var inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive) return;
+
+            // 仅对 ModeE 的子弹商店生效
+            if (__instance.MerchantID == "ModeE_Bullet" && __result != null && __result.Stackable)
+            {
+                __result.StackCount = __result.MaxStackCount;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Patch StockShop.Buy：
+    /// Mode E 子弹商店：拦截购买行为，每次固定购买一组 (MaxStackCount)
+    /// </summary>
+    [HarmonyPatch(typeof(Duckov.Economy.StockShop), "Buy")]
+    public static class ModeEBulletShopBuyPatch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Duckov.Economy.StockShop __instance, int itemTypeID, ref int amount)
+        {
+            var inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive) return;
+
+            // 仅对 ModeE 的子弹商店生效
+            if (__instance.MerchantID == "ModeE_Bullet")
+            {
+                var entry = __instance.entries.Find(e => e.ItemTypeID == itemTypeID);
+                if (entry != null)
+                {
+                    // 获取物品元数据以知道最大堆叠数
+                    var metaData = ItemStatsSystem.ItemAssetsCollection.GetMetaData(itemTypeID);
+                    if (metaData.maxStackCount > 1)
+                    {
+                        // 强制将购买数量设为满组数量
+                        amount = metaData.maxStackCount;
+                    }
+                }
+            }
+        }
+    }
+
 }
