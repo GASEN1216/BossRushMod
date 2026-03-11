@@ -271,10 +271,7 @@ namespace BossRush
                 return;
             }
 
-            Vector3 aimPoint = FenHuangHalberdRuntime.GetClampedAimPoint(
-                targetCharacter,
-                FenHuangHalberdConfig.LeapPreviewMaxRange
-            );
+            Vector3 aimPoint = FenHuangHalberdRuntime.GetAimPoint(targetCharacter);
             Vector3 resolvedLandingPoint = FenHuangHalberdRuntime.SnapToGround(
                 aimPoint,
                 targetCharacter.transform.position.y

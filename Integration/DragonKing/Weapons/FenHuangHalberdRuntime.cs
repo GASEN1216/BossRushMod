@@ -86,7 +86,10 @@ namespace BossRush
             return character.transform.position + Vector3.up * PreviewOriginHeight;
         }
 
-        public static Vector3 GetClampedAimPoint(CharacterMainControl character, float maxRange)
+        /// <summary>
+        /// 获取角色当前瞄准方向上的目标位置，不限制距离，允许跳到屏幕任意位置。
+        /// </summary>
+        public static Vector3 GetAimPoint(CharacterMainControl character)
         {
             if (character == null)
             {
@@ -117,37 +120,12 @@ namespace BossRush
                 new Vector3(aimPoint.x, 0f, aimPoint.z)
             );
 
-            if (maxRange > 0f)
-            {
-                distance = Mathf.Min(distance, maxRange);
-            }
-
-            Vector3 clamped = origin + flatDirection * distance;
-            clamped.y = aimPoint.y;
-            return clamped;
+            Vector3 result = origin + flatDirection * distance;
+            result.y = aimPoint.y;
+            return result;
         }
 
-        public static Vector3 ClampHorizontalTarget(Vector3 origin, Vector3 target, float maxRange)
-        {
-            if (maxRange <= 0f)
-            {
-                return target;
-            }
 
-            Vector3 offset = target - origin;
-            float originalY = target.y;
-            offset.y = 0f;
-
-            if (offset.sqrMagnitude <= maxRange * maxRange)
-            {
-                return target;
-            }
-
-            Vector3 clampedOffset = offset.normalized * maxRange;
-            Vector3 clamped = origin + clampedOffset;
-            clamped.y = originalY;
-            return clamped;
-        }
 
         public static Vector3 SnapToGround(Vector3 position, float fallbackY)
         {

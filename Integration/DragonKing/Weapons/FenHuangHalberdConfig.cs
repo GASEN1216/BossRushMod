@@ -51,8 +51,6 @@ namespace BossRush
 
         public const float FissureLength = 8f;
 
-        public const float LeapPreviewMaxRange = FissureLength;
-
         public const float LeapLandingRecoverTime = 0f;
 
         public const float LandingFireRingRadius = 1.8f;

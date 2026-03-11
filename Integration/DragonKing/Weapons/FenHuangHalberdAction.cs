@@ -93,11 +93,6 @@ namespace BossRush
             FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
 
             leapStartPoint = SnapToGround(characterController.transform.position, characterController.transform.position.y);
-            leapTargetPoint = FenHuangHalberdRuntime.ClampHorizontalTarget(
-                leapStartPoint,
-                leapTargetPoint,
-                FenHuangHalberdConfig.LeapPreviewMaxRange
-            );
             leapTargetPoint = SnapToGround(leapTargetPoint, leapStartPoint.y);
 
             Vector3 flatDirection = leapTargetPoint - leapStartPoint;
