@@ -108,6 +108,11 @@ namespace BossRush.Common.Equipment
         /// </summary>
         public bool IsActionRunning => abilityAction != null && abilityAction.Running;
 
+        /// <summary>
+        /// 当前绑定的目标角色
+        /// </summary>
+        public CharacterMainControl TargetCharacter => targetCharacter;
+
         // ========== 生命周期 ==========
 
         protected virtual void Awake()

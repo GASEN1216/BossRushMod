@@ -126,7 +126,7 @@ namespace BossRush
         {
             EnterStationaryIdleState();
             FacePlayer();
-            ModBehaviour.DevLog("[GoblinNPC] 婚礼教堂中保持站桩待机");
+            // ModBehaviour.DevLog("[GoblinNPC] 婚礼教堂中保持站桩待机");
         }
         
         /// <summary>

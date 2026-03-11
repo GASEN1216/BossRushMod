@@ -1254,7 +1254,7 @@ namespace BossRush
                         Transform spawnPoint = building.transform.Find("Function/NPCSpawnPoint");
                         if (spawnPoint != null)
                         {
-                            DevLog("[WeddingBuilding] 找到NPC站位点: " + spawnPoint.position);
+                            //DevLog("[WeddingBuilding] 找到NPC站位点: " + spawnPoint.position);
                             return spawnPoint.position;
                         }
                         

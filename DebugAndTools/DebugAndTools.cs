@@ -253,7 +253,7 @@ namespace BossRush
                 DevLog("[交互调试] 场景: " + sceneName);
                 DevLog("[交互调试] 对象名称: " + goName);
                 DevLog("[交互调试] 类型: " + typeName);
-                DevLog("[交互调试] 位置: " + pos);
+                // DevLog("[交互调试] 位置: " + pos);
                 DevLog("[交互调试] 层级路径: " + path);
 
                 // InteractName

@@ -50,7 +50,7 @@ namespace BossRush
 
                 ConfigureUsage(item);
                 EquipmentHelper.AddTagToItem(item, "Injector");
-                EquipmentHelper.AddTagToItem(item, "Medical");
+                EquipmentHelper.AddTagToItem(item, "Medic");
                 EquipmentHelper.AddTagToItem(item, "Special");
 
                 ModBehaviour.DevLog("[CalmingDropsConfig] Item configured: TypeID=" + TYPE_ID);
