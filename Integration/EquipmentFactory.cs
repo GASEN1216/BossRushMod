@@ -148,6 +148,9 @@ namespace BossRush
         // 已加载的 bundle 列表（避免重复加载）
         private static HashSet<string> loadedBundles = new HashSet<string>();
         
+        // 自定义近战武器 TypeID 列表（防止被 ItemSetting_Gun 误识别为枪械）
+        private static HashSet<int> customMeleeWeaponTypeIds = new HashSet<int>();
+
         // Mod 目录路径
         private static string modDirectory = null;
 
@@ -309,6 +312,15 @@ namespace BossRush
         public static bool IsCustomEquipment(int typeId)
         {
             return loadedModels.ContainsKey(typeId) || loadedGuns.ContainsKey(typeId);
+        }
+
+        /// <summary>
+        /// 注册自定义近战武器 TypeID（防止被 ItemSetting_Gun 误识别为枪械）
+        /// </summary>
+        public static void RegisterMeleeWeapon(int typeId)
+        {
+            customMeleeWeaponTypeIds.Add(typeId);
+            ModBehaviour.DevLog("[EquipmentFactory] 已注册自定义近战武器 TypeID: " + typeId);
         }
         
         /// <summary>
@@ -490,8 +502,17 @@ namespace BossRush
                         ItemSetting_Gun gunSetting = go.GetComponent<ItemSetting_Gun>();
                         if (gunSetting != null)
                         {
-                            detectedType = EquipmentType.Gun;
-                            gunSettingsByBaseName[baseName] = gunSetting;
+                            // 如果已注册为近战武器，跳过枪械识别并清除 Gun 组件
+                            if (customMeleeWeaponTypeIds.Contains(item.TypeID))
+                            {
+                                UnityEngine.Object.DestroyImmediate(gunSetting, true);
+                                ModBehaviour.DevLog("[EquipmentFactory] TypeID=" + item.TypeID + " 已注册为近战武器，跳过枪械识别并清除 Gun 组件");
+                            }
+                            else
+                            {
+                                detectedType = EquipmentType.Gun;
+                                gunSettingsByBaseName[baseName] = gunSetting;
+                            }
                         }
                         
                         itemsByBaseName[baseName] = item;
