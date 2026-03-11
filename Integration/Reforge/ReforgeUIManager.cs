@@ -352,6 +352,11 @@ namespace BossRush
         private static object detailsDisplayObj;  // ItemDetailsDisplay对象
         private static GameObject noItemSelectedIndicator;
         
+        // 倾向滑块控件
+        private static Slider tendencySlider;
+        private static TextMeshProUGUI tendencyText;
+        private static float currentTendencyChance = 0.5f;
+        
         // 是否正在重铸
         private static bool isReforging = false;
         
@@ -738,22 +743,25 @@ namespace BossRush
                 // 2. 隐藏原版结果显示，添加概率显示
                 ModifyResultDisplay();
                 
-                // 3. 修改分解按钮为重铸按钮
+                // 3. 创建倾向滑块
+                CreateTendencySliderUI();
+
+                // 4. 修改分解按钮为重铸按钮
                 ModifyDecomposeButton();
                 
-                // 4. 修改标题文本
+                // 5. 修改标题文本
                 ModifyTitleText();
                 
-                // 5. 移除原版事件监听器，防止原版方法被调用
+                // 6. 移除原版事件监听器，防止原版方法被调用
                 RemoveOriginalEventListeners();
                 
-                // 6. 获取其他UI组件引用
+                // 7. 获取其他UI组件引用
                 GetAdditionalUIReferences();
                 
-                // 7. 订阅我们自己的物品选择事件
+                // 8. 订阅我们自己的物品选择事件
                 ItemUIUtilities.OnSelectionChanged += OnItemSelectionChanged;
                 
-                // 8. 创建冷淬液数量显示UI
+                // 9. 创建冷淬液数量显示UI
                 CreateColdQuenchFluidUI();
                 
                 ModBehaviour.DevLog("[ReforgeUI] UI修改完成");
@@ -1054,6 +1062,132 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 计算当前倾向滑块所需的费用
+        /// 0% 或 100% 需要 10000金币，50% 为0金币
+        /// </summary>
+        private static int GetTendencyCost()
+        {
+            return Mathf.RoundToInt(Mathf.Abs(currentTendencyChance - 0.5f) * 2f * 10000f);
+        }
+
+        /// <summary>
+        /// 创建词条正负号倾向滑块
+
+        /// </summary>
+        private static void CreateTendencySliderUI()
+        {
+            try
+            {
+                if (moneySlider == null || probabilityText == null) return;
+
+                // 深拷贝moneySlider的父物体 (DecomposeSlider)
+                Transform moneySliderParent = moneySlider.transform.parent;
+                if (moneySliderParent == null) return;
+
+                GameObject tendencyObj = GameObject.Instantiate(moneySliderParent.gameObject, moneySliderParent.parent);
+                tendencyObj.name = "ReforgeTendencySlider";
+
+                // 调整位置，使其放在金钱滑块和概率显示之间
+                tendencyObj.transform.SetSiblingIndex(probabilityText.transform.GetSiblingIndex());
+
+                // 强制销毁克隆对象上遗留的所有脚本组件，防止干扰
+                // 只保留必要的UI基础组件
+                MonoBehaviour[] allScripts = tendencyObj.GetComponentsInChildren<MonoBehaviour>(true);
+                foreach (var script in allScripts)
+                {
+                    // 排除掉Slider, Image, TextMeshProUGUI等基础UI组件
+                    if (script is Slider || script is UnityEngine.UI.Image || script is TextMeshProUGUI)
+                        continue;
+                    
+                    // 销毁其他所有自定义逻辑脚本
+                    GameObject.DestroyImmediate(script);
+                }
+
+                // 获取新的Slider组件
+                Slider newSlider = tendencyObj.GetComponentInChildren<Slider>();
+                if (newSlider != null)
+                {
+                    tendencySlider = newSlider;
+                    
+                    // 设置倾向滑块范围 -50 到 50 
+                    tendencySlider.minValue = -50f;
+                    tendencySlider.maxValue = 50f;
+                    tendencySlider.value = 0f; // 初始为0
+                    tendencySlider.wholeNumbers = true;
+                    currentTendencyChance = 0.5f;
+
+                    tendencySlider.onValueChanged.RemoveAllListeners();
+                    tendencySlider.onValueChanged.AddListener(OnTendencySliderChanged);
+                }
+
+                // 找到新Slider下面的Text组件并修改文本
+                TextMeshProUGUI[] texts = tendencyObj.GetComponentsInChildren<TextMeshProUGUI>(true);
+                foreach (var txt in texts)
+                {
+                    // 仅替换说明文本和数值，清除原版Min/Max和滑动条上方的数值指示
+                    if (txt.gameObject.name.Contains("Title") || txt.text.Contains("投入") || txt.text.Contains("分解") || txt.text.Contains("Decompose") || txt.text == "投入" || txt.text == "正负极性倾向")
+                    {
+                        txt.text = "正负极性倾向";
+                        tendencyText = txt; // 如果自己创建了一个文本专门用于显示倾向
+                    }
+                    else if (txt.gameObject.name.IndexOf("value", StringComparison.OrdinalIgnoreCase) >= 0 || txt.text == "100")
+                    {
+                        // 用户要求隐藏滑块上方的100数值
+                        txt.gameObject.SetActive(false);
+                        txt.text = "";
+                    }
+                    else if (txt.gameObject.name.Contains("Min") || txt.gameObject.name.Contains("Max"))
+                    {
+                        txt.gameObject.SetActive(false); // 隐藏最大最小值文本
+                    }
+                }
+                
+                // 如果找不到专门用来显示倾向文本的控件，我们在Title上显示
+                if (tendencyText == null)
+                {
+                    foreach (var txt in texts)
+                    {
+                        if (txt.gameObject.name.Contains("Title"))
+                        {
+                            tendencyText = txt;
+                            break;
+                        }
+                    }
+                }
+                
+                // 强制触发一次变更，应用初始值到文本框以及总计费用上
+                OnTendencySliderChanged(0f);
+
+                ModBehaviour.DevLog("[ReforgeUI] 倾向滑块已创建");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeUI] [ERROR] 创建倾向滑块失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 倾向滑块值改变
+        /// </summary>
+        private static void OnTendencySliderChanged(float value)
+        {
+            currentTendencyChance = (value + 50f) / 100f; // 转换为 0.0 ~ 1.0 的几率
+            
+            if (tendencyText != null)
+            {
+                if (value < -10f)
+                    tendencyText.text = string.Format("<color=#FF4D4D>偏向负面 ({0})</color>", (int)value);
+                else if (value > 10f)
+                    tendencyText.text = string.Format("<color=#4DFF4D>偏向正面 (+{0})</color>", (int)value);
+                else
+                    tendencyText.text = string.Format("平衡 (0)");
+            }
+            
+            UpdateReforgeButtonInteractable();
+            UpdateProbabilityDisplay();
+        }
+
+        /// <summary>
         /// 修改分解按钮为重铸按钮
         /// </summary>
         private static void ModifyDecomposeButton()
@@ -1256,6 +1390,44 @@ namespace BossRush
         }
         
         /// <summary>
+        /// 计算达到指定金钱加成所需的金钱量（MoneyBonus的逆向计算）
+        /// </summary>
+        private static int CalculateMoneyForBonus(float targetBonus, float itemValue)
+        {
+            if (targetBonus <= 0) return 0;
+            if (targetBonus >= 1.0f) return Mathf.RoundToInt(itemValue * 10f); // 最高阈值：价值的10倍
+            
+            float tier1 = itemValue * 0.1f;
+            float tier2 = itemValue;
+            float tier3 = itemValue * 10f;
+            
+            if (targetBonus <= 0.10f)
+            {
+                // B = 0.10 * (m / tier1) => m = B * tier1 / 0.10
+                return Mathf.RoundToInt(targetBonus * tier1 / 0.10f);
+            }
+            else if (targetBonus <= 0.30f)
+            {
+                // B = 0.10 + 0.20 * (logM - logT1) / (logT2 - logT1)
+                // (B - 0.10) / 0.20 = (logM - logT1) / (logT2 - logT1)
+                float t = (targetBonus - 0.10f) / 0.20f;
+                float logT1 = Mathf.Log10(tier1);
+                float logT2 = Mathf.Log10(tier2);
+                float logM = logT1 + t * (logT2 - logT1);
+                return Mathf.RoundToInt(Mathf.Pow(10f, logM));
+            }
+            else
+            {
+                // B = 0.30 + 0.70 * (logM - logT2) / (logT3 - logT2)
+                float t = (targetBonus - 0.30f) / 0.70f;
+                float logT2 = Mathf.Log10(tier2);
+                float logT3 = Mathf.Log10(tier3);
+                float logM = logT2 + t * (logT3 - logT2);
+                return Mathf.RoundToInt(Mathf.Pow(10f, logM));
+            }
+        }
+
+        /// <summary>
         /// 重置UI状态（滑块、按钮、概率显示）
         /// </summary>
         private static void ResetUIState(int maxMoney)
@@ -1263,11 +1435,32 @@ namespace BossRush
             // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
             int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
             
+            int optimalMagMaxSliderValue = maxMoney;
+            if (selectedItem != null)
+            {
+                float itemValue = ReforgeSystem.GetItemValue(selectedItem);
+                int rarity = selectedItem.Quality;
+                // 计算当前物品不用投钱时的原始概率
+                float pItem = ReforgeSystem.BASE_PROBABILITY * ReforgeSystem.RarityFactor(rarity) * ReforgeSystem.ValueFactor(itemValue);
+                // 需要的金钱加成才能达到100% (即1.0)
+                float requiredBonusToMax = 1.0f - pItem;
+                
+                if (requiredBonusToMax <= 0)
+                {
+                    optimalMagMaxSliderValue = baseCost;
+                }
+                else
+                {
+                    int requiredMoney = CalculateMoneyForBonus(requiredBonusToMax, itemValue);
+                    optimalMagMaxSliderValue = Mathf.Max(baseCost, requiredMoney);
+                }
+            }
+            
             // 重置滑块
             if (moneySlider != null)
             {
                 moneySlider.minValue = baseCost;
-                moneySlider.maxValue = Mathf.Max(baseCost, maxMoney);
+                moneySlider.maxValue = optimalMagMaxSliderValue;
                 moneySlider.value = baseCost;
                 moneySlider.wholeNumbers = true;
                 currentMoney = baseCost;
@@ -1277,7 +1470,7 @@ namespace BossRush
                 if (sliderMinText != null)
                     sliderMinText.text = baseCost.ToString();
                 if (sliderMaxText != null)
-                    sliderMaxText.text = maxMoney.ToString();
+                    sliderMaxText.text = optimalMagMaxSliderValue.ToString();
             }
             
             UpdateUIStateCommon();
@@ -1291,18 +1484,39 @@ namespace BossRush
             // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
             int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
             
+            int optimalMagMaxSliderValue = maxMoney;
+            if (selectedItem != null)
+            {
+                float itemValue = ReforgeSystem.GetItemValue(selectedItem);
+                int rarity = selectedItem.Quality;
+                // 计算当前物品不用投钱时的原始概率
+                float pItem = ReforgeSystem.BASE_PROBABILITY * ReforgeSystem.RarityFactor(rarity) * ReforgeSystem.ValueFactor(itemValue);
+                // 需要的金钱加成才能达到100% (即1.0)
+                float requiredBonusToMax = 1.0f - pItem;
+                
+                if (requiredBonusToMax <= 0)
+                {
+                    optimalMagMaxSliderValue = baseCost;
+                }
+                else
+                {
+                    int requiredMoney = CalculateMoneyForBonus(requiredBonusToMax, itemValue);
+                    optimalMagMaxSliderValue = Mathf.Max(baseCost, requiredMoney);
+                }
+            }
+            
             if (moneySlider != null)
             {
                 // 保留当前滑块值，只更新最大值
                 float currentValue = moneySlider.value;
                 moneySlider.minValue = baseCost;
-                moneySlider.maxValue = Mathf.Max(baseCost, maxMoney);
+                moneySlider.maxValue = optimalMagMaxSliderValue;
                 
                 // 如果当前值超过新的最大值，则调整为最大值
-                if (currentValue > maxMoney)
+                if (currentValue > optimalMagMaxSliderValue)
                 {
-                    moneySlider.value = maxMoney;
-                    currentMoney = maxMoney;
+                    moneySlider.value = optimalMagMaxSliderValue;
+                    currentMoney = optimalMagMaxSliderValue;
                 }
                 else if (currentValue < baseCost)
                 {
@@ -1321,7 +1535,7 @@ namespace BossRush
                 if (sliderMinText != null)
                     sliderMinText.text = baseCost.ToString();
                 if (sliderMaxText != null)
-                    sliderMaxText.text = maxMoney.ToString();
+                    sliderMaxText.text = optimalMagMaxSliderValue.ToString();
             }
             
             UpdateUIStateCommon();
@@ -1353,16 +1567,19 @@ namespace BossRush
             int baseCost = ReforgeSystem.GetDiscountedCost(selectedItem);
             int playerMoney = GetPlayerMoney();
             float discount = ReforgeSystem.GetCurrentDiscount();
+            int tendencyCost = GetTendencyCost();
+            int totalCost = currentMoney + tendencyCost;
 
             // 检查玩家金钱是否足够支付基础费用
-            bool canAfford = playerMoney >= baseCost;
+            bool canAfford = playerMoney >= totalCost && playerMoney >= baseCost;
             reforgeButton.interactable = canAfford;
 
             // 如果金钱不足，更新概率显示提示
             if (!canAfford && probabilityText != null)
             {
                 string discountInfo = discount > 0 ? string.Format(" ({0:P0}折扣)", discount) : "";
-                probabilityText.text = string.Format("<color=#FF4D4D>金钱不足！\n基础费用: {0}{1}\n当前金钱: {2}</color>", baseCost, discountInfo, playerMoney);
+                probabilityText.text = string.Format("<color=#FF4D4D>金钱不足！\n基础费用: {0}{1}\n金钱滑块投入: {2}\n极性滑块花费: {3}\n所需总额: {4}\n你的当前总金钱: {5}</color>", 
+                    baseCost, discountInfo, currentMoney, tendencyCost, totalCost, playerMoney);
                 probabilityText.color = Color.white;
             }
         }
@@ -1505,11 +1722,9 @@ namespace BossRush
             float rarityFactor = ReforgeSystem.RarityFactor(rarity);      // 品质系数
             float valueFactor = ReforgeSystem.ValueFactor(itemValue);     // 价值系数
             float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney, itemValue);    // 金钱加成（基于物品价值）
-            float pityBonus = ReforgeSystem.GetPityBonus(itemId);         // 保底加成
-            int pityCount = ReforgeSystem.GetPityCount(itemId);           // 保底计数
 
-            // 计算最终概率（含保底）
-            float p = ReforgeSystem.FinalProbabilityWithPity(rarity, itemValue, currentMoney, itemId);
+            // 计算最终概率
+            float p = ReforgeSystem.FinalProbability(rarity, itemValue, currentMoney);
 
             // 根据概率获取颜色
             string probColorHex;
@@ -1526,27 +1741,35 @@ namespace BossRush
             // 品质: X (系数: X.XX)
             // 价值: XXXX (系数: X.XX)
             // 投入: XXXX (加成: X.XX)
-            // 保底: X次 (加成: X.XX)  -- 仅当有保底时显示
-            // 概率: 0.20×X.XX×X.XX+X.XX+X.XX = XX%
-            string pityLine = "";
-            string pityFormula = "";
-            if (pityCount > 0)
-            {
-                pityLine = string.Format("<color=#FFD700>保底: {0}次 (加成: {1:F2})</color>\n", pityCount, pityBonus);
-                pityFormula = string.Format("+{0:F2}", pityBonus);
-            }
+            // 极性费用: XX
+            // 负向概率: XX%  正向概率: XX%
+            // 概率: 0.20×X.XX×X.XX+X.XX = XX%
+            // 总计花费: XX
+            
+            int tendencyCost = GetTendencyCost();
+            string tendencyLine = string.Format("极性费用: {0}\n", tendencyCost);
+            
+            float posProb = currentTendencyChance;
+            float negProb = 1.0f - currentTendencyChance;
+            string polarityProbLine = string.Format("<color=#00FFFF>负向概率: {0:P0}   正向概率: {1:P0}</color>\n", negProb, posProb);
+            
+            int totalCost = currentMoney + tendencyCost;
+            string totalCostLine = string.Format("<color=#FFFF00>总计花费: {0}</color>", totalCost);
             
             probabilityText.text = string.Format(
                 "品质: {0} (系数: {1:F2})\n" +
                 "价值: {2:F0} (系数: {3:F2})\n" +
                 "投入: {4} (加成: {5:F2})\n" +
-                "{6}" +
-                "<color={7}>概率: 0.20×{1:F2}×{3:F2}+{5:F2}{8}={9:P0}</color>",
-                rarity, rarityFactor,
-                itemValue, valueFactor,
-                currentMoney, moneyBonus,
-                pityLine,
-                probColorHex, pityFormula, p
+                "{8}" + 
+                "{9}" + 
+                "<color={6}>幅度乘数参数: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n" +
+                "{10}",
+                rarity, rarityFactor,           // {0}, {1}
+                itemValue, valueFactor,         // {2}, {3}
+                currentMoney, moneyBonus,       // {4}, {5}
+                probColorHex, p,                // {6}, {7}
+                tendencyLine, polarityProbLine, // {8}, {9}
+                totalCostLine                   // {10}
             );
 
             // 整体文本使用白色
@@ -1561,13 +1784,19 @@ namespace BossRush
             if (!isReforgeMode) return;
             if (selectedItem == null) return;
             if (isReforging) return;
-            if (currentMoney <= 0)
+            
+            int totalCost = currentMoney + GetTendencyCost();
+            if (totalCost <= 0 && currentTendencyChance == 0.5f)
             {
-                ModBehaviour.DevLog("[ReforgeUI] 没有投入金钱");
+                // Can be 0 if both sliders are 0 and 50%
+                ModBehaviour.DevLog("[ReforgeUI] 投入金钱为0，正常重铸");
+            }
+            else if (totalCost < 0)
+            {
                 return;
             }
             
-            ModBehaviour.DevLog("[ReforgeUI] 点击重铸按钮: " + selectedItem.DisplayName + ", 投入: " + currentMoney);
+            ModBehaviour.DevLog("[ReforgeUI] 点击重铸按钮: " + selectedItem.DisplayName + ", 总费用: " + totalCost);
 
             // 播放重铸音效
             BossRushAudioManager.Instance.PlayReforgeSFX();
@@ -1577,29 +1806,22 @@ namespace BossRush
             try
             {
                 // 扣除金钱
-                Cost cost = new Cost((long)currentMoney);
-                if (!EconomyManager.Pay(cost, true, true))
+                if (totalCost > 0)
                 {
-                    ModBehaviour.DevLog("[ReforgeUI] 金钱不足");
-                    isReforging = false;
-                    return;
+                    Cost cost = new Cost((long)totalCost);
+                    if (!EconomyManager.Pay(cost, true, true))
+                    {
+                        ModBehaviour.DevLog("[ReforgeUI] 金钱不足");
+                        isReforging = false;
+                        return;
+                    }
                 }
                 
-                // 执行重铸
-                var result = ReforgeSystem.Reforge(selectedItem, currentMoney, "player");
+                // 执行重铸，传入当前的倾向几率
+                var result = ReforgeSystem.Reforge(selectedItem, currentMoney, "player", currentTendencyChance);
                 
-                if (result.Success)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] 重铸成功!");
-                    
-                    // 显示属性变化
-                    ShowPropertyChanges();
-                }
-                else
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] 重铸失败!");
-                    // 可以添加失败提示
-                }
+                // 显示属性变化（现在重铸必定成功）
+                ShowPropertyChanges();
                 
                 // 立即更新UI状态（金钱已扣除，保留滑块值方便多次快速重铸）
                 int newMax = GetPlayerMoney();

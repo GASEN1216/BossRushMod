@@ -125,9 +125,9 @@ namespace BossRush
         public const int MIN_REFORGE_COST = 100;
         
         /// <summary>
-        /// 基准概率常量（当稀有度=8，物品价值=10000时）
+        /// 基础概率：初始50%
         /// </summary>
-        private const float BASE_PROBABILITY = 0.20f;
+        public const float BASE_PROBABILITY = 0.50f;
         
         /// <summary>
         /// 基准物品价值
@@ -170,23 +170,6 @@ namespace BossRush
         };
         
         // ============================================================================
-        // 保底机制常量
-        // ============================================================================
-        
-        /// <summary>
-        /// 保底机制：每次失败增加的概率加成
-        /// </summary>
-        private const float PITY_BONUS_PER_FAIL = 0.05f;
-        
-        /// <summary>
-        /// 保底机制：最大累计加成（100%保底）
-        /// </summary>
-        private const float PITY_MAX_BONUS = 0.80f;
-        
-        /// <summary>
-        /// 保底机制：物品保底计数器（使用物品InstanceID作为key）
-        /// </summary>
-        private static readonly Dictionary<int, int> _pityCounters = new Dictionary<int, int>();
         
         /// <summary>
         /// 可重铸的物品Tag（装备、武器、图腾）
@@ -246,9 +229,9 @@ namespace BossRush
             float B;
             
             // 动态阈值：基于物品价值的倍数
-            float tier1 = itemValue;        // 1倍物品价值
-            float tier2 = itemValue * 10f;  // 10倍物品价值
-            float tier3 = itemValue * 100f; // 100倍物品价值
+            float tier1 = itemValue * 0.1f;  // 0.1倍物品价值
+            float tier2 = itemValue;         // 1倍物品价值
+            float tier3 = itemValue * 10f;   // 10倍物品价值
             
             // 计算log阈值（用于分段计算）
             float logTier1 = Mathf.Log10(tier1);
@@ -257,24 +240,24 @@ namespace BossRush
             
             if (m <= tier1)
             {
-                // 0 ~ 1倍物品价值：线性 0 → 0.10
+                // 0 ~ 0.1倍物品价值：线性 0 → 0.10
                 B = 0.10f * (m / tier1);
             }
             else if (m <= tier2)
             {
-                // 1倍 ~ 10倍物品价值：log分段 0.10 → 0.30
+                // 0.1倍 ~ 1倍物品价值：log分段 0.10 → 0.30
                 float logM = Mathf.Log10(m);
                 B = 0.10f + 0.20f * (logM - logTier1) / (logTier2 - logTier1);
             }
             else if (m <= tier3)
             {
-                // 10倍 ~ 100倍物品价值：log分段 0.30 → 1.00
+                // 1倍 ~ 10倍物品价值：log分段 0.30 → 1.00
                 float logM = Mathf.Log10(m);
                 B = 0.30f + 0.70f * (logM - logTier2) / (logTier3 - logTier2);
             }
             else
             {
-                // 超过100倍物品价值：上限1.00
+                // 超过10倍物品价值：上限1.00
                 B = 1.00f;
             }
             
@@ -282,22 +265,22 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 计算基础重铸费用（物品价值的1/1000，最低100）
+        /// 计算基础重铸费用（物品价值的1/100，最低100）
         /// </summary>
         public static int GetBaseCost(Item item)
         {
             if (item == null) return MIN_REFORGE_COST;
             float itemValue = GetItemValue(item);
-            int baseCost = Mathf.RoundToInt(itemValue / 1000f);
+            int baseCost = Mathf.RoundToInt(itemValue / 100f);
             return Mathf.Max(MIN_REFORGE_COST, baseCost);
         }
 
         /// <summary>
-        /// 计算基础重铸费用（基于物品价值）
+        /// 计算基础重铸费用（基于物品价值，1/100）
         /// </summary>
         public static int GetBaseCost(float itemValue)
         {
-            int baseCost = Mathf.RoundToInt(itemValue / 1000f);
+            int baseCost = Mathf.RoundToInt(itemValue / 100f);
             return Mathf.Max(MIN_REFORGE_COST, baseCost);
         }
 
@@ -329,68 +312,6 @@ namespace BossRush
             float pItem = BASE_PROBABILITY * RarityFactor(rarity) * ValueFactor(itemValue);
             float p = pItem + MoneyBonus(moneyInvested, itemValue);
             return Mathf.Clamp01(p);
-        }
-        
-        /// <summary>
-        /// 计算带保底的最终概率（用于实际重铸判定）
-        /// </summary>
-        public static float FinalProbabilityWithPity(int rarity, float itemValue, int moneyInvested, int itemInstanceId)
-        {
-            float baseP = FinalProbability(rarity, itemValue, moneyInvested);
-            float pityBonus = GetPityBonus(itemInstanceId);
-            return Mathf.Clamp01(baseP + pityBonus);
-        }
-        
-        /// <summary>
-        /// 获取物品的保底加成
-        /// </summary>
-        public static float GetPityBonus(int itemInstanceId)
-        {
-            if (_pityCounters.TryGetValue(itemInstanceId, out int failCount))
-            {
-                return Mathf.Min(failCount * PITY_BONUS_PER_FAIL, PITY_MAX_BONUS);
-            }
-            return 0f;
-        }
-        
-        /// <summary>
-        /// 获取物品的保底计数
-        /// </summary>
-        public static int GetPityCount(int itemInstanceId)
-        {
-            if (_pityCounters.TryGetValue(itemInstanceId, out int count))
-            {
-                return count;
-            }
-            return 0;
-        }
-        
-        /// <summary>
-        /// 增加保底计数（重铸结果不理想时调用）
-        /// </summary>
-        private static void IncrementPityCounter(int itemInstanceId)
-        {
-            if (_pityCounters.ContainsKey(itemInstanceId))
-            {
-                _pityCounters[itemInstanceId]++;
-            }
-            else
-            {
-                _pityCounters[itemInstanceId] = 1;
-            }
-            ModBehaviour.DevLog("[ReforgeSystem] 保底计数增加: " + _pityCounters[itemInstanceId]);
-        }
-        
-        /// <summary>
-        /// 重置保底计数（重铸结果理想时调用）
-        /// </summary>
-        private static void ResetPityCounter(int itemInstanceId)
-        {
-            if (_pityCounters.ContainsKey(itemInstanceId))
-            {
-                _pityCounters.Remove(itemInstanceId);
-                ModBehaviour.DevLog("[ReforgeSystem] 保底计数已重置");
-            }
         }
         
         /// <summary>
@@ -597,9 +518,9 @@ namespace BossRush
                 return result;
             }
             
-            // 计算基础费用（物品价值的1/1000）
+            // 计算基础费用（物品价值的1/1000，应用哥布林好感度折扣）
             float itemValue = GetItemValue(item);
-            int baseCost = GetBaseCost(itemValue);
+            int baseCost = GetDiscountedCost(item);
             
             if (moneyInvested < baseCost)
             {
@@ -615,9 +536,6 @@ namespace BossRush
                 
                 // 计算原始概率（不含保底，用于幅度计算）
                 float baseP = FinalProbability(rarity, itemValue, moneyInvested);
-                // 计算带保底的概率（用于属性选中判定）
-                float pWithPity = FinalProbabilityWithPity(rarity, itemValue, moneyInvested, itemId);
-                float pityBonus = GetPityBonus(itemId);
                 
                 // 创建随机种子
                 int seed = GenerateRandomSeed(userId, itemId);
@@ -719,21 +637,10 @@ namespace BossRush
                 // 记录哪些属性被选中修改
                 List<int> selectedIndices = new List<int>();
                 
-                // 对每个属性独立判定是否修改（使用带保底的概率）
+                // 保证全部词条必定都会被重铸
                 for (int i = 0; i < allProperties.Count; i++)
                 {
-                    if (random.NextDouble() < pWithPity)
-                    {
-                        selectedIndices.Add(i);
-                    }
-                }
-
-                // 保证至少有一个属性被修改，避免投入金钱后没有结果
-                if (selectedIndices.Count == 0 && allProperties.Count > 0)
-                {
-                    int forcedIndex = random.Next(allProperties.Count);
-                    selectedIndices.Add(forcedIndex);
-                    ModBehaviour.DevLog("[ReforgeSystem] 所有属性都未命中，强制选择属性: " + allProperties[forcedIndex].Key);
+                    selectedIndices.Add(i);
                 }
 
                 // 对选中的属性执行修改
@@ -766,7 +673,6 @@ namespace BossRush
                         maxValue = ZERO_VALUE_RANGE;
                         delta = sign * mag01 * ZERO_VALUE_RANGE;
                         newValue = originalValue + delta;
-                        newValue = Mathf.Clamp(newValue, minValue, maxValue);
                     }
                     else if (isSmallValue)
                     {
@@ -795,39 +701,48 @@ namespace BossRush
                             minValue = prefabValue * 2f;
                             maxValue = 0f;
                         }
-                        newValue = Mathf.Clamp(newValue, minValue, maxValue);
                     }
                     else
                     {
-                        // 大数值属性（预制体值>1）：使用百分比范围（0~100%预制体值）
-                        float maxDelta = Mathf.Abs(prefabValue) * MAX_VALUE_OFFSET_PERCENT;
-                        delta = sign * mag01 * maxDelta;
+                        // 大数值属性（预制体值>1或<-1）：计算delta
+                        delta = sign * mag01 * MAX_VALUE_OFFSET_PERCENT * Mathf.Abs(prefabValue);
                         newValue = originalValue + delta;
                         
                         if (prefabValue > 0)
                         {
-                            // 正数属性：范围为预制体值的30%~200%
                             minValue = prefabValue * 0.3f;
-                            maxValue = prefabValue * (1f + MAX_VALUE_OFFSET_PERCENT);
+                            maxValue = prefabValue * 2.0f;
                         }
                         else
                         {
-                            // 负数属性：范围反转
-                            minValue = prefabValue * (1f + MAX_VALUE_OFFSET_PERCENT);
+                            minValue = prefabValue * 2.0f;
                             maxValue = prefabValue * 0.3f;
                         }
-                        newValue = Mathf.Clamp(newValue, minValue, maxValue);
                     }
                     
-                    // Step 5: 整数属性保持整数
+                    // Step 5: 整数属性保持整数，且保证数值必定有变化
                     if (isInteger)
                     {
                         newValue = Mathf.Round(newValue);
+                        // 如果四舍五入后没有变化，则根据sign强行偏移1个单位
+                        if (Mathf.Approximately(newValue, originalValue))
+                        {
+                            newValue = originalValue + (sign != 0 ? sign : (random.Next(2) == 0 ? 1 : -1));
+                        }
                     }
                     else
                     {
                         newValue = (float)System.Math.Round(newValue, 2);
+                        // 如果舍入后没有变化，则强行偏移一个最小单位0.01
+                        if (Mathf.Approximately(newValue, originalValue))
+                        {
+                            newValue = originalValue + (sign != 0 ? sign * 0.01f : (random.Next(2) == 0 ? 0.01f : -0.01f));
+                            newValue = (float)System.Math.Round(newValue, 2);
+                        }
                     }
+
+                    // Step 6: 优先级要小于控制变化数值最大值的逻辑，即在最后进行Clamp截断
+                    newValue = Mathf.Clamp(newValue, minValue, maxValue);
                     
                     // 记录修改信息
                     ModifiedStatInfo statInfo = new ModifiedStatInfo();
@@ -840,58 +755,6 @@ namespace BossRush
                     // 应用修改并保存重铸数据
                     ApplyPropertyChange(prop, newValue, item, prefab);
                 }
-                
-                // 保底机制判定：
-                // 检查是否有显著变化（相对于预制体值的30%以上变化）
-                bool hasSignificantChange = false;
-                foreach (var stat in result.ModifiedStats)
-                {
-                    // 获取预制体值用于计算相对变化
-                    float prefabVal = GetPrefabPropertyValue(prefab, stat.StatKey, PropertyType.Modifier, stat.OldValue);
-                    // 也尝试从Stats和Variables获取
-                    if (Mathf.Approximately(prefabVal, stat.OldValue))
-                    {
-                        prefabVal = GetPrefabPropertyValue(prefab, stat.StatKey, PropertyType.Stat, stat.OldValue);
-                    }
-                    if (Mathf.Approximately(prefabVal, stat.OldValue))
-                    {
-                        prefabVal = GetPrefabPropertyValue(prefab, stat.StatKey, PropertyType.Variable, stat.OldValue);
-                    }
-                    
-                    // 计算相对变化幅度
-                    float relativeChange;
-                    if (Mathf.Abs(prefabVal) < 0.001f)
-                    {
-                        // 预制体值接近0，使用绝对值判断
-                        relativeChange = Mathf.Abs(stat.AdjustmentFactor);
-                    }
-                    else
-                    {
-                        // 相对于预制体值的百分比变化
-                        relativeChange = Mathf.Abs(stat.AdjustmentFactor / prefabVal);
-                    }
-                    
-                    // 30%以上的相对变化视为显著
-                    if (relativeChange > 0.3f)
-                    {
-                        hasSignificantChange = true;
-                        break;
-                    }
-                }
-                
-                if (hasSignificantChange)
-                {
-                    ResetPityCounter(itemId);
-                    ModBehaviour.DevLog("[ReforgeSystem] 重铸幅度显著（>30%），保底计数重置");
-                }
-                else
-                {
-                    IncrementPityCounter(itemId);
-                    ModBehaviour.DevLog("[ReforgeSystem] 重铸幅度较小（<30%），保底计数+1");
-                }
-                
-                // 更新重铸计数
-                IncrementReforgeCount(item);
                 
                 // 触发物品属性更新
                 try
@@ -908,11 +771,10 @@ namespace BossRush
                 
                 result.Success = true;
                 result.TotalCost = moneyInvested;
-                result.FinalProbability = pWithPity;
-                result.PityBonus = pityBonus;
+                result.FinalProbability = baseP;
                 
-                ModBehaviour.DevLog(string.Format("[ReforgeSystem] 重铸成功！选中概率={0:P0}(含保底{1:P0})，幅度概率={2:P0}，调整了{3}/{4}个属性", 
-                    pWithPity, pityBonus, baseP, result.ModifiedStats.Count, allProperties.Count));
+                ModBehaviour.DevLog(string.Format("[ReforgeSystem] 重铸完成！幅度系数={0:P0}，调整了{1}/{2}个属性", 
+                    baseP, result.ModifiedStats.Count, allProperties.Count));
             }
             catch (Exception e)
             {
@@ -1201,7 +1063,6 @@ namespace BossRush
         public string ErrorMessage;
         public int TotalCost;
         public float FinalProbability;
-        public float PityBonus;  // 保底加成
         public List<ModifiedStatInfo> ModifiedStats;
     }
     

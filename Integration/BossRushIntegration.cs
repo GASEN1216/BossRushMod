@@ -878,6 +878,7 @@ namespace BossRush
             InjectBrickStoneIntoShops();  // 将砖石注入到售货机
             
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
+            EquipmentFactory.RegisterMeleeWeapon(FenHuangHalberdIds.WeaponTypeId);
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
             

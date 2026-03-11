@@ -900,6 +900,7 @@ namespace BossRush
     {
         // 反射字段缓存
         private static FieldInfo _meleeRefField;
+        private static FieldInfo _gunRefField;
         private static FieldInfo _currentUsingSocketCacheField;
         private static FieldInfo _itemAgentItemField; // ItemAgent.item (private)
         private static bool _fieldsCached = false;
@@ -923,6 +924,8 @@ namespace BossRush
                 {
                     _meleeRefField = typeof(ItemAgentHolder).GetField("_meleeRef",
                         BindingFlags.NonPublic | BindingFlags.Instance);
+                    _gunRefField = typeof(ItemAgentHolder).GetField("_gunRef",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
                     _currentUsingSocketCacheField = typeof(ItemAgentHolder).GetField("_currentUsingSocketCache",
                         BindingFlags.NonPublic | BindingFlags.Instance);
                     // ItemAgent.item 是 private 字段，需要通过反射读取/写入
@@ -930,7 +933,7 @@ namespace BossRush
                         BindingFlags.NonPublic | BindingFlags.Instance);
                     _fieldsCached = true;
 
-                    ModBehaviour.DevLog($"[FenHuangHalberd] 反射字段缓存完成: _meleeRef={_meleeRefField != null}, usingSocket={_currentUsingSocketCacheField != null}, itemField={_itemAgentItemField != null}");
+                    ModBehaviour.DevLog($"[FenHuangHalberd] 反射字段缓存完成: _meleeRef={_meleeRefField != null}, _gunRef={_gunRefField != null}, usingSocket={_currentUsingSocketCacheField != null}, itemField={_itemAgentItemField != null}");
                 }
 
                 // 在返回的 GameObject 上补一个 ItemAgent_MeleeWeapon 组件
@@ -954,24 +957,21 @@ namespace BossRush
                 }
 
                 // 同步近战挂点与动画类型
-                meleeComp.handheldSocket = HandheldSocketTypes.meleeWeapon;
-                meleeComp.handAnimationType = HandheldAnimationType.meleeWeapon;
+                meleeComp.handheldSocket = HandheldSocketTypes.normalHandheld;
+                meleeComp.handAnimationType = HandheldAnimationType.normal;
 
                 // 绑定 Holder，确保角色控制和归属关系正确
                 meleeComp.SetHolder(__result.Holder);
 
                 // 同步返回代理的挂点、动画类型和实际父节点，确保 CurrentHoldItemAgent 表现正确
-                __result.handheldSocket = HandheldSocketTypes.meleeWeapon;
-                __result.handAnimationType = HandheldAnimationType.meleeWeapon;
+                __result.handheldSocket = HandheldSocketTypes.normalHandheld;
+                __result.handAnimationType = HandheldAnimationType.normal;
 
                 Transform meleeSocket = null;
                 if (__instance.characterController != null && __instance.characterController.characterModel != null)
                 {
-                    meleeSocket = __instance.characterController.characterModel.MeleeWeaponSocket;
-                    if (meleeSocket == null)
-                    {
-                        meleeSocket = __instance.characterController.characterModel.RightHandSocket;
-                    }
+                    // 改用 RightHandSocket，与原版刀具保持一致，防止使用特殊的近战挂点导致 IK 异常
+                    meleeSocket = __instance.characterController.characterModel.RightHandSocket;
                 }
 
                 if (meleeSocket != null)
@@ -1004,17 +1004,48 @@ namespace BossRush
                     ModBehaviour.DevLog("[FenHuangHalberd] 已同步 _meleeRef");
                 }
 
+                // 关键修复：清除 _gunRef，阻止枪械 IK 瞄准系统
+                // 游戏在 ChangeHoldItem 内部已经通过 `as ItemAgent_Gun` 给 _gunRef 赋值了，
+                // 这发生在我们的 Postfix 之前。如果不清除，IK 瞄准系统会让武器始终面向屏幕中心
+                if (_gunRefField != null)
+                {
+                    _gunRefField.SetValue(__instance, null);
+                    ModBehaviour.DevLog("[FenHuangHalberd] 已清除 _gunRef，防止枪械 IK 瞄准");
+                }
+
                 ModBehaviour.DevLog("[FenHuangHalberd] Injected ItemAgent_MeleeWeapon into handheld agent.");
 
-                // 禁用运动模糊，使武器移动时不会模糊
+                // 禁用运动模糊，并修复 Shader（替换 Standard/Lit 为游戏原生 SodaCharacter）
                 try
                 {
                     Renderer[] renderers = agentGo.GetComponentsInChildren<Renderer>(true);
+                    Shader gameShader = Shader.Find("SodaCraft/SodaCharacter");
                     foreach (Renderer r in renderers)
                     {
                         if (r != null)
                         {
                             r.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                            r.enabled = true;
+                            r.forceRenderingOff = false;
+
+                            // 替换非原生 Shader，修复影子/渲染异常
+                            if (gameShader != null && r.sharedMaterials != null)
+                            {
+                                foreach (Material mat in r.sharedMaterials)
+                                {
+                                    if (mat != null && mat.shader != null)
+                                    {
+                                        string shaderName = mat.shader.name;
+                                        if (shaderName.Contains("Standard") ||
+                                            shaderName.Contains("Lit") ||
+                                            shaderName.Contains("Universal"))
+                                        {
+                                            mat.shader = gameShader;
+                                            ModBehaviour.DevLog($"[FenHuangHalberd] 已将材质 {mat.name} 的 Shader 从 {shaderName} 替换为 {gameShader.name}");
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
