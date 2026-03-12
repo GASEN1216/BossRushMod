@@ -1103,7 +1103,10 @@ namespace BossRush
         /// </summary>
         private static int GetTendencyCost()
         {
-            return Mathf.RoundToInt(Mathf.Abs(currentTendencyChance - 0.5f) * 2f * 10000f);
+            float itemValue = selectedItem != null ? ReforgeSystem.GetItemValue(selectedItem) : 10000f;
+            float maxCost = itemValue * 0.5f;
+            float percentage = Mathf.Abs(currentTendencyChance - 0.5f) / 0.4f;
+            return Mathf.RoundToInt(maxCost * Math.Min(1f, percentage));
         }
 
         /// <summary>
@@ -1145,13 +1148,17 @@ namespace BossRush
                     }
                 }
                 tendencySliderRoot = tendencyObj;
-                tendencyObj.transform.SetSiblingIndex(probabilityText.transform.GetSiblingIndex());
+                tendencyObj.transform.SetSiblingIndex(moneySliderParent.GetSiblingIndex() + 1);
+                if (probabilityText != null)
+                {
+                    probabilityText.transform.SetSiblingIndex(tendencyObj.transform.GetSiblingIndex() + 1);
+                }
                 Slider newSlider = tendencyObj.GetComponentInChildren<Slider>(true);
                 if (newSlider != null)
                 {
                     tendencySlider = newSlider;
-                    tendencySlider.minValue = -50f;
-                    tendencySlider.maxValue = 50f;
+                    tendencySlider.minValue = -40f;
+                    tendencySlider.maxValue = 40f;
                     tendencySlider.wholeNumbers = true;
                     tendencySlider.onValueChanged.RemoveAllListeners();
                     tendencySlider.onValueChanged.AddListener(OnTendencySliderChanged);
@@ -1172,6 +1179,14 @@ namespace BossRush
                     {
                         txt.gameObject.SetActive(false);
                         txt.text = "";
+                        if (txt.transform.parent != null && txt.transform.parent != tendencyObj.transform)
+                        {
+                            UnityEngine.UI.Image parentImg = txt.transform.parent.GetComponent<UnityEngine.UI.Image>();
+                            if (parentImg != null)
+                            {
+                                parentImg.enabled = false;
+                            }
+                        }
                     }
                     else if (txt.gameObject.name.Contains("Min") || txt.gameObject.name.Contains("Max"))
                     {
@@ -1202,7 +1217,7 @@ namespace BossRush
         }
         private static void OnTendencySliderChanged(float value)
         {
-            currentTendencyChance = (value + 50f) / 100f; // 转换为 0.0 ~ 1.0 的几率
+            currentTendencyChance = 0.5f + (value / 40f) * 0.4f; // 转换为 0.1 ~ 0.9 的几率
             
             if (tendencyText != null)
             {
