@@ -612,6 +612,10 @@ namespace BossRush
                 }
                 
                 // 尝试添加到背包
+                if (cakeItem != null)
+                {
+                    EquipmentHelper.AddTagToItem(cakeItem, "Special");
+                }
                 bool added = inventory.AddAndMerge(cakeItem, 0);
                 if (added)
                 {

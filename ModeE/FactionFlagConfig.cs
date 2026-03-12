@@ -164,18 +164,6 @@ namespace BossRush
                     }
                 }
 
-                // 营旗为一次性消耗品，不需要耐久度
-                // 添加 Special 标签（防止进入随机搜集池）
-                try
-                {
-                    Tag specialTag = GameplayDataSettings.Tags.Special;
-                    if (specialTag != null && !item.Tags.Contains(specialTag))
-                    {
-                        item.Tags.Add(specialTag);
-                    }
-                }
-                catch { }
-
                 ModBehaviour.DevLog("[FactionFlagConfig] 营旗物品配置完成: TypeID=" + typeId);
             }
             catch (Exception e)

@@ -111,6 +111,9 @@ namespace BossRush
                 item.Variables.Set(VAR_GLIDING_STAMINA_DRAIN, SLOW_DESCENT_STAMINA_DRAIN.ToString("0.#") + "/s", true);
                 item.Variables.SetDisplay(VAR_GLIDING_STAMINA_DRAIN, true);
 
+                // 添加 Special 标签
+                EquipmentHelper.AddTagToItem(item, "Special");
+
                 // 注入本地化
                 InjectFlightTotemLocalization(item.TypeID);
 

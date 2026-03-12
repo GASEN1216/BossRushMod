@@ -216,9 +216,6 @@ namespace BossRush
                     usageField.SetValue(item, usageUtils);
                 }
 
-                // 6. 添加 Special 标签（防止物品进入随机搜集池）
-                AddSpecialTag(item);
-
                 ModBehaviour.DevLog("[WildHornConfig] 荒野号角物品配置完成");
             }
             catch (Exception e)
@@ -227,29 +224,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 添加 Special 标签到物品（防止进入随机搜集池）
-        /// </summary>
-        private static void AddSpecialTag(Item item)
-        {
-            try
-            {
-                Tag specialTag = GameplayDataSettings.Tags.Special;
-                if (specialTag != null && !item.Tags.Contains(specialTag))
-                {
-                    item.Tags.Add(specialTag);
-                    ModBehaviour.DevLog("[WildHornConfig] 已添加 Special 标签");
-                }
-                else if (specialTag == null)
-                {
-                    ModBehaviour.DevLog("[WildHornConfig] 警告: 无法获取 Special 标签");
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[WildHornConfig] 添加 Special 标签失败: " + e.Message);
-            }
-        }
 
         // ============================================================================
         // 注册与本地化

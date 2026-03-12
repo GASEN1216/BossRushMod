@@ -708,6 +708,7 @@ namespace BossRush
             EquipmentHelper.AddTagToItem(item, "Gun");
             EquipmentHelper.AddTagToItem(item, "GunType_BR");
             EquipmentHelper.AddTagToItem(item, "Western");
+            EquipmentHelper.AddTagToItem(item, "Special");
             EquipmentHelper.AddRepairableTag(item);
         }
         

@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // Integration.cs - 游戏系统集成
 // ============================================================================
 // 模块说明：
@@ -168,9 +168,11 @@ namespace BossRush
                 PeaceCharmConfig.RegisterConfigurator();  // 平安护身符配置器
                 DingdangDrawingConfig.RegisterConfigurator();
                 AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
+                ItemFactory.RegisterConfigurator(500013, ReverseScaleConfig.ConfigureItem);
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
                 FactionFlagConfig.RegisterConfigurators();  // 营旗配置器（Mode E）
                 RespawnItemConfig.RegisterConfigurators();  // 刷怪消耗品配置器（Mode E）
+                ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
                 ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
                 
                 int itemCount = ItemFactory.LoadAllItems();
@@ -199,6 +201,13 @@ namespace BossRush
         private void OnFenHuangHalberdLoaded(Item itemPrefab)
         {
             FenHuangHalberdWeaponConfig.TryConfigure(itemPrefab, "FenHuangHalberd");
+        }
+
+        private void OnAdventureJournalLoaded(Item itemPrefab)
+        {
+            if (itemPrefab == null) return;
+            EquipmentHelper.AddTagToItem(itemPrefab, "Special");
+            DevLog("[BossRush] 冒险家日志已添加 Special 标签");
         }
 
         /// <summary>
@@ -886,6 +895,9 @@ namespace BossRush
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
+
+            DragonKingBossGunConfig.InitializeRuntimePrefab();
+            DragonKingBossGunRuntime.InitializeRuntime();
 
             try
             {
@@ -2652,6 +2664,7 @@ namespace BossRush
                 {
                     // 添加火焰特效
                     DragonBreathWeaponConfig.TryAddFireEffectsToAgent(currentGun);
+                    DragonKingBossGunRuntime.TryAddFireEffectsToAgent(currentGun);
                 }
             }
             catch (Exception e)
@@ -2689,11 +2702,18 @@ namespace BossRush
             bool isDragonBreath = gunAgent != null && 
                                   gunAgent.Item != null && 
                                   gunAgent.Item.TypeID == DragonBreathConfig.WEAPON_TYPE_ID;
+            bool isDragonKingBossGun = gunAgent != null &&
+                                       gunAgent.Item != null &&
+                                       gunAgent.Item.TypeID == DragonKingBossGunConfig.WeaponTypeId;
             
             if (isDragonBreath)
             {
                 // 装备龙息武器：添加火焰特效
                 DragonBreathWeaponConfig.TryAddFireEffectsToAgent(gunAgent);
+            }
+            else if (isDragonKingBossGun)
+            {
+                DragonKingBossGunRuntime.TryAddFireEffectsToAgent(gunAgent);
             }
             // 不再在此处取消订阅Buff事件，因为Boss的龙息子弹也需要触发龙焰灼烧Buff
         }

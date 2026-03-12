@@ -144,6 +144,9 @@ namespace BossRush
                 
                 // 设置 Item 的 usageUtilities 字段
                 SetItemUsageUtilities(item, usageUtils);
+
+                // 添加 Special 标签
+                EquipmentHelper.AddTagToItem(item, "Special");
                 
                 ModBehaviour.DevLog("[AchievementMedalConfig] 成就勋章物品配置完成");
             }

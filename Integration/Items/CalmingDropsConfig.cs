@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using ItemStatsSystem;
@@ -51,7 +51,6 @@ namespace BossRush
                 ConfigureUsage(item);
                 EquipmentHelper.AddTagToItem(item, "Injector");
                 EquipmentHelper.AddTagToItem(item, "Medic");
-                EquipmentHelper.AddTagToItem(item, "Special");
 
                 ModBehaviour.DevLog("[CalmingDropsConfig] Item configured: TypeID=" + TYPE_ID);
             }

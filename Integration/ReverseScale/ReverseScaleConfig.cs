@@ -7,6 +7,7 @@
 // ============================================================================
 
 using BossRush.Common.Equipment;
+using ItemStatsSystem;
 
 namespace BossRush
 {
@@ -137,7 +138,14 @@ namespace BossRush
         /// 物品描述本地化键
         /// </summary>
         public const string LOC_KEY_DESC = "BossRush_ReverseScale_Desc";
+        // ========== 核心逻辑 ==========
 
+        public static void ConfigureItem(Item item)
+        {
+            if (item == null) return;
+            EquipmentHelper.AddTagToItem(item, "Special");
+            ModBehaviour.DevLog("[ReverseScaleConfig] 已添加 Special 标签");
+        }
         /// <summary>
         /// 气泡提示本地化键
         /// </summary>

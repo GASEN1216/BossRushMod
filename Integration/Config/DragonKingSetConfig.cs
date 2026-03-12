@@ -134,6 +134,9 @@ namespace BossRush
             // 添加可维修标签
             EquipmentHelper.AddRepairableTag(item);
 
+            // 添加 Special 标签
+            EquipmentHelper.AddTagToItem(item, "Special");
+
             // 注入本地化
             EquipmentLocalization.InjectDragonKingHelmLocalization(item.TypeID);
 
@@ -173,6 +176,9 @@ namespace BossRush
 
             // 添加可维修标签
             EquipmentHelper.AddRepairableTag(item);
+
+            // 添加 Special 标签
+            EquipmentHelper.AddTagToItem(item, "Special");
 
             // 注入本地化
             EquipmentLocalization.InjectDragonKingArmorLocalization(item.TypeID);
