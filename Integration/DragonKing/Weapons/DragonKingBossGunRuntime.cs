@@ -842,7 +842,37 @@ namespace BossRush
                 if (fx != null)
                 {
                     UnityEngine.Object.Destroy(fx, 3f);
+                    return;
                 }
+            }
+
+            if (profile != null && profile.Element == ElementTypes.fire)
+            {
+                GameObject fireFx = new GameObject("DragonGun_FireExplosionFx");
+                fireFx.transform.position = position;
+                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(fireFx);
+                
+                ParticleSystem[] particles = fireFx.GetComponentsInChildren<ParticleSystem>(true);
+                foreach (var ps in particles)
+                {
+                    var main = ps.main;
+                    main.loop = false;
+                    main.duration = 0.5f;
+                    
+                    var em = ps.emission;
+                    em.rateOverDistance = 0;
+                    em.rateOverTime = 0;
+                    em.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 30) });
+                    
+                    var shape = ps.shape;
+                    shape.shapeType = ParticleSystemShapeType.Sphere;
+                    shape.radius = 1f;
+                    
+                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    ps.Play(true);
+                }
+                
+                UnityEngine.Object.Destroy(fireFx, 2f);
                 return;
             }
 

@@ -165,7 +165,10 @@ namespace BossRush
                 GunDamageMult = 2f,
                 OverrideCapacity = 8,
                 OverrideReloadTime = 3.5f,
-                OverrideBulletDistance = 26f
+                OverrideBulletDistance = 26f,
+                TrailFxPrefab = "Fx_DragonGun_IceBlade_Trail",
+                HitFxPrefab = "Fx_DragonGun_IceBlade_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_IceBlade_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -197,7 +200,10 @@ namespace BossRush
                 GunDamageMult = 3.5f,
                 OverrideCapacity = 5,
                 OverrideReloadTime = 4.5f,
-                OverrideBulletDistance = 18f
+                OverrideBulletDistance = 18f,
+                TrailFxPrefab = "Fx_DragonGun_Rocket_Trail",
+                HitFxPrefab = "Fx_DragonGun_Rocket_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Rocket_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -219,7 +225,10 @@ namespace BossRush
                 GunDamageMult = 0.3f,
                 OverrideCapacity = 30,
                 OverrideReloadTime = 2.5f,
-                OverrideBulletDistance = 18f
+                OverrideBulletDistance = 18f,
+                TrailFxPrefab = "Fx_DragonGun_SMG_Trail",
+                HitFxPrefab = "Fx_DragonGun_SMG_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_SMG_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -240,7 +249,10 @@ namespace BossRush
                 GunDamageMult = 1f,
                 OverrideCapacity = 15,
                 OverrideReloadTime = 3.35f,
-                OverrideBulletDistance = 24f
+                OverrideBulletDistance = 24f,
+                TrailFxPrefab = "Fx_DragonGun_Assault_Trail",
+                HitFxPrefab = "Fx_DragonGun_Assault_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Assault_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -261,7 +273,10 @@ namespace BossRush
                 GunDamageMult = 2.8f,
                 OverrideCapacity = 8,
                 OverrideReloadTime = 3.8f,
-                OverrideBulletDistance = 28f
+                OverrideBulletDistance = 28f,
+                TrailFxPrefab = "Fx_DragonGun_Heavy_Trail",
+                HitFxPrefab = "Fx_DragonGun_Heavy_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Heavy_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -280,7 +295,10 @@ namespace BossRush
                 GunDamageMult = 4f,
                 OverrideCapacity = 5,
                 OverrideReloadTime = 4f,
-                OverrideBulletDistance = 36f
+                OverrideBulletDistance = 36f,
+                TrailFxPrefab = "Fx_DragonGun_Sniper_Trail",
+                HitFxPrefab = "Fx_DragonGun_Sniper_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Sniper_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -304,7 +322,10 @@ namespace BossRush
                 GunDamageMult = 0.35f,
                 OverrideCapacity = 8,
                 OverrideReloadTime = 3.5f,
-                OverrideBulletDistance = 12f
+                OverrideBulletDistance = 12f,
+                TrailFxPrefab = "Fx_DragonGun_Shotgun_Trail",
+                HitFxPrefab = "Fx_DragonGun_Shotgun_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Shotgun_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -325,7 +346,10 @@ namespace BossRush
                 GunDamageMult = 2.5f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
-                OverrideBulletDistance = 22f
+                OverrideBulletDistance = 22f,
+                TrailFxPrefab = "Fx_DragonGun_Magnum_Trail",
+                HitFxPrefab = "Fx_DragonGun_Magnum_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Magnum_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -346,7 +370,10 @@ namespace BossRush
                 GunDamageMult = 1.8f,
                 OverrideCapacity = 10,
                 OverrideReloadTime = 3.2f,
-                OverrideBulletDistance = 20f
+                OverrideBulletDistance = 20f,
+                TrailFxPrefab = "Fx_DragonGun_Arrow_Trail",
+                HitFxPrefab = "Fx_DragonGun_Arrow_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Arrow_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -376,7 +403,10 @@ namespace BossRush
                 GunDamageMult = 1.2f,
                 OverrideCapacity = 12,
                 OverrideReloadTime = 3f,
-                OverrideBulletDistance = 22f
+                OverrideBulletDistance = 22f,
+                TrailFxPrefab = "Fx_DragonGun_Energy_Trail",
+                HitFxPrefab = "Fx_DragonGun_Energy_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Energy_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -402,7 +432,10 @@ namespace BossRush
                 GunDamageMult = 0.8f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
-                OverrideBulletDistance = 16f
+                OverrideBulletDistance = 16f,
+                TrailFxPrefab = "Fx_DragonGun_Poop_Trail",
+                HitFxPrefab = "Fx_DragonGun_Poop_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Poop_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -426,7 +459,10 @@ namespace BossRush
                 GunDamageMult = 0.4f,
                 OverrideCapacity = 20,
                 OverrideReloadTime = 2.8f,
-                OverrideBulletDistance = 16f
+                OverrideBulletDistance = 16f,
+                TrailFxPrefab = "Fx_DragonGun_Candy_Trail",
+                HitFxPrefab = "Fx_DragonGun_Candy_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Candy_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -462,7 +498,10 @@ namespace BossRush
                 GunDamageMult = 1.5f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.8f,
-                OverrideBulletDistance = 18f
+                OverrideBulletDistance = 18f,
+                TrailFxPrefab = "Fx_DragonGun_Snow_Trail",
+                HitFxPrefab = "Fx_DragonGun_Snow_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Snow_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -491,7 +530,10 @@ namespace BossRush
                 GunDamageMult = 1.3f,
                 OverrideCapacity = 10,
                 OverrideReloadTime = 3.2f,
-                OverrideBulletDistance = 24f
+                OverrideBulletDistance = 24f,
+                TrailFxPrefab = "Fx_DragonGun_Nano_Trail",
+                HitFxPrefab = "Fx_DragonGun_Nano_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Nano_Explosion"
             },
             new DragonKingBossGunShotProfile
             {
@@ -526,7 +568,10 @@ namespace BossRush
                 GunDamageMult = 1f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
-                OverrideBulletDistance = 20f
+                OverrideBulletDistance = 20f,
+                TrailFxPrefab = "Fx_DragonGun_Firework_Trail",
+                HitFxPrefab = "Fx_DragonGun_Firework_Hit",
+                ExplosionFxPrefab = "Fx_DragonGun_Firework_Explosion"
             }
         };
 

@@ -68,6 +68,60 @@ namespace BossRush
             get { return projectile != null && deadRef(projectile); }
         }
 
+        private void CreateStickyCharge(DamageReceiver target, Vector3 point, Vector3 normal)
+        {
+            GameObject chargeObj = new GameObject("DragonGun_StickyCharge_" + profile.Id);
+            chargeObj.transform.position = point;
+            
+            if (profile.Element == ElementTypes.fire)
+            {
+                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(chargeObj);
+            }
+
+            DragonKingBossGunStickyCharge charge = chargeObj.AddComponent<DragonKingBossGunStickyCharge>();
+            charge.Initialize(projectile.context, profile, shotId, target != null ? target.transform : null, point);
+        }
+
+        private void CreateGroundZone(Vector3 position)
+        {
+            GameObject zoneObj = new GameObject("DragonGun_GroundZone_" + profile.Id);
+            zoneObj.transform.position = FenHuangHalberdRuntime.SnapToGround(position, position.y);
+            
+            if (profile.Element == ElementTypes.fire)
+            {
+                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(zoneObj);
+            }
+
+            DragonKingBossGunGroundZone zone = zoneObj.AddComponent<DragonKingBossGunGroundZone>();
+            zone.Initialize(projectile.context, profile);
+        }
+
+        private void SpawnFireHitEffect(Vector3 hitPoint, Vector3 hitNormal)
+        {
+            GameObject fireFx = new GameObject("DragonGun_FireHitFx");
+            fireFx.transform.position = hitPoint;
+            fireFx.transform.rotation = Quaternion.LookRotation(hitNormal);
+            DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(fireFx);
+            
+            ParticleSystem[] particles = fireFx.GetComponentsInChildren<ParticleSystem>(true);
+            foreach (var ps in particles)
+            {
+                var main = ps.main;
+                main.loop = false;
+                main.duration = 0.2f;
+                
+                var em = ps.emission;
+                em.rateOverDistance = 0;
+                em.rateOverTime = 0;
+                em.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 15) });
+                
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                ps.Play(true);
+            }
+            
+            UnityEngine.Object.Destroy(fireFx, 1.5f);
+        }
+
         public void Initialize(Projectile projectileInstance, ItemAgent_Gun gunAgent, DragonKingBossGunShotProfile shotProfile, int currentShotId, int currentProjectileIndex, bool isSecondary)
         {
             projectile = projectileInstance;
@@ -102,12 +156,21 @@ namespace BossRush
             if (customTrailInstance == null && profile != null && !string.IsNullOrEmpty(profile.TrailFxPrefab))
             {
                 customTrailInstance = DragonKingAssetManager.InstantiateEffect(profile.TrailFxPrefab, transform.position, transform.rotation, transform);
-                if (customTrailInstance != null)
-                {
-                    customTrailInstance.transform.localPosition = Vector3.zero;
-                    customTrailInstance.transform.localRotation = Quaternion.identity;
-                    StripPhysicsComponents(customTrailInstance);
-                }
+            }
+            else if (customTrailInstance == null && profile != null && profile.Element == ElementTypes.fire)
+            {
+                customTrailInstance = new GameObject("DragonGun_FireTrailFx");
+                customTrailInstance.transform.SetParent(transform);
+                customTrailInstance.transform.localPosition = Vector3.zero;
+                customTrailInstance.transform.localRotation = Quaternion.identity;
+                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(customTrailInstance);
+            }
+            
+            if (customTrailInstance != null)
+            {
+                customTrailInstance.transform.localPosition = Vector3.zero;
+                customTrailInstance.transform.localRotation = Quaternion.identity;
+                StripPhysicsComponents(customTrailInstance);
             }
 
             // 保留 Boss_Red 原版弹幕视觉，缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理
@@ -132,6 +195,21 @@ namespace BossRush
             }
         }
 
+
+        internal static void FadeAndDestroy(GameObject obj, float delay)
+        {
+            if (obj == null) return;
+            var particles = obj.GetComponentsInChildren<ParticleSystem>(true);
+            if (particles != null)
+            {
+                for (int i = 0; i < particles.Length; i++)
+                {
+                    var em = particles[i].emission;
+                    em.enabled = false;
+                }
+            }
+            UnityEngine.Object.Destroy(obj, delay);
+        }
 
         private void OnDisable()
         {
@@ -159,7 +237,8 @@ namespace BossRush
 
             if (customTrailInstance != null)
             {
-                UnityEngine.Object.Destroy(customTrailInstance);
+                customTrailInstance.transform.SetParent(null);
+                FadeAndDestroy(customTrailInstance, 2f);
                 customTrailInstance = null;
             }
         }
@@ -433,7 +512,7 @@ namespace BossRush
 
             if (profile.UseSticky)
             {
-                DragonKingBossGunRuntime.SpawnStickyCharge(hitPoint, hitNormal, receiver.transform, sourceGun, projectile.context, profile, shotId);
+                CreateStickyCharge(receiver, hitPoint, hitNormal);
                 transform.position = hitPoint;
                 deadRef(projectile) = true;
                 return true;
@@ -458,7 +537,7 @@ namespace BossRush
 
             if (profile.UseSticky)
             {
-                DragonKingBossGunRuntime.SpawnStickyCharge(hitPoint, hitNormal, null, sourceGun, projectile.context, profile, shotId);
+                CreateStickyCharge(null, hitPoint, hitNormal);
                 transform.position = hitPoint;
                 deadRef(projectile) = true;
                 return true;
@@ -506,7 +585,14 @@ namespace BossRush
                 {
                     UnityEngine.Object.Destroy(fx, 2f);
                 }
-                return;
+                else if (profile.Element == ElementTypes.fire)
+                {
+                    SpawnFireHitEffect(hitPoint, hitNormal);
+                }
+            }
+            else if (profile != null && profile.Element == ElementTypes.fire)
+            {
+                SpawnFireHitEffect(hitPoint, hitNormal);
             }
 
             GameObject hitFx = GameplayDataSettings.Prefabs != null ? GameplayDataSettings.Prefabs.BulletHitObsticleFx : null;
@@ -712,7 +798,8 @@ namespace BossRush
 
             if (elapsed >= duration || elapsed >= MaxLifetime)
             {
-                UnityEngine.Object.Destroy(gameObject);
+                DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, 2f);
+                enabled = false;
             }
         }
 
@@ -814,7 +901,8 @@ namespace BossRush
             {
                 if (elapsed >= MaxLifetime)
                 {
-                    UnityEngine.Object.Destroy(gameObject);
+                    DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, 2f);
+                    enabled = false;
                 }
 
                 return;
@@ -833,7 +921,8 @@ namespace BossRush
                 false,
                 true,
                 marker);
-            UnityEngine.Object.Destroy(gameObject);
+            DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, 2f);
+            enabled = false;
         }
     }
 }
