@@ -653,6 +653,13 @@ namespace BossRush
 
                     if (shouldExclude) continue;
 
+                    // 排除载具类型（包括炮台）
+                    if (preset.isVehicle)
+                    {
+                        DevLog("[ModeD] 排除载具/炮台: " + nameKey);
+                        continue;
+                    }
+
                     float health = (preset.health > 0f) ? preset.health : 100f;
                     float damage = preset.damageMultiplier;
 
