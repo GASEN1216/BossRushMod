@@ -578,6 +578,13 @@ namespace BossRush
                         continue;
                     }
 
+                    // 排除自动炮台（固定敌人，无法移动）
+                    if (nameKey == "Cname_GunTurret")
+                    {
+                        DevLog("[ModeD] 排除自动炮台: " + nameKey);
+                        continue;
+                    }
+
                     // 排除商人和宠物类型
                     bool shouldExclude = false;
                     
