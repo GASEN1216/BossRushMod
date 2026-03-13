@@ -1225,8 +1225,10 @@ namespace BossRush
                 }
                 else
                 {
-                    CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null && player.transform.position.y - currentPos.y >= 6f)
+                    EnemyRecoveryState recoveryState;
+                    if (enemyRecoveryStates.TryGetValue(boss, out recoveryState) &&
+                        recoveryState.hasExcludedAnchorPosition &&
+                        recoveryState.excludedAnchorPosition.y - currentPos.y >= 6f)
                     {
                         needsRecovery = true;
                         reason = "spawn_void";

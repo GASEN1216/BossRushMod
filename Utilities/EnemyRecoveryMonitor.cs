@@ -27,6 +27,7 @@ namespace BossRush
         private const float EnemyRapidFallDeltaPerCheck = 2.5f;
         private const int EnemyRapidFallSamplesRequired = 3;
         private const float EnemyVoidRelativePlayerYThreshold = 12f;
+        private const float EnemyVoidRelativeAnchorYThreshold = 6f;
         private const float EnemyGroundProbeDistance = 8f;
         private const float EnemyGroundProbeHeight = 1f;
         private const float EnemyNavMeshProbeDistance = 5f;
@@ -243,7 +244,7 @@ namespace BossRush
                     bool fallingOut = ShouldRecoverFallingEnemy(state, currentPos, player);
                     bool stuckUnderground = !fallingOut &&
                                             now - state.lastMovedTime >= EnemyStationaryRecoveryDelay &&
-                                            ShouldRecoverStationaryEnemy(currentPos, player);
+                                            ShouldRecoverStationaryEnemy(state, currentPos, player);
 
                     if (fallingOut || stuckUnderground)
                     {
@@ -313,7 +314,7 @@ namespace BossRush
             return player.transform.position.y - currentPos.y >= EnemyVoidRelativePlayerYThreshold;
         }
 
-        private bool ShouldRecoverStationaryEnemy(Vector3 currentPos, CharacterMainControl player)
+        private bool ShouldRecoverStationaryEnemy(EnemyRecoveryState state, Vector3 currentPos, CharacterMainControl player)
         {
             Vector3 groundAlignedPos;
             bool hasNearbyGround = TryResolveGroundAlignedPosition(
@@ -327,17 +328,27 @@ namespace BossRush
                 return true;
             }
 
-            if (player == null)
-            {
-                return !hasNearbyGround;
-            }
-
-            if (player.transform.position.y - currentPos.y < EnemyBelowPlayerThreshold)
+            if (hasNearbyGround)
             {
                 return false;
             }
 
-            return !hasNearbyGround;
+            if (state != null &&
+                state.hasExcludedAnchorPosition &&
+                state.excludedAnchorPosition.y - currentPos.y >= EnemyVoidRelativeAnchorYThreshold)
+            {
+                return true;
+            }
+
+            if (player == null)
+            {
+                return false;
+            }
+
+            // 仅当玩家明显更高，且敌人曾经出现过连续下坠趋势时，才把“无地面采样”视为掉出有效区域。
+            return player.transform.position.y - currentPos.y >= EnemyBelowPlayerThreshold &&
+                   state != null &&
+                   state.continuousFallSamples > 0;
         }
 
         private bool TryRecoverEnemyToNearestSpawnPoint(
@@ -511,13 +522,13 @@ namespace BossRush
             {
                 Vector3 candidate = enemyRecoverySpawnCandidates[i];
 
-                if (GetHorizontalSqrDistance(candidate, currentPos) <= EnemyCurrentPointExclusionRadius * EnemyCurrentPointExclusionRadius)
+                if (GetSqrDistance(candidate, currentPos) <= EnemyCurrentPointExclusionRadius * EnemyCurrentPointExclusionRadius)
                 {
                     continue;
                 }
 
                 if (state.hasExcludedAnchorPosition &&
-                    GetHorizontalSqrDistance(candidate, state.excludedAnchorPosition) <= EnemySpawnPointExclusionRadius * EnemySpawnPointExclusionRadius)
+                    GetSqrDistance(candidate, state.excludedAnchorPosition) <= EnemySpawnPointExclusionRadius * EnemySpawnPointExclusionRadius)
                 {
                     continue;
                 }
@@ -528,7 +539,7 @@ namespace BossRush
                     continue;
                 }
 
-                float distance = GetHorizontalSqrDistance(validatedPos, currentPos);
+                float distance = GetSqrDistance(validatedPos, currentPos);
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
@@ -599,6 +610,14 @@ namespace BossRush
             float dx = a.x - b.x;
             float dz = a.z - b.z;
             return dx * dx + dz * dz;
+        }
+
+        private static float GetSqrDistance(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x;
+            float dy = a.y - b.y;
+            float dz = a.z - b.z;
+            return dx * dx + dy * dy + dz * dz;
         }
     }
 }
