@@ -77,6 +77,38 @@ namespace BossRush
         /// <summary>当前场景中已放置的婚礼建筑实例（用于NPC生成追踪）</summary>
         private GameObject weddingNPCInstance = null;
 
+        /// <summary>婚礼教堂是否存在的缓存状态</summary>
+        private bool weddingBuildingPresenceKnown = false;
+
+        /// <summary>婚礼教堂是否存在</summary>
+        private bool cachedWeddingBuildingPresent = false;
+
+        /// <summary>缓存的婚礼建筑Transform，避免重复全场景扫描</summary>
+        private Transform cachedWeddingBuildingTransform = null;
+
+        /// <summary>缓存的婚礼NPC站位点</summary>
+        private Transform cachedWeddingNpcSpawnPoint = null;
+
+        /// <summary>BuildingManager 类型缓存</summary>
+        private static Type cachedBuildingManagerType = null;
+        private static bool buildingManagerTypeResolved = false;
+
+        /// <summary>BuildingManager.Any 方法缓存</summary>
+        private static MethodInfo cachedBuildingManagerAnyMethod = null;
+        private static bool buildingManagerAnyMethodResolved = false;
+
+        /// <summary>BuildingManager.GetBuildingData 方法缓存</summary>
+        private static MethodInfo cachedGetBuildingDataMethod = null;
+        private static bool getBuildingDataMethodResolved = false;
+
+        /// <summary>Building 类型缓存</summary>
+        private static Type cachedBuildingType = null;
+        private static bool buildingTypeResolved = false;
+
+        /// <summary>Building.ID 属性缓存</summary>
+        private static PropertyInfo cachedBuildingIdProperty = null;
+        private static bool buildingIdPropertyResolved = false;
+
         // ============================================================================
         // 工具方法
         // ============================================================================
@@ -97,6 +129,147 @@ namespace BossRush
                 catch { }
             }
             return null;
+        }
+
+        private static Type GetBuildingManagerType()
+        {
+            if (!buildingManagerTypeResolved)
+            {
+                cachedBuildingManagerType = FindGameType("Duckov.Buildings.BuildingManager");
+                buildingManagerTypeResolved = true;
+            }
+
+            return cachedBuildingManagerType;
+        }
+
+        private static MethodInfo GetBuildingManagerAnyMethod()
+        {
+            if (!buildingManagerAnyMethodResolved)
+            {
+                Type buildingManagerType = GetBuildingManagerType();
+                if (buildingManagerType != null)
+                {
+                    cachedBuildingManagerAnyMethod = buildingManagerType.GetMethod(
+                        "Any",
+                        BindingFlags.Public | BindingFlags.Static,
+                        null,
+                        new Type[] { typeof(string), typeof(bool) },
+                        null);
+                }
+
+                buildingManagerAnyMethodResolved = true;
+            }
+
+            return cachedBuildingManagerAnyMethod;
+        }
+
+        private static MethodInfo GetBuildingDataMethod()
+        {
+            if (!getBuildingDataMethodResolved)
+            {
+                Type buildingManagerType = GetBuildingManagerType();
+                if (buildingManagerType != null)
+                {
+                    cachedGetBuildingDataMethod = buildingManagerType.GetMethod(
+                        "GetBuildingData",
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                }
+
+                getBuildingDataMethodResolved = true;
+            }
+
+            return cachedGetBuildingDataMethod;
+        }
+
+        private static Type GetBuildingType()
+        {
+            if (!buildingTypeResolved)
+            {
+                cachedBuildingType = FindGameType("Duckov.Buildings.Building");
+                buildingTypeResolved = true;
+            }
+
+            return cachedBuildingType;
+        }
+
+        private static PropertyInfo GetBuildingIdProperty()
+        {
+            if (!buildingIdPropertyResolved)
+            {
+                Type buildingType = GetBuildingType();
+                if (buildingType != null)
+                {
+                    cachedBuildingIdProperty = buildingType.GetProperty("ID");
+                }
+
+                buildingIdPropertyResolved = true;
+            }
+
+            return cachedBuildingIdProperty;
+        }
+
+        private void ResetWeddingBuildingLocationCache()
+        {
+            cachedWeddingBuildingTransform = null;
+            cachedWeddingNpcSpawnPoint = null;
+        }
+
+        private void SetWeddingBuildingPresence(bool isPresent)
+        {
+            weddingBuildingPresenceKnown = true;
+            cachedWeddingBuildingPresent = isPresent;
+
+            if (!isPresent)
+            {
+                ResetWeddingBuildingLocationCache();
+            }
+        }
+
+        private bool RefreshWeddingBuildingPresence()
+        {
+            try
+            {
+                MethodInfo anyMethod = GetBuildingManagerAnyMethod();
+                bool isPresent = anyMethod != null
+                    && anyMethod.Invoke(null, new object[] { WEDDING_BUILDING_ID, false }) is bool result
+                    && result;
+
+                SetWeddingBuildingPresence(isPresent);
+                return isPresent;
+            }
+            catch (Exception e)
+            {
+                SetWeddingBuildingPresence(false);
+                Debug.LogError("[WeddingBuilding] 刷新建筑存在状态失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private bool TryUseCachedWeddingNpcPosition(out Vector3 position)
+        {
+            if (cachedWeddingNpcSpawnPoint != null)
+            {
+                position = cachedWeddingNpcSpawnPoint.position;
+                return true;
+            }
+
+            if (cachedWeddingBuildingTransform != null)
+            {
+                EnsureWeddingBuildingFunctionPoints(cachedWeddingBuildingTransform.gameObject);
+                Transform spawnPoint = cachedWeddingBuildingTransform.Find("Function/NPCSpawnPoint");
+                if (spawnPoint != null)
+                {
+                    cachedWeddingNpcSpawnPoint = spawnPoint;
+                    position = spawnPoint.position;
+                    return true;
+                }
+
+                position = cachedWeddingBuildingTransform.TransformPoint(WEDDING_NPC_OFFSET);
+                return true;
+            }
+
+            position = Vector3.zero;
+            return false;
         }
         
         // ============================================================================
@@ -161,7 +334,8 @@ namespace BossRush
             try
             {
                 UnregisterWeddingBuildingEvents();
-                
+                SetWeddingBuildingPresence(false);
+                 
                 // 清理NPC实例
                 if (weddingNPCInstance != null)
                 {
@@ -974,14 +1148,9 @@ namespace BossRush
             try
             {
                 // 通过反射获取建筑数据
-                Type bmType = FindGameType("Duckov.Buildings.BuildingManager");
-                if (bmType == null) return;
-                
-                // 调用 GetBuildingData(guid, null)
-                MethodInfo getBuildingData = bmType.GetMethod("GetBuildingData", 
-                    BindingFlags.NonPublic | BindingFlags.Static);
+                MethodInfo getBuildingData = GetBuildingDataMethod();
                 if (getBuildingData == null) return;
-                
+                 
                 object buildingData = getBuildingData.Invoke(null, new object[] { guid, null });
                 if (buildingData == null) return;
                 
@@ -990,9 +1159,11 @@ namespace BossRush
                 string buildingId = idProp?.GetValue(buildingData) as string;
                 
                 if (buildingId != WEDDING_BUILDING_ID) return;
-                
+                 
                 DevLog("[WeddingBuilding] 检测到婚礼教堂被放置，GUID=" + guid);
-                
+                SetWeddingBuildingPresence(true);
+                ResetWeddingBuildingLocationCache();
+                 
                 // 延迟生成NPC（等待建筑实例化完成）
                 StartCoroutine(DelayedSpawnWeddingNPC(guid));
                 
@@ -1015,29 +1186,25 @@ namespace BossRush
             {
                 // 场景中已经没有婚礼建筑了才清理NPC
                 // （因为 OnBuildingDestroyed 事件不携带建筑ID，需要反向检查）
-                Type bmType = FindGameType("Duckov.Buildings.BuildingManager");
-                if (bmType != null)
+                if (RefreshWeddingBuildingPresence())
                 {
-                    MethodInfo anyMethod = bmType.GetMethod("Any",
-                        BindingFlags.Public | BindingFlags.Static,
-                        null,
-                        new Type[] { typeof(string), typeof(bool) },
-                        null);
-                    if (anyMethod != null)
-                    {
-                        bool stillExists = (bool)anyMethod.Invoke(null,
-                            new object[] { WEDDING_BUILDING_ID, false });
-                        if (stillExists) return; // 还有婚礼建筑，不是拆的我们的
-                    }
+                    return;
                 }
-                
-                // 确认婚礼建筑已不存在，清理NPC
-                if (weddingNPCInstance != null)
+
+                ResetWeddingBuildingLocationCache();
+                DestroyWeddingPlaceholder();
+
+                string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+                if (spouseNpcId == GoblinAffinityConfig.NPC_ID)
                 {
-                    DevLog("[WeddingBuilding] 婚礼教堂被拆除，清理NPC");
-                    UnityEngine.Object.Destroy(weddingNPCInstance);
-                    weddingNPCInstance = null;
+                    DestroyGoblinNPC();
                 }
+                else if (spouseNpcId == NurseAffinityConfig.NPC_ID)
+                {
+                    DestroyNurseNPC();
+                }
+
+                DevLog("[WeddingBuilding] 婚礼教堂被拆除，已清理驻留NPC");
             }
             catch (Exception e)
             {
@@ -1235,30 +1402,36 @@ namespace BossRush
         {
             try
             {
-                // 获取 Building 类型
-                Type buildingType = FindGameType("Duckov.Buildings.Building");
-                if (buildingType == null) return Vector3.zero;
-                
-                // 查找场景中所有 Building 实例
+                Vector3 cachedPosition;
+                if (TryUseCachedWeddingNpcPosition(out cachedPosition))
+                {
+                    return cachedPosition;
+                }
+
+                Type buildingType = GetBuildingType();
+                PropertyInfo idProp = GetBuildingIdProperty();
+                if (buildingType == null || idProp == null)
+                {
+                    return Vector3.zero;
+                }
+
                 var allBuildings = UnityEngine.Object.FindObjectsOfType(buildingType);
                 foreach (Component building in allBuildings)
                 {
-                    PropertyInfo idProp = buildingType.GetProperty("ID");
                     string id = idProp?.GetValue(building) as string;
-                    
+
                     if (id == WEDDING_BUILDING_ID)
                     {
+                        cachedWeddingBuildingTransform = building.transform;
                         EnsureWeddingBuildingFunctionPoints(building.gameObject);
 
-                        // 找到婚礼建筑，查找 NPCSpawnPoint 子物体
                         Transform spawnPoint = building.transform.Find("Function/NPCSpawnPoint");
                         if (spawnPoint != null)
                         {
-                            //DevLog("[WeddingBuilding] 找到NPC站位点: " + spawnPoint.position);
+                            cachedWeddingNpcSpawnPoint = spawnPoint;
                             return spawnPoint.position;
                         }
-                        
-                        // 备用：使用建筑局部偏移换算出的世界坐标，确保随建筑旋转
+
                         Vector3 fallbackPos = building.transform.TransformPoint(WEDDING_NPC_OFFSET);
                         DevLog("[WeddingBuilding] 使用建筑中心位置作为NPC站位: " + fallbackPos);
                         return fallbackPos;
@@ -1269,7 +1442,8 @@ namespace BossRush
             {
                 Debug.LogError("[WeddingBuilding] 查找NPC站位失败: " + e.Message);
             }
-            
+
+            ResetWeddingBuildingLocationCache();
             return Vector3.zero;
         }
 
@@ -1379,7 +1553,14 @@ namespace BossRush
             // 移除碰撞体，避免影响玩家移动
             Collider col = weddingNPCInstance.GetComponent<Collider>();
             if (col != null) UnityEngine.Object.Destroy(col);
-            
+
+            WeddingNpcResidentMarker marker = weddingNPCInstance.GetComponent<WeddingNpcResidentMarker>();
+            if (marker == null)
+            {
+                marker = weddingNPCInstance.AddComponent<WeddingNpcResidentMarker>();
+            }
+            marker.NpcId = string.Empty;
+             
             DevLog("[WeddingBuilding] 婚礼NPC占位已生成在: " + position);
         }
 
@@ -1395,26 +1576,15 @@ namespace BossRush
         {
             try
             {
-                // 获取 BuildingManager 类型
-                Type bmType = FindGameType("Duckov.Buildings.BuildingManager");
-                if (bmType == null) return;
-                
-                // 调用 BuildingManager.Any(WEDDING_BUILDING_ID, false)
-                MethodInfo anyMethod = bmType.GetMethod("Any", 
-                    BindingFlags.Public | BindingFlags.Static,
-                    null,
-                    new Type[] { typeof(string), typeof(bool) },
-                    null);
-                
-                if (anyMethod == null) return;
-                
-                bool hasWeddingBuilding = (bool)anyMethod.Invoke(null, 
-                    new object[] { WEDDING_BUILDING_ID, false });
-                
+                bool hasWeddingBuilding = RefreshWeddingBuildingPresence();
                 if (hasWeddingBuilding)
                 {
                     DevLog("[WeddingBuilding] 检测到已放置的婚礼教堂，恢复NPC");
                     StartCoroutine(DelayedRestoreWeddingNPC());
+                }
+                else
+                {
+                    DestroyWeddingPlaceholder();
                 }
             }
             catch (Exception e)

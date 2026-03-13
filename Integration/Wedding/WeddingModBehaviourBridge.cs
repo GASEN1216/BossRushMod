@@ -1,47 +1,22 @@
 using System;
-using System.Reflection;
 using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>
-    /// 婚礼系统对 ModBehaviour 的桥接方法。
-    /// 通过 partial 拆分，避免继续扩大主文件修改面。
+    /// Wedding runtime bridge helpers for ModBehaviour.
+    /// Uses cached building state and marker-based NPC checks to avoid per-frame reflection/scans.
     /// </summary>
     public partial class ModBehaviour
     {
-        private const float WeddingNpcDistanceThreshold = 3f;
-
         public bool HasWeddingBuildingPlaced()
         {
-            try
+            if (weddingBuildingPresenceKnown)
             {
-                Type buildingManagerType = FindGameType("Duckov.Buildings.BuildingManager");
-                if (buildingManagerType == null)
-                {
-                    return false;
-                }
-
-                MethodInfo anyMethod = buildingManagerType.GetMethod(
-                    "Any",
-                    BindingFlags.Public | BindingFlags.Static,
-                    null,
-                    new Type[] { typeof(string), typeof(bool) },
-                    null);
-
-                if (anyMethod == null)
-                {
-                    return false;
-                }
-
-                object result = anyMethod.Invoke(null, new object[] { "wedding_chapel", false });
-                return result is bool && (bool)result;
+                return cachedWeddingBuildingPresent;
             }
-            catch (Exception e)
-            {
-                DevLog("[WeddingBridge] 检查婚礼建筑失败: " + e.Message);
-                return false;
-            }
+
+            return RefreshWeddingBuildingPresence();
         }
 
         public Transform GetWeddingNpcTransform()
@@ -94,6 +69,7 @@ namespace BossRush
 
                 if (spouseInstance != null)
                 {
+                    MarkWeddingNpcInstance(spouseInstance, spouseNpcId);
                     DestroyWeddingPlaceholder();
                     return spouseInstance.transform;
                 }
@@ -117,25 +93,20 @@ namespace BossRush
                     return false;
                 }
 
-                if (IsSameNpcObject(npcTransform, weddingNPCInstance))
+                WeddingNpcResidentMarker marker = GetWeddingNpcMarker(npcTransform);
+                if (marker == null)
+                {
+                    return false;
+                }
+
+                if (string.IsNullOrEmpty(marker.NpcId))
                 {
                     return true;
                 }
 
                 string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
-                GameObject spouseInstance = GetSpouseInstance(spouseNpcId);
-                if (spouseInstance == null || !IsSameNpcObject(npcTransform, spouseInstance))
-                {
-                    return false;
-                }
-
-                Vector3 weddingPosition = FindWeddingBuildingNPCPosition();
-                if (weddingPosition == Vector3.zero)
-                {
-                    return false;
-                }
-
-                return Vector3.Distance(npcTransform.position, weddingPosition) <= WeddingNpcDistanceThreshold;
+                return !string.IsNullOrEmpty(spouseNpcId)
+                    && string.Equals(marker.NpcId, spouseNpcId, StringComparison.Ordinal);
             }
             catch (Exception e)
             {
@@ -216,6 +187,44 @@ namespace BossRush
             }
         }
 
+        private void MarkWeddingNpcInstance(GameObject npcInstance, string npcId)
+        {
+            if (npcInstance == null)
+            {
+                return;
+            }
+
+            WeddingNpcResidentMarker marker = npcInstance.GetComponent<WeddingNpcResidentMarker>();
+            if (marker == null)
+            {
+                marker = npcInstance.AddComponent<WeddingNpcResidentMarker>();
+            }
+
+            marker.NpcId = npcId ?? string.Empty;
+        }
+
+        private static WeddingNpcResidentMarker GetWeddingNpcMarker(Transform npcTransform)
+        {
+            if (npcTransform == null)
+            {
+                return null;
+            }
+
+            WeddingNpcResidentMarker marker = npcTransform.GetComponent<WeddingNpcResidentMarker>();
+            if (marker != null)
+            {
+                return marker;
+            }
+
+            Transform root = npcTransform.root;
+            if (root != null && root != npcTransform)
+            {
+                return root.GetComponent<WeddingNpcResidentMarker>();
+            }
+
+            return null;
+        }
+
         private void DestroyWeddingPlaceholder()
         {
             if (weddingNPCInstance != null)
@@ -237,5 +246,10 @@ namespace BossRush
                 || npcTransform.root == instanceTransform
                 || instanceTransform.root == npcTransform;
         }
+    }
+
+    internal sealed class WeddingNpcResidentMarker : MonoBehaviour
+    {
+        public string NpcId;
     }
 }
