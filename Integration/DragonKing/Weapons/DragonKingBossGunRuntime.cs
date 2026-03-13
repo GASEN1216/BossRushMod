@@ -18,6 +18,7 @@ namespace BossRush
         private const float ProcessedHitKeepTime = 1.25f;
         private const float ProcessedHitCleanupInterval = 2f;
         private const int PhysicsBufferSize = 64;
+        private const float GroundImpactDotThreshold = 0.45f;
 
         internal static readonly Collider[] SharedColliderBuffer = new Collider[PhysicsBufferSize];
         internal static readonly HashSet<int> SharedReceiverIdSet = new HashSet<int>();
@@ -36,8 +37,14 @@ namespace BossRush
             public int marksApplied;
         }
 
+        private struct ProcessedGroundZoneState
+        {
+            public float time;
+            public int spawnCount;
+        }
+
         private static readonly Dictionary<long, ProcessedHitState> processedHitPairs = new Dictionary<long, ProcessedHitState>();
-        private static readonly Dictionary<long, float> processedGroundZoneShots = new Dictionary<long, float>();
+        private static readonly Dictionary<long, ProcessedGroundZoneState> processedGroundZoneShots = new Dictionary<long, ProcessedGroundZoneState>();
         private static readonly List<long> processedHitKeysToRemove = new List<long>();
         private static readonly FieldInfo traceTargetField = typeof(ItemAgent_Gun).GetField("traceTarget", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -371,7 +378,7 @@ namespace BossRush
 
             foreach (var kvp in processedGroundZoneShots)
             {
-                if (kvp.Value <= threshold)
+                if (kvp.Value.time <= threshold)
                 {
                     processedHitKeysToRemove.Add(kvp.Key);
                 }
@@ -741,7 +748,7 @@ namespace BossRush
             }
 
             GameObject zoneObject = new GameObject("DragonKingBossGunGroundZone");
-            zoneObject.transform.position = position;
+            zoneObject.transform.position = FenHuangHalberdRuntime.SnapToGround(position, position.y);
             DragonKingBossGunGroundZone zone = zoneObject.AddComponent<DragonKingBossGunGroundZone>();
             zone.Initialize(sourceContext, profile);
         }
@@ -762,13 +769,20 @@ namespace BossRush
             }
 
             long key = ComposeProcessedHitKey(shotId, (int)profileId, DragonKingBossGunHitStage.Primary);
-            float lastSpawnTime;
-            if (processedGroundZoneShots.TryGetValue(key, out lastSpawnTime) && Time.time - lastSpawnTime < ProcessedHitKeepTime)
+            ProcessedGroundZoneState state;
+            if (!processedGroundZoneShots.TryGetValue(key, out state) || Time.time - state.time >= ProcessedHitKeepTime)
+            {
+                state = default(ProcessedGroundZoneState);
+            }
+
+            if (state.spawnCount >= profile.MaxGroundZonesPerShot)
             {
                 return false;
             }
 
-            processedGroundZoneShots[key] = Time.time;
+            state.time = Time.time;
+            state.spawnCount++;
+            processedGroundZoneShots[key] = state;
             CleanupProcessedHitPairs();
             return true;
         }
@@ -889,6 +903,17 @@ namespace BossRush
             }
         }
 
+        internal static bool IsGroundSurface(GameObject hitObject, Vector3 hitNormal)
+        {
+            int layer = hitObject != null ? hitObject.layer : -1;
+            if (layer >= 0 && ((FenHuangHalberdRuntime.GroundLayerMask & (1 << layer)) != 0))
+            {
+                return true;
+            }
+
+            return hitNormal.sqrMagnitude > 0.001f && Vector3.Dot(hitNormal.normalized, Vector3.up) >= GroundImpactDotThreshold;
+        }
+
         internal static DamageInfo CreateDamageInfo(ProjectileContext sourceContext, float damageFactor, Vector3 point, Vector3 normal, bool isFromEffect, bool suppressMarks, float markerOverride = -1f)
         {
             DamageInfo damageInfo = new DamageInfo(sourceContext.fromCharacter);
@@ -952,7 +977,6 @@ namespace BossRush
             }
 
             projectile.transform.position = muzzlePoint;
-            projectile.transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
 
             float finalScale = Mathf.Max(0.2f, profile.Scale * scaleFactor);
             projectile.transform.localScale = cachedProjectileScale * finalScale;
@@ -972,6 +996,7 @@ namespace BossRush
                 isSecondary,
                 hitStage);
 
+            projectile.transform.rotation = Quaternion.LookRotation(context.direction, Vector3.up);
             projectile.Init(context);
 
             DragonKingBossGunProjectileAgent agent = projectile.GetComponent<DragonKingBossGunProjectileAgent>();
@@ -1004,7 +1029,7 @@ namespace BossRush
             ProjectileContext context = default(ProjectileContext);
             context.firstFrameCheck = true;
             context.firstFrameCheckStartPoint = firstFrameCheckStartPoint;
-            context.direction = direction.normalized;
+            context.direction = ResolveLaunchDirection(direction.normalized, profile, isSecondary);
             context.speed = (gun != null ? gun.BulletSpeed : 90f) * profile.SpeedFactor * speedFactor;
             context.traceTarget = null;
             context.traceAbility = traceAbilityOverride >= 0f ? traceAbilityOverride : profile.TraceAbility;
@@ -1106,6 +1131,33 @@ namespace BossRush
             return Mathf.Max(0f, profile.Gravity);
         }
 
+        private static Vector3 ResolveLaunchDirection(Vector3 direction, DragonKingBossGunShotProfile profile, bool isSecondary)
+        {
+            if (profile == null)
+            {
+                return direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.forward;
+            }
+
+            if (isSecondary && profile.SplitGravity > 0f)
+            {
+                return direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.forward;
+            }
+
+            if (profile.Arc == DragonKingBossGunArcMode.None)
+            {
+                return direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.forward;
+            }
+
+            float lift = profile.ArcLift;
+            if (lift <= 0f)
+            {
+                lift = profile.Arc == DragonKingBossGunArcMode.High ? 0.8f : 0.28f;
+            }
+
+            Vector3 adjusted = direction + Vector3.up * lift;
+            return adjusted.sqrMagnitude > 0.001f ? adjusted.normalized : Vector3.up;
+        }
+
         private static void ApplyElement(ref ProjectileContext context, ElementTypes element)
         {
             switch (element)
@@ -1196,11 +1248,21 @@ namespace BossRush
                     }
 
                     radialBase.Normalize();
+                    bool useParabolicScatter = profile.SplitGravity > 0f;
                     for (int i = 0; i < count; i++)
                     {
-                        float angle = 360f * i / count;
+                        float angle = 360f * i / count + UnityEngine.Random.Range(-12f, 12f);
                         Vector3 dir = Quaternion.AngleAxis(angle, axis) * radialBase;
-                        dir = (dir + forward * 0.25f).normalized;
+                        if (useParabolicScatter)
+                        {
+                            float upLift = 0.55f + UnityEngine.Random.Range(-0.15f, 0.2f);
+                            dir = (dir + Vector3.up * upLift + forward * 0.1f).normalized;
+                        }
+                        else
+                        {
+                            dir = (dir + forward * 0.25f).normalized;
+                        }
+
                         buffer[i] = dir;
                     }
 
