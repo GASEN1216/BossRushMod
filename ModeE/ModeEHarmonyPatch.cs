@@ -8,6 +8,7 @@
 //   4. InteractableBase.OnTimeOut Patch：拦截商人主交互，执行召唤煤球
 // ============================================================================
 
+using System;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
@@ -176,9 +177,11 @@ namespace BossRush
         public static void Postfix(Duckov.Economy.StockShop __instance, ref ItemStatsSystem.Item __result)
         {
             var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive) return;
+            if (inst == null || !inst.IsModeEActive)
+            {
+                return;
+            }
 
-            // 仅对 ModeE 的子弹商店生效
             if (__instance.MerchantID == "ModeE_Bullet" && __result != null && __result.Stackable)
             {
                 __result.StackCount = __result.MaxStackCount;
@@ -187,32 +190,37 @@ namespace BossRush
     }
 
     /// <summary>
-    /// Patch StockShop.Buy：
-    /// Mode E 子弹商店：拦截购买行为，每次固定购买一组 (MaxStackCount)
+    /// Patch ItemUtilities.SendToPlayerCharacterInventory：
+    /// Mode E 子弹商店：在原版把交易物送进背包前，先把真正买到的弹药实例补成满组。
+    /// 原版 StockShop.BuyTask 总是只实例化一件物品，Buy(amount) 只影响库存，不影响到手堆叠。
     /// </summary>
-    [HarmonyPatch(typeof(Duckov.Economy.StockShop), "Buy")]
-    public static class ModeEBulletShopBuyPatch
+    [HarmonyPatch(typeof(global::ItemUtilities), "SendToPlayerCharacterInventory")]
+    public static class ModeEBulletShopPurchaseStackPatch
     {
         [HarmonyPrefix]
-        public static void Prefix(Duckov.Economy.StockShop __instance, int itemTypeID, ref int amount)
+        public static void Prefix(ItemStatsSystem.Item item)
         {
             var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive) return;
-
-            // 仅对 ModeE 的子弹商店生效
-            if (__instance.MerchantID == "ModeE_Bullet")
+            if (inst == null || !inst.IsModeEActive || item == null || !item.Stackable)
             {
-                var entry = __instance.entries.Find(e => e.ItemTypeID == itemTypeID);
-                if (entry != null)
-                {
-                    // 获取物品元数据以知道最大堆叠数
-                    var metaData = ItemStatsSystem.ItemAssetsCollection.GetMetaData(itemTypeID);
-                    if (metaData.maxStackCount > 1)
-                    {
-                        // 强制将购买数量设为满组数量
-                        amount = metaData.maxStackCount;
-                    }
-                }
+                return;
+            }
+
+            var shopView = Duckov.Economy.UI.StockShopView.Instance;
+            var targetShop = shopView != null ? shopView.Target : null;
+            if (targetShop == null || targetShop.MerchantID != "ModeE_Bullet")
+            {
+                return;
+            }
+
+            if (!string.Equals(item.FromInfoKey, "UI_Trade", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (item.StackCount < item.MaxStackCount)
+            {
+                item.StackCount = item.MaxStackCount;
             }
         }
     }
