@@ -362,6 +362,7 @@ namespace BossRush
             questionMarkPresetSearched = false;
             cachedFallbackPreset = null;
             fallbackPresetSearched = false;
+            cachedDragonDescendantOriginalWeaponData = null;
             
             // 清理物品缓存
             cachedItemsByName.Clear();
@@ -436,6 +437,24 @@ namespace BossRush
             public float damage;                 // 伤害
             public float bulletDistance;         // 子弹射程
         }
+
+        private static OriginalWeaponData cachedDragonDescendantOriginalWeaponData;
+
+        internal static Projectile GetCachedDragonDescendantPhase2BulletPrefab()
+        {
+            return cachedDragonDescendantOriginalWeaponData != null ? cachedDragonDescendantOriginalWeaponData.bulletPrefab : null;
+        }
+
+        private static void CacheDragonDescendantOriginalWeaponData(OriginalWeaponData data)
+        {
+            if (data == null || data.bulletPrefab == null)
+            {
+                return;
+            }
+
+            cachedDragonDescendantOriginalWeaponData = data;
+            DevLog("[DragonDescendant] 已缓存二阶段原始弹幕基底: " + data.bulletPrefab.name);
+        }
         
         /// <summary>
         /// 从角色已装备的武器获取完整属性（在替换为龙息武器之前调用）
@@ -476,6 +495,7 @@ namespace BossRush
                                 ", 子弹速度=" + data.bulletSpeed +
                                 ", 伤害=" + data.damage +
                                 ", 音效=" + data.shootKey);
+                            CacheDragonDescendantOriginalWeaponData(data);
                             return data;
                         }
                     }
@@ -494,6 +514,7 @@ namespace BossRush
                                 "子弹=" + (data.bulletPrefab != null ? data.bulletPrefab.name : "null") +
                                 ", 射速=" + data.shootSpeed +
                                 ", 音效=" + data.shootKey);
+                            CacheDragonDescendantOriginalWeaponData(data);
                             return data;
                         }
                     }
@@ -528,6 +549,7 @@ namespace BossRush
                             ", 武器=" + weaponItem.name +
                             ", 射速=" + data.shootSpeed +
                             ", 音效=" + data.shootKey);
+                        CacheDragonDescendantOriginalWeaponData(data);
                         return data;
                     }
                 }

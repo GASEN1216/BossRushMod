@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Cysharp.Threading.Tasks;
 using Duckov.Utilities;
 using HarmonyLib;
 using ItemStatsSystem;
@@ -8,37 +9,59 @@ using UnityEngine;
 
 namespace BossRush
 {
-    internal enum DragonKingBossGunAmmoMode
-    {
-        Shotgun = 1,
-        Assault = 2,
-        Heavy = 3
-    }
-
     public static class DragonKingBossGunRuntime
     {
         private const int ShotMarkerBase = 1000000;
-        private const int ShotMarkerModeScale = 10;
+        private const int ShotMarkerScale = 100;
+        private const int ShotMarkerStageScale = 20;
         private const int MaxEncodedShotId = 99999;
         private const float ProcessedHitKeepTime = 1.25f;
+        private const float ProcessedHitCleanupInterval = 2f;
+        private const int PhysicsBufferSize = 64;
 
-        private static readonly HashSet<string> SupportedCalibers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        internal static readonly Collider[] SharedColliderBuffer = new Collider[PhysicsBufferSize];
+        internal static readonly HashSet<int> SharedReceiverIdSet = new HashSet<int>();
+
+        internal enum DragonKingBossGunHitStage
         {
-            "SMG",
-            "AR_S",
-            "BR"
-        };
+            Primary = 0,
+            Secondary = 1,
+            Return = 2,
+            Followup = 3
+        }
 
-        private static readonly Dictionary<long, float> processedHitPairs = new Dictionary<long, float>();
+        private struct ProcessedHitState
+        {
+            public float time;
+            public int marksApplied;
+        }
+
+        private static readonly Dictionary<long, ProcessedHitState> processedHitPairs = new Dictionary<long, ProcessedHitState>();
+        private static readonly Dictionary<long, float> processedGroundZoneShots = new Dictionary<long, float>();
         private static readonly List<long> processedHitKeysToRemove = new List<long>();
         private static readonly FieldInfo traceTargetField = typeof(ItemAgent_Gun).GetField("traceTarget", BindingFlags.Instance | BindingFlags.NonPublic);
 
+        private const int MaxProfileId = 15;
+        private const int MaxHitStage = 3;
+
         private static bool hurtEventSubscribed;
         private static int shotSequence;
+        private static float lastCleanupTime;
         private static Projectile cachedDragonProjectile;
         private static float cachedProjectileRadius = 0.12f;
         private static Vector3 cachedProjectileScale = Vector3.one;
         private static GameObject cachedExplosionFx;
+
+        // 弹种属性覆盖：记录当前已应用的 profile，避免重复覆写
+        private static DragonKingBossGunProfileId lastAppliedProfileId;
+        private static bool hasAppliedProfile;
+
+        private static readonly Vector3[] fanDirectionBuffer = new Vector3[16];
+        private static readonly Vector3[] splitDirectionBuffer = new Vector3[16];
+        private static readonly Dictionary<int, BulletTypeInfo> reusableBulletTypeDict = new Dictionary<int, BulletTypeInfo>();
+        private static readonly MethodInfo presetGenerateItemsMethod = typeof(CharacterRandomPreset).GetMethod("GenerateItems", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static bool dragonDescendantProjectilePreloadStarted;
+        private static bool dragonDescendantProjectilePreloadCompleted;
 
         public static void InitializeRuntime()
         {
@@ -49,6 +72,188 @@ namespace BossRush
 
             Health.OnHurt += OnDragonKingBossGunHurt;
             hurtEventSubscribed = true;
+        }
+
+        public static void WarmupDragonDescendantProjectileCache()
+        {
+            if (dragonDescendantProjectilePreloadStarted)
+            {
+                return;
+            }
+
+            dragonDescendantProjectilePreloadStarted = true;
+            PreloadDragonDescendantProjectileAsync().Forget();
+        }
+
+        public static void CleanupRuntime()
+        {
+            if (!hurtEventSubscribed)
+            {
+                return;
+            }
+
+            Health.OnHurt -= OnDragonKingBossGunHurt;
+            hurtEventSubscribed = false;
+            processedHitPairs.Clear();
+            processedGroundZoneShots.Clear();
+            processedHitKeysToRemove.Clear();
+            cachedDragonProjectile = null;
+            cachedExplosionFx = null;
+            shotSequence = 0;
+            lastCleanupTime = 0f;
+            dragonDescendantProjectilePreloadStarted = false;
+            dragonDescendantProjectilePreloadCompleted = false;
+            lastAppliedProfileId = default(DragonKingBossGunProfileId);
+            hasAppliedProfile = false;
+            DragonKingBossGunProjectileAgent.ClearStaticCaches();
+        }
+
+        private static async UniTaskVoid PreloadDragonDescendantProjectileAsync()
+        {
+            try
+            {
+                for (int i = 0; i < 60; i++)
+                {
+                    if (LevelManager.Instance != null)
+                    {
+                        break;
+                    }
+
+                    await UniTask.DelayFrame(1);
+                }
+
+                CharacterRandomPreset preset = FindDragonDescendantBasePreset();
+                if (preset == null)
+                {
+                    ModBehaviour.DevLog("[DragonKingBossGun] 未找到 Cname_Boss_Red 预设，无法预缓存龙裔二阶段弹幕");
+                    return;
+                }
+
+                Projectile projectile = await ExtractProjectileFromPresetAsync(preset);
+                if (projectile == null)
+                {
+                    ModBehaviour.DevLog("[DragonKingBossGun] 预缓存龙裔二阶段弹幕失败：未解析到原始枪械子弹");
+                    return;
+                }
+
+                CacheBaseProjectile(projectile, "[DragonKingBossGun] 启动预缓存龙裔二阶段弹幕基底: ");
+                dragonDescendantProjectilePreloadCompleted = true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonKingBossGun] 预缓存龙裔二阶段弹幕异常: " + e.Message);
+            }
+        }
+
+        private static CharacterRandomPreset FindDragonDescendantBasePreset()
+        {
+            CharacterRandomPreset[] presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+            for (int i = 0; i < presets.Length; i++)
+            {
+                CharacterRandomPreset preset = presets[i];
+                if (preset == null)
+                {
+                    continue;
+                }
+
+                if (preset.nameKey == DragonDescendantConfig.BasePresetNameKey || preset.nameKey == "Cname_Boss_Red")
+                {
+                    return preset;
+                }
+            }
+
+            for (int i = 0; i < presets.Length; i++)
+            {
+                CharacterRandomPreset preset = presets[i];
+                if (preset == null)
+                {
+                    continue;
+                }
+
+                if ((!string.IsNullOrEmpty(preset.name) && preset.name.IndexOf("Boss_Red", StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (!string.IsNullOrEmpty(preset.nameKey) && preset.nameKey.IndexOf("Boss_Red", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    return preset;
+                }
+            }
+
+            return null;
+        }
+
+        private static async UniTask<Projectile> ExtractProjectileFromPresetAsync(CharacterRandomPreset preset)
+        {
+            if (preset == null || presetGenerateItemsMethod == null)
+            {
+                return null;
+            }
+
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                List<Item> generatedItems = null;
+                try
+                {
+                    generatedItems = await (UniTask<List<Item>>)presetGenerateItemsMethod.Invoke(preset, null);
+                    if (generatedItems == null)
+                    {
+                        continue;
+                    }
+
+                    for (int i = 0; i < generatedItems.Count; i++)
+                    {
+                        Item item = generatedItems[i];
+                        if (item == null)
+                        {
+                            continue;
+                        }
+
+                        ItemSetting_Gun gunSetting = item.GetComponent<ItemSetting_Gun>();
+                        if (gunSetting != null && gunSetting.bulletPfb != null)
+                        {
+                            ModBehaviour.DevLog("[DragonKingBossGun] 从 Boss_Red 预设解析到原始枪械: " + item.name + ", 子弹=" + gunSetting.bulletPfb.name);
+                            return gunSetting.bulletPfb;
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonKingBossGun] 解析 Boss_Red 预设武器失败: " + e.Message);
+                }
+                finally
+                {
+                    DestroyGeneratedItems(generatedItems);
+                }
+            }
+
+            return null;
+        }
+
+        private static void DestroyGeneratedItems(List<Item> generatedItems)
+        {
+            if (generatedItems == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < generatedItems.Count; i++)
+            {
+                Item item = generatedItems[i];
+                if (item == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    item.DestroyTree();
+                }
+                catch
+                {
+                    if (item.gameObject != null)
+                    {
+                        UnityEngine.Object.Destroy(item.gameObject);
+                    }
+                }
+            }
         }
 
         public static bool IsDragonKingBossGun(Item item)
@@ -81,49 +286,75 @@ namespace BossRush
                 return;
             }
 
-            DragonKingBossGunAmmoMode mode;
             int shotId;
-            if (!TryDecodeShotMarker(damageInfo.buffChance, out shotId, out mode))
+            DragonKingBossGunProfileId profileId;
+            DragonKingBossGunHitStage hitStage;
+            if (!TryDecodeShotMarker(damageInfo.buffChance, out shotId, out profileId, out hitStage))
             {
                 return;
             }
 
+            DragonKingBossGunShotProfile profile = DragonKingBossGunProfiles.GetProfile(profileId);
             DamageReceiver receiver = FenHuangHalberdRuntime.TryGetDamageReceiver(health);
-            if (receiver == null)
+            if (receiver == null || profile == null)
             {
                 return;
             }
 
-            long processedKey = ComposeProcessedHitKey(shotId, receiver.GetInstanceID());
-            float lastHitTime;
-            if (processedHitPairs.TryGetValue(processedKey, out lastHitTime) && Time.time - lastHitTime < ProcessedHitKeepTime)
+            int markPerHit;
+            int maxMarksPerStage;
+            ResolveMarkRule(profile, hitStage, out markPerHit, out maxMarksPerStage);
+            if (maxMarksPerStage <= 0 || markPerHit <= 0)
             {
                 return;
             }
 
-            processedHitPairs[processedKey] = Time.time;
+            long processedKey = ComposeProcessedHitKey(shotId, receiver.GetInstanceID(), hitStage);
+            ProcessedHitState state;
+            if (!processedHitPairs.TryGetValue(processedKey, out state) || Time.time - state.time >= ProcessedHitKeepTime)
+            {
+                state = default(ProcessedHitState);
+            }
+
+            int remainingMarks = Mathf.Max(0, maxMarksPerStage - state.marksApplied);
+            int markGain = Mathf.Min(markPerHit, remainingMarks);
+            if (markGain <= 0)
+            {
+                return;
+            }
+
+            state.time = Time.time;
+            state.marksApplied += markGain;
+            processedHitPairs[processedKey] = state;
             CleanupProcessedHitPairs();
 
             DragonFlameMarkTracker.AddMark(
                 receiver,
-                GetModeMarkGain(mode),
+                markGain,
                 DragonKingBossGunConfig.MaxLinkedMarkStacks,
                 FenHuangHalberdConfig.MarkDuration);
         }
 
         private static void CleanupProcessedHitPairs()
         {
-            if (processedHitPairs.Count == 0)
+            if (processedHitPairs.Count == 0 && processedGroundZoneShots.Count == 0)
             {
                 return;
             }
 
-            float threshold = Time.time - ProcessedHitKeepTime;
+            float now = Time.time;
+            if (now - lastCleanupTime < ProcessedHitCleanupInterval)
+            {
+                return;
+            }
+
+            lastCleanupTime = now;
+            float threshold = now - ProcessedHitKeepTime;
             processedHitKeysToRemove.Clear();
 
             foreach (var kvp in processedHitPairs)
             {
-                if (kvp.Value <= threshold)
+                if (kvp.Value.time <= threshold)
                 {
                     processedHitKeysToRemove.Add(kvp.Key);
                 }
@@ -133,24 +364,75 @@ namespace BossRush
             {
                 processedHitPairs.Remove(processedHitKeysToRemove[i]);
             }
-        }
 
-        private static long ComposeProcessedHitKey(int shotId, int receiverId)
-        {
-            return ((long)shotId << 32) ^ (uint)receiverId;
-        }
+            processedHitKeysToRemove.Clear();
 
-        private static int GetModeMarkGain(DragonKingBossGunAmmoMode mode)
-        {
-            switch (mode)
+            foreach (var kvp in processedGroundZoneShots)
             {
-                case DragonKingBossGunAmmoMode.Heavy:
-                    return 3;
-                case DragonKingBossGunAmmoMode.Shotgun:
-                case DragonKingBossGunAmmoMode.Assault:
-                default:
-                    return 1;
+                if (kvp.Value <= threshold)
+                {
+                    processedHitKeysToRemove.Add(kvp.Key);
+                }
             }
+
+            for (int i = 0; i < processedHitKeysToRemove.Count; i++)
+            {
+                processedGroundZoneShots.Remove(processedHitKeysToRemove[i]);
+            }
+        }
+
+        private static void ResolveMarkRule(DragonKingBossGunShotProfile profile, DragonKingBossGunHitStage hitStage, out int markPerHit, out int maxMarksPerStage)
+        {
+            markPerHit = profile != null ? profile.MarkPerHit : 0;
+            maxMarksPerStage = profile != null ? profile.MaxMarksPerTargetPerShot : 0;
+            if (profile == null)
+            {
+                return;
+            }
+
+            switch (hitStage)
+            {
+                case DragonKingBossGunHitStage.Secondary:
+                    if (profile.SecondaryMarkPerHit >= 0)
+                    {
+                        markPerHit = profile.SecondaryMarkPerHit;
+                    }
+
+                    if (profile.MaxSecondaryMarksPerTargetPerShot >= 0)
+                    {
+                        maxMarksPerStage = profile.MaxSecondaryMarksPerTargetPerShot;
+                    }
+                    break;
+
+                case DragonKingBossGunHitStage.Return:
+                    if (profile.ReturnMarkPerHit >= 0)
+                    {
+                        markPerHit = profile.ReturnMarkPerHit;
+                    }
+
+                    if (profile.MaxReturnMarksPerTargetPerShot >= 0)
+                    {
+                        maxMarksPerStage = profile.MaxReturnMarksPerTargetPerShot;
+                    }
+                    break;
+
+                case DragonKingBossGunHitStage.Followup:
+                    if (profile.FollowupMarkPerHit >= 0)
+                    {
+                        markPerHit = profile.FollowupMarkPerHit;
+                    }
+
+                    if (profile.MaxFollowupMarksPerTargetPerShot >= 0)
+                    {
+                        maxMarksPerStage = profile.MaxFollowupMarksPerTargetPerShot;
+                    }
+                    break;
+            }
+        }
+
+        private static long ComposeProcessedHitKey(int shotId, int receiverId, DragonKingBossGunHitStage hitStage)
+        {
+            return ((long)shotId << 32) ^ ((long)hitStage << 28) ^ (uint)receiverId;
         }
 
         private static int NextShotId()
@@ -164,89 +446,143 @@ namespace BossRush
             return shotSequence;
         }
 
-        private static float EncodeShotMarker(int shotId, DragonKingBossGunAmmoMode mode)
+        internal static float EncodeShotMarker(int shotId, DragonKingBossGunProfileId profileId, DragonKingBossGunHitStage hitStage)
         {
-            return ShotMarkerBase + shotId * ShotMarkerModeScale + (int)mode;
+            return ShotMarkerBase + shotId * ShotMarkerScale + ((int)hitStage * ShotMarkerStageScale) + (int)profileId;
         }
 
-        private static bool TryDecodeShotMarker(float marker, out int shotId, out DragonKingBossGunAmmoMode mode)
+        private static bool TryDecodeShotMarker(float marker, out int shotId, out DragonKingBossGunProfileId profileId, out DragonKingBossGunHitStage hitStage)
         {
             shotId = 0;
-            mode = DragonKingBossGunAmmoMode.Assault;
+            profileId = DragonKingBossGunProfileId.Assault;
+            hitStage = DragonKingBossGunHitStage.Primary;
 
             int encoded = Mathf.RoundToInt(marker);
-            if (encoded < ShotMarkerBase + 10)
+            if (encoded < ShotMarkerBase + 1)
             {
                 return false;
             }
 
             int payload = encoded - ShotMarkerBase;
-            int modeValue = payload % ShotMarkerModeScale;
-            shotId = payload / ShotMarkerModeScale;
+            int localValue = payload % ShotMarkerScale;
+            int profileValue = localValue % ShotMarkerStageScale;
+            int stageValue = localValue / ShotMarkerStageScale;
+            shotId = payload / ShotMarkerScale;
 
-            if (shotId <= 0)
+            if (shotId <= 0 ||
+                profileValue < 1 || profileValue > MaxProfileId ||
+                stageValue < 0 || stageValue > MaxHitStage)
             {
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(DragonKingBossGunAmmoMode), modeValue))
-            {
-                return false;
-            }
-
-            mode = (DragonKingBossGunAmmoMode)modeValue;
+            profileId = (DragonKingBossGunProfileId)profileValue;
+            hitStage = (DragonKingBossGunHitStage)stageValue;
             return true;
-        }
-
-        private static bool TryGetAmmoMode(Item bulletItem, out DragonKingBossGunAmmoMode mode)
-        {
-            mode = DragonKingBossGunAmmoMode.Assault;
-            if (bulletItem == null || bulletItem.Constants == null)
-            {
-                return false;
-            }
-
-            string caliber = bulletItem.Constants.GetString("Caliber", null);
-            if (string.IsNullOrEmpty(caliber))
-            {
-                return false;
-            }
-
-            if (string.Equals(caliber, "SMG", StringComparison.OrdinalIgnoreCase))
-            {
-                mode = DragonKingBossGunAmmoMode.Shotgun;
-                return true;
-            }
-
-            if (string.Equals(caliber, "BR", StringComparison.OrdinalIgnoreCase))
-            {
-                mode = DragonKingBossGunAmmoMode.Heavy;
-                return true;
-            }
-
-            if (string.Equals(caliber, "AR_S", StringComparison.OrdinalIgnoreCase))
-            {
-                mode = DragonKingBossGunAmmoMode.Assault;
-                return true;
-            }
-
-            return false;
         }
 
         private static bool IsCompatibleBullet(Item weaponItem, Item bulletItem)
         {
-            if (!IsDragonKingBossGun(weaponItem) || bulletItem == null)
+            return IsDragonKingBossGun(weaponItem) && DragonKingBossGunProfiles.TryResolve(bulletItem, out _);
+        }
+
+        /// <summary>
+        /// 根据弹种 profile 覆写龙枪运行时属性（射速、伤害、弹匣、换弹时间、射程、后坐力）。
+        /// 仅修改运行时 StatCollection.BaseValue，不修改 Prefab/SO。
+        /// </summary>
+        internal static void ApplyAmmoAttributeOverride(Item gunItem, DragonKingBossGunShotProfile profile)
+        {
+            if (gunItem == null || profile == null || !IsDragonKingBossGun(gunItem))
             {
-                return false;
+                return;
             }
 
-            if (!bulletItem.GetBool("IsBullet", false))
+            StatCollection stats = gunItem.Stats;
+            if (stats == null)
             {
-                return false;
+                return;
             }
 
-            string caliber = bulletItem.Constants != null ? bulletItem.Constants.GetString("Caliber", null) : null;
-            return !string.IsNullOrEmpty(caliber) && SupportedCalibers.Contains(caliber);
+            // 射速覆盖
+            SetStatValue(stats, "ShootSpeed", 9.2f * profile.FireRateMult);
+
+            // 伤害覆盖
+            SetStatValue(stats, "Damage", 26f * profile.GunDamageMult);
+
+            // 弹匣容量覆盖
+            if (profile.OverrideCapacity > 0)
+            {
+                SetStatValue(stats, "Capacity", profile.OverrideCapacity);
+            }
+
+            // 换弹时间覆盖
+            if (profile.OverrideReloadTime > 0f)
+            {
+                SetStatValue(stats, "ReloadTime", profile.OverrideReloadTime);
+            }
+
+            // 射程覆盖
+            if (profile.OverrideBulletDistance > 0f)
+            {
+                SetStatValue(stats, "BulletDistance", profile.OverrideBulletDistance);
+            }
+
+            // 统一去震屏
+            SetStatValue(stats, "RecoilScaleV", 0f);
+            SetStatValue(stats, "RecoilScaleH", 0f);
+
+            lastAppliedProfileId = profile.Id;
+            hasAppliedProfile = true;
+            ModBehaviour.DevLog("[DragonKingBossGun] 应用弹种属性覆盖: " + profile.Id +
+                " ShootSpeed=" + (9.2f * profile.FireRateMult).ToString("F2") +
+                " Damage=" + (26f * profile.GunDamageMult).ToString("F2") +
+                " Capacity=" + profile.OverrideCapacity);
+        }
+
+        /// <summary>
+        /// 场景加载时调用：找到玩家手中的龙枪并重新应用弹种属性。
+        /// </summary>
+        public static void ReapplyAmmoAttributeOverrideForScene()
+        {
+            hasAppliedProfile = false;
+
+            if (LevelManager.Instance == null)
+            {
+                return;
+            }
+
+            CharacterMainControl mainChar = CharacterMainControl.Main;
+            if (mainChar == null)
+            {
+                return;
+            }
+
+            ItemAgent_Gun gunAgent = mainChar.GetComponentInChildren<ItemAgent_Gun>();
+            if (gunAgent == null || !IsDragonKingBossGun(gunAgent.Item))
+            {
+                return;
+            }
+
+            Item bulletItem = gunAgent.GunItemSetting != null ? gunAgent.GunItemSetting.GetCurrentLoadedBullet() : null;
+            if (bulletItem == null)
+            {
+                return;
+            }
+
+            DragonKingBossGunShotProfile profile;
+            if (DragonKingBossGunProfiles.TryResolve(bulletItem, out profile))
+            {
+                ApplyAmmoAttributeOverride(gunAgent.Item, profile);
+            }
+        }
+
+        private static void SetStatValue(StatCollection stats, string key, float value)
+        {
+            Stat stat = stats.GetStat(key);
+            if (stat != null)
+            {
+                stat.BaseValue = value;
+            }
         }
 
         private static CharacterMainControl GetTraceTarget(ItemAgent_Gun gun)
@@ -259,18 +595,29 @@ namespace BossRush
             return traceTargetField.GetValue(gun) as CharacterMainControl;
         }
 
-        private static Projectile GetDragonProjectile(Projectile fallback)
+        internal static Projectile GetDragonProjectile(Projectile fallback = null)
         {
             if (cachedDragonProjectile != null)
             {
                 return cachedDragonProjectile;
             }
 
-            Projectile projectile = EquipmentFactory.GetLoadedBullet("dragon");
+            Projectile projectile = ModBehaviour.GetCachedDragonDescendantPhase2BulletPrefab();
+            if (projectile != null)
+            {
+                CacheBaseProjectile(projectile, "[DragonKingBossGun] 使用龙裔二阶段原始弹幕基底: ");
+                return cachedDragonProjectile;
+            }
+
+            if (projectile == null)
+            {
+                projectile = EquipmentFactory.GetLoadedBullet("dragon");
+            }
             if (projectile == null)
             {
                 projectile = EquipmentFactory.GetLoadedBullet("Dragon");
             }
+
             if (projectile == null)
             {
                 Item sourceGun = EquipmentFactory.GetLoadedGun(DragonKingBossGunConfig.SourceWeaponTypeId);
@@ -286,61 +633,358 @@ namespace BossRush
                 projectile = fallback != null ? fallback : GameplayDataSettings.Prefabs.DefaultBullet;
             }
 
-            cachedDragonProjectile = projectile;
-            if (projectile != null)
-            {
-                cachedProjectileRadius = projectile.radius;
-                cachedProjectileScale = projectile.transform.localScale;
-                cachedExplosionFx = projectile.explosionFx;
-            }
-
+            CacheBaseProjectile(projectile, null);
             return cachedDragonProjectile;
         }
 
-        private static void SpawnDragonProjectile(ItemAgent_Gun gun, Vector3 muzzlePoint, Vector3 direction, Vector3 firstFrameCheckStartPoint, DragonKingBossGunAmmoMode mode, int shotId, int projectileCount, float scaleFactor, float radiusFactor, bool enableExplosion)
+        private static void CacheBaseProjectile(Projectile projectile, string logPrefix)
         {
-            Projectile baseProjectile = GetDragonProjectile(gun.GunItemSetting != null ? gun.GunItemSetting.bulletPfb : null);
-            if (baseProjectile == null || LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
-            {
-                return;
-            }
-
-            Projectile projectile = LevelManager.Instance.BulletPool.GetABullet(baseProjectile);
+            cachedDragonProjectile = projectile;
             if (projectile == null)
             {
                 return;
             }
 
-            projectile.transform.position = muzzlePoint;
-            projectile.transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
-            projectile.transform.localScale = cachedProjectileScale * scaleFactor;
-            projectile.radius = cachedProjectileRadius * radiusFactor;
-            projectile.explosionFx = enableExplosion ? cachedExplosionFx : null;
+            cachedProjectileRadius = projectile.radius;
+            cachedProjectileScale = projectile.transform.localScale;
+            cachedExplosionFx = null;
 
-            ProjectileContext context = BuildProjectileContext(gun, direction, firstFrameCheckStartPoint, mode, shotId, projectileCount, enableExplosion);
-            projectile.Init(context);
+            if (!string.IsNullOrEmpty(logPrefix))
+            {
+                ModBehaviour.DevLog(logPrefix + projectile.name);
+            }
         }
 
-        private static ProjectileContext BuildProjectileContext(ItemAgent_Gun gun, Vector3 direction, Vector3 firstFrameCheckStartPoint, DragonKingBossGunAmmoMode mode, int shotId, int projectileCount, bool enableExplosion)
+        private static Vector3 ApplyWeaponScatter(ItemAgent_Gun gun, Vector3 shootDirection)
         {
             bool isMainCharacterShot = gun.Holder != null && gun.Holder.IsMainCharacter;
-            float characterDamageMultiplier = gun.CharacterDamageMultiplier;
+            float extraScatter = 0f;
+            if (isMainCharacterShot)
+            {
+                extraScatter = Mathf.Max(1f, gun.CurrentScatter) * Mathf.Lerp(1.5f, 0f, Mathf.InverseLerp(0f, 0.5f, gun.durabilityPercent));
+            }
+
+            float randomYaw = UnityEngine.Random.Range(-0.5f, 0.5f) * (gun.CurrentScatter + extraScatter);
+            Vector3 adjustedDirection = Quaternion.Euler(0f, randomYaw, 0f) * shootDirection;
+            adjustedDirection.Normalize();
+            return adjustedDirection;
+        }
+
+        private static void SpawnPrimaryProjectiles(ItemAgent_Gun gun, DragonKingBossGunShotProfile profile, Vector3 muzzlePoint, Vector3 shootDirection, Vector3 firstFrameCheckStartPoint)
+        {
+            int shotId = NextShotId();
+            int dirCount = BuildFanDirections(shootDirection, profile.ShotCount, profile.SpreadAngle, fanDirectionBuffer, profile.RandomSpread);
+
+            for (int i = 0; i < dirCount; i++)
+            {
+                SpawnDragonProjectile(
+                    gun,
+                    profile,
+                    shotId,
+                    muzzlePoint,
+                    fanDirectionBuffer[i],
+                    firstFrameCheckStartPoint,
+                    dirCount,
+                    i,
+                    false,
+                    1f,
+                    1f,
+                    1f,
+                    1f,
+                    -1f,
+                    DragonKingBossGunHitStage.Primary);
+            }
+        }
+
+        internal static void SpawnSplitProjectiles(ItemAgent_Gun gun, DragonKingBossGunShotProfile profile, int shotId, Vector3 origin, Vector3 forward, Vector3 normal)
+        {
+            if (gun == null || profile == null || profile.SplitCount <= 0)
+            {
+                return;
+            }
+
+            int dirCount = BuildSplitDirections(profile, forward, normal, splitDirectionBuffer);
+            for (int i = 0; i < dirCount; i++)
+            {
+                SpawnDragonProjectile(
+                    gun,
+                    profile,
+                    shotId,
+                    origin,
+                    splitDirectionBuffer[i],
+                    origin,
+                    dirCount,
+                    i,
+                    true,
+                    profile.SplitScale,
+                    profile.SplitSpeedFactor,
+                    profile.SplitDistanceFactor,
+                    profile.SplitDamageFactor,
+                    profile.SplitTraceAbility > 0f ? profile.SplitTraceAbility : -1f,
+                    DragonKingBossGunHitStage.Secondary);
+            }
+        }
+
+        internal static void SpawnGroundZone(Vector3 position, ItemAgent_Gun gun, ProjectileContext sourceContext, DragonKingBossGunShotProfile profile)
+        {
+            if (gun == null || profile == null || !profile.UseGroundZone)
+            {
+                return;
+            }
+
+            if (!TryClaimGroundZoneSpawn(profile, sourceContext.buffChance))
+            {
+                return;
+            }
+
+            GameObject zoneObject = new GameObject("DragonKingBossGunGroundZone");
+            zoneObject.transform.position = position;
+            DragonKingBossGunGroundZone zone = zoneObject.AddComponent<DragonKingBossGunGroundZone>();
+            zone.Initialize(sourceContext, profile);
+        }
+
+        private static bool TryClaimGroundZoneSpawn(DragonKingBossGunShotProfile profile, float marker)
+        {
+            if (profile == null || profile.MaxGroundZonesPerShot <= 0)
+            {
+                return true;
+            }
+
+            int shotId;
+            DragonKingBossGunProfileId profileId;
+            DragonKingBossGunHitStage hitStage;
+            if (!TryDecodeShotMarker(marker, out shotId, out profileId, out hitStage))
+            {
+                return true;
+            }
+
+            long key = ComposeProcessedHitKey(shotId, (int)profileId, DragonKingBossGunHitStage.Primary);
+            float lastSpawnTime;
+            if (processedGroundZoneShots.TryGetValue(key, out lastSpawnTime) && Time.time - lastSpawnTime < ProcessedHitKeepTime)
+            {
+                return false;
+            }
+
+            processedGroundZoneShots[key] = Time.time;
+            CleanupProcessedHitPairs();
+            return true;
+        }
+
+        internal static void SpawnStickyCharge(Vector3 position, Vector3 normal, Transform followTarget, ItemAgent_Gun gun, ProjectileContext sourceContext, DragonKingBossGunShotProfile profile, int shotId)
+        {
+            if (gun == null || profile == null || !profile.UseSticky)
+            {
+                return;
+            }
+
+            GameObject stickyObject = new GameObject("DragonKingBossGunStickyCharge");
+            stickyObject.transform.position = position;
+            if (normal.sqrMagnitude > 0.001f)
+            {
+                stickyObject.transform.rotation = Quaternion.LookRotation(normal.normalized, Vector3.up);
+            }
+
+            DragonKingBossGunStickyCharge sticky = stickyObject.AddComponent<DragonKingBossGunStickyCharge>();
+            sticky.Initialize(sourceContext, profile, shotId, followTarget, position);
+        }
+
+        internal static void ApplyRadiusDamage(Vector3 position, float radius, ProjectileContext sourceContext, float damageFactor, bool treatAsEffect, bool ignoreOwner, float markerOverride = -1f)
+        {
+            if (radius <= 0f)
+            {
+                return;
+            }
+
+            int count = Physics.OverlapSphereNonAlloc(position, radius, SharedColliderBuffer, GameplayDataSettings.Layers.damageReceiverLayerMask, QueryTriggerInteraction.Ignore);
+            SharedReceiverIdSet.Clear();
+
+            for (int i = 0; i < count; i++)
+            {
+                DamageReceiver receiver = SharedColliderBuffer[i] != null ? SharedColliderBuffer[i].GetComponent<DamageReceiver>() : null;
+                if (receiver == null || SharedReceiverIdSet.Contains(receiver.GetInstanceID()))
+                {
+                    continue;
+                }
+
+                if (sourceContext.team == receiver.Team && receiver.Team != Teams.all)
+                {
+                    continue;
+                }
+
+                CharacterMainControl receiverCharacter = receiver.health != null ? receiver.health.TryGetCharacter() : null;
+                if (ignoreOwner && receiverCharacter != null && receiverCharacter == sourceContext.realFromCharacter)
+                {
+                    continue;
+                }
+
+                SharedReceiverIdSet.Add(receiver.GetInstanceID());
+
+                Vector3 damagePoint = receiver.transform.position + Vector3.up * 0.35f;
+                Vector3 damageNormal = (receiver.transform.position - position).normalized;
+                if (damageNormal.sqrMagnitude < 0.001f)
+                {
+                    damageNormal = Vector3.up;
+                }
+
+                DamageInfo damageInfo = CreateDamageInfo(sourceContext, damageFactor, damagePoint, damageNormal, treatAsEffect, treatAsEffect, markerOverride);
+                receiver.Hurt(damageInfo);
+                receiver.AddBuff(GameplayDataSettings.Buffs.Pain, sourceContext.fromCharacter);
+            }
+        }
+
+        internal static void TrySpawnExplosionFx(Vector3 position, DragonKingBossGunShotProfile profile = null)
+        {
+            if (profile != null && !string.IsNullOrEmpty(profile.ExplosionFxPrefab))
+            {
+                GameObject fx = DragonKingAssetManager.InstantiateEffect(profile.ExplosionFxPrefab, position, Quaternion.identity);
+                if (fx != null)
+                {
+                    UnityEngine.Object.Destroy(fx, 3f);
+                }
+                return;
+            }
+
+            if (cachedExplosionFx != null)
+            {
+                GameObject fx = UnityEngine.Object.Instantiate(cachedExplosionFx, position, Quaternion.identity);
+                if (fx != null)
+                {
+                    UnityEngine.Object.Destroy(fx, 3f);
+                }
+            }
+        }
+
+        internal static DamageInfo CreateDamageInfo(ProjectileContext sourceContext, float damageFactor, Vector3 point, Vector3 normal, bool isFromEffect, bool suppressMarks, float markerOverride = -1f)
+        {
+            DamageInfo damageInfo = new DamageInfo(sourceContext.fromCharacter);
+            damageInfo.damageValue = sourceContext.damage * damageFactor;
+            damageInfo.critDamageFactor = sourceContext.critDamageFactor;
+            damageInfo.critRate = sourceContext.critRate;
+            damageInfo.armorPiercing = sourceContext.armorPiercing;
+            damageInfo.armorBreak = sourceContext.armorBreak;
+            damageInfo.damagePoint = point;
+            damageInfo.damageNormal = normal.normalized;
+            damageInfo.damageType = DamageTypes.normal;
+            damageInfo.fromWeaponItemID = sourceContext.fromWeaponItemID;
+            damageInfo.bleedChance = suppressMarks ? 0f : sourceContext.bleedChance;
+            damageInfo.buffChance = suppressMarks ? 0f : (markerOverride >= 0f ? markerOverride : sourceContext.buffChance);
+            damageInfo.buff = suppressMarks ? null : sourceContext.buff;
+            damageInfo.isFromBuffOrEffect = isFromEffect;
+
+            ApplyContextElements(ref damageInfo, sourceContext);
+            return damageInfo;
+        }
+
+        internal static void ApplyContextElements(ref DamageInfo damageInfo, ProjectileContext sourceContext)
+        {
+            damageInfo.AddElementFactor(ElementTypes.physics, sourceContext.element_Physics);
+            damageInfo.AddElementFactor(ElementTypes.fire, sourceContext.element_Fire);
+            damageInfo.AddElementFactor(ElementTypes.poison, sourceContext.element_Poison);
+            damageInfo.AddElementFactor(ElementTypes.electricity, sourceContext.element_Electricity);
+            damageInfo.AddElementFactor(ElementTypes.space, sourceContext.element_Space);
+            damageInfo.AddElementFactor(ElementTypes.ghost, sourceContext.element_Ghost);
+            damageInfo.AddElementFactor(ElementTypes.ice, sourceContext.element_Ice);
+        }
+
+        private static Projectile SpawnDragonProjectile(
+            ItemAgent_Gun gun,
+            DragonKingBossGunShotProfile profile,
+            int shotId,
+            Vector3 muzzlePoint,
+            Vector3 direction,
+            Vector3 firstFrameCheckStartPoint,
+            int projectileCount,
+            int projectileIndex,
+            bool isSecondary,
+            float scaleFactor,
+            float speedFactor,
+            float distanceFactor,
+            float damageFactor,
+            float traceAbilityOverride,
+            DragonKingBossGunHitStage hitStage)
+        {
+            Projectile baseProjectile = GetDragonProjectile(gun != null && gun.GunItemSetting != null ? gun.GunItemSetting.bulletPfb : null);
+            if (baseProjectile == null || LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
+            {
+                return null;
+            }
+
+            Projectile projectile = LevelManager.Instance.BulletPool.GetABullet(baseProjectile);
+            if (projectile == null)
+            {
+                return null;
+            }
+
+            projectile.transform.position = muzzlePoint;
+            projectile.transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
+
+            float finalScale = Mathf.Max(0.2f, profile.Scale * scaleFactor);
+            projectile.transform.localScale = cachedProjectileScale * finalScale;
+            projectile.radius = cachedProjectileRadius * Mathf.Max(0.25f, finalScale);
+
+            ProjectileContext context = BuildProjectileContext(
+                gun,
+                profile,
+                direction,
+                firstFrameCheckStartPoint,
+                projectileCount,
+                shotId,
+                speedFactor,
+                distanceFactor,
+                damageFactor,
+                traceAbilityOverride,
+                isSecondary,
+                hitStage);
+
+            projectile.Init(context);
+
+            DragonKingBossGunProjectileAgent agent = projectile.GetComponent<DragonKingBossGunProjectileAgent>();
+            if (agent == null)
+            {
+                agent = projectile.gameObject.AddComponent<DragonKingBossGunProjectileAgent>();
+            }
+
+            agent.Initialize(projectile, gun, profile, shotId, projectileIndex, isSecondary);
+            return projectile;
+        }
+
+        private static ProjectileContext BuildProjectileContext(
+            ItemAgent_Gun gun,
+            DragonKingBossGunShotProfile profile,
+            Vector3 direction,
+            Vector3 firstFrameCheckStartPoint,
+            int projectileCount,
+            int shotId,
+            float speedFactor,
+            float distanceFactor,
+            float damageFactor,
+            float traceAbilityOverride,
+            bool isSecondary,
+            DragonKingBossGunHitStage hitStage)
+        {
+            bool isMainCharacterShot = gun != null && gun.Holder != null && gun.Holder.IsMainCharacter;
+            float characterDamageMultiplier = gun != null ? gun.CharacterDamageMultiplier : 1f;
 
             ProjectileContext context = default(ProjectileContext);
             context.firstFrameCheck = true;
             context.firstFrameCheckStartPoint = firstFrameCheckStartPoint;
             context.direction = direction.normalized;
-            context.speed = gun.BulletSpeed * GetModeSpeedFactor(mode);
-            context.traceTarget = mode == DragonKingBossGunAmmoMode.Heavy ? GetTraceTarget(gun) : null;
-            context.traceAbility = mode == DragonKingBossGunAmmoMode.Heavy ? Mathf.Max(gun.TraceAbility, 0.55f) : 0f;
-            context.controlMindType = gun.ControlMindType;
-            if (gun.GunItemSetting != null && !gun.GunItemSetting.CanControlMind)
+            context.speed = (gun != null ? gun.BulletSpeed : 90f) * profile.SpeedFactor * speedFactor;
+            context.traceTarget = null;
+            context.traceAbility = traceAbilityOverride >= 0f ? traceAbilityOverride : profile.TraceAbility;
+            if (context.traceAbility > 0.01f && gun != null)
+            {
+                context.traceTarget = GetTraceTarget(gun);
+            }
+
+            context.controlMindType = gun != null ? gun.ControlMindType : ControlMindTypes.none;
+            if (gun != null && gun.GunItemSetting != null && !gun.GunItemSetting.CanControlMind)
             {
                 context.controlMindType = ControlMindTypes.none;
             }
 
-            context.controlMindTime = gun.ControlMindTime;
-            if (gun.Holder != null)
+            context.controlMindTime = gun != null ? gun.ControlMindTime : 0f;
+            if (gun != null && gun.Holder != null)
             {
                 context.team = gun.Holder.Team;
                 context.speed *= gun.Holder.GunBulletSpeedMultiplier;
@@ -350,53 +994,55 @@ namespace BossRush
                 context.team = Teams.all;
             }
 
-            context.distance = gun.BulletDistance * GetModeDistanceFactor(mode) + 0.4f;
+            context.distance = (gun != null ? gun.BulletDistance : 24f) * profile.DistanceFactor * distanceFactor + 0.4f;
             context.halfDamageDistance = context.distance * 0.5f;
             if (!isMainCharacterShot)
             {
                 context.distance *= 1.05f;
             }
 
-            context.penetrate = Mathf.Max(gun.Penetrate, GetModePenetrate(mode));
-            context.damage = gun.Damage * gun.BulletDamageMultiplier * GetModeDamageFactor(mode) * characterDamageMultiplier / Mathf.Max(1, projectileCount);
-            if (gun.Damage > 1f && context.damage < 1f)
+            context.penetrate = Mathf.Max(gun != null ? gun.Penetrate : 0, profile.Pierce);
+            context.damage = (gun != null ? gun.Damage : 20f) *
+                             (gun != null ? gun.BulletDamageMultiplier : 1f) *
+                             profile.DamageFactor *
+                             damageFactor *
+                             characterDamageMultiplier /
+                             Mathf.Max(1, projectileCount);
+            if (gun != null && gun.Damage > 1f && context.damage < 1f)
             {
                 context.damage = 1f;
             }
 
-            context.dmgOverDistance = gun.DmgOverDistance;
-            context.critDamageFactor = (gun.CritDamageFactor + gun.BulletCritDamageFactorGain) * (1f + gun.CharacterGunCritDamageGain);
-            context.critRate = gun.CritRate * (1f + gun.CharacterGunCritRateGain);
+            context.dmgOverDistance = gun != null ? gun.DmgOverDistance : 0.5f;
+            context.critDamageFactor = gun != null
+                ? (gun.CritDamageFactor + gun.BulletCritDamageFactorGain) * (1f + gun.CharacterGunCritDamageGain)
+                : 1.5f;
+            context.critRate = gun != null
+                ? gun.CritRate * (1f + gun.CharacterGunCritRateGain)
+                : 0f;
             if (isMainCharacterShot && LevelManager.Instance != null && LevelManager.Instance.InputManager != null)
             {
                 context.critRate = LevelManager.Instance.InputManager.AimingEnemyHead ? 1f : context.critRate;
             }
 
-            context.armorPiercing = gun.ArmorPiercing + gun.BulletArmorPiercingGain;
-            context.armorBreak = gun.ArmorBreak + gun.BulletArmorBreakGain;
-            context.fromCharacter = gun.Holder;
-            context.realFromCharacter = gun.Holder;
-            if (gun.Holder != null && LevelManager.Instance != null && gun.Holder == LevelManager.Instance.ControllingCharacter)
+            context.armorPiercing = gun != null ? gun.ArmorPiercing + gun.BulletArmorPiercingGain : 0f;
+            context.armorBreak = gun != null ? gun.ArmorBreak + gun.BulletArmorBreakGain : 0f;
+            context.fromCharacter = gun != null ? gun.Holder : null;
+            context.realFromCharacter = gun != null ? gun.Holder : null;
+            if (gun != null && gun.Holder != null && LevelManager.Instance != null && gun.Holder == LevelManager.Instance.ControllingCharacter)
             {
                 context.fromCharacter = CharacterMainControl.Main;
             }
 
-            if (enableExplosion)
-            {
-                context.explosionRange = Mathf.Max(gun.BulletExplosionRange, 1.35f);
-                context.explosionDamage = Mathf.Max(
-                    gun.BulletExplosionDamage * gun.ExplosionDamageMultiplier * characterDamageMultiplier,
-                    gun.Damage * 0.7f * characterDamageMultiplier);
-            }
+            context.gravity = ResolveGravity(profile);
+            ApplyElement(ref context, profile.Element);
 
-            ApplyElement(ref context, gun.GunItemSetting != null ? gun.GunItemSetting.element : ElementTypes.fire);
-
-            context.fromWeaponItemID = gun.Item != null ? gun.Item.TypeID : 0;
+            context.fromWeaponItemID = gun != null && gun.Item != null ? gun.Item.TypeID : 0;
             context.buff = null;
-            context.buffChance = EncodeShotMarker(shotId, mode);
-            context.bleedChance = gun.BulletBleedChance;
+            context.buffChance = EncodeShotMarker(shotId, profile.Id, hitStage);
+            context.bleedChance = gun != null ? gun.BulletBleedChance : 0f;
 
-            if (gun.Holder != null && isMainCharacterShot && gun.Holder.HasNearByHalfObsticle())
+            if (gun != null && gun.Holder != null && isMainCharacterShot && gun.Holder.HasNearByHalfObsticle())
             {
                 context.ignoreHalfObsticle = true;
             }
@@ -407,6 +1053,16 @@ namespace BossRush
             }
 
             return context;
+        }
+
+        private static float ResolveGravity(DragonKingBossGunShotProfile profile)
+        {
+            if (profile == null || profile.Arc == DragonKingBossGunArcMode.None)
+            {
+                return 0f;
+            }
+
+            return Mathf.Max(0f, profile.Gravity);
         }
 
         private static void ApplyElement(ref ProjectileContext context, ElementTypes element)
@@ -438,117 +1094,82 @@ namespace BossRush
             }
         }
 
-        private static float GetModeDamageFactor(DragonKingBossGunAmmoMode mode)
+        private static int BuildFanDirections(Vector3 forward, int shotCount, float spreadAngle, Vector3[] buffer, bool randomSpread = false)
         {
-            switch (mode)
+            shotCount = Mathf.Clamp(shotCount, 1, buffer.Length);
+            if (shotCount == 1)
             {
-                case DragonKingBossGunAmmoMode.Shotgun:
-                    return 1.12f;
-                case DragonKingBossGunAmmoMode.Heavy:
-                    return 2.05f;
-                case DragonKingBossGunAmmoMode.Assault:
+                buffer[0] = forward.normalized;
+                return 1;
+            }
+
+            float halfSpread = spreadAngle * 0.5f;
+            for (int i = 0; i < shotCount; i++)
+            {
+                float angle;
+                if (randomSpread)
+                {
+                    angle = UnityEngine.Random.Range(-halfSpread, halfSpread);
+                }
+                else
+                {
+                    float t = (float)i / (shotCount - 1);
+                    angle = Mathf.Lerp(-halfSpread, halfSpread, t);
+                }
+
+                float pitch = randomSpread ? UnityEngine.Random.Range(-halfSpread * 0.2f, halfSpread * 0.2f) : 0f;
+                buffer[i] = (Quaternion.Euler(pitch, angle, 0f) * forward).normalized;
+            }
+
+            return shotCount;
+        }
+
+        private static int BuildSplitDirections(DragonKingBossGunShotProfile profile, Vector3 forward, Vector3 normal, Vector3[] buffer)
+        {
+            int count = Mathf.Clamp(profile.SplitCount, 1, buffer.Length);
+            forward = forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
+
+            switch (profile.SplitPattern)
+            {
+                case DragonKingBossGunSplitPattern.DownBurst:
+                {
+                    Vector3 downForward = (Vector3.down + forward * 0.2f).normalized;
+                    for (int i = 0; i < count; i++)
+                    {
+                        float angle = ((360f / count) * i) + UnityEngine.Random.Range(-8f, 8f);
+                        Vector3 dir = Quaternion.AngleAxis(angle, Vector3.up) * downForward;
+                        dir = Quaternion.AngleAxis(UnityEngine.Random.Range(0f, profile.SplitSpreadAngle * 0.35f), Vector3.Cross(dir, Vector3.up)) * dir;
+                        buffer[i] = dir.normalized;
+                    }
+
+                    return count;
+                }
+
+                case DragonKingBossGunSplitPattern.Radial:
+                {
+                    Vector3 axis = normal.sqrMagnitude > 0.001f ? normal.normalized : Vector3.up;
+                    Vector3 radialBase = Vector3.Cross(axis, Vector3.right);
+                    if (radialBase.sqrMagnitude < 0.001f)
+                    {
+                        radialBase = Vector3.Cross(axis, Vector3.forward);
+                    }
+
+                    radialBase.Normalize();
+                    for (int i = 0; i < count; i++)
+                    {
+                        float angle = 360f * i / count;
+                        Vector3 dir = Quaternion.AngleAxis(angle, axis) * radialBase;
+                        dir = (dir + forward * 0.25f).normalized;
+                        buffer[i] = dir;
+                    }
+
+                    return count;
+                }
+
+                case DragonKingBossGunSplitPattern.ForwardFan:
                 default:
-                    return 1.15f;
+                    return BuildFanDirections(forward, count, profile.SplitSpreadAngle, buffer, false);
             }
-        }
-
-        private static float GetModeSpeedFactor(DragonKingBossGunAmmoMode mode)
-        {
-            switch (mode)
-            {
-                case DragonKingBossGunAmmoMode.Shotgun:
-                    return 0.8f;
-                case DragonKingBossGunAmmoMode.Heavy:
-                    return 0.72f;
-                case DragonKingBossGunAmmoMode.Assault:
-                default:
-                    return 1.08f;
-            }
-        }
-
-        private static float GetModeDistanceFactor(DragonKingBossGunAmmoMode mode)
-        {
-            switch (mode)
-            {
-                case DragonKingBossGunAmmoMode.Shotgun:
-                    return 0.52f;
-                case DragonKingBossGunAmmoMode.Heavy:
-                    return 1.15f;
-                case DragonKingBossGunAmmoMode.Assault:
-                default:
-                    return 0.9f;
-            }
-        }
-
-        private static int GetModePenetrate(DragonKingBossGunAmmoMode mode)
-        {
-            switch (mode)
-            {
-                case DragonKingBossGunAmmoMode.Heavy:
-                    return 2;
-                case DragonKingBossGunAmmoMode.Assault:
-                    return 1;
-                default:
-                    return 0;
-            }
-        }
-
-        private static void SpawnModeProjectiles(ItemAgent_Gun gun, Vector3 muzzlePoint, Vector3 shootDirection, Vector3 firstFrameCheckStartPoint, DragonKingBossGunAmmoMode mode)
-        {
-            int shotId = NextShotId();
-
-            switch (mode)
-            {
-                case DragonKingBossGunAmmoMode.Shotgun:
-                    SpawnShotgunPattern(gun, muzzlePoint, shootDirection, firstFrameCheckStartPoint, shotId);
-                    break;
-                case DragonKingBossGunAmmoMode.Heavy:
-                    SpawnDragonProjectile(gun, muzzlePoint, shootDirection, firstFrameCheckStartPoint, mode, shotId, 1, 1.8f, 1.9f, true);
-                    break;
-                case DragonKingBossGunAmmoMode.Assault:
-                default:
-                    SpawnAssaultPattern(gun, muzzlePoint, shootDirection, firstFrameCheckStartPoint, shotId);
-                    break;
-            }
-        }
-
-        private static void SpawnShotgunPattern(ItemAgent_Gun gun, Vector3 muzzlePoint, Vector3 shootDirection, Vector3 firstFrameCheckStartPoint, int shotId)
-        {
-            const int pelletCount = 7;
-            const float spread = 22f;
-
-            for (int i = 0; i < pelletCount; i++)
-            {
-                float t = pelletCount <= 1 ? 0f : (float)i / (pelletCount - 1);
-                float angle = Mathf.Lerp(-spread * 0.5f, spread * 0.5f, t);
-                Vector3 direction = Quaternion.Euler(0f, angle, 0f) * shootDirection;
-                SpawnDragonProjectile(gun, muzzlePoint, direction, firstFrameCheckStartPoint, DragonKingBossGunAmmoMode.Shotgun, shotId, pelletCount, 0.85f, 0.85f, false);
-            }
-        }
-
-        private static void SpawnAssaultPattern(ItemAgent_Gun gun, Vector3 muzzlePoint, Vector3 shootDirection, Vector3 firstFrameCheckStartPoint, int shotId)
-        {
-            float[] angles = new float[] { -4.5f, 0f, 4.5f };
-            for (int i = 0; i < angles.Length; i++)
-            {
-                Vector3 direction = Quaternion.Euler(0f, angles[i], 0f) * shootDirection;
-                SpawnDragonProjectile(gun, muzzlePoint, direction, firstFrameCheckStartPoint, DragonKingBossGunAmmoMode.Assault, shotId, angles.Length, 0.92f, 0.92f, false);
-            }
-        }
-
-        private static Vector3 ApplyWeaponScatter(ItemAgent_Gun gun, Vector3 shootDirection)
-        {
-            bool isMainCharacterShot = gun.Holder != null && gun.Holder.IsMainCharacter;
-            float extraScatter = 0f;
-            if (isMainCharacterShot)
-            {
-                extraScatter = Mathf.Max(1f, gun.CurrentScatter) * Mathf.Lerp(1.5f, 0f, Mathf.InverseLerp(0f, 0.5f, gun.durabilityPercent));
-            }
-
-            float randomYaw = UnityEngine.Random.Range(-0.5f, 0.5f) * (gun.CurrentScatter + extraScatter);
-            Vector3 adjustedDirection = Quaternion.Euler(0f, randomYaw, 0f) * shootDirection;
-            adjustedDirection.Normalize();
-            return adjustedDirection;
         }
 
         [HarmonyPatch(typeof(ItemSetting_Gun), "IsValidBullet")]
@@ -562,7 +1183,7 @@ namespace BossRush
                     return true;
                 }
 
-                if (newBulletItem == null || !newBulletItem.Tags.Contains(GameplayDataSettings.Tags.Bullet))
+                if (newBulletItem == null || !DragonKingBossGunProfiles.IsBulletLike(newBulletItem))
                 {
                     __result = false;
                     return false;
@@ -594,32 +1215,42 @@ namespace BossRush
                 }
 
                 Item currentLoadedBullet = __instance.GetCurrentLoadedBullet();
-                if (currentLoadedBullet != null)
+                if (currentLoadedBullet != null && IsCompatibleBullet(__instance.Item, currentLoadedBullet))
                 {
                     __instance.SetTargetBulletType(currentLoadedBullet);
-                    __result = false;
-                    return false;
-                }
-
-                if (inventory == null)
-                {
-                    __instance.SetTargetBulletType(-1);
-                    __result = false;
+                    ApplyAmmoAttributeFromBullet(__instance.Item, currentLoadedBullet);
+                    __result = true;
                     return false;
                 }
 
                 __instance.SetTargetBulletType(-1);
-                foreach (Item item in inventory)
+                if (inventory != null)
                 {
-                    if (IsCompatibleBullet(__instance.Item, item))
+                    foreach (Item item in inventory)
                     {
+                        if (!IsCompatibleBullet(__instance.Item, item))
+                        {
+                            continue;
+                        }
+
                         __instance.SetTargetBulletType(item);
-                        break;
+                        ApplyAmmoAttributeFromBullet(__instance.Item, item);
+                        __result = true;
+                        return false;
                     }
                 }
 
-                __result = __instance.TargetBulletID != -1;
+                __result = false;
                 return false;
+            }
+
+            private static void ApplyAmmoAttributeFromBullet(Item gunItem, Item bulletItem)
+            {
+                DragonKingBossGunShotProfile profile;
+                if (DragonKingBossGunProfiles.TryResolve(bulletItem, out profile))
+                {
+                    ApplyAmmoAttributeOverride(gunItem, profile);
+                }
             }
         }
 
@@ -634,7 +1265,7 @@ namespace BossRush
                     return true;
                 }
 
-                Dictionary<int, BulletTypeInfo> result = new Dictionary<int, BulletTypeInfo>();
+                reusableBulletTypeDict.Clear();
                 if (inventory != null)
                 {
                     foreach (Item item in inventory)
@@ -645,12 +1276,12 @@ namespace BossRush
                         }
 
                         BulletTypeInfo info;
-                        if (!result.TryGetValue(item.TypeID, out info))
+                        if (!reusableBulletTypeDict.TryGetValue(item.TypeID, out info))
                         {
                             info = new BulletTypeInfo();
                             info.bulletTypeID = item.TypeID;
                             info.count = item.StackCount;
-                            result.Add(item.TypeID, info);
+                            reusableBulletTypeDict.Add(item.TypeID, info);
                         }
                         else
                         {
@@ -659,7 +1290,7 @@ namespace BossRush
                     }
                 }
 
-                __result = result;
+                __result = new Dictionary<int, BulletTypeInfo>(reusableBulletTypeDict);
                 return false;
             }
         }
@@ -693,14 +1324,20 @@ namespace BossRush
                     __instance.Holder.SetTeam(Teams.all);
                 }
 
-                DragonKingBossGunAmmoMode mode;
-                if (!TryGetAmmoMode(__instance.BulletItem, out mode))
+                DragonKingBossGunShotProfile profile;
+                if (!DragonKingBossGunProfiles.TryResolve(__instance.BulletItem, out profile))
                 {
-                    mode = DragonKingBossGunAmmoMode.Assault;
+                    profile = DragonKingBossGunProfiles.DefaultProfile;
+                }
+
+                // 射击时检测弹种是否变化，确保属性覆盖已应用
+                if (!hasAppliedProfile || lastAppliedProfileId != profile.Id)
+                {
+                    ApplyAmmoAttributeOverride(__instance.Item, profile);
                 }
 
                 Vector3 adjustedDirection = ApplyWeaponScatter(__instance, _shootDirection);
-                SpawnModeProjectiles(__instance, _muzzlePoint, adjustedDirection, firstFrameCheckStartPoint, mode);
+                SpawnPrimaryProjectiles(__instance, profile, _muzzlePoint, adjustedDirection, firstFrameCheckStartPoint);
                 return false;
             }
         }

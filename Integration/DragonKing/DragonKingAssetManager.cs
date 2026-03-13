@@ -288,34 +288,17 @@ namespace BossRush
         private static void PlayAllParticleSystems(GameObject obj)
         {
             if (obj == null) return;
-            
+
             try
             {
-                // 使用反射获取ParticleSystem组件并播放
-                // 避免直接引用ParticleSystemModule
-                var particleSystems = obj.GetComponentsInChildren<Component>(true);
-                int playedCount = 0;
-                
-                foreach (var comp in particleSystems)
+                var particleSystems = obj.GetComponentsInChildren<ParticleSystem>(true);
+                for (int i = 0; i < particleSystems.Length; i++)
                 {
-                    if (comp != null && comp.GetType().Name == "ParticleSystem")
+                    if (particleSystems[i] != null)
                     {
-                        // 确保游戏对象启用
-                        comp.gameObject.SetActive(true);
-                        
-                        // 使用反射调用Play方法
-                        var playMethod = comp.GetType().GetMethod("Play", new System.Type[] { typeof(bool) });
-                        if (playMethod != null)
-                        {
-                            playMethod.Invoke(comp, new object[] { true });
-                            playedCount++;
-                        }
+                        particleSystems[i].gameObject.SetActive(true);
+                        particleSystems[i].Play(true);
                     }
-                }
-                
-                if (playedCount > 0)
-                {
-                    ModBehaviour.DevLog($"[DragonKing] 已播放 {playedCount} 个粒子系统");
                 }
             }
             catch (Exception e)
@@ -358,9 +341,11 @@ namespace BossRush
                 GameObject fallback = new GameObject($"Fallback_{prefabName}");
                 fallback.transform.position = position;
                 fallback.transform.rotation = rotation;
-                
+
                 AddFallbackVisuals(fallback, prefabName);
-                
+
+                UnityEngine.Object.Destroy(fallback, 3f);
+
                 ModBehaviour.DevLog($"[DragonKing] 创建后备特效: {prefabName}");
                 return fallback;
             }
@@ -512,10 +497,14 @@ namespace BossRush
         {
             GameObject prefab = GetPrefab(prefabName);
             if (prefab == null) return null;
-            
+
             try
             {
                 GameObject instance = UnityEngine.Object.Instantiate(prefab, position, rotation, parent);
+
+                // 与无 parent 版本保持一致：播放粒子系统
+                PlayAllParticleSystems(instance);
+
                 return instance;
             }
             catch (Exception e)

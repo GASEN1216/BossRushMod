@@ -898,6 +898,7 @@ namespace BossRush
 
             DragonKingBossGunConfig.InitializeRuntimePrefab();
             DragonKingBossGunRuntime.InitializeRuntime();
+            DragonKingBossGunRuntime.WarmupDragonDescendantProjectileCache();
 
             try
             {
@@ -1087,6 +1088,10 @@ namespace BossRush
             
             // 设置焚皇断界戟系统（场景切换重绑定）
             SetupFenHuangHalberdForScene(scene);
+
+            // 场景加载后重新应用龙枪弹种属性覆盖（射速/伤害/弹匣等）
+            // 延迟调用确保玩家角色和武器已初始化
+            StartCoroutine(DelayedApplyDragonGunAmmoOverride());
 
             try
             {
@@ -2628,6 +2633,22 @@ namespace BossRush
             // 等待0.5秒确保玩家角色已初始化
             yield return new WaitForSeconds(0.5f);
             SubscribeDragonBreathEffectEvent();
+        }
+
+        /// <summary>
+        /// 延迟重新应用龙枪弹种属性覆盖（场景加载后等待玩家角色和武器初始化）
+        /// </summary>
+        private System.Collections.IEnumerator DelayedApplyDragonGunAmmoOverride()
+        {
+            yield return new WaitForSeconds(0.6f);
+            try
+            {
+                DragonKingBossGunRuntime.ReapplyAmmoAttributeOverrideForScene();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] 龙枪弹种属性覆盖异常: " + e.Message);
+            }
         }
         
         /// <summary>

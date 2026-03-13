@@ -226,8 +226,9 @@ namespace BossRush
             {
                 item.CreateInventoryComponent();
             }
-            catch
+            catch (Exception e)
             {
+                ModBehaviour.DevLog("[DragonKingBossGun] CreateInventoryComponent 失败，将手动创建: " + e.Message);
             }
 
             if (item.Inventory != null)
@@ -253,6 +254,8 @@ namespace BossRush
             }
         }
 
+        private static readonly Dictionary<string, FieldInfo> fieldInfoCache = new Dictionary<string, FieldInfo>();
+
         private static void SetPrivateField(object target, string fieldName, object value)
         {
             if (target == null)
@@ -260,7 +263,15 @@ namespace BossRush
                 return;
             }
 
-            FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            Type type = target.GetType();
+            string key = type.FullName + "." + fieldName;
+            FieldInfo field;
+            if (!fieldInfoCache.TryGetValue(key, out field))
+            {
+                field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                fieldInfoCache[key] = field;
+            }
+
             if (field != null)
             {
                 field.SetValue(target, value);

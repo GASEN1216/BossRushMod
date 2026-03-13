@@ -141,6 +141,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\DragonKing\Weapons\FenHuangHalberdRuntime.cs ^
     Integration\DragonKing\Weapons\DragonFlameMarkTracker.cs ^
     Integration\DragonKing\Weapons\DragonKingBossGunConfig.cs ^
+    Integration\DragonKing\Weapons\DragonKingBossGunProfiles.cs ^
+    Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent.cs ^
     Integration\DragonKing\Weapons\DragonKingBossGunRuntime.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdAction.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdAbilityManager.cs ^
