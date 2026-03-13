@@ -51,6 +51,10 @@ namespace BossRush
         private GameObject customTrailInstance;
         private GameObject savedExplosionFx;
         private bool stopMovementThisFrame;
+        private float splitActivationTimer;
+        private bool splitActivated = true;
+        private int splitSourceReceiverId = -1;
+        private int lastHitReceiverId = -1;
         private readonly HashSet<int> damagedReceiverIds = new HashSet<int>();
 
         public bool IsActiveForRuntime
@@ -60,7 +64,7 @@ namespace BossRush
 
         public bool UsesCustomMovement
         {
-            get { return IsActiveForRuntime && profile.RequiresCustomMovement; }
+            get { return IsActiveForRuntime && (profile.RequiresCustomMovement || (secondaryProjectile && profile.SplitGravity > 0f)); }
         }
 
         public bool IsDead
@@ -122,7 +126,7 @@ namespace BossRush
             UnityEngine.Object.Destroy(fireFx, 1.5f);
         }
 
-        public void Initialize(Projectile projectileInstance, ItemAgent_Gun gunAgent, DragonKingBossGunShotProfile shotProfile, int currentShotId, int currentProjectileIndex, bool isSecondary)
+        public void Initialize(Projectile projectileInstance, ItemAgent_Gun gunAgent, DragonKingBossGunShotProfile shotProfile, int currentShotId, int currentProjectileIndex, bool isSecondary, int sourceReceiverId = -1)
         {
             projectile = projectileInstance;
             sourceGun = gunAgent;
@@ -145,6 +149,10 @@ namespace BossRush
 
             lastHelixOffset = Vector3.zero;
             stopMovementThisFrame = false;
+            splitActivationTimer = 0f;
+            splitActivated = !isSecondary || profile == null || profile.SplitActivationDelay <= 0f;
+            splitSourceReceiverId = sourceReceiverId;
+            lastHitReceiverId = -1;
             damagedReceiverIds.Clear();
 
             savedExplosionFx = projectileInstance != null ? projectileInstance.explosionFx : null;
@@ -173,8 +181,73 @@ namespace BossRush
                 StripPhysicsComponents(customTrailInstance);
             }
 
+            if (profile != null && profile.Id == DragonKingBossGunProfileId.IceBlade)
+            {
+                CreateIceBladeTrail();
+            }
+
             // 保留 Boss_Red 原版弹幕视觉，缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理
             enabled = true;
+        }
+
+        private void CreateIceBladeTrail()
+        {
+            TrailRenderer trail = gameObject.GetComponent<TrailRenderer>();
+            if (trail == null)
+            {
+                trail = gameObject.AddComponent<TrailRenderer>();
+            }
+
+            trail.time = 0.25f;
+            trail.startWidth = 0.25f;
+            trail.endWidth = 0f;
+            trail.startColor = new Color(0.5f, 0.8f, 1f, 0.8f);
+            trail.endColor = new Color(0.5f, 0.8f, 1f, 0f);
+            trail.material = new Material(Shader.Find("Sprites/Default"));
+            trail.numCornerVertices = 2;
+            trail.numCapVertices = 2;
+            trail.minVertexDistance = 0.05f;
+        }
+
+        private void SpawnIcePierceEffect(Vector3 hitPoint, Vector3 hitNormal)
+        {
+            GameObject iceFx = new GameObject("DragonGun_IcePierceFx");
+            iceFx.transform.position = hitPoint;
+            iceFx.transform.rotation = Quaternion.LookRotation(hitNormal);
+
+            ParticleSystem ps = iceFx.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = false;
+            main.duration = 0.15f;
+            main.startLifetime = 0.35f;
+            main.startSpeed = 4f;
+            main.startSize = 0.12f;
+            main.startColor = new Color(0.5f, 0.8f, 1f, 0.9f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 12;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0;
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 12) });
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 35f;
+            shape.radius = 0.05f;
+
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(new Color(0.5f, 0.8f, 1f), 0f), new GradientColorKey(new Color(0.7f, 0.9f, 1f), 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0f, 1f) });
+            col.color = gradient;
+
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            renderer.material = new Material(Shader.Find("Sprites/Default"));
+
+            ps.Play();
+            UnityEngine.Object.Destroy(iceFx, 1f);
         }
 
         private static void StripPhysicsComponents(GameObject obj)
@@ -232,6 +305,10 @@ namespace BossRush
             successfulHits = 0;
             lastHelixOffset = Vector3.zero;
             stopMovementThisFrame = false;
+            splitActivationTimer = 0f;
+            splitActivated = true;
+            splitSourceReceiverId = -1;
+            lastHitReceiverId = -1;
             damagedReceiverIds.Clear();
             savedExplosionFx = null;
 
@@ -248,6 +325,21 @@ namespace BossRush
             if (!IsActiveForRuntime)
             {
                 return;
+            }
+
+            if (!splitActivated && profile.SplitActivationDelay > 0f)
+            {
+                float dt = Mathf.Min(Time.deltaTime, 0.04f);
+                splitActivationTimer += dt;
+                if (splitActivationTimer >= profile.SplitActivationDelay)
+                {
+                    splitActivated = true;
+                    velocityRef(projectile) = directionRef(projectile) * (velocityRef(projectile).magnitude / Mathf.Max(0.01f, profile.SplitInitialSpeedMult));
+                }
+                else if (splitActivationTimer <= dt)
+                {
+                    velocityRef(projectile) = directionRef(projectile) * (velocityRef(projectile).magnitude * profile.SplitInitialSpeedMult);
+                }
             }
 
             if (profile.UseHelix)
@@ -315,6 +407,26 @@ namespace BossRush
             }
 
             float deltaTime = Mathf.Min(Time.deltaTime, 0.04f);
+
+            if (!splitActivated && profile.SplitActivationDelay > 0f)
+            {
+                splitActivationTimer += deltaTime;
+                if (splitActivationTimer >= profile.SplitActivationDelay)
+                {
+                    splitActivated = true;
+                    velocityRef(projectile) = directionRef(projectile) * (velocityRef(projectile).magnitude / Mathf.Max(0.01f, profile.SplitInitialSpeedMult));
+                }
+                else
+                {
+                    float slowSpeed = velocityRef(projectile).magnitude;
+                    if (splitActivationTimer <= deltaTime)
+                    {
+                        slowSpeed *= profile.SplitInitialSpeedMult;
+                        velocityRef(projectile) = directionRef(projectile) * slowSpeed;
+                    }
+                }
+            }
+
             UpdateDirectionAndVelocity(deltaTime);
 
             float distanceThisFrame = velocityRef(projectile).magnitude * deltaTime;
@@ -464,6 +576,17 @@ namespace BossRush
         private bool HandleDamageReceiverHit(DamageReceiver receiver, GameObject hitObject, Vector3 hitPoint, Vector3 hitNormal)
         {
             int receiverId = receiver.GetInstanceID();
+
+            if (!splitActivated)
+            {
+                return false;
+            }
+
+            if (splitSourceReceiverId >= 0 && receiverId == splitSourceReceiverId)
+            {
+                return false;
+            }
+
             if (damagedReceiverIds.Contains(receiverId))
             {
                 return false;
@@ -505,10 +628,25 @@ namespace BossRush
                 damageInfo.damageValue *= rangeFactor;
             }
 
+            if (profile.PierceDamageDecay != null && successfulHits > 0 && successfulHits <= profile.PierceDamageDecay.Length)
+            {
+                damageInfo.damageValue *= profile.PierceDamageDecay[successfulHits - 1];
+            }
+            else if (profile.PierceDamageDecay != null && successfulHits > profile.PierceDamageDecay.Length)
+            {
+                damageInfo.damageValue *= profile.PierceDamageDecay[profile.PierceDamageDecay.Length - 1];
+            }
+
             receiver.Hurt(damageInfo);
             receiver.AddBuff(GameplayDataSettings.Buffs.Pain, projectile.context.fromCharacter);
             successfulHits++;
             remainingTargetHits--;
+            lastHitReceiverId = receiverId;
+
+            if (profile.Id == DragonKingBossGunProfileId.IceBlade && remainingTargetHits > 0)
+            {
+                SpawnIcePierceEffect(hitPoint, hitNormal);
+            }
 
             if (profile.UseSticky)
             {
@@ -540,6 +678,12 @@ namespace BossRush
                 CreateStickyCharge(null, hitPoint, hitNormal);
                 transform.position = hitPoint;
                 deadRef(projectile) = true;
+                return true;
+            }
+
+            if (profile.UseReturn && !returning)
+            {
+                BeginReturn();
                 return true;
             }
 
@@ -594,16 +738,6 @@ namespace BossRush
             {
                 SpawnFireHitEffect(hitPoint, hitNormal);
             }
-
-            GameObject hitFx = GameplayDataSettings.Prefabs != null ? GameplayDataSettings.Prefabs.BulletHitObsticleFx : null;
-            if (hitFx != null)
-            {
-                GameObject instance = UnityEngine.Object.Instantiate(hitFx, hitPoint, Quaternion.LookRotation(hitNormal, Vector3.up));
-                if (instance != null)
-                {
-                    UnityEngine.Object.Destroy(instance, 2f);
-                }
-            }
         }
 
         private void BeginReturn()
@@ -649,7 +783,7 @@ namespace BossRush
                 }
             }
 
-            if (!secondaryProjectile && profile.UseSplit && !splitTriggered && !profile.SplitOnAirburst)
+            if (!secondaryProjectile && profile.UseSplit && !splitTriggered)
             {
                 TriggerSplit();
             }
@@ -668,7 +802,8 @@ namespace BossRush
             }
 
             splitTriggered = true;
-            DragonKingBossGunRuntime.SpawnSplitProjectiles(sourceGun, profile, shotId, transform.position, directionRef(projectile), Vector3.up);
+            int sourceId = profile.SplitIgnoreSourceOnSplit ? lastHitReceiverId : -1;
+            DragonKingBossGunRuntime.SpawnSplitProjectiles(sourceGun, profile, shotId, transform.position, directionRef(projectile), Vector3.up, sourceId);
             DragonKingBossGunRuntime.TrySpawnExplosionFx(transform.position, profile);
         }
 
@@ -784,6 +919,63 @@ namespace BossRush
             tickDamageFactor = Mathf.Max(0.05f, profile.GroundZoneTickDamageFactor);
             tickTimer = 0f;
             elapsed = 0f;
+
+            CreateZoneVisual();
+        }
+
+        private void CreateZoneVisual()
+        {
+            Color zoneColor;
+            switch (profile.GroundZoneElement)
+            {
+                case ElementTypes.fire:
+                    zoneColor = new Color(1f, 0.4f, 0.1f, 0.7f);
+                    break;
+                case ElementTypes.poison:
+                    zoneColor = new Color(0.15f, 0.55f, 0.1f, 0.7f);
+                    break;
+                case ElementTypes.ice:
+                    zoneColor = new Color(0.5f, 0.8f, 1f, 0.7f);
+                    break;
+                default:
+                    return;
+            }
+
+            GameObject fxObj = new GameObject("ZoneRingFx");
+            fxObj.transform.SetParent(transform);
+            fxObj.transform.localPosition = Vector3.zero;
+
+            ParticleSystem ps = fxObj.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.duration = duration;
+            main.startLifetime = Mathf.Min(0.6f, duration * 0.5f);
+            main.startSpeed = 0.3f;
+            main.startSize = 0.08f;
+            main.startColor = zoneColor;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 40;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 25f;
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = radius;
+            shape.radiusThickness = 0.1f;
+
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(zoneColor, 0f), new GradientColorKey(zoneColor, 0.7f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.7f, 0f), new GradientAlphaKey(0f, 1f) });
+            col.color = gradient;
+
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            renderer.material = new Material(Shader.Find("Sprites/Default"));
+
+            ps.Play();
         }
 
         private void Update()
@@ -837,6 +1029,11 @@ namespace BossRush
                 }
 
                 DamageInfo damageInfo = DragonKingBossGunRuntime.CreateDamageInfo(sourceContext, tickDamageFactor, damagePoint, damageNormal, true, true);
+                if (profile.GroundZoneElement == ElementTypes.poison)
+                {
+                    damageInfo.damageValue = Mathf.Min(damageInfo.damageValue, 1f);
+                }
+
                 receiver.Hurt(damageInfo);
                 receiver.AddBuff(GameplayDataSettings.Buffs.Pain, sourceContext.fromCharacter);
 

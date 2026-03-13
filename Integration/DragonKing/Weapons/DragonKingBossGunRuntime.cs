@@ -698,7 +698,7 @@ namespace BossRush
             }
         }
 
-        internal static void SpawnSplitProjectiles(ItemAgent_Gun gun, DragonKingBossGunShotProfile profile, int shotId, Vector3 origin, Vector3 forward, Vector3 normal)
+        internal static void SpawnSplitProjectiles(ItemAgent_Gun gun, DragonKingBossGunShotProfile profile, int shotId, Vector3 origin, Vector3 forward, Vector3 normal, int sourceReceiverId = -1)
         {
             if (gun == null || profile == null || profile.SplitCount <= 0)
             {
@@ -723,7 +723,8 @@ namespace BossRush
                     profile.SplitDistanceFactor,
                     profile.SplitDamageFactor,
                     profile.SplitTraceAbility > 0f ? profile.SplitTraceAbility : -1f,
-                    DragonKingBossGunHitStage.Secondary);
+                    DragonKingBossGunHitStage.Secondary,
+                    sourceReceiverId);
             }
         }
 
@@ -836,12 +837,14 @@ namespace BossRush
 
         internal static void TrySpawnExplosionFx(Vector3 position, DragonKingBossGunShotProfile profile = null)
         {
+            float fxDuration = profile != null ? profile.ExplosionFxDuration : 3f;
+
             if (profile != null && !string.IsNullOrEmpty(profile.ExplosionFxPrefab))
             {
                 GameObject fx = DragonKingAssetManager.InstantiateEffect(profile.ExplosionFxPrefab, position, Quaternion.identity);
                 if (fx != null)
                 {
-                    UnityEngine.Object.Destroy(fx, 3f);
+                    UnityEngine.Object.Destroy(fx, fxDuration);
                     return;
                 }
             }
@@ -881,7 +884,7 @@ namespace BossRush
                 GameObject fx = UnityEngine.Object.Instantiate(cachedExplosionFx, position, Quaternion.identity);
                 if (fx != null)
                 {
-                    UnityEngine.Object.Destroy(fx, 3f);
+                    UnityEngine.Object.Destroy(fx, fxDuration);
                 }
             }
         }
@@ -933,7 +936,8 @@ namespace BossRush
             float distanceFactor,
             float damageFactor,
             float traceAbilityOverride,
-            DragonKingBossGunHitStage hitStage)
+            DragonKingBossGunHitStage hitStage,
+            int sourceReceiverId = -1)
         {
             Projectile baseProjectile = GetDragonProjectile(gun != null && gun.GunItemSetting != null ? gun.GunItemSetting.bulletPfb : null);
             if (baseProjectile == null || LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
@@ -976,7 +980,7 @@ namespace BossRush
                 agent = projectile.gameObject.AddComponent<DragonKingBossGunProjectileAgent>();
             }
 
-            agent.Initialize(projectile, gun, profile, shotId, projectileIndex, isSecondary);
+            agent.Initialize(projectile, gun, profile, shotId, projectileIndex, isSecondary, sourceReceiverId);
             return projectile;
         }
 
@@ -1067,6 +1071,11 @@ namespace BossRush
             }
 
             context.gravity = ResolveGravity(profile);
+            if (isSecondary && profile.SplitGravity > 0f)
+            {
+                context.gravity = profile.SplitGravity;
+            }
+
             ApplyElement(ref context, profile.Element);
 
             context.fromWeaponItemID = gun != null && gun.Item != null ? gun.Item.TypeID : 0;
