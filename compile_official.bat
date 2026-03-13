@@ -102,6 +102,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\EntityModelFactory.cs ^
     Utilities\SimpleJsonHelper.cs ^
     Utilities\EnemySpawnCore.cs ^
+    Utilities\EnemyRecoveryMonitor.cs ^
     Config\Config.cs ^
     Config\NPCSpawnConfig.cs ^
     Config\LootBlacklistRegistry.cs ^

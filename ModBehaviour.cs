@@ -2041,6 +2041,7 @@ namespace BossRush
         private void SetBossRushRuntimeActive(bool active)
         {
             IsActive = active;
+            ClearEnemyRecoveryMonitorState();
             
             // [Bug修复] BossRush开始时确保订阅龙息Buff处理器
             // 无论玩家手上拿什么武器，龙裔遗族Boss的龙息都应该能触发龙焰灼烧
@@ -2731,6 +2732,7 @@ namespace BossRush
             
             // 无间炼狱现金磁铁吸附更新
             UpdateCashMagnet();
+            UpdateEnemyRecoveryMonitor();
             
             // 检测 Boss 池窗口快捷键（Ctrl+F10）
             // 注：热键检测使用 GetKeyDown，必须每帧检测，否则会丢失按键
@@ -3273,6 +3275,7 @@ namespace BossRush
             // 场景切换时清理好感度系统UI缓存
             AffinityUIManager.OnSceneUnload();
             AffinityManager.OnSceneUnload();
+            ClearEnemyRecoveryMonitorState();
             
             // 场景切换时清理现金磁铁飞行状态
             try { ClearCashMagnetState(); } catch (System.Exception ex) { DevLog($"[CashMagnet] 场景切换清理异常: {ex.Message}"); }
@@ -5282,6 +5285,7 @@ namespace BossRush
                 
                 // 延迟校验Boss位置，防止低配玩家地形加载慢导致Boss卡在地下
                 StartCoroutine(DelayedBossPositionValidation(character, 0.5f));
+                RegisterEnemyRecoveryAnchor(character, position);
                 
                 ShowMessage(L10n.T("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName, "Wave " + (currentEnemyIndex + 1) + ": " + preset.displayName));
                 DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);

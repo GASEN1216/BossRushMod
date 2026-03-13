@@ -427,6 +427,7 @@ namespace BossRush
 
                 // [P4] 加入阵营独立存活列表（缩放时只遍历同阵营列表，避免全量遍历）
                 AddToFactionAliveList(faction, character);
+                RegisterEnemyRecoveryAnchor(character, ctx.position);
 
                 // 注册到虚拟 CharacterSpawnerRoot，使 BossLiveMapMod 能检测到
                 RegisterModeEEnemyToSpawnerRoot(character);
@@ -512,6 +513,7 @@ namespace BossRush
                 Teams enemyFaction = enemy.Team;
 
                 // 从存活列表移除（全局 + 阵营独立列表）
+                UnregisterEnemyRecovery(enemy);
                 modeEAliveEnemies.Remove(enemy);
                 RemoveFromFactionAliveList(enemyFaction, enemy);
 

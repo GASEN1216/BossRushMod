@@ -615,6 +615,7 @@ namespace BossRush
 
                         // 加入当前波敌人列表
                         modeDCurrentWaveEnemies.Add(character);
+                        RegisterEnemyRecoveryAnchor(character, ctx.position);
 
                         // 注册死亡事件
                         RegisterModeDEnemyDeath(character);
@@ -847,6 +848,7 @@ namespace BossRush
             // 关键操作：从列表移除 + 检查波次完成（独立 try，确保一定执行）
             try
             {
+                UnregisterEnemyRecovery(enemy);
                 modeDCurrentWaveEnemies.Remove(enemy);
                 TryResolveModeDWaveComplete();
             }

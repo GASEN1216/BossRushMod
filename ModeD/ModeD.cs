@@ -249,6 +249,7 @@ namespace BossRush
                 modeDWaveIndex = 0;
                 modeDWaveCompletePending = false;
                 modeDCurrentWaveEnemies.Clear();
+                ClearEnemyRecoveryMonitorState();
 
                 // 读取配置
                 if (config != null && config.modeDEnemiesPerWave > 0)
@@ -333,6 +334,7 @@ namespace BossRush
                 modeDActive = false;
                 modeDWaveIndex = 0;
                 modeDCurrentWaveEnemies.Clear();
+                ClearEnemyRecoveryMonitorState();
 
                 // 使用保存的波次数显示消息
                 ShowMessage(L10n.T(

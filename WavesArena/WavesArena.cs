@@ -1210,49 +1210,61 @@ namespace BossRush
             try
             {
                 Vector3 currentPos = boss.transform.position;
-                
-                // 从Boss当前位置向上发射射线，检测是否在地面以下
-                Vector3 checkOrigin = currentPos + Vector3.up * 0.5f;
-                LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
-                RaycastHit hitUp;
-                
-                // 如果向上能打到地面，说明Boss在地下
-                if (Physics.Raycast(checkOrigin, Vector3.up, out hitUp, 20f, groundMask))
+
+                bool needsRecovery = false;
+                string reason = null;
+
+                Vector3 groundAlignedPos;
+                if (TryResolveGroundAlignedPosition(currentPos, 8f, 5f, out groundAlignedPos))
                 {
-                    // Boss在地面以下，需要修正
-                    Vector3 fixedPos = hitUp.point + Vector3.up * 0.5f;
-                    boss.transform.position = fixedPos;
-                    DevLog("[BossRush] 修正Boss位置（从地下拉出）: " + boss.name + " -> " + fixedPos);
-                    return;
-                }
-                
-                // 从略高处向下检测，确认Boss脚下有地面（1m，防止卡到屋顶）
-                Vector3 abovePos = currentPos + Vector3.up * 1f;
-                RaycastHit hitDown;
-                if (Physics.Raycast(abovePos, Vector3.down, out hitDown, 5f, groundMask))
-                {
-                    float groundY = hitDown.point.y;
-                    // 如果Boss的Y坐标比地面低超过0.5米，修正位置
-                    if (currentPos.y < groundY - 0.5f)
+                    if (groundAlignedPos.y - currentPos.y >= 0.75f)
                     {
-                        Vector3 fixedPos = new Vector3(currentPos.x, groundY + 0.15f, currentPos.z);
-                        boss.transform.position = fixedPos;
-                        DevLog("[BossRush] 修正Boss位置（Y坐标过低）: " + boss.name + " -> " + fixedPos);
+                        needsRecovery = true;
+                        reason = "spawn_below_ground";
                     }
                 }
                 else
                 {
-                    // Raycast失败，尝试NavMesh
-                    NavMeshHit navHit;
-                    if (NavMesh.SamplePosition(currentPos, out navHit, 15f, NavMesh.AllAreas))
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player != null && player.transform.position.y - currentPos.y >= 6f)
                     {
-                        if (currentPos.y < navHit.position.y - 0.5f)
-                        {
-                            Vector3 fixedPos = navHit.position + Vector3.up * 0.15f;
-                            boss.transform.position = fixedPos;
-                            DevLog("[BossRush] 修正Boss位置（NavMesh校准）: " + boss.name + " -> " + fixedPos);
-                        }
+                        needsRecovery = true;
+                        reason = "spawn_void";
                     }
+                }
+
+                if (!needsRecovery)
+                {
+                    return;
+                }
+
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null)
+                {
+                    return;
+                }
+
+                EnemyRecoveryState state;
+                if (!enemyRecoveryStates.TryGetValue(boss, out state))
+                {
+                    state = new EnemyRecoveryState
+                    {
+                        lastSamplePosition = currentPos,
+                        lastMovedTime = Time.time,
+                        lastRecoveryTime = -4f,
+                        excludedAnchorPosition = currentPos,
+                        hasExcludedAnchorPosition = true,
+                        continuousFallSamples = 0
+                    };
+                }
+
+                Vector3 recoveredPos;
+                if (TryRecoverEnemyToNearestSpawnPoint(boss, state, main, reason, out recoveredPos))
+                {
+                    state.lastMovedTime = Time.time;
+                    state.lastRecoveryTime = Time.time;
+                    state.lastSamplePosition = recoveredPos;
+                    enemyRecoveryStates[boss] = state;
                 }
             }
             catch (Exception e)
@@ -1880,6 +1892,7 @@ namespace BossRush
                 }
 
                 countedDeadBosses.Add(bossMain);
+                UnregisterEnemyRecovery(bossMain);
 
                 // 识别 Boss 类型并触发成就
                 string bossType = IdentifyBossType(bossMain);
