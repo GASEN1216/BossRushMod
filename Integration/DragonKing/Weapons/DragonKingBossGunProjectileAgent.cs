@@ -110,7 +110,7 @@ namespace BossRush
                 }
             }
 
-            ApplyDragonVisual(projectileInstance, shotProfile);
+            // 保留 Boss_Red 原版弹幕视觉，缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理
             enabled = true;
         }
 
@@ -132,11 +132,6 @@ namespace BossRush
             }
         }
 
-        private void ApplyDragonVisual(Projectile proj, DragonKingBossGunShotProfile shotProfile)
-        {
-            // 保留 Boss_Red 原版弹幕视觉，不做任何替换。
-            // 缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理。
-        }
 
         private void OnDisable()
         {

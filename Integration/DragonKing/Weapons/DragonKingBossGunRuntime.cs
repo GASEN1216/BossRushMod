@@ -59,6 +59,7 @@ namespace BossRush
         private static readonly Vector3[] fanDirectionBuffer = new Vector3[16];
         private static readonly Vector3[] splitDirectionBuffer = new Vector3[16];
         private static readonly Dictionary<int, BulletTypeInfo> reusableBulletTypeDict = new Dictionary<int, BulletTypeInfo>();
+        private static readonly Dictionary<int, BulletTypeInfo> emptyBulletTypeDict = new Dictionary<int, BulletTypeInfo>();
         private static readonly MethodInfo presetGenerateItemsMethod = typeof(CharacterRandomPreset).GetMethod("GenerateItems", BindingFlags.Instance | BindingFlags.NonPublic);
         private static bool dragonDescendantProjectilePreloadStarted;
         private static bool dragonDescendantProjectilePreloadCompleted;
@@ -246,8 +247,9 @@ namespace BossRush
                 {
                     item.DestroyTree();
                 }
-                catch
+                catch (Exception e)
                 {
+                    ModBehaviour.DevLog("[DragonKingBossGun] DestroyTree 失败: " + e.Message);
                     if (item.gameObject != null)
                     {
                         UnityEngine.Object.Destroy(item.gameObject);
@@ -1290,7 +1292,9 @@ namespace BossRush
                     }
                 }
 
-                __result = new Dictionary<int, BulletTypeInfo>(reusableBulletTypeDict);
+                __result = reusableBulletTypeDict.Count > 0
+                    ? new Dictionary<int, BulletTypeInfo>(reusableBulletTypeDict)
+                    : emptyBulletTypeDict;
                 return false;
             }
         }
