@@ -2,6 +2,30 @@
  
 ![Changelog](TODO.png)
 
+### 2026.3.14 23:50
+- Added item "Diamond Ring" for marrying NPCs, unlocked at Goblin affinity level 7
+- Added building "Wedding Chapel", unlocked when any NPC reaches affinity level 10
+- Added Nurse NPC "Yuori", affinity rewards: medicine "Calming Drops", item "Safety Charm"
+- Added Dragon Emperor drop weapon "Burning Emperor's Realm-Breaking Halberd"
+- Faction Battle "Other" shop now sells "Hunter King's Whistle" and "Blood Hunt Beacon"
+- Faction Battle ammo shop price multiplier changed from 10x to 1x, all ammo set to one stack of corresponding ammo
+- Faction Battle "Medical" shop now sells syringes
+- Faction Battle added "Food" shop
+- Faction Battle reduced spawn points within 25m
+- Faction Battle enemies now drop one extra random ammo slot
+- Faction Battle and Naked Start now give more ammo
+- Custom NPCs now spawn in Lab 37 and Maze, BossRush randomly spawns one custom NPC
+- Major reforge system overhaul:
+  - Reforge prices reduced to 0.1x of original
+  - All stat rerolls now guaranteed to succeed, probability only affects magnitude
+  - Added slider to adjust positive/negative bias with money
+  - Base value change range changed from 0~200% to 30%~200%
+- Fixed Faction Battle bear faction having no enemies
+- Fixed Faction Battle courier spawning in the sky
+- Fixed Faction Battle loot not being random
+- Fixed no-damage and speedrun achievement trigger issues
+- Naked Start now excludes vehicle-type enemies
+
 ### 2026.2.26 00:30
 - Boss pool config now includes Infinite Hell boss factor settings
 - Fixed Dragon Emperor phase 3 lift affecting other enemies
