@@ -5297,19 +5297,13 @@ namespace BossRush
                 {
                     if (character != null)
                     {
-                        bossSpawnTimes[character] = Time.time + 1f;
-                        
-                        // 记录原始掉落物品数量
                         int originalLootCount = 0;
                         if (character.CharacterItem != null && character.CharacterItem.Inventory != null)
                         {
                             // 记录原始库存大小作为基础掉落规模参考
                             originalLootCount = 3; // 默认基础掉落数量
                         }
-                        bossOriginalLootCounts[character] = originalLootCount;
-                        
-                        // 关键：订阅 Boss 的掉落事件（使用lambda捕获Boss引用）
-                        character.BeforeCharacterSpawnLootOnDead += (dmgInfo) => OnBossBeforeSpawnLoot(character, dmgInfo);
+                        RegisterBossRandomLootTracking(character, originalLootCount);
                         
                         DevLog("[BossRush] 记录 Boss 生成信息并订阅掉落事件 - 时间: " + Time.time + ", 原始掉落数量: " + originalLootCount);
                     }

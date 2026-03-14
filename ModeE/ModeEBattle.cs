@@ -42,6 +42,56 @@ namespace BossRush
         /// <summary>Mode E 中是否已生成龙王（全局限制最多1个）</summary>
         private bool modeEDragonKingSpawned = false;
 
+        #if false
+        private void ApplyModeDStyleLootToModeESpecialEnemy_Temp(CharacterMainControl character, EnemySpawnContext ctx, Teams faction, bool promotedToBoss)
+        {
+            try
+            {
+                if (character == null || ctx == null || ctx.preset == null)
+                {
+                    return;
+                }
+
+                bool isDragonDescendant = IsDragonDescendantPreset(ctx.preset);
+                bool isBearPromotedMinion = faction == Teams.bear && promotedToBoss;
+                if (false && !isDragonDescendant && !isBearPromotedMinion)
+                {
+                    return;
+                }
+
+                InitializeModeDItemPools();
+                EnsureModeDGlobalItemPool();
+
+                float lootHealth = 100f;
+                try
+                {
+                    if (character.Health != null)
+                    {
+                        lootHealth = character.Health.MaxHealth;
+                    }
+                    else if (ctx.preset.baseHealth > 0f)
+                    {
+                        lootHealth = ctx.preset.baseHealth;
+                    }
+                }
+                catch {}
+
+                int virtualWave = promotedToBoss ? 5 : 10;
+                bool preserveBossArmor = !promotedToBoss;
+                EquipEnemyForModeD(character, virtualWave, lootHealth, preserveBossArmor);
+
+                DevLog("[ModeE] 宸插簲鐢ㄧ櫧鎵嬭捣瀹跺紡闅忔満鎺夎惤: " + character.gameObject.name
+                    + " (dragonDescendant=" + isDragonDescendant
+                    + ", bearPromotedMinion=" + isBearPromotedMinion
+                    + ", virtualWave=" + virtualWave + ")");
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] 搴旂敤鐧芥墜璧峰寮忛殢鏈烘帀钀藉け璐? " + e.Message);
+            }
+        }
+
+        #endif
         #endregion
 
         #region Mode E Boss 生成方法
@@ -422,6 +472,11 @@ namespace BossRush
                     ApplyBearFactionStatBoost(character);
                 }
 
+                if (ctx.isBoss && faction != modeEPlayerFaction)
+                {
+                    ApplyModeDStyleLootToModeESpecialEnemy(character, ctx, faction, promotedToBoss);
+                }
+
                 // 加入存活敌人列表
                 modeEAliveEnemies.Add(character);
 
@@ -455,6 +510,54 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] OnModeEEnemySpawned 失败: " + e.Message);
+            }
+        }
+
+        private void ApplyModeDStyleLootToModeESpecialEnemy(CharacterMainControl character, EnemySpawnContext ctx, Teams faction, bool promotedToBoss)
+        {
+            try
+            {
+                if (character == null || ctx == null || ctx.preset == null)
+                {
+                    return;
+                }
+
+                bool isDragonDescendant = IsDragonDescendantPreset(ctx.preset);
+                bool isBearPromotedMinion = faction == Teams.bear && promotedToBoss;
+                if (false && !isDragonDescendant && !isBearPromotedMinion)
+                {
+                    return;
+                }
+
+                InitializeModeDItemPools();
+                EnsureModeDGlobalItemPool();
+
+                float lootHealth = 100f;
+                try
+                {
+                    if (character.Health != null)
+                    {
+                        lootHealth = character.Health.MaxHealth;
+                    }
+                    else if (ctx.preset.baseHealth > 0f)
+                    {
+                        lootHealth = ctx.preset.baseHealth;
+                    }
+                }
+                catch {}
+
+                int virtualWave = promotedToBoss ? 5 : 10;
+                bool preserveBossArmor = !promotedToBoss;
+                EquipEnemyForModeD(character, virtualWave, lootHealth, preserveBossArmor);
+
+                DevLog("[ModeE] 宸插簲鐢ㄧ櫧鎵嬭捣瀹跺紡闅忔満鎺夎惤: " + character.gameObject.name
+                    + " (dragonDescendant=" + isDragonDescendant
+                    + ", bearPromotedMinion=" + isBearPromotedMinion
+                    + ", virtualWave=" + virtualWave + ")");
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] 搴旂敤鐧芥墜璧峰寮忛殢鏈烘帀钀藉け璐? " + e.Message);
             }
         }
 

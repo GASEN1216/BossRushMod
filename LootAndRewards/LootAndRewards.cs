@@ -92,6 +92,7 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, float> bossSpawnTimes = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, int> bossOriginalLootCounts = new Dictionary<CharacterMainControl, int>();
         private readonly HashSet<CharacterMainControl> countedDeadBosses = new HashSet<CharacterMainControl>();
+        private readonly HashSet<CharacterMainControl> trackedBossLootHooks = new HashSet<CharacterMainControl>();
 
         private bool infiniteHellMode = false;
         private int infiniteHellWaveIndex = 0;
@@ -108,6 +109,43 @@ namespace BossRush
         private static Dictionary<int, ItemValueCacheEntry> _itemValueCache = null;
         private static bool _itemValueCacheInitialized = false;
         private static bool _itemValueCacheInitializing = false;
+
+        private void RegisterBossRandomLootTracking(CharacterMainControl character, int originalLootCount = 3, float spawnTimeOffset = 1f)
+        {
+            try
+            {
+                if (character == null)
+                {
+                    return;
+                }
+
+                bossSpawnTimes[character] = Time.time + spawnTimeOffset;
+                bossOriginalLootCounts[character] = Mathf.Max(0, originalLootCount);
+                countedDeadBosses.Remove(character);
+
+                if (trackedBossLootHooks.Add(character))
+                {
+                    character.BeforeCharacterSpawnLootOnDead += (dmgInfo) => OnBossBeforeSpawnLoot(character, dmgInfo);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 注册随机掉落追踪失败: " + e.Message);
+            }
+        }
+
+        private void ClearBossRandomLootTracking(CharacterMainControl character)
+        {
+            if (character == null)
+            {
+                return;
+            }
+
+            bossSpawnTimes.Remove(character);
+            bossOriginalLootCounts.Remove(character);
+            countedDeadBosses.Remove(character);
+            trackedBossLootHooks.Remove(character);
+        }
 
         /// <summary>
         /// 物品价值缓存条目
@@ -1386,8 +1424,7 @@ namespace BossRush
                     }
                     catch {}
 
-                    bossSpawnTimes.Remove(bossMain);
-                    bossOriginalLootCounts.Remove(bossMain);
+                    ClearBossRandomLootTracking(bossMain);
                     return;
                 }
 
@@ -1464,8 +1501,7 @@ namespace BossRush
                 RandomizeBossLoot_LootAndRewards(bossMain, baseCount, highCount, killDuration, highChanceBonusByHealth);
 
                 // 清理已处理的Boss记录
-                bossSpawnTimes.Remove(bossMain);
-                bossOriginalLootCounts.Remove(bossMain);
+                ClearBossRandomLootTracking(bossMain);
             }
             catch (Exception e)
             {
