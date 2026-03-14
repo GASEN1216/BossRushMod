@@ -141,6 +141,8 @@ namespace BossRush
 
             Initialize();
             string sceneName = SceneManager.GetActiveScene().name;
+            bool useRandomSupportNpcSelection = mod.ShouldUseRandomSupportNpcSelection(sceneName);
+            List<INPCModule> supportNpcCandidates = useRandomSupportNpcSelection ? new List<INPCModule>() : null;
 
             int spawnCount = 0;
             for (int i = 0; i < modules.Count; i++)
@@ -160,6 +162,12 @@ namespace BossRush
 
                 if (!shouldSpawn) continue;
 
+                if (useRandomSupportNpcSelection && IsSupportNpcCandidate(module))
+                {
+                    supportNpcCandidates.Add(module);
+                    continue;
+                }
+
                 try
                 {
                     module.Spawn(mod);
@@ -168,6 +176,23 @@ namespace BossRush
                 catch (Exception e)
                 {
                     ModBehaviour.DevLog("[NPCRegistry] [WARNING] Spawn 异常: " + module.NpcId + " - " + e.Message);
+                }
+            }
+
+            if (useRandomSupportNpcSelection && supportNpcCandidates != null && supportNpcCandidates.Count > 0)
+            {
+                int randomIndex = UnityEngine.Random.Range(0, supportNpcCandidates.Count);
+                INPCModule selectedModule = supportNpcCandidates[randomIndex];
+
+                try
+                {
+                    selectedModule.Spawn(mod);
+                    spawnCount++;
+                    ModBehaviour.DevLog("[NPCRegistry] Random support NPC selected: " + selectedModule.NpcId + " [" + (randomIndex + 1) + "/" + supportNpcCandidates.Count + "]");
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[NPCRegistry] [WARNING] Random support NPC spawn failed: " + selectedModule.NpcId + " - " + e.Message);
                 }
             }
 
@@ -276,6 +301,16 @@ namespace BossRush
             }
 
             return false;
+        }
+
+        private static bool IsSupportNpcCandidate(INPCModule module)
+        {
+            if (module == null || string.IsNullOrEmpty(module.NpcId))
+            {
+                return false;
+            }
+
+            return !string.Equals(module.NpcId, "courier_awen", StringComparison.Ordinal);
         }
 
         private static bool RegisterInternal(INPCModule module)
@@ -390,7 +425,17 @@ namespace BossRush
             {
                 return false;
             }
-            return !string.IsNullOrEmpty(sceneName) && NPCSpawnConfig.HasGoblinConfig(sceneName);
+            if (mod == null || string.IsNullOrEmpty(sceneName))
+            {
+                return false;
+            }
+
+            if (mod.ShouldUseRandomSupportNpcSelection(sceneName))
+            {
+                return mod.IsValidBossRushArenaScene(sceneName);
+            }
+
+            return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
         }
 
         public void Spawn(ModBehaviour mod)
@@ -419,7 +464,17 @@ namespace BossRush
             {
                 return false;
             }
-            return !string.IsNullOrEmpty(sceneName) && NPCSpawnConfig.HasNurseConfig(sceneName);
+            if (mod == null || string.IsNullOrEmpty(sceneName))
+            {
+                return false;
+            }
+
+            if (mod.ShouldUseRandomSupportNpcSelection(sceneName))
+            {
+                return mod.IsValidBossRushArenaScene(sceneName);
+            }
+
+            return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
         }
 
         public void Spawn(ModBehaviour mod)

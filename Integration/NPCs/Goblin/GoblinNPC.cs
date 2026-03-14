@@ -69,8 +69,13 @@ namespace BossRush
                 }
             }, "ModBehaviour.GetGoblinSpawnPosition - 获取快递员位置");
             
-            // 从配置中查询哥布林刷新位置（传入快递员位置以避免重复）
-            if (NPCSpawnConfig.TryGetGoblinSpawnPosition(sceneName, out Vector3 position, courierPosition, 10f))
+            Vector3[] sharedSpawnPoints = GetSharedCommonNPCSpawnPointsForScene(sceneName);
+            if (NPCSpawnConfig.TryGetSharedSpawnPosition(
+                sharedSpawnPoints,
+                out Vector3 position,
+                new[] { courierPosition },
+                10f,
+                requireAvoidance: true))
             {
                 if (courierPosition != Vector3.zero)
                 {
@@ -79,15 +84,7 @@ namespace BossRush
                 }
                 return position;
             }
-            
-            // 未配置的场景使用随机刷新点
-            Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
-            if (spawnPoints != null && spawnPoints.Length > 0)
-            {
-                int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-                DevLog("[GoblinNPC] 随机刷新点 [" + randomIndex + "/" + spawnPoints.Length + "]");
-                return spawnPoints[randomIndex];
-            }
+
             return Vector3.zero;
         }
         
@@ -96,7 +93,12 @@ namespace BossRush
         /// </summary>
         private bool ShouldSpawnGoblin(string sceneName)
         {
-            return NPCSpawnConfig.HasGoblinConfig(sceneName);
+            if (ShouldUseRandomSupportNpcSelection(sceneName))
+            {
+                return IsValidBossRushArenaScene(sceneName);
+            }
+
+            return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
         }
         
         /// <summary>

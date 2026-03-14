@@ -1863,6 +1863,58 @@ namespace BossRush
             BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
             return mapConfig != null ? mapConfig.spawnPoints : null;
         }
+
+        /// <summary>
+        /// 公共 NPC 共享的刷新/漫步点池。
+        /// BossRush 相关模式下使用地图 Boss 刷新点池；普通模式才复用快递员普通模式点位。
+        /// </summary>
+        public static Vector3[] GetSharedCommonNPCSpawnPointsForScene(string sceneName)
+        {
+            ModBehaviour mod = Instance;
+            if (mod != null && mod.ShouldUseBossRushCommonNPCSpawnPoints(sceneName))
+            {
+                return GetSpawnPointsForScene(sceneName);
+            }
+
+            Vector3[] normalModePoints = NPCSpawnConfig.GetCourierNormalModeSpawnPoints(sceneName);
+            if (normalModePoints != null && normalModePoints.Length > 0)
+            {
+                return normalModePoints;
+            }
+
+            return GetSpawnPointsForScene(sceneName);
+        }
+
+        /// <summary>
+        /// 当前是否应让公共 NPC 使用 BossRush 地图刷怪点池。
+        /// </summary>
+        public bool ShouldUseBossRushCommonNPCSpawnPoints(string sceneName = null)
+        {
+            if (IsModeEActive)
+            {
+                return false;
+            }
+
+            if (!IsActive && !IsModeDActive && !IsBossRushArenaActive)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(sceneName))
+            {
+                sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            }
+
+            return IsValidBossRushArenaScene(sceneName);
+        }
+
+        /// <summary>
+        /// BossRush 激活且非 Mode E 时，仅随机刷新一个支援型公共 NPC。
+        /// </summary>
+        public bool ShouldUseRandomSupportNpcSelection(string sceneName = null)
+        {
+            return ShouldUseBossRushCommonNPCSpawnPoints(sceneName);
+        }
         
         /// <summary>
         /// 获取当前场景的刷新点

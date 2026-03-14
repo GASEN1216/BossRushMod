@@ -340,7 +340,7 @@ namespace BossRush
                 wanderTimer = 0f;
 
                 // 获取随机刷新点作为目标
-                Vector3 targetPos = GetRandomSpawnPoint();
+                Vector3 targetPos = GetSharedRandomSpawnPoint();
                 if (targetPos != Vector3.zero)
                 {
                     MoveToPos(targetPos);
@@ -523,15 +523,54 @@ namespace BossRush
         /// <summary>
         /// 获取随机的刷新点作为目标
         /// </summary>
+        private Vector3 GetSharedRandomSpawnPoint()
+        {
+            return NPCExceptionHandler.TryExecute(() =>
+            {
+                string targetScene = sceneName;
+                if (string.IsNullOrEmpty(targetScene))
+                {
+                    targetScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                }
+
+                Vector3[] spawnPoints = ModBehaviour.GetSharedCommonNPCSpawnPointsForScene(targetScene);
+                if (spawnPoints == null || spawnPoints.Length == 0)
+                {
+                    return Vector3.zero;
+                }
+
+                int maxAttempts = 5;
+                for (int i = 0; i < maxAttempts; i++)
+                {
+                    int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+                    Vector3 targetPos = CorrectTargetHeight(spawnPoints[randomIndex]);
+
+                    Vector3 diff = targetPos - transform.position;
+                    diff.y = 0;
+                    if (diff.magnitude > 3f)
+                    {
+                        return targetPos;
+                    }
+                }
+
+                return CorrectTargetHeight(spawnPoints[0]);
+            }, "GoblinMovement.GetSharedRandomSpawnPoint", Vector3.zero);
+        }
+
         private Vector3 GetRandomSpawnPoint()
         {
             return NPCExceptionHandler.TryExecute(() =>
             {
-                // 从 NPCSpawnConfig 获取哥布林刷新点
-                if (!string.IsNullOrEmpty(sceneName) &&
-                    NPCSpawnConfig.GoblinSpawnConfigs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
+                string targetScene = sceneName;
+                if (string.IsNullOrEmpty(targetScene))
                 {
-                    Vector3[] spawnPoints = config.spawnPoints;
+                    targetScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                }
+
+                // 从 NPCSpawnConfig 获取哥布林刷新点
+                Vector3[] spawnPoints = ModBehaviour.GetSharedCommonNPCSpawnPointsForScene(targetScene);
+                if (spawnPoints != null && spawnPoints.Length > 0)
+                {
                     if (spawnPoints != null && spawnPoints.Length > 0)
                     {
                         // 随机选择一个刷新点（排除当前位置附近的点）

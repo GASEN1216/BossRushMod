@@ -74,12 +74,13 @@ namespace BossRush
             }, "ModBehaviour.GetNurseSpawnPosition - 获取其他NPC位置");
             
             // 从配置中查询护士刷新位置
-            if (NPCSpawnConfig.TryGetNurseSpawnPosition(sceneName, out Vector3 position, courierPosition, goblinPosition, 10f))
+            Vector3[] sharedSpawnPoints = GetSharedCommonNPCSpawnPointsForScene(sceneName);
+            if (NPCSpawnConfig.TryGetSharedSpawnPosition(sharedSpawnPoints, out Vector3 position, new[] { courierPosition, goblinPosition }, 10f, requireAvoidance: true))
             {
                 return position;
             }
 
-            if (NPCSpawnConfig.HasNurseConfig(sceneName))
+            if (sharedSpawnPoints != null && sharedSpawnPoints.Length > 0)
             {
                 DevLog("[NurseNPC] 所有护士刷新点都与其他NPC过近，跳过本次生成");
                 return Vector3.zero;
@@ -101,7 +102,12 @@ namespace BossRush
         /// </summary>
         private bool ShouldSpawnNurse(string sceneName)
         {
-            return NPCSpawnConfig.HasNurseConfig(sceneName);
+            if (ShouldUseRandomSupportNpcSelection(sceneName))
+            {
+                return IsValidBossRushArenaScene(sceneName);
+            }
+
+            return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
         }
         
         /// <summary>

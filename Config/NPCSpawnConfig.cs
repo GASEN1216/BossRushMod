@@ -278,6 +278,20 @@ namespace BossRush
             return 0;
         }
 
+        /// <summary>
+        /// 获取快递员普通模式场景的原始刷新点数组。
+        /// 供其他公共 NPC 复用这套点池。
+        /// </summary>
+        public static Vector3[] GetCourierNormalModeSpawnPoints(string sceneName)
+        {
+            if (CourierNormalModeConfigs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
+            {
+                return config.spawnPoints;
+            }
+
+            return null;
+        }
+
         // ============================================================================
         // 哥布林NPC刷新点配置
         // ============================================================================
@@ -323,20 +337,17 @@ namespace BossRush
         /// <param name="avoidPositions">需要避开的位置列表（忽略 default(Vector3)）</param>
         /// <param name="minDistance">与其他NPC的最小距离，默认10米</param>
         /// <returns>是否找到配置</returns>
-        private static bool TryGetSpawnPosition(Dictionary<string, NPCSceneSpawnConfig> configs, string sceneName, out Vector3 position, Vector3[] avoidPositions, float minDistance = 10f, bool requireAvoidance = false)
+        private static bool TryGetSpawnPosition(Vector3[] spawnPoints, out Vector3 position, Vector3[] avoidPositions, float minDistance = 10f, bool requireAvoidance = false)
         {
             position = Vector3.zero;
 
-            if (!configs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
-                return false;
-
-            if (config.spawnPoints == null || config.spawnPoints.Length == 0)
+            if (spawnPoints == null || spawnPoints.Length == 0)
                 return false;
 
             if (avoidPositions != null && avoidPositions.Length > 0)
             {
                 _validPointsBuffer.Clear();
-                foreach (Vector3 point in config.spawnPoints)
+                foreach (Vector3 point in spawnPoints)
                 {
                     bool tooClose = false;
                     foreach (Vector3 avoid in avoidPositions)
@@ -366,15 +377,26 @@ namespace BossRush
             }
 
             // 没有避开位置或全部太近，使用默认随机选择
-            if (config.useRandomSpawn)
-            {
-                position = config.spawnPoints[Random.Range(0, config.spawnPoints.Length)];
-            }
-            else
-            {
-                position = config.spawnPoints[0];
-            }
+            position = spawnPoints[Random.Range(0, spawnPoints.Length)];
             return true;
+        }
+
+        private static bool TryGetSpawnPosition(Dictionary<string, NPCSceneSpawnConfig> configs, string sceneName, out Vector3 position, Vector3[] avoidPositions, float minDistance = 10f, bool requireAvoidance = false)
+        {
+            position = Vector3.zero;
+
+            if (!configs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
+                return false;
+
+            return TryGetSpawnPosition(config.spawnPoints, out position, avoidPositions, minDistance, requireAvoidance);
+        }
+
+        /// <summary>
+        /// 通用：从任意刷新点数组中选择一个位置，并可避开其他 NPC。
+        /// </summary>
+        public static bool TryGetSharedSpawnPosition(Vector3[] spawnPoints, out Vector3 position, Vector3[] avoidPositions, float minDistance = 10f, bool requireAvoidance = false)
+        {
+            return TryGetSpawnPosition(spawnPoints, out position, avoidPositions, minDistance, requireAvoidance);
         }
 
         // ============================================================================
@@ -386,8 +408,12 @@ namespace BossRush
         /// </summary>
         public static bool TryGetGoblinSpawnPosition(string sceneName, out Vector3 position, Vector3 courierPosition = default(Vector3), float minDistance = 10f)
         {
-            return TryGetSpawnPosition(GoblinSpawnConfigs, sceneName, out position,
-                new[] { courierPosition }, minDistance);
+            return TryGetSharedSpawnPosition(
+                GetCourierNormalModeSpawnPoints(sceneName),
+                out position,
+                new[] { courierPosition },
+                minDistance,
+                requireAvoidance: true);
         }
 
         /// <summary>
@@ -397,7 +423,7 @@ namespace BossRush
         /// <returns>是否有配置</returns>
         public static bool HasGoblinConfig(string sceneName)
         {
-            return GoblinSpawnConfigs.ContainsKey(sceneName);
+            return HasCourierNormalModeConfig(sceneName);
         }
 
         /// <summary>
@@ -407,11 +433,7 @@ namespace BossRush
         /// <returns>刷新点数量，未配置返回0</returns>
         public static int GetGoblinSpawnPointCount(string sceneName)
         {
-            if (GoblinSpawnConfigs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
-            {
-                return config.spawnPoints?.Length ?? 0;
-            }
-            return 0;
+            return GetCourierNormalModeSpawnPointCount(sceneName);
         }
 
         // ============================================================================
@@ -453,8 +475,12 @@ namespace BossRush
         /// </summary>
         public static bool TryGetNurseSpawnPosition(string sceneName, out Vector3 position, Vector3 courierPosition = default(Vector3), Vector3 goblinPosition = default(Vector3), float minDistance = 10f)
         {
-            return TryGetSpawnPosition(NurseSpawnConfigs, sceneName, out position,
-                new[] { courierPosition, goblinPosition }, minDistance, requireAvoidance: true);
+            return TryGetSharedSpawnPosition(
+                GetCourierNormalModeSpawnPoints(sceneName),
+                out position,
+                new[] { courierPosition, goblinPosition },
+                minDistance,
+                requireAvoidance: true);
         }
 
         /// <summary>
@@ -464,7 +490,7 @@ namespace BossRush
         /// <returns>是否有配置</returns>
         public static bool HasNurseConfig(string sceneName)
         {
-            return NurseSpawnConfigs.ContainsKey(sceneName);
+            return HasCourierNormalModeConfig(sceneName);
         }
 
         /// <summary>
@@ -474,11 +500,7 @@ namespace BossRush
         /// <returns>刷新点数量，未配置返回0</returns>
         public static int GetNurseSpawnPointCount(string sceneName)
         {
-            if (NurseSpawnConfigs.TryGetValue(sceneName, out NPCSceneSpawnConfig config))
-            {
-                return config.spawnPoints?.Length ?? 0;
-            }
-            return 0;
+            return GetCourierNormalModeSpawnPointCount(sceneName);
         }
     }
 }

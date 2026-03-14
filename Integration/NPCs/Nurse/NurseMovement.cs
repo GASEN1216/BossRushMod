@@ -159,7 +159,7 @@ namespace BossRush
             if (wanderTimer >= WANDER_INTERVAL)
             {
                 wanderTimer = 0f;
-                Vector3 targetPos = GetRandomSpawnPoint();
+                Vector3 targetPos = GetSharedRandomSpawnPoint();
                 if (targetPos != Vector3.zero)
                 {
                     MoveToPos(targetPos);
@@ -286,26 +286,17 @@ namespace BossRush
                 "[NurseNPC]");
         }
 
-        private Vector3 GetRandomSpawnPoint()
+        private Vector3 GetSharedRandomSpawnPoint()
         {
             try
             {
-                string scene = sceneName;
-                if (string.IsNullOrEmpty(scene))
+                string targetScene = sceneName;
+                if (string.IsNullOrEmpty(targetScene))
                 {
-                    scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                    targetScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                 }
 
-                Vector3[] spawnPoints = null;
-                if (NPCSpawnConfig.NurseSpawnConfigs.TryGetValue(scene, out NPCSceneSpawnConfig config))
-                {
-                    spawnPoints = config.spawnPoints;
-                }
-
-                if (spawnPoints == null || spawnPoints.Length == 0)
-                {
-                    spawnPoints = ModBehaviour.Instance != null ? ModBehaviour.Instance.GetCurrentSceneSpawnPoints() : null;
-                }
+                Vector3[] spawnPoints = ModBehaviour.GetSharedCommonNPCSpawnPointsForScene(targetScene);
 
                 if (spawnPoints == null || spawnPoints.Length == 0)
                 {
@@ -336,6 +327,11 @@ namespace BossRush
                 ModBehaviour.DevLog("[NurseNPC] [WARNING] 获取随机目标点失败: " + e.Message);
                 return Vector3.zero;
             }
+        }
+
+        private Vector3 GetRandomSpawnPoint()
+        {
+            return GetSharedRandomSpawnPoint();
         }
 
         private Vector3 CorrectTargetHeight(Vector3 point)
