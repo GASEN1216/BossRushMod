@@ -413,8 +413,9 @@ namespace BossRush
                     if (ids != null) modeDAmmoPool.AddRange(ids);
                 }
 
-                // 医疗品池（通过名字查找 Medical/Consumable Tag）
-                Duckov.Utilities.Tag medicalTag = FindTagByNameInInit("Medical");
+                // 医疗品池（优先使用原版 Medic Tag，兼容旧 Medical/Consumable/Healing）
+                Duckov.Utilities.Tag medicalTag = FindTagByNameInInit("Medic");
+                if (medicalTag == null) medicalTag = FindTagByNameInInit("Medical");
                 if (medicalTag == null) medicalTag = FindTagByNameInInit("Consumable");
                 if (medicalTag == null) medicalTag = FindTagByNameInInit("Healing");
                 if (medicalTag != null)

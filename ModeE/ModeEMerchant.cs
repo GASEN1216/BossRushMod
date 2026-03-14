@@ -36,6 +36,12 @@ namespace BossRush
         /// <summary>Mode E 神秘商人各分类商店列表（清理用）</summary>
         private List<StockShop> modeEMerchantShops = new List<StockShop>();
 
+        /// <summary>Mode E 医疗品商店需排除的原版物品 TypeID</summary>
+        private static readonly HashSet<int> modeEMedicalShopExcludedIds = new HashSet<int>
+        {
+            88, 89, 136, 331, 1428, 1429
+        };
+
         /// <summary>Mode E 神秘商人主交互引用（用于 Harmony patch 识别）</summary>
         private InteractableBase modeEMerchantMainInteract = null;
 
@@ -338,8 +344,9 @@ namespace BossRush
                     categories.Add(System.Tuple.Create(
                         new List<Duckov.Utilities.Tag> { maskTag },
                         "BossRush_ModeE_Shop_Mask", "Mask"));
-                // 医疗品（含注射器）
-                var medTag = FindTagByNameInInit("Medical");
+                // 医疗品（含注射器，优先使用原版 Medic Tag）
+                var medTag = FindTagByNameInInit("Medic");
+                if (medTag == null) medTag = FindTagByNameInInit("Medical");
                 if (medTag == null) medTag = FindTagByNameInInit("Consumable");
                 if (medTag == null) medTag = FindTagByNameInInit("Healing");
                 if (medTag != null)
@@ -376,6 +383,14 @@ namespace BossRush
                     // 多 Tag 合并搜索（取并集）
                     var allIds = ModeESearchItemsMultiTag(tags, emptyExclude);
                     if (allIds == null || allIds.Count == 0) continue;
+
+                    if (suffix == "Medical")
+                    {
+                        int removedCount = allIds.RemoveAll(id => modeEMedicalShopExcludedIds.Contains(id));
+                        if (allIds.Count == 0) continue;
+                        if (removedCount > 0)
+                            DevLog("[ModeE] 医疗品商店已排除 " + removedCount + " 个黑名单物品");
+                    }
 
                     // 创建子 GameObject 挂载商店和交互
                     GameObject shopObj = new GameObject("ModeEShop_" + suffix);

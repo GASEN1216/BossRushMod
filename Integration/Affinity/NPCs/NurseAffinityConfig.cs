@@ -181,7 +181,8 @@ namespace BossRush
                     _positiveTags = new HashSet<string>
                     {
                         "Consumable",       // 消耗品（药草、食物等）
-                        "Medical"           // 医疗物品
+                        "Medic",            // 原版医疗物品
+                        "Medical"           // 兼容旧标签写法
                     };
                 }
                 return _positiveTags;
