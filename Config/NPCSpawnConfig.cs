@@ -166,6 +166,43 @@ namespace BossRush
             new Vector3(268.68f, 0.02f, 220.83f)
         };
 
+        /// <summary>
+        /// SnowMilitaryBase 场景快递员刷新点（普通模式）
+        /// 使用实机记录的世界坐标，同时作为公共 NPC 的刷新/漫步点池。
+        /// </summary>
+        private static readonly Vector3[] SnowMilitaryBaseCourierSpawnPoints = new Vector3[]
+        {
+            new Vector3(281.01f, 0.00f, 555.24f),
+            new Vector3(556.58f, 0.00f, 701.25f),
+            new Vector3(561.71f, 0.00f, 891.71f),
+            new Vector3(741.35f, 0.00f, 894.35f),
+            new Vector3(747.30f, 0.00f, 761.26f),
+            new Vector3(866.43f, 0.00f, 736.83f),
+            new Vector3(727.82f, 0.00f, 449.39f),
+            new Vector3(508.84f, 0.00f, 414.85f),
+            new Vector3(480.59f, 0.00f, 265.95f),
+            new Vector3(885.59f, 0.00f, 137.46f)
+        };
+
+        /// <summary>
+        /// SnowMilitaryBase_ColdStorage 场景快递员刷新点（普通模式）
+        /// 使用实机记录的世界坐标，同时作为公共 NPC 的刷新/漫步点池。
+        /// </summary>
+        private static readonly Vector3[] SnowMilitaryBaseColdStorageCourierSpawnPoints = new Vector3[]
+        {
+            new Vector3(-102.48f, 0.00f, -107.58f),
+            new Vector3(-68.09f, 0.00f, -85.08f),
+            new Vector3(-44.79f, 0.00f, -43.36f),
+            new Vector3(-20.33f, 0.00f, -32.90f),
+            new Vector3(10.55f, 0.00f, -46.59f),
+            new Vector3(-23.30f, 0.00f, -82.00f),
+            new Vector3(-38.48f, 0.00f, -106.42f),
+            new Vector3(-44.24f, 0.00f, -127.44f),
+            new Vector3(-16.48f, 0.00f, -118.12f),
+            new Vector3(-16.79f, 0.00f, -135.25f),
+            new Vector3(-40.46f, 0.00f, -146.99f)
+        };
+
         // 未来可添加其他场景的刷新点数组，例如：
         // private static readonly Vector3[] FarmCourierSpawnPoints = new Vector3[] { ... };
 
@@ -203,6 +240,14 @@ namespace BossRush
             {
                 "Level_ChallengeSnow",
                 new NPCSceneSpawnConfig("Level_ChallengeSnow", ChallengeSnowCourierSpawnPoints, true)
+            },
+            {
+                "Level_SnowMilitaryBase",
+                new NPCSceneSpawnConfig("Level_SnowMilitaryBase", SnowMilitaryBaseCourierSpawnPoints, true)
+            },
+            {
+                "Level_SnowMilitaryBase_ColdStorage",
+                new NPCSceneSpawnConfig("Level_SnowMilitaryBase_ColdStorage", SnowMilitaryBaseColdStorageCourierSpawnPoints, true)
             }
             // 未来可在此添加其他场景配置
         };
