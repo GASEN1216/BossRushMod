@@ -233,6 +233,7 @@ namespace BossRush
                 modeEFactionDeathCount.Clear();
                 modeEFactionAliveMap.Clear();
                 ClearEnemyRecoveryMonitorState();
+                ClearPendingBossAggroQueue();
 
                 // 重置龙裔/龙王全局限制标记
                 modeEDragonDescendantSpawned = false;
@@ -362,6 +363,7 @@ namespace BossRush
                 // 回调中再对即将死亡的敌人执行无意义的 ApplyFactionDeathScaling
                 modeEActive = false;
                 ClearEnemyRecoveryMonitorState();
+                ClearPendingBossAggroQueue();
 
                 // 恢复玩家阵营
                 try

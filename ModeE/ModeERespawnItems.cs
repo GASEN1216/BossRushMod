@@ -36,6 +36,31 @@ namespace BossRush
             Teams.wolf
         };
 
+        private const int MODE_E_AGGRO_BATCH_SIZE = 10;
+
+        private const int MODE_E_AGGRO_BATCH_INTERVAL_MS = 1000;
+
+        private const float MODE_E_BOSSCALL_RANGE = 50f;
+
+        private const float MODE_E_BOSSCALL_TRACE_DISTANCE = 80f;
+
+        private const float MODE_E_ALL_KINGS_TRACE_DISTANCE = 9999f;
+
+        private const float MODE_E_FORCED_AGGRO_MIN_FORGET_TIME = 30f;
+
+        private const float MODE_E_FORCED_AGGRO_REPATH_MIN_DISTANCE = 2f;
+
+        private const bool MODE_E_LOG_PER_ENEMY_WAKE = false;
+
+        private readonly Queue<CharacterMainControl> modeEPendingAggroQueue = new Queue<CharacterMainControl>();
+
+        private readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
+            = new Dictionary<CharacterMainControl, float>();
+
+        private bool modeEAggroQueueRunning = false;
+
+        private int modeEAggroQueueEpoch = 0;
+
         #endregion
 
         #region 刷怪点收集方法
@@ -364,8 +389,189 @@ namespace BossRush
             return enemies;
         }
 
-        private bool ForceBossAggroToPlayer(CharacterMainControl enemy, CharacterMainControl player, float traceDistance)
+        private bool TryForceActivateModeEEnemy(CharacterMainControl enemy, out bool wokeInactiveEnemy)
         {
+            wokeInactiveEnemy = false;
+            if (!IsValidModeEEnemyTarget(enemy))
+            {
+                return false;
+            }
+
+            try
+            {
+                GameObject enemyObject = enemy.gameObject;
+                if (enemyObject == null)
+                {
+                    return false;
+                }
+
+                bool wasInactive = !enemyObject.activeSelf || !enemyObject.activeInHierarchy;
+                wokeInactiveEnemy = wasInactive;
+
+                try
+                {
+                    Duckov.Utilities.SetActiveByPlayerDistance.Unregister(enemyObject, enemyObject.scene.buildIndex);
+                }
+                catch { }
+
+                try
+                {
+                    enemy.SetSleeping(false);
+                }
+                catch { }
+
+                if (!enemyObject.activeSelf)
+                {
+                    enemyObject.SetActive(true);
+                }
+
+                AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>(true);
+                if (ai != null && !ai.enabled)
+                {
+                    ai.enabled = true;
+                }
+
+                if (MODE_E_LOG_PER_ENEMY_WAKE && wasInactive)
+                {
+                    DevLog("[ModeE] 已强制激活远距离休眠Boss: " + enemyObject.name);
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] TryForceActivateModeEEnemy 失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private void ClearPendingBossAggroQueue()
+        {
+            modeEAggroQueueEpoch++;
+            modeEPendingAggroQueue.Clear();
+            modeEPendingAggroTraceDistance.Clear();
+            modeEAggroQueueRunning = false;
+        }
+
+        private int QueueBossAggroToPlayer(List<CharacterMainControl> enemies, float traceDistance)
+        {
+            if (enemies == null || enemies.Count == 0)
+            {
+                return 0;
+            }
+
+            int queuedCount = 0;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                CharacterMainControl enemy = enemies[i];
+                if (!IsValidModeEEnemyTarget(enemy))
+                {
+                    continue;
+                }
+
+                float existingTraceDistance;
+                if (modeEPendingAggroTraceDistance.TryGetValue(enemy, out existingTraceDistance))
+                {
+                    if (traceDistance > existingTraceDistance)
+                    {
+                        modeEPendingAggroTraceDistance[enemy] = traceDistance;
+                    }
+                    continue;
+                }
+
+                modeEPendingAggroTraceDistance[enemy] = traceDistance;
+                modeEPendingAggroQueue.Enqueue(enemy);
+                queuedCount++;
+            }
+
+            if (!modeEAggroQueueRunning && modeEPendingAggroQueue.Count > 0)
+            {
+                ProcessPendingBossAggroQueue().Forget();
+            }
+
+            return queuedCount;
+        }
+
+        private async UniTaskVoid ProcessPendingBossAggroQueue()
+        {
+            if (modeEAggroQueueRunning)
+            {
+                return;
+            }
+
+            int queueEpoch = modeEAggroQueueEpoch;
+            int batchIndex = 0;
+            modeEAggroQueueRunning = true;
+            try
+            {
+                while (modeEActive && modeEAggroQueueEpoch == queueEpoch && modeEPendingAggroQueue.Count > 0)
+                {
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player == null || player.mainDamageReceiver == null)
+                    {
+                        break;
+                    }
+
+                    batchIndex++;
+                    int processedThisBatch = 0;
+                    int wokeInactiveThisBatch = 0;
+                    int failedThisBatch = 0;
+                    while (processedThisBatch < MODE_E_AGGRO_BATCH_SIZE && modeEPendingAggroQueue.Count > 0)
+                    {
+                        CharacterMainControl enemy = modeEPendingAggroQueue.Dequeue();
+
+                        float traceDistance;
+                        if (!modeEPendingAggroTraceDistance.TryGetValue(enemy, out traceDistance))
+                        {
+                            continue;
+                        }
+
+                        modeEPendingAggroTraceDistance.Remove(enemy);
+                        bool wokeInactiveEnemy;
+                        if (ForceBossAggroToPlayer(enemy, player, traceDistance, out wokeInactiveEnemy))
+                        {
+                            if (wokeInactiveEnemy)
+                            {
+                                wokeInactiveThisBatch++;
+                            }
+                        }
+                        else
+                        {
+                            failedThisBatch++;
+                        }
+
+                        processedThisBatch++;
+                    }
+
+                    LogModeEAggroBatch(batchIndex, processedThisBatch, wokeInactiveThisBatch, failedThisBatch, modeEPendingAggroQueue.Count);
+
+                    if (modeEPendingAggroQueue.Count > 0)
+                    {
+                        await UniTask.Delay(MODE_E_AGGRO_BATCH_INTERVAL_MS);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] ProcessPendingBossAggroQueue failed: " + e.Message);
+            }
+            finally
+            {
+                if (modeEAggroQueueEpoch == queueEpoch)
+                {
+                    modeEAggroQueueRunning = false;
+
+                    if (!modeEActive)
+                    {
+                        ClearPendingBossAggroQueue();
+                    }
+                }
+            }
+        }
+
+        private bool ForceBossAggroToPlayer(CharacterMainControl enemy, CharacterMainControl player, float traceDistance, out bool wokeInactiveEnemy)
+        {
+            wokeInactiveEnemy = false;
             if (!IsValidModeEEnemyTarget(enemy) || player == null || player.mainDamageReceiver == null)
             {
                 return false;
@@ -373,7 +579,12 @@ namespace BossRush
 
             try
             {
-                AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>();
+                if (!TryForceActivateModeEEnemy(enemy, out wokeInactiveEnemy))
+                {
+                    return false;
+                }
+
+                AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>(true);
                 if (ai == null)
                 {
                     return false;
@@ -384,11 +595,14 @@ namespace BossRush
 
                 // 设置 forceTracePlayerDistance 确保持续追踪
                 ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, traceDistance);
+                ai.traceTargetChance = 1f;
+                ai.forgetTime = Mathf.Max(ai.forgetTime, MODE_E_FORCED_AGGRO_MIN_FORGET_TIME);
 
                 // 设置目标和通知信息
                 ai.SetTarget(player.mainDamageReceiver.transform);
                 ai.SetNoticedToTarget(player.mainDamageReceiver);
                 ai.noticed = true;
+                PrimeBossChaseToPlayer(ai, player);
 
                 return true;
             }
@@ -399,28 +613,53 @@ namespace BossRush
             }
         }
 
-        private int ForceBossAggroToPlayer(List<CharacterMainControl> enemies, float traceDistance)
+        private void LogModeEAggroBatch(int batchIndex, int processedCount, int wokeInactiveCount, int failedCount, int remainingCount)
         {
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null) return 0;
-
-            int affected = 0;
-            for (int i = 0; i < enemies.Count; i++)
+            if (processedCount <= 0 && failedCount <= 0)
             {
-                if (ForceBossAggroToPlayer(enemies[i], player, traceDistance))
-                {
-                    affected++;
-                }
+                return;
             }
 
-            return affected;
+            DevLog(
+                "[ModeE] Boss仇恨批处理 #" + batchIndex +
+                ": handled=" + processedCount +
+                ", woke=" + wokeInactiveCount +
+                ", failed=" + failedCount +
+                ", remaining=" + remainingCount
+            );
+        }
+
+        private void PrimeBossChaseToPlayer(AICharacterController ai, CharacterMainControl player)
+        {
+            if (ai == null || player == null)
+            {
+                return;
+            }
+
+            CharacterMainControl enemy = ai.CharacterMainControl;
+            if (enemy == null)
+            {
+                return;
+            }
+
+            enemy.SetRunInput(true);
+
+            Vector3 playerPosition = player.transform.position;
+            Vector3 chaseOffset = playerPosition - enemy.transform.position;
+            chaseOffset.y = 0f;
+            if (chaseOffset.sqrMagnitude <= MODE_E_FORCED_AGGRO_REPATH_MIN_DISTANCE * MODE_E_FORCED_AGGRO_REPATH_MIN_DISTANCE)
+            {
+                return;
+            }
+
+            ai.MoveToPos(playerPosition);
         }
 
         public void UseBosscallWhistle()
         {
             try
             {
-                List<CharacterMainControl> nearbyEnemies = GetEnemyBossesInRange(50f);
+                List<CharacterMainControl> nearbyEnemies = GetEnemyBossesInRange(MODE_E_BOSSCALL_RANGE);
                 if (nearbyEnemies.Count == 0)
                 {
                     // 使用横幅提示玩家
@@ -431,7 +670,7 @@ namespace BossRush
                     return;
                 }
 
-                int affected = ForceBossAggroToPlayer(nearbyEnemies, 80f);
+                int affected = QueueBossAggroToPlayer(nearbyEnemies, MODE_E_BOSSCALL_TRACE_DISTANCE);
                 if (affected <= 0)
                 {
                     // 使用横幅提示玩家
@@ -443,6 +682,7 @@ namespace BossRush
                 }
 
                 PlaySmokeVFX();
+                ShowMessage(L10n.T("Boss 将按每秒10只分批苏醒并追击你。", "Bosses will wake and aggro in batches of 10 per second."));
                 ShowBigBanner(L10n.T(
                     "<color=yellow>猎王响哨</color>已吹响！附近 <color=red>" + affected + "</color> 名敌对Boss正朝你袭来！",
                     "<color=yellow>Bosscall Whistle</color> blown! <color=red>" + affected + "</color> nearby enemy Bosses are coming for you!"
@@ -469,7 +709,7 @@ namespace BossRush
                     return;
                 }
 
-                int affected = ForceBossAggroToPlayer(allEnemies, 9999f);
+                int affected = QueueBossAggroToPlayer(allEnemies, MODE_E_ALL_KINGS_TRACE_DISTANCE);
                 if (affected <= 0)
                 {
                     // 使用横幅提示玩家
@@ -481,6 +721,7 @@ namespace BossRush
                 }
 
                 PlaySmokeVFX();
+                ShowMessage(L10n.T("Boss 将按每秒10只分批苏醒并追击你。", "Bosses will wake and aggro in batches of 10 per second."));
                 ShowBigBanner(L10n.T(
                     "<color=red>血狩烽火</color>已点燃！全图 <color=red>" + affected + "</color> 名敌对Boss都将你视作首要猎物！",
                     "<color=red>Bloodhunt Beacon</color> ignited! <color=red>" + affected + "</color> enemy Bosses across the map now hunt you first!"
