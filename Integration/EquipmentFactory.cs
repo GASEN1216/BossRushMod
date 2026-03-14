@@ -642,6 +642,7 @@ namespace BossRush
                         if (equipType == EquipmentType.Gun)
                         {
                             // 武器处理
+                            DragonKingBossGunConfig.TryConfigure(itemPrefab, baseName);
                             ProcessGunItem(itemPrefab, baseName, modelAgent, gunSettingsByBaseName, buffsByPrefix, bulletsByPrefix);
                             loadedGuns[itemPrefab.TypeID] = itemPrefab;
                         }
@@ -793,7 +794,7 @@ namespace BossRush
             }
             
             // 自动关联 Bullet（如果未配置）
-            if (gunSetting.bulletPfb == null)
+            if (gunSetting.bulletPfb == null && itemPrefab.TypeID != DragonKingBossGunConfig.WeaponTypeId)
             {
                 Projectile matchedBullet;
                 if (bulletsByPrefix.TryGetValue(weaponPrefix, out matchedBullet))

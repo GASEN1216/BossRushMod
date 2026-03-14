@@ -896,9 +896,8 @@ namespace BossRush
             int equipCount = EquipmentFactory.LoadAllEquipment();
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
 
-            DragonKingBossGunConfig.InitializeRuntimePrefab();
             DragonKingBossGunRuntime.InitializeRuntime();
-            DragonKingBossGunRuntime.WarmupDragonDescendantProjectileCache();
+            DragonKingBossGunRuntime.WarmupProjectileCache();
 
             try
             {

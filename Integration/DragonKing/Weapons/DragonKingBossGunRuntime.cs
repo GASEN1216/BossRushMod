@@ -19,6 +19,7 @@ namespace BossRush
         private const float ProcessedHitCleanupInterval = 2f;
         private const int PhysicsBufferSize = 64;
         private const float GroundImpactDotThreshold = 0.45f;
+        private const string BossRedPresetNameKey = "Cname_Boss_Red";
 
         internal static readonly Collider[] SharedColliderBuffer = new Collider[PhysicsBufferSize];
         internal static readonly HashSet<int> SharedReceiverIdSet = new HashSet<int>();
@@ -68,8 +69,7 @@ namespace BossRush
         private static readonly Dictionary<int, BulletTypeInfo> reusableBulletTypeDict = new Dictionary<int, BulletTypeInfo>();
         private static readonly Dictionary<int, BulletTypeInfo> emptyBulletTypeDict = new Dictionary<int, BulletTypeInfo>();
         private static readonly MethodInfo presetGenerateItemsMethod = typeof(CharacterRandomPreset).GetMethod("GenerateItems", BindingFlags.Instance | BindingFlags.NonPublic);
-        private static bool dragonDescendantProjectilePreloadStarted;
-        private static bool dragonDescendantProjectilePreloadCompleted;
+        private static bool bossRedProjectileWarmupStarted;
 
         public static void InitializeRuntime()
         {
@@ -82,15 +82,15 @@ namespace BossRush
             hurtEventSubscribed = true;
         }
 
-        public static void WarmupDragonDescendantProjectileCache()
+        public static void WarmupProjectileCache()
         {
-            if (dragonDescendantProjectilePreloadStarted)
+            if (cachedDragonProjectile != null || bossRedProjectileWarmupStarted)
             {
                 return;
             }
 
-            dragonDescendantProjectilePreloadStarted = true;
-            PreloadDragonDescendantProjectileAsync().Forget();
+            bossRedProjectileWarmupStarted = true;
+            PreloadBossRedProjectileAsync().Forget();
         }
 
         public static void CleanupRuntime()
@@ -109,14 +109,13 @@ namespace BossRush
             cachedExplosionFx = null;
             shotSequence = 0;
             lastCleanupTime = 0f;
-            dragonDescendantProjectilePreloadStarted = false;
-            dragonDescendantProjectilePreloadCompleted = false;
+            bossRedProjectileWarmupStarted = false;
             lastAppliedProfileId = default(DragonKingBossGunProfileId);
             hasAppliedProfile = false;
             DragonKingBossGunProjectileAgent.ClearStaticCaches();
         }
 
-        private static async UniTaskVoid PreloadDragonDescendantProjectileAsync()
+        private static async UniTaskVoid PreloadBossRedProjectileAsync()
         {
             try
             {
@@ -130,30 +129,33 @@ namespace BossRush
                     await UniTask.DelayFrame(1);
                 }
 
-                CharacterRandomPreset preset = FindDragonDescendantBasePreset();
+                CharacterRandomPreset preset = FindBossRedBasePreset();
                 if (preset == null)
                 {
-                    ModBehaviour.DevLog("[DragonKingBossGun] 未找到 Cname_Boss_Red 预设，无法预缓存龙裔二阶段弹幕");
+                    bossRedProjectileWarmupStarted = false;
+                    ModBehaviour.DevLog("[DragonKingBossGun] 未找到 Cname_Boss_Red 预设，无法绑定 Boss_Red 弹幕");
                     return;
                 }
 
-                Projectile projectile = await ExtractProjectileFromPresetAsync(preset);
+                Projectile projectile = await ExtractBossRedProjectileAsync(preset);
                 if (projectile == null)
                 {
-                    ModBehaviour.DevLog("[DragonKingBossGun] 预缓存龙裔二阶段弹幕失败：未解析到原始枪械子弹");
+                    bossRedProjectileWarmupStarted = false;
+                    ModBehaviour.DevLog("[DragonKingBossGun] 解析 Boss_Red 弹幕失败：未找到原始枪械子弹");
                     return;
                 }
 
-                CacheBaseProjectile(projectile, "[DragonKingBossGun] 启动预缓存龙裔二阶段弹幕基底: ");
-                dragonDescendantProjectilePreloadCompleted = true;
+                CacheBaseProjectile(projectile, "[DragonKingBossGun] 预缓存 Boss_Red 弹幕基底: ");
+                ApplyBossRedProjectileToLoadedGun(projectile);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonKingBossGun] 预缓存龙裔二阶段弹幕异常: " + e.Message);
+                bossRedProjectileWarmupStarted = false;
+                ModBehaviour.DevLog("[DragonKingBossGun] 预缓存 Boss_Red 弹幕异常: " + e.Message);
             }
         }
 
-        private static CharacterRandomPreset FindDragonDescendantBasePreset()
+        private static CharacterRandomPreset FindBossRedBasePreset()
         {
             CharacterRandomPreset[] presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
             for (int i = 0; i < presets.Length; i++)
@@ -164,7 +166,7 @@ namespace BossRush
                     continue;
                 }
 
-                if (preset.nameKey == DragonDescendantConfig.BasePresetNameKey || preset.nameKey == "Cname_Boss_Red")
+                if (preset.nameKey == BossRedPresetNameKey)
                 {
                     return preset;
                 }
@@ -188,7 +190,7 @@ namespace BossRush
             return null;
         }
 
-        private static async UniTask<Projectile> ExtractProjectileFromPresetAsync(CharacterRandomPreset preset)
+        private static async UniTask<Projectile> ExtractBossRedProjectileAsync(CharacterRandomPreset preset)
         {
             if (preset == null || presetGenerateItemsMethod == null)
             {
@@ -262,6 +264,21 @@ namespace BossRush
                         UnityEngine.Object.Destroy(item.gameObject);
                     }
                 }
+            }
+        }
+
+        private static void ApplyBossRedProjectileToLoadedGun(Projectile projectile)
+        {
+            if (projectile == null)
+            {
+                return;
+            }
+
+            Item loadedGun = EquipmentFactory.GetLoadedGun(DragonKingBossGunConfig.WeaponTypeId);
+            ItemSetting_Gun gunSetting = loadedGun != null ? loadedGun.GetComponent<ItemSetting_Gun>() : null;
+            if (gunSetting != null)
+            {
+                gunSetting.bulletPfb = projectile;
             }
         }
 
@@ -604,46 +621,60 @@ namespace BossRush
             return traceTargetField.GetValue(gun) as CharacterMainControl;
         }
 
-        internal static Projectile GetDragonProjectile(Projectile fallback = null)
+        private static Projectile ResolveBaseProjectile()
         {
-            if (cachedDragonProjectile != null)
+            if (cachedDragonProjectile == null)
             {
-                return cachedDragonProjectile;
+                WarmupProjectileCache();
+
+                Projectile fallbackProjectile = TryResolveFallbackProjectile();
+                if (fallbackProjectile != null)
+                {
+                    CacheBaseProjectile(fallbackProjectile, "[DragonKingBossGun] 使用同步兜底弹幕基底: ");
+                    ApplyBossRedProjectileToLoadedGun(fallbackProjectile);
+                }
+            }
+            else
+            {
+                ApplyBossRedProjectileToLoadedGun(cachedDragonProjectile);
+            }
+
+            return cachedDragonProjectile;
+        }
+
+        internal static Projectile GetDragonProjectile()
+        {
+            return ResolveBaseProjectile();
+        }
+
+        private static Projectile TryResolveFallbackProjectile()
+        {
+            Item loadedGun = EquipmentFactory.GetLoadedGun(DragonKingBossGunConfig.WeaponTypeId);
+            ItemSetting_Gun gunSetting = loadedGun != null ? loadedGun.GetComponent<ItemSetting_Gun>() : null;
+            if (gunSetting != null && gunSetting.bulletPfb != null)
+            {
+                return gunSetting.bulletPfb;
             }
 
             Projectile projectile = ModBehaviour.GetCachedDragonDescendantPhase2BulletPrefab();
             if (projectile != null)
             {
-                CacheBaseProjectile(projectile, "[DragonKingBossGun] 使用龙裔二阶段原始弹幕基底: ");
-                return cachedDragonProjectile;
+                return projectile;
             }
 
-            if (projectile == null)
+            projectile = EquipmentFactory.GetLoadedBullet("dragon");
+            if (projectile != null)
             {
-                projectile = EquipmentFactory.GetLoadedBullet("dragon");
-            }
-            if (projectile == null)
-            {
-                projectile = EquipmentFactory.GetLoadedBullet("Dragon");
+                return projectile;
             }
 
-            if (projectile == null)
+            projectile = EquipmentFactory.GetLoadedBullet("Dragon");
+            if (projectile != null)
             {
-                Item sourceGun = EquipmentFactory.GetLoadedGun(DragonKingBossGunConfig.SourceWeaponTypeId);
-                ItemSetting_Gun sourceSetting = sourceGun != null ? sourceGun.GetComponent<ItemSetting_Gun>() : null;
-                if (sourceSetting != null)
-                {
-                    projectile = sourceSetting.bulletPfb;
-                }
+                return projectile;
             }
 
-            if (projectile == null)
-            {
-                projectile = fallback != null ? fallback : GameplayDataSettings.Prefabs.DefaultBullet;
-            }
-
-            CacheBaseProjectile(projectile, null);
-            return cachedDragonProjectile;
+            return GameplayDataSettings.Prefabs.DefaultBullet;
         }
 
         private static void CacheBaseProjectile(Projectile projectile, string logPrefix)
@@ -964,10 +995,15 @@ namespace BossRush
             DragonKingBossGunHitStage hitStage,
             int sourceReceiverId = -1)
         {
-            Projectile baseProjectile = GetDragonProjectile(gun != null && gun.GunItemSetting != null ? gun.GunItemSetting.bulletPfb : null);
+            Projectile baseProjectile = GetDragonProjectile();
             if (baseProjectile == null || LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
             {
                 return null;
+            }
+
+            if (gun != null && gun.GunItemSetting != null && gun.GunItemSetting.bulletPfb != baseProjectile)
+            {
+                gun.GunItemSetting.bulletPfb = baseProjectile;
             }
 
             Projectile projectile = LevelManager.Instance.BulletPool.GetABullet(baseProjectile);

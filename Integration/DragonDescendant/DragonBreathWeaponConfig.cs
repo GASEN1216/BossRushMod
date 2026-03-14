@@ -181,11 +181,7 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[DragonBreathWeapon] 开始配置龙息武器...");
                 
-                EnsureInventoryComponent(item);
-                ConfigureSlotTags(item);
-                SetCaliber(item, CALIBER);
-                SetDurability(item, MAX_DURABILITY);
-                SetRepairLossRatio(item, REPAIR_LOSS_RATIO);
+                ConfigureSharedGunFoundation(item, CALIBER, MAX_DURABILITY, REPAIR_LOSS_RATIO);
                 SetWeaponStats(item);
                 AddWeaponTags(item);
                 SetBulletCountDisplay(item);  // 设置BulletCount显示
@@ -199,6 +195,57 @@ namespace BossRush
             }
         }
         
+        public static void ConfigureSharedGunFoundation(Item item, string caliber, float maxDurability, float repairLossRatio)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            EnsureInventoryComponent(item);
+            ConfigureSlotTags(item, false);
+            SetCaliber(item, caliber);
+            SetDurability(item, maxDurability);
+            SetRepairLossRatio(item, repairLossRatio);
+            SetBulletCountDisplay(item);
+        }
+
+        public static void ConfigureSharedFireGunSettings(Item item, bool useBurnBullet)
+        {
+            if (useBurnBullet)
+            {
+                ConfigureGunSettings(item);
+                return;
+            }
+
+            try
+            {
+                ItemSetting_Gun gunSetting = item != null ? item.GetComponent<ItemSetting_Gun>() : null;
+                if (gunSetting == null)
+                {
+                    return;
+                }
+
+                gunSetting.shootKey = SHOOT_KEY;
+                gunSetting.reloadKey = RELOAD_KEY;
+
+                if (gunSetting.muzzleFxPfb == null || gunSetting.muzzleFxPfb.name != "MuzzleFlash_Fire")
+                {
+                    GameObject fireMuzzle = FindMuzzleFxPrefab("MuzzleFlash_Fire");
+                    if (fireMuzzle != null)
+                    {
+                        gunSetting.muzzleFxPfb = fireMuzzle;
+                    }
+                }
+
+                EnsureGunSettingStatsReference(gunSetting, item);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] ConfigureSharedFireGunSettings寮傚父: " + e.Message);
+            }
+        }
+
         private static void EnsureInventoryComponent(Item item)
         {
             try
@@ -242,7 +289,7 @@ namespace BossRush
             }
         }
         
-        private static void ConfigureSlotTags(Item item)
+        private static void ConfigureSlotTags(Item item, bool logAvailableTags = true)
         {
             if (item.Slots == null || item.Slots.Count == 0)
             {
@@ -254,7 +301,10 @@ namespace BossRush
             ModBehaviour.DevLog("[DragonBreathWeapon] 开始配置 " + slotCount + " 个槽位的Tags");
             
             // 打印所有可用的Tag名称（仅首次）
-            PrintAllAvailableTags();
+            if (logAvailableTags)
+            {
+                PrintAllAvailableTags();
+            }
             
             for (int i = 0; i < slotCount; i++)
             {

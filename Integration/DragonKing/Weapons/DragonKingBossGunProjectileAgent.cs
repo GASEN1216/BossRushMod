@@ -222,7 +222,7 @@ namespace BossRush
                 CreateIceBladeTrail();
             }
 
-            // 保留 Boss_Red 原版弹幕视觉，缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理
+            // 保留原版弹幕视觉，缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理
             enabled = true;
         }
 
