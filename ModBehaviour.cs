@@ -1866,7 +1866,7 @@ namespace BossRush
 
         /// <summary>
         /// 公共 NPC 共享的刷新/漫步点池。
-        /// BossRush 相关模式下使用地图 Boss 刷新点池；普通模式才复用快递员普通模式点位。
+        /// Mode E 和普通模式优先复用快递员普通模式点位；其他 BossRush 相关模式使用地图 Boss 刷新点池。
         /// </summary>
         public static Vector3[] GetSharedCommonNPCSpawnPointsForScene(string sceneName)
         {
@@ -3464,6 +3464,7 @@ namespace BossRush
                 
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeE();
+                SpawnCommonNPCs("DEMO场景 Mode E 初始化完成");
                 yield break;
             }
             

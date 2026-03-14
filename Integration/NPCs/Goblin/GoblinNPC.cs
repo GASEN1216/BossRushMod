@@ -98,6 +98,11 @@ namespace BossRush
                 return IsValidBossRushArenaScene(sceneName);
             }
 
+            if (IsModeEActive)
+            {
+                return IsValidBossRushArenaScene(sceneName);
+            }
+
             return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
         }
         

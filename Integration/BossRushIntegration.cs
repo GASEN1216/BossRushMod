@@ -1668,6 +1668,7 @@ namespace BossRush
                 
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeE();
+                SpawnCommonNPCs("GroundZero场景 Mode E 初始化完成");
                 yield break;
             }
             

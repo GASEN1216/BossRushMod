@@ -435,6 +435,11 @@ namespace BossRush
                 return mod.IsValidBossRushArenaScene(sceneName);
             }
 
+            if (mod.IsModeEActive)
+            {
+                return mod.IsValidBossRushArenaScene(sceneName);
+            }
+
             return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
         }
 
@@ -470,6 +475,11 @@ namespace BossRush
             }
 
             if (mod.ShouldUseRandomSupportNpcSelection(sceneName))
+            {
+                return mod.IsValidBossRushArenaScene(sceneName);
+            }
+
+            if (mod.IsModeEActive)
             {
                 return mod.IsValidBossRushArenaScene(sceneName);
             }
