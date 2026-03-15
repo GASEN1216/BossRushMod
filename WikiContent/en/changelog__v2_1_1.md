@@ -1,0 +1,18 @@
+## v2.1.1
+
+### Release Date
+- 2026-02-11
+
+### Summary
+- Wild Horn and wolf-model work arrived.
+- Dragon King audio and set effects were further polished.
+
+### Source Commit Subjects
+- 狼模型
+- 荒野号角
+- 龙皇音效
+- 龙皇套装效果
+- 修复龙皇三阶段移动问题
+- 加油站扣除玩家金钱
+- 改为金色
+- 版本号提交：2.1.1

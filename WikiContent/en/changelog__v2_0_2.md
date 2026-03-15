@@ -1,0 +1,13 @@
+## v2.0.2
+
+### Release Date
+- 2026-01-06
+
+### Summary
+- Fixed a cleanup bug that could also remove scene lights.
+- Awen started roaming on official maps.
+
+### Source Commit Subjects
+- 修复销毁spawner时把灯光也清理的bug
+- 快递员阿稳现在会在官方地图刷新随机走动了
+- 版本号提交：2.0.2

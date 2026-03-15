@@ -1,24 +1,22 @@
-## BossRush Mode Guide
+## Mode Overview
 
-### Links
-- Github: https://github.com/GASEN1216/BossRushMod
-- Video: https://www.bilibili.com/video/BV1mCSbBJEQC/
+### The five main modes
+- **Mode A: Easy**: one boss per wave, best for first contact.
+- **Mode B: Standard**: three bosses of the same type per wave, stronger pressure.
+- **Mode C: Infinite Hell**: endless waves, tuned for long farming and endurance.
+- **Mode D: Rags to Riches**: naked entry, random growth, survival progression.
+- **Mode E: Faction War**: naked entry plus faction flag, large faction sandbox battles.
 
-### How to Enter BossRush
-- Purchase the item "Boss Rush Ticket" from the **vending machine**
-- Go to the **boat in the sewer** and use the ticket to enter the BossRush map
-- After entering, interact with the **signpost** to choose a mode and start the challenge
-- You can leave anytime from the **evac point on the right**
+### How to think about them
+- Mode A and B teach you the base loop.
+- Infinite Hell tests endurance, economy, and boss-pool control.
+- Mode D tests adaptation and growth from nothing.
+- Mode E is not standard BossRush at all. It is a battlefield simulator with faction logic.
 
-![EnterBossRush-TicketAndBoat](TODO.png)
-
-### Signpost Interaction (BossRush)
-- The signpost is the main interaction entry (start challenge / select mode)
-- After each wave, you can continue from the center (whether manual interaction is required to start the next wave is configurable)
-
-![BossRush-SignpostInteraction](TODO.png)
-
-### New Content List
-- NPC: 1 (Courier Awen)
-- Boss: 1 (Dragon Descendant)
-- Equipment: 3 (Dragon Head, Flame Scale Armor, Dragon Breath)
+### Best order for most players
+- Learn A.
+- Stabilize in B.
+- Then choose your direction:
+- Long farming and achievement progress in C.
+- Roguelike growth in D.
+- Controlled chaos and sandbox battles in E.

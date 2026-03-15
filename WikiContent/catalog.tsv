@@ -1,10 +1,61 @@
 categoryId	entryId	titleKey_zh	titleKey_en	order
-start	mode__overview	入门指南	Getting Started	1
-mode	mode__mode_a	弹指可灭	Mode A: Easy	1
-mode	mode__mode_b	有点意思	Mode B: Medium	2
-mode	mode__mode_c	无间炼狱	Mode C: Infinite Hell	3
-mode	mode__mode_d	白手起家	Mode D: Naked Start	4
-mechanics	tips__mechanics	挑战机制	Challenge Mechanics	1
-config	tips__config	Mod配置	Mod Configuration	1
-easter	tips__easter_egg	彩蛋	Easter Egg	1
-changelog	tips__changelog	更新日志	Changelog	1
+start	start__overview	总览与定位	Overview	1
+start	start__how_to_enter	如何进入 BossRush	How to Enter BossRush	2
+start	start__first_run	第一次游玩建议	First Run Guide	3
+mode	mode__overview	模式总览	Mode Overview	1
+mode	mode__mode_a	弹指可灭	Mode A: Easy	2
+mode	mode__mode_b	有点意思	Mode B: Standard	3
+mode	mode__mode_c	无间炼狱	Mode C: Infinite Hell	4
+mode	mode__mode_d	白手起家	Mode D: Rags to Riches	5
+mode	mode__mode_e	划地为营	Mode E: Faction War	6
+map	map__overview	地图与场地总览	Map Overview	1
+map	map__all_maps	全部地图一览	All Maps	2
+boss	boss__overview	Boss 图鉴总览	Boss Overview	1
+boss	boss__dragon_descendant	龙裔遗族	Dragon Descendant	2
+boss	boss__dragon_king	龙王	Dragon King	3
+npc	npc__overview	NPC 总览	NPC Overview	1
+npc	npc__courier	阿稳：快递员	Awen: Courier	2
+npc	npc__goblin	叮当：哥布林工匠	Dingdang: Goblin Smith	3
+npc	npc__nurse	羽织：护士	Yu Zhi: Nurse	4
+npc	npc__affinity_and_marriage	好感度、礼物与婚姻	Bonds, Gifts and Marriage	5
+equipment	equipment__overview	装备与能力总览	Equipment Overview	1
+equipment	equipment__sets_and_totems	套装、图腾与逆鳞	Sets, Totems and Reverse Scale	2
+equipment	equipment__dragon_king_weapons	龙王专属武器	Dragon King Weapons	3
+item	item__overview	物品总览	Item Overview	1
+item	item__key_items	关键功能物品	Key Utility Items	2
+item	item__npc_items	NPC 相关物品	NPC Related Items	3
+item	item__special_items	特殊物品与模式物品	Special and Mode Items	4
+system	system__rewards_and_loot	波次、掉落与奖励	Waves, Loot and Rewards	1
+system	system__reforge_and_achievements	重铸与成就	Reforge and Achievements	2
+system	system__boss_filter_and_wiki	Boss 筛选与百科	Boss Filter and Wiki	3
+config	config__overview	配置说明	Configuration	1
+tips	tips__new_player_route	新玩家路线	New Player Route	1
+tips	tips__hell_and_mode_d	无间炼狱与白手起家	Infinite Hell and Mode D	2
+tips	tips__mode_e_strategy	划地为营思路	Mode E Strategy	3
+easter	easter__kunkun	彩蛋：哎哟你干嘛	Easter Egg: Why Are You Doing That	1
+changelog	changelog__highlights	更新日志总览	Changelog Overview	1
+changelog	changelog__legacy_archive	早期版本档案	Legacy Archive	2
+changelog	changelog__v1_6_2	v1.6.2	v1.6.2	3
+changelog	changelog__v1_6_3	v1.6.3	v1.6.3	4
+changelog	changelog__v1_6_4	v1.6.4	v1.6.4	5
+changelog	changelog__v1_7_3	v1.7.3	v1.7.3	6
+changelog	changelog__v1_7_4	v1.7.4	v1.7.4	7
+changelog	changelog__v1_9_7	v1.9.7	v1.9.7	8
+changelog	changelog__v2_0_0	v2.0.0	v2.0.0	9
+changelog	changelog__v2_0_2	v2.0.2	v2.0.2	10
+changelog	changelog__v2_0_3	v2.0.3	v2.0.3	11
+changelog	changelog__v2_0_4	v2.0.4	v2.0.4	12
+changelog	changelog__v2_0_5	v2.0.5	v2.0.5	13
+changelog	changelog__v2_0_6	v2.0.6	v2.0.6	14
+changelog	changelog__v2_1_0	v2.1.0	v2.1.0	15
+changelog	changelog__v2_1_1	v2.1.1	v2.1.1	16
+changelog	changelog__v2_1_2	v2.1.2	v2.1.2	17
+changelog	changelog__v2_1_6	v2.1.6	v2.1.6	18
+changelog	changelog__v2_1_10	v2.1.10	v2.1.10	19
+changelog	changelog__v2_1_12	v2.1.12	v2.1.12	20
+changelog	changelog__v2_1_13	v2.1.13	v2.1.13	21
+changelog	changelog__v2_1_14	v2.1.14	v2.1.14	22
+changelog	changelog__v2_1_15	v2.1.15	v2.1.15	23
+changelog	changelog__v2_1_16	v2.1.16	v2.1.16	24
+changelog	changelog__v2_1_17	v2.1.17	v2.1.17	25
+changelog	changelog__v2_1_20	v2.1.20	v2.1.20	26

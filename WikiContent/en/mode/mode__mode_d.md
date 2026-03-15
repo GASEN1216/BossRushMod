@@ -1,21 +1,21 @@
-## Mode D: Naked Start (demo)
+## Mode D: Rags to Riches
 
-### Core Rules
-- Infinite waves
-- Each wave spawns **x enemies** (default 3, configurable)
-- Each wave is a mix of **Bosses + minions** (ratio changes with waves)
-- Enemies get stronger as waves progress (stats scale up)
+### Entry condition
+- **Naked entry plus Boss Rush Ticket**.
 
-![ModeD-SelectNakedStart](TODO.png)
+### Core idea
+- You start with nothing meaningful and build your run as you go.
+- It is closer to a survival-growth challenge than a standard farm route.
+- Adaptation matters more than planning a fixed final build.
 
-### Entry Requirement (Strict)
-- You must enter "naked":
-- All equipment and weapon slots must be empty
-- Backpack can contain **only the BossRush Ticket**
-- Pet inventory must also be empty
+### What this mode teaches
+- Using what you get instead of waiting for ideal drops.
+- Recognizing value quickly.
+- Surviving weak starts without falling apart mentally.
 
-![ModeD-NakedEntryExample](TODO.png)
+### Best use cases
+- Players who like growth runs.
+- Players who want a different rhythm from standard BossRush.
+- Players who already know the item and gear ecosystem well enough to improvise.
 
-### Gameplay
-- Random starting equipment
-- Enemies have random equipment
+[tip] Mode D rewards judgment more than greed. Live first, optimize second.

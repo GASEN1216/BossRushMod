@@ -1,0 +1,20 @@
+## v1.7.3
+
+### Release Date
+- 2025-12-16
+
+### Summary
+- Birthday cake easter egg and F6 placement mode.
+- Ground Zero support and reuse of original transport UI.
+- Early interaction and aggro-flow polish.
+
+### Source Commit Subjects
+- 生日蛋糕彩蛋
+- F6放置模式
+- 路牌可穿过
+- Update Integration.cs
+- 强制设置 AI 仇恨到玩家
+- 添加零号区场景
+- bossrush选项复用原版传送UI
+- 交互式输出交互信息
+- 版本号提交：1.7.3

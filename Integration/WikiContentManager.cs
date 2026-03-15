@@ -459,13 +459,19 @@ namespace BossRush
                 case "boss":
                     return isChinese ? "Boss 图鉴" : "Boss Guide";
                 case "equipment":
-                    return isChinese ? "装备说明" : "Equipment";
+                    return isChinese ? "装备与能力" : "Equipment & Powers";
                 case "mode":
-                    return isChinese ? "模式攻略" : "Game Modes";
+                    return isChinese ? "模式与玩法" : "Game Modes";
                 case "item":
-                    return isChinese ? "物品说明" : "Items";
+                    return isChinese ? "物品与道具" : "Items";
+                case "map":
+                    return isChinese ? "地图与场地" : "Maps & Arena";
+                case "npc":
+                    return isChinese ? "NPC 与关系" : "NPCs & Bonds";
+                case "system":
+                    return isChinese ? "核心系统" : "Core Systems";
                 case "tips":
-                    return isChinese ? "游戏技巧" : "Tips & Tricks";
+                    return isChinese ? "进阶技巧" : "Tips & Tricks";
                 default:
                     return categoryId;
             }
