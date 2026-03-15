@@ -57,6 +57,200 @@ namespace BossRush
         
         // [性能优化] 商店注入完成标记，避免每次场景加载都重复扫描
         private static bool _shopInjectionCompleted = false;
+
+        internal bool IsBaseHubNormalMerchantShop(StockShop shop)
+        {
+            if (shop == null || shop.entries == null || shop.gameObject == null)
+            {
+                return false;
+            }
+
+            bool isNpcShop = false;
+            try
+            {
+                isNpcShop = shop.GetComponentInParent<CharacterMainControl>() != null;
+            }
+            catch { }
+
+            if (isNpcShop)
+            {
+                return false;
+            }
+
+            string sceneName = string.Empty;
+            string merchantId = string.Empty;
+            try { sceneName = shop.gameObject.scene.name; } catch { }
+            try { merchantId = shop.MerchantID; } catch { }
+
+            return merchantId == "Merchant_Normal" && sceneName == BaseSceneName;
+        }
+
+        internal bool TryInjectBossRushTicketIntoShop(StockShop shop)
+        {
+            if (bossRushTicketTypeId <= 0 || !IsBaseHubNormalMerchantShop(shop))
+            {
+                return false;
+            }
+
+            bool alreadyExists = false;
+            foreach (StockShop.Entry entry in shop.entries)
+            {
+                if (entry != null && entry.ItemTypeID == bossRushTicketTypeId)
+                {
+                    alreadyExists = true;
+                    injectedTicketEntry = entry;
+                    break;
+                }
+            }
+
+            if (alreadyExists)
+            {
+                return false;
+            }
+
+            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+            itemEntry.typeID = bossRushTicketTypeId;
+            itemEntry.maxStock = TICKET_DEFAULT_MAX_STOCK;
+            itemEntry.forceUnlock = true;
+            itemEntry.priceFactor = 1f;
+            itemEntry.possibility = 1f;
+            itemEntry.lockInDemo = false;
+
+            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
+            int stockToSet = LoadTicketStockFromSave();
+            wrapped.CurrentStock = stockToSet;
+            wrapped.Show = true;
+
+            injectedTicketEntry = wrapped;
+            shop.entries.Add(wrapped);
+            DevLog("[BossRush] 船票注入成功，库存设置为: " + stockToSet);
+            return true;
+        }
+
+        internal bool TryInjectAdventureJournalIntoShop(StockShop shop)
+        {
+            if (!IsBaseHubNormalMerchantShop(shop))
+            {
+                return false;
+            }
+
+            bool alreadyExists = false;
+            foreach (StockShop.Entry entry in shop.entries)
+            {
+                if (entry != null && entry.ItemTypeID == ADVENTURE_JOURNAL_TYPE_ID)
+                {
+                    alreadyExists = true;
+                    injectedJournalEntry = entry;
+                    break;
+                }
+            }
+
+            if (alreadyExists)
+            {
+                return false;
+            }
+
+            float priceFactor = 1f;
+            try
+            {
+                Item itemPrefab = ItemAssetsCollection.GetPrefab(ADVENTURE_JOURNAL_TYPE_ID);
+                if (itemPrefab != null)
+                {
+                    int rawValue = itemPrefab.GetTotalRawValue();
+                    if (rawValue > 0)
+                    {
+                        priceFactor = 1f / rawValue;
+                    }
+                }
+            }
+            catch { }
+
+            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+            itemEntry.typeID = ADVENTURE_JOURNAL_TYPE_ID;
+            itemEntry.maxStock = JOURNAL_DEFAULT_MAX_STOCK;
+            itemEntry.forceUnlock = true;
+            itemEntry.priceFactor = priceFactor;
+            itemEntry.possibility = 1f;
+            itemEntry.lockInDemo = false;
+
+            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
+            int stockToSet = LoadJournalStockFromSave();
+            wrapped.CurrentStock = stockToSet;
+            wrapped.Show = true;
+
+            injectedJournalEntry = wrapped;
+            shop.entries.Insert(0, wrapped);
+            DevLog("[BossRush] 冒险家日志注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
+            return true;
+        }
+
+        internal bool TryInjectBrickStoneIntoShop(StockShop shop)
+        {
+            if (!IsBaseHubNormalMerchantShop(shop))
+            {
+                return false;
+            }
+
+            bool alreadyExists = false;
+            foreach (StockShop.Entry entry in shop.entries)
+            {
+                if (entry != null && entry.ItemTypeID == BrickStoneConfig.TYPE_ID)
+                {
+                    alreadyExists = true;
+                    injectedBrickStoneEntry = entry;
+                    break;
+                }
+            }
+
+            if (alreadyExists)
+            {
+                return false;
+            }
+
+            float priceFactor = 1f;
+            try
+            {
+                Item itemPrefab = ItemAssetsCollection.GetPrefab(BrickStoneConfig.TYPE_ID);
+                if (itemPrefab != null)
+                {
+                    int rawValue = itemPrefab.GetTotalRawValue();
+                    if (rawValue > 0)
+                    {
+                        priceFactor = 1f / rawValue;
+                    }
+                }
+            }
+            catch { }
+
+            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+            itemEntry.typeID = BrickStoneConfig.TYPE_ID;
+            itemEntry.maxStock = BrickStoneConfig.DEFAULT_MAX_STOCK;
+            itemEntry.forceUnlock = true;
+            itemEntry.priceFactor = priceFactor;
+            itemEntry.possibility = 1f;
+            itemEntry.lockInDemo = false;
+
+            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
+            int stockToSet = LoadBrickStoneStockFromSave();
+            wrapped.CurrentStock = stockToSet;
+            wrapped.Show = true;
+
+            injectedBrickStoneEntry = wrapped;
+            shop.entries.Add(wrapped);
+            DevLog("[BrickStone] 砖石注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
+            return true;
+        }
+
+        internal int TryInjectAllBossRushItemsIntoShop(StockShop shop)
+        {
+            int injectedCount = 0;
+            if (TryInjectBossRushTicketIntoShop(shop)) injectedCount++;
+            if (TryInjectAdventureJournalIntoShop(shop)) injectedCount++;
+            if (TryInjectAchievementMedalIntoShop(shop)) injectedCount++;
+            if (TryInjectBrickStoneIntoShop(shop)) injectedCount++;
+            injectedCount += FactionFlagConfig.TryInjectIntoShop(shop);
+            return injectedCount;
+        }
         
         /// <summary>
         /// 初始化动态物品（从 AssetBundle 加载 BossRush 船票）
@@ -222,13 +416,13 @@ namespace BossRush
                 return;
             }
             
-            // [性能优化] 只在基地场景扫描商店，船票只在基地售货机出售
+            // [性能优化] 只在基地相关场景扫描商店，船票只在基地售货机出售
             string currentScene = targetSceneName;
             if (string.IsNullOrEmpty(currentScene))
             {
                 try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
             }
-            if (currentScene != "Base_SceneV2")
+            if (currentScene != BaseSceneName)
             {
                 return;
             }
@@ -303,7 +497,7 @@ namespace BossRush
                     }
                     catch { }
 
-                    bool isTargetShop = (!isNpcShop && merchantId == "Merchant_Normal" && sceneName == "Base_SceneV2");
+                    bool isTargetShop = IsBaseHubNormalMerchantShop(shop);
 
                     if (isTargetShop)
                     {
@@ -311,52 +505,9 @@ namespace BossRush
 
                         if (shop.entries != null)
                         {
-                            bool alreadyExists = false;
-                            foreach (StockShop.Entry entry in shop.entries)
+                            if (TryInjectBossRushTicketIntoShop(shop))
                             {
-                                if (entry != null && entry.ItemTypeID == bossRushTicketTypeId)
-                                {
-                                    alreadyExists = true;
-                                    break;
-                                }
-                            }
-
-                            if (!alreadyExists)
-                            {
-                                StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-                                itemEntry.typeID = bossRushTicketTypeId;
-                                itemEntry.maxStock = TICKET_DEFAULT_MAX_STOCK;
-                                itemEntry.forceUnlock = true;
-                                itemEntry.priceFactor = 1f;
-                                itemEntry.possibility = 1f;
-                                itemEntry.lockInDemo = false;
-
-                                StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
-                                
-                                // 从存档读取库存，如果没有存档则使用默认最大库存
-                                int stockToSet = LoadTicketStockFromSave();
-                                wrapped.CurrentStock = stockToSet;
-                                wrapped.Show = true;
-                                
-                                // 缓存引用，用于后续存档
-                                injectedTicketEntry = wrapped;
-                                
-                                shop.entries.Add(wrapped);
                                 addedCount++;
-                                
-                                DevLog("[BossRush] 船票注入成功，库存设置为: " + stockToSet);
-                            }
-                            else
-                            {
-                                // 已存在的条目，更新缓存引用
-                                foreach (StockShop.Entry entry in shop.entries)
-                                {
-                                    if (entry != null && entry.ItemTypeID == bossRushTicketTypeId)
-                                    {
-                                        injectedTicketEntry = entry;
-                                        break;
-                                    }
-                                }
                             }
                         }
                     }
@@ -384,7 +535,7 @@ namespace BossRush
             {
                 try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
             }
-            if (currentScene != "Base_SceneV2")
+            if (currentScene != BaseSceneName)
             {
                 return;
             }
@@ -405,78 +556,9 @@ namespace BossRush
                 {
                     if (shop == null) continue;
 
-                    bool isNpcShop = false;
-                    try
+                    if (TryInjectAdventureJournalIntoShop(shop))
                     {
-                        if (shop.GetComponentInParent<CharacterMainControl>() != null)
-                        {
-                            isNpcShop = true;
-                        }
-                    }
-                    catch { }
-
-                    string sceneName = "";
-                    string merchantId = "";
-                    try { sceneName = shop.gameObject != null ? shop.gameObject.scene.name : ""; } catch { }
-                    try { merchantId = shop.MerchantID; } catch { }
-
-                    // 只注入到基地的普通售货机
-                    bool isTargetShop = (!isNpcShop && merchantId == "Merchant_Normal" && sceneName == "Base_SceneV2");
-
-                    if (isTargetShop && shop.entries != null)
-                    {
-                        bool alreadyExists = false;
-                        foreach (StockShop.Entry entry in shop.entries)
-                        {
-                            if (entry != null && entry.ItemTypeID == ADVENTURE_JOURNAL_TYPE_ID)
-                            {
-                                alreadyExists = true;
-                                injectedJournalEntry = entry;
-                                break;
-                            }
-                        }
-
-                        if (!alreadyExists)
-                        {
-                            // 计算 priceFactor 使价格为1块钱
-                            // 价格 = rawValue * priceFactor，所以 priceFactor = 1 / rawValue
-                            float priceFactor = 1f;
-                            try
-                            {
-                                Item itemPrefab = ItemAssetsCollection.GetPrefab(ADVENTURE_JOURNAL_TYPE_ID);
-                                if (itemPrefab != null)
-                                {
-                                    int rawValue = itemPrefab.GetTotalRawValue();
-                                    if (rawValue > 0)
-                                    {
-                                        priceFactor = 1f / rawValue;
-                                    }
-                                }
-                            }
-                            catch { }
-                            
-                            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-                            itemEntry.typeID = ADVENTURE_JOURNAL_TYPE_ID;
-                            itemEntry.maxStock = JOURNAL_DEFAULT_MAX_STOCK;
-                            itemEntry.forceUnlock = true;
-                            itemEntry.priceFactor = priceFactor;  // 设置价格因子使价格为1块钱
-                            itemEntry.possibility = 1f;
-                            itemEntry.lockInDemo = false;
-
-                            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
-                            
-                            // 从存档读取库存
-                            int stockToSet = LoadJournalStockFromSave();
-                            wrapped.CurrentStock = stockToSet;
-                            wrapped.Show = true;
-                            
-                            injectedJournalEntry = wrapped;
-                            // 插入到列表开头，排在船票前面
-                            shop.entries.Insert(0, wrapped);
-                            addedCount++;
-                            
-                            DevLog("[BossRush] 冒险家日志注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
-                        }
+                        addedCount++;
                     }
                 }
 
@@ -577,7 +659,7 @@ namespace BossRush
             {
                 try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
             }
-            if (currentScene != "Base_SceneV2")
+            if (currentScene != BaseSceneName)
             {
                 return;
             }
@@ -595,76 +677,9 @@ namespace BossRush
                 {
                     if (shop == null) continue;
 
-                    bool isNpcShop = false;
-                    try
+                    if (TryInjectBrickStoneIntoShop(shop))
                     {
-                        if (shop.GetComponentInParent<CharacterMainControl>() != null)
-                        {
-                            isNpcShop = true;
-                        }
-                    }
-                    catch { }
-
-                    string sceneName = "";
-                    string merchantId = "";
-                    try { sceneName = shop.gameObject != null ? shop.gameObject.scene.name : ""; } catch { }
-                    try { merchantId = shop.MerchantID; } catch { }
-
-                    // 只注入到基地的普通售货机
-                    bool isTargetShop = (!isNpcShop && merchantId == "Merchant_Normal" && sceneName == "Base_SceneV2");
-
-                    if (isTargetShop && shop.entries != null)
-                    {
-                        bool alreadyExists = false;
-                        foreach (StockShop.Entry entry in shop.entries)
-                        {
-                            if (entry != null && entry.ItemTypeID == BrickStoneConfig.TYPE_ID)
-                            {
-                                alreadyExists = true;
-                                injectedBrickStoneEntry = entry;
-                                break;
-                            }
-                        }
-
-                        if (!alreadyExists)
-                        {
-                            // 计算 priceFactor 使价格为1块钱
-                            float priceFactor = 1f;
-                            try
-                            {
-                                Item itemPrefab = ItemAssetsCollection.GetPrefab(BrickStoneConfig.TYPE_ID);
-                                if (itemPrefab != null)
-                                {
-                                    int rawValue = itemPrefab.GetTotalRawValue();
-                                    if (rawValue > 0)
-                                    {
-                                        priceFactor = 1f / rawValue;
-                                    }
-                                }
-                            }
-                            catch { }
-                            
-                            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-                            itemEntry.typeID = BrickStoneConfig.TYPE_ID;
-                            itemEntry.maxStock = BrickStoneConfig.DEFAULT_MAX_STOCK;
-                            itemEntry.forceUnlock = true;
-                            itemEntry.priceFactor = priceFactor;
-                            itemEntry.possibility = 1f;
-                            itemEntry.lockInDemo = false;
-
-                            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
-                            
-                            // 从存档读取库存
-                            int stockToSet = LoadBrickStoneStockFromSave();
-                            wrapped.CurrentStock = stockToSet;
-                            wrapped.Show = true;
-                            
-                            injectedBrickStoneEntry = wrapped;
-                            shop.entries.Add(wrapped);
-                            addedCount++;
-                            
-                            DevLog("[BrickStone] 砖石注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
-                        }
+                        addedCount++;
                     }
                 }
 
@@ -928,7 +943,6 @@ namespace BossRush
             
             // 注册场景加载事件，在进入新场景时注入交互
             SceneManager.sceneLoaded += OnSceneLoaded;
-            
             // 注册商店购买事件，用于检测进货行为
             StockShop.OnItemPurchased += OnItemPurchased_Integration;
             

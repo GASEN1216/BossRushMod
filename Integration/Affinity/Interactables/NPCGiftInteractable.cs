@@ -43,34 +43,34 @@ namespace BossRush
             // 始终可交互，即使今日已赠送（会显示不同的对话）
             return isInitialized && !string.IsNullOrEmpty(npcId);
         }
-        
+
         // ============================================================================
         // 交互逻辑
         // ============================================================================
-        
+
         protected override void DoInteract(CharacterMainControl character)
         {
             ModBehaviour.DevLog("[NPCGift] 玩家选择赠送礼物给: " + npcId);
-            
+
             // 让NPC进入对话状态
             StartNPCDialogue();
-            
-            // 检查今日是否已赠送
-            if (!CanOpenGiftContainer())
+
+            // 检查今日是否已赠送（已婚玩家仍可打开容器以赠送钻石戒指）
+            if (!NPCGiftSystem.CanGiftToday(npcId))
             {
                 ShowAlreadyGiftedDialogue();
                 return;
             }
-            
+
             // 获取NPC配置
             var config = GetNPCConfig();
             var containerConfig = config as INPCGiftContainerConfig;
-            
+
             // 打开容器式UI
             ModBehaviour.DevLog("[NPCGift] 打开礼物容器UI，NPC: " + npcId);
             NPCGiftContainerService.OpenService(npcId, npcController?.NpcTransform, containerConfig, npcController);
         }
-        
+
         /// <summary>
         /// 显示今日已赠送礼物的对话
         /// </summary>
@@ -78,19 +78,9 @@ namespace BossRush
         {
             string dialogue = NPCGiftSystem.GetAlreadyGiftedDialogue(npcId);
             NPCDialogueSystem.ShowDialogue(npcId, npcController?.NpcTransform, dialogue);
-            
+
             ModBehaviour.DevLog("[NPCGift] 今日已赠送，显示对话: " + dialogue);
             EndNPCDialogue();
-        }
-
-        private bool CanOpenGiftContainer()
-        {
-            if (NPCGiftSystem.CanGiftToday(npcId))
-            {
-                return true;
-            }
-
-            return !string.IsNullOrEmpty(AffinityManager.GetCurrentSpouseNpcId());
         }
     }
 

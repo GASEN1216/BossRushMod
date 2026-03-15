@@ -2116,10 +2116,60 @@ namespace BossRush
         private const string BossRushArenaSceneID = "Level_DemoChallenge_Main"; // 用于SceneLoader加载的场景ID
         private const string BossRushArenaSceneName = "Level_DemoChallenge_1";  // 实际运行时的场景名称
 
-        // Base 集散地与竞技场内用于查找最近交互点的锚点坐标
-        private const string BaseSceneName = "Base_SceneV2_Sub_01";
+        // Base 集散地与下水道区域会在不同 active scene 间切换，这几个场景都视为同一个入口环境
+        private const string BaseSceneName = "Base_SceneV2";
+        private const string BaseSceneSubName = "Base_SceneV2_Sub_01";
+        private const string BaseSewerSceneName = "Level_HiddenWarehouse_CellarUnderGround";
         private static readonly Vector3 BaseEntryPosition = new Vector3(101.73f, 0.02f, -59.46f);
         private static readonly Vector3 ArenaEntryPosition = new Vector3(236.76f, -4.98f, 170.26f);
+
+        internal static bool IsBaseHubSceneName(string sceneName)
+        {
+            return sceneName == BaseSceneName ||
+                   sceneName == BaseSceneSubName ||
+                   sceneName == BaseSewerSceneName;
+        }
+
+        internal bool IsBaseHubBoatInteractable(InteractableBase interactable)
+        {
+            if (interactable == null || interactable.gameObject == null)
+            {
+                return false;
+            }
+
+            if (interactable is BossRushInteractable)
+            {
+                return false;
+            }
+
+            string sceneName = string.Empty;
+            try { sceneName = interactable.gameObject.scene.name; } catch { }
+            if (!IsBaseHubSceneName(sceneName))
+            {
+                return false;
+            }
+
+            string goName = interactable.gameObject.name ?? string.Empty;
+            bool isMainInteract = goName == "Interact" || interactable.interactableGroup;
+            bool isSubInteract = goName.Contains("_");
+            if (!isMainInteract || isSubInteract)
+            {
+                return false;
+            }
+
+            string path = GetGameObjectPath(interactable.gameObject);
+            return path.IndexOf("Boat", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        internal bool TryInjectBaseHubBoatInteractable(InteractableBase interactable)
+        {
+            if (!IsBaseHubBoatInteractable(interactable))
+            {
+                return false;
+            }
+
+            return InjectIntoInteractableBaseGroup(interactable);
+        }
 
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
@@ -4035,7 +4085,7 @@ namespace BossRush
                 string sceneName = activeScene.name;
 
                 Vector3 targetPos;
-                bool isBaseScene = sceneName == BaseSceneName;
+                bool isBaseScene = IsBaseHubSceneName(sceneName);
                 bool isArenaScene = sceneName == BossRushArenaSceneName;
 
                 if (isBaseScene)
@@ -4068,7 +4118,7 @@ namespace BossRush
                         float distSq = (interact.transform.position - targetPos).sqrMagnitude;
                         
                         // 查找船坞主交互点：路径包含 "Boat"，名称是 "Interact" 或 isGroup=True，排除子交互点
-                        bool isBoatPath = path.Contains("Boat");
+                        bool isBoatPath = path.IndexOf("Boat", StringComparison.OrdinalIgnoreCase) >= 0;
                         bool isMainInteract = goName == "Interact" || interact.interactableGroup;
                         bool isSubInteract = goName.Contains("_");
                         
@@ -4083,7 +4133,7 @@ namespace BossRush
                 // 如果找到船坞交互点，尝试注入
                 if (boatInteract != null)
                 {
-                    if (InjectIntoInteractableBaseGroup(boatInteract))
+                    if (TryInjectBaseHubBoatInteractable(boatInteract))
                     {
                         anyInjected = true;
                     }

@@ -164,7 +164,11 @@ namespace BossRush
                     DevLog("[ModeE] 狼阵营可用 Boss 预设数量: " + modeEWolfBossCount);
                 }
 
-                // 分批生成：每个boss让出一帧，分散到多帧执行，避免开局卡顿
+                // 分批生成：每个boss之间让出足够时间，分散到多帧执行，避免低端机卡顿
+                // 前几个boss距离玩家最近，优先生成；后续逐步生成远处boss
+                const int SPAWN_DELAY_MS = 500;
+                const int INITIAL_BATCH_DELAY_MS = 800;
+
                 for (int i = 0; i < spawnTasks.Count; i++)
                 {
                     if (!modeEActive) break; // 模式已结束，停止生成
@@ -172,11 +176,12 @@ namespace BossRush
                     var task = spawnTasks[i];
                     SpawnSingleModeEBoss(task.faction, task.pos);
 
-                    // 每个boss让出多帧，把生成压力分散到更长时间
+                    // 每个boss之间等待，给角色创建和配装充足时间完成，减少帧率尖刺
                     if (i + 1 < spawnTasks.Count)
                     {
-                        // 每个boss之间等待0.25秒，给角色创建和配装充足时间完成，减少帧率尖刺
-                        await UniTask.Delay(250);
+                        // 前3个boss使用更长间隔（初始化阶段资源竞争最激烈）
+                        int delay = i < 3 ? INITIAL_BATCH_DELAY_MS : SPAWN_DELAY_MS;
+                        await UniTask.Delay(delay);
                     }
                 }
 

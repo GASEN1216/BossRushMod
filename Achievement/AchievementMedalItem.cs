@@ -52,15 +52,72 @@ namespace BossRush
         /// <summary>
         /// 将成就勋章注入到商店（排在最前面，与冒险家日志相同位置）
         /// </summary>
+        internal bool TryInjectAchievementMedalIntoShop(StockShop shop)
+        {
+            if (!IsBaseHubNormalMerchantShop(shop))
+            {
+                return false;
+            }
+
+            bool alreadyExists = false;
+            foreach (StockShop.Entry entry in shop.entries)
+            {
+                if (entry != null && entry.ItemTypeID == AchievementMedalConfig.TYPE_ID)
+                {
+                    alreadyExists = true;
+                    injectedMedalEntry = entry;
+                    break;
+                }
+            }
+
+            if (alreadyExists)
+            {
+                return false;
+            }
+
+            float priceFactor = 1f;
+            try
+            {
+                Item itemPrefab = ItemAssetsCollection.GetPrefab(AchievementMedalConfig.TYPE_ID);
+                if (itemPrefab != null)
+                {
+                    int rawValue = itemPrefab.GetTotalRawValue();
+                    if (rawValue > 0)
+                    {
+                        priceFactor = 1f / rawValue;
+                    }
+                }
+            }
+            catch { }
+
+            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+            itemEntry.typeID = AchievementMedalConfig.TYPE_ID;
+            itemEntry.maxStock = AchievementMedalConfig.DEFAULT_MAX_STOCK;
+            itemEntry.forceUnlock = true;
+            itemEntry.priceFactor = priceFactor;
+            itemEntry.possibility = 1f;
+            itemEntry.lockInDemo = false;
+
+            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
+            int stockToSet = LoadMedalStockFromSave();
+            wrapped.CurrentStock = stockToSet;
+            wrapped.Show = true;
+
+            injectedMedalEntry = wrapped;
+            shop.entries.Insert(0, wrapped);
+            DevLog("[AchievementMedal] 成就勋章注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
+            return true;
+        }
+
         private void InjectAchievementMedalIntoShops(string targetSceneName = null)
         {
-            // 如果不在基地场景，跳过扫描
+            // 如果不在基地主场景，跳过扫描
             string currentScene = targetSceneName;
             if (string.IsNullOrEmpty(currentScene))
             {
                 try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
             }
-            if (currentScene != "Base_SceneV2")
+            if (currentScene != BaseSceneName)
             {
                 return;
             }
@@ -78,77 +135,9 @@ namespace BossRush
                 {
                     if (shop == null) continue;
 
-                    bool isNpcShop = false;
-                    try
+                    if (TryInjectAchievementMedalIntoShop(shop))
                     {
-                        if (shop.GetComponentInParent<CharacterMainControl>() != null)
-                        {
-                            isNpcShop = true;
-                        }
-                    }
-                    catch { }
-
-                    string sceneName = "";
-                    string merchantId = "";
-                    try { sceneName = shop.gameObject != null ? shop.gameObject.scene.name : ""; } catch { }
-                    try { merchantId = shop.MerchantID; } catch { }
-
-                    // 只注入到基地的普通售货机
-                    bool isTargetShop = (!isNpcShop && merchantId == "Merchant_Normal" && sceneName == "Base_SceneV2");
-
-                    if (isTargetShop && shop.entries != null)
-                    {
-                        bool alreadyExists = false;
-                        foreach (StockShop.Entry entry in shop.entries)
-                        {
-                            if (entry != null && entry.ItemTypeID == AchievementMedalConfig.TYPE_ID)
-                            {
-                                alreadyExists = true;
-                                injectedMedalEntry = entry;
-                                break;
-                            }
-                        }
-
-                        if (!alreadyExists)
-                        {
-                            // 计算 priceFactor 使价格为1块钱
-                            float priceFactor = 1f;
-                            try
-                            {
-                                Item itemPrefab = ItemAssetsCollection.GetPrefab(AchievementMedalConfig.TYPE_ID);
-                                if (itemPrefab != null)
-                                {
-                                    int rawValue = itemPrefab.GetTotalRawValue();
-                                    if (rawValue > 0)
-                                    {
-                                        priceFactor = 1f / rawValue;
-                                    }
-                                }
-                            }
-                            catch { }
-                            
-                            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-                            itemEntry.typeID = AchievementMedalConfig.TYPE_ID;
-                            itemEntry.maxStock = AchievementMedalConfig.DEFAULT_MAX_STOCK;
-                            itemEntry.forceUnlock = true;
-                            itemEntry.priceFactor = priceFactor;
-                            itemEntry.possibility = 1f;
-                            itemEntry.lockInDemo = false;
-
-                            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
-                            
-                            // 从存档读取库存
-                            int stockToSet = LoadMedalStockFromSave();
-                            wrapped.CurrentStock = stockToSet;
-                            wrapped.Show = true;
-                            
-                            injectedMedalEntry = wrapped;
-                            // 插入到列表开头，排在冒险家日志前面
-                            shop.entries.Insert(0, wrapped);
-                            addedCount++;
-                            
-                            DevLog("[AchievementMedal] 成就勋章注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
-                        }
+                        addedCount++;
                     }
                 }
 

@@ -234,6 +234,59 @@ namespace BossRush
         /// <summary>缓存已注入的商店条目引用</summary>
         private static readonly Dictionary<int, StockShop.Entry> injectedFlagEntries = new Dictionary<int, StockShop.Entry>();
 
+        internal static int TryInjectIntoShop(StockShop shop)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null || shop == null || shop.entries == null || !inst.IsBaseHubNormalMerchantShop(shop))
+            {
+                return 0;
+            }
+
+            HashSet<int> existingFlagIds = new HashSet<int>();
+            foreach (StockShop.Entry entry in shop.entries)
+            {
+                if (entry != null)
+                {
+                    for (int i = 0; i < ALL_FLAG_TYPE_IDS.Length; i++)
+                    {
+                        if (entry.ItemTypeID == ALL_FLAG_TYPE_IDS[i])
+                        {
+                            existingFlagIds.Add(ALL_FLAG_TYPE_IDS[i]);
+                            injectedFlagEntries[ALL_FLAG_TYPE_IDS[i]] = entry;
+                        }
+                    }
+                }
+            }
+
+            int addedCount = 0;
+            for (int i = 0; i < ALL_FLAG_TYPE_IDS.Length; i++)
+            {
+                int typeId = ALL_FLAG_TYPE_IDS[i];
+                if (existingFlagIds.Contains(typeId))
+                {
+                    continue;
+                }
+
+                StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+                itemEntry.typeID = typeId;
+                itemEntry.maxStock = DEFAULT_MAX_STOCK;
+                itemEntry.forceUnlock = true;
+                itemEntry.priceFactor = 1f;
+                itemEntry.possibility = 1f;
+                itemEntry.lockInDemo = false;
+
+                StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
+                wrapped.CurrentStock = DEFAULT_MAX_STOCK;
+                wrapped.Show = true;
+
+                injectedFlagEntries[typeId] = wrapped;
+                shop.entries.Add(wrapped);
+                addedCount++;
+            }
+
+            return addedCount;
+        }
+
         /// <summary>
         /// 将所有营旗注入到基地售货机
         /// </summary>
@@ -241,7 +294,7 @@ namespace BossRush
         {
             try
             {
-                // 只在基地场景注入
+                // 只在基地主场景注入
                 string currentScene = targetSceneName;
                 if (string.IsNullOrEmpty(currentScene))
                 {
@@ -255,61 +308,8 @@ namespace BossRush
                 int addedCount = 0;
                 foreach (StockShop shop in shops)
                 {
-                    if (shop == null || shop.entries == null) continue;
-
-                    // 只注入到基地普通售货机（与船票相同的目标商店）
-                    bool isNpcShop = false;
-                    try { isNpcShop = shop.GetComponentInParent<CharacterMainControl>() != null; } catch { }
-                    if (isNpcShop) continue;
-
-                    string sceneName = "";
-                    string merchantId = "";
-                    try { sceneName = shop.gameObject.scene.name; } catch { }
-                    try { merchantId = shop.MerchantID; } catch { }
-
-                    if (merchantId != "Merchant_Normal" || sceneName != "Base_SceneV2") continue;
-
-                    // 收集已存在的营旗 TypeID（避免重复注入）
-                    HashSet<int> existingFlagIds = new HashSet<int>();
-                    foreach (StockShop.Entry entry in shop.entries)
-                    {
-                        if (entry != null)
-                        {
-                            for (int i = 0; i < ALL_FLAG_TYPE_IDS.Length; i++)
-                            {
-                                if (entry.ItemTypeID == ALL_FLAG_TYPE_IDS[i])
-                                {
-                                    existingFlagIds.Add(ALL_FLAG_TYPE_IDS[i]);
-                                    injectedFlagEntries[ALL_FLAG_TYPE_IDS[i]] = entry;
-                                }
-                            }
-                        }
-                    }
-
-                    // 逐个注入营旗
-                    for (int i = 0; i < ALL_FLAG_TYPE_IDS.Length; i++)
-                    {
-                        int typeId = ALL_FLAG_TYPE_IDS[i];
-
-                        if (!existingFlagIds.Contains(typeId))
-                        {
-                            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-                            itemEntry.typeID = typeId;
-                            itemEntry.maxStock = DEFAULT_MAX_STOCK;
-                            itemEntry.forceUnlock = true;
-                            itemEntry.priceFactor = 1f;
-                            itemEntry.possibility = 1f;
-                            itemEntry.lockInDemo = false;
-
-                            StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
-                            wrapped.CurrentStock = DEFAULT_MAX_STOCK;
-                            wrapped.Show = true;
-
-                            injectedFlagEntries[typeId] = wrapped;
-                            shop.entries.Add(wrapped);
-                            addedCount++;
-                        }
-                    }
+                    if (shop == null) continue;
+                    addedCount += TryInjectIntoShop(shop);
                 }
 
                 if (addedCount > 0)
