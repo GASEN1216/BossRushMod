@@ -25,6 +25,11 @@ public static class ModConfigAPI
     private static bool versionChecked = false;
     private static bool isVersionCompatible = false;
 
+    private static void DevLog(string message)
+    {
+        BossRush.ModBehaviour.DevLog(message);
+    }
+
     /// <summary>
     /// 检查版本兼容性
     /// Check version compatibility
@@ -50,7 +55,7 @@ public static class ModConfigAPI
                     return false;
                 }
 
-                Debug.Log($"[{TAG}] 版本检查通过: {ModConfigVersion}");
+                DevLog($"[{TAG}] 版本检查通过: {ModConfigVersion}");
                 versionChecked = true;
                 return true;
             }
@@ -58,7 +63,7 @@ public static class ModConfigAPI
             {
                 // 如果找不到版本字段，发出警告但继续运行（向后兼容）
                 // If version field not found, warn but continue (backward compatibility)
-                Debug.LogWarning($"[{TAG}] 未找到版本信息字段，跳过版本检查");
+                DevLog($"[{TAG}] 未找到版本信息字段，跳过版本检查");
                 isVersionCompatible = true;
                 versionChecked = true;
                 return true;
@@ -89,7 +94,7 @@ public static class ModConfigAPI
             modBehaviourType = FindTypeInAssemblies("ModConfig.ModBehaviour");
             if (modBehaviourType == null)
             {
-                Debug.LogWarning($"[{TAG}] ModConfig.ModBehaviour 类型未找到，ModConfig 可能未加载");
+                DevLog($"[{TAG}] ModConfig.ModBehaviour 类型未找到，ModConfig 可能未加载");
                 return false;
             }
 
@@ -98,7 +103,7 @@ public static class ModConfigAPI
             optionsManagerType = FindTypeInAssemblies("ModConfig.OptionsManager_Mod");
             if (optionsManagerType == null)
             {
-                Debug.LogWarning($"[{TAG}] ModConfig.OptionsManager_Mod 类型未找到");
+                DevLog($"[{TAG}] ModConfig.OptionsManager_Mod 类型未找到");
                 return false;
             }
 
@@ -106,7 +111,7 @@ public static class ModConfigAPI
             // Check version compatibility
             if (!CheckVersionCompatibility())
             {
-                Debug.LogWarning($"[{TAG}] ModConfig version mismatch!!!");
+                DevLog($"[{TAG}] ModConfig version mismatch!!!");
                 return false;
             }
 
@@ -131,7 +136,7 @@ public static class ModConfigAPI
             }
 
             isInitialized = true;
-            Debug.Log($"[{TAG}] ModConfigAPI 初始化成功");
+            DevLog($"[{TAG}] ModConfigAPI 初始化成功");
             return true;
         }
         catch (Exception ex)
@@ -158,14 +163,14 @@ public static class ModConfigAPI
                     // 检查程序集名称是否包含 ModConfig
                     if (assembly.FullName.Contains("ModConfig"))
                     {
-                        Debug.Log($"[{TAG}] 找到 ModConfig 相关程序集: {assembly.FullName}");
+                        DevLog($"[{TAG}] 找到 ModConfig 相关程序集: {assembly.FullName}");
                     }
 
                     // 尝试在该程序集中查找类型
                     Type type = assembly.GetType(typeName);
                     if (type != null)
                     {
-                        Debug.Log($"[{TAG}] 在程序集 {assembly.FullName} 中找到类型 {typeName}");
+                        DevLog($"[{TAG}] 在程序集 {assembly.FullName} 中找到类型 {typeName}");
                         return type;
                     }
                 }
@@ -177,10 +182,10 @@ public static class ModConfigAPI
             }
 
             // 记录所有已加载的程序集用于调试
-            Debug.LogWarning($"[{TAG}] 在所有程序集中未找到类型 {typeName}，已加载程序集数量: {assemblies.Length}");
+            DevLog($"[{TAG}] 在所有程序集中未找到类型 {typeName}，已加载程序集数量: {assemblies.Length}");
             foreach (var assembly in assemblies.Where(a => a.FullName.Contains("ModConfig")))
             {
-                Debug.Log($"[{TAG}] ModConfig 相关程序集: {assembly.FullName}");
+                DevLog($"[{TAG}] ModConfig 相关程序集: {assembly.FullName}");
             }
 
             return null;
@@ -205,7 +210,7 @@ public static class ModConfigAPI
 
         if (action == null)
         {
-            Debug.LogWarning($"[{TAG}] 不能添加空的事件委托");
+            DevLog($"[{TAG}] 不能添加空的事件委托");
             return false;
         }
 
@@ -214,7 +219,7 @@ public static class ModConfigAPI
             MethodInfo method = modBehaviourType.GetMethod("AddOnOptionsChangedDelegate", BindingFlags.Public | BindingFlags.Static);
             method.Invoke(null, new object[] { action });
 
-            Debug.Log($"[{TAG}] 成功添加选项变更事件委托");
+            DevLog($"[{TAG}] 成功添加选项变更事件委托");
             return true;
         }
         catch (Exception ex)
@@ -237,7 +242,7 @@ public static class ModConfigAPI
 
         if (action == null)
         {
-            Debug.LogWarning($"[{TAG}] 不能移除空的事件委托");
+            DevLog($"[{TAG}] 不能移除空的事件委托");
             return false;
         }
 
@@ -246,7 +251,7 @@ public static class ModConfigAPI
             MethodInfo method = modBehaviourType.GetMethod("RemoveOnOptionsChangedDelegate", BindingFlags.Public | BindingFlags.Static);
             method.Invoke(null, new object[] { action });
 
-            Debug.Log($"[{TAG}] 成功移除选项变更事件委托");
+            DevLog($"[{TAG}] 成功移除选项变更事件委托");
             return true;
         }
         catch (Exception ex)
@@ -272,7 +277,7 @@ public static class ModConfigAPI
             MethodInfo method = modBehaviourType.GetMethod("AddDropdownList", BindingFlags.Public | BindingFlags.Static);
             method.Invoke(null, new object[] { modName, key, description, options, valueType, defaultValue });
 
-            Debug.Log($"[{TAG}] 成功添加下拉列表: {modName}.{key}");
+            DevLog($"[{TAG}] 成功添加下拉列表: {modName}.{key}");
             return true;
         }
         catch (Exception ex)
@@ -305,7 +310,7 @@ public static class ModConfigAPI
 
             method.Invoke(null, parameters);
 
-            Debug.Log($"[{TAG}] 成功添加滑条输入框: {modName}.{key}");
+            DevLog($"[{TAG}] 成功添加滑条输入框: {modName}.{key}");
             return true;
         }
         catch (Exception ex)
@@ -331,7 +336,7 @@ public static class ModConfigAPI
             MethodInfo method = modBehaviourType.GetMethod("AddBoolDropdownList", BindingFlags.Public | BindingFlags.Static);
             method.Invoke(null, new object[] { modName, key, description, defaultValue });
 
-            Debug.Log($"[{TAG}] 成功添加布尔下拉列表: {modName}.{key}");
+            DevLog($"[{TAG}] 成功添加布尔下拉列表: {modName}.{key}");
             return true;
         }
         catch (Exception ex)
@@ -358,7 +363,7 @@ public static class ModConfigAPI
 
         if (string.IsNullOrEmpty(key))
         {
-            Debug.LogWarning($"[{TAG}] 配置键不能为空");
+            DevLog($"[{TAG}] 配置键不能为空");
             return defaultValue;
         }
 
@@ -375,7 +380,7 @@ public static class ModConfigAPI
             MethodInfo genericLoadMethod = loadMethod.MakeGenericMethod(typeof(T));
             object result = genericLoadMethod.Invoke(null, new object[] { key, defaultValue });
 
-            Debug.Log($"[{TAG}] 成功加载配置: {key} = {result}");
+            DevLog($"[{TAG}] 成功加载配置: {key} = {result}");
             return (T)result;
         }
         catch (Exception ex)
@@ -402,7 +407,7 @@ public static class ModConfigAPI
 
         if (string.IsNullOrEmpty(key))
         {
-            Debug.LogWarning($"[{TAG}] 配置键不能为空");
+            DevLog($"[{TAG}] 配置键不能为空");
             return false;
         }
 
@@ -419,7 +424,7 @@ public static class ModConfigAPI
             MethodInfo genericSaveMethod = saveMethod.MakeGenericMethod(typeof(T));
             genericSaveMethod.Invoke(null, new object[] { key, value });
 
-            Debug.Log($"[{TAG}] 成功保存配置: {key} = {value}");
+            DevLog($"[{TAG}] 成功保存配置: {key} = {value}");
             return true;
         }
         catch (Exception ex)

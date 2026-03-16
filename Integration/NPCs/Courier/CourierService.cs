@@ -479,17 +479,27 @@ namespace BossRush
             if (containerObject != null)
             {
                 UnityEngine.Object.Destroy(containerObject);
+                containerObject = null;
+                courierInventory = null;
+                courierLootbox = null;
             }
             
             // 创建容器对象
             containerObject = new GameObject("CourierServiceContainer");
+            containerObject.SetActive(false);
             
             // 添加 Inventory 组件
             courierInventory = containerObject.AddComponent<Inventory>();
             courierInventory.SetCapacity(CONTAINER_CAPACITY);
+            BoxCollider boxCollider = containerObject.AddComponent<BoxCollider>();
+            boxCollider.isTrigger = true;
+            boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
+            boxCollider.enabled = false;
             
             // 添加 InteractableLootbox 组件（用于触发官方 LootView）
             courierLootbox = containerObject.AddComponent<InteractableLootbox>();
+            NPCInteractionGroupHelper.GetOrCreateGroupList(courierLootbox, "[CourierService]");
+            courierLootbox.enabled = false;
             
             // 通过反射设置 inventoryReference，使 Lootbox.Inventory 返回我们的容器
             if (inventoryReferenceField != null)
@@ -504,6 +514,7 @@ namespace BossRush
             
             // 设置容器显示名称（必须在 InteractableLootbox 上设置，因为它会覆盖 Inventory 的 DisplayNameKey）
             SetLootboxDisplayNameKey(courierLootbox, "BossRush_CourierService_ContainerTitle");
+            containerObject.SetActive(true);
             
             // 注册容器内容变化事件（事件驱动，无需每帧检测）
             courierInventory.onContentChanged += OnContainerContentChanged;

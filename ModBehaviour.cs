@@ -104,7 +104,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[BossRush] ReflectionCache 初始化异常: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] ReflectionCache 初始化异常: " + e.Message);
                 IsInitialized = false;
             }
         }
@@ -3504,6 +3504,8 @@ namespace BossRush
             // Mode E 提前分支：先扫描刷怪点，再禁用spawner和清理敌人，跳过路牌/气泡/快递员
             if (shouldStartModeE)
             {
+                ScheduleModeEStartupWarmup("DemoChallenge");
+                PreCacheMapSpawnerPositions();
                 // Mode E 需要先扫描 CharacterSpawnerRoot 位置作为刷怪点（必须在 DisableAllSpawners 之前）
                 // AllocateSpawnPoints 内部会调用 ScanMapSpawnerPositions
                 

@@ -50,6 +50,12 @@ namespace BossRush
         private readonly Dictionary<Teams, List<CharacterMainControl>> modeEFactionAliveMap
             = new Dictionary<Teams, List<CharacterMainControl>>();
 
+        /// <summary>Mode E 入场预热线程，尽量把重初始化提前摊到前置等待阶段。</summary>
+        private Coroutine modeEStartupWarmupCoroutine = null;
+
+        /// <summary>当前预热对应的场景名，用于避免跨场景误复用协程状态。</summary>
+        private string modeEStartupWarmupSceneName = null;
+
         #endregion
 
         #region Mode E 配置
@@ -94,6 +100,167 @@ namespace BossRush
         #endregion
 
         #region Mode E 核心方法
+
+        /// <summary>
+        /// Mode E 入场分段耗时统计器，仅在开发模式下输出关键阶段耗时。
+        /// </summary>
+        private sealed class ModeEStartupProfiler
+        {
+            private readonly bool enabled;
+            private readonly string scope;
+            private readonly float startTime;
+            private float lastCheckpointTime;
+            private bool completed;
+
+            public ModeEStartupProfiler(string scope, string detail = null)
+            {
+                enabled = DevModeEnabled && ModeEStartupProfilingEnabled;
+                if (!enabled)
+                {
+                    return;
+                }
+
+                this.scope = string.IsNullOrEmpty(detail) ? scope : scope + " [" + detail + "]";
+                startTime = Time.realtimeSinceStartup;
+                lastCheckpointTime = startTime;
+                DevLog("[ModeE] [Profile] " + this.scope + " begin");
+            }
+
+            public void Mark(string stageName)
+            {
+                if (!enabled || completed)
+                {
+                    return;
+                }
+
+                float now = Time.realtimeSinceStartup;
+                DevLog("[ModeE] [Profile] " + scope + " | " + stageName + ": +" + ((now - lastCheckpointTime) * 1000f).ToString("F1") + " ms");
+                lastCheckpointTime = now;
+            }
+
+            public void Complete(string status = "completed")
+            {
+                if (!enabled || completed)
+                {
+                    return;
+                }
+
+                completed = true;
+                float now = Time.realtimeSinceStartup;
+                DevLog("[ModeE] [Profile] " + scope + " | " + status + " | total=" + ((now - startTime) * 1000f).ToString("F1") + " ms");
+            }
+        }
+
+        /// <summary>
+        /// 在进入 Mode E 前预热重初始化逻辑，尽量把首帧卡顿摊到前置等待阶段。
+        /// </summary>
+        private void ScheduleModeEStartupWarmup(string reason)
+        {
+            try
+            {
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (modeEStartupWarmupCoroutine != null && modeEStartupWarmupSceneName == sceneName)
+                {
+                    return;
+                }
+
+                if (modeEStartupWarmupCoroutine != null)
+                {
+                    StopCoroutine(modeEStartupWarmupCoroutine);
+                    modeEStartupWarmupCoroutine = null;
+                }
+
+                modeEStartupWarmupSceneName = sceneName;
+                modeEStartupWarmupCoroutine = StartCoroutine(PrepareModeEStartupCoroutine(sceneName, reason));
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] ScheduleModeEStartupWarmup failed: " + e.Message);
+            }
+        }
+
+        private void ClearModeEStartupWarmupCoroutine(string sceneName)
+        {
+            if (modeEStartupWarmupSceneName == sceneName)
+            {
+                modeEStartupWarmupCoroutine = null;
+            }
+        }
+
+        private bool TryRunModeEStartupWarmupStep(Action action, ModeEStartupProfiler profiler, string stageName, string errorContext, string sceneName)
+        {
+            try
+            {
+                action();
+                profiler.Mark(stageName);
+                return true;
+            }
+            catch (Exception e)
+            {
+                profiler.Complete("failed");
+                DevLog("[ModeE] [ERROR] " + errorContext + " failed: " + e.Message);
+                ClearModeEStartupWarmupCoroutine(sceneName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 分帧预热 Mode E 入场所需的重缓存，未跑完时由正式启动流程继续兜底。
+        /// </summary>
+        private System.Collections.IEnumerator PrepareModeEStartupCoroutine(string sceneName, string reason)
+        {
+            ModeEStartupProfiler profiler = new ModeEStartupProfiler("PrepareModeEStartup", sceneName + ", " + reason);
+            yield return null;
+
+            if (!TryRunModeEStartupWarmupStep(
+                InitializeModeDItemPools,
+                profiler,
+                "InitializeModeDItemPools",
+                "PrepareModeEStartup.InitializeModeDItemPools",
+                sceneName))
+            {
+                yield break;
+            }
+            yield return null;
+
+            if (!TryRunModeEStartupWarmupStep(
+                InitializeModeDEnemyPools,
+                profiler,
+                "InitializeModeDEnemyPools",
+                "PrepareModeEStartup.InitializeModeDEnemyPools",
+                sceneName))
+            {
+                yield break;
+            }
+            yield return null;
+
+            if (!TryRunModeEStartupWarmupStep(
+                TryPrewarmModeDGlobalItemPool,
+                profiler,
+                "TryPrewarmModeDGlobalItemPool",
+                "PrepareModeEStartup.TryPrewarmModeDGlobalItemPool",
+                sceneName))
+            {
+                yield break;
+            }
+            yield return null;
+
+            if (!TryRunModeEStartupWarmupStep(
+                PreCacheMapSpawnerPositions,
+                profiler,
+                "PreCacheMapSpawnerPositions",
+                "PrepareModeEStartup.PreCacheMapSpawnerPositions",
+                sceneName))
+            {
+                yield break;
+            }
+            yield return null;
+
+            yield return StartCoroutine(WarmModeEMerchantCachesAsync());
+            profiler.Mark("WarmModeEMerchantCachesAsync");
+            profiler.Complete();
+            ClearModeEStartupWarmupCoroutine(sceneName);
+        }
 
         /// <summary>
         /// 检测玩家背包中是否存在营旗物品
@@ -176,19 +343,24 @@ namespace BossRush
         /// </summary>
         public bool TryStartModeE()
         {
+            ModeEStartupProfiler profiler = new ModeEStartupProfiler("TryStartModeE");
+            string profileStatus = "failed";
             try
             {
                 // 互斥保护：Mode D 已激活时不启动 Mode E
                 if (modeDActive)
                 {
+                    profileStatus = "skipped: ModeD active";
                     DevLog("[ModeE] Mode D 已激活，跳过 Mode E 启动");
                     return false;
                 }
 
                 // 检测营旗
                 var (faction, flagItem) = DetectFactionFlag();
+                profiler.Mark("DetectFactionFlag");
                 if (!faction.HasValue || flagItem == null)
                 {
+                    profileStatus = "skipped: no faction flag";
                     DevLog("[ModeE] 未检测到营旗，不启动 Mode E");
                     return false;
                 }
@@ -196,6 +368,8 @@ namespace BossRush
                 // 检查裸装条件（复用 Mode D 的裸装检测）
                 if (!IsPlayerNaked())
                 {
+                    profiler.Mark("IsPlayerNaked");
+                    profileStatus = "skipped: player not naked";
                     DevLog("[ModeE] 玩家不满足裸装条件，拒绝启动");
                     ShowMessage(L10n.T(
                         "划地为营模式需要裸装入场！请清空所有装备后重试。",
@@ -205,16 +379,24 @@ namespace BossRush
                 }
 
                 // 消耗营旗
+                profiler.Mark("IsPlayerNaked");
                 ConsumeFactionFlag(flagItem);
+                profiler.Mark("ConsumeFactionFlag");
 
                 // 启动 Mode E
                 StartModeE(faction.Value);
+                profiler.Mark("StartModeE");
+                profileStatus = "success";
                 return true;
             }
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] TryStartModeE 失败: " + e.Message);
                 return false;
+            }
+            finally
+            {
+                profiler.Complete(profileStatus);
             }
         }
 
@@ -223,6 +405,7 @@ namespace BossRush
         /// </summary>
         private void StartModeE(Teams faction)
         {
+            ModeEStartupProfiler profiler = new ModeEStartupProfiler("StartModeE", faction.ToString());
             try
             {
                 DevLog("[ModeE] 启动 Mode E 模式，阵营: " + faction);
@@ -244,6 +427,7 @@ namespace BossRush
                 {
                     modeEFactionDeathCount[ModeEAvailableFactions[i]] = 0;
                 }
+                profiler.Mark("ResetState");
 
                 // 设置玩家阵营
                 CharacterMainControl player = CharacterMainControl.Main;
@@ -260,26 +444,34 @@ namespace BossRush
                         DevLog("[ModeE] 爷的营旗：玩家保持 player 阵营，所有Boss均为敌对");
                     }
                 }
+                profiler.Mark("SetupPlayerFaction");
 
                 // 显示阵营气泡
                 ShowFactionBubble(faction);
+                profiler.Mark("ShowFactionBubble");
 
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
+                profiler.Mark("InitializeModeDItemPools");
                 InitializeModeDEnemyPools();
+                profiler.Mark("InitializeModeDEnemyPools");
 
                 // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
                 EnsureModeDGlobalItemPool();
+                profiler.Mark("EnsureModeDGlobalItemPool");
 
                 // Mode E 不激活 BossRush 运行时状态（IsActive 保持 false）
                 // 仅订阅龙息Buff处理器，确保龙裔遗族Boss的龙息能触发龙焰灼烧
                 DragonBreathBuffHandler.Subscribe();
+                profiler.Mark("SubscribeDragonBreath");
 
                 // 分配刷怪点给各阵营（优先使用地图配置的 Mode E 专用刷怪点，无配置时兜底使用原地图 spawner 位置）
                 AllocateSpawnPoints();
+                profiler.Mark("AllocateSpawnPoints");
 
                 // 传送玩家到安全位置（远离Boss的安全点）
                 TeleportPlayerToSafePosition();
+                profiler.Mark("TeleportPlayerToSafePosition");
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）
                 GivePlayerStarterKit();
@@ -292,19 +484,23 @@ namespace BossRush
                 {
                     ModeEGiveLoneWolfSupplies();
                 }
+                profiler.Mark("GiveLoadout");
 
                 // 一次性生成所有阵营的 Boss（UniTaskVoid fire-and-forget，抑制 CS4014 警告）
                 #pragma warning disable CS4014
                 ModeESpawnAllBosses();
+                profiler.Mark("ScheduleBosses");
                 #pragma warning restore CS4014
 
                 // 生成神秘商人 NPC（fire-and-forget）
                 #pragma warning disable CS4014
                 SpawnModeEMerchant();
+                profiler.Mark("ScheduleMerchant");
                 #pragma warning restore CS4014
 
                 // 在玩家出生点生成快递员阿稳（站在原地不移动）
                 SpawnCourierNPC();
+                profiler.Mark("SpawnCourier");
 
                 ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
@@ -314,9 +510,12 @@ namespace BossRush
                     "欢迎来到 <color=red>划地为营</color>！",
                     "Welcome to <color=red>Faction Battle</color>!"
                 ));
+                profiler.Mark("ShowModeEUI");
+                profiler.Complete("success");
             }
             catch (Exception e)
             {
+                profiler.Complete("failed");
                 DevLog("[ModeE] [ERROR] StartModeE 失败: " + e.Message);
             }
         }
@@ -427,6 +626,13 @@ namespace BossRush
                 modeEScalingBatchTimer = 0f;
                 modeESpawnAllocation = null;
                 modeECachedSpawnerPositions = null;
+                modeECachedSpawnerSceneName = null;
+                if (modeEStartupWarmupCoroutine != null)
+                {
+                    StopCoroutine(modeEStartupWarmupCoroutine);
+                    modeEStartupWarmupCoroutine = null;
+                }
+                modeEStartupWarmupSceneName = null;
                 modeEIntegrityTimer = 0f;
 
                 // 重置龙裔/龙王全局限制标记

@@ -134,7 +134,7 @@ namespace BossRush
             iconBundle = FindLoadedBundle(BUNDLE_NAME);
             if (iconBundle != null)
             {
-                Debug.Log("[AchievementIconLoader] 使用已加载的 AssetBundle");
+                ModBehaviour.DevLog("[AchievementIconLoader] 使用已加载的 AssetBundle");
                 LogBundleContents();
                 return;
             }
@@ -143,14 +143,14 @@ namespace BossRush
             string modPath = ModBehaviour.GetModPath();
             if (string.IsNullOrEmpty(modPath))
             {
-                Debug.LogWarning("[AchievementIconLoader] ModPath 为空，无法加载 AssetBundle");
+                ModBehaviour.DevLog("[AchievementIconLoader] ModPath 为空，无法加载 AssetBundle");
                 return;
             }
 
             string bundlePath = System.IO.Path.Combine(modPath, BUNDLE_RELATIVE_PATH);
             if (!System.IO.File.Exists(bundlePath))
             {
-                Debug.LogWarning("[AchievementIconLoader] AssetBundle 文件不存在: " + bundlePath);
+                ModBehaviour.DevLog("[AchievementIconLoader] AssetBundle 文件不存在: " + bundlePath);
                 return;
             }
 
@@ -159,7 +159,7 @@ namespace BossRush
                 iconBundle = AssetBundle.LoadFromFile(bundlePath);
                 if (iconBundle != null)
                 {
-                    Debug.Log("[AchievementIconLoader] 成功加载 AssetBundle: " + bundlePath);
+                    ModBehaviour.DevLog("[AchievementIconLoader] 成功加载 AssetBundle: " + bundlePath);
                     LogBundleContents();
                 }
                 else
@@ -168,11 +168,11 @@ namespace BossRush
                     iconBundle = FindLoadedBundle(BUNDLE_NAME);
                     if (iconBundle != null)
                     {
-                        Debug.Log("[AchievementIconLoader] 从已加载列表获取 AssetBundle");
+                        ModBehaviour.DevLog("[AchievementIconLoader] 从已加载列表获取 AssetBundle");
                     }
                     else
                     {
-                        Debug.LogWarning("[AchievementIconLoader] AssetBundle.LoadFromFile 返回 null");
+                        ModBehaviour.DevLog("[AchievementIconLoader] AssetBundle.LoadFromFile 返回 null");
                     }
                 }
             }
@@ -199,7 +199,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning("[AchievementIconLoader] 查找已加载 AssetBundle 失败: " + e.Message);
+                ModBehaviour.DevLog("[AchievementIconLoader] 查找已加载 AssetBundle 失败: " + e.Message);
             }
             return null;
         }
@@ -213,7 +213,7 @@ namespace BossRush
             try
             {
                 string[] allAssets = iconBundle.GetAllAssetNames();
-                Debug.Log("[AchievementIconLoader] AssetBundle 包含 " + allAssets.Length + " 个资源");
+                ModBehaviour.DevLog("[AchievementIconLoader] AssetBundle 包含 " + allAssets.Length + " 个资源");
             }
             catch { }
         }
@@ -247,7 +247,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning("[AchievementIconLoader] 加载 Sprite 失败: " + iconName + " - " + e.Message);
+                ModBehaviour.DevLog("[AchievementIconLoader] 加载 Sprite 失败: " + iconName + " - " + e.Message);
             }
 
             return null;
@@ -268,7 +268,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning("[AchievementIconLoader] 加载 Texture2D 失败: " + iconName + " - " + e.Message);
+                ModBehaviour.DevLog("[AchievementIconLoader] 加载 Texture2D 失败: " + iconName + " - " + e.Message);
             }
 
             return null;

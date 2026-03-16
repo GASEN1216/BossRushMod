@@ -293,9 +293,12 @@ namespace BossRush
             BoxCollider boxCollider = containerObject.AddComponent<BoxCollider>();
             boxCollider.isTrigger = true;
             boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
+            boxCollider.enabled = false;
             
             // 添加 InteractableLootbox 组件
             giftLootbox = containerObject.AddComponent<InteractableLootbox>();
+            NPCInteractionGroupHelper.GetOrCreateGroupList(giftLootbox, "[NPCGiftContainerService]");
+            giftLootbox.enabled = false;
             
             // 设置 inventoryReference
             if (inventoryReferenceField != null)

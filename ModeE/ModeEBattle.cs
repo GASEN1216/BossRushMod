@@ -829,6 +829,8 @@ namespace BossRush
                 GameObject spawnerObj = new GameObject("ModeE_VirtualSpawnerRoot");
                 UnityEngine.Object.DontDestroyOnLoad(spawnerObj);
                 modeEVirtualSpawnerRoot = spawnerObj.AddComponent<CharacterSpawnerRoot>();
+                // This virtual root is only a registry bridge; keep Update/Init from entering the vanilla spawn pipeline.
+                modeEVirtualSpawnerRoot.enabled = false;
                 DevLog("[ModeE] 创建虚拟 CharacterSpawnerRoot 用于 BossLiveMapMod 集成");
             }
             catch (Exception e)

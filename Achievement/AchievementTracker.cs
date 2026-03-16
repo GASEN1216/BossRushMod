@@ -68,7 +68,7 @@ namespace BossRush
 
             LoadStats();
             isInitialized = true;
-            Debug.Log("[Achievement] 追踪器初始化完成 - 累计击杀: " + TotalBossKills + ", 累计通关: " + TotalClears);
+            ModBehaviour.DevLog("[Achievement] 追踪器初始化完成 - 累计击杀: " + TotalBossKills + ", 累计通关: " + TotalClears);
         }
 
         /// <summary>
@@ -201,7 +201,7 @@ namespace BossRush
             lastSavedBossKills = 0;
             lastSavedClears = 0;
             SaveStats();
-            Debug.Log("[Achievement] 统计数据已重置");
+            ModBehaviour.DevLog("[Achievement] 统计数据已重置");
         }
         
         /// <summary>
@@ -211,7 +211,7 @@ namespace BossRush
         {
             if (CollectedDragonDescendantLoot.Add(itemTypeId))
             {
-                Debug.Log("[Achievement] 收集龙裔掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonDescendantLoot.Count);
+                ModBehaviour.DevLog("[Achievement] 收集龙裔掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonDescendantLoot.Count);
                 TryAutoSave();
             }
         }
@@ -223,7 +223,7 @@ namespace BossRush
         {
             if (CollectedDragonKingLoot.Add(itemTypeId))
             {
-                Debug.Log("[Achievement] 收集龙王掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonKingLoot.Count);
+                ModBehaviour.DevLog("[Achievement] 收集龙王掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonKingLoot.Count);
                 TryAutoSave();
             }
         }
@@ -236,7 +236,7 @@ namespace BossRush
             if (!HasUsedFlightTotem)
             {
                 HasUsedFlightTotem = true;
-                Debug.Log("[Achievement] 首次使用腾云驾雾图腾");
+                ModBehaviour.DevLog("[Achievement] 首次使用腾云驾雾图腾");
                 SaveStats();
             }
         }
@@ -249,7 +249,7 @@ namespace BossRush
             if (!HasTriggeredReverseScale)
             {
                 HasTriggeredReverseScale = true;
-                Debug.Log("[Achievement] 首次触发逆鳞效果");
+                ModBehaviour.DevLog("[Achievement] 首次触发逆鳞效果");
                 SaveStats();
             }
         }

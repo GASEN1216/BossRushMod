@@ -407,6 +407,20 @@ namespace BossRush
         /// <summary>
         /// 开发模式日志输出（仅在 DevModeEnabled = true 时输出）
         /// </summary>
+        internal const bool ModeEStartupProfilingEnabled = false;
+        internal const bool VerboseStartupDebugLogsEnabled = false;
+
+        /// <summary>
+        /// 当前是否启用开发日志输出
+        /// </summary>
+        internal static bool IsDevLoggingEnabled
+        {
+            get { return DevModeEnabled && VerboseStartupDebugLogsEnabled; }
+        }
+
+        /// <summary>
+        /// 开发模式日志输出（仅在 DevModeEnabled = true 时输出）
+        /// </summary>
         /// <param name="message">日志消息</param>
         internal static void DevLog(string message)
         {

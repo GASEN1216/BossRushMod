@@ -30,6 +30,32 @@ namespace BossRush
         private const float GLOBAL_POOL_RETRY_INTERVAL = 5f;
 
         /// <summary>
+        /// 仅在 TagsData 已就绪时预热全局掉落池，避免触发重试节流影响正式入口构建
+        /// </summary>
+        private void TryPrewarmModeDGlobalItemPool()
+        {
+            if (modeDGlobalItemPoolInitialized && modeDGlobalItemPool != null && modeDGlobalItemPool.Count > 0)
+            {
+                return;
+            }
+
+            try
+            {
+                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+                if (tagsData == null || tagsData.AllTags == null || tagsData.AllTags.Count == 0)
+                {
+                    return;
+                }
+            }
+            catch
+            {
+                return;
+            }
+
+            EnsureModeDGlobalItemPool();
+        }
+
+        /// <summary>
         /// 构建/缓存 Mode D 全局掉落物品池
         /// <para>从全物品池中收集可掉落物品，排除黑名单和不应掉落的 Tag</para>
         /// </summary>

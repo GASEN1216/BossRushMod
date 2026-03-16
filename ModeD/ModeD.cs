@@ -57,6 +57,7 @@ namespace BossRush
         
         /// <summary>Mode D 物品池是否已初始化</summary>
         private bool modeDItemPoolsInitialized = false;
+        private bool modeDEnemyPoolsInitialized = false;
         
         /// <summary>Mode D 武器池（Gun Tag）</summary>
         private readonly List<int> modeDWeaponPool = new List<int>();
@@ -357,7 +358,11 @@ namespace BossRush
 
             try
             {
-                DevLog("[ModeD] 开始初始化物品池...");
+                bool logEnabled = VerboseStartupDebugLogsEnabled;
+                if (logEnabled)
+                {
+                    DevLog("[ModeD] 开始初始化物品池...");
+                }
 
                 modeDWeaponPool.Clear();
                 modeDArmortPool.Clear();
@@ -373,7 +378,10 @@ namespace BossRush
                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
                 if (tagsData == null)
                 {
-                    DevLog("[ModeD] [WARNING] 无法获取 TagsData");
+                    if (logEnabled)
+                    {
+                        DevLog("[ModeD] [WARNING] 无法获取 TagsData");
+                    }
                     return;
                 }
 
@@ -457,16 +465,19 @@ namespace BossRush
                 }
 
                 modeDItemPoolsInitialized = true;
-                DevLog("[ModeD] 物品池初始化完成: " +
-                       "武器=" + modeDWeaponPool.Count +
-                       ", 护甲=" + modeDArmortPool.Count +
-                       ", 头盔=" + modeDHelmetPool.Count +
-                       ", 弹药=" + modeDAmmoPool.Count +
-                       ", 医疗=" + modeDMedicalPool.Count +
-                       ", 近战=" + modeDMeleePool.Count +
-                       ", 图腾=" + modeDTotemPool.Count +
-                       ", 面具=" + modeDMaskPool.Count +
-                       ", 背包=" + modeDBackpackPool.Count);
+                if (logEnabled)
+                {
+                    DevLog("[ModeD] 物品池初始化完成: " +
+                           "武器=" + modeDWeaponPool.Count +
+                           ", 护甲=" + modeDArmortPool.Count +
+                           ", 头盔=" + modeDHelmetPool.Count +
+                           ", 弹药=" + modeDAmmoPool.Count +
+                           ", 医疗=" + modeDMedicalPool.Count +
+                           ", 近战=" + modeDMeleePool.Count +
+                           ", 图腾=" + modeDTotemPool.Count +
+                           ", 面具=" + modeDMaskPool.Count +
+                           ", 背包=" + modeDBackpackPool.Count);
+                }
             }
             catch (Exception e)
             {
@@ -537,7 +548,20 @@ namespace BossRush
         {
             try
             {
-                DevLog("[ModeD] 开始初始化敌人池...");
+                bool logEnabled = VerboseStartupDebugLogsEnabled;
+                if (logEnabled)
+                {
+                    DevLog("[ModeD] 开始初始化敌人池...");
+                }
+
+                modeDBossPool = enemyPresets;
+                if (modeDEnemyPoolsInitialized &&
+                    cachedCharacterPresets != null &&
+                    cachedCharacterPresets.Count > 0 &&
+                    modeDMinionPool.Count > 0)
+                {
+                    return;
+                }
 
                 modeDMinionPool.Clear();
 
@@ -545,7 +569,10 @@ namespace BossRush
                 var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
                 if (allPresets == null || allPresets.Length == 0)
                 {
-                    DevLog("[ModeD] [WARNING] 未找到任何 CharacterRandomPreset");
+                    if (logEnabled)
+                    {
+                        DevLog("[ModeD] [WARNING] 未找到任何 CharacterRandomPreset");
+                    }
                     return;
                 }
 
@@ -559,7 +586,10 @@ namespace BossRush
                         cachedCharacterPresets[preset.nameKey] = preset;
                     }
                 }
-                DevLog("[ModeD] 缓存了 " + cachedCharacterPresets.Count + " 个 CharacterRandomPreset");
+                if (logEnabled)
+                {
+                    DevLog("[ModeD] 缓存了 " + cachedCharacterPresets.Count + " 个 CharacterRandomPreset");
+                }
 
                 foreach (var preset in allPresets)
                 {
@@ -575,14 +605,20 @@ namespace BossRush
                     // 雇佣兵在运行时会被设置为友方（leader.IsMainCharacter），无法被玩家击杀
                     if (nameKey == "Cname_Usec")
                     {
-                        DevLog("[ModeD] 排除雇佣兵预设: " + nameKey);
+                        if (logEnabled)
+                        {
+                            DevLog("[ModeD] 排除雇佣兵预设: " + nameKey);
+                        }
                         continue;
                     }
 
                     // 排除自动炮台（固定敌人，无法移动）
                     if (nameKey == "Cname_GunTurret")
                     {
-                        DevLog("[ModeD] 排除自动炮台: " + nameKey);
+                        if (logEnabled)
+                        {
+                            DevLog("[ModeD] 排除自动炮台: " + nameKey);
+                        }
                         continue;
                     }
 
@@ -604,12 +640,18 @@ namespace BossRush
                                 if (iconType == 4)
                                 {
                                     shouldExclude = true;
-                                    DevLog("[ModeD] 排除商人(iconType): " + nameKey);
+                                    if (logEnabled)
+                                    {
+                                        DevLog("[ModeD] 排除商人(iconType): " + nameKey);
+                                    }
                                 }
                                 else if (iconType == 5)
                                 {
                                     shouldExclude = true;
-                                    DevLog("[ModeD] 排除宠物(iconType): " + nameKey);
+                                    if (logEnabled)
+                                    {
+                                        DevLog("[ModeD] 排除宠物(iconType): " + nameKey);
+                                    }
                                 }
                             }
                         }
@@ -629,12 +671,18 @@ namespace BossRush
                                 if (merchantIcon != null && icon == merchantIcon)
                                 {
                                     shouldExclude = true;
-                                    DevLog("[ModeD] 排除商人(icon): " + nameKey);
+                                    if (logEnabled)
+                                    {
+                                        DevLog("[ModeD] 排除商人(icon): " + nameKey);
+                                    }
                                 }
                                 else if (petIcon != null && icon == petIcon)
                                 {
                                     shouldExclude = true;
-                                    DevLog("[ModeD] 排除宠物(icon): " + nameKey);
+                                    if (logEnabled)
+                                    {
+                                        DevLog("[ModeD] 排除宠物(icon): " + nameKey);
+                                    }
                                 }
                             }
                         }
@@ -650,12 +698,18 @@ namespace BossRush
                             nameKey.Contains("商人") || nameKey.Contains("商贩"))
                         {
                             shouldExclude = true;
-                            DevLog("[ModeD] 排除商人(name): " + nameKey);
+                            if (logEnabled)
+                            {
+                                DevLog("[ModeD] 排除商人(name): " + nameKey);
+                            }
                         }
                         else if (lowerName.Contains("pet") || nameKey.Contains("宠物"))
                         {
                             shouldExclude = true;
-                            DevLog("[ModeD] 排除宠物(name): " + nameKey);
+                            if (logEnabled)
+                            {
+                                DevLog("[ModeD] 排除宠物(name): " + nameKey);
+                            }
                         }
                     }
 
@@ -664,7 +718,10 @@ namespace BossRush
                     // 排除载具类型（包括炮台）
                     if (preset.isVehicle)
                     {
-                        DevLog("[ModeD] 排除载具/炮台: " + nameKey);
+                        if (logEnabled)
+                        {
+                            DevLog("[ModeD] 排除载具/炮台: " + nameKey);
+                        }
                         continue;
                     }
 
@@ -689,7 +746,10 @@ namespace BossRush
                         };
 
                         modeDMinionPool.Add(minionInfo);
-                        DevLog("[ModeD] 添加小怪: " + nameKey + " (health=" + health + ")");
+                        if (logEnabled)
+                        {
+                            DevLog("[ModeD] 添加小怪: " + nameKey + " (health=" + health + ")");
+                        }
                     }
                 }
 
@@ -697,7 +757,13 @@ namespace BossRush
                 modeDBossPool = enemyPresets;
 
                 int bossCount = (modeDBossPool != null) ? modeDBossPool.Count : 0;
-                DevLog("[ModeD] 敌人池初始化完成: 小怪=" + modeDMinionPool.Count + ", Boss=" + bossCount);
+                modeDEnemyPoolsInitialized = cachedCharacterPresets != null &&
+                    cachedCharacterPresets.Count > 0 &&
+                    (modeDMinionPool.Count > 0 || bossCount > 0);
+                if (logEnabled)
+                {
+                    DevLog("[ModeD] 敌人池初始化完成: 小怪=" + modeDMinionPool.Count + ", Boss=" + bossCount);
+                }
             }
             catch (Exception e)
             {

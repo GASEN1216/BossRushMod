@@ -1151,6 +1151,7 @@ namespace BossRush
                         // [Mode E] 在禁用 spawner 之前预缓存原地图刷怪点位置
                         // Mode E 需要使用这些位置作为阵营刷怪点
                         PreCacheMapSpawnerPositions();
+                        ScheduleModeEStartupWarmup("OnSceneLoaded");
                         
                         // [修复] 立即禁用 spawner，防止敌人生成
                         // 场景加载时 spawner 已经存在，必须立即禁用
@@ -1673,6 +1674,7 @@ namespace BossRush
                 
                 // 预缓存原地图刷怪点位置（必须在 DisableAllSpawners 之前）
                 PreCacheMapSpawnerPositions();
+                ScheduleModeEStartupWarmup("GroundZeroModeE");
                 
                 // 禁用 spawner 和清理敌人（Mode E 仍需要）
                 DisableAllSpawners();

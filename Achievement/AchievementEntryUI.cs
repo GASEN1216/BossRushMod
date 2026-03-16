@@ -107,7 +107,7 @@ namespace BossRush
         {
             if (def == null)
             {
-                Debug.LogWarning("[AchievementEntryUI] Create called with null definition");
+                ModBehaviour.DevLog("[AchievementEntryUI] Create called with null definition");
                 return null;
             }
 
@@ -308,7 +308,7 @@ namespace BossRush
         {
             if (def == null)
             {
-                Debug.LogWarning("[AchievementEntryUI] Setup called with null definition");
+                ModBehaviour.DevLog("[AchievementEntryUI] Setup called with null definition");
                 return;
             }
 
@@ -508,7 +508,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[AchievementEntryUI] Failed to load icon " + iconFile + ": " + e.Message);
+                ModBehaviour.DevLog("[AchievementEntryUI] Failed to load icon " + iconFile + ": " + e.Message);
                 SetDefaultIcon(grayscale);
             }
         }

@@ -48,6 +48,22 @@ namespace BossRush
         /// <summary>获取 Mode E 神秘商人主交互引用（供 Harmony patch 使用）</summary>
         public InteractableBase ModeEMerchantMainInteract => modeEMerchantMainInteract;
 
+        /// <summary>缓存的 Mode E 商人预设，避免重复扫描所有 CharacterRandomPreset</summary>
+        private static CharacterRandomPreset cachedModeEMerchantPreset = null;
+
+        /// <summary>缓存的 Mode E 商店分类商品 ID，Key 为分类后缀（如 Gun / Medical）</summary>
+        private static readonly Dictionary<string, int[]> modeEMerchantCategoryItemCache = new Dictionary<string, int[]>();
+
+        /// <summary>Mode E 其他分类商店的固定商品列表</summary>
+        private static readonly int[] modeEMerchantOtherItemIds = new int[]
+        {
+            388,
+            RespawnItemConfig.TAUNT_SMOKE_TYPE_ID,
+            RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID,
+            RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID,
+            RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID
+        };
+
         // ====================================================================
         // 生成神秘商人
         // ====================================================================
@@ -60,10 +76,10 @@ namespace BossRush
             try
             {
                 // 查找原版商人预设 —— 优先使用缓存字典，避免重复调用 FindObjectsOfTypeAll
-                CharacterRandomPreset merchantPreset = null;
+                CharacterRandomPreset merchantPreset = GetModeEMerchantPreset();
 
                 // 优先从缓存字典查找（O(1) 操作）
-                if (cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
+                if (merchantPreset == null && cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
                 {
                     // 尝试精确匹配神秘商人
                     foreach (var kvp in cachedCharacterPresets)
@@ -371,6 +387,8 @@ namespace BossRush
                         new List<Duckov.Utilities.Tag> { tagsData.Bait },
                         "BossRush_ModeE_Shop_Bait", "Bait"));
 
+                categories = GetModeEMerchantCategories(tagsData);
+
                 int totalItems = 0;
 
                 // 为每个分类创建独立商店和交互选项
@@ -497,14 +515,7 @@ namespace BossRush
                         otherShop.entries.Clear();
 
                     // 388=原版物品；其余为 Mode E 专属消耗品
-                    int[] otherItemIds = new int[]
-                    {
-                        388,
-                        RespawnItemConfig.TAUNT_SMOKE_TYPE_ID,
-                        RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID,
-                        RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID,
-                        RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID
-                    };
+                    int[] otherItemIds = modeEMerchantOtherItemIds;
                     foreach (int id in otherItemIds)
                     {
                         try
@@ -549,6 +560,300 @@ namespace BossRush
         /// <summary>
         /// 根据 Tag 搜索所有可用物品ID（品质1及以上）
         /// </summary>
+        private CharacterRandomPreset GetModeEMerchantPreset()
+        {
+            try
+            {
+                if (cachedModeEMerchantPreset != null)
+                {
+                    return cachedModeEMerchantPreset;
+                }
+
+                CharacterRandomPreset merchantPreset = null;
+
+                if (cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
+                {
+                    foreach (var kvp in cachedCharacterPresets)
+                    {
+                        string nameKey = kvp.Key;
+                        if (string.IsNullOrEmpty(nameKey)) continue;
+                        if (nameKey.Contains("Merchant") && nameKey.Contains("Myst"))
+                        {
+                            merchantPreset = kvp.Value;
+                            break;
+                        }
+                    }
+
+                    if (merchantPreset == null)
+                    {
+                        foreach (var kvp in cachedCharacterPresets)
+                        {
+                            string nameKey = kvp.Key;
+                            if (string.IsNullOrEmpty(nameKey)) continue;
+                            if (nameKey.Contains("Merchant"))
+                            {
+                                merchantPreset = kvp.Value;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (merchantPreset != null && cachedModeEMerchantPreset == null)
+                {
+                    cachedModeEMerchantPreset = merchantPreset;
+                }
+
+                if (merchantPreset == null)
+                {
+                    CharacterRandomPreset[] allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                    CharacterRandomPreset fallbackMerchant = null;
+                    for (int i = 0; i < allPresets.Length; i++)
+                    {
+                        CharacterRandomPreset preset = allPresets[i];
+                        if (preset == null) continue;
+
+                        try
+                        {
+                            string nameKey = preset.nameKey;
+                            if (string.IsNullOrEmpty(nameKey)) continue;
+                            if (nameKey.Contains("Merchant"))
+                            {
+                                if (nameKey.Contains("Myst"))
+                                {
+                                    merchantPreset = preset;
+                                    break;
+                                }
+
+                                if (fallbackMerchant == null)
+                                {
+                                    fallbackMerchant = preset;
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (merchantPreset == null)
+                    {
+                        merchantPreset = fallbackMerchant;
+                    }
+
+                    if (merchantPreset == null)
+                    {
+                        FieldInfo iconField = ReflectionCache.CharacterRandomPreset_CharacterIconType;
+                        if (iconField != null)
+                        {
+                            for (int i = 0; i < allPresets.Length; i++)
+                            {
+                                CharacterRandomPreset preset = allPresets[i];
+                                if (preset == null) continue;
+
+                                try
+                                {
+                                    if ((int)iconField.GetValue(preset) == 4)
+                                    {
+                                        merchantPreset = preset;
+                                        break;
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+
+                if (merchantPreset != null)
+                {
+                    cachedModeEMerchantPreset = merchantPreset;
+                }
+
+                return merchantPreset;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] GetModeEMerchantPreset 澶辫触: " + e.Message);
+                return null;
+            }
+        }
+
+        private List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
+        {
+            var categories = new List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>>();
+            if (tagsData == null)
+            {
+                return categories;
+            }
+
+            if (tagsData.Gun != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { tagsData.Gun },
+                    "BossRush_ModeE_Shop_Gun", "Gun"));
+
+            Duckov.Utilities.Tag meleeTag = FindTagByNameInInit("MeleeWeapon");
+            if (meleeTag != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { meleeTag },
+                    "BossRush_ModeE_Shop_Melee", "Melee"));
+
+            Duckov.Utilities.Tag accessoryTag = FindTagByNameInInit("Accessory");
+            if (accessoryTag != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { accessoryTag },
+                    "BossRush_ModeE_Shop_Accessory", "Accessory"));
+
+            if (tagsData.Bullet != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { tagsData.Bullet },
+                    "BossRush_ModeE_Shop_Bullet", "Bullet"));
+
+            if (tagsData.Helmat != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { tagsData.Helmat },
+                    "BossRush_ModeE_Shop_Helmat", "Helmat"));
+
+            if (tagsData.Armor != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { tagsData.Armor },
+                    "BossRush_ModeE_Shop_Armor", "Armor"));
+
+            if (tagsData.Backpack != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { tagsData.Backpack },
+                    "BossRush_ModeE_Shop_Backpack", "Backpack"));
+
+            Duckov.Utilities.Tag totemTag = FindTagByNameInInit("Totem");
+            if (totemTag != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { totemTag },
+                    "BossRush_ModeE_Shop_Totem", "Totem"));
+
+            Duckov.Utilities.Tag maskTag = FindTagByNameInInit("Mask");
+            if (maskTag == null) maskTag = FindTagByNameInInit("FaceMask");
+            if (maskTag != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { maskTag },
+                    "BossRush_ModeE_Shop_Mask", "Mask"));
+
+            Duckov.Utilities.Tag medTag = FindTagByNameInInit("Medic");
+            if (medTag == null) medTag = FindTagByNameInInit("Medical");
+            if (medTag == null) medTag = FindTagByNameInInit("Consumable");
+            if (medTag == null) medTag = FindTagByNameInInit("Healing");
+            if (medTag != null)
+            {
+                var medTags = new List<Duckov.Utilities.Tag> { medTag };
+                Duckov.Utilities.Tag injectorTag = FindTagByNameInInit("Injector");
+                if (injectorTag != null)
+                {
+                    medTags.Add(injectorTag);
+                }
+                categories.Add(System.Tuple.Create(
+                    medTags,
+                    "BossRush_ModeE_Shop_Medical", "Medical"));
+            }
+
+            Duckov.Utilities.Tag foodTag = FindTagByNameInInit("Food");
+            if (foodTag != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { foodTag },
+                    "BossRush_ModeE_Shop_Food", "Food"));
+
+            if (tagsData.Bait != null)
+                categories.Add(System.Tuple.Create(
+                    new List<Duckov.Utilities.Tag> { tagsData.Bait },
+                    "BossRush_ModeE_Shop_Bait", "Bait"));
+
+            return categories;
+        }
+
+        internal void PrewarmModeEMerchantCaches()
+        {
+            try
+            {
+                GetModeEMerchantPreset();
+
+                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+                if (tagsData == null)
+                {
+                    return;
+                }
+
+                Duckov.Utilities.Tag[] emptyExclude = new Duckov.Utilities.Tag[0];
+                List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> categories = GetModeEMerchantCategories(tagsData);
+                for (int i = 0; i < categories.Count; i++)
+                {
+                    System.Tuple<List<Duckov.Utilities.Tag>, string, string> category = categories[i];
+                    List<int> allIds = ModeESearchItemsMultiTag(category.Item1, emptyExclude);
+                    if (allIds == null || allIds.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    if (category.Item3 == "Medical")
+                    {
+                        allIds.RemoveAll(id => modeEMedicalShopExcludedIds.Contains(id));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] PrewarmModeEMerchantCaches failed: " + e.Message);
+            }
+        }
+
+        private System.Collections.IEnumerator WarmModeEMerchantCachesAsync()
+        {
+            GetModeEMerchantPreset();
+            yield return null;
+
+            Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+            if (tagsData == null)
+            {
+                yield break;
+            }
+
+            Duckov.Utilities.Tag[] emptyExclude = new Duckov.Utilities.Tag[0];
+            List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> categories = GetModeEMerchantCategories(tagsData);
+            for (int i = 0; i < categories.Count; i++)
+            {
+                System.Tuple<List<Duckov.Utilities.Tag>, string, string> category = categories[i];
+                List<int> allIds = ModeESearchItemsMultiTag(category.Item1, emptyExclude);
+                if (allIds != null && category.Item3 == "Medical")
+                {
+                    allIds.RemoveAll(id => modeEMedicalShopExcludedIds.Contains(id));
+                }
+
+                yield return null;
+            }
+        }
+
+        private string BuildModeEMerchantCategoryCacheKey(List<Duckov.Utilities.Tag> tags, Duckov.Utilities.Tag[] excludeTags)
+        {
+            string key = string.Empty;
+
+            if (tags != null)
+            {
+                for (int i = 0; i < tags.Count; i++)
+                {
+                    Duckov.Utilities.Tag tag = tags[i];
+                    key += (tag != null ? tag.name : "<null>") + "|";
+                }
+            }
+
+            key += "#";
+
+            if (excludeTags != null)
+            {
+                for (int i = 0; i < excludeTags.Length; i++)
+                {
+                    Duckov.Utilities.Tag tag = excludeTags[i];
+                    key += (tag != null ? tag.name : "<null>") + "|";
+                }
+            }
+
+            return key;
+        }
+
         private int[] ModeESearchItems(Duckov.Utilities.Tag tag, Duckov.Utilities.Tag[] excludeTags)
         {
             try
@@ -579,6 +884,13 @@ namespace BossRush
         /// </summary>
         private List<int> ModeESearchItemsMultiTag(List<Duckov.Utilities.Tag> tags, Duckov.Utilities.Tag[] excludeTags)
         {
+            string cacheKey = BuildModeEMerchantCategoryCacheKey(tags, excludeTags);
+            int[] cachedIds;
+            if (modeEMerchantCategoryItemCache.TryGetValue(cacheKey, out cachedIds))
+            {
+                return cachedIds != null ? new List<int>(cachedIds) : new List<int>();
+            }
+
             var idSet = new HashSet<int>();
             foreach (var tag in tags)
             {
@@ -586,10 +898,15 @@ namespace BossRush
                 if (ids != null)
                 {
                     foreach (int id in ids)
+                    {
                         idSet.Add(id);
+                    }
                 }
             }
-            return new List<int>(idSet);
+
+            List<int> result = new List<int>(idSet);
+            modeEMerchantCategoryItemCache[cacheKey] = result.ToArray();
+            return result;
         }
 
         // ====================================================================

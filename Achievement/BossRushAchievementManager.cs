@@ -47,7 +47,7 @@ namespace BossRush
         {
             if (isInitialized)
             {
-                Debug.Log("[Achievement] 成就系统已初始化，跳过");
+                ModBehaviour.DevLog("[Achievement] 成就系统已初始化，跳过");
                 return;
             }
 
@@ -56,7 +56,7 @@ namespace BossRush
             AchievementTracker.Initialize();
 
             isInitialized = true;
-            Debug.Log("[Achievement] 成就系统初始化完成 - 共 " + allAchievements.Count + " 个成就，已解锁 " + unlockedAchievements.Count + " 个");
+            ModBehaviour.DevLog("[Achievement] 成就系统初始化完成 - 共 " + allAchievements.Count + " 个成就，已解锁 " + unlockedAchievements.Count + " 个");
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace BossRush
                 "解锁所有成就", "Unlock all achievements",
                 AchievementCategory.Ultimate, 5000000, 5);
 
-            Debug.Log("[Achievement] 已注册 " + allAchievements.Count + " 个成就定义");
+            ModBehaviour.DevLog("[Achievement] 已注册 " + allAchievements.Count + " 个成就定义");
         }
 
         /// <summary>
@@ -228,7 +228,7 @@ namespace BossRush
         {
             if (allAchievements.ContainsKey(id))
             {
-                Debug.LogWarning("[Achievement] 成就ID重复: " + id);
+                ModBehaviour.DevLog("[Achievement] 成就ID重复: " + id);
                 return;
             }
             allAchievements[id] = new BossRushAchievementDef(id, nameCN, nameEN, descCN, descEN, category, cashReward, difficulty, isHidden);
@@ -250,7 +250,7 @@ namespace BossRush
             unlockedAchievements.Add(achievementId);
             SaveData();
 
-            Debug.Log("[Achievement] 成就解锁: " + achievement.nameCN + " (" + achievementId + ")");
+            ModBehaviour.DevLog("[Achievement] 成就解锁: " + achievement.nameCN + " (" + achievementId + ")");
 
             OnAchievementUnlocked?.Invoke(achievement);
             SteamAchievementPopup.Show(achievement);
@@ -290,7 +290,7 @@ namespace BossRush
                 try
                 {
                     Duckov.Economy.EconomyManager.Add(achievement.reward.cashReward);
-                    Debug.Log("[Achievement] 发放现金奖励: " + achievement.reward.cashReward);
+                    ModBehaviour.DevLog("[Achievement] 发放现金奖励: " + achievement.reward.cashReward);
                 }
                 catch (Exception e)
                 {
@@ -306,7 +306,7 @@ namespace BossRush
                     int itemId = achievement.reward.itemIds[i];
                     int count = (achievement.reward.itemCounts != null && i < achievement.reward.itemCounts.Length)
                         ? achievement.reward.itemCounts[i] : 1;
-                    Debug.Log("[Achievement] 发放物品奖励: ID=" + itemId + ", 数量=" + count);
+                    ModBehaviour.DevLog("[Achievement] 发放物品奖励: ID=" + itemId + ", 数量=" + count);
                 }
             }
 
@@ -366,7 +366,7 @@ namespace BossRush
                 var claimedList = SavesSystem.LoadGlobal<List<string>>(SAVE_KEY_CLAIMED, new List<string>());
                 claimedRewards = new HashSet<string>(claimedList);
 
-                Debug.Log("[Achievement] 数据已加载 - 解锁: " + unlockedAchievements.Count + ", 领取: " + claimedRewards.Count);
+                ModBehaviour.DevLog("[Achievement] 数据已加载 - 解锁: " + unlockedAchievements.Count + ", 领取: " + claimedRewards.Count);
             }
             catch
             {
@@ -384,7 +384,7 @@ namespace BossRush
             foreach (var id in allAchievements.Keys)
                 unlockedAchievements.Add(id);
             SaveData();
-            Debug.Log("[Achievement] [DEBUG] 已解锁所有成就");
+            ModBehaviour.DevLog("[Achievement] [DEBUG] 已解锁所有成就");
         }
 
         public static void DebugResetAll()
@@ -395,7 +395,7 @@ namespace BossRush
             AchievementTracker.TotalBossKills = 0;
             AchievementTracker.TotalClears = 0;
             AchievementTracker.SaveStats();
-            Debug.Log("[Achievement] [DEBUG] 已重置所有成就");
+            ModBehaviour.DevLog("[Achievement] [DEBUG] 已重置所有成就");
         }
 
         #endregion
