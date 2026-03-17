@@ -116,11 +116,20 @@ namespace BossRush
         /// 在所有阵营的刷怪点一次性生成全部 Boss
         /// 按距离玩家由近到远分批生成，每批之间让出一帧，避免卡顿
         /// </summary>
-        public async UniTaskVoid ModeESpawnAllBosses()
+        public async UniTaskVoid ModeESpawnAllBosses(
+            int modeFSessionToken = 0,
+            int modeFRelatedScene = -1,
+            int modeESessionToken = 0,
+            int modeESessionRelatedScene = -1)
         {
             try
             {
-                if ((!modeEActive && !modeFActive) || modeESpawnAllocation == null)
+                if (!IsModeEOrModeFSpawnSessionStillValid(
+                        modeFSessionToken,
+                        modeFRelatedScene,
+                        modeESessionToken,
+                        modeESessionRelatedScene) ||
+                    modeESpawnAllocation == null)
                 {
                     DevLog("[ModeE] ModeESpawnAllBosses: no active map mode or spawn allocation");
                     return;
@@ -181,10 +190,23 @@ namespace BossRush
 
                 for (int i = 0; i < spawnTasks.Count; i++)
                 {
-                    if (!modeEActive && !modeFActive) break;
+                    if (!IsModeEOrModeFSpawnSessionStillValid(
+                            modeFSessionToken,
+                            modeFRelatedScene,
+                            modeESessionToken,
+                            modeESessionRelatedScene))
+                    {
+                        break;
+                    }
 
                     var task = spawnTasks[i];
-                    SpawnSingleModeEBoss(task.faction, task.pos);
+                    SpawnSingleModeEBoss(
+                        task.faction,
+                        task.pos,
+                        modeFSessionToken,
+                        modeFRelatedScene,
+                        modeESessionToken,
+                        modeESessionRelatedScene);
 
                     // 每个boss之间等待，给角色创建和配装充足时间完成，减少帧率尖刺
                     if (i + 1 < spawnTasks.Count)
@@ -312,7 +334,13 @@ namespace BossRush
         ///   狼阵营特殊：先刷完所有 wolf Boss，剩余刷怪点才出小怪。
         ///   BEAR阵营特殊：原版游戏无 bear 预设，从全阵营小怪池兜底，并提升150%属性。
         /// </summary>
-        private void SpawnSingleModeEBoss(Teams faction, Vector3 spawnPoint)
+        private void SpawnSingleModeEBoss(
+            Teams faction,
+            Vector3 spawnPoint,
+            int modeFSessionToken = 0,
+            int modeFRelatedScene = -1,
+            int modeESessionToken = 0,
+            int modeESessionRelatedScene = -1)
         {
             try
             {
@@ -410,7 +438,11 @@ namespace BossRush
                     bossPreset,
                     spawnPos,
                     isBoss,
-                    isActiveCheck: () => modeEActive || modeFActive,
+                    isActiveCheck: () => IsModeEOrModeFSpawnSessionStillValid(
+                        modeFSessionToken,
+                        modeFRelatedScene,
+                        modeESessionToken,
+                        modeESessionRelatedScene),
                     onSpawned: (ctx) => OnModeEEnemySpawned(ctx, capturedFaction, capturedPromoted),
                     onFailed: () =>
                     {

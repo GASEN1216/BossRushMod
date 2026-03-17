@@ -97,13 +97,13 @@ namespace BossRush
                     modeFState.BountyMarksByCharacterId.Remove(victimId);
 
                     DevLog("[ModeF] Boss 继承印记: killer=" + killer.gameObject.name + " +" + victimMarks + " (总计=" + (killerMarks + victimMarks) + ")");
+                
+                    // Boss 成长 +5% 生命/伤害
+                    ApplyModeFBossGrowth(killer, 0.05f);
+
+                    // 装备掠夺
+                    CompareAndSwapEquipment(killer, victim);
                 }
-
-                // Boss 成长 +5% 生命/伤害
-                ApplyModeFBossGrowth(killer, 0.05f);
-
-                // 装备掠夺
-                CompareAndSwapEquipment(killer, victim);
 
                 ApplyModeFPhasePressure();
 
@@ -458,23 +458,32 @@ namespace BossRush
         {
             try
             {
+                PruneModeFBountyMarksByCharacterId();
+
+                CharacterMainControl oldLeader = modeFState.CurrentBountyLeader;
+                int oldLeaderMarks = modeFState.CurrentBountyLeaderMarks;
                 CharacterMainControl newLeader = null;
                 int maxMarks = 0;
 
-                foreach (var kvp in modeFState.BountyMarksByCharacterId)
+                for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
                 {
-                    if (kvp.Value > maxMarks)
+                    CharacterMainControl candidate = modeFState.ActiveBosses[i];
+                    if (candidate == null || candidate.Health == null || candidate.Health.IsDead)
                     {
-                        maxMarks = kvp.Value;
-                        // 找到对应的 Boss
-                        for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
-                        {
-                            if (modeFState.ActiveBosses[i] != null && modeFState.ActiveBosses[i].GetInstanceID() == kvp.Key)
-                            {
-                                newLeader = modeFState.ActiveBosses[i];
-                                break;
-                            }
-                        }
+                        continue;
+                    }
+
+                    int candidateMarks = 0;
+                    modeFState.BountyMarksByCharacterId.TryGetValue(candidate.GetInstanceID(), out candidateMarks);
+                    if (candidateMarks <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (candidateMarks > maxMarks)
+                    {
+                        maxMarks = candidateMarks;
+                        newLeader = candidate;
                     }
                 }
 
@@ -489,7 +498,7 @@ namespace BossRush
                 {
                     newLeader = null;
                 }
-                else if (preferredLeader != null)
+                else if (preferredLeader != null && preferredLeader != CharacterMainControl.Main)
                 {
                     int preferredMarks = 0;
                     if (modeFState.BountyMarksByCharacterId.TryGetValue(preferredLeader.GetInstanceID(), out preferredMarks)
@@ -498,9 +507,22 @@ namespace BossRush
                         newLeader = preferredLeader;
                     }
                 }
+                else if (oldLeader != null && oldLeader.Health != null && !oldLeader.Health.IsDead)
+                {
+                    int oldMarks = 0;
+                    if (modeFState.BountyMarksByCharacterId.TryGetValue(oldLeader.GetInstanceID(), out oldMarks)
+                        && oldMarks == maxMarks && maxMarks > 0)
+                    {
+                        newLeader = oldLeader;
+                    }
+                }
 
-                if (maxMarks > modeFState.CurrentBountyLeaderMarks ||
-                    (maxMarks == modeFState.CurrentBountyLeaderMarks && newLeader != modeFState.CurrentBountyLeader))
+                if (maxMarks <= 0)
+                {
+                    newLeader = null;
+                }
+
+                if (maxMarks != oldLeaderMarks || newLeader != oldLeader)
                 {
                     modeFState.CurrentBountyLeader = newLeader;
                     modeFState.CurrentBountyLeaderMarks = maxMarks;
@@ -514,6 +536,52 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeF] [WARNING] CheckAndBroadcastLeaderChange 失败: " + e.Message);
+            }
+        }
+
+        private void PruneModeFBountyMarksByCharacterId()
+        {
+            if (modeFState.BountyMarksByCharacterId.Count <= 0)
+            {
+                return;
+            }
+
+            HashSet<int> activeBossIds = new HashSet<int>();
+            for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
+            {
+                CharacterMainControl boss = modeFState.ActiveBosses[i];
+                if (boss == null || boss.Health == null || boss.Health.IsDead)
+                {
+                    continue;
+                }
+
+                activeBossIds.Add(boss.GetInstanceID());
+            }
+
+            List<int> staleIds = null;
+            foreach (var kvp in modeFState.BountyMarksByCharacterId)
+            {
+                if (kvp.Value > 0 && activeBossIds.Contains(kvp.Key))
+                {
+                    continue;
+                }
+
+                if (staleIds == null)
+                {
+                    staleIds = new List<int>();
+                }
+
+                staleIds.Add(kvp.Key);
+            }
+
+            if (staleIds == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < staleIds.Count; i++)
+            {
+                modeFState.BountyMarksByCharacterId.Remove(staleIds[i]);
             }
         }
 

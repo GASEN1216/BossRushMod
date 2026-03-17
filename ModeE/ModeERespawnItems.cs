@@ -202,10 +202,12 @@ namespace BossRush
                 }
 
                 DevLog("[ModeE] 开始重生Boss，刷怪点数量: " + points.Count);
+                int modeESessionToken = CurrentModeESessionToken;
+                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
 
                 for (int i = 0; i < points.Count; i++)
                 {
-                    if (!modeEActive) break; // 模式已结束，停止生成
+                    if (!IsModeESessionStillValid(modeESessionToken, relatedScene)) break; // 模式已结束或切到新局，停止生成
 
                     // 随机选择阵营
                     Teams faction = RespawnFactions[UnityEngine.Random.Range(0, RespawnFactions.Length)];
@@ -216,7 +218,11 @@ namespace BossRush
                     //   - 注册到 modeEAliveEnemies 和 modeEFactionAliveMap
                     //   - 注册死亡事件（OnModeEEnemyDeath）
                     //   - 应用当前阵营死亡缩放倍率
-                    SpawnSingleModeEBoss(faction, points[i]);
+                    SpawnSingleModeEBoss(
+                        faction,
+                        points[i],
+                        modeESessionToken: modeESessionToken,
+                        modeESessionRelatedScene: relatedScene);
 
                     // 每次生成间加延迟，避免帧率卡顿（与 ModeESpawnAllBosses 保持一致）
                     if (i + 1 < points.Count)

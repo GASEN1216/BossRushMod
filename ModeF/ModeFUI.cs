@@ -259,7 +259,7 @@ namespace BossRush
             string suffix = character.IsMainCharacter
                 ? inst.GetModeFPlayerMarkSuffix()
                 : inst.GetModeFBountyMarkSuffix(character);
-            if (!string.IsNullOrEmpty(suffix))
+            if (!string.IsNullOrEmpty(suffix) && !___nameText.text.EndsWith(suffix, StringComparison.Ordinal))
             {
                 ___nameText.text += suffix;
             }

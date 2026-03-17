@@ -37,6 +37,12 @@ namespace BossRush
         /// <summary>玩家被分配的阵营</summary>
         private Teams modeEPlayerFaction = Teams.player;
 
+        /// <summary>Mode E 会话序号，防止上一局异步对象晚到污染新局。</summary>
+        private int modeESessionSerial = 0;
+
+        /// <summary>当前有效的 Mode E 会话令牌。</summary>
+        private int modeESessionToken = 0;
+
         /// <summary>当前所有存活的 Mode E 敌人（跨阵营）</summary>
         private readonly List<CharacterMainControl> modeEAliveEnemies = new List<CharacterMainControl>();
 
@@ -97,6 +103,8 @@ namespace BossRush
         /// <summary>玩家当前所属阵营</summary>
         public Teams ModeEPlayerFaction { get { return modeEPlayerFaction; } }
 
+        internal int CurrentModeESessionToken { get { return modeESessionToken; } }
+
         /// <summary>当前所有存活的 Mode E 敌人列表（只读访问，供龙王等系统查找攻击目标）</summary>
         public List<CharacterMainControl> ModeEAliveEnemies { get { return modeEAliveEnemies; } }
 
@@ -152,6 +160,49 @@ namespace BossRush
                 float now = Time.realtimeSinceStartup;
                 DevLog("[ModeE] [Profile] " + scope + " | " + status + " | total=" + ((now - startTime) * 1000f).ToString("F1") + " ms");
             }
+        }
+
+        private int BeginModeESession()
+        {
+            modeESessionToken = ++modeESessionSerial;
+            return modeESessionToken;
+        }
+
+        private void InvalidateModeESession()
+        {
+            modeESessionSerial++;
+            modeESessionToken = 0;
+        }
+
+        internal bool IsModeESessionStillValid(int sessionToken, int relatedScene)
+        {
+            if (sessionToken <= 0)
+            {
+                return false;
+            }
+
+            return modeEActive &&
+                   modeESessionToken == sessionToken &&
+                   UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == relatedScene;
+        }
+
+        private bool IsModeEOrModeFSpawnSessionStillValid(
+            int modeFSessionToken,
+            int modeFRelatedScene,
+            int modeESessionToken,
+            int modeESessionRelatedScene)
+        {
+            if (modeFSessionToken > 0)
+            {
+                return IsModeFSessionStillValid(modeFSessionToken, modeFRelatedScene);
+            }
+
+            if (modeESessionToken > 0)
+            {
+                return IsModeESessionStillValid(modeESessionToken, modeESessionRelatedScene);
+            }
+
+            return modeEActive || modeFActive;
         }
 
         /// <summary>
@@ -414,6 +465,8 @@ namespace BossRush
                 DevLog("[ModeE] 启动 Mode E 模式，阵营: " + faction);
 
                 modeEActive = true;
+                int modeESessionToken = BeginModeESession();
+                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 modeEPlayerFaction = faction;
                 modeEAliveEnemies.Clear();
                 modeEAliveEnemySet.Clear();
@@ -499,13 +552,13 @@ namespace BossRush
 
                 // 一次性生成所有阵营的 Boss（UniTaskVoid fire-and-forget，抑制 CS4014 警告）
                 #pragma warning disable CS4014
-                ModeESpawnAllBosses();
+                ModeESpawnAllBosses(modeESessionToken: modeESessionToken, modeESessionRelatedScene: relatedScene);
                 profiler.Mark("ScheduleBosses");
                 #pragma warning restore CS4014
 
                 // 生成神秘商人 NPC（fire-and-forget）
                 #pragma warning disable CS4014
-                SpawnModeEMerchant();
+                SpawnModeEMerchant(modeESessionToken: modeESessionToken, modeESessionRelatedScene: relatedScene);
                 profiler.Mark("ScheduleMerchant");
                 #pragma warning restore CS4014
 
@@ -572,6 +625,7 @@ namespace BossRush
                 // 先置 modeEActive = false，防止后续 Hurt() 触发的 OnModeEEnemyDeath
                 // 回调中再对即将死亡的敌人执行无意义的 ApplyFactionDeathScaling
                 modeEActive = false;
+                InvalidateModeESession();
                 ClearEnemyRecoveryMonitorState();
                 ClearPendingBossAggroQueue();
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
+using Duckov.UI;
 
 namespace BossRush
 {
@@ -34,6 +35,10 @@ namespace BossRush
         private Modifier modeFMaxHealthModifier = null;
         private readonly Dictionary<CharacterMainControl, Modifier> modeFBossMoveSpeedModifiers
             = new Dictionary<CharacterMainControl, Modifier>();
+        private readonly Dictionary<CharacterMainControl, float> modeFBossAppliedSpeedBonuses
+            = new Dictionary<CharacterMainControl, float>();
+        private readonly Dictionary<CharacterMainControl, CharacterMainControl> modeFBossForcedTargets
+            = new Dictionary<CharacterMainControl, CharacterMainControl>();
         private float modeFBossRetargetTimer = 0f;
 
         /// <summary>L2: 缓存的 DamageInfo，避免每帧 new</summary>
@@ -57,6 +62,8 @@ namespace BossRush
                 modeFState.PlayerBountyMarks = 0;
                 modeFMaxHealthModifier = null;
                 modeFBossRetargetTimer = 0f;
+                modeFBossForcedTargets.Clear();
+                modeFBossAppliedSpeedBonuses.Clear();
                 EnsureModeFPlayerNameTag();
 
                 EnterModeFPhase(ModeFPhase.Preparation);
@@ -336,7 +343,7 @@ namespace BossRush
         /// <summary>
         /// 退出 Mode F，清理所有临时状态
         /// </summary>
-        private void ExitModeF()
+        private void ExitModeF(bool showEndMessage = true)
         {
             try
             {
@@ -346,6 +353,7 @@ namespace BossRush
 
                 modeFActive = false;
                 modeFState.IsActive = false;
+                InvalidateModeFSession();
 
                 // 清理最大生命 Modifier
                 try
@@ -365,6 +373,25 @@ namespace BossRush
                 modeFBossRetargetTimer = 0f;
                 CleanupModeFPlayerNameTag();
                 ClearModeFBossMoveSpeedModifiers();
+                modeFState.ExtractionResolved = true;
+
+                try
+                {
+                    if (modeFState.ActiveExtractionArea != null)
+                    {
+                        EvacuationCountdownUI.Release(modeFState.ActiveExtractionArea);
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    if (modeFState.ActiveExtractionArea != null && modeFState.ActiveExtractionArea.gameObject != null)
+                    {
+                        UnityEngine.Object.Destroy(modeFState.ActiveExtractionArea.gameObject);
+                    }
+                }
+                catch { }
 
                 // 清理所有存活 Boss
                 for (int i = modeFState.ActiveBosses.Count - 1; i >= 0; i--)
@@ -372,15 +399,16 @@ namespace BossRush
                     try
                     {
                         CharacterMainControl boss = modeFState.ActiveBosses[i];
-                        if (boss != null)
+                        Teams? bossTeam = null;
+                        if (!(boss == null))
                         {
-                            // H1: 清理 modeEAliveEnemies / factionAliveMap / enemyRecovery
-                            modeEAliveEnemies.Remove(boss);
-                            RemoveFromFactionAliveList(boss.Team, boss);
-                            UnregisterEnemyRecovery(boss);
+                            try { bossTeam = boss.Team; } catch { }
                         }
 
-                        if (boss != null && boss.gameObject != null)
+                        CleanupModeESharedRuntimeForModeFBoss(boss, bossTeam);
+                        UnregisterModeFBossDeath(boss);
+
+                        if (!(boss == null) && boss.gameObject != null)
                         {
                             boss.dropBoxOnDead = false;
                             Health health = boss.Health;
@@ -402,8 +430,10 @@ namespace BossRush
 
                 // H2: 清理 Boss 成长 Modifier 缓存
                 modeFBossModifiers.Clear();
-                // C1: 清理死亡事件注册记录
-                modeFBossDeathRegistered.Clear();
+                modeFBossDeathHandlers.Clear();
+                modeFBossForcedTargets.Clear();
+                modeFBossAppliedSpeedBonuses.Clear();
+                ResetModeESharedRuntimeAfterModeF();
 
                 // 清理工事
                 CleanupAllModeFortifications();
@@ -422,10 +452,13 @@ namespace BossRush
                 modeFHighQualityPoolBuilt = false;
                 modeFVerifiedHighQualityTypeIds.Clear();
 
-                ShowMessage(L10n.T(
-                    "血猎追击模式已结束！",
-                    "Bloodhunt mode ended!"
-                ));
+                if (showEndMessage)
+                {
+                    ShowMessage(L10n.T(
+                        "血猎追击模式已结束！",
+                        "Bloodhunt mode ended!"
+                    ));
+                }
             }
             catch (Exception e)
             {
@@ -459,6 +492,35 @@ namespace BossRush
         private void RefreshModeFBossTargets()
         {
             ApplyModeFPhasePressure();
+        }
+
+        private bool TryApplyModeFBossTarget(CharacterMainControl boss, AICharacterController ai, CharacterMainControl target)
+        {
+            if (boss == null || ai == null || target == null || target.mainDamageReceiver == null)
+            {
+                return false;
+            }
+
+            ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, MODEF_FORCED_TRACE_DISTANCE);
+            ai.traceTargetChance = 1f;
+            ai.noticed = true;
+            boss.SetRunInput(true);
+
+            CharacterMainControl lastTarget = null;
+            bool sameTarget = modeFBossForcedTargets.TryGetValue(boss, out lastTarget) &&
+                              lastTarget == target &&
+                              ai.searchedEnemy == target.mainDamageReceiver;
+            if (sameTarget)
+            {
+                return true;
+            }
+
+            ai.searchedEnemy = target.mainDamageReceiver;
+            try { ai.SetTarget(target.mainDamageReceiver.transform); } catch { }
+            try { ai.SetNoticedToTarget(target.mainDamageReceiver); } catch { }
+            try { ai.MoveToPos(target.transform.position); } catch { }
+            modeFBossForcedTargets[boss] = target;
+            return true;
         }
 
         private void ApplyModeFPressureToBoss(CharacterMainControl boss)
@@ -500,22 +562,15 @@ namespace BossRush
                 if (preferredTarget != null && preferredTarget.mainDamageReceiver != null)
                 {
                     AICharacterController preferredAi = boss.GetComponentInChildren<AICharacterController>(true);
-                    if (preferredAi != null)
+                    if (preferredAi != null && TryApplyModeFBossTarget(boss, preferredAi, preferredTarget))
                     {
-                        preferredAi.searchedEnemy = preferredTarget.mainDamageReceiver;
-                        preferredAi.forceTracePlayerDistance = Mathf.Max(preferredAi.forceTracePlayerDistance, MODEF_FORCED_TRACE_DISTANCE);
-                        preferredAi.traceTargetChance = 1f;
-                        preferredAi.noticed = true;
-                        try { preferredAi.SetTarget(preferredTarget.mainDamageReceiver.transform); } catch { }
-                        try { preferredAi.SetNoticedToTarget(preferredTarget.mainDamageReceiver); } catch { }
-                        boss.SetRunInput(true);
-                        try { preferredAi.MoveToPos(preferredTarget.transform.position); } catch { }
                         return;
                     }
                 }
 
                 if (!forcePlayerTarget)
                 {
+                    modeFBossForcedTargets.Remove(boss);
                     return;
                 }
 
@@ -531,14 +586,7 @@ namespace BossRush
                     return;
                 }
 
-                ai.searchedEnemy = player.mainDamageReceiver;
-                ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, MODEF_FORCED_TRACE_DISTANCE);
-                ai.traceTargetChance = 1f;
-                ai.noticed = true;
-                try { ai.SetTarget(player.mainDamageReceiver.transform); } catch { }
-                try { ai.SetNoticedToTarget(player.mainDamageReceiver); } catch { }
-                boss.SetRunInput(true);
-                try { ai.MoveToPos(player.transform.position); } catch { }
+                TryApplyModeFBossTarget(boss, ai, player);
             }
             catch (Exception e)
             {
@@ -642,6 +690,13 @@ namespace BossRush
                     return;
                 }
 
+                float appliedBonus = 0f;
+                if (modeFBossAppliedSpeedBonuses.TryGetValue(boss, out appliedBonus) &&
+                    Mathf.Abs(appliedBonus - speedBonus) < 0.001f)
+                {
+                    return;
+                }
+
                 Stat speedStat = boss.CharacterItem.GetStat("MoveSpeed");
                 if (speedStat == null)
                 {
@@ -657,6 +712,7 @@ namespace BossRush
                 if (speedBonus <= 0f)
                 {
                     modeFBossMoveSpeedModifiers.Remove(boss);
+                    modeFBossAppliedSpeedBonuses.Remove(boss);
                     return;
                 }
 
@@ -664,6 +720,7 @@ namespace BossRush
                 Modifier newModifier = new Modifier(ModifierType.Add, delta, this);
                 speedStat.AddModifier(newModifier);
                 modeFBossMoveSpeedModifiers[boss] = newModifier;
+                modeFBossAppliedSpeedBonuses[boss] = speedBonus;
             }
             catch (Exception e)
             {
@@ -694,6 +751,8 @@ namespace BossRush
             }
 
             modeFBossMoveSpeedModifiers.Clear();
+            modeFBossAppliedSpeedBonuses.Clear();
+            modeFBossForcedTargets.Clear();
         }
 
         #endregion

@@ -171,10 +171,10 @@ namespace BossRush
         internal bool CanUseModeFRepairSpray()
         {
             CharacterMainControl player = CharacterMainControl.Main;
-            return FindNearestOwnedModeFFortification(player, FORT_REPAIR_RANGE) != null;
+            return FindNearestOwnedModeFFortification(player, FORT_REPAIR_RANGE, true) != null;
         }
 
-        private ModeFFortificationMarker FindNearestOwnedModeFFortification(CharacterMainControl player, float maxDistance)
+        private ModeFFortificationMarker FindNearestOwnedModeFFortification(CharacterMainControl player, float maxDistance, bool requireDamaged = false)
         {
             try
             {
@@ -201,6 +201,11 @@ namespace BossRush
                         continue;
                     }
 
+                    if (requireDamaged && marker.BoundHealth.CurrentHealth >= marker.MaxHealth - 0.01f)
+                    {
+                        continue;
+                    }
+
                     float dist = Vector3.Distance(playerPos, marker.transform.position);
                     if (dist <= maxDistance && dist < nearestDist)
                     {
@@ -222,7 +227,7 @@ namespace BossRush
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
-                ModeFFortificationMarker nearest = FindNearestOwnedModeFFortification(player, FORT_REPAIR_RANGE);
+                ModeFFortificationMarker nearest = FindNearestOwnedModeFFortification(player, FORT_REPAIR_RANGE, true);
 
                 if (nearest == null)
                 {

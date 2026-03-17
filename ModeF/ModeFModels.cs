@@ -37,6 +37,8 @@ namespace BossRush
         public Dictionary<int, ModeFFortificationMarker> ActiveFortifications = new Dictionary<int, ModeFFortificationMarker>();
         public CountDownArea ActiveExtractionArea;
         public bool ExtractionPointSpawned;
+        public bool ExtractionResolved;
+        public int RuntimeSessionToken;
         public float PhaseStatusBroadcastTimer;
 
         public void Reset()
@@ -57,6 +59,8 @@ namespace BossRush
             ActiveFortifications.Clear();
             ActiveExtractionArea = null;
             ExtractionPointSpawned = false;
+            ExtractionResolved = false;
+            RuntimeSessionToken = 0;
             PhaseStatusBroadcastTimer = 0f;
         }
     }

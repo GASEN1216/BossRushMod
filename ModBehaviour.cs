@@ -3554,8 +3554,15 @@ namespace BossRush
                 ClearEnemiesForBossRush();
 
                 yield return new UnityEngine.WaitForSeconds(0.5f);
-                TryStartModeF();
-                SpawnCommonNPCs("DEMO场景 Mode F 初始化完成");
+                bool startedModeF = TryStartModeF();
+                if (startedModeF)
+                {
+                    SpawnCommonNPCs("DEMO场景 Mode F 初始化完成");
+                }
+                else
+                {
+                    DevLog("[BossRush] [WARNING] Mode F 启动失败，已跳过 Mode F 额外 NPC 生成");
+                }
                 yield break;
             }
             

@@ -184,6 +184,21 @@ namespace BossRush
 
                         if (isDragonSpecialSpawn)
                         {
+                            if (!isActiveCheck())
+                            {
+                                try
+                                {
+                                    if (character.gameObject != null)
+                                    {
+                                        UnityEngine.Object.Destroy(character.gameObject);
+                                    }
+                                }
+                                catch { }
+
+                                DevLog("[SpawnCore] 模式已结束，销毁特殊生成的敌人");
+                                return;
+                            }
+
                             // 龙裔/龙王：立即调用 onSpawned（设置阵营），不等 Yield
                             // 这样角色激活后的第一帧就已经有正确的阵营
                             var ctx = new EnemySpawnContext

@@ -9,6 +9,34 @@ namespace BossRush
     {
         #region Mode F 入口
 
+        /// <summary>Mode F 会话序号，防止上一局的异步对象晚到并污染新局。</summary>
+        private int modeFSessionSerial = 0;
+
+        private int BeginModeFSession()
+        {
+            modeFState.RuntimeSessionToken = ++modeFSessionSerial;
+            return modeFState.RuntimeSessionToken;
+        }
+
+        private void InvalidateModeFSession()
+        {
+            modeFSessionSerial++;
+            modeFState.RuntimeSessionToken = 0;
+        }
+
+        private bool IsModeFSessionStillValid(int sessionToken, int relatedScene)
+        {
+            if (sessionToken <= 0)
+            {
+                return false;
+            }
+
+            return modeFActive &&
+                   modeFState.IsActive &&
+                   modeFState.RuntimeSessionToken == sessionToken &&
+                   UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == relatedScene;
+        }
+
         /// <summary>
         /// 检测玩家背包中是否存在血猎收发器
         /// </summary>
@@ -277,8 +305,16 @@ namespace BossRush
                     DevLog("[ModeF] [WARNING] 部分道具消耗失败 (transponder=" + transponderConsumed + ", ticket=" + ticketConsumed + ")，仍尝试启动以避免道具丢失");
                 }
 
-                StartModeF();
-                return true;
+                bool started = StartModeF();
+                if (!started)
+                {
+                    ShowMessage(L10n.T(
+                        "血猎追击模式启动失败，请重试。",
+                        "Bloodhunt start failed. Please try again."
+                    ));
+                }
+
+                return started;
             }
             catch (Exception e)
             {
@@ -290,7 +326,7 @@ namespace BossRush
         /// <summary>
         /// 启动 Mode F 模式
         /// </summary>
-        private void StartModeF()
+        private bool StartModeF()
         {
             try
             {
@@ -299,7 +335,10 @@ namespace BossRush
                 modeFActive = true;
                 modeFState.Reset();
                 modeFState.IsActive = true;
+                int modeFSessionToken = BeginModeFSession();
+                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 ClearEnemyRecoveryMonitorState();
+                PrepareModeESharedRuntimeForModeF();
 
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
@@ -354,12 +393,12 @@ namespace BossRush
 
                 // 一次性生成所有 Boss（复用 Mode E 逻辑）
                 #pragma warning disable CS4014
-                ModeESpawnAllBosses();
+                ModeESpawnAllBosses(modeFSessionToken, relatedScene);
                 #pragma warning restore CS4014
 
                 // 生成神秘商人 NPC
                 #pragma warning disable CS4014
-                SpawnModeEMerchant();
+                SpawnModeEMerchant(modeFSessionToken, relatedScene);
                 #pragma warning restore CS4014
 
                 // 生成快递员
@@ -376,10 +415,13 @@ namespace BossRush
                     "欢迎来到 <color=red>血猎追击</color>！",
                     "Welcome to <color=red>Bloodhunt</color>!"
                 ));
+                return true;
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] StartModeF 失败: " + e.Message);
+                try { ExitModeF(false); } catch { }
+                return false;
             }
         }
 

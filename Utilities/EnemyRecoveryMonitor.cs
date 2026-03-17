@@ -111,7 +111,7 @@ namespace BossRush
         {
             try
             {
-                if (!modeDActive && !modeEActive && !IsActive)
+                if (!modeDActive && !modeEActive && !modeFActive && !IsActive)
                 {
                     ClearEnemyRecoveryMonitorState();
                     return;
@@ -139,6 +139,10 @@ namespace BossRush
                 else if (modeEActive)
                 {
                     MonitorEnemyRecoveryList(modeEAliveEnemies, player);
+                }
+                else if (modeFActive)
+                {
+                    MonitorEnemyRecoveryList(modeFState.ActiveBosses, player);
                 }
                 else
                 {
@@ -421,6 +425,12 @@ namespace BossRush
 
             try
             {
+                if (modeFActive)
+                {
+                    ApplyModeFPressureToBoss(enemy);
+                    return;
+                }
+
                 AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>();
                 if (ai == null)
                 {
@@ -466,7 +476,7 @@ namespace BossRush
 
         private void CollectPrimaryRecoverySpawnCandidates(CharacterMainControl player)
         {
-            if (modeEActive && modeESpawnAllocation != null && modeESpawnAllocation.Count > 0)
+            if ((modeEActive || modeFActive) && modeESpawnAllocation != null && modeESpawnAllocation.Count > 0)
             {
                 foreach (KeyValuePair<Teams, List<Vector3>> pair in modeESpawnAllocation)
                 {

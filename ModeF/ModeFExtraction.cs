@@ -125,15 +125,20 @@ namespace BossRush
                 {
                     countDown.onCountDownSucceed = new UnityEvent();
                 }
+                bool shouldNotifyGameEvacuation = countDown.onCountDownSucceed.GetPersistentEventCount() <= 0;
                 countDown.onCountDownSucceed.AddListener(() =>
                 {
-                    if (!modeFActive || modeFState.ActiveExtractionArea != countDown)
+                    if (!modeFActive || modeFState.ActiveExtractionArea != countDown || modeFState.ExtractionResolved)
                     {
                         return;
                     }
 
+                    modeFState.ExtractionResolved = true;
                     OnModeFExtractionSuccess();
-                    TryNotifyModeFExtraction(extractionPos);
+                    if (shouldNotifyGameEvacuation)
+                    {
+                        TryNotifyModeFExtraction(extractionPos);
+                    }
                 });
 
                 if (countDown.onCountDownStarted == null)

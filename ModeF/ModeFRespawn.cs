@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace BossRush
 {
@@ -8,11 +9,187 @@ namespace BossRush
     {
         #region Mode F Boss Registration And Respawn
 
-        /// <summary>已注册死亡事件的 Boss InstanceID，防止重复 AddListener</summary>
-        private readonly HashSet<int> modeFBossDeathRegistered = new HashSet<int>();
+        /// <summary>已注册的 Mode F Boss 死亡事件句柄，确保能对称取消订阅。</summary>
+        private readonly Dictionary<CharacterMainControl, UnityAction<DamageInfo>> modeFBossDeathHandlers
+            = new Dictionary<CharacterMainControl, UnityAction<DamageInfo>>();
 
         /// <summary>FindSpawnPointAwayFromPlayer 候选点缓存，避免每次 new List</summary>
         private static readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
+
+        private void PrepareModeESharedRuntimeForModeF()
+        {
+            modeEPlayerFaction = Teams.player;
+            modeEAliveEnemies.Clear();
+            modeEAliveEnemySet.Clear();
+            modeEFactionAliveMap.Clear();
+            modeEFactionDeathCount.Clear();
+            modeEScalingModifiers.Clear();
+            modeEEnemyDeathHandlers.Clear();
+            modeEEnemyLootHandlers.Clear();
+            modeEPendingScalingFactions.Clear();
+            modeEScalingBatchTimer = 0f;
+            modeESpawnerRootRegisteredEnemies.Clear();
+            CleanupModeEVirtualSpawnerRoot();
+            ClearPendingBossAggroQueue();
+        }
+
+        private void ResetModeESharedRuntimeAfterModeF()
+        {
+            modeEPlayerFaction = Teams.player;
+            modeEAliveEnemies.Clear();
+            modeEAliveEnemySet.Clear();
+            modeEFactionAliveMap.Clear();
+            modeEFactionDeathCount.Clear();
+            modeEScalingModifiers.Clear();
+            modeEEnemyDeathHandlers.Clear();
+            modeEEnemyLootHandlers.Clear();
+            modeEPendingScalingFactions.Clear();
+            modeEScalingBatchTimer = 0f;
+            modeESpawnerRootRegisteredEnemies.Clear();
+            modeEIntegrityTimer = 0f;
+            modeESpawnAllocation = null;
+            CleanupModeEVirtualSpawnerRoot();
+            ClearPendingBossAggroQueue();
+        }
+
+        private void RemoveModeFCharacterReference(List<CharacterMainControl> list, CharacterMainControl target)
+        {
+            if (list == null || object.ReferenceEquals(target, null))
+            {
+                return;
+            }
+
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                if (object.ReferenceEquals(list[i], target))
+                {
+                    list.RemoveAt(i);
+                }
+            }
+        }
+
+        private bool IsTrackedModeFBoss(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
+            {
+                if (object.ReferenceEquals(modeFState.ActiveBosses[i], boss))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool RemoveModeFBossReference(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return false;
+            }
+
+            bool removed = false;
+            for (int i = modeFState.ActiveBosses.Count - 1; i >= 0; i--)
+            {
+                if (object.ReferenceEquals(modeFState.ActiveBosses[i], boss))
+                {
+                    modeFState.ActiveBosses.RemoveAt(i);
+                    removed = true;
+                }
+            }
+
+            return removed;
+        }
+
+        private void UnregisterModeFBossDeath(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return;
+            }
+
+            UnityAction<DamageInfo> handler = null;
+            if (!modeFBossDeathHandlers.TryGetValue(boss, out handler))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!(boss == null) && boss.Health != null)
+                {
+                    boss.Health.OnDeadEvent.RemoveListener(handler);
+                }
+            }
+            catch { }
+
+            modeFBossDeathHandlers.Remove(boss);
+        }
+
+        private void RegisterModeESharedRuntimeForModeFBoss(CharacterMainControl boss, Vector3 anchorPosition)
+        {
+            if (boss == null)
+            {
+                return;
+            }
+
+            Teams faction = boss.Team;
+            CleanupModeESharedRuntimeForModeFBoss(boss, faction);
+            TrackModeEAliveEnemy(boss, faction);
+            RegisterEnemyRecoveryAnchor(boss, anchorPosition);
+            RegisterModeEEnemyToSpawnerRoot(boss);
+            RegisterModeEEnemyDeath(boss);
+        }
+
+        private void CleanupModeESharedRuntimeForModeFBoss(CharacterMainControl boss, Teams? faction = null)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!(boss == null))
+                {
+                    UnregisterModeEEnemyDeath(boss);
+                    UnregisterModeEEnemyLootHandler(boss);
+                    RemoveModeEScalingModifiers(boss);
+
+                    if (boss.characterPreset != null)
+                    {
+                        UnityEngine.Object.Destroy(boss.characterPreset);
+                    }
+                }
+            }
+            catch { }
+
+            modeEEnemyDeathHandlers.Remove(boss);
+            modeEEnemyLootHandlers.Remove(boss);
+            modeEScalingModifiers.Remove(boss);
+            modeEPendingAggroTraceDistance.Remove(boss);
+            UnregisterModeEEnemyFromSpawnerRoot(boss);
+            UnregisterEnemyRecovery(boss);
+            modeEAliveEnemySet.Remove(boss);
+            RemoveModeFCharacterReference(modeEAliveEnemies, boss);
+
+            if (faction.HasValue)
+            {
+                RemoveFromFactionAliveList(faction.Value, boss);
+            }
+            else
+            {
+                foreach (var kvp in modeEFactionAliveMap)
+                {
+                    RemoveFromFactionAliveList(kvp.Key, boss);
+                }
+            }
+        }
 
         private void RegisterModeFBoss(CharacterMainControl boss)
         {
@@ -32,11 +209,20 @@ namespace BossRush
                 ApplyModeFPressureToBoss(boss);
 
                 Health health = boss.Health;
-                int bossId = boss.GetInstanceID();
-                if (health != null && !modeFBossDeathRegistered.Contains(bossId))
+                if (health != null)
                 {
-                    modeFBossDeathRegistered.Add(bossId);
-                    health.OnDeadEvent.AddListener((damageInfo) => OnModeFBossDied(boss, damageInfo));
+                    UnregisterModeFBossDeath(boss);
+
+                    CharacterMainControl capturedBoss = boss;
+                    UnityAction<DamageInfo> handler = null;
+                    handler = (damageInfo) =>
+                    {
+                        UnregisterModeFBossDeath(capturedBoss);
+                        OnModeFBossDied(capturedBoss, damageInfo);
+                    };
+
+                    modeFBossDeathHandlers[boss] = handler;
+                    health.OnDeadEvent.AddListener(handler);
                 }
 
                 DevLog("[ModeF] Boss registered: " + boss.gameObject.name + " (total=" + modeFState.ActiveBosses.Count + ")");
@@ -57,13 +243,20 @@ namespace BossRush
                 }
 
                 // C1 guard: 防止死亡事件重复触发（IntegrityCheck 移除后再次触发）
-                if (!modeFState.ActiveBosses.Contains(deadBoss))
+                if (!RemoveModeFBossReference(deadBoss))
                 {
                     return;
                 }
 
-                modeFState.ActiveBosses.Remove(deadBoss);
+                Teams? deadBossTeam = null;
+                if (!(deadBoss == null))
+                {
+                    try { deadBossTeam = deadBoss.Team; } catch { }
+                }
+
+                CleanupModeESharedRuntimeForModeFBoss(deadBoss, deadBossTeam);
                 modeFBossModifiers.Remove(deadBoss);
+                modeFBossForcedTargets.Remove(deadBoss);
                 ApplyModeFBossMoveSpeedModifier(deadBoss, 0f);
 
                 CharacterMainControl killer = null;
@@ -74,6 +267,7 @@ namespace BossRush
                 modeFState.BountyMarksByCharacterId.TryGetValue(deadBossId, out deadBossMarks);
 
                 bool killedByPlayer = killer == CharacterMainControl.Main;
+                bool killedByTrackedBoss = IsTrackedModeFBoss(killer);
 
                 DevLog("[ModeF] Boss died: " + deadBoss.gameObject.name
                     + " (marks=" + deadBossMarks
@@ -88,7 +282,7 @@ namespace BossRush
                         AddBountyBossExtraLoot(deadBoss, deadBossMarks);
                     }
                 }
-                else if (killer != null)
+                else if (killedByTrackedBoss)
                 {
                     OnModeFBossKilledByBoss(killer, deadBoss);
                     if (deadBossMarks > 0)
@@ -99,7 +293,8 @@ namespace BossRush
                 else
                 {
                     modeFState.BountyMarksByCharacterId.Remove(deadBossId);
-                    DevLog("[ModeF] Boss died to the environment, bounty marks were discarded.");
+                    CheckAndBroadcastLeaderChange();
+                    DevLog("[ModeF] Boss died to the environment or a non-ModeF actor, bounty marks were discarded.");
                 }
 
                 RespawnModeFBoss();
@@ -127,11 +322,14 @@ namespace BossRush
                     return;
                 }
 
+                int modeFSessionToken = modeFState.RuntimeSessionToken;
+                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+
                 SpawnEnemyCore(
                     preset,
                     spawnPos,
                     true,
-                    () => modeFActive,
+                    () => IsModeFSessionStillValid(modeFSessionToken, relatedScene),
                     (ctx) =>
                     {
                         try
@@ -152,13 +350,8 @@ namespace BossRush
 
                             ctx.character.SetTeam((Teams)preset.team);
                             ctx.character.gameObject.name = "ModeF_" + ((Teams)preset.team) + "_" + preset.displayName;
+                            RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);
                             RegisterModeFBoss(ctx.character);
-
-                            modeEAliveEnemies.Add(ctx.character);
-                            AddToFactionAliveList(ctx.character.Team, ctx.character);
-                            RegisterEnemyRecoveryAnchor(ctx.character, ctx.position);
-                            RegisterModeEEnemyToSpawnerRoot(ctx.character);
-                            RegisterModeEEnemyDeath(ctx.character);
                         }
                         catch (Exception e)
                         {
@@ -249,18 +442,42 @@ namespace BossRush
                     CharacterMainControl boss = modeFState.ActiveBosses[i];
                     if (boss == null || boss.gameObject == null || boss.Health == null || boss.Health.IsDead)
                     {
+                        Teams? bossTeam = null;
+                        int bossId = 0;
+                        bool hasBossId = false;
+
                         try
                         {
-                            if (boss != null)
+                            if (!(boss == null))
                             {
+                                try { bossTeam = boss.Team; } catch { }
+                                try
+                                {
+                                    bossId = boss.GetInstanceID();
+                                    hasBossId = true;
+                                }
+                                catch { }
+
                                 modeFBossModifiers.Remove(boss);
+                                modeFBossForcedTargets.Remove(boss);
+                                ApplyModeFBossMoveSpeedModifier(boss, 0f);
                             }
                         }
                         catch { }
 
                         modeFState.ActiveBosses.RemoveAt(i);
+                        CleanupModeESharedRuntimeForModeFBoss(boss, bossTeam);
+                        UnregisterModeFBossDeath(boss);
+                        if (hasBossId)
+                        {
+                            modeFState.BountyMarksByCharacterId.Remove(bossId);
+                        }
+
+                        RespawnModeFBoss();
                     }
                 }
+
+                CheckAndBroadcastLeaderChange();
             }
             catch { }
         }

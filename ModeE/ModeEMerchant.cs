@@ -71,7 +71,11 @@ namespace BossRush
         /// <summary>
         /// 异步生成神秘商人 NPC，注入分类商店交互选项
         /// </summary>
-        private async UniTaskVoid SpawnModeEMerchant()
+        private async UniTaskVoid SpawnModeEMerchant(
+            int modeFSessionToken = 0,
+            int modeFRelatedScene = -1,
+            int modeESessionToken = 0,
+            int modeESessionRelatedScene = -1)
         {
             try
             {
@@ -180,6 +184,26 @@ namespace BossRush
                 if (character == null)
                 {
                     DevLog("[ModeE] [ERROR] CreateCharacterAsync 返回空，神秘商人生成失败");
+                    return;
+                }
+
+                if (!IsModeEOrModeFSpawnSessionStillValid(
+                        modeFSessionToken,
+                        modeFRelatedScene,
+                        modeESessionToken,
+                        modeESessionRelatedScene) ||
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex != relatedScene)
+                {
+                    try
+                    {
+                        if (character.gameObject != null)
+                        {
+                            UnityEngine.Object.Destroy(character.gameObject);
+                        }
+                    }
+                    catch { }
+
+                    DevLog("[ModeE] 商人生成完成时模式已结束或场景已切换，已放弃该实例");
                     return;
                 }
 
@@ -1073,7 +1097,10 @@ namespace BossRush
         /// </summary>
         public static void SpawnPet()
         {
-            SpawnPetAsync().Forget();
+            var inst = ModBehaviour.Instance;
+            int modeESessionToken = inst != null ? inst.CurrentModeESessionToken : 0;
+            int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+            SpawnPetAsync(modeESessionToken, relatedScene).Forget();
         }
 
         /// <summary>
@@ -1150,7 +1177,7 @@ namespace BossRush
         /// <summary>
         /// 异步生成煤球NPC
         /// </summary>
-        private static async UniTaskVoid SpawnPetAsync()
+        private static async UniTaskVoid SpawnPetAsync(int modeESessionToken, int relatedScene)
         {
             try
             {
@@ -1207,8 +1234,6 @@ namespace BossRush
                 // 在玩家前方生成煤球
                 Vector3 spawnPos = player.transform.position + player.transform.forward * 1.5f;
                 Vector3 dir = -player.transform.forward;
-                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
-
                 var coalballCharacter = await coalballPreset.CreateCharacterAsync(spawnPos, dir, relatedScene, null, false);
                 if (coalballCharacter == null)
                 {
@@ -1218,6 +1243,21 @@ namespace BossRush
 
                 // 设置煤球为玩家阵营
                 var inst2 = ModBehaviour.Instance;
+                if (inst2 == null || !inst2.IsModeESessionStillValid(modeESessionToken, relatedScene))
+                {
+                    try
+                    {
+                        if (coalballCharacter.gameObject != null)
+                        {
+                            UnityEngine.Object.Destroy(coalballCharacter.gameObject);
+                        }
+                    }
+                    catch { }
+
+                    ModBehaviour.DevLog("[ModeE] 煤球生成完成时 Mode E 已结束或场景已切换，已放弃该实例");
+                    return;
+                }
+
                 if (inst2 != null)
                 {
                     coalballCharacter.SetTeam(inst2.ModeEPlayerFaction);
