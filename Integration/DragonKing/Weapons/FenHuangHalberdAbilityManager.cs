@@ -2,6 +2,7 @@ using System.Reflection;
 using BossRush.Common.Equipment;
 using Duckov.Utilities;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace BossRush
 {
@@ -22,6 +23,15 @@ namespace BossRush
         private Vector3 previewLandingPoint;
         private Vector3 lastPreviewAimPoint;
         private const float PreviewAimChangeSqrThreshold = 0.04f;
+        private const float PreviewOriginChangeSqrThreshold = 0.0225f;
+        private const float PreviewValidationInterval = 0.05f;
+        private const float PreviewReuseMaxAge = 0.15f;
+        private bool previewCacheValid;
+        private bool cachedPreviewValid;
+        private float lastPreviewValidationTime = -999f;
+        private float nextPreviewValidationTime = -999f;
+        private Vector3 cachedPreviewLandingPoint;
+        private Vector3 lastPreviewOrigin;
         private GameObject previewObject;
         private FenHuangLeapPreview previewController;
 
@@ -86,6 +96,7 @@ namespace BossRush
         public override void OnSceneChanged()
         {
             StopPreview();
+            ClearPreviewCache();
             FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
             base.OnSceneChanged();
         }
@@ -93,6 +104,7 @@ namespace BossRush
         public override void RebindToCharacter(CharacterMainControl character)
         {
             StopPreview();
+            ClearPreviewCache();
             base.RebindToCharacter(character);
         }
 
@@ -112,6 +124,7 @@ namespace BossRush
             }
 
             GetAdsInputState(out bool adsHeld, out bool adsPressed, out bool adsReleased);
+            bool previewStartedThisFrame = false;
 
             if (!isPreviewing)
             {
@@ -123,6 +136,7 @@ namespace BossRush
                 if (adsPressed && CanStartPreview())
                 {
                     BeginPreview();
+                    previewStartedThisFrame = true;
                 }
             }
 
@@ -138,9 +152,13 @@ namespace BossRush
                 return;
             }
 
-            UpdatePreview();
+            bool shouldRelease = adsReleased || !adsHeld;
+            if (!previewStartedThisFrame || shouldRelease)
+            {
+                UpdatePreview(shouldRelease);
+            }
 
-            if (adsReleased || !adsHeld)
+            if (shouldRelease)
             {
                 ReleasePreview();
             }
@@ -194,8 +212,15 @@ namespace BossRush
 
             isPreviewing = true;
             previewValid = false;
-            lastPreviewAimPoint = Vector3.positiveInfinity;
-            UpdatePreview();
+            if (!TryReuseCachedPreview())
+            {
+                lastPreviewAimPoint = Vector3.positiveInfinity;
+                lastPreviewOrigin = Vector3.positiveInfinity;
+                if (previewController != null)
+                {
+                    previewController.ClearPreview();
+                }
+            }
             LogIfVerbose("检测到 ADS 输入，进入跃击预览");
         }
 
@@ -258,6 +283,17 @@ namespace BossRush
             }
         }
 
+        private void ClearPreviewCache()
+        {
+            previewCacheValid = false;
+            cachedPreviewValid = false;
+            cachedPreviewLandingPoint = Vector3.zero;
+            lastPreviewAimPoint = Vector3.positiveInfinity;
+            lastPreviewOrigin = Vector3.positiveInfinity;
+            lastPreviewValidationTime = -999f;
+            nextPreviewValidationTime = -999f;
+        }
+
         private void EnsurePreviewController()
         {
             if (previewObject != null && previewController != null)
@@ -272,7 +308,38 @@ namespace BossRush
             previewController.Initialize();
         }
 
-        private void UpdatePreview()
+        private bool TryReuseCachedPreview()
+        {
+            if (!previewCacheValid || targetCharacter == null || previewController == null)
+            {
+                return false;
+            }
+
+            if (Time.unscaledTime - lastPreviewValidationTime > PreviewReuseMaxAge)
+            {
+                return false;
+            }
+
+            Vector3 aimPoint = FenHuangHalberdRuntime.GetAimPoint(targetCharacter);
+            Vector3 previewOrigin = FenHuangHalberdRuntime.GetPreviewOrigin(targetCharacter);
+
+            if ((aimPoint - lastPreviewAimPoint).sqrMagnitude >= PreviewAimChangeSqrThreshold)
+            {
+                return false;
+            }
+
+            if ((previewOrigin - lastPreviewOrigin).sqrMagnitude >= PreviewOriginChangeSqrThreshold)
+            {
+                return false;
+            }
+
+            previewLandingPoint = cachedPreviewLandingPoint;
+            previewValid = cachedPreviewValid;
+            previewController.UpdatePreview(previewPointsBuffer, cachedPreviewLandingPoint, cachedPreviewValid);
+            return true;
+        }
+
+        private void UpdatePreview(bool requireFreshValidation)
         {
             if (targetCharacter == null)
             {
@@ -281,18 +348,29 @@ namespace BossRush
             }
 
             Vector3 aimPoint = FenHuangHalberdRuntime.GetAimPoint(targetCharacter);
+            Vector3 previewOrigin = FenHuangHalberdRuntime.GetPreviewOrigin(targetCharacter);
+            bool aimChanged = (aimPoint - lastPreviewAimPoint).sqrMagnitude >= PreviewAimChangeSqrThreshold;
+            bool originChanged = (previewOrigin - lastPreviewOrigin).sqrMagnitude >= PreviewOriginChangeSqrThreshold;
+            float now = Time.unscaledTime;
+            bool cacheFresh = previewCacheValid && now - lastPreviewValidationTime <= PreviewReuseMaxAge;
+            bool needsValidation =
+                !previewCacheValid ||
+                aimChanged ||
+                originChanged ||
+                now >= nextPreviewValidationTime ||
+                (requireFreshValidation && !cacheFresh);
 
-            if ((aimPoint - lastPreviewAimPoint).sqrMagnitude < PreviewAimChangeSqrThreshold)
+            if (!needsValidation)
             {
+                previewLandingPoint = cachedPreviewLandingPoint;
+                previewValid = cachedPreviewValid;
                 return;
             }
-            lastPreviewAimPoint = aimPoint;
 
             Vector3 resolvedLandingPoint = FenHuangHalberdRuntime.SnapToGround(
                 aimPoint,
                 targetCharacter.transform.position.y
             );
-            Vector3 previewOrigin = FenHuangHalberdRuntime.GetPreviewOrigin(targetCharacter);
 
             // 使用和实际飞行完全一致的 lerp + sine wave 弧线来构建预览轨迹
             FenHuangHalberdRuntime.FillTrajectory(previewPointsBuffer, previewOrigin, resolvedLandingPoint);
@@ -306,12 +384,19 @@ namespace BossRush
             );
 
             previewLandingPoint = resolvedLandingPoint;
+            lastPreviewAimPoint = aimPoint;
+            lastPreviewOrigin = previewOrigin;
 
             float horizontalDist = Vector3.Distance(
                 new Vector3(previewOrigin.x, 0f, previewOrigin.z),
                 new Vector3(resolvedLandingPoint.x, 0f, resolvedLandingPoint.z)
             );
             previewValid = !hitObstacle && horizontalDist > 0.3f && IsLandingPointValid(previewLandingPoint);
+            cachedPreviewLandingPoint = previewLandingPoint;
+            cachedPreviewValid = previewValid;
+            previewCacheValid = true;
+            lastPreviewValidationTime = now;
+            nextPreviewValidationTime = now + PreviewValidationInterval;
 
             // 始终在目标终点显示标记（光效、圆环、ban 图标），而非障碍物碰撞点
             Vector3 markerPoint = previewLandingPoint;
@@ -451,10 +536,30 @@ namespace BossRush
             }
             catch { return false; }
 
+            if (Time.timeScale <= 0f)
+            {
+                return false;
+            }
+
+            if (Cursor.lockState == CursorLockMode.None)
+            {
+                return false;
+            }
+
             try
             {
                 if (Duckov.UI.View.ActiveView != null)
                     return false;
+            }
+            catch { }
+
+            try
+            {
+                EventSystem eventSystem = EventSystem.current;
+                if (eventSystem != null && eventSystem.IsPointerOverGameObject())
+                {
+                    return false;
+                }
             }
             catch { }
 
@@ -475,33 +580,15 @@ namespace BossRush
                 return;
             }
 
+            if (!IsGameplayInputAllowed())
+            {
+                return;
+            }
+
             GetAdsInputState(out bool adsHeld, out bool adsPressed, out bool adsReleased);
             if (!adsHeld && !adsPressed && !adsReleased && !IsActionRunning && !isPreviewing)
             {
                 return;
-            }
-
-            try
-            {
-                if (!InputManager.InputActived)
-                {
-                    return;
-                }
-            }
-            catch
-            {
-                return;
-            }
-
-            try
-            {
-                if (Duckov.UI.View.ActiveView != null)
-                {
-                    return;
-                }
-            }
-            catch
-            {
             }
 
             try
@@ -673,6 +760,24 @@ namespace BossRush
             {
                 markerLight.transform.position = landingPoint + Vector3.up * 0.35f;
                 markerLight.color = color;
+            }
+        }
+
+        public void ClearPreview()
+        {
+            if (trajectoryLine != null)
+            {
+                trajectoryLine.positionCount = 0;
+            }
+
+            if (landingRing != null)
+            {
+                landingRing.positionCount = 0;
+            }
+
+            if (banIconObject != null)
+            {
+                banIconObject.SetActive(false);
             }
         }
 

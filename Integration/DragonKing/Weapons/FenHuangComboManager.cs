@@ -60,9 +60,10 @@ namespace BossRush
             public DamageReceiver receiver;
             public CharacterMainControl attacker;
             public int step;
+            public int enqueueFrame;
         }
 
-        private readonly List<PendingHitEffect> pendingHitEffects = new List<PendingHitEffect>();
+        private readonly Queue<PendingHitEffect> pendingHitEffects = new Queue<PendingHitEffect>();
         private bool hasPendingEffects;
         private const int MaxEffectsPerFrame = 2;
 
@@ -113,6 +114,8 @@ namespace BossRush
             }
 
             activeComboAttacks.Clear();
+            pendingHitEffects.Clear();
+            hasPendingEffects = false;
             DragonFlameMarkTracker.ClearAll();
 
             if (combo3BurnBuff != null)
@@ -198,6 +201,8 @@ namespace BossRush
             ComboStep = 0;
             lastAttackTime = -999f;
             activeComboAttacks.Clear();
+            pendingHitEffects.Clear();
+            hasPendingEffects = false;
         }
 
         // ========== 场景切换清理 ==========
@@ -239,8 +244,13 @@ namespace BossRush
             int processed = 0;
             while (processed < MaxEffectsPerFrame && pendingHitEffects.Count > 0)
             {
-                PendingHitEffect effect = pendingHitEffects[0];
-                pendingHitEffects.RemoveAt(0);
+                PendingHitEffect effect = pendingHitEffects.Peek();
+                if (effect.enqueueFrame >= Time.frameCount)
+                {
+                    break;
+                }
+
+                pendingHitEffects.Dequeue();
 
                 if (effect.receiver == null || effect.receiver.health == null || effect.receiver.health.IsDead)
                 {
@@ -332,11 +342,12 @@ namespace BossRush
             DragonFlameMarkTracker.AddMark(receiver);
 
             // 将附加效果（火伤/灼烧/击飞/拉扯）入队，延迟到后续帧批量处理
-            pendingHitEffects.Add(new PendingHitEffect
+            pendingHitEffects.Enqueue(new PendingHitEffect
             {
                 receiver = receiver,
                 attacker = attacker,
-                step = state.Step
+                step = state.Step,
+                enqueueFrame = Time.frameCount
             });
             hasPendingEffects = true;
         }
