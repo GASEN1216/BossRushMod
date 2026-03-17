@@ -64,9 +64,9 @@ namespace BossRush
         {
             { DragonKingConfig.PrismaticBoltPrefab, 36 },
             { DragonKingConfig.RainbowStarPrefab, 42 },
-            { DragonKingConfig.EtherealLancePrefab, 72 },
+            { DragonKingConfig.EtherealLancePrefab, 96 },
             { DragonKingConfig.SunBeamGroupPrefab, 3 },
-            { DragonKingConfig.DashTrailPrefab, 36 },
+            { DragonKingConfig.DashTrailPrefab, 48 },
             { DragonKingConfig.TeleportFXPrefab, 6 },
             { DragonKingConfig.PhaseTransitionPrefab, 6 }
         };

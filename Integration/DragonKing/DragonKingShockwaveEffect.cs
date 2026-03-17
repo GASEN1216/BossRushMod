@@ -21,6 +21,9 @@ namespace BossRush
     public class DragonKingShockwaveEffect : MonoBehaviour
     {
         private const int RingSegmentCount = 60;
+        private const float WaveBaseWidth = 0.8f;
+        private const float WaveMinWidth = 0.2f;
+        private const int InitialEffectPoolCapacity = 4;
 
         // ========== 配置参数 ==========
 
@@ -72,19 +75,23 @@ namespace BossRush
 
         // ========== 私有变量 ==========
 
-        private List<WaveRing> waveRings = new List<WaveRing>();
+        private readonly List<WaveRing> waveRings = new List<WaveRing>(3);
         private bool isActive = false;
+        private bool isPooled = false;
         private Vector3 centerPosition;
         private CharacterMainControl playerCharacter;
         private static Material sharedWaveMaterial;
         private static Vector2[] cachedRingUnitPoints;
+        private static Transform sharedPoolRoot;
+        private static readonly Stack<DragonKingShockwaveEffect> sharedEffectPool =
+            new Stack<DragonKingShockwaveEffect>(InitialEffectPoolCapacity);
 
         // 协程引用（用于生命周期管理）
         private Coroutine releaseWavesCoroutine;
         private Coroutine knockbackClearCoroutine;
 
         // 回调
-        public System.Action OnAllWavesComplete;
+        public Action OnAllWavesComplete;
 
         // ========== 公开方法 ==========
 
@@ -93,13 +100,28 @@ namespace BossRush
         /// </summary>
         public static DragonKingShockwaveEffect PlayAt(Vector3 position)
         {
-            GameObject obj = new GameObject("DragonKing_Shockwave");
-            obj.transform.position = position;
-
-            var effect = obj.AddComponent<DragonKingShockwaveEffect>();
+            DragonKingShockwaveEffect effect = AcquirePooledEffect();
+            effect.transform.position = position;
+            effect.gameObject.SetActive(true);
             effect.StartShockwave(position);
-
             return effect;
+        }
+
+        public static void WarmSharedPool(int desiredCount)
+        {
+            if (desiredCount <= 0)
+            {
+                return;
+            }
+
+            while (sharedEffectPool.Count < desiredCount)
+            {
+                GameObject obj = new GameObject("DragonKing_Shockwave");
+                DragonKingShockwaveEffect effect = obj.AddComponent<DragonKingShockwaveEffect>();
+                effect.isPooled = false;
+                effect.EnsureWaveRingPool(effect.waveCount);
+                effect.ReturnToPool();
+            }
         }
 
         /// <summary>
@@ -107,8 +129,15 @@ namespace BossRush
         /// </summary>
         public void StartShockwave(Vector3 center)
         {
+            EnsureWaveRingPool(waveCount);
+            StopActiveCoroutines();
+            DeactivateAllWaveRings();
+
             centerPosition = center;
+            transform.position = center;
             isActive = true;
+            isPooled = false;
+            OnAllWavesComplete = null;
 
             // 获取玩家引用
             FindPlayer();
@@ -119,11 +148,47 @@ namespace BossRush
             ModBehaviour.DevLog($"[DragonKing] 冲击波特效开始播放，将释放{waveCount}个波");
         }
 
+        private void Awake()
+        {
+            EnsureWaveRingPool(waveCount);
+            DeactivateAllWaveRings();
+        }
+
         // ========== 私有方法 ==========
+
+        private static DragonKingShockwaveEffect AcquirePooledEffect()
+        {
+            while (sharedEffectPool.Count > 0)
+            {
+                DragonKingShockwaveEffect pooledEffect = sharedEffectPool.Pop();
+                if (pooledEffect != null)
+                {
+                    pooledEffect.transform.SetParent(null, false);
+                    pooledEffect.isPooled = false;
+                    return pooledEffect;
+                }
+            }
+
+            GameObject obj = new GameObject("DragonKing_Shockwave");
+            DragonKingShockwaveEffect effect = obj.AddComponent<DragonKingShockwaveEffect>();
+            effect.isPooled = false;
+            return effect;
+        }
+
+        private static Transform GetOrCreatePoolRoot()
+        {
+            if (sharedPoolRoot == null)
+            {
+                GameObject poolRootObject = new GameObject("DragonKing_ShockwavePool");
+                poolRootObject.hideFlags = HideFlags.HideInHierarchy;
+                sharedPoolRoot = poolRootObject.transform;
+            }
+
+            return sharedPoolRoot;
+        }
 
         private void FindPlayer()
         {
-            // 使用CharacterMainControl.Main获取玩家
             playerCharacter = CharacterMainControl.Main;
 
             if (playerCharacter == null)
@@ -136,93 +201,161 @@ namespace BossRush
         {
             for (int i = 0; i < waveCount; i++)
             {
-                // 创建一个波纹环
-                CreateWaveRing(i);
+                ActivateWaveRing(i);
 
-                // 等待间隔（最后一个波不需要等待）
                 if (i < waveCount - 1)
                 {
-                    yield return waveIntervalCached; // waveInterval = 0.5f
+                    yield return waveIntervalCached;
                 }
             }
 
-            // 等待所有波纹扩散完成
-            yield return waveExpandTime; // 预留足够时间让波纹扩散(3f)
+            yield return waveExpandTime;
 
-            // 所有波纹完成
-            OnAllWavesComplete?.Invoke();
+            Action onAllWavesComplete = OnAllWavesComplete;
+            OnAllWavesComplete = null;
+            onAllWavesComplete?.Invoke();
             ModBehaviour.DevLog("[DragonKing] 冲击波特效完成");
 
-            isActive = false;
-            Destroy(gameObject, 1f);
+            ReturnToPool();
         }
 
-        private void CreateWaveRing(int index)
+        private void EnsureWaveRingPool(int requiredCount)
+        {
+            if (requiredCount <= 0)
+            {
+                requiredCount = 1;
+            }
+
+            while (waveRings.Count < requiredCount)
+            {
+                waveRings.Add(CreateWaveRing(waveRings.Count));
+            }
+        }
+
+        private WaveRing CreateWaveRing(int index)
         {
             GameObject ringObj = new GameObject($"WaveRing_{index}");
-            ringObj.transform.SetParent(transform);
+            ringObj.transform.SetParent(transform, false);
             ringObj.transform.localPosition = Vector3.zero;
 
-            // 添加 LineRenderer
             LineRenderer lineRenderer = ringObj.AddComponent<LineRenderer>();
-
-            // 配置 LineRenderer
             Material material = GetSharedWaveMaterial();
             if (material != null)
             {
                 lineRenderer.sharedMaterial = material;
             }
-            lineRenderer.startWidth = 0.8f;
-            lineRenderer.endWidth = 0.8f;
+            lineRenderer.startWidth = WaveBaseWidth;
+            lineRenderer.endWidth = WaveBaseWidth;
             lineRenderer.positionCount = RingSegmentCount + 1;
             lineRenderer.useWorldSpace = true;
             lineRenderer.loop = false;
 
-            // 创建波纹环数据
-            WaveRing wave = new WaveRing
+            WaveRing waveRing = new WaveRing
             {
                 index = index,
+                ringObject = ringObj,
                 lineRenderer = lineRenderer,
+                positions = new Vector3[RingSegmentCount + 1],
                 currentRadius = 0f,
-                hasHitPlayer = false
+                hasHitPlayer = false,
+                isActive = false
             };
 
-            waveRings.Add(wave);
+            ringObj.SetActive(false);
+            return waveRing;
+        }
+
+        private void ActivateWaveRing(int index)
+        {
+            if (index < 0 || index >= waveRings.Count)
+            {
+                return;
+            }
+
+            WaveRing wave = waveRings[index];
+            if (wave == null || wave.ringObject == null || wave.lineRenderer == null)
+            {
+                return;
+            }
+
+            wave.index = index;
+            wave.currentRadius = 0f;
+            wave.hasHitPlayer = false;
+            wave.isActive = true;
+            wave.ringObject.SetActive(true);
+
+            Color color = waveColor;
+            color.a = 0f;
+            wave.lineRenderer.startColor = color;
+            wave.lineRenderer.endColor = color;
+            wave.lineRenderer.startWidth = WaveBaseWidth;
+            wave.lineRenderer.endWidth = WaveBaseWidth;
+            UpdateRingPositions(wave);
+        }
+
+        private void DeactivateWaveRing(WaveRing wave)
+        {
+            if (wave == null)
+            {
+                return;
+            }
+
+            wave.currentRadius = 0f;
+            wave.hasHitPlayer = false;
+            wave.isActive = false;
+
+            if (wave.ringObject != null)
+            {
+                wave.ringObject.SetActive(false);
+            }
+        }
+
+        private void DeactivateAllWaveRings()
+        {
+            for (int i = 0; i < waveRings.Count; i++)
+            {
+                DeactivateWaveRing(waveRings[i]);
+            }
         }
 
         private void Update()
         {
-            if (!isActive) return;
+            if (!isActive)
+            {
+                return;
+            }
 
-            // 检查玩家位置
+            if (playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead)
+            {
+                FindPlayer();
+            }
+
             Vector3 playerPos = Vector3.zero;
             bool playerValid = false;
-            if (playerCharacter != null)
+            if (playerCharacter != null && playerCharacter.Health != null && !playerCharacter.Health.IsDead)
             {
                 playerPos = playerCharacter.transform.position;
                 playerValid = true;
             }
 
-            // 更新所有波纹环
-            for (int i = waveRings.Count - 1; i >= 0; i--)
+            float maxVisibleRadius = maxRadius + waveSpacing;
+            for (int i = 0; i < waveCount && i < waveRings.Count; i++)
             {
                 WaveRing wave = waveRings[i];
-                if (wave == null || wave.lineRenderer == null) continue;
+                if (wave == null || !wave.isActive || wave.lineRenderer == null)
+                {
+                    continue;
+                }
 
-                // 扩散波纹
                 wave.currentRadius += expansionSpeed * Time.deltaTime;
-
-                // 更新圆环点位
                 UpdateRingPositions(wave);
 
-                // 检查是否击中玩家
                 if (playerValid && !wave.hasHitPlayer)
                 {
                     Vector2 playerOffset = new Vector2(playerPos.x - centerPosition.x, playerPos.z - centerPosition.z);
                     float distanceToPlayerSqr = playerOffset.sqrMagnitude;
                     float waveRadiusSqr = wave.currentRadius * wave.currentRadius;
 
-                    // 当波纹半径接近玩家距离时，击退玩家
                     if (waveRadiusSqr >= distanceToPlayerSqr)
                     {
                         KnockbackPlayer(playerPos, centerPosition);
@@ -231,27 +364,20 @@ namespace BossRush
                     }
                 }
 
-                // 更新透明度（边缘淡出）
                 float alpha = CalculateAlpha(wave.currentRadius);
                 Color color = waveColor;
                 color.a = alpha;
                 wave.lineRenderer.startColor = color;
                 wave.lineRenderer.endColor = color;
 
-                // 更新线条宽度（随着扩散逐渐变细）
-                float width = 0.8f * (1f - wave.currentRadius / (maxRadius + waveSpacing) * 0.6f);
-                width = Mathf.Max(0.2f, width);
+                float width = WaveBaseWidth * (1f - wave.currentRadius / maxVisibleRadius * 0.6f);
+                width = Mathf.Max(WaveMinWidth, width);
                 wave.lineRenderer.startWidth = width;
                 wave.lineRenderer.endWidth = width;
 
-                // 超出最大半径后移除
-                if (wave.currentRadius > maxRadius + waveSpacing)
+                if (wave.currentRadius > maxVisibleRadius)
                 {
-                    if (wave.lineRenderer != null)
-                    {
-                        Destroy(wave.lineRenderer.gameObject);
-                    }
-                    waveRings.RemoveAt(i);
+                    DeactivateWaveRing(wave);
                 }
             }
         }
@@ -262,37 +388,35 @@ namespace BossRush
             for (int i = 0; i < unitPoints.Length; i++)
             {
                 Vector2 point = unitPoints[i];
-                wave.lineRenderer.SetPosition(
-                    i,
-                    new Vector3(
-                        centerPosition.x + point.x * wave.currentRadius,
-                        centerPosition.y,
-                        centerPosition.z + point.y * wave.currentRadius));
+                wave.positions[i] = new Vector3(
+                    centerPosition.x + point.x * wave.currentRadius,
+                    centerPosition.y,
+                    centerPosition.z + point.y * wave.currentRadius);
             }
+
+            wave.lineRenderer.SetPositions(wave.positions);
         }
 
         private float CalculateAlpha(float radius)
         {
-            // 开始时淡入
             float fadeIn = Mathf.Min(1f, radius / waveSpacing);
-            // 结束时淡出
             float fadeOut = 1f - (radius - maxRadius) / waveSpacing;
             return Mathf.Clamp01(fadeIn * fadeOut) * waveColor.a;
         }
 
         private void KnockbackPlayer(Vector3 playerPos, Vector3 waveCenter)
         {
-            if (playerCharacter == null) return;
+            if (playerCharacter == null)
+            {
+                return;
+            }
 
-            // 计算击退方向（从波中心向外）
             Vector3 knockbackDir = (playerPos - waveCenter).normalized;
-            knockbackDir.y = 0; // 保持水平方向
+            knockbackDir.y = 0;
 
-            // 使用游戏原生的SetForceMoveVelocity进行击退
             Vector3 knockbackVelocity = knockbackDir * knockbackForce + Vector3.up * knockbackUpwardForce;
             playerCharacter.SetForceMoveVelocity(knockbackVelocity);
 
-            // 启动协程在短时间后清除强制移动（保存协程引用）
             if (knockbackClearCoroutine != null)
             {
                 StopCoroutine(knockbackClearCoroutine);
@@ -301,24 +425,44 @@ namespace BossRush
 
             ModBehaviour.DevLog($"[DragonKing] 玩家被击退，速度: {knockbackVelocity}");
         }
-        
+
         /// <summary>
         /// 延迟清除击退效果
         /// </summary>
         private IEnumerator ClearKnockbackAfterDelay()
         {
-            yield return knockbackClearTime; // delay = 0.3f
-            
-            // 清除强制移动，让玩家恢复正常控制
+            yield return knockbackClearTime;
+
             if (playerCharacter != null)
             {
                 playerCharacter.SetForceMoveVelocity(Vector3.zero);
             }
         }
 
-        private void OnDestroy()
+        private void ReturnToPool()
         {
-            // 停止所有协程（防止协程泄漏）
+            if (isPooled)
+            {
+                return;
+            }
+
+            StopActiveCoroutines();
+            isActive = false;
+            isPooled = true;
+            playerCharacter = null;
+            OnAllWavesComplete = null;
+            DeactivateAllWaveRings();
+
+            transform.SetParent(GetOrCreatePoolRoot(), false);
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+            gameObject.SetActive(false);
+
+            sharedEffectPool.Push(this);
+        }
+
+        private void StopActiveCoroutines()
+        {
             if (releaseWavesCoroutine != null)
             {
                 StopCoroutine(releaseWavesCoroutine);
@@ -329,15 +473,12 @@ namespace BossRush
                 StopCoroutine(knockbackClearCoroutine);
                 knockbackClearCoroutine = null;
             }
+        }
 
-            // 清理所有波纹（包括Material）
-            foreach (var wave in waveRings)
-            {
-                if (wave != null && wave.lineRenderer != null)
-                {
-                    Destroy(wave.lineRenderer.gameObject);
-                }
-            }
+        private void OnDestroy()
+        {
+            StopActiveCoroutines();
+            OnAllWavesComplete = null;
             waveRings.Clear();
         }
 
@@ -377,12 +518,15 @@ namespace BossRush
 
         // ========== 内部类 ==========
 
-        private class WaveRing
+        private sealed class WaveRing
         {
             public int index;
+            public GameObject ringObject;
             public LineRenderer lineRenderer;
+            public Vector3[] positions;
             public float currentRadius;
             public bool hasHitPlayer;
+            public bool isActive;
         }
     }
 }

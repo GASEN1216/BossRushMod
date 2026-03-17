@@ -203,6 +203,11 @@ namespace BossRush
         /// </summary>
         private static bool cachedAudioPostResolved = false;
 
+        /// <summary>
+        /// 跨龙皇共享的音效节流时间表，避免同一帧堆出多次相同事件
+        /// </summary>
+        private static Dictionary<string, float> sharedSoundThrottleTimestamps = new Dictionary<string, float>(16);
+
 
         /// <summary>
         /// 太阳舞期间Boss锁定位置（用于弹幕发射位置）
@@ -433,6 +438,9 @@ namespace BossRush
         private const int WARNING_CIRCLE_PREWARM_COUNT = 6;
         private const int DASH_CHARGE_PREWARM_COUNT = 3;
         private const int DASH_COUNTDOWN_RING_PREWARM_COUNT = 3;
+        private const float GLOBAL_WEAPON_SOUND_INTERVAL = 0.015f;
+        private const float GLOBAL_BOLT_SPAWN2_SOUND_INTERVAL = 0.03f;
+        private const float PLAYER_HITBOX_BOUNDS_REFRESH_INTERVAL = 1f;
 
         private static CharacterMainControl sharedTrackedTarget = null;
         private static Rigidbody sharedTrackedTargetRigidbody = null;
@@ -441,6 +449,11 @@ namespace BossRush
         private static float lastSharedTargetSampleTime = float.NegativeInfinity;
         private static int lastSharedTargetSampleFrame = -1;
         private static bool hasSharedTrackedTargetSnapshot = false;
+        private static CharacterMainControl sharedTargetHitboxBoundsOwner = null;
+        private static Transform sharedTargetHitboxBoundsRoot = null;
+        private static Bounds sharedTargetHitboxBounds = default(Bounds);
+        private static float lastSharedTargetHitboxBoundsRefreshTime = float.NegativeInfinity;
+        private static bool hasSharedTargetHitboxBounds = false;
         private static Gradient cachedTransparentRainbowGradient = null;
         private static Vector3[] cachedWarningCircleUnitPoints = null;
         private static readonly Collider[] sharedTeleportValidationBuffer = new Collider[24];
@@ -549,6 +562,7 @@ namespace BossRush
             nextAttackDesyncSeed = 0;
             cachedAudioPostDelegate = null;
             cachedAudioPostResolved = false;
+            sharedSoundThrottleTimestamps.Clear();
             sharedTrackedTarget = null;
             sharedTrackedTargetRigidbody = null;
             sharedTrackedTargetAimPosition = Vector3.zero;
@@ -572,6 +586,7 @@ namespace BossRush
             WarmSharedWarningCirclePool(WARNING_CIRCLE_PREWARM_COUNT);
             WarmSharedDashChargePool(DASH_CHARGE_PREWARM_COUNT);
             WarmSharedDashCountdownRingPool(DASH_COUNTDOWN_RING_PREWARM_COUNT);
+            DragonKingShockwaveEffect.WarmSharedPool(3);
         }
 
         private static void WarmSharedWarningLinePool(int desiredCount)
@@ -885,11 +900,6 @@ namespace BossRush
                 detectorObj.transform.SetParent(bossCharacter.transform);
                 detectorObj.transform.localPosition = Vector3.zero;
 
-                // 添加球形碰撞器（触发器模式）
-                SphereCollider collider = detectorObj.AddComponent<SphereCollider>();
-                collider.radius = DragonKingConfig.CollisionRadius;
-                collider.isTrigger = true;
-
                 // 添加碰撞检测器组件
                 collisionDetector = detectorObj.AddComponent<DragonKingCollisionDetector>();
                 collisionDetector.Initialize(this);
@@ -1047,6 +1057,115 @@ namespace BossRush
 
             targetPosition = Vector3.zero;
             return false;
+        }
+
+        private bool TryGetPlayerSnapshot(out CharacterMainControl targetCharacter, out Vector3 targetPosition, bool forceRefresh = false)
+        {
+            targetCharacter = null;
+            targetPosition = Vector3.zero;
+
+            UpdatePlayerReference();
+            targetCharacter = playerCharacter;
+            if (targetCharacter == null || targetCharacter.Health == null || targetCharacter.Health.IsDead)
+            {
+                return false;
+            }
+
+            if (!TryRefreshSharedTargetSnapshot(targetCharacter, forceRefresh))
+            {
+                return false;
+            }
+
+            targetPosition = sharedTrackedTargetAimPosition;
+            return true;
+        }
+
+        private static bool TryGetSharedTargetHitboxBounds(CharacterMainControl targetCharacter, out Bounds hitboxBounds)
+        {
+            hitboxBounds = default(Bounds);
+            if (targetCharacter == null || targetCharacter.gameObject == null)
+            {
+                return false;
+            }
+
+            Transform targetRoot = targetCharacter.transform.root;
+            bool needsRefresh =
+                sharedTargetHitboxBoundsOwner != targetCharacter ||
+                sharedTargetHitboxBoundsRoot != targetRoot ||
+                !hasSharedTargetHitboxBounds ||
+                Time.time - lastSharedTargetHitboxBoundsRefreshTime >= PLAYER_HITBOX_BOUNDS_REFRESH_INTERVAL;
+
+            if (needsRefresh)
+            {
+                sharedTargetHitboxBoundsOwner = targetCharacter;
+                sharedTargetHitboxBoundsRoot = targetRoot;
+                hasSharedTargetHitboxBounds = TryBuildTargetHitboxBounds(targetRoot, out sharedTargetHitboxBounds);
+                lastSharedTargetHitboxBoundsRefreshTime = Time.time;
+            }
+
+            hitboxBounds = sharedTargetHitboxBounds;
+            return hasSharedTargetHitboxBounds;
+        }
+
+        private static bool TryBuildTargetHitboxBounds(Transform targetRoot, out Bounds hitboxBounds)
+        {
+            hitboxBounds = default(Bounds);
+            if (targetRoot == null)
+            {
+                return false;
+            }
+
+            Collider[] colliders = targetRoot.GetComponentsInChildren<Collider>(true);
+            bool hasBounds = false;
+
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (collider == null || !collider.enabled)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    hitboxBounds = collider.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    hitboxBounds.Encapsulate(collider.bounds);
+                }
+            }
+
+            return hasBounds;
+        }
+
+        private static bool TryPassSharedSoundThrottle(string throttleKey, float minInterval)
+        {
+            if (string.IsNullOrEmpty(throttleKey) || minInterval <= 0f)
+            {
+                return true;
+            }
+
+            float now = Time.time;
+            float lastTime;
+            if (sharedSoundThrottleTimestamps.TryGetValue(throttleKey, out lastTime) && now - lastTime < minInterval)
+            {
+                return false;
+            }
+
+            sharedSoundThrottleTimestamps[throttleKey] = now;
+            return true;
+        }
+
+        private void PlaySharedDragonSound(string filePath, string throttleKey, float minInterval)
+        {
+            if (!TryPassSharedSoundThrottle(throttleKey, minInterval))
+            {
+                return;
+            }
+
+            ModBehaviour.Instance?.PlaySoundEffect(filePath);
         }
 
         private bool IsPlayerDead()
@@ -1262,6 +1381,24 @@ namespace BossRush
         /// </summary>
         private void StopAllProjectileCoroutines()
         {
+            for (int i = activeTrackingProjectiles.Count - 1; i >= 0; i--)
+            {
+                GameObject projectile = activeTrackingProjectiles[i].projectile;
+                if (projectile != null)
+                {
+                    ReleaseManagedProjectile(projectile);
+                }
+            }
+
+            for (int i = activeLances.Count - 1; i >= 0; i--)
+            {
+                GameObject lance = activeLances[i].lance;
+                if (lance != null)
+                {
+                    ReleaseManagedProjectile(lance);
+                }
+            }
+
             activeTrackingProjectiles.Clear();
             activeLances.Clear();
 
@@ -1298,6 +1435,7 @@ namespace BossRush
                 rb.velocity = currentVelocity;
             }
 
+            TrackManagedProjectile(projectile);
             activeTrackingProjectiles.Add(new TrackingProjectileState
             {
                 projectile = projectile,
@@ -1315,6 +1453,9 @@ namespace BossRush
         private void UpdateTrackingProjectiles()
         {
             if (activeTrackingProjectiles.Count == 0) return;
+
+            Vector3 targetPos;
+            bool hasTargetSnapshot = TryGetPlayerSnapshot(out _, out targetPos);
 
             for (int i = activeTrackingProjectiles.Count - 1; i >= 0; i--)
             {
@@ -1343,8 +1484,7 @@ namespace BossRush
                 Vector3 currentPos = projectile.transform.position;
                 if (elapsed < state.trackingDuration && !state.trackingEnded)
                 {
-                    Vector3 targetPos;
-                    if (TryGetPlayerAimPosition(out targetPos))
+                    if (hasTargetSnapshot)
                     {
                         Vector3 dirToTarget = (targetPos - currentPos).normalized;
                         if (state.rigidbody == null && state.currentVelocity.sqrMagnitude < 0.01f)
@@ -1384,7 +1524,7 @@ namespace BossRush
                     projectile.transform.rotation = Quaternion.LookRotation(state.currentVelocity);
                 }
 
-                if (CheckProjectileHit(currentPos, DragonKingConfig.PrismaticBoltDamage))
+                if (CheckProjectileHit(currentPos, DragonKingConfig.PrismaticBoltDamage, hasTargetSnapshot, targetPos))
                 {
                     ReleaseManagedProjectile(projectile);
                     if (i < activeTrackingProjectiles.Count)
@@ -1402,6 +1542,7 @@ namespace BossRush
         {
             if (lance == null) return;
 
+            TrackManagedProjectile(lance);
             activeLances.Add(new LanceProjectileState
             {
                 lance = lance,
@@ -1415,6 +1556,10 @@ namespace BossRush
         private void UpdateActiveLances()
         {
             if (activeLances.Count == 0) return;
+
+            CharacterMainControl targetCharacter;
+            Vector3 targetPos;
+            bool hasTargetSnapshot = TryGetPlayerSnapshot(out targetCharacter, out targetPos);
 
             for (int i = activeLances.Count - 1; i >= 0; i--)
             {
@@ -1436,7 +1581,7 @@ namespace BossRush
                 lance.transform.position += state.direction * moveDelta;
                 state.traveled += moveDelta;
 
-                if (CheckLanceHit(lance) || state.traveled >= state.maxDistance)
+                if (CheckLanceHit(lance, hasTargetSnapshot, targetCharacter, targetPos) || state.traveled >= state.maxDistance)
                 {
                     ReleaseManagedProjectile(lance);
                     if (i < activeLances.Count)
@@ -1456,6 +1601,15 @@ namespace BossRush
 
             activeProjectiles.Remove(projectile);
             DragonKingAssetManager.ReleaseEffect(projectile);
+        }
+
+        private void TrackManagedProjectile(GameObject projectile)
+        {
+            if (projectile == null) return;
+            if (!activeProjectiles.Contains(projectile))
+            {
+                activeProjectiles.Add(projectile);
+            }
         }
 
         /// <summary>
@@ -2779,7 +2933,7 @@ namespace BossRush
                     }
 
                     bolts.Add(bolt);
-                    activeProjectiles.Add(bolt);
+                    TrackManagedProjectile(bolt);
 
                     // 播放棱彩弹1生成音效（每个弹幕都播放）
                 }
@@ -2932,6 +3086,12 @@ namespace BossRush
         {
             Vector3 targetPos;
             if (playerCharacter == null || IsPlayerDead() || !TryGetPlayerAimPosition(out targetPos)) return false;
+            return CheckProjectileHit(position, damage, true, targetPos);
+        }
+
+        private bool CheckProjectileHit(Vector3 position, float damage, bool hasTargetPosition, Vector3 targetPos)
+        {
+            if (!hasTargetPosition || playerCharacter == null || IsPlayerDead()) return false;
 
             // 性能优化：使用sqrMagnitude避免开方运算
             // 使用配置中的常量
@@ -3074,7 +3234,6 @@ namespace BossRush
 
             float currentAngle = 0f;
             float startTime = Time.time;
-            int boltIndex = 0;
 
             while (Time.time - startTime < duration && bossCharacter != null)
             {
@@ -3099,19 +3258,20 @@ namespace BossRush
                     // 设置缩放
                     bolt.transform.localScale = Vector3.one * scale;
 
-                    activeProjectiles.Add(bolt);
+                    TrackManagedProjectile(bolt);
                     // 使用棱彩弹2专用的追踪时间（2秒），添加到协程管理列表
                     RegisterTrackingProjectile(
                         bolt,
                         DragonKingConfig.PrismaticBoltLifetime,
                         DragonKingConfig.PrismaticBolt2TrackingDuration);
 
-                    // 播放棱彩弹1生成音效（每个弹幕都播放）
-                    ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltSpawn2);
+                    PlaySharedDragonSound(
+                        DragonKingConfig.Sound_BoltSpawn2,
+                        DragonKingConfig.Sound_BoltSpawn2,
+                        GLOBAL_BOLT_SPAWN2_SOUND_INTERVAL);
                 }
 
                 currentAngle += angleIncrement;
-                boltIndex++;
                 yield return wait01s; // interval = SpiralFireInterval = 0.1f
             }
 
@@ -3852,8 +4012,12 @@ namespace BossRush
                     return;
                 }
 
-                // 每发子弹都播放音效（与龙裔一致，不做节流）
                 if (Time.time - lastWeaponShootSoundTime < 0.05f)
+                {
+                    return;
+                }
+
+                if (!TryPassSharedSoundThrottle(cachedWeaponShootEventName, GLOBAL_WEAPON_SOUND_INTERVAL))
                 {
                     return;
                 }
@@ -3995,7 +4159,7 @@ namespace BossRush
                 {
                     stars.Add(star);
                     starAngles.Add(angle);
-                    activeProjectiles.Add(star);
+                    TrackManagedProjectile(star);
                 }
             }
 
@@ -4006,10 +4170,11 @@ namespace BossRush
             while (Time.time - startTime < duration && bossCharacter != null)
             {
                 float elapsed = Time.time - startTime;
-                float progress = elapsed / duration;
 
                 // 实时获取龙王位置作为中心点（跟随龙王移动）
                 Vector3 currentCenter = bossCharacter.transform.position;
+                Vector3 targetPos;
+                bool hasTargetSnapshot = TryGetPlayerSnapshot(out _, out targetPos);
 
                 // 计算当前半径（先扩散后收缩）
                 float currentRadius;
@@ -4043,7 +4208,7 @@ namespace BossRush
                     stars[i].transform.position = currentCenter + offset;
 
                     // 检测伤害
-                    if (CheckProjectileHit(stars[i].transform.position, DragonKingConfig.RainbowTrailDamage))
+                    if (CheckProjectileHit(stars[i].transform.position, DragonKingConfig.RainbowTrailDamage, hasTargetSnapshot, targetPos))
                     {
                         // 不销毁星星，只造成伤害
                     }
@@ -4328,7 +4493,6 @@ namespace BossRush
                 {
                     // 激活 Blade 子物体（使长矛可见）
                     ActivateLanceBlade(backLance);
-                    activeProjectiles.Add(backLance);
                     RegisterLanceProjectile(backLance, forwardDir, lanceSpeed, spawnDistance * 2f);
                 }
             }
@@ -4346,7 +4510,6 @@ namespace BossRush
                 {
                     // 激活 Blade 子物体（使长矛可见）
                     ActivateLanceBlade(forwardLance);
-                    activeProjectiles.Add(forwardLance);
                     RegisterLanceProjectile(forwardLance, backDir, lanceSpeed, spawnDistance * 2f);
                 }
             }
@@ -4404,21 +4567,55 @@ namespace BossRush
         /// </summary>
         private bool CheckLanceHit(GameObject lance)
         {
+            CharacterMainControl targetCharacter;
             Vector3 playerPos;
-            if (playerCharacter == null || lance == null || IsPlayerDead() || !TryGetPlayerAimPosition(out playerPos)) return false;
+            if (!TryGetPlayerSnapshot(out targetCharacter, out playerPos)) return false;
+            return CheckLanceHit(lance, true, targetCharacter, playerPos);
+        }
+
+        private bool CheckLanceHit(GameObject lance, bool hasTargetSnapshot, CharacterMainControl targetCharacter, Vector3 playerPos)
+        {
+            if (!hasTargetSnapshot || lance == null || targetCharacter == null || targetCharacter.Health == null || targetCharacter.Health.IsDead)
+            {
+                return false;
+            }
+
+            const float lanceLength = 2f;
+            const float broadPhaseRadius = lanceLength + 1f;
+            const float lanceLengthSqr = lanceLength * lanceLength;
 
             Vector3 lancePos = lance.transform.position;
 
             // 使用射线检测长矛到玩家的路径
             Vector3 toPlayer = playerPos - lancePos;
-            float lanceLength = 2f;
-            float broadPhaseRadius = lanceLength + 1f;
-            if (toPlayer.sqrMagnitude > broadPhaseRadius * broadPhaseRadius)
+            float toPlayerSqr = toPlayer.sqrMagnitude;
+            if (toPlayerSqr > broadPhaseRadius * broadPhaseRadius)
             {
                 return false;
             }
 
-            Vector3 direction = toPlayer.normalized;
+            // 近距离命中仍保留旧逻辑，避免改变玩家体感
+            if (toPlayerSqr < lanceLengthSqr)
+            {
+                ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                return true;
+            }
+
+            Bounds targetHitboxBounds;
+            if (TryGetSharedTargetHitboxBounds(targetCharacter, out targetHitboxBounds) &&
+                targetHitboxBounds.SqrDistance(lancePos) > lanceLengthSqr)
+            {
+                return false;
+            }
+
+            float toPlayerDistance = Mathf.Sqrt(toPlayerSqr);
+            if (toPlayerDistance <= 0.001f)
+            {
+                ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                return true;
+            }
+
+            Vector3 direction = toPlayer / toPlayerDistance;
 
             // 长矛长度约2米，检测前方是否有玩家
             RaycastHit hit;
@@ -4426,19 +4623,12 @@ namespace BossRush
             if (Physics.Raycast(lancePos, direction, out hit, lanceLength))
             {
                 // 检测是否击中玩家
-                if (hit.collider.gameObject == playerCharacter.gameObject ||
-                    hit.collider.transform.IsChildOf(playerCharacter.transform))
+                if (hit.collider.gameObject == targetCharacter.gameObject ||
+                    hit.collider.transform.IsChildOf(targetCharacter.transform))
                 {
                     ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
                     return true;
                 }
-            }
-
-            // 备用检测：近距离检测（2米内）
-            if (toPlayer.sqrMagnitude < lanceLength * lanceLength)
-            {
-                ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
-                return true;
             }
 
             return false;
@@ -5387,13 +5577,6 @@ namespace BossRush
             collisionRadius = DragonKingConfig.CollisionRadius;
             collisionRadiusSqr = collisionRadius * collisionRadius;
 
-            // 禁用SphereCollider的触发器功能，改用距离检测
-            var sphereCollider = GetComponent<SphereCollider>();
-            if (sphereCollider != null)
-            {
-                sphereCollider.enabled = false;
-            }
-
             ModBehaviour.DevLog("[DragonKing] 碰撞检测器组件初始化完成（使用距离检测模式）");
         }
 
@@ -5815,14 +5998,9 @@ namespace BossRush
                 {
                     if (tree != null)
                     {
-                        var behaviour = tree.GetComponent("NodeCanvas.Framework.Behaviour");
-                        if (behaviour != null)
+                        if (cachedBehaviourEnabledProperty != null && cachedBehaviourEnabledProperty.CanWrite)
                         {
-                            // 使用缓存的反射属性
-                            if (cachedBehaviourEnabledProperty != null && cachedBehaviourEnabledProperty.CanWrite)
-                            {
-                                cachedBehaviourEnabledProperty.SetValue(behaviour, false);
-                            }
+                            cachedBehaviourEnabledProperty.SetValue(tree, false);
                         }
                     }
                 }
@@ -5879,14 +6057,9 @@ namespace BossRush
                 {
                     if (tree != null)
                     {
-                        var behaviour = tree.GetComponent("NodeCanvas.Framework.Behaviour");
-                        if (behaviour != null)
+                        if (cachedBehaviourEnabledProperty != null && cachedBehaviourEnabledProperty.CanWrite)
                         {
-                            // 使用缓存的反射属性
-                            if (cachedBehaviourEnabledProperty != null && cachedBehaviourEnabledProperty.CanWrite)
-                            {
-                                cachedBehaviourEnabledProperty.SetValue(behaviour, true);
-                            }
+                            cachedBehaviourEnabledProperty.SetValue(tree, true);
                         }
                     }
                 }
@@ -6173,6 +6346,10 @@ namespace BossRush
     /// </summary>
     public class DragonKingLavaZone : MonoBehaviour
     {
+        private const float PLAYER_COLLIDER_REFRESH_INTERVAL = 1f;
+        private static readonly Collider[] emptyPlayerColliders = new Collider[0];
+        private static readonly List<DragonKingLavaZone> activeZones = new List<DragonKingLavaZone>(48);
+
         /// <summary>
         /// 每次伤害值
         /// </summary>
@@ -6212,9 +6389,12 @@ namespace BossRush
         /// 缓存的点燃Buff
         /// </summary>
         private static Duckov.Buffs.Buff cachedBurnBuff = null;
-
-        private CharacterMainControl cachedMainPlayer = null;
-        private Transform cachedMainPlayerRoot = null;
+        private static CharacterMainControl cachedMainPlayer = null;
+        private static Transform cachedMainPlayerRoot = null;
+        private static Collider[] cachedMainPlayerColliders = emptyPlayerColliders;
+        private static float lastPlayerColliderRefreshTime = float.NegativeInfinity;
+        private static DragonKingLavaZoneUpdater updater = null;
+        private bool isInitialized = false;
 
         /// <summary>
         /// 球形碰撞器
@@ -6226,8 +6406,11 @@ namespace BossRush
         /// </summary>
         public void PrepareForPooling()
         {
+            EnsureUpdater();
             EnsureSphereCollider();
-            CacheMainPlayer();
+            ConfigureDisabledTrigger();
+            RefreshMainPlayerCache(false);
+            ResetRuntimeState();
         }
 
         public void Initialize(float dmg, float interval, float dur, float rad, CharacterMainControl boss)
@@ -6239,6 +6422,7 @@ namespace BossRush
             bossCharacter = boss;
             createTime = Time.time;
             lastDamageTime = 0f;
+            isInitialized = true;
 
             // 缓存点燃Buff
             if (cachedBurnBuff == null)
@@ -6246,27 +6430,72 @@ namespace BossRush
                 cachedBurnBuff = GameplayDataSettings.Buffs.Burn;
             }
 
-            CacheMainPlayer();
+            EnsureUpdater();
+            RefreshMainPlayerCache(false);
 
-            // 添加球形触发器
+            // 保留碰撞器组件供对象池复用，但关闭触发检测，改由集中式距离采样统一处理
             EnsureSphereCollider();
             sphereCollider.radius = radius;
             sphereCollider.isTrigger = true;
+            sphereCollider.enabled = false;
 
             // 设置层级
             gameObject.layer = LayerMask.NameToLayer("Default");
         }
 
-        void OnTriggerStay(Collider other)
+        private void OnEnable()
         {
-            // 检查伤害间隔
-            if (Time.time - lastDamageTime < damageInterval) return;
+            if (!Application.isPlaying)
+            {
+                return;
+            }
 
-            // 获取玩家角色
-            CharacterMainControl player = GetPlayerFromCollider(other);
-            if (player == null || !player.IsMainCharacter) return;
+            RegisterZone(this);
+        }
 
-            // 造成伤害
+        private void OnDisable()
+        {
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
+            UnregisterZone(this);
+            ResetRuntimeState();
+        }
+
+        private void OnDestroy()
+        {
+            UnregisterZone(this);
+        }
+
+        private void TickActiveZone(CharacterMainControl player)
+        {
+            if (!isInitialized || !gameObject.activeInHierarchy)
+            {
+                return;
+            }
+
+            if (player == null || player.Health == null || player.Health.IsDead)
+            {
+                return;
+            }
+
+            if (Time.time - createTime > duration)
+            {
+                return;
+            }
+
+            if (Time.time - lastDamageTime < damageInterval)
+            {
+                return;
+            }
+
+            if (!IsMainPlayerInsideZone())
+            {
+                return;
+            }
+
             lastDamageTime = Time.time;
             ApplyLavaDamage(player);
         }
@@ -6302,50 +6531,143 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 从碰撞器获取玩家角色
-        /// </summary>
-        private CharacterMainControl GetPlayerFromCollider(Collider other)
+        private bool IsMainPlayerInsideZone()
         {
-            if (other == null) return null;
+            Vector3 zoneCenter = transform.position;
+            float radiusSqr = radius * radius;
+            Collider[] playerColliders = cachedMainPlayerColliders;
 
-            CacheMainPlayer();
-            if (cachedMainPlayerRoot != null && other.transform.root == cachedMainPlayerRoot)
+            for (int i = 0; i < playerColliders.Length; i++)
             {
-                return cachedMainPlayer;
-            }
-
-            // 从碰撞器的父级查找
-            CharacterMainControl character = other.GetComponentInParent<CharacterMainControl>();
-
-            // 从碰撞器本身查找
-            if (character == null)
-            {
-                character = other.GetComponent<CharacterMainControl>();
-            }
-
-            // 检查DamageReceiver
-            if (character == null)
-            {
-                var damageReceiver = other.GetComponent<DamageReceiver>();
-                if (damageReceiver != null && damageReceiver.health != null)
+                Collider collider = playerColliders[i];
+                if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy)
                 {
-                    character = damageReceiver.health.TryGetCharacter();
+                    continue;
+                }
+
+                Vector3 closestPoint = collider.ClosestPoint(zoneCenter);
+                if ((closestPoint - zoneCenter).sqrMagnitude <= radiusSqr)
+                {
+                    return true;
                 }
             }
 
-            return character;
+            if (cachedMainPlayerRoot == null)
+            {
+                return false;
+            }
+
+            Vector3 toPlayer = cachedMainPlayerRoot.position - zoneCenter;
+            return toPlayer.sqrMagnitude <= radiusSqr;
         }
 
-        private void CacheMainPlayer()
+        private static void UpdateActiveZones()
         {
-            if (cachedMainPlayer != null && cachedMainPlayer.gameObject != null && cachedMainPlayer.gameObject.activeInHierarchy)
+            if (activeZones.Count == 0)
             {
                 return;
             }
 
-            cachedMainPlayer = CharacterMainControl.Main;
-            cachedMainPlayerRoot = cachedMainPlayer != null ? cachedMainPlayer.transform.root : null;
+            CharacterMainControl player;
+            if (!TryGetMainPlayer(out player))
+            {
+                return;
+            }
+
+            for (int i = activeZones.Count - 1; i >= 0; i--)
+            {
+                DragonKingLavaZone zone = activeZones[i];
+                if (zone == null)
+                {
+                    activeZones.RemoveAt(i);
+                    continue;
+                }
+
+                zone.TickActiveZone(player);
+            }
+        }
+
+        private static bool TryGetMainPlayer(out CharacterMainControl player)
+        {
+            RefreshMainPlayerCache(false);
+            player = cachedMainPlayer;
+            return player != null && player.Health != null && !player.Health.IsDead;
+        }
+
+        private static void RefreshMainPlayerCache(bool forceRefresh)
+        {
+            CharacterMainControl mainPlayer = CharacterMainControl.Main;
+            Transform mainPlayerRoot = mainPlayer != null ? mainPlayer.transform.root : null;
+            bool needsRefresh =
+                forceRefresh ||
+                cachedMainPlayer != mainPlayer ||
+                cachedMainPlayerRoot != mainPlayerRoot ||
+                cachedMainPlayerColliders == null ||
+                Time.time - lastPlayerColliderRefreshTime >= PLAYER_COLLIDER_REFRESH_INTERVAL;
+
+            if (!needsRefresh)
+            {
+                return;
+            }
+
+            cachedMainPlayer = mainPlayer;
+            cachedMainPlayerRoot = mainPlayerRoot;
+            cachedMainPlayerColliders = emptyPlayerColliders;
+
+            if (mainPlayerRoot != null)
+            {
+                Collider[] colliders = mainPlayerRoot.GetComponentsInChildren<Collider>(true);
+                if (colliders != null && colliders.Length > 0)
+                {
+                    cachedMainPlayerColliders = colliders;
+                }
+            }
+
+            lastPlayerColliderRefreshTime = Time.time;
+        }
+
+        private static void RegisterZone(DragonKingLavaZone zone)
+        {
+            if (zone == null)
+            {
+                return;
+            }
+
+            EnsureUpdater();
+            if (!activeZones.Contains(zone))
+            {
+                activeZones.Add(zone);
+            }
+        }
+
+        private static void UnregisterZone(DragonKingLavaZone zone)
+        {
+            if (zone == null)
+            {
+                return;
+            }
+
+            activeZones.Remove(zone);
+        }
+
+        private static void EnsureUpdater()
+        {
+            if (updater != null)
+            {
+                return;
+            }
+
+            GameObject updaterObject = new GameObject("DragonKing_LavaZoneUpdater");
+            updaterObject.hideFlags = HideFlags.HideInHierarchy;
+            updater = updaterObject.AddComponent<DragonKingLavaZoneUpdater>();
+        }
+
+        private void ResetRuntimeState()
+        {
+            isInitialized = false;
+            bossCharacter = null;
+            createTime = 0f;
+            lastDamageTime = 0f;
         }
 
         private void EnsureSphereCollider()
@@ -6357,6 +6679,43 @@ namespace BossRush
             if (sphereCollider == null)
             {
                 sphereCollider = gameObject.AddComponent<SphereCollider>();
+            }
+
+            ConfigureDisabledTrigger();
+        }
+
+        private void ConfigureDisabledTrigger()
+        {
+            if (sphereCollider == null)
+            {
+                return;
+            }
+
+            sphereCollider.isTrigger = true;
+            sphereCollider.enabled = false;
+        }
+
+        private sealed class DragonKingLavaZoneUpdater : MonoBehaviour
+        {
+            private void Update()
+            {
+                DragonKingLavaZone.UpdateActiveZones();
+            }
+
+            private void OnDisable()
+            {
+                if (updater == this)
+                {
+                    updater = null;
+                }
+            }
+
+            private void OnDestroy()
+            {
+                if (updater == this)
+                {
+                    updater = null;
+                }
             }
         }
     }
