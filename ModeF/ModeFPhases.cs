@@ -1,0 +1,683 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using ItemStatsSystem;
+using ItemStatsSystem.Stats;
+
+namespace BossRush
+{
+    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    {
+        #region Mode F 阶段常量
+
+        private const float MODEF_PREPARATION_DURATION = 180f;
+        private const float MODEF_BOUNTY_DURATION = 180f;
+        private const float MODEF_HUNTSTORM_DURATION = 180f;
+
+        private const float MODEF_BLEED_RATE_PREPARATION = 0.01f;
+        private const float MODEF_BLEED_RATE_BOUNTY = 0.015f;
+        private const float MODEF_BLEED_RATE_HUNTSTORM = 0.02f;
+        private const float MODEF_BLEED_RATE_EXTRACTION = 0.03f;
+
+        private const float MODEF_HEAL_NORMAL_KILL = 0.50f;
+        private const float MODEF_HEAL_BOUNTY_KILL_BONUS = 0.25f;
+        private const float MODEF_MAX_HP_GROWTH_NORMAL = 1f;
+        private const float MODEF_MAX_HP_GROWTH_BOUNTY = 2f;
+        private const float MODEF_HUNTSTORM_UNMARKED_SPEED_BONUS = 0.5f;
+        private const float MODEF_EXTRACTION_ALL_SPEED_BONUS = 0.5f;
+        private const float MODEF_FORCED_TRACE_DISTANCE = 500f;
+        private const float MODEF_BOSS_RETARGET_INTERVAL = 1.5f;
+
+        private const float MODEF_PHASE_BROADCAST_INTERVAL = 15f;
+
+        /// <summary>Mode F 最大生命成长 Modifier 引用（用于清理）</summary>
+        private Modifier modeFMaxHealthModifier = null;
+        private readonly Dictionary<CharacterMainControl, Modifier> modeFBossMoveSpeedModifiers
+            = new Dictionary<CharacterMainControl, Modifier>();
+        private float modeFBossRetargetTimer = 0f;
+
+        #endregion
+
+        #region Mode F 状态机
+
+        /// <summary>
+        /// 初始化并启动 Mode F 状态机
+        /// </summary>
+        private void StartModeFRun()
+        {
+            try
+            {
+                modeFState.CurrentPhase = ModeFPhase.None;
+                modeFState.PhaseElapsed = 0f;
+                modeFState.TempMaxHealthGrowth = 0f;
+                modeFState.PlayerKillCount = 0;
+                modeFState.PlayerBountyMarks = 0;
+                modeFMaxHealthModifier = null;
+                modeFBossRetargetTimer = 0f;
+                EnsureModeFPlayerNameTag();
+
+                EnterModeFPhase(ModeFPhase.Preparation);
+                DevLog("[ModeF] 状态机已启动，进入准备阶段");
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] StartModeFRun 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 每帧 Tick Mode F 状态机
+        /// </summary>
+        private void TickModeF(float deltaTime)
+        {
+            if (!modeFActive || !modeFState.IsActive) return;
+
+            try
+            {
+                // 检查玩家是否死亡
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.Health == null || player.Health.IsDead)
+                {
+                    OnModeFPlayerDeath();
+                    return;
+                }
+
+                // 推进阶段计时
+                modeFState.PhaseElapsed += deltaTime;
+
+                // 持续掉血
+                ApplyModeFBleedDamage(player, deltaTime);
+                UpdateModeFPlayerNameTag();
+                UpdateModeFFortificationHighlights();
+
+                // 阶段广播计时
+                modeFState.PhaseStatusBroadcastTimer += deltaTime;
+                if (modeFState.PhaseStatusBroadcastTimer >= MODEF_PHASE_BROADCAST_INTERVAL)
+                {
+                    modeFState.PhaseStatusBroadcastTimer = 0f;
+                    BroadcastModeFPhaseStatus();
+                }
+
+                if (modeFState.CurrentPhase != ModeFPhase.Preparation)
+                {
+                    modeFBossRetargetTimer += deltaTime;
+                    if (modeFBossRetargetTimer >= MODEF_BOSS_RETARGET_INTERVAL)
+                    {
+                        modeFBossRetargetTimer = 0f;
+                        RefreshModeFBossTargets();
+                    }
+                }
+
+                // 检查阶段切换
+                CheckModeFPhaseTransition();
+
+                // Mode F Boss 自检（清理已死亡引用）
+                ModeFBossIntegrityCheck();
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] TickModeF 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 进入指定阶段
+        /// </summary>
+        private void EnterModeFPhase(ModeFPhase phase)
+        {
+            try
+            {
+                modeFState.CurrentPhase = phase;
+                modeFState.PhaseElapsed = 0f;
+                modeFState.PhaseStatusBroadcastTimer = 0f;
+
+                switch (phase)
+                {
+                    case ModeFPhase.Preparation:
+                        modeFState.PhaseDuration = MODEF_PREPARATION_DURATION;
+                        ShowBigBanner(L10n.T(
+                            "<color=yellow>准备阶段</color> 开始！持续 180 秒",
+                            "<color=yellow>Preparation Phase</color> started! 180 seconds"
+                        ));
+                        DevLog("[ModeF] 进入准备阶段 (180s, 1%/s)");
+                        break;
+
+                    case ModeFPhase.Bounty:
+                        modeFState.PhaseDuration = MODEF_BOUNTY_DURATION;
+                        GenerateBountyList();
+                        ShowBigBanner(L10n.T(
+                            "<color=orange>悬赏阶段</color> 开始！悬赏名单已生成",
+                            "<color=orange>Bounty Phase</color> started! Bounty list generated"
+                        ));
+                        DevLog("[ModeF] 进入悬赏阶段 (180s, 1.5%/s)");
+                        break;
+
+                    case ModeFPhase.HuntStorm:
+                        modeFState.PhaseDuration = MODEF_HUNTSTORM_DURATION;
+                        ShowBigBanner(L10n.T(
+                            "<color=red>猎潮阶段</color> 开始！Boss 全面追杀！",
+                            "<color=red>Hunt Storm</color> started! All bosses hunting you!"
+                        ));
+                        DevLog("[ModeF] 进入猎潮阶段 (180s, 2%/s)");
+                        break;
+
+                    case ModeFPhase.Extraction:
+                        modeFState.PhaseDuration = float.MaxValue;
+                        SpawnFinalExtractionPoint();
+                        ShowBigBanner(L10n.T(
+                            "<color=green>撤离阶段</color> 开始！撤离点已生成，速速撤离！",
+                            "<color=green>Extraction Phase</color> started! Extraction point spawned, evacuate now!"
+                        ));
+                        DevLog("[ModeF] 进入撤离阶段 (无限, 3%/s)");
+                        break;
+                }
+
+                ApplyModeFPhasePressure();
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] EnterModeFPhase 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 检查是否需要切换阶段
+        /// </summary>
+        private void CheckModeFPhaseTransition()
+        {
+            if (modeFState.PhaseElapsed < modeFState.PhaseDuration) return;
+
+            switch (modeFState.CurrentPhase)
+            {
+                case ModeFPhase.Preparation:
+                    EnterModeFPhase(ModeFPhase.Bounty);
+                    break;
+                case ModeFPhase.Bounty:
+                    EnterModeFPhase(ModeFPhase.HuntStorm);
+                    break;
+                case ModeFPhase.HuntStorm:
+                    EnterModeFPhase(ModeFPhase.Extraction);
+                    break;
+                // Extraction 无限持续
+            }
+        }
+
+        /// <summary>
+        /// 应用持续掉血
+        /// </summary>
+        private void ApplyModeFBleedDamage(CharacterMainControl player, float deltaTime)
+        {
+            try
+            {
+                float rate = GetModeFBleedRate();
+                if (rate <= 0f) return;
+
+                float damage = rate * modeFState.InitialMaxHealthSnapshot * deltaTime;
+                if (damage <= 0f) return;
+
+                Health health = player.Health;
+                if (health == null || health.IsDead) return;
+
+                // 使用无来源 DamageInfo 避免触发击杀归属
+                DamageInfo dmgInfo = new DamageInfo();
+                dmgInfo.damageValue = damage;
+                dmgInfo.ignoreArmor = true;
+                health.Hurt(dmgInfo);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 获取当前阶段的掉血率
+        /// </summary>
+        private float GetModeFBleedRate()
+        {
+            switch (modeFState.CurrentPhase)
+            {
+                case ModeFPhase.Preparation: return MODEF_BLEED_RATE_PREPARATION;
+                case ModeFPhase.Bounty: return MODEF_BLEED_RATE_BOUNTY;
+                case ModeFPhase.HuntStorm: return MODEF_BLEED_RATE_HUNTSTORM;
+                case ModeFPhase.Extraction: return MODEF_BLEED_RATE_EXTRACTION;
+                default: return 0f;
+            }
+        }
+
+        /// <summary>
+        /// 击杀 Boss 后的回血和最大生命成长
+        /// </summary>
+        private void ApplyModeFKillReward(bool isBountyBoss)
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.Health == null || player.Health.IsDead) return;
+
+                Health health = player.Health;
+
+                // 回血
+                float healPercent = MODEF_HEAL_NORMAL_KILL;
+                if (isBountyBoss)
+                {
+                    healPercent += MODEF_HEAL_BOUNTY_KILL_BONUS;
+                }
+                float healAmount = health.MaxHealth * healPercent;
+                float newHp = Mathf.Min(health.CurrentHealth + healAmount, health.MaxHealth);
+                health.CurrentHealth = newHp;
+                DevLog("[ModeF] 击杀回血: " + healAmount.ToString("F1") + " (bounty=" + isBountyBoss + ")");
+
+                // 最大生命成长
+                float growth = isBountyBoss ? MODEF_MAX_HP_GROWTH_BOUNTY : MODEF_MAX_HP_GROWTH_NORMAL;
+                modeFState.TempMaxHealthGrowth += growth;
+
+                // 应用最大生命 Modifier
+                try
+                {
+                    var characterItem = player.CharacterItem;
+                    if (characterItem != null)
+                    {
+                        Stat maxHealthStat = characterItem.GetStat("MaxHealth");
+                        if (maxHealthStat != null)
+                        {
+                            // 移除旧 Modifier
+                            if (modeFMaxHealthModifier != null)
+                            {
+                                try { maxHealthStat.RemoveModifier(modeFMaxHealthModifier); } catch { }
+                            }
+
+                            // 添加新 Modifier
+                            modeFMaxHealthModifier = new Modifier(ModifierType.Add, modeFState.TempMaxHealthGrowth, this);
+                            maxHealthStat.AddModifier(modeFMaxHealthModifier);
+
+                            // 当前生命同步抬高
+                            health.CurrentHealth = Mathf.Min(health.CurrentHealth + growth, maxHealthStat.Value);
+                            DevLog("[ModeF] 最大生命成长: +" + growth + " (总计+" + modeFState.TempMaxHealthGrowth + ")");
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 失败: " + e.Message);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] ApplyModeFKillReward 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 玩家死亡处理
+        /// </summary>
+        private void OnModeFPlayerDeath()
+        {
+            try
+            {
+                DevLog("[ModeF] 玩家死亡，Mode F 失败");
+
+                ShowBigBanner(L10n.T(
+                    "<color=red>血猎追击失败！</color> 你倒在了血猎场上...",
+                    "<color=red>Bloodhunt Failed!</color> You fell on the hunting grounds..."
+                ));
+
+                // 印记清零、不发奖励
+                modeFState.PlayerBountyMarks = 0;
+                modeFState.TempMaxHealthGrowth = 0f;
+
+                ExitModeF();
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] OnModeFPlayerDeath 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 退出 Mode F，清理所有临时状态
+        /// </summary>
+        private void ExitModeF()
+        {
+            try
+            {
+                if (!modeFActive) return;
+
+                DevLog("[ModeF] 退出 Mode F 模式");
+
+                modeFActive = false;
+                modeFState.IsActive = false;
+
+                // 清理最大生命 Modifier
+                try
+                {
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player != null && player.CharacterItem != null && modeFMaxHealthModifier != null)
+                    {
+                        Stat maxHealthStat = player.CharacterItem.GetStat("MaxHealth");
+                        if (maxHealthStat != null)
+                        {
+                            maxHealthStat.RemoveModifier(modeFMaxHealthModifier);
+                        }
+                    }
+                }
+                catch { }
+                modeFMaxHealthModifier = null;
+                modeFBossRetargetTimer = 0f;
+                CleanupModeFPlayerNameTag();
+                ClearModeFBossMoveSpeedModifiers();
+
+                // 清理所有存活 Boss
+                for (int i = modeFState.ActiveBosses.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
+                        CharacterMainControl boss = modeFState.ActiveBosses[i];
+                        if (boss != null && boss.gameObject != null)
+                        {
+                            boss.dropBoxOnDead = false;
+                            Health health = boss.Health;
+                            if (health != null && !health.IsDead)
+                            {
+                                DamageInfo dmgInfo = new DamageInfo();
+                                dmgInfo.damageValue = health.MaxHealth * 10f;
+                                dmgInfo.ignoreArmor = true;
+                                health.Hurt(dmgInfo);
+                            }
+                            else
+                            {
+                                UnityEngine.Object.Destroy(boss.gameObject);
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                // 清理工事
+                CleanupAllModeFortifications();
+
+                // 清理商人和快递员
+                CleanupModeEMerchant();
+                DestroyCourierNPC();
+
+                // 清理龙息Buff处理器
+                DragonBreathBuffHandler.Cleanup();
+
+                // 重置状态
+                modeFState.Reset();
+                ClearEnemyRecoveryMonitorState();
+
+                ShowMessage(L10n.T(
+                    "血猎追击模式已结束！",
+                    "Bloodhunt mode ended!"
+                ));
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] ExitModeF 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 获取阶段中文名
+        /// </summary>
+        private string GetModeFPhaseName(ModeFPhase phase)
+        {
+            switch (phase)
+            {
+                case ModeFPhase.Preparation: return L10n.T("准备阶段", "Preparation");
+                case ModeFPhase.Bounty: return L10n.T("悬赏阶段", "Bounty");
+                case ModeFPhase.HuntStorm: return L10n.T("猎潮阶段", "Hunt Storm");
+                case ModeFPhase.Extraction: return L10n.T("撤离阶段", "Extraction");
+                default: return "";
+            }
+        }
+
+        private void ApplyModeFPhasePressure()
+        {
+            for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
+            {
+                ApplyModeFPressureToBoss(modeFState.ActiveBosses[i]);
+            }
+        }
+
+        private void RefreshModeFBossTargets()
+        {
+            ApplyModeFPhasePressure();
+        }
+
+        private void ApplyModeFPressureToBoss(CharacterMainControl boss)
+        {
+            try
+            {
+                if (boss == null || boss.CharacterItem == null)
+                {
+                    return;
+                }
+
+                int marks = 0;
+                modeFState.BountyMarksByCharacterId.TryGetValue(boss.GetInstanceID(), out marks);
+
+                float speedBonus = 0f;
+                bool forcePlayerTarget = false;
+                switch (modeFState.CurrentPhase)
+                {
+                    case ModeFPhase.HuntStorm:
+                        if (marks <= 0)
+                        {
+                            speedBonus += MODEF_HUNTSTORM_UNMARKED_SPEED_BONUS;
+                        }
+                        forcePlayerTarget = true;
+                        break;
+                    case ModeFPhase.Extraction:
+                        speedBonus += MODEF_EXTRACTION_ALL_SPEED_BONUS;
+                        if (marks <= 0)
+                        {
+                            speedBonus += MODEF_HUNTSTORM_UNMARKED_SPEED_BONUS;
+                        }
+                        forcePlayerTarget = true;
+                        break;
+                }
+
+                ApplyModeFBossMoveSpeedModifier(boss, speedBonus);
+
+                CharacterMainControl preferredTarget = GetModeFPreferredTargetForBoss(boss);
+                if (preferredTarget != null && preferredTarget.mainDamageReceiver != null)
+                {
+                    AICharacterController preferredAi = boss.GetComponentInChildren<AICharacterController>(true);
+                    if (preferredAi != null)
+                    {
+                        preferredAi.searchedEnemy = preferredTarget.mainDamageReceiver;
+                        preferredAi.forceTracePlayerDistance = Mathf.Max(preferredAi.forceTracePlayerDistance, MODEF_FORCED_TRACE_DISTANCE);
+                        preferredAi.traceTargetChance = 1f;
+                        preferredAi.noticed = true;
+                        try { preferredAi.SetTarget(preferredTarget.mainDamageReceiver.transform); } catch { }
+                        try { preferredAi.SetNoticedToTarget(preferredTarget.mainDamageReceiver); } catch { }
+                        boss.SetRunInput(true);
+                        try { preferredAi.MoveToPos(preferredTarget.transform.position); } catch { }
+                        return;
+                    }
+                }
+
+                if (!forcePlayerTarget)
+                {
+                    return;
+                }
+
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.mainDamageReceiver == null)
+                {
+                    return;
+                }
+
+                AICharacterController ai = boss.GetComponentInChildren<AICharacterController>(true);
+                if (ai == null)
+                {
+                    return;
+                }
+
+                ai.searchedEnemy = player.mainDamageReceiver;
+                ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, MODEF_FORCED_TRACE_DISTANCE);
+                ai.traceTargetChance = 1f;
+                ai.noticed = true;
+                try { ai.SetTarget(player.mainDamageReceiver.transform); } catch { }
+                try { ai.SetNoticedToTarget(player.mainDamageReceiver); } catch { }
+                boss.SetRunInput(true);
+                try { ai.MoveToPos(player.transform.position); } catch { }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] ApplyModeFPressureToBoss 失败: " + e.Message);
+            }
+        }
+
+        private CharacterMainControl GetModeFPreferredTargetForBoss(CharacterMainControl boss)
+        {
+            if (boss == null)
+            {
+                return null;
+            }
+
+            switch (modeFState.CurrentPhase)
+            {
+                case ModeFPhase.Bounty:
+                    return FindModeFBountyPriorityTarget(boss);
+                case ModeFPhase.HuntStorm:
+                case ModeFPhase.Extraction:
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (IsModeFValidCombatTarget(boss, player))
+                    {
+                        return player;
+                    }
+                    return FindModeFBountyPriorityTarget(boss);
+                default:
+                    return null;
+            }
+        }
+
+        private CharacterMainControl FindModeFBountyPriorityTarget(CharacterMainControl boss)
+        {
+            CharacterMainControl bestTarget = null;
+            int bestMarks = 0;
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (IsModeFValidCombatTarget(boss, player) && modeFState.PlayerBountyMarks > 0)
+            {
+                bestTarget = player;
+                bestMarks = modeFState.PlayerBountyMarks;
+            }
+
+            for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
+            {
+                CharacterMainControl candidate = modeFState.ActiveBosses[i];
+                if (!IsModeFValidCombatTarget(boss, candidate))
+                {
+                    continue;
+                }
+
+                int candidateMarks = 0;
+                modeFState.BountyMarksByCharacterId.TryGetValue(candidate.GetInstanceID(), out candidateMarks);
+                if (candidateMarks <= 0)
+                {
+                    continue;
+                }
+
+                if (candidateMarks > bestMarks)
+                {
+                    bestTarget = candidate;
+                    bestMarks = candidateMarks;
+                    continue;
+                }
+
+                if (candidateMarks == bestMarks && candidate == modeFState.CurrentBountyLeader)
+                {
+                    bestTarget = candidate;
+                }
+            }
+
+            return bestTarget;
+        }
+
+        private bool IsModeFValidCombatTarget(CharacterMainControl boss, CharacterMainControl candidate)
+        {
+            if (boss == null || candidate == null || candidate == boss)
+            {
+                return false;
+            }
+
+            if (candidate.gameObject == null || candidate.Health == null || candidate.Health.IsDead || candidate.mainDamageReceiver == null)
+            {
+                return false;
+            }
+
+            if (!candidate.IsMainCharacter && candidate.Team == boss.Team)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private void ApplyModeFBossMoveSpeedModifier(CharacterMainControl boss, float speedBonus)
+        {
+            try
+            {
+                if (boss == null || boss.CharacterItem == null)
+                {
+                    return;
+                }
+
+                Stat speedStat = boss.CharacterItem.GetStat("MoveSpeed");
+                if (speedStat == null)
+                {
+                    return;
+                }
+
+                Modifier existingModifier = null;
+                if (modeFBossMoveSpeedModifiers.TryGetValue(boss, out existingModifier) && existingModifier != null)
+                {
+                    try { speedStat.RemoveModifier(existingModifier); } catch { }
+                }
+
+                if (speedBonus <= 0f)
+                {
+                    modeFBossMoveSpeedModifiers.Remove(boss);
+                    return;
+                }
+
+                float delta = speedStat.BaseValue * speedBonus;
+                Modifier newModifier = new Modifier(ModifierType.Add, delta, this);
+                speedStat.AddModifier(newModifier);
+                modeFBossMoveSpeedModifiers[boss] = newModifier;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] ApplyModeFBossMoveSpeedModifier 失败: " + e.Message);
+            }
+        }
+
+        private void ClearModeFBossMoveSpeedModifiers()
+        {
+            foreach (var kvp in modeFBossMoveSpeedModifiers)
+            {
+                try
+                {
+                    CharacterMainControl boss = kvp.Key;
+                    Modifier modifier = kvp.Value;
+                    if (boss == null || boss.CharacterItem == null || modifier == null)
+                    {
+                        continue;
+                    }
+
+                    Stat speedStat = boss.CharacterItem.GetStat("MoveSpeed");
+                    if (speedStat != null)
+                    {
+                        speedStat.RemoveModifier(modifier);
+                    }
+                }
+                catch { }
+            }
+
+            modeFBossMoveSpeedModifiers.Clear();
+        }
+
+        #endregion
+    }
+}

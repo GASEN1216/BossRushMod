@@ -110,9 +110,9 @@ namespace BossRush
         {
             try
             {
-                if (!modeEActive || modeESpawnAllocation == null)
+                if ((!modeEActive && !modeFActive) || modeESpawnAllocation == null)
                 {
-                    DevLog("[ModeE] ModeESpawnAllBosses: Mode E 未激活或刷怪点未分配");
+                    DevLog("[ModeE] ModeESpawnAllBosses: no active map mode or spawn allocation");
                     return;
                 }
 
@@ -171,7 +171,7 @@ namespace BossRush
 
                 for (int i = 0; i < spawnTasks.Count; i++)
                 {
-                    if (!modeEActive) break; // 模式已结束，停止生成
+                    if (!modeEActive && !modeFActive) break;
 
                     var task = spawnTasks[i];
                     SpawnSingleModeEBoss(task.faction, task.pos);
@@ -400,7 +400,7 @@ namespace BossRush
                     bossPreset,
                     spawnPos,
                     isBoss,
-                    isActiveCheck: () => modeEActive,
+                    isActiveCheck: () => modeEActive || modeFActive,
                     onSpawned: (ctx) => OnModeEEnemySpawned(ctx, capturedFaction, capturedPromoted),
                     onFailed: () =>
                     {
@@ -432,6 +432,11 @@ namespace BossRush
             try
             {
                 CharacterMainControl character = ctx.character;
+                bool isModeFRun = modeFActive && !modeEActive;
+                if (character == null)
+                {
+                    return;
+                }
 
                 // 克隆 characterPreset 副本，避免修改原版 ScriptableObject
                 // 1) 统一设置 aiCombatFactor=1，使 AI 互相攻击时伤害不被缩放
@@ -451,7 +456,7 @@ namespace BossRush
                 }
 
                 // 命名
-                character.gameObject.name = "ModeE_" + faction + "_" + ctx.preset.displayName;
+                character.gameObject.name = (isModeFRun ? "ModeF_" : "ModeE_") + faction + "_" + ctx.preset.displayName;
 
                 // 设置阵营（确保运行时 team 与预设原始阵营一致）
                 // 对于龙裔/龙王：CreateCharacterAsync 使用的是 Cname_Boss_Red 基础预设（team=scav），
@@ -468,16 +473,19 @@ namespace BossRush
                     ai.forceTracePlayerDistance = 0f;
                 }
 
-                // Mode E 基础血量提升：所有敌人血量 × 1.5（跳过玩家所属阵营）
-                ApplyModeEBaseHealthBoost(character);
-
-                // BEAR阵营属性提升：血量和伤害提升150%（× 2.5），补偿小怪基础数值偏低
-                if (faction == Teams.bear)
+                if (!isModeFRun)
                 {
-                    ApplyBearFactionStatBoost(character);
+                    // Mode E 基础血量提升：所有敌人血量 × 1.5（跳过玩家所属阵营）
+                    ApplyModeEBaseHealthBoost(character);
+
+                    // BEAR阵营属性提升：血量和伤害提升150%（× 2.5），补偿小怪基础数值偏低
+                    if (faction == Teams.bear)
+                    {
+                        ApplyBearFactionStatBoost(character);
+                    }
                 }
 
-                if (ctx.isBoss && faction != modeEPlayerFaction)
+                if (!isModeFRun && ctx.isBoss && faction != modeEPlayerFaction)
                 {
                     ApplyModeDStyleLootToModeESpecialEnemy(character, ctx, faction, promotedToBoss);
                 }
@@ -494,6 +502,10 @@ namespace BossRush
 
                 // 注册死亡事件
                 RegisterModeEEnemyDeath(character);
+                if (isModeFRun)
+                {
+                    RegisterModeFBoss(character);
+                }
 
                 // 订阅掉落事件：同阵营 Boss 死亡时阻止掉落战利品箱子
                 CharacterMainControl capturedChar = character;

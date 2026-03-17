@@ -142,8 +142,7 @@ namespace BossRush
                 cachedInstance = ModBehaviour.Instance;
             }
 
-            // 非 Mode E 时跳过
-            if (cachedInstance == null || !cachedInstance.IsModeEActive)
+            if (cachedInstance == null)
                 return;
 
             // nameText 不可用或未激活时跳过
@@ -156,6 +155,16 @@ namespace BossRush
 
             CharacterMainControl character = target.TryGetCharacter();
             if (character == null) return;
+
+            if (cachedInstance.IsModeFActive)
+                return;
+
+            if (!cachedInstance.IsModeEActive)
+                return;
+
+            // 非 Mode E 时跳过
+            if (!cachedInstance.IsModeEActive)
+                return;
 
             // 获取阵营显示名并追加到原版名字后面
             string factionSuffix = cachedInstance.GetModeEFactionSuffix(character.Team);

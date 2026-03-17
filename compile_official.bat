@@ -125,6 +125,15 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeE\RespawnItemConfig.cs ^
     ModeE\ModeERespawnItems.cs ^
     ModeE\RespawnItemUsage.cs ^
+    ModeF\ModeFModels.cs ^
+    ModeF\ModeFEntry.cs ^
+    ModeF\ModeFPhases.cs ^
+    ModeF\ModeFBounty.cs ^
+    ModeF\ModeFRespawn.cs ^
+    ModeF\ModeFExtraction.cs ^
+    ModeF\ModeFFortifications.cs ^
+    ModeF\ModeFUI.cs ^
+    ModeF\ModeFMerchant.cs ^
     BossFilter\BossFilter.cs ^
     MapSelection\BossRushMapSelectionHelper.cs ^
     Integration\DragonDescendant\DragonDescendantConfig.cs ^
@@ -206,6 +215,11 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Items\DingdangDrawingUsage.cs ^
     Integration\Items\WildHornConfig.cs ^
     Integration\Items\WildHornUsage.cs ^
+    Integration\Items\BloodhuntTransponderConfig.cs ^
+    Integration\Items\FoldableCoverPackConfig.cs ^
+    Integration\Items\ReinforcedRoadblockPackConfig.cs ^
+    Integration\Items\BarbedWirePackConfig.cs ^
+    Integration\Items\EmergencyRepairSprayConfig.cs ^
     Integration\UI\ImageViewerUI.cs ^
     Integration\Affinity\INPCAffinityConfig.cs ^
     Integration\Affinity\AffinityConfig.cs ^

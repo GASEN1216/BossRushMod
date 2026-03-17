@@ -345,7 +345,7 @@ namespace BossRush
 
             // 第6-10波（首次出Boss的波次）：过滤掉强力Boss
             // Mode E 不使用波次系统，直接走完整池
-            if (!modeEActive && modeDWaveIndex <= 10)
+            if (!modeEActive && !modeFActive && modeDWaveIndex <= 10)
             {
                 // 使用复用缓存避免 GC
                 presetFilterCache.Clear();

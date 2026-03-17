@@ -536,12 +536,18 @@ namespace BossRush
                         catch { }
                     }
 
+                    int modeFItemCount = 0;
+                    if (modeFActive)
+                    {
+                        modeFItemCount = TryInjectModeFItemsIntoMerchantShop(otherShop);
+                    }
+
                     // 创建交互选项
                     var otherInteract = otherShopObj.AddComponent<ModeEShopInteractable>();
                     otherInteract.Setup(otherShop, "BossRush_ModeE_Shop_Other");
                     groupList.Add(otherInteract);
 
-                    totalItems += otherItemIds.Length;
+                    totalItems += otherItemIds.Length + modeFItemCount;
                     DevLog("[ModeE] 商店分类 其他: " + otherItemIds.Length + " 个物品");
                 }
 

@@ -107,7 +107,7 @@ namespace BossRush
                 return IsValidBossRushArenaScene(sceneName);
             }
 
-            if (IsModeEActive)
+            if (IsModeEActive || IsModeFActive)
             {
                 return IsValidBossRushArenaScene(sceneName);
             }

@@ -137,12 +137,12 @@ namespace BossRush
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 
             // 检测是否为BossRush模式（包括ModeD、ModeE和竞技场激活状态）
-            bool isBossRushMode = IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive;
+            bool isBossRushMode = IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive || IsModeFActive;
             DevLog("[CourierNPC] 模式检测: IsActive=" + IsActive + ", IsModeDActive=" + IsModeDActive + ", IsBossRushArenaActive=" + IsBossRushArenaActive + ", IsModeEActive=" + IsModeEActive + " => BossRush模式=" + isBossRushMode);
 
             if (isBossRushMode)
             {
-                if (IsModeEActive)
+                if (IsModeEActive || IsModeFActive)
                 {
                     // Mode E：优先使用地图配置的 modeEPlayerSpawnPos（与玩家传送目标一致），
                     // 避免依赖 player.transform.position（场景初始化阶段位置可能尚未稳定）
@@ -251,7 +251,7 @@ namespace BossRush
                 DevLog("[CourierNPC] 移动组件添加成功");
 
                 // 设置移动模式
-                if (IsModeEActive)
+                if (IsModeEActive || IsModeFActive)
                 {
                     // Mode E：设置固定模式，快递员站在玩家出生点不移动
                     movement.SetStationary(true);

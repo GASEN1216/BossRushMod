@@ -366,6 +366,11 @@ namespace BossRush
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
                 FactionFlagConfig.RegisterConfigurators();  // 营旗配置器（Mode E）
                 RespawnItemConfig.RegisterConfigurators();  // 刷怪消耗品配置器（Mode E）
+                BloodhuntTransponderConfig.RegisterConfigurator();  // 血猎收发器配置器（Mode F）
+                FoldableCoverPackConfig.RegisterConfigurator();  // 折叠掩体包配置器（Mode F）
+                ReinforcedRoadblockPackConfig.RegisterConfigurator();  // 加固路障包配置器（Mode F）
+                BarbedWirePackConfig.RegisterConfigurator();  // 阻滞铁丝网包配置器（Mode F）
+                EmergencyRepairSprayConfig.RegisterConfigurator();  // 应急维修喷剂配置器（Mode F）
                 ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
                 ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
                 
@@ -390,6 +395,61 @@ namespace BossRush
         {
             LocalizationInjector.InjectTicketLocalization(bossRushTicketTypeId);
             DevLog("[BossRush] 船票本地化注入完成");
+        }
+
+        /// <summary>
+        /// 注入 Mode F 物品本地化
+        /// </summary>
+        private static void InjectModeFItemLocalization()
+        {
+            try
+            {
+                bool isChinese = L10n.IsChinese;
+
+                // 血猎收发器
+                InjectModeFItemLoc(BloodhuntTransponderConfig.LOC_KEY_DISPLAY, BloodhuntTransponderConfig.TYPE_ID,
+                    BloodhuntTransponderConfig.DISPLAY_NAME_CN, BloodhuntTransponderConfig.DISPLAY_NAME_EN,
+                    BloodhuntTransponderConfig.DESCRIPTION_CN, BloodhuntTransponderConfig.DESCRIPTION_EN, isChinese);
+
+                // 折叠掩体包
+                InjectModeFItemLoc(FoldableCoverPackConfig.LOC_KEY_DISPLAY, FoldableCoverPackConfig.TYPE_ID,
+                    FoldableCoverPackConfig.DISPLAY_NAME_CN, FoldableCoverPackConfig.DISPLAY_NAME_EN,
+                    FoldableCoverPackConfig.DESCRIPTION_CN, FoldableCoverPackConfig.DESCRIPTION_EN, isChinese);
+
+                // 加固路障包
+                InjectModeFItemLoc(ReinforcedRoadblockPackConfig.LOC_KEY_DISPLAY, ReinforcedRoadblockPackConfig.TYPE_ID,
+                    ReinforcedRoadblockPackConfig.DISPLAY_NAME_CN, ReinforcedRoadblockPackConfig.DISPLAY_NAME_EN,
+                    ReinforcedRoadblockPackConfig.DESCRIPTION_CN, ReinforcedRoadblockPackConfig.DESCRIPTION_EN, isChinese);
+
+                // 阻滞铁丝网包
+                InjectModeFItemLoc(BarbedWirePackConfig.LOC_KEY_DISPLAY, BarbedWirePackConfig.TYPE_ID,
+                    BarbedWirePackConfig.DISPLAY_NAME_CN, BarbedWirePackConfig.DISPLAY_NAME_EN,
+                    BarbedWirePackConfig.DESCRIPTION_CN, BarbedWirePackConfig.DESCRIPTION_EN, isChinese);
+
+                // 应急维修喷剂
+                InjectModeFItemLoc(EmergencyRepairSprayConfig.LOC_KEY_DISPLAY, EmergencyRepairSprayConfig.TYPE_ID,
+                    EmergencyRepairSprayConfig.DISPLAY_NAME_CN, EmergencyRepairSprayConfig.DISPLAY_NAME_EN,
+                    EmergencyRepairSprayConfig.DESCRIPTION_CN, EmergencyRepairSprayConfig.DESCRIPTION_EN, isChinese);
+
+                DevLog("[BossRush] Mode F 物品本地化注入完成");
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] Mode F 物品本地化注入失败: " + e.Message);
+            }
+        }
+
+        private static void InjectModeFItemLoc(string locKey, int typeId, string nameCN, string nameEN, string descCN, string descEN, bool isChinese)
+        {
+            string displayName = isChinese ? nameCN : nameEN;
+            string description = isChinese ? descCN : descEN;
+
+            LocalizationHelper.InjectLocalization(locKey, displayName);
+            LocalizationHelper.InjectLocalization(locKey + "_Desc", description);
+            LocalizationHelper.InjectLocalization("Item_" + typeId, displayName);
+            LocalizationHelper.InjectLocalization("Item_" + typeId + "_Desc", description);
+            LocalizationHelper.InjectLocalization(nameCN, displayName);
+            LocalizationHelper.InjectLocalization(nameEN, displayName);
         }
 
         private void OnFenHuangHalberdLoaded(Item itemPrefab)
@@ -866,7 +926,9 @@ namespace BossRush
             WildHornConfig.InjectLocalization();  // 荒野号角物品本地化
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
             RespawnItemConfig.InjectLocalization();  // 刷怪消耗品本地化（Mode E）
+            InjectModeFItemLocalization();  // Mode F 物品本地化
             FactionFlagConfig.InjectIntoShops();  // 将营旗注入到售货机
+            BloodhuntTransponderConfig.InjectIntoShops();  // 将血猎收发器注入到售货机（Mode F）
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             LocalizationInjector.InjectWeddingBuildingLocalization();  // 婚礼教堂建筑本地化
@@ -1113,6 +1175,7 @@ namespace BossRush
                 InjectAchievementMedalIntoShops(scene.name);  // 注入成就勋章
                 InjectBrickStoneIntoShops(scene.name);  // 注入砖石
                 FactionFlagConfig.InjectIntoShops(scene.name);  // 注入营旗（Mode E）
+                BloodhuntTransponderConfig.InjectIntoShops(scene.name);  // 注入血猎收发器（Mode F）
                 // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
                 
                 // 在基地场景检查并赠送12月份生日蛋糕
@@ -1367,7 +1430,7 @@ namespace BossRush
             }
             
             // 检查是否已进入 BossRush 模式（玩家可能在等待期间启动了 BossRush）
-            if (IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive)
+            if (IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive || IsModeFActive)
             {
                 DevLog("[NPCSpawn] 已进入 BossRush 模式，跳过普通模式公共NPC生成");
                 yield break;
