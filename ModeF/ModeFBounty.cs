@@ -384,7 +384,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] TryReplaceModeFEquippedItem 澶辫触: " + e.Message + " slot=" + slotKey);
+                DevLog("[ModeF] [WARNING] TryReplaceModeFEquippedItem 失败: " + e.Message + " slot=" + slotKey);
             }
         }
 
@@ -450,7 +450,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] RefillModeFBossGunAndAmmo 澶辫触: " + e.Message);
+                DevLog("[ModeF] [WARNING] RefillModeFBossGunAndAmmo 失败: " + e.Message);
             }
         }
 
@@ -552,18 +552,64 @@ namespace BossRush
             }
         }
 
+        /// <summary>M3: 已验证的高品质 TypeID 缓存，避免每次实例化物品仅为检查品质</summary>
+        private readonly List<int> modeFVerifiedHighQualityTypeIds = new List<int>();
+        private bool modeFHighQualityPoolBuilt = false;
+
         /// <summary>
         /// 获取 Mode F 高品质奖励物品 TypeID（品质>=6）
         /// </summary>
         private int GetModeFHighQualityRewardTypeID()
         {
+            // 如果缓存已构建，直接从缓存随机取
+            if (modeFHighQualityPoolBuilt && modeFVerifiedHighQualityTypeIds.Count > 0)
+            {
+                return modeFVerifiedHighQualityTypeIds[UnityEngine.Random.Range(0, modeFVerifiedHighQualityTypeIds.Count)];
+            }
+
+            // 首次调用：构建缓存
+            if (!modeFHighQualityPoolBuilt)
+            {
+                modeFHighQualityPoolBuilt = true;
+                for (int probe = 0; probe < 40; probe++)
+                {
+                    int candidateId = GetRandomInfiniteHellHighQualityRewardTypeID();
+                    if (candidateId <= 0) continue;
+
+                    Item probeItem = null;
+                    try
+                    {
+                        probeItem = ItemAssetsCollection.InstantiateSync(candidateId);
+                        if (probeItem != null && probeItem.Quality >= 6 && !modeFVerifiedHighQualityTypeIds.Contains(candidateId))
+                        {
+                            modeFVerifiedHighQualityTypeIds.Add(candidateId);
+                        }
+                    }
+                    catch { }
+                    finally
+                    {
+                        try
+                        {
+                            if (probeItem != null && probeItem.gameObject != null)
+                            {
+                                UnityEngine.Object.Destroy(probeItem.gameObject);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                if (modeFVerifiedHighQualityTypeIds.Count > 0)
+                {
+                    return modeFVerifiedHighQualityTypeIds[UnityEngine.Random.Range(0, modeFVerifiedHighQualityTypeIds.Count)];
+                }
+            }
+
+            // 缓存为空时回退到原始逻辑
             for (int attempt = 0; attempt < 20; attempt++)
             {
                 int rewardTypeId = GetRandomInfiniteHellHighQualityRewardTypeID();
-                if (rewardTypeId <= 0)
-                {
-                    continue;
-                }
+                if (rewardTypeId <= 0) continue;
 
                 Item reward = null;
                 try
@@ -571,6 +617,7 @@ namespace BossRush
                     reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
                     if (reward != null && reward.Quality >= 6)
                     {
+                        modeFVerifiedHighQualityTypeIds.Add(rewardTypeId);
                         return rewardTypeId;
                     }
                 }

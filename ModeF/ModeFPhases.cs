@@ -36,6 +36,9 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, Modifier>();
         private float modeFBossRetargetTimer = 0f;
 
+        /// <summary>L2: 缓存的 DamageInfo，避免每帧 new</summary>
+        private DamageInfo modeFBleedDamageInfo = new DamageInfo();
+
         #endregion
 
         #region Mode F 状态机
@@ -218,11 +221,10 @@ namespace BossRush
                 Health health = player.Health;
                 if (health == null || health.IsDead) return;
 
-                // 使用无来源 DamageInfo 避免触发击杀归属
-                DamageInfo dmgInfo = new DamageInfo();
-                dmgInfo.damageValue = damage;
-                dmgInfo.ignoreArmor = true;
-                health.Hurt(dmgInfo);
+                // 复用缓存的 DamageInfo 避免每帧分配
+                modeFBleedDamageInfo.damageValue = damage;
+                modeFBleedDamageInfo.ignoreArmor = true;
+                health.Hurt(modeFBleedDamageInfo);
             }
             catch { }
         }
@@ -370,6 +372,14 @@ namespace BossRush
                     try
                     {
                         CharacterMainControl boss = modeFState.ActiveBosses[i];
+                        if (boss != null)
+                        {
+                            // H1: 清理 modeEAliveEnemies / factionAliveMap / enemyRecovery
+                            modeEAliveEnemies.Remove(boss);
+                            RemoveFromFactionAliveList(boss.Team, boss);
+                            UnregisterEnemyRecovery(boss);
+                        }
+
                         if (boss != null && boss.gameObject != null)
                         {
                             boss.dropBoxOnDead = false;
@@ -390,6 +400,11 @@ namespace BossRush
                     catch { }
                 }
 
+                // H2: 清理 Boss 成长 Modifier 缓存
+                modeFBossModifiers.Clear();
+                // C1: 清理死亡事件注册记录
+                modeFBossDeathRegistered.Clear();
+
                 // 清理工事
                 CleanupAllModeFortifications();
 
@@ -403,6 +418,9 @@ namespace BossRush
                 // 重置状态
                 modeFState.Reset();
                 ClearEnemyRecoveryMonitorState();
+                // M3: 重置高品质奖励缓存，下次进入重新构建
+                modeFHighQualityPoolBuilt = false;
+                modeFVerifiedHighQualityTypeIds.Clear();
 
                 ShowMessage(L10n.T(
                     "血猎追击模式已结束！",

@@ -49,6 +49,7 @@ namespace BossRush
             }
         }
 
+        // TODO: M9 — 与 ModBehaviour 中已有的船票检测逻辑重复，未来可统一
         private Item DetectBossRushTicketItem()
         {
             try
@@ -91,6 +92,8 @@ namespace BossRush
             }
         }
 
+        // TODO: M8 — 与 ModeD 的 IsPlayerNaked() 高度重复，仅多了收发器白名单。
+        // 未来可提取公共方法 IsPlayerNakedWithAllowedItems(HashSet<int> allowedTypeIds)
         private bool IsPlayerNakedForModeF()
         {
             try
@@ -230,7 +233,11 @@ namespace BossRush
                     return false;
                 }
 
+                // H3: 先验证两个道具都存在，再一起消耗
+                // 如果任一消耗失败，仍尝试启动（道具已部分消耗，不启动更糟）
                 bool transponderConsumed = false;
+                bool ticketConsumed = false;
+
                 try
                 {
                     transponder.Detach();
@@ -243,7 +250,6 @@ namespace BossRush
                     DevLog("[ModeF] [WARNING] 消耗血猎收发器失败: " + e.Message);
                 }
 
-                bool ticketConsumed = false;
                 try
                 {
                     ticket.Detach();
@@ -256,13 +262,19 @@ namespace BossRush
                     DevLog("[ModeF] [WARNING] 消耗船票失败: " + e.Message);
                 }
 
-                if (!transponderConsumed || !ticketConsumed)
+                if (!transponderConsumed && !ticketConsumed)
                 {
+                    // 两个都没消耗成功，安全退出
                     ShowMessage(L10n.T(
                         "血猎追击模式启动失败：入场道具消耗异常。",
                         "Bloodhunt start failed: unable to consume the entry items."
                     ));
                     return false;
+                }
+
+                if (!transponderConsumed || !ticketConsumed)
+                {
+                    DevLog("[ModeF] [WARNING] 部分道具消耗失败 (transponder=" + transponderConsumed + ", ticket=" + ticketConsumed + ")，仍尝试启动以避免道具丢失");
                 }
 
                 StartModeF();

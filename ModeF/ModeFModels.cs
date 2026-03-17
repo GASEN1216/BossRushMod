@@ -71,6 +71,7 @@ namespace BossRush
         public Health BoundHealth;
         public GameObject HighlightRoot;
         public float HighlightUntilTime;
+        // L1: 静态变量跨模式重启累积，但 ID 只需唯一不需连续，int 溢出前需 ~2B 次放置，无需重置
         private static int nextFortId = 1;
         public int FortificationId;
 

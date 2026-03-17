@@ -165,6 +165,8 @@ namespace BossRush
     {
         private GameObject modeFPlayerNameTagObject;
         private TextMeshPro modeFPlayerNameTagText;
+        /// <summary>M4: 缓存上次 NameTag 文本，避免每帧重建字符串</summary>
+        private string modeFPlayerNameTagCachedText;
 
         private void EnsureModeFPlayerNameTag()
         {
@@ -195,7 +197,12 @@ namespace BossRush
             EnsureModeFPlayerNameTag();
             if (modeFPlayerNameTagText != null)
             {
-                modeFPlayerNameTagText.text = BuildModeFPlayerNameTagText();
+                string newText = BuildModeFPlayerNameTagText();
+                if (newText != modeFPlayerNameTagCachedText)
+                {
+                    modeFPlayerNameTagCachedText = newText;
+                    modeFPlayerNameTagText.text = newText;
+                }
             }
 
             NPCNameTagHelper.UpdateNameTagRotation(modeFPlayerNameTagObject);
@@ -221,6 +228,7 @@ namespace BossRush
 
             modeFPlayerNameTagObject = null;
             modeFPlayerNameTagText = null;
+            modeFPlayerNameTagCachedText = null;
         }
     }
 

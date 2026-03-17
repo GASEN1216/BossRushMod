@@ -292,6 +292,9 @@ namespace BossRush
             }
         }
 
+        /// <summary>M2: 缓存 MaterialPropertyBlock，避免每次 CreatePrimitivePart 泄漏 Material</summary>
+        private static readonly MaterialPropertyBlock fortMaterialPropertyBlock = new MaterialPropertyBlock();
+
         private void CreatePrimitivePart(Transform parent, PrimitiveType primitiveType, Vector3 localPosition, Vector3 localScale, Color color)
         {
             GameObject part = GameObject.CreatePrimitive(primitiveType);
@@ -300,9 +303,10 @@ namespace BossRush
             part.transform.localScale = localScale;
 
             Renderer renderer = part.GetComponent<Renderer>();
-            if (renderer != null && renderer.material != null && renderer.material.HasProperty("_Color"))
+            if (renderer != null)
             {
-                renderer.material.color = color;
+                fortMaterialPropertyBlock.SetColor("_Color", color);
+                renderer.SetPropertyBlock(fortMaterialPropertyBlock);
             }
         }
 
@@ -321,24 +325,6 @@ namespace BossRush
                 {
                     marker.HighlightRoot.SetActive(true);
                 }
-            }
-            return;
-
-            Renderer[] renderers = marker.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                try
-                {
-                    Material[] materials = renderers[i].materials;
-                    for (int j = 0; j < materials.Length; j++)
-                    {
-                        if (materials[j] != null && materials[j].HasProperty("_Color"))
-                        {
-                            materials[j].SetColor("_Color", enabled ? Color.white : Color.gray);
-                        }
-                    }
-                }
-                catch { }
             }
         }
 

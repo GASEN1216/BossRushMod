@@ -8,6 +8,12 @@ namespace BossRush
     {
         #region Mode F Boss Registration And Respawn
 
+        /// <summary>已注册死亡事件的 Boss InstanceID，防止重复 AddListener</summary>
+        private readonly HashSet<int> modeFBossDeathRegistered = new HashSet<int>();
+
+        /// <summary>FindSpawnPointAwayFromPlayer 候选点缓存，避免每次 new List</summary>
+        private static readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
+
         private void RegisterModeFBoss(CharacterMainControl boss)
         {
             try
@@ -26,8 +32,10 @@ namespace BossRush
                 ApplyModeFPressureToBoss(boss);
 
                 Health health = boss.Health;
-                if (health != null && isNewBoss)
+                int bossId = boss.GetInstanceID();
+                if (health != null && !modeFBossDeathRegistered.Contains(bossId))
                 {
+                    modeFBossDeathRegistered.Add(bossId);
                     health.OnDeadEvent.AddListener((damageInfo) => OnModeFBossDied(boss, damageInfo));
                 }
 
@@ -44,6 +52,12 @@ namespace BossRush
             try
             {
                 if (!modeFActive || deadBoss == null)
+                {
+                    return;
+                }
+
+                // C1 guard: 防止死亡事件重复触发（IntegrityCheck 移除后再次触发）
+                if (!modeFState.ActiveBosses.Contains(deadBoss))
                 {
                     return;
                 }
@@ -174,7 +188,7 @@ namespace BossRush
                 {
                     Vector3 bestPoint = Vector3.zero;
                     float bestDistance = 0f;
-                    List<Vector3> candidates = new List<Vector3>();
+                    reusableSpawnCandidates.Clear();
 
                     foreach (var kvp in modeESpawnAllocation)
                     {
@@ -189,7 +203,7 @@ namespace BossRush
                             float distance = Vector3.Distance(point, playerPos);
                             if (distance >= minDistance)
                             {
-                                candidates.Add(point);
+                                reusableSpawnCandidates.Add(point);
                             }
 
                             if (distance > bestDistance)
@@ -200,9 +214,9 @@ namespace BossRush
                         }
                     }
 
-                    if (candidates.Count > 0)
+                    if (reusableSpawnCandidates.Count > 0)
                     {
-                        return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+                        return reusableSpawnCandidates[UnityEngine.Random.Range(0, reusableSpawnCandidates.Count)];
                     }
 
                     if (bestDistance > 0f)
