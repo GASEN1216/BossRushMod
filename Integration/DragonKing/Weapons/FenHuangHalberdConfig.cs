@@ -27,6 +27,12 @@ namespace BossRush
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special", "DragonKing" };
         public override string IconAssetName => FenHuangHalberdIds.IconAssetName;
 
+        /// <summary>
+        /// 断界戟默认基础攻击范围。
+        /// 连招判定需要基于这个值计算每段的范围偏移，避免直接覆写实时 Stat。
+        /// </summary>
+        public const float BaseAttackRange = 2.5f;
+
         // ========== 右键技能「龙皇裂地」参数 ==========
 
         /// <summary>

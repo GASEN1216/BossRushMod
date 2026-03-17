@@ -367,18 +367,23 @@ namespace BossRush
             }
         }
 
-        internal static float GetComboConfiguredRange(int step, float baseRange)
+        internal static float GetComboConfiguredRange(int step, float currentRange)
+        {
+            return Mathf.Max(0.05f, currentRange + GetComboRangeOffset(step));
+        }
+
+        internal static float GetComboRangeOffset(int step)
         {
             switch (step)
             {
                 case 0:
-                    return FenHuangHalberdConfig.Combo1Range;
+                    return FenHuangHalberdConfig.Combo1Range - FenHuangHalberdConfig.BaseAttackRange;
                 case 1:
-                    return FenHuangHalberdConfig.Combo2Range;
+                    return FenHuangHalberdConfig.Combo2Range - FenHuangHalberdConfig.BaseAttackRange;
                 case 2:
-                    return FenHuangHalberdConfig.Combo3Range;
+                    return FenHuangHalberdConfig.Combo3Range - FenHuangHalberdConfig.BaseAttackRange;
                 default:
-                    return baseRange;
+                    return 0f;
             }
         }
 
@@ -870,95 +875,190 @@ namespace BossRush
     [HarmonyPatch(typeof(ItemAgent_MeleeWeapon), "CheckAndDealDamage")]
     public static class FenHuangComboDamagePatch
     {
-        private static readonly Dictionary<int, float> originalDamageValues = new Dictionary<int, float>();
-        private static readonly Dictionary<int, float> originalRangeValues = new Dictionary<int, float>();
-        private static readonly int damageStatHash = "Damage".GetHashCode();
-        private static readonly int attackRangeStatHash = "AttackRange".GetHashCode();
+        private static readonly Collider[] halberdHitBuffer = new Collider[6];
 
         [HarmonyPrefix]
-        public static void Prefix(ItemAgent_MeleeWeapon __instance)
+        public static bool Prefix(ItemAgent_MeleeWeapon __instance)
         {
             try
             {
-                if (__instance == null) return;
+                if (__instance == null) return true;
                 Item item = __instance.Item;
-                if (item == null || item.TypeID != FenHuangHalberdIds.WeaponTypeId) return;
+                if (item == null || item.TypeID != FenHuangHalberdIds.WeaponTypeId) return true;
 
                 CharacterMainControl holder = __instance.Holder;
                 FenHuangComboManager combo = FenHuangComboManager.Instance;
-                if (holder == null || combo == null) return;
+                if (holder == null) return true;
 
-                int step;
-                if (!combo.TryGetActiveAttackStep(holder, out step)) return;
-
-                int meleeId = __instance.GetInstanceID();
-
-                // 动态修改基础伤害
-                Stat damageStat = item.GetStat(damageStatHash);
-                if (damageStat != null)
+                int step = 0;
+                if (combo != null)
                 {
-                    if (!originalDamageValues.ContainsKey(meleeId))
-                    {
-                        originalDamageValues[meleeId] = damageStat.BaseValue;
-                    }
-                    damageStat.BaseValue = FenHuangComboManager.GetComboConfiguredDamage(step, originalDamageValues[meleeId]);
+                    combo.TryGetActiveAttackStep(holder, out step);
                 }
 
-                // 动态修改攻击范围
-                Stat rangeStat = item.GetStat(attackRangeStatHash);
-                if (rangeStat != null)
-                {
-                    if (!originalRangeValues.ContainsKey(meleeId))
-                    {
-                        originalRangeValues[meleeId] = rangeStat.BaseValue;
-                    }
-                    rangeStat.BaseValue = FenHuangComboManager.GetComboConfiguredRange(step, originalRangeValues[meleeId]);
-                }
+                DealHalberdDamage(__instance, item, holder, step);
+                return false;
             }
-            catch
+            catch (Exception e)
             {
+                ModBehaviour.DevLog("[FenHuangHalberd] 自定义近战判定失败，回退原版逻辑: " + e.Message);
+                return true;
             }
         }
 
         [HarmonyPostfix]
         public static void Postfix(ItemAgent_MeleeWeapon __instance)
         {
-            RestoreDamage(__instance);
         }
 
-        private static void RestoreDamage(ItemAgent_MeleeWeapon melee)
+        private static void DealHalberdDamage(ItemAgent_MeleeWeapon melee, Item item, CharacterMainControl holder, int step)
         {
-            if (melee == null) return;
+            float comboDamage = FenHuangComboManager.GetComboConfiguredDamage(step, melee.Damage);
+            float comboRange = FenHuangComboManager.GetComboConfiguredRange(step, melee.AttackRange);
+            Vector3 aimDirection = GetFlatAimDirection(holder);
+            ItemSetting_MeleeWeapon meleeSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
 
-            int meleeId = melee.GetInstanceID();
-            try
+            int hitCount = Physics.OverlapSphereNonAlloc(
+                holder.transform.position,
+                comboRange + 0.05f,
+                halberdHitBuffer,
+                Duckov.Utilities.GameplayDataSettings.Layers.damageReceiverLayerMask
+            );
+
+            float blockBullet = melee.BlockBullet;
+            bool shouldBlockBullet = blockBullet > 0.5f;
+            bool bulletBack = blockBullet > 1.5f;
+            if (shouldBlockBullet)
             {
-                Item item = melee.Item;
-                if (item == null) return;
+                BulletBlocker bulletBlocker = UnityEngine.Object.Instantiate<BulletBlocker>(
+                    Duckov.Utilities.GameplayDataSettings.Prefabs.MeleeBulletBlocker,
+                    holder.transform.position,
+                    Quaternion.LookRotation(aimDirection, Vector3.up)
+                );
 
-                if (originalDamageValues.TryGetValue(meleeId, out float originalDamage))
+                SphereCollider sphereCollider = bulletBlocker.GetComponent<SphereCollider>();
+                if (sphereCollider != null)
                 {
-                    Stat damageStat = item.GetStat(damageStatHash);
-                    if (damageStat != null)
-                    {
-                        damageStat.BaseValue = originalDamage;
-                    }
-                    originalDamageValues.Remove(meleeId);
+                    sphereCollider.radius = comboRange;
                 }
 
-                if (originalRangeValues.TryGetValue(meleeId, out float originalRange))
+                bulletBlocker.checkDirection = true;
+                bulletBlocker.bulletBack = bulletBack;
+                bulletBlocker.from = holder;
+                bulletBlocker.team = holder.Team;
+            }
+
+            float damageReceiverRadius = 0f;
+            if (holder.characterModel != null)
+            {
+                damageReceiverRadius = holder.characterModel.damageReceiverRadius;
+            }
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider collider = halberdHitBuffer[i];
+                if (collider == null)
                 {
-                    Stat rangeStat = item.GetStat(attackRangeStatHash);
-                    if (rangeStat != null)
+                    continue;
+                }
+
+                DamageReceiver receiver = collider.GetComponent<DamageReceiver>();
+                if (receiver == null || (holder.Team == receiver.Team && holder.Team != Teams.all))
+                {
+                    continue;
+                }
+
+                Health health = receiver.health;
+                if (health != null)
+                {
+                    CharacterMainControl targetCharacter = health.TryGetCharacter();
+                    if (targetCharacter == holder || (targetCharacter != null && targetCharacter.Dashing))
                     {
-                        rangeStat.BaseValue = originalRange;
+                        continue;
                     }
-                    originalRangeValues.Remove(meleeId);
+                }
+
+                Vector3 hitDirection = collider.transform.position - holder.transform.position;
+                hitDirection.y = 0f;
+                float hitDistance = hitDirection.magnitude;
+                if (hitDistance > 0.0001f)
+                {
+                    hitDirection /= hitDistance;
+                }
+                else
+                {
+                    hitDirection = aimDirection;
+                }
+
+                if (Vector3.Angle(hitDirection, aimDirection) >= 90f &&
+                    hitDistance >= 0.5f + damageReceiverRadius)
+                {
+                    continue;
+                }
+
+                DamageInfo damageInfo = new DamageInfo(holder);
+                damageInfo.damageValue = comboDamage * melee.CharacterDamageMultiplier;
+                damageInfo.armorPiercing = melee.ArmorPiercing;
+                damageInfo.critDamageFactor = melee.CritDamageFactor * (1f + melee.CharacterCritDamageGain);
+                damageInfo.critRate = melee.CritRate * (1f + melee.CharacterCritRateGain);
+                damageInfo.crit = -1;
+                damageInfo.damageNormal = -holder.modelRoot.right;
+                damageInfo.damagePoint = collider.transform.position - hitDirection * 0.2f;
+                damageInfo.damagePoint.y = melee.transform.position.y;
+                damageInfo.fromWeaponItemID = item.TypeID;
+                damageInfo.bleedChance = melee.BleedChance;
+
+                if (meleeSetting != null)
+                {
+                    damageInfo.isExplosion = meleeSetting.dealExplosionDamage;
+                    damageInfo.elementFactors.Add(new ElementFactor(meleeSetting.element, 1f));
+                    damageInfo.buff = meleeSetting.buff;
+                    damageInfo.buffChance = meleeSetting.buffChance;
+                }
+
+                if (LevelManager.Instance != null && LevelManager.Instance.ControllingCharacter == holder)
+                {
+                    damageInfo.fromCharacter = CharacterMainControl.Main;
+                }
+
+                receiver.Hurt(damageInfo);
+                receiver.AddBuff(Duckov.Utilities.GameplayDataSettings.Buffs.Pain, holder);
+
+                if (melee.hitFx != null)
+                {
+                    UnityEngine.Object.Instantiate<GameObject>(
+                        melee.hitFx,
+                        damageInfo.damagePoint,
+                        Quaternion.LookRotation(damageInfo.damageNormal, Vector3.up)
+                    );
+                }
+
+                if (holder == CharacterMainControl.Main)
+                {
+                    Vector3 shakeDirection = holder.modelRoot.right;
+                    shakeDirection += UnityEngine.Random.insideUnitSphere * 0.3f;
+                    shakeDirection.Normalize();
+                    CameraShaker.Shake(shakeDirection * 0.05f, CameraShaker.CameraShakeTypes.meleeAttackHit);
                 }
             }
-            catch
+        }
+
+        private static Vector3 GetFlatAimDirection(CharacterMainControl holder)
+        {
+            Vector3 aimDirection = holder.CurrentAimDirection;
+            aimDirection.y = 0f;
+            if (aimDirection.sqrMagnitude < 0.0001f)
             {
+                aimDirection = holder.transform.forward;
+                aimDirection.y = 0f;
             }
+
+            if (aimDirection.sqrMagnitude < 0.0001f)
+            {
+                return Vector3.forward;
+            }
+
+            return aimDirection.normalized;
         }
     }
 

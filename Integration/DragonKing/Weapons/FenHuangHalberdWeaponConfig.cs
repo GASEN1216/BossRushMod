@@ -35,7 +35,7 @@ namespace BossRush
         private const float STAT_CRIT_DAMAGE_FACTOR = 2.0f;
         private const float STAT_ARMOR_PIERCING = 6f;
         private const float STAT_ATTACK_SPEED = 2.2f;
-        private const float STAT_ATTACK_RANGE = 2.5f;
+        private const float STAT_ATTACK_RANGE = FenHuangHalberdConfig.BaseAttackRange;
         private const float STAT_DEAL_DAMAGE_TIME = 0.12f;
         private const float STAT_STAMINA_COST = 10f;
         private const float STAT_BLEED_CHANCE = 0.15f;
