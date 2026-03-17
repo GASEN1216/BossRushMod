@@ -943,6 +943,7 @@ namespace BossRush
                     catch { }
                 }
                 modeEMerchantShops.Clear();
+                modeEMerchantMainInteract = null;
 
                 // 销毁商人 NPC
                 if (modeEMerchantNPC != null)

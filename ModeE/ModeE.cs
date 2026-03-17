@@ -40,6 +40,9 @@ namespace BossRush
         /// <summary>当前所有存活的 Mode E 敌人（跨阵营）</summary>
         private readonly List<CharacterMainControl> modeEAliveEnemies = new List<CharacterMainControl>();
 
+        /// <summary>Mode E 存活敌人的去重集合，避免重复注册导致列表和扫描路径膨胀。</summary>
+        private readonly HashSet<CharacterMainControl> modeEAliveEnemySet = new HashSet<CharacterMainControl>();
+
         /// <summary>各阵营死亡计数，用于计算独立缩放倍率</summary>
         private Dictionary<Teams, int> modeEFactionDeathCount = new Dictionary<Teams, int>();
 
@@ -413,8 +416,16 @@ namespace BossRush
                 modeEActive = true;
                 modeEPlayerFaction = faction;
                 modeEAliveEnemies.Clear();
+                modeEAliveEnemySet.Clear();
                 modeEFactionDeathCount.Clear();
                 modeEFactionAliveMap.Clear();
+                modeEScalingModifiers.Clear();
+                modeEEnemyDeathHandlers.Clear();
+                modeEEnemyLootHandlers.Clear();
+                modeEPendingScalingFactions.Clear();
+                modeEScalingBatchTimer = 0f;
+                CleanupModeEVirtualSpawnerRoot();
+                modeESpawnerRootRegisteredEnemies.Clear();
                 ClearEnemyRecoveryMonitorState();
                 ClearPendingBossAggroQueue();
 
@@ -581,13 +592,23 @@ namespace BossRush
 
                 // 清理所有存活的 Mode E 敌人（优先使用游戏API触发正常死亡流程）
                 // [L4修复] 清理前先阻止所有敌人掉落战利品箱子，防止模式结束时友军Boss掉落一堆箱子
-                for (int i = modeEAliveEnemies.Count - 1; i >= 0; i--)
+                CharacterMainControl[] trackedEnemies = modeEAliveEnemies.ToArray();
+                for (int i = trackedEnemies.Length - 1; i >= 0; i--)
                 {
                     try
                     {
-                        CharacterMainControl enemy = modeEAliveEnemies[i];
+                        CharacterMainControl enemy = trackedEnemies[i];
                         if (enemy != null && enemy.gameObject != null)
                         {
+                            Teams? enemyFaction = null;
+                            try
+                            {
+                                enemyFaction = enemy.Team;
+                            }
+                            catch { }
+
+                            CleanupModeEEnemyRuntimeState(enemy, enemyFaction);
+
                             // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
                             try
                             {
@@ -629,11 +650,15 @@ namespace BossRush
                 // 重置所有状态（modeEActive 已在清理前置为 false）
                 modeEPlayerFaction = Teams.player;
                 modeEAliveEnemies.Clear();
+                modeEAliveEnemySet.Clear();
                 modeEFactionDeathCount.Clear();
                 modeEFactionAliveMap.Clear();
                 modeEScalingModifiers.Clear();
+                modeEEnemyDeathHandlers.Clear();
+                modeEEnemyLootHandlers.Clear();
                 modeEPendingScalingFactions.Clear();
                 modeEScalingBatchTimer = 0f;
+                modeESpawnerRootRegisteredEnemies.Clear();
                 modeESpawnAllocation = null;
                 modeECachedSpawnerPositions = null;
                 modeECachedSpawnerSceneName = null;
@@ -691,6 +716,13 @@ namespace BossRush
                 for (int i = modeEAliveEnemies.Count - 1; i >= 0; i--)
                 {
                     CharacterMainControl enemy = modeEAliveEnemies[i];
+                    if (object.ReferenceEquals(enemy, null))
+                    {
+                        modeEAliveEnemies.RemoveAt(i);
+                        removedCount++;
+                        continue;
+                    }
+
                     if (enemy == null || enemy.gameObject == null || enemy.Health == null || enemy.Health.IsDead)
                     {
                         // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
@@ -717,20 +749,15 @@ namespace BossRush
                                 {
                                     modeEFactionDeathCount[faction]++;
                                 }
-                                RemoveFromFactionAliveList(faction, enemy);
+                                CleanupModeEEnemyRuntimeState(enemy, faction);
                             }
                         }
                         catch
                         {
                             // Unity 已销毁对象，无法读取 Team —— 从所有阵营列表中暴力移除
-                            foreach (var kvp in modeEFactionAliveMap)
-                            {
-                                kvp.Value.Remove(enemy);
-                            }
+                            CleanupModeEEnemyRuntimeState(enemy);
                         }
 
-                        modeEAliveEnemies.RemoveAt(i);
-                        modeEScalingModifiers.Remove(enemy);
                         removedCount++;
                     }
                 }
@@ -872,7 +899,10 @@ namespace BossRush
                 list = new List<CharacterMainControl>();
                 modeEFactionAliveMap[faction] = list;
             }
-            list.Add(enemy);
+            if (!list.Contains(enemy))
+            {
+                list.Add(enemy);
+            }
         }
 
         /// <summary>
@@ -883,7 +913,56 @@ namespace BossRush
             List<CharacterMainControl> list;
             if (modeEFactionAliveMap.TryGetValue(faction, out list))
             {
-                list.Remove(enemy);
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    if (object.ReferenceEquals(list[i], enemy))
+                    {
+                        list.RemoveAt(i);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 将敌人登记为 Mode E 运行时存活对象，避免重复加入全局/阵营列表。
+        /// </summary>
+        private void TrackModeEAliveEnemy(CharacterMainControl enemy, Teams faction)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            if (modeEAliveEnemySet.Add(enemy) && !modeEAliveEnemies.Contains(enemy))
+            {
+                modeEAliveEnemies.Add(enemy);
+            }
+
+            AddToFactionAliveList(faction, enemy);
+        }
+
+        /// <summary>
+        /// 从 Mode E 运行时存活对象登记中移除敌人。
+        /// </summary>
+        private void UntrackModeEAliveEnemy(CharacterMainControl enemy, Teams? faction = null)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            modeEAliveEnemySet.Remove(enemy);
+            modeEAliveEnemies.Remove(enemy);
+
+            if (faction.HasValue)
+            {
+                RemoveFromFactionAliveList(faction.Value, enemy);
+                return;
+            }
+
+            foreach (KeyValuePair<Teams, List<CharacterMainControl>> kvp in modeEFactionAliveMap)
+            {
+                RemoveFromFactionAliveList(kvp.Key, enemy);
             }
         }
 

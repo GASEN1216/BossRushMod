@@ -13,7 +13,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
+using UnityEngine.Events;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 using Cysharp.Threading.Tasks;
@@ -35,6 +37,14 @@ namespace BossRush
 
         /// <summary>Mode E 专用的虚拟 CharacterSpawnerRoot，用于让 BossLiveMapMod 检测到 Mode E 生成的敌人</summary>
         private CharacterSpawnerRoot modeEVirtualSpawnerRoot = null;
+
+        /// <summary>虚拟 SpawnerRoot 中已登记的 Mode E 敌人，避免重复 AddCreatedCharacter。</summary>
+        private readonly HashSet<CharacterMainControl> modeESpawnerRootRegisteredEnemies = new HashSet<CharacterMainControl>();
+
+        private static FieldInfo modeESpawnerRootCreatedCharactersField = null;
+        private static PropertyInfo modeESpawnerRootCreatedCharactersProperty = null;
+        private static bool modeESpawnerRootCreatedCharactersAccessorCached = false;
+        private static bool modeESpawnerRootCreatedCharactersAccessorMissingLogged = false;
 
         /// <summary>Mode E 中是否已生成龙裔遗族（全局限制最多1个）</summary>
         private bool modeEDragonDescendantSpawned = false;
@@ -490,11 +500,9 @@ namespace BossRush
                     ApplyModeDStyleLootToModeESpecialEnemy(character, ctx, faction, promotedToBoss);
                 }
 
-                // 加入存活敌人列表
-                modeEAliveEnemies.Add(character);
-
-                // [P4] 加入阵营独立存活列表（缩放时只遍历同阵营列表，避免全量遍历）
-                AddToFactionAliveList(faction, character);
+                // 先清理该实例可能残留的旧注册，再以当前 Mode E 生命周期重新登记。
+                CleanupModeEEnemyRuntimeState(character);
+                TrackModeEAliveEnemy(character, faction);
                 RegisterEnemyRecoveryAnchor(character, ctx.position);
 
                 // 注册到虚拟 CharacterSpawnerRoot，使 BossLiveMapMod 能检测到
@@ -502,23 +510,11 @@ namespace BossRush
 
                 // 注册死亡事件
                 RegisterModeEEnemyDeath(character);
+                RegisterModeEEnemyLootHandler(character, faction);
                 if (isModeFRun)
                 {
                     RegisterModeFBoss(character);
                 }
-
-                // 订阅掉落事件：同阵营 Boss 死亡时阻止掉落战利品箱子
-                CharacterMainControl capturedChar = character;
-                Teams capturedFac = faction;
-                capturedChar.BeforeCharacterSpawnLootOnDead += (dmgInfo) =>
-                {
-                    // 同阵营的 Boss 死亡不掉落战利品箱子
-                    if (modeEActive && capturedFac == modeEPlayerFaction)
-                    {
-                        capturedChar.dropBoxOnDead = false;
-                        DevLog("[ModeE] 同阵营Boss死亡，阻止掉落战利品箱子: " + capturedChar.gameObject.name);
-                    }
-                };
 
                 // 更新生成计数
                 modeESpawnResolved++;
@@ -590,6 +586,14 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg, Modifier meleeDmg)> modeEScalingModifiers
             = new Dictionary<CharacterMainControl, (Modifier, Modifier, Modifier)>();
 
+        /// <summary>缓存死亡事件句柄，避免对象复用或重复注册导致 UnityEvent 持续膨胀。</summary>
+        private readonly Dictionary<CharacterMainControl, UnityAction<DamageInfo>> modeEEnemyDeathHandlers
+            = new Dictionary<CharacterMainControl, UnityAction<DamageInfo>>();
+
+        /// <summary>缓存掉落拦截句柄，确保 Mode E 结束或对象复用时可以对称取消订阅。</summary>
+        private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> modeEEnemyLootHandlers
+            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
+
         /// <summary>需要延迟批量缩放的阵营集合（死亡时记录，定时批量应用）</summary>
         private readonly HashSet<Teams> modeEPendingScalingFactions = new HashSet<Teams>();
 
@@ -606,16 +610,173 @@ namespace BossRush
         {
             try
             {
+                if (enemy == null)
+                {
+                    return;
+                }
+
+                UnregisterModeEEnemyDeath(enemy);
+
                 Health health = enemy.GetComponent<Health>();
                 if (health != null)
                 {
-                    health.OnDeadEvent.AddListener((dmgInfo) => OnModeEEnemyDeath(enemy));
+                    CharacterMainControl capturedEnemy = enemy;
+                    UnityAction<DamageInfo> handler = null;
+                    handler = (dmgInfo) =>
+                    {
+                        UnregisterModeEEnemyDeath(capturedEnemy);
+                        OnModeEEnemyDeath(capturedEnemy);
+                    };
+                    modeEEnemyDeathHandlers[enemy] = handler;
+                    health.OnDeadEvent.AddListener(handler);
                 }
             }
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] RegisterModeEEnemyDeath 失败: " + e.Message);
             }
+        }
+
+        private void UnregisterModeEEnemyDeath(CharacterMainControl enemy)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            UnityAction<DamageInfo> handler;
+            if (!modeEEnemyDeathHandlers.TryGetValue(enemy, out handler))
+            {
+                return;
+            }
+
+            try
+            {
+                Health health = enemy.GetComponent<Health>();
+                if (health != null)
+                {
+                    health.OnDeadEvent.RemoveListener(handler);
+                }
+            }
+            catch { }
+
+            modeEEnemyDeathHandlers.Remove(enemy);
+        }
+
+        private void RegisterModeEEnemyLootHandler(CharacterMainControl enemy, Teams faction)
+        {
+            try
+            {
+                if (enemy == null)
+                {
+                    return;
+                }
+
+                UnregisterModeEEnemyLootHandler(enemy);
+
+                CharacterMainControl capturedEnemy = enemy;
+                Teams capturedFaction = faction;
+                Action<DamageInfo> handler = (dmgInfo) =>
+                {
+                    if (!modeEActive || capturedFaction != modeEPlayerFaction || capturedEnemy == null)
+                    {
+                        return;
+                    }
+
+                    capturedEnemy.dropBoxOnDead = false;
+                    DevLog("[ModeE] 同阵营Boss死亡，阻止掉落战利品箱子: " + capturedEnemy.gameObject.name);
+                };
+
+                modeEEnemyLootHandlers[enemy] = handler;
+                enemy.BeforeCharacterSpawnLootOnDead += handler;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] RegisterModeEEnemyLootHandler 失败: " + e.Message);
+            }
+        }
+
+        private void UnregisterModeEEnemyLootHandler(CharacterMainControl enemy)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            Action<DamageInfo> handler;
+            if (!modeEEnemyLootHandlers.TryGetValue(enemy, out handler))
+            {
+                return;
+            }
+
+            try
+            {
+                enemy.BeforeCharacterSpawnLootOnDead -= handler;
+            }
+            catch { }
+
+            modeEEnemyLootHandlers.Remove(enemy);
+        }
+
+        private void RemoveModeEScalingModifiers(CharacterMainControl enemy)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            (Modifier hp, Modifier gunDmg, Modifier meleeDmg) oldMods;
+            if (!modeEScalingModifiers.TryGetValue(enemy, out oldMods))
+            {
+                return;
+            }
+
+            try
+            {
+                Item characterItem = enemy.CharacterItem;
+                if (characterItem != null)
+                {
+                    try
+                    {
+                        Stat oldHpStat = characterItem.GetStat("MaxHealth");
+                        if (oldHpStat != null && oldMods.hp != null) oldHpStat.RemoveModifier(oldMods.hp);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
+                        if (oldGunStat != null && oldMods.gunDmg != null) oldGunStat.RemoveModifier(oldMods.gunDmg);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
+                        if (oldMeleeStat != null && oldMods.meleeDmg != null) oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            modeEScalingModifiers.Remove(enemy);
+        }
+
+        private void CleanupModeEEnemyRuntimeState(CharacterMainControl enemy, Teams? faction = null)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            UnregisterModeEEnemyDeath(enemy);
+            UnregisterModeEEnemyLootHandler(enemy);
+            UnregisterModeEEnemyFromSpawnerRoot(enemy);
+            UnregisterEnemyRecovery(enemy);
+            modeEPendingAggroTraceDistance.Remove(enemy);
+            RemoveModeEScalingModifiers(enemy);
+            UntrackModeEAliveEnemy(enemy, faction);
         }
 
         /// <summary>
@@ -642,16 +803,8 @@ namespace BossRush
                 }
                 catch { }
 
-                // 从虚拟 SpawnerRoot 移除，防止 CreatedCharacters 列表无限膨胀
-                UnregisterModeEEnemyFromSpawnerRoot(enemy);
-
-                // 从存活列表移除（全局 + 阵营独立列表）
-                UnregisterEnemyRecovery(enemy);
-                modeEAliveEnemies.Remove(enemy);
-                RemoveFromFactionAliveList(enemyFaction, enemy);
-
-                // 清理死亡敌人的 Modifier 缓存
-                modeEScalingModifiers.Remove(enemy);
+                // 从所有运行时注册表移除，避免事件/列表/虚拟 spawner root 持续膨胀
+                CleanupModeEEnemyRuntimeState(enemy, enemyFaction);
 
                 // 递增该阵营死亡计数
                 if (modeEFactionDeathCount.ContainsKey(enemyFaction))
@@ -724,8 +877,7 @@ namespace BossRush
                     {
                         // 清理无效引用
                         factionList.RemoveAt(i);
-                        modeEAliveEnemies.Remove(enemy);
-                        modeEScalingModifiers.Remove(enemy);
+                        CleanupModeEEnemyRuntimeState(enemy, faction);
                         continue;
                     }
 
@@ -735,28 +887,7 @@ namespace BossRush
                         if (characterItem == null) continue;
 
                         // 移除该敌人上一次的缩放 Modifier
-                        // [安全改进] 移除失败时清空引用，防止后续 AddModifier 导致属性只增不减
-                        if (modeEScalingModifiers.TryGetValue(enemy, out var oldMods))
-                        {
-                            try
-                            {
-                                Stat oldHpStat = characterItem.GetStat("MaxHealth");
-                                if (oldHpStat != null && oldMods.hp != null) oldHpStat.RemoveModifier(oldMods.hp);
-                            }
-                            catch { oldMods.hp = null; }
-                            try
-                            {
-                                Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
-                                if (oldGunStat != null && oldMods.gunDmg != null) oldGunStat.RemoveModifier(oldMods.gunDmg);
-                            }
-                            catch { oldMods.gunDmg = null; }
-                            try
-                            {
-                                Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
-                                if (oldMeleeStat != null && oldMods.meleeDmg != null) oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
-                            }
-                            catch { oldMods.meleeDmg = null; }
-                        }
+                        RemoveModeEScalingModifiers(enemy);
 
                         // 计算新的增量（基于 BaseValue，不受 Modifier 影响）
                         Modifier newHpMod = null;
@@ -866,6 +997,89 @@ namespace BossRush
             return modeEVirtualSpawnerRoot;
         }
 
+        private System.Collections.IList GetModeESpawnerRootCreatedCharactersList()
+        {
+            if (modeEVirtualSpawnerRoot == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                if (!modeESpawnerRootCreatedCharactersAccessorCached)
+                {
+                    const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+                    Type rootType = typeof(CharacterSpawnerRoot);
+
+                    modeESpawnerRootCreatedCharactersField =
+                        rootType.GetField("CreatedCharacters", flags) ??
+                        rootType.GetField("createdCharacters", flags);
+
+                    if (modeESpawnerRootCreatedCharactersField == null)
+                    {
+                        modeESpawnerRootCreatedCharactersProperty =
+                            rootType.GetProperty("CreatedCharacters", flags) ??
+                            rootType.GetProperty("createdCharacters", flags);
+                    }
+
+                    modeESpawnerRootCreatedCharactersAccessorCached = true;
+
+                    if (modeESpawnerRootCreatedCharactersField == null &&
+                        modeESpawnerRootCreatedCharactersProperty == null &&
+                        !modeESpawnerRootCreatedCharactersAccessorMissingLogged)
+                    {
+                        modeESpawnerRootCreatedCharactersAccessorMissingLogged = true;
+                        DevLog("[ModeE] [WARNING] 未找到虚拟 SpawnerRoot 的 createdCharacters/CreatedCharacters 访问器");
+                    }
+                }
+
+                if (modeESpawnerRootCreatedCharactersField != null)
+                {
+                    return modeESpawnerRootCreatedCharactersField.GetValue(modeEVirtualSpawnerRoot) as System.Collections.IList;
+                }
+
+                if (modeESpawnerRootCreatedCharactersProperty != null)
+                {
+                    return modeESpawnerRootCreatedCharactersProperty.GetValue(modeEVirtualSpawnerRoot, null) as System.Collections.IList;
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 获取虚拟 SpawnerRoot CreatedCharacters 失败: " + e.Message);
+            }
+
+            return null;
+        }
+
+        private void RemoveModeEEnemyFromSpawnerRootList(CharacterMainControl character)
+        {
+            try
+            {
+                System.Collections.IList list = GetModeESpawnerRootCreatedCharactersList();
+                if (list == null)
+                {
+                    return;
+                }
+
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    object entry = list[i];
+                    if (entry == null)
+                    {
+                        list.RemoveAt(i);
+                        continue;
+                    }
+
+                    CharacterMainControl existing = entry as CharacterMainControl;
+                    if (existing != null && object.ReferenceEquals(existing, character))
+                    {
+                        list.RemoveAt(i);
+                    }
+                }
+            }
+            catch { }
+        }
+
         /// <summary>
         /// 从虚拟 CharacterSpawnerRoot 中移除敌人，防止 CreatedCharacters 列表无限膨胀
         /// 通过反射获取 CreatedCharacters 列表（无公开 Remove API）
@@ -874,33 +1088,11 @@ namespace BossRush
         {
             try
             {
+                modeESpawnerRootRegisteredEnemies.Remove(character);
+
                 if (modeEVirtualSpawnerRoot == null) return;
 
-                // 通过反射获取 CreatedCharacters 列表
-                var field = typeof(CharacterSpawnerRoot).GetField("CreatedCharacters",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field != null)
-                {
-                    var list = field.GetValue(modeEVirtualSpawnerRoot) as System.Collections.IList;
-                    if (list != null)
-                    {
-                        list.Remove(character);
-                    }
-                }
-                else
-                {
-                    // 尝试属性访问
-                    var prop = typeof(CharacterSpawnerRoot).GetProperty("CreatedCharacters",
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (prop != null)
-                    {
-                        var list = prop.GetValue(modeEVirtualSpawnerRoot, null) as System.Collections.IList;
-                        if (list != null)
-                        {
-                            list.Remove(character);
-                        }
-                    }
-                }
+                RemoveModeEEnemyFromSpawnerRootList(character);
             }
             catch { }
         }
@@ -913,9 +1105,16 @@ namespace BossRush
         {
             try
             {
+                if (character == null)
+                {
+                    return;
+                }
+
                 CharacterSpawnerRoot root = GetOrCreateModeESpawnerRoot();
                 if (root != null)
                 {
+                    RemoveModeEEnemyFromSpawnerRootList(character);
+                    modeESpawnerRootRegisteredEnemies.Add(character);
                     root.AddCreatedCharacter(character);
                 }
             }
@@ -934,11 +1133,22 @@ namespace BossRush
             {
                 if (modeEVirtualSpawnerRoot != null)
                 {
+                    try
+                    {
+                        System.Collections.IList list = GetModeESpawnerRootCreatedCharactersList();
+                        if (list != null)
+                        {
+                            list.Clear();
+                        }
+                    }
+                    catch { }
+
                     if (modeEVirtualSpawnerRoot.gameObject != null)
                     {
                         UnityEngine.Object.Destroy(modeEVirtualSpawnerRoot.gameObject);
                     }
                     modeEVirtualSpawnerRoot = null;
+                    modeESpawnerRootRegisteredEnemies.Clear();
                     DevLog("[ModeE] 已清理虚拟 CharacterSpawnerRoot");
                 }
             }

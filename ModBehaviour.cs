@@ -3971,7 +3971,7 @@ namespace BossRush
                     }
 
                     // [Mode E] 跳过 Mode E 存活敌人列表中的单位，避免误清理阵营 Boss
-                    if (modeEActive && modeEAliveEnemies.Contains(c))
+                    if (modeEActive && modeEAliveEnemySet.Contains(c))
                     {
                         continue;
                     }
