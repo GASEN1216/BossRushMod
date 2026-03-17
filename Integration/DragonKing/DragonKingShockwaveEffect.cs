@@ -20,6 +20,8 @@ namespace BossRush
     /// </summary>
     public class DragonKingShockwaveEffect : MonoBehaviour
     {
+        private const int RingSegmentCount = 60;
+
         // ========== 配置参数 ==========
 
         /// <summary>
@@ -74,7 +76,8 @@ namespace BossRush
         private bool isActive = false;
         private Vector3 centerPosition;
         private CharacterMainControl playerCharacter;
-        private HashSet<int> hitPlayerWaves = new HashSet<int>(); // 记录已击退玩家的波
+        private static Material sharedWaveMaterial;
+        private static Vector2[] cachedRingUnitPoints;
 
         // 协程引用（用于生命周期管理）
         private Coroutine releaseWavesCoroutine;
@@ -106,7 +109,6 @@ namespace BossRush
         {
             centerPosition = center;
             isActive = true;
-            hitPlayerWaves.Clear();
 
             // 获取玩家引用
             FindPlayer();
@@ -164,18 +166,15 @@ namespace BossRush
             // 添加 LineRenderer
             LineRenderer lineRenderer = ringObj.AddComponent<LineRenderer>();
 
-            // 创建材质
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("UI/Default");
-
-            Material material = new Material(shader);
-            material.color = waveColor;
-
             // 配置 LineRenderer
-            lineRenderer.material = material;
+            Material material = GetSharedWaveMaterial();
+            if (material != null)
+            {
+                lineRenderer.sharedMaterial = material;
+            }
             lineRenderer.startWidth = 0.8f;
             lineRenderer.endWidth = 0.8f;
-            lineRenderer.positionCount = 61;
+            lineRenderer.positionCount = RingSegmentCount + 1;
             lineRenderer.useWorldSpace = true;
             lineRenderer.loop = false;
 
@@ -219,13 +218,12 @@ namespace BossRush
                 // 检查是否击中玩家
                 if (playerValid && !wave.hasHitPlayer)
                 {
-                    float distanceToPlayer = Vector2.Distance(
-                        new Vector2(centerPosition.x, centerPosition.z),
-                        new Vector2(playerPos.x, playerPos.z)
-                    );
+                    Vector2 playerOffset = new Vector2(playerPos.x - centerPosition.x, playerPos.z - centerPosition.z);
+                    float distanceToPlayerSqr = playerOffset.sqrMagnitude;
+                    float waveRadiusSqr = wave.currentRadius * wave.currentRadius;
 
                     // 当波纹半径接近玩家距离时，击退玩家
-                    if (wave.currentRadius >= distanceToPlayer)
+                    if (waveRadiusSqr >= distanceToPlayerSqr)
                     {
                         KnockbackPlayer(playerPos, centerPosition);
                         wave.hasHitPlayer = true;
@@ -260,18 +258,16 @@ namespace BossRush
 
         private void UpdateRingPositions(WaveRing wave)
         {
-            int segments = 60;
-            float angleStep = 360f / segments;
-
-            for (int i = 0; i <= segments; i++)
+            Vector2[] unitPoints = GetCachedRingUnitPoints();
+            for (int i = 0; i < unitPoints.Length; i++)
             {
-                float angle = i * angleStep * Mathf.Deg2Rad;
-
-                float x = centerPosition.x + Mathf.Cos(angle) * wave.currentRadius;
-                float z = centerPosition.z + Mathf.Sin(angle) * wave.currentRadius;
-                float y = centerPosition.y;
-
-                wave.lineRenderer.SetPosition(i, new Vector3(x, y, z));
+                Vector2 point = unitPoints[i];
+                wave.lineRenderer.SetPosition(
+                    i,
+                    new Vector3(
+                        centerPosition.x + point.x * wave.currentRadius,
+                        centerPosition.y,
+                        centerPosition.z + point.y * wave.currentRadius));
             }
         }
 
@@ -339,15 +335,44 @@ namespace BossRush
             {
                 if (wave != null && wave.lineRenderer != null)
                 {
-                    // 销毁动态创建的Material
-                    if (wave.lineRenderer.material != null)
-                    {
-                        Destroy(wave.lineRenderer.material);
-                    }
                     Destroy(wave.lineRenderer.gameObject);
                 }
             }
             waveRings.Clear();
+        }
+
+        private static Material GetSharedWaveMaterial()
+        {
+            if (sharedWaveMaterial == null)
+            {
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader == null)
+                {
+                    shader = Shader.Find("UI/Default");
+                }
+                if (shader != null)
+                {
+                    sharedWaveMaterial = new Material(shader);
+                }
+            }
+
+            return sharedWaveMaterial;
+        }
+
+        private static Vector2[] GetCachedRingUnitPoints()
+        {
+            if (cachedRingUnitPoints == null || cachedRingUnitPoints.Length != RingSegmentCount + 1)
+            {
+                cachedRingUnitPoints = new Vector2[RingSegmentCount + 1];
+                float angleStep = 360f / RingSegmentCount;
+                for (int i = 0; i <= RingSegmentCount; i++)
+                {
+                    float angle = i * angleStep * Mathf.Deg2Rad;
+                    cachedRingUnitPoints[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                }
+            }
+
+            return cachedRingUnitPoints;
         }
 
         // ========== 内部类 ==========

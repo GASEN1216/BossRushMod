@@ -93,8 +93,11 @@ namespace BossRush
             // 使用引用计数清理
             DragonKingAssetManager.ClearCache();
 
-            // 清理能力控制器静态材质缓存
-            DragonKingAbilityController.ClearStaticCache();
+            // 只有最后一只龙皇退场后才清理共享缓存，避免影响仍在场上的其它实例
+            if (!DragonKingAssetManager.HasActiveReferences)
+            {
+                DragonKingAbilityController.ClearStaticCache();
+            }
         }
         
         // ========== 生成方法 ==========

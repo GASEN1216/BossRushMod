@@ -51,6 +51,44 @@ namespace BossRush
         /// 动态创建的Material跟踪列表（防止内存泄漏）
         /// </summary>
         private static List<Material> dynamicMaterials = new List<Material>();
+
+        /// <summary>
+        /// 多只龙皇共享的特效对象池
+        /// </summary>
+        private static Dictionary<string, DragonKingEffectPoolInfo> effectPools = new Dictionary<string, DragonKingEffectPoolInfo>();
+
+        /// <summary>
+        /// 各预制体的预热数量
+        /// </summary>
+        private static readonly Dictionary<string, int> initialPoolSizes = new Dictionary<string, int>()
+        {
+            { DragonKingConfig.PrismaticBoltPrefab, 36 },
+            { DragonKingConfig.RainbowStarPrefab, 42 },
+            { DragonKingConfig.EtherealLancePrefab, 72 },
+            { DragonKingConfig.SunBeamGroupPrefab, 3 },
+            { DragonKingConfig.DashTrailPrefab, 36 },
+            { DragonKingConfig.TeleportFXPrefab, 6 },
+            { DragonKingConfig.PhaseTransitionPrefab, 6 }
+        };
+
+        /// <summary>
+        /// 各预制体的对象池上限
+        /// </summary>
+        private static readonly Dictionary<string, int> maxPoolSizes = new Dictionary<string, int>()
+        {
+            { DragonKingConfig.PrismaticBoltPrefab, 96 },
+            { DragonKingConfig.RainbowStarPrefab, 64 },
+            { DragonKingConfig.EtherealLancePrefab, 192 },
+            { DragonKingConfig.SunBeamGroupPrefab, 9 },
+            { DragonKingConfig.DashTrailPrefab, 96 },
+            { DragonKingConfig.TeleportFXPrefab, 18 },
+            { DragonKingConfig.PhaseTransitionPrefab, 12 }
+        };
+
+        /// <summary>
+        /// 共享对象池根节点
+        /// </summary>
+        private static Transform effectPoolRoot = null;
         
         // ========== 公开方法 ==========
         
@@ -70,7 +108,11 @@ namespace BossRush
         /// </summary>
         public static bool LoadAssetBundleSync(string modBasePath)
         {
-            if (loadedBundle != null) return true;
+            if (loadedBundle != null)
+            {
+                assetBundleRefCount++;
+                return true;
+            }
             if (loadAttempted) return loadSucceeded;
             
             loadAttempted = true;
@@ -100,6 +142,7 @@ namespace BossRush
                 ModBehaviour.DevLog($"[DragonKing] AssetBundle加载成功，引用计数: {assetBundleRefCount}");
 
                 PreloadPrefabs();
+                WarmEffectPools();
                 return true;
             }
             catch (Exception e)
@@ -148,6 +191,39 @@ namespace BossRush
         /// </summary>
         /// <param name="name">预制体名称</param>
         /// <returns>预制体GameObject，失败返回null</returns>
+        /// <summary>
+        /// 预热共享特效池，把多只龙皇同时开技能时的首次实例化成本前移
+        /// </summary>
+        private static void WarmEffectPools()
+        {
+            foreach (var pair in initialPoolSizes)
+            {
+                WarmEffectPool(pair.Key, pair.Value);
+            }
+        }
+
+        /// <summary>
+        /// 预热单个特效池
+        /// </summary>
+        private static void WarmEffectPool(string prefabName, int count)
+        {
+            if (!ShouldUseEffectPool(prefabName) || count <= 0) return;
+
+            GameObject prefab = GetPrefab(prefabName);
+            if (prefab == null) return;
+
+            DragonKingEffectPoolInfo poolInfo = GetOrCreateEffectPool(prefabName);
+            int missingCount = count - poolInfo.TotalCreated;
+            for (int i = 0; i < missingCount; i++)
+            {
+                DragonKingPooledEffect pooledEffect = CreateNewPooledEffect(prefabName, prefab, Vector3.zero, Quaternion.identity);
+                if (pooledEffect == null) break;
+
+                poolInfo.TotalCreated++;
+                ReturnPooledEffectToPool(pooledEffect, poolInfo);
+            }
+        }
+
         public static GameObject GetPrefab(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
@@ -520,6 +596,8 @@ namespace BossRush
         /// <param name="unloadAllLoadedObjects">是否卸载所有已加载的对象</param>
         public static void UnloadAssetBundle(bool unloadAllLoadedObjects = false)
         {
+            DestroyEffectPools();
+
             if (loadedBundle != null)
             {
                 loadedBundle.Unload(unloadAllLoadedObjects);
@@ -540,14 +618,15 @@ namespace BossRush
         public static void ClearCache()
         {
             assetBundleRefCount--;
+            if (assetBundleRefCount < 0)
+            {
+                assetBundleRefCount = 0;
+            }
             ModBehaviour.DevLog($"[DragonKing] 资源缓存清理，引用计数: {assetBundleRefCount}");
 
             // 只有当引用计数为0时才真正清理
             if (assetBundleRefCount <= 0)
             {
-                prefabCache.Clear();
-                loadAttempted = false;
-                loadSucceeded = false;
                 assetBundleRefCount = 0;
                 ModBehaviour.DevLog("[DragonKing] 所有资源已清理，AssetBundle仍保持加载以便复用");
             }
@@ -558,6 +637,14 @@ namespace BossRush
         /// </summary>
         public static void ForceCleanup()
         {
+            DestroyEffectPools();
+
+            if (loadedBundle != null)
+            {
+                loadedBundle.Unload(false);
+                loadedBundle = null;
+            }
+
             prefabCache.Clear();
             loadAttempted = false;
             loadSucceeded = false;
@@ -590,12 +677,384 @@ namespace BossRush
         /// <summary>
         /// 检查AssetBundle是否已加载
         /// </summary>
+        public static GameObject AcquireSharedEffect(string prefabName, Vector3 position, Quaternion rotation)
+        {
+            GameObject prefab = GetPrefab(prefabName);
+            if (prefab == null)
+            {
+                return CreateFallbackEffect(prefabName, position, rotation);
+            }
+
+            if (!ShouldUseEffectPool(prefabName))
+            {
+                return InstantiateEffect(prefabName, position, rotation);
+            }
+
+            try
+            {
+                return AcquirePooledEffect(prefabName, prefab, position, rotation);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] AcquireSharedEffect 失败: {prefabName} - {e.Message}");
+                return InstantiateEffect(prefabName, position, rotation);
+            }
+        }
+
+        public static void ReleaseEffect(GameObject instance)
+        {
+            if (instance == null) return;
+
+            DragonKingPooledEffect pooledEffect = instance.GetComponent<DragonKingPooledEffect>();
+            if (pooledEffect == null || string.IsNullOrEmpty(pooledEffect.PoolKey))
+            {
+                UnityEngine.Object.Destroy(instance);
+                return;
+            }
+
+            if (pooledEffect.IsInPool) return;
+
+            DragonKingEffectPoolInfo poolInfo = GetOrCreateEffectPool(pooledEffect.PoolKey);
+            int maxPoolSize = GetMaxPoolSize(pooledEffect.PoolKey);
+            if (maxPoolSize > 0 && poolInfo.InactiveInstances.Count >= maxPoolSize)
+            {
+                poolInfo.TotalCreated = Mathf.Max(0, poolInfo.TotalCreated - 1);
+                pooledEffect.NotifyOwnerReleased();
+                UnityEngine.Object.Destroy(instance);
+                return;
+            }
+
+            ReturnPooledEffectToPool(pooledEffect, poolInfo);
+        }
+
+        public static void ReleaseEffectAfter(GameObject instance, float delay)
+        {
+            if (instance == null) return;
+
+            if (delay <= 0f)
+            {
+                ReleaseEffect(instance);
+                return;
+            }
+
+            DragonKingPooledEffect pooledEffect = instance.GetComponent<DragonKingPooledEffect>();
+            if (pooledEffect != null && !string.IsNullOrEmpty(pooledEffect.PoolKey))
+            {
+                pooledEffect.ScheduleRelease(delay);
+                return;
+            }
+
+            UnityEngine.Object.Destroy(instance, delay);
+        }
+
+        private static bool ShouldUseEffectPool(string prefabName)
+        {
+            return !string.IsNullOrEmpty(prefabName) && maxPoolSizes.ContainsKey(prefabName);
+        }
+
+        private static DragonKingEffectPoolInfo GetOrCreateEffectPool(string prefabName)
+        {
+            DragonKingEffectPoolInfo poolInfo;
+            if (!effectPools.TryGetValue(prefabName, out poolInfo))
+            {
+                poolInfo = new DragonKingEffectPoolInfo();
+                effectPools[prefabName] = poolInfo;
+            }
+
+            return poolInfo;
+        }
+
+        private static Transform GetOrCreateEffectPoolRoot()
+        {
+            if (effectPoolRoot == null)
+            {
+                GameObject rootObject = new GameObject("DragonKing_EffectPool");
+                rootObject.hideFlags = HideFlags.HideInHierarchy;
+                UnityEngine.Object.DontDestroyOnLoad(rootObject);
+                effectPoolRoot = rootObject.transform;
+            }
+
+            return effectPoolRoot;
+        }
+
+        private static int GetMaxPoolSize(string prefabName)
+        {
+            int maxPoolSize;
+            return maxPoolSizes.TryGetValue(prefabName, out maxPoolSize) ? maxPoolSize : 0;
+        }
+
+        private static GameObject CreateOneShotEffect(string prefabName, GameObject prefab, Vector3 position, Quaternion rotation, Transform parent)
+        {
+            GameObject instance = parent != null
+                ? UnityEngine.Object.Instantiate(prefab, position, rotation, parent)
+                : UnityEngine.Object.Instantiate(prefab, position, rotation);
+
+            PrepareEffectInstance(instance, prefabName);
+            return instance;
+        }
+
+        private static GameObject AcquirePooledEffect(string prefabName, GameObject prefab, Vector3 position, Quaternion rotation)
+        {
+            DragonKingEffectPoolInfo poolInfo = GetOrCreateEffectPool(prefabName);
+            DragonKingPooledEffect pooledEffect = null;
+
+            while (poolInfo.InactiveInstances.Count > 0 && pooledEffect == null)
+            {
+                pooledEffect = poolInfo.InactiveInstances.Pop();
+            }
+
+            if (pooledEffect == null)
+            {
+                pooledEffect = CreateNewPooledEffect(prefabName, prefab, position, rotation);
+                if (pooledEffect == null) return null;
+                poolInfo.TotalCreated++;
+            }
+
+            pooledEffect.OnAcquire(position, rotation);
+            return pooledEffect.gameObject;
+        }
+
+        private static DragonKingPooledEffect CreateNewPooledEffect(string prefabName, GameObject prefab, Vector3 position, Quaternion rotation)
+        {
+            GameObject instance = UnityEngine.Object.Instantiate(prefab, position, rotation);
+            PrepareEffectInstance(instance, prefabName);
+
+            DragonKingPooledEffect pooledEffect = instance.GetComponent<DragonKingPooledEffect>();
+            if (pooledEffect == null)
+            {
+                pooledEffect = instance.AddComponent<DragonKingPooledEffect>();
+            }
+            pooledEffect.Initialize(prefabName);
+            return pooledEffect;
+        }
+
+        private static void PrepareEffectInstance(GameObject instance, string prefabName)
+        {
+            if (instance == null) return;
+
+            try
+            {
+                var renderers = instance.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length == 0)
+                {
+                    ModBehaviour.DevLog($"[DragonKing] 预制体 {prefabName} 没有渲染器，添加后备视觉效果");
+                    AddFallbackVisuals(instance, prefabName);
+                }
+
+                if (prefabName == DragonKingConfig.SunBeamGroupPrefab)
+                {
+                    SunBeamTriggerCache triggerCache = instance.GetComponent<SunBeamTriggerCache>();
+                    if (triggerCache == null)
+                    {
+                        triggerCache = instance.AddComponent<SunBeamTriggerCache>();
+                    }
+                    triggerCache.WarmCache();
+                }
+                else if (prefabName == DragonKingConfig.DashTrailPrefab)
+                {
+                    DragonKingLavaZone lavaZone = instance.GetComponent<DragonKingLavaZone>();
+                    if (lavaZone == null)
+                    {
+                        lavaZone = instance.AddComponent<DragonKingLavaZone>();
+                    }
+                    lavaZone.PrepareForPooling();
+                }
+
+                PlayAllParticleSystems(instance);
+                EnableAllLights(instance);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] PrepareEffectInstance 失败: {prefabName} - {e.Message}");
+            }
+        }
+
+        private static void ReturnPooledEffectToPool(DragonKingPooledEffect pooledEffect, DragonKingEffectPoolInfo poolInfo)
+        {
+            if (pooledEffect == null || poolInfo == null) return;
+
+            pooledEffect.OnRelease(GetOrCreateEffectPoolRoot());
+            poolInfo.InactiveInstances.Push(pooledEffect);
+        }
+
+        private static void DestroyEffectPools()
+        {
+            foreach (var pair in effectPools)
+            {
+                pair.Value.InactiveInstances.Clear();
+                pair.Value.TotalCreated = 0;
+            }
+            effectPools.Clear();
+
+            if (effectPoolRoot != null)
+            {
+                UnityEngine.Object.Destroy(effectPoolRoot.gameObject);
+                effectPoolRoot = null;
+            }
+        }
+
         public static bool IsLoaded => loadedBundle != null;
+        public static bool HasActiveReferences => assetBundleRefCount > 0;
     }
     
     /// <summary>
     /// 简单旋转组件（用于后备特效动画）
     /// </summary>
+    internal sealed class DragonKingEffectPoolInfo
+    {
+        public readonly Stack<DragonKingPooledEffect> InactiveInstances = new Stack<DragonKingPooledEffect>();
+        public int TotalCreated = 0;
+    }
+
+    public class DragonKingPooledEffect : MonoBehaviour
+    {
+        private string poolKey = null;
+        private Vector3 initialLocalScale = Vector3.one;
+        private ParticleSystem[] particleSystems = new ParticleSystem[0];
+        private Light[] lights = new Light[0];
+        private Rigidbody[] rigidbodies = new Rigidbody[0];
+        private TrailRenderer[] trailRenderers = new TrailRenderer[0];
+        private Action<GameObject> ownerReleaseTracker = null;
+
+        public string PoolKey => poolKey;
+        public bool IsInPool { get; private set; }
+
+        public void SetOwnerReleaseTracker(Action<GameObject> tracker)
+        {
+            ownerReleaseTracker = tracker;
+        }
+
+        public void Initialize(string key)
+        {
+            poolKey = key;
+            initialLocalScale = transform.localScale;
+            particleSystems = GetComponentsInChildren<ParticleSystem>(true);
+            lights = GetComponentsInChildren<Light>(true);
+            rigidbodies = GetComponentsInChildren<Rigidbody>(true);
+            trailRenderers = GetComponentsInChildren<TrailRenderer>(true);
+            IsInPool = false;
+        }
+
+        public void OnAcquire(Vector3 position, Quaternion rotation)
+        {
+            CancelScheduledRelease();
+
+            transform.SetParent(null, false);
+            transform.position = position;
+            transform.rotation = rotation;
+            transform.localScale = initialLocalScale;
+
+            ResetRigidbodies();
+            ClearTrails();
+            gameObject.SetActive(true);
+
+            for (int i = 0; i < lights.Length; i++)
+            {
+                if (lights[i] != null)
+                {
+                    lights[i].enabled = true;
+                }
+            }
+
+            for (int i = 0; i < particleSystems.Length; i++)
+            {
+                if (particleSystems[i] != null)
+                {
+                    particleSystems[i].gameObject.SetActive(true);
+                    particleSystems[i].Play(true);
+                }
+            }
+
+            IsInPool = false;
+        }
+
+        public void OnRelease(Transform poolRoot)
+        {
+            if (IsInPool) return;
+
+            CancelScheduledRelease();
+            NotifyOwnerReleased();
+
+            for (int i = 0; i < particleSystems.Length; i++)
+            {
+                if (particleSystems[i] != null)
+                {
+                    particleSystems[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                }
+            }
+
+            for (int i = 0; i < lights.Length; i++)
+            {
+                if (lights[i] != null)
+                {
+                    lights[i].enabled = false;
+                }
+            }
+
+            ResetRigidbodies();
+            ClearTrails();
+
+            transform.SetParent(poolRoot, false);
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+            transform.localScale = initialLocalScale;
+            gameObject.SetActive(false);
+            IsInPool = true;
+        }
+
+        public void NotifyOwnerReleased()
+        {
+            Action<GameObject> tracker = ownerReleaseTracker;
+            ownerReleaseTracker = null;
+            tracker?.Invoke(gameObject);
+        }
+
+        public void ScheduleRelease(float delay)
+        {
+            CancelScheduledRelease();
+            Invoke(nameof(ReleaseToPool), delay);
+        }
+
+        public void CancelScheduledRelease()
+        {
+            CancelInvoke(nameof(ReleaseToPool));
+        }
+
+        private void ReleaseToPool()
+        {
+            DragonKingAssetManager.ReleaseEffect(gameObject);
+        }
+
+        private void ResetRigidbodies()
+        {
+            for (int i = 0; i < rigidbodies.Length; i++)
+            {
+                if (rigidbodies[i] != null)
+                {
+                    rigidbodies[i].velocity = Vector3.zero;
+                    rigidbodies[i].angularVelocity = Vector3.zero;
+                }
+            }
+        }
+
+        private void ClearTrails()
+        {
+            for (int i = 0; i < trailRenderers.Length; i++)
+            {
+                if (trailRenderers[i] != null)
+                {
+                    trailRenderers[i].Clear();
+                }
+            }
+        }
+
+        private void OnDestroy()
+        {
+            CancelScheduledRelease();
+            ownerReleaseTracker = null;
+        }
+    }
+
     public class SimpleRotator : MonoBehaviour
     {
         /// <summary>

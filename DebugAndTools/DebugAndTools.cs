@@ -424,7 +424,17 @@ namespace BossRush
         /// <param name="message">日志消息</param>
         internal static void DevLog(string message)
         {
-            if (DevModeEnabled)
+            if (!DevModeEnabled || string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            bool shouldLog =
+                IsDevLoggingEnabled ||
+                message.IndexOf("[WARNING]", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                message.IndexOf("[ERROR]", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (shouldLog)
             {
                 Debug.Log(message);
             }

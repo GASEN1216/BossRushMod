@@ -2179,7 +2179,7 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = false;
+        internal const bool DevModeEnabled = true;
 
         // F3 婚姻系统测试面板（仅 DevMode）
         private bool marriageTestUIVisible = false;
@@ -4493,11 +4493,69 @@ namespace BossRush
         /// 播放自定义音效文件
         /// </summary>
         /// <param name="filePath">音效文件的完整路径</param>
+        private delegate void PostCustomSfxDelegate(string filePath, GameObject target, bool loop);
+
+        private static readonly Dictionary<string, bool> _cachedSoundFileExists = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private static PostCustomSfxDelegate _cachedPostCustomSfx;
+        private static bool _postCustomSfxResolved = false;
+
+        private static bool SoundFileExistsCached(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return false;
+            }
+
+            bool exists;
+            if (_cachedSoundFileExists.TryGetValue(filePath, out exists))
+            {
+                return exists;
+            }
+
+            exists = File.Exists(filePath);
+            _cachedSoundFileExists[filePath] = exists;
+            return exists;
+        }
+
+        private static bool TryGetPostCustomSfxDelegate(out PostCustomSfxDelegate postCustomSfx)
+        {
+            if (!_postCustomSfxResolved)
+            {
+                _postCustomSfxResolved = true;
+
+                try
+                {
+                    Type audioManagerType = Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
+                    if (audioManagerType != null)
+                    {
+                        MethodInfo method = audioManagerType.GetMethod(
+                            "PostCustomSFX",
+                            BindingFlags.Public | BindingFlags.Static,
+                            null,
+                            new Type[] { typeof(string), typeof(GameObject), typeof(bool) },
+                            null);
+
+                        if (method != null)
+                        {
+                            _cachedPostCustomSfx = Delegate.CreateDelegate(typeof(PostCustomSfxDelegate), method, false) as PostCustomSfxDelegate;
+                        }
+                    }
+                }
+                catch
+                {
+                    _cachedPostCustomSfx = null;
+                }
+            }
+
+            postCustomSfx = _cachedPostCustomSfx;
+            return postCustomSfx != null;
+        }
+
         public void PlaySoundEffect(string filePath)
         {
             try
             {
-                if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+                if (string.IsNullOrEmpty(filePath) || !SoundFileExistsCached(filePath))
                 {
                     DevLog("[BossRush] PlaySoundEffect: 音效文件不存在: " + filePath);
                     return;
@@ -4515,6 +4573,13 @@ namespace BossRush
                 catch {}
                 
                 // 使用游戏的AudioManager播放音效
+                PostCustomSfxDelegate postCustomSfx;
+                if (TryGetPostCustomSfxDelegate(out postCustomSfx))
+                {
+                    postCustomSfx(filePath, target, false);
+                    return;
+                }
+
                 System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
                 if (audioManagerType == null)
                 {
