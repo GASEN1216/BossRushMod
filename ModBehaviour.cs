@@ -2178,13 +2178,15 @@ namespace BossRush
 
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
+        // DevMode 仅保留源码硬编码开关，不再暴露给玩家配置。
+        // 本地开发调试时手动改为 true，正式发布前保持 false。
+        private const bool HardcodedDevModeEnabled = true;
 
         internal static bool DevModeEnabled
         {
             get
             {
-                ModBehaviour inst = Instance;
-                return inst != null && inst.IsDevModeEnabledInternal();
+                return HardcodedDevModeEnabled;
             }
         }
 

@@ -42,7 +42,6 @@ namespace BossRush
             public bool enableRandomBossLoot = true;
             public bool useInteractBetweenWaves = false;
             public bool lootBoxBlocksBullets = false;
-            public bool enableDevMode = false;
             public int infiniteHellBossesPerWave = 3;
             public float bossStatMultiplier = 1f;
 
@@ -271,11 +270,6 @@ namespace BossRush
                     bool loadedCover = (bool)coverResult;
                     config.lootBoxBlocksBullets = loadedCover;
 
-                    string devModeKey = ModName + "_EnableDevMode";
-                    object devModeResult = boolLoadMethod.Invoke(null, new object[] { devModeKey, config.enableDevMode });
-                    bool loadedDevMode = (bool)devModeResult;
-                    config.enableDevMode = loadedDevMode;
-
                     MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
                     int currentHell = (config != null) ? config.infiniteHellBossesPerWave : 3;
                     object hellResult = intLoadMethod.Invoke(null, new object[] { hellBossKey, currentHell });
@@ -337,7 +331,7 @@ namespace BossRush
                     bool loadedWolfModel = (bool)wolfModelResult;
                     config.useWolfModelForWildHorn = loadedWolfModel;
 
-                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", enableDevMode=" + loadedDevMode + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel);
+                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel);
                 }
                 else
                 {
@@ -366,18 +360,16 @@ namespace BossRush
                 string lootKey = ModName + "_EnableRandomBossLoot";
                 string interactKey = ModName + "_UseInteractBetweenWaves";
                 string coverKey = ModName + "_LootBoxBlocksBullets";
-                string devModeKey = ModName + "_EnableDevMode";
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
                 string modeDKey = ModName + "_ModeDEnemiesPerWave";
                 string achievementHotkeyKey = ModName + "_AchievementHotkey";
                 
-                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == devModeKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
+                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
                 {
                     DevLog("[BossRush] 检测到配置变更: " + changedKey);
                     LoadConfigFromModConfig();
                     SaveConfigToFile();
-                    ApplyDevModeRuntimeState();
                     DevLog("[BossRush] 配置已更新并保存到本地文件");
 
                     // 如果在下一波倒计时过程中修改了波次间隔，重启倒计时以使用新配置
@@ -479,23 +471,6 @@ namespace BossRush
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册掉落箱掩体配置项失败: " + ex.Message);
-                }
-
-                // 开发模式调试热键
-                try
-                {
-                    string devModeLabel = L10n.T("开发模式：启用调试热键", "Developer Mode: Enable debug hotkeys");
-                    string devModeKey = ModName + "_EnableDevMode";
-
-                    if (addBoolMethod != null)
-                    {
-                        addBoolMethod.Invoke(null, new object[] { ModName, devModeKey, devModeLabel, config.enableDevMode });
-                        DevLog("[BossRush] 开发模式配置项注册成功");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    DevLog("[BossRush] 注册开发模式配置项失败: " + ex.Message);
                 }
 
                 // 波次间使用交互点开启下一波
@@ -717,11 +692,6 @@ namespace BossRush
             return true; // 默认开启
         }
 
-        private bool IsDevModeEnabledInternal()
-        {
-            return config != null && config.enableDevMode;
-        }
-        
         #endregion
     }
 }
