@@ -79,89 +79,7 @@ namespace BossRush
         {
             try
             {
-                // 查找原版商人预设 —— 优先使用缓存字典，避免重复调用 FindObjectsOfTypeAll
                 CharacterRandomPreset merchantPreset = GetModeEMerchantPreset();
-
-                // 优先从缓存字典查找（O(1) 操作）
-                if (merchantPreset == null && cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
-                {
-                    // 尝试精确匹配神秘商人
-                    foreach (var kvp in cachedCharacterPresets)
-                    {
-                        string nameKey = kvp.Key;
-                        if (string.IsNullOrEmpty(nameKey)) continue;
-                        if (nameKey.Contains("Merchant") && nameKey.Contains("Myst"))
-                        {
-                            merchantPreset = kvp.Value;
-                            DevLog("[ModeE] 从缓存找到神秘商人预设: " + nameKey);
-                            break;
-                        }
-                    }
-                    // 回退到任意商人
-                    if (merchantPreset == null)
-                    {
-                        foreach (var kvp in cachedCharacterPresets)
-                        {
-                            if (kvp.Key.Contains("Merchant"))
-                            {
-                                merchantPreset = kvp.Value;
-                                DevLog("[ModeE] 从缓存找到商人预设 (回退): " + kvp.Key);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // 缓存未命中时回退到 FindObjectsOfTypeAll（仅首次或缓存为空时）
-                if (merchantPreset == null)
-                {
-                    var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
-                    CharacterRandomPreset fallbackMerchant = null;
-                    foreach (var preset in allPresets)
-                    {
-                        try
-                        {
-                            string nameKey = preset.nameKey;
-                            if (string.IsNullOrEmpty(nameKey)) continue;
-                            if (nameKey.Contains("Merchant"))
-                            {
-                                if (nameKey.Contains("Myst"))
-                                {
-                                    merchantPreset = preset;
-                                    DevLog("[ModeE] 找到神秘商人预设 (nameKey): " + nameKey);
-                                    break;
-                                }
-                                if (fallbackMerchant == null)
-                                    fallbackMerchant = preset;
-                            }
-                        }
-                        catch { }
-                    }
-
-                    if (merchantPreset == null && fallbackMerchant != null)
-                        merchantPreset = fallbackMerchant;
-
-                    // 回退到 characterIconType == 4
-                    if (merchantPreset == null)
-                    {
-                        var iconField = ReflectionCache.CharacterRandomPreset_CharacterIconType;
-                        if (iconField != null)
-                        {
-                            foreach (var preset in allPresets)
-                            {
-                                try
-                                {
-                                    if ((int)iconField.GetValue(preset) == 4)
-                                    {
-                                        merchantPreset = preset;
-                                        break;
-                                    }
-                                }
-                                catch { }
-                            }
-                        }
-                    }
-                }
 
                 if (merchantPreset == null)
                 {
@@ -289,7 +207,7 @@ namespace BossRush
                 var origShop = npcGo.GetComponentInChildren<StockShop>(true);
                 if (origShop != null)
                 {
-                    UnityEngine.Object.DestroyImmediate(origShop);
+                    UnityEngine.Object.Destroy(origShop);
                     DevLog("[ModeE] 已移除商人原版 StockShop");
                 }
 
@@ -327,91 +245,7 @@ namespace BossRush
                 }
 
                 Duckov.Utilities.Tag[] emptyExclude = new Duckov.Utilities.Tag[0];
-
-                // 定义分类列表：(标签列表, 本地化键, merchantID后缀)
-                // 使用本地化键代替原始中文字符串
-                var categories = new List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>>();
-
-                // 枪械
-                if (tagsData.Gun != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { tagsData.Gun },
-                        "BossRush_ModeE_Shop_Gun", "Gun"));
-                // 近战武器
-                var meleeTag = FindTagByNameInInit("MeleeWeapon");
-                if (meleeTag != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { meleeTag },
-                        "BossRush_ModeE_Shop_Melee", "Melee"));
-
-                // 配件模组 —— 仅使用 Accessory 标签
-                var accessoryTag = FindTagByNameInInit("Accessory");
-                if (accessoryTag != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { accessoryTag },
-                        "BossRush_ModeE_Shop_Accessory", "Accessory"));
-
-                // 子弹
-                if (tagsData.Bullet != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { tagsData.Bullet },
-                        "BossRush_ModeE_Shop_Bullet", "Bullet"));
-                // 头盔
-                if (tagsData.Helmat != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { tagsData.Helmat },
-                        "BossRush_ModeE_Shop_Helmat", "Helmat"));
-                // 护甲
-                if (tagsData.Armor != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { tagsData.Armor },
-                        "BossRush_ModeE_Shop_Armor", "Armor"));
-                // 背包
-                if (tagsData.Backpack != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { tagsData.Backpack },
-                        "BossRush_ModeE_Shop_Backpack", "Backpack"));
-                // 图腾
-                var totemTag = FindTagByNameInInit("Totem");
-                if (totemTag != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { totemTag },
-                        "BossRush_ModeE_Shop_Totem", "Totem"));
-                // 面具
-                var maskTag = FindTagByNameInInit("Mask");
-                if (maskTag == null) maskTag = FindTagByNameInInit("FaceMask");
-                if (maskTag != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { maskTag },
-                        "BossRush_ModeE_Shop_Mask", "Mask"));
-                // 医疗品（含注射器，优先使用原版 Medic Tag）
-                var medTag = FindTagByNameInInit("Medic");
-                if (medTag == null) medTag = FindTagByNameInInit("Medical");
-                if (medTag == null) medTag = FindTagByNameInInit("Consumable");
-                if (medTag == null) medTag = FindTagByNameInInit("Healing");
-                if (medTag != null)
-                {
-                    var medTags = new List<Duckov.Utilities.Tag> { medTag };
-                    var injectorTag = FindTagByNameInInit("Injector");
-                    if (injectorTag != null)
-                        medTags.Add(injectorTag);
-                    categories.Add(System.Tuple.Create(
-                        medTags,
-                        "BossRush_ModeE_Shop_Medical", "Medical"));
-                }
-                // 食物
-                var foodTag = FindTagByNameInInit("Food");
-                if (foodTag != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { foodTag },
-                        "BossRush_ModeE_Shop_Food", "Food"));
-                // 诱饵
-                if (tagsData.Bait != null)
-                    categories.Add(System.Tuple.Create(
-                        new List<Duckov.Utilities.Tag> { tagsData.Bait },
-                        "BossRush_ModeE_Shop_Bait", "Bait"));
-
-                categories = GetModeEMerchantCategories(tagsData);
+                List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> categories = GetModeEMerchantCategories(tagsData);
 
                 int totalItems = 0;
 
@@ -702,7 +536,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] GetModeEMerchantPreset 澶辫触: " + e.Message);
+                DevLog("[ModeE] [WARNING] GetModeEMerchantPreset 失败: " + e.Message);
                 return null;
             }
         }

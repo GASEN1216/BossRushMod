@@ -167,6 +167,14 @@ namespace BossRush
         private TextMeshPro modeFPlayerNameTagText;
         /// <summary>M4: 缓存上次 NameTag 文本，避免每帧重建字符串</summary>
         private string modeFPlayerNameTagCachedText;
+        private bool modeFPlayerNameTagTextDirty = true;
+        private float modeFPlayerNameTagTextRefreshTimer = 0f;
+        private const float MODEF_PLAYER_NAMETAG_TEXT_REFRESH_INTERVAL = 0.5f;
+
+        private void MarkModeFPlayerNameTagDirty()
+        {
+            modeFPlayerNameTagTextDirty = true;
+        }
 
         private void EnsureModeFPlayerNameTag()
         {
@@ -184,6 +192,8 @@ namespace BossRush
                 out modeFPlayerNameTagObject,
                 out modeFPlayerNameTagText,
                 "[ModeF]");
+            modeFPlayerNameTagTextDirty = true;
+            modeFPlayerNameTagTextRefreshTimer = MODEF_PLAYER_NAMETAG_TEXT_REFRESH_INTERVAL;
         }
 
         private void UpdateModeFPlayerNameTag()
@@ -197,11 +207,18 @@ namespace BossRush
             EnsureModeFPlayerNameTag();
             if (modeFPlayerNameTagText != null)
             {
-                string newText = BuildModeFPlayerNameTagText();
-                if (newText != modeFPlayerNameTagCachedText)
+                modeFPlayerNameTagTextRefreshTimer += Time.unscaledDeltaTime;
+                if (modeFPlayerNameTagTextDirty || modeFPlayerNameTagTextRefreshTimer >= MODEF_PLAYER_NAMETAG_TEXT_REFRESH_INTERVAL)
                 {
-                    modeFPlayerNameTagCachedText = newText;
-                    modeFPlayerNameTagText.text = newText;
+                    modeFPlayerNameTagTextRefreshTimer = 0f;
+                    modeFPlayerNameTagTextDirty = false;
+
+                    string newText = BuildModeFPlayerNameTagText();
+                    if (newText != modeFPlayerNameTagCachedText)
+                    {
+                        modeFPlayerNameTagCachedText = newText;
+                        modeFPlayerNameTagText.text = newText;
+                    }
                 }
             }
 
@@ -229,17 +246,30 @@ namespace BossRush
             modeFPlayerNameTagObject = null;
             modeFPlayerNameTagText = null;
             modeFPlayerNameTagCachedText = null;
+            modeFPlayerNameTagTextDirty = true;
+            modeFPlayerNameTagTextRefreshTimer = 0f;
         }
     }
 
     [HarmonyPatch(typeof(HealthBar), "RefreshCharacterIcon")]
     public static class ModeFHealthBarNamePatch
     {
+        private static ModBehaviour cachedInstance;
+        private static int lastRefreshFrame = -1;
+        private const string ModeFMarkSuffixZhPrefix = " [印记: ";
+        private const string ModeFMarkSuffixEnPrefix = " [Mark: ";
+
         [HarmonyPostfix]
         public static void Postfix(HealthBar __instance, TextMeshProUGUI ___nameText)
         {
-            ModBehaviour inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeFActive || ___nameText == null || !___nameText.gameObject.activeSelf)
+            int currentFrame = Time.frameCount;
+            if (cachedInstance == null || currentFrame - lastRefreshFrame >= 60)
+            {
+                lastRefreshFrame = currentFrame;
+                cachedInstance = ModBehaviour.Instance;
+            }
+
+            if (cachedInstance == null || !cachedInstance.IsModeFActive || ___nameText == null || !___nameText.gameObject.activeSelf)
             {
                 return;
             }
@@ -257,12 +287,77 @@ namespace BossRush
             }
 
             string suffix = character.IsMainCharacter
-                ? inst.GetModeFPlayerMarkSuffix()
-                : inst.GetModeFBountyMarkSuffix(character);
-            if (!string.IsNullOrEmpty(suffix) && !___nameText.text.EndsWith(suffix, StringComparison.Ordinal))
+                ? cachedInstance.GetModeFPlayerMarkSuffix()
+                : cachedInstance.GetModeFBountyMarkSuffix(character);
+
+            string baseText = StripModeFMarkSuffix(___nameText.text);
+            if (string.IsNullOrEmpty(suffix))
             {
-                ___nameText.text += suffix;
+                if (!string.Equals(___nameText.text, baseText, StringComparison.Ordinal))
+                {
+                    ___nameText.text = baseText;
+                }
+
+                return;
             }
+
+            string desiredText = baseText + suffix;
+            if (!string.Equals(___nameText.text, desiredText, StringComparison.Ordinal))
+            {
+                ___nameText.text = desiredText;
+            }
+        }
+
+        private static string StripModeFMarkSuffix(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            string sanitized = text;
+            while (TryTrimTrailingModeFMarkSuffix(ref sanitized))
+            {
+            }
+
+            return sanitized;
+        }
+
+        private static bool TryTrimTrailingModeFMarkSuffix(ref string text)
+        {
+            if (string.IsNullOrEmpty(text) || text[text.Length - 1] != ']')
+            {
+                return false;
+            }
+
+            return TryTrimTrailingModeFMarkSuffix(ref text, ModeFMarkSuffixZhPrefix) ||
+                   TryTrimTrailingModeFMarkSuffix(ref text, ModeFMarkSuffixEnPrefix);
+        }
+
+        private static bool TryTrimTrailingModeFMarkSuffix(ref string text, string prefix)
+        {
+            int startIndex = text.LastIndexOf(prefix, StringComparison.Ordinal);
+            if (startIndex < 0)
+            {
+                return false;
+            }
+
+            int digitsStart = startIndex + prefix.Length;
+            if (digitsStart >= text.Length - 1)
+            {
+                return false;
+            }
+
+            for (int i = digitsStart; i < text.Length - 1; i++)
+            {
+                if (!char.IsDigit(text[i]))
+                {
+                    return false;
+                }
+            }
+
+            text = text.Substring(0, startIndex);
+            return true;
         }
     }
 }

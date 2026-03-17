@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using ItemStatsSystem;
 
@@ -42,184 +41,24 @@ namespace BossRush
         /// </summary>
         private Item DetectBloodhuntTransponder()
         {
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null) return null;
-
-                Item characterItem = main.CharacterItem;
-                if (characterItem == null) return null;
-
-                Inventory inventory = characterItem.Inventory;
-                if (inventory == null || inventory.Content == null) return null;
-
-                for (int i = 0; i < inventory.Content.Count; i++)
-                {
-                    Item item = inventory.Content[i];
-                    if (item == null) continue;
-
-                    int typeId = -1;
-                    try { typeId = item.TypeID; } catch { continue; }
-
-                    if (typeId == BloodhuntTransponderConfig.TYPE_ID)
-                    {
-                        DevLog("[ModeF] 检测到血猎收发器 (TypeID=" + typeId + ")");
-                        return item;
-                    }
-                }
-
-                return null;
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeF] [ERROR] DetectBloodhuntTransponder 失败: " + e.Message);
-                return null;
-            }
+            return FindFirstPlayerInventoryItemByTypeId(
+                BloodhuntTransponderConfig.TYPE_ID,
+                "ModeF",
+                "血猎收发器");
         }
 
-        // TODO: M9 — 与 ModBehaviour 中已有的船票检测逻辑重复，未来可统一
         private Item DetectBossRushTicketItem()
         {
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null || main.CharacterItem == null)
-                {
-                    return null;
-                }
-
-                Inventory inventory = main.CharacterItem.Inventory;
-                if (inventory == null || inventory.Content == null)
-                {
-                    return null;
-                }
-
-                int allowedTicketTypeId = bossRushTicketTypeId > 0 ? bossRushTicketTypeId : 868;
-                for (int i = 0; i < inventory.Content.Count; i++)
-                {
-                    Item item = inventory.Content[i];
-                    if (item == null)
-                    {
-                        continue;
-                    }
-
-                    int typeId = -1;
-                    try { typeId = item.TypeID; } catch { }
-                    if (typeId == allowedTicketTypeId)
-                    {
-                        return item;
-                    }
-                }
-
-                return null;
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeF] [ERROR] DetectBossRushTicketItem 失败: " + e.Message);
-                return null;
-            }
+            return FindFirstPlayerInventoryItemByTypeId(GetBossRushTicketTypeId());
         }
 
-        // TODO: M8 — 与 ModeD 的 IsPlayerNaked() 高度重复，仅多了收发器白名单。
-        // 未来可提取公共方法 IsPlayerNakedWithAllowedItems(HashSet<int> allowedTypeIds)
         private bool IsPlayerNakedForModeF()
         {
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null || main.CharacterItem == null)
-                {
-                    return false;
-                }
-
-                Item characterItem = main.CharacterItem;
-                string[] equipmentSlots = new string[]
-                {
-                    "Armor",
-                    "Helmat",
-                    "FaceMask",
-                    "Backpack",
-                    "Headset",
-                    "Totem1",
-                    "Totem2"
-                };
-                for (int i = 0; i < equipmentSlots.Length; i++)
-                {
-                    try
-                    {
-                        var slot = characterItem.Slots.GetSlot(equipmentSlots[i]);
-                        if (slot != null && slot.Content != null)
-                        {
-                            return false;
-                        }
-                    }
-                    catch { }
-                }
-
-                string[] weaponSlots = new string[] { "PrimaryWeapon", "SecondaryWeapon", "MeleeWeapon" };
-                for (int i = 0; i < weaponSlots.Length; i++)
-                {
-                    try
-                    {
-                        var slot = characterItem.Slots.GetSlot(weaponSlots[i]);
-                        if (slot != null && slot.Content != null)
-                        {
-                            return false;
-                        }
-                    }
-                    catch { }
-                }
-
-                Inventory inventory = characterItem.Inventory;
-                if (inventory != null && inventory.Content != null)
-                {
-                    int allowedTicketTypeId = bossRushTicketTypeId > 0 ? bossRushTicketTypeId : 868;
-                    for (int i = 0; i < inventory.Content.Count; i++)
-                    {
-                        Item item = inventory.Content[i];
-                        if (item == null)
-                        {
-                            continue;
-                        }
-
-                        int typeId = -1;
-                        try { typeId = item.TypeID; } catch { }
-
-                        if (typeId == allowedTicketTypeId || typeId == BloodhuntTransponderConfig.TYPE_ID)
-                        {
-                            continue;
-                        }
-
-                        return false;
-                    }
-                }
-
-                try
-                {
-                    Inventory petInventory = PetProxy.PetInventory;
-                    if (petInventory != null && petInventory.Content != null)
-                    {
-                        for (int i = 0; i < petInventory.Content.Count; i++)
-                        {
-                            if (petInventory.Content[i] != null)
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                }
-                catch (Exception petEx)
-                {
-                    DevLog("[ModeF] [WARNING] 无法检查狗子背包: " + petEx.Message);
-                }
-
-                return true;
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeF] [ERROR] IsPlayerNakedForModeF 失败: " + e.Message);
-                return false;
-            }
+            return IsPlayerNakedWithAllowedItems(
+                "ModeF",
+                GetBossRushTicketTypeId(),
+                BloodhuntTransponderConfig.TYPE_ID,
+                false);
         }
 
         /// <summary>
@@ -266,29 +105,8 @@ namespace BossRush
                 bool transponderConsumed = false;
                 bool ticketConsumed = false;
 
-                try
-                {
-                    transponder.Detach();
-                    transponder.DestroyTree();
-                    transponderConsumed = true;
-                    DevLog("[ModeF] 血猎收发器已消耗");
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ModeF] [WARNING] 消耗血猎收发器失败: " + e.Message);
-                }
-
-                try
-                {
-                    ticket.Detach();
-                    ticket.DestroyTree();
-                    ticketConsumed = true;
-                    DevLog("[ModeF] 船票已消耗");
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ModeF] [WARNING] 消耗船票失败: " + e.Message);
-                }
+                transponderConsumed = TryConsumeModeEntryItem(transponder, "ModeF", "血猎收发器");
+                ticketConsumed = TryConsumeModeEntryItem(ticket, "ModeF", "船票");
 
                 if (!transponderConsumed && !ticketConsumed)
                 {
@@ -334,6 +152,7 @@ namespace BossRush
 
                 modeFActive = true;
                 modeFState.Reset();
+                modeFActiveBossSet.Clear();
                 modeFState.IsActive = true;
                 int modeFSessionToken = BeginModeFSession();
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
@@ -343,6 +162,7 @@ namespace BossRush
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
                 InitializeModeDEnemyPools();
+                BuildModeEFactionPresetCaches();
                 EnsureModeDGlobalItemPool();
 
                 // 订阅龙息Buff处理器

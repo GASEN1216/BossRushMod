@@ -14,6 +14,32 @@ namespace BossRush
         /// <summary>Mode F Boss 成长 Modifier 缓存</summary>
         private readonly Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg)> modeFBossModifiers
             = new Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg)>();
+        private bool modeFBountyLeaderDirty = false;
+        private CharacterMainControl modeFBountyLeaderPreferred = null;
+        private readonly HashSet<int> modeFActiveBossIdScratch = new HashSet<int>();
+        private readonly List<int> modeFStaleBountyIdScratch = new List<int>();
+
+        private void MarkModeFBountyLeaderDirty(CharacterMainControl preferredLeader = null)
+        {
+            modeFBountyLeaderDirty = true;
+            if (preferredLeader != null)
+            {
+                modeFBountyLeaderPreferred = preferredLeader;
+            }
+        }
+
+        private void RefreshModeFBountyLeaderIfDirty()
+        {
+            if (!modeFBountyLeaderDirty)
+            {
+                return;
+            }
+
+            CharacterMainControl preferredLeader = modeFBountyLeaderPreferred;
+            modeFBountyLeaderDirty = false;
+            modeFBountyLeaderPreferred = null;
+            CheckAndBroadcastLeaderChange(preferredLeader);
+        }
 
         /// <summary>
         /// 生成悬赏名单（第二阶段开始时调用）
@@ -33,9 +59,11 @@ namespace BossRush
                 // 清理无效引用
                 for (int i = alive.Count - 1; i >= 0; i--)
                 {
-                    if (alive[i] == null || alive[i].gameObject == null || alive[i].Health == null || alive[i].Health.IsDead)
+                    CharacterMainControl boss = alive[i];
+                    if (boss == null || boss.gameObject == null || boss.Health == null || boss.Health.IsDead)
                     {
                         alive.RemoveAt(i);
+                        CleanupModeFBossRuntimeState(boss);
                     }
                 }
 
@@ -67,6 +95,8 @@ namespace BossRush
                 }
 
                 ApplyModeFPhasePressure();
+                MarkModeFBountyLeaderDirty();
+                RefreshModeFBountyLeaderIfDirty();
                 DevLog("[ModeF] 悬赏名单已生成: " + bountyCount + "/" + total + " 个 Boss 被标记");
             }
             catch (Exception e)
@@ -107,8 +137,8 @@ namespace BossRush
 
                 ApplyModeFPhasePressure();
 
-                // 检查榜首变化
-                CheckAndBroadcastLeaderChange(killer);
+                MarkModeFBountyLeaderDirty(killer);
+                RefreshModeFBountyLeaderIfDirty();
             }
             catch (Exception e)
             {
@@ -133,6 +163,7 @@ namespace BossRush
                 if (isBounty)
                 {
                     modeFState.PlayerBountyMarks += 1;
+                    MarkModeFPlayerNameTagDirty();
                     DevLog("[ModeF] 玩家获得 +1 悬赏印记 (总计=" + modeFState.PlayerBountyMarks + ")");
                 }
 
@@ -153,8 +184,8 @@ namespace BossRush
 
                 ApplyModeFPhasePressure();
 
-                // 检查榜首变化
-                CheckAndBroadcastLeaderChange(CharacterMainControl.Main);
+                MarkModeFBountyLeaderDirty(CharacterMainControl.Main);
+                RefreshModeFBountyLeaderIfDirty();
             }
             catch (Exception e)
             {
@@ -245,6 +276,53 @@ namespace BossRush
             }
         }
 
+        private void RemoveModeFBossGrowthModifiers(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return;
+            }
+
+            (Modifier hp, Modifier gunDmg) oldMods;
+            if (!modeFBossModifiers.TryGetValue(boss, out oldMods))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!(boss == null))
+                {
+                    Item characterItem = boss.CharacterItem;
+                    if (characterItem != null)
+                    {
+                        try
+                        {
+                            Stat oldHpStat = characterItem.GetStat("MaxHealth");
+                            if (oldHpStat != null && oldMods.hp != null)
+                            {
+                                oldHpStat.RemoveModifier(oldMods.hp);
+                            }
+                        }
+                        catch { }
+
+                        try
+                        {
+                            Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
+                            if (oldGunStat != null && oldMods.gunDmg != null)
+                            {
+                                oldGunStat.RemoveModifier(oldMods.gunDmg);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            modeFBossModifiers.Remove(boss);
+        }
+
         /// <summary>
         /// 比较并交换装备（头盔/护甲/枪）
         /// </summary>
@@ -310,13 +388,11 @@ namespace BossRush
 
                 if (victimQuality > killerQuality)
                 {
-                    if (killerGun != null)
+                    if (!TrySwapModeFLootedItemWithRollback(killer, victimGun, killerGun, "Gun"))
                     {
-                        killerGun.Detach();
-                        killerGun.DestroyTree();
+                        DevLog("[ModeF] [WARNING] Boss 换枪失败，已执行回滚/掉落保护");
+                        return;
                     }
-                    victimGun.Detach();
-                    killer.CharacterItem.TryPlug(victimGun, true, null, 0);
 
                     // 补满弹匣
                     RefillModeFBossGunAndAmmo(killer, victimGun);
@@ -375,17 +451,121 @@ namespace BossRush
 
                 if (oldItem != null)
                 {
-                    oldItem.Detach();
-                    oldItem.DestroyTree();
+                    if (!TrySwapModeFLootedItemWithRollback(owner, newItem, oldItem, slotKey))
+                    {
+                        DevLog("[ModeF] [WARNING] 替换装备失败，已执行回滚/掉落保护 slot=" + slotKey);
+                    }
+                    return;
                 }
 
-                newItem.Detach();
-                owner.CharacterItem.TryPlug(newItem, true, null, 0);
+                if (!TryEquipModeFLootedItemOrDrop(owner, newItem))
+                {
+                    DevLog("[ModeF] [WARNING] 替换装备失败，已掉落战利品 slot=" + slotKey);
+                }
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [WARNING] TryReplaceModeFEquippedItem 失败: " + e.Message + " slot=" + slotKey);
             }
+        }
+
+        private bool TrySwapModeFLootedItemWithRollback(CharacterMainControl owner, Item newItem, Item oldItem, string slotKey)
+        {
+            if (owner == null || owner.CharacterItem == null || newItem == null)
+            {
+                return false;
+            }
+
+            bool oldDetached = false;
+            if (oldItem != null)
+            {
+                try
+                {
+                    oldItem.Detach();
+                    oldDetached = true;
+                }
+                catch { }
+            }
+
+            if (TryEquipModeFLootedItem(owner, newItem))
+            {
+                if (oldDetached && oldItem != null)
+                {
+                    try { oldItem.DestroyTree(); } catch { }
+                }
+
+                return true;
+            }
+
+            bool restored = false;
+            if (oldDetached && oldItem != null)
+            {
+                try
+                {
+                    restored = owner.CharacterItem.TryPlug(oldItem, true, null, 0);
+                }
+                catch { }
+            }
+
+            DropOrDestroyModeFLootedItem(owner, newItem);
+            if (oldDetached && oldItem != null && !restored)
+            {
+                DevLog("[ModeF] [WARNING] 旧装备回滚失败，已掉落 slot=" + slotKey);
+                DropOrDestroyModeFLootedItem(owner, oldItem);
+            }
+
+            return false;
+        }
+
+        private bool TryEquipModeFLootedItemOrDrop(CharacterMainControl owner, Item item)
+        {
+            bool plugged = TryEquipModeFLootedItem(owner, item);
+            if (!plugged)
+            {
+                DropOrDestroyModeFLootedItem(owner, item);
+            }
+
+            return plugged;
+        }
+
+        private bool TryEquipModeFLootedItem(CharacterMainControl owner, Item item)
+        {
+            if (owner == null || owner.CharacterItem == null || item == null)
+            {
+                return false;
+            }
+
+            try { item.Detach(); } catch { }
+
+            try
+            {
+                return owner.CharacterItem.TryPlug(item, true, null, 0);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void DropOrDestroyModeFLootedItem(CharacterMainControl owner, Item item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (owner != null && owner.transform != null)
+                {
+                    item.Drop(owner.transform.position + Vector3.up * 0.3f, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
+                }
+                else if (item.gameObject != null)
+                {
+                    UnityEngine.Object.Destroy(item.gameObject);
+                }
+            }
+            catch { }
         }
 
         private void RefillModeFBossGunAndAmmo(CharacterMainControl owner, Item gunItem)
@@ -546,7 +726,7 @@ namespace BossRush
                 return;
             }
 
-            HashSet<int> activeBossIds = new HashSet<int>();
+            modeFActiveBossIdScratch.Clear();
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
             {
                 CharacterMainControl boss = modeFState.ActiveBosses[i];
@@ -555,33 +735,23 @@ namespace BossRush
                     continue;
                 }
 
-                activeBossIds.Add(boss.GetInstanceID());
+                modeFActiveBossIdScratch.Add(boss.GetInstanceID());
             }
 
-            List<int> staleIds = null;
+            modeFStaleBountyIdScratch.Clear();
             foreach (var kvp in modeFState.BountyMarksByCharacterId)
             {
-                if (kvp.Value > 0 && activeBossIds.Contains(kvp.Key))
+                if (kvp.Value > 0 && modeFActiveBossIdScratch.Contains(kvp.Key))
                 {
                     continue;
                 }
 
-                if (staleIds == null)
-                {
-                    staleIds = new List<int>();
-                }
-
-                staleIds.Add(kvp.Key);
+                modeFStaleBountyIdScratch.Add(kvp.Key);
             }
 
-            if (staleIds == null)
+            for (int i = 0; i < modeFStaleBountyIdScratch.Count; i++)
             {
-                return;
-            }
-
-            for (int i = 0; i < staleIds.Count; i++)
-            {
-                modeFState.BountyMarksByCharacterId.Remove(staleIds[i]);
+                modeFState.BountyMarksByCharacterId.Remove(modeFStaleBountyIdScratch[i]);
             }
         }
 
@@ -622,6 +792,7 @@ namespace BossRush
 
         /// <summary>M3: 已验证的高品质 TypeID 缓存，避免每次实例化物品仅为检查品质</summary>
         private readonly List<int> modeFVerifiedHighQualityTypeIds = new List<int>();
+        private readonly HashSet<int> modeFVerifiedHighQualityTypeIdSet = new HashSet<int>();
         private bool modeFHighQualityPoolBuilt = false;
 
         /// <summary>
@@ -648,7 +819,7 @@ namespace BossRush
                     try
                     {
                         probeItem = ItemAssetsCollection.InstantiateSync(candidateId);
-                        if (probeItem != null && probeItem.Quality >= 6 && !modeFVerifiedHighQualityTypeIds.Contains(candidateId))
+                        if (probeItem != null && probeItem.Quality >= 6 && modeFVerifiedHighQualityTypeIdSet.Add(candidateId))
                         {
                             modeFVerifiedHighQualityTypeIds.Add(candidateId);
                         }
@@ -685,7 +856,10 @@ namespace BossRush
                     reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
                     if (reward != null && reward.Quality >= 6)
                     {
-                        modeFVerifiedHighQualityTypeIds.Add(rewardTypeId);
+                        if (modeFVerifiedHighQualityTypeIdSet.Add(rewardTypeId))
+                        {
+                            modeFVerifiedHighQualityTypeIds.Add(rewardTypeId);
+                        }
                         return rewardTypeId;
                     }
                 }

@@ -28,6 +28,7 @@ namespace BossRush
         private const float MODEF_EXTRACTION_ALL_SPEED_BONUS = 0.5f;
         private const float MODEF_FORCED_TRACE_DISTANCE = 500f;
         private const float MODEF_BOSS_RETARGET_INTERVAL = 1.5f;
+        private const float MODEF_BOSS_INTEGRITY_CHECK_INTERVAL = 1f;
 
         private const float MODEF_PHASE_BROADCAST_INTERVAL = 15f;
 
@@ -39,7 +40,10 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, CharacterMainControl> modeFBossForcedTargets
             = new Dictionary<CharacterMainControl, CharacterMainControl>();
+        private readonly Dictionary<CharacterMainControl, AICharacterController> modeFBossAiControllers
+            = new Dictionary<CharacterMainControl, AICharacterController>();
         private float modeFBossRetargetTimer = 0f;
+        private float modeFBossIntegrityTimer = 0f;
 
         /// <summary>L2: 缓存的 DamageInfo，避免每帧 new</summary>
         private DamageInfo modeFBleedDamageInfo = new DamageInfo();
@@ -60,10 +64,15 @@ namespace BossRush
                 modeFState.TempMaxHealthGrowth = 0f;
                 modeFState.PlayerKillCount = 0;
                 modeFState.PlayerBountyMarks = 0;
+                MarkModeFPlayerNameTagDirty();
                 modeFMaxHealthModifier = null;
                 modeFBossRetargetTimer = 0f;
+                modeFBossIntegrityTimer = 0f;
                 modeFBossForcedTargets.Clear();
                 modeFBossAppliedSpeedBonuses.Clear();
+                modeFBossAiControllers.Clear();
+                modeFHasActiveFortificationHighlight = false;
+                MarkModeFBountyLeaderDirty();
                 EnsureModeFPlayerNameTag();
 
                 EnterModeFPhase(ModeFPhase.Preparation);
@@ -99,6 +108,7 @@ namespace BossRush
                 ApplyModeFBleedDamage(player, deltaTime);
                 UpdateModeFPlayerNameTag();
                 UpdateModeFFortificationHighlights();
+                RefreshModeFBountyLeaderIfDirty();
 
                 // 阶段广播计时
                 modeFState.PhaseStatusBroadcastTimer += deltaTime;
@@ -120,9 +130,15 @@ namespace BossRush
 
                 // 检查阶段切换
                 CheckModeFPhaseTransition();
+                RefreshModeFBountyLeaderIfDirty();
 
-                // Mode F Boss 自检（清理已死亡引用）
-                ModeFBossIntegrityCheck();
+                modeFBossIntegrityTimer += deltaTime;
+                if (modeFBossIntegrityTimer >= MODEF_BOSS_INTEGRITY_CHECK_INTERVAL)
+                {
+                    modeFBossIntegrityTimer = 0f;
+                    // Mode F Boss 自检是兜底逻辑，不需要每帧扫描全部 Boss。
+                    ModeFBossIntegrityCheck();
+                }
             }
             catch (Exception e)
             {
@@ -330,6 +346,7 @@ namespace BossRush
 
                 // 印记清零、不发奖励
                 modeFState.PlayerBountyMarks = 0;
+                MarkModeFPlayerNameTagDirty();
                 modeFState.TempMaxHealthGrowth = 0f;
 
                 ExitModeF();
@@ -371,6 +388,7 @@ namespace BossRush
                 catch { }
                 modeFMaxHealthModifier = null;
                 modeFBossRetargetTimer = 0f;
+                modeFBossIntegrityTimer = 0f;
                 CleanupModeFPlayerNameTag();
                 ClearModeFBossMoveSpeedModifiers();
                 modeFState.ExtractionResolved = true;
@@ -405,8 +423,7 @@ namespace BossRush
                             try { bossTeam = boss.Team; } catch { }
                         }
 
-                        CleanupModeESharedRuntimeForModeFBoss(boss, bossTeam);
-                        UnregisterModeFBossDeath(boss);
+                        CleanupModeFBossRuntimeState(boss, bossTeam);
 
                         if (!(boss == null) && boss.gameObject != null)
                         {
@@ -433,6 +450,10 @@ namespace BossRush
                 modeFBossDeathHandlers.Clear();
                 modeFBossForcedTargets.Clear();
                 modeFBossAppliedSpeedBonuses.Clear();
+                modeFBossAiControllers.Clear();
+                modeFBountyLeaderDirty = false;
+                modeFBountyLeaderPreferred = null;
+                modeFHasActiveFortificationHighlight = false;
                 ResetModeESharedRuntimeAfterModeF();
 
                 // 清理工事
@@ -447,10 +468,12 @@ namespace BossRush
 
                 // 重置状态
                 modeFState.Reset();
+                modeFActiveBossSet.Clear();
                 ClearEnemyRecoveryMonitorState();
                 // M3: 重置高品质奖励缓存，下次进入重新构建
                 modeFHighQualityPoolBuilt = false;
                 modeFVerifiedHighQualityTypeIds.Clear();
+                modeFVerifiedHighQualityTypeIdSet.Clear();
 
                 if (showEndMessage)
                 {
@@ -492,6 +515,32 @@ namespace BossRush
         private void RefreshModeFBossTargets()
         {
             ApplyModeFPhasePressure();
+        }
+
+        private AICharacterController GetModeFBossAIController(CharacterMainControl boss)
+        {
+            if (boss == null)
+            {
+                return null;
+            }
+
+            AICharacterController ai = null;
+            if (modeFBossAiControllers.TryGetValue(boss, out ai) && ai != null)
+            {
+                return ai;
+            }
+
+            ai = boss.GetComponentInChildren<AICharacterController>(true);
+            if (ai != null)
+            {
+                modeFBossAiControllers[boss] = ai;
+            }
+            else
+            {
+                modeFBossAiControllers.Remove(boss);
+            }
+
+            return ai;
         }
 
         private bool TryApplyModeFBossTarget(CharacterMainControl boss, AICharacterController ai, CharacterMainControl target)
@@ -561,7 +610,7 @@ namespace BossRush
                 CharacterMainControl preferredTarget = GetModeFPreferredTargetForBoss(boss);
                 if (preferredTarget != null && preferredTarget.mainDamageReceiver != null)
                 {
-                    AICharacterController preferredAi = boss.GetComponentInChildren<AICharacterController>(true);
+                    AICharacterController preferredAi = GetModeFBossAIController(boss);
                     if (preferredAi != null && TryApplyModeFBossTarget(boss, preferredAi, preferredTarget))
                     {
                         return;
@@ -580,7 +629,7 @@ namespace BossRush
                     return;
                 }
 
-                AICharacterController ai = boss.GetComponentInChildren<AICharacterController>(true);
+                AICharacterController ai = GetModeFBossAIController(boss);
                 if (ai == null)
                 {
                     return;
@@ -620,14 +669,35 @@ namespace BossRush
 
         private CharacterMainControl FindModeFBountyPriorityTarget(CharacterMainControl boss)
         {
+            CharacterMainControl player = CharacterMainControl.Main;
+            int playerMarks = modeFState.PlayerBountyMarks;
+
+            if (!modeFBountyLeaderDirty)
+            {
+                CharacterMainControl currentLeader = modeFState.CurrentBountyLeader;
+                int currentLeaderMarks = modeFState.CurrentBountyLeaderMarks;
+
+                if (currentLeader != null &&
+                    currentLeaderMarks > 0 &&
+                    currentLeaderMarks >= playerMarks &&
+                    IsModeFValidCombatTarget(boss, currentLeader))
+                {
+                    return currentLeader;
+                }
+
+                if (playerMarks > currentLeaderMarks && IsModeFValidCombatTarget(boss, player))
+                {
+                    return player;
+                }
+            }
+
             CharacterMainControl bestTarget = null;
             int bestMarks = 0;
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (IsModeFValidCombatTarget(boss, player) && modeFState.PlayerBountyMarks > 0)
+            if (IsModeFValidCombatTarget(boss, player) && playerMarks > 0)
             {
                 bestTarget = player;
-                bestMarks = modeFState.PlayerBountyMarks;
+                bestMarks = playerMarks;
             }
 
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
@@ -685,8 +755,18 @@ namespace BossRush
         {
             try
             {
+                if (object.ReferenceEquals(boss, null))
+                {
+                    return;
+                }
+
                 if (boss == null || boss.CharacterItem == null)
                 {
+                    if (speedBonus <= 0f)
+                    {
+                        modeFBossMoveSpeedModifiers.Remove(boss);
+                        modeFBossAppliedSpeedBonuses.Remove(boss);
+                    }
                     return;
                 }
 
@@ -753,6 +833,7 @@ namespace BossRush
             modeFBossMoveSpeedModifiers.Clear();
             modeFBossAppliedSpeedBonuses.Clear();
             modeFBossForcedTargets.Clear();
+            modeFBossAiControllers.Clear();
         }
 
         #endregion

@@ -49,6 +49,10 @@ namespace BossRush
         /// <summary>Mode E 存活敌人的去重集合，避免重复注册导致列表和扫描路径膨胀。</summary>
         private readonly HashSet<CharacterMainControl> modeEAliveEnemySet = new HashSet<CharacterMainControl>();
 
+        /// <summary>Mode E 存活敌人的阵营缓存，避免清理路径回退到全阵营扫描。</summary>
+        private readonly Dictionary<CharacterMainControl, Teams> modeEAliveEnemyFactionMap
+            = new Dictionary<CharacterMainControl, Teams>();
+
         /// <summary>各阵营死亡计数，用于计算独立缩放倍率</summary>
         private Dictionary<Teams, int> modeEFactionDeathCount = new Dictionary<Teams, int>();
 
@@ -174,6 +178,56 @@ namespace BossRush
             modeESessionToken = 0;
         }
 
+        private void ResetModeESharedRuntimeState(bool clearSpawnAllocation, bool clearSpawnerCache, bool stopWarmupCoroutine)
+        {
+            modeEPlayerFaction = Teams.player;
+            modeEAliveEnemies.Clear();
+            modeEAliveEnemySet.Clear();
+            modeEAliveEnemyFactionMap.Clear();
+            modeEFactionDeathCount.Clear();
+            modeEFactionAliveMap.Clear();
+            modeEScalingModifiers.Clear();
+            modeEEnemyDeathHandlers.Clear();
+            modeEEnemyLootHandlers.Clear();
+            modeEPendingScalingFactions.Clear();
+            modeEScalingBatchTimer = 0f;
+            modeETotalSpawnExpected = 0;
+            modeESpawnResolved = 0;
+            modeEDragonDescendantSpawned = false;
+            modeEDragonKingSpawned = false;
+            modeEWolfBossCount = 0;
+            modeEWolfBossAssigned = 0;
+            modeESpawnerRootRegisteredEnemies.Clear();
+            modeEIntegrityTimer = 0f;
+
+            if (clearSpawnAllocation)
+            {
+                modeESpawnAllocation = null;
+                modeEFlattenedSpawnPoints = null;
+                modeECachedSmokeVfxPrefab = null;
+            }
+
+            if (clearSpawnerCache)
+            {
+                modeECachedSpawnerPositions = null;
+                modeECachedSpawnerSceneName = null;
+            }
+
+            if (stopWarmupCoroutine)
+            {
+                if (modeEStartupWarmupCoroutine != null)
+                {
+                    StopCoroutine(modeEStartupWarmupCoroutine);
+                    modeEStartupWarmupCoroutine = null;
+                }
+
+                modeEStartupWarmupSceneName = null;
+            }
+
+            CleanupModeEVirtualSpawnerRoot();
+            ClearPendingBossAggroQueue();
+        }
+
         internal bool IsModeESessionStillValid(int sessionToken, int relatedScene)
         {
             if (sessionToken <= 0)
@@ -289,6 +343,17 @@ namespace BossRush
             yield return null;
 
             if (!TryRunModeEStartupWarmupStep(
+                BuildModeEFactionPresetCaches,
+                profiler,
+                "BuildModeEFactionPresetCaches",
+                "PrepareModeEStartup.BuildModeEFactionPresetCaches",
+                sceneName))
+            {
+                yield break;
+            }
+            yield return null;
+
+            if (!TryRunModeEStartupWarmupStep(
                 TryPrewarmModeDGlobalItemPool,
                 profiler,
                 "TryPrewarmModeDGlobalItemPool",
@@ -372,24 +437,31 @@ namespace BossRush
         /// <summary>
         /// 消耗（销毁）指定的营旗物品
         /// </summary>
-        private void ConsumeFactionFlag(Item flagItem)
+        private bool TryConsumeModeEntryItem(Item item, string modeTag, string itemLabel)
         {
+            if (item == null)
+            {
+                DevLog("[" + modeTag + "] [WARNING] " + itemLabel + " 为 null，跳过消耗");
+                return false;
+            }
+
             try
             {
-                if (flagItem == null)
-                {
-                    DevLog("[ModeE] [WARNING] ConsumeFactionFlag: flagItem 为 null，跳过消耗");
-                    return;
-                }
-
-                flagItem.Detach();
-                flagItem.DestroyTree();
-                DevLog("[ModeE] 营旗已消耗");
+                item.Detach();
+                item.DestroyTree();
+                DevLog("[" + modeTag + "] " + itemLabel + "已消耗");
+                return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ConsumeFactionFlag 失败: " + e.Message);
+                DevLog("[" + modeTag + "] [WARNING] 消耗" + itemLabel + "失败: " + e.Message);
+                return false;
             }
+        }
+
+        private bool ConsumeFactionFlag(Item flagItem)
+        {
+            return TryConsumeModeEntryItem(flagItem, "ModeE", "营旗");
         }
 
         /// <summary>
@@ -434,7 +506,15 @@ namespace BossRush
 
                 // 消耗营旗
                 profiler.Mark("IsPlayerNaked");
-                ConsumeFactionFlag(flagItem);
+                if (!ConsumeFactionFlag(flagItem))
+                {
+                    profileStatus = "failed: flag consume failed";
+                    ShowMessage(L10n.T(
+                        "划地为营模式启动失败：营旗消耗异常。",
+                        "Faction Battle start failed: unable to consume the faction flag."
+                    ));
+                    return false;
+                }
                 profiler.Mark("ConsumeFactionFlag");
 
                 // 启动 Mode E
@@ -467,20 +547,9 @@ namespace BossRush
                 modeEActive = true;
                 int modeESessionToken = BeginModeESession();
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+                ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
                 modeEPlayerFaction = faction;
-                modeEAliveEnemies.Clear();
-                modeEAliveEnemySet.Clear();
-                modeEFactionDeathCount.Clear();
-                modeEFactionAliveMap.Clear();
-                modeEScalingModifiers.Clear();
-                modeEEnemyDeathHandlers.Clear();
-                modeEEnemyLootHandlers.Clear();
-                modeEPendingScalingFactions.Clear();
-                modeEScalingBatchTimer = 0f;
-                CleanupModeEVirtualSpawnerRoot();
-                modeESpawnerRootRegisteredEnemies.Clear();
                 ClearEnemyRecoveryMonitorState();
-                ClearPendingBossAggroQueue();
 
                 // 重置龙裔/龙王全局限制标记
                 modeEDragonDescendantSpawned = false;
@@ -519,6 +588,8 @@ namespace BossRush
                 profiler.Mark("InitializeModeDItemPools");
                 InitializeModeDEnemyPools();
                 profiler.Mark("InitializeModeDEnemyPools");
+                BuildModeEFactionPresetCaches();
+                profiler.Mark("BuildModeEFactionPresetCaches");
 
                 // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
                 EnsureModeDGlobalItemPool();
@@ -702,41 +773,10 @@ namespace BossRush
                 DestroyCourierNPC();
 
                 // 重置所有状态（modeEActive 已在清理前置为 false）
-                modeEPlayerFaction = Teams.player;
-                modeEAliveEnemies.Clear();
-                modeEAliveEnemySet.Clear();
-                modeEFactionDeathCount.Clear();
-                modeEFactionAliveMap.Clear();
-                modeEScalingModifiers.Clear();
-                modeEEnemyDeathHandlers.Clear();
-                modeEEnemyLootHandlers.Clear();
-                modeEPendingScalingFactions.Clear();
-                modeEScalingBatchTimer = 0f;
-                modeESpawnerRootRegisteredEnemies.Clear();
-                modeESpawnAllocation = null;
-                modeECachedSpawnerPositions = null;
-                modeECachedSpawnerSceneName = null;
-                if (modeEStartupWarmupCoroutine != null)
-                {
-                    StopCoroutine(modeEStartupWarmupCoroutine);
-                    modeEStartupWarmupCoroutine = null;
-                }
-                modeEStartupWarmupSceneName = null;
-                modeEIntegrityTimer = 0f;
-
-                // 重置龙裔/龙王全局限制标记
-                modeEDragonDescendantSpawned = false;
-                modeEDragonKingSpawned = false;
-
-                // 重置狼阵营 Boss 计数
-                modeEWolfBossCount = 0;
-                modeEWolfBossAssigned = 0;
+                ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: true, stopWarmupCoroutine: true);
 
                 // 重置刷怪消耗品击杀计数器
                 modeERespawnKillCounter = 0;
-
-                // 清理虚拟 CharacterSpawnerRoot（BossLiveMapMod 集成）
-                CleanupModeEVirtualSpawnerRoot();
 
                 // 清理龙息Buff处理器（防止非 BossRush 场景中意外触发龙焰灼烧）
                 DragonBreathBuffHandler.Cleanup();
@@ -794,22 +834,26 @@ namespace BossRush
 
                         // 补偿丢失的死亡事件：递增该阵营死亡计数
                         // [修复] 当 enemy.Team 访问失败时，从所有阵营列表中暴力移除，防止残留无效引用
-                        try
+                    try
+                    {
+                        if (!(enemy == null))
                         {
-                            if (enemy != null)
+                            Teams faction = enemy.Team;
+                            if (modeEFactionDeathCount.ContainsKey(faction))
                             {
-                                Teams faction = enemy.Team;
-                                if (modeEFactionDeathCount.ContainsKey(faction))
-                                {
-                                    modeEFactionDeathCount[faction]++;
-                                }
-                                CleanupModeEEnemyRuntimeState(enemy, faction);
+                                modeEFactionDeathCount[faction]++;
                             }
+                            CleanupModeEEnemyRuntimeState(enemy, faction);
                         }
-                        catch
+                        else
                         {
-                            // Unity 已销毁对象，无法读取 Team —— 从所有阵营列表中暴力移除
                             CleanupModeEEnemyRuntimeState(enemy);
+                        }
+                    }
+                    catch
+                    {
+                        // Unity 已销毁对象，无法读取 Team —— 从所有阵营列表中暴力移除
+                        CleanupModeEEnemyRuntimeState(enemy);
                         }
 
                         removedCount++;
@@ -950,13 +994,11 @@ namespace BossRush
             List<CharacterMainControl> list;
             if (!modeEFactionAliveMap.TryGetValue(faction, out list))
             {
-                list = new List<CharacterMainControl>();
+                list = new List<CharacterMainControl>(8);
                 modeEFactionAliveMap[faction] = list;
             }
-            if (!list.Contains(enemy))
-            {
-                list.Add(enemy);
-            }
+
+            list.Add(enemy);
         }
 
         /// <summary>
@@ -972,6 +1014,7 @@ namespace BossRush
                     if (object.ReferenceEquals(list[i], enemy))
                     {
                         list.RemoveAt(i);
+                        break;
                     }
                 }
             }
@@ -987,11 +1030,13 @@ namespace BossRush
                 return;
             }
 
-            if (modeEAliveEnemySet.Add(enemy) && !modeEAliveEnemies.Contains(enemy))
+            if (!modeEAliveEnemySet.Add(enemy))
             {
-                modeEAliveEnemies.Add(enemy);
+                return;
             }
 
+            modeEAliveEnemies.Add(enemy);
+            modeEAliveEnemyFactionMap[enemy] = faction;
             AddToFactionAliveList(faction, enemy);
         }
 
@@ -1000,13 +1045,21 @@ namespace BossRush
         /// </summary>
         private void UntrackModeEAliveEnemy(CharacterMainControl enemy, Teams? faction = null)
         {
-            if (enemy == null)
+            if (object.ReferenceEquals(enemy, null))
             {
                 return;
             }
 
             modeEAliveEnemySet.Remove(enemy);
             modeEAliveEnemies.Remove(enemy);
+
+            Teams trackedFaction;
+            if (!faction.HasValue && modeEAliveEnemyFactionMap.TryGetValue(enemy, out trackedFaction))
+            {
+                faction = trackedFaction;
+            }
+
+            modeEAliveEnemyFactionMap.Remove(enemy);
 
             if (faction.HasValue)
             {

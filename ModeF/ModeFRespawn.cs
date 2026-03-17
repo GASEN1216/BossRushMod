@@ -12,44 +12,20 @@ namespace BossRush
         /// <summary>已注册的 Mode F Boss 死亡事件句柄，确保能对称取消订阅。</summary>
         private readonly Dictionary<CharacterMainControl, UnityAction<DamageInfo>> modeFBossDeathHandlers
             = new Dictionary<CharacterMainControl, UnityAction<DamageInfo>>();
+        private readonly HashSet<CharacterMainControl> modeFActiveBossSet = new HashSet<CharacterMainControl>();
 
         /// <summary>FindSpawnPointAwayFromPlayer 候选点缓存，避免每次 new List</summary>
         private static readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
+        private readonly List<EnemyPresetInfo> modeFRespawnBossPresetScratch = new List<EnemyPresetInfo>();
 
         private void PrepareModeESharedRuntimeForModeF()
         {
-            modeEPlayerFaction = Teams.player;
-            modeEAliveEnemies.Clear();
-            modeEAliveEnemySet.Clear();
-            modeEFactionAliveMap.Clear();
-            modeEFactionDeathCount.Clear();
-            modeEScalingModifiers.Clear();
-            modeEEnemyDeathHandlers.Clear();
-            modeEEnemyLootHandlers.Clear();
-            modeEPendingScalingFactions.Clear();
-            modeEScalingBatchTimer = 0f;
-            modeESpawnerRootRegisteredEnemies.Clear();
-            CleanupModeEVirtualSpawnerRoot();
-            ClearPendingBossAggroQueue();
+            ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
         }
 
         private void ResetModeESharedRuntimeAfterModeF()
         {
-            modeEPlayerFaction = Teams.player;
-            modeEAliveEnemies.Clear();
-            modeEAliveEnemySet.Clear();
-            modeEFactionAliveMap.Clear();
-            modeEFactionDeathCount.Clear();
-            modeEScalingModifiers.Clear();
-            modeEEnemyDeathHandlers.Clear();
-            modeEEnemyLootHandlers.Clear();
-            modeEPendingScalingFactions.Clear();
-            modeEScalingBatchTimer = 0f;
-            modeESpawnerRootRegisteredEnemies.Clear();
-            modeEIntegrityTimer = 0f;
-            modeESpawnAllocation = null;
-            CleanupModeEVirtualSpawnerRoot();
-            ClearPendingBossAggroQueue();
+            ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: true);
         }
 
         private void RemoveModeFCharacterReference(List<CharacterMainControl> list, CharacterMainControl target)
@@ -75,6 +51,16 @@ namespace BossRush
                 return false;
             }
 
+            if (modeFBossDeathHandlers.ContainsKey(boss))
+            {
+                return true;
+            }
+
+            if (modeFActiveBossSet.Contains(boss))
+            {
+                return true;
+            }
+
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
             {
                 if (object.ReferenceEquals(modeFState.ActiveBosses[i], boss))
@@ -92,6 +78,8 @@ namespace BossRush
             {
                 return false;
             }
+
+            modeFActiveBossSet.Remove(boss);
 
             bool removed = false;
             for (int i = modeFState.ActiveBosses.Count - 1; i >= 0; i--)
@@ -169,25 +157,39 @@ namespace BossRush
             }
             catch { }
 
-            modeEEnemyDeathHandlers.Remove(boss);
-            modeEEnemyLootHandlers.Remove(boss);
-            modeEScalingModifiers.Remove(boss);
             modeEPendingAggroTraceDistance.Remove(boss);
             UnregisterModeEEnemyFromSpawnerRoot(boss);
             UnregisterEnemyRecovery(boss);
-            modeEAliveEnemySet.Remove(boss);
-            RemoveModeFCharacterReference(modeEAliveEnemies, boss);
+            UntrackModeEAliveEnemy(boss, faction);
+            modeFBossAiControllers.Remove(boss);
+        }
 
-            if (faction.HasValue)
+        private void CleanupModeFBossRuntimeState(CharacterMainControl boss, Teams? faction = null, bool removeBountyMarks = true)
+        {
+            if (!object.ReferenceEquals(boss, null))
             {
-                RemoveFromFactionAliveList(faction.Value, boss);
-            }
-            else
-            {
-                foreach (var kvp in modeEFactionAliveMap)
+                if (!faction.HasValue)
                 {
-                    RemoveFromFactionAliveList(kvp.Key, boss);
+                    try { faction = boss.Team; } catch { }
                 }
+
+                RemoveModeFBossGrowthModifiers(boss);
+                modeFBossForcedTargets.Remove(boss);
+                ApplyModeFBossMoveSpeedModifier(boss, 0f);
+                modeFBossAiControllers.Remove(boss);
+                modeFActiveBossSet.Remove(boss);
+            }
+
+            CleanupModeESharedRuntimeForModeFBoss(boss, faction);
+            UnregisterModeFBossDeath(boss);
+
+            if (removeBountyMarks && !object.ReferenceEquals(boss, null))
+            {
+                try
+                {
+                    modeFState.BountyMarksByCharacterId.Remove(boss.GetInstanceID());
+                }
+                catch { }
             }
         }
 
@@ -200,12 +202,13 @@ namespace BossRush
                     return;
                 }
 
-                bool isNewBoss = !modeFState.ActiveBosses.Contains(boss);
+                bool isNewBoss = modeFActiveBossSet.Add(boss);
                 if (isNewBoss)
                 {
                     modeFState.ActiveBosses.Add(boss);
                 }
 
+                GetModeFBossAIController(boss);
                 ApplyModeFPressureToBoss(boss);
 
                 Health health = boss.Health;
@@ -254,17 +257,14 @@ namespace BossRush
                     try { deadBossTeam = deadBoss.Team; } catch { }
                 }
 
-                CleanupModeESharedRuntimeForModeFBoss(deadBoss, deadBossTeam);
-                modeFBossModifiers.Remove(deadBoss);
-                modeFBossForcedTargets.Remove(deadBoss);
-                ApplyModeFBossMoveSpeedModifier(deadBoss, 0f);
-
                 CharacterMainControl killer = null;
                 try { killer = damageInfo.fromCharacter; } catch { }
 
                 int deadBossId = deadBoss.GetInstanceID();
                 int deadBossMarks = 0;
                 modeFState.BountyMarksByCharacterId.TryGetValue(deadBossId, out deadBossMarks);
+
+                CleanupModeFBossRuntimeState(deadBoss, deadBossTeam, false);
 
                 bool killedByPlayer = killer == CharacterMainControl.Main;
                 bool killedByTrackedBoss = IsTrackedModeFBoss(killer);
@@ -293,7 +293,8 @@ namespace BossRush
                 else
                 {
                     modeFState.BountyMarksByCharacterId.Remove(deadBossId);
-                    CheckAndBroadcastLeaderChange();
+                    MarkModeFBountyLeaderDirty();
+                    RefreshModeFBountyLeaderIfDirty();
                     DevLog("[ModeF] Boss died to the environment or a non-ModeF actor, bounty marks were discarded.");
                 }
 
@@ -315,7 +316,7 @@ namespace BossRush
                 }
 
                 Vector3 spawnPos = FindSpawnPointAwayFromPlayer(50f);
-                EnemyPresetInfo preset = GetRandomBossPreset();
+                EnemyPresetInfo preset = GetRandomModeFRespawnBossPreset();
                 if (preset == null)
                 {
                     DevLog("[ModeF] [WARNING] RespawnModeFBoss: no boss preset is available.");
@@ -324,6 +325,11 @@ namespace BossRush
 
                 int modeFSessionToken = modeFState.RuntimeSessionToken;
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+                bool selectedDragonDescendant = IsDragonDescendantPreset(preset);
+                if (selectedDragonDescendant)
+                {
+                    modeEDragonDescendantSpawned = true;
+                }
 
                 SpawnEnemyCore(
                     preset,
@@ -339,6 +345,14 @@ namespace BossRush
                                 return;
                             }
 
+                            EnemyPresetInfo spawnedPreset = ctx.preset;
+                            if (spawnedPreset == null)
+                            {
+                                return;
+                            }
+
+                            SyncModeEDragonDescendantSpawnFlag(selectedDragonDescendant, spawnedPreset, "ModeF");
+
                             if (ctx.character.characterPreset != null)
                             {
                                 CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(ctx.character.characterPreset);
@@ -348,8 +362,9 @@ namespace BossRush
                                 ctx.character.characterPreset = customPreset;
                             }
 
-                            ctx.character.SetTeam((Teams)preset.team);
-                            ctx.character.gameObject.name = "ModeF_" + ((Teams)preset.team) + "_" + preset.displayName;
+                            Teams spawnedTeam = (Teams)spawnedPreset.team;
+                            ctx.character.SetTeam(spawnedTeam);
+                            ctx.character.gameObject.name = "ModeF_" + spawnedTeam + "_" + spawnedPreset.displayName;
                             RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);
                             RegisterModeFBoss(ctx.character);
                         }
@@ -358,8 +373,18 @@ namespace BossRush
                             DevLog("[ModeF] [WARNING] Failed to configure respawned boss: " + e.Message);
                         }
                     },
-                    () => DevLog("[ModeF] [WARNING] Failed to spawn replacement boss."),
-                    1
+                    () =>
+                    {
+                        if (selectedDragonDescendant)
+                        {
+                            modeEDragonDescendantSpawned = false;
+                        }
+
+                        DevLog("[ModeF] [WARNING] Failed to spawn replacement boss.");
+                    },
+                    1,
+                    skipDragonDescendant: !selectedDragonDescendant,
+                    skipDragonKing: true
                 );
 
                 DevLog("[ModeF] Replacement boss is spawning at: " + spawnPos);
@@ -377,33 +402,27 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 Vector3 playerPos = player != null ? player.transform.position : Vector3.zero;
 
-                if (modeESpawnAllocation != null)
+                Vector3[] allSpawnPoints = GetModeEFlattenedSpawnPoints();
+                if (allSpawnPoints.Length > 0)
                 {
                     Vector3 bestPoint = Vector3.zero;
-                    float bestDistance = 0f;
+                    float bestDistanceSqr = 0f;
+                    float minDistanceSqr = minDistance * minDistance;
                     reusableSpawnCandidates.Clear();
 
-                    foreach (var kvp in modeESpawnAllocation)
+                    for (int i = 0; i < allSpawnPoints.Length; i++)
                     {
-                        if (kvp.Value == null)
+                        Vector3 point = allSpawnPoints[i];
+                        float distanceSqr = (point - playerPos).sqrMagnitude;
+                        if (distanceSqr >= minDistanceSqr)
                         {
-                            continue;
+                            reusableSpawnCandidates.Add(point);
                         }
 
-                        for (int i = 0; i < kvp.Value.Count; i++)
+                        if (distanceSqr > bestDistanceSqr)
                         {
-                            Vector3 point = kvp.Value[i];
-                            float distance = Vector3.Distance(point, playerPos);
-                            if (distance >= minDistance)
-                            {
-                                reusableSpawnCandidates.Add(point);
-                            }
-
-                            if (distance > bestDistance)
-                            {
-                                bestDistance = distance;
-                                bestPoint = point;
-                            }
+                            bestDistanceSqr = distanceSqr;
+                            bestPoint = point;
                         }
                     }
 
@@ -412,9 +431,9 @@ namespace BossRush
                         return reusableSpawnCandidates[UnityEngine.Random.Range(0, reusableSpawnCandidates.Count)];
                     }
 
-                    if (bestDistance > 0f)
+                    if (bestDistanceSqr > 0f)
                     {
-                        DevLog("[ModeF] [WARNING] No spawn point was found beyond " + minDistance + "m, using the farthest point instead (" + bestDistance.ToString("F0") + "m).");
+                        DevLog("[ModeF] [WARNING] No spawn point was found beyond " + minDistance + "m, using the farthest point instead (" + Mathf.Sqrt(bestDistanceSqr).ToString("F0") + "m).");
                         return bestPoint;
                     }
                 }
@@ -426,6 +445,50 @@ namespace BossRush
                 DevLog("[ModeF] [ERROR] FindSpawnPointAwayFromPlayer failed: " + e.Message);
                 return Vector3.zero;
             }
+        }
+
+        private EnemyPresetInfo GetRandomModeFRespawnBossPreset()
+        {
+            BuildModeEFactionPresetCaches();
+
+            if (modeDBossPool == null || modeDBossPool.Count == 0)
+            {
+                return null;
+            }
+
+            if (modeFRespawnBossPresetScratch.Capacity < modeDBossPool.Count)
+            {
+                modeFRespawnBossPresetScratch.Capacity = modeDBossPool.Count;
+            }
+
+            modeFRespawnBossPresetScratch.Clear();
+            for (int i = 0; i < modeDBossPool.Count; i++)
+            {
+                EnemyPresetInfo preset = modeDBossPool[i];
+                if (preset == null || string.IsNullOrEmpty(preset.name))
+                {
+                    continue;
+                }
+
+                if (IsDragonKingPreset(preset))
+                {
+                    continue;
+                }
+
+                if (modeEDragonDescendantSpawned && IsDragonDescendantPreset(preset))
+                {
+                    continue;
+                }
+
+                modeFRespawnBossPresetScratch.Add(preset);
+            }
+
+            if (modeFRespawnBossPresetScratch.Count <= 0)
+            {
+                return null;
+            }
+
+            return modeFRespawnBossPresetScratch[UnityEngine.Random.Range(0, modeFRespawnBossPresetScratch.Count)];
         }
 
         private void ModeFBossIntegrityCheck()
@@ -443,41 +506,25 @@ namespace BossRush
                     if (boss == null || boss.gameObject == null || boss.Health == null || boss.Health.IsDead)
                     {
                         Teams? bossTeam = null;
-                        int bossId = 0;
-                        bool hasBossId = false;
 
                         try
                         {
                             if (!(boss == null))
                             {
                                 try { bossTeam = boss.Team; } catch { }
-                                try
-                                {
-                                    bossId = boss.GetInstanceID();
-                                    hasBossId = true;
-                                }
-                                catch { }
-
-                                modeFBossModifiers.Remove(boss);
-                                modeFBossForcedTargets.Remove(boss);
-                                ApplyModeFBossMoveSpeedModifier(boss, 0f);
                             }
                         }
                         catch { }
 
                         modeFState.ActiveBosses.RemoveAt(i);
-                        CleanupModeESharedRuntimeForModeFBoss(boss, bossTeam);
-                        UnregisterModeFBossDeath(boss);
-                        if (hasBossId)
-                        {
-                            modeFState.BountyMarksByCharacterId.Remove(bossId);
-                        }
+                        CleanupModeFBossRuntimeState(boss, bossTeam);
 
+                        MarkModeFBountyLeaderDirty();
                         RespawnModeFBoss();
                     }
                 }
 
-                CheckAndBroadcastLeaderChange();
+                RefreshModeFBountyLeaderIfDirty();
             }
             catch { }
         }

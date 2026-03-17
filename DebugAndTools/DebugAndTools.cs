@@ -174,6 +174,36 @@ namespace BossRush
             catch {}
         }
 
+        private void ApplyDevModeRuntimeState()
+        {
+            if (DevModeEnabled)
+            {
+                RegisterInteractDebugListener();
+                RegisterShootDebugListener();
+
+                InventoryInspector inspector = GetComponent<InventoryInspector>();
+                if (inspector == null)
+                {
+                    inspector = gameObject.AddComponent<InventoryInspector>();
+                }
+                else
+                {
+                    inspector.enabled = true;
+                }
+
+                return;
+            }
+
+            UnregisterInteractDebugListener();
+            UnregisterShootDebugListener();
+
+            InventoryInspector existingInspector = GetComponent<InventoryInspector>();
+            if (existingInspector != null)
+            {
+                existingInspector.enabled = false;
+            }
+        }
+
         /// <summary>
         /// 开枪事件回调：输出枪口火焰和声音的实际值（用于调试龙息武器等自定义武器）
         /// </summary>

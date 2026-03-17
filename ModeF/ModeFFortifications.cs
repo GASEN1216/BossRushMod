@@ -25,6 +25,7 @@ namespace BossRush
             typeof(Health).GetField("defaultMaxHealth", BindingFlags.NonPublic | BindingFlags.Instance);
 
         private Material modeFFortificationOutlineMaterial;
+        private bool modeFHasActiveFortificationHighlight = false;
 
         public void UseModeFFortificationItem(FortificationType type)
         {
@@ -186,7 +187,8 @@ namespace BossRush
                 Vector3 playerPos = player.transform.position;
                 int playerId = player.GetInstanceID();
                 ModeFFortificationMarker nearest = null;
-                float nearestDist = float.MaxValue;
+                float nearestDistSqr = float.MaxValue;
+                float maxDistanceSqr = maxDistance * maxDistance;
 
                 foreach (var kvp in modeFState.ActiveFortifications)
                 {
@@ -206,10 +208,10 @@ namespace BossRush
                         continue;
                     }
 
-                    float dist = Vector3.Distance(playerPos, marker.transform.position);
-                    if (dist <= maxDistance && dist < nearestDist)
+                    float distSqr = (marker.transform.position - playerPos).sqrMagnitude;
+                    if (distSqr <= maxDistanceSqr && distSqr < nearestDistSqr)
                     {
-                        nearestDist = dist;
+                        nearestDistSqr = distSqr;
                         nearest = marker;
                     }
                 }
@@ -326,10 +328,19 @@ namespace BossRush
             if (enabled)
             {
                 marker.HighlightUntilTime = Mathf.Max(marker.HighlightUntilTime, Time.unscaledTime + 0.75f);
+                modeFHasActiveFortificationHighlight = true;
                 if (marker.HighlightRoot != null)
                 {
                     marker.HighlightRoot.SetActive(true);
                 }
+
+                return;
+            }
+
+            marker.HighlightUntilTime = 0f;
+            if (marker.HighlightRoot != null && marker.HighlightRoot.activeSelf)
+            {
+                marker.HighlightRoot.SetActive(false);
             }
         }
 
@@ -340,6 +351,13 @@ namespace BossRush
                 return;
             }
 
+            if (!modeFHasActiveFortificationHighlight)
+            {
+                return;
+            }
+
+            bool hasActiveHighlight = false;
+            float now = Time.unscaledTime;
             foreach (var kvp in modeFState.ActiveFortifications)
             {
                 ModeFFortificationMarker marker = kvp.Value;
@@ -348,12 +366,19 @@ namespace BossRush
                     continue;
                 }
 
-                bool shouldShow = !marker.IsDestroyed && Time.unscaledTime < marker.HighlightUntilTime;
+                bool shouldShow = !marker.IsDestroyed && now < marker.HighlightUntilTime;
                 if (marker.HighlightRoot.activeSelf != shouldShow)
                 {
                     marker.HighlightRoot.SetActive(shouldShow);
                 }
+
+                if (shouldShow)
+                {
+                    hasActiveHighlight = true;
+                }
             }
+
+            modeFHasActiveFortificationHighlight = hasActiveHighlight;
         }
 
         private void EnsureModeFFortificationHighlight(ModeFFortificationMarker marker)
@@ -520,6 +545,7 @@ namespace BossRush
                 }
 
                 modeFState.ActiveFortifications.Clear();
+                modeFHasActiveFortificationHighlight = false;
                 DevLog("[ModeF] All fortifications have been cleaned up.");
             }
             catch { }

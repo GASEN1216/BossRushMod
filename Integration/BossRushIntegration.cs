@@ -945,6 +945,7 @@ namespace BossRush
                 LoadConfigFromModConfig();
                 SaveConfigToFile();
             }
+            ApplyDevModeRuntimeState();
 
             // 尝试注入本地化字典
             InjectLocalization();

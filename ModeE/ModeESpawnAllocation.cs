@@ -34,6 +34,12 @@ namespace BossRush
         /// <summary>阵营 → 刷怪点列表的映射</summary>
         private Dictionary<Teams, List<Vector3>> modeESpawnAllocation;
 
+        /// <summary>扁平化后的全图刷怪点缓存，供 Mode E/Mode F 复用，避免重复遍历字典拼列表。</summary>
+        private Vector3[] modeEFlattenedSpawnPoints;
+
+        /// <summary>空刷怪点缓存，避免热路径反复 new 空数组。</summary>
+        private static readonly Vector3[] EmptyModeESpawnPoints = new Vector3[0];
+
         /// <summary>缓存的原地图刷怪点位置（在 DisableAllSpawners 销毁 spawner 之前扫描并缓存）</summary>
         private Vector3[] modeECachedSpawnerPositions;
         private string modeECachedSpawnerSceneName;
@@ -45,6 +51,62 @@ namespace BossRush
         /// <summary>刷怪点之间的最小间隔距离（米）</summary>
         private const float MODE_E_SPAWN_MIN_DISTANCE = 10f;
         private const float MODE_E_SPAWN_MIN_DISTANCE_SQR = MODE_E_SPAWN_MIN_DISTANCE * MODE_E_SPAWN_MIN_DISTANCE;
+
+        private void RebuildModeEFlattenedSpawnPointCache()
+        {
+            if (modeESpawnAllocation == null || modeESpawnAllocation.Count == 0)
+            {
+                modeEFlattenedSpawnPoints = EmptyModeESpawnPoints;
+                return;
+            }
+
+            int totalCount = 0;
+            foreach (var kvp in modeESpawnAllocation)
+            {
+                if (kvp.Value != null)
+                {
+                    totalCount += kvp.Value.Count;
+                }
+            }
+
+            if (totalCount <= 0)
+            {
+                modeEFlattenedSpawnPoints = EmptyModeESpawnPoints;
+                return;
+            }
+
+            Vector3[] flattenedPoints = new Vector3[totalCount];
+            int offset = 0;
+            foreach (var kvp in modeESpawnAllocation)
+            {
+                List<Vector3> factionPoints = kvp.Value;
+                if (factionPoints == null || factionPoints.Count == 0)
+                {
+                    continue;
+                }
+
+                factionPoints.CopyTo(flattenedPoints, offset);
+                offset += factionPoints.Count;
+            }
+
+            modeEFlattenedSpawnPoints = flattenedPoints;
+        }
+
+        private Vector3[] GetModeEFlattenedSpawnPoints()
+        {
+            if (modeEFlattenedSpawnPoints != null)
+            {
+                return modeEFlattenedSpawnPoints;
+            }
+
+            if (modeESpawnAllocation == null)
+            {
+                return EmptyModeESpawnPoints;
+            }
+
+            RebuildModeEFlattenedSpawnPointCache();
+            return modeEFlattenedSpawnPoints ?? EmptyModeESpawnPoints;
+        }
 
         /// <summary>
         /// 将刷怪点按间隔过滤后，循环依次分配给各阵营
@@ -64,7 +126,7 @@ namespace BossRush
                 }
 
                 // 初始化分配映射（始终为5个NPC阵营分配）
-                modeESpawnAllocation = new Dictionary<Teams, List<Vector3>>();
+                modeESpawnAllocation = new Dictionary<Teams, List<Vector3>>(ModeEAvailableFactions.Length);
                 for (int i = 0; i < ModeEAvailableFactions.Length; i++)
                 {
                     modeESpawnAllocation[ModeEAvailableFactions[i]] = new List<Vector3>();
@@ -133,7 +195,7 @@ namespace BossRush
                 });
 
                 // ========== 第3步：间隔过滤（每个点与已选点距离 >= 10m） ==========
-                List<Vector3> filtered = new List<Vector3>();
+                List<Vector3> filtered = new List<Vector3>(sorted.Length);
                 for (int i = 0; i < sorted.Length; i++)
                 {
                     bool tooClose = false;
@@ -154,6 +216,21 @@ namespace BossRush
                 if (logEnabled)
                 {
                     DevLog("[ModeE] 间隔过滤后剩余刷怪点: " + filtered.Count);
+                }
+
+                int estimatedPointsPerFaction = factionCount > 0
+                    ? (filtered.Count + factionCount - 1) / factionCount
+                    : 0;
+                if (estimatedPointsPerFaction > 0)
+                {
+                    for (int i = 0; i < ModeEAvailableFactions.Length; i++)
+                    {
+                        List<Vector3> factionPoints = modeESpawnAllocation[ModeEAvailableFactions[i]];
+                        if (factionPoints.Capacity < estimatedPointsPerFaction)
+                        {
+                            factionPoints.Capacity = estimatedPointsPerFaction;
+                        }
+                    }
                 }
 
                 // ========== 第4步：构建阵营分配顺序 ==========
@@ -212,6 +289,8 @@ namespace BossRush
                     modeESpawnAllocation[faction].Add(filtered[i]);
                 }
 
+                RebuildModeEFlattenedSpawnPointCache();
+
                 // 输出分配结果日志
                 if (logEnabled)
                 {
@@ -260,16 +339,8 @@ namespace BossRush
                     DevLog("[ModeE] 无自定义独狼落点配置，兜底使用远离Boss的安全位置");
 
                     // 收集所有已分配给NPC阵营的刷怪点（即Boss会出现的位置）
-                    List<Vector3> bossSpawnPoints = new List<Vector3>();
-                    if (modeESpawnAllocation != null)
-                    {
-                        foreach (var kvp in modeESpawnAllocation)
-                        {
-                            bossSpawnPoints.AddRange(kvp.Value);
-                        }
-                    }
-
-                    if (bossSpawnPoints.Count == 0)
+                    Vector3[] bossSpawnPoints = GetModeEFlattenedSpawnPoints();
+                    if (bossSpawnPoints.Length == 0)
                     {
                         DevLog("[ModeE] [WARNING] TeleportPlayerToSafePosition: 无刷怪点数据，跳过传送");
                         return;
@@ -289,7 +360,7 @@ namespace BossRush
 
                             // 计算该候选点到最近Boss刷怪点的距离
                             float minDistSq = float.MaxValue;
-                            for (int j = 0; j < bossSpawnPoints.Count; j++)
+                            for (int j = 0; j < bossSpawnPoints.Length; j++)
                             {
                                 float distSq = (candidate - bossSpawnPoints[j]).sqrMagnitude;
                                 if (distSq < minDistSq) minDistSq = distSq;
@@ -388,7 +459,7 @@ namespace BossRush
                     return;
                 }
 
-                List<Vector3> positions = new List<Vector3>();
+                List<Vector3> positions = new List<Vector3>(spawners.Length * 4);
                 for (int i = 0; i < spawners.Length; i++)
                 {
                     if (spawners[i] == null) continue;
@@ -473,7 +544,7 @@ namespace BossRush
                     return null;
                 }
 
-                List<Vector3> positions = new List<Vector3>();
+                List<Vector3> positions = new List<Vector3>(spawners.Length * 4);
                 for (int i = 0; i < spawners.Length; i++)
                 {
                     if (spawners[i] == null) continue;

@@ -64,7 +64,7 @@ namespace BossRush
 
                 bool isDragonDescendant = IsDragonDescendantPreset(ctx.preset);
                 bool isBearPromotedMinion = faction == Teams.bear && promotedToBoss;
-                if (false && !isDragonDescendant && !isBearPromotedMinion)
+                if (!isDragonDescendant && !isBearPromotedMinion)
                 {
                     return;
                 }
@@ -90,14 +90,14 @@ namespace BossRush
                 bool preserveBossArmor = !promotedToBoss;
                 EquipEnemyForModeD(character, virtualWave, lootHealth, preserveBossArmor);
 
-                DevLog("[ModeE] 宸插簲鐢ㄧ櫧鎵嬭捣瀹跺紡闅忔満鎺夎惤: " + character.gameObject.name
+                DevLog("[ModeE] 已应用白手起家式随机掉落: " + character.gameObject.name
                     + " (dragonDescendant=" + isDragonDescendant
                     + ", bearPromotedMinion=" + isBearPromotedMinion
                     + ", virtualWave=" + virtualWave + ")");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] 搴旂敤鐧芥墜璧峰寮忛殢鏈烘帀钀藉け璐? " + e.Message);
+                DevLog("[ModeE] [ERROR] 应用白手起家式随机掉落失败: " + e.Message);
             }
         }
 
@@ -111,6 +111,113 @@ namespace BossRush
 
         /// <summary>狼阵营已分配的 Boss 刷怪点计数（每分配一个 Boss 递增，超过 modeEWolfBossCount 后出小怪）</summary>
         private int modeEWolfBossAssigned = 0;
+
+        private readonly Dictionary<Teams, List<EnemyPresetInfo>> modeEBossPoolByFaction
+            = new Dictionary<Teams, List<EnemyPresetInfo>>();
+        private readonly Dictionary<Teams, List<EnemyPresetInfo>> modeEBossPoolByFactionWithoutDragonDescendant
+            = new Dictionary<Teams, List<EnemyPresetInfo>>();
+        private readonly Dictionary<Teams, List<EnemyPresetInfo>> modeEMinionPoolByFaction
+            = new Dictionary<Teams, List<EnemyPresetInfo>>();
+        private readonly Dictionary<Teams, float> modeEWeightedMinionTotalHealthByFaction
+            = new Dictionary<Teams, float>();
+        private bool modeEFactionPresetCachesBuilt = false;
+        private List<EnemyPresetInfo> modeECachedBossPoolSource = null;
+        private int modeECachedBossPoolCount = -1;
+        private int modeECachedMinionPoolCount = -1;
+
+        private List<EnemyPresetInfo> GetOrCreateModeEPresetList(
+            Dictionary<Teams, List<EnemyPresetInfo>> presetMap,
+            Teams faction)
+        {
+            List<EnemyPresetInfo> list;
+            if (!presetMap.TryGetValue(faction, out list))
+            {
+                list = new List<EnemyPresetInfo>();
+                presetMap[faction] = list;
+            }
+
+            return list;
+        }
+
+        private void BuildModeEFactionPresetCaches()
+        {
+            int bossPoolCount = modeDBossPool != null ? modeDBossPool.Count : 0;
+            int minionPoolCount = modeDMinionPool != null ? modeDMinionPool.Count : 0;
+            if (modeEFactionPresetCachesBuilt &&
+                object.ReferenceEquals(modeECachedBossPoolSource, modeDBossPool) &&
+                modeECachedBossPoolCount == bossPoolCount &&
+                modeECachedMinionPoolCount == minionPoolCount)
+            {
+                return;
+            }
+
+            modeEBossPoolByFaction.Clear();
+            modeEBossPoolByFactionWithoutDragonDescendant.Clear();
+            modeEMinionPoolByFaction.Clear();
+            modeEWeightedMinionTotalHealthByFaction.Clear();
+
+            if (modeDBossPool != null)
+            {
+                for (int i = 0; i < modeDBossPool.Count; i++)
+                {
+                    EnemyPresetInfo boss = modeDBossPool[i];
+                    if (boss == null || string.IsNullOrEmpty(boss.name) || IsDragonKingPreset(boss))
+                    {
+                        continue;
+                    }
+
+                    Teams faction = (Teams)boss.team;
+                    GetOrCreateModeEPresetList(modeEBossPoolByFaction, faction).Add(boss);
+                    if (!IsDragonDescendantPreset(boss))
+                    {
+                        GetOrCreateModeEPresetList(modeEBossPoolByFactionWithoutDragonDescendant, faction).Add(boss);
+                    }
+                }
+            }
+
+            if (modeDMinionPool != null)
+            {
+                for (int i = 0; i < modeDMinionPool.Count; i++)
+                {
+                    EnemyPresetInfo minion = modeDMinionPool[i];
+                    if (minion == null || string.IsNullOrEmpty(minion.name))
+                    {
+                        continue;
+                    }
+
+                    Teams faction = (Teams)minion.team;
+                    GetOrCreateModeEPresetList(modeEMinionPoolByFaction, faction).Add(minion);
+
+                    float totalWeight = 0f;
+                    modeEWeightedMinionTotalHealthByFaction.TryGetValue(faction, out totalWeight);
+                    modeEWeightedMinionTotalHealthByFaction[faction] = totalWeight + Mathf.Max(minion.baseHealth, 1f);
+                }
+            }
+
+            modeECachedBossPoolSource = modeDBossPool;
+            modeECachedBossPoolCount = bossPoolCount;
+            modeECachedMinionPoolCount = minionPoolCount;
+            modeEFactionPresetCachesBuilt = true;
+        }
+
+        private List<EnemyPresetInfo> GetModeEBossPoolForFaction(Teams faction, bool includeDragonDescendant)
+        {
+            BuildModeEFactionPresetCaches();
+
+            List<EnemyPresetInfo> list;
+            var source = includeDragonDescendant
+                ? modeEBossPoolByFaction
+                : modeEBossPoolByFactionWithoutDragonDescendant;
+            return source.TryGetValue(faction, out list) ? list : null;
+        }
+
+        private List<EnemyPresetInfo> GetModeEMinionPoolForFaction(Teams faction)
+        {
+            BuildModeEFactionPresetCaches();
+
+            List<EnemyPresetInfo> list;
+            return modeEMinionPoolByFaction.TryGetValue(faction, out list) ? list : null;
+        }
 
         /// <summary>
         /// 在所有阵营的刷怪点一次性生成全部 Boss
@@ -136,6 +243,7 @@ namespace BossRush
                 }
 
                 DevLog("[ModeE] 开始分批生成所有阵营 Boss...");
+                BuildModeEFactionPresetCaches();
 
                 // 重置生成计数
                 modeETotalSpawnExpected = 0;
@@ -146,7 +254,10 @@ namespace BossRush
                 CharacterMainControl playerRef = CharacterMainControl.Main;
                 if (playerRef != null) playerPos = playerRef.transform.position;
 
-                var spawnTasks = new List<(Teams faction, Vector3 pos)>();
+                Vector3[] flattenedSpawnPoints = GetModeEFlattenedSpawnPoints();
+                var spawnTasks = flattenedSpawnPoints.Length > 0
+                    ? new List<(Teams faction, Vector3 pos)>(flattenedSpawnPoints.Length)
+                    : new List<(Teams faction, Vector3 pos)>();
                 foreach (var kvp in modeESpawnAllocation)
                 {
                     Teams faction = kvp.Key;
@@ -168,18 +279,10 @@ namespace BossRush
                 // 预计算狼阵营可用的不重复 Boss 数量（用于"先刷完所有 Boss 再出小怪"逻辑）
                 modeEWolfBossCount = 0;
                 modeEWolfBossAssigned = 0;
-                if (modeDBossPool != null)
+                List<EnemyPresetInfo> wolfBossPool = GetModeEBossPoolForFaction(Teams.wolf, true);
+                if (wolfBossPool != null)
                 {
-                    int wolfTeam = (int)Teams.wolf;
-                    for (int i = 0; i < modeDBossPool.Count; i++)
-                    {
-                        EnemyPresetInfo boss = modeDBossPool[i];
-                        if (boss == null || string.IsNullOrEmpty(boss.name)) continue;
-                        if (boss.team != wolfTeam) continue;
-                        // 排除龙皇（Mode E 完全排除）
-                        if (IsDragonKingPreset(boss)) continue;
-                        modeEWolfBossCount++;
-                    }
+                    modeEWolfBossCount = wolfBossPool.Count;
                     DevLog("[ModeE] 狼阵营可用 Boss 预设数量: " + modeEWolfBossCount);
                 }
 
@@ -231,27 +334,9 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo GetBossPresetForFaction(Teams faction)
         {
-            if (modeDBossPool == null || modeDBossPool.Count == 0) return null;
-
-            int targetTeam = (int)faction;
-
-            // 使用复用缓存避免 GC
-            presetFilterCache.Clear();
-            for (int i = 0; i < modeDBossPool.Count; i++)
-            {
-                EnemyPresetInfo boss = modeDBossPool[i];
-                if (boss == null || string.IsNullOrEmpty(boss.name)) continue;
-                if (boss.team != targetTeam) continue;
-
-                // 龙裔全局限制1个；龙皇在 Mode E 中完全排除
-                if (IsDragonDescendantPreset(boss) && modeEDragonDescendantSpawned) continue;
-                if (IsDragonKingPreset(boss)) continue;
-
-                presetFilterCache.Add(boss);
-            }
-
-            if (presetFilterCache.Count == 0) return null;
-            return presetFilterCache[UnityEngine.Random.Range(0, presetFilterCache.Count)];
+            List<EnemyPresetInfo> candidates = GetModeEBossPoolForFaction(faction, !modeEDragonDescendantSpawned);
+            if (candidates == null || candidates.Count == 0) return null;
+            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
         }
 
         /// <summary>
@@ -259,21 +344,9 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo GetMinionPresetForFaction(Teams faction)
         {
-            if (modeDMinionPool == null || modeDMinionPool.Count == 0) return null;
-
-            int targetTeam = (int)faction;
-
-            presetFilterCache.Clear();
-            for (int i = 0; i < modeDMinionPool.Count; i++)
-            {
-                EnemyPresetInfo minion = modeDMinionPool[i];
-                if (minion == null || string.IsNullOrEmpty(minion.name)) continue;
-                if (minion.team != targetTeam) continue;
-                presetFilterCache.Add(minion);
-            }
-
-            if (presetFilterCache.Count == 0) return null;
-            return presetFilterCache[UnityEngine.Random.Range(0, presetFilterCache.Count)];
+            List<EnemyPresetInfo> candidates = GetModeEMinionPoolForFaction(faction);
+            if (candidates == null || candidates.Count == 0) return null;
+            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
         }
 
         /// <summary>
@@ -283,44 +356,30 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo GetWeightedMinionPresetForFaction(Teams faction)
         {
-            if (modeDMinionPool == null || modeDMinionPool.Count == 0) return null;
+            List<EnemyPresetInfo> candidates = GetModeEMinionPoolForFaction(faction);
+            if (candidates == null || candidates.Count == 0) return null;
+            if (candidates.Count == 1) return candidates[0];
 
-            int targetTeam = (int)faction;
-
-            // 筛选该阵营的小怪
-            presetFilterCache.Clear();
-            for (int i = 0; i < modeDMinionPool.Count; i++)
-            {
-                EnemyPresetInfo minion = modeDMinionPool[i];
-                if (minion == null || string.IsNullOrEmpty(minion.name)) continue;
-                if (minion.team != targetTeam) continue;
-                presetFilterCache.Add(minion);
-            }
-
-            if (presetFilterCache.Count == 0) return null;
-            if (presetFilterCache.Count == 1) return presetFilterCache[0];
-
-            // 按 baseHealth 加权随机：血量越高权重越大
             float totalWeight = 0f;
-            for (int i = 0; i < presetFilterCache.Count; i++)
+            modeEWeightedMinionTotalHealthByFaction.TryGetValue(faction, out totalWeight);
+            if (totalWeight <= 0f)
             {
-                float w = Mathf.Max(presetFilterCache[i].baseHealth, 1f);
-                totalWeight += w;
+                return candidates[UnityEngine.Random.Range(0, candidates.Count)];
             }
 
             float roll = UnityEngine.Random.Range(0f, totalWeight);
             float cumulative = 0f;
-            for (int i = 0; i < presetFilterCache.Count; i++)
+            for (int i = 0; i < candidates.Count; i++)
             {
-                cumulative += Mathf.Max(presetFilterCache[i].baseHealth, 1f);
+                cumulative += Mathf.Max(candidates[i].baseHealth, 1f);
                 if (roll <= cumulative)
                 {
-                    return presetFilterCache[i];
+                    return candidates[i];
                 }
             }
 
             // 兜底（浮点精度问题时返回最后一个）
-            return presetFilterCache[presetFilterCache.Count - 1];
+            return candidates[candidates.Count - 1];
         }
 
         /// <summary>
@@ -423,7 +482,7 @@ namespace BossRush
 
                 // skipDragonDescendant：防止 SpawnEnemyCore 重试时意外生成额外的龙裔
                 // skipDragonKing：Mode E 完全排除龙皇，始终跳过
-                bool skipDragon = !isThisDragonDescendant && modeEDragonDescendantSpawned;
+                bool skipDragon = !isThisDragonDescendant;
                 bool skipKing = true; // Mode E 完全排除龙皇
 
                 // 捕获龙裔标记，用于生成失败时回退
@@ -443,7 +502,11 @@ namespace BossRush
                         modeFRelatedScene,
                         modeESessionToken,
                         modeESessionRelatedScene),
-                    onSpawned: (ctx) => OnModeEEnemySpawned(ctx, capturedFaction, capturedPromoted),
+                    onSpawned: (ctx) =>
+                    {
+                        SyncModeEDragonDescendantSpawnFlag(capturedIsDD, ctx != null ? ctx.preset : null, "ModeE");
+                        OnModeEEnemySpawned(ctx, capturedFaction, capturedPromoted);
+                    },
                     onFailed: () =>
                     {
                         // 龙裔生成失败时回退全局标记，允许后续刷怪点再次尝试
@@ -461,6 +524,22 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] SpawnSingleModeEBoss 失败: " + e.Message);
+            }
+        }
+
+        private void SyncModeEDragonDescendantSpawnFlag(bool reservedDragonDescendantSlot, EnemyPresetInfo actualPreset, string modeTag)
+        {
+            bool actualIsDragonDescendant = IsDragonDescendantPreset(actualPreset);
+            if (reservedDragonDescendantSlot && !actualIsDragonDescendant)
+            {
+                modeEDragonDescendantSpawned = false;
+                DevLog("[" + modeTag + "] 龙裔候选在重试后替换为普通Boss，已回退龙裔占位标记");
+                return;
+            }
+
+            if (actualIsDragonDescendant)
+            {
+                modeEDragonDescendantSpawned = true;
             }
         }
 
@@ -569,7 +648,7 @@ namespace BossRush
 
                 bool isDragonDescendant = IsDragonDescendantPreset(ctx.preset);
                 bool isBearPromotedMinion = faction == Teams.bear && promotedToBoss;
-                if (false && !isDragonDescendant && !isBearPromotedMinion)
+                if (!isDragonDescendant && !isBearPromotedMinion)
                 {
                     return;
                 }
@@ -595,14 +674,14 @@ namespace BossRush
                 bool preserveBossArmor = !promotedToBoss;
                 EquipEnemyForModeD(character, virtualWave, lootHealth, preserveBossArmor);
 
-                DevLog("[ModeE] 宸插簲鐢ㄧ櫧鎵嬭捣瀹跺紡闅忔満鎺夎惤: " + character.gameObject.name
+                DevLog("[ModeE] 已应用白手起家式随机掉落: " + character.gameObject.name
                     + " (dragonDescendant=" + isDragonDescendant
                     + ", bearPromotedMinion=" + isBearPromotedMinion
                     + ", virtualWave=" + virtualWave + ")");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] 搴旂敤鐧芥墜璧峰寮忛殢鏈烘帀钀藉け璐? " + e.Message);
+                DevLog("[ModeE] [ERROR] 应用白手起家式随机掉落失败: " + e.Message);
             }
         }
 
@@ -671,7 +750,7 @@ namespace BossRush
 
         private void UnregisterModeEEnemyDeath(CharacterMainControl enemy)
         {
-            if (enemy == null)
+            if (object.ReferenceEquals(enemy, null))
             {
                 return;
             }
@@ -684,10 +763,13 @@ namespace BossRush
 
             try
             {
-                Health health = enemy.GetComponent<Health>();
-                if (health != null)
+                if (!(enemy == null))
                 {
-                    health.OnDeadEvent.RemoveListener(handler);
+                    Health health = enemy.GetComponent<Health>();
+                    if (health != null)
+                    {
+                        health.OnDeadEvent.RemoveListener(handler);
+                    }
                 }
             }
             catch { }
@@ -730,7 +812,7 @@ namespace BossRush
 
         private void UnregisterModeEEnemyLootHandler(CharacterMainControl enemy)
         {
-            if (enemy == null)
+            if (object.ReferenceEquals(enemy, null))
             {
                 return;
             }
@@ -743,7 +825,10 @@ namespace BossRush
 
             try
             {
-                enemy.BeforeCharacterSpawnLootOnDead -= handler;
+                if (!(enemy == null))
+                {
+                    enemy.BeforeCharacterSpawnLootOnDead -= handler;
+                }
             }
             catch { }
 
@@ -752,7 +837,7 @@ namespace BossRush
 
         private void RemoveModeEScalingModifiers(CharacterMainControl enemy)
         {
-            if (enemy == null)
+            if (object.ReferenceEquals(enemy, null))
             {
                 return;
             }
@@ -765,29 +850,32 @@ namespace BossRush
 
             try
             {
-                Item characterItem = enemy.CharacterItem;
-                if (characterItem != null)
+                if (!(enemy == null))
                 {
-                    try
+                    Item characterItem = enemy.CharacterItem;
+                    if (characterItem != null)
                     {
-                        Stat oldHpStat = characterItem.GetStat("MaxHealth");
-                        if (oldHpStat != null && oldMods.hp != null) oldHpStat.RemoveModifier(oldMods.hp);
-                    }
-                    catch { }
+                        try
+                        {
+                            Stat oldHpStat = characterItem.GetStat("MaxHealth");
+                            if (oldHpStat != null && oldMods.hp != null) oldHpStat.RemoveModifier(oldMods.hp);
+                        }
+                        catch { }
 
-                    try
-                    {
-                        Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
-                        if (oldGunStat != null && oldMods.gunDmg != null) oldGunStat.RemoveModifier(oldMods.gunDmg);
-                    }
-                    catch { }
+                        try
+                        {
+                            Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
+                            if (oldGunStat != null && oldMods.gunDmg != null) oldGunStat.RemoveModifier(oldMods.gunDmg);
+                        }
+                        catch { }
 
-                    try
-                    {
-                        Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
-                        if (oldMeleeStat != null && oldMods.meleeDmg != null) oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
+                        try
+                        {
+                            Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
+                            if (oldMeleeStat != null && oldMods.meleeDmg != null) oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
+                        }
+                        catch { }
                     }
-                    catch { }
                 }
             }
             catch { }
@@ -797,7 +885,7 @@ namespace BossRush
 
         private void CleanupModeEEnemyRuntimeState(CharacterMainControl enemy, Teams? faction = null)
         {
-            if (enemy == null)
+            if (object.ReferenceEquals(enemy, null))
             {
                 return;
             }

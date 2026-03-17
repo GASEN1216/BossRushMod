@@ -2179,7 +2179,14 @@ namespace BossRush
         // 扫描调试日志开关（默认关闭，避免刷屏；需要时可设为 true 重新启用）
         private const bool EnableScanDebugLogs = false;
 
-        internal const bool DevModeEnabled = true;
+        internal static bool DevModeEnabled
+        {
+            get
+            {
+                ModBehaviour inst = Instance;
+                return inst != null && inst.IsDevModeEnabledInternal();
+            }
+        }
 
         // F3 婚姻系统测试面板（仅 DevMode）
         private bool marriageTestUIVisible = false;
@@ -2380,8 +2387,6 @@ namespace BossRush
                 
                 DevLog("[BossRush] 好感度系统初始化完成");
                 
-                // 添加背包物品检查工具（DevMode下F11打开）
-                gameObject.AddComponent<InventoryInspector>();
             }
             catch (Exception e)
             {

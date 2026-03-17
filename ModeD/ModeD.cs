@@ -124,117 +124,7 @@ namespace BossRush
         /// </summary>
         public bool IsPlayerNaked()
         {
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null) return false;
-
-                Item characterItem = main.CharacterItem;
-                if (characterItem == null) return false;
-
-                // 检查装备槽是否全空（包括图腾槽位）
-                string[] equipmentSlots = new string[] { "Armor", "Helmat", "FaceMask", "Backpack", "Headset", "Totem1", "Totem2" };
-                foreach (string slotName in equipmentSlots)
-                {
-                    try
-                    {
-                        Slot slot = characterItem.Slots.GetSlot(slotName);
-                        if (slot != null && slot.Content != null)
-                        {
-                            DevLog("[ModeD] 装备槽不为空: " + slotName);
-                            return false;
-                        }
-                    }
-                    catch {}
-                }
-
-                // 检查武器槽
-                string[] weaponSlots = new string[] { "PrimaryWeapon", "SecondaryWeapon", "MeleeWeapon" };
-                foreach (string slotName in weaponSlots)
-                {
-                    try
-                    {
-                        Slot slot = characterItem.Slots.GetSlot(slotName);
-                        if (slot != null && slot.Content != null)
-                        {
-                            DevLog("[ModeD] 武器槽不为空: " + slotName);
-                            return false;
-                        }
-                    }
-                    catch {}
-                }
-
-                // 检查背包中是否存在非 BossRush 船票的物品
-                Inventory inventory = characterItem.Inventory;
-                if (inventory != null && inventory.Content != null && inventory.Content.Count > 0)
-                {
-                    // 允许的船票类型：优先使用动态注册的 bossRushTicketTypeId，否则退回到老的固定 ID 868
-                    int allowedTicketTypeId = bossRushTicketTypeId > 0 ? bossRushTicketTypeId : 868;
-
-                    for (int i = 0; i < inventory.Content.Count; i++)
-                    {
-                        Item item = inventory.Content[i];
-                        if (item == null)
-                        {
-                            continue;
-                        }
-
-                        int typeId = -1;
-                        try
-                        {
-                            typeId = item.TypeID;
-                        }
-                        catch {}
-
-                        // 允许 BossRush 船票存在于背包中
-                        if (typeId == allowedTicketTypeId)
-                        {
-                            continue;
-                        }
-
-                        // 允许 Mode E 营旗存在于背包中（营旗也是裸装入场凭证）
-                        if (IsFactionFlagTypeId(typeId))
-                        {
-                            continue;
-                        }
-
-                        DevLog("[ModeD] 背包中存在非船票物品: " + item.DisplayName + " (TypeID=" + typeId + ")");
-                        return false;
-                    }
-                }
-
-                // 检查狗子背包（PetProxy.PetInventory）是否有物品，防止通过狗子保险箱偷渡装备
-                try
-                {
-                    Inventory petInventory = PetProxy.PetInventory;
-                    if (petInventory != null && petInventory.Content != null && petInventory.Content.Count > 0)
-                    {
-                        // 遍历狗子背包，检查是否有任何物品
-                        for (int i = 0; i < petInventory.Content.Count; i++)
-                        {
-                            Item petItem = petInventory.Content[i];
-                            if (petItem != null)
-                            {
-                                DevLog("[ModeD] 狗子背包中存在物品: " + petItem.DisplayName + " - 不满足裸体条件");
-                                return false;
-                            }
-                        }
-                    }
-                }
-                catch (Exception petEx)
-                {
-                    // 如果无法访问狗子背包（可能狗子不存在），忽略此检查
-                    DevLog("[ModeD] 无法检查狗子背包: " + petEx.Message);
-                }
-
-                DevLog("[ModeD] 玩家满足裸体条件");
-                return true;
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] IsPlayerNaked 检测失败: " + e.Message);
-                return false;
-            }
+            return IsPlayerNakedWithAllowedItems("ModeD", GetBossRushTicketTypeId(), -1, true);
         }
         
         /// <summary>
@@ -770,6 +660,218 @@ namespace BossRush
         #endregion
 
         #region Mode D/E 共用辅助方法
+
+        private static readonly string[] NakedEquipmentSlotNames = new string[]
+        {
+            "Armor",
+            "Helmat",
+            "FaceMask",
+            "Backpack",
+            "Headset",
+            "Totem1",
+            "Totem2"
+        };
+
+        private static readonly string[] NakedWeaponSlotNames = new string[]
+        {
+            "PrimaryWeapon",
+            "SecondaryWeapon",
+            "MeleeWeapon"
+        };
+
+        private int GetBossRushTicketTypeId()
+        {
+            return bossRushTicketTypeId > 0 ? bossRushTicketTypeId : 868;
+        }
+
+        private bool TryGetMainCharacterItem(out CharacterMainControl main, out Item characterItem)
+        {
+            main = CharacterMainControl.Main;
+            if (main == null)
+            {
+                characterItem = null;
+                return false;
+            }
+
+            characterItem = main.CharacterItem;
+            return characterItem != null;
+        }
+
+        private Item FindFirstPlayerInventoryItemByTypeId(int typeId, string logTag = null, string itemLabel = null)
+        {
+            if (typeId <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                CharacterMainControl main;
+                Item characterItem;
+                if (!TryGetMainCharacterItem(out main, out characterItem))
+                {
+                    return null;
+                }
+
+                Inventory inventory = characterItem.Inventory;
+                if (inventory == null || inventory.Content == null)
+                {
+                    return null;
+                }
+
+                for (int i = 0; i < inventory.Content.Count; i++)
+                {
+                    Item item = inventory.Content[i];
+                    if (item == null)
+                    {
+                        continue;
+                    }
+
+                    int itemTypeId = -1;
+                    try { itemTypeId = item.TypeID; } catch { }
+                    if (itemTypeId != typeId)
+                    {
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(logTag) && !string.IsNullOrEmpty(itemLabel))
+                    {
+                        DevLog("[" + logTag + "] 检测到" + itemLabel + " (TypeID=" + itemTypeId + ")");
+                    }
+
+                    return item;
+                }
+            }
+            catch (Exception e)
+            {
+                if (!string.IsNullOrEmpty(logTag))
+                {
+                    string label = string.IsNullOrEmpty(itemLabel) ? "入场物品" : itemLabel;
+                    DevLog("[" + logTag + "] [ERROR] 查找" + label + "失败: " + e.Message);
+                }
+            }
+
+            return null;
+        }
+
+        private bool IsAllowedNakedEntryInventoryItem(int typeId, int allowedTypeIdA, int allowedTypeIdB, bool allowFactionFlags)
+        {
+            if (typeId <= 0)
+            {
+                return false;
+            }
+
+            if (typeId == allowedTypeIdA || typeId == allowedTypeIdB)
+            {
+                return true;
+            }
+
+            return allowFactionFlags && IsFactionFlagTypeId(typeId);
+        }
+
+        private bool IsPlayerNakedWithAllowedItems(string logTag, int allowedTypeIdA, int allowedTypeIdB, bool allowFactionFlags)
+        {
+            try
+            {
+                CharacterMainControl main;
+                Item characterItem;
+                if (!TryGetMainCharacterItem(out main, out characterItem))
+                {
+                    return false;
+                }
+
+                for (int i = 0; i < NakedEquipmentSlotNames.Length; i++)
+                {
+                    string slotName = NakedEquipmentSlotNames[i];
+                    try
+                    {
+                        Slot slot = characterItem.Slots.GetSlot(slotName);
+                        if (slot != null && slot.Content != null)
+                        {
+                            DevLog("[" + logTag + "] 装备槽不为空: " + slotName);
+                            return false;
+                        }
+                    }
+                    catch { }
+                }
+
+                for (int i = 0; i < NakedWeaponSlotNames.Length; i++)
+                {
+                    string slotName = NakedWeaponSlotNames[i];
+                    try
+                    {
+                        Slot slot = characterItem.Slots.GetSlot(slotName);
+                        if (slot != null && slot.Content != null)
+                        {
+                            DevLog("[" + logTag + "] 武器槽不为空: " + slotName);
+                            return false;
+                        }
+                    }
+                    catch { }
+                }
+
+                Inventory inventory = characterItem.Inventory;
+                if (inventory != null && inventory.Content != null)
+                {
+                    for (int i = 0; i < inventory.Content.Count; i++)
+                    {
+                        Item item = inventory.Content[i];
+                        if (item == null)
+                        {
+                            continue;
+                        }
+
+                        int typeId = -1;
+                        try { typeId = item.TypeID; } catch { }
+                        if (IsAllowedNakedEntryInventoryItem(typeId, allowedTypeIdA, allowedTypeIdB, allowFactionFlags))
+                        {
+                            continue;
+                        }
+
+                        string displayName = null;
+                        try { displayName = item.DisplayName; } catch { }
+                        string itemLabel = string.IsNullOrEmpty(displayName)
+                            ? ("TypeID=" + typeId)
+                            : (displayName + " (TypeID=" + typeId + ")");
+                        DevLog("[" + logTag + "] 背包中存在未允许物品: " + itemLabel);
+                        return false;
+                    }
+                }
+
+                try
+                {
+                    Inventory petInventory = PetProxy.PetInventory;
+                    if (petInventory != null && petInventory.Content != null)
+                    {
+                        for (int i = 0; i < petInventory.Content.Count; i++)
+                        {
+                            Item petItem = petInventory.Content[i];
+                            if (petItem == null)
+                            {
+                                continue;
+                            }
+
+                            string displayName = null;
+                            try { displayName = petItem.DisplayName; } catch { }
+                            DevLog("[" + logTag + "] 狗子背包中存在物品: " + (string.IsNullOrEmpty(displayName) ? "未知物品" : displayName));
+                            return false;
+                        }
+                    }
+                }
+                catch (Exception petEx)
+                {
+                    DevLog("[" + logTag + "] 无法检查狗子背包: " + petEx.Message);
+                }
+
+                DevLog("[" + logTag + "] 玩家满足裸装条件");
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[" + logTag + "] [ERROR] 裸装检测失败: " + e.Message);
+                return false;
+            }
+        }
 
         /// <summary>
         /// 判断指定 TypeID 是否为 Mode E 营旗物品（裸装检测时豁免用）

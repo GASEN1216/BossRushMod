@@ -61,6 +61,10 @@ namespace BossRush
 
         private int modeEAggroQueueEpoch = 0;
 
+        private const int MODE_E_SMOKE_GRENADE_TYPE_ID = 660;
+
+        private UnityEngine.Object modeECachedSmokeVfxPrefab = null;
+
         #endregion
 
         #region 刷怪点收集方法
@@ -72,8 +76,10 @@ namespace BossRush
         /// </summary>
         private List<Vector3> GetNearestSpawnPoints(int count)
         {
-            // 合并所有阵营的刷怪点
-            List<Vector3> allPoints = GetAllSpawnPoints();
+            Vector3[] cachedPoints = GetModeEFlattenedSpawnPoints();
+            List<Vector3> allPoints = cachedPoints.Length > 0
+                ? new List<Vector3>(cachedPoints)
+                : new List<Vector3>();
             if (allPoints.Count == 0) return allPoints;
 
             // 获取玩家位置
@@ -102,20 +108,10 @@ namespace BossRush
         /// </summary>
         private List<Vector3> GetAllSpawnPoints()
         {
-            List<Vector3> allPoints = new List<Vector3>();
-
-            if (modeESpawnAllocation == null) return allPoints;
-
-            foreach (var kvp in modeESpawnAllocation)
-            {
-                List<Vector3> factionPoints = kvp.Value;
-                if (factionPoints != null)
-                {
-                    allPoints.AddRange(factionPoints);
-                }
-            }
-
-            return allPoints;
+            Vector3[] cachedPoints = GetModeEFlattenedSpawnPoints();
+            return cachedPoints.Length > 0
+                ? new List<Vector3>(cachedPoints)
+                : new List<Vector3>();
         }
 
         #endregion
@@ -127,6 +123,59 @@ namespace BossRush
         /// 从原版烟雾弹(TypeID=660)的 Skill_Grenade 获取 Grenade prefab，
         /// 再从 Grenade.createOnExlode 获取 FowSmoke prefab 并实例化
         /// </summary>
+        private UnityEngine.Object GetModeESmokeVfxPrefab()
+        {
+            if (modeECachedSmokeVfxPrefab != null)
+            {
+                return modeECachedSmokeVfxPrefab;
+            }
+
+            Item smokeItem = null;
+            try
+            {
+                smokeItem = ItemAssetsCollection.InstantiateSync(MODE_E_SMOKE_GRENADE_TYPE_ID);
+                if (smokeItem == null)
+                {
+                    DevLog("[ModeE] [WARNING] 无法实例化原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ")，跳过VFX");
+                    return null;
+                }
+
+                Skill_Grenade skillGrenade = smokeItem.GetComponentInChildren<Skill_Grenade>();
+                if (skillGrenade == null)
+                {
+                    DevLog("[ModeE] [WARNING] 原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ")无 Skill_Grenade 组件");
+                    return null;
+                }
+
+                Grenade grenadePfb = skillGrenade.grenadePfb;
+                if (grenadePfb == null)
+                {
+                    DevLog("[ModeE] [WARNING] 原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ") Skill_Grenade.grenadePfb 为 null");
+                    return null;
+                }
+
+                if (grenadePfb.createOnExlode == null)
+                {
+                    DevLog("[ModeE] [WARNING] Grenade.createOnExlode 为 null，无烟雾效果");
+                    return null;
+                }
+
+                modeECachedSmokeVfxPrefab = grenadePfb.createOnExlode;
+                return modeECachedSmokeVfxPrefab;
+            }
+            finally
+            {
+                try
+                {
+                    if (smokeItem != null && smokeItem.gameObject != null)
+                    {
+                        UnityEngine.Object.Destroy(smokeItem.gameObject);
+                    }
+                }
+                catch { }
+            }
+        }
+
         private void PlaySmokeVFX()
         {
             try
@@ -134,46 +183,15 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null) return;
 
-                // 实例化原版烟雾弹物品（TypeID=660）以获取其 Grenade prefab
-                Item smokeItem = ItemAssetsCollection.InstantiateSync(660);
-                if (smokeItem == null)
+                UnityEngine.Object smokeVfxPrefab = GetModeESmokeVfxPrefab();
+                if (smokeVfxPrefab == null)
                 {
-                    DevLog("[ModeE] [WARNING] 无法实例化原版烟雾弹(660)，跳过VFX");
                     return;
                 }
 
-                // 从物品上获取 Skill_Grenade 组件（可能在子对象上）
-                Skill_Grenade skillGrenade = smokeItem.GetComponentInChildren<Skill_Grenade>();
-                if (skillGrenade == null)
-                {
-                    DevLog("[ModeE] [WARNING] 原版烟雾弹(660)无 Skill_Grenade 组件");
-                    UnityEngine.Object.Destroy(smokeItem.gameObject);
-                    return;
-                }
-
-                // 获取 Grenade prefab
-                Grenade grenadePfb = skillGrenade.grenadePfb;
-                if (grenadePfb == null)
-                {
-                    DevLog("[ModeE] [WARNING] 原版烟雾弹(660) Skill_Grenade.grenadePfb 为 null");
-                    UnityEngine.Object.Destroy(smokeItem.gameObject);
-                    return;
-                }
-
-                // 从 Grenade prefab 获取 createOnExlode（FowSmoke prefab）并在玩家位置实例化
-                if (grenadePfb.createOnExlode != null)
-                {
-                    Vector3 playerPos = player.transform.position;
-                    UnityEngine.Object.Instantiate(grenadePfb.createOnExlode, playerPos, Quaternion.identity);
-                    DevLog("[ModeE] 已在玩家位置实例化原版烟雾效果(FowSmoke)");
-                }
-                else
-                {
-                    DevLog("[ModeE] [WARNING] Grenade.createOnExlode 为 null，无烟雾效果");
-                }
-
-                // 销毁临时烟雾弹物品对象
-                UnityEngine.Object.Destroy(smokeItem.gameObject);
+                Vector3 playerPos = player.transform.position;
+                UnityEngine.Object.Instantiate(smokeVfxPrefab, playerPos, Quaternion.identity);
+                DevLog("[ModeE] 已在玩家位置实例化原版烟雾效果(FowSmoke)");
             }
             catch (Exception e)
             {
@@ -356,7 +374,7 @@ namespace BossRush
 
         private List<CharacterMainControl> GetEnemyBossesInRange(float radius)
         {
-            List<CharacterMainControl> enemies = new List<CharacterMainControl>();
+            List<CharacterMainControl> enemies = new List<CharacterMainControl>(modeEAliveEnemies.Count);
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null) return enemies;
 
@@ -381,7 +399,7 @@ namespace BossRush
 
         private List<CharacterMainControl> GetAllEnemyBosses()
         {
-            List<CharacterMainControl> enemies = new List<CharacterMainControl>();
+            List<CharacterMainControl> enemies = new List<CharacterMainControl>(modeEAliveEnemies.Count);
 
             for (int i = 0; i < modeEAliveEnemies.Count; i++)
             {
