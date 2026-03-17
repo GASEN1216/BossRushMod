@@ -20,6 +20,8 @@ namespace BossRush
         private bool isPreviewing;
         private bool previewValid;
         private Vector3 previewLandingPoint;
+        private Vector3 lastPreviewAimPoint;
+        private const float PreviewAimChangeSqrThreshold = 0.04f;
         private GameObject previewObject;
         private FenHuangLeapPreview previewController;
 
@@ -98,6 +100,12 @@ namespace BossRush
         {
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || targetCharacter == null || abilityAction == null)
+            {
+                StopPreview();
+                return;
+            }
+
+            if (!IsGameplayInputAllowed())
             {
                 StopPreview();
                 return;
@@ -186,6 +194,7 @@ namespace BossRush
 
             isPreviewing = true;
             previewValid = false;
+            lastPreviewAimPoint = Vector3.positiveInfinity;
             UpdatePreview();
             LogIfVerbose("检测到 ADS 输入，进入跃击预览");
         }
@@ -272,6 +281,13 @@ namespace BossRush
             }
 
             Vector3 aimPoint = FenHuangHalberdRuntime.GetAimPoint(targetCharacter);
+
+            if ((aimPoint - lastPreviewAimPoint).sqrMagnitude < PreviewAimChangeSqrThreshold)
+            {
+                return;
+            }
+            lastPreviewAimPoint = aimPoint;
+
             Vector3 resolvedLandingPoint = FenHuangHalberdRuntime.SnapToGround(
                 aimPoint,
                 targetCharacter.transform.position.y
@@ -422,6 +438,25 @@ namespace BossRush
 
                 return false;
             }
+
+            return true;
+        }
+
+        private static bool IsGameplayInputAllowed()
+        {
+            try
+            {
+                if (!InputManager.InputActived)
+                    return false;
+            }
+            catch { return false; }
+
+            try
+            {
+                if (Duckov.UI.View.ActiveView != null)
+                    return false;
+            }
+            catch { }
 
             return true;
         }

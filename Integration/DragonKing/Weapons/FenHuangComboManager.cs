@@ -55,6 +55,17 @@ namespace BossRush
         private readonly Dictionary<int, ComboAttackState> activeComboAttacks = new Dictionary<int, ComboAttackState>();
         private readonly List<int> expiredAttackers = new List<int>();
 
+        private struct PendingHitEffect
+        {
+            public DamageReceiver receiver;
+            public CharacterMainControl attacker;
+            public int step;
+        }
+
+        private readonly List<PendingHitEffect> pendingHitEffects = new List<PendingHitEffect>();
+        private bool hasPendingEffects;
+        private const int MaxEffectsPerFrame = 2;
+
         private static Buff combo3BurnBuff;
         private static FieldInfo buffTotalLifeTimeField;
         private static FieldInfo buffLimitedLifeTimeField;
@@ -80,6 +91,11 @@ namespace BossRush
             if (ComboStep > 0 && Time.time - lastAttackTime > FenHuangHalberdConfig.ComboWindowTime)
             {
                 ComboStep = 0;
+            }
+
+            if (hasPendingEffects)
+            {
+                ProcessPendingHitEffects();
             }
 
             // 定期清理过期的龙焰印记
@@ -218,6 +234,37 @@ namespace BossRush
             }
         }
 
+        private void ProcessPendingHitEffects()
+        {
+            int processed = 0;
+            while (processed < MaxEffectsPerFrame && pendingHitEffects.Count > 0)
+            {
+                PendingHitEffect effect = pendingHitEffects[0];
+                pendingHitEffects.RemoveAt(0);
+
+                if (effect.receiver == null || effect.receiver.health == null || effect.receiver.health.IsDead)
+                {
+                    continue;
+                }
+
+                ApplyFireDamage(effect.receiver, effect.attacker);
+                ApplyBurnBuff(effect.receiver, effect.attacker);
+
+                if (effect.step == 1)
+                {
+                    ApplyLaunch(effect.receiver.transform, effect.attacker, FenHuangHalberdConfig.Combo2LaunchHeight);
+                }
+                else if (effect.step == 2)
+                {
+                    ApplyPull(effect.receiver.transform, effect.attacker, FenHuangHalberdConfig.Combo3PullDistance);
+                }
+
+                processed++;
+            }
+
+            hasPendingEffects = pendingHitEffects.Count > 0;
+        }
+
         private void OnFenHuangHalberdHurt(Health health, DamageInfo damageInfo)
         {
             if (health == null)
@@ -284,20 +331,14 @@ namespace BossRush
 
             DragonFlameMarkTracker.AddMark(receiver);
 
-            // 所有段数都施加火焰伤害 + 灼烧 Buff
-            ApplyFireDamage(receiver, attacker);
-            ApplyBurnBuff(receiver, attacker);
-
-            if (state.Step == 1)
+            // 将附加效果（火伤/灼烧/击飞/拉扯）入队，延迟到后续帧批量处理
+            pendingHitEffects.Add(new PendingHitEffect
             {
-                // 第二段：向上挑飞
-                ApplyLaunch(receiver.transform, attacker, FenHuangHalberdConfig.Combo2LaunchHeight);
-            }
-            else if (state.Step == 2)
-            {
-                // 第三段：向玩家拉扯
-                ApplyPull(receiver.transform, attacker, FenHuangHalberdConfig.Combo3PullDistance);
-            }
+                receiver = receiver,
+                attacker = attacker,
+                step = state.Step
+            });
+            hasPendingEffects = true;
         }
 
         internal static float GetComboConfiguredDamage(int step, float baseDamage)
@@ -692,7 +733,6 @@ namespace BossRush
             {
                 if (character.characterModel == null)
                 {
-                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: characterModel 为 null");
                     return;
                 }
 
@@ -700,7 +740,6 @@ namespace BossRush
                     character.characterModel.GetComponentInChildren<CharacterAnimationControl>();
                 if (animControl == null)
                 {
-                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: CharacterAnimationControl 为 null");
                     return;
                 }
 
@@ -710,31 +749,20 @@ namespace BossRush
                     _holdAgentField = typeof(CharacterAnimationControl).GetField("holdAgent",
                         BindingFlags.NonPublic | BindingFlags.Instance);
                     _holdAgentFieldCached = true;
-                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: holdAgent 字段缓存=" + (_holdAgentField != null));
                 }
 
                 // 强制将 holdAgent 更新为当前手持代理
                 DuckovItemAgent currentAgent = character.CurrentHoldItemAgent;
                 if (currentAgent != null && _holdAgentField != null)
                 {
-                    DuckovItemAgent oldAgent = _holdAgentField.GetValue(animControl) as DuckovItemAgent;
                     _holdAgentField.SetValue(animControl, currentAgent);
-                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: holdAgent 已更新"
-                        + " old=" + (oldAgent != null ? oldAgent.name + " animType=" + (int)oldAgent.handAnimationType : "null")
-                        + " new=" + currentAgent.name + " animType=" + (int)currentAgent.handAnimationType);
-                }
-                else
-                {
-                    ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: currentAgent=" + (currentAgent != null) + " holdAgentField=" + (_holdAgentField != null));
                 }
 
                 // 通过 CharacterModel 的公开方法触发攻击动画
                 character.characterModel.ForcePlayAttackAnimation();
-                ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation: 已调用 ForcePlayAttackAnimation");
             }
-            catch (Exception e)
+            catch
             {
-                ModBehaviour.DevLog("[FenHuangHalberd] ForceAttackAnimation 异常: " + e.Message);
             }
         }
 
