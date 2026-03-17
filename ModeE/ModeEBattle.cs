@@ -632,6 +632,19 @@ namespace BossRush
                 // 获取死亡敌人的阵营
                 Teams enemyFaction = enemy.Team;
 
+                // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
+                try
+                {
+                    if (enemy.characterPreset != null)
+                    {
+                        UnityEngine.Object.Destroy(enemy.characterPreset);
+                    }
+                }
+                catch { }
+
+                // 从虚拟 SpawnerRoot 移除，防止 CreatedCharacters 列表无限膨胀
+                UnregisterModeEEnemyFromSpawnerRoot(enemy);
+
                 // 从存活列表移除（全局 + 阵营独立列表）
                 UnregisterEnemyRecovery(enemy);
                 modeEAliveEnemies.Remove(enemy);
@@ -851,6 +864,45 @@ namespace BossRush
             }
 
             return modeEVirtualSpawnerRoot;
+        }
+
+        /// <summary>
+        /// 从虚拟 CharacterSpawnerRoot 中移除敌人，防止 CreatedCharacters 列表无限膨胀
+        /// 通过反射获取 CreatedCharacters 列表（无公开 Remove API）
+        /// </summary>
+        private void UnregisterModeEEnemyFromSpawnerRoot(CharacterMainControl character)
+        {
+            try
+            {
+                if (modeEVirtualSpawnerRoot == null) return;
+
+                // 通过反射获取 CreatedCharacters 列表
+                var field = typeof(CharacterSpawnerRoot).GetField("CreatedCharacters",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null)
+                {
+                    var list = field.GetValue(modeEVirtualSpawnerRoot) as System.Collections.IList;
+                    if (list != null)
+                    {
+                        list.Remove(character);
+                    }
+                }
+                else
+                {
+                    // 尝试属性访问
+                    var prop = typeof(CharacterSpawnerRoot).GetProperty("CreatedCharacters",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (prop != null)
+                    {
+                        var list = prop.GetValue(modeEVirtualSpawnerRoot, null) as System.Collections.IList;
+                        if (list != null)
+                        {
+                            list.Remove(character);
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         /// <summary>

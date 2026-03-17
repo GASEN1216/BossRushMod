@@ -588,6 +588,16 @@ namespace BossRush
                         CharacterMainControl enemy = modeEAliveEnemies[i];
                         if (enemy != null && enemy.gameObject != null)
                         {
+                            // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
+                            try
+                            {
+                                if (enemy.characterPreset != null)
+                                {
+                                    UnityEngine.Object.Destroy(enemy.characterPreset);
+                                }
+                            }
+                            catch { }
+
                             // 阻止掉落战利品箱子（模式结束清理，不应产生掉落物）
                             enemy.dropBoxOnDead = false;
 
@@ -683,8 +693,21 @@ namespace BossRush
                     CharacterMainControl enemy = modeEAliveEnemies[i];
                     if (enemy == null || enemy.gameObject == null || enemy.Health == null || enemy.Health.IsDead)
                     {
+                        // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
+                        try
+                        {
+                            if (enemy != null && enemy.characterPreset != null)
+                            {
+                                UnityEngine.Object.Destroy(enemy.characterPreset);
+                            }
+                        }
+                        catch { }
+
+                        // 从虚拟 SpawnerRoot 移除
+                        UnregisterModeEEnemyFromSpawnerRoot(enemy);
+
                         // 补偿丢失的死亡事件：递增该阵营死亡计数
-                        // [修复] 使用 try-catch 保护 Team 访问，防止 Unity 已销毁对象的假 non-null 引用
+                        // [修复] 当 enemy.Team 访问失败时，从所有阵营列表中暴力移除，防止残留无效引用
                         try
                         {
                             if (enemy != null)
@@ -694,11 +717,17 @@ namespace BossRush
                                 {
                                     modeEFactionDeathCount[faction]++;
                                 }
-                                // 从阵营独立列表中移除
                                 RemoveFromFactionAliveList(faction, enemy);
                             }
                         }
-                        catch { /* Unity 已销毁对象，无法读取 Team，跳过计数补偿 */ }
+                        catch
+                        {
+                            // Unity 已销毁对象，无法读取 Team —— 从所有阵营列表中暴力移除
+                            foreach (var kvp in modeEFactionAliveMap)
+                            {
+                                kvp.Value.Remove(enemy);
+                            }
+                        }
 
                         modeEAliveEnemies.RemoveAt(i);
                         modeEScalingModifiers.Remove(enemy);
