@@ -82,6 +82,107 @@ namespace BossRush
             return LootBlacklistRegistry.Contains(itemId);
         }
 
+        private void AddUniqueLootExcludeTag(List<Duckov.Utilities.Tag> excludeTags, Duckov.Utilities.Tag tag)
+        {
+            if (excludeTags == null || tag == null || excludeTags.Contains(tag))
+            {
+                return;
+            }
+
+            excludeTags.Add(tag);
+        }
+
+        private Duckov.Utilities.Tag TryFindQuestTag(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
+        {
+            if (tagsData == null)
+            {
+                return null;
+            }
+
+            const BindingFlags publicInstanceIgnoreCase =
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
+
+            try
+            {
+                FieldInfo questField = tagsData.GetType().GetField("Quest", publicInstanceIgnoreCase);
+                if (questField != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questField.FieldType))
+                {
+                    return questField.GetValue(tagsData) as Duckov.Utilities.Tag;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                PropertyInfo questProperty = tagsData.GetType().GetProperty("Quest", publicInstanceIgnoreCase);
+                if (questProperty != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questProperty.PropertyType))
+                {
+                    return questProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (tagsData.AllTags != null)
+                {
+                    for (int i = 0; i < tagsData.AllTags.Count; i++)
+                    {
+                        Duckov.Utilities.Tag tag = tagsData.AllTags[i];
+                        if (tag != null && string.Equals(tag.name, "Quest", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return tag;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        // Quest items should stay out of generic reward/drop pools even if they match other tags.
+        private List<Duckov.Utilities.Tag> BuildGeneralLootExcludeTags(Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)
+        {
+            List<Duckov.Utilities.Tag> excludeTags = new List<Duckov.Utilities.Tag>();
+            if (tagsData == null)
+            {
+                return excludeTags;
+            }
+
+            if (includeCharacterTag)
+            {
+                AddUniqueLootExcludeTag(excludeTags, tagsData.Character);
+            }
+
+            AddUniqueLootExcludeTag(excludeTags, tagsData.DestroyOnLootBox);
+            AddUniqueLootExcludeTag(excludeTags, tagsData.DontDropOnDeadInSlot);
+            AddUniqueLootExcludeTag(excludeTags, tagsData.LockInDemoTag);
+            AddUniqueLootExcludeTag(excludeTags, TryFindQuestTag(tagsData));
+
+            return excludeTags;
+        }
+
+        private void MergeGeneralLootExcludeTags(List<Duckov.Utilities.Tag> excludeList, Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)
+        {
+            if (excludeList == null || tagsData == null)
+            {
+                return;
+            }
+
+            List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData, includeCharacterTag);
+            for (int i = 0; i < baseExclude.Count; i++)
+            {
+                AddUniqueLootExcludeTag(excludeList, baseExclude[i]);
+            }
+        }
+
         private List<EnemyPresetInfo> enemyPresets = new List<EnemyPresetInfo>();
         private float minBossBaseHealth = 100f;
         private float maxBossBaseHealth = 100f;
@@ -192,10 +293,7 @@ namespace BossRush
                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
                 if (tagsData != null && tagsData.AllTags != null)
                 {
-                    List<Duckov.Utilities.Tag> baseExclude = new List<Duckov.Utilities.Tag>();
-                    if (tagsData.DestroyOnLootBox != null) baseExclude.Add(tagsData.DestroyOnLootBox);
-                    if (tagsData.DontDropOnDeadInSlot != null) baseExclude.Add(tagsData.DontDropOnDeadInSlot);
-                    if (tagsData.LockInDemoTag != null) baseExclude.Add(tagsData.LockInDemoTag);
+                    List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
 
                     foreach (Duckov.Utilities.Tag tag in tagsData.AllTags)
                     {
@@ -540,10 +638,7 @@ namespace BossRush
                 return -1;
             }
 
-            List<Duckov.Utilities.Tag> baseExclude = new List<Duckov.Utilities.Tag>();
-            if (tagsData.DestroyOnLootBox != null) baseExclude.Add(tagsData.DestroyOnLootBox);
-            if (tagsData.DontDropOnDeadInSlot != null) baseExclude.Add(tagsData.DontDropOnDeadInSlot);
-            if (tagsData.LockInDemoTag != null) baseExclude.Add(tagsData.LockInDemoTag);
+            List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
 
             List<Duckov.Utilities.Tag> includeTags = new List<Duckov.Utilities.Tag>();
             for (int i = 0; i < tagsData.AllTags.Count; i++)
@@ -988,6 +1083,7 @@ namespace BossRush
                                     if (tagsData != null && tagsData.AllTags != null)
                                     {
                                         var allTags = tagsData.AllTags;
+                                        List<Duckov.Utilities.Tag> tagExclude = BuildGeneralLootExcludeTags(tagsData, true);
                                         for (int i = 0; i < allTags.Count; i++)
                                         {
                                             Duckov.Utilities.Tag t = allTags[i];
@@ -995,7 +1091,7 @@ namespace BossRush
                                             {
                                                 continue;
                                             }
-                                            if (t == tagsData.Character || t == tagsData.DestroyOnLootBox || t == tagsData.DontDropOnDeadInSlot || t == tagsData.LockInDemoTag)
+                                            if (tagExclude.Contains(t))
                                             {
                                                 continue;
                                             }
@@ -1014,12 +1110,7 @@ namespace BossRush
                                 }
 
                                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData2 = Duckov.Utilities.GameplayDataSettings.Tags;
-                                if (tagsData2 != null)
-                                {
-                                    if (tagsData2.DestroyOnLootBox != null && !excludeList.Contains(tagsData2.DestroyOnLootBox)) excludeList.Add(tagsData2.DestroyOnLootBox);
-                                    if (tagsData2.DontDropOnDeadInSlot != null && !excludeList.Contains(tagsData2.DontDropOnDeadInSlot)) excludeList.Add(tagsData2.DontDropOnDeadInSlot);
-                                    if (tagsData2.LockInDemoTag != null && !excludeList.Contains(tagsData2.LockInDemoTag)) excludeList.Add(tagsData2.LockInDemoTag);
-                                }
+                                MergeGeneralLootExcludeTags(excludeList, tagsData2);
 
                                 object randomPoolObj = randomPoolField.GetValue(loader);
                                 if (randomPoolObj != null)
@@ -1054,10 +1145,7 @@ namespace BossRush
                                             Duckov.Utilities.GameplayDataSettings.TagsData tagsData3 = Duckov.Utilities.GameplayDataSettings.Tags;
                                             if (tagsData3 != null)
                                             {
-                                                List<Duckov.Utilities.Tag> baseExclude = new List<Duckov.Utilities.Tag>();
-                                                if (tagsData3.DestroyOnLootBox != null) baseExclude.Add(tagsData3.DestroyOnLootBox);
-                                                if (tagsData3.DontDropOnDeadInSlot != null) baseExclude.Add(tagsData3.DontDropOnDeadInSlot);
-                                                if (tagsData3.LockInDemoTag != null) baseExclude.Add(tagsData3.LockInDemoTag);
+                                                List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData3);
 
                                                 List<Duckov.Utilities.Tag> includeTags = new List<Duckov.Utilities.Tag>();
                                                 if (tagsData3.AllTags != null)
@@ -1825,6 +1913,7 @@ namespace BossRush
                                 if (tagsData != null && tagsData.AllTags != null)
                                 {
                                     var allTags = tagsData.AllTags;
+                                    List<Duckov.Utilities.Tag> tagExclude = BuildGeneralLootExcludeTags(tagsData, true);
                                     for (int i = 0; i < allTags.Count; i++)
                                     {
                                         Duckov.Utilities.Tag t = allTags[i];
@@ -1832,19 +1921,7 @@ namespace BossRush
                                         {
                                             continue;
                                         }
-                                        if (t == tagsData.Character)
-                                        {
-                                            continue;
-                                        }
-                                        if (t == tagsData.DestroyOnLootBox)
-                                        {
-                                            continue;
-                                        }
-                                        if (t == tagsData.DontDropOnDeadInSlot)
-                                        {
-                                            continue;
-                                        }
-                                        if (t == tagsData.LockInDemoTag)
+                                        if (tagExclude.Contains(t))
                                         {
                                             continue;
                                         }
@@ -1866,21 +1943,7 @@ namespace BossRush
                             }
 
                             Duckov.Utilities.GameplayDataSettings.TagsData tagsData2 = Duckov.Utilities.GameplayDataSettings.Tags;
-                            if (tagsData2 != null)
-                            {
-                                if (tagsData2.DestroyOnLootBox != null && !excludeList.Contains(tagsData2.DestroyOnLootBox))
-                                {
-                                    excludeList.Add(tagsData2.DestroyOnLootBox);
-                                }
-                                if (tagsData2.DontDropOnDeadInSlot != null && !excludeList.Contains(tagsData2.DontDropOnDeadInSlot))
-                                {
-                                    excludeList.Add(tagsData2.DontDropOnDeadInSlot);
-                                }
-                                if (tagsData2.LockInDemoTag != null && !excludeList.Contains(tagsData2.LockInDemoTag))
-                                {
-                                    excludeList.Add(tagsData2.LockInDemoTag);
-                                }
-                            }
+                            MergeGeneralLootExcludeTags(excludeList, tagsData2);
                         }
 
                         try
@@ -1948,19 +2011,7 @@ namespace BossRush
                                         Duckov.Utilities.GameplayDataSettings.TagsData tagsData3 = Duckov.Utilities.GameplayDataSettings.Tags;
                                         if (tagsData3 != null)
                                         {
-                                            List<Duckov.Utilities.Tag> baseExclude = new List<Duckov.Utilities.Tag>();
-                                            if (tagsData3.DestroyOnLootBox != null)
-                                            {
-                                                baseExclude.Add(tagsData3.DestroyOnLootBox);
-                                            }
-                                            if (tagsData3.DontDropOnDeadInSlot != null)
-                                            {
-                                                baseExclude.Add(tagsData3.DontDropOnDeadInSlot);
-                                            }
-                                            if (tagsData3.LockInDemoTag != null)
-                                            {
-                                                baseExclude.Add(tagsData3.LockInDemoTag);
-                                            }
+                                            List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData3);
 
                                             List<Duckov.Utilities.Tag> includeTags = new List<Duckov.Utilities.Tag>();
                                             if (tagsData3.AllTags != null)

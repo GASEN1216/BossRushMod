@@ -91,10 +91,7 @@ namespace BossRush
                     return;
                 }
 
-                List<Duckov.Utilities.Tag> baseExclude = new List<Duckov.Utilities.Tag>();
-                if (tagsData.DestroyOnLootBox != null) baseExclude.Add(tagsData.DestroyOnLootBox);
-                if (tagsData.DontDropOnDeadInSlot != null) baseExclude.Add(tagsData.DontDropOnDeadInSlot);
-                if (tagsData.LockInDemoTag != null) baseExclude.Add(tagsData.LockInDemoTag);
+                List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
 
                 // P1-3 优化：把 ToArray() 提到循环外，避免每次循环都分配数组
                 Duckov.Utilities.Tag[] excludeArray = baseExclude.ToArray();

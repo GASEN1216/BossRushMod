@@ -386,11 +386,7 @@ namespace BossRush
                 }
 
                 // 基础排除标签（demo锁定、不可掉落等）
-                List<Duckov.Utilities.Tag> baseExclude = new List<Duckov.Utilities.Tag>();
-                if (tagsData.LockInDemoTag != null) baseExclude.Add(tagsData.LockInDemoTag);
-                if (tagsData.DestroyOnLootBox != null) baseExclude.Add(tagsData.DestroyOnLootBox);
-                if (tagsData.DontDropOnDeadInSlot != null) baseExclude.Add(tagsData.DontDropOnDeadInSlot);
-                if (tagsData.Character != null) baseExclude.Add(tagsData.Character);
+                List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData, true);
                 Duckov.Utilities.Tag[] excludeArray = baseExclude.ToArray();
 
                 // 武器池（Gun Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
