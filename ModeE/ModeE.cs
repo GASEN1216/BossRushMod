@@ -17,9 +17,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using ItemStatsSystem;
 using Duckov.UI.DialogueBubbles;
+using Duckov.UI;
+using HarmonyLib;
 
 namespace BossRush
 {
@@ -69,6 +72,19 @@ namespace BossRush
         /// <summary>当前预热对应的场景名，用于避免跨场景误复用协程状态。</summary>
         private string modeEStartupWarmupSceneName = null;
 
+        private const float MODEE_PLAYER_NAME_CACHE_INTERVAL = 5f;
+        private const float MODEE_HEALTHBAR_LOOKUP_INTERVAL = 1f;
+        private static readonly BindingFlags ModeEUiInstanceBindingFlags =
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        private static MethodInfo modeERefreshCharacterIconMethod = null;
+        private static MethodInfo modeESteamFriendsGetPersonaNameMethod = null;
+        private static MethodInfo modeESteamManagerGetSteamDisplayMethod = null;
+
+        private string modeECachedPlayerName = null;
+        private float modeENextPlayerNameRefreshTime = 0f;
+        private HealthBar modeECachedPlayerHealthBar = null;
+        private float modeENextHealthBarLookupTime = 0f;
+
         #endregion
 
         #region Mode E 配置
@@ -111,6 +127,264 @@ namespace BossRush
 
         /// <summary>当前所有存活的 Mode E 敌人列表（只读访问，供龙王等系统查找攻击目标）</summary>
         public List<CharacterMainControl> ModeEAliveEnemies { get { return modeEAliveEnemies; } }
+
+        #endregion
+
+        #region Mode E UI
+
+        private void ResetModeEUiCaches()
+        {
+            modeECachedPlayerName = null;
+            modeENextPlayerNameRefreshTime = 0f;
+            modeECachedPlayerHealthBar = null;
+            modeENextHealthBarLookupTime = 0f;
+        }
+
+        private static MethodInfo GetModeERefreshCharacterIconMethod()
+        {
+            if (modeERefreshCharacterIconMethod == null)
+            {
+                modeERefreshCharacterIconMethod = typeof(HealthBar).GetMethod(
+                    "RefreshCharacterIcon",
+                    ModeEUiInstanceBindingFlags);
+            }
+
+            return modeERefreshCharacterIconMethod;
+        }
+
+        private static MethodInfo GetModeESteamFriendsGetPersonaNameMethod()
+        {
+            if (modeESteamFriendsGetPersonaNameMethod != null)
+            {
+                return modeESteamFriendsGetPersonaNameMethod;
+            }
+
+            Type steamFriendsType = AccessTools.TypeByName("Steamworks.SteamFriends");
+            if (steamFriendsType != null)
+            {
+                modeESteamFriendsGetPersonaNameMethod = steamFriendsType.GetMethod(
+                    "GetPersonaName",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            }
+
+            return modeESteamFriendsGetPersonaNameMethod;
+        }
+
+        private static MethodInfo GetModeESteamManagerGetSteamDisplayMethod()
+        {
+            if (modeESteamManagerGetSteamDisplayMethod != null)
+            {
+                return modeESteamManagerGetSteamDisplayMethod;
+            }
+
+            Type steamManagerType = AccessTools.TypeByName("SteamManager");
+            if (steamManagerType != null)
+            {
+                modeESteamManagerGetSteamDisplayMethod = steamManagerType.GetMethod(
+                    "GetSteamDisplay",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            }
+
+            return modeESteamManagerGetSteamDisplayMethod;
+        }
+
+        private string TryGetModeESteamPersonaName()
+        {
+            try
+            {
+                MethodInfo getPersonaName = GetModeESteamFriendsGetPersonaNameMethod();
+                if (getPersonaName != null)
+                {
+                    string personaName = getPersonaName.Invoke(null, null) as string;
+                    if (!string.IsNullOrEmpty(personaName))
+                    {
+                        return personaName;
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
+                MethodInfo getSteamDisplay = GetModeESteamManagerGetSteamDisplayMethod();
+                if (getSteamDisplay != null)
+                {
+                    object display = getSteamDisplay.IsStatic ? getSteamDisplay.Invoke(null, null) : null;
+                    string displayName = display as string;
+                    if (!string.IsNullOrEmpty(displayName))
+                    {
+                        return displayName;
+                    }
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        internal string GetModeEPlayerName()
+        {
+            if (Time.unscaledTime < modeENextPlayerNameRefreshTime && !string.IsNullOrEmpty(modeECachedPlayerName))
+            {
+                return modeECachedPlayerName;
+            }
+
+            try
+            {
+                string steamName = TryGetModeESteamPersonaName();
+                modeECachedPlayerName = !string.IsNullOrEmpty(steamName)
+                    ? steamName
+                    : L10n.T("我", "Me");
+            }
+            catch
+            {
+                modeECachedPlayerName = L10n.T("我", "Me");
+            }
+
+            modeENextPlayerNameRefreshTime = Time.unscaledTime + MODEE_PLAYER_NAME_CACHE_INTERVAL;
+            return modeECachedPlayerName;
+        }
+
+        internal string GetModeEActorDisplayName(CharacterMainControl actor, bool treatNullAsPlayer = false)
+        {
+            if (actor == null)
+            {
+                return treatNullAsPlayer ? GetModeEPlayerName() : L10n.T("未知目标", "Unknown");
+            }
+
+            try
+            {
+                if (actor.CharacterItem != null && !string.IsNullOrEmpty(actor.CharacterItem.DisplayName))
+                {
+                    return actor.CharacterItem.DisplayName;
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (actor.gameObject != null && !string.IsNullOrEmpty(actor.gameObject.name))
+                {
+                    return actor.gameObject.name;
+                }
+            }
+            catch { }
+
+            return L10n.T("未知目标", "Unknown");
+        }
+
+        private void EnsureModeEPlayerNameTag()
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null || player.Health == null)
+            {
+                return;
+            }
+
+            try
+            {
+                player.Health.showHealthBar = true;
+
+                HealthBar healthBar = FindModeEHealthBar(player.Health);
+                if (healthBar != null)
+                {
+                    ForceRefreshModeEHealthBarName(healthBar);
+                    return;
+                }
+
+                player.Health.RequestHealthBar();
+            }
+            catch { }
+        }
+
+        private void UpdateModeEPlayerNameTag()
+        {
+            if (!modeEActive)
+            {
+                return;
+            }
+
+            if (Time.frameCount % 120 == 0)
+            {
+                EnsureModeEPlayerNameTag();
+            }
+        }
+
+        private void CleanupModeEPlayerNameTag()
+        {
+            modeECachedPlayerHealthBar = null;
+            modeENextHealthBarLookupTime = 0f;
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null || player.Health == null)
+            {
+                return;
+            }
+
+            HealthBar healthBar = FindModeEHealthBar(player.Health);
+            if (healthBar == null)
+            {
+                return;
+            }
+
+            ForceRefreshModeEHealthBarName(healthBar);
+        }
+
+        private HealthBar FindModeEHealthBar(Health health)
+        {
+            if (health == null)
+            {
+                return null;
+            }
+
+            if (modeECachedPlayerHealthBar != null)
+            {
+                if (modeECachedPlayerHealthBar.target == health)
+                {
+                    return modeECachedPlayerHealthBar;
+                }
+
+                modeECachedPlayerHealthBar = null;
+            }
+
+            if (Time.unscaledTime < modeENextHealthBarLookupTime)
+            {
+                return null;
+            }
+
+            modeENextHealthBarLookupTime = Time.unscaledTime + MODEE_HEALTHBAR_LOOKUP_INTERVAL;
+
+            HealthBar[] healthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
+            for (int i = 0; i < healthBars.Length; i++)
+            {
+                HealthBar healthBar = healthBars[i];
+                if (healthBar != null && healthBar.target == health)
+                {
+                    modeECachedPlayerHealthBar = healthBar;
+                    return healthBar;
+                }
+            }
+
+            return null;
+        }
+
+        private static void ForceRefreshModeEHealthBarName(HealthBar healthBar)
+        {
+            if (healthBar == null)
+            {
+                return;
+            }
+
+            try
+            {
+                MethodInfo refreshCharacterIcon = GetModeERefreshCharacterIconMethod();
+                if (refreshCharacterIcon != null)
+                {
+                    refreshCharacterIcon.Invoke(healthBar, null);
+                }
+            }
+            catch { }
+        }
 
         #endregion
 
@@ -548,6 +822,7 @@ namespace BossRush
                 int modeESessionToken = BeginModeESession();
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
+                ResetModeEUiCaches();
                 modeEPlayerFaction = faction;
                 ClearEnemyRecoveryMonitorState();
 
@@ -578,6 +853,9 @@ namespace BossRush
                     }
                 }
                 profiler.Mark("SetupPlayerFaction");
+
+                EnsureModeEPlayerNameTag();
+                profiler.Mark("SetupPlayerNameTag");
 
                 // 显示阵营气泡
                 ShowFactionBubble(faction);
@@ -714,6 +992,9 @@ namespace BossRush
                 {
                     DevLog("[ModeE] [WARNING] 恢复玩家阵营失败: " + e.Message);
                 }
+
+                CleanupModeEPlayerNameTag();
+                ResetModeEUiCaches();
 
                 // 清理所有存活的 Mode E 敌人（优先使用游戏API触发正常死亡流程）
                 // [L4修复] 清理前先阻止所有敌人掉落战利品箱子，防止模式结束时友军Boss掉落一堆箱子

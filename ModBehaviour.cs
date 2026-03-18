@@ -2935,6 +2935,8 @@ namespace BossRush
             // Mode E 独立自检（Mode E 不激活 IsActive，需要单独的自检循环）
             if (modeEActive)
             {
+                UpdateModeEPlayerNameTag();
+
                 modeEIntegrityTimer += Time.deltaTime;
                 if (modeEIntegrityTimer >= WaveIntegrityCheckInterval)
                 {

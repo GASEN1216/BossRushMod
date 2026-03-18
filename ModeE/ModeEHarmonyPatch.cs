@@ -120,10 +120,10 @@ namespace BossRush
     }
 
     /// <summary>
-    /// Patch HealthBar.RefreshCharacterIcon：
-    /// Mode E 中在原版名字右边追加 " - 阵营名"，完全交给游戏原版渲染
+    /// Patch HealthBar.LateUpdate：
+    /// Mode E 中持续覆盖血条名字，保证玩家自己也显示 "名字 - 阵营名"
     /// </summary>
-    [HarmonyPatch(typeof(HealthBar), "RefreshCharacterIcon")]
+    [HarmonyPatch(typeof(HealthBar), "LateUpdate")]
     public static class ModeEHealthBarFactionNamePatch
     {
         /// <summary>缓存的 ModBehaviour 实例引用</summary>
@@ -145,8 +145,8 @@ namespace BossRush
             if (cachedInstance == null || cachedInstance.IsModeFActive || !cachedInstance.IsModeEActive)
                 return;
 
-            // nameText 不可用或未激活时跳过
-            if (___nameText == null || !___nameText.gameObject.activeSelf)
+            // nameText 不可用时跳过；玩家自己允许强制显示
+            if (___nameText == null)
                 return;
 
             // 获取角色阵营
@@ -156,13 +156,74 @@ namespace BossRush
             CharacterMainControl character = target.TryGetCharacter();
             if (character == null) return;
 
-            // 获取阵营显示名并追加到原版名字后面
-            string factionSuffix = cachedInstance.GetModeEFactionSuffix(character.Team);
-            if (!string.IsNullOrEmpty(factionSuffix) &&
-                !___nameText.text.EndsWith(factionSuffix, StringComparison.Ordinal))
+            bool forceShowName = character.IsMainCharacter;
+            if (!forceShowName && !___nameText.gameObject.activeSelf)
+                return;
+
+            string baseText = forceShowName
+                ? cachedInstance.GetModeEPlayerName()
+                : StripModeEFactionSuffix(___nameText.text, cachedInstance);
+            if (string.IsNullOrEmpty(baseText))
             {
-                ___nameText.text += factionSuffix;
+                baseText = cachedInstance.GetModeEActorDisplayName(character);
             }
+
+            Teams displayFaction = forceShowName
+                ? cachedInstance.ModeEPlayerFaction
+                : character.Team;
+            string factionSuffix = cachedInstance.GetModeEFactionSuffix(displayFaction);
+            string desiredText = string.IsNullOrEmpty(factionSuffix) ? baseText : baseText + factionSuffix;
+
+            if (forceShowName && !___nameText.gameObject.activeSelf)
+            {
+                ___nameText.gameObject.SetActive(true);
+            }
+
+            if (!string.Equals(___nameText.text, desiredText, StringComparison.Ordinal))
+            {
+                ___nameText.text = desiredText;
+            }
+        }
+
+        private static string StripModeEFactionSuffix(string text, ModBehaviour instance)
+        {
+            if (string.IsNullOrEmpty(text) || instance == null)
+            {
+                return text;
+            }
+
+            string sanitized = text;
+            while (TryTrimTrailingModeEFactionSuffix(ref sanitized, instance))
+            {
+            }
+
+            return sanitized;
+        }
+
+        private static bool TryTrimTrailingModeEFactionSuffix(ref string text, ModBehaviour instance)
+        {
+            return TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.scav)) ||
+                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.usec)) ||
+                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.bear)) ||
+                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.lab)) ||
+                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.wolf)) ||
+                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.player));
+        }
+
+        private static bool TryTrimTrailingModeEFactionSuffix(ref string text, string suffix)
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(suffix))
+            {
+                return false;
+            }
+
+            if (!text.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            text = text.Substring(0, text.Length - suffix.Length);
+            return true;
         }
     }
 
