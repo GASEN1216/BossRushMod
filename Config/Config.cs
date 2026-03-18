@@ -344,6 +344,135 @@ namespace BossRush
             }
         }
 
+        private bool TryLoadSingleModConfigValue(string changedKey)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(changedKey))
+                {
+                    return false;
+                }
+
+                Type optionsManagerType = FindModConfigType("ModConfig.OptionsManager_Mod");
+                if (optionsManagerType == null)
+                {
+                    return false;
+                }
+
+                if (config == null)
+                {
+                    config = new BossRushConfig();
+                }
+
+                MethodInfo loadMethod = optionsManagerType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
+                if (loadMethod == null)
+                {
+                    DevLog("[BossRush] 未找到 Load 方法");
+                    return false;
+                }
+
+                string waveKey = ModName + "_waveIntervalSeconds";
+                if (changedKey == waveKey)
+                {
+                    MethodInfo floatLoadMethod = loadMethod.MakeGenericMethod(typeof(float));
+                    object waveResult = floatLoadMethod.Invoke(null, new object[] { waveKey, config.waveIntervalSeconds });
+                    float loadedWave = Mathf.Clamp((float)waveResult, 2f, 60f);
+                    config.waveIntervalSeconds = loadedWave;
+                    return true;
+                }
+
+                string lootKey = ModName + "_EnableRandomBossLoot";
+                if (changedKey == lootKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object lootResult = boolLoadMethod.Invoke(null, new object[] { lootKey, config.enableRandomBossLoot });
+                    config.enableRandomBossLoot = (bool)lootResult;
+                    return true;
+                }
+
+                string interactKey = ModName + "_UseInteractBetweenWaves";
+                if (changedKey == interactKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object interactResult = boolLoadMethod.Invoke(null, new object[] { interactKey, config.useInteractBetweenWaves });
+                    config.useInteractBetweenWaves = (bool)interactResult;
+                    return true;
+                }
+
+                string coverKey = ModName + "_LootBoxBlocksBullets";
+                if (changedKey == coverKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object coverResult = boolLoadMethod.Invoke(null, new object[] { coverKey, config.lootBoxBlocksBullets });
+                    config.lootBoxBlocksBullets = (bool)coverResult;
+                    return true;
+                }
+
+                string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
+                if (changedKey == hellBossKey)
+                {
+                    MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
+                    object hellResult = intLoadMethod.Invoke(null, new object[] { hellBossKey, config.infiniteHellBossesPerWave });
+                    int loadedHell = Mathf.Clamp((int)hellResult, 1, 10);
+                    config.infiniteHellBossesPerWave = loadedHell;
+                    return true;
+                }
+
+                string bossStatKey = ModName + "_BossStatMultiplier";
+                if (changedKey == bossStatKey)
+                {
+                    MethodInfo floatLoadMethod = loadMethod.MakeGenericMethod(typeof(float));
+                    object bossStatResult = floatLoadMethod.Invoke(null, new object[] { bossStatKey, config.bossStatMultiplier });
+                    float loadedBossStat = Mathf.Clamp((float)bossStatResult, 0.1f, 10f);
+                    config.bossStatMultiplier = loadedBossStat;
+                    return true;
+                }
+
+                string modeDKey = ModName + "_ModeDEnemiesPerWave";
+                if (changedKey == modeDKey)
+                {
+                    MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
+                    object modeDResult = intLoadMethod.Invoke(null, new object[] { modeDKey, config.modeDEnemiesPerWave });
+                    int loadedModeD = Mathf.Clamp((int)modeDResult, 1, 10);
+                    config.modeDEnemiesPerWave = loadedModeD;
+                    return true;
+                }
+
+                string dragonDashKey = ModName + "_EnableDragonDash";
+                if (changedKey == dragonDashKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object dragonDashResult = boolLoadMethod.Invoke(null, new object[] { dragonDashKey, config.enableDragonDash });
+                    config.enableDragonDash = (bool)dragonDashResult;
+                    return true;
+                }
+
+                string achievementHotkeyKey = ModName + "_AchievementHotkey";
+                if (changedKey == achievementHotkeyKey)
+                {
+                    MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
+                    object hotkeyResult = intLoadMethod.Invoke(null, new object[] { achievementHotkeyKey, config.achievementHotkey });
+                    config.achievementHotkey = (int)hotkeyResult;
+                    return true;
+                }
+
+                string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
+                if (changedKey == wolfModelKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object wolfModelResult = boolLoadMethod.Invoke(null, new object[] { wolfModelKey, config.useWolfModelForWildHorn });
+                    config.useWolfModelForWildHorn = (bool)wolfModelResult;
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                DevLog("[BossRush] TryLoadSingleModConfigValue 失败: " + changedKey + ", " + ex.Message);
+            }
+
+            return false;
+        }
+
         #endregion
         
         #region ModConfig 事件处理
@@ -368,10 +497,12 @@ namespace BossRush
                 if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
                 {
                     DevLog("[BossRush] 检测到配置变更: " + changedKey);
-                    LoadConfigFromModConfig();
-                    SaveConfigToFile();
-                    DevLog("[BossRush] 配置已更新并保存到本地文件");
-
+                    if (TryLoadSingleModConfigValue(changedKey))
+                    {
+                        SaveConfigToFile();
+                        DevLog("[BossRush] 配置已更新并保存到本地文件");
+                    }
+	
                     // 如果在下一波倒计时过程中修改了波次间隔，重启倒计时以使用新配置
                     if (changedKey == waveKey && waitingForNextWave)
                     {
@@ -385,8 +516,10 @@ namespace BossRush
                 if (changedKey == dragonDashKey)
                 {
                     DevLog("[BossRush] 检测到龙套装冲刺配置变更");
-                    LoadConfigFromModConfig();
-                    SaveConfigToFile();
+                    if (TryLoadSingleModConfigValue(changedKey))
+                    {
+                        SaveConfigToFile();
+                    }
                 }
 
                 // 荒野号角狼模型开关
@@ -394,8 +527,10 @@ namespace BossRush
                 if (changedKey == wolfModelKey)
                 {
                     DevLog("[BossRush] 检测到荒野号角狼模型配置变更");
-                    LoadConfigFromModConfig();
-                    SaveConfigToFile();
+                    if (TryLoadSingleModConfigValue(changedKey))
+                    {
+                        SaveConfigToFile();
+                    }
                 }
             }
             catch (Exception ex)

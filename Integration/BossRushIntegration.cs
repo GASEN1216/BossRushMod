@@ -942,7 +942,6 @@ namespace BossRush
             if (modConfigType != null)
             {
                 SetupModConfig();
-                LoadConfigFromModConfig();
                 SaveConfigToFile();
             }
             ApplyDevModeRuntimeState();

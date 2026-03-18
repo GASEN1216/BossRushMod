@@ -1031,8 +1031,11 @@ namespace BossRush
             {
                 if (rigidbodies[i] != null)
                 {
-                    rigidbodies[i].velocity = Vector3.zero;
-                    rigidbodies[i].angularVelocity = Vector3.zero;
+                    if (!rigidbodies[i].isKinematic)
+                    {
+                        rigidbodies[i].velocity = Vector3.zero;
+                        rigidbodies[i].angularVelocity = Vector3.zero;
+                    }
                 }
             }
         }

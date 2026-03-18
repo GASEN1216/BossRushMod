@@ -1585,8 +1585,12 @@ namespace BossRush
             {
                 if (this.rb != null)
                 {
+                    if (!this.rb.isKinematic)
+                    {
+                        this.rb.velocity = Vector3.zero;
+                        this.rb.angularVelocity = Vector3.zero;
+                    }
                     this.rb.isKinematic = true;
-                    this.rb.velocity = Vector3.zero;
                 }
             }
             catch {}
@@ -1667,7 +1671,12 @@ namespace BossRush
                     if (this.rb != null)
                     {
                         this.rb.position = dropPos;
+                        if (this.rb.isKinematic)
+                        {
+                            this.rb.isKinematic = false;
+                        }
                         this.rb.velocity = Vector3.zero;
+                        this.rb.angularVelocity = Vector3.zero;
                     }
                     else
                     {
