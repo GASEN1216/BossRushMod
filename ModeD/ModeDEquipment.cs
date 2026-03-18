@@ -537,6 +537,71 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 检查物品预制体是否拥有指定 Tag
+        /// </summary>
+        private bool ItemTypeHasTag(int typeId, Duckov.Utilities.Tag requiredTag)
+        {
+            try
+            {
+                if (requiredTag == null)
+                {
+                    return true;
+                }
+
+                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                if (prefab == null || prefab.Tags == null || prefab.Tags.Count == 0)
+                {
+                    return false;
+                }
+
+                if (prefab.Tags.Contains(requiredTag))
+                {
+                    return true;
+                }
+
+                foreach (Duckov.Utilities.Tag tag in prefab.Tags)
+                {
+                    if (tag != null && string.Equals(tag.name, requiredTag.name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch {}
+
+            return false;
+        }
+
+        /// <summary>
+        /// 开局医疗品额外要求带有 Healing Tag，避免混入无法治疗的消耗品
+        /// </summary>
+        private List<int> GetStarterMedicalPool()
+        {
+            Duckov.Utilities.Tag healingTag = FindTagByName("Healing");
+            if (healingTag == null || modeDMedicalPool.Count == 0)
+            {
+                return modeDMedicalPool;
+            }
+
+            List<int> filteredPool = new List<int>(modeDMedicalPool.Count);
+            for (int i = 0; i < modeDMedicalPool.Count; i++)
+            {
+                int typeId = modeDMedicalPool[i];
+                if (ItemTypeHasTag(typeId, healingTag))
+                {
+                    filteredPool.Add(typeId);
+                }
+            }
+
+            if (filteredPool.Count != modeDMedicalPool.Count)
+            {
+                DevLog("[ModeD] 开局医疗品池附加 Healing 过滤: " + modeDMedicalPool.Count + " -> " + filteredPool.Count);
+            }
+
+            return filteredPool;
+        }
+
+        /// <summary>
         /// 发放开局医疗品
         /// </summary>
         /// <param name="character">角色</param>
@@ -545,9 +610,11 @@ namespace BossRush
         {
             try
             {
+                List<int> starterMedicalPool = GetStarterMedicalPool();
+
                 for (int i = 0; i < count; i++)
                 {
-                    if (modeDMedicalPool.Count == 0)
+                    if (starterMedicalPool.Count == 0)
                     {
                         // 使用硬编码的常见医疗品
                         int[] commonMedIds = new int[] { 401, 402, 403 };
@@ -562,7 +629,7 @@ namespace BossRush
                     }
                     else
                     {
-                        int medicalId = modeDMedicalPool[UnityEngine.Random.Range(0, modeDMedicalPool.Count)];
+                        int medicalId = starterMedicalPool[UnityEngine.Random.Range(0, starterMedicalPool.Count)];
                         Item medical = ItemAssetsCollection.InstantiateSync(medicalId);
                         if (medical != null)
                         {
