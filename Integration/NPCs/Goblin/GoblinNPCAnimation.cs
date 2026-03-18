@@ -22,13 +22,6 @@ namespace BossRush
     public partial class GoblinNPCController
     {
         // ============================================================================
-        // 名字标签
-        // ============================================================================
-        
-        private GameObject nameTagObject;
-        private TMPro.TextMeshPro nameTagText;
-        
-        // ============================================================================
         // 名字标签方法
         // ============================================================================
         
@@ -48,17 +41,19 @@ namespace BossRush
                 // 如果本地化失败，使用默认名称
             }
 
-            if (NPCNameTagHelper.CreateNameTag(
+            if (NPCNameTagHelper.RegisterOriginalHealthBarName(
                 transform,
-                "GoblinNameTag",
                 goblinName,
                 GoblinNPCConstants.NAME_TAG_HEIGHT,
-                out nameTagObject,
-                out nameTagText,
                 "[GoblinNPC]"))
             {
-                ModBehaviour.DevLog("[GoblinNPC] 名字标签创建成功: " + goblinName);
+                ModBehaviour.DevLog("[GoblinNPC] 原版名字组件注册成功: " + goblinName);
             }
+        }
+
+        void OnDestroy()
+        {
+            NPCNameTagHelper.UnregisterOriginalHealthBarName(transform);
         }
         
         // ============================================================================

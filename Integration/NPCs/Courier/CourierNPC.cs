@@ -454,9 +454,6 @@ namespace BossRush
             isStationary = stationary;
         }
 
-        // 名字标签
-        private GameObject nameTagObject;
-        private TMPro.TextMeshPro nameTagText;
         private const float NAME_TAG_HEIGHT = 2.3f;  // 名字标签高度（头顶上方）
 
         // 距离阈值（米）
@@ -652,22 +649,24 @@ namespace BossRush
                 // 本地化失败时使用默认中文名
             }
 
-            if (NPCNameTagHelper.CreateNameTag(
+            if (NPCNameTagHelper.RegisterOriginalHealthBarName(
                 transform,
-                "CourierNameTag",
                 courierName,
                 NAME_TAG_HEIGHT,
-                out nameTagObject,
-                out nameTagText,
                 "[CourierNPC]"))
             {
-                ModBehaviour.DevLog("[CourierNPC] 名字标签创建成功: " + courierName);
+                ModBehaviour.DevLog("[CourierNPC] 原版名字组件注册成功: " + courierName);
             }
         }
 
         void LateUpdate()
         {
-            NPCNameTagHelper.UpdateNameTagRotation(nameTagObject);
+            NPCNameTagHelper.RefreshOriginalHealthBarName(transform);
+        }
+
+        void OnDestroy()
+        {
+            NPCNameTagHelper.UnregisterOriginalHealthBarName(transform);
         }
 
         /// <summary>

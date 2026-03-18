@@ -150,7 +150,7 @@ namespace BossRush
 
         void LateUpdate()
         {
-            NPCNameTagHelper.UpdateNameTagRotation(nameTagObject);
+            NPCNameTagHelper.RefreshOriginalHealthBarName(transform);
         }
 
         void Update()

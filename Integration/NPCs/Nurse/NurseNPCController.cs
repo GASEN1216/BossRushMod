@@ -57,13 +57,6 @@ namespace BossRush
         private float storyDialogueCheckCooldown = 0f;
         
         // ============================================================================
-        // 名字标签
-        // ============================================================================
-        
-        private GameObject nameTagObject;
-        private TMPro.TextMeshPro nameTagText;
-
-        // ============================================================================
         // 状态标志
         // ============================================================================
 
@@ -330,16 +323,13 @@ namespace BossRush
         /// </summary>
         private void CreateNameTag()
         {
-            if (NPCNameTagHelper.CreateNameTag(
+            if (NPCNameTagHelper.RegisterOriginalHealthBarName(
                 transform,
-                "NurseNameTag",
                 config.DisplayName,
                 NurseNPCConstants.NAME_TAG_HEIGHT,
-                out nameTagObject,
-                out nameTagText,
                 "[NurseNPC]"))
             {
-                ModBehaviour.DevLog("[NurseNPC] 名字标签创建成功: " + config.DisplayName);
+                ModBehaviour.DevLog("[NurseNPC] 原版名字组件注册成功: " + config.DisplayName);
             }
         }
         
@@ -348,7 +338,7 @@ namespace BossRush
         /// </summary>
         private void UpdateNameTagRotation()
         {
-            NPCNameTagHelper.UpdateNameTagRotation(nameTagObject);
+            NPCNameTagHelper.RefreshOriginalHealthBarName(transform);
         }
         
         // ============================================================================
@@ -934,10 +924,7 @@ namespace BossRush
         
         void OnDestroy()
         {
-            if (nameTagObject != null)
-            {
-                Destroy(nameTagObject);
-            }
+            NPCNameTagHelper.UnregisterOriginalHealthBarName(transform);
         }
     }
 }
