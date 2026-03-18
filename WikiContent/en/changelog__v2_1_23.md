@@ -1,0 +1,10 @@
+## v2.1.23
+
+### Release Date
+- 2026-03-18
+
+### Main Themes
+- **Code Optimization**: Optimized Dragon King, Fenhuang Halberd, and Mode E code.
+
+### Detailed Update Log
+- Optimized Dragon King, Fenhuang Halberd, and Mode E code
