@@ -372,6 +372,21 @@ namespace BossRush
             return Mathf.Max(0.05f, currentRange + GetComboRangeOffset(step));
         }
 
+        internal static float GetComboBaseRange(int step)
+        {
+            switch (step)
+            {
+                case 0:
+                    return FenHuangHalberdConfig.Combo1Range;
+                case 1:
+                    return FenHuangHalberdConfig.Combo2Range;
+                case 2:
+                    return FenHuangHalberdConfig.Combo3Range;
+                default:
+                    return FenHuangHalberdConfig.BaseAttackRange;
+            }
+        }
+
         internal static float GetComboRangeOffset(int step)
         {
             switch (step)
@@ -823,6 +838,18 @@ namespace BossRush
         {
             try
             {
+                float rangeScale = 1f;
+                ItemAgent_MeleeWeapon melee = character != null ? character.GetMeleeWeapon() : null;
+                if (melee != null)
+                {
+                    float comboRange = FenHuangComboManager.GetComboConfiguredRange(step, melee.AttackRange);
+                    float baseComboRange = FenHuangComboManager.GetComboBaseRange(step);
+                    if (baseComboRange > 0.01f)
+                    {
+                        rangeScale = Mathf.Max(0.2f, comboRange / baseComboRange);
+                    }
+                }
+
                 // 固定特效生成中心点：人物坐标 + 高度偏移 + 向前少许偏移。
                 // 彻底不依赖武器Socket的位置，因为武器会在不同段数被倾斜，Socket会乱跑
                 // 保证三段式特效围绕统一个圆心爆发，视觉上才是一个完美的定点连招
@@ -858,7 +885,7 @@ namespace BossRush
                 fx.transform.rotation = rotation;
 
                 FenHuangSwingFx swingFx = fx.AddComponent<FenHuangSwingFx>();
-                swingFx.Initialize(step);
+                swingFx.Initialize(step, rangeScale);
                 UnityEngine.Object.Destroy(fx, 0.22f);
             }
             catch
@@ -1239,6 +1266,9 @@ namespace BossRush
     }
     public class FenHuangSwingFx : MonoBehaviour
     {
+        private const float BaseTrailDistance = 1.5f;
+        private const float MinTrailDistance = 0.35f;
+
         private float elapsed;
         private float duration = 0.2f;
         private Transform trailRoot;
@@ -1249,10 +1279,14 @@ namespace BossRush
         private float startAngle;
         private float sweepAngle;
 
-        public void Initialize(int step)
+        public void Initialize(int step, float rangeScale)
         {
             duration = 0.22f; // Matches Destroy delay
             Color color = GetStepColor(step);
+            float clampedRangeScale = Mathf.Max(0.2f, rangeScale);
+            float trailDistance = Mathf.Max(MinTrailDistance, BaseTrailDistance * clampedRangeScale);
+            float sizeScale = Mathf.Lerp(1f, clampedRangeScale, 0.35f);
+            float lightScale = Mathf.Lerp(1f, clampedRangeScale, 0.4f);
 
             // Determine sweep angles per combo step
             switch (step)
@@ -1285,7 +1319,7 @@ namespace BossRush
                 
                 // 将拖尾特效节点稍微往后拉，也就是减小它相对角色前方的 Z 轴偏移。
                 // 这样特效轨迹就会更加贴合武器的实际攻击判定范围，不会出现“火烧到怪了但没掉血”的情况
-                blurObj.transform.localPosition = new Vector3(0f, 0f, 1.5f);
+                blurObj.transform.localPosition = new Vector3(0f, 0f, trailDistance);
 
                 // =========== 核心复用：使用龙息武器的火焰特效投射到挥击节点 ===========
                 // DragonBreathWeaponConfig.TryAddFireEffectsToGraphic 会自动找到火 AK-47，
@@ -1311,7 +1345,7 @@ namespace BossRush
                     main.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 0.8f);
                     
                     // 3. 放大粒子体积，但避免过于遮挡视线
-                    main.startSizeMultiplier *= 1.8f;
+                    main.startSizeMultiplier *= 1.8f * sizeScale;
 
                     // 4. 最重要：原版火焰是靠时间生成的 (rateOverTime)。
                     // 我们挥砍极快（0.2秒），必须改为根据移动距离生成 (rateOverDistance)！
@@ -1331,7 +1365,7 @@ namespace BossRush
                 foreach (var l in injectedLights)
                 {
                     l.color = color;
-                    l.range = 3.0f;
+                    l.range = 3.0f * lightScale;
                     l.intensity = 2.0f;
                 }
             }
