@@ -159,6 +159,11 @@ namespace BossRush
         /// 小数值属性阈值：预制体值≤此值时使用0~1范围，>此值时使用百分比范围
         /// </summary>
         private const float SMALL_VALUE_THRESHOLD = 1.0f;
+        
+        /// <summary>
+        /// UI判定属性是否已贴近上下限时使用的容差
+        /// </summary>
+        private const float BOUNDARY_EPSILON = 0.001f;
 
         /// <summary>
         /// 强制使用0~1绝对范围的属性Key列表（如护甲值）
@@ -321,6 +326,75 @@ namespace BossRush
         {
             // 如果预制体值与其四舍五入值相等，则认为是整数属性
             return Mathf.Approximately(prefabValue, Mathf.Round(prefabValue));
+        }
+        
+        /// <summary>
+        /// 计算指定属性在重铸系统中的允许范围。
+        /// UI与实际重铸逻辑共用这套边界，避免 Max/Min 显示和真实结果不一致。
+        /// </summary>
+        public static void GetPropertyValueBounds(string key, float prefabValue, out float minValue, out float maxValue)
+        {
+            bool isForceAbsolute = !string.IsNullOrEmpty(key) && FORCE_ABSOLUTE_RANGE_KEYS.Contains(key);
+            bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD || isForceAbsolute;
+            
+            if (Mathf.Approximately(prefabValue, 0f))
+            {
+                minValue = -ZERO_VALUE_RANGE;
+                maxValue = ZERO_VALUE_RANGE;
+                return;
+            }
+            
+            if (isSmallValue)
+            {
+                if (isForceAbsolute)
+                {
+                    minValue = Mathf.Max(0f, prefabValue - MAX_DELTA_ABSOLUTE);
+                    maxValue = prefabValue + MAX_DELTA_ABSOLUTE;
+                }
+                else if (prefabValue > 0)
+                {
+                    minValue = 0f;
+                    maxValue = prefabValue * 2f;
+                }
+                else
+                {
+                    minValue = prefabValue * 2f;
+                    maxValue = 0f;
+                }
+                
+                return;
+            }
+            
+            if (prefabValue > 0)
+            {
+                minValue = prefabValue * 0.3f;
+                maxValue = prefabValue * 2.0f;
+            }
+            else
+            {
+                minValue = prefabValue * 2.0f;
+                maxValue = prefabValue * 0.3f;
+            }
+        }
+        
+        /// <summary>
+        /// 当前值是否已经达到重铸允许的最大值。
+        /// </summary>
+        public static bool IsValueAtUpperBound(string key, float prefabValue, float currentValue)
+        {
+            float minValue, maxValue;
+            GetPropertyValueBounds(key, prefabValue, out minValue, out maxValue);
+            return currentValue >= maxValue - BOUNDARY_EPSILON;
+        }
+        
+        /// <summary>
+        /// 当前值是否已经达到重铸允许的最小值。
+        /// </summary>
+        public static bool IsValueAtLowerBound(string key, float prefabValue, float currentValue)
+        {
+            float minValue, maxValue;
+            GetPropertyValueBounds(key, prefabValue, out minValue, out maxValue);
+            return currentValue <= minValue + BOUNDARY_EPSILON;
         }
         
         /// <summary>
@@ -665,12 +739,10 @@ namespace BossRush
                     // Step 4: 计算delta和新值
                     float delta, newValue;
                     float minValue, maxValue;
+                    GetPropertyValueBounds(prop.Key, prefabValue, out minValue, out maxValue);
                     
                     if (Mathf.Approximately(prefabValue, 0f))
                     {
-                        // 预制体值为0：使用固定范围
-                        minValue = -ZERO_VALUE_RANGE;
-                        maxValue = ZERO_VALUE_RANGE;
                         delta = sign * mag01 * ZERO_VALUE_RANGE;
                         newValue = originalValue + delta;
                     }
@@ -680,44 +752,12 @@ namespace BossRush
                         delta = sign * mag01 * MAX_DELTA_ABSOLUTE;
                         newValue = originalValue + delta;
 
-                        // 检查是否为强制绝对范围的属性（如护甲值）
-                        bool isForceAbsolute = FORCE_ABSOLUTE_RANGE_KEYS.Contains(prop.Key);
-
-                        if (isForceAbsolute)
-                        {
-                            // 强制绝对范围属性：范围为 prefabValue-1 ~ prefabValue+1
-                            minValue = Mathf.Max(0f, prefabValue - MAX_DELTA_ABSOLUTE);
-                            maxValue = prefabValue + MAX_DELTA_ABSOLUTE;
-                        }
-                        else if (prefabValue > 0)
-                        {
-                            // 正数小值：范围0~2（预制体值的0%~200%）
-                            minValue = 0f;
-                            maxValue = prefabValue * 2f;
-                        }
-                        else
-                        {
-                            // 负数小值：范围-2~0
-                            minValue = prefabValue * 2f;
-                            maxValue = 0f;
-                        }
                     }
                     else
                     {
                         // 大数值属性（预制体值>1或<-1）：计算delta
                         delta = sign * mag01 * MAX_VALUE_OFFSET_PERCENT * Mathf.Abs(prefabValue);
                         newValue = originalValue + delta;
-                        
-                        if (prefabValue > 0)
-                        {
-                            minValue = prefabValue * 0.3f;
-                            maxValue = prefabValue * 2.0f;
-                        }
-                        else
-                        {
-                            minValue = prefabValue * 2.0f;
-                            maxValue = prefabValue * 0.3f;
-                        }
                     }
                     
                     // Step 5: 整数属性保持整数，且保证数值必定有变化

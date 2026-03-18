@@ -138,6 +138,8 @@ namespace BossRush
         private const int DEFAULT_FRAME_DELAY = 1;
         private const int REFORGE_REFRESH_FRAME_DELAY = 2;
         private const float DIFF_THRESHOLD = 0.01f;
+        private const string MAX_BOUND_LABEL_COLOR = "#FF4D4D";
+        private const string MIN_BOUND_LABEL_COLOR = "#9AD8FF";
         
         // 冷淬液UI常量
         private const float COLD_QUENCH_UI_OFFSET_Y = -10f;
@@ -2003,9 +2005,15 @@ namespace BossRush
                                             string arrow = diff > 0 ? "↑" : "↓";
                                             string diffStr = Mathf.Abs(diff).ToString("F2");
                                             string colorHex = diff > 0 ? "#FF6666" : "#66FF66";
+                                            string diffMarkup = string.Format(" <color={0}>({1}{2})</color>", colorHex, arrow, diffStr);
+                                            float prefabValue;
+                                            if (cachedPrefabModifiers.TryGetValue(key, out prefabValue))
+                                            {
+                                                diffMarkup += GetReforgeBoundLabelMarkup(key, prefabValue, newValue, diff);
+                                            }
                                             
                                             // 显示格式: 原值 (<color>↑/↓+差异</color>)
-                                            valueText.text = valueText.text + string.Format(" <color={0}>({1}{2})</color>", colorHex, arrow, diffStr);
+                                            valueText.text = valueText.text + diffMarkup;
                                         }
                                     }
                                     
@@ -2026,6 +2034,41 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 显示属性变化失败: " + e.Message);
             }
+        }
+        
+        /// <summary>
+        /// 生成属性差值的富文本标记，并在触达上下限时追加 Max/Min 标签。
+        /// </summary>
+        private static string BuildPropertyDiffMarkup(string key, float prefabValue, float currentValue, float diff, string diffColorHex, bool insertSpaceBetweenArrowAndValue)
+        {
+            string arrow = diff > 0 ? "↑" : "↓";
+            string diffStr = Mathf.Abs(diff).ToString("F2");
+            string separator = insertSpaceBetweenArrowAndValue ? " " : string.Empty;
+            
+            return string.Format(" <color={0}>({1}{2}{3})</color>{4}",
+                diffColorHex,
+                arrow,
+                separator,
+                diffStr,
+                GetReforgeBoundLabelMarkup(key, prefabValue, currentValue, diff));
+        }
+        
+        /// <summary>
+        /// 如果当前数值已经达到重铸边界，则返回对应的 Max/Min 标签。
+        /// </summary>
+        private static string GetReforgeBoundLabelMarkup(string key, float prefabValue, float currentValue, float diff)
+        {
+            if (diff > 0 && ReforgeSystem.IsValueAtUpperBound(key, prefabValue, currentValue))
+            {
+                return string.Format(" <color={0}>Max</color>", MAX_BOUND_LABEL_COLOR);
+            }
+            
+            if (diff < 0 && ReforgeSystem.IsValueAtLowerBound(key, prefabValue, currentValue))
+            {
+                return string.Format(" <color={0}>Min</color>", MIN_BOUND_LABEL_COLOR);
+            }
+            
+            return string.Empty;
         }
         
         /// <summary>
@@ -2423,11 +2466,9 @@ namespace BossRush
                     }
                     
                     // 显示差异: 预制体值 (↑/↓ xx)，保留两位小数
-                    string arrow = diff > 0 ? "↑" : "↓";
-                    string diffStr = Mathf.Abs(diff).ToString("F2");
                     string colorHex = diff > 0 ? "#66FF66" : "#FF6666";
                     
-                    string newText = baseText + string.Format(" <color={0}>({1} {2})</color>", colorHex, arrow, diffStr);
+                    string newText = baseText + BuildPropertyDiffMarkup(key, prefabValue, playerValue, diff, colorHex, true);
                     valueText.text = newText;
                     ModBehaviour.DevLog(string.Format("[ReforgeUI] 已修改: {0}", newText));
                 }
