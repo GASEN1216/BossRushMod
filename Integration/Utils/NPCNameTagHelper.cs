@@ -4,16 +4,15 @@
 // 模块说明：
 //   统一 NPC 名字显示逻辑。
 //   旧方案：创建世界空间 TextMeshPro 头顶字。
-//   新方案：优先复用游戏原版 HealthBar 的 nameText，仅显示原版名字组件。
+//   新方案：复制原版 HealthBar UI，并只保留原版名字组件。
 // ============================================================================
 
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using HarmonyLib;
 using Duckov.UI;
+using Duckov.UI.Animations;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
 using TMPro;
 
@@ -23,13 +22,19 @@ namespace BossRush.Utils
     {
         private const float DEFAULT_FONT_SIZE = 4f;
         private const int DEFAULT_SORTING_ORDER = 100;
-        private const int DEFAULT_PROXY_MAX_HEALTH = 1;
-        private const float DEFAULT_PROXY_CURRENT_HEALTH = 1f;
+        private const float DEFAULT_SCREEN_Y_OFFSET = 0.01f;
+        private const float ORIGINAL_HEALTH_BAR_NAME_HEIGHT_ADJUSTMENT = -0.5f;
+        private const float ORIGINAL_HEALTH_BAR_NAME_FONT_SCALE = 1.2f;
 
         private static readonly BindingFlags PrivateInstanceFlags = BindingFlags.NonPublic | BindingFlags.Instance;
-        private static readonly FieldInfo DefaultMaxHealthField = typeof(Health).GetField("defaultMaxHealth", PrivateInstanceFlags);
-        private static readonly FieldInfo CurrentHealthField = typeof(Health).GetField("_currentHealth", PrivateInstanceFlags);
-        private static readonly FieldInfo DisplayOffsetField = typeof(HealthBar).GetField("displayOffset", PrivateInstanceFlags);
+        private static readonly FieldInfo NameTextField = typeof(HealthBar).GetField("nameText", PrivateInstanceFlags);
+        private static readonly FieldInfo BackgroundField = typeof(HealthBar).GetField("background", PrivateInstanceFlags);
+        private static readonly FieldInfo FillField = typeof(HealthBar).GetField("fill", PrivateInstanceFlags);
+        private static readonly FieldInfo FollowFillField = typeof(HealthBar).GetField("followFill", PrivateInstanceFlags);
+        private static readonly FieldInfo LevelIconField = typeof(HealthBar).GetField("levelIcon", PrivateInstanceFlags);
+        private static readonly FieldInfo DeathIndicatorField = typeof(HealthBar).GetField("deathIndicator", PrivateInstanceFlags);
+        private static readonly FieldInfo HurtBlinkField = typeof(HealthBar).GetField("hurtBlink", PrivateInstanceFlags);
+        private static readonly FieldInfo DamageBarTemplateField = typeof(HealthBar).GetField("damageBarTemplate", PrivateInstanceFlags);
 
         private static Camera _cachedCamera;
         private static float _nextCameraRefreshTime;
@@ -38,21 +43,24 @@ namespace BossRush.Utils
 
         private sealed class OriginalHealthBarEntry
         {
-            public Health Health;
+            public Transform Target;
             public string DisplayName;
             public float Height;
             public bool HideBarVisuals;
-            public float NextEnsureVisibleTime;
+            public string LogPrefix;
+            public float NextEnsureInstanceTime;
+            public bool LoggedMissingHealthBarManager;
+            public GameObject RootObject;
+            public RectTransform RootRectTransform;
+            public TextMeshProUGUI NameText;
         }
 
-        private static readonly Dictionary<int, OriginalHealthBarEntry> OriginalHealthBarEntriesByHealthId
+        private static readonly Dictionary<int, OriginalHealthBarEntry> OriginalHealthBarEntriesByTransformId
             = new Dictionary<int, OriginalHealthBarEntry>();
-        private static readonly Dictionary<int, int> TransformToHealthId
-            = new Dictionary<int, int>();
 
         /// <summary>
         /// 使用原版 HealthBar 的名字组件显示 NPC 名字。
-        /// 对没有 CharacterMainControl 的功能型 NPC，会补一个最小 Health 代理。
+        /// 内部只复制原版 UI 样式，不再补 Health 代理。
         /// </summary>
         public static bool RegisterOriginalHealthBarName(
             Transform parent,
@@ -69,27 +77,24 @@ namespace BossRush.Utils
 
             try
             {
-                Health health = EnsureOriginalHealthBarProxy(parent.gameObject, Mathf.Max(0.1f, height), logPrefix);
-                if (health == null)
+                int transformId = parent.GetInstanceID();
+                OriginalHealthBarEntry entry;
+                if (!OriginalHealthBarEntriesByTransformId.TryGetValue(transformId, out entry) || entry == null)
                 {
-                    return false;
+                    entry = new OriginalHealthBarEntry();
+                    OriginalHealthBarEntriesByTransformId[transformId] = entry;
                 }
 
-                OriginalHealthBarEntry entry = new OriginalHealthBarEntry
-                {
-                    Health = health,
-                    DisplayName = displayName ?? string.Empty,
-                    Height = Mathf.Max(0.1f, height),
-                    HideBarVisuals = hideBarVisuals,
-                    NextEnsureVisibleTime = 0f
-                };
+                entry.Target = parent;
+                entry.DisplayName = displayName ?? string.Empty;
+                entry.Height = Mathf.Max(0.1f, height);
+                entry.HideBarVisuals = hideBarVisuals;
+                entry.LogPrefix = logPrefix ?? "[NPCNameTagHelper]";
+                entry.NextEnsureInstanceTime = 0f;
+                entry.LoggedMissingHealthBarManager = false;
 
-                int healthId = health.GetInstanceID();
-                OriginalHealthBarEntriesByHealthId[healthId] = entry;
-                TransformToHealthId[parent.GetInstanceID()] = healthId;
-
-                health.showHealthBar = true;
-                health.RequestHealthBar();
+                EnsureOriginalHealthBarInstance(entry);
+                RefreshOriginalHealthBarName(parent);
                 return true;
             }
             catch (Exception e)
@@ -109,28 +114,20 @@ namespace BossRush.Utils
                 return;
             }
 
-            int healthId;
-            if (!TransformToHealthId.TryGetValue(parent.GetInstanceID(), out healthId))
-            {
-                return;
-            }
-
+            int transformId = parent.GetInstanceID();
             OriginalHealthBarEntry entry;
-            if (!OriginalHealthBarEntriesByHealthId.TryGetValue(healthId, out entry) || entry == null || entry.Health == null)
-            {
-                CleanupStaleOriginalHealthBarEntry(parent.GetInstanceID(), healthId);
-                return;
-            }
-
-            float now = Time.unscaledTime;
-            if (now < entry.NextEnsureVisibleTime)
+            if (!OriginalHealthBarEntriesByTransformId.TryGetValue(transformId, out entry) || entry == null)
             {
                 return;
             }
 
-            entry.NextEnsureVisibleTime = now + 0.5f;
-            entry.Health.showHealthBar = true;
-            entry.Health.RequestHealthBar();
+            entry.Target = parent;
+            if (!EnsureOriginalHealthBarInstance(entry))
+            {
+                return;
+            }
+
+            UpdateOriginalHealthBarInstance(entry);
         }
 
         /// <summary>
@@ -144,55 +141,14 @@ namespace BossRush.Utils
             }
 
             int transformId = parent.GetInstanceID();
-            int healthId;
-            if (!TransformToHealthId.TryGetValue(transformId, out healthId))
+            OriginalHealthBarEntry entry;
+            if (!OriginalHealthBarEntriesByTransformId.TryGetValue(transformId, out entry) || entry == null)
             {
                 return;
             }
 
-            TransformToHealthId.Remove(transformId);
-
-            OriginalHealthBarEntry entry;
-            if (!OriginalHealthBarEntriesByHealthId.TryGetValue(healthId, out entry))
-            {
-                return;
-            }
-
-            OriginalHealthBarEntriesByHealthId.Remove(healthId);
-
-            HealthBar activeHealthBar = FindActiveHealthBar(entry.Health);
-            if (activeHealthBar != null)
-            {
-                ForceRefreshCharacterIcon(activeHealthBar);
-            }
-        }
-
-        internal static bool TryGetOriginalHealthBarEntry(
-            Health health,
-            out string displayName,
-            out float height,
-            out bool hideBarVisuals)
-        {
-            displayName = null;
-            height = 0f;
-            hideBarVisuals = false;
-
-            if (health == null)
-            {
-                return false;
-            }
-
-            OriginalHealthBarEntry entry;
-            int healthId = health.GetInstanceID();
-            if (!OriginalHealthBarEntriesByHealthId.TryGetValue(healthId, out entry) || entry == null || entry.Health == null)
-            {
-                return false;
-            }
-
-            displayName = entry.DisplayName ?? string.Empty;
-            height = entry.Height;
-            hideBarVisuals = entry.HideBarVisuals;
-            return true;
+            OriginalHealthBarEntriesByTransformId.Remove(transformId);
+            DestroyOriginalHealthBarInstance(entry);
         }
 
         /// <summary>
@@ -318,153 +274,239 @@ namespace BossRush.Utils
         {
             if (nameTagObject == null) return;
 
+            RefreshCachedCamera();
+            if (_cachedCamera == null) return;
+            nameTagObject.transform.rotation = _cachedCamera.transform.rotation;
+        }
+
+        private static void RefreshCachedCamera()
+        {
             float now = Time.unscaledTime;
             if (_cachedCamera == null || now >= _nextCameraRefreshTime)
             {
                 _cachedCamera = Camera.main;
                 _nextCameraRefreshTime = now + 1f;
             }
-
-            if (_cachedCamera == null) return;
-            nameTagObject.transform.rotation = _cachedCamera.transform.rotation;
         }
 
-        private static Health EnsureOriginalHealthBarProxy(GameObject target, float height, string logPrefix)
+        private static bool EnsureOriginalHealthBarInstance(OriginalHealthBarEntry entry)
         {
-            if (target == null)
+            if (entry == null || entry.Target == null)
             {
-                return null;
+                return false;
             }
 
-            Health health = target.GetComponent<Health>();
-            if (health == null)
+            if (entry.RootObject != null && entry.NameText != null)
             {
-                health = target.AddComponent<Health>();
-                ModBehaviour.DevLog(logPrefix + " 已添加 Health 代理以复用原版名字组件");
+                return true;
             }
 
-            if (health.OnHealthChange == null)
+            if (entry.RootObject != null || entry.NameText != null)
             {
-                health.OnHealthChange = new UnityEvent<Health>();
+                DestroyOriginalHealthBarInstance(entry);
             }
 
-            if (health.OnMaxHealthChange == null)
+            float now = Time.unscaledTime;
+            if (now < entry.NextEnsureInstanceTime)
             {
-                health.OnMaxHealthChange = new UnityEvent<Health>();
+                return false;
             }
 
-            if (health.OnHurtEvent == null)
-            {
-                health.OnHurtEvent = new UnityEvent<DamageInfo>();
-            }
+            entry.NextEnsureInstanceTime = now + 1f;
 
-            if (health.OnDeadEvent == null)
+            HealthBarManager manager = HealthBarManager.Instance;
+            if (manager == null || manager.healthBarPrefab == null)
             {
-                health.OnDeadEvent = new UnityEvent<DamageInfo>();
-            }
-
-            health.autoInit = false;
-            health.showHealthBar = true;
-            health.hasSoul = false;
-            health.team = Teams.all;
-            health.healthBarHeight = height;
-            health.CanDieIfNotRaidMap = false;
-
-            if (health.TryGetCharacter() == null)
-            {
-                if (DefaultMaxHealthField != null)
+                if (!entry.LoggedMissingHealthBarManager)
                 {
-                    DefaultMaxHealthField.SetValue(health, DEFAULT_PROXY_MAX_HEALTH);
+                    entry.LoggedMissingHealthBarManager = true;
+                    ModBehaviour.DevLog(entry.LogPrefix + " [WARNING] 复制原版名字组件失败: HealthBarManager 或 prefab 不可用");
                 }
 
-                if (CurrentHealthField != null)
-                {
-                    float currentHealth = 0f;
-                    object boxedCurrentHealth = CurrentHealthField.GetValue(health);
-                    if (boxedCurrentHealth is float)
-                    {
-                        currentHealth = (float)boxedCurrentHealth;
-                    }
-
-                    if (currentHealth <= 0f)
-                    {
-                        CurrentHealthField.SetValue(health, DEFAULT_PROXY_CURRENT_HEALTH);
-                    }
-                }
-                else if (health.CurrentHealth <= 0f)
-                {
-                    health.CurrentHealth = DEFAULT_PROXY_CURRENT_HEALTH;
-                }
-
-                health.SetInvincible(true);
+                return false;
             }
 
-            return health;
-        }
+            entry.LoggedMissingHealthBarManager = false;
 
-        private static void CleanupStaleOriginalHealthBarEntry(int transformId, int healthId)
-        {
-            TransformToHealthId.Remove(transformId);
-            OriginalHealthBarEntriesByHealthId.Remove(healthId);
-        }
-
-        private static HealthBar FindActiveHealthBar(Health health)
-        {
-            if (health == null)
-            {
-                return null;
-            }
-
-            HealthBar[] healthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
-            for (int i = 0; i < healthBars.Length; i++)
-            {
-                HealthBar healthBar = healthBars[i];
-                if (healthBar != null && healthBar.target == health)
-                {
-                    return healthBar;
-                }
-            }
-
-            return null;
-        }
-
-        private static void ForceRefreshCharacterIcon(HealthBar healthBar)
-        {
             try
             {
-                var refreshCharacterIcon = AccessTools.Method(typeof(HealthBar), "RefreshCharacterIcon");
-                if (healthBar != null && refreshCharacterIcon != null)
+                GameObject instance = UnityEngine.Object.Instantiate(manager.healthBarPrefab.gameObject);
+                instance.name = "NPCOriginalHealthBarName_" + entry.Target.name;
+                instance.transform.SetParent(manager.transform, false);
+
+                RectTransform rootRectTransform = instance.transform as RectTransform;
+                if (rootRectTransform != null)
                 {
-                    refreshCharacterIcon.Invoke(healthBar, null);
+                    rootRectTransform.localScale = Vector3.one;
+                    rootRectTransform.localRotation = Quaternion.identity;
                 }
+
+                HealthBar healthBar = instance.GetComponent<HealthBar>();
+                TextMeshProUGUI nameText = GetHealthBarField<TextMeshProUGUI>(healthBar, NameTextField);
+                GameObject background = GetHealthBarField<GameObject>(healthBar, BackgroundField);
+                Image fill = GetHealthBarField<Image>(healthBar, FillField);
+                Image followFill = GetHealthBarField<Image>(healthBar, FollowFillField);
+                Image levelIcon = GetHealthBarField<Image>(healthBar, LevelIconField);
+                GameObject deathIndicator = GetHealthBarField<GameObject>(healthBar, DeathIndicatorField);
+                Image hurtBlink = GetHealthBarField<Image>(healthBar, HurtBlinkField);
+                Component damageBarTemplate = GetHealthBarField<Component>(healthBar, DamageBarTemplateField);
+
+                DisableFadeBehaviours(instance);
+                ApplyOriginalHealthBarNameVisuals(entry, nameText, background, fill, followFill, levelIcon, deathIndicator, hurtBlink, damageBarTemplate);
+
+                if (healthBar != null)
+                {
+                    healthBar.enabled = false;
+                }
+
+                entry.RootObject = instance;
+                entry.RootRectTransform = rootRectTransform;
+                entry.NameText = nameText;
+
+                if (entry.NameText == null)
+                {
+                    ModBehaviour.DevLog(entry.LogPrefix + " [WARNING] 复制原版名字组件失败: 未找到 nameText");
+                    DestroyOriginalHealthBarInstance(entry);
+                    return false;
+                }
+
+                return true;
             }
-            catch { }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(entry.LogPrefix + " [WARNING] 复制原版名字组件失败: " + e);
+                DestroyOriginalHealthBarInstance(entry);
+                return false;
+            }
         }
 
-        internal static void ApplyOriginalHealthBarStyle(
-            HealthBar healthBar,
+        private static void DestroyOriginalHealthBarInstance(OriginalHealthBarEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            if (entry.RootObject != null)
+            {
+                UnityEngine.Object.Destroy(entry.RootObject);
+            }
+
+            entry.RootObject = null;
+            entry.RootRectTransform = null;
+            entry.NameText = null;
+        }
+
+        private static void UpdateOriginalHealthBarInstance(OriginalHealthBarEntry entry)
+        {
+            if (entry == null || entry.Target == null || entry.RootObject == null)
+            {
+                return;
+            }
+
+            if (entry.NameText != null)
+            {
+                if (!entry.NameText.gameObject.activeSelf)
+                {
+                    entry.NameText.gameObject.SetActive(true);
+                }
+
+                if (!string.Equals(entry.NameText.text, entry.DisplayName, StringComparison.Ordinal))
+                {
+                    entry.NameText.text = entry.DisplayName;
+                }
+            }
+
+            RefreshCachedCamera();
+            bool shouldShow = ShouldShowOriginalHealthBarName(entry.Target);
+            if (entry.RootObject.activeSelf != shouldShow)
+            {
+                entry.RootObject.SetActive(shouldShow);
+            }
+
+            if (!shouldShow || _cachedCamera == null)
+            {
+                return;
+            }
+
+            Vector3 screenPosition = _cachedCamera.WorldToScreenPoint(
+                entry.Target.position + Vector3.up * GetAdjustedOriginalHealthBarNameHeight(entry.Height));
+            screenPosition.y += DEFAULT_SCREEN_Y_OFFSET * Screen.height;
+
+            if (entry.RootRectTransform != null)
+            {
+                entry.RootRectTransform.position = screenPosition;
+            }
+            else
+            {
+                entry.RootObject.transform.position = screenPosition;
+            }
+        }
+
+        private static bool ShouldShowOriginalHealthBarName(Transform target)
+        {
+            if (target == null || !target.gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            if (_cachedCamera == null)
+            {
+                return false;
+            }
+
+            Vector3 direction = target.position - _cachedCamera.transform.position;
+            return Vector3.Dot(direction, _cachedCamera.transform.forward) > 0f;
+        }
+
+        private static void DisableFadeBehaviours(GameObject rootObject)
+        {
+            if (rootObject == null)
+            {
+                return;
+            }
+
+            FadeGroup[] fadeGroups = rootObject.GetComponentsInChildren<FadeGroup>(true);
+            for (int i = 0; i < fadeGroups.Length; i++)
+            {
+                FadeGroup fadeGroup = fadeGroups[i];
+                if (fadeGroup == null)
+                {
+                    continue;
+                }
+
+                fadeGroup.enabled = false;
+            }
+
+            CanvasGroup[] canvasGroups = rootObject.GetComponentsInChildren<CanvasGroup>(true);
+            for (int i = 0; i < canvasGroups.Length; i++)
+            {
+                CanvasGroup canvasGroup = canvasGroups[i];
+                if (canvasGroup == null)
+                {
+                    continue;
+                }
+
+                canvasGroup.alpha = 1f;
+                canvasGroup.blocksRaycasts = false;
+                canvasGroup.interactable = false;
+            }
+        }
+
+        private static void ApplyOriginalHealthBarNameVisuals(
+            OriginalHealthBarEntry entry,
             TextMeshProUGUI nameText,
             GameObject background,
             Image fill,
             Image followFill,
-            Image levelIcon)
+            Image levelIcon,
+            GameObject deathIndicator,
+            Image hurtBlink,
+            Component damageBarTemplate)
         {
-            if (healthBar == null || healthBar.target == null)
+            if (entry == null)
             {
                 return;
-            }
-
-            string displayName;
-            float height;
-            bool hideBarVisuals;
-            if (!TryGetOriginalHealthBarEntry(healthBar.target, out displayName, out height, out hideBarVisuals))
-            {
-                return;
-            }
-
-            if (DisplayOffsetField != null)
-            {
-                DisplayOffsetField.SetValue(healthBar, Vector3.up * height);
             }
 
             if (nameText != null)
@@ -474,13 +516,25 @@ namespace BossRush.Utils
                     nameText.gameObject.SetActive(true);
                 }
 
-                if (!string.Equals(nameText.text, displayName, StringComparison.Ordinal))
+                if (!string.Equals(nameText.text, entry.DisplayName, StringComparison.Ordinal))
                 {
-                    nameText.text = displayName;
+                    nameText.text = entry.DisplayName;
                 }
+
+                if (nameText.enableAutoSizing)
+                {
+                    nameText.fontSizeMin *= ORIGINAL_HEALTH_BAR_NAME_FONT_SCALE;
+                    nameText.fontSizeMax *= ORIGINAL_HEALTH_BAR_NAME_FONT_SCALE;
+                }
+                else if (nameText.fontSize > 0f)
+                {
+                    nameText.fontSize *= ORIGINAL_HEALTH_BAR_NAME_FONT_SCALE;
+                }
+
+                nameText.raycastTarget = false;
             }
 
-            if (!hideBarVisuals)
+            if (!entry.HideBarVisuals)
             {
                 return;
             }
@@ -504,96 +558,35 @@ namespace BossRush.Utils
             {
                 levelIcon.gameObject.SetActive(false);
             }
-        }
-    }
-
-    [HarmonyPatch(typeof(HealthBar), "Refresh")]
-    internal static class NPCOriginalHealthBarRefreshPatch
-    {
-        [HarmonyPrefix]
-        private static bool Prefix(HealthBar __instance, Image ___fill, Image ___followFill)
-        {
-            if (__instance == null || __instance.target == null)
+            if (deathIndicator != null && deathIndicator.activeSelf)
             {
-                return true;
+                deathIndicator.SetActive(false);
             }
 
-            string displayName;
-            float height;
-            bool hideBarVisuals;
-            if (!NPCNameTagHelper.TryGetOriginalHealthBarEntry(__instance.target, out displayName, out height, out hideBarVisuals))
+            if (hurtBlink != null && hurtBlink.gameObject.activeSelf)
             {
-                return true;
+                hurtBlink.gameObject.SetActive(false);
             }
 
-            if (___fill != null)
+            if (damageBarTemplate != null && damageBarTemplate.gameObject.activeSelf)
             {
-                ___fill.fillAmount = 1f;
+                damageBarTemplate.gameObject.SetActive(false);
+            }
+        }
+
+        private static T GetHealthBarField<T>(HealthBar healthBar, FieldInfo fieldInfo) where T : class
+        {
+            if (healthBar == null || fieldInfo == null)
+            {
+                return null;
             }
 
-            if (___followFill != null)
-            {
-                ___followFill.fillAmount = 1f;
-            }
-
-            return false;
+            return fieldInfo.GetValue(healthBar) as T;
         }
-    }
 
-    [HarmonyPatch(typeof(HealthBar), "ShowDamageBar")]
-    internal static class NPCOriginalHealthBarDamageBarPatch
-    {
-        [HarmonyPrefix]
-        private static bool Prefix(HealthBar __instance)
+        private static float GetAdjustedOriginalHealthBarNameHeight(float originalHeight)
         {
-            if (__instance == null || __instance.target == null)
-            {
-                return true;
-            }
-
-            string displayName;
-            float height;
-            bool hideBarVisuals;
-            return !NPCNameTagHelper.TryGetOriginalHealthBarEntry(__instance.target, out displayName, out height, out hideBarVisuals);
-        }
-    }
-
-    [HarmonyPatch(typeof(HealthBar), "RefreshOffset")]
-    internal static class NPCOriginalHealthBarOffsetPatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(HealthBar __instance)
-        {
-            NPCNameTagHelper.ApplyOriginalHealthBarStyle(__instance, null, null, null, null, null);
-        }
-    }
-
-    [HarmonyPatch(typeof(HealthBar), "Setup")]
-    internal static class NPCOriginalHealthBarSetupPatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(
-            HealthBar __instance,
-            TextMeshProUGUI ___nameText,
-            GameObject ___background,
-            Image ___fill,
-            Image ___followFill,
-            Image ___levelIcon)
-        {
-            NPCNameTagHelper.ApplyOriginalHealthBarStyle(__instance, ___nameText, ___background, ___fill, ___followFill, ___levelIcon);
-        }
-    }
-
-    [HarmonyPatch(typeof(HealthBar), "RefreshCharacterIcon")]
-    internal static class NPCOriginalHealthBarNamePatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(
-            HealthBar __instance,
-            TextMeshProUGUI ___nameText,
-            Image ___levelIcon)
-        {
-            NPCNameTagHelper.ApplyOriginalHealthBarStyle(__instance, ___nameText, null, null, null, ___levelIcon);
+            return Mathf.Max(0.1f, originalHeight + ORIGINAL_HEALTH_BAR_NAME_HEIGHT_ADJUSTMENT);
         }
     }
 }
