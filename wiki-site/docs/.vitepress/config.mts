@@ -276,14 +276,16 @@ function sidebarEn() {
 }
 
 // ── 导出配置 ──────────────────────────────────────────────
+const base = process.env.DEPLOY_TARGET === 'cloudflare' ? '/' : '/BossRushMod/'
+
 export default defineConfig({
   title: 'BossRush Wiki',
   description: 'Escape from Duckov — BossRush Mod 百科',
-  base: '/BossRushMod/',
+  base,
   cleanUrls: true,
 
   head: [
-    ['link', { rel: 'icon', href: '/BossRushMod/images/favicon.ico' }],
+    ['link', { rel: 'icon', href: `${base}images/favicon.ico` }],
   ],
 
   locales: {
