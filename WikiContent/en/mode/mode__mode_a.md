@@ -49,6 +49,13 @@ The following facilities are available around the signpost:
 - Trash Can — Clean up loot crates on the field (option to clear boxes or clear all)
 - Return to Spawn — Quick teleport back to the safe zone
 
+### Arena NPCs
+
+The following NPCs appear inside the arena:
+
+- Awen (Courier): Always present, provides item storage and retrieval services
+- One of Dingdang or Yuori (random): Provides Reforge/shop or healing services (married NPCs are excluded from the random pool)
+
 ### Related Achievements
 
 - Rookie — First time clearing any difficulty

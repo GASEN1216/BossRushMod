@@ -21,7 +21,10 @@ See Affinity and Marriage for details.
 ### NPC Locations
 - Base: Dingdang ✓ / Yuori ✓ / Awen ✓
 - Wedding Chapel (after marriage): Dingdang ✓ / Yuori ✓ / Awen —
-- Faction War (in-mode): Dingdang — / Yuori — / Awen ✓
-- Blood Hunt (in-mode): Dingdang — / Yuori — / Awen ✓
+- Standard BossRush / From Scratch (in-mode): One of Dingdang or Yuori (random) ✓ / Awen ✓
+- Faction War (in-mode): Dingdang ✓ / Yuori ✓ / Awen ✓
+- Blood Hunt (in-mode): Dingdang ✓ / Yuori ✓ / Awen ✓
+
+In Standard BossRush and From Scratch modes, one of Dingdang or Yuori is randomly selected to appear (married NPCs are excluded from the random pool). In Faction War and Blood Hunt modes, all three NPCs appear.
 
 A Mystery Merchant also appears within Faction War and Blood Hunt modes, offering categorized shop services.

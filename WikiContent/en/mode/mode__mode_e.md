@@ -51,6 +51,14 @@ When a member of a faction dies, all surviving members of that faction receive s
 - Dragon Descendant appears at most once per session
 - Skyburner Dragon Lord does not appear in Faction War
 
+### Arena NPCs
+
+All three NPCs appear in Faction War mode:
+
+- Awen (Courier): Provides item storage and retrieval services
+- Dingdang (Goblin Smith): Provides Reforge and shop services
+- Yuori (Nurse): Provides healing services
+
 ### Mystery Merchant
 
 When the mode starts, a Mystery Merchant appears in front of you, offering 13 categorized shops:

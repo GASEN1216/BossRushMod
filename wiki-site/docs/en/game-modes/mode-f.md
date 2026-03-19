@@ -51,6 +51,14 @@ Starting from the Bounty Phase, a Bounty Radar is displayed on screen:
 
 Killing a bounty Boss also drops additional high-quality items equal to the number of marks on that Boss.
 
+# Arena NPCs
+
+All three NPCs appear in Blood Hunt mode:
+
+- Awen (Courier): Provides item storage and retrieval services
+- Dingdang (Goblin Smith): Provides Reforge and shop services
+- Yuori (Nurse): Provides healing services
+
 # Fortification System
 
 Blood Hunt provides 4 deployable fortification items:

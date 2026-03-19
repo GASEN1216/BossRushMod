@@ -47,6 +47,10 @@
 - By default, the next wave starts automatically on a countdown (interval is configurable).
 - You can also manually trigger "Rush Next Wave" via the signpost (must enable manual mode in config).
 
+### Arena NPCs
+- Awen (Courier): Always present, provides item storage and retrieval services.
+- One of Dingdang or Yuori (random): Provides Reforge/shop or healing services (married NPCs are excluded from the random pool).
+
 ### Related Achievements
 - From Scratch — Complete 10 waves (bonus 30,000).
 - Perfect Scratch — 5 waves without taking damage (bonus 350,000).
