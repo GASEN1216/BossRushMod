@@ -7,8 +7,22 @@
 ### Basic Info
 - Type: Melee weapon
 - Quality: 7 (Legendary)
+- Element: Fire
 - Drop source: Skyburner Dragon Lord (15% drop rate)
 - Death drop: Will not drop on death
+
+### Weapon Stats
+- Base Damage: 55
+- Attack Speed: 2.2
+- Attack Range: 2.5m
+- Crit Rate: 10%
+- Crit Damage: 2.0x
+- Armor Piercing: 6
+- Bleed Chance: 15%
+- Block Bullet: 1
+- Stamina Cost: 10 per hit
+- Move Speed: 110%
+- Deal Damage Time: 0.12 sec
 
 ### Three-Hit Combo (Left Click)
 Clicking left click consecutively triggers a three-hit combo, each hit with different attack range and effects. The combo window is 0.75 seconds; exceeding it resets the chain.

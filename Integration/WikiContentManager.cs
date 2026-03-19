@@ -311,46 +311,57 @@ namespace BossRush
             {
                 return "";
             }
-            
+
             string result = markdown;
-            
+
             try
             {
-                // 1. 处理二级标题 ## -> 深棕色大字（黄色背景可见）
-                result = Regex.Replace(result, @"^## (.+)$", "<color=#8B4513><size=120%><b>$1</b></size></color>", RegexOptions.Multiline);
-                
-                // 2. 处理三级标题 ### -> 粗体
-                result = Regex.Replace(result, @"^### (.+)$", "<b>$1</b>", RegexOptions.Multiline);
-                
-                // 3. 处理粗体 **text** -> <b>text</b>
+                // 先处理特殊标记（在标题处理之前，避免被标题正则误匹配）
+                // 处理警告提示 [warn]text[/warn] -> 红色
+                result = Regex.Replace(result, @"\[warn\](.+?)\[/warn\]", "\n<color=#CC0000><b>[!]</b> $1</color>\n", RegexOptions.Singleline);
+
+                // 处理提示信息 [tip]text[/tip] -> 深蓝色
+                result = Regex.Replace(result, @"\[tip\](.+?)\[/tip\]", "\n<color=#0066CC><b>[i]</b> $1</color>\n", RegexOptions.Singleline);
+
+                // 处理分隔线 --- -> 用短横线模拟
+                result = Regex.Replace(result, @"^---+$", "<color=#C0B090>----------------</color>", RegexOptions.Multiline);
+
+                // 处理标题（注意顺序：先处理 #### 再 ### 再 ##，避免 ## 匹配到 ###）
+                // 四级标题 #### -> 小号粗体，带左侧标记
+                result = Regex.Replace(result, @"^#### (.+)$", "  <color=#5C4033><b>> $1</b></color>", RegexOptions.Multiline);
+
+                // 三级标题 ### -> 粗体
+                result = Regex.Replace(result, @"^### (.+)$", "\n<color=#6B4226><b># $1</b></color>", RegexOptions.Multiline);
+
+                // 二级标题 ## -> 适中大小，不用 size 避免换行
+                result = Regex.Replace(result, @"^## (.+)$", "\n<color=#5B3010><b>== $1 ==</b></color>\n", RegexOptions.Multiline);
+
+                // 处理粗体 **text** -> <b>text</b>
                 result = Regex.Replace(result, @"\*\*(.+?)\*\*", "<b>$1</b>");
-                
-                // 4. 处理无序列表 - item -> • item
-                result = Regex.Replace(result, @"^- (.+)$", "• $1", RegexOptions.Multiline);
-                
-                // 5. 处理警告提示 [warn]text[/warn] -> 红色
-                result = Regex.Replace(result, @"\[warn\](.+?)\[/warn\]", "<color=#CC0000>[警告] $1</color>", RegexOptions.Singleline);
-                
-                // 6. 处理提示信息 [tip]text[/tip] -> 深蓝色（黄色背景可见）
-                result = Regex.Replace(result, @"\[tip\](.+?)\[/tip\]", "<color=#0066CC>[提示] $1</color>", RegexOptions.Singleline);
-                
-                // 7. 处理代码块 `code` -> 等宽字体颜色
+
+                // 处理无序列表 - item -> 带缩进的短横线
+                result = Regex.Replace(result, @"^- (.+)$", "  - $1", RegexOptions.Multiline);
+
+                // 处理代码块 `code` -> 灰色
                 result = Regex.Replace(result, @"`(.+?)`", "<color=#A0A0A0>$1</color>");
-                
-                // 8. 处理Markdown链接 [text](url) -> TMP link标签（蓝色下划线）
+
+                // 处理Markdown链接 [text](url) -> TMP link标签
                 result = Regex.Replace(result, @"\[([^\]]+)\]\(([^)]+)\)", "<color=#0066CC><u><link=\"$2\">$1</link></u></color>");
-                
-                // 9. 处理纯URL链接（http://或https://开头）
+
+                // 处理纯URL链接（http://或https://开头）
                 result = Regex.Replace(result, @"(?<![\"">])((https?://)[^\s<>\[\]]+)", "<color=#0066CC><u><link=\"$1\">$1</link></u></color>");
-                
-                // 10. 移除多余空行（保留单个换行）
+
+                // 清理多余空行（最多保留1个空行）
                 result = Regex.Replace(result, @"\n{3,}", "\n\n");
+
+                // 去掉开头的空行
+                result = result.TrimStart('\n', '\r');
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[WikiContentManager] Markdown 解析失败: " + e.Message);
             }
-            
+
             return result;
         }
         

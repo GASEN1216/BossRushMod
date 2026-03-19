@@ -21,7 +21,7 @@
 - Max ascend speed: 10 units/sec
 - Acceleration time: 0.3 sec
 - Glide horizontal speed: 0.8x normal move speed
-- Glide descent speed: -0.8 units/sec
+- Glide descent speed: -2 units/sec
 
 ### Stamina Consumption
 - Takeoff: 5 Stamina

@@ -2,11 +2,12 @@
 
 ### Diamond
 
-A real diamond. Can be gifted to an NPC to increase Affinity.
+A real diamond. Can be used directly to summon Dingdang, or gifted to an NPC.
 
 - Source: Purchasable after unlocking Dingdang Affinity Lv.2; Dingdang Affinity level-up reward
-- Affinity Bonus: +80 (when gifted to Dingdang or Yuori)
-- Use Effect: Summons Dingdang
+- Use Effect: Summons Dingdang to run toward you, Dingdang Affinity +5
+- As a Gift: Counts as a "Liked" item, Affinity +80 (universal for Dingdang/Yuori)
+- Used without Dingdang present: Item is still consumed, displays "Nothing seems to happen..."
 
 ---
 
@@ -15,8 +16,9 @@ A real diamond. Can be gifted to an NPC to increase Affinity.
 A light, sparkly-looking stone... but it's fake.
 
 - Source: Purchased from the base merchant (stock 5)
-- Affinity Impact: Dingdang -40 (recognized as a fake diamond), Yuori -60 (reminds her of the lab)
-- Use Effect: Summons Dingdang
+- Use Effect: Summons Dingdang to run toward you, Dingdang Affinity -20 (recognized as a fake diamond)
+- As a Gift: Dingdang -40, Yuori -60 (reminds her of the lab)
+- Used without Dingdang present: Item is still consumed, displays "Nothing seems to happen..."
 
 [warn] Gift a fake diamond to the Goblin Craftsman at your own risk.
 

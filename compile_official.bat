@@ -1,8 +1,8 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
 cd /d "%~dp0"
 echo ===================================
-echo Boss Rush Mod - 鐎规ɑ鏌烝PI缂傛牞鐦ч懘姘拱
+echo Boss Rush Mod - Compile (Official)
 echo ===================================
 echo.
 
@@ -10,19 +10,17 @@ set OUTPUT_DIR=Build
 set MOD_NAME=BossRush
 set GAME_PATH=D:\sofrware\steam\steamapps\common\Escape from Duckov
 set WORKSHOP_PATH=D:\sofrware\steam\steamapps\workshop\content\3167020
-:: HarmonyLoadMod 閸撳秶鐤唌od (閸掓稒鍓板銉ユ綉ID: 3588386576)
-:: 閻劍鍩涢棁鈧憰浣筋吂闂冨懏顒漨od: https://steamcommunity.com/sharedfiles/filedetails/?id=3588386576
+:: HarmonyLoadMod (Workshop ID: 3588386576)
 set HARMONY_MOD_ID=3588386576
-echo 濞撳憡鍨欑捄顖氱窞 GAME_PATH=%GAME_PATH%
+echo GAME_PATH=%GAME_PATH%
 
-:: 閸掓稑缂撴潏鎾冲毉閻╊喖缍?
+:: Create output directory
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 
-echo 濮濓絽婀紓鏍槯 %MOD_NAME%.dll...
+echo Compiling %MOD_NAME%.dll...
 echo.
 
-:: 缂傛牞鐦ч崨鎴掓姢 - 娴ｈ法鏁?.NET SDK Roslyn 缂傛牞鐦ч崳銊︽暜閹?C# 7.3
-:: 閼奉亜濮╅弻銉﹀閺堚偓閺傛壆娈?.NET SDK
+:: Find .NET SDK Roslyn compiler (C# 7.3)
 for /f "delims=" %%i in ('dir /b /ad /o-n "C:\Program Files\dotnet\sdk" 2^>nul') do (
     set "DOTNET_SDK=C:\Program Files\dotnet\sdk\%%i"
     goto :found_sdk
@@ -281,8 +279,8 @@ if %ERRORLEVEL% EQU 0 (
     echo Build succeeded!
     echo ===================================
     echo.
-    echo Output file: %OUTPUT_DIR%\%MOD_NAME%.dll
-    
+    echo Output: %OUTPUT_DIR%\%MOD_NAME%.dll
+
     REM Auto deploy to the game mod load path
     copy /Y "%OUTPUT_DIR%\%MOD_NAME%.dll" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\%MOD_NAME%.dll" >nul 2>nul
     if errorlevel 1 (

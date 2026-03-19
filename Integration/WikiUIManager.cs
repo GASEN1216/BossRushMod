@@ -1112,52 +1112,64 @@ namespace BossRush
                 // 解析 Markdown
                 currentParsedContent = WikiContentManager.Instance.ParseMarkdown(content);
             }
-            
-            // 设置左栏为Page模式，让TMP自动计算分页
+
+            // 统一排版属性，确保左右栏分页断点一致
+            ApplyTextStyle(txtLeft);
+            ApplyTextStyle(txtRight);
+
+            // 让右栏的 RectTransform 尺寸与左栏完全一致，保证分页断点相同
+            if (txtLeft != null && txtRight != null)
+            {
+                var leftRect = txtLeft.rectTransform;
+                var rightRect = txtRight.rectTransform;
+                rightRect.sizeDelta = leftRect.sizeDelta;
+            }
+
+            // 左右栏都设置完整文本 + Page 模式
             if (txtLeft != null)
             {
                 txtLeft.text = currentParsedContent;
-                txtLeft.fontSize = 18f;
-                txtLeft.color = new Color(0.25f, 0.2f, 0.15f, 1f);
-                txtLeft.enableWordWrapping = true;
                 txtLeft.overflowMode = TMPro.TextOverflowModes.Page;
                 txtLeft.pageToDisplay = 1;
-                
-                // 强制更新以获取正确的pageCount
                 txtLeft.ForceMeshUpdate();
-                
-                // 获取TMP计算出的总页数
+
                 totalPages = txtLeft.textInfo.pageCount;
                 if (totalPages < 1) totalPages = 1;
-                
-                // 计算书本的总"翻页数"（每次翻页显示左右两栏，即2个TMP页）
-                // 例如：TMP有5页，则书本有3翻（1-2, 3-4, 5-空）
+
                 int bookPages = (totalPages + 1) / 2;
-                
                 ModBehaviour.DevLog("[WikiUIManager] TMP分页完成: TMP页数=" + totalPages + ", 书本翻页数=" + bookPages);
-                
-                // 添加链接点击处理
+
                 EnsureLinkHandler(txtLeft);
             }
-            
-            // 设置右栏
+
             if (txtRight != null)
             {
                 txtRight.text = currentParsedContent;
-                txtRight.fontSize = 18f;
-                txtRight.color = new Color(0.25f, 0.2f, 0.15f, 1f);
-                txtRight.enableWordWrapping = true;
                 txtRight.overflowMode = TMPro.TextOverflowModes.Page;
-                txtRight.pageToDisplay = 2; // 右栏显示第2页
+                txtRight.pageToDisplay = 2;
                 txtRight.ForceMeshUpdate();
-                
+
                 EnsureLinkHandler(txtRight);
             }
-            
+
             // 初始化页码
-            currentPageIndex = 0; // 书本的第0翻（显示TMP的第1-2页）
+            currentPageIndex = 0;
             leftPageToDisplay = 1;
             rightPageToDisplay = 2;
+        }
+
+        /// <summary>
+        /// 统一设置 TMP 文本的排版属性
+        /// </summary>
+        private void ApplyTextStyle(TMP_Text txt)
+        {
+            if (txt == null) return;
+            txt.fontSize = 16f;
+            txt.color = new Color(0.25f, 0.2f, 0.15f, 1f);
+            txt.enableWordWrapping = true;
+            txt.lineSpacing = 4f;
+            txt.paragraphSpacing = 8f;
+            txt.margin = new Vector4(10f, 8f, 10f, 8f);
         }
         
         /// <summary>
@@ -1165,43 +1177,47 @@ namespace BossRush
         /// </summary>
         private void RefreshArticleContent()
         {
-            // 计算当前翻页对应的TMP页码
+            // 计算当前翻页对应的TMP页码（从1开始）
             leftPageToDisplay = currentPageIndex * 2 + 1;
             rightPageToDisplay = currentPageIndex * 2 + 2;
-            
+
             ModBehaviour.DevLog("[WikiUIManager] RefreshArticleContent - 书本翻页: " + currentPageIndex + ", 左栏TMP页: " + leftPageToDisplay + ", 右栏TMP页: " + rightPageToDisplay + ", TMP总页数: " + totalPages);
-            
-            // 更新左栏显示的页
+
+            // 更新左栏
             if (txtLeft != null)
             {
                 txtLeft.pageToDisplay = leftPageToDisplay;
                 txtLeft.ForceMeshUpdate();
             }
-            
-            // 更新右栏显示的页（如果超出总页数则显示空）
+
+            // 更新右栏（超出总页数时显示空，翻回时恢复内容）
             if (txtRight != null)
             {
                 if (rightPageToDisplay <= totalPages)
                 {
+                    // 如果之前被清空过，需要恢复完整文本
+                    if (string.IsNullOrEmpty(txtRight.text))
+                    {
+                        txtRight.text = currentParsedContent;
+                    }
                     txtRight.pageToDisplay = rightPageToDisplay;
                 }
                 else
                 {
-                    // 右栏没有内容，设置为空或显示一个不存在的页
-                    txtRight.pageToDisplay = rightPageToDisplay; // TMP会自动处理超出范围的情况
+                    txtRight.text = "";
                 }
                 txtRight.ForceMeshUpdate();
             }
-            
+
             // 计算书本的总翻页数
             int bookTotalPages = (totalPages + 1) / 2;
-            
+
             // 更新页码显示
             if (txtPageNumber != null)
             {
                 txtPageNumber.text = (currentPageIndex + 1) + "/" + bookTotalPages;
             }
-            
+
             // 更新翻页按钮状态
             if (btnPrevPage != null)
             {
