@@ -2182,7 +2182,7 @@ namespace BossRush
         private const bool EnableScanDebugLogs = false;
         // DevMode 仅保留源码硬编码开关，不再暴露给玩家配置。
         // 本地开发调试时手动改为 true，正式发布前保持 false。
-        private const bool HardcodedDevModeEnabled = true;
+        private const bool HardcodedDevModeEnabled = false;
 
         internal static bool DevModeEnabled
         {
