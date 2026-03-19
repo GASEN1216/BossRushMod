@@ -59,6 +59,7 @@ namespace BossRush
         private static float cachedProjectileRadius = 0.12f;
         private static Vector3 cachedProjectileScale = Vector3.one;
         private static GameObject cachedExplosionFx;
+        private static Projectile cachedNativeRocketProjectile;
 
         // 弹种属性覆盖：记录当前已应用的 profile，避免重复覆写
         private static DragonKingBossGunProfileId lastAppliedProfileId;
@@ -107,6 +108,7 @@ namespace BossRush
             processedHitKeysToRemove.Clear();
             cachedDragonProjectile = null;
             cachedExplosionFx = null;
+            cachedNativeRocketProjectile = null;
             shotSequence = 0;
             lastCleanupTime = 0f;
             bossRedProjectileWarmupStarted = false;
@@ -647,6 +649,61 @@ namespace BossRush
             return ResolveBaseProjectile();
         }
 
+        internal static Projectile GetNativeRocketProjectile()
+        {
+            if (cachedNativeRocketProjectile != null)
+            {
+                return cachedNativeRocketProjectile;
+            }
+
+            try
+            {
+                // 从游戏中所有已加载的枪械中查找使用 Rocket 口径的原版枪
+                ItemSetting_Gun[] allGunSettings = Resources.FindObjectsOfTypeAll<ItemSetting_Gun>();
+                for (int i = 0; i < allGunSettings.Length; i++)
+                {
+                    ItemSetting_Gun gs = allGunSettings[i];
+                    if (gs == null || gs.bulletPfb == null || gs.Item == null)
+                    {
+                        continue;
+                    }
+
+                    if (IsDragonKingBossGun(gs.Item))
+                    {
+                        continue;
+                    }
+
+                    string caliber = gs.Item.Constants != null ? gs.Item.Constants.GetString("Caliber", null) : null;
+                    if (string.Equals(caliber, "Rocket", StringComparison.OrdinalIgnoreCase))
+                    {
+                        cachedNativeRocketProjectile = gs.bulletPfb;
+                        ModBehaviour.DevLog("[DragonKingBossGun] 缓存原版火箭弹预制体: " + gs.bulletPfb.name + " (来自 " + gs.Item.name + ")");
+                        return cachedNativeRocketProjectile;
+                    }
+                }
+
+                // fallback: 从 Projectile 池中查找名称含 Rocket 的
+                Projectile[] allProjectiles = Resources.FindObjectsOfTypeAll<Projectile>();
+                for (int i = 0; i < allProjectiles.Length; i++)
+                {
+                    if (allProjectiles[i] != null &&
+                        !string.IsNullOrEmpty(allProjectiles[i].name) &&
+                        allProjectiles[i].name.IndexOf("Rocket", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        cachedNativeRocketProjectile = allProjectiles[i];
+                        ModBehaviour.DevLog("[DragonKingBossGun] 缓存原版火箭弹预制体(fallback): " + allProjectiles[i].name);
+                        return cachedNativeRocketProjectile;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonKingBossGun] 查找原版火箭弹预制体失败: " + e.Message);
+            }
+
+            return null;
+        }
+
         private static Projectile TryResolveFallbackProjectile()
         {
             Item loadedGun = EquipmentFactory.GetLoadedGun(DragonKingBossGunConfig.WeaponTypeId);
@@ -995,13 +1052,15 @@ namespace BossRush
             DragonKingBossGunHitStage hitStage,
             int sourceReceiverId = -1)
         {
-            Projectile baseProjectile = GetDragonProjectile();
+            bool useNative = profile != null && profile.UseNativeProjectile;
+            Projectile nativeProjectile = useNative ? GetNativeRocketProjectile() : null;
+            Projectile baseProjectile = nativeProjectile != null ? nativeProjectile : GetDragonProjectile();
             if (baseProjectile == null || LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
             {
                 return null;
             }
 
-            if (gun != null && gun.GunItemSetting != null && gun.GunItemSetting.bulletPfb != baseProjectile)
+            if (!useNative && gun != null && gun.GunItemSetting != null && gun.GunItemSetting.bulletPfb != baseProjectile)
             {
                 gun.GunItemSetting.bulletPfb = baseProjectile;
             }
@@ -1014,9 +1073,18 @@ namespace BossRush
 
             projectile.transform.position = muzzlePoint;
 
-            float finalScale = Mathf.Max(0.2f, profile.Scale * scaleFactor);
-            projectile.transform.localScale = cachedProjectileScale * finalScale;
-            projectile.radius = cachedProjectileRadius * Mathf.Max(0.25f, finalScale);
+            if (useNative && nativeProjectile != null)
+            {
+                float nativeScale = Mathf.Max(0.2f, scaleFactor);
+                projectile.transform.localScale = nativeProjectile.transform.localScale * nativeScale;
+                projectile.radius = nativeProjectile.radius * Mathf.Max(0.25f, nativeScale);
+            }
+            else
+            {
+                float finalScale = Mathf.Max(0.2f, profile.Scale * scaleFactor);
+                projectile.transform.localScale = cachedProjectileScale * finalScale;
+                projectile.radius = cachedProjectileRadius * Mathf.Max(0.25f, finalScale);
+            }
 
             ProjectileContext context = BuildProjectileContext(
                 gun,
@@ -1031,6 +1099,13 @@ namespace BossRush
                 traceAbilityOverride,
                 isSecondary,
                 hitStage);
+
+            // 原版火箭弹：设置原版爆炸参数，让 Projectile.Update() 自动处理爆炸
+            if (useNative && !isSecondary && profile.ExplosionRange > 0f)
+            {
+                context.explosionRange = profile.ExplosionRange;
+                context.explosionDamage = context.damage * Mathf.Max(0.1f, profile.ExplosionDamageFactor);
+            }
 
             projectile.transform.rotation = Quaternion.LookRotation(context.direction, Vector3.up);
             projectile.Init(context);
@@ -1065,8 +1140,27 @@ namespace BossRush
             ProjectileContext context = default(ProjectileContext);
             context.firstFrameCheck = true;
             context.firstFrameCheckStartPoint = firstFrameCheckStartPoint;
-            context.direction = ResolveLaunchDirection(direction.normalized, profile, isSecondary);
-            context.speed = (gun != null ? gun.BulletSpeed : 90f) * profile.SpeedFactor * speedFactor;
+
+            // 瞄准投掷模式：根据鼠标位置计算抛物线
+            if (!isSecondary && profile.UseAimedArc && profile.Gravity > 0f && gun != null && gun.Holder != null && gun.Holder.IsMainCharacter)
+            {
+                Vector3 aimPoint = gun.Holder.GetCurrentAimPoint();
+                Vector3 toTarget = aimPoint - firstFrameCheckStartPoint;
+                toTarget.y = 0f;
+                float horizontalDist = Mathf.Max(1f, toTarget.magnitude);
+                Vector3 horizontalDir = toTarget.normalized;
+
+                // 55° 固定仰角: cos≈0.5736, sin≈0.8192, sin(110°)≈0.9397
+                float speed = Mathf.Clamp(Mathf.Sqrt(Mathf.Abs(profile.Gravity * horizontalDist * 1.0642f)), 8f, 80f);
+
+                context.direction = (horizontalDir * 0.5736f + Vector3.up * 0.8192f).normalized;
+                context.speed = speed;
+            }
+            else
+            {
+                context.direction = ResolveLaunchDirection(direction.normalized, profile, isSecondary);
+                context.speed = (gun != null ? gun.BulletSpeed : 90f) * profile.SpeedFactor * speedFactor;
+            }
             context.traceTarget = null;
             context.traceAbility = traceAbilityOverride >= 0f ? traceAbilityOverride : profile.TraceAbility;
             if (context.traceAbility > 0.01f && gun != null)

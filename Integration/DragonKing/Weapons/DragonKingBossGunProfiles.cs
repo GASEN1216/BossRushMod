@@ -56,6 +56,7 @@ namespace BossRush
         public DragonKingBossGunArcMode Arc = DragonKingBossGunArcMode.None;
         public float ArcLift;
         public float Gravity;
+        public bool UseAimedArc;
         public float TraceAbility;
         public int Pierce;
         public int Bounce;
@@ -101,6 +102,7 @@ namespace BossRush
         public bool PlaySplitTriggerFx = true;
         public bool RequiresCustomMovement;
         public ElementTypes Element = ElementTypes.fire;
+        public bool UseNativeProjectile;
         public int MarkPerHit = 1;
         public int MaxMarksPerTargetPerShot = 1;
         public int SecondaryMarkPerHit = -1;
@@ -189,7 +191,7 @@ namespace BossRush
                 Id = DragonKingBossGunProfileId.Rocket,
                 TypeIds = new[] { 326 },
                 Calibers = new[] { "Rocket" },
-                Scale = 2.2f,
+                Scale = 1f,
                 SpeedFactor = 0.65f,
                 DistanceFactor = 0.7f,
                 DamageFactor = 1.75f,
@@ -197,16 +199,17 @@ namespace BossRush
                 ArcLift = 0.28f,
                 Gravity = 5f,
                 TraceAbility = 0.2f,
+                UseNativeProjectile = true,
                 UseSplit = true,
                 SplitOnAirburst = true,
                 AirburstDistanceFactor = 0.52f,
-                SplitCount = 6,
+                SplitCount = 1,
                 SplitScale = 0.72f,
                 SplitSpeedFactor = 0.78f,
                 SplitDistanceFactor = 0.92f,
-                SplitDamageFactor = 0.38f,
-                SplitSpreadAngle = 58f,
-                SplitPattern = DragonKingBossGunSplitPattern.Radial,
+                SplitDamageFactor = 0.55f,
+                SplitSpreadAngle = 0f,
+                SplitPattern = DragonKingBossGunSplitPattern.DownBurst,
                 SplitIgnoreSourceOnSplit = true,
                 SplitGravity = 7.5f,
                 ExplosionRange = 1.5f,
@@ -219,13 +222,13 @@ namespace BossRush
                 SecondaryMarkPerHit = 1,
                 MaxSecondaryMarksPerTargetPerShot = 1,
                 FireRateMult = 0.25f,
-                GunDamageMult = 3.5f,
+                GunDamageMult = 2.2f,
                 OverrideCapacity = 5,
                 OverrideReloadTime = 4.5f,
                 OverrideBulletDistance = 18f,
-                TrailFxPrefab = "Fx_DragonGun_Rocket_Trail",
-                HitFxPrefab = "Fx_DragonGun_Rocket_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_Rocket_Explosion"
+                TrailFxPrefab = "",
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
             },
             new DragonKingBossGunShotProfile
             {
@@ -245,7 +248,7 @@ namespace BossRush
                 MarkPerHit = 1,
                 MaxMarksPerTargetPerShot = 2,
                 FireRateMult = 1.6f,
-                GunDamageMult = 0.3f,
+                GunDamageMult = 0.45f,
                 OverrideCapacity = 30,
                 OverrideReloadTime = 2.5f,
                 OverrideBulletDistance = 18f,
@@ -270,7 +273,7 @@ namespace BossRush
                 MarkPerHit = 1,
                 MaxMarksPerTargetPerShot = 1,
                 FireRateMult = 1f,
-                GunDamageMult = 1f,
+                GunDamageMult = 0.75f,
                 OverrideCapacity = 15,
                 OverrideReloadTime = 3.35f,
                 OverrideBulletDistance = 24f,
@@ -296,7 +299,7 @@ namespace BossRush
                 FollowupMarkPerHit = 1,
                 MaxFollowupMarksPerTargetPerShot = 1,
                 FireRateMult = 0.4f,
-                GunDamageMult = 2.8f,
+                GunDamageMult = 1.4f,
                 OverrideCapacity = 8,
                 OverrideReloadTime = 3.8f,
                 OverrideBulletDistance = 28f,
@@ -345,8 +348,8 @@ namespace BossRush
                 GroundZoneTickDamageFactor = 0.12f,
                 MarkPerHit = 1,
                 MaxMarksPerTargetPerShot = 2,
-                FireRateMult = 0.2f,
-                GunDamageMult = 0.35f,
+                FireRateMult = 0.35f,
+                GunDamageMult = 1.5f,
                 OverrideCapacity = 8,
                 OverrideReloadTime = 3.5f,
                 OverrideBulletDistance = 12f,
@@ -363,6 +366,7 @@ namespace BossRush
                 SpeedFactor = 0.95f,
                 DistanceFactor = 1.12f,
                 DamageFactor = 1.28f,
+                Pierce = 3,
                 UseReturn = true,
                 PlayObstacleHitFx = false,
                 RequiresCustomMovement = true,
@@ -371,7 +375,7 @@ namespace BossRush
                 ReturnMarkPerHit = 1,
                 MaxReturnMarksPerTargetPerShot = 1,
                 FireRateMult = 0.33f,
-                GunDamageMult = 2.5f,
+                GunDamageMult = 1.9f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
                 OverrideBulletDistance = 26f,
@@ -451,11 +455,12 @@ namespace BossRush
                 Calibers = new[] { "Poop" },
                 Scale = 0.9f,
                 SpeedFactor = 0.55f,
-                DistanceFactor = 0.7f,
+                DistanceFactor = 2.5f,
                 DamageFactor = 0.7f,
                 Arc = DragonKingBossGunArcMode.High,
                 ArcLift = 0.95f,
                 Gravity = 9.5f,
+                UseAimedArc = true,
                 Element = ElementTypes.poison,
                 UseGroundZone = true,
                 MaxGroundZonesPerShot = 1,
@@ -468,10 +473,10 @@ namespace BossRush
                 MarkPerHit = 1,
                 MaxMarksPerTargetPerShot = 1,
                 FireRateMult = 0.28f,
-                GunDamageMult = 0.8f,
+                GunDamageMult = 3.2f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
-                OverrideBulletDistance = 16f,
+                OverrideBulletDistance = 60f,
                 TrailFxPrefab = "Fx_DragonGun_Poop_Trail",
                 HitFxPrefab = "Fx_DragonGun_Poop_Hit",
                 ExplosionFxPrefab = "Fx_DragonGun_Poop_Explosion"
@@ -496,7 +501,7 @@ namespace BossRush
                 SecondaryMarkPerHit = 1,
                 MaxSecondaryMarksPerTargetPerShot = 1,
                 FireRateMult = 1.2f,
-                GunDamageMult = 0.4f,
+                GunDamageMult = 0.5f,
                 OverrideCapacity = 20,
                 OverrideReloadTime = 2.8f,
                 OverrideBulletDistance = 18f,
@@ -542,7 +547,7 @@ namespace BossRush
                 SecondaryMarkPerHit = 0,
                 MaxSecondaryMarksPerTargetPerShot = 0,
                 FireRateMult = 0.33f,
-                GunDamageMult = 1.5f,
+                GunDamageMult = 2.2f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.8f,
                 OverrideBulletDistance = 18f,
@@ -623,7 +628,7 @@ namespace BossRush
                 SecondaryMarkPerHit = 1,
                 MaxSecondaryMarksPerTargetPerShot = 1,
                 FireRateMult = 0.28f,
-                GunDamageMult = 1f,
+                GunDamageMult = 2.2f,
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
                 OverrideBulletDistance = 20f,

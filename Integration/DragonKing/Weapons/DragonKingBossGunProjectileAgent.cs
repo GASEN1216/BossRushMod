@@ -41,7 +41,11 @@ namespace BossRush
 
         internal static void ClearStaticCaches()
         {
+            cachedIceMaterial = null;
+            DragonKingBossGunGroundZone.ClearStaticCaches();
         }
+
+        private static Material cachedIceMaterial;
 
         private Projectile projectile;
         private ItemAgent_Gun sourceGun;
@@ -104,7 +108,7 @@ namespace BossRush
 
         private void CreateStickyCharge(DamageReceiver target, Vector3 point, Vector3 normal)
         {
-            GameObject chargeObj = new GameObject("DragonGun_StickyCharge_" + profile.Id);
+            GameObject chargeObj = new GameObject("DragonGun_StickyCharge");
             chargeObj.transform.position = point;
             
             if (profile.Element == ElementTypes.fire)
@@ -118,7 +122,7 @@ namespace BossRush
 
         private void CreateGroundZone(Vector3 position)
         {
-            GameObject zoneObj = new GameObject("DragonGun_GroundZone_" + profile.Id);
+            GameObject zoneObj = new GameObject("DragonGun_GroundZone");
             zoneObj.transform.position = FenHuangHalberdRuntime.SnapToGround(position, position.y);
             
             if (profile.Element == ElementTypes.fire)
@@ -192,16 +196,17 @@ namespace BossRush
             damagedReceiverIds.Clear();
 
             savedExplosionFx = projectileInstance != null ? projectileInstance.explosionFx : null;
-            if (projectileInstance != null)
+            bool keepNativeExplosionFx = profile != null && profile.UseNativeProjectile && !isSecondary;
+            if (projectileInstance != null && !keepNativeExplosionFx)
             {
                 projectileInstance.explosionFx = null;
             }
 
-            if (customTrailInstance == null && profile != null && !string.IsNullOrEmpty(profile.TrailFxPrefab))
+            if (customTrailInstance == null && profile != null && !profile.UseNativeProjectile && !string.IsNullOrEmpty(profile.TrailFxPrefab))
             {
                 customTrailInstance = DragonKingAssetManager.InstantiateEffect(profile.TrailFxPrefab, transform.position, transform.rotation, transform);
             }
-            else if (customTrailInstance == null && profile != null && profile.Element == ElementTypes.fire)
+            else if (customTrailInstance == null && profile != null && !profile.UseNativeProjectile && profile.Element == ElementTypes.fire)
             {
                 customTrailInstance = new GameObject("DragonGun_FireTrailFx");
                 customTrailInstance.transform.SetParent(transform);
@@ -239,7 +244,7 @@ namespace BossRush
             trail.endWidth = 0f;
             trail.startColor = new Color(0.5f, 0.8f, 1f, 0.8f);
             trail.endColor = new Color(0.5f, 0.8f, 1f, 0f);
-            trail.material = new Material(Shader.Find("Sprites/Default"));
+            trail.material = GetOrCreateIceMaterial();
             trail.numCornerVertices = 2;
             trail.numCapVertices = 2;
             trail.minVertexDistance = 0.05f;
@@ -280,10 +285,19 @@ namespace BossRush
             col.color = gradient;
 
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = new Material(Shader.Find("Sprites/Default"));
+            renderer.material = GetOrCreateIceMaterial();
 
             ps.Play();
             UnityEngine.Object.Destroy(iceFx, 1f);
+        }
+
+        private static Material GetOrCreateIceMaterial()
+        {
+            if (cachedIceMaterial == null)
+            {
+                cachedIceMaterial = new Material(Shader.Find("Sprites/Default"));
+            }
+            return cachedIceMaterial;
         }
 
         private static void StripPhysicsComponents(GameObject obj)
@@ -438,8 +452,7 @@ namespace BossRush
 
             if (customTrailInstance != null)
             {
-                customTrailInstance.transform.SetParent(null);
-                FadeAndDestroy(customTrailInstance, 2f);
+                UnityEngine.Object.Destroy(customTrailInstance, 2f);
                 customTrailInstance = null;
             }
         }
@@ -709,7 +722,8 @@ namespace BossRush
 
             if (!splitActivated)
             {
-                return false;
+                // 未激活的分裂弹命中敌人时立即激活，而非忽略
+                splitActivated = true;
             }
 
             if (splitSourceReceiverId >= 0 && receiverId == splitSourceReceiverId)
@@ -888,7 +902,7 @@ namespace BossRush
             projectile.damagedObjects.Clear();
             damagedReceiverIds.Clear();
             customTraceLerp = 0f;
-            remainingTargetHits = 1;
+            remainingTargetHits = Mathf.Max(1, projectile.context.penetrate + 1);
 
             Vector3 returnDirection = GetReturnDirection();
             directionRef(projectile) = returnDirection;
@@ -906,8 +920,9 @@ namespace BossRush
             deathHandled = true;
             Vector3 resolvedDeathPoint = GetDeathPoint();
             bool playDeathExplosionFx = ShouldPlayDeathExplosionFx();
+            bool isNativeExplosion = profile.UseNativeProjectile && !secondaryProjectile;
 
-            if (!secondaryProjectile && profile.ExplosionRange > 0f)
+            if (!isNativeExplosion && !secondaryProjectile && profile.ExplosionRange > 0f)
             {
                 if (playDeathExplosionFx)
                 {
@@ -1088,11 +1103,14 @@ namespace BossRush
         private const float PoisonTickLockDuration = 0.32f;
         private const float PoisonTickKeepTime = 1.2f;
         private const float PoisonTickCleanupInterval = 1f;
-        private const int RingSegments = 24;
+        private const int RingSegments = 16;
+        private const float RingUpdateInterval = 0.1f;
 
         private static readonly Dictionary<int, float> poisonTickTimes = new Dictionary<int, float>();
         private static readonly List<int> poisonTickKeysToRemove = new List<int>();
         private static float lastPoisonTickCleanup;
+        private static Shader cachedZoneShader;
+        private static readonly Dictionary<ElementTypes, Material> cachedZoneMaterials = new Dictionary<ElementTypes, Material>();
 
         private ProjectileContext sourceContext;
         private DragonKingBossGunShotProfile profile;
@@ -1102,9 +1120,26 @@ namespace BossRush
         private float tickTimer;
         private float elapsed;
         private float pulseTime;
+        private float ringUpdateTimer;
+        private float lastPulse;
         private LineRenderer zoneRing;
         private Material zoneRingMaterial;
         private Light zoneLight;
+
+        internal static void ClearStaticCaches()
+        {
+            foreach (var kvp in cachedZoneMaterials)
+            {
+                if (kvp.Value != null)
+                {
+                    UnityEngine.Object.Destroy(kvp.Value);
+                }
+            }
+            cachedZoneMaterials.Clear();
+            cachedZoneShader = null;
+            poisonTickTimes.Clear();
+            poisonTickKeysToRemove.Clear();
+        }
 
         public void Initialize(ProjectileContext projectileContext, DragonKingBossGunShotProfile profile)
         {
@@ -1188,26 +1223,30 @@ namespace BossRush
             zoneRing.useWorldSpace = false;
             zoneRing.loop = true;
             zoneRing.positionCount = RingSegments;
-            zoneRing.numCapVertices = 4;
-            zoneRing.numCornerVertices = 4;
+            zoneRing.numCapVertices = 2;
+            zoneRing.numCornerVertices = 2;
             zoneRing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             zoneRing.receiveShadows = false;
             zoneRing.textureMode = LineTextureMode.Stretch;
             zoneRing.startColor = zoneColor;
             zoneRing.endColor = zoneColor;
 
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null)
+            if (cachedZoneShader == null)
             {
-                shader = Shader.Find("Unlit/Color");
-            }
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
+                cachedZoneShader = Shader.Find("Sprites/Default");
+                if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Unlit/Color");
+                if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Standard");
             }
 
-            zoneRingMaterial = new Material(shader);
-            zoneRingMaterial.color = zoneColor;
+            Material sharedMat;
+            if (!cachedZoneMaterials.TryGetValue(profile.GroundZoneElement, out sharedMat) || sharedMat == null)
+            {
+                sharedMat = new Material(cachedZoneShader);
+                sharedMat.color = zoneColor;
+                cachedZoneMaterials[profile.GroundZoneElement] = sharedMat;
+            }
+
+            zoneRingMaterial = sharedMat;
             zoneRing.material = zoneRingMaterial;
             zoneRing.widthMultiplier = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f);
             UpdateZoneRing(radius);
@@ -1243,17 +1282,23 @@ namespace BossRush
             elapsed += Time.deltaTime;
             tickTimer += Time.deltaTime;
             pulseTime += Time.deltaTime * 3.5f;
+            ringUpdateTimer += Time.deltaTime;
 
-            float pulse = 1f + Mathf.Sin(pulseTime) * 0.08f;
-            if (zoneRing != null)
+            if (ringUpdateTimer >= RingUpdateInterval)
             {
-                zoneRing.widthMultiplier = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f) * pulse;
-                UpdateZoneRing(radius * pulse);
-            }
+                ringUpdateTimer = 0f;
+                float pulse = 1f + Mathf.Sin(pulseTime) * 0.08f;
+                if (zoneRing != null && Mathf.Abs(pulse - lastPulse) > 0.005f)
+                {
+                    lastPulse = pulse;
+                    zoneRing.widthMultiplier = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f) * pulse;
+                    UpdateZoneRing(radius * pulse);
+                }
 
-            if (zoneLight != null)
-            {
-                zoneLight.intensity = Mathf.Lerp(1f, 2.2f, Mathf.InverseLerp(-1f, 1f, Mathf.Sin(pulseTime)));
+                if (zoneLight != null)
+                {
+                    zoneLight.intensity = Mathf.Lerp(1f, 2.2f, Mathf.InverseLerp(-1f, 1f, Mathf.Sin(pulseTime)));
+                }
             }
 
             if (tickTimer >= 0.35f)
@@ -1389,11 +1434,8 @@ namespace BossRush
 
         private void OnDestroy()
         {
-            if (zoneRingMaterial != null)
-            {
-                UnityEngine.Object.Destroy(zoneRingMaterial);
-                zoneRingMaterial = null;
-            }
+            // Material 已改为静态共享缓存，不在单个 zone 销毁时 Destroy
+            zoneRingMaterial = null;
         }
     }
 
