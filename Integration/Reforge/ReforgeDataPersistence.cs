@@ -19,9 +19,11 @@
 using System;
 using System.Collections.Generic;
 using Duckov.Buildings;
+using Duckov.Utilities;
 using HarmonyLib;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
+using ItemStatsSystem.Stats;
 using UnityEngine;
 
 namespace BossRush
@@ -72,6 +74,44 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 取消物品的已恢复标记。
+        /// 当自定义武器在运行时被重新补配基础 Stats/组件后，
+        /// 需要允许 RF_ 数据重新覆盖一次。
+        /// </summary>
+        public static void UnmarkRestored(Item item)
+        {
+            if (item != null)
+            {
+                _restoredItems.Remove(item.GetInstanceID());
+            }
+        }
+
+        /// <summary>
+        /// 检查物品是否包含任何 RF_ 重铸数据。
+        /// </summary>
+        public static bool HasReforgeData(Item item)
+        {
+            if (item == null || item.Variables == null)
+            {
+                return false;
+            }
+
+            foreach (var variable in item.Variables)
+            {
+                if (variable.Key != null &&
+                    variable.Key.Length > 3 &&
+                    variable.Key[0] == 'R' &&
+                    variable.Key[1] == 'F' &&
+                    variable.Key[2] == '_')
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// 保存 Modifier 重铸数据到物品的 Variables
         /// </summary>
         public static void SaveReforgeData(Item item, string modifierKey, float prefabValue, float newValue)
@@ -93,6 +133,102 @@ namespace BossRush
         public static void SaveReforgeDataVariable(Item item, string variableKey, float prefabValue, float newValue)
         {
             SaveReforgeDataInternal(item, VARIABLE_PREFIX, variableKey, prefabValue, newValue);
+        }
+
+        /// <summary>
+        /// 将当前实例的可显示属性外化为 RF_ 差值，供 ItemTreeData 序列化。
+        /// </summary>
+        public static void SyncCurrentReforgeState(Item item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            Item prefab = GetItemPrefab(item);
+            if (prefab == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (item.Modifiers != null)
+                {
+                    foreach (ModifierDescription mod in item.Modifiers)
+                    {
+                        if (mod == null || !mod.Display || !ReforgeSystem.IsNativeModifier(prefab, mod))
+                        {
+                            continue;
+                        }
+
+                        float prefabValue = GetPrefabModifierValue(prefab, mod.Key);
+                        if (!ShouldSyncDelta(item, MODIFIER_PREFIX, mod.Key, prefabValue, mod.Value))
+                        {
+                            continue;
+                        }
+
+                        SaveReforgeData(item, mod.Key, prefabValue, mod.Value);
+                    }
+                }
+
+                if (item.Stats != null)
+                {
+                    foreach (Stat stat in item.Stats)
+                    {
+                        if (stat == null || !stat.Display)
+                        {
+                            continue;
+                        }
+
+                        float prefabValue = GetPrefabStatValue(prefab, stat.Key);
+                        if (!ShouldSyncDelta(item, STAT_PREFIX, stat.Key, prefabValue, stat.BaseValue))
+                        {
+                            continue;
+                        }
+
+                        SaveReforgeDataStat(item, stat.Key, prefabValue, stat.BaseValue);
+                    }
+                }
+
+                if (item.Variables != null)
+                {
+                    foreach (var variable in item.Variables)
+                    {
+                        if (variable == null || !variable.Display || IsIgnoredRuntimeVariableKey(variable.Key))
+                        {
+                            continue;
+                        }
+
+                        if (variable.DataType != CustomDataType.Float)
+                        {
+                            continue;
+                        }
+
+                        float currentValue;
+                        try
+                        {
+                            currentValue = variable.GetFloat();
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+
+                        float prefabValue = GetPrefabVariableValue(prefab, variable.Key);
+                        if (!ShouldSyncDelta(item, VARIABLE_PREFIX, variable.Key, prefabValue, currentValue))
+                        {
+                            continue;
+                        }
+
+                        SaveReforgeDataVariable(item, variable.Key, prefabValue, currentValue);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ReforgeData] 同步当前重铸状态失败: " + e.Message);
+            }
         }
 
         /// <summary>
@@ -146,22 +282,9 @@ namespace BossRush
             // 快速检查：已恢复的物品直接跳过
             int itemId = item.GetInstanceID();
             if (_restoredItems.Contains(itemId)) return false;
-            
-            // 快速路径检查：先扫描是否有 RF_ 前缀的变量
-            // 大多数物品没有重铸数据，这个检查可以快速跳过
-            bool hasRFData = false;
-            foreach (var variable in item.Variables)
-            {
-                if (variable.Key != null && variable.Key.Length > 3 &&
-                    variable.Key[0] == 'R' && variable.Key[1] == 'F' && variable.Key[2] == '_')
-                {
-                    hasRFData = true;
-                    break;
-                }
-            }
-            
+
             // 没有重铸数据，快速返回
-            if (!hasRFData) return false;
+            if (!HasReforgeData(item)) return false;
 
             int restored = 0;
 
@@ -329,6 +452,42 @@ namespace BossRush
             return false;
         }
 
+        private static bool IsIgnoredRuntimeVariableKey(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return true;
+            }
+
+            return key == "Count" ||
+                   key == "ReforgeCount" ||
+                   key.StartsWith("RF_", StringComparison.Ordinal);
+        }
+
+        private static bool ShouldSyncDelta(Item item, string prefix, string propertyKey, float prefabValue, float currentValue)
+        {
+            float delta = currentValue - prefabValue;
+            return Mathf.Abs(delta) >= 0.001f || HasVariableKey(item, prefix + propertyKey);
+        }
+
+        private static bool HasVariableKey(Item item, string key)
+        {
+            if (item == null || item.Variables == null || string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            foreach (var variable in item.Variables)
+            {
+                if (variable != null && variable.Key == key)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// 获取物品的预制体
         /// </summary>
@@ -339,7 +498,12 @@ namespace BossRush
             {
                 int typeId = item.TypeID;
                 if (typeId <= 0) return null;
-                return ItemAssetsCollection.GetPrefab(typeId);
+                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                if (prefab != null)
+                {
+                    CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(prefab);
+                }
+                return prefab;
             }
             catch
             {
@@ -391,6 +555,188 @@ namespace BossRush
     }
 
     /// <summary>
+    /// 自定义物品运行时状态恢复。
+    /// 统一处理三类问题：
+    /// 1. ItemTreeData 还原出的自定义武器缺少运行时配置；
+    /// 2. 重新补配基础 Stats/组件后，需要再应用 RF_ 重铸差值；
+    /// 3. 龙息展示物需要补火焰特效。
+    /// </summary>
+    public static class CustomItemRuntimeStateHelper
+    {
+        private sealed class RuntimeConfigEntry
+        {
+            public Action<Item> Configure;
+            public Func<Item, bool> NeedsConfigure;
+            public Action<Item> AfterRestore;
+            public string DebugName;
+        }
+
+        private static readonly Dictionary<int, RuntimeConfigEntry> runtimeConfigEntries =
+            new Dictionary<int, RuntimeConfigEntry>();
+
+        public static void RegisterRuntimeConfiguredItem(
+            int typeId,
+            Action<Item> configure,
+            Func<Item, bool> needsConfigure = null,
+            Action<Item> afterRestore = null,
+            string debugName = null)
+        {
+            if (typeId <= 0 || configure == null)
+            {
+                return;
+            }
+
+            runtimeConfigEntries[typeId] = new RuntimeConfigEntry
+            {
+                Configure = configure,
+                NeedsConfigure = needsConfigure,
+                AfterRestore = afterRestore,
+                DebugName = string.IsNullOrEmpty(debugName) ? ("TypeID=" + typeId) : debugName
+            };
+        }
+
+        public static void RegisterGunRuntimeConfiguredItem(
+            int typeId,
+            Action<Item> configure,
+            string debugName,
+            Action<Item> afterRestore = null,
+            bool requireInventory = false)
+        {
+            RegisterRuntimeConfiguredItem(
+                typeId,
+                configure,
+                delegate(Item item)
+                {
+                    return NeedsGunRuntimeConfig(item, requireInventory);
+                },
+                afterRestore,
+                debugName);
+        }
+
+        public static void RegisterMeleeRuntimeConfiguredItem(
+            int typeId,
+            Action<Item> configure,
+            string debugName,
+            Action<Item> afterRestore = null)
+        {
+            RegisterRuntimeConfiguredItem(
+                typeId,
+                configure,
+                NeedsMeleeRuntimeConfig,
+                afterRestore,
+                debugName);
+        }
+
+        public static bool IsRuntimeConfiguredType(int typeId)
+        {
+            return typeId > 0 && runtimeConfigEntries.ContainsKey(typeId);
+        }
+
+        public static bool EnsureCustomItemConfigured(Item item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                RuntimeConfigEntry entry;
+                if (!runtimeConfigEntries.TryGetValue(item.TypeID, out entry) || entry == null)
+                {
+                    return false;
+                }
+
+                if (entry.NeedsConfigure != null && !entry.NeedsConfigure(item))
+                {
+                    return false;
+                }
+
+                entry.Configure(item);
+                ModBehaviour.DevLog("[CustomItemRestore] 已补配自定义物品实例: " + entry.DebugName);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CustomItemRestore] 补配自定义物品失败: " + e.Message);
+            }
+
+            return false;
+        }
+
+        public static bool RestoreRuntimeState(Item item, string reason = null)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            bool configured = false;
+            bool restored = false;
+
+            try
+            {
+                configured = EnsureCustomItemConfigured(item);
+                if (configured)
+                {
+                    ReforgeDataPersistence.UnmarkRestored(item);
+                }
+
+                restored = ReforgeDataPersistence.TryRestoreReforgeData(item);
+
+                RuntimeConfigEntry entry;
+                if ((configured || restored) &&
+                    runtimeConfigEntries.TryGetValue(item.TypeID, out entry) &&
+                    entry != null &&
+                    entry.AfterRestore != null)
+                {
+                    entry.AfterRestore(item);
+                }
+
+                if ((configured || restored) && !string.IsNullOrEmpty(reason))
+                {
+                    ModBehaviour.DevLog("[CustomItemRestore] 已恢复物品状态: " + item.DisplayName + " (" + reason + ")");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CustomItemRestore] 恢复运行时状态失败: " + e.Message);
+            }
+
+            return configured || restored;
+        }
+
+        public static bool NeedsGunRuntimeConfig(Item item, bool requireInventory = false)
+        {
+            ItemSetting_Gun gunSetting = item.GetComponent<ItemSetting_Gun>();
+            if (gunSetting == null || (requireInventory && item.Inventory == null))
+            {
+                return true;
+            }
+
+            return item.Stats == null ||
+                   item.Stats.GetStat("Damage") == null ||
+                   item.Stats.GetStat("ShootSpeed") == null ||
+                   item.Stats.GetStat("Capacity") == null;
+        }
+
+        public static bool NeedsMeleeRuntimeConfig(Item item)
+        {
+            ItemSetting_MeleeWeapon meleeSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
+            ItemAgent_MeleeWeapon meleeAgent = item.GetComponent<ItemAgent_MeleeWeapon>();
+            if (meleeSetting == null || meleeAgent == null)
+            {
+                return true;
+            }
+
+            return item.Stats == null ||
+                   item.Stats.GetStat("Damage") == null ||
+                   item.Stats.GetStat("AttackRange") == null ||
+                   item.Stats.GetStat("AttackSpeed") == null;
+        }
+    }
+
+    /// <summary>
     /// Harmony Patch: 在 ModifierDescriptionCollection.ReapplyModifiers 之前恢复重铸数据
     ///
     /// 设计说明：
@@ -425,6 +771,41 @@ namespace BossRush
             catch (InvalidOperationException)
             {
                 // 集合可能正在被修改，静默处理
+            }
+        }
+    }
+
+    /// <summary>
+    /// Harmony Patch: 物品实例启用后补跑自定义装备配置与 RF_ 恢复。
+    /// 主要覆盖 ItemTreeData / 仓库 / 快递缓冲区恢复出来的物品实例。
+    /// </summary>
+    [HarmonyPatch]
+    public static class ItemOnEnableRestorePatch
+    {
+        private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        {
+            var onEnable = AccessTools.Method(typeof(Item), "OnEnable");
+            if (onEnable != null)
+            {
+                yield return onEnable;
+            }
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(Item __instance)
+        {
+            if (__instance == null)
+            {
+                return;
+            }
+
+            try
+            {
+                CustomItemRuntimeStateHelper.RestoreRuntimeState(__instance, "Item.OnEnable");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CustomItemRestore] Item.OnEnable 恢复失败: " + e.Message);
             }
         }
     }

@@ -241,6 +241,7 @@ namespace BossRush
                 {
                     string itemName = item.DisplayName;  // 先保存名称，因为 Push 后 item 会被销毁
                     item.Detach();  // 先从容器分离
+                    ReforgeDataPersistence.SyncCurrentReforgeState(item);
                     
                     // 使用原版 PlayerStorage.Push() 方法
                     // 参数 toBufferDirectly=true 表示直接放入快递站（Buffer），不尝试放入仓库
@@ -1004,6 +1005,7 @@ namespace BossRush
                 foreach (Item item in itemsToSend)
                 {
                     item.Detach();  // 先从容器分离
+                    ReforgeDataPersistence.SyncCurrentReforgeState(item);
                     
                     // 直接添加到缓冲区（不显示通知）
                     var itemData = ItemStatsSystem.Data.ItemTreeData.FromItem(item);

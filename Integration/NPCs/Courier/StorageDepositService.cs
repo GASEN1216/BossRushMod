@@ -607,6 +607,8 @@ namespace BossRush
                         
                         if (restoredItem != null)
                         {
+                            CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, "StorageDeposit.InitializeItemInstances");
+
                             // 使用索引作为 key 存储到我们的缓存（每个物品独立）
                             depositItemInstances[i] = restoredItem;
                             
@@ -624,6 +626,7 @@ namespace BossRush
                         Item fallbackItem = ItemAssetsCollection.InstantiateSync(typeID);
                         if (fallbackItem != null)
                         {
+                            CustomItemRuntimeStateHelper.RestoreRuntimeState(fallbackItem, "StorageDeposit.InitializeFallbackItem");
                             depositItemInstances[i] = fallbackItem;
                             itemInstances[typeID] = fallbackItem;
                         }
@@ -994,6 +997,8 @@ namespace BossRush
                     
                     if (restoredItem != null)
                     {
+                        CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, "StorageDeposit.HandleDeposit");
+
                         // 存入缓存
                         depositItemInstances[newIndex] = restoredItem;
                         
@@ -1555,6 +1560,7 @@ namespace BossRush
                     return;
                 }
                 
+                CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, "StorageDeposit.RestoreAndReplace");
                 ModBehaviour.DevLog("[StorageDepositService] 物品恢复成功: " + restoredItem.DisplayName);
                 
                 // 记录空白物品的位置（用于掉落）
@@ -2164,6 +2170,7 @@ namespace BossRush
                         
                         if (restoredItem != null)
                         {
+                            CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, "StorageDeposit.RetrieveAll");
                             // 发送给玩家
                             ItemUtilities.SendToPlayer(restoredItem, true, true);
                             successCount++;

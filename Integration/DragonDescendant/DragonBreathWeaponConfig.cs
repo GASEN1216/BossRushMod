@@ -588,12 +588,10 @@ namespace BossRush
                 
                 // 验证关键 Stats 是否正确设置（用于调试）
                 VerifyCriticalStats(item);
-                
-                ModBehaviour.DevLog("[DragonBreathWeapon] Stats设置完成: 新增=" + addedCount + ", 更新=" + updatedCount);
-                
-                // 同时添加 Modifiers（用于重铸系统的持久化恢复）
-                // 只为需要显示的属性添加 Modifier，target 设为 Self（作用于武器自身）
-                AddWeaponModifiers(item);
+
+                int removedLegacyModifiers = RemoveLegacyTrackingModifiers(item);
+                ModBehaviour.DevLog("[DragonBreathWeapon] Stats设置完成: 新增=" + addedCount + ", 更新=" + updatedCount +
+                    ", 清理遗留追踪Modifier=" + removedLegacyModifiers);
             }
             catch (Exception e)
             {
@@ -629,75 +627,51 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 为龙息武器添加 Modifiers（用于重铸系统的持久化恢复）
-        /// 原版武器同时使用 Stats 和 Modifiers，我们也需要这样做
+        /// 清理旧版本为了重铸追踪而额外添加的隐藏 Modifier。
+        /// 现在龙息枪与龙皇铳一样，直接以 Stat/Variable 作为重铸来源，
+        /// 避免同名隐藏 Modifier 抢占属性栏差异对比。
         /// </summary>
-        private static void AddWeaponModifiers(Item item)
+        private static int RemoveLegacyTrackingModifiers(Item item)
         {
+            if (item == null || item.Modifiers == null)
+            {
+                return 0;
+            }
+
             try
             {
-                // 确保有 Modifiers 组件
-                if (item.Modifiers == null)
+                List<ModifierDescription> toRemove = new List<ModifierDescription>();
+                foreach (ModifierDescription mod in item.Modifiers)
                 {
-                    item.CreateModifiersComponent();
-                }
-                
-                if (item.Modifiers == null)
-                {
-                    ModBehaviour.DevLog("[DragonBreathWeapon] 无法创建 Modifiers 组件");
-                    return;
-                }
-                
-                // 为需要显示的属性添加 Modifier（target = Self，作用于武器自身的 Stats）
-                int modifierCount = 0;
-                foreach (var kvp in WEAPON_STATS)
-                {
-                    // 只为显示的属性添加 Modifier
-                    if (!DISPLAY_STATS.Contains(kvp.Key)) continue;
-                    
-                    // 检查是否已存在该 Modifier
-                    bool exists = false;
-                    foreach (var mod in item.Modifiers)
+                    if (mod == null || mod.Display)
                     {
-                        if (mod.Key == kvp.Key)
-                        {
-                            exists = true;
-                            break;
-                        }
+                        continue;
                     }
-                    if (exists) continue;
-                    
-                    // 创建 ModifierDescription（target = Self，作用于武器自身）
-                    // 使用 Add 类型，值为 0（不改变基础值，只是为了让重铸系统能够追踪）
-                    ModifierDescription modDesc = new ModifierDescription(
-                        ModifierTarget.Self,           // 目标：自身
-                        kvp.Key,                       // 属性键名
-                        ItemStatsSystem.Stats.ModifierType.Add,  // 加法类型
-                        0f,                            // 初始值为0（不影响基础属性）
-                        false,                         // 不覆盖顺序
-                        0                              // 顺序值
-                    );
-                    
-                    // 设置 display 字段
-                    FieldInfo displayField = typeof(ModifierDescription).GetField("display", 
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (displayField != null)
+
+                    if (!DISPLAY_STATS.Contains(mod.Key))
                     {
-                        displayField.SetValue(modDesc, false);  // 不显示（Stats已经显示了）
+                        continue;
                     }
-                    
-                    item.Modifiers.Add(modDesc);
-                    modifierCount++;
+
+                    if (Mathf.Abs(mod.Value) > 0.001f)
+                    {
+                        continue;
+                    }
+
+                    toRemove.Add(mod);
                 }
-                
-                if (modifierCount > 0)
+
+                for (int i = 0; i < toRemove.Count; i++)
                 {
-                    ModBehaviour.DevLog("[DragonBreathWeapon] 已添加 " + modifierCount + " 个 Modifiers（用于重铸持久化）");
+                    item.Modifiers.Remove(toRemove[i]);
                 }
+
+                return toRemove.Count;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DragonBreathWeapon] AddWeaponModifiers异常: " + e.Message);
+                ModBehaviour.DevLog("[DragonBreathWeapon] 清理遗留追踪Modifier异常: " + e.Message);
+                return 0;
             }
         }
         

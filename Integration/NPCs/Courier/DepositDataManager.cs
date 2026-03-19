@@ -195,6 +195,8 @@ namespace BossRush
             
             try
             {
+                ReforgeDataPersistence.SyncCurrentReforgeState(item);
+
                 // 创建寄存数据
                 DepositedItemData depositedItem = new DepositedItemData();
                 depositedItem.itemData = ItemTreeData.FromItem(item);

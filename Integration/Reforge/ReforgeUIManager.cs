@@ -122,7 +122,7 @@ namespace BossRush
     {
         public string Key;
         public float Value;
-        public ModifierType Type;
+        public PropertyType PropType;
     }
 
     /// <summary>
@@ -1902,17 +1902,67 @@ namespace BossRush
             
             try
             {
-                if (item.Modifiers == null) return;
-                
-                foreach (var mod in item.Modifiers)
+                if (item == null) return;
+
+                if (item.Modifiers != null)
                 {
-                    PropertySnapshot snapshot = new PropertySnapshot
+                    foreach (var mod in item.Modifiers)
                     {
-                        Key = mod.Key,
-                        Value = mod.Value,
-                        Type = mod.Type
-                    };
-                    originalProperties.Add(snapshot);
+                        if (!mod.Display) continue;
+
+                        PropertySnapshot snapshot = new PropertySnapshot
+                        {
+                            Key = mod.Key,
+                            Value = mod.Value,
+                            PropType = PropertyType.Modifier
+                        };
+                        originalProperties.Add(snapshot);
+                    }
+                }
+
+                if (item.Stats != null)
+                {
+                    foreach (var stat in item.Stats)
+                    {
+                        if (!stat.Display) continue;
+
+                        PropertySnapshot snapshot = new PropertySnapshot
+                        {
+                            Key = stat.Key,
+                            Value = stat.BaseValue,
+                            PropType = PropertyType.Stat
+                        };
+                        originalProperties.Add(snapshot);
+                    }
+                }
+
+                if (item.Variables != null)
+                {
+                    foreach (var variable in item.Variables)
+                    {
+                        if (!variable.Display) continue;
+                        if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
+                        if (variable.Key.StartsWith("RF_")) continue;
+                        if (variable.DataType != Duckov.Utilities.CustomDataType.Float) continue;
+
+                        float value;
+                        try
+                        {
+                            value = variable.GetFloat();
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+
+                        PropertySnapshot snapshot = new PropertySnapshot
+                        {
+                            Key = variable.Key,
+                            Value = value,
+                            PropType = PropertyType.Variable
+                        };
+                        originalProperties.Add(snapshot);
+                    }
                 }
                 
                 ModBehaviour.DevLog("[ReforgeUI] 保存了 " + originalProperties.Count + " 个属性快照");
@@ -1920,6 +1970,236 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 保存属性快照失败: " + e.Message);
+            }
+        }
+
+        private static string BuildSnapshotKey(string key, PropertyType propType)
+        {
+            return ((int)propType).ToString() + ":" + key;
+        }
+
+        private static bool TryGetDisplayedEntryInfo(Transform child, out string key, out PropertyType propType, out TextMeshProUGUI valueText)
+        {
+            key = null;
+            propType = PropertyType.Modifier;
+            valueText = null;
+
+            if (child == null)
+            {
+                return false;
+            }
+
+            Component modEntry = child.GetComponent("ItemModifierEntry");
+            if (modEntry != null)
+            {
+                if (_modEntryTargetField == null)
+                {
+                    _modEntryTargetField = modEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+                if (_modEntryValueField == null)
+                {
+                    _modEntryValueField = modEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+
+                if (_modEntryTargetField != null)
+                {
+                    var modDesc = _modEntryTargetField.GetValue(modEntry);
+                    if (modDesc != null)
+                    {
+                        if (_modDescKeyProp == null)
+                        {
+                            _modDescKeyProp = modDesc.GetType().GetProperty("Key");
+                        }
+                        if (_modDescKeyProp != null)
+                        {
+                            key = _modDescKeyProp.GetValue(modDesc, null) as string;
+                        }
+                    }
+                }
+
+                if (_modEntryValueField != null)
+                {
+                    valueText = _modEntryValueField.GetValue(modEntry) as TextMeshProUGUI;
+                }
+
+                propType = PropertyType.Modifier;
+                return !string.IsNullOrEmpty(key) && valueText != null;
+            }
+
+            Component varEntry = child.GetComponent("ItemVariableEntry");
+            if (varEntry != null)
+            {
+                if (_varEntryTargetField == null)
+                {
+                    _varEntryTargetField = varEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+                if (_varEntryValueField == null)
+                {
+                    _varEntryValueField = varEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+
+                if (_varEntryTargetField != null)
+                {
+                    var customData = _varEntryTargetField.GetValue(varEntry);
+                    if (customData != null)
+                    {
+                        if (_customDataKeyProp == null)
+                        {
+                            _customDataKeyProp = customData.GetType().GetProperty("Key");
+                        }
+                        if (_customDataKeyProp != null)
+                        {
+                            key = _customDataKeyProp.GetValue(customData, null) as string;
+                        }
+                    }
+                }
+
+                if (_varEntryValueField != null)
+                {
+                    valueText = _varEntryValueField.GetValue(varEntry) as TextMeshProUGUI;
+                }
+
+                propType = PropertyType.Variable;
+                return !string.IsNullOrEmpty(key) && valueText != null;
+            }
+
+            Component statEntry = child.GetComponent("ItemStatEntry");
+            if (statEntry != null)
+            {
+                if (_statEntryTargetField == null)
+                {
+                    _statEntryTargetField = statEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+                if (_statEntryValueField == null)
+                {
+                    _statEntryValueField = statEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                }
+
+                if (_statEntryTargetField != null)
+                {
+                    var stat = _statEntryTargetField.GetValue(statEntry);
+                    if (stat != null)
+                    {
+                        if (_statKeyProp == null)
+                        {
+                            _statKeyProp = stat.GetType().GetProperty("Key");
+                        }
+                        if (_statKeyProp != null)
+                        {
+                            key = _statKeyProp.GetValue(stat, null) as string;
+                        }
+                    }
+                }
+
+                if (_statEntryValueField != null)
+                {
+                    valueText = _statEntryValueField.GetValue(statEntry) as TextMeshProUGUI;
+                }
+
+                propType = PropertyType.Stat;
+                return !string.IsNullOrEmpty(key) && valueText != null;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetCurrentItemPropertyValue(Item item, string key, PropertyType propType, out float value)
+        {
+            value = 0f;
+            if (item == null || string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            switch (propType)
+            {
+                case PropertyType.Modifier:
+                    if (item.Modifiers == null) return false;
+                    foreach (var mod in item.Modifiers)
+                    {
+                        if (mod.Key == key)
+                        {
+                            value = mod.Value;
+                            return true;
+                        }
+                    }
+                    break;
+
+                case PropertyType.Stat:
+                    if (item.Stats == null) return false;
+                    foreach (var stat in item.Stats)
+                    {
+                        if (stat.Key == key)
+                        {
+                            value = stat.BaseValue;
+                            return true;
+                        }
+                    }
+                    break;
+
+                case PropertyType.Variable:
+                    if (item.Variables == null) return false;
+                    foreach (var variable in item.Variables)
+                    {
+                        if (variable.Key != key) continue;
+
+                        try
+                        {
+                            value = variable.GetFloat();
+                            return true;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }
+                    break;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetCachedPrefabValue(string key, PropertyType propType, out float value)
+        {
+            switch (propType)
+            {
+                case PropertyType.Modifier:
+                    return cachedPrefabModifiers.TryGetValue(key, out value);
+
+                case PropertyType.Stat:
+                    return cachedPrefabStats.TryGetValue(key, out value);
+
+                case PropertyType.Variable:
+                    return cachedPrefabVariables.TryGetValue(key, out value);
+
+                default:
+                    value = 0f;
+                    return false;
+            }
+        }
+
+        private static bool TryGetComparisonValue(
+            string key,
+            PropertyType propType,
+            Dictionary<string, float> modifiers,
+            Dictionary<string, float> stats,
+            Dictionary<string, float> variables,
+            out float value)
+        {
+            switch (propType)
+            {
+                case PropertyType.Modifier:
+                    return modifiers.TryGetValue(key, out value);
+
+                case PropertyType.Stat:
+                    return stats.TryGetValue(key, out value);
+
+                case PropertyType.Variable:
+                    return variables.TryGetValue(key, out value);
+
+                default:
+                    value = 0f;
+                    return false;
             }
         }
         
@@ -1950,7 +2230,7 @@ namespace BossRush
                 Dictionary<string, PropertySnapshot> oldProps = new Dictionary<string, PropertySnapshot>();
                 foreach (var snap in originalProperties)
                 {
-                    oldProps[snap.Key] = snap;
+                    oldProps[BuildSnapshotKey(snap.Key, snap.PropType)] = snap;
                 }
                 
                 // 获取propertiesParent来查找属性条目
@@ -1960,68 +2240,52 @@ namespace BossRush
                     Transform propsParent = propsParentField.GetValue(detailsDisplay) as Transform;
                     if (propsParent != null)
                     {
-                        // 遍历所有ItemModifierEntry子组件
                         foreach (Transform child in propsParent)
                         {
-                            Component modEntry = child.GetComponent("ItemModifierEntry");
-                            if (modEntry == null) continue;
-                            
-                            // 获取target字段
-                            FieldInfo targetField = modEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (targetField == null) continue;
-                            
-                            var modDesc = targetField.GetValue(modEntry);
-                            if (modDesc == null) continue;
-                            
-                            // 获取Key属性
-                            PropertyInfo keyProp = modDesc.GetType().GetProperty("Key");
-                            if (keyProp == null) continue;
-                            
-                            string key = keyProp.GetValue(modDesc, null) as string;
-                            if (string.IsNullOrEmpty(key)) continue;
-                            
-                            // 获取当前Value
-                            PropertyInfo valueProp = modDesc.GetType().GetProperty("Value");
-                            if (valueProp == null) continue;
-                            
-                            float newValue = (float)valueProp.GetValue(modDesc, null);
-                            
-                            // 检查是否有旧值
-                            if (oldProps.ContainsKey(key))
+                            string key;
+                            PropertyType propType;
+                            TextMeshProUGUI valueText;
+                            if (!TryGetDisplayedEntryInfo(child, out key, out propType, out valueText))
                             {
-                                float oldValue = oldProps[key].Value;
-                                float diff = newValue - oldValue;
-                                
-                                if (Mathf.Abs(diff) > 0.001f)
+                                continue;
+                            }
+
+                            PropertySnapshot oldSnapshot;
+                            if (!oldProps.TryGetValue(BuildSnapshotKey(key, propType), out oldSnapshot))
+                            {
+                                continue;
+                            }
+
+                            float newValue;
+                            if (!TryGetCurrentItemPropertyValue(selectedItem, key, propType, out newValue))
+                            {
+                                continue;
+                            }
+
+                            float diff = newValue - oldSnapshot.Value;
+                            if (Mathf.Abs(diff) > 0.001f)
+                            {
+                                string baseText = valueText.text;
+                                int colorTagIndex = baseText.IndexOf(" <color=");
+                                if (colorTagIndex > 0)
                                 {
-                                    // 获取value文本组件
-                                    FieldInfo valueTextField = modEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                                    if (valueTextField != null)
-                                    {
-                                        TextMeshProUGUI valueText = valueTextField.GetValue(modEntry) as TextMeshProUGUI;
-                                        if (valueText != null)
-                                        {
-                                            // 添加差异显示
-                                            string arrow = diff > 0 ? "↑" : "↓";
-                                            string diffStr = Mathf.Abs(diff).ToString("F2");
-                                            string colorHex = diff > 0 ? "#FF6666" : "#66FF66";
-                                            string diffMarkup = string.Format(" <color={0}>({1}{2})</color>", colorHex, arrow, diffStr);
-                                            float prefabValue;
-                                            if (cachedPrefabModifiers.TryGetValue(key, out prefabValue))
-                                            {
-                                                diffMarkup += GetReforgeBoundLabelMarkup(key, prefabValue, newValue, diff);
-                                            }
-                                            
-                                            // 显示格式: 原值 (<color>↑/↓+差异</color>)
-                                            valueText.text = valueText.text + diffMarkup;
-                                        }
-                                    }
-                                    
-                                    // 日志记录
-                                    string logArrow = diff > 0 ? "↑" : "↓";
-                                    string logColor = diff > 0 ? "红" : "绿";
-                                    ModBehaviour.DevLog("[ReforgeUI] 属性变化: " + key + " " + logArrow + " " + Mathf.Abs(diff).ToString("F2") + " (" + logColor + ")");
+                                    baseText = baseText.Substring(0, colorTagIndex);
                                 }
+
+                                string colorHex = diff > 0 ? "#66FF66" : "#FF6666";
+                                float prefabValue;
+                                string diffMarkup = TryGetCachedPrefabValue(key, propType, out prefabValue)
+                                    ? BuildPropertyDiffMarkup(key, prefabValue, newValue, diff, colorHex, false)
+                                    : string.Format(" <color={0}>({1}{2})</color>",
+                                        colorHex,
+                                        diff > 0 ? "↑" : "↓",
+                                        Mathf.Abs(diff).ToString("F2"));
+
+                                valueText.text = baseText + diffMarkup;
+
+                                string logArrow = diff > 0 ? "↑" : "↓";
+                                string logColor = diff > 0 ? "绿" : "红";
+                                ModBehaviour.DevLog("[ReforgeUI] 属性变化: " + key + " " + logArrow + " " + Mathf.Abs(diff).ToString("F2") + " (" + logColor + ")");
                             }
                         }
                     }
@@ -2292,164 +2556,26 @@ namespace BossRush
                 foreach (Transform child in propsParent)
                 {
                     if (!child.gameObject.activeInHierarchy) continue;
-                    
-                    string key = null;
-                    TextMeshProUGUI valueText = null;
-                    
-                    // 1. 尝试ItemModifierEntry（使用缓存的反射字段）
-                    Component modEntry = child.GetComponent("ItemModifierEntry");
-                    if (modEntry != null)
+
+                    string key;
+                    PropertyType propType;
+                    TextMeshProUGUI valueText;
+                    if (!TryGetDisplayedEntryInfo(child, out key, out propType, out valueText))
                     {
-                        // 动态获取反射字段（如果缓存未初始化）
-                        if (_modEntryTargetField == null)
-                        {
-                            _modEntryTargetField = modEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                        }
-                        if (_modEntryValueField == null)
-                        {
-                            _modEntryValueField = modEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                        }
-                        
-                        if (_modEntryTargetField != null)
-                        {
-                            var modDesc = _modEntryTargetField.GetValue(modEntry);
-                            if (modDesc != null)
-                            {
-                                if (_modDescKeyProp == null)
-                                {
-                                    _modDescKeyProp = modDesc.GetType().GetProperty("Key");
-                                }
-                                if (_modDescKeyProp != null)
-                                {
-                                    key = _modDescKeyProp.GetValue(modDesc, null) as string;
-                                }
-                            }
-                        }
-                        if (_modEntryValueField != null)
-                        {
-                            valueText = _modEntryValueField.GetValue(modEntry) as TextMeshProUGUI;
-                        }
+                        continue;
                     }
-                    
-                    // 2. 尝试ItemVariableEntry（使用缓存的反射字段）
-                    if (key == null)
+
+                    float prefabValue;
+                    if (!TryGetComparisonValue(key, propType, prefabModifiers, prefabStats, prefabVariables, out prefabValue))
                     {
-                        Component varEntry = child.GetComponent("ItemVariableEntry");
-                        if (varEntry != null)
-                        {
-                            if (_varEntryTargetField == null)
-                            {
-                                _varEntryTargetField = varEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                            }
-                            if (_varEntryValueField == null)
-                            {
-                                _varEntryValueField = varEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                            }
-                            
-                            if (_varEntryTargetField != null)
-                            {
-                                var customData = _varEntryTargetField.GetValue(varEntry);
-                                if (customData != null)
-                                {
-                                    if (_customDataKeyProp == null)
-                                    {
-                                        _customDataKeyProp = customData.GetType().GetProperty("Key");
-                                    }
-                                    if (_customDataKeyProp != null)
-                                    {
-                                        key = _customDataKeyProp.GetValue(customData, null) as string;
-                                    }
-                                }
-                            }
-                            if (_varEntryValueField != null)
-                            {
-                                valueText = _varEntryValueField.GetValue(varEntry) as TextMeshProUGUI;
-                            }
-                        }
+                        continue;
                     }
-                    
-                    // 3. 尝试ItemStatEntry（使用缓存的反射字段）
-                    if (key == null)
+
+                    float playerValue;
+                    if (!TryGetComparisonValue(key, propType, playerModifiers, playerStats, playerVariables, out playerValue))
                     {
-                        Component statEntry = child.GetComponent("ItemStatEntry");
-                        if (statEntry != null)
-                        {
-                            if (_statEntryTargetField == null)
-                            {
-                                _statEntryTargetField = statEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                            }
-                            if (_statEntryValueField == null)
-                            {
-                                _statEntryValueField = statEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                            }
-                            
-                            if (_statEntryTargetField != null)
-                            {
-                                var stat = _statEntryTargetField.GetValue(statEntry);
-                                if (stat != null)
-                                {
-                                    if (_statKeyProp == null)
-                                    {
-                                        _statKeyProp = stat.GetType().GetProperty("Key");
-                                    }
-                                    if (_statKeyProp != null)
-                                    {
-                                        key = _statKeyProp.GetValue(stat, null) as string;
-                                    }
-                                }
-                            }
-                            if (_statEntryValueField != null)
-                            {
-                                valueText = _statEntryValueField.GetValue(statEntry) as TextMeshProUGUI;
-                            }
-                        }
+                        continue;
                     }
-                    
-                    if (string.IsNullOrEmpty(key) || valueText == null) continue;
-                    
-                    // 从传入的预制体属性字典获取预制体值
-                    float prefabValue = 0f;
-                    bool hasPrefabValue = false;
-                    
-                    if (prefabModifiers.ContainsKey(key))
-                    {
-                        prefabValue = prefabModifiers[key];
-                        hasPrefabValue = true;
-                    }
-                    else if (prefabStats.ContainsKey(key))
-                    {
-                        prefabValue = prefabStats[key];
-                        hasPrefabValue = true;
-                    }
-                    else if (prefabVariables.ContainsKey(key))
-                    {
-                        prefabValue = prefabVariables[key];
-                        hasPrefabValue = true;
-                    }
-                    
-                    if (!hasPrefabValue) continue;
-                    
-                    // 从传入的玩家属性字典获取玩家值
-                    float playerValue = prefabValue;
-                    bool hasPlayerValue = false;
-                    
-                    if (playerModifiers.ContainsKey(key))
-                    {
-                        playerValue = playerModifiers[key];
-                        hasPlayerValue = true;
-                    }
-                    else if (playerStats.ContainsKey(key))
-                    {
-                        playerValue = playerStats[key];
-                        hasPlayerValue = true;
-                    }
-                    else if (playerVariables.ContainsKey(key))
-                    {
-                        playerValue = playerVariables[key];
-                        hasPlayerValue = true;
-                    }
-                    
-                    if (!hasPlayerValue) continue;
                     
                     float diff = playerValue - prefabValue;
                     ModBehaviour.DevLog(string.Format("[ReforgeUI] 属性 {0}: player={1}, prefab={2}, diff={3}", 
@@ -2489,6 +2615,8 @@ namespace BossRush
             
             try
             {
+                CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(prefabItem);
+
                 int typeId = prefabItem.TypeID;
                 
                 // 逆鳞图腾

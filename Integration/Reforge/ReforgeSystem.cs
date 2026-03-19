@@ -824,6 +824,10 @@ namespace BossRush
                     ApplyPropertyChange(prop, newValue, item, prefab);
                 }
                 
+                // 标记物品已恢复，防止下面 ReapplyModifiers 触发 Harmony Prefix 时重复恢复
+                ReforgeDataPersistence.MarkAsRestored(item);
+                IncrementReforgeCount(item);
+
                 // 触发物品属性更新
                 try
                 {
@@ -894,7 +898,7 @@ namespace BossRush
                         }
                     }
                 }
-                // 如果没有找到，尝试添加（如果支持的话）
+                item.SetFloat("ReforgeCount", count, false);
             }
             catch (Exception e)
             {
@@ -923,7 +927,12 @@ namespace BossRush
             {
                 int typeId = item.TypeID;
                 if (typeId <= 0) return null;
-                return ItemAssetsCollection.GetPrefab(typeId);
+                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                if (prefab != null)
+                {
+                    CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(prefab);
+                }
+                return prefab;
             }
             catch (Exception e)
             {

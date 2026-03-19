@@ -26,6 +26,7 @@ using Duckov.Scenes;
 using Duckov.Economy;
 using Duckov.UI;
 using ItemStatsSystem;
+using ItemStatsSystem.Items;
 using Saves;
 
 namespace BossRush
@@ -57,6 +58,7 @@ namespace BossRush
         
         // [性能优化] 商店注入完成标记，避免每次场景加载都重复扫描
         private static bool _shopInjectionCompleted = false;
+        private Coroutine runtimeStateMonitorCoroutine;
 
         internal bool IsBaseHubNormalMerchantShop(StockShop shop)
         {
@@ -450,6 +452,34 @@ namespace BossRush
             LocalizationHelper.InjectLocalization("Item_" + typeId + "_Desc", description);
             LocalizationHelper.InjectLocalization(nameCN, displayName);
             LocalizationHelper.InjectLocalization(nameEN, displayName);
+        }
+
+        /// <summary>
+        /// 注册“需要运行时补配基础配置”的自定义武器。
+        /// 以后新增同类武器时，只需要在这里追加一条注册，
+        /// 不需要再去改快递/仓库/切图/重铸恢复链路。
+        /// </summary>
+        private void RegisterCustomWeaponRuntimeConfigs()
+        {
+            CustomItemRuntimeStateHelper.RegisterGunRuntimeConfiguredItem(
+                DragonBreathWeaponConfig.WEAPON_TYPE_ID,
+                DragonBreathWeaponConfig.ConfigureWeapon,
+                "龙息",
+                null,
+                true);
+
+            CustomItemRuntimeStateHelper.RegisterGunRuntimeConfiguredItem(
+                DragonKingBossGunConfig.WeaponTypeId,
+                DragonKingBossGunConfig.ConfigureWeapon,
+                "焚皇铳");
+
+            CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
+                FenHuangHalberdIds.WeaponTypeId,
+                delegate(Item item)
+                {
+                    FenHuangHalberdWeaponConfig.TryConfigure(item, "FenHuangHalberd");
+                },
+                "焚皇断界戟");
         }
 
         private void OnFenHuangHalberdLoaded(Item itemPrefab)
@@ -949,6 +979,14 @@ namespace BossRush
             // 尝试注入本地化字典
             InjectLocalization();
 
+            // 注册需要在实例恢复后再次补配的自定义武器
+            RegisterCustomWeaponRuntimeConfigs();
+
+            if (runtimeStateMonitorCoroutine == null)
+            {
+                runtimeStateMonitorCoroutine = StartCoroutine(MonitorLateRuntimeStateRestore());
+            }
+
             InitializeDynamicItems();
             InjectBossRushTicketLocalization();
             InjectBossRushTicketIntoShops();
@@ -1042,6 +1080,12 @@ namespace BossRush
         
         void OnDestroy_Integration()
         {
+            if (runtimeStateMonitorCoroutine != null)
+            {
+                StopCoroutine(runtimeStateMonitorCoroutine);
+                runtimeStateMonitorCoroutine = null;
+            }
+
             SceneManager.sceneLoaded -= OnSceneLoaded;
             StockShop.OnItemPurchased -= OnItemPurchased_Integration;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_TicketStock;
@@ -1150,6 +1194,16 @@ namespace BossRush
             
             // [内存优化] 场景切换时清理荒野号角坐骑缓存
             WildHornUsage.ClearMountCache();
+
+            // [修复] 场景切换时清除重铸恢复追踪，允许重新恢复重铸属性
+            // 背包物品是 DontDestroyOnLoad，InstanceID 不变，
+            // 如果不清除，ReapplyModifiers 的 Harmony Prefix 会跳过恢复
+            ReforgeDataPersistence.ClearRestoredTracking();
+
+            // [修复] 主动恢复背包物品的重铸数据
+            // Harmony Patch 只挂在 ReapplyModifiers 上，只有 Modifiers 的物品才会触发
+            // 纯 Stats 物品（如焚皇断界戟）不会触发 ReapplyModifiers，需要主动恢复
+            StartCoroutine(DelayedRestoreReforgeDataForInventory());
 
             // 平安护身符在每个场景仅可触发一次，切图时重置
             PeaceCharmRuntime.ResetSceneTrigger();
@@ -1389,6 +1443,185 @@ namespace BossRush
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// 延迟恢复背包物品的重铸数据
+        /// 解决纯 Stats 物品（如焚皇断界戟）不触发 ReapplyModifiers 导致重铸效果丢失的问题
+        /// </summary>
+        private System.Collections.IEnumerator DelayedRestoreReforgeDataForInventory()
+        {
+            // 等待玩家角色可用
+            float waitTime = 0f;
+            while (CharacterMainControl.Main == null && waitTime < 10f)
+            {
+                yield return new UnityEngine.WaitForSeconds(0.5f);
+                waitTime += 0.5f;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null || player.CharacterItem == null) yield break;
+
+            Inventory inventory = player.CharacterItem.Inventory;
+            if (inventory == null) yield break;
+
+            int restored = 0;
+            try
+            {
+                foreach (Item item in inventory)
+                {
+                    if (item == null) continue;
+                    if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, "PlayerInventory"))
+                    {
+                        restored++;
+                    }
+                }
+
+                restored += RestoreRuntimeStateForSlots(player.CharacterItem, "CharacterSlots");
+                restored += RestoreRuntimeStateForHoldAgent(player.CurrentHoldItemAgent, "CurrentHoldItemAgent");
+
+                if (PlayerStorage.Inventory != null)
+                {
+                    foreach (Item item in PlayerStorage.Inventory)
+                    {
+                        if (item == null) continue;
+                        if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, "PlayerStorage"))
+                        {
+                            restored++;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[Reforge] 主动恢复重铸数据异常: " + e.Message);
+            }
+
+            if (restored > 0)
+            {
+                DevLog("[Reforge] 场景切换后主动恢复了 " + restored + " 件物品的重铸数据");
+            }
+        }
+
+        private System.Collections.IEnumerator MonitorLateRuntimeStateRestore()
+        {
+            WaitForSeconds wait = new WaitForSeconds(0.5f);
+
+            while (true)
+            {
+                int restored = 0;
+
+                try
+                {
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player != null && player.CharacterItem != null)
+                    {
+                        restored += RestoreRuntimeStateForInventory(player.CharacterItem.Inventory, "PlayerInventoryMonitor");
+                        restored += RestoreRuntimeStateForSlots(player.CharacterItem, "CharacterSlotsMonitor");
+                        restored += RestoreRuntimeStateForHoldAgent(player.CurrentHoldItemAgent, "CurrentHoldItemMonitor");
+                    }
+
+                    restored += RestoreRuntimeStateForInventory(PlayerStorage.Inventory, "PlayerStorageMonitor");
+                }
+                catch (System.Exception e)
+                {
+                    DevLog("[Reforge] 运行时状态监控异常: " + e.Message);
+                }
+
+                if (restored > 0)
+                {
+                    DevLog("[Reforge] 监控协程补恢复了 " + restored + " 件延迟实例化物品");
+                }
+
+                yield return wait;
+            }
+        }
+
+        private static int RestoreRuntimeStateForInventory(Inventory inventory, string reason)
+        {
+            if (inventory == null)
+            {
+                return 0;
+            }
+
+            int restored = 0;
+            foreach (Item item in inventory)
+            {
+                if (item == null)
+                {
+                    continue;
+                }
+
+                bool shouldRestore =
+                    CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
+                    ReforgeDataPersistence.HasReforgeData(item);
+
+                if (!shouldRestore)
+                {
+                    continue;
+                }
+
+                if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason))
+                {
+                    restored++;
+                }
+            }
+
+            return restored;
+        }
+
+        private static int RestoreRuntimeStateForSlots(Item characterItem, string reason)
+        {
+            if (characterItem == null || characterItem.Slots == null)
+            {
+                return 0;
+            }
+
+            int restored = 0;
+            foreach (Slot slot in characterItem.Slots)
+            {
+                if (slot == null || slot.Content == null)
+                {
+                    continue;
+                }
+
+                Item item = slot.Content;
+                bool shouldRestore =
+                    CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
+                    ReforgeDataPersistence.HasReforgeData(item);
+
+                if (!shouldRestore)
+                {
+                    continue;
+                }
+
+                if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason + ":" + slot.Key))
+                {
+                    restored++;
+                }
+            }
+
+            return restored;
+        }
+
+        private static int RestoreRuntimeStateForHoldAgent(DuckovItemAgent holdAgent, string reason)
+        {
+            if (holdAgent == null || holdAgent.Item == null)
+            {
+                return 0;
+            }
+
+            Item item = holdAgent.Item;
+            bool shouldRestore =
+                CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
+                ReforgeDataPersistence.HasReforgeData(item);
+
+            if (!shouldRestore)
+            {
+                return 0;
+            }
+
+            return CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason) ? 1 : 0;
         }
 
         /// <summary>
@@ -2767,7 +3000,10 @@ namespace BossRush
                 
                 // 始终订阅Buff事件（龙裔遗族Boss也会发射龙息子弹，需要触发龙焰灼烧Buff）
                 DragonBreathBuffHandler.Subscribe();
-                
+
+                DuckovItemAgent currentHoldAgent = mainChar.CurrentHoldItemAgent;
+                RestoreRuntimeStateForHoldAgent(currentHoldAgent, "SubscribeDragonBreathEffectEvent");
+
                 // 检查当前手持的武器（处理玩家进入存档时已装备龙息武器的情况）
                 var currentGun = mainChar.GetGun();
                 if (currentGun != null)
@@ -2806,6 +3042,8 @@ namespace BossRush
         /// </summary>
         private void OnPlayerHoldAgentChanged(DuckovItemAgent newAgent)
         {
+            RestoreRuntimeStateForHoldAgent(newAgent, "OnHoldAgentChanged");
+
             var gunAgent = newAgent as ItemAgent_Gun;
             
             // 检查是否为龙息武器
