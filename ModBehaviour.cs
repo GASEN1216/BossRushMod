@@ -2122,6 +2122,7 @@ namespace BossRush
         private const string BossRushArenaSceneName = "Level_DemoChallenge_1";  // 实际运行时的场景名称
 
         // Base 集散地与下水道区域会在不同 active scene 间切换，这几个场景都视为同一个入口环境
+        private const string BaseRootSceneName = "Base";
         private const string BaseSceneName = "Base_SceneV2";
         private const string BaseSceneSubName = "Base_SceneV2_Sub_01";
         private const string BaseSewerSceneName = "Level_HiddenWarehouse_CellarUnderGround";
@@ -2130,7 +2131,8 @@ namespace BossRush
 
         internal static bool IsBaseHubSceneName(string sceneName)
         {
-            return sceneName == BaseSceneName ||
+            return sceneName == BaseRootSceneName ||
+                   sceneName == BaseSceneName ||
                    sceneName == BaseSceneSubName ||
                    sceneName == BaseSewerSceneName;
         }
@@ -2403,6 +2405,11 @@ namespace BossRush
         {
             int delta = newPoints - oldPoints;
             AffinityUIManager.ShowAffinityChange(npcId, delta);
+
+            if (!string.IsNullOrEmpty(npcId))
+            {
+                HandleSpouseFollowAffinityLoss(npcId);
+            }
         }
         
         /// <summary>
@@ -3584,6 +3591,7 @@ namespace BossRush
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeE();
                 SpawnCommonNPCs("DEMO场景 Mode E 初始化完成");
+                ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "DEMO场景 Mode E 初始化完成");
                 BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                 yield break;
             }
@@ -3604,6 +3612,7 @@ namespace BossRush
                 if (startedModeF)
                 {
                     SpawnCommonNPCs("DEMO场景 Mode F 初始化完成");
+                    ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "DEMO场景 Mode F 初始化完成");
                 }
                 else
                 {
@@ -3718,6 +3727,7 @@ namespace BossRush
             }
             
             SpawnCommonNPCs("DEMO场景初始化完成");
+            ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "DEMO场景初始化完成");
             BossRushMapSelectionHelper.ClearPendingEntryFlowState();
         }
 

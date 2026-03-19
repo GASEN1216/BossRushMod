@@ -280,12 +280,12 @@ namespace BossRush
 
         private static bool ShouldSkipDestroyForMarriedNpc(string reason, string sceneName, string npcId)
         {
-            if (!string.Equals(reason, "LeaveBossRushScene", StringComparison.Ordinal))
+            if (!string.Equals(reason, "离开竞技场场景", StringComparison.Ordinal))
             {
                 return false;
             }
 
-            if (!string.Equals(sceneName, "Base_SceneV2", StringComparison.Ordinal))
+            if (!ModBehaviour.IsBaseHubSceneName(sceneName))
             {
                 return false;
             }

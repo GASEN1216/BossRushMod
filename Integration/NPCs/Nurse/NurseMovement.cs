@@ -17,7 +17,7 @@ namespace BossRush
     /// <summary>
     /// 护士漫步移动控制
     /// </summary>
-    public class NurseMovement : MonoBehaviour
+    public class NurseMovement : NPCFollowMovementBase
     {
         private NurseNPCController controller;
         private Animator animator;
@@ -44,6 +44,7 @@ namespace BossRush
 
         // 移动参数
         public float walkSpeed = 1.8f;
+        public float runSpeed = 4.5f;
         public float turnSpeed = 360f;
 
         // 漫步参数
@@ -51,6 +52,12 @@ namespace BossRush
         private const float WANDER_INTERVAL = 6f;
         private const float MIN_TARGET_DISTANCE = 5f;
         private const float MIN_TARGET_DISTANCE_SQR = MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE;
+        private const float FOLLOW_REPATH_INTERVAL = 0.15f;
+        private const float FOLLOW_STOP_DISTANCE = 2.8f;
+        private const float FOLLOW_RUN_DISTANCE = 10f;
+        private const float FOLLOW_TELEPORT_DISTANCE = 40f;
+        private const float FOLLOW_SPEED_BOOST_DISTANCE = 10f;
+        private const float FOLLOW_SPEED_RESET_DISTANCE = 8f;
 
         // 场景名
         private string sceneName;
@@ -82,6 +89,7 @@ namespace BossRush
             controller = GetComponent<NurseNPCController>();
             animator = GetComponentInChildren<Animator>();
             CacheAnimatorParameters();
+            InitializeFollowDefaults();
 
             StartCoroutine(InitializeDelayed());
         }
@@ -99,9 +107,19 @@ namespace BossRush
                 return;
             }
 
+            if (IsFollowingPlayer)
+            {
+                UpdateFollowDecision(moving, waitingForPathResult, path != null);
+                if (!UpdatePathFollowing(ShouldRunWhileFollowing()))
+                {
+                    ApplyGravityOnly();
+                }
+                return;
+            }
+
             UpdateWanderDecision();
 
-            if (!UpdatePathFollowing())
+            if (!UpdatePathFollowing(false))
             {
                 ApplyGravityOnly();
             }
@@ -168,9 +186,9 @@ namespace BossRush
         }
 
         /// <returns>true 表示本帧已通过 CharacterController.Move 应用了水平移动（含重力）</returns>
-        private bool UpdatePathFollowing()
+        private bool UpdatePathFollowing(bool isRunning)
         {
-            if (waitingForPathResult) return false;
+            if (waitingForPathResult && path == null) return false;
 
             if (path == null || path.vectorPath == null || path.vectorPath.Count == 0)
             {
@@ -193,24 +211,56 @@ namespace BossRush
             moving = true;
             reachedEndOfPath = false;
 
-            Vector3 direction = path.vectorPath[currentWaypoint] - transform.position;
-            direction.y = 0f;
-
-            float nextWaypointDistanceSqr = nextWaypointDistance * nextWaypointDistance;
-            if (direction.sqrMagnitude < nextWaypointDistanceSqr)
+            float distanceToWaypoint;
+            while (true)
             {
-                currentWaypoint++;
-                return false;
+                Vector3 toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
+                toWaypoint.y = 0f;
+                distanceToWaypoint = toWaypoint.magnitude;
+
+                if (distanceToWaypoint < nextWaypointDistance)
+                {
+                    if (currentWaypoint + 1 < path.vectorPath.Count)
+                    {
+                        currentWaypoint++;
+                    }
+                    else
+                    {
+                        reachedEndOfPath = true;
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
             }
 
-            Vector3 moveDirection = direction.normalized;
+            Vector3 moveDirection = path.vectorPath[currentWaypoint] - transform.position;
+            moveDirection.y = 0f;
+            moveDirection = moveDirection.normalized;
             if (moveDirection.sqrMagnitude > 0.001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
             }
 
-            Vector3 moveVector = moveDirection * walkSpeed * Time.deltaTime;
+            float speedMultiplier = 1f;
+            if (reachedEndOfPath)
+            {
+                speedMultiplier = Mathf.Sqrt(distanceToWaypoint / nextWaypointDistance);
+
+                if (distanceToWaypoint < FOLLOW_STOP_DISTANCE)
+                {
+                    path = null;
+                    moving = false;
+                    UpdateMoveAnimation(0f);
+                    return false;
+                }
+            }
+
+            float currentSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
+            Vector3 moveVector = moveDirection * currentSpeed * Time.deltaTime;
             moveVector.y = verticalVelocity * Time.deltaTime;
 
             if (characterController != null)
@@ -219,10 +269,10 @@ namespace BossRush
             }
             else
             {
-                transform.position += moveDirection * walkSpeed * Time.deltaTime;
+                transform.position += moveDirection * currentSpeed * Time.deltaTime;
             }
 
-            UpdateMoveAnimation(walkSpeed);
+            UpdateMoveAnimation(currentSpeed);
             return true;
         }
 
@@ -383,8 +433,8 @@ namespace BossRush
                 bool isIdle = speed < 0.01f;
                 if (hasIsRunningParam)
                 {
-                    // 护士没有“跑向玩家”行为，漫步时始终保持非跑步态
-                    animator.SetBool(hash_IsRunning, false);
+                    bool isRunning = runSpeed > walkSpeed && speed > walkSpeed + 0.05f;
+                    animator.SetBool(hash_IsRunning, isRunning);
                 }
 
                 if (hasIsIdleParam)
@@ -396,6 +446,96 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[NurseNPC] [WARNING] UpdateMoveAnimation 失败: " + e.Message);
             }
+        }
+
+        protected override float WalkSpeed
+        {
+            get { return walkSpeed; }
+            set { walkSpeed = value; }
+        }
+
+        protected override float RunSpeed
+        {
+            get { return runSpeed; }
+            set { runSpeed = value; }
+        }
+
+        protected override float FollowRepathInterval
+        {
+            get { return FOLLOW_REPATH_INTERVAL; }
+        }
+
+        protected override float FollowStopDistance
+        {
+            get { return FOLLOW_STOP_DISTANCE; }
+        }
+
+        protected override float FollowRunDistance
+        {
+            get { return FOLLOW_RUN_DISTANCE; }
+        }
+
+        protected override float FollowTeleportDistance
+        {
+            get { return FOLLOW_TELEPORT_DISTANCE; }
+        }
+
+        protected override float FollowSpeedBoostDistance
+        {
+            get { return FOLLOW_SPEED_BOOST_DISTANCE; }
+        }
+
+        protected override float FollowSpeedResetDistance
+        {
+            get { return FOLLOW_SPEED_RESET_DISTANCE; }
+        }
+
+        protected override Seeker FollowSeeker
+        {
+            get { return seeker; }
+        }
+
+        protected override CharacterController FollowCharacterController
+        {
+            get { return characterController; }
+        }
+
+        protected override int FollowActivePathRequestId
+        {
+            get { return activePathRequestId; }
+            set { activePathRequestId = value; }
+        }
+
+        protected override bool FollowWaitingForPathResult
+        {
+            get { return waitingForPathResult; }
+            set { waitingForPathResult = value; }
+        }
+
+        protected override bool FollowReachedEndOfPath
+        {
+            get { return reachedEndOfPath; }
+            set { reachedEndOfPath = value; }
+        }
+
+        protected override Vector3 GetFollowDestination(Transform target)
+        {
+            if (target == null)
+            {
+                return transform.position;
+            }
+
+            return CorrectTargetHeight(target.position);
+        }
+
+        protected override void StopCurrentFollowMovement()
+        {
+            StopMove();
+        }
+
+        protected override void HandleFollowPathComplete(Path pathResult, int requestId)
+        {
+            OnPathComplete(pathResult, requestId);
         }
 
         private void CacheAnimatorParameters()

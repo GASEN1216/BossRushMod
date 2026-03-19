@@ -174,6 +174,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Utils\NPCHeartBubbleHelper.cs ^
     Integration\Utils\NPCNameTagHelper.cs ^
     Integration\Utils\NPCPathingHelper.cs ^
+    Integration\Utils\NPCFollowMovementBase.cs ^
     Integration\Utils\NPCInteractionGroupHelper.cs ^
     Integration\Utils\NPCCommonUtils.cs ^
     Integration\NPCs\Common\NPCModuleRegistry.cs ^

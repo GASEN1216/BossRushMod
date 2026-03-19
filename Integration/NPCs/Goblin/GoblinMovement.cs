@@ -19,14 +19,13 @@ namespace BossRush
     /// <summary>
     /// 哥布林移动控制（使用 A* Pathfinding Seeker）
     /// </summary>
-    public class GoblinMovement : MonoBehaviour
+    public class GoblinMovement : NPCFollowMovementBase
     {
         // ============================================================================
         // 组件引用
         // ============================================================================
 
         private GoblinNPCController controller;
-        private Transform playerTransform;
         private Animator animator;
 
         // ============================================================================
@@ -64,6 +63,12 @@ namespace BossRush
         public float walkSpeed = GoblinMovementConstants.WALK_SPEED;
         public float runSpeed = GoblinMovementConstants.RUN_SPEED;
         public float turnSpeed = GoblinMovementConstants.TURN_SPEED;
+        private const float FOLLOW_REPATH_INTERVAL = 0.15f;
+        private const float FOLLOW_STOP_DISTANCE = 2.8f;
+        private const float FOLLOW_RUN_DISTANCE = 10f;
+        private const float FOLLOW_TELEPORT_DISTANCE = 40f;
+        private const float FOLLOW_SPEED_BOOST_DISTANCE = 10f;
+        private const float FOLLOW_SPEED_RESET_DISTANCE = 8f;
 
         // ============================================================================
         // 漫步参数
@@ -180,21 +185,14 @@ namespace BossRush
             animator = GetComponentInChildren<Animator>();
 
             // 获取玩家引用
-            NPCExceptionHandler.TryExecute(() =>
-            {
-                if (CharacterMainControl.Main != null)
-                {
-                    playerTransform = CharacterMainControl.Main.transform;
-                    ModBehaviour.DevLog("[GoblinNPC] 获取到玩家引用");
-                }
-            }, "GoblinMovement.Start - 获取玩家引用");
+            InitializeFollowDefaults();
 
-            if (playerTransform == null)
+            if (CurrentPlayerTransform == null)
             {
                 var player = GameObject.FindGameObjectWithTag("Player");
                 if (player != null)
                 {
-                    playerTransform = player.transform;
+                    RefreshFollowPlayerCharacter(true);
                     ModBehaviour.DevLog("[GoblinNPC] 通过 Tag 获取到玩家引用");
                 }
             }
@@ -223,19 +221,24 @@ namespace BossRush
                 return;
             }
 
-            if (playerTransform == null)
+            if (CurrentPlayerTransform == null)
             {
-                try
-                {
-                    if (CharacterMainControl.Main != null)
-                        playerTransform = CharacterMainControl.Main.transform;
-                }
-                catch { }
+                RefreshFollowPlayerCharacter();
             }
 
             if (controller != null && controller.IsRunningToPlayer)
             {
                 if (!UpdatePathFollowing(true))
+                {
+                    ApplyGravityOnly();
+                }
+                return;
+            }
+
+            if (IsFollowingPlayer)
+            {
+                UpdateFollowDecision(moving, waitingForPathResult, path != null);
+                if (!UpdatePathFollowing(ShouldRunWhileFollowing()))
                 {
                     ApplyGravityOnly();
                 }
@@ -354,7 +357,7 @@ namespace BossRush
         /// <returns>true 表示本帧已通过 CharacterController.Move 应用了水平移动（含重力）</returns>
         private bool UpdatePathFollowing(bool isRunning)
         {
-            if (waitingForPathResult) return false;
+            if (waitingForPathResult && path == null) return false;
 
             if (path == null)
             {
@@ -518,6 +521,96 @@ namespace BossRush
             }
 
             return pos;
+        }
+
+        protected override float WalkSpeed
+        {
+            get { return walkSpeed; }
+            set { walkSpeed = value; }
+        }
+
+        protected override float RunSpeed
+        {
+            get { return runSpeed; }
+            set { runSpeed = value; }
+        }
+
+        protected override float FollowRepathInterval
+        {
+            get { return FOLLOW_REPATH_INTERVAL; }
+        }
+
+        protected override float FollowStopDistance
+        {
+            get { return FOLLOW_STOP_DISTANCE; }
+        }
+
+        protected override float FollowRunDistance
+        {
+            get { return FOLLOW_RUN_DISTANCE; }
+        }
+
+        protected override float FollowTeleportDistance
+        {
+            get { return FOLLOW_TELEPORT_DISTANCE; }
+        }
+
+        protected override float FollowSpeedBoostDistance
+        {
+            get { return FOLLOW_SPEED_BOOST_DISTANCE; }
+        }
+
+        protected override float FollowSpeedResetDistance
+        {
+            get { return FOLLOW_SPEED_RESET_DISTANCE; }
+        }
+
+        protected override Seeker FollowSeeker
+        {
+            get { return seeker; }
+        }
+
+        protected override CharacterController FollowCharacterController
+        {
+            get { return characterController; }
+        }
+
+        protected override int FollowActivePathRequestId
+        {
+            get { return activePathRequestId; }
+            set { activePathRequestId = value; }
+        }
+
+        protected override bool FollowWaitingForPathResult
+        {
+            get { return waitingForPathResult; }
+            set { waitingForPathResult = value; }
+        }
+
+        protected override bool FollowReachedEndOfPath
+        {
+            get { return reachedEndOfPath; }
+            set { reachedEndOfPath = value; }
+        }
+
+        protected override Vector3 GetFollowDestination(Transform target)
+        {
+            if (target == null)
+            {
+                return transform.position;
+            }
+
+            return CorrectTargetHeight(target.position);
+        }
+
+        protected override void StopCurrentFollowMovement()
+        {
+            StopMove();
+        }
+
+        protected override void HandleFollowPathComplete(Path pathResult, int requestId)
+        {
+            OnPathComplete(pathResult, requestId);
         }
 
         /// <summary>
