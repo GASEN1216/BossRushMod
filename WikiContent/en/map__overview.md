@@ -1,21 +1,33 @@
 ## Map Overview
 
-### What changes with maps
-- BossRush is not tied to one arena anymore.
-- Different maps change sightlines, cover quality, rotation space, spawn pressure, and Mode E battle flow.
-- The same boss can feel completely different depending on terrain.
+BossRush Mod supports 9 maps, covering most in-game scenes. All maps are available for Standard BossRush, Infinite Hell, From Scratch, Faction War, and Blood Hunt.
 
-### Core arena facilities
-- **Signpost** for mode and wave flow.
-- **Ammo refill** between waves.
-- **Repair station** for long runs.
-- **Trash can loot cleanup** for clearing all lootboxes or only empty ones.
-- **Victory / extraction flow** once the run condition is met.
+### Map List
 
-### How players should pick maps
-- Learn on familiar, readable maps first.
-- Farm on maps with clean movement routes.
-- Use larger maps for kiting and observation.
-- Use tighter maps only after you understand boss patterns.
+- **DEMO Ultimate Challenge**: Default map, simple and open layout, beginner-friendly
+- **Zero Challenge**: Snow map, cold-weather gear is automatically issued upon entry
+- **Ground Zero**
+- **Hidden Warehouse**
+- **Farm Town**
+- **J-Lab Laboratory**
+- **Underground Arena**
+- **Zone 37 Experimental Area**
+- **Maze**: Complex terrain, limited visibility
 
-[tip] Map difficulty is not absolute. It depends on the mode, your build, and what you are trying to accomplish.
+### How to Select a Map
+
+- 1. Have a BossRush Ticket in your inventory
+- 2. Open the map selection screen
+- 3. Choose the target map to enter
+
+### Snow Map Special Rules
+
+On cold maps such as Zero Challenge, the From Scratch, Faction War, and Blood Hunt modes will additionally issue cold-weather gear (helmet + armor) to prevent players from dying of cold.
+
+### Map Recommendations
+
+- Beginners: DEMO Ultimate Challenge
+- Boss fight practice: Open maps (DEMO, Farm Town)
+- Faction War brawls: Maps with many spread-out spawn points
+- Blood Hunt: Maps with cover and complex terrain
+- Speedrun achievements: Familiar small maps

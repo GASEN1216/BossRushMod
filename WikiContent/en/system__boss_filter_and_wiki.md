@@ -1,20 +1,26 @@
-## Boss Filter and Wiki
+## Boss Filter
 
-### Boss Filter
-- You can choose which bosses stay in the active pool.
-- This is not only a comfort feature. It is one of the strongest control tools in the mod.
+### Overview
+- The Boss Filter allows you to customize the Boss pool by disabling Bosses you don't want to encounter or adjusting the appearance weight of specific Bosses in Infinite Hell.
 
-### What players can do with it
-- Practice one boss.
-- Farm a specific drop line.
-- Remove noise from the pool.
-- Tune Infinite Hell around specific targets with boss-specific spawn factors.
+### How to Open
+- Press **Ctrl+F10** to open the Boss Filter panel.
 
-### How to open it
-- Default shortcut support includes **Ctrl+F10** for the boss-pool window.
+### Features
 
-### In-game wiki
-- The **Adventurer's Journal** is the in-game reading item.
-- Its job is simple: let players understand the mod without tabbing out.
+#### Disable Bosses
+- Uncheck a Boss in the panel and it will no longer appear in the Boss pool of any mode.
+- Use cases:
+  - Disable all other Bosses when you want to practice against a specific one
+  - Temporarily exclude a Boss that's too difficult or annoying
+  - Narrow down the Boss pool to improve efficiency when farming a specific Boss's drops
 
-[tip] If you plan to grind a target seriously, set up the Boss Filter first instead of brute-forcing random runs.
+#### Infinite Hell Weight
+- You can set an individual appearance weight multiplier for each Boss in Infinite Hell:
+  - Default weight is 1.0
+  - Set to 2.0 = double the appearance probability
+  - Set to 0.5 = halve the appearance probability
+  - Set to 0 = equivalent to disabling
+
+### Data Persistence
+- Filter settings are saved to the configuration file and automatically loaded the next time the game starts.

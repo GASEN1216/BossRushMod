@@ -1,15 +1,27 @@
 ## NPC Overview
 
-### NPCs are a major content pillar
-- The three core NPCs players should know are **Awen**, **Dingdang**, and **Yu Zhi**.
-- Each of them anchors a different system path.
+BossRush Mod adds 3 NPCs, each providing different services. They appear in the base scene, and some NPCs also appear within specific modes.
 
-### Their roles
-- **Awen**: in-game wiki access, storage, courier-style utility.
-- **Dingdang**: reforging and gear improvement.
-- **Yu Zhi**: healing, support, and relationship progression.
+### NPC List
+- Dingdang: Goblin Smith, main services are Reforge, shop, chat
+- Yuori: Nurse, main services are healing, Debuff removal
+- Awen: Courier, main services are item storage and retrieval
 
-### Why this matters
-- BossRush gives you combat.
-- NPC systems give you continuity, progression, and long-term goals.
-- If you ignore them, you are skipping a large part of the mod.
+### Affinity System
+
+Dingdang and Yuori have a full Affinity system:
+
+- 10 levels, raised through daily chat and gift-giving
+- Each level unlocks new services, discounts, or rewards
+- At max Affinity you can propose with a Diamond Ring
+- Not interacting for a day causes Affinity to slowly decay
+
+See Affinity and Marriage for details.
+
+### NPC Locations
+- Base: Dingdang ✓ / Yuori ✓ / Awen ✓
+- Wedding Chapel (after marriage): Dingdang ✓ / Yuori ✓ / Awen —
+- Faction War (in-mode): Dingdang — / Yuori — / Awen ✓
+- Blood Hunt (in-mode): Dingdang — / Yuori — / Awen ✓
+
+A Mystery Merchant also appears within Faction War and Blood Hunt modes, offering categorized shop services.

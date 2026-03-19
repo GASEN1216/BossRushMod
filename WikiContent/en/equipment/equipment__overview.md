@@ -1,17 +1,28 @@
 ## Equipment Overview
 
-### These are not just stat sticks
-- BossRush gear is built to change how you play, not only to raise numbers.
-- The important rewards include set bonuses, flight, emergency survival tools, dragon dashes, and exclusive weapons.
+BossRush Mod adds a series of custom equipment, mainly from two Boss drop lines: Dragon Descendant and Skyburner Dragon Lord.
 
-### The main gear lines
-- **Dragon Set**
-- **Dragon King Set**
-- **Cloud Soar I**
-- **Reverse Scale**
-- **Dragon-exclusive weapons**
+### Equipment List
+- Dragon Set — Helmet + Armor (Dragon Descendant drop)
+- Dragon King Set — Helmet + Armor (Skyburner Dragon Lord drop)
+- Cloud Rider Totem — Totem (Skyburner Dragon Lord drop)
+- Reverse Scale — Totem (Skyburner Dragon Lord drop)
+- Skyburner Halberd — Melee weapon (Skyburner Dragon Lord drop)
+- Dragon Breath — Firearm (Dragon Descendant drop)
+- Dragon Cannon — Firearm (Skyburner Dragon Lord Boss exclusive, unobtainable)
 
-### How to evaluate gear here
-- Some items are stable upgrades.
-- Some items are high-ceiling tools that demand understanding.
-- The real value is often "what kind of combat this unlocks", not just raw damage or defense.
+### Set Effects
+
+Both dragon-themed sets provide a core "fire-to-heal" passive; the difference lies in dash strength:
+
+- Dragon Set — 3-meter dash, 1.5-second cooldown, triggered by double-tapping a direction key
+- Dragon King Set — 6-meter dash (with an additional 3-meter second dash), 0.5-second cooldown, dash path leaves a magma trail
+
+### Totem Comparison
+- Cloud Rider — Flight/glide mobility, continuous use, consumes stamina
+- Reverse Scale — Near-death counterattack, one-time trigger then shatters
+
+### Equipment Acquisition Tips
+- Challenge Dragon Descendant first to obtain the Dragon Set and Dragon Breath as transitional gear
+- After mastering Dragon Descendant, challenge Skyburner Dragon Lord for the Dragon King Set and exclusive weapons
+- Choose totems based on playstyle: Cloud Rider for mobility, Reverse Scale for survivability

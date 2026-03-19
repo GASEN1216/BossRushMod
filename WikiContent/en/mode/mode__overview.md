@@ -1,22 +1,27 @@
-## Mode Overview
+## Game Mode Overview
 
-### The five main modes
-- **Mode A: Easy**: one boss per wave, best for first contact.
-- **Mode B: Standard**: three bosses of the same type per wave, stronger pressure.
-- **Mode C: Infinite Hell**: endless waves, tuned for long farming and endurance.
-- **Mode D: Rags to Riches**: naked entry, random growth, survival progression.
-- **Mode E: Faction War**: naked entry plus faction flag, large faction sandbox battles.
+BossRush Mod offers 5 game modes with different focuses, catering to everything from casual to hardcore playstyles.
 
-### How to think about them
-- Mode A and B teach you the base loop.
-- Infinite Hell tests endurance, economy, and boss-pool control.
-- Mode D tests adaptation and growth from nothing.
-- Mode E is not standard BossRush at all. It is a battlefield simulator with faction logic.
+### Mode Comparison
 
-### Best order for most players
-- Learn A.
-- Stabilize in B.
-- Then choose your direction:
-- Long farming and achievement progress in C.
-- Roguelike growth in D.
-- Controlled chaos and sandbox battles in E.
+- Standard BossRush: Entry Requirement Ticket / Waves Limited / Core Experience Classic Boss wave challenge / Difficulty ★★☆☆☆
+- Infinite Hell: Entry Requirement Ticket (select Infinite Hell difficulty) / Waves Unlimited / Core Experience Endless survival, Bosses grow stronger each wave / Difficulty ★★★★☆
+- From Scratch: Entry Requirement Naked + Ticket / Waves Unlimited / Core Experience Random start, grow from zero / Difficulty ★★★☆☆
+- Faction War: Entry Requirement Naked + Faction Banner / Waves None (Sandbox) / Core Experience Multi-faction Boss brawl / Difficulty ★★★☆☆
+- Blood Hunt: Entry Requirement Naked + Ticket + Bloodhunt Transponder / Waves Four phases / Core Experience Constant bleed, kill to heal / Difficulty ★★★★★
+
+### Entry Detection Priority
+
+When you carry multiple entry items at the same time, the system determines which mode to enter based on the following priority:
+
+- 1. Faction War — Faction Banner detected
+- 2. Blood Hunt — Bloodhunt Transponder + Ticket detected
+- 3. From Scratch — Naked + Ticket detected
+- 4. Standard BossRush — Ticket only
+
+### General Rules
+
+- In all modes, players do not drop items on death
+- All modes support 9 maps
+- The arena provides basic facilities such as ammo shop, repair station, and trash can
+- Loot crates spawn after killing Bosses (except Infinite Hell, which uses a cash pool instead)

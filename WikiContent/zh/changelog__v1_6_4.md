@@ -5,7 +5,7 @@
 
 ### 同期重点
 - 当前仓库在这个版本节点只保留了版本号提交。
-- 但仓库内有 [PROJECT_OVERVIEW.md](/E:/SteamLibrary/steamapps/common/Escape%20from%20Duckov/Duckov_Data/Mods/ykf/BossRushMod/docs/PROJECT_OVERVIEW.md) 作为这条时期的项目基线文档。
+- 但仓库内有 [项目全景文档.md](/E:/SteamLibrary/steamapps/common/Escape%20from%20Duckov/Duckov_Data/Mods/ykf/BossRushMod/docs/项目全景文档.md) 作为这条时期的项目基线文档。
 
 ### 详细更新记录
 - 版本号提交：1.6.4

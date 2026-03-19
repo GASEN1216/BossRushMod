@@ -6,7 +6,7 @@
 
 ### v1.3.10
 - The repository still contains a dedicated note:
-- [docs/V1.3.10.md](/E:/SteamLibrary/steamapps/common/Escape%20from%20Duckov/Duckov_Data/Mods/ykf/BossRushMod/docs/V1.3.10.md)
+- [docs/版本记录/V1.3.10.md](/E:/SteamLibrary/steamapps/common/Escape%20from%20Duckov/Duckov_Data/Mods/ykf/BossRushMod/docs/%E7%89%88%E6%9C%AC%E8%AE%B0%E5%BD%95/V1.3.10.md)
 - That document covers UI prefab reuse, options-panel hooks, console command registration, and dynamic recipe injection.
 
 ### v1.5.5

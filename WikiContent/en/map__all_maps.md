@@ -1,19 +1,33 @@
-## All Maps
+## Map Overview
 
-### Current supported maps
-- **DEMO Ultimate Challenge**: the clean default arena and the best first map.
-- **Zero Challenge**: readable snow arena, good for learning wave rhythm.
-- **Ground Zero**: larger movement lanes and better long-distance awareness.
-- **Hidden Warehouse**: more cover and tighter mid-range fights.
-- **Farm Town**: larger space for kiting and route control.
-- **J-Lab Laboratory**: more room-and-corridor pressure.
-- **Underground Arena**: tighter underground combat with stronger close pressure.
-- **Zone 37 Experimental Area**: one of the newer larger battle spaces.
-- **Maze**: a newer high-pressure enclosed map focused on pathing and reaction.
+BossRush Mod supports 9 maps, covering most in-game scenes. All maps are available for Standard BossRush, Infinite Hell, From Scratch, Faction War, and Blood Hunt.
 
-### Suggested use
-- Best first maps: **DEMO Ultimate Challenge**, **Zero Challenge**.
-- Better for big movement and kiting: **Ground Zero**, **Farm Town**, **Zone 37 Experimental Area**.
-- Better for close pressure: **Hidden Warehouse**, **J-Lab Laboratory**, **Underground Arena**, **Maze**.
+### Map List
 
-[warn] Maze is not a good first learning map unless you already know boss behavior well.
+- **DEMO Ultimate Challenge**: Default map, simple and open layout, beginner-friendly
+- **Zero Challenge**: Snow map, cold-weather gear is automatically issued upon entry
+- **Ground Zero**
+- **Hidden Warehouse**
+- **Farm Town**
+- **J-Lab Laboratory**
+- **Underground Arena**
+- **Zone 37 Experimental Area**
+- **Maze**: Complex terrain, limited visibility
+
+### How to Select a Map
+
+- 1. Have a BossRush Ticket in your inventory
+- 2. Open the map selection screen
+- 3. Choose the target map to enter
+
+### Snow Map Special Rules
+
+On cold maps such as Zero Challenge, the From Scratch, Faction War, and Blood Hunt modes will additionally issue cold-weather gear (helmet + armor) to prevent players from dying of cold.
+
+### Map Recommendations
+
+- Beginners: DEMO Ultimate Challenge
+- Boss fight practice: Open maps (DEMO, Farm Town)
+- Faction War brawls: Maps with many spread-out spawn points
+- Blood Hunt: Maps with cover and complex terrain
+- Speedrun achievements: Familiar small maps

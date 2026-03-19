@@ -5,7 +5,7 @@
 - 在这之前，仓库只保留了少量文档锚点和标签信息。
 
 ### v1.3.10
-- 仓库保留了单独文档：[docs/V1.3.10.md](/E:/SteamLibrary/steamapps/common/Escape%20from%20Duckov/Duckov_Data/Mods/ykf/BossRushMod/docs/V1.3.10.md)
+- 仓库保留了单独文档：[docs/版本记录/V1.3.10.md](/E:/SteamLibrary/steamapps/common/Escape%20from%20Duckov/Duckov_Data/Mods/ykf/BossRushMod/docs/%E7%89%88%E6%9C%AC%E8%AE%B0%E5%BD%95/V1.3.10.md)
 - 该文档记录的重点包括：
 - 官方 `Button` / `ScrollRect` UI 预制体复用能力
 - 选项面板启用事件挂载点

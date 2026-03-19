@@ -1,21 +1,29 @@
-## Overview
+## Mod Overview
 
-### What this mod actually is
-- BossRushMod is not just one small challenge map. It is a full content layer built around BossRush.
-- It includes multiple game modes, custom bosses, NPC systems, gear progression, special items, reforging, achievements, and an in-game wiki.
-- If you only treat it as "spawn bosses and leave", you will only see part of the mod.
+### What is BossRush Mod
 
-### The main content pillars
-- **Standard BossRush** for direct boss challenge runs.
-- **Infinite Hell** for long endurance, farming, and boss-pool tuning.
-- **Mode D: Rags to Riches** for naked-entry growth runs.
-- **Mode E: Faction War** for large sandbox faction battles.
-- **NPC systems** built around Awen, Dingdang, and Yu Zhi.
-- **Dragon content** built around the Dragon Descendant and the Dragon King.
+BossRush Mod is a large-scale content expansion mod for Escape from Duckov (Steam Workshop). Starting from a Boss arena, it has grown into a comprehensive content pack featuring multiple game modes, custom Bosses, NPC interactions, equipment progression, and an achievement system.
 
-### How players should approach it
-- Learn the standard modes first.
-- Then explore maps, boss drops, NPC systems, and gear progression.
-- After that, the mod opens into long-term content: reforging, achievements, gifts, marriage, and boss-pool customization.
+### Main Content at a Glance
 
-[tip] The fastest way to understand this mod is not "highest difficulty first". It is learning how the systems connect.
+- Game Modes: 5 — Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt
+- Available Maps: 9, covering most in-game scenes
+- Custom Bosses: 2 — Dragon Descendant, Skyburner Dragon Lord (each with unique skill sets and exclusive drops)
+- NPCs: 3 — Dingdang (Goblin Craftsman), Yuori (Nurse), Awen (Courier)
+- Custom Equipment: Dragon Set, Dragon King Set, Cloud Rider Totem, Reverse Scale, Skyburner Halberd, Dragon Breath
+- Custom Items: 20+ functional items, consumables, and mode-exclusive props
+- Reforge System: Equipment stat Reforge + Cold Quench Fluid to lock affixes
+- Affinity System: NPC Affinity progression, gifting, marriage
+- Achievement System: 35 achievements covering completion, no-hit, speedrun, kills, collection, etc.
+- In-Game Encyclopedia: Browse Wiki content in-game via the Adventurer's Journal item
+- Configuration System: Customizable wave intervals, Boss count, difficulty multipliers, and more
+
+### Supported Languages
+
+The Mod fully supports Chinese and English, including all item descriptions, NPC dialogues, UI text, and the in-game encyclopedia.
+
+### Compatibility
+
+- Install via Steam Workshop subscription
+- Does not modify original game files; functionality is injected through the Mod loader and Harmony patches
+- Stays compatible with game version updates
