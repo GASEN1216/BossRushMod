@@ -44,9 +44,8 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, AICharacterController>();
         private float modeFBossRetargetTimer = 0f;
         private float modeFBossIntegrityTimer = 0f;
-
-        /// <summary>L2: 缓存的 DamageInfo，避免每帧 new</summary>
-        private DamageInfo modeFBleedDamageInfo = new DamageInfo();
+        /// <summary>防止 ApplyModeFBleedDamage 致死 + TickModeF 帧首检测 重复触发 OnModeFPlayerDeath</summary>
+        private bool modeFPlayerDeathHandled = false;
 
         #endregion
 
@@ -64,10 +63,17 @@ namespace BossRush
                 modeFState.TempMaxHealthGrowth = 0f;
                 modeFState.PlayerKillCount = 0;
                 modeFState.PlayerBountyMarks = 0;
+                ResetModeFUiCaches();
                 MarkModeFPlayerNameTagDirty();
                 modeFMaxHealthModifier = null;
                 modeFBossRetargetTimer = 0f;
                 modeFBossIntegrityTimer = 0f;
+                modeFPlayerDeathHandled = false;
+                modeFPendingRespawnCount = 0;
+                modeFRespawnInFlightCount = 0;
+                modeFHandledBossDeathIds.Clear();
+                modeFBossDeathHandlers.Clear();
+                modeFBossLootHandlers.Clear();
                 modeFBossForcedTargets.Clear();
                 modeFBossAppliedSpeedBonuses.Clear();
                 modeFBossAiControllers.Clear();
@@ -107,8 +113,11 @@ namespace BossRush
                 // 持续掉血
                 ApplyModeFBleedDamage(player, deltaTime);
                 UpdateModeFPlayerNameTag();
-                UpdateModeFFortificationHighlights();
+                UpdateModeFBossNameTags();
                 RefreshModeFBountyLeaderIfDirty();
+                UpdateModeFBountyRadarUI();
+                UpdateModeFFortificationHighlights();
+                UpdateFortPlacementMode();
 
                 // 阶段广播计时
                 modeFState.PhaseStatusBroadcastTimer += deltaTime;
@@ -138,6 +147,7 @@ namespace BossRush
                     modeFBossIntegrityTimer = 0f;
                     // Mode F Boss 自检是兜底逻辑，不需要每帧扫描全部 Boss。
                     ModeFBossIntegrityCheck();
+                    TryFulfillModeFPendingRespawns();
                 }
             }
             catch (Exception e)
@@ -162,8 +172,8 @@ namespace BossRush
                     case ModeFPhase.Preparation:
                         modeFState.PhaseDuration = MODEF_PREPARATION_DURATION;
                         ShowBigBanner(L10n.T(
-                            "<color=yellow>准备阶段</color> 开始！持续 180 秒",
-                            "<color=yellow>Preparation Phase</color> started! 180 seconds"
+                            "<color=red>血猎追击</color> | <color=yellow>准备阶段</color> 开始！持续 180 秒",
+                            "<color=red>Bloodhunt</color> | <color=yellow>Preparation Phase</color> started! 180 seconds"
                         ));
                         DevLog("[ModeF] 进入准备阶段 (180s, 1%/s)");
                         break;
@@ -172,8 +182,8 @@ namespace BossRush
                         modeFState.PhaseDuration = MODEF_BOUNTY_DURATION;
                         GenerateBountyList();
                         ShowBigBanner(L10n.T(
-                            "<color=orange>悬赏阶段</color> 开始！悬赏名单已生成",
-                            "<color=orange>Bounty Phase</color> started! Bounty list generated"
+                            "<color=red>血猎追击</color> | <color=orange>悬赏阶段</color> 开始！悬赏名单已生成",
+                            "<color=red>Bloodhunt</color> | <color=orange>Bounty Phase</color> started! Bounty list generated"
                         ));
                         DevLog("[ModeF] 进入悬赏阶段 (180s, 1.5%/s)");
                         break;
@@ -181,8 +191,8 @@ namespace BossRush
                     case ModeFPhase.HuntStorm:
                         modeFState.PhaseDuration = MODEF_HUNTSTORM_DURATION;
                         ShowBigBanner(L10n.T(
-                            "<color=red>猎潮阶段</color> 开始！Boss 全面追杀！",
-                            "<color=red>Hunt Storm</color> started! All bosses hunting you!"
+                            "<color=red>血猎追击</color> | <color=red>猎潮阶段</color> 开始！Boss 全面追杀！",
+                            "<color=red>Bloodhunt</color> | <color=red>Hunt Storm</color> started! All bosses hunting you!"
                         ));
                         DevLog("[ModeF] 进入猎潮阶段 (180s, 2%/s)");
                         break;
@@ -191,8 +201,8 @@ namespace BossRush
                         modeFState.PhaseDuration = float.MaxValue;
                         SpawnFinalExtractionPoint();
                         ShowBigBanner(L10n.T(
-                            "<color=green>撤离阶段</color> 开始！撤离点已生成，速速撤离！",
-                            "<color=green>Extraction Phase</color> started! Extraction point spawned, evacuate now!"
+                            "<color=red>血猎追击</color> | <color=green>撤离阶段</color> 开始！撤离点已生成，速速撤离！",
+                            "<color=red>Bloodhunt</color> | <color=green>Extraction Phase</color> started! Extraction point spawned, evacuate now!"
                         ));
                         DevLog("[ModeF] 进入撤离阶段 (无限, 3%/s)");
                         break;
@@ -238,16 +248,50 @@ namespace BossRush
                 float rate = GetModeFBleedRate();
                 if (rate <= 0f) return;
 
-                float damage = rate * modeFState.InitialMaxHealthSnapshot * deltaTime;
-                if (damage <= 0f) return;
-
                 Health health = player.Health;
                 if (health == null || health.IsDead) return;
 
-                // 复用缓存的 DamageInfo 避免每帧分配
-                modeFBleedDamageInfo.damageValue = damage;
-                modeFBleedDamageInfo.ignoreArmor = true;
-                health.Hurt(modeFBleedDamageInfo);
+                if (modeFState.InitialMaxHealthSnapshot <= 0.01f && health.MaxHealth > 0.01f)
+                {
+                    modeFState.InitialMaxHealthSnapshot = health.MaxHealth;
+                    DevLog("[ModeF] [WARNING] 初始最大生命快照缺失，已回填为当前最大生命: " + modeFState.InitialMaxHealthSnapshot);
+                }
+
+                float damage = rate * modeFState.InitialMaxHealthSnapshot * deltaTime;
+                if (damage <= 0f) return;
+
+                // Mode F 的持续掉血属于模式规则，不应再被护甲/元素减伤抵消。
+                float nextHealth = health.CurrentHealth - damage;
+                if (nextHealth > 0f)
+                {
+                    health.CurrentHealth = nextHealth;
+                    return;
+                }
+
+                health.CurrentHealth = Mathf.Max(health.CurrentHealth, 1f);
+
+                DamageInfo lethalDamage = new DamageInfo(player);
+                lethalDamage.damageValue = Mathf.Max(Mathf.Max(modeFState.InitialMaxHealthSnapshot, health.MaxHealth), 100f);
+                lethalDamage.damageType = DamageTypes.realDamage;
+                lethalDamage.ignoreArmor = true;
+                lethalDamage.ignoreDifficulty = true;
+                lethalDamage.damagePoint = player.transform.position + Vector3.up;
+                lethalDamage.damageNormal = Vector3.up;
+                lethalDamage.AddElementFactor(ElementTypes.physics, 1f);
+                lethalDamage.AddElementFactor(ElementTypes.fire, 1f);
+                lethalDamage.AddElementFactor(ElementTypes.poison, 1f);
+                lethalDamage.AddElementFactor(ElementTypes.electricity, 1f);
+                lethalDamage.AddElementFactor(ElementTypes.space, 1f);
+                lethalDamage.AddElementFactor(ElementTypes.ghost, 1f);
+                lethalDamage.AddElementFactor(ElementTypes.ice, 1f);
+                health.Hurt(lethalDamage);
+
+                if (!health.IsDead)
+                {
+                    health.CurrentHealth = 0f;
+                }
+
+                OnModeFPlayerDeath();
             }
             catch { }
         }
@@ -270,12 +314,15 @@ namespace BossRush
         /// <summary>
         /// 击杀 Boss 后的回血和最大生命成长
         /// </summary>
-        private void ApplyModeFKillReward(bool isBountyBoss)
+        private (float healAmount, float maxHealthGain) ApplyModeFKillReward(bool isBountyBoss, int victimMarks)
         {
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
-                if (player == null || player.Health == null || player.Health.IsDead) return;
+                if (player == null || player.Health == null || player.Health.IsDead)
+                {
+                    return (0f, 0f);
+                }
 
                 Health health = player.Health;
 
@@ -291,7 +338,10 @@ namespace BossRush
                 DevLog("[ModeF] 击杀回血: " + healAmount.ToString("F1") + " (bounty=" + isBountyBoss + ")");
 
                 // 最大生命成长
-                float growth = isBountyBoss ? MODEF_MAX_HP_GROWTH_BOUNTY : MODEF_MAX_HP_GROWTH_NORMAL;
+                int resolvedVictimMarks = Mathf.Max(0, victimMarks);
+                float growth = isBountyBoss
+                    ? Mathf.Max(MODEF_MAX_HP_GROWTH_NORMAL, resolvedVictimMarks)
+                    : MODEF_MAX_HP_GROWTH_NORMAL;
                 modeFState.TempMaxHealthGrowth += growth;
 
                 // 应用最大生命 Modifier
@@ -315,7 +365,10 @@ namespace BossRush
 
                             // 当前生命同步抬高
                             health.CurrentHealth = Mathf.Min(health.CurrentHealth + growth, maxHealthStat.Value);
-                            DevLog("[ModeF] 最大生命成长: +" + growth + " (总计+" + modeFState.TempMaxHealthGrowth + ")");
+                            DevLog("[ModeF] 最大生命成长: +" + growth
+                                + " (bounty=" + isBountyBoss
+                                + ", victimMarks=" + resolvedVictimMarks
+                                + ", 总计+" + modeFState.TempMaxHealthGrowth + ")");
                         }
                     }
                 }
@@ -323,10 +376,13 @@ namespace BossRush
                 {
                     DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 失败: " + e.Message);
                 }
+
+                return (healAmount, growth);
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] ApplyModeFKillReward 失败: " + e.Message);
+                return (0f, 0f);
             }
         }
 
@@ -335,6 +391,10 @@ namespace BossRush
         /// </summary>
         private void OnModeFPlayerDeath()
         {
+            if (modeFPlayerDeathHandled) return;
+            modeFPlayerDeathHandled = true;
+
+            bool exitAttempted = false;
             try
             {
                 DevLog("[ModeF] 玩家死亡，Mode F 失败");
@@ -350,10 +410,18 @@ namespace BossRush
                 modeFState.TempMaxHealthGrowth = 0f;
 
                 ExitModeF();
+                exitAttempted = true;
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] OnModeFPlayerDeath 失败: " + e.Message);
+            }
+            finally
+            {
+                if (!exitAttempted && modeFActive)
+                {
+                    try { ExitModeF(); } catch (Exception exitEx) { DevLog("[ModeF] [ERROR] OnModeFPlayerDeath 强制退出失败: " + exitEx.Message); }
+                }
             }
         }
 
@@ -365,6 +433,9 @@ namespace BossRush
             try
             {
                 if (!modeFActive) return;
+
+                // 如果正在放置工事，取消并退还物品
+                CancelFortPlacement();
 
                 DevLog("[ModeF] 退出 Mode F 模式");
 
@@ -389,7 +460,13 @@ namespace BossRush
                 modeFMaxHealthModifier = null;
                 modeFBossRetargetTimer = 0f;
                 modeFBossIntegrityTimer = 0f;
+                modeFPlayerDeathHandled = false;
+                modeFPendingRespawnCount = 0;
+                modeFRespawnInFlightCount = 0;
+                modeFHandledBossDeathIds.Clear();
                 CleanupModeFPlayerNameTag();
+                CleanupModeFBountyRadarUI();
+                ResetModeFUiCaches();
                 ClearModeFBossMoveSpeedModifiers();
                 modeFState.ExtractionResolved = true;
 
@@ -410,6 +487,8 @@ namespace BossRush
                     }
                 }
                 catch { }
+
+                RestoreOriginalExtractionPoints();
 
                 // 清理所有存活 Boss
                 for (int i = modeFState.ActiveBosses.Count - 1; i >= 0; i--)
@@ -448,11 +527,13 @@ namespace BossRush
                 // H2: 清理 Boss 成长 Modifier 缓存
                 modeFBossModifiers.Clear();
                 modeFBossDeathHandlers.Clear();
+                modeFBossLootHandlers.Clear();
                 modeFBossForcedTargets.Clear();
                 modeFBossAppliedSpeedBonuses.Clear();
                 modeFBossAiControllers.Clear();
                 modeFBountyLeaderDirty = false;
                 modeFBountyLeaderPreferred = null;
+                ClearModeFLeaderChangeContext();
                 modeFHasActiveFortificationHighlight = false;
                 ResetModeESharedRuntimeAfterModeF();
 
@@ -470,6 +551,7 @@ namespace BossRush
                 modeFState.Reset();
                 modeFActiveBossSet.Clear();
                 ClearEnemyRecoveryMonitorState();
+                ClearAllModeFBossPlunderLootState();
                 // M3: 重置高品质奖励缓存，下次进入重新构建
                 modeFHighQualityPoolBuilt = false;
                 modeFVerifiedHighQualityTypeIds.Clear();

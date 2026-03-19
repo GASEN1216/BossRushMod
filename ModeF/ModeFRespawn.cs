@@ -12,10 +12,15 @@ namespace BossRush
         /// <summary>已注册的 Mode F Boss 死亡事件句柄，确保能对称取消订阅。</summary>
         private readonly Dictionary<CharacterMainControl, UnityAction<DamageInfo>> modeFBossDeathHandlers
             = new Dictionary<CharacterMainControl, UnityAction<DamageInfo>>();
+        private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> modeFBossLootHandlers
+            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
         private readonly HashSet<CharacterMainControl> modeFActiveBossSet = new HashSet<CharacterMainControl>();
+        private readonly HashSet<int> modeFHandledBossDeathIds = new HashSet<int>();
+        private int modeFPendingRespawnCount = 0;
+        private int modeFRespawnInFlightCount = 0;
 
-        /// <summary>FindSpawnPointAwayFromPlayer 候选点缓存，避免每次 new List</summary>
-        private static readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
+        /// <summary>FindSpawnPointAwayFromPlayer 候选点缓存，避免每次 new List。改为实例字段防止重入污染。</summary>
+        private readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
         private readonly List<EnemyPresetInfo> modeFRespawnBossPresetScratch = new List<EnemyPresetInfo>();
 
         private void PrepareModeESharedRuntimeForModeF()
@@ -119,6 +124,31 @@ namespace BossRush
             modeFBossDeathHandlers.Remove(boss);
         }
 
+        private void UnregisterModeFBossLoot(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return;
+            }
+
+            Action<DamageInfo> handler = null;
+            if (!modeFBossLootHandlers.TryGetValue(boss, out handler))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!(boss == null))
+                {
+                    boss.BeforeCharacterSpawnLootOnDead -= handler;
+                }
+            }
+            catch { }
+
+            modeFBossLootHandlers.Remove(boss);
+        }
+
         private void RegisterModeESharedRuntimeForModeFBoss(CharacterMainControl boss, Vector3 anchorPosition)
         {
             if (boss == null)
@@ -164,7 +194,11 @@ namespace BossRush
             modeFBossAiControllers.Remove(boss);
         }
 
-        private void CleanupModeFBossRuntimeState(CharacterMainControl boss, Teams? faction = null, bool removeBountyMarks = true)
+        private void CleanupModeFBossRuntimeState(
+            CharacterMainControl boss,
+            Teams? faction = null,
+            bool removeBountyMarks = true,
+            bool clearLootResolutionState = true)
         {
             if (!object.ReferenceEquals(boss, null))
             {
@@ -181,7 +215,14 @@ namespace BossRush
             }
 
             CleanupModeESharedRuntimeForModeFBoss(boss, faction);
+            UnregisterModeFBossLoot(boss);
             UnregisterModeFBossDeath(boss);
+
+            if (clearLootResolutionState)
+            {
+                ClearModeFBossPlunderLootState(boss);
+                ClearBossRandomLootTracking(boss);
+            }
 
             if (removeBountyMarks && !object.ReferenceEquals(boss, null))
             {
@@ -208,10 +249,39 @@ namespace BossRush
                     modeFState.ActiveBosses.Add(boss);
                 }
 
+                RegisterBossRandomLootTracking(boss);
                 GetModeFBossAIController(boss);
                 ApplyModeFPressureToBoss(boss);
+                EnsureModeFBossNameTag(boss);
 
                 Health health = boss.Health;
+                UnregisterModeFBossLoot(boss);
+
+                CharacterMainControl capturedLootBoss = boss;
+                Action<DamageInfo> lootHandler = (damageInfo) =>
+                {
+                    if (!modeFActive || capturedLootBoss == null)
+                    {
+                        return;
+                    }
+
+                    CharacterMainControl killer = null;
+                    try { killer = damageInfo.fromCharacter; } catch { }
+                    int victimMarks = 0;
+                    try { modeFState.BountyMarksByCharacterId.TryGetValue(capturedLootBoss.GetInstanceID(), out victimMarks); } catch { }
+                    if (killer != null &&
+                        !object.ReferenceEquals(killer, capturedLootBoss) &&
+                        IsTrackedModeFBoss(killer) &&
+                        victimMarks > 0)
+                    {
+                        TryHandleModeFBossPreLootPlunder(killer, capturedLootBoss);
+                    }
+
+                    OnModeFBossDied(capturedLootBoss, damageInfo, "BeforeSpawnLoot");
+                };
+                modeFBossLootHandlers[boss] = lootHandler;
+                boss.BeforeCharacterSpawnLootOnDead += lootHandler;
+
                 if (health != null)
                 {
                     UnregisterModeFBossDeath(boss);
@@ -221,7 +291,7 @@ namespace BossRush
                     handler = (damageInfo) =>
                     {
                         UnregisterModeFBossDeath(capturedBoss);
-                        OnModeFBossDied(capturedBoss, damageInfo);
+                        OnModeFBossDied(capturedBoss, damageInfo, "OnDeadEvent");
                     };
 
                     modeFBossDeathHandlers[boss] = handler;
@@ -236,8 +306,9 @@ namespace BossRush
             }
         }
 
-        private void OnModeFBossDied(CharacterMainControl deadBoss, DamageInfo damageInfo)
+        private void OnModeFBossDied(CharacterMainControl deadBoss, DamageInfo damageInfo, string sourceTag = null)
         {
+            int deadBossId = 0;
             try
             {
                 if (!modeFActive || deadBoss == null)
@@ -245,9 +316,16 @@ namespace BossRush
                     return;
                 }
 
+                deadBossId = deadBoss.GetInstanceID();
+                if (!modeFHandledBossDeathIds.Add(deadBossId))
+                {
+                    return;
+                }
+
                 // C1 guard: 防止死亡事件重复触发（IntegrityCheck 移除后再次触发）
                 if (!RemoveModeFBossReference(deadBoss))
                 {
+                    modeFHandledBossDeathIds.Remove(deadBossId);
                     return;
                 }
 
@@ -260,16 +338,22 @@ namespace BossRush
                 CharacterMainControl killer = null;
                 try { killer = damageInfo.fromCharacter; } catch { }
 
-                int deadBossId = deadBoss.GetInstanceID();
                 int deadBossMarks = 0;
                 modeFState.BountyMarksByCharacterId.TryGetValue(deadBossId, out deadBossMarks);
 
-                CleanupModeFBossRuntimeState(deadBoss, deadBossTeam, false);
+                bool preserveLootResolutionState = string.Equals(sourceTag, "OnDeadEvent", StringComparison.Ordinal);
+                CleanupModeFBossRuntimeState(
+                    deadBoss,
+                    deadBossTeam,
+                    false,
+                    clearLootResolutionState: !preserveLootResolutionState);
 
                 bool killedByPlayer = killer == CharacterMainControl.Main;
                 bool killedByTrackedBoss = IsTrackedModeFBoss(killer);
 
                 DevLog("[ModeF] Boss died: " + deadBoss.gameObject.name
+                    + " (source=" + (string.IsNullOrEmpty(sourceTag) ? "unknown" : sourceTag)
+                    + ")"
                     + " (marks=" + deadBossMarks
                     + ", killedByPlayer=" + killedByPlayer
                     + ", killer=" + (killer != null ? killer.gameObject.name : "null") + ")");
@@ -287,7 +371,7 @@ namespace BossRush
                     OnModeFBossKilledByBoss(killer, deadBoss);
                     if (deadBossMarks > 0)
                     {
-                        AddBountyBossExtraLoot(deadBoss, deadBossMarks);
+                        DevLog("[ModeF] 悬赏额外奖励机会已随印记一并转移给胜者，不在当前死亡点兑现");
                     }
                 }
                 else
@@ -298,29 +382,81 @@ namespace BossRush
                     DevLog("[ModeF] Boss died to the environment or a non-ModeF actor, bounty marks were discarded.");
                 }
 
-                RespawnModeFBoss();
+                QueueModeFBossRespawn();
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] OnModeFBossDied failed: " + e.Message);
+                if (deadBossId != 0)
+                {
+                    modeFHandledBossDeathIds.Remove(deadBossId);
+                }
             }
         }
 
-        private void RespawnModeFBoss()
+        private void QueueModeFBossRespawn(int count = 1)
+        {
+            if (count <= 0)
+            {
+                return;
+            }
+
+            modeFPendingRespawnCount += count;
+            TryFulfillModeFPendingRespawns();
+        }
+
+        private void TryFulfillModeFPendingRespawns()
+        {
+            if (!modeFActive || modeFPendingRespawnCount <= 0 || modeFRespawnInFlightCount > 0)
+            {
+                return;
+            }
+
+            if (RespawnModeFBoss())
+            {
+                modeFPendingRespawnCount = Mathf.Max(0, modeFPendingRespawnCount - 1);
+                modeFRespawnInFlightCount += 1;
+            }
+        }
+
+        private void CompleteModeFBossRespawnAttempt(bool success, bool requeueOnFailure)
+        {
+            modeFRespawnInFlightCount = Mathf.Max(0, modeFRespawnInFlightCount - 1);
+
+            if (!modeFActive)
+            {
+                return;
+            }
+
+            if (!success && requeueOnFailure)
+            {
+                modeFPendingRespawnCount += 1;
+                return;
+            }
+
+            if (success)
+            {
+                TryFulfillModeFPendingRespawns();
+            }
+        }
+
+        private bool RespawnModeFBoss()
         {
             try
             {
                 if (!modeFActive)
                 {
-                    return;
+                    return false;
                 }
 
+                InitializeEnemyPresets();
+                InitializeModeDEnemyPools();
                 Vector3 spawnPos = FindSpawnPointAwayFromPlayer(50f);
                 EnemyPresetInfo preset = GetRandomModeFRespawnBossPreset();
                 if (preset == null)
                 {
                     DevLog("[ModeF] [WARNING] RespawnModeFBoss: no boss preset is available.");
-                    return;
+                    return false;
                 }
 
                 int modeFSessionToken = modeFState.RuntimeSessionToken;
@@ -338,6 +474,8 @@ namespace BossRush
                     () => IsModeFSessionStillValid(modeFSessionToken, relatedScene),
                     (ctx) =>
                     {
+                        bool configured = false;
+                        bool requeueOnFailure = true;
                         try
                         {
                             if (ctx.character == null)
@@ -367,10 +505,15 @@ namespace BossRush
                             ctx.character.gameObject.name = "ModeF_" + spawnedTeam + "_" + spawnedPreset.displayName;
                             RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);
                             RegisterModeFBoss(ctx.character);
+                            configured = true;
                         }
                         catch (Exception e)
                         {
                             DevLog("[ModeF] [WARNING] Failed to configure respawned boss: " + e.Message);
+                        }
+                        finally
+                        {
+                            CompleteModeFBossRespawnAttempt(configured, requeueOnFailure);
                         }
                     },
                     () =>
@@ -381,6 +524,7 @@ namespace BossRush
                         }
 
                         DevLog("[ModeF] [WARNING] Failed to spawn replacement boss.");
+                        CompleteModeFBossRespawnAttempt(false, true);
                     },
                     1,
                     skipDragonDescendant: !selectedDragonDescendant,
@@ -388,10 +532,12 @@ namespace BossRush
                 );
 
                 DevLog("[ModeF] Replacement boss is spawning at: " + spawnPos);
+                return true;
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] RespawnModeFBoss failed: " + e.Message);
+                return false;
             }
         }
 
@@ -428,27 +574,30 @@ namespace BossRush
 
                     if (reusableSpawnCandidates.Count > 0)
                     {
-                        return reusableSpawnCandidates[UnityEngine.Random.Range(0, reusableSpawnCandidates.Count)];
+                        return GetSafeBossSpawnPosition(
+                            reusableSpawnCandidates[UnityEngine.Random.Range(0, reusableSpawnCandidates.Count)]);
                     }
 
                     if (bestDistanceSqr > 0f)
                     {
                         DevLog("[ModeF] [WARNING] No spawn point was found beyond " + minDistance + "m, using the farthest point instead (" + Mathf.Sqrt(bestDistanceSqr).ToString("F0") + "m).");
-                        return bestPoint;
+                        return GetSafeBossSpawnPosition(bestPoint);
                     }
                 }
 
-                return playerPos + new Vector3(60f, 0f, 60f);
+                return GetSafeBossSpawnPosition(playerPos + new Vector3(60f, 0f, 60f));
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] FindSpawnPointAwayFromPlayer failed: " + e.Message);
-                return Vector3.zero;
+                return GetSafeBossSpawnPosition(Vector3.zero);
             }
         }
 
         private EnemyPresetInfo GetRandomModeFRespawnBossPreset()
         {
+            InitializeEnemyPresets();
+            InitializeModeDEnemyPools();
             BuildModeEFactionPresetCaches();
 
             if (modeDBossPool == null || modeDBossPool.Count == 0)
@@ -518,13 +667,23 @@ namespace BossRush
 
                         modeFState.ActiveBosses.RemoveAt(i);
                         CleanupModeFBossRuntimeState(boss, bossTeam);
+                        try
+                        {
+                            if (!(boss == null))
+                            {
+                                modeFHandledBossDeathIds.Add(boss.GetInstanceID());
+                                modeFState.BountyMarksByCharacterId.Remove(boss.GetInstanceID());
+                            }
+                        }
+                        catch { }
 
                         MarkModeFBountyLeaderDirty();
-                        RespawnModeFBoss();
+                        QueueModeFBossRespawn();
                     }
                 }
 
                 RefreshModeFBountyLeaderIfDirty();
+                TryFulfillModeFPendingRespawns();
             }
             catch { }
         }

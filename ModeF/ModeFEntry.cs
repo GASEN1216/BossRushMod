@@ -67,8 +67,16 @@ namespace BossRush
         /// </summary>
         public bool TryStartModeF()
         {
+            bool transponderConsumed = false;
+            bool ticketConsumed = false;
             try
             {
+                if (modeFActive || modeFState.IsActive)
+                {
+                    DevLog("[ModeF] Mode F 已在运行，忽略重复启动请求");
+                    return false;
+                }
+
                 if (modeDActive || modeEActive)
                 {
                     DevLog("[ModeF] Mode D 或 Mode E 已激活，跳过 Mode F 启动");
@@ -76,8 +84,9 @@ namespace BossRush
                 }
 
                 Item ticket = DetectBossRushTicketItem();
+                bool ticketPrepaid = BossRushMapSelectionHelper.HasPendingPrepaidTicket();
                 Item transponder = DetectBloodhuntTransponder();
-                if (ticket == null || transponder == null)
+                if ((ticket == null && !ticketPrepaid) || transponder == null)
                 {
                     DevLog("[ModeF] 未检测到船票或血猎收发器，不启动 Mode F");
                     return false;
@@ -102,11 +111,8 @@ namespace BossRush
 
                 // H3: 先验证两个道具都存在，再一起消耗
                 // 如果任一消耗失败，仍尝试启动（道具已部分消耗，不启动更糟）
-                bool transponderConsumed = false;
-                bool ticketConsumed = false;
-
                 transponderConsumed = TryConsumeModeEntryItem(transponder, "ModeF", "血猎收发器");
-                ticketConsumed = TryConsumeModeEntryItem(ticket, "ModeF", "船票");
+                ticketConsumed = ticketPrepaid || TryConsumeModeEntryItem(ticket, "ModeF", "船票");
 
                 if (!transponderConsumed && !ticketConsumed)
                 {
@@ -126,10 +132,20 @@ namespace BossRush
                 bool started = StartModeF();
                 if (!started)
                 {
+                    RefundModeFStartupEntryItems(ticketConsumed, transponderConsumed);
                     ShowMessage(L10n.T(
-                        "血猎追击模式启动失败，请重试。",
-                        "Bloodhunt start failed. Please try again."
+                        "血猎追击模式启动失败，已返还入场道具。",
+                        "Bloodhunt start failed. Entry items were refunded."
                     ));
+                }
+                else
+                {
+                    FinalizeModeFStartupEntryConsumption(
+                        ticket,
+                        ticketPrepaid,
+                        ref ticketConsumed,
+                        transponder,
+                        ref transponderConsumed);
                 }
 
                 return started;
@@ -137,8 +153,105 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] TryStartModeF 失败: " + e.Message);
+                RefundModeFStartupEntryItems(ticketConsumed, transponderConsumed);
                 return false;
             }
+        }
+
+        private void FinalizeModeFStartupEntryConsumption(
+            Item ticket,
+            bool ticketPrepaid,
+            ref bool ticketConsumed,
+            Item transponder,
+            ref bool transponderConsumed)
+        {
+            if (!ticketPrepaid && !ticketConsumed)
+            {
+                ticketConsumed = TryFinalizeModeFStartupEntryItemConsumption(
+                    ticket,
+                    DetectBossRushTicketItem,
+                    "船票");
+            }
+
+            if (!transponderConsumed)
+            {
+                transponderConsumed = TryFinalizeModeFStartupEntryItemConsumption(
+                    transponder,
+                    DetectBloodhuntTransponder,
+                    "血猎收发器");
+            }
+        }
+
+        private bool TryFinalizeModeFStartupEntryItemConsumption(
+            Item originalItem,
+            Func<Item> fallbackFinder,
+            string itemLabel)
+        {
+            if (TryConsumeModeEntryItem(originalItem, "ModeF", itemLabel))
+            {
+                DevLog("[ModeF] 启动成功后已补偿消耗" + itemLabel);
+                return true;
+            }
+
+            Item fallbackItem = null;
+            try
+            {
+                if (fallbackFinder != null)
+                {
+                    fallbackItem = fallbackFinder();
+                }
+            }
+            catch { }
+
+            if (fallbackItem != null && !object.ReferenceEquals(fallbackItem, originalItem))
+            {
+                if (TryConsumeModeEntryItem(fallbackItem, "ModeF", itemLabel))
+                {
+                    DevLog("[ModeF] 启动成功后已通过重新检索补偿消耗" + itemLabel);
+                    return true;
+                }
+            }
+
+            DevLog("[ModeF] [WARNING] 启动成功，但未能补偿消耗" + itemLabel + "，请留意背包状态");
+            return false;
+        }
+
+        private void RefundModeFStartupEntryItems(bool refundTicket, bool refundTransponder)
+        {
+            bool attemptedRefund = false;
+            bool refundedAny = false;
+
+            if (refundTicket)
+            {
+                attemptedRefund = true;
+                refundedAny |= TryRefundModeFStartupEntryItem(
+                    GetBossRushTicketTypeId(),
+                    L10n.T("船票", "Boss Rush Ticket"));
+            }
+
+            if (refundTransponder)
+            {
+                attemptedRefund = true;
+                refundedAny |= TryRefundModeFStartupEntryItem(
+                    BloodhuntTransponderConfig.TYPE_ID,
+                    L10n.T("血猎收发器", "Bloodhunt Transponder"));
+            }
+
+            if (attemptedRefund && !refundedAny)
+            {
+                DevLog("[ModeF] [WARNING] 启动失败后的入场道具返还未成功，请检查背包与地面掉落。");
+            }
+        }
+
+        private bool TryRefundModeFStartupEntryItem(int typeId, string displayName)
+        {
+            bool refunded = TryGiveItemToPlayerOrDrop(typeId, displayName, false);
+            if (!refunded)
+            {
+                DevLog("[ModeF] [WARNING] 返还入场道具失败: typeId=" + typeId + ", displayName=" + displayName);
+            }
+
+            return refunded;
         }
 
         /// <summary>
@@ -148,6 +261,12 @@ namespace BossRush
         {
             try
             {
+                if (modeFActive || modeFState.IsActive)
+                {
+                    DevLog("[ModeF] [WARNING] StartModeF 在模式已激活时被重复调用，已忽略");
+                    return false;
+                }
+
                 DevLog("[ModeF] 启动 Mode F 血猎追击模式");
 
                 modeFActive = true;
@@ -181,15 +300,11 @@ namespace BossRush
                 // 零度挑战地图：额外发放保暖装备
                 ModeEGiveColdWeatherGear();
 
-                // 额外发放折叠掩体包 x1
+                // 额外发放折叠掩体包 x1（背包满时掉在脚下，避免静默丢失）
                 try
                 {
-                    Item coverPack = ItemAssetsCollection.InstantiateSync(FoldableCoverPackConfig.TYPE_ID);
-                    if (coverPack != null)
-                    {
-                        ItemUtilities.SendToPlayerCharacterInventory(coverPack, false);
-                        DevLog("[ModeF] 发放折叠掩体包 x1");
-                    }
+                    GiveModeFItem(FoldableCoverPackConfig.TYPE_ID, L10n.T("折叠掩体包", "Foldable Cover Pack"));
+                    DevLog("[ModeF] 发放折叠掩体包 x1");
                 }
                 catch (Exception e)
                 {

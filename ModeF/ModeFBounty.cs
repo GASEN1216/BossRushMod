@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using ItemStatsSystem;
+using ItemStatsSystem.Items;
 using ItemStatsSystem.Stats;
 
 namespace BossRush
@@ -16,8 +17,27 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg)>();
         private bool modeFBountyLeaderDirty = false;
         private CharacterMainControl modeFBountyLeaderPreferred = null;
+        private string modeFBountyLeaderContextZh = null;
+        private string modeFBountyLeaderContextEn = null;
         private readonly HashSet<int> modeFActiveBossIdScratch = new HashSet<int>();
         private readonly List<int> modeFStaleBountyIdScratch = new List<int>();
+        private readonly Dictionary<int, int> modeFBossCarriedHighQualityLootCounts = new Dictionary<int, int>();
+        private readonly Dictionary<int, int> modeFBossPendingHighQualityLootPenaltyCounts = new Dictionary<int, int>();
+        private readonly HashSet<int> modeFHandledPreLootPlunderVictimIds = new HashSet<int>();
+        private readonly HashSet<int> modeFPlunderSeenItemIdScratch = new HashSet<int>();
+        private readonly List<Item> modeFTransferableAmmoScratch = new List<Item>();
+        private readonly Dictionary<int, string> modeFBulletCaliberCache = new Dictionary<int, string>();
+        private static readonly BindingFlags ModeFPrivateInstanceFlags =
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        private static readonly FieldInfo modeFGunBulletCountCacheField =
+            typeof(ItemSetting_Gun).GetField("_bulletCountCache", ModeFPrivateInstanceFlags);
+        private static readonly FieldInfo modeFGunBulletCountHashField =
+            typeof(ItemSetting_Gun).GetField("bulletCountHash", ModeFPrivateInstanceFlags);
+
+        private bool ShouldUseModeFAbstractPlunderLootTracking()
+        {
+            return config != null && config.enableRandomBossLoot;
+        }
 
         private void MarkModeFBountyLeaderDirty(CharacterMainControl preferredLeader = null)
         {
@@ -39,6 +59,7 @@ namespace BossRush
             modeFBountyLeaderDirty = false;
             modeFBountyLeaderPreferred = null;
             CheckAndBroadcastLeaderChange(preferredLeader);
+            ClearModeFLeaderChangeContext();
         }
 
         /// <summary>
@@ -127,16 +148,16 @@ namespace BossRush
                     modeFState.BountyMarksByCharacterId.Remove(victimId);
 
                     DevLog("[ModeF] Boss 继承印记: killer=" + killer.gameObject.name + " +" + victimMarks + " (总计=" + (killerMarks + victimMarks) + ")");
-                
-                    // Boss 成长 +5% 生命/伤害
-                    ApplyModeFBossGrowth(killer, 0.05f);
 
-                    // 装备掠夺
-                    CompareAndSwapEquipment(killer, victim);
+                    // Boss 成长按战胜目标的印记数结算，每层印记提供 5% 生命/伤害成长。
+                    float growthPercent = 0.05f * victimMarks;
+                    ApplyModeFBossGrowth(killer, growthPercent);
+                    BroadcastModeFBossGrowth(killer, victim, growthPercent);
                 }
 
                 ApplyModeFPhasePressure();
 
+                QueueModeFLeaderChangeContext(killer, victim);
                 MarkModeFBountyLeaderDirty(killer);
                 RefreshModeFBountyLeaderIfDirty();
             }
@@ -171,19 +192,21 @@ namespace BossRush
                 modeFState.PlayerKillCount++;
 
                 // 回血和最大生命成长
-                ApplyModeFKillReward(isBounty);
+                var killReward = ApplyModeFKillReward(isBounty, victimMarks);
 
                 // 工事补给发放
                 GrantModeFKillRewards(modeFState.PlayerKillCount);
 
                 // 击杀奖励气泡
-                string killMsg = isBounty
-                    ? L10n.T("悬赏Boss击杀！+1印记", "Bounty Boss killed! +1 mark")
-                    : L10n.T("Boss击杀！", "Boss killed!");
+                string killMsg = BuildModeFKillRewardBubbleText(
+                    isBounty,
+                    killReward.healAmount,
+                    killReward.maxHealthGain);
                 ShowModeFRewardBubble(killMsg);
 
                 ApplyModeFPhasePressure();
 
+                QueueModeFLeaderChangeContext(CharacterMainControl.Main, victim);
                 MarkModeFBountyLeaderDirty(CharacterMainControl.Main);
                 RefreshModeFBountyLeaderIfDirty();
             }
@@ -204,7 +227,8 @@ namespace BossRush
                 if (characterItem == null) return;
 
                 // 移除旧 Modifier
-                if (modeFBossModifiers.TryGetValue(boss, out var oldMods))
+                bool hadOldMods = modeFBossModifiers.TryGetValue(boss, out var oldMods);
+                if (hadOldMods)
                 {
                     try
                     {
@@ -222,7 +246,7 @@ namespace BossRush
 
                 // 计算累积成长倍率
                 float existingGrowth = 0f;
-                if (oldMods.hp != null)
+                if (hadOldMods && oldMods.hp != null)
                 {
                     Stat hpStat = characterItem.GetStat("MaxHealth");
                     if (hpStat != null && hpStat.BaseValue > 0)
@@ -333,12 +357,14 @@ namespace BossRush
                 if (killer == null || victim == null) return;
                 if (killer.CharacterItem == null || victim.CharacterItem == null) return;
 
+                Vector3 lootDropPosition = GetModeFBountyDropPosition(victim, killer);
+
                 // 比较头盔
-                TrySwapSlot(killer, victim, "Helmat");
+                TrySwapSlot(killer, victim, "Helmat", lootDropPosition);
                 // 比较护甲
-                TrySwapSlot(killer, victim, "Armor");
+                TrySwapSlot(killer, victim, "Armor", lootDropPosition);
                 // 比较枪
-                TrySwapGun(killer, victim);
+                TrySwapGun(killer, victim, lootDropPosition);
             }
             catch (Exception e)
             {
@@ -346,7 +372,241 @@ namespace BossRush
             }
         }
 
-        private void TrySwapSlot(CharacterMainControl killer, CharacterMainControl victim, string slotTag)
+        private bool TryHandleModeFBossPreLootPlunder(CharacterMainControl killer, CharacterMainControl victim)
+        {
+            try
+            {
+                if (!modeFActive || killer == null || victim == null || object.ReferenceEquals(killer, victim))
+                {
+                    return false;
+                }
+
+                if (!IsTrackedModeFBoss(killer))
+                {
+                    return false;
+                }
+
+                int victimMarks = 0;
+                try { modeFState.BountyMarksByCharacterId.TryGetValue(victim.GetInstanceID(), out victimMarks); } catch { }
+                if (victimMarks <= 0)
+                {
+                    return false;
+                }
+
+                int victimId = victim.GetInstanceID();
+                if (!modeFHandledPreLootPlunderVictimIds.Add(victimId))
+                {
+                    return false;
+                }
+
+                CompareAndSwapEquipment(killer, victim);
+
+                if (!ShouldUseModeFAbstractPlunderLootTracking())
+                {
+                    DevLog("[ModeF] Boss 预掠夺已执行即时换装，但当前关闭了随机掉落，跳过抽象战利品继承");
+                    return true;
+                }
+
+                int physicalHighQualityCount = CountModeFPlunderableHighQualityItems(victim);
+                int carriedHighQualityCount = ConsumeModeFBossCarriedHighQualityLootCount(victim);
+                int totalTransferredCount = physicalHighQualityCount + carriedHighQualityCount;
+
+                if (physicalHighQualityCount > 0)
+                {
+                    AddModeFBossPendingHighQualityLootPenaltyCount(victim, physicalHighQualityCount);
+                }
+
+                if (totalTransferredCount > 0)
+                {
+                    AddModeFBossCarriedHighQualityLootCount(killer, totalTransferredCount);
+                }
+
+                DevLog("[ModeF] Boss 高品质战利品转移: killer="
+                    + killer.gameObject.name
+                    + ", victim=" + victim.gameObject.name
+                    + ", physicalQ6+=" + physicalHighQualityCount
+                    + ", carried+=" + carriedHighQualityCount
+                    + ", transferred=" + totalTransferredCount);
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] TryHandleModeFBossPreLootPlunder 失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private int CountModeFPlunderableHighQualityItems(CharacterMainControl character)
+        {
+            try
+            {
+                if (character == null || character.CharacterItem == null)
+                {
+                    return 0;
+                }
+
+                int count = 0;
+                modeFPlunderSeenItemIdScratch.Clear();
+
+                try
+                {
+                    if (character.CharacterItem.Slots != null)
+                    {
+                        foreach (Slot slot in character.CharacterItem.Slots)
+                        {
+                            Item slotItem = slot != null ? slot.Content : null;
+                            if (slotItem == null)
+                            {
+                                continue;
+                            }
+
+                            int itemId = slotItem.GetInstanceID();
+                            if (!modeFPlunderSeenItemIdScratch.Add(itemId))
+                            {
+                                continue;
+                            }
+
+                            if (slotItem.Quality >= 6)
+                            {
+                                count++;
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    Inventory inventory = character.CharacterItem.Inventory;
+                    if (inventory != null)
+                    {
+                        foreach (Item inventoryItem in inventory)
+                        {
+                            if (inventoryItem == null)
+                            {
+                                continue;
+                            }
+
+                            int itemId = inventoryItem.GetInstanceID();
+                            if (!modeFPlunderSeenItemIdScratch.Add(itemId))
+                            {
+                                continue;
+                            }
+
+                            if (inventoryItem.Quality >= 6)
+                            {
+                                count++;
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                modeFPlunderSeenItemIdScratch.Clear();
+                return count;
+            }
+            catch
+            {
+                modeFPlunderSeenItemIdScratch.Clear();
+                return 0;
+            }
+        }
+
+        private void AddModeFBossCarriedHighQualityLootCount(CharacterMainControl boss, int count)
+        {
+            if (boss == null || count == 0)
+            {
+                return;
+            }
+
+            int bossId = boss.GetInstanceID();
+            int existing = 0;
+            modeFBossCarriedHighQualityLootCounts.TryGetValue(bossId, out existing);
+            int next = existing + count;
+            if (next > 0)
+            {
+                modeFBossCarriedHighQualityLootCounts[bossId] = next;
+            }
+            else
+            {
+                modeFBossCarriedHighQualityLootCounts.Remove(bossId);
+            }
+        }
+
+        private int ConsumeModeFBossCarriedHighQualityLootCount(CharacterMainControl boss)
+        {
+            if (boss == null)
+            {
+                return 0;
+            }
+
+            int bossId = boss.GetInstanceID();
+            int count = 0;
+            if (!modeFBossCarriedHighQualityLootCounts.TryGetValue(bossId, out count))
+            {
+                return 0;
+            }
+
+            modeFBossCarriedHighQualityLootCounts.Remove(bossId);
+            return Mathf.Max(0, count);
+        }
+
+        private void AddModeFBossPendingHighQualityLootPenaltyCount(CharacterMainControl boss, int count)
+        {
+            if (boss == null || count <= 0)
+            {
+                return;
+            }
+
+            int bossId = boss.GetInstanceID();
+            int existing = 0;
+            modeFBossPendingHighQualityLootPenaltyCounts.TryGetValue(bossId, out existing);
+            modeFBossPendingHighQualityLootPenaltyCounts[bossId] = existing + count;
+        }
+
+        private int ConsumeModeFBossPendingHighQualityLootPenaltyCount(CharacterMainControl boss)
+        {
+            if (boss == null)
+            {
+                return 0;
+            }
+
+            int bossId = boss.GetInstanceID();
+            int count = 0;
+            if (!modeFBossPendingHighQualityLootPenaltyCounts.TryGetValue(bossId, out count))
+            {
+                return 0;
+            }
+
+            modeFBossPendingHighQualityLootPenaltyCounts.Remove(bossId);
+            return Mathf.Max(0, count);
+        }
+
+        private void ClearModeFBossPlunderLootState(CharacterMainControl boss)
+        {
+            if (boss == null)
+            {
+                return;
+            }
+
+            int bossId = boss.GetInstanceID();
+            modeFBossCarriedHighQualityLootCounts.Remove(bossId);
+            modeFBossPendingHighQualityLootPenaltyCounts.Remove(bossId);
+            modeFHandledPreLootPlunderVictimIds.Remove(bossId);
+        }
+
+        private void ClearAllModeFBossPlunderLootState()
+        {
+            modeFBossCarriedHighQualityLootCounts.Clear();
+            modeFBossPendingHighQualityLootPenaltyCounts.Clear();
+            modeFHandledPreLootPlunderVictimIds.Clear();
+            modeFPlunderSeenItemIdScratch.Clear();
+            modeFTransferableAmmoScratch.Clear();
+            modeFBulletCaliberCache.Clear();
+        }
+
+        private void TrySwapSlot(CharacterMainControl killer, CharacterMainControl victim, string slotTag, Vector3 lootDropPosition)
         {
             try
             {
@@ -365,15 +625,20 @@ namespace BossRush
 
                 if (victimQuality > killerQuality)
                 {
-                    // 替换：先卸下 killer 的，再装上 victim 的
-                    TryReplaceModeFEquippedItem(killer, slotTag, victimItem, killerItem);
-                    DevLog("[ModeF] Boss 换装 [" + slotTag + "]: Q" + killerQuality + " -> Q" + victimQuality);
+                    if (TrySwapModeFItemsBetweenCharacters(killer, victim, victimItem, killerItem, lootDropPosition))
+                    {
+                        DevLog("[ModeF] Boss 换装 [" + slotTag + "]: Q" + killerQuality + " -> Q" + victimQuality);
+                    }
+                    else
+                    {
+                        DevLog("[ModeF] [WARNING] Boss 换装失败 [" + slotTag + "]，已保持原装备");
+                    }
                 }
             }
             catch { }
         }
 
-        private void TrySwapGun(CharacterMainControl killer, CharacterMainControl victim)
+        private void TrySwapGun(CharacterMainControl killer, CharacterMainControl victim, Vector3 lootDropPosition)
         {
             try
             {
@@ -388,14 +653,15 @@ namespace BossRush
 
                 if (victimQuality > killerQuality)
                 {
-                    if (!TrySwapModeFLootedItemWithRollback(killer, victimGun, killerGun, "Gun"))
+                    if (!TrySwapModeFItemsBetweenCharacters(killer, victim, victimGun, killerGun, lootDropPosition))
                     {
-                        DevLog("[ModeF] [WARNING] Boss 换枪失败，已执行回滚/掉落保护");
+                        DevLog("[ModeF] [WARNING] Boss 换枪失败，已保持原装备");
                         return;
                     }
 
+                    TransferModeFBossCompatibleAmmo(killer, victim, victimGun, lootDropPosition);
                     // 补满弹匣
-                    RefillModeFBossGunAndAmmo(killer, victimGun);
+                    RefillModeFBossGunAndAmmo(killer, victimGun, lootDropPosition, !HasModeFCompatibleAmmo(killer, victimGun));
 
                     DevLog("[ModeF] Boss 换枪: Q" + killerQuality + " -> Q" + victimQuality);
                 }
@@ -443,7 +709,7 @@ namespace BossRush
             }
         }
 
-        private void TryReplaceModeFEquippedItem(CharacterMainControl owner, string slotKey, Item newItem, Item oldItem)
+        private void TryReplaceModeFEquippedItem(CharacterMainControl owner, string slotKey, Item newItem, Item oldItem, Vector3 lootDropPosition)
         {
             try
             {
@@ -451,14 +717,14 @@ namespace BossRush
 
                 if (oldItem != null)
                 {
-                    if (!TrySwapModeFLootedItemWithRollback(owner, newItem, oldItem, slotKey))
+                    if (!TrySwapModeFLootedItemWithRollback(owner, newItem, oldItem, slotKey, lootDropPosition))
                     {
                         DevLog("[ModeF] [WARNING] 替换装备失败，已执行回滚/掉落保护 slot=" + slotKey);
                     }
                     return;
                 }
 
-                if (!TryEquipModeFLootedItemOrDrop(owner, newItem))
+                if (!TryEquipModeFLootedItemOrDrop(owner, newItem, lootDropPosition))
                 {
                     DevLog("[ModeF] [WARNING] 替换装备失败，已掉落战利品 slot=" + slotKey);
                 }
@@ -469,7 +735,7 @@ namespace BossRush
             }
         }
 
-        private bool TrySwapModeFLootedItemWithRollback(CharacterMainControl owner, Item newItem, Item oldItem, string slotKey)
+        private bool TrySwapModeFLootedItemWithRollback(CharacterMainControl owner, Item newItem, Item oldItem, string slotKey, Vector3 lootDropPosition)
         {
             if (owner == null || owner.CharacterItem == null || newItem == null)
             {
@@ -491,7 +757,7 @@ namespace BossRush
             {
                 if (oldDetached && oldItem != null)
                 {
-                    try { oldItem.DestroyTree(); } catch { }
+                    DropOrDestroyModeFLootedItem(owner, oldItem, lootDropPosition);
                 }
 
                 return true;
@@ -507,22 +773,22 @@ namespace BossRush
                 catch { }
             }
 
-            DropOrDestroyModeFLootedItem(owner, newItem);
+            DropOrDestroyModeFLootedItem(owner, newItem, lootDropPosition);
             if (oldDetached && oldItem != null && !restored)
             {
                 DevLog("[ModeF] [WARNING] 旧装备回滚失败，已掉落 slot=" + slotKey);
-                DropOrDestroyModeFLootedItem(owner, oldItem);
+                DropOrDestroyModeFLootedItem(owner, oldItem, lootDropPosition);
             }
 
             return false;
         }
 
-        private bool TryEquipModeFLootedItemOrDrop(CharacterMainControl owner, Item item)
+        private bool TryEquipModeFLootedItemOrDrop(CharacterMainControl owner, Item item, Vector3 lootDropPosition)
         {
             bool plugged = TryEquipModeFLootedItem(owner, item);
             if (!plugged)
             {
-                DropOrDestroyModeFLootedItem(owner, item);
+                DropOrDestroyModeFLootedItem(owner, item, lootDropPosition);
             }
 
             return plugged;
@@ -547,7 +813,7 @@ namespace BossRush
             }
         }
 
-        private void DropOrDestroyModeFLootedItem(CharacterMainControl owner, Item item)
+        private void DropOrDestroyModeFLootedItem(CharacterMainControl owner, Item item, Vector3? preferredDropPosition = null)
         {
             if (item == null)
             {
@@ -556,19 +822,142 @@ namespace BossRush
 
             try
             {
-                if (owner != null && owner.transform != null)
+                Vector3 dropPosition = Vector3.zero;
+                bool hasDropPosition = false;
+
+                if (preferredDropPosition.HasValue)
                 {
-                    item.Drop(owner.transform.position + Vector3.up * 0.3f, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
+                    dropPosition = preferredDropPosition.Value;
+                    hasDropPosition = true;
+                }
+                else if (owner != null && owner.transform != null)
+                {
+                    dropPosition = owner.transform.position + Vector3.up * 0.3f;
+                    hasDropPosition = true;
+                }
+
+                if (hasDropPosition)
+                {
+                    item.Drop(dropPosition, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
                 }
                 else if (item.gameObject != null)
                 {
-                    UnityEngine.Object.Destroy(item.gameObject);
+                    item.DestroyTree();
                 }
             }
             catch { }
         }
 
-        private void RefillModeFBossGunAndAmmo(CharacterMainControl owner, Item gunItem)
+        private bool TrySwapModeFItemsBetweenCharacters(
+            CharacterMainControl receiver,
+            CharacterMainControl donor,
+            Item donorItem,
+            Item receiverItem,
+            Vector3 lootDropPosition)
+        {
+            if (receiver == null || donor == null || donorItem == null)
+            {
+                return false;
+            }
+
+            if (receiver.CharacterItem == null || donor.CharacterItem == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                donorItem.Detach();
+            }
+            catch
+            {
+                return false;
+            }
+
+            bool receiverItemDetached = false;
+            if (receiverItem != null)
+            {
+                try
+                {
+                    receiverItem.Detach();
+                    receiverItemDetached = true;
+                }
+                catch
+                {
+                    if (!TryRestoreModeFItemToCharacter(donor, donorItem))
+                    {
+                        DropOrDestroyModeFLootedItem(donor, donorItem, lootDropPosition);
+                    }
+                    return false;
+                }
+            }
+
+            if (!TryEquipModeFLootedItem(receiver, donorItem))
+            {
+                if (!TryRestoreModeFItemToCharacter(donor, donorItem))
+                {
+                    DropOrDestroyModeFLootedItem(donor, donorItem, lootDropPosition);
+                }
+                if (receiverItemDetached && receiverItem != null)
+                {
+                    if (!TryRestoreModeFItemToCharacter(receiver, receiverItem))
+                    {
+                        DropOrDestroyModeFLootedItem(receiver, receiverItem, lootDropPosition);
+                    }
+                }
+
+                return false;
+            }
+
+            if (receiverItem == null)
+            {
+                return true;
+            }
+
+            if (TryEquipModeFLootedItem(donor, receiverItem))
+            {
+                return true;
+            }
+
+            try { donorItem.Detach(); } catch { }
+            bool donorRestored = TryRestoreModeFItemToCharacter(donor, donorItem);
+            bool receiverRestored = TryRestoreModeFItemToCharacter(receiver, receiverItem);
+            if (!donorRestored || !receiverRestored)
+            {
+                if (!donorRestored)
+                {
+                    DropOrDestroyModeFLootedItem(donor, donorItem, lootDropPosition);
+                }
+
+                if (!receiverRestored)
+                {
+                    DropOrDestroyModeFLootedItem(receiver, receiverItem, lootDropPosition);
+                }
+
+                DevLog("[ModeF] [WARNING] Boss 装备互换回滚不完整");
+            }
+
+            return false;
+        }
+
+        private bool TryRestoreModeFItemToCharacter(CharacterMainControl owner, Item item)
+        {
+            if (owner == null || owner.CharacterItem == null || item == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return owner.CharacterItem.TryPlug(item, true, null, 0);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void RefillModeFBossGunAndAmmo(CharacterMainControl owner, Item gunItem, Vector3 lootDropPosition, bool ensureSpareAmmo = true)
         {
             try
             {
@@ -581,18 +970,15 @@ namespace BossRush
 
                 try
                 {
-                    const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-                    FieldInfo bulletCacheField = typeof(ItemSetting_Gun).GetField("_bulletCountCache", flags);
-                    FieldInfo bulletHashField = typeof(ItemSetting_Gun).GetField("bulletCountHash", flags);
-                    if (bulletCacheField != null)
+                    if (modeFGunBulletCountCacheField != null)
                     {
-                        bulletCacheField.SetValue(gunSetting, capacity);
+                        modeFGunBulletCountCacheField.SetValue(gunSetting, capacity);
                     }
 
                     int bulletCountHash = "BulletCount".GetHashCode();
-                    if (bulletHashField != null)
+                    if (modeFGunBulletCountHashField != null)
                     {
-                        bulletCountHash = (int)bulletHashField.GetValue(gunSetting);
+                        bulletCountHash = (int)modeFGunBulletCountHashField.GetValue(gunSetting);
                     }
 
                     gunItem.Variables.SetInt(bulletCountHash, capacity);
@@ -600,6 +986,11 @@ namespace BossRush
                 catch { }
 
                 int bulletTypeId = gunSetting.TargetBulletID;
+                if (!ensureSpareAmmo || bulletTypeId <= 0)
+                {
+                    return;
+                }
+
                 if (bulletTypeId > 0)
                 {
                     Item bullet = ItemAssetsCollection.InstantiateSync(bulletTypeId);
@@ -621,9 +1012,12 @@ namespace BossRush
                         }
                         catch { }
 
-                        if (!plugged && owner.transform != null)
+                        if (!plugged)
                         {
-                            bullet.Drop(owner.transform.position + Vector3.up * 0.3f, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
+                            if (!TryReplaceModeFLowerQualityAmmo(owner, bullet, bulletTypeId))
+                            {
+                                DropOrDestroyModeFLootedItem(owner, bullet, lootDropPosition);
+                            }
                         }
                     }
                 }
@@ -632,6 +1026,383 @@ namespace BossRush
             {
                 DevLog("[ModeF] [WARNING] RefillModeFBossGunAndAmmo 失败: " + e.Message);
             }
+        }
+
+        private int TransferModeFBossCompatibleAmmo(CharacterMainControl receiver, CharacterMainControl donor, Item gunItem, Vector3 lootDropPosition)
+        {
+            if (receiver == null || donor == null || gunItem == null)
+            {
+                return 0;
+            }
+
+            Inventory donorInventory = null;
+            try { donorInventory = donor.CharacterItem != null ? donor.CharacterItem.Inventory : null; } catch { }
+            if (donorInventory == null)
+            {
+                return 0;
+            }
+
+            int bulletTypeId = 0;
+            string targetCaliber = null;
+            if (!TryGetModeFGunAmmoRequirements(gunItem, out bulletTypeId, out targetCaliber))
+            {
+                return 0;
+            }
+
+            modeFTransferableAmmoScratch.Clear();
+            try
+            {
+                foreach (Item candidate in donorInventory)
+                {
+                    if (IsModeFCompatibleAmmoForGun(candidate, bulletTypeId, targetCaliber))
+                    {
+                        modeFTransferableAmmoScratch.Add(candidate);
+                    }
+                }
+            }
+            catch { }
+
+            modeFTransferableAmmoScratch.Sort((a, b) =>
+            {
+                bool aExact = a != null && a.TypeID == bulletTypeId;
+                bool bExact = b != null && b.TypeID == bulletTypeId;
+                if (aExact != bExact)
+                {
+                    return bExact.CompareTo(aExact);
+                }
+
+                int aQuality = a != null ? a.Quality : 0;
+                int bQuality = b != null ? b.Quality : 0;
+                return bQuality.CompareTo(aQuality);
+            });
+
+            int transferred = 0;
+            for (int i = 0; i < modeFTransferableAmmoScratch.Count; i++)
+            {
+                Item ammo = modeFTransferableAmmoScratch[i];
+                if (ammo == null)
+                {
+                    continue;
+                }
+
+                bool detached = false;
+                try
+                {
+                    ammo.Detach();
+                    detached = true;
+                }
+                catch { }
+
+                if (!detached)
+                {
+                    continue;
+                }
+
+                bool plugged = false;
+                try
+                {
+                    plugged = receiver.CharacterItem != null && receiver.CharacterItem.TryPlug(ammo, true, null, 0);
+                }
+                catch { }
+
+                if (!plugged)
+                {
+                    plugged = TryReplaceModeFLowerQualityAmmo(receiver, ammo, ammo.TypeID);
+                }
+
+                if (plugged)
+                {
+                    transferred++;
+                }
+                else
+                {
+                    DropOrDestroyModeFLootedItem(receiver, ammo, lootDropPosition);
+                }
+            }
+
+            if (transferred > 0)
+            {
+                DevLog("[ModeF] Boss 换枪同步转移兼容弹药: " + transferred + " 组");
+            }
+
+            modeFTransferableAmmoScratch.Clear();
+            return transferred;
+        }
+
+        private bool HasModeFCompatibleAmmo(CharacterMainControl owner, Item gunItem)
+        {
+            if (owner == null || gunItem == null)
+            {
+                return false;
+            }
+
+            Inventory inventory = null;
+            try { inventory = owner.CharacterItem != null ? owner.CharacterItem.Inventory : null; } catch { }
+            if (inventory == null)
+            {
+                return false;
+            }
+
+            int bulletTypeId = 0;
+            string targetCaliber = null;
+            if (!TryGetModeFGunAmmoRequirements(gunItem, out bulletTypeId, out targetCaliber))
+            {
+                return false;
+            }
+
+            try
+            {
+                foreach (Item candidate in inventory)
+                {
+                    if (IsModeFCompatibleAmmoForGun(candidate, bulletTypeId, targetCaliber))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        private bool TryGetModeFGunAmmoRequirements(Item gunItem, out int bulletTypeId, out string targetCaliber)
+        {
+            bulletTypeId = 0;
+            targetCaliber = null;
+
+            if (gunItem == null)
+            {
+                return false;
+            }
+
+            ItemSetting_Gun gunSetting = gunItem.GetComponent<ItemSetting_Gun>();
+            if (gunSetting == null)
+            {
+                return false;
+            }
+
+            bulletTypeId = gunSetting.TargetBulletID;
+            if (bulletTypeId > 0)
+            {
+                string cachedCaliber;
+                if (modeFBulletCaliberCache.TryGetValue(bulletTypeId, out cachedCaliber))
+                {
+                    targetCaliber = string.IsNullOrEmpty(cachedCaliber) ? null : cachedCaliber;
+                }
+                else
+                {
+                    try
+                    {
+                        Item bulletMeta = ItemAssetsCollection.InstantiateSync(bulletTypeId);
+                        if (bulletMeta != null)
+                        {
+                            try { targetCaliber = bulletMeta.Constants != null ? bulletMeta.Constants.GetString("Caliber", null) : null; } catch { }
+                            try { bulletMeta.DestroyTree(); } catch { }
+                        }
+                    }
+                    catch { }
+
+                    modeFBulletCaliberCache[bulletTypeId] = targetCaliber ?? string.Empty;
+                }
+            }
+
+            return bulletTypeId > 0 || !string.IsNullOrEmpty(targetCaliber);
+        }
+
+        private bool IsModeFCompatibleAmmoForGun(Item ammoItem, int bulletTypeId, string targetCaliber)
+        {
+            if (ammoItem == null)
+            {
+                return false;
+            }
+
+            if (!DragonKingBossGunProfiles.IsBulletLike(ammoItem))
+            {
+                return false;
+            }
+
+            if (bulletTypeId > 0 && ammoItem.TypeID == bulletTypeId)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(targetCaliber))
+            {
+                return false;
+            }
+
+            string ammoCaliber = null;
+            try { ammoCaliber = ammoItem.Constants != null ? ammoItem.Constants.GetString("Caliber", null) : null; } catch { }
+            return string.Equals(ammoCaliber, targetCaliber, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool TryReplaceModeFLowerQualityAmmo(CharacterMainControl owner, Item newBullet, int preferredTypeId = 0)
+        {
+            if (owner == null || owner.CharacterItem == null || newBullet == null)
+            {
+                return false;
+            }
+
+            Inventory inventory = null;
+            try { inventory = owner.CharacterItem.Inventory; } catch { }
+            if (inventory == null)
+            {
+                return false;
+            }
+
+            string targetCaliber = null;
+            try { targetCaliber = newBullet.Constants != null ? newBullet.Constants.GetString("Caliber", null) : null; } catch { }
+            bool matchByType = preferredTypeId > 0;
+            bool matchByCaliber = !string.IsNullOrEmpty(targetCaliber);
+            if (!matchByType && !matchByCaliber)
+            {
+                return false;
+            }
+
+            Item replaceCandidate = null;
+            try
+            {
+                foreach (Item candidate in inventory)
+                {
+                    if (candidate == null || candidate == newBullet)
+                    {
+                        continue;
+                    }
+
+                    if (!DragonKingBossGunProfiles.IsBulletLike(candidate))
+                    {
+                        continue;
+                    }
+
+                    bool exactTypeMatch = matchByType && candidate.TypeID == preferredTypeId;
+                    string candidateCaliber = null;
+                    if (!exactTypeMatch && matchByCaliber)
+                    {
+                        try { candidateCaliber = candidate.Constants != null ? candidate.Constants.GetString("Caliber", null) : null; } catch { }
+                    }
+
+                    bool sameAmmoGroup = exactTypeMatch ||
+                        (matchByCaliber && string.Equals(candidateCaliber, targetCaliber, StringComparison.OrdinalIgnoreCase));
+                    if (!sameAmmoGroup)
+                    {
+                        continue;
+                    }
+
+                    if (candidate.Quality >= newBullet.Quality)
+                    {
+                        continue;
+                    }
+
+                    if (replaceCandidate == null || candidate.Quality < replaceCandidate.Quality)
+                    {
+                        replaceCandidate = candidate;
+                    }
+                }
+            }
+            catch { }
+
+            if (replaceCandidate == null)
+            {
+                return false;
+            }
+
+            bool detached = false;
+            try
+            {
+                replaceCandidate.Detach();
+                detached = true;
+            }
+            catch { }
+
+            if (!detached)
+            {
+                return false;
+            }
+
+            bool plugged = false;
+            try
+            {
+                plugged = owner.CharacterItem.TryPlug(newBullet, true, null, 0);
+            }
+            catch { }
+
+            if (plugged)
+            {
+                try { replaceCandidate.DestroyTree(); } catch { }
+                DevLog("[ModeF] 新枪补给弹药：已替换同口径低品质弹药");
+                return true;
+            }
+
+            bool restored = false;
+            try
+            {
+                restored = owner.CharacterItem.TryPlug(replaceCandidate, true, null, 0);
+            }
+            catch { }
+
+            if (!restored)
+            {
+                DevLog("[ModeF] [WARNING] 同口径低品质弹药回滚失败");
+                try { replaceCandidate.DestroyTree(); } catch { }
+            }
+
+            return false;
+        }
+
+        private Vector3 GetModeFBountyDropPosition(CharacterMainControl victim, CharacterMainControl fallbackOwner = null)
+        {
+            try
+            {
+                if (victim != null && victim.transform != null)
+                {
+                    return victim.transform.position + Vector3.up * 0.5f;
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (fallbackOwner != null && fallbackOwner.transform != null)
+                {
+                    return fallbackOwner.transform.position + Vector3.up * 0.5f;
+                }
+            }
+            catch { }
+
+            return Vector3.up * 0.5f;
+        }
+
+        private void QueueModeFLeaderChangeContext(CharacterMainControl killer, CharacterMainControl victim)
+        {
+            string killerName = GetModeFActorDisplayName(killer, true);
+            string victimName = GetModeFActorDisplayName(victim, false);
+
+            modeFBountyLeaderContextZh = "<color=orange>" + killerName + "</color> 杀死了 <color=red>" + victimName
+                + "</color>，并成为悬赏榜首！";
+            modeFBountyLeaderContextEn = "<color=orange>" + killerName + "</color> killed <color=red>" + victimName
+                + "</color> and became the Bounty Leader!";
+        }
+
+        private bool TryConsumeModeFLeaderChangeContext(out string zh, out string en)
+        {
+            zh = modeFBountyLeaderContextZh;
+            en = modeFBountyLeaderContextEn;
+
+            if (string.IsNullOrEmpty(zh) || string.IsNullOrEmpty(en))
+            {
+                ClearModeFLeaderChangeContext();
+                return false;
+            }
+
+            modeFBountyLeaderContextZh = null;
+            modeFBountyLeaderContextEn = null;
+            return true;
+        }
+
+        private void ClearModeFLeaderChangeContext()
+        {
+            modeFBountyLeaderContextZh = null;
+            modeFBountyLeaderContextEn = null;
         }
 
         private void CheckAndBroadcastLeaderChange(CharacterMainControl preferredLeader = null)
@@ -667,11 +1438,10 @@ namespace BossRush
                     }
                 }
 
-                // 玩家印记也参与比较
                 if (modeFState.PlayerBountyMarks > maxMarks)
                 {
                     maxMarks = modeFState.PlayerBountyMarks;
-                    newLeader = null; // null 表示玩家是榜首
+                    newLeader = null;
                 }
 
                 if (preferredLeader == CharacterMainControl.Main && modeFState.PlayerBountyMarks == maxMarks && maxMarks > 0)
@@ -829,9 +1599,9 @@ namespace BossRush
                     {
                         try
                         {
-                            if (probeItem != null && probeItem.gameObject != null)
+                            if (probeItem != null)
                             {
-                                UnityEngine.Object.Destroy(probeItem.gameObject);
+                                probeItem.DestroyTree();
                             }
                         }
                         catch { }
@@ -868,9 +1638,9 @@ namespace BossRush
                 {
                     try
                     {
-                        if (reward != null && reward.gameObject != null)
+                        if (reward != null)
                         {
-                            UnityEngine.Object.Destroy(reward.gameObject);
+                            reward.DestroyTree();
                         }
                     }
                     catch { }
