@@ -195,13 +195,11 @@ function main() {
     }
   }
 
-  // 补充中文 changelog：docs/wiki-site/changelog/ 只有 index.md，
-  // 版本文件和 legacy-archive 从 WikiContent/zh/ 转换补充
+  // 补充中文内容：docs/wiki-site/ 缺失的文件从 WikiContent/zh/ 转换补充
   const ZH_WIKI = join(MOD_ROOT, 'WikiContent', 'zh');
   let zhSupplementCount = 0;
   const catalogEntries = parseCatalog();
   for (const entry of catalogEntries) {
-    if (entry.categoryId !== 'changelog') continue;
     const route = getEnRoute(entry.entryId); // 路由映射中英文共用
     if (!route) continue;
     const outPath = join(DOCS_DIR, route);
@@ -212,7 +210,7 @@ function main() {
     let srcPath = join(ZH_WIKI, entry.categoryId, fileName);
     if (!existsSync(srcPath)) srcPath = join(ZH_WIKI, fileName);
     if (!existsSync(srcPath)) {
-      console.warn(`[sync] 中文 changelog 源缺失: ${entry.entryId}`);
+      console.warn(`[sync] 中文源缺失: ${entry.entryId}`);
       continue;
     }
     const raw = readFileSync(srcPath, 'utf-8');
@@ -223,7 +221,7 @@ function main() {
     zhSupplementCount++;
   }
   if (zhSupplementCount > 0) {
-    console.log(`[sync] 中文 changelog 补充: ${zhSupplementCount} 篇（从 WikiContent/zh/ 转换）`);
+    console.log(`[sync] 中文补充: ${zhSupplementCount} 篇（从 WikiContent/zh/ 转换）`);
   }
 
   console.log(`[sync] 中文合计: ${zhCount} 篇`);

@@ -345,7 +345,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/nicekun/BossRushMod' },
+      { icon: 'github', link: 'https://github.com/GASEN1216/BossRushMod' },
     ],
 
     footer: {
