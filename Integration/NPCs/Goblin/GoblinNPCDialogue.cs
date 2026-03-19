@@ -83,6 +83,14 @@ namespace BossRush
         /// <param name="showFarewell">是否显示告别对话，默认false（只有商店和重铸UI关闭时才传true）</param>
         public void EndDialogueWithStay(float stayDuration = 10f, bool showFarewell = false)
         {
+            if (ModBehaviour.Instance != null)
+            {
+                stayDuration = ModBehaviour.Instance.AdjustDialogueStayDurationForSpouseFollow(
+                    GoblinAffinityConfig.NPC_ID,
+                    transform,
+                    stayDuration);
+            }
+
             // 停止之前的停留协程（防止多个协程同时运行导致提前恢复走路）
             if (currentStayCoroutine != null)
             {

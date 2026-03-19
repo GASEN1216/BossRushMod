@@ -1443,6 +1443,8 @@ namespace BossRush
                         DevLog("[NPCSpawn] 普通模式检测到可生成公共NPC场景: " + scene.name + ", 延迟统一生成");
                         StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(scene.name));
                     }
+
+                    ScheduleRestoreFollowingSpouse(scene.name, "普通场景加载");
                     
                     // 其他场景：注入传送到竞技场的交互选项
                     StartCoroutine(FindInteractionTargets(10));
@@ -1679,6 +1681,7 @@ namespace BossRush
             }
             
             SpawnCommonNPCs("普通模式场景初始化完成");
+            ScheduleRestoreFollowingSpouse(sceneName, "普通模式场景初始化完成");
         }
 
         /// <summary>
@@ -1968,6 +1971,7 @@ namespace BossRush
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeE();
                 SpawnCommonNPCs("GroundZero场景 Mode E 初始化完成");
+                ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "GroundZero场景 Mode E 初始化完成");
                 BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                 yield break;
             }
@@ -1988,6 +1992,7 @@ namespace BossRush
                 if (startedModeF)
                 {
                     SpawnCommonNPCs("GroundZero场景 Mode F 初始化完成");
+                    ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "GroundZero场景 Mode F 初始化完成");
                 }
                 else
                 {
@@ -2051,6 +2056,7 @@ namespace BossRush
             
             // 10. 统一生成公共NPC（快递员、哥布林、护士）
             SpawnCommonNPCs("GroundZero场景初始化完成");
+            ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "GroundZero场景初始化完成");
             BossRushMapSelectionHelper.ClearPendingEntryFlowState();
         }
         

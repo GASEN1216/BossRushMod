@@ -777,6 +777,14 @@ namespace BossRush
         /// </summary>
         public void EndDialogueWithStay(float stayDuration, bool showFarewell = false)
         {
+            if (ModBehaviour.Instance != null)
+            {
+                stayDuration = ModBehaviour.Instance.AdjustDialogueStayDurationForSpouseFollow(
+                    NurseAffinityConfig.NPC_ID,
+                    transform,
+                    stayDuration);
+            }
+
             // 停止之前的停留协程
             if (currentStayCoroutine != null)
             {

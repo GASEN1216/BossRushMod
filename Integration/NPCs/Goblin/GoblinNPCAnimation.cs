@@ -96,6 +96,35 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 退出原地站桩待机，恢复正常移动状态。
+        /// </summary>
+        public void ExitStationaryIdleState()
+        {
+            isRunningToPlayer = false;
+            isBraking = false;
+            isInDialogue = false;
+            isIdling = false;
+
+            if (currentStayCoroutine != null)
+            {
+                StopCoroutine(currentStayCoroutine);
+                currentStayCoroutine = null;
+            }
+
+            if (movement == null)
+            {
+                movement = GetComponent<GoblinMovement>();
+            }
+
+            if (movement != null)
+            {
+                movement.enabled = true;
+            }
+
+            InitializeDefaultAnimatorParams();
+        }
+
+        /// <summary>
         /// 开始播放急停动画（距离4米时触发）
         /// 设置 IsRunning=false，触发 DoStop，然后设置 IsIdle=true
         /// </summary>
