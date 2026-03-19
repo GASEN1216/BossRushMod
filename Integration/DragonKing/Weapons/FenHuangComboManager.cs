@@ -707,6 +707,7 @@ namespace BossRush
         private static bool _holdAgentFieldCached;
 
         [HarmonyPostfix]
+        [HarmonyPriority(Priority.First)]
         public static void Postfix(CA_Attack __instance, bool __result)
         {
             if (!__result)
@@ -738,6 +739,8 @@ namespace BossRush
                 {
                     return;
                 }
+
+                FenHuangHalberdWeaponConfig.EnsureMeleeAttackFx(melee);
 
                 // 强制确保 CharacterAnimationControl 的 holdAgent 指向当前武器代理，
                 // 并触发攻击动画。原版的事件链 CA_Attack.OnAttack → CharacterModel →
@@ -1119,8 +1122,12 @@ namespace BossRush
                 // 只处理焚皇断界戟
                 if (item.TypeID != FenHuangHalberdIds.WeaponTypeId) return;
 
-                // 如果返回结果已经是 ItemAgent_MeleeWeapon，则无需重复注入
-                if (__result is ItemAgent_MeleeWeapon) return;
+                ItemAgent_MeleeWeapon existingMelee = __result as ItemAgent_MeleeWeapon;
+                if (existingMelee != null)
+                {
+                    FenHuangHalberdWeaponConfig.EnsureMeleeAttackFx(existingMelee);
+                    return;
+                }
 
                 // 首次进入时缓存反射字段
                 if (!_fieldsCached)
@@ -1162,6 +1169,7 @@ namespace BossRush
                 // 同步近战挂点与动画类型
                 meleeComp.handheldSocket = HandheldSocketTypes.normalHandheld;
                 meleeComp.handAnimationType = HandheldAnimationType.meleeWeapon;
+                FenHuangHalberdWeaponConfig.EnsureMeleeAttackFx(meleeComp);
 
                 // 绑定 Holder，确保角色控制和归属关系正确
                 meleeComp.SetHolder(__result.Holder);

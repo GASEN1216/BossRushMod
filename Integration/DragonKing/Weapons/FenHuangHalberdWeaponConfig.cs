@@ -27,6 +27,9 @@ namespace BossRush
     {
         // ========== 基础名匹配 ==========
         private const string HALBERD_BASE_NAME = "FenHuangHalberd";
+        private static readonly Vector3 DefaultSlashFxScale = new Vector3(1.92f, 1.92f, 1.92f);
+        private static GameObject cachedFallbackSlashFx;
+        private static GameObject cachedFallbackHitFx;
 
         // ========== 近战 Stats 数值 ==========
         private const float STAT_DAMAGE = 55f;
@@ -224,7 +227,7 @@ namespace BossRush
             }
             catch { }
 
-            // hitFx 和 slashFx 留空，使用原版默认
+            EnsureMeleeAttackFx(meleeAgent);
 
             // 确保 socketsList 被初始化（DuckovItemAgent 基类需要）
             try
@@ -252,9 +255,108 @@ namespace BossRush
                 }
                 modelMeleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
                 modelMeleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
+                EnsureMeleeAttackFx(modelMeleeAgent);
             }
 
             ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=normalHandheld, anim=meleeWeapon)");
+        }
+
+
+        internal static void EnsureMeleeAttackFx(ItemAgent_MeleeWeapon meleeAgent)
+        {
+            if (meleeAgent == null)
+            {
+                return;
+            }
+
+            if (meleeAgent.slashFx == null)
+            {
+                meleeAgent.slashFx = GetFallbackSlashFx();
+            }
+
+            if (meleeAgent.hitFx == null)
+            {
+                meleeAgent.hitFx = GetFallbackHitFx();
+            }
+
+            if (meleeAgent.slashFx != null && meleeAgent.slashFx.transform != null)
+            {
+                Vector3 scale = meleeAgent.slashFx.transform.localScale;
+                if (scale.sqrMagnitude <= 0.0001f)
+                {
+                    meleeAgent.slashFx.transform.localScale = DefaultSlashFxScale;
+                }
+            }
+        }
+
+        private static GameObject GetFallbackSlashFx()
+        {
+            if (cachedFallbackSlashFx == null)
+            {
+                cachedFallbackSlashFx = FindFallbackMeleeFx(true);
+                if (cachedFallbackSlashFx == null)
+                {
+                    cachedFallbackSlashFx = FenHuangHalberdSlashFxCompat.CreateTemplate(DefaultSlashFxScale);
+                }
+            }
+
+            return cachedFallbackSlashFx;
+        }
+
+        private static GameObject GetFallbackHitFx()
+        {
+            if (cachedFallbackHitFx == null)
+            {
+                cachedFallbackHitFx = FindFallbackMeleeFx(false);
+            }
+
+            return cachedFallbackHitFx;
+        }
+
+        private static GameObject FindFallbackMeleeFx(bool slashFx)
+        {
+            try
+            {
+                ItemAgent_MeleeWeapon[] meleeAgents = Resources.FindObjectsOfTypeAll<ItemAgent_MeleeWeapon>();
+                for (int i = 0; i < meleeAgents.Length; i++)
+                {
+                    ItemAgent_MeleeWeapon candidate = meleeAgents[i];
+                    if (candidate == null)
+                    {
+                        continue;
+                    }
+
+                    Item candidateItem = candidate.Item;
+                    if (candidateItem != null && candidateItem.TypeID == FenHuangHalberdIds.WeaponTypeId)
+                    {
+                        continue;
+                    }
+
+                    GameObject fx = slashFx ? candidate.slashFx : candidate.hitFx;
+                    if (fx == null)
+                    {
+                        continue;
+                    }
+
+                    if (cachedFallbackSlashFx == null && candidate.slashFx != null)
+                    {
+                        cachedFallbackSlashFx = candidate.slashFx;
+                    }
+
+                    if (cachedFallbackHitFx == null && candidate.hitFx != null)
+                    {
+                        cachedFallbackHitFx = candidate.hitFx;
+                    }
+
+                    return fx;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] 搜索近战特效引用失败: " + e.Message);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -434,6 +536,35 @@ namespace BossRush
             {
                 SetLayerRecursively(child.gameObject, layer);
             }
+        }
+    }
+
+
+    internal sealed class FenHuangHalberdSlashFxCompat : MonoBehaviour
+    {
+        private static readonly Vector3 HiddenPosition = new Vector3(0f, -9999f, 0f);
+        private const float Lifetime = 0.3f;
+
+        internal static GameObject CreateTemplate(Vector3 scale)
+        {
+            GameObject template = new GameObject("FenHuangHalberd_SlashFxTemplate");
+            template.transform.position = HiddenPosition;
+            template.transform.localScale = scale;
+            template.hideFlags = HideFlags.HideAndDontSave;
+            UnityEngine.Object.DontDestroyOnLoad(template);
+            template.AddComponent<FenHuangHalberdSlashFxCompat>();
+            return template;
+        }
+
+        private void Awake()
+        {
+            if (gameObject.name.IndexOf("(Clone)", StringComparison.Ordinal) >= 0)
+            {
+                UnityEngine.Object.Destroy(gameObject, Lifetime);
+                return;
+            }
+
+            transform.position = HiddenPosition;
         }
     }
 }

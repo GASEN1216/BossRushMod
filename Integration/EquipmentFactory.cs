@@ -1509,6 +1509,19 @@ namespace BossRush
             target.handheldSocket = template != null ? template.handheldSocket : HandheldSocketTypes.normalHandheld;
             target.handAnimationType = template != null ? template.handAnimationType : HandheldAnimationType.meleeWeapon;
 
+            if (template != null)
+            {
+                if (template.hitFx != null)
+                {
+                    target.hitFx = template.hitFx;
+                }
+
+                if (template.slashFx != null)
+                {
+                    target.slashFx = template.slashFx;
+                }
+            }
+
             EnsureSocketsListInitialized(target);
 
             try
