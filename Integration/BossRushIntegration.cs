@@ -45,7 +45,7 @@ namespace BossRush
         private static StockShop.Entry injectedTicketEntry = null;  // 缓存注入的船票条目引用
         
         // 冒险家日志库存持久化相关
-        private const int ADVENTURE_JOURNAL_TYPE_ID = 500007;  // 冒险家日志物品 ID
+        private const int ADVENTURE_JOURNAL_TYPE_ID = BossRushItemIds.AdventureJournal;  // 冒险家日志物品 ID
         private const string JOURNAL_STOCK_SAVE_KEY = "BossRush_JournalStock";
         private const int JOURNAL_DEFAULT_MAX_STOCK = 1;  // 最大库存为1
         private static int cachedJournalStock = -1;  // -1 表示未初始化，需要从存档读取
@@ -362,7 +362,7 @@ namespace BossRush
                 PeaceCharmConfig.RegisterConfigurator();  // 平安护身符配置器
                 DingdangDrawingConfig.RegisterConfigurator();
                 AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
-                ItemFactory.RegisterConfigurator(500013, ReverseScaleConfig.ConfigureItem);
+                ItemFactory.RegisterConfigurator(ReverseScaleConfig.TotemTypeId, ReverseScaleConfig.ConfigureItem);
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
                 FactionFlagConfig.RegisterConfigurators();  // 营旗配置器（Mode E）
                 RespawnItemConfig.RegisterConfigurators();  // 刷怪消耗品配置器（Mode E）

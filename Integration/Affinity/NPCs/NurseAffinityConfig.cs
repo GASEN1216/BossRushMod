@@ -161,7 +161,7 @@ namespace BossRush
                     {
                         // 所有NPC都喜欢的物品
                         { 1254, 500 },      // +500好感度
-                        { 500002, 150 },    // +150好感度
+                        { BossRushItemIds.BirthdayCake, 150 },    // +150好感度
                         { DiamondConfig.TYPE_ID, 80 },  // 钻石 +80好感度
                         { DiamondRingConfig.TYPE_ID, DiamondRingConfig.AFFINITY_BONUS }  // 钻石戒指 +500好感度
                     };

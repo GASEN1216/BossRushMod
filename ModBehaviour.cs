@@ -3100,10 +3100,11 @@ namespace BossRush
             {
                 DevLog("[BossRush] F9按下，打开传送地图UI");
                 
-                // 给玩家背包发送一张BossRush船票 (id=500001)
+                // 给玩家背包发送一张 BossRush 船票
                 try
                 {
-                    Item ticket = ItemAssetsCollection.InstantiateSync(500001);
+                    int ticketTypeId = bossRushTicketTypeId > 0 ? bossRushTicketTypeId : BossRushItemIds.BossRushTicket;
+                    Item ticket = ItemAssetsCollection.InstantiateSync(ticketTypeId);
                     if (ticket != null)
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(ticket, false);

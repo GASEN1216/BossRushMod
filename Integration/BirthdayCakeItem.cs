@@ -36,7 +36,7 @@ namespace BossRush
         /// <summary>
         /// 生日蛋糕物品 TypeID（需要与 Unity 预制体中的 typeID 一致）
         /// </summary>
-        private const int BIRTHDAY_CAKE_TYPE_ID = 500002;
+        private const int BIRTHDAY_CAKE_TYPE_ID = BossRushItemIds.BirthdayCake;
         
         /// <summary>
         /// 生日蛋糕显示名称（中文）

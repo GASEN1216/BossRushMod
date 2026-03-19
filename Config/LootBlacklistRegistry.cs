@@ -41,19 +41,38 @@ namespace BossRush
                 1052, 1053, 1054, 1062, 1064, 1065, 1066, 1067, 1068,
                 1069, 1073, 1092, 1158, 1164, 1214, 1225, 1249, 1273,
 
-                500003,
-                500004,
-                500005,
+                DragonDescendantConfig.DRAGON_HELM_TYPE_ID,
+                DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID,
+                DragonBreathConfig.WEAPON_TYPE_ID,
 
-                500010,
+                FlightConfig.TotemTypeIdBase,
 
-                500011,
-                500012,
-                500013,
-                500034,
-                500035,
+                DragonKingConfig.DRAGON_KING_HELM_TYPE_ID,
+                DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID,
+                ReverseScaleConfig.TotemTypeId,
+                DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID,
+                DragonKingBossGunConfig.WeaponTypeId,
 
-                500016,
+                FactionFlagConfig.RANDOM_FLAG_TYPE_ID,
+                FactionFlagConfig.SCAV_FLAG_TYPE_ID,
+                FactionFlagConfig.USEC_FLAG_TYPE_ID,
+                FactionFlagConfig.BEAR_FLAG_TYPE_ID,
+                FactionFlagConfig.LAB_FLAG_TYPE_ID,
+                FactionFlagConfig.WOLF_FLAG_TYPE_ID,
+                FactionFlagConfig.PLAYER_FLAG_TYPE_ID,
+
+                RespawnItemConfig.TAUNT_SMOKE_TYPE_ID,
+                RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID,
+                RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID,
+                RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID,
+
+                BloodhuntTransponderConfig.TYPE_ID,
+                FoldableCoverPackConfig.TYPE_ID,
+                ReinforcedRoadblockPackConfig.TYPE_ID,
+                BarbedWirePackConfig.TYPE_ID,
+                EmergencyRepairSprayConfig.TYPE_ID,
+
+                DingdangDrawingConfig.TYPE_ID,
             };
 
             foreach (int id in blacklistIds)

@@ -829,4 +829,15 @@ namespace BossRush
 
         #endregion
     }
+
+    /// <summary>
+    /// BossRush 物品 TypeID 常量表。
+    /// 仅收录当前没有独立 Config 类、但会被多个模块复用的物品 ID。
+    /// </summary>
+    public static class BossRushItemIds
+    {
+        public const int BossRushTicket = 500001;
+        public const int BirthdayCake = 500002;
+        public const int AdventureJournal = 500007;
+    }
 }

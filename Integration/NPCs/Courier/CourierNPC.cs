@@ -467,7 +467,7 @@ namespace BossRush
         private const string FIRST_MEET_SAVE_KEY = "BossRush_CourierFirstMeet";
 
         // Wiki Book 物品 TypeID
-        private const int WIKI_BOOK_TYPE_ID = 500007;
+        private const int WIKI_BOOK_TYPE_ID = BossRushItemIds.AdventureJournal;
 
         // 对话进行中标志
         private bool isInFirstMeetDialogue = false;
