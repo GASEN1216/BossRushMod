@@ -444,6 +444,8 @@ namespace BossRush
             // 预定义分类标题
             switch (categoryId.ToLower())
             {
+                case "_wiki_link":
+                    return isChinese ? "BossRush Wiki" : "BossRush Wiki";
                 case "start":
                     return isChinese ? "入门" : "Getting Started";
                 case "mechanics":

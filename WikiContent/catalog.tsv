@@ -1,4 +1,5 @@
 categoryId	entryId	titleKey_zh	titleKey_en	order
+_wiki_link	_wiki_link__home	BossRush Wiki	BossRush Wiki	0
 start	start__overview	Mod 简介	Mod Overview	1
 start	start__how_to_enter	安装与启用	Installation & Activation	2
 start	start__first_run	新手上路	Getting Started	3

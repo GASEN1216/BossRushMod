@@ -946,11 +946,19 @@ namespace BossRush
         /// </summary>
         private void SelectCategory(string categoryId)
         {
+            // 特殊分类：点击直接打开外部链接
+            if (categoryId == "_wiki_link")
+            {
+                ModBehaviour.DevLog("[WikiUIManager] 打开 BossRush Wiki 网页");
+                Application.OpenURL("https://bossrushmod.pages.dev/");
+                return;
+            }
+
             if (currentCategoryId == categoryId)
             {
                 return;
             }
-            
+
             currentCategoryId = categoryId;
             RefreshEntryList(categoryId);
         }
