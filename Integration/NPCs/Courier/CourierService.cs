@@ -50,6 +50,12 @@ namespace BossRush
         private static GameObject sendButtonObject;
         private static Button sendButton;
         private static TextMeshProUGUI buttonText;
+
+        // 玩家背包侧的"一键存入"按钮
+        private static GameObject quickStoreButtonObject;
+        private static Button quickStoreButton;
+        private static TextMeshProUGUI quickStoreButtonText;
+        private static Inventory playerInventory;
         
         // 服务状态
         private static bool isServiceActive = false;
@@ -144,6 +150,8 @@ namespace BossRush
         private static FieldInfo inventoryReferenceField = null;
         private static FieldInfo lootTargetFadeGroupField = null;
         private static FieldInfo lootTargetInventoryDisplayField = null;  // 容器区域的 InventoryDisplay
+        private static FieldInfo playerInventoryDisplayField = null;      // 玩家背包区域的 InventoryDisplay
+        private static FieldInfo characterInventoryDisplayField = null;   // 旧版本/其他布局的玩家背包区域
         private static FieldInfo sortButtonField = null;  // InventoryDisplay 中的整理按钮
         private static FieldInfo lootboxDisplayNameKeyField = null;  // InteractableLootbox 的 displayNameKey 字段
         private static bool reflectionInitialized = false;
@@ -205,6 +213,8 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[CourierService] [WARNING] npcTransform 为空！");
             }
+
+            BindPlayerInventory();
             
             // 创建快递容器
             CreateCourierContainer();
@@ -558,6 +568,10 @@ namespace BossRush
                 
                 // LootView 的 lootTargetInventoryDisplay 字段（容器区域的 InventoryDisplay）
                 lootTargetInventoryDisplayField = typeof(LootView).GetField("lootTargetInventoryDisplay", privateInstance);
+
+                // LootView 的玩家背包区域字段
+                playerInventoryDisplayField = typeof(LootView).GetField("playerInventoryDisplay", privateInstance);
+                characterInventoryDisplayField = typeof(LootView).GetField("characterInventoryDisplay", privateInstance);
                 
                 // InventoryDisplay 的 sortButton 字段（整理按钮，用于定位发送按钮）
                 sortButtonField = typeof(Duckov.UI.InventoryDisplay).GetField("sortButton", privateInstance);
@@ -811,6 +825,7 @@ namespace BossRush
             }
             
             CreateSendButton();
+            CreateQuickStoreButton();
         }
         
         /// <summary>
@@ -926,66 +941,101 @@ namespace BossRush
         /// </summary>
         private static void UpdateButtonState()
         {
-            if (sendButton == null) return;
-            
             bool hasItems = courierInventory != null && courierInventory.GetItemCount() > 0;
             int fee = hasItems ? CalculateDeliveryFee(courierInventory) : 0;
             bool canAfford = hasItems && fee > 0 && CanAffordDeliveryInternal(fee);
-            
-            // 获取本地化文本（从本地化系统获取）
-            string sendText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Send");
-            string emptyText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Empty");
-            
-            // 更新按钮文本和状态
-            string displayText;
-            bool interactable;
-            Color buttonColor;
-            
-            if (!hasItems)
+
+            if (sendButton != null)
             {
-                displayText = emptyText;
-                interactable = false;
-                buttonColor = Color.gray;
+                string sendText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Send");
+                string emptyText = LocalizationHelper.GetLocalizedText("BossRush_CourierService_Empty");
+
+                string displayText;
+                bool interactable;
+                Color buttonColor;
+
+                if (!hasItems)
+                {
+                    displayText = emptyText;
+                    interactable = false;
+                    buttonColor = Color.gray;
+                }
+                else if (!canAfford)
+                {
+                    displayText = sendText + " (<color=#FF0000>￥" + fee + "</color>)";
+                    interactable = false;
+                    buttonColor = Color.gray;
+                }
+                else
+                {
+                    displayText = sendText + " (￥" + fee + ")";
+                    interactable = true;
+                    buttonColor = new Color(0.2f, 0.8f, 0.2f);
+                }
+
+                ApplyButtonState(sendButton, sendButtonObject, buttonText, displayText, interactable, buttonColor, true);
             }
-            else if (!canAfford)
+
+            if (quickStoreButton != null)
             {
-                // 资金不足时显示红色金额
-                displayText = sendText + " (<color=#FF0000>￥" + fee + "</color>)";
-                interactable = false;
-                buttonColor = Color.gray;
+                int transferableCount = CountPlayerInventoryItems();
+                bool canQuickStore = courierInventory != null && transferableCount > 0;
+                string quickStoreLabel = L10n.T("一键存入", "Store All");
+                string quickStoreText = canQuickStore
+                    ? quickStoreLabel + " (" + transferableCount + ")"
+                    : quickStoreLabel;
+                Color quickStoreColor = canQuickStore ? new Color(0.2f, 0.8f, 0.2f) : Color.gray;
+
+                ApplyButtonState(
+                    quickStoreButton,
+                    quickStoreButtonObject,
+                    quickStoreButtonText,
+                    quickStoreText,
+                    canQuickStore,
+                    quickStoreColor,
+                    false);
             }
-            else
+        }
+
+        /// <summary>
+        /// 统一应用按钮文案、颜色和交互状态。
+        /// </summary>
+        private static void ApplyButtonState(
+            Button targetButton,
+            GameObject targetObject,
+            TextMeshProUGUI targetText,
+            string displayText,
+            bool interactable,
+            Color buttonColor,
+            bool useRichText)
+        {
+            if (targetButton == null)
             {
-                // 可以支付时显示绿色金额
-                displayText = sendText + " (￥" + fee + ")";
-                interactable = true;
-                buttonColor = new Color(0.2f, 0.8f, 0.2f);
+                return;
             }
-            
-            // 应用文本
-            if (buttonText != null)
+
+            if (targetText != null)
             {
-                buttonText.text = displayText;
-                buttonText.richText = true;  // 启用富文本支持
+                targetText.text = displayText;
+                targetText.richText = useRichText;
             }
-            else if (sendButtonObject != null)
+            else if (targetObject != null)
             {
-                var legacyText = sendButtonObject.GetComponentInChildren<Text>();
+                Text legacyText = targetObject.GetComponentInChildren<Text>();
                 if (legacyText != null)
                 {
                     legacyText.text = displayText;
-                    legacyText.supportRichText = true;
+                    legacyText.supportRichText = useRichText;
                 }
             }
-            
-            // 应用可交互性和颜色
-            sendButton.interactable = interactable;
-            var colors = sendButton.colors;
+
+            targetButton.interactable = interactable;
+            ColorBlock colors = targetButton.colors;
             colors.normalColor = buttonColor;
             colors.highlightedColor = buttonColor * 1.1f;
             colors.pressedColor = buttonColor * 0.9f;
             colors.disabledColor = Color.gray;
-            sendButton.colors = colors;
+            targetButton.colors = colors;
         }
         
         /// <summary>
@@ -996,6 +1046,15 @@ namespace BossRush
             ModBehaviour.DevLog("[CourierService] 发送按钮被点击");
             ExecuteDelivery();
         }
+
+        /// <summary>
+        /// 玩家背包侧"一键存入"按钮点击事件。
+        /// </summary>
+        private static void OnQuickStoreButtonClicked()
+        {
+            ModBehaviour.DevLog("[CourierService] 一键存入按钮被点击");
+            MovePlayerInventoryItemsToCourier();
+        }
         
         /// <summary>
         /// 容器内容变化事件（事件驱动，无需每帧检测）
@@ -1004,6 +1063,219 @@ namespace BossRush
         {
             // 立即更新按钮状态
             UpdateButtonState();
+        }
+
+        /// <summary>
+        /// 玩家背包内容变化事件。
+        /// </summary>
+        private static void OnPlayerInventoryContentChanged(Inventory inventory, int index)
+        {
+            UpdateButtonState();
+        }
+
+        /// <summary>
+        /// 绑定当前玩家背包，便于实时刷新一键存入按钮状态。
+        /// </summary>
+        private static void BindPlayerInventory()
+        {
+            if (playerInventory != null)
+            {
+                playerInventory.onContentChanged -= OnPlayerInventoryContentChanged;
+                playerInventory = null;
+            }
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.CharacterItem != null)
+                {
+                    playerInventory = player.CharacterItem.Inventory;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 绑定玩家背包失败: " + e.Message);
+            }
+
+            if (playerInventory != null)
+            {
+                playerInventory.onContentChanged += OnPlayerInventoryContentChanged;
+            }
+        }
+
+        /// <summary>
+        /// 统计当前玩家背包里的根物品数量。
+        /// </summary>
+        private static int CountPlayerInventoryItems()
+        {
+            if (playerInventory == null)
+            {
+                BindPlayerInventory();
+            }
+
+            if (playerInventory == null || playerInventory.Content == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < playerInventory.Content.Count; i++)
+            {
+                if (playerInventory.Content[i] != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// 收集玩家背包中的根物品，用于一键搬运到快递箱。
+        /// </summary>
+        private static List<Item> CollectPlayerInventoryRootItems()
+        {
+            List<Item> items = new List<Item>();
+
+            if (playerInventory == null)
+            {
+                BindPlayerInventory();
+            }
+
+            if (playerInventory == null || playerInventory.Content == null)
+            {
+                return items;
+            }
+
+            for (int i = 0; i < playerInventory.Content.Count; i++)
+            {
+                Item item = playerInventory.Content[i];
+                if (item != null)
+                {
+                    items.Add(item);
+                }
+            }
+
+            return items;
+        }
+
+        /// <summary>
+        /// 将玩家背包里的根物品批量搬运到快递容器。
+        /// </summary>
+        private static void MovePlayerInventoryItemsToCourier()
+        {
+            if (courierInventory == null)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 快递容器不存在，无法执行一键存入");
+                return;
+            }
+
+            List<Item> itemsToMove = CollectPlayerInventoryRootItems();
+            if (itemsToMove.Count == 0)
+            {
+                NotificationText.Push(L10n.T("背包里没有可存入的物品", "No items in inventory to store"));
+                UpdateButtonState();
+                return;
+            }
+
+            int movedCount = 0;
+            int failedCount = 0;
+
+            for (int i = 0; i < itemsToMove.Count; i++)
+            {
+                Item item = itemsToMove[i];
+                if (item == null)
+                {
+                    continue;
+                }
+
+                string itemName = item.DisplayName;
+
+                try
+                {
+                    item.Detach();
+
+                    bool added = courierInventory.AddAndMerge(item, 0);
+                    if (added)
+                    {
+                        movedCount++;
+                        ModBehaviour.DevLog("[CourierService] 一键存入成功: " + itemName);
+                        continue;
+                    }
+
+                    failedCount++;
+                    RestoreItemToPlayerInventory(item, itemName);
+                }
+                catch (Exception e)
+                {
+                    failedCount++;
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 一键存入失败: " + itemName + ", " + e.Message);
+                    RestoreItemToPlayerInventory(item, itemName);
+                }
+            }
+
+            if (movedCount > 0 && failedCount > 0)
+            {
+                NotificationText.Push(L10n.T(
+                    "已存入 " + movedCount + " 件物品，" + failedCount + " 件未能存入",
+                    "Stored " + movedCount + " items, " + failedCount + " could not be stored"));
+            }
+            else if (movedCount > 0)
+            {
+                NotificationText.Push(L10n.T(
+                    "已存入 " + movedCount + " 件物品到快递箱",
+                    "Stored " + movedCount + " items into the courier box"));
+            }
+            else
+            {
+                NotificationText.Push(L10n.T(
+                    "没有物品存入快递箱，可能已经满了",
+                    "No items were stored, the courier box may be full"));
+            }
+
+            UpdateButtonState();
+        }
+
+        /// <summary>
+        /// 一键存入失败时，尽量把物品恢复回玩家身上。
+        /// </summary>
+        private static void RestoreItemToPlayerInventory(Item item, string itemName)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (playerInventory != null && playerInventory.AddAndMerge(item, 0))
+                {
+                    ModBehaviour.DevLog("[CourierService] 已恢复物品到玩家背包: " + itemName);
+                    return;
+                }
+            }
+            catch (Exception restoreEx)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 恢复物品到背包失败: " + itemName + ", " + restoreEx.Message);
+            }
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null)
+                {
+                    item.Drop(player, true);
+                    ModBehaviour.DevLog("[CourierService] 已将未恢复物品丢到玩家脚下: " + itemName);
+                    return;
+                }
+            }
+            catch (Exception dropEx)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 丢弃未恢复物品失败: " + itemName + ", " + dropEx.Message);
+            }
+
+            item.DestroyTree();
+            ModBehaviour.DevLog("[CourierService] [WARNING] 未恢复物品已销毁: " + itemName);
         }
         
         /// <summary>
@@ -1367,6 +1639,98 @@ namespace BossRush
                 DropItemsToGround(player);
             }
         }
+
+        /// <summary>
+        /// 创建玩家背包侧的"一键存入"按钮。
+        /// 为避免覆盖原有整理按钮，按钮会放在整理按钮上方。
+        /// </summary>
+        private static void CreateQuickStoreButton()
+        {
+            if (LootView.Instance == null) return;
+
+            try
+            {
+                Duckov.UI.InventoryDisplay playerInventoryDisplay = null;
+                if (playerInventoryDisplayField != null)
+                {
+                    playerInventoryDisplay = playerInventoryDisplayField.GetValue(LootView.Instance) as Duckov.UI.InventoryDisplay;
+                }
+
+                if (playerInventoryDisplay == null && characterInventoryDisplayField != null)
+                {
+                    playerInventoryDisplay = characterInventoryDisplayField.GetValue(LootView.Instance) as Duckov.UI.InventoryDisplay;
+                }
+
+                if (playerInventoryDisplay == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 无法获取玩家背包的 InventoryDisplay，跳过创建一键存入按钮");
+                    return;
+                }
+
+                Button sortButton = null;
+                if (sortButtonField != null)
+                {
+                    sortButton = sortButtonField.GetValue(playerInventoryDisplay) as Button;
+                }
+
+                if (sortButton == null)
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 无法获取玩家背包整理按钮，跳过创建一键存入按钮");
+                    return;
+                }
+
+                quickStoreButtonObject = UnityEngine.Object.Instantiate(sortButton.gameObject, sortButton.transform.parent);
+                quickStoreButtonObject.name = "CourierQuickStoreButton";
+                quickStoreButtonObject.SetActive(true);
+
+                RectTransform rt = quickStoreButtonObject.GetComponent<RectTransform>();
+                RectTransform sortRt = sortButton.GetComponent<RectTransform>();
+                if (rt != null && sortRt != null)
+                {
+                    rt.anchorMin = sortRt.anchorMin;
+                    rt.anchorMax = sortRt.anchorMax;
+                    rt.pivot = sortRt.pivot;
+                    rt.anchoredPosition = sortRt.anchoredPosition + new Vector2(0f, sortRt.sizeDelta.y + 8f);
+                    rt.sizeDelta = new Vector2(sortRt.sizeDelta.x + 80f, sortRt.sizeDelta.y);
+                }
+
+                LayoutElement layoutElement = quickStoreButtonObject.GetComponent<LayoutElement>();
+                if (layoutElement != null)
+                {
+                    if (layoutElement.preferredWidth > 0)
+                    {
+                        layoutElement.preferredWidth += 80f;
+                    }
+
+                    if (layoutElement.minWidth > 0)
+                    {
+                        layoutElement.minWidth += 80f;
+                    }
+                }
+
+                ContentSizeFitter contentSizeFitter = quickStoreButtonObject.GetComponent<ContentSizeFitter>();
+                if (contentSizeFitter != null)
+                {
+                    contentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                }
+
+                quickStoreButton = quickStoreButtonObject.GetComponent<Button>();
+                if (quickStoreButton != null)
+                {
+                    quickStoreButton.onClick.RemoveAllListeners();
+                    quickStoreButton.onClick.AddListener(OnQuickStoreButtonClicked);
+                }
+
+                quickStoreButtonText = quickStoreButtonObject.GetComponentInChildren<TextMeshProUGUI>();
+                UpdateButtonState();
+
+                ModBehaviour.DevLog("[CourierService] 一键存入按钮创建成功");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 创建一键存入按钮失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
         
         /// <summary>
         /// 将容器中的所有物品丢到地上（备用方案，当无法获取玩家背包时）
@@ -1558,6 +1922,12 @@ namespace BossRush
             {
                 courierInventory.onContentChanged -= OnContainerContentChanged;
             }
+
+            if (playerInventory != null)
+            {
+                playerInventory.onContentChanged -= OnPlayerInventoryContentChanged;
+                playerInventory = null;
+            }
             
             // 取消 OnStopLoot 事件订阅
             InteractableLootbox.OnStopLoot -= OnLootboxStopLoot;
@@ -1569,6 +1939,14 @@ namespace BossRush
                 sendButtonObject = null;
                 sendButton = null;
                 buttonText = null;
+            }
+
+            if (quickStoreButtonObject != null)
+            {
+                UnityEngine.Object.Destroy(quickStoreButtonObject);
+                quickStoreButtonObject = null;
+                quickStoreButton = null;
+                quickStoreButtonText = null;
             }
             
             // 销毁容器对象
