@@ -3500,6 +3500,64 @@ namespace BossRush
             DevLog("[BossRush] EnsureNextWaveEntryPoint: 在 " + 30f + " 秒内仍未能确认 BossRush_NextWaveEntry 存在, 共尝试 " + attempt + " 次，放弃重试。");
         }
 
+        private enum BossRushEntryMode
+        {
+            Normal,
+            ModeD,
+            ModeE,
+            ModeF
+        }
+
+        /// <summary>
+        /// 统一判定 BossRush 入场模式，优先级：Mode E > Mode F > Mode D > Normal
+        /// </summary>
+        private BossRushEntryMode DetermineBossRushEntryMode(string context)
+        {
+            try
+            {
+                bool? isPlayerNaked = null;
+
+                var (modeEFaction, modeEFlag) = DetectFactionFlag();
+                if (modeEFaction.HasValue && modeEFlag != null)
+                {
+                    isPlayerNaked = IsPlayerNaked();
+                    if (isPlayerNaked.Value)
+                    {
+                        return BossRushEntryMode.ModeE;
+                    }
+                }
+
+                Item ticket = DetectBossRushTicketItem();
+                bool hasPrepaidTicket = BossRushMapSelectionHelper.HasPendingPrepaidTicket();
+                Item transponder = DetectBloodhuntTransponder();
+                if ((ticket != null || hasPrepaidTicket) && transponder != null)
+                {
+                    if (IsPlayerNakedForModeF())
+                    {
+                        return BossRushEntryMode.ModeF;
+                    }
+
+                    DevLog("[BossRush] " + context + ": 检测到船票+血猎收发器，但玩家不满足 Mode F 裸装条件，不进入 Mode F，继续后续入场判定");
+                }
+
+                if (!isPlayerNaked.HasValue)
+                {
+                    isPlayerNaked = IsPlayerNaked();
+                }
+
+                if (isPlayerNaked.Value)
+                {
+                    return BossRushEntryMode.ModeD;
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] " + context + ": 检测 BossRush 入场模式失败: " + e.Message);
+            }
+
+            return BossRushEntryMode.Normal;
+        }
+
         private System.Collections.IEnumerator SetupBossRushInDemoChallenge(Scene scene)
         {
             // 等待场景初始化（缩短等待时间，尽快传送玩家）
@@ -3507,36 +3565,12 @@ namespace BossRush
             
             // 提前检测 Mode E / Mode F / Mode D 条件（Mode E > Mode F > Mode D）
             // 必须在禁用 spawner 之前检测，因为 Mode E 需要先扫描 CharacterSpawnerRoot 位置
-            bool shouldStartModeD = false;
-            bool shouldStartModeE = false;
-            bool shouldStartModeF = false;
-            try
-            {
-                var (modeEFaction, modeEFlag) = DetectFactionFlag();
-                if (modeEFaction.HasValue && modeEFlag != null && IsPlayerNaked())
-                {
-                    shouldStartModeE = true;
-                    DevLog("[BossRush] 检测到营旗+裸装入场，将启动 Mode E");
-                }
-                else if (DetectBossRushTicketItem() != null && DetectBloodhuntTransponder() != null && IsPlayerNakedForModeF())
-                {
-                    shouldStartModeF = true;
-                    DevLog("[BossRush] 检测到船票+血猎收发器+裸装入场，将启动 Mode F");
-                }
-                else if (IsPlayerNaked())
-                {
-                    shouldStartModeD = true;
-                    DevLog("[BossRush] 检测到裸体入场（无营旗无收发器），将启动 Mode D");
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 检测 Mode E/F/D 条件失败: " + e.Message);
-            }
+            BossRushEntryMode entryMode = DetermineBossRushEntryMode("SetupBossRushInDemoChallenge");
 
             // Mode E 提前分支：先扫描刷怪点，再禁用spawner和清理敌人，跳过路牌/气泡/快递员
-            if (shouldStartModeE)
+            if (entryMode == BossRushEntryMode.ModeE)
             {
+                DevLog("[BossRush] 检测到营旗+裸装入场，将启动 Mode E");
                 ScheduleModeEStartupWarmup("DemoChallenge");
                 PreCacheMapSpawnerPositions();
                 // Mode E 需要先扫描 CharacterSpawnerRoot 位置作为刷怪点（必须在 DisableAllSpawners 之前）
@@ -3550,12 +3584,14 @@ namespace BossRush
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeE();
                 SpawnCommonNPCs("DEMO场景 Mode E 初始化完成");
+                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                 yield break;
             }
 
             // Mode F 提前分支：复用 Mode E 的地图初始化，叠加 Mode F 状态机
-            if (shouldStartModeF)
+            if (entryMode == BossRushEntryMode.ModeF)
             {
+                DevLog("[BossRush] 检测到船票+血猎收发器+裸装入场，将启动 Mode F");
                 ScheduleModeEStartupWarmup("DemoChallenge_ModeF");
                 PreCacheMapSpawnerPositions();
 
@@ -3573,6 +3609,7 @@ namespace BossRush
                 {
                     DevLog("[BossRush] [WARNING] Mode F 启动失败，已跳过 Mode F 额外 NPC 生成");
                 }
+                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                 yield break;
             }
             
@@ -3673,13 +3710,15 @@ namespace BossRush
             StartCoroutine(EnsureArenaEntryPointCreated());
 
             // 延迟启动 Mode D
-            if (shouldStartModeD)
+            if (entryMode == BossRushEntryMode.ModeD)
             {
+                DevLog("[BossRush] 检测到裸体入场（无营旗无收发器），将启动 Mode D");
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeD();
             }
             
             SpawnCommonNPCs("DEMO场景初始化完成");
+            BossRushMapSelectionHelper.ClearPendingEntryFlowState();
         }
 
         /// <summary>

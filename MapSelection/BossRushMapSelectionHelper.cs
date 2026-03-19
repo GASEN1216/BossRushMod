@@ -33,6 +33,13 @@ namespace BossRush
     /// </summary>
     public static class BossRushMapSelectionHelper
     {
+        private enum BossRushEntryFlowSource
+        {
+            None,
+            MapSelectionUi,
+            DirectTeleport
+        }
+
         // BossRush 竞技场场景 ID（保留兼容性，从配置系统获取第一个地图）
         public static string BossRushSceneID
         {
@@ -79,6 +86,10 @@ namespace BossRush
         
         // 当前选中的地图条目索引（用于传送后处理）
         private static int pendingMapEntryIndex = -1;
+
+        // 地图选择 UI 流程与“船票已被 UI 扣除”的跨场景状态
+        private static BossRushEntryFlowSource pendingEntryFlowSource = BossRushEntryFlowSource.None;
+        private static bool pendingPrepaidTicketForCurrentEntry = false;
         
         // 是否已初始化 - 保留用于未来扩展
         #pragma warning disable CS0414
@@ -143,6 +154,52 @@ namespace BossRush
             Cost cost = CreateBossRushCost();
             return cost.Enough;
         }
+
+        /// <summary>
+        /// 标记本次 BossRush 启动来自地图选择 UI。
+        /// 仅在实际进入目标地图后，才会把船票视为“已由 UI 预扣”。
+        /// </summary>
+        public static void MarkEntryFlowFromMapSelectionUi()
+        {
+            pendingEntryFlowSource = BossRushEntryFlowSource.MapSelectionUi;
+            pendingPrepaidTicketForCurrentEntry = false;
+        }
+
+        /// <summary>
+        /// 标记本次 BossRush 启动来自直接传送路径（不走地图选择扣票）。
+        /// </summary>
+        public static void MarkEntryFlowFromDirectTeleport()
+        {
+            pendingEntryFlowSource = BossRushEntryFlowSource.DirectTeleport;
+            pendingPrepaidTicketForCurrentEntry = false;
+        }
+
+        /// <summary>
+        /// 目标 BossRush 场景已开始加载。
+        /// 若本次来自地图选择 UI，则视为船票已在 UI 确认阶段扣除。
+        /// </summary>
+        public static void MarkTargetSceneLoadStarted()
+        {
+            pendingPrepaidTicketForCurrentEntry =
+                pendingEntryFlowSource == BossRushEntryFlowSource.MapSelectionUi;
+        }
+
+        /// <summary>
+        /// 当前这次 BossRush 入场，船票是否已在地图选择 UI 中预扣。
+        /// </summary>
+        public static bool HasPendingPrepaidTicket()
+        {
+            return pendingPrepaidTicketForCurrentEntry;
+        }
+
+        /// <summary>
+        /// 清理当前 BossRush 入场的预扣票状态，避免串到下一次。
+        /// </summary>
+        public static void ClearPendingEntryFlowState()
+        {
+            pendingEntryFlowSource = BossRushEntryFlowSource.None;
+            pendingPrepaidTicketForCurrentEntry = false;
+        }
         
         /// <summary>
         /// 打开带有 BossRush 条目的地图选择 UI
@@ -151,6 +208,8 @@ namespace BossRush
         {
             try
             {
+                MarkEntryFlowFromMapSelectionUi();
+
                 // 设置 BossRush 传送标记，确保场景加载后触发 BossRush 设置逻辑
                 SetBossRushArenaPlanned(true);
                 
@@ -1393,6 +1452,8 @@ namespace BossRush
         {
             try
             {
+                MarkEntryFlowFromDirectTeleport();
+
                 ModBehaviour mod = ModBehaviour.Instance;
                 if (mod != null)
                 {

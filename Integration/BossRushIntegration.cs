@@ -1195,6 +1195,7 @@ namespace BossRush
                     // 只有在通过 BossRush 启动且是默认传送位置的地图时才执行竞技场逻辑
                     if (bossRushArenaPlanned)
                     {
+                        BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
                         InitializeEnemyPresets();
                         InitializeItemValueCacheAsync(); // 异步初始化物品价值缓存
                         InitializeBossPoolFilter();
@@ -1244,6 +1245,7 @@ namespace BossRush
                     if (targetSubScene != null && scene.name == targetSubScene && customPos.HasValue)
                     {
                         DevLog("[BossRush] 检测到目标子场景加载: " + scene.name + ", 执行自定义传送到: " + customPos.Value);
+                        BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
                         bossRushArenaPlanned = false;
                         
                         // 延迟传送玩家到自定义位置
@@ -1278,6 +1280,7 @@ namespace BossRush
                         DevLog("[BossRush] 非目标场景: " + scene.name + ", 重置传送标记");
                         bossRushArenaPlanned = false;
                         BossRushMapSelectionHelper.ClearPendingMapEntry();
+                        BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                     }
                 }
                 else
@@ -1472,19 +1475,14 @@ namespace BossRush
             // 额外等待一小段时间，确保游戏自身的出生点逻辑已执行完毕
             yield return new WaitForSeconds(0.5f);
             
-            // [Mode E 修复] 检测是否为 Mode E 入场（营旗+裸装），如果是则跳过传送
+            // [Mode E 修复] 使用统一入场判定，只在 Mode E 时跳过 customSpawnPos 传送
             // Mode E 设计为"玩家留在地图默认出生点"，不需要传送到 customSpawnPos
-            bool isModeEEntry = false;
-            try
+            BossRushEntryMode entryMode = DetermineBossRushEntryMode("TeleportPlayerToCustomPosition");
+            bool isModeEEntry = entryMode == BossRushEntryMode.ModeE;
+            if (isModeEEntry)
             {
-                var (modeEFaction, modeEFlag) = DetectFactionFlag();
-                if (modeEFaction.HasValue && modeEFlag != null && IsPlayerNaked())
-                {
-                    isModeEEntry = true;
-                    DevLog("[BossRush] TeleportPlayerToCustomPosition: 检测到 Mode E 入场条件，跳过传送");
-                }
+                DevLog("[BossRush] TeleportPlayerToCustomPosition: 检测到 Mode E 入场条件，跳过传送");
             }
-            catch { }
             
             // 传送玩家到目标位置
             try
@@ -1572,7 +1570,7 @@ namespace BossRush
                     if (mapConfig != null && mapConfig.customSpawnPos.HasValue)
                     {
                         // 启动该地图的 BossRush 初始化协程
-                        StartCoroutine(SetupBossRushInGroundZero(finalPosition));
+                        StartCoroutine(SetupBossRushInGroundZero(finalPosition, entryMode));
                     }
                 }
                 else
@@ -1679,6 +1677,7 @@ namespace BossRush
                     bossRushArenaPlanned = false;
                     StartCoroutine(TeleportPlayerToCustomPosition(targetPosition));
                     BossRushMapSelectionHelper.ClearPendingMapEntry();
+                    BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                 }
             }
             catch (System.Exception e)
@@ -1686,13 +1685,14 @@ namespace BossRush
                 DevLog("[BossRush] ForceTeleportToSubScene 失败: " + e.Message);
                 bossRushArenaPlanned = false;
                 BossRushMapSelectionHelper.ClearPendingMapEntry();
+                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
             }
         }
         
         /// <summary>
         /// 在零号区设置 BossRush 模式（类似 SetupBossRushInDemoChallenge）
         /// </summary>
-        private System.Collections.IEnumerator SetupBossRushInGroundZero(Vector3 playerPosition)
+        private System.Collections.IEnumerator SetupBossRushInGroundZero(Vector3 playerPosition, BossRushEntryMode? resolvedEntryMode = null)
         {
             DevLog("[BossRush] SetupBossRushInGroundZero: 开始初始化零号区 BossRush 模式");
             
@@ -1703,32 +1703,14 @@ namespace BossRush
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             SetArenaCenterFromMapConfig(currentSceneName);
             
-            // 提前检测 Mode E / Mode D 条件（必须在 DisableAllSpawners 之前，Mode E 需要先扫描 CharacterSpawnerRoot 位置）
-            bool shouldStartModeD = false;
-            bool shouldStartModeE = false;
-            try
-            {
-                var (modeEFaction, modeEFlag) = DetectFactionFlag();
-                if (modeEFaction.HasValue && modeEFlag != null && IsPlayerNaked())
-                {
-                    shouldStartModeE = true;
-                    DevLog("[BossRush] SetupBossRushInGroundZero: 检测到营旗+裸装入场，将启动 Mode E");
-                }
-                else if (IsPlayerNaked())
-                {
-                    shouldStartModeD = true;
-                    DevLog("[BossRush] SetupBossRushInGroundZero: 检测到裸体入场（无营旗），将启动 Mode D");
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[BossRush] SetupBossRushInGroundZero: 检测 Mode E/D 条件失败: " + e.Message);
-            }
+            // 提前检测 Mode E / Mode F / Mode D 条件（必须在 DisableAllSpawners 之前，Mode E 需要先扫描 CharacterSpawnerRoot 位置）
+            BossRushEntryMode entryMode = resolvedEntryMode ?? DetermineBossRushEntryMode("SetupBossRushInGroundZero");
             
             // Mode E 提前分支：先扫描刷怪点（AllocateSpawnPoints 内部调用），再禁用spawner和清理敌人
             // 跳过路牌、撤离点、快递员等 BossRush 竞技场逻辑
-            if (shouldStartModeE)
+            if (entryMode == BossRushEntryMode.ModeE)
             {
+                DevLog("[BossRush] SetupBossRushInGroundZero: 检测到营旗+裸装入场，将启动 Mode E");
                 // 初始化敌人预设和Boss池（Mode E 生成Boss需要）
                 InitializeEnemyPresets();
                 InitializeItemValueCacheAsync();
@@ -1747,6 +1729,32 @@ namespace BossRush
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeE();
                 SpawnCommonNPCs("GroundZero场景 Mode E 初始化完成");
+                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                yield break;
+            }
+
+            // Mode F 提前分支：复用 DEMO 的初始化顺序，跳过普通 BossRush 竞技场入口流程
+            if (entryMode == BossRushEntryMode.ModeF)
+            {
+                DevLog("[BossRush] SetupBossRushInGroundZero: 检测到船票+血猎收发器+裸装入场，将启动 Mode F");
+                PreCacheMapSpawnerPositions();
+                ScheduleModeEStartupWarmup("GroundZeroModeF");
+
+                DisableAllSpawners();
+                DevLog("[BossRush] SetupBossRushInGroundZero Mode F: 已禁用竞技场范围内的敌怪生成器");
+                ClearEnemiesForBossRush();
+
+                yield return new UnityEngine.WaitForSeconds(0.5f);
+                bool startedModeF = TryStartModeF();
+                if (startedModeF)
+                {
+                    SpawnCommonNPCs("GroundZero场景 Mode F 初始化完成");
+                }
+                else
+                {
+                    DevLog("[BossRush] [WARNING] SetupBossRushInGroundZero: Mode F 启动失败，已跳过 Mode F 额外 NPC 生成");
+                }
+                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                 yield break;
             }
             
@@ -1795,14 +1803,16 @@ namespace BossRush
             DevLog("[BossRush] SetupBossRushInGroundZero: 零号区 BossRush 模式初始化完成");
             
             // 9. 延迟启动 Mode D
-            if (shouldStartModeD)
+            if (entryMode == BossRushEntryMode.ModeD)
             {
+                DevLog("[BossRush] SetupBossRushInGroundZero: 检测到裸体入场（无营旗无收发器），将启动 Mode D");
                 yield return new UnityEngine.WaitForSeconds(0.5f);
                 TryStartModeD();
             }
             
             // 10. 统一生成公共NPC（快递员、哥布林、护士）
             SpawnCommonNPCs("GroundZero场景初始化完成");
+            BossRushMapSelectionHelper.ClearPendingEntryFlowState();
         }
         
         /// <summary>
