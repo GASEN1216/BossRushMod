@@ -224,6 +224,7 @@ namespace BossRush
         /// <summary>
         /// 恢复 Modifier 属性
         /// 使用覆盖模式：prefabValue + delta = 最终值
+        /// 只恢复预制体中原生存在的 Modifier，跳过非原生属性
         /// </summary>
         private static bool TryRestoreModifier(Item item, string modifierKey, float delta)
         {
@@ -231,7 +232,16 @@ namespace BossRush
 
             // 获取预制体原始值
             Item prefab = GetItemPrefab(item);
+
+            // 安全检查：只恢复预制体中原生存在的 Modifier
+            // 非原生的 Modifier 不在预制体中，
+            // 如果旧版本误存了这些属性的 RF_MOD_ 数据，这里会自动跳过
             float prefabValue = GetPrefabModifierValue(prefab, modifierKey);
+            if (prefab != null && !PrefabHasModifier(prefab, modifierKey))
+            {
+                ModBehaviour.DevLog($"[ReforgeData] 跳过非原生Modifier恢复: {item.DisplayName}.{modifierKey} (预制体中不存在)");
+                return false;
+            }
 
             foreach (var mod in item.Modifiers)
             {
@@ -244,6 +254,19 @@ namespace BossRush
                     ModBehaviour.DevLog($"[ReforgeData] 恢复Modifier: {item.DisplayName}.{modifierKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
                     return true;
                 }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 检查预制体中是否存在指定Key的Modifier
+        /// </summary>
+        private static bool PrefabHasModifier(Item prefab, string key)
+        {
+            if (prefab == null || prefab.Modifiers == null) return false;
+            foreach (var mod in prefab.Modifiers)
+            {
+                if (mod.Key == key) return true;
             }
             return false;
         }

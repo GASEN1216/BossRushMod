@@ -116,9 +116,28 @@ namespace BossRush
         }
         
         // ============================================================================
+        // 兼容性
+        // ============================================================================
+
+        /// <summary>
+        /// 判断 Modifier 是否为预制体中原生存在的属性
+        /// 只有预制体中存在的属性才应被重铸系统处理，
+        /// 非原生的动态 Modifier 不在预制体中，自动被排除
+        /// </summary>
+        public static bool IsNativeModifier(Item prefab, ModifierDescription mod)
+        {
+            if (prefab == null || prefab.Modifiers == null || mod == null) return false;
+            foreach (var prefabMod in prefab.Modifiers)
+            {
+                if (prefabMod.Key == mod.Key) return true;
+            }
+            return false;
+        }
+
+        // ============================================================================
         // 常量配置
         // ============================================================================
-        
+
         /// <summary>
         /// 最小重铸费用
         /// </summary>
@@ -446,15 +465,16 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 检查物品是否有可显示的Modifiers（Display=true）
+        /// 检查物品是否有可显示的Modifiers（Display=true，排除非预制体原生的）
         /// </summary>
         private static bool HasDisplayableModifiers(Item item)
         {
             if (item == null || item.Modifiers == null) return false;
-            
+            Item prefab = GetItemPrefab(item);
+
             foreach (var mod in item.Modifiers)
             {
-                if (mod.Display) return true;
+                if (mod.Display && IsNativeModifier(prefab, mod)) return true;
             }
             return false;
         }
@@ -504,12 +524,13 @@ namespace BossRush
             
             int count = 0;
             
-            // 只计算Display=true的Modifiers
+            // 只计算Display=true的Modifiers（排除非预制体原生的）
             if (item.Modifiers != null)
             {
+                Item prefab = GetItemPrefab(item);
                 foreach (var mod in item.Modifiers)
                 {
-                    if (mod.Display) count++;
+                    if (mod.Display && IsNativeModifier(prefab, mod)) count++;
                 }
             }
             
@@ -621,21 +642,28 @@ namespace BossRush
                 // 收集所有可调整的属性（只收集 Display=true 的属性，与UI显示保持一致）
                 List<ReforgeableProperty> allProperties = new List<ReforgeableProperty>();
                 
-                // 1. 收集Modifiers（只收集Display=true的，跳过已固定的属性）
+                // 1. 收集Modifiers（只收集Display=true的，跳过非预制体原生属性和已固定的属性）
                 if (item.Modifiers != null)
                 {
                     foreach (ModifierDescription mod in item.Modifiers)
                     {
                         // 只收集在UI上显示的属性
                         if (!mod.Display) continue;
-                        
+
+                        // 跳过非预制体原生的属性（动态添加的Modifier不在预制体中）
+                        if (!IsNativeModifier(prefab, mod))
+                        {
+                            ModBehaviour.DevLog("[ReforgeSystem] 跳过非原生属性: " + mod.Key);
+                            continue;
+                        }
+
                         // 跳过已固定的属性（冷淬液功能）
                         if (PropertyLockSystem.IsPropertyLocked(item, mod.Key, PropertyType.Modifier))
                         {
                             ModBehaviour.DevLog("[ReforgeSystem] 跳过已固定属性: " + mod.Key + " (Modifier)");
                             continue;
                         }
-                        
+
                         allProperties.Add(new ReforgeableProperty
                         {
                             Key = mod.Key,
