@@ -18,8 +18,14 @@ namespace BossRush
         public const string WeaponDescKey = "DragonKingBossGun_Desc";
         public const string WeaponNameCN = "焚天龙铳";
         public const string WeaponNameEN = "Skyburn Dragon Cannon";
-        public const string WeaponDescCN = "龙皇以龙息枪为骨，熔炼断界余焰而成的王兵。可兼容霰弹、AR_S 与 AR_B 三种口径，但射出的永远都是龙焰本体。命中会为断界戟铺设最多 10 层龙焰印记。";
-        public const string WeaponDescEN = "A royal arm forged by the Dragon King from the Dragon's Breath and the halberd's lingering fire. It accepts S, AR, and L ammo, yet every shot manifests as pure dragon flame. Hits can prepare up to 10 Dragon Flame marks for the halberd.";
+        public const string WeaponDescCN = "焚天龙皇以龙息枪为骨、断界余焰为魂熔铸的王兵。铳身龙纹流转不息，装填弹药的瞬间便将其吞噬殆尽，化为纯粹的龙焰射出。" +
+            "\n<color=#FF6347>【万弹归焰】</color>兼容15种口径弹药，每种弹药被龙焰吞噬后化为截然不同的弹幕形态：螺旋龙息、黏附焰种、返程烈焰、空爆分裂……弹种决定战术，龙焰贯穿一切。" +
+            "\n<color=#FF4500>【弹种覆写】</color>装填不同口径时，射速、弹匣、射程等属性随弹种动态变化，每种弹药都是一把全新的武器。" +
+            "\n<color=#FFD700>【龙焰印记】</color>命中敌人叠加龙焰印记（至多10层），与焚皇断界戟联动——戟之砸落引爆全部印记，层数越深，爆燃越烈。";
+        public const string WeaponDescEN = "A royal arm forged by the Skyburner Dragon Lord from the Dragon's Breath and the halberd's lingering fire. Dragon runes pulse across the barrel, devouring any ammo loaded and transmuting it into pure dragon flame." +
+            "\n<color=#FF6347>[Myriad Rounds, One Flame]</color> Compatible with 15 ammo calibers. Each type is consumed by dragonfire and reborn as a unique barrage: spiraling breath, sticky fire seeds, returning blaze, airburst splits... The ammo dictates the tactic; the flame pierces all." +
+            "\n<color=#FF4500>[Caliber Override]</color> Fire rate, magazine, range and other stats shift dynamically with each ammo type—every caliber is a different weapon." +
+            "\n<color=#FFD700>[Dragon Flame Mark]</color> Hits stack Dragon Flame Marks (up to 10). Synergizes with the Realm-Breaking Halberd—its slam detonates all marks. More stacks, fiercer the explosion.";
 
         private const string BaseName = "dragonking_Gun";
         private const string PrefabName = "dragonking_Gun_Item";
@@ -75,6 +81,14 @@ namespace BossRush
             { "RecoilRecover", 500f },
             { "FlashLight", 0f },
             { "OverrideTriggerMode", 0f }
+        };
+
+        private static readonly HashSet<string> DisplayStats = new HashSet<string>
+        {
+            "Damage", "ShootSpeed", "Capacity", "ReloadTime", "BulletSpeed", "BulletDistance",
+            "CritDamageFactor", "SoundRange", "ADSTime", "MoveSpeedMultiplier",
+            "AdsWalkSpeedMultiplier", "ExplosionDamageMultiplier", "ScatterFactor",
+            "ScatterFactorADS", "RecoilScaleV", "RecoilScaleH"
         };
 
         private static readonly Dictionary<string, FieldInfo> fieldInfoCache = new Dictionary<string, FieldInfo>();
@@ -227,10 +241,11 @@ namespace BossRush
 
             foreach (var kvp in WeaponStats)
             {
+                bool shouldDisplay = DisplayStats.Contains(kvp.Key);
                 Stat stat = stats.GetStat(kvp.Key);
                 if (stat == null)
                 {
-                    stats.Add(new Stat(kvp.Key, kvp.Value, true));
+                    stats.Add(new Stat(kvp.Key, kvp.Value, shouldDisplay));
                 }
                 else
                 {
