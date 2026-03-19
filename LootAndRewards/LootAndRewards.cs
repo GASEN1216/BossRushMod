@@ -193,7 +193,9 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, float> bossSpawnTimes = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, int> bossOriginalLootCounts = new Dictionary<CharacterMainControl, int>();
         private readonly HashSet<CharacterMainControl> countedDeadBosses = new HashSet<CharacterMainControl>();
-        private readonly HashSet<CharacterMainControl> trackedBossLootHooks = new HashSet<CharacterMainControl>();
+        private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
+            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
+        private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();
 
         private bool infiniteHellMode = false;
         private int infiniteHellWaveIndex = 0;
@@ -224,10 +226,25 @@ namespace BossRush
                 bossOriginalLootCounts[character] = Mathf.Max(0, originalLootCount);
                 countedDeadBosses.Remove(character);
 
-                if (trackedBossLootHooks.Add(character))
+                Action<DamageInfo> existingHandler = null;
+                if (trackedBossLootHooks.TryGetValue(character, out existingHandler) && existingHandler != null)
                 {
-                    character.BeforeCharacterSpawnLootOnDead += (dmgInfo) => OnBossBeforeSpawnLoot(character, dmgInfo);
+                    try
+                    {
+                        character.BeforeCharacterSpawnLootOnDead -= existingHandler;
+                    }
+                    catch { }
                 }
+
+                CharacterMainControl capturedCharacter = character;
+                Action<DamageInfo> handler = (dmgInfo) => OnBossBeforeSpawnLoot(capturedCharacter, dmgInfo);
+                trackedBossLootHooks[character] = handler;
+
+                try
+                {
+                    character.BeforeCharacterSpawnLootOnDead += handler;
+                }
+                catch { }
             }
             catch (Exception e)
             {
@@ -237,9 +254,22 @@ namespace BossRush
 
         private void ClearBossRandomLootTracking(CharacterMainControl character)
         {
-            if (character == null)
+            if (object.ReferenceEquals(character, null))
             {
                 return;
+            }
+
+            Action<DamageInfo> handler = null;
+            if (trackedBossLootHooks.TryGetValue(character, out handler))
+            {
+                try
+                {
+                    if (!(character == null) && handler != null)
+                    {
+                        character.BeforeCharacterSpawnLootOnDead -= handler;
+                    }
+                }
+                catch { }
             }
 
             bossSpawnTimes.Remove(character);
@@ -1432,7 +1462,7 @@ namespace BossRush
             {
                 // [调试] 记录事件触发
                 string bossName = bossMain != null ? bossMain.gameObject.name : "null";
-                DevLog("[BossRush] OnBossBeforeSpawnLoot_LootAndRewards 被调用: bossName=" + bossName + ", IsActive=" + IsActive);
+                DevLog("[BossRush] OnBossBeforeSpawnLoot_LootAndRewards 被调用: bossName=" + bossName + ", IsActive=" + IsActive + ", modeFActive=" + modeFActive);
                 
                 // 空检查
                 if (bossMain == null)
@@ -1445,14 +1475,19 @@ namespace BossRush
                 // 原因：龙王第三阶段召唤龙裔遗族，龙裔死亡会先触发OnAllEnemiesDefeated设置IsActive=false
                 // 然后龙王联动死亡才触发此事件，此时需要允许龙王的掉落逻辑执行
                 bool isDragonKing = IsDragonKingBoss(bossMain);
-                if (!IsActive && !isDragonKing)
+                bool allowModeFIndependentLoot = modeFActive;
+                if (!IsActive && !isDragonKing && !allowModeFIndependentLoot)
                 {
-                    DevLog("[BossRush] 掉落事件跳过: IsActive=False 且不是龙王Boss");
+                    DevLog("[BossRush] 掉落事件跳过: IsActive=False，且既不是龙王Boss也不是 Mode F");
                     return;
                 }
                 if (!IsActive && isDragonKing)
                 {
                     DevLog("[BossRush] 龙王Boss联动死亡特殊处理: 允许继续执行掉落逻辑");
+                }
+                else if (!IsActive && allowModeFIndependentLoot)
+                {
+                    DevLog("[ModeF] 独立模式掉落处理: 允许继续执行Boss掉落逻辑");
                 }
 
                 // 只处理由 BossRush 生成且被追踪的 Boss
@@ -1511,9 +1546,34 @@ namespace BossRush
                         bossMain.dropBoxOnDead = false;
                     }
                     catch {}
-
-                    ClearBossRandomLootTracking(bossMain);
                     return;
+                }
+
+                int modeFPlunderLootPenaltyCount = 0;
+                int modeFPlunderLootBonusCount = 0;
+                bool useModeFAbstractPlunderLootTracking = modeFActive && config != null && config.enableRandomBossLoot;
+                if (modeFActive)
+                {
+                    CharacterMainControl killer = null;
+                    try { killer = dmgInfo.fromCharacter; } catch { }
+
+                    if (killer != null)
+                    {
+                        TryHandleModeFBossPreLootPlunder(killer, bossMain);
+                    }
+
+                    if (useModeFAbstractPlunderLootTracking)
+                    {
+                        modeFPlunderLootPenaltyCount = ConsumeModeFBossPendingHighQualityLootPenaltyCount(bossMain);
+                        modeFPlunderLootBonusCount = ConsumeModeFBossCarriedHighQualityLootCount(bossMain);
+                    }
+
+                    if (modeFPlunderLootPenaltyCount > 0 || modeFPlunderLootBonusCount > 0)
+                    {
+                        DevLog("[ModeF] 掉落箱高品质调节: boss=" + bossName
+                            + ", penalty=" + modeFPlunderLootPenaltyCount
+                            + ", bonus=" + modeFPlunderLootBonusCount);
+                    }
                 }
 
                 if (config == null || !config.enableRandomBossLoot)
@@ -1586,18 +1646,41 @@ namespace BossRush
                     + ", 高品质最高数量=" + highCount);
 
                 // 随机生成物品并填充到Boss掉落源（CharacterItem.Inventory），由原版逻辑创建LootBox
-                RandomizeBossLoot_LootAndRewards(bossMain, baseCount, highCount, killDuration, highChanceBonusByHealth);
+                RandomizeBossLoot_LootAndRewards(
+                    bossMain,
+                    baseCount,
+                    highCount,
+                    killDuration,
+                    highChanceBonusByHealth,
+                    modeFPlunderLootBonusCount,
+                    modeFPlunderLootPenaltyCount);
 
-                // 清理已处理的Boss记录
-                ClearBossRandomLootTracking(bossMain);
             }
             catch (Exception e)
             {
                 DevLog("[BossRush] OnBossBeforeSpawnLoot 错误: " + e.Message);
             }
+            finally
+            {
+                try
+                {
+                    if (bossMain != null)
+                    {
+                        ClearBossRandomLootTracking(bossMain);
+                    }
+                }
+                catch { }
+            }
         }
 
-        private void RandomizeBossLoot_LootAndRewards(CharacterMainControl bossMain, int totalCount, int highQualityCount, float killDuration, float highChanceBonusByHealth)
+        private void RandomizeBossLoot_LootAndRewards(
+            CharacterMainControl bossMain,
+            int totalCount,
+            int highQualityCount,
+            float killDuration,
+            float highChanceBonusByHealth,
+            int modeFPlunderLootBonusCount = 0,
+            int modeFPlunderLootPenaltyCount = 0)
         {
             try
             {
@@ -2270,7 +2353,11 @@ namespace BossRush
                 // 统一使用一个协程处理所有Boss的特殊掉落
                 try
                 {
-                    this.StartCoroutine(AddBossSpecialLootToLootboxCoroutine(lootbox, bossMain));
+                    this.StartCoroutine(AddBossSpecialLootToLootboxCoroutine(
+                        lootbox,
+                        bossMain,
+                        modeFPlunderLootBonusCount,
+                        modeFPlunderLootPenaltyCount));
                 }
                 catch (Exception specialLootEx)
                 {
@@ -2677,7 +2764,11 @@ namespace BossRush
         /// Boss特殊掉落：统一处理所有Boss的专属掉落物（协程版本）
         /// 在掉落箱填充完成后添加专属掉落物
         /// </summary>
-        private IEnumerator AddBossSpecialLootToLootboxCoroutine(InteractableLootbox lootbox, CharacterMainControl bossMain)
+        private IEnumerator AddBossSpecialLootToLootboxCoroutine(
+            InteractableLootbox lootbox,
+            CharacterMainControl bossMain,
+            int modeFPlunderLootBonusCount = 0,
+            int modeFPlunderLootPenaltyCount = 0)
         {
             if (lootbox == null || bossMain == null)
             {
@@ -2705,6 +2796,11 @@ namespace BossRush
                 yield return new WaitForSeconds(0.1f);
             }
 
+            if (modeFPlunderLootPenaltyCount > 0)
+            {
+                ApplyModeFPlunderLootPenalty(inv, modeFPlunderLootPenaltyCount);
+            }
+
             // 根据Boss类型添加对应的专属掉落物
             if (IsDragonDescendantBoss(bossMain))
             {
@@ -2716,7 +2812,127 @@ namespace BossRush
                 // 龙王：按概率掉落专属物品（飞行图腾20%、龙王之冕20%、龙王鳞铠20%、逆鳞40%）
                 yield return AddDragonKingLoot(inv);
             }
+
+            if (modeFPlunderLootBonusCount > 0)
+            {
+                AddModeFPlunderLootBonus(inv, modeFPlunderLootBonusCount);
+            }
             // 未来新增Boss在此添加 else if 分支
+        }
+
+        private void ApplyModeFPlunderLootPenalty(Inventory inv, int penaltyCount)
+        {
+            if (inv == null || penaltyCount <= 0)
+            {
+                return;
+            }
+
+            modeFPlunderPenaltyScratch.Clear();
+            try
+            {
+                List<Item> content = inv.Content;
+                if (content != null)
+                {
+                    for (int i = 0; i < content.Count; i++)
+                    {
+                        Item item = content[i];
+                        if (item != null && item.Quality >= 6)
+                        {
+                            modeFPlunderPenaltyScratch.Add(item);
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            modeFPlunderPenaltyScratch.Sort((a, b) =>
+            {
+                int qA = a != null ? a.Quality : 0;
+                int qB = b != null ? b.Quality : 0;
+                if (qA != qB)
+                {
+                    return qB.CompareTo(qA);
+                }
+
+                int vA = a != null ? a.Value : 0;
+                int vB = b != null ? b.Value : 0;
+                return vB.CompareTo(vA);
+            });
+
+            int removed = 0;
+            for (int i = 0; i < modeFPlunderPenaltyScratch.Count && removed < penaltyCount; i++)
+            {
+                Item item = modeFPlunderPenaltyScratch[i];
+                if (item == null)
+                {
+                    continue;
+                }
+
+                try { item.Detach(); } catch { }
+                try { item.DestroyTree(); } catch { }
+                removed++;
+            }
+
+            if (removed > 0)
+            {
+                DevLog("[ModeF] 已从被杀 Boss 奖励箱移除高品质战利品: " + removed);
+            }
+
+            modeFPlunderPenaltyScratch.Clear();
+        }
+
+        private void AddModeFPlunderLootBonus(Inventory inv, int bonusCount)
+        {
+            if (inv == null || bonusCount <= 0)
+            {
+                return;
+            }
+
+            int added = 0;
+            for (int i = 0; i < bonusCount; i++)
+            {
+                Item reward = null;
+                try
+                {
+                    int rewardTypeId = GetModeFHighQualityRewardTypeID();
+                    if (rewardTypeId <= 0)
+                    {
+                        continue;
+                    }
+
+                    reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
+                    if (reward == null || reward.Quality < 6)
+                    {
+                        continue;
+                    }
+
+                    if (inv.AddItem(reward))
+                    {
+                        added++;
+                        reward = null;
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog("[ModeF] [WARNING] 添加掠夺奖励到掉落箱失败: " + e.Message);
+                }
+                finally
+                {
+                    try
+                    {
+                        if (reward != null)
+                        {
+                            reward.DestroyTree();
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            if (added > 0)
+            {
+                DevLog("[ModeF] 已向战胜 Boss 奖励箱补入高品质战利品: " + added);
+            }
         }
         
         /// <summary>
