@@ -54,6 +54,7 @@ namespace BossRush
             SimpleJsonHelper.AppendString(sb, "triggeredEventKeys", data.triggeredEventKeys ?? string.Empty);
             SimpleJsonHelper.AppendString(sb, "claimedRewardKeys", data.claimedRewardKeys ?? string.Empty);
             SimpleJsonHelper.AppendBool(sb, "isMarriedToPlayer", data.isMarriedToPlayer);
+            SimpleJsonHelper.AppendBool(sb, "isFollowingPlayer", data.isFollowingPlayer);
             SimpleJsonHelper.AppendString(sb, "marriageDateText", data.marriageDateText ?? string.Empty);
             SimpleJsonHelper.AppendInt(sb, "cheatingIncidentCount", data.cheatingIncidentCount);
             SimpleJsonHelper.AppendBool(sb, "hasPendingCheatingRebuke", data.hasPendingCheatingRebuke);
@@ -77,6 +78,7 @@ namespace BossRush
                 triggeredEventKeys = SimpleJsonHelper.ExtractString(json, "triggeredEventKeys", start, end),
                 claimedRewardKeys = SimpleJsonHelper.ExtractString(json, "claimedRewardKeys", start, end),
                 isMarriedToPlayer = SimpleJsonHelper.ExtractBool(json, "isMarriedToPlayer", start, end),
+                isFollowingPlayer = SimpleJsonHelper.ExtractBool(json, "isFollowingPlayer", start, end),
                 marriageDateText = SimpleJsonHelper.ExtractString(json, "marriageDateText", start, end),
                 cheatingIncidentCount = SimpleJsonHelper.ExtractInt(json, "cheatingIncidentCount", start, end),
                 hasPendingCheatingRebuke = SimpleJsonHelper.ExtractBool(json, "hasPendingCheatingRebuke", start, end),

@@ -11,7 +11,9 @@ namespace BossRush
         private NurseNPCController controller;
         private NPCGiftInteractable giftInteractable;
         private NurseHealInteractable healInteractable;
+        private NPCSpouseFollowInteractable spouseFollowInteractable;
         private NPCDivorceInteractable divorceInteractable;
+        private NPCSpouseHomeInteractable spouseHomeInteractable;
         private bool handledDialogueEndThisInteraction;
 
         protected override void Awake()
@@ -92,6 +94,7 @@ namespace BossRush
             }
 
             CreateSubInteractables();
+            RefreshMarriageOptionVisibility();
         }
 
         private void CreateSubInteractables()
@@ -115,13 +118,31 @@ namespace BossRush
                     "HealInteractable",
                     groupList);
 
-                if (ShouldAddDivorceOption())
+                if (ShouldAddMarriageOptions())
+                {
+                    spouseFollowInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                        transform,
+                        "SpouseFollowInteractable",
+                        groupList,
+                        (NPCSpouseFollowInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
+                }
+
+                if (ShouldAddMarriageOptions())
                 {
                     divorceInteractable = NPCInteractionGroupHelper.AddSubInteractable(
                         transform,
                         "DivorceInteractable",
                         groupList,
                         (NPCDivorceInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
+                }
+
+                if (ShouldAddMarriageOptions())
+                {
+                    spouseHomeInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                        transform,
+                        "SpouseHomeInteractable",
+                        groupList,
+                        (NPCSpouseHomeInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
                 }
 
                 ModBehaviour.DevLog("[NurseNPC] 已注入护士交互组选项，总数: " + groupList.Count);
@@ -132,7 +153,7 @@ namespace BossRush
             }
         }
 
-        private bool ShouldAddDivorceOption()
+        private bool ShouldAddMarriageOptions()
         {
             if (!AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID))
             {
@@ -145,13 +166,40 @@ namespace BossRush
                 return false;
             }
 
-            if (ModBehaviour.Instance == null)
+            return true;
+        }
+
+        public void RefreshMarriageOptionVisibility()
+        {
+            if (!ShouldAddMarriageOptions() || ModBehaviour.Instance == null)
             {
-                return false;
+                SetMarriageOptionActive(spouseFollowInteractable, false);
+                SetMarriageOptionActive(divorceInteractable, false);
+                SetMarriageOptionActive(spouseHomeInteractable, false);
+                return;
             }
 
             Transform npcTransform = controller != null ? controller.NpcTransform : transform;
-            return ModBehaviour.Instance.IsWeddingNpcInstance(npcTransform);
+            bool showFollow = ModBehaviour.Instance.ShouldShowSpouseFollowOption(NurseAffinityConfig.NPC_ID, npcTransform);
+            bool showDivorce = ModBehaviour.Instance.ShouldShowSpouseDivorceOption(NurseAffinityConfig.NPC_ID, npcTransform);
+            bool showHome = ModBehaviour.Instance.ShouldShowSpouseHomeOption(NurseAffinityConfig.NPC_ID, npcTransform);
+
+            SetMarriageOptionActive(spouseFollowInteractable, showFollow);
+            SetMarriageOptionActive(divorceInteractable, showDivorce);
+            SetMarriageOptionActive(spouseHomeInteractable, showHome);
+        }
+
+        private static void SetMarriageOptionActive(Behaviour interactable, bool active)
+        {
+            if (interactable == null || interactable.gameObject == null)
+            {
+                return;
+            }
+
+            if (interactable.gameObject.activeSelf != active)
+            {
+                interactable.gameObject.SetActive(active);
+            }
         }
 
         protected override bool IsInteractable()

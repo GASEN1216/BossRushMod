@@ -52,6 +52,9 @@ namespace BossRush
 
         /// <summary>配偶谴责时每次追加的额外惩罚</summary>
         public const int SPOUSE_CHEATING_STACK_PENALTY = 40;
+
+        /// <summary>配偶可解锁跟随的最低好感度等级</summary>
+        public const int SPOUSE_FOLLOW_REQUIRED_LEVEL = 10;
         
         // ============================================================================
         // 状态
@@ -837,7 +840,41 @@ namespace BossRush
             }
 
             data.isMarriedToPlayer = true;
+            data.isFollowingPlayer = false;
             data.marriageDateText = normalizedDateText;
+            MarkDirty();
+            return true;
+        }
+
+        public static bool IsSpouseFollowingPlayer(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return false;
+            return npcDataMap.TryGetValue(npcId, out AffinityData data) && data != null && data.isFollowingPlayer;
+        }
+
+        public static bool SetSpouseFollowingPlayer(string npcId, bool isFollowing)
+        {
+            if (string.IsNullOrEmpty(npcId)) return false;
+
+            AffinityData data = GetOrCreateAffinityData(npcId);
+            if (isFollowing)
+            {
+                string spouseNpcId = GetCurrentSpouseNpcId();
+                if (string.IsNullOrEmpty(spouseNpcId)
+                    || spouseNpcId != npcId
+                    || !data.isMarriedToPlayer
+                    || GetLevel(npcId) < SPOUSE_FOLLOW_REQUIRED_LEVEL)
+                {
+                    return false;
+                }
+            }
+
+            if (data.isFollowingPlayer == isFollowing)
+            {
+                return false;
+            }
+
+            data.isFollowingPlayer = isFollowing;
             MarkDirty();
             return true;
         }
@@ -851,6 +888,7 @@ namespace BossRush
             }
 
             data.isMarriedToPlayer = false;
+            data.isFollowingPlayer = false;
             data.marriageDateText = string.Empty;
             data.cheatingIncidentCount = 0;
             data.hasPendingCheatingRebuke = false;

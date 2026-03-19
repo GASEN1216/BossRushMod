@@ -95,7 +95,9 @@ namespace BossRush
         private GoblinReforgeInteractable reforgeInteractable;
         private NPCShopInteractable shopInteractable;  // 使用通用商店交互组件
         private NPCGiftInteractable giftInteractable;  // 使用通用礼物交互组件
+        private NPCSpouseFollowInteractable spouseFollowInteractable;
         private NPCDivorceInteractable divorceInteractable;  // 离婚选项（仅配偶可见）
+        private NPCSpouseHomeInteractable spouseHomeInteractable;  // 回家选项（仅跟随中配偶可见）
         
         protected override void Awake()
         {
@@ -191,10 +193,11 @@ namespace BossRush
             
             // 创建子交互选项
             CreateSubInteractables();
+            RefreshMarriageOptionVisibility();
         }
         
         /// <summary>
-        /// 创建子交互选项（商店、礼物、重铸、离婚）
+        /// 创建子交互选项（商店、礼物、重铸、跟随、离婚、回家）
         /// 使用反射将子选项注入到 otherInterablesInGroup 列表中（与快递员阿稳一致）
         /// 主选项为"对话"（由 OnTimeOut 处理）
         /// 子选项顺序：1.商店(好感度≥2级才显示) 2.赠送礼物 3.重铸服务
@@ -245,8 +248,22 @@ namespace BossRush
                     ModBehaviour.DevLog("[GoblinNPC] 创建重铸交互选项并注入到交互组");
                 }
 
-                // 4. 创建离婚交互选项（仅"婚礼教堂中的当前配偶"才加入交互组）
-                if (ShouldAddDivorceOption())
+                // 4. 创建配偶跟随交互选项（仅当前配偶加入交互组，显示条件由子组件控制）
+                if (ShouldAddMarriageOptions())
+                {
+                    spouseFollowInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCSpouseFollowInteractable>(
+                        transform,
+                        "SpouseFollowInteractable",
+                        list,
+                        component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+                    if (spouseFollowInteractable != null)
+                    {
+                        ModBehaviour.DevLog("[GoblinNPC] 创建配偶跟随交互选项并注入到交互组");
+                    }
+                }
+
+                // 5. 创建离婚交互选项（仅当前配偶加入交互组，显示条件由子组件控制）
+                if (ShouldAddMarriageOptions())
                 {
                     divorceInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCDivorceInteractable>(
                         transform,
@@ -259,6 +276,20 @@ namespace BossRush
                     }
                 }
 
+                // 6. 创建回家交互选项（仅当前配偶加入交互组，显示条件由子组件控制）
+                if (ShouldAddMarriageOptions())
+                {
+                    spouseHomeInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCSpouseHomeInteractable>(
+                        transform,
+                        "SpouseHomeInteractable",
+                        list,
+                        component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+                    if (spouseHomeInteractable != null)
+                    {
+                        ModBehaviour.DevLog("[GoblinNPC] 创建配偶回家交互选项并注入到交互组");
+                    }
+                }
+
                 ModBehaviour.DevLog("[GoblinNPC] 所有子交互选项已注入到 otherInterablesInGroup，共 " + list.Count + " 个（主选项=对话）");
             }
             catch (Exception e)
@@ -268,9 +299,9 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 只有当前配偶且该NPC实例由婚礼教堂刷出时，才允许添加离婚选项
+        /// 只有当前配偶才允许添加婚后专属选项。
         /// </summary>
-        private bool ShouldAddDivorceOption()
+        private bool ShouldAddMarriageOptions()
         {
             if (!AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
             {
@@ -283,13 +314,40 @@ namespace BossRush
                 return false;
             }
 
-            if (ModBehaviour.Instance == null)
+            return true;
+        }
+
+        public void RefreshMarriageOptionVisibility()
+        {
+            if (!ShouldAddMarriageOptions() || ModBehaviour.Instance == null)
             {
-                return false;
+                SetMarriageOptionActive(spouseFollowInteractable, false);
+                SetMarriageOptionActive(divorceInteractable, false);
+                SetMarriageOptionActive(spouseHomeInteractable, false);
+                return;
             }
 
             Transform npcTransform = controller != null ? controller.NpcTransform : transform;
-            return ModBehaviour.Instance.IsWeddingNpcInstance(npcTransform);
+            bool showFollow = ModBehaviour.Instance.ShouldShowSpouseFollowOption(GoblinAffinityConfig.NPC_ID, npcTransform);
+            bool showDivorce = ModBehaviour.Instance.ShouldShowSpouseDivorceOption(GoblinAffinityConfig.NPC_ID, npcTransform);
+            bool showHome = ModBehaviour.Instance.ShouldShowSpouseHomeOption(GoblinAffinityConfig.NPC_ID, npcTransform);
+
+            SetMarriageOptionActive(spouseFollowInteractable, showFollow);
+            SetMarriageOptionActive(divorceInteractable, showDivorce);
+            SetMarriageOptionActive(spouseHomeInteractable, showHome);
+        }
+
+        private static void SetMarriageOptionActive(Behaviour interactable, bool active)
+        {
+            if (interactable == null || interactable.gameObject == null)
+            {
+                return;
+            }
+
+            if (interactable.gameObject.activeSelf != active)
+            {
+                interactable.gameObject.SetActive(active);
+            }
         }
         
         protected override bool IsInteractable()

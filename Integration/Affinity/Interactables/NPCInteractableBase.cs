@@ -219,6 +219,19 @@ namespace BossRush
         {
             EndNPCDialogue();
         }
+
+        /// <summary>
+        /// 结束对话并主动关闭当前交互，确保交互组按最新状态刷新。
+        /// </summary>
+        protected void CloseCurrentInteraction(float stayDuration = 0.05f)
+        {
+            EndNPCDialogue(stayDuration);
+
+            NPCExceptionHandler.TryExecute(
+                () => base.StopInteract(),
+                "NPCInteractableBase.CloseCurrentInteraction.StopInteract",
+                false);
+        }
         
         /// <summary>
         /// 获取NPC配置

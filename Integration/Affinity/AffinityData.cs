@@ -17,6 +17,7 @@ namespace BossRush
         public string triggeredEventKeys = "";
         public string claimedRewardKeys = "";
         public bool isMarriedToPlayer = false;
+        public bool isFollowingPlayer = false;
         public string marriageDateText = "";
         public int cheatingIncidentCount = 0;
         public bool hasPendingCheatingRebuke = false;
@@ -47,6 +48,7 @@ namespace BossRush
                 triggeredEventKeys = this.triggeredEventKeys,
                 claimedRewardKeys = this.claimedRewardKeys,
                 isMarriedToPlayer = this.isMarriedToPlayer,
+                isFollowingPlayer = this.isFollowingPlayer,
                 marriageDateText = this.marriageDateText,
                 cheatingIncidentCount = this.cheatingIncidentCount,
                 hasPendingCheatingRebuke = this.hasPendingCheatingRebuke,
