@@ -181,6 +181,22 @@ namespace BossRush
                 ModBehaviour.DevLog("[AwenCourierToken] Collect inventory failed: " + e.Message);
             }
 
+            try
+            {
+                Inventory petInventory = PetProxy.PetInventory;
+                if (petInventory != null && petInventory.Content != null)
+                {
+                    for (int i = 0; i < petInventory.Content.Count; i++)
+                    {
+                        TryAddCandidate(result, seen, petInventory.Content[i], usedItem, excludeRootsContainingUsedItem);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[AwenCourierToken] Collect pet inventory failed: " + e.Message);
+            }
+
             return result;
         }
 
