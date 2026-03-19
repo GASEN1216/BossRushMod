@@ -14,7 +14,7 @@
 
 BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 竞技场玩法为核心，但当前源码已经扩展成一个包含多模式玩法、自定义 Boss、自定义装备与物品、NPC 关系线、成就、重铸、游戏内 Wiki、本地化、音频和运行时稳定性修复的完整内容包。
 
-这份 README 反映当前仓库源码基线。更完整的开发向说明见 [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md)。
+这份 README 反映当前仓库源码基线。更完整的开发向说明见 [docs/项目全景文档.md](docs/项目全景文档.md)。
 
 ## 内容总览
 
@@ -196,7 +196,7 @@ BossRushMod/
 
 ## 文档
 
-- 开发总览：[docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md)
+- 开发总览：[docs/项目全景文档.md](docs/项目全景文档.md)
 - 设计文档目录：[docs/](docs/)
 - 游戏内百科内容：[WikiContent/](WikiContent/)
 

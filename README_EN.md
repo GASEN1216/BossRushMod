@@ -14,7 +14,7 @@
 
 BossRushMod is a large-scale integrated mod for Escape from Duckov. It started from the BossRush arena loop, but the current source baseline now includes multiple gameplay modes, custom bosses, custom gear and items, persistent NPC storylines, achievements, reforging, an in-game wiki, localization, audio work, and runtime stability systems.
 
-This README reflects the current source baseline in the repository. For the full developer-facing overview, see [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md).
+This README reflects the current source baseline in the repository. For the full developer-facing overview, see [docs/项目全景文档.md](docs/项目全景文档.md).
 
 ## At a Glance
 
@@ -196,7 +196,7 @@ The project includes an extensive built-in debug layer. Common hotkeys:
 
 ## Documentation
 
-- Project overview: [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md)
+- Project overview: [docs/项目全景文档.md](docs/项目全景文档.md)
 - Design docs: [docs/](docs/)
 - In-game wiki content: [WikiContent/](WikiContent/)
 
