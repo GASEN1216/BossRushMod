@@ -152,6 +152,16 @@ namespace BossRush
         /// 基准物品价值
         /// </summary>
         private const float BASE_ITEM_VALUE = 10000f;
+
+        /// <summary>
+        /// 金钱增益分段阈值（基于物品价值的倍数）
+        /// 原始曲线阈值为 0.1 / 1 / 10。
+        /// 按需求将整条曲线整体放大 100 倍，变为 10 / 100 / 1000，
+        /// 保持形状不变，只放大达到同一加成所需的投入金额。
+        /// </summary>
+        public const float MONEY_BONUS_TIER1_MULTIPLIER = 10f;
+        public const float MONEY_BONUS_TIER2_MULTIPLIER = 100f;
+        public const float MONEY_BONUS_TIER3_MULTIPLIER = 1000f;
         
         /// <summary>
         /// 每次重铸的最大改变量（绝对值0~1，用于小数值属性）
@@ -238,9 +248,9 @@ namespace BossRush
         
         /// <summary>
         /// 计算金钱增益：基于物品价值的倍数
-        /// 1倍物品价值 → +10%
-        /// 10倍物品价值 → +30%
-        /// 100倍物品价值 → +100%
+        /// 10倍物品价值 → +10%
+        /// 100倍物品价值 → +30%
+        /// 1000倍物品价值 → +100%
         /// </summary>
         /// <param name="money">投入的金钱</param>
         /// <param name="itemValue">物品价值（用于计算动态阈值）</param>
@@ -253,9 +263,9 @@ namespace BossRush
             float B;
             
             // 动态阈值：基于物品价值的倍数
-            float tier1 = itemValue * 0.1f;  // 0.1倍物品价值
-            float tier2 = itemValue;         // 1倍物品价值
-            float tier3 = itemValue * 10f;   // 10倍物品价值
+            float tier1 = itemValue * MONEY_BONUS_TIER1_MULTIPLIER;  // 10倍物品价值
+            float tier2 = itemValue * MONEY_BONUS_TIER2_MULTIPLIER;  // 100倍物品价值
+            float tier3 = itemValue * MONEY_BONUS_TIER3_MULTIPLIER;  // 1000倍物品价值
             
             // 计算log阈值（用于分段计算）
             float logTier1 = Mathf.Log10(tier1);
@@ -264,24 +274,24 @@ namespace BossRush
             
             if (m <= tier1)
             {
-                // 0 ~ 0.1倍物品价值：线性 0 → 0.10
+                // 0 ~ 10倍物品价值：线性 0 → 0.10
                 B = 0.10f * (m / tier1);
             }
             else if (m <= tier2)
             {
-                // 0.1倍 ~ 1倍物品价值：log分段 0.10 → 0.30
+                // 10倍 ~ 100倍物品价值：log分段 0.10 → 0.30
                 float logM = Mathf.Log10(m);
                 B = 0.10f + 0.20f * (logM - logTier1) / (logTier2 - logTier1);
             }
             else if (m <= tier3)
             {
-                // 1倍 ~ 10倍物品价值：log分段 0.30 → 1.00
+                // 100倍 ~ 1000倍物品价值：log分段 0.30 → 1.00
                 float logM = Mathf.Log10(m);
                 B = 0.30f + 0.70f * (logM - logTier2) / (logTier3 - logTier2);
             }
             else
             {
-                // 超过10倍物品价值：上限1.00
+                // 超过1000倍物品价值：上限1.00
                 B = 1.00f;
             }
             
@@ -574,20 +584,62 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 获取物品价值（尝试从物品获取）
+        /// 获取物品价值。
+        /// 优先读取物品自身 Value；对运行时补配的自定义武器，若 Value 缺失则回退到
+        /// GetTotalRawValue() 和已补配的 prefab 值，避免重铸 UI/费用读取到默认值。
         /// </summary>
         public static float GetItemValue(Item item)
         {
             if (item == null) return BASE_ITEM_VALUE;
+
             try
             {
-                // 尝试获取物品价值
-                return item.Value > 0 ? item.Value : BASE_ITEM_VALUE;
+                if (CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID))
+                {
+                    CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(item);
+                }
             }
-            catch
+            catch { }
+
+            try
             {
-                return BASE_ITEM_VALUE;
+                if (item.Value > 0)
+                {
+                    return item.Value;
+                }
             }
+            catch { }
+
+            try
+            {
+                int rawValue = item.GetTotalRawValue();
+                if (rawValue > 0)
+                {
+                    return rawValue;
+                }
+            }
+            catch { }
+
+            try
+            {
+                Item prefab = GetItemPrefab(item);
+                if (prefab != null)
+                {
+                    if (prefab.Value > 0)
+                    {
+                        return prefab.Value;
+                    }
+
+                    int prefabRawValue = prefab.GetTotalRawValue();
+                    if (prefabRawValue > 0)
+                    {
+                        return prefabRawValue;
+                    }
+                }
+            }
+            catch { }
+
+            return BASE_ITEM_VALUE;
         }
         
         /// <summary>

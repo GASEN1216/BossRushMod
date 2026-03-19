@@ -107,6 +107,7 @@ namespace BossRush
 
                 // 5. 注入本地化
                 InjectLocalization(item);
+                SyncItemValueFromRawValue(item);
 
                 // 6. 修复运动模糊（禁用 MotionVector 使武器不会在移动时模糊）
                 DisableMotionBlur(item.gameObject);
@@ -135,6 +136,27 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[FenHuangHalberd] 配置失败: " + e.Message + "\n" + e.StackTrace);
                 return false;
+            }
+        }
+
+        private static void SyncItemValueFromRawValue(Item item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                int rawValue = item.GetTotalRawValue();
+                if (rawValue > 0 && item.Value < rawValue)
+                {
+                    item.Value = rawValue;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] 同步物品价值失败: " + e.Message);
             }
         }
 
@@ -260,7 +282,6 @@ namespace BossRush
 
             ModBehaviour.DevLog("[FenHuangHalberd] 已配置 ItemAgent_MeleeWeapon (socket=normalHandheld, anim=meleeWeapon)");
         }
-
 
         internal static void EnsureMeleeAttackFx(ItemAgent_MeleeWeapon meleeAgent)
         {
@@ -538,7 +559,6 @@ namespace BossRush
             }
         }
     }
-
 
     internal sealed class FenHuangHalberdSlashFxCompat : MonoBehaviour
     {

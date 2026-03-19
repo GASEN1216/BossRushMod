@@ -717,7 +717,8 @@ namespace BossRush
             return item.Stats == null ||
                    item.Stats.GetStat("Damage") == null ||
                    item.Stats.GetStat("ShootSpeed") == null ||
-                   item.Stats.GetStat("Capacity") == null;
+                   item.Stats.GetStat("Capacity") == null ||
+                   item.Value <= 0;
         }
 
         public static bool NeedsMeleeRuntimeConfig(Item item)
@@ -732,7 +733,8 @@ namespace BossRush
             return item.Stats == null ||
                    item.Stats.GetStat("Damage") == null ||
                    item.Stats.GetStat("AttackRange") == null ||
-                   item.Stats.GetStat("AttackSpeed") == null;
+                   item.Stats.GetStat("AttackSpeed") == null ||
+                   item.Value <= 0;
         }
     }
 

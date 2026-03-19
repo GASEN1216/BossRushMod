@@ -186,12 +186,34 @@ namespace BossRush
                 AddWeaponTags(item);
                 SetBulletCountDisplay(item);  // 设置BulletCount显示
                 ConfigureGunSettings(item);   // 配置枪械音效和特效
+                SyncItemValueFromRawValue(item);
                 
                 ModBehaviour.DevLog("[DragonBreathWeapon] 配置完成");
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonBreathWeapon] 配置出错: " + e.Message);
+            }
+        }
+
+        private static void SyncItemValueFromRawValue(Item item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                int rawValue = item.GetTotalRawValue();
+                if (rawValue > 0 && item.Value < rawValue)
+                {
+                    item.Value = rawValue;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] 同步物品价值失败: " + e.Message);
             }
         }
         

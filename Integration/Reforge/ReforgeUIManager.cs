@@ -1363,6 +1363,8 @@ namespace BossRush
             
             if (selectedItem != null)
             {
+                CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(selectedItem);
+
                 // 保存新物品的属性快照
                 SavePropertySnapshot(selectedItem);
                 
@@ -1443,11 +1445,11 @@ namespace BossRush
         private static int CalculateMoneyForBonus(float targetBonus, float itemValue)
         {
             if (targetBonus <= 0) return 0;
-            if (targetBonus >= 1.0f) return Mathf.RoundToInt(itemValue * 10f); // 最高阈值：价值的10倍
+            if (targetBonus >= 1.0f) return Mathf.RoundToInt(itemValue * ReforgeSystem.MONEY_BONUS_TIER3_MULTIPLIER);
             
-            float tier1 = itemValue * 0.1f;
-            float tier2 = itemValue;
-            float tier3 = itemValue * 10f;
+            float tier1 = itemValue * ReforgeSystem.MONEY_BONUS_TIER1_MULTIPLIER;
+            float tier2 = itemValue * ReforgeSystem.MONEY_BONUS_TIER2_MULTIPLIER;
+            float tier3 = itemValue * ReforgeSystem.MONEY_BONUS_TIER3_MULTIPLIER;
             
             if (targetBonus <= 0.10f)
             {
