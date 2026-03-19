@@ -1174,6 +1174,7 @@ namespace BossRush
                     return;
             }
 
+            EnsureZoneShaderCached();
             CreateZoneRing(zoneColor);
             CreateZoneLight(zoneColor);
 
@@ -1209,9 +1210,36 @@ namespace BossRush
             col.color = gradient;
 
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = new Material(Shader.Find("Sprites/Default"));
+            renderer.material = GetOrCreateZoneMaterial(profile.GroundZoneElement, zoneColor);
 
             ps.Play();
+        }
+
+        private static void EnsureZoneShaderCached()
+        {
+            if (cachedZoneShader != null)
+            {
+                return;
+            }
+
+            cachedZoneShader = Shader.Find("Sprites/Default");
+            if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Unlit/Color");
+            if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Standard");
+        }
+
+        private static Material GetOrCreateZoneMaterial(ElementTypes element, Color color)
+        {
+            Material mat;
+            if (cachedZoneMaterials.TryGetValue(element, out mat) && mat != null)
+            {
+                return mat;
+            }
+
+            EnsureZoneShaderCached();
+            mat = new Material(cachedZoneShader);
+            mat.color = color;
+            cachedZoneMaterials[element] = mat;
+            return mat;
         }
 
         private void CreateZoneRing(Color zoneColor)
@@ -1231,22 +1259,7 @@ namespace BossRush
             zoneRing.startColor = zoneColor;
             zoneRing.endColor = zoneColor;
 
-            if (cachedZoneShader == null)
-            {
-                cachedZoneShader = Shader.Find("Sprites/Default");
-                if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Unlit/Color");
-                if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Standard");
-            }
-
-            Material sharedMat;
-            if (!cachedZoneMaterials.TryGetValue(profile.GroundZoneElement, out sharedMat) || sharedMat == null)
-            {
-                sharedMat = new Material(cachedZoneShader);
-                sharedMat.color = zoneColor;
-                cachedZoneMaterials[profile.GroundZoneElement] = sharedMat;
-            }
-
-            zoneRingMaterial = sharedMat;
+            zoneRingMaterial = GetOrCreateZoneMaterial(profile.GroundZoneElement, zoneColor);
             zoneRing.material = zoneRingMaterial;
             zoneRing.widthMultiplier = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f);
             UpdateZoneRing(radius);
