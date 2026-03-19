@@ -1,0 +1,66 @@
+/* BossRush Wiki — 游戏 Wiki 风格主题覆盖 */
+
+:root {
+  /* 龙焰橙主色调 */
+  --vp-c-brand-1: #e65100;
+  --vp-c-brand-2: #ff6d00;
+  --vp-c-brand-3: #ffab00;
+  --vp-c-brand-soft: rgba(230, 81, 0, 0.14);
+
+  /* Hero 渐变 */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, #e65100, #ffab00);
+  --vp-home-hero-image-background-image: linear-gradient(135deg, rgba(230, 81, 0, 0.3), rgba(255, 171, 0, 0.2));
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+.dark {
+  --vp-c-bg: #1a1a2e;
+  --vp-c-bg-soft: #1f1f3a;
+  --vp-c-bg-mute: #252547;
+  --vp-c-bg-alt: #16162a;
+}
+
+/* 内容区加宽 */
+.vp-doc {
+  max-width: 900px !important;
+}
+@media (min-width: 960px) {
+  .VPContent.has-sidebar .content-container {
+    max-width: 900px !important;
+  }
+}
+
+/* 表格增强 */
+.vp-doc table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.vp-doc table th {
+  background-color: var(--vp-c-brand-soft);
+  font-weight: 600;
+}
+.vp-doc table th,
+.vp-doc table td {
+  border: 1px solid var(--vp-c-divider);
+  padding: 8px 12px;
+}
+.vp-doc table tr:nth-child(even) {
+  background-color: var(--vp-c-bg-soft);
+}
+
+/* tip / warning 容器用主题色 */
+.vp-doc .custom-block.tip {
+  border-color: var(--vp-c-brand-2);
+}
+.vp-doc .custom-block.tip .custom-block-title {
+  color: var(--vp-c-brand-1);
+}
+.vp-doc .custom-block.warning {
+  border-color: #ffab00;
+}
+
+/* 侧边栏活跃项高亮 */
+.VPSidebarItem.is-active > .item > .link > .text {
+  color: var(--vp-c-brand-1) !important;
+}
