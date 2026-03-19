@@ -12,8 +12,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_BarbedWirePack";
         public const string DISPLAY_NAME_CN = "阻滞铁丝网包";
         public const string DISPLAY_NAME_EN = "Barbed Wire Pack";
-        public const string DESCRIPTION_CN = "一卷带刺铁丝网。使用后在面前部署阻滞铁丝网，减缓敌人推进。";
-        public const string DESCRIPTION_EN = "A roll of barbed wire. Use to deploy barbed wire in front of you to slow enemies.";
+        public const string DESCRIPTION_CN = "一卷带刺铁丝网。使用后在面前部署阻滞铁丝网，阻挡并拖延敌人推进。";
+        public const string DESCRIPTION_EN = "A roll of barbed wire. Use to deploy barbed wire in front of you to obstruct and delay enemy advances.";
 
         public static void ConfigureItem(Item item)
         {
