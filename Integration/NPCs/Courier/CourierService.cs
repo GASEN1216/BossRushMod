@@ -23,6 +23,7 @@ using UnityEngine.UI;
 using TMPro;
 using ItemStatsSystem;
 using Duckov.UI;
+using Duckov.Utilities;
 using BossRush.Utils;
 
 namespace BossRush
@@ -57,6 +58,75 @@ namespace BossRush
         /// 检查服务是否激活（公共属性）
         /// </summary>
         public static bool IsServiceActive { get { return isServiceActive; } }
+
+        /// <summary>
+        /// 不打开快递 UI，直接把物品快递回家。
+        /// 用于一键清包类快捷功能。
+        /// </summary>
+        public static int QuickDeliverItems(IEnumerable<Item> items, string bannerText = null, bool showBanner = true)
+        {
+            if (items == null)
+            {
+                return 0;
+            }
+
+            int sentCount = 0;
+
+            try
+            {
+                foreach (Item item in items)
+                {
+                    if (item == null)
+                    {
+                        continue;
+                    }
+
+                    string itemName = item.DisplayName;
+
+                    try
+                    {
+                        item.Detach();
+                        ReforgeDataPersistence.SyncCurrentReforgeState(item);
+                        PlayerStorage.Push(item, true);
+                        sentCount++;
+                        ModBehaviour.DevLog("[CourierService] QuickDeliverItems: 已发送物品到快递站: " + itemName);
+                    }
+                    catch (Exception pushEx)
+                    {
+                        ModBehaviour.DevLog("[CourierService] QuickDeliverItems: 发送失败: " + itemName + ", " + pushEx.Message);
+
+                        try
+                        {
+                            ItemUtilities.SendToPlayer(item, true, true);
+                        }
+                        catch (Exception restoreEx)
+                        {
+                            ModBehaviour.DevLog("[CourierService] QuickDeliverItems: 回退物品失败: " + itemName + ", " + restoreEx.Message);
+                        }
+                    }
+                }
+
+                if (sentCount <= 0)
+                {
+                    return 0;
+                }
+
+                ClearNotificationQueue();
+                lastSentItemCount = sentCount;
+                lastDeliveryFee = 0;
+                PlayerStorageBuffer.SaveBuffer();
+                if (showBanner)
+                {
+                    ShowDeliveryCompleteBanner(bannerText);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] QuickDeliverItems 失败: " + e.Message + "\n" + e.StackTrace);
+            }
+
+            return sentCount;
+        }
         
         // 发送结果（用于显示告别气泡）
         private static int lastSentItemCount = 0;
@@ -151,23 +221,34 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 计算快递费用（物品总价值的90%，向上取整）
+        /// 计算快递费用（物品总价值的10%，向上取整）
         /// </summary>
         public static int CalculateDeliveryFee(Inventory container)
         {
             if (container == null) return 0;
-            
+
+            return CalculateDeliveryFee((IEnumerable<Item>)container);
+        }
+
+        /// <summary>
+        /// 计算快递费用（物品总价值的10%，向上取整）。
+        /// 用于快捷快递等不经过快递 UI 的场景。
+        /// </summary>
+        public static int CalculateDeliveryFee(IEnumerable<Item> items)
+        {
+            if (items == null) return 0;
+
             int totalValue = 0;
-            foreach (Item item in container)
+            foreach (Item item in items)
             {
-                if (item != null)
+                if (item == null)
                 {
-                    // 使用 Item.Value 获取物品单价，乘以堆叠数量
-                    totalValue += item.Value * item.StackCount;
+                    continue;
                 }
+
+                totalValue += item.Value * item.StackCount;
             }
-            
-            // 90%快递费，向上取整
+
             return (int)Math.Ceiling(totalValue * DELIVERY_FEE_RATE);
         }
         
@@ -178,6 +259,35 @@ namespace BossRush
         {
             if (fee <= 0) return false;
             return CanAffordDeliveryInternal(fee);
+        }
+
+        /// <summary>
+        /// 扣除快递费。fee 小于等于 0 时视为无需扣费。
+        /// </summary>
+        public static bool TryPayDeliveryFee(int fee)
+        {
+            if (fee <= 0)
+            {
+                return true;
+            }
+
+            try
+            {
+                var cost = new Duckov.Economy.Cost((long)fee);
+                if (!cost.Pay(true, true))
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] 扣费失败: " + fee);
+                    return false;
+                }
+
+                ModBehaviour.DevLog("[CourierService] 已扣除快递费: " + fee);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 扣费异常: " + e.Message);
+                return false;
+            }
         }
         
         /// <summary>
@@ -217,14 +327,10 @@ namespace BossRush
             
             try
             {
-                // 使用 EconomyManager 扣除快递费（通过 Cost.Pay 方法）
-                var cost = new Duckov.Economy.Cost((long)fee);
-                if (!cost.Pay(true, true))
+                if (!TryPayDeliveryFee(fee))
                 {
-                    ModBehaviour.DevLog("[CourierService] [WARNING] 扣费失败");
                     return;
                 }
-                ModBehaviour.DevLog("[CourierService] 已扣除快递费: " + fee);
                 
                 // 收集所有物品（避免遍历时修改集合）
                 List<Item> itemsToSend = new List<Item>();
@@ -279,15 +385,19 @@ namespace BossRush
         /// <summary>
         /// 显示快递完成的大横幅通知（绿色背景，2秒）
         /// </summary>
-        private static void ShowDeliveryCompleteBanner()
+        private static void ShowDeliveryCompleteBanner(string customBannerText = null)
         {
             try
             {
                 // 获取本地化文本（绿色文字），显示发送的物品数量
-                string bannerText = L10n.T(
-                    "<color=#00FF00>" + lastSentItemCount + "件快递已送达！</color>",
-                    "<color=#00FF00>" + lastSentItemCount + " items delivered!</color>"
-                );
+                string bannerText = customBannerText;
+                if (string.IsNullOrEmpty(bannerText))
+                {
+                    bannerText = L10n.T(
+                        "<color=#00FF00>" + lastSentItemCount + "件快递已送达！</color>",
+                        "<color=#00FF00>" + lastSentItemCount + " items delivered!</color>"
+                    );
+                }
                 
                 // 使用游戏的通知系统显示横幅
                 NotificationText.Push(bannerText);
@@ -982,14 +1092,10 @@ namespace BossRush
         {
             try
             {
-                // 使用 EconomyManager 扣除快递费（通过 Cost.Pay 方法）
-                var cost = new Duckov.Economy.Cost((long)fee);
-                if (!cost.Pay(true, true))
+                if (!TryPayDeliveryFee(fee))
                 {
-                    ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 扣费失败");
                     return false;
                 }
-                ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 已扣除快递费: " + fee);
                 
                 // 收集所有物品（避免遍历时修改集合）
                 List<Item> itemsToSend = new List<Item>();

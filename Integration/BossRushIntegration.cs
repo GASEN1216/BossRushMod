@@ -249,6 +249,7 @@ namespace BossRush
             if (TryInjectBossRushTicketIntoShop(shop)) injectedCount++;
             if (TryInjectAdventureJournalIntoShop(shop)) injectedCount++;
             if (TryInjectAchievementMedalIntoShop(shop)) injectedCount++;
+            if (AwenCourierTokenConfig.TryInjectIntoShop(shop, this)) injectedCount++;
             if (TryInjectBrickStoneIntoShop(shop)) injectedCount++;
             injectedCount += FactionFlagConfig.TryInjectIntoShop(shop);
             return injectedCount;
@@ -356,6 +357,7 @@ namespace BossRush
             try
             {
                 // 注册物品配置器（必须在 LoadAllItems 之前）
+                AwenCourierTokenConfig.RegisterConfigurator();
                 ColdQuenchFluidConfig.RegisterConfigurator();
                 BrickStoneConfig.RegisterConfigurator();
                 DiamondConfig.RegisterConfigurator();
@@ -946,6 +948,7 @@ namespace BossRush
             LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
             LocalizationInjector.InjectGoblinNPCLocalization();   // 哥布林NPC本地化（重铸服务）
             LocalizationInjector.InjectNurseNPCLocalization();    // 护士NPC本地化
+            AwenCourierTokenConfig.InjectLocalization();  // 阿稳快递牌物品本地化
             LocalizationInjector.InjectColdQuenchFluidLocalization();  // 冷淬液物品本地化
             LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
             LocalizationInjector.InjectDiamondLocalization();     // 钻石物品本地化
@@ -957,6 +960,7 @@ namespace BossRush
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
             RespawnItemConfig.InjectLocalization();  // 刷怪消耗品本地化（Mode E）
             InjectModeFItemLocalization();  // Mode F 物品本地化
+            AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
             FactionFlagConfig.InjectIntoShops();  // 将营旗注入到售货机
             BloodhuntTransponderConfig.InjectIntoShops();  // 将血猎收发器注入到售货机（Mode F）
             EquipmentLocalization.InjectAllEquipmentLocalizations();
@@ -1005,6 +1009,7 @@ namespace BossRush
             // InitializeAchievementMedalItem();  // 配置器已移至 LoadAllItems 之前
             InjectAchievementMedalLocalization();
             InjectAchievementMedalIntoShops();  // 将成就勋章注入到售货机（排在最前面）
+            AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
             InjectBrickStoneIntoShops();  // 将砖石注入到售货机
             
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
@@ -1227,6 +1232,7 @@ namespace BossRush
                 InjectBossRushTicketIntoShops_Integration(scene.name);
                 InjectAdventureJournalIntoShops_Integration(scene.name);
                 InjectAchievementMedalIntoShops(scene.name);  // 注入成就勋章
+                AwenCourierTokenConfig.InjectIntoShops(scene.name);  // 注入阿稳快递牌
                 InjectBrickStoneIntoShops(scene.name);  // 注入砖石
                 FactionFlagConfig.InjectIntoShops(scene.name);  // 注入营旗（Mode E）
                 BloodhuntTransponderConfig.InjectIntoShops(scene.name);  // 注入血猎收发器（Mode F）

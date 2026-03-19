@@ -200,6 +200,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Reforge\ReforgeUIManager.cs ^
     Integration\Reforge\ReforgeDataPersistence.cs ^
     Integration\ItemFactory.cs ^
+    Integration\Items\AwenDepositTokenConfig.cs ^
+    Integration\Items\AwenDepositTokenUsage.cs ^
     Integration\Items\BrickStoneConfig.cs ^
     Integration\Items\BrickStoneUsage.cs ^
     Integration\Items\DiamondConfig.cs ^
