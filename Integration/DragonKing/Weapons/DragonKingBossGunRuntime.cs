@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Reflection;
 using Cysharp.Threading.Tasks;
 using Duckov.Utilities;
+using Duckov.UI;
 using HarmonyLib;
 using ItemStatsSystem;
+using TMPro;
 using UnityEngine;
 
 namespace BossRush
@@ -48,6 +50,8 @@ namespace BossRush
         private static readonly Dictionary<long, ProcessedGroundZoneState> processedGroundZoneShots = new Dictionary<long, ProcessedGroundZoneState>();
         private static readonly List<long> processedHitKeysToRemove = new List<long>();
         private static readonly FieldInfo traceTargetField = typeof(ItemAgent_Gun).GetField("traceTarget", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo itemVariableEntryTargetField = typeof(ItemVariableEntry).GetField("target", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo itemVariableEntryValueField = typeof(ItemVariableEntry).GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private const int MaxProfileId = 15;
         private const int MaxHitStage = 3;
@@ -1574,6 +1578,47 @@ namespace BossRush
                 Vector3 adjustedDirection = ApplyWeaponScatter(__instance, _shootDirection);
                 SpawnPrimaryProjectiles(__instance, profile, _muzzlePoint, adjustedDirection, firstFrameCheckStartPoint);
                 return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(ItemVariableEntry), "Refresh")]
+        private static class DragonKingBossGunCaliberDisplayPatch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(ItemVariableEntry __instance)
+            {
+                try
+                {
+                    if (__instance == null || itemVariableEntryTargetField == null || itemVariableEntryValueField == null)
+                    {
+                        return;
+                    }
+
+                    CustomData targetData = itemVariableEntryTargetField.GetValue(__instance) as CustomData;
+                    if (targetData == null || !string.Equals(targetData.Key, "Caliber", StringComparison.Ordinal))
+                    {
+                        return;
+                    }
+
+                    ItemDetailsDisplay detailsDisplay = __instance.GetComponentInParent<ItemDetailsDisplay>();
+                    if (detailsDisplay == null || !IsDragonKingBossGun(detailsDisplay.Target))
+                    {
+                        return;
+                    }
+
+                    TextMeshProUGUI valueText = itemVariableEntryValueField.GetValue(__instance) as TextMeshProUGUI;
+                    if (valueText == null)
+                    {
+                        return;
+                    }
+
+                    // 只覆写详情页展示，保留后台真实口径，避免影响多口径配弹逻辑。
+                    valueText.text = DragonKingBossGunConfig.GetUnknownCaliberDisplayText();
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonKingBossGun] 覆写详情页口径显示失败: " + e.Message);
+                }
             }
         }
     }

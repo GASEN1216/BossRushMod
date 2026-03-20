@@ -166,6 +166,7 @@ namespace BossRush
             InjectDragonKingBossLocalization();
             InjectDragonKingHelmLocalization(0);
             InjectDragonKingArmorLocalization(0);
+            InjectDragonKingBossGunLocalization();
         }
         
         /// <summary>
@@ -326,6 +327,22 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[EquipmentLocalization] 注入龙王鳞铠本地化失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 注入焚天龙铳本地化
+        /// </summary>
+        public static void InjectDragonKingBossGunLocalization()
+        {
+            try
+            {
+                DragonKingBossGunConfig.InjectLocalization();
+                ModBehaviour.DevLog("[EquipmentLocalization] 焚天龙铳本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入焚天龙铳本地化失败: " + e.Message);
             }
         }
         

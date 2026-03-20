@@ -609,9 +609,9 @@ namespace BossRush
         public const int REVERSE_SCALE_TYPE_ID = 500013;
         
         /// <summary>
-        /// 飞行图腾掉落概率（20%）
+        /// 飞行图腾掉落概率（15%）
         /// </summary>
-        public const float DROP_CHANCE_FLIGHT_TOTEM = 0.2f;
+        public const float DROP_CHANCE_FLIGHT_TOTEM = 0.15f;
         
         /// <summary>
         /// 龙王之冕掉落概率（15%）
@@ -627,6 +627,11 @@ namespace BossRush
         /// 逆鳞掉落概率（35%）
         /// </summary>
         public const float DROP_CHANCE_REVERSE_SCALE = 0.35f;
+
+        /// <summary>
+        /// 焚天龙铳掉落概率（5%）
+        /// </summary>
+        public const float DROP_CHANCE_BOSS_GUN = 0.05f;
         
         // ========== 装备配置 ==========
         

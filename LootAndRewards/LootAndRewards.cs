@@ -2809,7 +2809,7 @@ namespace BossRush
             }
             else if (IsDragonKingBoss(bossMain))
             {
-                // 龙王：按概率掉落专属物品（飞行图腾20%、龙王之冕20%、龙王鳞铠20%、逆鳞40%）
+                // 龙王：按概率掉落专属物品（飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳5%、逆鳞35%）
                 yield return AddDragonKingLoot(inv);
             }
 
@@ -3008,7 +3008,7 @@ namespace BossRush
         
         /// <summary>
         /// 添加龙王专属掉落物到Inventory
-        /// 共享掉落格子：飞行图腾20%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、逆鳞35%
+        /// 共享掉落格：飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳5%、逆鳞35%
         /// </summary>
         private IEnumerator AddDragonKingLoot(Inventory inv)
         {
@@ -3017,14 +3017,15 @@ namespace BossRush
             int selectedTypeId;
             string itemName;
             
-            float threshold1 = DragonKingConfig.DROP_CHANCE_FLIGHT_TOTEM;           // 0.20
-            float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;      // 0.35
-            float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;      // 0.50
-            float threshold4 = threshold3 + DragonKingConfig.DROP_CHANCE_HALBERD;    // 0.65
+            float threshold1 = DragonKingConfig.DROP_CHANCE_FLIGHT_TOTEM;           // 0.15
+            float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;      // 0.30
+            float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;      // 0.45
+            float threshold4 = threshold3 + DragonKingConfig.DROP_CHANCE_HALBERD;    // 0.60
+            float threshold5 = threshold4 + DragonKingConfig.DROP_CHANCE_BOSS_GUN;   // 0.65
             
             if (roll < threshold1)
             {
-                // 20% 飞行图腾
+                // 15% 飞行图腾
                 selectedTypeId = DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID;
                 itemName = "腾云驾雾 I";
             }
@@ -3046,6 +3047,12 @@ namespace BossRush
                 selectedTypeId = DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID;
                 itemName = "焚皇断界戟";
             }
+            else if (roll < threshold5)
+            {
+                // 5% 焚天龙铳
+                selectedTypeId = DragonKingBossGunConfig.WeaponTypeId;
+                itemName = DragonKingBossGunConfig.WeaponNameCN;
+            }
             else
             {
                 // 35% 逆鳞
@@ -3057,31 +3064,10 @@ namespace BossRush
 
             try
             {
-                Item newItem = ItemAssetsCollection.InstantiateSync(selectedTypeId);
-                if (newItem == null)
+                if (!TryAddDragonKingLootItem(inv, selectedTypeId, itemName))
                 {
-                    DevLog("[DragonKing] 创建掉落物实例失败: TypeID=" + selectedTypeId);
                     yield break;
                 }
-
-                // 确保耐久度为满
-                float maxDurability = newItem.MaxDurability;
-                if (maxDurability > 0)
-                {
-                    newItem.Durability = maxDurability;
-                    newItem.DurabilityLoss = 0f;
-                }
-
-                inv.AddItem(newItem);
-                DevLog("[DragonKing] 已将 " + itemName + " 添加到掉落箱");
-                
-                // 记录收藏龙王掉落物（用于成就追踪）
-                try
-                {
-                    AchievementTracker.OnCollectDragonKingLoot(selectedTypeId);
-                    CheckDragonKingCollectionAchievement();
-                }
-                catch { }
             }
             catch (Exception addEx)
             {
@@ -3091,6 +3077,45 @@ namespace BossRush
             yield break;
         }
         
+        private bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)
+        {
+            try
+            {
+                Item newItem = ItemAssetsCollection.InstantiateSync(typeId);
+                if (newItem == null)
+                {
+                    DevLog("[DragonKing] 创建掉落物实例失败: TypeID=" + typeId);
+                    return false;
+                }
+
+                float maxDurability = newItem.MaxDurability;
+                if (maxDurability > 0f)
+                {
+                    newItem.Durability = maxDurability;
+                    newItem.DurabilityLoss = 0f;
+                }
+
+                inv.AddItem(newItem);
+                DevLog("[DragonKing] 已将 " + itemName + " 添加到掉落箱");
+
+                try
+                {
+                    AchievementTracker.OnCollectDragonKingLoot(typeId);
+                    CheckDragonKingCollectionAchievement();
+                }
+                catch
+                {
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonKing] 添加掉落物失败: " + itemName + " - " + e.Message);
+                return false;
+            }
+        }
+
         /// <summary>
         /// 检查龙裔收藏成就
         /// </summary>
@@ -3125,13 +3150,15 @@ namespace BossRush
         /// </summary>
         private void CheckDragonKingCollectionAchievement()
         {
-            // 龙王专属掉落物列表：飞行图腾、龙王之冕、龙王鳞铠、逆鳞
+            // 龙王专属掉落物列表：飞行图腾、龙王之冕、龙王鳞铠、焚皇断界戟、逆鳞、焚天龙铳
             int[] requiredItems = new int[]
             {
                 DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID,
                 DragonKingConfig.DRAGON_KING_HELM_TYPE_ID,
                 DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID,
-                DragonKingConfig.REVERSE_SCALE_TYPE_ID
+                DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID,
+                DragonKingConfig.REVERSE_SCALE_TYPE_ID,
+                DragonKingBossGunConfig.WeaponTypeId
             };
             
             bool allCollected = true;

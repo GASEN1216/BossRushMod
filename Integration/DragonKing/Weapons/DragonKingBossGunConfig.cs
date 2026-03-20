@@ -5,6 +5,7 @@ using Duckov.Utilities;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using ItemStatsSystem.Stats;
+using SodaCraft.Localizations;
 using UnityEngine;
 
 namespace BossRush
@@ -16,15 +17,18 @@ namespace BossRush
 
         public const string WeaponNameKey = "DragonKingBossGun_Name";
         public const string WeaponDescKey = "DragonKingBossGun_Desc";
+        public const string UnknownCaliberKey = "DragonKingBossGun_CaliberUnknown";
         public const string WeaponNameCN = "焚天龙铳";
         public const string WeaponNameEN = "Skyburn Dragon Cannon";
-        public const string WeaponDescCN = "焚天龙皇以龙息枪为骨、断界余焰为魂熔铸的王兵。铳身龙纹流转不息，装填弹药的瞬间便将其吞噬殆尽，化为纯粹的龙焰射出。" +
-            "\n<color=#FF6347>【万弹归焰】</color>兼容15种口径弹药，每种弹药被龙焰吞噬后化为截然不同的弹幕形态：螺旋龙息、黏附焰种、返程烈焰、空爆分裂……弹种决定战术，龙焰贯穿一切。" +
-            "\n<color=#FF4500>【弹种覆写】</color>装填不同口径时，射速、弹匣、射程等属性随弹种动态变化，每种弹药都是一把全新的武器。" +
+        public const string UnknownCaliberCN = "？？？";
+        public const string UnknownCaliberEN = "???";
+        public const string WeaponDescCN = "焚天龙皇以龙息枪残骸为骨、断界戟余焰为魂亲铸的王铳。铳身覆满噬焰龙纹，扣动扳机之时，万类弹药皆会被吞没、淬炼，再以龙皇之炎重生出膛。" +
+            "\n<color=#FF6347>【万弹归焰】</color>兼容15种口径弹药，狙击、霰弹、火箭、糖果、雪球……一切弹种都会被改写成截然不同的龙焰弹幕。弹种决定战术，龙焰贯穿万敌。" +
+            "\n<color=#FF4500>【龙铳覆式】</color>装填不同口径时，射速、伤害、弹匣、射程与弹道形态都会同步蜕变，每一次换弹，都是换上一把全新的王兵。" +
             "\n<color=#FFD700>【龙焰印记】</color>命中敌人叠加龙焰印记（至多10层），与焚皇断界戟联动——戟之砸落引爆全部印记，层数越深，爆燃越烈。";
-        public const string WeaponDescEN = "A royal arm forged by the Skyburner Dragon Lord from the Dragon's Breath and the halberd's lingering fire. Dragon runes pulse across the barrel, devouring any ammo loaded and transmuting it into pure dragon flame." +
-            "\n<color=#FF6347>[Myriad Rounds, One Flame]</color> Compatible with 15 ammo calibers. Each type is consumed by dragonfire and reborn as a unique barrage: spiraling breath, sticky fire seeds, returning blaze, airburst splits... The ammo dictates the tactic; the flame pierces all." +
-            "\n<color=#FF4500>[Caliber Override]</color> Fire rate, magazine, range and other stats shift dynamically with each ammo type—every caliber is a different weapon." +
+        public const string WeaponDescEN = "A royal cannon personally forged by the Skyburner Dragon Lord from the wreck of Dragon's Breath and the halberd's lingering embers. Devouring draconic sigils coil across the barrel; when the trigger is pulled, any round fed into it is consumed, tempered, and reborn as dragonfire." +
+            "\n<color=#FF6347>[Myriad Rounds, One Flame]</color> Compatible with 15 ammo calibers. Sniper rounds, buckshot, rockets, candy, snowballs and more are all rewritten into entirely different dragonfire barrages. The ammo dictates the tactic; the flame pierces every foe." +
+            "\n<color=#FF4500>[Dragon Cannon Override]</color> Fire rate, damage, magazine, range, and projectile behavior all metamorphose with each caliber. Every reload is the crowning of a new royal weapon." +
             "\n<color=#FFD700>[Dragon Flame Mark]</color> Hits stack Dragon Flame Marks (up to 10). Synergizes with the Realm-Breaking Halberd—its slam detonates all marks. More stacks, fiercer the explosion.";
 
         private const string BaseName = "dragonking_Gun";
@@ -157,15 +161,33 @@ namespace BossRush
             }
         }
 
-        private static void InjectLocalization()
+        public static void InjectLocalization()
         {
             string displayName = L10n.T(WeaponNameCN, WeaponNameEN);
             string description = L10n.T(WeaponDescCN, WeaponDescEN);
+            string unknownCaliber = L10n.T(UnknownCaliberCN, UnknownCaliberEN);
 
             LocalizationHelper.InjectLocalization(WeaponNameKey, displayName);
+            LocalizationHelper.InjectLocalization(WeaponNameKey + "_Desc", description);
             LocalizationHelper.InjectLocalization(WeaponDescKey, description);
             LocalizationHelper.InjectLocalization("Item_" + WeaponTypeId, displayName);
             LocalizationHelper.InjectLocalization("Item_" + WeaponTypeId + "_Desc", description);
+            LocalizationHelper.InjectLocalization(WeaponNameCN, displayName);
+            LocalizationHelper.InjectLocalization(WeaponNameEN, displayName);
+            LocalizationHelper.InjectLocalization(WeaponNameCN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(WeaponNameEN + "_Desc", description);
+            LocalizationHelper.InjectLocalization(UnknownCaliberKey, unknownCaliber);
+        }
+
+        public static string GetUnknownCaliberDisplayText()
+        {
+            string displayText = UnknownCaliberKey.ToPlainText();
+            if (!string.IsNullOrEmpty(displayText) && !string.Equals(displayText, UnknownCaliberKey, StringComparison.Ordinal))
+            {
+                return displayText;
+            }
+
+            return L10n.T(UnknownCaliberCN, UnknownCaliberEN);
         }
 
         private static ItemSetting_Gun EnsureGunSettingComponent(Item item)
