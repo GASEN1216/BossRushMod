@@ -1,4 +1,46 @@
+import { readFileSync } from 'fs'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 import { defineConfig } from 'vitepress'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const CATALOG_PATH = resolve(__dirname, '..', '..', '..', 'WikiContent', 'catalog.tsv')
+
+function getChangelogLink(entryId: string, prefix: string) {
+  if (entryId === 'changelog__highlights') return `${prefix}/changelog/`
+  if (entryId === 'changelog__legacy_archive') return `${prefix}/changelog/legacy-archive`
+
+  const versionMatch = entryId.match(/^changelog__v(\d+)_(\d+)_(\d+)$/)
+  if (!versionMatch) return null
+
+  return `${prefix}/changelog/v${versionMatch[1]}.${versionMatch[2]}.${versionMatch[3]}`
+}
+
+function getChangelogItems(locale: 'zh' | 'en') {
+  const prefix = locale === 'en' ? '/en' : ''
+  const raw = readFileSync(CATALOG_PATH, 'utf-8')
+  const lines = raw.trim().split('\n').slice(1)
+
+  return lines
+    .map((line) => line.split('\t'))
+    .filter((cols) => cols.length >= 5 && cols[0] === 'changelog')
+    .map((cols) => ({
+      entryId: cols[1],
+      text: locale === 'en' ? cols[3] : cols[2],
+      order: Number(cols[4]),
+    }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => {
+      const link = getChangelogLink(entry.entryId, prefix)
+      if (!link) return null
+
+      return {
+        text: entry.text,
+        link,
+      }
+    })
+    .filter((entry): entry is { text: string; link: string } => entry !== null)
+}
 
 // ── 侧边栏定义 ───────────────────────────────────────────
 // 以 docs/wiki-site/ 的实际文件结构为准
@@ -105,36 +147,7 @@ function sidebarZh() {
     {
       text: '更新日志',
       collapsed: true,
-      items: [
-        { text: '更新日志', link: '/changelog/' },
-        { text: '早期版本档案', link: '/changelog/legacy-archive' },
-        { text: 'v2.1.24', link: '/changelog/v2.1.24' },
-        { text: 'v2.1.23', link: '/changelog/v2.1.23' },
-        { text: 'v2.1.20', link: '/changelog/v2.1.20' },
-        { text: 'v2.1.17', link: '/changelog/v2.1.17' },
-        { text: 'v2.1.16', link: '/changelog/v2.1.16' },
-        { text: 'v2.1.15', link: '/changelog/v2.1.15' },
-        { text: 'v2.1.14', link: '/changelog/v2.1.14' },
-        { text: 'v2.1.13', link: '/changelog/v2.1.13' },
-        { text: 'v2.1.12', link: '/changelog/v2.1.12' },
-        { text: 'v2.1.10', link: '/changelog/v2.1.10' },
-        { text: 'v2.1.6', link: '/changelog/v2.1.6' },
-        { text: 'v2.1.2', link: '/changelog/v2.1.2' },
-        { text: 'v2.1.1', link: '/changelog/v2.1.1' },
-        { text: 'v2.1.0', link: '/changelog/v2.1.0' },
-        { text: 'v2.0.6', link: '/changelog/v2.0.6' },
-        { text: 'v2.0.5', link: '/changelog/v2.0.5' },
-        { text: 'v2.0.4', link: '/changelog/v2.0.4' },
-        { text: 'v2.0.3', link: '/changelog/v2.0.3' },
-        { text: 'v2.0.2', link: '/changelog/v2.0.2' },
-        { text: 'v2.0.0', link: '/changelog/v2.0.0' },
-        { text: 'v1.9.7', link: '/changelog/v1.9.7' },
-        { text: 'v1.7.4', link: '/changelog/v1.7.4' },
-        { text: 'v1.7.3', link: '/changelog/v1.7.3' },
-        { text: 'v1.6.4', link: '/changelog/v1.6.4' },
-        { text: 'v1.6.3', link: '/changelog/v1.6.3' },
-        { text: 'v1.6.2', link: '/changelog/v1.6.2' },
-      ],
+      items: getChangelogItems('zh'),
     },
   ]
 }
@@ -241,36 +254,7 @@ function sidebarEn() {
     {
       text: 'Changelog',
       collapsed: true,
-      items: [
-        { text: 'Changelog', link: '/en/changelog/' },
-        { text: 'Legacy Archive', link: '/en/changelog/legacy-archive' },
-        { text: 'v2.1.24', link: '/en/changelog/v2.1.24' },
-        { text: 'v2.1.23', link: '/en/changelog/v2.1.23' },
-        { text: 'v2.1.20', link: '/en/changelog/v2.1.20' },
-        { text: 'v2.1.17', link: '/en/changelog/v2.1.17' },
-        { text: 'v2.1.16', link: '/en/changelog/v2.1.16' },
-        { text: 'v2.1.15', link: '/en/changelog/v2.1.15' },
-        { text: 'v2.1.14', link: '/en/changelog/v2.1.14' },
-        { text: 'v2.1.13', link: '/en/changelog/v2.1.13' },
-        { text: 'v2.1.12', link: '/en/changelog/v2.1.12' },
-        { text: 'v2.1.10', link: '/en/changelog/v2.1.10' },
-        { text: 'v2.1.6', link: '/en/changelog/v2.1.6' },
-        { text: 'v2.1.2', link: '/en/changelog/v2.1.2' },
-        { text: 'v2.1.1', link: '/en/changelog/v2.1.1' },
-        { text: 'v2.1.0', link: '/en/changelog/v2.1.0' },
-        { text: 'v2.0.6', link: '/en/changelog/v2.0.6' },
-        { text: 'v2.0.5', link: '/en/changelog/v2.0.5' },
-        { text: 'v2.0.4', link: '/en/changelog/v2.0.4' },
-        { text: 'v2.0.3', link: '/en/changelog/v2.0.3' },
-        { text: 'v2.0.2', link: '/en/changelog/v2.0.2' },
-        { text: 'v2.0.0', link: '/en/changelog/v2.0.0' },
-        { text: 'v1.9.7', link: '/en/changelog/v1.9.7' },
-        { text: 'v1.7.4', link: '/en/changelog/v1.7.4' },
-        { text: 'v1.7.3', link: '/en/changelog/v1.7.3' },
-        { text: 'v1.6.4', link: '/en/changelog/v1.6.4' },
-        { text: 'v1.6.3', link: '/en/changelog/v1.6.3' },
-        { text: 'v1.6.2', link: '/en/changelog/v1.6.2' },
-      ],
+      items: getChangelogItems('en'),
     },
   ]
 }
