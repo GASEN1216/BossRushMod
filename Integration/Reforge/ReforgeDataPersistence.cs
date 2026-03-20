@@ -563,6 +563,19 @@ namespace BossRush
     /// </summary>
     public static class CustomItemRuntimeStateHelper
     {
+        private static readonly string[] CriticalGunStatKeys =
+        {
+            "Damage",
+            "ShootSpeed",
+            "Capacity",
+            "DefaultScatter",
+            "MaxScatter",
+            "ScatterFactor",
+            "DefaultScatterADS",
+            "MaxScatterADS",
+            "ScatterFactorADS"
+        };
+
         private sealed class RuntimeConfigEntry
         {
             public Action<Item> Configure;
@@ -708,17 +721,31 @@ namespace BossRush
 
         public static bool NeedsGunRuntimeConfig(Item item, bool requireInventory = false)
         {
+            if (item == null)
+            {
+                return false;
+            }
+
             ItemSetting_Gun gunSetting = item.GetComponent<ItemSetting_Gun>();
             if (gunSetting == null || (requireInventory && item.Inventory == null))
             {
                 return true;
             }
 
-            return item.Stats == null ||
-                   item.Stats.GetStat("Damage") == null ||
-                   item.Stats.GetStat("ShootSpeed") == null ||
-                   item.Stats.GetStat("Capacity") == null ||
-                   item.Value <= 0;
+            if (item.Stats == null || item.Value <= 0)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < CriticalGunStatKeys.Length; i++)
+            {
+                if (item.Stats.GetStat(CriticalGunStatKeys[i]) == null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static bool NeedsMeleeRuntimeConfig(Item item)
@@ -778,21 +805,13 @@ namespace BossRush
     }
 
     /// <summary>
-    /// Harmony Patch: 物品实例启用后补跑自定义装备配置与 RF_ 恢复。
+    /// Harmony Patch: 物品初始化后补跑自定义装备配置与 RF_ 恢复。
+    /// 原版 Item 没有 OnEnable，运行时恢复必须挂到真实存在的初始化入口。
     /// 主要覆盖 ItemTreeData / 仓库 / 快递缓冲区恢复出来的物品实例。
     /// </summary>
-    [HarmonyPatch]
-    public static class ItemOnEnableRestorePatch
+    [HarmonyPatch(typeof(Item), "Initialize")]
+    public static class ItemInitializeRestorePatch
     {
-        private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
-        {
-            var onEnable = AccessTools.Method(typeof(Item), "OnEnable");
-            if (onEnable != null)
-            {
-                yield return onEnable;
-            }
-        }
-
         [HarmonyPostfix]
         public static void Postfix(Item __instance)
         {
@@ -803,11 +822,11 @@ namespace BossRush
 
             try
             {
-                CustomItemRuntimeStateHelper.RestoreRuntimeState(__instance, "Item.OnEnable");
+                CustomItemRuntimeStateHelper.RestoreRuntimeState(__instance, "Item.Initialize");
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[CustomItemRestore] Item.OnEnable 恢复失败: " + e.Message);
+                ModBehaviour.DevLog("[CustomItemRestore] Item.Initialize 恢复失败: " + e.Message);
             }
         }
     }
