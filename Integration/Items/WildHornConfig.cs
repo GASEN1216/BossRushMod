@@ -34,6 +34,21 @@ namespace BossRush
         /// <summary>本地化键 - 显示名称</summary>
         public const string LOC_KEY_DISPLAY = "BossRush_WildHorn";
 
+        /// <summary>标签名称（用于创建 Tag ScriptableObject）</summary>
+        public const string TAG_NAME = "BossRushMount";
+
+        /// <summary>标签显示名称（中文）</summary>
+        public const string TAG_DISPLAY_CN = "坐骑";
+
+        /// <summary>标签显示名称（英文）</summary>
+        public const string TAG_DISPLAY_EN = "Mount";
+
+        /// <summary>标签描述（中文）</summary>
+        public const string TAG_DESC_CN = "可用于召唤或呼唤坐骑";
+
+        /// <summary>标签描述（英文）</summary>
+        public const string TAG_DESC_EN = "Used to summon or call your mount";
+
         // ============================================================================
         // 冷却配置
         // ============================================================================
@@ -171,6 +186,58 @@ namespace BossRush
             return L10n.T(COOLDOWN_CN, COOLDOWN_EN);
         }
 
+        /// <summary>缓存的坐骑标签</summary>
+        private static Tag cachedMountTag = null;
+
+        /// <summary>获取或创建坐骑标签</summary>
+        private static Tag GetMountTag()
+        {
+            if (cachedMountTag != null) return cachedMountTag;
+
+            try
+            {
+                cachedMountTag = ScriptableObject.CreateInstance<Tag>();
+
+                var tagType = typeof(Tag);
+                cachedMountTag.name = TAG_NAME;
+
+                var showField = tagType.GetField("show", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (showField != null) showField.SetValue(cachedMountTag, true);
+
+                var showDescField = tagType.GetField("showDescription", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (showDescField != null) showDescField.SetValue(cachedMountTag, true);
+
+                var colorField = tagType.GetField("color", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (colorField != null) colorField.SetValue(cachedMountTag, Color.yellow);
+
+                ModBehaviour.DevLog("[WildHornConfig] 创建坐骑标签成功");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WildHornConfig] 创建坐骑标签失败: " + e.Message);
+            }
+
+            return cachedMountTag;
+        }
+
+        /// <summary>添加坐骑标签到物品</summary>
+        private static void AddMountTag(Item item)
+        {
+            try
+            {
+                Tag mountTag = GetMountTag();
+                if (mountTag != null && !item.Tags.Contains(mountTag))
+                {
+                    item.Tags.Add(mountTag);
+                    ModBehaviour.DevLog("[WildHornConfig] 已添加坐骑标签");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WildHornConfig] 添加坐骑标签失败: " + e.Message);
+            }
+        }
+
         // ============================================================================
         // 物品配置
         // ============================================================================
@@ -215,6 +282,9 @@ namespace BossRush
                 {
                     usageField.SetValue(item, usageUtils);
                 }
+
+                // 6. 添加"坐骑"标签（黄色显示）
+                AddMountTag(item);
 
                 ModBehaviour.DevLog("[WildHornConfig] 荒野号角物品配置完成");
             }
@@ -263,6 +333,12 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization(DISPLAY_NAME_EN, isChinese ? DISPLAY_NAME_CN : DISPLAY_NAME_EN);
                 LocalizationHelper.InjectLocalization(DISPLAY_NAME_CN + "_Desc", isChinese ? DESCRIPTION_CN : DESCRIPTION_EN);
                 LocalizationHelper.InjectLocalization(DISPLAY_NAME_EN + "_Desc", isChinese ? DESCRIPTION_CN : DESCRIPTION_EN);
+
+                string tagDisplayName = L10n.T(TAG_DISPLAY_CN, TAG_DISPLAY_EN);
+                string tagDescription = L10n.T(TAG_DESC_CN, TAG_DESC_EN);
+                LocalizationHelper.InjectLocalization("Tag_" + TAG_NAME, tagDisplayName);
+                LocalizationHelper.InjectLocalization("Tag_" + TAG_NAME + "_Desc", tagDescription);
+                LocalizationHelper.InjectLocalization(TAG_NAME, tagDisplayName);
 
                 ModBehaviour.DevLog("[WildHornConfig] 本地化注入完成");
             }
