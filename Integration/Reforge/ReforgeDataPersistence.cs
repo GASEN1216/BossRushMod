@@ -151,13 +151,15 @@ namespace BossRush
                 return;
             }
 
+            CleanupUnsupportedReforgeData(item);
+
             try
             {
                 if (item.Modifiers != null)
                 {
                     foreach (ModifierDescription mod in item.Modifiers)
                     {
-                        if (mod == null || !mod.Display || !ReforgeSystem.IsNativeModifier(prefab, mod))
+                        if (!ReforgeSystem.IsModifierEligibleForReforge(prefab, mod))
                         {
                             continue;
                         }
@@ -176,7 +178,7 @@ namespace BossRush
                 {
                     foreach (Stat stat in item.Stats)
                     {
-                        if (stat == null || !stat.Display)
+                        if (!ReforgeSystem.IsStatEligibleForReforge(stat))
                         {
                             continue;
                         }
@@ -195,12 +197,7 @@ namespace BossRush
                 {
                     foreach (var variable in item.Variables)
                     {
-                        if (variable == null || !variable.Display || IsIgnoredRuntimeVariableKey(variable.Key))
-                        {
-                            continue;
-                        }
-
-                        if (variable.DataType != CustomDataType.Float)
+                        if (!ReforgeSystem.IsVariableEligibleForReforge(variable))
                         {
                             continue;
                         }
@@ -278,6 +275,8 @@ namespace BossRush
         public static bool TryRestoreReforgeData(Item item)
         {
             if (item == null || item.Variables == null) return false;
+
+            CleanupUnsupportedReforgeData(item);
 
             // 快速检查：已恢复的物品直接跳过
             int itemId = item.GetInstanceID();
@@ -452,16 +451,162 @@ namespace BossRush
             return false;
         }
 
-        private static bool IsIgnoredRuntimeVariableKey(string key)
+        private static bool TryParseReforgeDataKey(string variableKey, out PropertyType propertyType, out string propertyKey)
         {
-            if (string.IsNullOrEmpty(key))
+            propertyType = PropertyType.Modifier;
+            propertyKey = null;
+
+            if (string.IsNullOrEmpty(variableKey))
             {
-                return true;
+                return false;
             }
 
-            return key == "Count" ||
-                   key == "ReforgeCount" ||
-                   key.StartsWith("RF_", StringComparison.Ordinal);
+            if (variableKey.StartsWith(MODIFIER_PREFIX, StringComparison.Ordinal))
+            {
+                propertyType = PropertyType.Modifier;
+                propertyKey = variableKey.Substring(MODIFIER_PREFIX.Length);
+                return !string.IsNullOrEmpty(propertyKey);
+            }
+
+            if (variableKey.StartsWith(STAT_PREFIX, StringComparison.Ordinal))
+            {
+                propertyType = PropertyType.Stat;
+                propertyKey = variableKey.Substring(STAT_PREFIX.Length);
+                return !string.IsNullOrEmpty(propertyKey);
+            }
+
+            if (variableKey.StartsWith(VARIABLE_PREFIX, StringComparison.Ordinal))
+            {
+                propertyType = PropertyType.Variable;
+                propertyKey = variableKey.Substring(VARIABLE_PREFIX.Length);
+                return !string.IsNullOrEmpty(propertyKey);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 清理已经持久化但当前不再允许参与重铸的 RF_ 数据，
+        /// 同时将对应属性回滚到预制体默认值。
+        /// </summary>
+        public static void CleanupUnsupportedReforgeData(Item item)
+        {
+            if (item == null || item.Variables == null)
+            {
+                return;
+            }
+
+            List<CustomData> entriesToRemove = null;
+
+            foreach (var variable in item.Variables)
+            {
+                if (variable == null)
+                {
+                    continue;
+                }
+
+                PropertyType propertyType;
+                string propertyKey;
+                if (!TryParseReforgeDataKey(variable.Key, out propertyType, out propertyKey))
+                {
+                    continue;
+                }
+
+                if (ReforgeSystem.IsPropertySupportedForReforge(propertyKey, propertyType))
+                {
+                    continue;
+                }
+
+                ResetPropertyToPrefabValue(item, propertyKey, propertyType);
+
+                if (entriesToRemove == null)
+                {
+                    entriesToRemove = new List<CustomData>();
+                }
+
+                entriesToRemove.Add(variable);
+                ModBehaviour.DevLog($"[ReforgeData] 已清理不支持的重铸数据: {item.DisplayName}.{variable.Key}");
+            }
+
+            if (entriesToRemove == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < entriesToRemove.Count; i++)
+            {
+                item.Variables.Remove(entriesToRemove[i]);
+            }
+        }
+
+        private static void ResetPropertyToPrefabValue(Item item, string propertyKey, PropertyType propertyType)
+        {
+            if (item == null || string.IsNullOrEmpty(propertyKey))
+            {
+                return;
+            }
+
+            Item prefab = GetItemPrefab(item);
+
+            switch (propertyType)
+            {
+                case PropertyType.Modifier:
+                    if (item.Modifiers == null)
+                    {
+                        return;
+                    }
+
+                    float prefabModifierValue = GetPrefabModifierValue(prefab, propertyKey);
+                    foreach (var mod in item.Modifiers)
+                    {
+                        if (mod != null && mod.Key == propertyKey)
+                        {
+                            ReforgeSystem.ApplyModifierValueChangePublic(mod, prefabModifierValue);
+                            return;
+                        }
+                    }
+                    break;
+
+                case PropertyType.Stat:
+                    if (item.Stats == null)
+                    {
+                        return;
+                    }
+
+                    float prefabStatValue = GetPrefabStatValue(prefab, propertyKey);
+                    foreach (var stat in item.Stats)
+                    {
+                        if (stat != null && stat.Key == propertyKey)
+                        {
+                            ReforgeSystem.ApplyStatValueChangePublic(stat, prefabStatValue);
+                            return;
+                        }
+                    }
+                    break;
+
+                case PropertyType.Variable:
+                    if (item.Variables == null)
+                    {
+                        return;
+                    }
+
+                    float prefabVariableValue = GetPrefabVariableValue(prefab, propertyKey);
+                    foreach (var variable in item.Variables)
+                    {
+                        if (variable != null && variable.Key == propertyKey)
+                        {
+                            try
+                            {
+                                variable.SetFloat(prefabVariableValue);
+                            }
+                            catch
+                            {
+                            }
+                            return;
+                        }
+                    }
+                    break;
+            }
         }
 
         private static bool ShouldSyncDelta(Item item, string prefix, string propertyKey, float prefabValue, float currentValue)

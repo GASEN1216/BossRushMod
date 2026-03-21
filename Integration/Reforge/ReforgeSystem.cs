@@ -202,6 +202,21 @@ namespace BossRush
             "HeadArmor",  // 头盔护甲值
             "BodyArmor"   // 身体护甲值
         };
+
+        /// <summary>
+        /// 不参与重铸的内部时序类 Stat。
+        /// 这些字段会直接影响战斗判定窗口，暴露到重铸池后容易让武器行为失真。
+        /// </summary>
+        private static readonly HashSet<string> UNSUPPORTED_REFORGE_STAT_KEYS = new HashSet<string>
+        {
+            "DealDamageTime"
+        };
+
+        /// <summary>
+        /// 不参与重铸的 Variable 键。
+        /// 先保留扩展点，后续如有新的运行时字段可直接加入。
+        /// </summary>
+        private static readonly HashSet<string> UNSUPPORTED_REFORGE_VARIABLE_KEYS = new HashSet<string>();
         
         // ============================================================================
         
@@ -457,6 +472,73 @@ namespace BossRush
         // ============================================================================
         // 公共接口
         // ============================================================================
+
+        /// <summary>
+        /// 判断 Variable 是否为系统跟踪字段。
+        /// </summary>
+        public static bool IsRuntimeTrackingVariableKey(string key)
+        {
+            return string.IsNullOrEmpty(key) ||
+                   key == "Count" ||
+                   key == "ReforgeCount" ||
+                   key.StartsWith("RF_", StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 判断指定属性键是否允许进入重铸池。
+        /// </summary>
+        public static bool IsPropertySupportedForReforge(string key, PropertyType type)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            switch (type)
+            {
+                case PropertyType.Modifier:
+                    return true;
+                case PropertyType.Stat:
+                    return !UNSUPPORTED_REFORGE_STAT_KEYS.Contains(key);
+                case PropertyType.Variable:
+                    return !IsRuntimeTrackingVariableKey(key) &&
+                           !UNSUPPORTED_REFORGE_VARIABLE_KEYS.Contains(key);
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// 判断 Modifier 是否可参与重铸。
+        /// </summary>
+        public static bool IsModifierEligibleForReforge(Item prefab, ModifierDescription mod)
+        {
+            return mod != null &&
+                   mod.Display &&
+                   IsNativeModifier(prefab, mod) &&
+                   IsPropertySupportedForReforge(mod.Key, PropertyType.Modifier);
+        }
+
+        /// <summary>
+        /// 判断 Stat 是否可参与重铸。
+        /// </summary>
+        public static bool IsStatEligibleForReforge(Stat stat)
+        {
+            return stat != null &&
+                   stat.Display &&
+                   IsPropertySupportedForReforge(stat.Key, PropertyType.Stat);
+        }
+
+        /// <summary>
+        /// 判断 Variable 是否可参与重铸。
+        /// </summary>
+        public static bool IsVariableEligibleForReforge(CustomData variable)
+        {
+            return variable != null &&
+                   variable.Display &&
+                   variable.DataType == CustomDataType.Float &&
+                   IsPropertySupportedForReforge(variable.Key, PropertyType.Variable);
+        }
         
         /// <summary>
         /// 检查物品是否可以重铸
@@ -484,7 +566,7 @@ namespace BossRush
 
             foreach (var mod in item.Modifiers)
             {
-                if (mod.Display && IsNativeModifier(prefab, mod)) return true;
+                if (IsModifierEligibleForReforge(prefab, mod)) return true;
             }
             return false;
         }
@@ -498,7 +580,7 @@ namespace BossRush
             
             foreach (var stat in item.Stats)
             {
-                if (stat.Display) return true;
+                if (IsStatEligibleForReforge(stat)) return true;
             }
             return false;
         }
@@ -512,12 +594,7 @@ namespace BossRush
             
             foreach (var variable in item.Variables)
             {
-                // 跳过系统变量
-                if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
-                if (variable.Key.StartsWith("RF_")) continue;
-                
-                // 只处理Display=true且为Float类型的变量
-                if (variable.Display && variable.DataType == Duckov.Utilities.CustomDataType.Float)
+                if (IsVariableEligibleForReforge(variable))
                 {
                     return true;
                 }
@@ -540,7 +617,7 @@ namespace BossRush
                 Item prefab = GetItemPrefab(item);
                 foreach (var mod in item.Modifiers)
                 {
-                    if (mod.Display && IsNativeModifier(prefab, mod)) count++;
+                    if (IsModifierEligibleForReforge(prefab, mod)) count++;
                 }
             }
             
@@ -549,7 +626,7 @@ namespace BossRush
             {
                 foreach (var stat in item.Stats)
                 {
-                    if (stat.Display) count++;
+                    if (IsStatEligibleForReforge(stat)) count++;
                 }
             }
             
@@ -558,9 +635,7 @@ namespace BossRush
             {
                 foreach (var variable in item.Variables)
                 {
-                    if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
-                    if (variable.Key.StartsWith("RF_")) continue;
-                    if (variable.Display && variable.DataType == Duckov.Utilities.CustomDataType.Float) count++;
+                    if (IsVariableEligibleForReforge(variable)) count++;
                 }
             }
             
@@ -699,13 +774,12 @@ namespace BossRush
                 {
                     foreach (ModifierDescription mod in item.Modifiers)
                     {
-                        // 只收集在UI上显示的属性
-                        if (!mod.Display) continue;
-
-                        // 跳过非预制体原生的属性（动态添加的Modifier不在预制体中）
-                        if (!IsNativeModifier(prefab, mod))
+                        if (!IsModifierEligibleForReforge(prefab, mod))
                         {
-                            ModBehaviour.DevLog("[ReforgeSystem] 跳过非原生属性: " + mod.Key);
+                            if (mod != null && mod.Display && !IsNativeModifier(prefab, mod))
+                            {
+                                ModBehaviour.DevLog("[ReforgeSystem] 跳过非原生属性: " + mod.Key);
+                            }
                             continue;
                         }
 
@@ -731,8 +805,7 @@ namespace BossRush
                 {
                     foreach (var stat in item.Stats)
                     {
-                        // 只收集在UI上显示的属性
-                        if (!stat.Display) continue;
+                        if (!IsStatEligibleForReforge(stat)) continue;
                         
                         // 跳过已固定的属性（冷淬液功能）
                         if (PropertyLockSystem.IsPropertyLocked(item, stat.Key, PropertyType.Stat))
@@ -756,12 +829,7 @@ namespace BossRush
                 {
                     foreach (var variable in item.Variables)
                     {
-                        // 只收集在UI上显示的属性
-                        if (!variable.Display) continue;
-                        // 跳过系统变量
-                        if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
-                        // 跳过重铸数据（RF_MOD_、RF_STAT_、RF_VAR_ 前缀）
-                        if (variable.Key.StartsWith("RF_")) continue;
+                        if (!IsVariableEligibleForReforge(variable)) continue;
                         
                         // 跳过已固定的属性（冷淬液功能）
                         if (PropertyLockSystem.IsPropertyLocked(item, variable.Key, PropertyType.Variable))

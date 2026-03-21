@@ -1364,6 +1364,7 @@ namespace BossRush
             if (selectedItem != null)
             {
                 CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(selectedItem);
+                ReforgeDataPersistence.CleanupUnsupportedReforgeData(selectedItem);
 
                 // 保存新物品的属性快照
                 SavePropertySnapshot(selectedItem);
@@ -1905,12 +1906,13 @@ namespace BossRush
             try
             {
                 if (item == null) return;
+                Item prefab = GetCachedPrefab(item.TypeID);
 
                 if (item.Modifiers != null)
                 {
                     foreach (var mod in item.Modifiers)
                     {
-                        if (!mod.Display) continue;
+                        if (!ReforgeSystem.IsModifierEligibleForReforge(prefab, mod)) continue;
 
                         PropertySnapshot snapshot = new PropertySnapshot
                         {
@@ -1926,7 +1928,7 @@ namespace BossRush
                 {
                     foreach (var stat in item.Stats)
                     {
-                        if (!stat.Display) continue;
+                        if (!ReforgeSystem.IsStatEligibleForReforge(stat)) continue;
 
                         PropertySnapshot snapshot = new PropertySnapshot
                         {
@@ -1942,10 +1944,7 @@ namespace BossRush
                 {
                     foreach (var variable in item.Variables)
                     {
-                        if (!variable.Display) continue;
-                        if (variable.Key == "Count" || variable.Key == "ReforgeCount") continue;
-                        if (variable.Key.StartsWith("RF_")) continue;
-                        if (variable.DataType != Duckov.Utilities.CustomDataType.Float) continue;
+                        if (!ReforgeSystem.IsVariableEligibleForReforge(variable)) continue;
 
                         float value;
                         try
@@ -3077,6 +3076,7 @@ namespace BossRush
                     
                     // 跳过系统变量
                     if (key == "Count" || key == "ReforgeCount" || key.StartsWith("RF_")) continue;
+                    if (!ReforgeSystem.IsPropertySupportedForReforge(key, propType)) continue;
                     
                     // 为属性条目添加交互功能
                     SetupPropertyEntryInteraction(child, key, propType, canLock);
