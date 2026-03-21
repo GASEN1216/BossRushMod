@@ -22,6 +22,16 @@ namespace BossRush
         private bool cachedVisibility = false;
         private bool visibilityCached = false;
         private bool listenersRegistered = false;
+
+        protected override Vector3 GetDefaultInteractMarkerOffset()
+        {
+            return new Vector3(0f, 0.15f, 0f);
+        }
+
+        protected override bool ShouldHideInteractMarker()
+        {
+            return true;
+        }
         
         // ============================================================================
         // 交互设置

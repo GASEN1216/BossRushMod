@@ -82,6 +82,7 @@ namespace BossRush
                 {
                     MarkWeddingNpcInstance(spouseInstance, spouseNpcId);
                     DestroyWeddingPlaceholder();
+                    RefreshSpouseInteractionOptions(spouseInstance);
                     return spouseInstance.transform;
                 }
 

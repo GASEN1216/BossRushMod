@@ -14,6 +14,22 @@ namespace BossRush.Utils
     public static class NPCInteractionGroupHelper
     {
         /// <summary>
+        /// Prepares grouped interaction internals before InteractableBase.Awake touches them.
+        /// The game's GetInteractableList() crashes when interactableGroup is true but the private list is still null.
+        /// </summary>
+        public static List<InteractableBase> PrepareGroupedInteractionOwner(InteractableBase owner, string logPrefix)
+        {
+            if (owner == null)
+            {
+                ModBehaviour.DevLog(logPrefix + " [ERROR] Failed to prepare grouped interaction: owner is null");
+                return null;
+            }
+
+            owner.interactableGroup = true;
+            return GetOrCreateGroupList(owner, logPrefix);
+        }
+
+        /// <summary>
         /// Gets or creates the internal grouped interaction list.
         /// </summary>
         public static List<InteractableBase> GetOrCreateGroupList(InteractableBase owner, string logPrefix)
@@ -64,32 +80,84 @@ namespace BossRush.Utils
                 return null;
             }
 
-            GameObject childObj = new GameObject(childName);
+            Transform existingChild = parent.Find(childName);
+            GameObject childObj = existingChild != null ? existingChild.gameObject : new GameObject(childName);
             childObj.transform.SetParent(parent, false);
             childObj.transform.localPosition = Vector3.zero;
+            childObj.transform.localRotation = Quaternion.identity;
+            childObj.transform.localScale = Vector3.one;
 
-            bool restoreActive = childObj.activeSelf;
-            if (restoreActive)
+            BoxCollider boxCollider = childObj.GetComponent<BoxCollider>();
+            if (boxCollider == null)
             {
-                childObj.SetActive(false);
+                boxCollider = childObj.AddComponent<BoxCollider>();
             }
 
-            if (childObj.GetComponent<Collider>() == null)
+            boxCollider.isTrigger = true;
+            boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
+            boxCollider.enabled = false;
+
+            T component = childObj.GetComponent<T>();
+            if (component == null)
             {
-                BoxCollider boxCollider = childObj.AddComponent<BoxCollider>();
-                boxCollider.isTrigger = false;
-                boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
+                component = childObj.AddComponent<T>();
             }
 
-            T component = childObj.AddComponent<T>();
             setup?.Invoke(component);
 
-            if (restoreActive)
+            if (!groupList.Contains(component))
             {
-                childObj.SetActive(true);
+                groupList.Add(component);
             }
 
-            groupList.Add(component);
+            return component;
+        }
+
+        /// <summary>
+        /// Gets or creates a standalone world-space interactable anchor without touching grouped interaction internals.
+        /// </summary>
+        public static T GetOrCreateStandaloneInteractable<T>(
+            Transform parent,
+            string childName,
+            Vector3 localPosition,
+            Action<T> setup = null)
+            where T : InteractableBase
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            Transform child = parent.Find(childName);
+            GameObject childObj = child != null ? child.gameObject : new GameObject(childName);
+            childObj.transform.SetParent(parent, false);
+            childObj.transform.localPosition = localPosition;
+            childObj.transform.localRotation = Quaternion.identity;
+            childObj.transform.localScale = Vector3.one;
+
+            int interactableLayer = LayerMask.NameToLayer("Interactable");
+            if (interactableLayer != -1)
+            {
+                childObj.layer = interactableLayer;
+            }
+
+            SphereCollider sphereCollider = childObj.GetComponent<SphereCollider>();
+            if (sphereCollider == null)
+            {
+                sphereCollider = childObj.AddComponent<SphereCollider>();
+            }
+
+            sphereCollider.isTrigger = false;
+            sphereCollider.radius = 0.22f;
+            sphereCollider.center = Vector3.zero;
+
+            T component = childObj.GetComponent<T>();
+            if (component == null)
+            {
+                component = childObj.AddComponent<T>();
+            }
+
+            setup?.Invoke(component);
             return component;
         }
     }

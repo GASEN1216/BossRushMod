@@ -23,6 +23,16 @@ namespace BossRush
         // ============================================================================
         // 交互设置
         // ============================================================================
+
+        protected override Vector3 GetDefaultInteractMarkerOffset()
+        {
+            return new Vector3(0f, 0.15f, 0f);
+        }
+
+        protected override bool ShouldHideInteractMarker()
+        {
+            return true;
+        }
         
         protected override void SetupInteractName()
         {
@@ -91,6 +101,16 @@ namespace BossRush
     public class NPCSpouseFollowInteractable : NPCInteractableBase
     {
         private const string FollowKey = "BossRush_SpouseFollow";
+
+        protected override Vector3 GetDefaultInteractMarkerOffset()
+        {
+            return new Vector3(0f, 0.15f, 0f);
+        }
+
+        protected override bool ShouldHideInteractMarker()
+        {
+            return true;
+        }
 
         protected override void Awake()
         {
@@ -164,6 +184,16 @@ namespace BossRush
     {
         private const string DivorceKey = "BossRush_Divorce";
 
+        protected override Vector3 GetDefaultInteractMarkerOffset()
+        {
+            return new Vector3(0f, 0.15f, 0f);
+        }
+
+        protected override bool ShouldHideInteractMarker()
+        {
+            return true;
+        }
+
         protected override void Awake()
         {
             base.Awake();
@@ -233,6 +263,16 @@ namespace BossRush
     public class NPCSpouseHomeInteractable : NPCInteractableBase
     {
         private const string GoHomeKey = "BossRush_GoHome";
+
+        protected override Vector3 GetDefaultInteractMarkerOffset()
+        {
+            return new Vector3(0f, 0.15f, 0f);
+        }
+
+        protected override bool ShouldHideInteractMarker()
+        {
+            return true;
+        }
 
         protected override void Awake()
         {

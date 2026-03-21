@@ -63,7 +63,7 @@ namespace BossRush
                 
                 // 设置交互标记偏移
                 NPCExceptionHandler.TryExecute(
-                    () => this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f),
+                    () => this.interactMarkerOffset = GetDefaultInteractMarkerOffset(),
                     "NPCInteractableBase.Awake.SetInteractMarkerOffset",
                     false);
                 
@@ -87,8 +87,8 @@ namespace BossRush
                 
                 // 子选项不需要自己的 Collider，隐藏交互标记
                 NPCExceptionHandler.TryExecute(
-                    () => this.MarkerActive = false,
-                    "NPCInteractableBase.Awake.SetMarkerInactive",
+                    () => this.MarkerActive = !ShouldHideInteractMarker(),
+                    "NPCInteractableBase.Awake.ConfigureMarkerVisibility",
                     false);
                 
                 isInitialized = true;
@@ -120,6 +120,22 @@ namespace BossRush
         /// 执行交互逻辑（子类实现）
         /// </summary>
         protected abstract void DoInteract(CharacterMainControl character);
+
+        /// <summary>
+        /// 获取默认交互标记偏移。
+        /// </summary>
+        protected virtual Vector3 GetDefaultInteractMarkerOffset()
+        {
+            return new Vector3(0f, 1.0f, 0f);
+        }
+
+        /// <summary>
+        /// 是否在初始化时隐藏交互标记。
+        /// </summary>
+        protected virtual bool ShouldHideInteractMarker()
+        {
+            return true;
+        }
         
         // ============================================================================
         // 交互处理

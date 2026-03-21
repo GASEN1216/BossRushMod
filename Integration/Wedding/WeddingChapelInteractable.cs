@@ -16,21 +16,21 @@ namespace BossRush
     {
         private const string TogetherKey = "BossRush_WeddingChapel_Together";
         private const string MarriageDateFormat = "yyyy年M月d日";
-
-        private bool optionsInjected;
         private string cachedSpouseNpcId;
         private int cachedTogetherDays = int.MinValue;
         private string cachedDisplayText;
+        private WeddingChapelReplayInteractable replayInteractable;
 
         protected override void Awake()
         {
             try
             {
-                interactableGroup = true;
                 interactMarkerOffset = new Vector3(0f, 1.2f, 0f);
                 overrideInteractName = true;
                 _overrideInteractNameKey = TogetherKey;
                 InteractName = TogetherKey;
+
+                NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(this, "[WeddingChapel]");
 
                 Collider existingCollider = GetComponent<Collider>();
                 if (existingCollider == null)
@@ -51,8 +51,6 @@ namespace BossRush
                 {
                     gameObject.layer = interactableLayer;
                 }
-
-                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[WeddingChapel]");
 
                 RefreshTogetherDaysDisplay(force: true);
             }
@@ -82,34 +80,16 @@ namespace BossRush
                 ModBehaviour.DevLog("[WeddingChapel] base.Start failed: " + e.Message);
             }
 
-            if (!optionsInjected)
+            if (replayInteractable == null)
             {
-                InjectSubOptions();
-            }
-        }
-
-        private void InjectSubOptions()
-        {
-            try
-            {
-                optionsInjected = true;
-
                 var groupList = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[WeddingChapel]");
-                if (groupList == null)
+                if (groupList != null)
                 {
-                    return;
+                    replayInteractable = NPCInteractionGroupHelper.AddSubInteractable<WeddingChapelReplayInteractable>(
+                        transform,
+                        "WeddingChapelReplayOption",
+                        groupList);
                 }
-
-                NPCInteractionGroupHelper.AddSubInteractable<WeddingChapelReplayInteractable>(
-                    transform,
-                    "WeddingChapel_Replay",
-                    groupList);
-
-                ModBehaviour.DevLog("[WeddingChapel] 已注入“回忆当天”子交互。");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[WeddingChapel] 注入子交互失败: " + e.Message);
             }
         }
 
@@ -210,25 +190,14 @@ namespace BossRush
 
         protected override void Awake()
         {
-            Collider replayCollider = null;
-
             try
             {
                 LocalizationHelper.InjectLocalization(ReplayKey, L10n.T("回忆当天", "Relive the Moment"));
                 overrideInteractName = true;
                 _overrideInteractNameKey = ReplayKey;
                 InteractName = ReplayKey;
-
-                replayCollider = GetComponent<Collider>();
-                if (replayCollider == null)
-                {
-                    BoxCollider box = gameObject.AddComponent<BoxCollider>();
-                    box.size = new Vector3(0.2f, 0.2f, 0.2f);
-                    box.isTrigger = false;
-                    replayCollider = box;
-                }
-
-                interactCollider = replayCollider;
+                interactMarkerOffset = new Vector3(0f, 0.15f, 0f);
+                interactCollider = GetComponent<Collider>();
             }
             catch (Exception e)
             {
@@ -246,11 +215,6 @@ namespace BossRush
 
             try
             {
-                if (replayCollider != null)
-                {
-                    replayCollider.enabled = false;
-                }
-
                 MarkerActive = false;
             }
             catch (Exception e)

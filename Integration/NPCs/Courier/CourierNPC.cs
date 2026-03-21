@@ -2038,8 +2038,6 @@ namespace BossRush
 
         protected override void Awake()
         {
-            // 子选项不需要设置 interactableGroup，它们是被主交互组件管理的
-
             NPCExceptionHandler.TryExecute(() =>
             {
                 this.overrideInteractName = true;
@@ -2048,7 +2046,7 @@ namespace BossRush
             }, "CourierStorageInteractable.Awake.SetupInteractName", false);
 
             NPCExceptionHandler.TryExecute(
-                () => this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f),
+                () => this.interactMarkerOffset = new Vector3(0f, 0.15f, 0f),
                 "CourierStorageInteractable.Awake.SetMarkerOffset",
                 false);
 
@@ -2062,10 +2060,9 @@ namespace BossRush
                 "CourierStorageInteractable.Awake.GetController",
                 false);
 
-            // 子选项不需要自己的 Collider，隐藏交互标记
             NPCExceptionHandler.TryExecute(
                 () => this.MarkerActive = false,
-                "CourierStorageInteractable.Awake.SetMarkerInactive",
+                "CourierStorageInteractable.Awake.SetMarkerActive",
                 false);
 
             isInitialized = true;
@@ -2110,29 +2107,26 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 快递员主交互组件
-    /// 使用 InteractableBase 的 interactableGroup 模式，与路牌一样的方式实现多选项
-    /// 玩家按 F 交互后弹出选项列表（快递服务、寄存服务）
+    /// 快递员主交互组件。
+    /// 主交互处理快递服务，寄存服务通过原生 grouped interaction 提供。
     /// </summary>
     public class CourierInteractable : InteractableBase
     {
-        private bool optionsInjected = false;
-        private List<InteractableBase> groupOptions = new List<InteractableBase>();
+        private CourierStorageInteractable storageInteractable;
 
         protected override void Awake()
         {
             try
             {
-                // 设置为交互组（启用多选项模式）
-                this.interactableGroup = true;
-
-                // 设置主交互名称（显示为第一个选项"快递服务"）
+                // 设置主交互名称
                 this.overrideInteractName = true;
                 this._overrideInteractNameKey = "BossRush_CourierService";
                 this.InteractName = "BossRush_CourierService";
 
                 // 设置交互标记偏移（显示在人物中间）
                 this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f);
+
+                NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(this, "[CourierNPC]");
             }
             catch (Exception e)
             {
@@ -2171,15 +2165,6 @@ namespace BossRush
 
             try
             {
-                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[CourierNPC]");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[CourierNPC] [ERROR] CourierInteractable 预创建交互组失败: " + e.Message);
-            }
-
-            try
-            {
                 base.Awake();
             }
             catch (Exception e)
@@ -2202,47 +2187,26 @@ namespace BossRush
                 ModBehaviour.DevLog("[CourierNPC] [WARNING] CourierInteractable base.Start 异常: " + e.Message);
             }
 
-            // 注入所有选项
-            if (!optionsInjected)
-            {
-                InjectAllOptions();
-            }
+            EnsureGroupedInteractionOptions();
         }
 
         /// <summary>
-        /// 注入所有交互选项（寄存服务作为子选项，快递服务由主交互处理）
+        /// 创建组内附加服务选项。
         /// </summary>
-        private void InjectAllOptions()
+        private void EnsureGroupedInteractionOptions()
         {
-            try
+            List<InteractableBase> groupList = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[CourierNPC]");
+            if (groupList == null)
             {
-                optionsInjected = true;
-
-                var list = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[CourierNPC]");
-                if (list == null)
-                {
-                    return;
-                }
-
-                // 主选项是"快递服务"（由 OnTimeOut 处理）
-                // 子选项只有"寄存服务"
-                var storageInteract = NPCInteractionGroupHelper.AddSubInteractable<CourierStorageInteractable>(
-                    transform,
-                    "CourierOption_Storage",
-                    list);
-                if (storageInteract == null)
-                {
-                    ModBehaviour.DevLog("[CourierNPC] [ERROR] 寄存服务子交互创建失败");
-                    return;
-                }
-
-                groupOptions.Add(storageInteract);
-
-                ModBehaviour.DevLog("[CourierNPC] CourierInteractable: 已注入选项（主选项=快递服务，子选项=寄存服务）");
+                return;
             }
-            catch (Exception e)
+
+            if (storageInteractable == null)
             {
-                ModBehaviour.DevLog("[CourierNPC] [ERROR] InjectAllOptions 失败: " + e.Message + "\n" + e.StackTrace);
+                storageInteractable = NPCInteractionGroupHelper.AddSubInteractable<CourierStorageInteractable>(
+                    transform,
+                    "StorageOption",
+                    groupList);
             }
         }
 

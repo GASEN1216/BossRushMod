@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BossRush.Utils;
 using UnityEngine;
 
@@ -20,7 +21,6 @@ namespace BossRush
         {
             try
             {
-                interactableGroup = true;
                 overrideInteractName = true;
 
                 string chatText = L10n.T("聊天", "Chat");
@@ -29,6 +29,8 @@ namespace BossRush
                 _overrideInteractNameKey = "BossRush_Chat";
                 InteractName = "BossRush_Chat";
                 interactMarkerOffset = new Vector3(0f, 1f, 0f);
+
+                NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(this, "[NurseNPC]");
             }
             catch (Exception ex)
             {
@@ -58,7 +60,6 @@ namespace BossRush
                     gameObject.layer = interactableLayer;
                 }
 
-                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[NurseNPC]");
             }
             catch (Exception ex)
             {
@@ -93,63 +94,60 @@ namespace BossRush
                 controller = GetComponent<NurseNPCController>();
             }
 
-            CreateSubInteractables();
+            EnsureGroupedInteractionOptions();
             RefreshMarriageOptionVisibility();
         }
 
-        private void CreateSubInteractables()
+        private void EnsureGroupedInteractionOptions()
         {
-            try
+            List<InteractableBase> groupList = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[NurseNPC]");
+            if (groupList == null)
             {
-                var groupList = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[NurseNPC]");
-                if (groupList == null)
-                {
-                    return;
-                }
+                return;
+            }
 
+            if (giftInteractable == null)
+            {
                 giftInteractable = NPCInteractionGroupHelper.AddSubInteractable(
                     transform,
-                    "GiftInteractable",
+                    "GiftOption",
                     groupList,
                     (NPCGiftInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
+            }
 
+            if (healInteractable == null)
+            {
                 healInteractable = NPCInteractionGroupHelper.AddSubInteractable<NurseHealInteractable>(
                     transform,
-                    "HealInteractable",
+                    "HealOption",
                     groupList);
-
-                if (ShouldAddMarriageOptions())
-                {
-                    spouseFollowInteractable = NPCInteractionGroupHelper.AddSubInteractable(
-                        transform,
-                        "SpouseFollowInteractable",
-                        groupList,
-                        (NPCSpouseFollowInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
-                }
-
-                if (ShouldAddMarriageOptions())
-                {
-                    divorceInteractable = NPCInteractionGroupHelper.AddSubInteractable(
-                        transform,
-                        "DivorceInteractable",
-                        groupList,
-                        (NPCDivorceInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
-                }
-
-                if (ShouldAddMarriageOptions())
-                {
-                    spouseHomeInteractable = NPCInteractionGroupHelper.AddSubInteractable(
-                        transform,
-                        "SpouseHomeInteractable",
-                        groupList,
-                        (NPCSpouseHomeInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
-                }
-
-                ModBehaviour.DevLog("[NurseNPC] 已注入护士交互组选项，总数: " + groupList.Count);
             }
-            catch (Exception ex)
+
+            if (spouseFollowInteractable == null)
             {
-                ModBehaviour.DevLog("[NurseNPC] [ERROR] 创建子交互失败: " + ex.Message + "\n" + ex.StackTrace);
+                spouseFollowInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                    transform,
+                    "MarriageFollowOption",
+                    groupList,
+                    (NPCSpouseFollowInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
+            }
+
+            if (divorceInteractable == null)
+            {
+                divorceInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                    transform,
+                    "MarriageDivorceOption",
+                    groupList,
+                    (NPCDivorceInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
+            }
+
+            if (spouseHomeInteractable == null)
+            {
+                spouseHomeInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                    transform,
+                    "MarriageHomeOption",
+                    groupList,
+                    (NPCSpouseHomeInteractable component) => component.NpcId = NurseAffinityConfig.NPC_ID);
             }
         }
 
@@ -171,7 +169,10 @@ namespace BossRush
 
         public void RefreshMarriageOptionVisibility()
         {
-            if (!ShouldAddMarriageOptions() || ModBehaviour.Instance == null)
+            EnsureGroupedInteractionOptions();
+
+            bool shouldAddMarriageOptions = ShouldAddMarriageOptions();
+            if (!shouldAddMarriageOptions || ModBehaviour.Instance == null)
             {
                 SetMarriageOptionActive(spouseFollowInteractable, false);
                 SetMarriageOptionActive(divorceInteractable, false);

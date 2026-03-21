@@ -7,6 +7,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using BossRush.Utils;
 
@@ -31,13 +32,12 @@ namespace BossRush
             }
             catch { }
             
-            try { this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f); } catch { }
+            try { this.interactMarkerOffset = new Vector3(0f, 0.15f, 0f); } catch { }
             
             try { base.Awake(); } catch { }
             
             try { controller = GetComponentInParent<GoblinNPCController>(); } catch { }
             
-            // 子选项不需要自己的 Collider，隐藏交互标记
             try { this.MarkerActive = false; } catch { }
             
             isInitialized = true;
@@ -85,9 +85,8 @@ namespace BossRush
     }
     
     /// <summary>
-    /// 哥布林主交互组件
-    /// 使用交互组模式，支持多个交互选项（对话、商店、礼物、重铸）
-    /// 主选项为"对话"，子选项为商店、礼物、重铸
+    /// 哥布林主交互组件。
+    /// 主交互处理聊天，附加服务通过原生 grouped interaction 提供。
     /// </summary>
     public class GoblinInteractable : InteractableBase
     {
@@ -103,16 +102,15 @@ namespace BossRush
         {
             try
             {
-                // 使用交互组模式，显示多个选项
-                this.interactableGroup = true;
-                
-                // 设置主交互名称为"对话"（第一个选项）
+                // 设置主交互名称为"对话"
                 this.overrideInteractName = true;
                 this._overrideInteractNameKey = "BossRush_Chat";
                 this.InteractName = "BossRush_Chat";
                 
                 // 设置交互标记偏移
                 this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f);
+
+                NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(this, "[GoblinNPC]");
             }
             catch (Exception e)
             {
@@ -149,15 +147,6 @@ namespace BossRush
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] GoblinInteractable 设置 Collider 失败: " + e.Message);
             }
 
-            try
-            {
-                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[GoblinNPC]");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[GoblinNPC] [ERROR] GoblinInteractable 预创建交互组失败: " + e.Message);
-            }
-
             // 在确保 Collider 就绪后再调用基类 Awake，避免 InteractableBase 内部空引用
             try
             {
@@ -191,115 +180,77 @@ namespace BossRush
                 controller = GetComponent<GoblinNPCController>();
             }
             
-            // 创建子交互选项
-            CreateSubInteractables();
+            EnsureGroupedInteractionOptions();
             RefreshMarriageOptionVisibility();
         }
         
         /// <summary>
-        /// 创建子交互选项（商店、礼物、重铸、跟随、离婚、回家）
-        /// 使用反射将子选项注入到 otherInterablesInGroup 列表中（与快递员阿稳一致）
-        /// 主选项为"对话"（由 OnTimeOut 处理）
-        /// 子选项顺序：1.商店(好感度≥2级才显示) 2.赠送礼物 3.重铸服务
+        /// 创建组内交互选项。
         /// </summary>
-        private void CreateSubInteractables()
+        private void EnsureGroupedInteractionOptions()
         {
-            try
+            List<InteractableBase> groupList = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[GoblinNPC]");
+            if (groupList == null)
             {
-                // 获取或创建 otherInterablesInGroup 列表（统一走公用助手）
-                var list = NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[GoblinNPC]");
-                if (list == null)
-                {
-                    return;
-                }
+                return;
+            }
 
-                // 主选项是"对话"（由 OnTimeOut 处理）
-                // 子选项：商店、礼物、重铸、离婚
-
-                // 1. 创建商店交互选项（好感度等级≥2才显示，使用通用组件）
+            if (shopInteractable == null)
+            {
                 shopInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCShopInteractable>(
                     transform,
-                    "ShopInteractable",
-                    list,
+                    "ShopOption",
+                    groupList,
                     component => component.NpcId = GoblinAffinityConfig.NPC_ID);
-                if (shopInteractable != null)
-                {
-                    ModBehaviour.DevLog("[GoblinNPC] 创建商店交互选项并注入到交互组（使用通用组件）");
-                }
+            }
 
-                // 2. 创建礼物赠送交互选项（使用通用组件）
+            if (giftInteractable == null)
+            {
                 giftInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCGiftInteractable>(
                     transform,
-                    "GiftInteractable",
-                    list,
+                    "GiftOption",
+                    groupList,
                     component => component.NpcId = GoblinAffinityConfig.NPC_ID);
-                if (giftInteractable != null)
-                {
-                    ModBehaviour.DevLog("[GoblinNPC] 创建礼物赠送交互选项并注入到交互组（使用通用组件）");
-                }
+            }
 
-                // 3. 创建重铸交互选项
+            if (reforgeInteractable == null)
+            {
                 reforgeInteractable = NPCInteractionGroupHelper.AddSubInteractable<GoblinReforgeInteractable>(
                     transform,
-                    "ReforgeInteractable",
-                    list);
-                if (reforgeInteractable != null)
-                {
-                    ModBehaviour.DevLog("[GoblinNPC] 创建重铸交互选项并注入到交互组");
-                }
-
-                // 4. 创建配偶跟随交互选项（仅当前配偶加入交互组，显示条件由子组件控制）
-                if (ShouldAddMarriageOptions())
-                {
-                    spouseFollowInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCSpouseFollowInteractable>(
-                        transform,
-                        "SpouseFollowInteractable",
-                        list,
-                        component => component.NpcId = GoblinAffinityConfig.NPC_ID);
-                    if (spouseFollowInteractable != null)
-                    {
-                        ModBehaviour.DevLog("[GoblinNPC] 创建配偶跟随交互选项并注入到交互组");
-                    }
-                }
-
-                // 5. 创建离婚交互选项（仅当前配偶加入交互组，显示条件由子组件控制）
-                if (ShouldAddMarriageOptions())
-                {
-                    divorceInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCDivorceInteractable>(
-                        transform,
-                        "DivorceInteractable",
-                        list,
-                        component => component.NpcId = GoblinAffinityConfig.NPC_ID);
-                    if (divorceInteractable != null)
-                    {
-                        ModBehaviour.DevLog("[GoblinNPC] 创建离婚交互选项并注入到交互组");
-                    }
-                }
-
-                // 6. 创建回家交互选项（仅当前配偶加入交互组，显示条件由子组件控制）
-                if (ShouldAddMarriageOptions())
-                {
-                    spouseHomeInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCSpouseHomeInteractable>(
-                        transform,
-                        "SpouseHomeInteractable",
-                        list,
-                        component => component.NpcId = GoblinAffinityConfig.NPC_ID);
-                    if (spouseHomeInteractable != null)
-                    {
-                        ModBehaviour.DevLog("[GoblinNPC] 创建配偶回家交互选项并注入到交互组");
-                    }
-                }
-
-                ModBehaviour.DevLog("[GoblinNPC] 所有子交互选项已注入到 otherInterablesInGroup，共 " + list.Count + " 个（主选项=对话）");
+                    "ReforgeOption",
+                    groupList);
             }
-            catch (Exception e)
+
+            if (spouseFollowInteractable == null)
             {
-                ModBehaviour.DevLog("[GoblinNPC] [ERROR] 创建子交互选项失败: " + e.Message + "\n" + e.StackTrace);
+                spouseFollowInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCSpouseFollowInteractable>(
+                    transform,
+                    "MarriageFollowOption",
+                    groupList,
+                    component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+            }
+
+            if (divorceInteractable == null)
+            {
+                divorceInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCDivorceInteractable>(
+                    transform,
+                    "MarriageDivorceOption",
+                    groupList,
+                    component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+            }
+
+            if (spouseHomeInteractable == null)
+            {
+                spouseHomeInteractable = NPCInteractionGroupHelper.AddSubInteractable<NPCSpouseHomeInteractable>(
+                    transform,
+                    "MarriageHomeOption",
+                    groupList,
+                    component => component.NpcId = GoblinAffinityConfig.NPC_ID);
             }
         }
 
         /// <summary>
-        /// 只有当前配偶才允许添加婚后专属选项。
+        /// 只有当前配偶才允许显示婚后专属选项。
         /// </summary>
         private bool ShouldAddMarriageOptions()
         {
@@ -319,7 +270,10 @@ namespace BossRush
 
         public void RefreshMarriageOptionVisibility()
         {
-            if (!ShouldAddMarriageOptions() || ModBehaviour.Instance == null)
+            EnsureGroupedInteractionOptions();
+
+            bool shouldAddMarriageOptions = ShouldAddMarriageOptions();
+            if (!shouldAddMarriageOptions || ModBehaviour.Instance == null)
             {
                 SetMarriageOptionActive(spouseFollowInteractable, false);
                 SetMarriageOptionActive(divorceInteractable, false);
@@ -358,7 +312,7 @@ namespace BossRush
         protected override void OnInteractStart(CharacterMainControl interactCharacter)
         {
             base.OnInteractStart(interactCharacter);
-            ModBehaviour.DevLog("[GoblinNPC] 玩家开始与哥布林交互（交互组模式）");
+            ModBehaviour.DevLog("[GoblinNPC] 玩家开始与哥布林交互");
             
             // 让哥布林进入对话状态
             if (controller != null)

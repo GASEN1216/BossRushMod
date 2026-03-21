@@ -31,7 +31,7 @@ namespace BossRush
                 overrideInteractName = true;
                 _overrideInteractNameKey = HealInteractKey;
                 InteractName = HealInteractKey;
-                interactMarkerOffset = new Vector3(0f, 1f, 0f);
+                interactMarkerOffset = new Vector3(0f, 0.15f, 0f);
                 UpdateHealOptionName();
             }, "NurseHealInteractable.Awake.Setup", false);
 
@@ -47,7 +47,7 @@ namespace BossRush
 
             NPCExceptionHandler.TryExecute(
                 () => MarkerActive = false,
-                "NurseHealInteractable.Awake.SetMarkerInactive",
+                "NurseHealInteractable.Awake.SetMarkerActive",
                 false);
 
             isInitialized = true;
