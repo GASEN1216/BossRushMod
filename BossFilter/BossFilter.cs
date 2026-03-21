@@ -231,6 +231,16 @@ namespace BossRush
             _filteredPresetsCacheDirty = true;
         }
 
+        private void ResetBossPoolFilterStateForEnemyPresetRefresh()
+        {
+            bossPoolFilterInitialized = false;
+            showBossPoolWindow = false;
+            bossEnabledStates.Clear();
+            bossInfiniteHellFactors.Clear();
+            InvalidateFilteredPresetsCache();
+            DestroyBossPoolUI();
+        }
+
         /// <summary>
         /// 全选所有 Boss
         /// </summary>

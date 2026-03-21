@@ -466,7 +466,7 @@ namespace BossRush
                 cachedCharacterPresets = new System.Collections.Generic.Dictionary<string, CharacterRandomPreset>();
                 foreach (var preset in allPresets)
                 {
-                    if (preset == null || string.IsNullOrEmpty(preset.nameKey)) continue;
+                    if (preset == null || string.IsNullOrEmpty(preset.nameKey) || IsRuntimeCharacterPresetClone(preset)) continue;
                     if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
                     {
                         cachedCharacterPresets[preset.nameKey] = preset;
@@ -479,7 +479,7 @@ namespace BossRush
 
                 foreach (var preset in allPresets)
                 {
-                    if (preset == null) continue;
+                    if (preset == null || IsRuntimeCharacterPresetClone(preset)) continue;
 
                     string nameKey = preset.nameKey;
                     if (string.IsNullOrEmpty(nameKey)) continue;

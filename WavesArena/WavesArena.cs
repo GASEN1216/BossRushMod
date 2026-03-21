@@ -2078,6 +2078,15 @@ namespace BossRush
             // [性能优化] 如果已经初始化过，跳过重复扫描
             if (_enemyPresetsInitialized && enemyPresets != null && enemyPresets.Count > 0)
             {
+                if (!IsActive && !modeDActive && !modeEActive && !modeFActive)
+                {
+                    int removed = PruneNonBossEnemyPresetsFromCache();
+                    if (removed > 0)
+                    {
+                        ResetBossPoolFilterStateForEnemyPresetRefresh();
+                    }
+                }
+
                 DevLog("[BossRush] 敌人预设已初始化，跳过重复扫描 (共 " + enemyPresets.Count + " 个)");
                 return;
             }
@@ -2106,6 +2115,8 @@ namespace BossRush
             
             // 注册龙王Boss
             RegisterDragonKingPreset();
+
+            PruneNonBossEnemyPresetsFromCache();
 
             // 计算 Boss 池基础血量范围
             try
@@ -2259,6 +2270,99 @@ namespace BossRush
                 baseDamage = damage 
             });
         }
+
+        private static bool IsRuntimeCharacterPresetClone(CharacterRandomPreset preset)
+        {
+            if (preset == null)
+            {
+                return false;
+            }
+
+            string runtimeName = null;
+            try { runtimeName = preset.name; } catch { }
+
+            return !string.IsNullOrEmpty(runtimeName) &&
+                   runtimeName.IndexOf("(Clone)", StringComparison.Ordinal) >= 0;
+        }
+
+        private int PruneNonBossEnemyPresetsFromCache()
+        {
+            if (enemyPresets == null || enemyPresets.Count == 0)
+            {
+                return 0;
+            }
+
+            try
+            {
+                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                if (allPresets == null || allPresets.Length == 0)
+                {
+                    return 0;
+                }
+
+                var showNameByKey = new Dictionary<string, bool>(StringComparer.Ordinal);
+                for (int i = 0; i < allPresets.Length; i++)
+                {
+                    CharacterRandomPreset preset = allPresets[i];
+                    if (preset == null || IsRuntimeCharacterPresetClone(preset))
+                    {
+                        continue;
+                    }
+
+                    string nameKey = preset.nameKey;
+                    if (string.IsNullOrEmpty(nameKey))
+                    {
+                        continue;
+                    }
+
+                    bool existingShowName = false;
+                    if (showNameByKey.TryGetValue(nameKey, out existingShowName))
+                    {
+                        showNameByKey[nameKey] = existingShowName || preset.showName;
+                    }
+                    else
+                    {
+                        showNameByKey[nameKey] = preset.showName;
+                    }
+                }
+
+                int removed = 0;
+                for (int i = enemyPresets.Count - 1; i >= 0; i--)
+                {
+                    EnemyPresetInfo preset = enemyPresets[i];
+                    if (preset == null || string.IsNullOrEmpty(preset.name))
+                    {
+                        continue;
+                    }
+
+                    bool canonicalShowName = false;
+                    if (!showNameByKey.TryGetValue(preset.name, out canonicalShowName) || canonicalShowName)
+                    {
+                        continue;
+                    }
+
+                    if (IsDragonDescendantPreset(preset) || IsDragonKingPreset(preset))
+                    {
+                        continue;
+                    }
+
+                    enemyPresets.RemoveAt(i);
+                    removed++;
+                }
+
+                if (removed > 0)
+                {
+                    DevLog("[BossRush] 已从 Boss 池缓存中移除 " + removed + " 个被运行时 showName 克隆误判的小怪预设");
+                }
+
+                return removed;
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 清理 Boss 池缓存中的误判小怪失败: " + e.Message);
+                return 0;
+            }
+        }
         
         /// <summary>
         /// 尝试发现额外的敌人类型
@@ -2273,6 +2377,11 @@ namespace BossRush
                     foreach (var preset in allPresets)
                     {
                         if (preset == null)
+                        {
+                            continue;
+                        }
+
+                        if (IsRuntimeCharacterPresetClone(preset))
                         {
                             continue;
                         }
