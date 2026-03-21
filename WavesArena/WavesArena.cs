@@ -2285,6 +2285,12 @@ namespace BossRush
                    runtimeName.IndexOf("(Clone)", StringComparison.Ordinal) >= 0;
         }
 
+        private static bool IsBossPoolSpecialNoShowNamePreset(string nameKey)
+        {
+            return string.Equals(nameKey, "Cname_Boss_Red", StringComparison.Ordinal) ||
+                   string.Equals(nameKey, "Cname_Boss_Blue", StringComparison.Ordinal);
+        }
+
         private int PruneNonBossEnemyPresetsFromCache()
         {
             if (enemyPresets == null || enemyPresets.Count == 0)
@@ -2346,6 +2352,11 @@ namespace BossRush
                         continue;
                     }
 
+                    if (IsBossPoolSpecialNoShowNamePreset(preset.name))
+                    {
+                        continue;
+                    }
+
                     enemyPresets.RemoveAt(i);
                     removed++;
                 }
@@ -2393,7 +2404,7 @@ namespace BossRush
                         }
 
                         string displayName = GetLocalizedCharacterName(nameKey);
-                        bool isSpecialUnknownBoss = nameKey == "Cname_Boss_Red";
+                        bool isSpecialUnknownBoss = IsBossPoolSpecialNoShowNamePreset(nameKey);
 
                         if (!preset.showName && !isSpecialUnknownBoss)
                         {
