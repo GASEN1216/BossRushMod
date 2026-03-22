@@ -12,8 +12,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_FoldableCoverPack";
         public const string DISPLAY_NAME_CN = "折叠掩体包";
         public const string DISPLAY_NAME_EN = "Foldable Cover Pack";
-        public const string DESCRIPTION_CN = "一个可快速展开的轻型掩体包。使用后在面前部署一个折叠掩体，提供基础掩护。";
-        public const string DESCRIPTION_EN = "A lightweight cover pack that deploys quickly. Use to place a foldable cover in front of you.";
+        public const string DESCRIPTION_CN = "一个可快速展开的轻型掩体包。使用后进入部署预览：左键确认，右键取消，滚轮旋转，中键90度旋转。确认后部署折叠掩体，提供基础掩护。";
+        public const string DESCRIPTION_EN = "A lightweight cover pack that deploys quickly. Using it enters placement preview: LMB confirm, RMB cancel, mouse wheel rotate, MMB rotate 90 degrees. Confirm to deploy a foldable cover for basic protection.";
 
         public static void ConfigureItem(Item item)
         {

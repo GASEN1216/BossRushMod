@@ -559,6 +559,11 @@ namespace BossRush
                     return;
                 }
 
+                Teams runtimeFaction = isModeFRun
+                    ? ResolveModeFBossCombatTeam(faction, ctx.preset, ctx.position)
+                    : faction;
+                Teams trackedFaction = runtimeFaction;
+
                 // 克隆 characterPreset 副本，避免修改原版 ScriptableObject
                 // 1) 统一设置 aiCombatFactor=1，使 AI 互相攻击时伤害不被缩放
                 // 2) 小怪提升为 Boss，或被 Mode F 复用时，额外设置 showName/showHealthBar
@@ -578,14 +583,19 @@ namespace BossRush
                         + ": " + ctx.preset.displayName);
                 }
 
+                if (isModeFRun && ctx.preset != null)
+                {
+                    SetModeFBossDisplayName(character, ctx.preset.displayName, runtimeFaction);
+                }
+
                 // 命名
-                character.gameObject.name = (isModeFRun ? "ModeF_" : "ModeE_") + faction + "_" + ctx.preset.displayName;
+                character.gameObject.name = (isModeFRun ? "ModeF_" : "ModeE_") + runtimeFaction + "_" + ctx.preset.displayName;
 
                 // 设置阵营（确保运行时 team 与预设原始阵营一致）
                 // 对于龙裔/龙王：CreateCharacterAsync 使用的是 Cname_Boss_Red 基础预设（team=scav），
                 // 但 EnemyPresetInfo.team 记录的是 wolf，所以 SetTeam 是必要的
-                character.SetTeam(faction);
-                DevLog("[ModeE] 敌人阵营已设置: " + ctx.preset.displayName + " -> " + faction + " (预设team=" + ctx.preset.team + ")");
+                character.SetTeam(runtimeFaction);
+                DevLog("[ModeE] 敌人阵营已设置: " + ctx.preset.displayName + " -> " + runtimeFaction + " (预设team=" + ctx.preset.team + ")");
 
                 // Mode E AI：不主动设置目标，让 AI 自然感知范围内的敌人后再开打
                 // 不设置 forceTracePlayerDistance，不设置初始 searchedEnemy
@@ -615,7 +625,7 @@ namespace BossRush
 
                 // 先清理该实例可能残留的旧注册，再以当前 Mode E 生命周期重新登记。
                 CleanupModeEEnemyRuntimeState(character);
-                TrackModeEAliveEnemy(character, faction);
+                TrackModeEAliveEnemy(character, trackedFaction);
                 RegisterEnemyRecoveryAnchor(character, ctx.position);
 
                 // 注册到虚拟 CharacterSpawnerRoot，使 BossLiveMapMod 能检测到
@@ -623,7 +633,7 @@ namespace BossRush
 
                 // 注册死亡事件
                 RegisterModeEEnemyDeath(character);
-                RegisterModeEEnemyLootHandler(character, faction);
+                RegisterModeEEnemyLootHandler(character, trackedFaction);
                 if (isModeFRun)
                 {
                     RegisterModeFBoss(character);

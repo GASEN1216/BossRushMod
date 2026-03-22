@@ -8,8 +8,8 @@ echo.
 
 set OUTPUT_DIR=Build
 set MOD_NAME=BossRush
-set GAME_PATH=D:\sofrware\steam\steamapps\common\Escape from Duckov
-set WORKSHOP_PATH=D:\sofrware\steam\steamapps\workshop\content\3167020
+set GAME_PATH=E:\SteamLibrary\steamapps\common\Escape from Duckov
+set WORKSHOP_PATH=E:\SteamLibrary\steamapps\workshop\content\3167020
 :: HarmonyLoadMod (Workshop ID: 3588386576)
 set HARMONY_MOD_ID=3588386576
 echo GAME_PATH=%GAME_PATH%

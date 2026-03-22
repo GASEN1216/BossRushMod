@@ -64,7 +64,7 @@ namespace BossRush
 
         /// <summary>
         /// 生成悬赏名单（第二阶段开始时调用）
-        /// 抽取 40-50% 存活 Boss，向上取整，最少 5 个
+        /// 当前规则：所有存活 Boss 初始都获得 1 层印记
         /// </summary>
         private void GenerateBountyList()
         {
@@ -89,27 +89,13 @@ namespace BossRush
                 }
 
                 int total = alive.Count;
-                float ratio = UnityEngine.Random.Range(0.4f, 0.5f);
-                int bountyCount = Mathf.CeilToInt(total * ratio);
-                bountyCount = Mathf.Max(bountyCount, 5);
-                bountyCount = Mathf.Min(bountyCount, total);
-
-                // 随机抽取
-                List<CharacterMainControl> shuffled = new List<CharacterMainControl>(alive);
-                for (int i = shuffled.Count - 1; i > 0; i--)
-                {
-                    int j = UnityEngine.Random.Range(0, i + 1);
-                    CharacterMainControl temp = shuffled[i];
-                    shuffled[i] = shuffled[j];
-                    shuffled[j] = temp;
-                }
 
                 modeFState.BountyMarksByCharacterId.Clear();
                 modeFState.InitialBountyBossIds.Clear();
 
-                for (int i = 0; i < bountyCount; i++)
+                for (int i = 0; i < total; i++)
                 {
-                    CharacterMainControl boss = shuffled[i];
+                    CharacterMainControl boss = alive[i];
                     int charId = boss.GetInstanceID();
                     modeFState.BountyMarksByCharacterId[charId] = 1;
                     modeFState.InitialBountyBossIds.Add(charId);
@@ -118,7 +104,8 @@ namespace BossRush
                 ApplyModeFPhasePressure();
                 MarkModeFBountyLeaderDirty();
                 RefreshModeFBountyLeaderIfDirty();
-                DevLog("[ModeF] 悬赏名单已生成: " + bountyCount + "/" + total + " 个 Boss 被标记");
+                Debug.Log("[ModeF] [BOUNTY] allAliveMarked=" + total);
+                DevLog("[ModeF] 悬赏名单已生成: " + total + "/" + total + " 个 Boss 被标记");
             }
             catch (Exception e)
             {

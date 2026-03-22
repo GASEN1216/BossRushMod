@@ -13,9 +13,9 @@ namespace BossRush
     {
         #region Mode F Fortifications
 
-        private const float FORT_HP_FOLDABLE_COVER = 100f;
-        private const float FORT_HP_REINFORCED_ROADBLOCK = 500f;
-        private const float FORT_HP_BARBED_WIRE = 200f;
+        private const float FORT_HP_FOLDABLE_COVER = 2500f;
+        private const float FORT_HP_REINFORCED_ROADBLOCK = 5000f;
+        private const float FORT_HP_BARBED_WIRE = 2000f;
 
         /// <summary>遍历 ActiveFortifications 时的防御性快照缓存，避免遍历期间字典被修改</summary>
         private readonly List<ModeFFortificationMarker> modeFActiveFortificationSnapshot = new List<ModeFFortificationMarker>();
@@ -45,14 +45,6 @@ namespace BossRush
 
         private static int cachedModeFFortificationPlacementObstacleLayerMask = int.MinValue;
 
-        // Health 反射字段缓存（修复其他mod Harmony patch导致的无敌问题）
-        private static readonly FieldInfo healthHasCharacterField =
-            typeof(Health).GetField("hasCharacter", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static readonly FieldInfo healthCharacterCachedField =
-            typeof(Health).GetField("characterCached", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static readonly FieldInfo healthItemField =
-            typeof(Health).GetField("item", BindingFlags.NonPublic | BindingFlags.Instance);
-
         // 预览放置系统字段
         private bool modeFPlacementActive = false;
         private FortificationType modeFPlacementType;
@@ -60,6 +52,11 @@ namespace BossRush
         private float modeFPlacementRotationY;
         private int modeFPlacementItemTypeId;
         private Material modeFPlacementPreviewMaterial;
+        private readonly List<Renderer> modeFPlacementPreviewRendererCache = new List<Renderer>();
+        private readonly List<Material[]> modeFPlacementPreviewOriginalMaterials = new List<Material[]>();
+        private bool modeFRepairSelectionActive = false;
+        private int modeFRepairSelectionItemTypeId;
+        private ModeFFortificationMarker modeFRepairSelectionTarget;
 
         private Material modeFFortificationOutlineMaterial;
         private bool modeFHasActiveFortificationHighlight = false;
@@ -78,6 +75,12 @@ namespace BossRush
                 return false;
             }
 
+            if (modeFRepairSelectionActive)
+            {
+                ShowMessage(L10n.T("请先结束当前维修选择", "Finish the current repair selection first"));
+                return false;
+            }
+
             return EnterFortPlacementMode(type);
         }
 
@@ -89,7 +92,19 @@ namespace BossRush
                 return false;
             }
 
-            return TryRepairNearestFortification();
+            if (modeFPlacementActive)
+            {
+                ShowMessage(L10n.T("已有工事正在部署中", "A fortification is already being placed"));
+                return false;
+            }
+
+            if (modeFRepairSelectionActive)
+            {
+                ShowMessage(L10n.T("已在维修选择模式中", "Repair selection is already active"));
+                return false;
+            }
+
+            return EnterModeFRepairSelection();
         }
 
         private int GetFortificationTypeItemTypeId(FortificationType type)
@@ -138,6 +153,7 @@ namespace BossRush
                 if (preview == null) return false;
 
                 preview.name = "ModeF_FortPlacement_Preview";
+                CacheFortPlacementPreviewMaterials(preview);
 
                 // 禁用所有 Collider 和 Rigidbody
                 Collider[] cols = preview.GetComponentsInChildren<Collider>(true);
@@ -163,8 +179,8 @@ namespace BossRush
                 modeFPlacementItemTypeId = GetFortificationTypeItemTypeId(type);
 
                 ShowMessage(L10n.T(
-                    "工事部署模式：左键确认 | 右键取消 | 滚轮旋转",
-                    "Fortification placement: LMB confirm | RMB cancel | Scroll to rotate"));
+                    "工事部署模式：左键确认 | 右键取消 | 滚轮旋转 | 中键旋转90度",
+                    "Fortification placement: LMB confirm | RMB cancel | Scroll rotate | MMB rotate 90 deg"));
                 DevLog("[ModeF] 进入工事放置模式: " + type);
                 return true;
             }
@@ -260,6 +276,195 @@ namespace BossRush
             }
         }
 
+        internal void UpdateModeFRepairSelection()
+        {
+            if (!modeFRepairSelectionActive)
+            {
+                return;
+            }
+
+            try
+            {
+                Camera cam = null;
+                try
+                {
+                    if (GameCamera.Instance != null)
+                    {
+                        cam = GameCamera.Instance.renderCamera;
+                    }
+                }
+                catch { }
+                if (cam == null) cam = Camera.main;
+                if (cam == null) return;
+
+                ModeFFortificationMarker nextTarget = FindModeFRepairSelectionTarget(cam, UnityEngine.Input.mousePosition);
+                if (modeFRepairSelectionTarget != nextTarget)
+                {
+                    if (modeFRepairSelectionTarget != null)
+                    {
+                        HighlightModeFFortification(modeFRepairSelectionTarget, false);
+                    }
+
+                    modeFRepairSelectionTarget = nextTarget;
+                }
+
+                if (modeFRepairSelectionTarget != null)
+                {
+                    HighlightModeFFortification(modeFRepairSelectionTarget, true);
+                }
+
+                if (UnityEngine.Input.GetMouseButtonDown(0))
+                {
+                    ConfirmModeFRepairSelection();
+                }
+
+                if (UnityEngine.Input.GetMouseButtonDown(1))
+                {
+                    CancelModeFRepairSelection(L10n.T("已取消维修", "Repair cancelled"));
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] UpdateModeFRepairSelection failed: " + e.Message);
+            }
+        }
+
+        private bool EnterModeFRepairSelection()
+        {
+            try
+            {
+                if (!CanUseModeFRepairSpray(false))
+                {
+                    ShowModeFRewardBubble(L10n.T("附近没有可维修的工事", "No repairable fortification nearby"));
+                    return false;
+                }
+
+                modeFRepairSelectionActive = true;
+                modeFRepairSelectionItemTypeId = EmergencyRepairSprayConfig.TYPE_ID;
+                modeFRepairSelectionTarget = null;
+                ShowMessage(L10n.T(
+                    "工事维修模式：靠近鼠标的受损工事会高亮 | 左键确认 | 右键取消",
+                    "Fortification repair: damaged fortification nearest to cursor is highlighted | LMB confirm | RMB cancel"));
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] EnterModeFRepairSelection failed: " + e.Message);
+                modeFRepairSelectionActive = false;
+                modeFRepairSelectionItemTypeId = 0;
+                modeFRepairSelectionTarget = null;
+                return false;
+            }
+        }
+
+        private void ConfirmModeFRepairSelection()
+        {
+            ModeFFortificationMarker target = modeFRepairSelectionTarget;
+            if (target == null)
+            {
+                ShowModeFRewardBubble(L10n.T("附近没有可维修的工事", "No repairable fortification nearby"));
+                return;
+            }
+
+            try
+            {
+                if (!TryRepairFortification(target))
+                {
+                    return;
+                }
+
+                CancelModeFRepairSelection(null, false);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] ConfirmModeFRepairSelection failed: " + e.Message);
+                CancelModeFRepairSelection(L10n.T("维修失败", "Repair failed"), true);
+            }
+        }
+
+        private void CancelModeFRepairSelection(string reason, bool refundItem = true)
+        {
+            if (modeFRepairSelectionTarget != null)
+            {
+                HighlightModeFFortification(modeFRepairSelectionTarget, false);
+            }
+
+            int itemTypeId = modeFRepairSelectionItemTypeId;
+            bool wasActive = modeFRepairSelectionActive;
+            modeFRepairSelectionTarget = null;
+            modeFRepairSelectionActive = false;
+            modeFRepairSelectionItemTypeId = 0;
+
+            if (refundItem && wasActive && itemTypeId > 0)
+            {
+                RefundModeFUtilityItem(itemTypeId, string.IsNullOrEmpty(reason) ? L10n.T("已取消维修", "Repair cancelled") : reason);
+            }
+        }
+
+        private ModeFFortificationMarker FindModeFRepairSelectionTarget(Camera cam, Vector3 mousePos)
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null || cam == null)
+            {
+                return null;
+            }
+
+            Ray ray = cam.ScreenPointToRay(mousePos);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 500f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                ModeFFortificationMarker hoveredMarker = hit.collider != null
+                    ? hit.collider.GetComponentInParent<ModeFFortificationMarker>()
+                    : null;
+                if (IsValidModeFRepairTarget(hoveredMarker, player, FORT_REPAIR_RANGE))
+                {
+                    return hoveredMarker;
+                }
+            }
+
+            Vector2 mouseScreen = new Vector2(mousePos.x, mousePos.y);
+            ModeFFortificationMarker bestTarget = null;
+            float bestDistance = float.MaxValue;
+            float maxDistanceSqr = FORT_REPAIR_RANGE * FORT_REPAIR_RANGE;
+
+            modeFActiveFortificationSnapshot.Clear();
+            foreach (var kvp in modeFState.ActiveFortifications)
+            {
+                modeFActiveFortificationSnapshot.Add(kvp.Value);
+            }
+
+            for (int fi = 0; fi < modeFActiveFortificationSnapshot.Count; fi++)
+            {
+                ModeFFortificationMarker marker = modeFActiveFortificationSnapshot[fi];
+                if (!IsValidModeFRepairTarget(marker, player, FORT_REPAIR_RANGE))
+                {
+                    continue;
+                }
+
+                if ((marker.transform.position - player.transform.position).sqrMagnitude > maxDistanceSqr)
+                {
+                    continue;
+                }
+
+                Vector3 worldPoint = marker.transform.position + Vector3.up * 0.8f;
+                Vector3 screenPoint = cam.WorldToScreenPoint(worldPoint);
+                if (screenPoint.z <= 0f)
+                {
+                    continue;
+                }
+
+                float distance = Vector2.SqrMagnitude(new Vector2(screenPoint.x, screenPoint.y) - mouseScreen);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestTarget = marker;
+                }
+            }
+
+            modeFActiveFortificationSnapshot.Clear();
+            return bestTarget;
+        }
+
         private bool CanPlaceModeFFortificationAtPreview(CharacterMainControl player, out string failureMessage)
         {
             failureMessage = null;
@@ -267,14 +472,16 @@ namespace BossRush
 
             // 复用或创建一次性 BoxCollider 用于检测（缓存在预览对象上避免每帧创建）
             BoxCollider previewCol = modeFPlacementPreview.GetComponent<BoxCollider>();
+            Bounds localBounds = GetModeFFortificationLocalBounds(
+                modeFPlacementPreview.transform,
+                GetDefaultModeFFortificationBounds(modeFPlacementType));
             if (previewCol == null)
             {
-                Bounds defaultBounds = GetDefaultModeFFortificationBounds(modeFPlacementType);
                 previewCol = modeFPlacementPreview.AddComponent<BoxCollider>();
-                previewCol.center = defaultBounds.center;
-                previewCol.size = defaultBounds.size;
                 previewCol.enabled = false;
             }
+            previewCol.center = localBounds.center;
+            previewCol.size = localBounds.size;
 
             return CanPlaceModeFFortification(player, modeFPlacementPreview.transform, previewCol, modeFPlacementType, out failureMessage);
         }
@@ -308,17 +515,18 @@ namespace BossRush
                 Vector3 position = modeFPlacementPreview.transform.position;
                 Quaternion rotation = modeFPlacementPreview.transform.rotation;
                 FortificationType type = modeFPlacementType;
+                GameObject previewObject = modeFPlacementPreview;
 
-                // 销毁预览，退出放置模式
-                try { UnityEngine.Object.Destroy(modeFPlacementPreview); } catch { }
                 modeFPlacementPreview = null;
                 modeFPlacementActive = false;
                 modeFPlacementItemTypeId = 0;
 
-                // 放置实际工事
-                bool placed = PlaceModeFortification(type, position, rotation);
+                // 直接将当前预览对象转为真实工事，避免重新实例化后只剩影子
+                bool placed = PlaceModeFortification(type, position, rotation, previewObject);
                 if (!placed)
                 {
+                    try { if (previewObject != null) UnityEngine.Object.Destroy(previewObject); } catch { }
+                    ClearFortPlacementPreviewMaterialCache();
                     RefundModeFUtilityItem(itemTypeId,
                         L10n.T("部署失败", "Deployment failed"));
                 }
@@ -331,6 +539,7 @@ namespace BossRush
                 modeFPlacementPreview = null;
                 modeFPlacementActive = false;
                 modeFPlacementItemTypeId = 0;
+                ClearFortPlacementPreviewMaterialCache();
                 // 退还物品（使用进入时缓存的 itemTypeId）
                 if (itemTypeId > 0)
                 {
@@ -351,6 +560,7 @@ namespace BossRush
             modeFPlacementPreview = null;
             modeFPlacementActive = false;
             modeFPlacementItemTypeId = 0;
+            ClearFortPlacementPreviewMaterialCache();
 
             if (wasActive && itemTypeId > 0)
             {
@@ -365,9 +575,10 @@ namespace BossRush
 
             if (modeFPlacementPreviewMaterial == null)
             {
-                Shader shader = Shader.Find("Standard");
-                if (shader == null) shader = Shader.Find("Unlit/Color");
+                Shader shader = Shader.Find("Unlit/Color");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
                 if (shader == null) shader = Shader.Find("Sprites/Default");
+                if (shader == null) shader = Shader.Find("Standard");
                 modeFPlacementPreviewMaterial = new Material(shader);
                 if (modeFPlacementPreviewMaterial.HasProperty("_Mode"))
                 {
@@ -391,16 +602,78 @@ namespace BossRush
             Renderer[] renderers = preview.GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++)
             {
-                if (renderers[i] != null)
+                Renderer renderer = renderers[i];
+                if (renderer != null)
                 {
-                    renderers[i].sharedMaterial = modeFPlacementPreviewMaterial;
+                    renderer.enabled = true;
+                    Material[] materials = renderer.sharedMaterials;
+                    if (materials == null || materials.Length == 0)
+                    {
+                        renderer.sharedMaterial = modeFPlacementPreviewMaterial;
+                        continue;
+                    }
+
+                    for (int mi = 0; mi < materials.Length; mi++)
+                    {
+                        materials[mi] = modeFPlacementPreviewMaterial;
+                    }
+                    renderer.sharedMaterials = materials;
                 }
             }
         }
 
-        private bool PlaceModeFortification(FortificationType type, Vector3 position, Quaternion rotation)
+        private void CacheFortPlacementPreviewMaterials(GameObject preview)
         {
-            GameObject fortObj = null;
+            ClearFortPlacementPreviewMaterialCache();
+            if (preview == null)
+            {
+                return;
+            }
+
+            Renderer[] renderers = preview.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                Material[] sharedMaterials = renderer.sharedMaterials;
+                Material[] snapshot = new Material[sharedMaterials.Length];
+                Array.Copy(sharedMaterials, snapshot, sharedMaterials.Length);
+                modeFPlacementPreviewRendererCache.Add(renderer);
+                modeFPlacementPreviewOriginalMaterials.Add(snapshot);
+            }
+        }
+
+        private void RestoreFortPlacementPreviewMaterials()
+        {
+            int count = Mathf.Min(modeFPlacementPreviewRendererCache.Count, modeFPlacementPreviewOriginalMaterials.Count);
+            for (int i = 0; i < count; i++)
+            {
+                Renderer renderer = modeFPlacementPreviewRendererCache[i];
+                Material[] originalMaterials = modeFPlacementPreviewOriginalMaterials[i];
+                if (renderer == null || originalMaterials == null)
+                {
+                    continue;
+                }
+
+                renderer.sharedMaterials = originalMaterials;
+                renderer.enabled = true;
+            }
+        }
+
+        private void ClearFortPlacementPreviewMaterialCache()
+        {
+            modeFPlacementPreviewRendererCache.Clear();
+            modeFPlacementPreviewOriginalMaterials.Clear();
+        }
+
+        private bool PlaceModeFortification(FortificationType type, Vector3 position, Quaternion rotation, GameObject existingPreview = null)
+        {
+            GameObject fortObj = existingPreview;
+            bool reusedPreview = fortObj != null;
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
@@ -430,23 +703,37 @@ namespace BossRush
                         return false;
                 }
 
-                fortObj = EntityModelFactory.Create(prefabName, position, rotation);
-                if (fortObj == null)
+                if (!reusedPreview)
                 {
-                    DevLog("[ModeF] [WARNING] Failed to create fortification model, falling back to runtime geometry: " + prefabName);
-                    fortObj = CreateFallbackModeFFortification(type, position, rotation);
+                    fortObj = EntityModelFactory.Create(prefabName, position, rotation);
                     if (fortObj == null)
                     {
-                        return false;
+                        DevLog("[ModeF] [WARNING] Failed to create fortification model, falling back to runtime geometry: " + prefabName);
+                        fortObj = CreateFallbackModeFFortification(type, position, rotation);
+                        if (fortObj == null)
+                        {
+                            return false;
+                        }
                     }
                 }
+                else
+                {
+                    RestoreFortPlacementPreviewMaterials();
+                }
 
-                if (fortObj.activeSelf)
+                EnsureModeFFortificationRenderersVisible(fortObj);
+
+                if (!reusedPreview && fortObj.activeSelf)
                 {
                     fortObj.SetActive(false);
                 }
 
                 fortObj.name = "ModeF_Fort_" + type + "_" + Time.frameCount;
+
+                if (fortObj.activeSelf)
+                {
+                    fortObj.SetActive(false);
+                }
 
                 Health health = fortObj.GetComponent<Health>();
                 if (health == null)
@@ -454,22 +741,14 @@ namespace BossRush
                     health = fortObj.AddComponent<Health>();
                 }
 
-                EnsureModeFFortificationHealthRuntime(health, maxHealth);
+                Teams fortTeam = GetModeFFortificationOwnerTeam(player);
+                EnsureModeFFortificationHealthRuntime(health, maxHealth, fortTeam);
                 ConfigureModeFFortificationPhysics(fortObj);
-                EnsureModeFFortificationDamageTarget(fortObj, type, health);
+                EnsureModeFFortificationDamageTarget(fortObj, type, health, fortTeam);
                 EnsureModeFFortificationWallCollider(fortObj, type);
-
-                if (healthDefaultMaxHealthField != null)
-                {
-                    try
-                    {
-                        healthDefaultMaxHealthField.SetValue(health, Mathf.RoundToInt(maxHealth));
-                    }
-                    catch { }
-                }
-
+                EnsureModeFFortificationCharacterBlocker(fortObj, type);
+                EnsureModeFFortificationHalfObstacleRegistration(fortObj, type);
                 try { health.CurrentHealth = maxHealth; } catch { }
-                health.showHealthBar = true;
 
                 ModeFFortificationMarker marker = fortObj.GetComponent<ModeFFortificationMarker>();
                 if (marker == null)
@@ -481,6 +760,7 @@ namespace BossRush
                 marker.Owner = player;
                 marker.OwnerCharacterId = player.GetInstanceID();
                 marker.MaxHealth = maxHealth;
+                marker.LastKnownHealth = maxHealth;
                 marker.IsDestroyed = false;
                 marker.BoundHealth = health;
 
@@ -488,18 +768,32 @@ namespace BossRush
                 {
                     health.OnDeadEvent.AddListener((damageInfo) => OnFortificationDestroyed(marker));
                 }
+                if (health.OnHurtEvent != null)
+                {
+                    health.OnHurtEvent.AddListener((damageInfo) => OnFortificationHurt(marker, damageInfo));
+                }
 
                 if (!fortObj.activeSelf)
                 {
                     fortObj.SetActive(true);
                 }
-
-                try { health.RequestHealthBar(); } catch { }
+                EnsureModeFFortificationRenderersVisible(fortObj);
+                fortObj.transform.SetPositionAndRotation(position, rotation);
+                Physics.SyncTransforms();
 
                 modeFState.ActiveFortifications[marker.FortificationId] = marker;
 
                 string typeName = GetFortificationTypeName(type);
-                DevLog("[ModeF] Fortification placed: " + typeName + " at " + position);
+                Debug.Log("[ModeF] [PLACE] " + typeName
+                    + " | reusedPreview=" + reusedPreview
+                    + " | pos=" + position
+                    + " | renderers=" + fortObj.GetComponentsInChildren<Renderer>(true).Length
+                    + " | hp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
+                if (IsModeFFortificationHalfObstacle(type))
+                {
+                    Debug.Log("[ModeF] [HALF] " + typeName + GetModeFFortificationColliderDebugText(fortObj));
+                }
+                ClearFortPlacementPreviewMaterialCache();
                 ShowModeFRewardBubble(typeName + L10n.T("已部署", " deployed"));
                 return true;
             }
@@ -514,6 +808,7 @@ namespace BossRush
                     }
                 }
                 catch { }
+                ClearFortPlacementPreviewMaterialCache();
                 return false;
             }
         }
@@ -544,37 +839,6 @@ namespace BossRush
                     return false;
                 }
             }
-
-            modeFActiveFortificationSnapshot.Clear();
-            foreach (var kvp in modeFState.ActiveFortifications)
-            {
-                modeFActiveFortificationSnapshot.Add(kvp.Value);
-            }
-
-            for (int fi = 0; fi < modeFActiveFortificationSnapshot.Count; fi++)
-            {
-                ModeFFortificationMarker marker = modeFActiveFortificationSnapshot[fi];
-                if (marker == null || marker.IsDestroyed || marker.gameObject == null)
-                {
-                    continue;
-                }
-
-                float otherRadius = GetModeFFortificationFootprintRadius(
-                    marker.transform,
-                    marker.GetComponent<BoxCollider>(),
-                    marker.Type);
-                float minDistance = candidateRadius + otherRadius + FORT_PLACEMENT_PADDING;
-                if ((marker.transform.position - candidateTransform.position).sqrMagnitude <
-                    minDistance * minDistance)
-                {
-                    failureMessage = L10n.T(
-                        "附近已有工事，无法重叠部署",
-                        "Another fortification is too close. Deployment cancelled.");
-                    modeFActiveFortificationSnapshot.Clear();
-                    return false;
-                }
-            }
-            modeFActiveFortificationSnapshot.Clear();
 
             if (IsModeFFortificationPlacementBlocked(owner, candidateTransform, candidateCollider, type))
             {
@@ -730,7 +994,27 @@ namespace BossRush
             return cachedModeFFortificationPlacementObstacleLayerMask;
         }
 
-        private void EnsureModeFFortificationHealthRuntime(Health health, float maxHealth)
+        private Teams GetModeFFortificationOwnerTeam(CharacterMainControl owner)
+        {
+            // 工事归属仍由 OwnerCharacterId 追踪；受击 team 使用 middle，
+            // 这样玩家和敌人的子弹都能正常命中工事，同时 AI 不会把工事当成主动敌对目标。
+            return Teams.middle;
+        }
+
+        private bool IsModeFFortificationHalfObstacle(FortificationType type)
+        {
+            switch (type)
+            {
+                case FortificationType.FoldableCover:
+                case FortificationType.ReinforcedRoadblock:
+                case FortificationType.BarbedWire:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private void EnsureModeFFortificationHealthRuntime(Health health, float maxHealth, Teams ownerTeam)
         {
             if (health == null)
             {
@@ -744,41 +1028,20 @@ namespace BossRush
 
             health.autoInit = false;
             health.hasSoul = false;
-            health.team = Teams.all;
+            health.team = ownerTeam;
             health.healthBarHeight = 1.1f;
-            health.CanDieIfNotRaidMap = false;
+            health.CanDieIfNotRaidMap = true;
+            EnsureModeFFortificationVulnerable(health);
 
-            // 使用反射读取 defaultMaxHealth，绕过被其他mod Harmony patch 的 MaxHealth 属性
-            float currentMaxHealth = 0f;
             if (healthDefaultMaxHealthField != null)
             {
-                try { currentMaxHealth = (int)healthDefaultMaxHealthField.GetValue(health); } catch { }
-            }
-            if (currentMaxHealth <= 0f)
-            {
-                if (healthDefaultMaxHealthField != null)
-                {
-                    try { healthDefaultMaxHealthField.SetValue(health, Mathf.RoundToInt(maxHealth)); } catch { }
-                }
+                try { healthDefaultMaxHealthField.SetValue(health, Mathf.RoundToInt(maxHealth)); } catch { }
             }
 
             if (health.CurrentHealth <= 0f)
             {
                 health.CurrentHealth = Mathf.Max(maxHealth, 1f);
             }
-
-            // 修复其他mod Harmony patch导致的无敌问题：
-            // 清除 hasCharacter/characterCached/item，确保 MaxHealth getter 走 defaultMaxHealth 分支
-            try
-            {
-                if (healthHasCharacterField != null)
-                    healthHasCharacterField.SetValue(health, false);
-                if (healthCharacterCachedField != null)
-                    healthCharacterCachedField.SetValue(health, null);
-                if (healthItemField != null)
-                    healthItemField.SetValue(health, null);
-            }
-            catch { }
         }
 
         private static void EnsureModeFHealthUnityEvent(Health health, string memberName, Type fallbackEventType)
@@ -839,6 +1102,16 @@ namespace BossRush
             return null;
         }
 
+        private static void EnsureModeFFortificationVulnerable(Health health)
+        {
+            if (health == null)
+            {
+                return;
+            }
+
+            try { health.SetInvincible(false); } catch { }
+        }
+
         private static void ConfigureModeFFortificationPhysics(GameObject fortObj)
         {
             if (fortObj == null)
@@ -858,20 +1131,60 @@ namespace BossRush
             body.collisionDetectionMode = CollisionDetectionMode.Discrete;
         }
 
-        private void EnsureModeFFortificationDamageTarget(GameObject fortObj, FortificationType type, Health health)
+        private static void EnsureModeFFortificationRenderersVisible(GameObject fortObj)
+        {
+            if (fortObj == null)
+            {
+                return;
+            }
+
+            Renderer[] renderers = fortObj.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null)
+                {
+                    renderers[i].enabled = true;
+                }
+            }
+        }
+
+        private void EnsureModeFFortificationDamageTarget(GameObject fortObj, FortificationType type, Health health, Teams ownerTeam)
         {
             if (fortObj == null || health == null)
             {
                 return;
             }
 
-            health.team = Teams.all;
+            health.team = ownerTeam;
 
             Collider damageCollider = EnsureModeFFortificationDamageCollider(fortObj, type);
-            DamageReceiver receiver = fortObj.GetComponent<DamageReceiver>();
+            if (damageCollider == null)
+            {
+                return;
+            }
+
+            DamageReceiver rootReceiver = fortObj.GetComponent<DamageReceiver>();
+            if (rootReceiver != null)
+            {
+                rootReceiver.enabled = false;
+                UnityEngine.Object.Destroy(rootReceiver);
+            }
+
+            DamageReceiver receiver = damageCollider.GetComponent<DamageReceiver>();
             if (receiver == null)
             {
-                receiver = fortObj.AddComponent<DamageReceiver>();
+                receiver = damageCollider.gameObject.AddComponent<DamageReceiver>();
+            }
+
+            receiver.useSimpleHealth = false;
+            receiver.isHalfObsticle = IsModeFFortificationHalfObstacle(type);
+            if (receiver.OnHurtEvent == null)
+            {
+                receiver.OnHurtEvent = new UnityEvent<DamageInfo>();
+            }
+            if (receiver.OnDeadEvent == null)
+            {
+                receiver.OnDeadEvent = new UnityEvent<DamageInfo>();
             }
 
             try
@@ -903,38 +1216,137 @@ namespace BossRush
             int damageReceiverLayer = GetModeFFortificationDamageReceiverLayer();
             if (damageReceiverLayer >= 0)
             {
-                fortObj.layer = damageReceiverLayer;
-                if (damageCollider != null)
-                {
-                    damageCollider.gameObject.layer = damageReceiverLayer;
-                }
+                damageCollider.gameObject.layer = damageReceiverLayer;
             }
         }
 
         private void EnsureModeFFortificationWallCollider(GameObject fortObj, FortificationType type)
         {
-            if (fortObj == null) return;
+            if (fortObj == null)
+            {
+                return;
+            }
 
             try
             {
-                // 获取 damage collider 的尺寸作为参考
-                BoxCollider rootCollider = fortObj.GetComponent<BoxCollider>();
-                Bounds bounds = rootCollider != null
-                    ? new Bounds(rootCollider.center, rootCollider.size)
-                    : GetDefaultModeFFortificationBounds(type);
+                Transform wallTransform = fortObj.transform.Find("ModeF_WallCollider");
+                GameObject wallObj = wallTransform != null
+                    ? wallTransform.gameObject
+                    : new GameObject("ModeF_WallCollider");
+                wallObj.transform.SetParent(fortObj.transform, false);
+                wallObj.transform.localPosition = Vector3.zero;
+                wallObj.transform.localRotation = Quaternion.identity;
+                wallObj.transform.localScale = Vector3.one;
 
-                GameObject wallChild = new GameObject("ModeF_WallCollider");
-                wallChild.transform.SetParent(fortObj.transform, false);
-                wallChild.layer = LayerMask.NameToLayer("Wall");
+                int wallLayer = GetModeFFortificationWallLayer();
+                if (IsModeFFortificationHalfObstacle(type))
+                {
+                    int halfObstacleLayer = GetModeFFortificationHalfObstacleLayer();
+                    if (halfObstacleLayer >= 0)
+                    {
+                        wallLayer = halfObstacleLayer;
+                    }
+                }
+                if (wallLayer >= 0)
+                {
+                    wallObj.layer = wallLayer;
+                }
 
-                BoxCollider wallCol = wallChild.AddComponent<BoxCollider>();
-                wallCol.center = bounds.center;
-                wallCol.size = bounds.size;
-                wallCol.isTrigger = false;
+                Collider[] childColliders = wallObj.GetComponents<Collider>();
+                BoxCollider wallCollider = null;
+                for (int i = 0; i < childColliders.Length; i++)
+                {
+                    BoxCollider existingBox = childColliders[i] as BoxCollider;
+                    if (existingBox != null && wallCollider == null)
+                    {
+                        wallCollider = existingBox;
+                        continue;
+                    }
+
+                    childColliders[i].enabled = false;
+                }
+
+                if (wallCollider == null)
+                {
+                    wallCollider = wallObj.AddComponent<BoxCollider>();
+                }
+
+                Bounds bounds = GetModeFFortificationLocalBounds(
+                    fortObj.transform,
+                    GetModeFFortificationWallColliderBounds(type));
+                wallCollider.enabled = true;
+                wallCollider.isTrigger = false;
+                wallCollider.center = bounds.center;
+                wallCollider.size = bounds.size;
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [WARNING] EnsureModeFFortificationWallCollider failed: " + e.Message);
+            }
+        }
+
+        private void EnsureModeFFortificationCharacterBlocker(GameObject fortObj, FortificationType type)
+        {
+            if (fortObj == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Transform blockerTransform = fortObj.transform.Find("ModeF_CharacterBlocker");
+                GameObject blockerObj = blockerTransform != null
+                    ? blockerTransform.gameObject
+                    : new GameObject("ModeF_CharacterBlocker");
+                blockerObj.transform.SetParent(fortObj.transform, false);
+                blockerObj.transform.localPosition = Vector3.zero;
+                blockerObj.transform.localRotation = Quaternion.identity;
+                blockerObj.transform.localScale = Vector3.one;
+
+                int wallLayer = GetModeFFortificationWallLayer();
+                if (wallLayer >= 0)
+                {
+                    blockerObj.layer = wallLayer;
+                }
+
+                Collider[] childColliders = blockerObj.GetComponents<Collider>();
+                BoxCollider blockerCollider = null;
+                for (int i = 0; i < childColliders.Length; i++)
+                {
+                    BoxCollider existingBox = childColliders[i] as BoxCollider;
+                    if (existingBox != null && blockerCollider == null)
+                    {
+                        blockerCollider = existingBox;
+                        continue;
+                    }
+
+                    childColliders[i].enabled = false;
+                }
+
+                if (blockerCollider == null)
+                {
+                    blockerCollider = blockerObj.AddComponent<BoxCollider>();
+                }
+
+                Bounds bounds = GetModeFFortificationLocalBounds(
+                    fortObj.transform,
+                    GetModeFFortificationCharacterBlockerBounds(type));
+                blockerCollider.enabled = true;
+                blockerCollider.isTrigger = true;
+                blockerCollider.center = bounds.center;
+                blockerCollider.size = bounds.size;
+
+                ModeFFortificationCharacterBlocker blocker = blockerObj.GetComponent<ModeFFortificationCharacterBlocker>();
+                if (blocker == null)
+                {
+                    blocker = blockerObj.AddComponent<ModeFFortificationCharacterBlocker>();
+                }
+
+                blocker.Bind(blockerCollider);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] EnsureModeFFortificationCharacterBlocker failed: " + e.Message);
             }
         }
 
@@ -946,12 +1358,6 @@ namespace BossRush
             }
 
             Collider[] existingColliders = fortObj.GetComponentsInChildren<Collider>(true);
-            Bounds localBounds;
-            if (!TryGetModeFFortificationLocalBounds(fortObj.transform, existingColliders, out localBounds))
-            {
-                localBounds = GetDefaultModeFFortificationBounds(type);
-            }
-
             for (int i = 0; i < existingColliders.Length; i++)
             {
                 if (existingColliders[i] == null)
@@ -962,85 +1368,92 @@ namespace BossRush
                 existingColliders[i].enabled = false;
             }
 
-            BoxCollider rootCollider = fortObj.GetComponent<BoxCollider>();
-            if (rootCollider == null)
+            Transform damageTransform = fortObj.transform.Find("ModeF_DamageReceiver");
+            GameObject damageObj = damageTransform != null
+                ? damageTransform.gameObject
+                : new GameObject("ModeF_DamageReceiver");
+            damageObj.transform.SetParent(fortObj.transform, false);
+            damageObj.transform.localPosition = Vector3.zero;
+            damageObj.transform.localRotation = Quaternion.identity;
+            damageObj.transform.localScale = Vector3.one;
+
+            int damageReceiverLayer = GetModeFFortificationDamageReceiverLayer();
+            if (damageReceiverLayer >= 0)
             {
-                rootCollider = fortObj.AddComponent<BoxCollider>();
+                damageObj.layer = damageReceiverLayer;
             }
 
-            rootCollider.enabled = true;
-            rootCollider.isTrigger = false;
-            rootCollider.center = localBounds.center;
-            rootCollider.size = new Vector3(
-                Mathf.Max(localBounds.size.x, 0.2f),
-                Mathf.Max(localBounds.size.y, 0.2f),
-                Mathf.Max(localBounds.size.z, 0.2f));
-            return rootCollider;
-        }
-
-        private bool TryGetModeFFortificationLocalBounds(Transform root, Collider[] existingColliders, out Bounds localBounds)
-        {
-            localBounds = new Bounds(Vector3.zero, Vector3.zero);
-            if (root == null)
+            Collider[] damageColliders = damageObj.GetComponents<Collider>();
+            BoxCollider damageCollider = null;
+            for (int i = 0; i < damageColliders.Length; i++)
             {
-                return false;
-            }
-
-            bool initialized = false;
-
-            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                Renderer renderer = renderers[i];
-                if (renderer == null || !renderer.enabled)
+                BoxCollider existingBox = damageColliders[i] as BoxCollider;
+                if (existingBox != null && damageCollider == null)
                 {
+                    damageCollider = existingBox;
                     continue;
                 }
 
-                EncapsulateModeFFortificationWorldBounds(root, renderer.bounds, ref localBounds, ref initialized);
+                damageColliders[i].enabled = false;
             }
 
-            if (!initialized && existingColliders != null)
+            if (damageCollider == null)
             {
-                for (int i = 0; i < existingColliders.Length; i++)
-                {
-                    Collider collider = existingColliders[i];
-                    if (collider == null)
-                    {
-                        continue;
-                    }
-
-                    EncapsulateModeFFortificationWorldBounds(root, collider.bounds, ref localBounds, ref initialized);
-                }
+                damageCollider = damageObj.AddComponent<BoxCollider>();
             }
 
-            return initialized;
+            Bounds localBounds = GetModeFFortificationLocalBounds(
+                fortObj.transform,
+                GetModeFFortificationDamageColliderBounds(type));
+            damageCollider.enabled = true;
+            damageCollider.isTrigger = false;
+            damageCollider.center = localBounds.center;
+            damageCollider.size = localBounds.size;
+            return damageCollider;
         }
 
-        private void EncapsulateModeFFortificationWorldBounds(Transform root, Bounds worldBounds, ref Bounds localBounds, ref bool initialized)
+        private Bounds GetModeFFortificationDamageColliderBounds(FortificationType type)
         {
-            Vector3 extents = worldBounds.extents;
-            Vector3 center = worldBounds.center;
-
-            for (int x = -1; x <= 1; x += 2)
+            switch (type)
             {
-                for (int y = -1; y <= 1; y += 2)
-                {
-                    for (int z = -1; z <= 1; z += 2)
-                    {
-                        Vector3 worldPoint = center + Vector3.Scale(extents, new Vector3(x, y, z));
-                        Vector3 localPoint = root.InverseTransformPoint(worldPoint);
-                        if (!initialized)
-                        {
-                            localBounds = new Bounds(localPoint, Vector3.zero);
-                            initialized = true;
-                        }
-                        else
-                        {
-                            localBounds.Encapsulate(localPoint);
-                        }
-                    }
-                }
+                case FortificationType.FoldableCover:
+                    return new Bounds(new Vector3(0f, 0.54f, 0f), new Vector3(1.66f, 1.08f, 0.30f));
+                case FortificationType.ReinforcedRoadblock:
+                    return new Bounds(new Vector3(0f, 0.64f, 0f), new Vector3(2.48f, 1.28f, 0.64f));
+                case FortificationType.BarbedWire:
+                    return new Bounds(new Vector3(0f, 0.42f, 0f), new Vector3(2.24f, 0.90f, 0.30f));
+                default:
+                    return GetDefaultModeFFortificationBounds(type);
+            }
+        }
+
+        private Bounds GetModeFFortificationWallColliderBounds(FortificationType type)
+        {
+            switch (type)
+            {
+                case FortificationType.FoldableCover:
+                    return new Bounds(new Vector3(0f, 0.45f, 0f), new Vector3(1.56f, 0.90f, 0.16f));
+                case FortificationType.ReinforcedRoadblock:
+                    return new Bounds(new Vector3(0f, 0.62f, 0f), new Vector3(2.32f, 1.18f, 0.50f));
+                case FortificationType.BarbedWire:
+                    return new Bounds(new Vector3(0f, 0.40f, 0f), new Vector3(2.14f, 0.78f, 0.18f));
+                default:
+                    return GetModeFFortificationDamageColliderBounds(type);
+            }
+        }
+
+        private Bounds GetModeFFortificationCharacterBlockerBounds(FortificationType type)
+        {
+            switch (type)
+            {
+                case FortificationType.FoldableCover:
+                    return new Bounds(new Vector3(0f, 0.52f, 0f), new Vector3(1.70f, 1.12f, 0.30f));
+                case FortificationType.ReinforcedRoadblock:
+                    return new Bounds(new Vector3(0f, 0.66f, 0f), new Vector3(2.50f, 1.30f, 0.70f));
+                case FortificationType.BarbedWire:
+                    return new Bounds(new Vector3(0f, 0.44f, 0f), new Vector3(2.20f, 0.92f, 0.32f));
+                default:
+                    return GetModeFFortificationWallColliderBounds(type);
             }
         }
 
@@ -1049,7 +1462,7 @@ namespace BossRush
             switch (type)
             {
                 case FortificationType.FoldableCover:
-                    return new Bounds(new Vector3(0f, 0.6f, 0f), new Vector3(1.8f, 1.3f, 0.35f));
+                    return new Bounds(new Vector3(0f, 0.54f, 0f), new Vector3(1.76f, 1.08f, 0.35f));
                 case FortificationType.ReinforcedRoadblock:
                     return new Bounds(new Vector3(0f, 0.6f, 0f), new Vector3(2.6f, 1.35f, 0.75f));
                 case FortificationType.BarbedWire:
@@ -1059,8 +1472,227 @@ namespace BossRush
             }
         }
 
+        private void EnsureModeFFortificationHalfObstacleRegistration(GameObject fortObj, FortificationType type)
+        {
+            if (fortObj == null)
+            {
+                return;
+            }
+
+            Transform triggerTransform = fortObj.transform.Find("ModeF_HalfObstacleTrigger");
+            ModeFHalfObstacleTrigger triggerComponent = triggerTransform != null
+                ? triggerTransform.GetComponent<ModeFHalfObstacleTrigger>()
+                : null;
+
+            if (!IsModeFFortificationHalfObstacle(type))
+            {
+                if (triggerTransform != null)
+                {
+                    UnityEngine.Object.Destroy(triggerTransform.gameObject);
+                }
+                return;
+            }
+
+            Transform damageTransform = fortObj.transform.Find("ModeF_DamageReceiver");
+            GameObject damagePart = damageTransform != null ? damageTransform.gameObject : null;
+            if (damagePart == null)
+            {
+                return;
+            }
+
+            GameObject triggerObj = triggerTransform != null
+                ? triggerTransform.gameObject
+                : new GameObject("ModeF_HalfObstacleTrigger");
+            triggerObj.transform.SetParent(fortObj.transform, false);
+            triggerObj.transform.localPosition = Vector3.zero;
+            triggerObj.transform.localRotation = Quaternion.identity;
+            triggerObj.transform.localScale = Vector3.one;
+
+            BoxCollider triggerCollider = triggerObj.GetComponent<BoxCollider>();
+            if (triggerCollider == null)
+            {
+                triggerCollider = triggerObj.AddComponent<BoxCollider>();
+            }
+
+            Bounds triggerBounds = GetModeFFortificationLocalBounds(
+                fortObj.transform,
+                GetModeFFortificationHalfObstacleTriggerBounds(type));
+            triggerCollider.enabled = true;
+            triggerCollider.isTrigger = true;
+            triggerCollider.center = triggerBounds.center;
+            triggerCollider.size = triggerBounds.size;
+
+            if (triggerComponent == null)
+            {
+                triggerComponent = triggerObj.AddComponent<ModeFHalfObstacleTrigger>();
+            }
+
+            triggerComponent.SetRegisteredParts(damagePart);
+        }
+
+        private Bounds GetModeFFortificationHalfObstacleTriggerBounds(FortificationType type)
+        {
+            switch (type)
+            {
+                case FortificationType.FoldableCover:
+                    return new Bounds(new Vector3(0f, 0.95f, -0.82f), new Vector3(2.05f, 1.90f, 1.25f));
+                case FortificationType.ReinforcedRoadblock:
+                    return new Bounds(new Vector3(0f, 1.02f, -0.96f), new Vector3(2.95f, 2.05f, 1.45f));
+                case FortificationType.BarbedWire:
+                    return new Bounds(new Vector3(0f, 0.78f, -0.76f), new Vector3(2.70f, 1.60f, 1.20f));
+                default:
+                    return new Bounds(Vector3.zero, Vector3.zero);
+            }
+        }
+
+        private Bounds GetModeFFortificationLocalBounds(Transform fortTransform, Bounds desiredWorldBounds)
+        {
+            Vector3 scale = fortTransform != null ? fortTransform.lossyScale : Vector3.one;
+            scale.x = Mathf.Abs(scale.x) < 0.001f ? 1f : Mathf.Abs(scale.x);
+            scale.y = Mathf.Abs(scale.y) < 0.001f ? 1f : Mathf.Abs(scale.y);
+            scale.z = Mathf.Abs(scale.z) < 0.001f ? 1f : Mathf.Abs(scale.z);
+
+            return new Bounds(
+                new Vector3(
+                    desiredWorldBounds.center.x / scale.x,
+                    desiredWorldBounds.center.y / scale.y,
+                    desiredWorldBounds.center.z / scale.z),
+                new Vector3(
+                    desiredWorldBounds.size.x / scale.x,
+                    desiredWorldBounds.size.y / scale.y,
+                    desiredWorldBounds.size.z / scale.z));
+        }
+
+        private string GetModeFFortificationColliderDebugText(GameObject fortObj)
+        {
+            if (fortObj == null)
+            {
+                return string.Empty;
+            }
+
+            Vector3 scale = fortObj.transform.lossyScale;
+            BoxCollider damageCollider = null;
+            BoxCollider wallCollider = null;
+            BoxCollider blockerCollider = null;
+            BoxCollider triggerCollider = null;
+
+            Transform damageTransform = fortObj.transform.Find("ModeF_DamageReceiver");
+            if (damageTransform != null)
+            {
+                damageCollider = damageTransform.GetComponent<BoxCollider>();
+            }
+
+            Transform wallTransform = fortObj.transform.Find("ModeF_WallCollider");
+            if (wallTransform != null)
+            {
+                wallCollider = wallTransform.GetComponent<BoxCollider>();
+            }
+
+            Transform blockerTransform = fortObj.transform.Find("ModeF_CharacterBlocker");
+            if (blockerTransform != null)
+            {
+                blockerCollider = blockerTransform.GetComponent<BoxCollider>();
+            }
+
+            Transform triggerTransform = fortObj.transform.Find("ModeF_HalfObstacleTrigger");
+            if (triggerTransform != null)
+            {
+                triggerCollider = triggerTransform.GetComponent<BoxCollider>();
+            }
+
+            return " | scale=" + scale
+                + " | damage=" + GetModeFFortificationBoxColliderWorldBoundsText(damageCollider)
+                + " | wall=" + GetModeFFortificationBoxColliderWorldBoundsText(wallCollider)
+                + " | block=" + GetModeFFortificationBoxColliderWorldBoundsText(blockerCollider)
+                + " | halfTrigger=" + GetModeFFortificationBoxColliderWorldBoundsText(triggerCollider);
+        }
+
+        private string GetModeFFortificationBoxColliderWorldBoundsText(BoxCollider collider)
+        {
+            if (collider == null)
+            {
+                return "none";
+            }
+
+            Vector3 scale = collider.transform.lossyScale;
+            scale.x = Mathf.Abs(scale.x);
+            scale.y = Mathf.Abs(scale.y);
+            scale.z = Mathf.Abs(scale.z);
+
+            Vector3 worldCenter = Vector3.Scale(collider.center, scale);
+            Vector3 worldSize = Vector3.Scale(collider.size, scale);
+            return "center=" + worldCenter + ", size=" + worldSize;
+        }
+
+        private int GetModeFFortificationWallLayer()
+        {
+            int namedLayer = LayerMask.NameToLayer("Wall");
+            if (namedLayer >= 0)
+            {
+                return namedLayer;
+            }
+
+            int mask = 0;
+            try
+            {
+                mask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
+            }
+            catch { }
+
+            for (int i = 0; i < 32; i++)
+            {
+                if ((mask & (1 << i)) != 0)
+                {
+                    return i;
+                }
+            }
+
+            int obstacleLayer = LayerMask.NameToLayer("Obstacle");
+            if (obstacleLayer >= 0)
+            {
+                return obstacleLayer;
+            }
+
+            return 0;
+        }
+
+        private int GetModeFFortificationHalfObstacleLayer()
+        {
+            int namedLayer = LayerMask.NameToLayer("HalfObsticle");
+            if (namedLayer >= 0)
+            {
+                return namedLayer;
+            }
+
+            int mask = 0;
+            try
+            {
+                mask = Duckov.Utilities.GameplayDataSettings.Layers.halfObsticleLayer;
+            }
+            catch
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < 32; i++)
+            {
+                if ((mask & (1 << i)) != 0)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
         private int GetModeFFortificationDamageReceiverLayer()
         {
+            int namedLayer = LayerMask.NameToLayer("DamageReceiver");
+            if (namedLayer >= 0)
+            {
+                return namedLayer;
+            }
+
             int mask = 0;
             try
             {
@@ -1086,7 +1718,7 @@ namespace BossRush
         {
             try
             {
-                if (marker == null)
+                if (marker == null || marker.IsDestroyed)
                 {
                     return;
                 }
@@ -1095,7 +1727,7 @@ namespace BossRush
                 modeFState.ActiveFortifications.Remove(marker.FortificationId);
 
                 string typeName = GetFortificationTypeName(marker.Type);
-                DevLog("[ModeF] Fortification destroyed: " + typeName);
+                Debug.Log("[ModeF] [DESTROY] " + typeName + " | lastHp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
                 if (marker.gameObject != null)
                 {
                     UnityEngine.Object.Destroy(marker.gameObject);
@@ -1104,17 +1736,54 @@ namespace BossRush
             catch { }
         }
 
-        internal bool CanUseModeFRepairSpray()
+        private void OnFortificationHurt(ModeFFortificationMarker marker, DamageInfo damageInfo)
+        {
+            if (marker == null || marker.IsDestroyed || marker.BoundHealth == null)
+            {
+                return;
+            }
+
+            marker.LastKnownHealth = Mathf.Max(0f, marker.BoundHealth.CurrentHealth);
+            float finalDamage = damageInfo.finalDamage;
+            Debug.Log("[ModeF] [HURT] " + GetFortificationTypeName(marker.Type)
+                + " | damage=" + finalDamage.ToString("F1")
+                + " | hp=" + marker.LastKnownHealth.ToString("F1") + "/" + marker.MaxHealth.ToString("F1"));
+        }
+
+        internal bool CanUseModeFRepairSpray(bool highlightNearest = true)
         {
             CharacterMainControl player = CharacterMainControl.Main;
             ModeFFortificationMarker nearest = FindNearestOwnedModeFFortification(player, FORT_REPAIR_RANGE, true);
             if (nearest != null)
             {
-                HighlightModeFFortification(nearest, true);
+                if (highlightNearest)
+                {
+                    HighlightModeFFortification(nearest, true);
+                }
                 return true;
             }
 
             return false;
+        }
+
+        private bool IsValidModeFRepairTarget(ModeFFortificationMarker marker, CharacterMainControl player, float maxDistance)
+        {
+            if (marker == null || player == null || marker.IsDestroyed || marker.BoundHealth == null || marker.BoundHealth.IsDead)
+            {
+                return false;
+            }
+
+            if (marker.OwnerCharacterId != player.GetInstanceID())
+            {
+                return false;
+            }
+
+            if (marker.BoundHealth.CurrentHealth >= marker.MaxHealth - 0.01f)
+            {
+                return false;
+            }
+
+            return (marker.transform.position - player.transform.position).sqrMagnitude <= maxDistance * maxDistance;
         }
 
         private ModeFFortificationMarker FindNearestOwnedModeFFortification(CharacterMainControl player, float maxDistance, bool requireDamaged = false)
@@ -1173,34 +1842,33 @@ namespace BossRush
             }
         }
 
-        private bool TryRepairNearestFortification()
+        private bool TryRepairFortification(ModeFFortificationMarker target)
         {
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
-                ModeFFortificationMarker nearest = FindNearestOwnedModeFFortification(player, FORT_REPAIR_RANGE, true);
-
-                if (nearest == null)
+                if (!IsValidModeFRepairTarget(target, player, FORT_REPAIR_RANGE))
                 {
                     ShowModeFRewardBubble(L10n.T("附近没有可维修的工事", "No repairable fortification nearby"));
                     return false;
                 }
 
-                HighlightModeFFortification(nearest, true);
+                HighlightModeFFortification(target, true);
 
-                Health health = nearest.BoundHealth;
-                float healAmount = nearest.MaxHealth * FORT_REPAIR_PERCENT;
-                float newHealth = Mathf.Min(health.CurrentHealth + healAmount, nearest.MaxHealth);
+                Health health = target.BoundHealth;
+                float healAmount = target.MaxHealth * FORT_REPAIR_PERCENT;
+                float newHealth = Mathf.Min(health.CurrentHealth + healAmount, target.MaxHealth);
                 health.CurrentHealth = newHealth;
+                target.LastKnownHealth = newHealth;
 
-                string typeName = GetFortificationTypeName(nearest.Type);
+                string typeName = GetFortificationTypeName(target.Type);
                 DevLog("[ModeF] Fortification repaired: " + typeName + " +" + healAmount.ToString("F0") + " HP");
                 ShowModeFRewardBubble(typeName + L10n.T("已维修", " repaired"));
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] TryRepairNearestFortification failed: " + e.Message);
+                DevLog("[ModeF] [ERROR] TryRepairFortification failed: " + e.Message);
                 return false;
             }
         }
@@ -1216,7 +1884,7 @@ namespace BossRush
                 switch (type)
                 {
                     case FortificationType.FoldableCover:
-                        CreatePrimitivePart(root.transform, PrimitiveType.Cube, new Vector3(0f, 0.6f, 0f), new Vector3(1.6f, 1.2f, 0.2f), new Color(0.28f, 0.33f, 0.38f));
+                        CreatePrimitivePart(root.transform, PrimitiveType.Cube, new Vector3(0f, 0.54f, 0f), new Vector3(1.6f, 1.08f, 0.2f), new Color(0.28f, 0.33f, 0.38f));
                         CreatePrimitivePart(root.transform, PrimitiveType.Cube, new Vector3(-0.65f, 0.15f, 0f), new Vector3(0.12f, 0.3f, 0.12f), new Color(0.18f, 0.18f, 0.18f));
                         CreatePrimitivePart(root.transform, PrimitiveType.Cube, new Vector3(0.65f, 0.15f, 0f), new Vector3(0.12f, 0.3f, 0.12f), new Color(0.18f, 0.18f, 0.18f));
                         break;
@@ -1551,16 +2219,29 @@ namespace BossRush
                 // 防御性退还：如果清理时仍在放置模式，退还物品
                 int pendingItemTypeId = modeFPlacementItemTypeId;
                 bool wasPlacing = modeFPlacementActive;
+                int pendingRepairItemTypeId = modeFRepairSelectionItemTypeId;
+                bool wasRepairSelecting = modeFRepairSelectionActive;
 
                 // 清理放置预览
                 try { if (modeFPlacementPreview != null) UnityEngine.Object.Destroy(modeFPlacementPreview); } catch { }
                 modeFPlacementPreview = null;
                 modeFPlacementActive = false;
                 modeFPlacementItemTypeId = 0;
+                if (modeFRepairSelectionTarget != null)
+                {
+                    HighlightModeFFortification(modeFRepairSelectionTarget, false);
+                }
+                modeFRepairSelectionTarget = null;
+                modeFRepairSelectionActive = false;
+                modeFRepairSelectionItemTypeId = 0;
 
                 if (wasPlacing && pendingItemTypeId > 0)
                 {
                     try { RefundModeFUtilityItem(pendingItemTypeId, L10n.T("模式结束", "Mode ended")); } catch { }
+                }
+                if (wasRepairSelecting && pendingRepairItemTypeId > 0)
+                {
+                    try { RefundModeFUtilityItem(pendingRepairItemTypeId, L10n.T("模式结束", "Mode ended")); } catch { }
                 }
 
                 foreach (var kvp in modeFState.ActiveFortifications)
@@ -1606,10 +2287,11 @@ namespace BossRush
         {
             get
             {
+                Item item = GetBoundItem();
                 return new DisplaySettingsData
                 {
                     display = true,
-                    description = L10n.T("使用：部署 Mode F 战术物品", "Use: Deploy Mode F tactical utility")
+                    description = GetUsageDescription(item)
                 };
             }
         }
@@ -1624,19 +2306,6 @@ namespace BossRush
 
             if (!inst.IsModeFActive)
             {
-                NotificationText.Push(L10n.T(
-                    "该物品只能在血猎追击模式中使用！",
-                    "This item can only be used in Bloodhunt mode!"
-                ));
-                return false;
-            }
-
-            if (item != null && item.TypeID == EmergencyRepairSprayConfig.TYPE_ID && !inst.CanUseModeFRepairSpray())
-            {
-                NotificationText.Push(L10n.T(
-                    "附近没有可维修的己方工事。",
-                    "No repairable fortification nearby."
-                ));
                 return false;
             }
 
@@ -1696,6 +2365,48 @@ namespace BossRush
                     }
                 }
                 catch { }
+            }
+        }
+
+        private Item GetBoundItem()
+        {
+            Item item = GetComponent<Item>();
+            if (item != null)
+            {
+                return item;
+            }
+
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            Type currentType = GetType();
+            while (currentType != null)
+            {
+                FieldInfo masterField = currentType.GetField("master", flags);
+                if (masterField != null)
+                {
+                    return masterField.GetValue(this) as Item;
+                }
+
+                currentType = currentType.BaseType;
+            }
+
+            return null;
+        }
+
+        private static string GetUsageDescription(Item item)
+        {
+            int typeId = item != null ? item.TypeID : 0;
+            switch (typeId)
+            {
+                case FoldableCoverPackConfig.TYPE_ID:
+                    return L10n.T("使用：部署折叠掩体", "Use: Deploy Foldable Cover");
+                case ReinforcedRoadblockPackConfig.TYPE_ID:
+                    return L10n.T("使用：部署加固路障", "Use: Deploy Reinforced Roadblock");
+                case BarbedWirePackConfig.TYPE_ID:
+                    return L10n.T("使用：部署阻滞铁丝网", "Use: Deploy Barbed Wire");
+                case EmergencyRepairSprayConfig.TYPE_ID:
+                    return L10n.T("使用：修复已部署的防御工事", "Use: Repair deployed fortifications");
+                default:
+                    return L10n.T("使用：部署 Mode F 战术物品", "Use: Deploy Mode F tactical utility");
             }
         }
     }
@@ -1774,6 +2485,244 @@ namespace BossRush
                 }
             }
             catch { }
+        }
+    }
+
+    public class ModeFHalfObstacleTrigger : MonoBehaviour
+    {
+        private readonly List<GameObject> registeredParts = new List<GameObject>();
+        private readonly Dictionary<CharacterMainControl, int> overlapCounts = new Dictionary<CharacterMainControl, int>();
+
+        public void SetRegisteredParts(params GameObject[] parts)
+        {
+            RemoveRegisteredPartsFromTrackedCharacters();
+            registeredParts.Clear();
+
+            if (parts == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                GameObject part = parts[i];
+                if (part != null && !registeredParts.Contains(part))
+                {
+                    registeredParts.Add(part);
+                }
+            }
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            CharacterMainControl character = GetCharacter(other);
+            if (!ShouldTrackCharacter(character) || registeredParts.Count <= 0)
+            {
+                return;
+            }
+
+            int overlapCount = 0;
+            overlapCounts.TryGetValue(character, out overlapCount);
+            overlapCount++;
+            overlapCounts[character] = overlapCount;
+
+            if (overlapCount == 1)
+            {
+                character.AddnearByHalfObsticles(registeredParts);
+            }
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            CharacterMainControl character = GetCharacter(other);
+            if (!ShouldTrackCharacter(character) || registeredParts.Count <= 0)
+            {
+                return;
+            }
+
+            int overlapCount = 0;
+            if (!overlapCounts.TryGetValue(character, out overlapCount))
+            {
+                return;
+            }
+
+            overlapCount--;
+            if (overlapCount > 0)
+            {
+                overlapCounts[character] = overlapCount;
+                return;
+            }
+
+            overlapCounts.Remove(character);
+            character.RemoveNearByHalfObsticles(registeredParts);
+        }
+
+        private void OnDisable()
+        {
+            RemoveRegisteredPartsFromTrackedCharacters();
+        }
+
+        private void OnDestroy()
+        {
+            RemoveRegisteredPartsFromTrackedCharacters();
+        }
+
+        private CharacterMainControl GetCharacter(Collider other)
+        {
+            if (other == null)
+            {
+                return null;
+            }
+
+            CharacterMainControl character = other.GetComponent<CharacterMainControl>();
+            if (character != null)
+            {
+                return character;
+            }
+
+            return other.GetComponentInParent<CharacterMainControl>();
+        }
+
+        private static bool ShouldTrackCharacter(CharacterMainControl character)
+        {
+            if (character == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return character.IsMainCharacter || character == CharacterMainControl.Main;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void RemoveRegisteredPartsFromTrackedCharacters()
+        {
+            foreach (var kvp in overlapCounts)
+            {
+                CharacterMainControl character = kvp.Key;
+                if (character != null && registeredParts.Count > 0)
+                {
+                    character.RemoveNearByHalfObsticles(registeredParts);
+                }
+            }
+
+            overlapCounts.Clear();
+        }
+    }
+
+    public class ModeFFortificationCharacterBlocker : MonoBehaviour
+    {
+        private const float PushOutPadding = 0.05f;
+        private const float PushOutCooldown = 0.08f;
+        private BoxCollider blockerCollider;
+        private float nextPushAllowedTime = 0f;
+
+        public void Bind(BoxCollider collider)
+        {
+            blockerCollider = collider;
+        }
+
+        private void Awake()
+        {
+            if (blockerCollider == null)
+            {
+                blockerCollider = GetComponent<BoxCollider>();
+            }
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            TryPushCharacterOut(other);
+        }
+
+        private void OnTriggerStay(Collider other)
+        {
+            TryPushCharacterOut(other);
+        }
+
+        private void TryPushCharacterOut(Collider other)
+        {
+            if (blockerCollider == null || other == null)
+            {
+                return;
+            }
+
+            CharacterMainControl character = GetCharacter(other);
+            if (!ShouldPushCharacter(character))
+            {
+                return;
+            }
+
+            if (Time.unscaledTime < nextPushAllowedTime)
+            {
+                return;
+            }
+
+            Vector3 direction;
+            float distance;
+            if (!Physics.ComputePenetration(
+                blockerCollider,
+                blockerCollider.transform.position,
+                blockerCollider.transform.rotation,
+                other,
+                other.transform.position,
+                other.transform.rotation,
+                out direction,
+                out distance))
+            {
+                return;
+            }
+
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                Vector3 fallback = character.transform.position - blockerCollider.bounds.center;
+                fallback.y = 0f;
+                direction = fallback.sqrMagnitude > 0.0001f ? fallback.normalized : blockerCollider.transform.forward;
+            }
+            else
+            {
+                direction.Normalize();
+            }
+
+            Vector3 currentPos = character.transform.position;
+            Vector3 targetPos = currentPos + direction * (distance + PushOutPadding);
+            targetPos.y = currentPos.y;
+            character.SetPosition(targetPos);
+            nextPushAllowedTime = Time.unscaledTime + PushOutCooldown;
+        }
+
+        private CharacterMainControl GetCharacter(Collider other)
+        {
+            CharacterMainControl character = other.GetComponent<CharacterMainControl>();
+            if (character != null)
+            {
+                return character;
+            }
+
+            return other.GetComponentInParent<CharacterMainControl>();
+        }
+
+        private static bool ShouldPushCharacter(CharacterMainControl character)
+        {
+            if (character == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return character.IsMainCharacter || character == CharacterMainControl.Main;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

@@ -220,7 +220,7 @@ namespace BossRush
                     DevLog("[NurseNPC] 已设置为站桩模式（不移动）");
                 }
                 
-                // 添加交互组件（使用游戏原生 interactableGroup 模式）
+                // 添加交互组件（主交互 + 独立服务锚点）
                 NurseInteractable interactable = nurseNPCInstance.GetComponent<NurseInteractable>();
                 if (interactable == null)
                 {

@@ -71,6 +71,7 @@ namespace BossRush
         public CharacterMainControl Owner;
         public int OwnerCharacterId;
         public float MaxHealth;
+        public float LastKnownHealth;
         public bool IsDestroyed;
         public Health BoundHealth;
         public GameObject HighlightRoot;
@@ -83,5 +84,11 @@ namespace BossRush
         {
             FortificationId = nextFortId++;
         }
+    }
+
+    public class ModeFBossDisplayNameMarker : MonoBehaviour
+    {
+        public string DisplayName;
+        public Teams OriginalFaction = Teams.middle;
     }
 }

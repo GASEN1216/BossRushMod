@@ -22,7 +22,7 @@ namespace BossRush
         private static MethodInfo modeFSteamFriendsGetPersonaNameMethod = null;
         private static MethodInfo modeFSteamManagerGetSteamDisplayMethod = null;
         private const int MODEF_BOUNTY_RADAR_MAX_TARGETS = 5;
-        private const float MODEF_BOUNTY_RADAR_REFRESH_INTERVAL = 0.10f;
+        private const float MODEF_BOUNTY_RADAR_REFRESH_INTERVAL = 0.20f;
         private const float MODEF_BOUNTY_RADAR_REGULAR_RADIUS = 250f;
         private const float MODEF_BOUNTY_RADAR_LEADER_RADIUS = 320f;
         private const float MODEF_BOUNTY_RADAR_REGULAR_SIZE = 52f;
@@ -52,6 +52,8 @@ namespace BossRush
         private ModeFBountyRadarEntryUi modeFBountyLeaderRadarEntry = null;
         private readonly List<ModeFBountyRadarEntryUi> modeFBountyRadarEntries = new List<ModeFBountyRadarEntryUi>();
         private readonly List<ModeFBountyRadarTarget> modeFBountyRadarTargetScratch = new List<ModeFBountyRadarTarget>();
+        private readonly Dictionary<int, string> modeFMarkSuffixZhCache = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> modeFMarkSuffixEnCache = new Dictionary<int, string>();
         private float modeFNextBountyRadarRefreshTime = 0f;
         private TMP_FontAsset modeFBountyRadarFont = null;
         private static Sprite modeFBountyRadarRegularSprite = null;
@@ -116,8 +118,28 @@ namespace BossRush
 
         private string BuildModeFMarkSuffix(int marks)
         {
-            string markText = BuildModeFMarkText(marks, L10n.IsChinese);
-            return string.IsNullOrEmpty(markText) ? null : " " + markText;
+            if (marks <= 0)
+            {
+                return null;
+            }
+
+            bool isChinese = L10n.IsChinese;
+            Dictionary<int, string> suffixCache = isChinese ? modeFMarkSuffixZhCache : modeFMarkSuffixEnCache;
+            string suffix = null;
+            if (suffixCache.TryGetValue(marks, out suffix) && !string.IsNullOrEmpty(suffix))
+            {
+                return suffix;
+            }
+
+            string markText = BuildModeFMarkText(marks, isChinese);
+            if (string.IsNullOrEmpty(markText))
+            {
+                return null;
+            }
+
+            suffix = " " + markText;
+            suffixCache[marks] = suffix;
+            return suffix;
         }
 
         private static MethodInfo GetModeFRefreshCharacterIconMethod()
@@ -298,11 +320,59 @@ namespace BossRush
             return modeFCachedPlayerName;
         }
 
+        internal void SetModeFBossDisplayName(CharacterMainControl actor, string displayName, Teams originalFaction)
+        {
+            if (actor == null || actor.gameObject == null || string.IsNullOrWhiteSpace(displayName))
+            {
+                return;
+            }
+
+            ModeFBossDisplayNameMarker marker = actor.GetComponent<ModeFBossDisplayNameMarker>();
+            if (marker == null)
+            {
+                marker = actor.gameObject.AddComponent<ModeFBossDisplayNameMarker>();
+            }
+
+            marker.DisplayName = displayName;
+            marker.OriginalFaction = originalFaction;
+        }
+
+        private string TryGetModeFBossDisplayName(CharacterMainControl actor)
+        {
+            if (actor == null)
+            {
+                return null;
+            }
+
+            ModeFBossDisplayNameMarker marker = actor.GetComponent<ModeFBossDisplayNameMarker>();
+            if (marker == null || IsModeFPlaceholderActorName(marker.DisplayName))
+            {
+                return null;
+            }
+
+            return marker.DisplayName;
+        }
+
         internal string GetModeFActorDisplayName(CharacterMainControl actor, bool treatNullAsPlayer = false)
         {
             if (actor == null)
             {
                 return treatNullAsPlayer ? GetModeFPlayerName() : L10n.T("未知目标", "Unknown");
+            }
+
+            try
+            {
+                if (actor == CharacterMainControl.Main || actor.IsMainCharacter)
+                {
+                    return GetModeFPlayerName();
+                }
+            }
+            catch { }
+
+            string trackedDisplayName = TryGetModeFBossDisplayName(actor);
+            if (!string.IsNullOrEmpty(trackedDisplayName))
+            {
+                return trackedDisplayName;
             }
 
             string presetDisplayName = null;
@@ -375,8 +445,11 @@ namespace BossRush
             string trimmed = name.Trim();
             return string.Equals(trimmed, "躯壳", StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(trimmed, "Shell", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(trimmed, "Character(Clone)", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(trimmed, "Character", StringComparison.OrdinalIgnoreCase) ||
                    trimmed.StartsWith("ModeF_", StringComparison.Ordinal) ||
-                   trimmed.StartsWith("BossRush_", StringComparison.Ordinal);
+                   trimmed.StartsWith("BossRush_", StringComparison.Ordinal) ||
+                   trimmed.StartsWith("Character(", StringComparison.OrdinalIgnoreCase);
         }
 
         private string TryGetModeFSteamPersonaName()
@@ -1314,6 +1387,7 @@ namespace BossRush
     {
         private static ModBehaviour cachedInstance;
         private static int lastRefreshFrame = -1;
+        private const int ModeFHealthBarNameRefreshIntervalFrames = 12;
         private const string ModeFMarkSuffixZhPrefix = " [印记: ";
         private const string ModeFMarkSuffixEnPrefix = " [Mark: ";
         private const string ModeFMarkSuffixZhRichPrefix = " <color=yellow>悬赏";
@@ -1352,6 +1426,25 @@ namespace BossRush
             if (!forceShowName)
             {
                 return;
+            }
+
+            bool forceImmediateRefresh = !___nameText.gameObject.activeSelf || string.IsNullOrEmpty(___nameText.text);
+            if (!forceImmediateRefresh)
+            {
+                int refreshBucket = __instance.GetInstanceID();
+                if (refreshBucket == int.MinValue)
+                {
+                    refreshBucket = 0;
+                }
+                else if (refreshBucket < 0)
+                {
+                    refreshBucket = -refreshBucket;
+                }
+
+                if ((currentFrame + refreshBucket) % ModeFHealthBarNameRefreshIntervalFrames != 0)
+                {
+                    return;
+                }
             }
 
             string baseText = isPlayer

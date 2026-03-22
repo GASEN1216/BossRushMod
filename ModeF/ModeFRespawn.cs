@@ -23,6 +23,115 @@ namespace BossRush
         private readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
         private readonly List<EnemyPresetInfo> modeFRespawnBossPresetScratch = new List<EnemyPresetInfo>();
 
+        private const int MODEF_RESPAWN_NEAREST_POINT_POOL = 10;
+
+        private Teams ResolveModeFBossCombatTeam(Teams requestedFaction, EnemyPresetInfo preset, Vector3 spawnPos)
+        {
+            if (IsValidModeFCombatFaction(requestedFaction))
+            {
+                return requestedFaction;
+            }
+
+            Teams allocatedFaction;
+            if (TryGetModeFAllocatedFactionForPosition(spawnPos, out allocatedFaction))
+            {
+                return allocatedFaction;
+            }
+
+            if (preset != null)
+            {
+                Teams presetFaction = (Teams)preset.team;
+                if (IsValidModeFCombatFaction(presetFaction))
+                {
+                    return presetFaction;
+                }
+            }
+
+            return ModeEAvailableFactions[UnityEngine.Random.Range(0, ModeEAvailableFactions.Length)];
+        }
+
+        private bool IsValidModeFCombatFaction(Teams faction)
+        {
+            switch (faction)
+            {
+                case Teams.scav:
+                case Teams.usec:
+                case Teams.bear:
+                case Teams.lab:
+                case Teams.wolf:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private bool TryGetModeFAllocatedFactionForPosition(Vector3 spawnPos, out Teams faction)
+        {
+            faction = Teams.middle;
+            if (modeESpawnAllocation == null || modeESpawnAllocation.Count <= 0)
+            {
+                return false;
+            }
+
+            bool found = false;
+            float bestDistanceSqr = float.MaxValue;
+            foreach (var kvp in modeESpawnAllocation)
+            {
+                if (!IsValidModeFCombatFaction(kvp.Key) || kvp.Value == null)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < kvp.Value.Count; i++)
+                {
+                    float distanceSqr = (kvp.Value[i] - spawnPos).sqrMagnitude;
+                    if (distanceSqr < bestDistanceSqr)
+                    {
+                        bestDistanceSqr = distanceSqr;
+                        faction = kvp.Key;
+                        found = true;
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        private bool IsModeFBountyPhaseActive()
+        {
+            switch (modeFState.CurrentPhase)
+            {
+                case ModeFPhase.Bounty:
+                case ModeFPhase.HuntStorm:
+                case ModeFPhase.Extraction:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private void EnsureModeFBossHasBaseBountyMark(CharacterMainControl boss)
+        {
+            if (boss == null || !modeFActive || !IsModeFBountyPhaseActive())
+            {
+                return;
+            }
+
+            int bossId = boss.GetInstanceID();
+            int marks = 0;
+            if (modeFState.BountyMarksByCharacterId.TryGetValue(bossId, out marks) && marks > 0)
+            {
+                return;
+            }
+
+            modeFState.BountyMarksByCharacterId[bossId] = 1;
+            modeFState.InitialBountyBossIds.Add(bossId);
+            Debug.Log("[ModeF] [BOUNTY] autoMark=" + GetModeFActorDisplayName(boss, false)
+                + " | phase=" + modeFState.CurrentPhase);
+            MarkModeFBountyLeaderDirty();
+            RefreshModeFBountyLeaderIfDirty();
+        }
+
         private void PrepareModeESharedRuntimeForModeF()
         {
             ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
@@ -250,6 +359,7 @@ namespace BossRush
                 }
 
                 RegisterBossRandomLootTracking(boss);
+                EnsureModeFBossHasBaseBountyMark(boss);
                 GetModeFBossAIController(boss);
                 ApplyModeFPressureToBoss(boss);
                 EnsureModeFBossNameTag(boss);
@@ -299,6 +409,11 @@ namespace BossRush
                 }
 
                 DevLog("[ModeF] Boss registered: " + boss.gameObject.name + " (total=" + modeFState.ActiveBosses.Count + ")");
+                Debug.Log("[ModeF] [RESPAWN] register=" + GetModeFActorDisplayName(boss, false)
+                    + " | team=" + boss.Team
+                    + " | total=" + modeFState.ActiveBosses.Count
+                    + " | pending=" + modeFPendingRespawnCount
+                    + " | inflight=" + modeFRespawnInFlightCount);
             }
             catch (Exception e)
             {
@@ -357,6 +472,11 @@ namespace BossRush
                     + " (marks=" + deadBossMarks
                     + ", killedByPlayer=" + killedByPlayer
                     + ", killer=" + (killer != null ? killer.gameObject.name : "null") + ")");
+                Debug.Log("[ModeF] [RESPAWN] death victim=" + GetModeFActorDisplayName(deadBoss, false)
+                    + " | killer=" + GetModeFActorDisplayName(killer, killedByPlayer)
+                    + " | marks=" + deadBossMarks
+                    + " | source=" + (string.IsNullOrEmpty(sourceTag) ? "unknown" : sourceTag)
+                    + " | totalAfterRemove=" + modeFState.ActiveBosses.Count);
 
                 if (killedByPlayer)
                 {
@@ -402,6 +522,9 @@ namespace BossRush
             }
 
             modeFPendingRespawnCount += count;
+            Debug.Log("[ModeF] [RESPAWN] queue pending=" + modeFPendingRespawnCount
+                + " | inflight=" + modeFRespawnInFlightCount
+                + " | added=" + count);
             TryFulfillModeFPendingRespawns();
         }
 
@@ -412,6 +535,8 @@ namespace BossRush
                 return;
             }
 
+            Debug.Log("[ModeF] [RESPAWN] dispatch pending=" + modeFPendingRespawnCount
+                + " | inflight=" + modeFRespawnInFlightCount);
             if (RespawnModeFBoss())
             {
                 modeFPendingRespawnCount = Mathf.Max(0, modeFPendingRespawnCount - 1);
@@ -431,11 +556,17 @@ namespace BossRush
             if (!success && requeueOnFailure)
             {
                 modeFPendingRespawnCount += 1;
+                Debug.Log("[ModeF] [RESPAWN] complete success=False | requeue=True"
+                    + " | pending=" + modeFPendingRespawnCount
+                    + " | inflight=" + modeFRespawnInFlightCount);
                 return;
             }
 
             if (success)
             {
+                Debug.Log("[ModeF] [RESPAWN] complete success=True"
+                    + " | pending=" + modeFPendingRespawnCount
+                    + " | inflight=" + modeFRespawnInFlightCount);
                 TryFulfillModeFPendingRespawns();
             }
         }
@@ -466,6 +597,8 @@ namespace BossRush
                 {
                     modeEDragonDescendantSpawned = true;
                 }
+
+                Debug.Log("[ModeF] [RESPAWN] request preset=" + preset.displayName + " | pos=" + spawnPos);
 
                 SpawnEnemyCore(
                     preset,
@@ -500,11 +633,15 @@ namespace BossRush
                                 ctx.character.characterPreset = customPreset;
                             }
 
-                            Teams spawnedTeam = (Teams)spawnedPreset.team;
+                            Teams spawnedTeam = ResolveModeFBossCombatTeam(Teams.middle, spawnedPreset, spawnPos);
+                            SetModeFBossDisplayName(ctx.character, spawnedPreset.displayName, spawnedTeam);
                             ctx.character.SetTeam(spawnedTeam);
-                            ctx.character.gameObject.name = "ModeF_" + spawnedTeam + "_" + spawnedPreset.displayName;
+                            ctx.character.gameObject.name = "ModeF_" + spawnedPreset.displayName;
                             RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);
                             RegisterModeFBoss(ctx.character);
+                            Debug.Log("[ModeF] [RESPAWN] spawned=" + GetModeFActorDisplayName(ctx.character, false)
+                                + " | team=" + spawnedTeam
+                                + " | total=" + modeFState.ActiveBosses.Count);
                             configured = true;
                         }
                         catch (Exception e)
@@ -524,6 +661,7 @@ namespace BossRush
                         }
 
                         DevLog("[ModeF] [WARNING] Failed to spawn replacement boss.");
+                        Debug.Log("[ModeF] [RESPAWN] spawnFailed");
                         CompleteModeFBossRespawnAttempt(false, true);
                     },
                     1,
@@ -545,6 +683,13 @@ namespace BossRush
         {
             try
             {
+                List<Vector3> nearestSpawnPoints = GetNearestSpawnPoints(MODEF_RESPAWN_NEAREST_POINT_POOL);
+                if (nearestSpawnPoints != null && nearestSpawnPoints.Count > 0)
+                {
+                    return GetSafeBossSpawnPosition(
+                        nearestSpawnPoints[UnityEngine.Random.Range(0, nearestSpawnPoints.Count)]);
+                }
+
                 CharacterMainControl player = CharacterMainControl.Main;
                 Vector3 playerPos = player != null ? player.transform.position : Vector3.zero;
 

@@ -9,7 +9,7 @@
 //   - 闲置自言自语气泡
 //   - 对话气泡显示
 //   
-//   交互菜单由 NurseInteractable 处理（使用游戏原生 interactableGroup）
+//   交互菜单由 NurseInteractable 处理（使用独立交互锚点）
 //   遵循 KISS/YAGNI/SOLID 原则，参考 GoblinNPCController 实现
 // ============================================================================
 

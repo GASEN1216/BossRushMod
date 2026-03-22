@@ -118,6 +118,7 @@ namespace BossRush
                 UpdateModeFBountyRadarUI();
                 UpdateModeFFortificationHighlights();
                 UpdateFortPlacementMode();
+                UpdateModeFRepairSelection();
 
                 // 阶段广播计时
                 modeFState.PhaseStatusBroadcastTimer += deltaTime;
@@ -825,7 +826,10 @@ namespace BossRush
                 return false;
             }
 
-            if (!candidate.IsMainCharacter && candidate.Team == boss.Team)
+            if (!candidate.IsMainCharacter &&
+                candidate.Team == boss.Team &&
+                candidate.Team != Teams.all &&
+                boss.Team != Teams.all)
             {
                 return false;
             }
