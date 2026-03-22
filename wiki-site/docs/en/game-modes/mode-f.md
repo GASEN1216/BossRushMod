@@ -63,9 +63,9 @@ All three NPCs appear in Blood Hunt mode:
 
 Blood Hunt provides 4 deployable fortification items:
 
-- Foldable Cover Pack (100 HP): Light cover, provides basic protection
-- Reinforced Roadblock Pack (500 HP): Heavy barricade, provides strong protection
-- Barbed Wire Pack (200 HP): Blocks and slows enemy advance
+- Foldable Cover Pack (2500 HP): Light cover, provides basic protection
+- Reinforced Roadblock Pack (5000 HP): Heavy barricade, provides strong protection
+- Barbed Wire Pack (2000 HP): Blocks and slows enemy advance
 - Emergency Repair Spray: Repairs the nearest friendly fortification within 3 meters, restoring 25% of its max HP
 
 Usage: After using the item, the fortification deploys 2 meters in front of you. Deployment location cannot be too close, cannot overlap, and cannot be blocked by scene objects.

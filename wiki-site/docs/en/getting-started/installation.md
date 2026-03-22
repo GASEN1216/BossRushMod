@@ -13,7 +13,7 @@ After entering the game, you can verify the Mod is working properly by:
 
 - New items such as the **BossRush Ticket** are available at the base merchant
 - Press **L** (default) to open the achievement panel
-- NPCs **Dingdang** (Goblin) and **Yuori** (Nurse) are visible in the base scene
+- NPCs **Dingdang** (Goblin) and **Yuori** (Nurse) are visible in normal maps
 
 # Configuration File
 

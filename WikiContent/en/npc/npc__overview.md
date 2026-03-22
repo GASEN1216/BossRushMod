@@ -1,6 +1,6 @@
 ## NPC Overview
 
-BossRush Mod adds 3 NPCs, each providing different services. They appear in the base scene, and some NPCs also appear within specific modes.
+BossRush Mod adds 3 NPCs, each providing different services. They appear in normal maps, and some NPCs also appear within specific modes.
 
 ### NPC List
 - Dingdang: Goblin Smith, main services are Reforge, shop, chat
@@ -19,7 +19,7 @@ Dingdang and Yuori have a full Affinity system:
 See Affinity and Marriage for details.
 
 ### NPC Locations
-- Base: Dingdang ✓ / Yuori ✓ / Awen ✓
+- Normal Maps: Dingdang ✓ / Yuori ✓ / Awen ✓
 - Wedding Chapel (after marriage): Dingdang ✓ / Yuori ✓ / Awen —
 - Standard BossRush / From Scratch (in-mode): One of Dingdang or Yuori (random) ✓ / Awen ✓
 - Faction War (in-mode): Dingdang ✓ / Yuori ✓ / Awen ✓

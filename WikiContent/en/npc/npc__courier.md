@@ -2,7 +2,7 @@
 
 ### Overview
 
-Awen is a Courier NPC who provides item storage and retrieval services. He appears in the base scene and also within all BossRush modes, allowing you to store and retrieve items at any time during combat.
+Awen is a Courier NPC who provides item storage and retrieval services. He appears in normal maps and also within all BossRush modes, allowing you to store and retrieve items at any time during combat.
 
 ### Services
 - Item Storage: Store items into a Storage Point, saved across scenes
@@ -15,10 +15,10 @@ Awen is a Courier NPC who provides item storage and retrieval services. He appea
 
 #### Integration with Blood Hunt
 
-When you successfully extract in Blood Hunt mode, bounty reward items are automatically sent to the Storage Point. Return to base and find Awen to retrieve these rewards after extraction.
+When you successfully extract in Blood Hunt mode, bounty reward items are automatically sent to the Storage Point. Return to normal maps and find Awen to retrieve these rewards after extraction.
 
 ### Locations
-- Base: ✓
+- Normal Maps: ✓
 - Standard BossRush (in-mode): ✓
 - From Scratch (in-mode): ✓
 - Faction War (in-mode): ✓

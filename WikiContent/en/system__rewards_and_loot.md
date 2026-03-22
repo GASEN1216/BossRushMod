@@ -83,6 +83,7 @@ When killing a custom Boss, in addition to the regular loot crate, exclusive equ
 - Dragon King Scale Armor (Armor): 15% drop rate
 - Reverse Scale (Totem): 35% drop rate
 - Skyburner Halberd (Melee): 15% drop rate
+- Dragon Cannon (Firearm): 5% drop rate
 
 ### Death Protection
 

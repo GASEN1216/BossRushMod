@@ -2,17 +2,17 @@
 
 # Overview
 - The exclusive firearm used by the Skyburner Dragon Lord in combat
-- Players cannot obtain it through drops or any other means; only the Boss itself is equipped with it
+- Players could not obtain it previously, but it has now been added to the Dragon Lord's loot pool
 - Features 15 ammo configurations that dynamically switch during combat, making the Boss's shooting patterns highly varied
 
-::: warning
-This weapon is on the drop blacklist and will not appear in any loot crates.
+::: tip
+Defeating the Skyburner Dragon Lord has a very small chance to drop this exclusive weapon (5% drop rate).
 :::
 
 # Basic Info
 - Type: Firearm
 - Owner: Skyburner Dragon Lord (Boss exclusive)
-- Player obtainable: No
+- Player obtainable: Yes
 
 # Weapon Stats
 - Base damage: 26

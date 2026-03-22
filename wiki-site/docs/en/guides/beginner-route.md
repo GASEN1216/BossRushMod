@@ -18,7 +18,7 @@ Congratulations — you've unlocked the "First Steps" and "Easy" achievements.
 - Try Infinite Hell and see how many waves you can survive.
 
 # Meet the NPCs
-- Return to base and find **Dingdang** (Goblin) and **Yuori** (Nurse).
+- Return to normal maps and find **Dingdang** (Goblin) and **Yuori** (Nurse).
 - Chat with them and give gifts daily to increase Affinity.
 - Dingdang Lv.2 unlocks the shop, Lv.4 grants Cold Quench Fluid — after which you can start Reforging equipment.
 

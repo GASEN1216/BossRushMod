@@ -25,9 +25,9 @@ See Entry & Utility Items — Faction Banner.
 
 These items can only be used in Blood Hunt mode. Obtained by killing Bosses or purchased from the Mystery Merchant.
 
-- Foldable Cover Pack (Common / Green, max stack 10): Deploys a light cover in front of you (100 HP)
-- Reinforced Roadblock Pack (Rare, max stack 5): Deploys a heavy roadblock in front of you (500 HP)
-- Barbed Wire Pack (Common, max stack 5): Deploys barbed wire in front of you that blocks and slows enemies (200 HP)
+- Foldable Cover Pack (Common/Green, max stack 10): Deploys a light cover in front of you (2500 HP)
+- Barbed Wire Pack (Uncommon/Blue, max stack 10): Deploys barbed wire that significantly slows enemy movement without collision (2000 HP)
+- Reinforced Roadblock Pack (Epic/Purple, max stack 10): Deploys a highly durable cover (5000 HP)
 - Emergency Repair Spray (Common, max stack 10): Repairs the nearest friendly fortification within 3m, restoring 25% of its max HP
 
 #### Fortification Deployment Rules

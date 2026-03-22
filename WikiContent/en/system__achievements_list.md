@@ -65,7 +65,7 @@ BossRush Mod contains 37 achievements across 7 categories. Completing achievemen
 |-------------|-----------------|--------|------------|
 | Iron Man | Survive 10 waves in Infinite Hell without using healing items | $250,000 | ★★★★ |
 | Dragon Descendant Collector | Collect all exclusive drops from Dragon Descendant (Dragon Breath, Crimson Dragon Helm, Flame Scale Armor) | $300,000 | ★★★ |
-| Dragon King Collector | Collect all exclusive drops from Skyburner Dragon Lord (Cloud Rider, Dragon King Crown, Dragon King Scale Armor, Reverse Scale) | $500,000 | ★★★★ |
+| Dragon King Collector | Collect all exclusive drops from Skyburner Dragon Lord (Cloud Rider, Dragon King Crown, Dragon King Scale Armor, Reverse Scale, Skyburner Halberd, Dragon Cannon) | $500,000 | ★★★★ |
 | Wind Rider | Take flight for the first time using Cloud Rider Totem | $50,000 | ★ |
 | Dragon's Wrath | Trigger the Reverse Scale totem effect for the first time (activates when near death) | $80,000 | ★★ |
 

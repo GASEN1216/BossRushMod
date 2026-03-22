@@ -67,6 +67,7 @@ When the Skyburner Dragon Lord's HP drops to 1, it does not die immediately. Ins
 - Dragon King Scale Armor (Armor): 15% drop rate
 - Reverse Scale (Totem): 35% drop rate
 - Skyburner Halberd (Melee): 15% drop rate
+- Dragon Cannon (Firearm): 5% drop rate
 
 ### Combat Strategy
 - The Skyburner Dragon Lord hovers in the air — melee weapons can barely reach it, prioritize firearms

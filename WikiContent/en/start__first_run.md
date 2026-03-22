@@ -44,4 +44,4 @@ Once you are familiar with standard BossRush, try:
 
 [tip] Press L at any time to check your achievement progress.
 
-[tip] Interact with Dingdang and Yuori at the base to unlock more content.
+[tip] Interact with Dingdang and Yuori in normal maps to unlock more content.

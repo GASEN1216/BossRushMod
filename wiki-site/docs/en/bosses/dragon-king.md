@@ -69,6 +69,7 @@ Do not ignore the "Protect me, my child!" phase. Prioritize killing the Dragon D
 - Dragon King Scale Armor (Armor): 15% drop rate
 - Reverse Scale (Totem): 35% drop rate
 - Skyburner Halberd (Melee): 15% drop rate
+- Dragon Cannon (Firearm): 5% drop rate
 
 # Combat Strategy
 - The Skyburner Dragon Lord hovers in the air — melee weapons can barely reach it, prioritize firearms
