@@ -65,8 +65,9 @@
 - Dragon Descendant and BEAR faction promoted minions carry random equipment.
 
 ### Blood Hunt Loot
-- Killing a bounty Boss drops extra high quality items, with the quantity equal to the number of Bounty Marks on that Boss.
-- Upon successful extraction, each Bounty Mark on a player = 1 high quality reward item, sent to the Storage Point.
+- Killing a bounty Boss drops extra items from the shared high-quality reward pool, with the quantity equal to the number of Bounty Marks on that Boss.
+- Upon successful extraction, each Bounty Mark on a player = 1 item from the shared high-quality reward pool, sent to the Storage Point.
+- Both reward sources currently reuse the same shared reward-pool rules.
 
 ### Custom Boss Exclusive Drops
 

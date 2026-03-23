@@ -12,7 +12,7 @@
 //   - OnInfiniteHellWaveCompleted: 无间炼狱单波完成处理
 //   - OnAllEnemiesDefeated: 所有敌人击败后的通关处理
 //   - SpawnDifficultyRewardLootbox: 生成通关奖励箱
-//   - GetRandomInfiniteHellHighQualityRewardTypeID: 获取高品质奖励物品
+//   - GetRandomInfiniteHellHighQualityRewardTypeID: 获取共享高品质奖励池物品
 // ============================================================================
 
 using System;
@@ -639,6 +639,10 @@ namespace BossRush
             catch {}
         }
 
+        /// <summary>
+        /// 从共享高品质奖励池中随机取一个奖励 TypeID。
+        /// 当前候选规则为 Quality>=5，且优先选择价格>=10000 的条目；调用方如需更高门槛，需要自行二次过滤。
+        /// </summary>
         private int GetRandomInfiniteHellHighQualityRewardTypeID()
         {
             // 皇冠（1254）权重降为0.1，与其他模式保持一致
@@ -2894,7 +2898,7 @@ namespace BossRush
                 Item reward = null;
                 try
                 {
-                    int rewardTypeId = GetModeFHighQualityRewardTypeID();
+                    int rewardTypeId = GetRandomInfiniteHellHighQualityRewardTypeID();
                     if (rewardTypeId <= 0)
                     {
                         continue;

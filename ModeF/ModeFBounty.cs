@@ -91,20 +91,20 @@ namespace BossRush
                 int total = alive.Count;
 
                 modeFState.BountyMarksByCharacterId.Clear();
-                modeFState.InitialBountyBossIds.Clear();
 
                 for (int i = 0; i < total; i++)
                 {
                     CharacterMainControl boss = alive[i];
                     int charId = boss.GetInstanceID();
                     modeFState.BountyMarksByCharacterId[charId] = 1;
-                    modeFState.InitialBountyBossIds.Add(charId);
+                    EnsureModeFBossNameTag(boss);
                 }
 
+                MarkModeFHealthBarNamesDirty();
                 ApplyModeFPhasePressure();
                 MarkModeFBountyLeaderDirty();
                 RefreshModeFBountyLeaderIfDirty();
-                Debug.Log("[ModeF] [BOUNTY] allAliveMarked=" + total);
+                DevLog("[ModeF] [BOUNTY] allAliveMarked=" + total);
                 DevLog("[ModeF] 悬赏名单已生成: " + total + "/" + total + " 个 Boss 被标记");
             }
             catch (Exception e)
@@ -133,6 +133,7 @@ namespace BossRush
                     modeFState.BountyMarksByCharacterId.TryGetValue(killerId, out killerMarks);
                     modeFState.BountyMarksByCharacterId[killerId] = killerMarks + victimMarks;
                     modeFState.BountyMarksByCharacterId.Remove(victimId);
+                    MarkModeFHealthBarNamesDirty();
 
                     DevLog("[ModeF] Boss 继承印记: killer=" + killer.gameObject.name + " +" + victimMarks + " (总计=" + (killerMarks + victimMarks) + ")");
 
@@ -142,6 +143,7 @@ namespace BossRush
                     BroadcastModeFBossGrowth(killer, victim, growthPercent);
                 }
 
+                EnsureModeFBossNameTag(killer);
                 ApplyModeFPhasePressure();
 
                 QueueModeFLeaderChangeContext(killer, victim);
@@ -171,6 +173,7 @@ namespace BossRush
                 if (isBounty)
                 {
                     modeFState.PlayerBountyMarks += 1;
+                    MarkModeFHealthBarNamesDirty();
                     MarkModeFPlayerNameTagDirty();
                     DevLog("[ModeF] 玩家获得 +1 悬赏印记 (总计=" + modeFState.PlayerBountyMarks + ")");
                 }
@@ -307,29 +310,24 @@ namespace BossRush
                     Item characterItem = boss.CharacterItem;
                     if (characterItem != null)
                     {
-                        try
+                        Stat oldHpStat = characterItem.GetStat("MaxHealth");
+                        if (oldHpStat != null && oldMods.hp != null)
                         {
-                            Stat oldHpStat = characterItem.GetStat("MaxHealth");
-                            if (oldHpStat != null && oldMods.hp != null)
-                            {
-                                oldHpStat.RemoveModifier(oldMods.hp);
-                            }
+                            oldHpStat.RemoveModifier(oldMods.hp);
                         }
-                        catch { }
 
-                        try
+                        Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
+                        if (oldGunStat != null && oldMods.gunDmg != null)
                         {
-                            Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
-                            if (oldGunStat != null && oldMods.gunDmg != null)
-                            {
-                                oldGunStat.RemoveModifier(oldMods.gunDmg);
-                            }
+                            oldGunStat.RemoveModifier(oldMods.gunDmg);
                         }
-                        catch { }
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] RemoveModeFBossGrowthModifiers failed: " + e.Message);
+            }
 
             modeFBossModifiers.Remove(boss);
         }
@@ -386,15 +384,15 @@ namespace BossRush
                     return false;
                 }
 
-                CompareAndSwapEquipment(killer, victim);
-
                 if (!ShouldUseModeFAbstractPlunderLootTracking())
                 {
+                    CompareAndSwapEquipment(killer, victim);
                     DevLog("[ModeF] Boss 预掠夺已执行即时换装，但当前关闭了随机掉落，跳过抽象战利品继承");
                     return true;
                 }
 
                 int physicalHighQualityCount = CountModeFPlunderableHighQualityItems(victim);
+                CompareAndSwapEquipment(killer, victim);
                 int carriedHighQualityCount = ConsumeModeFBossCarriedHighQualityLootCount(victim);
                 int totalTransferredCount = physicalHighQualityCount + carriedHighQualityCount;
 
@@ -1510,10 +1508,16 @@ namespace BossRush
             {
                 modeFState.BountyMarksByCharacterId.Remove(modeFStaleBountyIdScratch[i]);
             }
+
+            if (modeFStaleBountyIdScratch.Count > 0)
+            {
+                MarkModeFHealthBarNamesDirty();
+            }
         }
 
         /// <summary>
-        /// 为悬赏 Boss 添加额外掉落
+        /// 为悬赏 Boss 添加额外掉落。
+        /// 当前实现直接复用共享高品质奖励池，候选规则与 GetRandomInfiniteHellHighQualityRewardTypeID 保持一致。
         /// </summary>
         private void AddBountyBossExtraLoot(CharacterMainControl victim, int marks)
         {
@@ -1527,7 +1531,7 @@ namespace BossRush
                 {
                     try
                     {
-                        int rewardTypeId = GetModeFHighQualityRewardTypeID();
+                        int rewardTypeId = GetRandomInfiniteHellHighQualityRewardTypeID();
                         if (rewardTypeId <= 0) continue;
 
                         Item reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
@@ -1545,96 +1549,6 @@ namespace BossRush
             {
                 DevLog("[ModeF] [WARNING] AddBountyBossExtraLoot 失败: " + e.Message);
             }
-        }
-
-        /// <summary>M3: 已验证的高品质 TypeID 缓存，避免每次实例化物品仅为检查品质</summary>
-        private readonly List<int> modeFVerifiedHighQualityTypeIds = new List<int>();
-        private readonly HashSet<int> modeFVerifiedHighQualityTypeIdSet = new HashSet<int>();
-        private bool modeFHighQualityPoolBuilt = false;
-
-        /// <summary>
-        /// 获取 Mode F 高品质奖励物品 TypeID（品质>=6）
-        /// </summary>
-        private int GetModeFHighQualityRewardTypeID()
-        {
-            // 如果缓存已构建，直接从缓存随机取
-            if (modeFHighQualityPoolBuilt && modeFVerifiedHighQualityTypeIds.Count > 0)
-            {
-                return modeFVerifiedHighQualityTypeIds[UnityEngine.Random.Range(0, modeFVerifiedHighQualityTypeIds.Count)];
-            }
-
-            // 首次调用：构建缓存
-            if (!modeFHighQualityPoolBuilt)
-            {
-                modeFHighQualityPoolBuilt = true;
-                for (int probe = 0; probe < 40; probe++)
-                {
-                    int candidateId = GetRandomInfiniteHellHighQualityRewardTypeID();
-                    if (candidateId <= 0) continue;
-
-                    Item probeItem = null;
-                    try
-                    {
-                        probeItem = ItemAssetsCollection.InstantiateSync(candidateId);
-                        if (probeItem != null && probeItem.Quality >= 6 && modeFVerifiedHighQualityTypeIdSet.Add(candidateId))
-                        {
-                            modeFVerifiedHighQualityTypeIds.Add(candidateId);
-                        }
-                    }
-                    catch { }
-                    finally
-                    {
-                        try
-                        {
-                            if (probeItem != null)
-                            {
-                                probeItem.DestroyTree();
-                            }
-                        }
-                        catch { }
-                    }
-                }
-
-                if (modeFVerifiedHighQualityTypeIds.Count > 0)
-                {
-                    return modeFVerifiedHighQualityTypeIds[UnityEngine.Random.Range(0, modeFVerifiedHighQualityTypeIds.Count)];
-                }
-            }
-
-            // 缓存为空时回退到原始逻辑
-            for (int attempt = 0; attempt < 20; attempt++)
-            {
-                int rewardTypeId = GetRandomInfiniteHellHighQualityRewardTypeID();
-                if (rewardTypeId <= 0) continue;
-
-                Item reward = null;
-                try
-                {
-                    reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
-                    if (reward != null && reward.Quality >= 6)
-                    {
-                        if (modeFVerifiedHighQualityTypeIdSet.Add(rewardTypeId))
-                        {
-                            modeFVerifiedHighQualityTypeIds.Add(rewardTypeId);
-                        }
-                        return rewardTypeId;
-                    }
-                }
-                catch { }
-                finally
-                {
-                    try
-                    {
-                        if (reward != null)
-                        {
-                            reward.DestroyTree();
-                        }
-                    }
-                    catch { }
-                }
-            }
-
-            return -1;
         }
 
         #endregion
