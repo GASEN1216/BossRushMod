@@ -13,8 +13,8 @@ namespace BossRush
         #region Mode F 悬赏系统
 
         /// <summary>Mode F Boss 成长 Modifier 缓存</summary>
-        private readonly Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg)> modeFBossModifiers
-            = new Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg)>();
+        private readonly Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg, Modifier meleeDmg)> modeFBossModifiers
+            = new Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg, Modifier meleeDmg)>();
         private bool modeFBountyLeaderDirty = false;
         private CharacterMainControl modeFBountyLeaderPreferred = null;
         private string modeFBountyLeaderContextZh = null;
@@ -232,6 +232,12 @@ namespace BossRush
                         if (oldGunStat != null && oldMods.gunDmg != null) oldGunStat.RemoveModifier(oldMods.gunDmg);
                     }
                     catch { }
+                    try
+                    {
+                        Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
+                        if (oldMeleeStat != null && oldMods.meleeDmg != null) oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
+                    }
+                    catch { }
                 }
 
                 // 计算累积成长倍率
@@ -248,6 +254,7 @@ namespace BossRush
 
                 Modifier newHpMod = null;
                 Modifier newGunMod = null;
+                Modifier newMeleeMod = null;
 
                 // 生命值成长
                 Stat maxHealthStat = characterItem.GetStat("MaxHealth");
@@ -282,7 +289,19 @@ namespace BossRush
                     }
                 }
 
-                modeFBossModifiers[boss] = (newHpMod, newGunMod);
+                // 近战伤害成长
+                Stat meleeDmgStat = characterItem.GetStat("MeleeDamageMultiplier");
+                if (meleeDmgStat != null)
+                {
+                    float meleeDelta = meleeDmgStat.BaseValue * totalGrowth;
+                    if (meleeDelta > 0)
+                    {
+                        newMeleeMod = new Modifier(ModifierType.Add, meleeDelta, this);
+                        meleeDmgStat.AddModifier(newMeleeMod);
+                    }
+                }
+
+                modeFBossModifiers[boss] = (newHpMod, newGunMod, newMeleeMod);
             }
             catch (Exception e)
             {
@@ -297,7 +316,7 @@ namespace BossRush
                 return;
             }
 
-            (Modifier hp, Modifier gunDmg) oldMods;
+            (Modifier hp, Modifier gunDmg, Modifier meleeDmg) oldMods;
             if (!modeFBossModifiers.TryGetValue(boss, out oldMods))
             {
                 return;
@@ -320,6 +339,12 @@ namespace BossRush
                         if (oldGunStat != null && oldMods.gunDmg != null)
                         {
                             oldGunStat.RemoveModifier(oldMods.gunDmg);
+                        }
+
+                        Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
+                        if (oldMeleeStat != null && oldMods.meleeDmg != null)
+                        {
+                            oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
                         }
                     }
                 }

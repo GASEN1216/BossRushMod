@@ -63,6 +63,7 @@ namespace BossRush
                 modeFState.TempMaxHealthGrowth = 0f;
                 modeFState.PlayerKillCount = 0;
                 modeFState.PlayerBountyMarks = 0;
+                modeFPendingUtilityRewardCounts.Clear();
                 ResetModeFUiCaches();
                 MarkModeFPlayerNameTagDirty();
                 modeFMaxHealthModifier = null;
@@ -113,7 +114,11 @@ namespace BossRush
                 // 持续掉血
                 ApplyModeFBleedDamage(player, deltaTime);
                 UpdateModeFPlayerNameTag();
-                UpdateModeFBossNameTags();
+                if (Time.frameCount % 120 == 0)
+                {
+                    UpdateModeFPendingUtilityRewards();
+                }
+
                 RefreshModeFBountyLeaderIfDirty();
                 UpdateModeFBountyRadarUI();
                 UpdateModeFFortificationHighlights();
@@ -437,6 +442,7 @@ namespace BossRush
 
                 // 如果正在放置工事，取消并退还物品
                 CancelFortPlacement();
+                FlushModeFPendingUtilityRewards(true);
 
                 DevLog("[ModeF] 退出 Mode F 模式");
 
@@ -467,6 +473,7 @@ namespace BossRush
                 modeFHandledBossDeathIds.Clear();
                 CleanupModeFPlayerNameTag();
                 CleanupModeFBountyRadarUI();
+                CleanupModeFExtractionMapMarker();
                 ResetModeFUiCaches();
                 ClearModeFBossMoveSpeedModifiers();
                 modeFState.ExtractionResolved = true;
@@ -553,10 +560,7 @@ namespace BossRush
                 modeFActiveBossSet.Clear();
                 ClearEnemyRecoveryMonitorState();
                 ClearAllModeFBossPlunderLootState();
-                // M3: 重置高品质奖励缓存，下次进入重新构建
-                modeFHighQualityPoolBuilt = false;
-                modeFVerifiedHighQualityTypeIds.Clear();
-                modeFVerifiedHighQualityTypeIdSet.Clear();
+
 
                 if (showEndMessage)
                 {

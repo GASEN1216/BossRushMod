@@ -8,8 +8,20 @@ echo.
 
 set OUTPUT_DIR=Build
 set MOD_NAME=BossRush
-set GAME_PATH=E:\SteamLibrary\steamapps\common\Escape from Duckov
-set WORKSHOP_PATH=E:\SteamLibrary\steamapps\workshop\content\3167020
+if not defined GAME_PATH (
+    if exist "D:\sofrware\steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed" (
+        set "GAME_PATH=D:\sofrware\steam\steamapps\common\Escape from Duckov"
+    ) else (
+        set "GAME_PATH=E:\SteamLibrary\steamapps\common\Escape from Duckov"
+    )
+)
+if not defined WORKSHOP_PATH (
+    if exist "D:\sofrware\steam\steamapps\workshop\content\3167020\3588386576\0Harmony.dll" (
+        set "WORKSHOP_PATH=D:\sofrware\steam\steamapps\workshop\content\3167020"
+    ) else (
+        set "WORKSHOP_PATH=E:\SteamLibrary\steamapps\workshop\content\3167020"
+    )
+)
 :: HarmonyLoadMod (Workshop ID: 3588386576)
 set HARMONY_MOD_ID=3588386576
 echo GAME_PATH=%GAME_PATH%
@@ -217,6 +229,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Items\WildHornConfig.cs ^
     Integration\Items\WildHornUsage.cs ^
     Integration\Items\BloodhuntTransponderConfig.cs ^
+    Integration\Items\ModeFItemConfigHelper.cs ^
     Integration\Items\FoldableCoverPackConfig.cs ^
     Integration\Items\ReinforcedRoadblockPackConfig.cs ^
     Integration\Items\BarbedWirePackConfig.cs ^

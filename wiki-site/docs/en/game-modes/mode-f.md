@@ -23,7 +23,7 @@ Bleed rate is calculated based on your initial max HP when entering the mode, an
 
 # Bounty System
 
-When the Bounty Phase begins, the system randomly selects 40-50% of surviving Bosses and marks them as bounty targets.
+When the Bounty Phase begins, the system marks all surviving Bosses as bounty targets.
 
 # Bounty Mark
 
@@ -36,8 +36,8 @@ When the Bounty Phase begins, the system randomly selects 40-50% of surviving Bo
 
 Starting from the Bounty Phase, a Bounty Radar is displayed on screen:
 
-- Red-orange dots mark regular bounty targets (250m detection range)
-- Gold dots mark the Bounty Leader (320m detection range)
+- Red-orange dots mark off-screen regular bounty targets
+- Gold dots mark the off-screen Bounty Leader
 - Shows mark count and distance
 
 # Kill Rewards
@@ -79,13 +79,14 @@ You automatically receive 1 Foldable Cover Pack at the start. Obtain more by kil
 - Hunt Surge Phase: All Bosses forced to chase the player, unmarked Bosses gain +50% movement speed
 - Extraction Phase: All Bosses chase the player, all Bosses gain +50% movement speed, unmarked Bosses gain +100% movement speed
 
-Killed Bosses are automatically replaced with new ones (spawning at least 50 meters from the player).
+Killed Bosses are automatically replaced with new ones.
 
 # Extraction
 
 - When the Extraction Phase begins, an extraction point spawns on the map (far from the player's position)
 - Stand inside the extraction point for 15 seconds to successfully evacuate
-- Extraction reward: Each Bounty Mark on the player = 1 high-quality reward item, sent to storage
+- Extraction reward: Each Bounty Mark on the player = 1 item from the shared high-quality reward pool, sent to storage
+- Extra bounty Boss drops and extraction rewards currently follow the same shared high-quality reward-pool rules
 
 # Win/Lose Conditions
 

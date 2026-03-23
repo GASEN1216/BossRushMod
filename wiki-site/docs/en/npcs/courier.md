@@ -15,7 +15,7 @@ Awen is a Courier NPC who provides item storage and retrieval services. He appea
 
 # Integration with Blood Hunt
 
-When you successfully extract in Blood Hunt mode, bounty reward items are automatically sent to the Storage Point. Return to normal maps and find Awen to retrieve these rewards after extraction.
+When you successfully extract in Blood Hunt mode, bounty reward items from the shared high-quality reward pool are automatically sent to the Storage Point. Return to normal maps and find Awen to retrieve these rewards after extraction.
 
 # Locations
 - Normal Maps: ✓
@@ -27,5 +27,5 @@ When you successfully extract in Blood Hunt mode, bounty reward items are automa
 # Tips
 - Awen has no Affinity system and does not require daily interaction; just find him whenever you need to store or retrieve items
 - Before entering high-risk modes, you can store valuable items with Awen to avoid accidental loss
-- Blood Hunt extraction rewards are automatically sent to the Storage Point, so remember to pick them up after extraction
+- Blood Hunt extraction rewards are automatically sent to the Storage Point, and currently come from the shared high-quality reward pool, so remember to pick them up after extraction
 - Awen is present within all BossRush modes, so you can store and retrieve equipment at any time

@@ -618,7 +618,7 @@ namespace BossRush
                     }
                 }
 
-                if (!isModeFRun && ctx.isBoss && faction != modeEPlayerFaction)
+                if (ctx.isBoss && faction != modeEPlayerFaction && !isModeFRun)
                 {
                     ApplyModeDStyleLootToModeESpecialEnemy(character, ctx, faction, promotedToBoss);
                 }

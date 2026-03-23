@@ -9,26 +9,147 @@ using Duckov.UI;
 
 namespace BossRush
 {
+    // -------------------------------------------------------------------------
+    // FortDef: 每种工事的所有静态参数，集中于此，消除散落的 switch/case
+    // -------------------------------------------------------------------------
+    internal sealed class FortDef
+    {
+        internal readonly FortificationType Type;
+        internal readonly string PrefabName;
+        internal readonly float MaxHp;
+        internal readonly int ItemTypeId;
+        internal readonly bool IsHalfObstacle;
+        internal readonly Bounds DamageColliderBounds;
+        internal readonly Bounds WallColliderBounds;
+        internal readonly Bounds CharacterBlockerBounds;
+        internal readonly Bounds DefaultBounds;
+        internal readonly Bounds HalfObstacleTriggerBounds;
+
+        private FortDef(
+            FortificationType type, string prefab, float hp, int itemTypeId, bool halfObstacle,
+            Bounds damage, Bounds wall, Bounds blocker, Bounds def, Bounds halfTrigger)
+        {
+            Type = type; PrefabName = prefab; MaxHp = hp; ItemTypeId = itemTypeId;
+            IsHalfObstacle = halfObstacle;
+            DamageColliderBounds = damage; WallColliderBounds = wall;
+            CharacterBlockerBounds = blocker; DefaultBounds = def;
+            HalfObstacleTriggerBounds = halfTrigger;
+        }
+
+        private static readonly Dictionary<FortificationType, FortDef> _table =
+            new Dictionary<FortificationType, FortDef>
+            {
+                {
+                    FortificationType.FoldableCover,
+                    new FortDef(FortificationType.FoldableCover,
+                        "BossRush_ModeF_FoldableCover_Model", 2500f, FoldableCoverPackConfig.TYPE_ID, true,
+                        new Bounds(new Vector3(0f, 0.54f, 0f),     new Vector3(1.66f, 1.08f, 0.30f)),
+                        new Bounds(new Vector3(0f, 0.45f, 0f),     new Vector3(1.56f, 0.90f, 0.16f)),
+                        new Bounds(new Vector3(0f, 0.52f, 0f),     new Vector3(1.70f, 1.12f, 0.30f)),
+                        new Bounds(new Vector3(0f, 0.54f, 0f),     new Vector3(1.76f, 1.08f, 0.35f)),
+                        new Bounds(new Vector3(0f, 0.95f, -0.82f), new Vector3(2.05f, 1.90f, 1.25f)))
+                },
+                {
+                    FortificationType.ReinforcedRoadblock,
+                    new FortDef(FortificationType.ReinforcedRoadblock,
+                        "BossRush_ModeF_ReinforcedRoadblock_Model", 5000f, ReinforcedRoadblockPackConfig.TYPE_ID, true,
+                        new Bounds(new Vector3(0f, 0.64f, 0f),     new Vector3(2.48f, 1.28f, 0.64f)),
+                        new Bounds(new Vector3(0f, 0.62f, 0f),     new Vector3(2.32f, 1.18f, 0.50f)),
+                        new Bounds(new Vector3(0f, 0.66f, 0f),     new Vector3(2.50f, 1.30f, 0.70f)),
+                        new Bounds(new Vector3(0f, 0.6f,  0f),     new Vector3(2.60f, 1.35f, 0.75f)),
+                        new Bounds(new Vector3(0f, 1.02f, -0.96f), new Vector3(2.95f, 2.05f, 1.45f)))
+                },
+                {
+                    FortificationType.BarbedWire,
+                    new FortDef(FortificationType.BarbedWire,
+                        "BossRush_ModeF_BarbedWire_Model", 2000f, BarbedWirePackConfig.TYPE_ID, true,
+                        new Bounds(new Vector3(0f, 0.42f, 0f),     new Vector3(2.24f, 0.90f, 0.30f)),
+                        new Bounds(new Vector3(0f, 0.40f, 0f),     new Vector3(2.14f, 0.78f, 0.18f)),
+                        new Bounds(new Vector3(0f, 0.44f, 0f),     new Vector3(2.20f, 0.92f, 0.32f)),
+                        new Bounds(new Vector3(0f, 0.45f, 0f),     new Vector3(2.40f, 0.95f, 0.45f)),
+                        new Bounds(new Vector3(0f, 0.78f, -0.76f), new Vector3(2.70f, 1.60f, 1.20f)))
+                },
+            };
+
+        internal static FortDef Get(FortificationType type)
+        {
+            FortDef d; return _table.TryGetValue(type, out d) ? d : null;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // FortLayers: layer ID 只解析一次，之后直接读属性
+    // -------------------------------------------------------------------------
+    internal static class FortLayers
+    {
+        private static int _wall           = int.MinValue;
+        private static int _halfObstacle   = int.MinValue;
+        private static int _damageReceiver = int.MinValue;
+
+        internal static int Wall
+        {
+            get
+            {
+                if (_wall != int.MinValue) return _wall;
+                _wall = LayerMask.NameToLayer("Wall");
+                if (_wall >= 0) return _wall;
+                int mask = 0;
+                try { mask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask; } catch { }
+                _wall = FirstBit(mask);
+                if (_wall < 0) _wall = LayerMask.NameToLayer("Obstacle");
+                if (_wall < 0) _wall = 0;
+                return _wall;
+            }
+        }
+
+        internal static int HalfObstacle
+        {
+            get
+            {
+                if (_halfObstacle != int.MinValue) return _halfObstacle;
+                _halfObstacle = LayerMask.NameToLayer("HalfObsticle");
+                if (_halfObstacle >= 0) return _halfObstacle;
+                int mask = 0;
+                try { mask = Duckov.Utilities.GameplayDataSettings.Layers.halfObsticleLayer; } catch { return _halfObstacle = -1; }
+                return _halfObstacle = FirstBit(mask);
+            }
+        }
+
+        internal static int DamageReceiver
+        {
+            get
+            {
+                if (_damageReceiver != int.MinValue) return _damageReceiver;
+                _damageReceiver = LayerMask.NameToLayer("DamageReceiver");
+                if (_damageReceiver >= 0) return _damageReceiver;
+                int mask = 0;
+                try { mask = Duckov.Utilities.GameplayDataSettings.Layers.damageReceiverLayerMask; } catch { return _damageReceiver = -1; }
+                return _damageReceiver = FirstBit(mask);
+            }
+        }
+
+        private static int FirstBit(int mask)
+        {
+            for (int i = 0; i < 32; i++) if ((mask & (1 << i)) != 0) return i;
+            return -1;
+        }
+    }
+
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         #region Mode F Fortifications
 
-        private const float FORT_HP_FOLDABLE_COVER = 2500f;
-        private const float FORT_HP_REINFORCED_ROADBLOCK = 5000f;
-        private const float FORT_HP_BARBED_WIRE = 2000f;
-
-        /// <summary>遍历 ActiveFortifications 时的防御性快照缓存，避免遍历期间字典被修改</summary>
         private readonly List<ModeFFortificationMarker> modeFActiveFortificationSnapshot = new List<ModeFFortificationMarker>();
-        private const float FORT_REPAIR_RANGE = 3f;
-        private const float FORT_REPAIR_PERCENT = 0.25f;
-        private const float FORT_HIGHLIGHT_DURATION = 1.25f;
-        private const float FORT_PLACEMENT_PADDING = 0.35f;
+        private const float FORT_REPAIR_RANGE            = 3f;
+        private const float FORT_REPAIR_PERCENT          = 0.25f;
+        private const float FORT_HIGHLIGHT_DURATION      = 1.25f;
+        private const float FORT_DAMAGE_LOG_INTERVAL     = 0.25f;
+        private const float FORT_PLACEMENT_PADDING       = 0.35f;
         private const float FORT_WORLD_COLLISION_PADDING = 0.05f;
-        private const int FORT_PLACEMENT_OVERLAP_BUFFER_SIZE = 24;
-
-        private const string FORT_PREFAB_FOLDABLE_COVER = "BossRush_ModeF_FoldableCover_Model";
-        private const string FORT_PREFAB_REINFORCED_ROADBLOCK = "BossRush_ModeF_ReinforcedRoadblock_Model";
-        private const string FORT_PREFAB_BARBED_WIRE = "BossRush_ModeF_BarbedWire_Model";
+        private const int   FORT_PLACEMENT_OVERLAP_BUFFER_SIZE = 24;
+        private const int   MODEF_UTILITY_REWARD_UNTHROTTLED_THRESHOLD = 6;
+        private const int   MODEF_UTILITY_REWARD_MAX_DELIVERIES_PER_FLUSH = 6;
+        private const int   MODEF_UTILITY_REWARD_MAX_DELIVERIES_PER_TYPE_PER_FLUSH = 3;
 
         private static readonly FieldInfo healthDefaultMaxHealthField =
             typeof(Health).GetField("defaultMaxHealth", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -52,11 +173,16 @@ namespace BossRush
         private float modeFPlacementRotationY;
         private int modeFPlacementItemTypeId;
         private Material modeFPlacementPreviewMaterial;
+        private bool? modeFPlacementLastCanPlace = null;
         private readonly List<Renderer> modeFPlacementPreviewRendererCache = new List<Renderer>();
         private readonly List<Material[]> modeFPlacementPreviewOriginalMaterials = new List<Material[]>();
         private bool modeFRepairSelectionActive = false;
         private int modeFRepairSelectionItemTypeId;
         private ModeFFortificationMarker modeFRepairSelectionTarget;
+
+        // 工事道具奖励队列
+        private readonly Dictionary<int, int> modeFPendingUtilityRewardCounts    = new Dictionary<int, int>();
+        private readonly List<int>            modeFPendingUtilityRewardTypeScratch = new List<int>();
 
         private Material modeFFortificationOutlineMaterial;
         private bool modeFHasActiveFortificationHighlight = false;
@@ -109,13 +235,8 @@ namespace BossRush
 
         private int GetFortificationTypeItemTypeId(FortificationType type)
         {
-            switch (type)
-            {
-                case FortificationType.FoldableCover: return FoldableCoverPackConfig.TYPE_ID;
-                case FortificationType.ReinforcedRoadblock: return ReinforcedRoadblockPackConfig.TYPE_ID;
-                case FortificationType.BarbedWire: return BarbedWirePackConfig.TYPE_ID;
-                default: return 0;
-            }
+            FortDef def = FortDef.Get(type);
+            return def != null ? def.ItemTypeId : 0;
         }
 
         private bool EnterFortPlacementMode(FortificationType type)
@@ -125,27 +246,14 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null) return false;
 
+                FortDef def = FortDef.Get(type);
+                if (def == null) return false;
+
                 Vector3 forward = player.transform.forward;
                 if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
                 Vector3 startPos = player.transform.position + forward.normalized * 2f;
 
-                string prefabName;
-                switch (type)
-                {
-                    case FortificationType.FoldableCover:
-                        prefabName = FORT_PREFAB_FOLDABLE_COVER;
-                        break;
-                    case FortificationType.ReinforcedRoadblock:
-                        prefabName = FORT_PREFAB_REINFORCED_ROADBLOCK;
-                        break;
-                    case FortificationType.BarbedWire:
-                        prefabName = FORT_PREFAB_BARBED_WIRE;
-                        break;
-                    default:
-                        return false;
-                }
-
-                GameObject preview = EntityModelFactory.Create(prefabName, startPos, Quaternion.LookRotation(forward));
+                GameObject preview = EntityModelFactory.Create(def.PrefabName, startPos, Quaternion.LookRotation(forward));
                 if (preview == null)
                 {
                     preview = CreateFallbackModeFFortification(type, startPos, Quaternion.LookRotation(forward));
@@ -251,11 +359,15 @@ namespace BossRush
                     modeFPlacementPreview.transform.position = hit.point;
                     modeFPlacementPreview.transform.rotation = Quaternion.Euler(0f, modeFPlacementRotationY, 0f);
 
-                    // 颜色反馈：检查是否可放置
+                    // 颜色反馈：仅在可放置状态变化时更新材质
                     CharacterMainControl player = CharacterMainControl.Main;
                     string unused;
                     bool canPlace = player != null && CanPlaceModeFFortificationAtPreview(player, out unused);
-                    ApplyFortPlacementPreviewMaterial(modeFPlacementPreview, canPlace);
+                    if (modeFPlacementLastCanPlace == null || modeFPlacementLastCanPlace.Value != canPlace)
+                    {
+                        ApplyFortPlacementPreviewMaterial(modeFPlacementPreview, canPlace);
+                        modeFPlacementLastCanPlace = canPlace;
+                    }
                 }
 
                 // 左键确认
@@ -474,7 +586,7 @@ namespace BossRush
             BoxCollider previewCol = modeFPlacementPreview.GetComponent<BoxCollider>();
             Bounds localBounds = GetModeFFortificationLocalBounds(
                 modeFPlacementPreview.transform,
-                GetDefaultModeFFortificationBounds(modeFPlacementType));
+                GetModeFFortificationDefaultBounds(modeFPlacementType));
             if (previewCol == null)
             {
                 previewCol = modeFPlacementPreview.AddComponent<BoxCollider>();
@@ -520,6 +632,7 @@ namespace BossRush
                 modeFPlacementPreview = null;
                 modeFPlacementActive = false;
                 modeFPlacementItemTypeId = 0;
+                modeFPlacementLastCanPlace = null;
 
                 // 直接将当前预览对象转为真实工事，避免重新实例化后只剩影子
                 bool placed = PlaceModeFortification(type, position, rotation, previewObject);
@@ -539,6 +652,7 @@ namespace BossRush
                 modeFPlacementPreview = null;
                 modeFPlacementActive = false;
                 modeFPlacementItemTypeId = 0;
+                modeFPlacementLastCanPlace = null;
                 ClearFortPlacementPreviewMaterialCache();
                 // 退还物品（使用进入时缓存的 itemTypeId）
                 if (itemTypeId > 0)
@@ -560,6 +674,7 @@ namespace BossRush
             modeFPlacementPreview = null;
             modeFPlacementActive = false;
             modeFPlacementItemTypeId = 0;
+            modeFPlacementLastCanPlace = null;
             ClearFortPlacementPreviewMaterialCache();
 
             if (wasActive && itemTypeId > 0)
@@ -599,10 +714,11 @@ namespace BossRush
                 modeFPlacementPreviewMaterial.SetColor("_Color", color);
             }
 
-            Renderer[] renderers = preview.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
+            // 使用进入放置模式时缓存好的 Renderer 列表，避免每帧 GetComponentsInChildren 分配
+            int rendererCount = modeFPlacementPreviewRendererCache.Count;
+            for (int i = 0; i < rendererCount; i++)
             {
-                Renderer renderer = renderers[i];
+                Renderer renderer = modeFPlacementPreviewRendererCache[i];
                 if (renderer != null)
                 {
                     renderer.enabled = true;
@@ -682,26 +798,14 @@ namespace BossRush
                     return false;
                 }
 
-                string prefabName;
-                float maxHealth;
-                switch (type)
+                FortDef def = FortDef.Get(type);
+                if (def == null)
                 {
-                    case FortificationType.FoldableCover:
-                        prefabName = FORT_PREFAB_FOLDABLE_COVER;
-                        maxHealth = FORT_HP_FOLDABLE_COVER;
-                        break;
-                    case FortificationType.ReinforcedRoadblock:
-                        prefabName = FORT_PREFAB_REINFORCED_ROADBLOCK;
-                        maxHealth = FORT_HP_REINFORCED_ROADBLOCK;
-                        break;
-                    case FortificationType.BarbedWire:
-                        prefabName = FORT_PREFAB_BARBED_WIRE;
-                        maxHealth = FORT_HP_BARBED_WIRE;
-                        break;
-                    default:
-                        DevLog("[ModeF] [WARNING] Unknown fortification type: " + type);
-                        return false;
+                    DevLog("[ModeF] [WARNING] Unknown fortification type: " + type);
+                    return false;
                 }
+                string prefabName = def.PrefabName;
+                float maxHealth   = def.MaxHp;
 
                 if (!reusedPreview)
                 {
@@ -784,14 +888,14 @@ namespace BossRush
                 modeFState.ActiveFortifications[marker.FortificationId] = marker;
 
                 string typeName = GetFortificationTypeName(type);
-                Debug.Log("[ModeF] [PLACE] " + typeName
+                DevLog("[ModeF] [PLACE] " + typeName
                     + " | reusedPreview=" + reusedPreview
                     + " | pos=" + position
                     + " | renderers=" + fortObj.GetComponentsInChildren<Renderer>(true).Length
                     + " | hp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
-                if (IsModeFFortificationHalfObstacle(type))
+                if ((FortDef.Get(type)?.IsHalfObstacle ?? false))
                 {
-                    Debug.Log("[ModeF] [HALF] " + typeName + GetModeFFortificationColliderDebugText(fortObj));
+                    DevLog("[ModeF] [HALF] " + typeName + GetModeFFortificationColliderDebugText(fortObj));
                 }
                 ClearFortPlacementPreviewMaterialCache();
                 ShowModeFRewardBubble(typeName + L10n.T("已部署", " deployed"));
@@ -858,7 +962,7 @@ namespace BossRush
         {
             Bounds localBounds = rootCollider != null
                 ? new Bounds(rootCollider.center, rootCollider.size)
-                : GetDefaultModeFFortificationBounds(type);
+                : GetModeFFortificationDefaultBounds(type);
             Vector3 scale = fortTransform != null ? fortTransform.lossyScale : Vector3.one;
             float extentX = Mathf.Abs(localBounds.extents.x * scale.x);
             float extentZ = Mathf.Abs(localBounds.extents.z * scale.z);
@@ -878,7 +982,7 @@ namespace BossRush
 
             Bounds localBounds = candidateCollider != null
                 ? new Bounds(candidateCollider.center, candidateCollider.size)
-                : GetDefaultModeFFortificationBounds(type);
+                : GetModeFFortificationDefaultBounds(type);
             Vector3 center = candidateTransform.TransformPoint(localBounds.center);
             Vector3 halfExtents = GetModeFFortificationPlacementHalfExtents(candidateTransform, localBounds);
             int layerMask = GetModeFFortificationPlacementObstacleLayerMask();
@@ -957,11 +1061,6 @@ namespace BossRush
                 }
             }
 
-            if (hit.GetComponentInParent<ModeFFortificationMarker>() != null)
-            {
-                return true;
-            }
-
             return false;
         }
 
@@ -1001,18 +1100,6 @@ namespace BossRush
             return Teams.middle;
         }
 
-        private bool IsModeFFortificationHalfObstacle(FortificationType type)
-        {
-            switch (type)
-            {
-                case FortificationType.FoldableCover:
-                case FortificationType.ReinforcedRoadblock:
-                case FortificationType.BarbedWire:
-                    return true;
-                default:
-                    return false;
-            }
-        }
 
         private void EnsureModeFFortificationHealthRuntime(Health health, float maxHealth, Teams ownerTeam)
         {
@@ -1177,7 +1264,7 @@ namespace BossRush
             }
 
             receiver.useSimpleHealth = false;
-            receiver.isHalfObsticle = IsModeFFortificationHalfObstacle(type);
+            receiver.isHalfObsticle = (FortDef.Get(type)?.IsHalfObstacle ?? false);
             if (receiver.OnHurtEvent == null)
             {
                 receiver.OnHurtEvent = new UnityEvent<DamageInfo>();
@@ -1213,7 +1300,7 @@ namespace BossRush
             }
             catch { }
 
-            int damageReceiverLayer = GetModeFFortificationDamageReceiverLayer();
+            int damageReceiverLayer = FortLayers.DamageReceiver;
             if (damageReceiverLayer >= 0)
             {
                 damageCollider.gameObject.layer = damageReceiverLayer;
@@ -1238,10 +1325,10 @@ namespace BossRush
                 wallObj.transform.localRotation = Quaternion.identity;
                 wallObj.transform.localScale = Vector3.one;
 
-                int wallLayer = GetModeFFortificationWallLayer();
-                if (IsModeFFortificationHalfObstacle(type))
+                int wallLayer = FortLayers.Wall;
+                if ((FortDef.Get(type)?.IsHalfObstacle ?? false))
                 {
-                    int halfObstacleLayer = GetModeFFortificationHalfObstacleLayer();
+                    int halfObstacleLayer = FortLayers.HalfObstacle;
                     if (halfObstacleLayer >= 0)
                     {
                         wallLayer = halfObstacleLayer;
@@ -1273,7 +1360,7 @@ namespace BossRush
 
                 Bounds bounds = GetModeFFortificationLocalBounds(
                     fortObj.transform,
-                    GetModeFFortificationWallColliderBounds(type));
+                    (FortDef.Get(type)?.WallColliderBounds ?? GetModeFFortificationDefaultBounds(type)));
                 wallCollider.enabled = true;
                 wallCollider.isTrigger = false;
                 wallCollider.center = bounds.center;
@@ -1303,7 +1390,7 @@ namespace BossRush
                 blockerObj.transform.localRotation = Quaternion.identity;
                 blockerObj.transform.localScale = Vector3.one;
 
-                int wallLayer = GetModeFFortificationWallLayer();
+                int wallLayer = FortLayers.Wall;
                 if (wallLayer >= 0)
                 {
                     blockerObj.layer = wallLayer;
@@ -1330,7 +1417,7 @@ namespace BossRush
 
                 Bounds bounds = GetModeFFortificationLocalBounds(
                     fortObj.transform,
-                    GetModeFFortificationCharacterBlockerBounds(type));
+                    (FortDef.Get(type)?.CharacterBlockerBounds ?? GetModeFFortificationDefaultBounds(type)));
                 blockerCollider.enabled = true;
                 blockerCollider.isTrigger = true;
                 blockerCollider.center = bounds.center;
@@ -1377,7 +1464,7 @@ namespace BossRush
             damageObj.transform.localRotation = Quaternion.identity;
             damageObj.transform.localScale = Vector3.one;
 
-            int damageReceiverLayer = GetModeFFortificationDamageReceiverLayer();
+            int damageReceiverLayer = FortLayers.DamageReceiver;
             if (damageReceiverLayer >= 0)
             {
                 damageObj.layer = damageReceiverLayer;
@@ -1404,7 +1491,7 @@ namespace BossRush
 
             Bounds localBounds = GetModeFFortificationLocalBounds(
                 fortObj.transform,
-                GetModeFFortificationDamageColliderBounds(type));
+                (FortDef.Get(type)?.DamageColliderBounds ?? GetModeFFortificationDefaultBounds(type)));
             damageCollider.enabled = true;
             damageCollider.isTrigger = false;
             damageCollider.center = localBounds.center;
@@ -1412,65 +1499,9 @@ namespace BossRush
             return damageCollider;
         }
 
-        private Bounds GetModeFFortificationDamageColliderBounds(FortificationType type)
-        {
-            switch (type)
-            {
-                case FortificationType.FoldableCover:
-                    return new Bounds(new Vector3(0f, 0.54f, 0f), new Vector3(1.66f, 1.08f, 0.30f));
-                case FortificationType.ReinforcedRoadblock:
-                    return new Bounds(new Vector3(0f, 0.64f, 0f), new Vector3(2.48f, 1.28f, 0.64f));
-                case FortificationType.BarbedWire:
-                    return new Bounds(new Vector3(0f, 0.42f, 0f), new Vector3(2.24f, 0.90f, 0.30f));
-                default:
-                    return GetDefaultModeFFortificationBounds(type);
-            }
-        }
 
-        private Bounds GetModeFFortificationWallColliderBounds(FortificationType type)
-        {
-            switch (type)
-            {
-                case FortificationType.FoldableCover:
-                    return new Bounds(new Vector3(0f, 0.45f, 0f), new Vector3(1.56f, 0.90f, 0.16f));
-                case FortificationType.ReinforcedRoadblock:
-                    return new Bounds(new Vector3(0f, 0.62f, 0f), new Vector3(2.32f, 1.18f, 0.50f));
-                case FortificationType.BarbedWire:
-                    return new Bounds(new Vector3(0f, 0.40f, 0f), new Vector3(2.14f, 0.78f, 0.18f));
-                default:
-                    return GetModeFFortificationDamageColliderBounds(type);
-            }
-        }
 
-        private Bounds GetModeFFortificationCharacterBlockerBounds(FortificationType type)
-        {
-            switch (type)
-            {
-                case FortificationType.FoldableCover:
-                    return new Bounds(new Vector3(0f, 0.52f, 0f), new Vector3(1.70f, 1.12f, 0.30f));
-                case FortificationType.ReinforcedRoadblock:
-                    return new Bounds(new Vector3(0f, 0.66f, 0f), new Vector3(2.50f, 1.30f, 0.70f));
-                case FortificationType.BarbedWire:
-                    return new Bounds(new Vector3(0f, 0.44f, 0f), new Vector3(2.20f, 0.92f, 0.32f));
-                default:
-                    return GetModeFFortificationWallColliderBounds(type);
-            }
-        }
 
-        private Bounds GetDefaultModeFFortificationBounds(FortificationType type)
-        {
-            switch (type)
-            {
-                case FortificationType.FoldableCover:
-                    return new Bounds(new Vector3(0f, 0.54f, 0f), new Vector3(1.76f, 1.08f, 0.35f));
-                case FortificationType.ReinforcedRoadblock:
-                    return new Bounds(new Vector3(0f, 0.6f, 0f), new Vector3(2.6f, 1.35f, 0.75f));
-                case FortificationType.BarbedWire:
-                    return new Bounds(new Vector3(0f, 0.45f, 0f), new Vector3(2.4f, 0.95f, 0.45f));
-                default:
-                    return new Bounds(new Vector3(0f, 0.5f, 0f), Vector3.one);
-            }
-        }
 
         private void EnsureModeFFortificationHalfObstacleRegistration(GameObject fortObj, FortificationType type)
         {
@@ -1484,7 +1515,7 @@ namespace BossRush
                 ? triggerTransform.GetComponent<ModeFHalfObstacleTrigger>()
                 : null;
 
-            if (!IsModeFFortificationHalfObstacle(type))
+            if (!(FortDef.Get(type)?.IsHalfObstacle ?? false))
             {
                 if (triggerTransform != null)
                 {
@@ -1516,7 +1547,7 @@ namespace BossRush
 
             Bounds triggerBounds = GetModeFFortificationLocalBounds(
                 fortObj.transform,
-                GetModeFFortificationHalfObstacleTriggerBounds(type));
+                (FortDef.Get(type)?.HalfObstacleTriggerBounds ?? new Bounds(Vector3.zero, Vector3.zero)));
             triggerCollider.enabled = true;
             triggerCollider.isTrigger = true;
             triggerCollider.center = triggerBounds.center;
@@ -1530,19 +1561,10 @@ namespace BossRush
             triggerComponent.SetRegisteredParts(damagePart);
         }
 
-        private Bounds GetModeFFortificationHalfObstacleTriggerBounds(FortificationType type)
+        private Bounds GetModeFFortificationDefaultBounds(FortificationType type)
         {
-            switch (type)
-            {
-                case FortificationType.FoldableCover:
-                    return new Bounds(new Vector3(0f, 0.95f, -0.82f), new Vector3(2.05f, 1.90f, 1.25f));
-                case FortificationType.ReinforcedRoadblock:
-                    return new Bounds(new Vector3(0f, 1.02f, -0.96f), new Vector3(2.95f, 2.05f, 1.45f));
-                case FortificationType.BarbedWire:
-                    return new Bounds(new Vector3(0f, 0.78f, -0.76f), new Vector3(2.70f, 1.60f, 1.20f));
-                default:
-                    return new Bounds(Vector3.zero, Vector3.zero);
-            }
+            FortDef def = FortDef.Get(type);
+            return def != null ? def.DefaultBounds : new Bounds(new Vector3(0f, 0.5f, 0f), Vector3.one);
         }
 
         private Bounds GetModeFFortificationLocalBounds(Transform fortTransform, Bounds desiredWorldBounds)
@@ -1624,95 +1646,6 @@ namespace BossRush
             return "center=" + worldCenter + ", size=" + worldSize;
         }
 
-        private int GetModeFFortificationWallLayer()
-        {
-            int namedLayer = LayerMask.NameToLayer("Wall");
-            if (namedLayer >= 0)
-            {
-                return namedLayer;
-            }
-
-            int mask = 0;
-            try
-            {
-                mask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
-            }
-            catch { }
-
-            for (int i = 0; i < 32; i++)
-            {
-                if ((mask & (1 << i)) != 0)
-                {
-                    return i;
-                }
-            }
-
-            int obstacleLayer = LayerMask.NameToLayer("Obstacle");
-            if (obstacleLayer >= 0)
-            {
-                return obstacleLayer;
-            }
-
-            return 0;
-        }
-
-        private int GetModeFFortificationHalfObstacleLayer()
-        {
-            int namedLayer = LayerMask.NameToLayer("HalfObsticle");
-            if (namedLayer >= 0)
-            {
-                return namedLayer;
-            }
-
-            int mask = 0;
-            try
-            {
-                mask = Duckov.Utilities.GameplayDataSettings.Layers.halfObsticleLayer;
-            }
-            catch
-            {
-                return -1;
-            }
-
-            for (int i = 0; i < 32; i++)
-            {
-                if ((mask & (1 << i)) != 0)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
-        private int GetModeFFortificationDamageReceiverLayer()
-        {
-            int namedLayer = LayerMask.NameToLayer("DamageReceiver");
-            if (namedLayer >= 0)
-            {
-                return namedLayer;
-            }
-
-            int mask = 0;
-            try
-            {
-                mask = Duckov.Utilities.GameplayDataSettings.Layers.damageReceiverLayerMask;
-            }
-            catch
-            {
-                return -1;
-            }
-
-            for (int i = 0; i < 32; i++)
-            {
-                if ((mask & (1 << i)) != 0)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
 
         private void OnFortificationDestroyed(ModeFFortificationMarker marker)
         {
@@ -1727,7 +1660,7 @@ namespace BossRush
                 modeFState.ActiveFortifications.Remove(marker.FortificationId);
 
                 string typeName = GetFortificationTypeName(marker.Type);
-                Debug.Log("[ModeF] [DESTROY] " + typeName + " | lastHp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
+                DevLog("[ModeF] [DESTROY] " + typeName + " | lastHp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
                 if (marker.gameObject != null)
                 {
                     UnityEngine.Object.Destroy(marker.gameObject);
@@ -1744,8 +1677,19 @@ namespace BossRush
             }
 
             marker.LastKnownHealth = Mathf.Max(0f, marker.BoundHealth.CurrentHealth);
+            if (!IsDevLoggingEnabled)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime < marker.NextDamageLogTime)
+            {
+                return;
+            }
+
+            marker.NextDamageLogTime = Time.unscaledTime + FORT_DAMAGE_LOG_INTERVAL;
             float finalDamage = damageInfo.finalDamage;
-            Debug.Log("[ModeF] [HURT] " + GetFortificationTypeName(marker.Type)
+            DevLog("[ModeF] [HURT] " + GetFortificationTypeName(marker.Type)
                 + " | damage=" + finalDamage.ToString("F1")
                 + " | hp=" + marker.LastKnownHealth.ToString("F1") + "/" + marker.MaxHealth.ToString("F1"));
         }
@@ -2093,21 +2037,29 @@ namespace BossRush
                     return;
                 }
 
-                GiveModeFItem(FoldableCoverPackConfig.TYPE_ID, L10n.T("折叠掩体包", "Foldable Cover Pack"));
+                GiveModeFItem(
+                    FoldableCoverPackConfig.TYPE_ID,
+                    L10n.T("折叠掩体包", "Foldable Cover Pack"));
 
                 if (killCount % 3 == 0)
                 {
-                    GiveModeFItem(EmergencyRepairSprayConfig.TYPE_ID, L10n.T("应急维修喷剂", "Emergency Repair Spray"));
+                    GiveModeFItem(
+                        EmergencyRepairSprayConfig.TYPE_ID,
+                        L10n.T("应急维修喷剂", "Emergency Repair Spray"));
                 }
 
                 if (killCount % 10 == 0)
                 {
-                    GiveModeFItem(ReinforcedRoadblockPackConfig.TYPE_ID, L10n.T("加固路障包", "Reinforced Roadblock Pack"));
+                    GiveModeFItem(
+                        ReinforcedRoadblockPackConfig.TYPE_ID,
+                        L10n.T("加固路障包", "Reinforced Roadblock Pack"));
                 }
 
                 if (killCount % 20 == 0)
                 {
-                    GiveModeFItem(BarbedWirePackConfig.TYPE_ID, L10n.T("阻滞铁丝网包", "Barbed Wire Pack"));
+                    GiveModeFItem(
+                        BarbedWirePackConfig.TYPE_ID,
+                        L10n.T("阻滞铁丝网包", "Barbed Wire Pack"));
                 }
             }
             catch (Exception e)
@@ -2116,7 +2068,7 @@ namespace BossRush
             }
         }
 
-        private bool TryGiveItemToPlayerOrDrop(int typeId, string displayName, bool showRewardBubble = true)
+        private bool TryGiveItemToPlayerOrDrop(int typeId, string displayName, bool showRewardBubble = true, bool allowWorldDrop = true)
         {
             Item item = null;
             try
@@ -2137,11 +2089,14 @@ namespace BossRush
 
                 if (!sent)
                 {
-                    CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null)
+                    if (allowWorldDrop)
                     {
-                        item.Drop(player.transform.position + Vector3.up * 0.3f, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
-                        sent = true;
+                        CharacterMainControl player = CharacterMainControl.Main;
+                        if (player != null)
+                        {
+                            item.Drop(player.transform.position + Vector3.up * 0.3f, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
+                            sent = true;
+                        }
                     }
                 }
 
@@ -2276,6 +2231,171 @@ namespace BossRush
                 default:
                     return type.ToString();
             }
+        }
+
+        private void QueueModeFAutoUtilityReward(int typeId, string displayName)
+        {
+            int current;
+            modeFPendingUtilityRewardCounts.TryGetValue(typeId, out current);
+            modeFPendingUtilityRewardCounts[typeId] = current + 1;
+            DevLog("[ModeF] [REWARD] queued typeId=" + typeId + " name=" + displayName + " pending=" + (current + 1));
+        }
+
+        private int GetModeFPendingUtilityRewardCount(int typeId)
+        {
+            int count;
+            modeFPendingUtilityRewardCounts.TryGetValue(typeId, out count);
+            return count;
+        }
+
+        // 每帧（节流后）尝试把积压奖励发放到玩家背包/丢地上
+        private void UpdateModeFPendingUtilityRewards()
+        {
+            if (!modeFActive || modeFPendingUtilityRewardCounts.Count <= 0)
+            {
+                return;
+            }
+
+            FlushModeFPendingUtilityRewards(false);
+        }
+
+        // allowWorldDrop=false 时若背包满则留到下次；true 时强制丢地
+        private void FlushModeFPendingUtilityRewards(bool allowWorldDrop)
+        {
+            if (modeFPendingUtilityRewardCounts.Count <= 0) return;
+
+            modeFPendingUtilityRewardTypeScratch.Clear();
+            int totalPendingCount = 0;
+            foreach (var kvp in modeFPendingUtilityRewardCounts)
+            {
+                if (kvp.Value > 0)
+                {
+                    modeFPendingUtilityRewardTypeScratch.Add(kvp.Key);
+                    totalPendingCount += kvp.Value;
+                }
+            }
+
+            bool throttleDeliveries =
+                !allowWorldDrop &&
+                totalPendingCount > MODEF_UTILITY_REWARD_UNTHROTTLED_THRESHOLD;
+            int remainingBudget = throttleDeliveries
+                ? MODEF_UTILITY_REWARD_MAX_DELIVERIES_PER_FLUSH
+                : int.MaxValue;
+
+            for (int i = 0; i < modeFPendingUtilityRewardTypeScratch.Count; i++)
+            {
+                if (remainingBudget <= 0)
+                {
+                    break;
+                }
+
+                int typeId = modeFPendingUtilityRewardTypeScratch[i];
+                int remaining = GetModeFPendingUtilityRewardCount(typeId);
+                string displayName = GetModeFUtilityItemDisplayName(typeId);
+                if (remaining <= 0 || string.IsNullOrEmpty(displayName))
+                {
+                    modeFPendingUtilityRewardCounts.Remove(typeId);
+                    continue;
+                }
+
+                int deliveredThisType = 0;
+                int perTypeBudget = throttleDeliveries
+                    ? MODEF_UTILITY_REWARD_MAX_DELIVERIES_PER_TYPE_PER_FLUSH
+                    : int.MaxValue;
+                while (remaining > 0 && deliveredThisType < perTypeBudget && remainingBudget > 0)
+                {
+                    if (!TryGiveItemToPlayerOrDrop(typeId, displayName, true, allowWorldDrop))
+                    {
+                        break;
+                    }
+                    remaining--;
+                    deliveredThisType++;
+                    if (remainingBudget != int.MaxValue)
+                    {
+                        remainingBudget--;
+                    }
+                }
+
+                if (remaining > 0)
+                    modeFPendingUtilityRewardCounts[typeId] = remaining;
+                else
+                    modeFPendingUtilityRewardCounts.Remove(typeId);
+            }
+        }
+
+        // 撤离时同步写入 PlayerStorage（不受背包格限制）
+        private int DeliverModeFPendingUtilityRewardsToStorage()
+        {
+            if (modeFPendingUtilityRewardCounts.Count <= 0) return 0;
+
+            int delivered = 0;
+            modeFPendingUtilityRewardTypeScratch.Clear();
+            foreach (var kvp in modeFPendingUtilityRewardCounts)
+            {
+                if (kvp.Value > 0) modeFPendingUtilityRewardTypeScratch.Add(kvp.Key);
+            }
+
+            for (int i = 0; i < modeFPendingUtilityRewardTypeScratch.Count; i++)
+            {
+                int typeId = modeFPendingUtilityRewardTypeScratch[i];
+                int remaining = GetModeFPendingUtilityRewardCount(typeId);
+                if (remaining <= 0)
+                {
+                    modeFPendingUtilityRewardCounts.Remove(typeId);
+                    continue;
+                }
+
+                bool anyBuffered = false;
+                while (remaining > 0)
+                {
+                    Item item = null;
+                    bool stored = false;
+                    try
+                    {
+                        item = ItemAssetsCollection.InstantiateSync(typeId);
+                        if (item == null) break;
+                        try { PlayerStorage.Push(item, true); stored = true; } catch { }
+                        if (!stored)
+                        {
+                            // PlayerStorage 已满，回退到 PlayerStorageBuffer
+                            try
+                            {
+                                ItemStatsSystem.Data.ItemTreeData bufferedData = ItemStatsSystem.Data.ItemTreeData.FromItem(item);
+                                PlayerStorageBuffer.Buffer.Add(bufferedData);
+                                item.DestroyTree();
+                                delivered++;
+                                remaining--;
+                                anyBuffered = true;
+                                DevLog("[ModeF] [WARNING] PlayerStorage.Push 失败，工事奖励已回退写入寄存缓冲");
+                            }
+                            catch
+                            {
+                                try { item.DestroyTree(); } catch { }
+                                break;
+                            }
+                            continue;
+                        }
+                        delivered++;
+                        remaining--;
+                    }
+                    catch
+                    {
+                        if (item != null) try { item.DestroyTree(); } catch { }
+                        break;
+                    }
+                }
+                if (anyBuffered)
+                {
+                    try { PlayerStorageBuffer.SaveBuffer(); } catch { }
+                }
+
+                if (remaining > 0)
+                    modeFPendingUtilityRewardCounts[typeId] = remaining;
+                else
+                    modeFPendingUtilityRewardCounts.Remove(typeId);
+            }
+
+            return delivered;
         }
 
         #endregion

@@ -4,15 +4,14 @@
 // 包含：
 //   1. SetTeam 阵营保护 Patch：阻止原版防作弊逻辑篡改玩家阵营
 //   2. HealthBar 友方血条绿色 Patch：同阵营单位血条显示为绿色
-//   3. HealthBar 名字追加阵营后缀 Patch：在原版名字右边显示 " - 阵营名"
-//   4. InteractableBase.OnTimeOut Patch：拦截商人主交互，执行召唤煤球
+//   3. InteractableBase.OnTimeOut Patch：拦截商人主交互，执行召唤煤球
+// 注意：HealthBar 名字后缀 patch 已合并至 ModeFUI.cs 的 BossRushHealthBarNamePatch
 // ============================================================================
 
 using System;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 using Duckov.UI;
 
 namespace BossRush
@@ -53,7 +52,7 @@ namespace BossRush
         {
             // 非 Mode E 时放行
             var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive)
+            if (inst == null || (!inst.IsModeEActive && !inst.IsModeFActive))
                 return true;
 
             // 检查是否是商人主交互
@@ -116,114 +115,6 @@ namespace BossRush
                     ___fill.color = AllyHealthBarColor;
                 }
             }
-        }
-    }
-
-    /// <summary>
-    /// Patch HealthBar.LateUpdate：
-    /// Mode E 中持续覆盖血条名字，保证玩家自己也显示 "名字 - 阵营名"
-    /// </summary>
-    [HarmonyPatch(typeof(HealthBar), "LateUpdate")]
-    public static class ModeEHealthBarFactionNamePatch
-    {
-        /// <summary>缓存的 ModBehaviour 实例引用</summary>
-        private static ModBehaviour cachedInstance;
-        /// <summary>上次刷新缓存的帧号</summary>
-        private static int lastRefreshFrame = -1;
-
-        [HarmonyPostfix]
-        public static void Postfix(HealthBar __instance, TextMeshProUGUI ___nameText)
-        {
-            // 每 60 帧刷新一次缓存
-            int currentFrame = Time.frameCount;
-            if (cachedInstance == null || currentFrame - lastRefreshFrame >= 60)
-            {
-                lastRefreshFrame = currentFrame;
-                cachedInstance = ModBehaviour.Instance;
-            }
-
-            if (cachedInstance == null || cachedInstance.IsModeFActive || !cachedInstance.IsModeEActive)
-                return;
-
-            // nameText 不可用时跳过；玩家自己允许强制显示
-            if (___nameText == null)
-                return;
-
-            // 获取角色阵营
-            Health target = __instance.target;
-            if (target == null) return;
-
-            CharacterMainControl character = target.TryGetCharacter();
-            if (character == null) return;
-
-            bool forceShowName = character.IsMainCharacter;
-            if (!forceShowName && !___nameText.gameObject.activeSelf)
-                return;
-
-            string baseText = forceShowName
-                ? cachedInstance.GetModeEPlayerName()
-                : StripModeEFactionSuffix(___nameText.text, cachedInstance);
-            if (string.IsNullOrEmpty(baseText))
-            {
-                baseText = cachedInstance.GetModeEActorDisplayName(character);
-            }
-
-            Teams displayFaction = forceShowName
-                ? cachedInstance.ModeEPlayerFaction
-                : character.Team;
-            string factionSuffix = cachedInstance.GetModeEFactionSuffix(displayFaction);
-            string desiredText = string.IsNullOrEmpty(factionSuffix) ? baseText : baseText + factionSuffix;
-
-            if (forceShowName && !___nameText.gameObject.activeSelf)
-            {
-                ___nameText.gameObject.SetActive(true);
-            }
-
-            if (!string.Equals(___nameText.text, desiredText, StringComparison.Ordinal))
-            {
-                ___nameText.text = desiredText;
-            }
-        }
-
-        private static string StripModeEFactionSuffix(string text, ModBehaviour instance)
-        {
-            if (string.IsNullOrEmpty(text) || instance == null)
-            {
-                return text;
-            }
-
-            string sanitized = text;
-            while (TryTrimTrailingModeEFactionSuffix(ref sanitized, instance))
-            {
-            }
-
-            return sanitized;
-        }
-
-        private static bool TryTrimTrailingModeEFactionSuffix(ref string text, ModBehaviour instance)
-        {
-            return TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.scav)) ||
-                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.usec)) ||
-                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.bear)) ||
-                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.lab)) ||
-                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.wolf)) ||
-                   TryTrimTrailingModeEFactionSuffix(ref text, instance.GetModeEFactionSuffix(Teams.player));
-        }
-
-        private static bool TryTrimTrailingModeEFactionSuffix(ref string text, string suffix)
-        {
-            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(suffix))
-            {
-                return false;
-            }
-
-            if (!text.EndsWith(suffix, StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            text = text.Substring(0, text.Length - suffix.Length);
-            return true;
         }
     }
 

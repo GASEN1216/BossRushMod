@@ -19,6 +19,8 @@ namespace BossRush
         private static readonly BindingFlags ModeFUiInstanceBindingFlags =
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         private static MethodInfo modeFRefreshCharacterIconMethod = null;
+        private static readonly FieldInfo modeFHealthBarNameTextField =
+            typeof(HealthBar).GetField("nameText", ModeFUiInstanceBindingFlags);
         private static MethodInfo modeFSteamFriendsGetPersonaNameMethod = null;
         private static MethodInfo modeFSteamManagerGetSteamDisplayMethod = null;
         private const int MODEF_BOUNTY_RADAR_MAX_TARGETS = 5;
@@ -39,14 +41,14 @@ namespace BossRush
         private float modeFNextPlayerNameRefreshTime = 0f;
         private HealthBar modeFCachedPlayerHealthBar = null;
         private float modeFNextHealthBarLookupTime = 0f;
-        /// <summary>缓存场景中的 HealthBar 数组，避免 UpdateModeFBossNameTags 每次 FindObjectsOfType</summary>
-        private HealthBar[] modeFCachedAllHealthBars = null;
-        private float modeFNextAllHealthBarsRefreshTime = 0f;
-        private const float MODEF_ALL_HEALTHBARS_CACHE_INTERVAL = 2f;
-        private string modeFCachedMarkLabel = null;
-        private bool? modeFCachedMarkLabelIsChinese = null;
+        private readonly Dictionary<int, HealthBar> modeFHealthBarCacheByTargetId = new Dictionary<int, HealthBar>();
+        private readonly Dictionary<int, int> modeFHealthBarTargetIdsByBarId = new Dictionary<int, int>();
+        private readonly Dictionary<int, string> modeFHealthBarDesiredTextByBarId = new Dictionary<int, string>();
+        private readonly Dictionary<int, int> modeFHealthBarAppliedVersionByBarId = new Dictionary<int, int>();
+        private int modeFHealthBarNameVersion = 1;
+        private bool? modeFLastHealthBarLanguageIsChinese = null;
+
         private GameObject modeFBountyRadarCanvasObject = null;
-        private RectTransform modeFBountyRadarRootRect = null;
         private RectTransform modeFBountyRadarCenterRect = null;
         private Image modeFBountyRadarGuideImage = null;
         private ModeFBountyRadarEntryUi modeFBountyLeaderRadarEntry = null;
@@ -83,25 +85,127 @@ namespace BossRush
             modeFNextPlayerNameRefreshTime = 0f;
             modeFCachedPlayerHealthBar = null;
             modeFNextHealthBarLookupTime = 0f;
-            modeFCachedAllHealthBars = null;
-            modeFNextAllHealthBarsRefreshTime = 0f;
-            modeFCachedMarkLabel = null;
-            modeFCachedMarkLabelIsChinese = null;
+            modeFHealthBarCacheByTargetId.Clear();
+            modeFHealthBarTargetIdsByBarId.Clear();
+            modeFHealthBarDesiredTextByBarId.Clear();
+            modeFHealthBarAppliedVersionByBarId.Clear();
+            modeFHealthBarNameVersion = 1;
+            modeFLastHealthBarLanguageIsChinese = null;
+
+            modeFMarkSuffixZhCache.Clear();
+            modeFMarkSuffixEnCache.Clear();
             modeFNextBountyRadarRefreshTime = 0f;
         }
 
-        private string GetModeFMarkLabel()
+        internal void MarkModeFHealthBarNamesDirty()
+        {
+            if (modeFHealthBarNameVersion < int.MaxValue)
+            {
+                modeFHealthBarNameVersion++;
+            }
+            else
+            {
+                modeFHealthBarNameVersion = 1;
+                modeFHealthBarAppliedVersionByBarId.Clear();
+            }
+        }
+
+        private void SyncModeFHealthBarNameLanguageState()
         {
             bool isChinese = L10n.IsChinese;
-            if (!modeFCachedMarkLabelIsChinese.HasValue ||
-                modeFCachedMarkLabelIsChinese.Value != isChinese ||
-                string.IsNullOrEmpty(modeFCachedMarkLabel))
+            if (!modeFLastHealthBarLanguageIsChinese.HasValue ||
+                modeFLastHealthBarLanguageIsChinese.Value != isChinese)
             {
-                modeFCachedMarkLabel = isChinese ? "悬赏" : "Bounty";
-                modeFCachedMarkLabelIsChinese = isChinese;
+                modeFLastHealthBarLanguageIsChinese = isChinese;
+                MarkModeFHealthBarNamesDirty();
+            }
+        }
+
+        internal void RegisterModeFHealthBar(HealthBar healthBar)
+        {
+            if (healthBar == null)
+            {
+                return;
             }
 
-            return modeFCachedMarkLabel;
+            Health target = healthBar.target;
+            if (target == null)
+            {
+                return;
+            }
+
+            int targetId = target.GetInstanceID();
+            int barId = healthBar.GetInstanceID();
+            int previousTargetId = 0;
+            if (modeFHealthBarTargetIdsByBarId.TryGetValue(barId, out previousTargetId) &&
+                previousTargetId != targetId)
+            {
+                HealthBar previousBar = null;
+                if (modeFHealthBarCacheByTargetId.TryGetValue(previousTargetId, out previousBar) &&
+                    object.ReferenceEquals(previousBar, healthBar))
+                {
+                    modeFHealthBarCacheByTargetId.Remove(previousTargetId);
+                }
+
+                modeFHealthBarDesiredTextByBarId.Remove(barId);
+                modeFHealthBarAppliedVersionByBarId.Remove(barId);
+            }
+
+            modeFHealthBarCacheByTargetId[targetId] = healthBar;
+            modeFHealthBarTargetIdsByBarId[barId] = targetId;
+        }
+
+        private void ClearModeFHealthBarOverrideCache(HealthBar healthBar)
+        {
+            if (healthBar == null)
+            {
+                return;
+            }
+
+            int barId = healthBar.GetInstanceID();
+            modeFHealthBarDesiredTextByBarId.Remove(barId);
+            modeFHealthBarAppliedVersionByBarId.Remove(barId);
+        }
+
+        private bool TryGetCachedModeFHealthBar(Health health, out HealthBar healthBar)
+        {
+            healthBar = null;
+            if (health == null)
+            {
+                return false;
+            }
+
+            int targetId = health.GetInstanceID();
+            if (!modeFHealthBarCacheByTargetId.TryGetValue(targetId, out healthBar))
+            {
+                return false;
+            }
+
+            if (healthBar != null && healthBar.target == health)
+            {
+                return true;
+            }
+
+            modeFHealthBarCacheByTargetId.Remove(targetId);
+            healthBar = null;
+            return false;
+        }
+
+        private void ScanAndCacheModeFHealthBars(bool force = false)
+        {
+            if (!force && Time.unscaledTime < modeFNextHealthBarLookupTime)
+            {
+                return;
+            }
+
+            modeFNextHealthBarLookupTime = Time.unscaledTime + MODEF_HEALTHBAR_LOOKUP_INTERVAL;
+            modeFHealthBarCacheByTargetId.Clear();
+
+            HealthBar[] healthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
+            for (int i = 0; i < healthBars.Length; i++)
+            {
+                RegisterModeFHealthBar(healthBars[i]);
+            }
         }
 
         private static string BuildModeFMarkText(int marks, bool chinese)
@@ -188,6 +292,16 @@ namespace BossRush
             }
 
             return modeFSteamManagerGetSteamDisplayMethod;
+        }
+
+        private static TextMeshProUGUI GetModeFHealthBarNameText(HealthBar healthBar)
+        {
+            if (healthBar == null || modeFHealthBarNameTextField == null)
+            {
+                return null;
+            }
+
+            return modeFHealthBarNameTextField.GetValue(healthBar) as TextMeshProUGUI;
         }
 
         /// <summary>
@@ -304,6 +418,7 @@ namespace BossRush
                 return modeFCachedPlayerName;
             }
 
+            string previousName = modeFCachedPlayerName;
             try
             {
                 string steamName = TryGetModeFSteamPersonaName();
@@ -317,6 +432,11 @@ namespace BossRush
             }
 
             modeFNextPlayerNameRefreshTime = Time.unscaledTime + MODEF_PLAYER_NAME_CACHE_INTERVAL;
+            if (!string.Equals(previousName, modeFCachedPlayerName, StringComparison.Ordinal))
+            {
+                MarkModeFHealthBarNamesDirty();
+            }
+
             return modeFCachedPlayerName;
         }
 
@@ -335,6 +455,7 @@ namespace BossRush
 
             marker.DisplayName = displayName;
             marker.OriginalFaction = originalFaction;
+            MarkModeFHealthBarNamesDirty();
         }
 
         private string TryGetModeFBossDisplayName(CharacterMainControl actor)
@@ -524,6 +645,7 @@ namespace BossRush
         {
             if (modeFActive)
             {
+                MarkModeFHealthBarNamesDirty();
                 EnsureModeFPlayerNameTag();
             }
         }
@@ -541,7 +663,7 @@ namespace BossRush
                 player.Health.showHealthBar = true;
 
                 // 玩家血条已存在时只刷新名字，避免反复 RequestHealthBar 导致 UI 释放/重建抖动。
-                HealthBar healthBar = FindModeFHealthBar(player.Health);
+                HealthBar healthBar = FindModeFPlayerHealthBar(player.Health);
                 if (healthBar != null)
                 {
                     ForceRefreshModeFHealthBarName(healthBar);
@@ -616,50 +738,150 @@ namespace BossRush
             try
             {
                 boss.Health.showHealthBar = true;
+
+                HealthBar healthBar = FindModeFHealthBar(boss.Health);
+                if (healthBar != null)
+                {
+                    ForceRefreshModeFHealthBarName(healthBar);
+                    return;
+                }
+
                 boss.Health.RequestHealthBar();
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] EnsureModeFBossNameTag failed: " + e.Message);
+            }
         }
 
-        private void UpdateModeFBossNameTags()
+        private string BuildModeFDesiredHealthBarText(CharacterMainControl character)
         {
-            if (!modeFActive || Time.frameCount % 120 != 0)
+            if (character == null)
             {
-                return;
+                return null;
             }
 
-            // 使用缓存的 HealthBar 数组，每 MODEF_ALL_HEALTHBARS_CACHE_INTERVAL 秒刷新一次
-            if (modeFCachedAllHealthBars == null || Time.unscaledTime >= modeFNextAllHealthBarsRefreshTime)
+            string baseText = character.IsMainCharacter
+                ? GetModeFPlayerName()
+                : GetModeFActorDisplayName(character);
+            if (string.IsNullOrEmpty(baseText))
             {
-                modeFCachedAllHealthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
-                modeFNextAllHealthBarsRefreshTime = Time.unscaledTime + MODEF_ALL_HEALTHBARS_CACHE_INTERVAL;
+                return null;
             }
 
-            HealthBar[] healthBars = modeFCachedAllHealthBars;
-            for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
+            string suffix = character.IsMainCharacter
+                ? GetModeFPlayerMarkSuffix()
+                : GetModeFBountyMarkSuffix(character);
+            return string.IsNullOrEmpty(suffix) ? baseText : baseText + suffix;
+        }
+
+        internal bool ApplyModeFHealthBarNameOverride(HealthBar healthBar, TextMeshProUGUI nameText = null)
+        {
+            if (!modeFActive || healthBar == null)
             {
-                CharacterMainControl boss = modeFState.ActiveBosses[i];
-                if (boss == null || boss.Health == null || boss.Health.IsDead)
+                return false;
+            }
+
+            RegisterModeFHealthBar(healthBar);
+            nameText = nameText ?? GetModeFHealthBarNameText(healthBar);
+            if (nameText == null)
+            {
+                return false;
+            }
+
+            Health target = healthBar.target;
+            if (target == null)
+            {
+                ClearModeFHealthBarOverrideCache(healthBar);
+                return false;
+            }
+
+            CharacterMainControl character = target.TryGetCharacter();
+            if (character == null || !ShouldForceModeFHealthBarName(character))
+            {
+                ClearModeFHealthBarOverrideCache(healthBar);
+                return false;
+            }
+
+            SyncModeFHealthBarNameLanguageState();
+            int barId = healthBar.GetInstanceID();
+            int targetId = target.GetInstanceID();
+            string desiredText = null;
+            int appliedVersion = 0;
+            int cachedTargetId = 0;
+            bool needsRebuild =
+                !modeFHealthBarDesiredTextByBarId.TryGetValue(barId, out desiredText) ||
+                string.IsNullOrEmpty(desiredText) ||
+                !modeFHealthBarAppliedVersionByBarId.TryGetValue(barId, out appliedVersion) ||
+                appliedVersion != modeFHealthBarNameVersion ||
+                !modeFHealthBarTargetIdsByBarId.TryGetValue(barId, out cachedTargetId) ||
+                cachedTargetId != targetId;
+
+            if (needsRebuild)
+            {
+                desiredText = BuildModeFDesiredHealthBarText(character);
+                if (string.IsNullOrEmpty(desiredText))
                 {
-                    continue;
+                    ClearModeFHealthBarOverrideCache(healthBar);
+                    return false;
                 }
 
-                try
-                {
-                    boss.Health.showHealthBar = true;
-                }
-                catch { }
+                modeFHealthBarDesiredTextByBarId[barId] = desiredText;
+                modeFHealthBarAppliedVersionByBarId[barId] = modeFHealthBarNameVersion;
+                modeFHealthBarTargetIdsByBarId[barId] = targetId;
+            }
 
-                HealthBar healthBar = FindModeFHealthBar(healthBars, boss.Health);
+            if (!nameText.gameObject.activeSelf)
+            {
+                nameText.gameObject.SetActive(true);
+            }
+
+            if (!string.Equals(nameText.text, desiredText, StringComparison.Ordinal))
+            {
+                nameText.text = desiredText;
+            }
+
+            return true;
+        }
+
+        public void RefreshModeFActorNameText(CharacterMainControl actor)
+        {
+            if (!modeFActive || actor == null || actor.Health == null) return;
+
+            try
+            {
+                HealthBar healthBar = FindModeFHealthBar(actor.Health);
                 if (healthBar != null)
                 {
                     ForceRefreshModeFHealthBarName(healthBar);
                 }
-                else
-                {
-                    try { boss.Health.RequestHealthBar(); } catch { }
-                }
             }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] RefreshModeFActorNameText failed: " + e.Message);
+            }
+        }
+
+        private HealthBar FindModeFHealthBar(Health health)
+        {
+            if (health == null)
+            {
+                return null;
+            }
+
+            HealthBar healthBar = null;
+            if (TryGetCachedModeFHealthBar(health, out healthBar))
+            {
+                return healthBar;
+            }
+
+            ScanAndCacheModeFHealthBars();
+            if (TryGetCachedModeFHealthBar(health, out healthBar))
+            {
+                return healthBar;
+            }
+
+            return null;
         }
 
         private void UpdateModeFBountyRadarUI()
@@ -692,6 +914,8 @@ namespace BossRush
             }
 
             Vector3 playerPos = player.transform.position;
+            int leaderMarks = 0;
+            CharacterMainControl leader = GetModeFBountyRadarLeader(out leaderMarks);
             modeFBountyRadarTargetScratch.Clear();
 
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
@@ -709,6 +933,11 @@ namespace BossRush
                 }
 
                 if (IsModeFBountyRadarTargetVisible(radarCamera, boss))
+                {
+                    continue;
+                }
+
+                if (object.ReferenceEquals(boss, leader))
                 {
                     continue;
                 }
@@ -747,8 +976,6 @@ namespace BossRush
                 }
             }
 
-            int leaderMarks = 0;
-            CharacterMainControl leader = GetModeFBountyRadarLeader(out leaderMarks);
             bool showLeader = leader != null &&
                               leaderMarks > 0 &&
                               leader.transform != null &&
@@ -793,9 +1020,32 @@ namespace BossRush
                     return false;
             }
 
+            if (IsModeFBountyRadarSuppressedByOverlay())
+            {
+                return false;
+            }
+
             return modeFState.PlayerBountyMarks > 0 ||
                    modeFState.CurrentBountyLeaderMarks > 0 ||
                    modeFState.BountyMarksByCharacterId.Count > 0;
+        }
+
+        private bool IsModeFBountyRadarSuppressedByOverlay()
+        {
+            if (BossRush.Utils.NPCCommonUtils.IsAnyUIOpen())
+            {
+                return true;
+            }
+
+            try
+            {
+                Duckov.MiniMaps.UI.MiniMapView mapView = Duckov.MiniMaps.UI.MiniMapView.Instance;
+                return mapView != null && mapView.open;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private void EnsureModeFBountyRadarUI()
@@ -851,7 +1101,6 @@ namespace BossRush
             guideImage.raycastTarget = false;
 
             modeFBountyRadarCanvasObject = root;
-            modeFBountyRadarRootRect = rootRect;
             modeFBountyRadarCenterRect = centerRect;
             modeFBountyRadarGuideImage = guideImage;
             modeFBountyRadarGuideImage.gameObject.SetActive(false);
@@ -996,6 +1245,14 @@ namespace BossRush
             leaderMarks = 0;
 
             CharacterMainControl currentLeader = modeFState.CurrentBountyLeader;
+            if (currentLeader == null &&
+                modeFState.CurrentBountyLeaderMarks > 0 &&
+                modeFState.PlayerBountyMarks == modeFState.CurrentBountyLeaderMarks)
+            {
+                leaderMarks = modeFState.CurrentBountyLeaderMarks;
+                return null;
+            }
+
             if (currentLeader != null &&
                 currentLeader.Health != null &&
                 !currentLeader.Health.IsDead &&
@@ -1006,7 +1263,7 @@ namespace BossRush
             }
 
             CharacterMainControl bestLeader = null;
-            int bestMarks = 0;
+            int bestMarks = modeFState.PlayerBountyMarks;
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
             {
                 CharacterMainControl boss = modeFState.ActiveBosses[i];
@@ -1072,7 +1329,6 @@ namespace BossRush
             }
 
             modeFBountyRadarCanvasObject = null;
-            modeFBountyRadarRootRect = null;
             modeFBountyRadarCenterRect = null;
             modeFBountyRadarGuideImage = null;
             modeFBountyLeaderRadarEntry = null;
@@ -1091,7 +1347,7 @@ namespace BossRush
                 return;
             }
 
-            HealthBar healthBar = FindModeFHealthBar(player.Health);
+            HealthBar healthBar = FindModeFPlayerHealthBar(player.Health);
             if (healthBar == null)
             {
                 return;
@@ -1100,7 +1356,7 @@ namespace BossRush
             ForceRefreshModeFHealthBarName(healthBar);
         }
 
-        private HealthBar FindModeFHealthBar(Health health)
+        private HealthBar FindModeFPlayerHealthBar(Health health)
         {
             if (health == null)
             {
@@ -1117,45 +1373,16 @@ namespace BossRush
                 modeFCachedPlayerHealthBar = null;
             }
 
-            if (Time.unscaledTime < modeFNextHealthBarLookupTime)
+            HealthBar healthBar = FindModeFHealthBar(health);
+            if (healthBar != null)
             {
-                return null;
+                modeFCachedPlayerHealthBar = healthBar;
             }
 
-            modeFNextHealthBarLookupTime = Time.unscaledTime + MODEF_HEALTHBAR_LOOKUP_INTERVAL;
-
-            HealthBar[] healthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
-            for (int i = 0; i < healthBars.Length; i++)
-            {
-                HealthBar healthBar = healthBars[i];
-                if (healthBar != null && healthBar.target == health)
-                {
-                    modeFCachedPlayerHealthBar = healthBar;
-                    return healthBar;
-                }
-            }
-
-            return null;
+            return healthBar;
         }
 
-        private static HealthBar FindModeFHealthBar(HealthBar[] healthBars, Health health)
-        {
-            if (healthBars == null || health == null)
-            {
-                return null;
-            }
 
-            for (int i = 0; i < healthBars.Length; i++)
-            {
-                HealthBar healthBar = healthBars[i];
-                if (healthBar != null && healthBar.target == health)
-                {
-                    return healthBar;
-                }
-            }
-
-            return null;
-        }
 
         private static void ForceRefreshModeFHealthBarName(HealthBar healthBar)
         {
@@ -1170,6 +1397,16 @@ namespace BossRush
                 if (refreshCharacterIcon != null)
                 {
                     refreshCharacterIcon.Invoke(healthBar, null);
+                }
+            }
+            catch { }
+
+            try
+            {
+                ModBehaviour instance = ModBehaviour.Instance;
+                if (instance != null)
+                {
+                    instance.ApplyModeFHealthBarNameOverride(healthBar);
                 }
             }
             catch { }
@@ -1383,16 +1620,15 @@ namespace BossRush
     }
 
     [HarmonyPatch(typeof(HealthBar), "LateUpdate")]
-    public static class ModeFHealthBarNamePatch
+    public static class BossRushHealthBarNamePatch
     {
         private static ModBehaviour cachedInstance;
         private static int lastRefreshFrame = -1;
-        private const int ModeFHealthBarNameRefreshIntervalFrames = 12;
-        private const string ModeFMarkSuffixZhPrefix = " [印记: ";
-        private const string ModeFMarkSuffixEnPrefix = " [Mark: ";
-        private const string ModeFMarkSuffixZhRichPrefix = " <color=yellow>悬赏";
-        private const string ModeFMarkSuffixEnRichPrefix = " <color=yellow>Bounty ";
-        private const char ModeFMarkSuffixStar = '⭐';
+        private static readonly Dictionary<int, int> lastProcessedFrameByBarId = new Dictionary<int, int>();
+        private static int lastCleanupFrame = -1;
+        private const int HEALTHBAR_PATCH_FRAME_INTERVAL = 6;
+        private const int HEALTHBAR_CACHE_STALE_FRAMES = 300;
+        private const int HEALTHBAR_CLEANUP_INTERVAL = 600;
 
         [HarmonyPostfix]
         public static void Postfix(HealthBar __instance, TextMeshProUGUI ___nameText)
@@ -1404,198 +1640,51 @@ namespace BossRush
                 cachedInstance = ModBehaviour.Instance;
             }
 
-            if (cachedInstance == null || !cachedInstance.IsModeFActive || ___nameText == null)
+            if (cachedInstance == null)
             {
+                if (lastProcessedFrameByBarId.Count > 0)
+                    lastProcessedFrameByBarId.Clear();
                 return;
             }
 
-            Health target = __instance.target;
-            if (target == null)
+            bool isModeF = cachedInstance.IsModeFActive;
+            bool isModeE = !isModeF && cachedInstance.IsModeEActive;
+
+            if (!isModeF && !isModeE)
             {
+                if (lastProcessedFrameByBarId.Count > 0)
+                    lastProcessedFrameByBarId.Clear();
                 return;
             }
 
-            CharacterMainControl character = target.TryGetCharacter();
-            if (character == null)
+            // 定期清理长期未更新的过期条目，防止无限积累失效 HealthBar ID
+            if (currentFrame - lastCleanupFrame >= HEALTHBAR_CLEANUP_INTERVAL)
+            {
+                lastCleanupFrame = currentFrame;
+                var toRemove = new System.Collections.Generic.List<int>();
+                foreach (var kv in lastProcessedFrameByBarId)
+                {
+                    if (currentFrame - kv.Value >= HEALTHBAR_CACHE_STALE_FRAMES)
+                        toRemove.Add(kv.Key);
+                }
+                for (int ri = 0; ri < toRemove.Count; ri++)
+                    lastProcessedFrameByBarId.Remove(toRemove[ri]);
+            }
+
+            int barId = __instance.GetInstanceID();
+            int lastFrame;
+            if (lastProcessedFrameByBarId.TryGetValue(barId, out lastFrame) &&
+                currentFrame - lastFrame < HEALTHBAR_PATCH_FRAME_INTERVAL)
             {
                 return;
             }
+            lastProcessedFrameByBarId[barId] = currentFrame;
 
-            bool isPlayer = character.IsMainCharacter;
-            bool forceShowName = cachedInstance.ShouldForceModeFHealthBarName(character);
-            if (!forceShowName)
-            {
-                return;
-            }
-
-            bool forceImmediateRefresh = !___nameText.gameObject.activeSelf || string.IsNullOrEmpty(___nameText.text);
-            if (!forceImmediateRefresh)
-            {
-                int refreshBucket = __instance.GetInstanceID();
-                if (refreshBucket == int.MinValue)
-                {
-                    refreshBucket = 0;
-                }
-                else if (refreshBucket < 0)
-                {
-                    refreshBucket = -refreshBucket;
-                }
-
-                if ((currentFrame + refreshBucket) % ModeFHealthBarNameRefreshIntervalFrames != 0)
-                {
-                    return;
-                }
-            }
-
-            string baseText = isPlayer
-                ? cachedInstance.GetModeFPlayerName()
-                : cachedInstance.GetModeFActorDisplayName(character);
-            if (string.IsNullOrEmpty(baseText))
-            {
-                baseText = StripModeFMarkSuffix(___nameText.text);
-            }
-
-            string suffix = isPlayer
-                ? cachedInstance.GetModeFPlayerMarkSuffix()
-                : cachedInstance.GetModeFBountyMarkSuffix(character);
-            string desiredText = string.IsNullOrEmpty(suffix) ? baseText : baseText + suffix;
-
-            if (forceShowName && !___nameText.gameObject.activeSelf)
-            {
-                ___nameText.gameObject.SetActive(true);
-            }
-
-            if (!string.Equals(___nameText.text, desiredText, StringComparison.Ordinal))
-            {
-                ___nameText.text = desiredText;
-            }
-        }
-
-        private static string StripModeFMarkSuffix(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return text;
-            }
-
-            string sanitized = text;
-            while (TryTrimTrailingModeFMarkSuffix(ref sanitized))
-            {
-            }
-
-            return sanitized;
-        }
-
-        private static bool TryTrimTrailingModeFMarkSuffix(ref string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return false;
-            }
-
-            if (text.EndsWith("</color>", StringComparison.Ordinal) &&
-                (TryTrimTrailingModeFRichMarkSuffix(ref text, ModeFMarkSuffixZhRichPrefix) ||
-                 TryTrimTrailingModeFRichMarkSuffix(ref text, ModeFMarkSuffixEnRichPrefix)))
-            {
-                return true;
-            }
-
-            if (text[text.Length - 1] == ModeFMarkSuffixStar &&
-                TryTrimTrailingModeFStarSuffix(ref text))
-            {
-                return true;
-            }
-
-            if (text[text.Length - 1] != ']')
-            {
-                return false;
-            }
-
-            return TryTrimTrailingModeFMarkSuffix(ref text, ModeFMarkSuffixZhPrefix) ||
-                   TryTrimTrailingModeFMarkSuffix(ref text, ModeFMarkSuffixEnPrefix);
-        }
-
-        private static bool TryTrimTrailingModeFStarSuffix(ref string text)
-        {
-            int endIndex = text.Length - 1;
-            int digitEnd = endIndex - 1;
-            if (digitEnd < 0)
-            {
-                return false;
-            }
-
-            int digitStart = digitEnd;
-            while (digitStart >= 0 && char.IsDigit(text[digitStart]))
-            {
-                digitStart--;
-            }
-
-            if (digitStart == digitEnd || digitStart < 0 || text[digitStart] != ' ')
-            {
-                return false;
-            }
-
-            text = text.Substring(0, digitStart);
-            return true;
-        }
-
-        private static bool TryTrimTrailingModeFRichMarkSuffix(ref string text, string prefix)
-        {
-            const string richTextEndTag = "</color>";
-            if (!text.EndsWith(richTextEndTag, StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            int richSuffixEnd = text.Length - richTextEndTag.Length;
-            int startIndex = text.LastIndexOf(prefix, StringComparison.Ordinal);
-            if (startIndex < 0)
-            {
-                return false;
-            }
-
-            int digitsStart = startIndex + prefix.Length;
-            if (digitsStart >= richSuffixEnd)
-            {
-                return false;
-            }
-
-            for (int i = digitsStart; i < richSuffixEnd; i++)
-            {
-                if (!char.IsDigit(text[i]))
-                {
-                    return false;
-                }
-            }
-
-            text = text.Substring(0, startIndex);
-            return true;
-        }
-
-        private static bool TryTrimTrailingModeFMarkSuffix(ref string text, string prefix)
-        {
-            int startIndex = text.LastIndexOf(prefix, StringComparison.Ordinal);
-            if (startIndex < 0)
-            {
-                return false;
-            }
-
-            int digitsStart = startIndex + prefix.Length;
-            if (digitsStart >= text.Length - 1)
-            {
-                return false;
-            }
-
-            for (int i = digitsStart; i < text.Length - 1; i++)
-            {
-                if (!char.IsDigit(text[i]))
-                {
-                    return false;
-                }
-            }
-
-            text = text.Substring(0, startIndex);
-            return true;
+            if (isModeF)
+                cachedInstance.ApplyModeFHealthBarNameOverride(__instance, ___nameText);
+            else
+                cachedInstance.ApplyModeEHealthBarNameOverride(__instance, ___nameText);
         }
     }
+
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ItemStatsSystem;
 
 namespace BossRush
@@ -38,8 +37,8 @@ namespace BossRush
                 item.Value = 15000;
                 item.Quality = 5;
                 item.name = DISPLAY_NAME_EN;
-                SetHiddenMember(item, "description", GetDescription());
-                SetHiddenMember(item, "DescriptionRaw", GetDescription());
+                ModeFItemConfigHelper.SetHiddenMember(item, "description", GetDescription());
+                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
 
                 EquipmentHelper.AddTagToItem(item, "Key");
                 EquipmentHelper.AddTagToItem(item, "SpecialKey");
@@ -122,20 +121,5 @@ namespace BossRush
             }
         }
 
-        private static void SetHiddenMember(object target, string memberName, object value)
-        {
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            PropertyInfo property = target.GetType().GetProperty(memberName, flags);
-            if (property != null && property.SetMethod != null)
-            {
-                property.SetValue(target, value);
-                return;
-            }
-            FieldInfo field = target.GetType().GetField(memberName, flags);
-            if (field != null)
-            {
-                field.SetValue(target, value);
-            }
-        }
     }
 }

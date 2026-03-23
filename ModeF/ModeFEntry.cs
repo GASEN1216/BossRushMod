@@ -10,6 +10,7 @@ namespace BossRush
 
         /// <summary>Mode F 会话序号，防止上一局的异步对象晚到并污染新局。</summary>
         private int modeFSessionSerial = 0;
+        internal int CurrentModeFSessionToken { get { return modeFState.RuntimeSessionToken; } }
 
         private int BeginModeFSession()
         {
@@ -109,24 +110,28 @@ namespace BossRush
                     return false;
                 }
 
-                // H3: 先验证两个道具都存在，再一起消耗
-                // 如果任一消耗失败，仍尝试启动（道具已部分消耗，不启动更糟）
+                // 原子性扣费：任一失败则退还已消耗的道具并中止
                 transponderConsumed = TryConsumeModeEntryItem(transponder, "ModeF", "血猎收发器");
-                ticketConsumed = ticketPrepaid || TryConsumeModeEntryItem(ticket, "ModeF", "船票");
-
-                if (!transponderConsumed && !ticketConsumed)
+                if (!transponderConsumed)
                 {
-                    // 两个都没消耗成功，安全退出
                     ShowMessage(L10n.T(
-                        "血猎追击模式启动失败：入场道具消耗异常。",
-                        "Bloodhunt start failed: unable to consume the entry items."
+                        "血猎追击模式启动失败：无法消耗血猎收发器。",
+                        "Bloodhunt start failed: unable to consume the Bloodhunt Transponder."
                     ));
                     return false;
                 }
 
-                if (!transponderConsumed || !ticketConsumed)
+                ticketConsumed = ticketPrepaid || TryConsumeModeEntryItem(ticket, "ModeF", "船票");
+                if (!ticketConsumed)
                 {
-                    DevLog("[ModeF] [WARNING] 部分道具消耗失败 (transponder=" + transponderConsumed + ", ticket=" + ticketConsumed + ")，仍尝试启动以避免道具丢失");
+                    // 退还已消耗的收发器
+                    RefundModeFStartupEntryItems(false, transponderConsumed);
+                    transponderConsumed = false;
+                    ShowMessage(L10n.T(
+                        "血猎追击模式启动失败：无法消耗船票，已退还血猎收发器。",
+                        "Bloodhunt start failed: unable to consume the ticket. Transponder refunded."
+                    ));
+                    return false;
                 }
 
                 bool started = StartModeF();

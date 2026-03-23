@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using ItemStatsSystem;
 
 namespace BossRush
@@ -26,8 +25,8 @@ namespace BossRush
                 item.Value = 2200;
                 item.Quality = 3;
                 item.name = DISPLAY_NAME_EN;
-                SetHiddenMember(item, "description", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
-                SetHiddenMember(item, "DescriptionRaw", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
+                ModeFItemConfigHelper.SetHiddenMember(item, "description", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
+                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
                 EquipmentHelper.AddTagToItem(item, "Special");
                 ModeFItemUsageHelper.AttachToItem(item);
                 ModBehaviour.DevLog("[BarbedWirePackConfig] Item configured: TypeID=" + TYPE_ID);
@@ -41,15 +40,6 @@ namespace BossRush
         public static void RegisterConfigurator()
         {
             ItemFactory.RegisterConfigurator(TYPE_ID, ConfigureItem);
-        }
-
-        private static void SetHiddenMember(object target, string memberName, object value)
-        {
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            PropertyInfo property = target.GetType().GetProperty(memberName, flags);
-            if (property != null && property.SetMethod != null) { property.SetValue(target, value); return; }
-            FieldInfo field = target.GetType().GetField(memberName, flags);
-            if (field != null) { field.SetValue(target, value); }
         }
     }
 }

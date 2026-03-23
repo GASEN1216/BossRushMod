@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using TMPro;
 using ItemStatsSystem;
 using Duckov.UI.DialogueBubbles;
 using Duckov.UI;
@@ -514,7 +515,7 @@ namespace BossRush
                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == relatedScene;
         }
 
-        private bool IsModeEOrModeFSpawnSessionStillValid(
+        internal bool IsModeEOrModeFSpawnSessionStillValid(
             int modeFSessionToken,
             int modeFRelatedScene,
             int modeESessionToken,
@@ -1263,6 +1264,73 @@ namespace BossRush
             string name = GetFactionDisplayName(faction);
             if (string.IsNullOrEmpty(name)) return null;
             return " - " + name;
+        }
+
+        /// <summary>
+        /// 在 HealthBar 名字后追加阵营后缀，供统一的 HealthBar patch 调用。
+        /// </summary>
+        internal void ApplyModeEHealthBarNameOverride(HealthBar healthBar, TextMeshProUGUI nameText)
+        {
+            if (nameText == null) return;
+
+            Health target = healthBar.target;
+            if (target == null) return;
+
+            CharacterMainControl character = target.TryGetCharacter();
+            if (character == null) return;
+
+            bool forceShowName = character.IsMainCharacter;
+            if (!forceShowName && !nameText.gameObject.activeSelf) return;
+
+            string baseText = forceShowName
+                ? GetModeEPlayerName()
+                : StripModeEFactionSuffix(nameText.text);
+            if (string.IsNullOrEmpty(baseText))
+            {
+                baseText = GetModeEActorDisplayName(character);
+            }
+
+            Teams displayFaction = forceShowName ? ModeEPlayerFaction : character.Team;
+            string factionSuffix = GetModeEFactionSuffix(displayFaction);
+            string desiredText = string.IsNullOrEmpty(factionSuffix) ? baseText : baseText + factionSuffix;
+
+            if (forceShowName && !nameText.gameObject.activeSelf)
+            {
+                nameText.gameObject.SetActive(true);
+            }
+
+            if (!string.Equals(nameText.text, desiredText, StringComparison.Ordinal))
+            {
+                nameText.text = desiredText;
+            }
+        }
+
+        private string StripModeEFactionSuffix(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            string sanitized = text;
+            while (TryTrimTrailingModeEFactionSuffix(ref sanitized))
+            {
+            }
+            return sanitized;
+        }
+
+        private bool TryTrimTrailingModeEFactionSuffix(ref string text)
+        {
+            return TryTrimOneModeEFactionSuffix(ref text, GetModeEFactionSuffix(Teams.scav)) ||
+                   TryTrimOneModeEFactionSuffix(ref text, GetModeEFactionSuffix(Teams.usec)) ||
+                   TryTrimOneModeEFactionSuffix(ref text, GetModeEFactionSuffix(Teams.bear)) ||
+                   TryTrimOneModeEFactionSuffix(ref text, GetModeEFactionSuffix(Teams.lab)) ||
+                   TryTrimOneModeEFactionSuffix(ref text, GetModeEFactionSuffix(Teams.wolf)) ||
+                   TryTrimOneModeEFactionSuffix(ref text, GetModeEFactionSuffix(Teams.player));
+        }
+
+        private static bool TryTrimOneModeEFactionSuffix(ref string text, string suffix)
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(suffix)) return false;
+            if (!text.EndsWith(suffix, StringComparison.Ordinal)) return false;
+            text = text.Substring(0, text.Length - suffix.Length);
+            return true;
         }
 
         #region Mode E 阵营存活列表管理（P4性能优化）

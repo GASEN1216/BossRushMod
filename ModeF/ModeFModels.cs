@@ -32,7 +32,6 @@ namespace BossRush
         public CharacterMainControl CurrentBountyLeader;
         public int CurrentBountyLeaderMarks;
         public List<CharacterMainControl> ActiveBosses = new List<CharacterMainControl>();
-        public HashSet<int> InitialBountyBossIds = new HashSet<int>();
         public Dictionary<int, int> BountyMarksByCharacterId = new Dictionary<int, int>();
         public Dictionary<int, ModeFFortificationMarker> ActiveFortifications = new Dictionary<int, ModeFFortificationMarker>();
         public CountDownArea ActiveExtractionArea;
@@ -54,7 +53,6 @@ namespace BossRush
             CurrentBountyLeader = null;
             CurrentBountyLeaderMarks = 0;
             ActiveBosses.Clear();
-            InitialBountyBossIds.Clear();
             BountyMarksByCharacterId.Clear();
             ActiveFortifications.Clear();
             ActiveExtractionArea = null;
@@ -72,6 +70,7 @@ namespace BossRush
         public int OwnerCharacterId;
         public float MaxHealth;
         public float LastKnownHealth;
+        public float NextDamageLogTime;
         public bool IsDestroyed;
         public Health BoundHealth;
         public GameObject HighlightRoot;

@@ -936,9 +936,10 @@ namespace BossRush
         public static void SpawnPet()
         {
             var inst = ModBehaviour.Instance;
+            int modeFSessionToken = inst != null ? inst.CurrentModeFSessionToken : 0;
             int modeESessionToken = inst != null ? inst.CurrentModeESessionToken : 0;
             int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
-            SpawnPetAsync(modeESessionToken, relatedScene).Forget();
+            SpawnPetAsync(modeFSessionToken, relatedScene, modeESessionToken, relatedScene).Forget();
         }
 
         /// <summary>
@@ -1015,7 +1016,11 @@ namespace BossRush
         /// <summary>
         /// 异步生成煤球NPC
         /// </summary>
-        private static async UniTaskVoid SpawnPetAsync(int modeESessionToken, int relatedScene)
+        private static async UniTaskVoid SpawnPetAsync(
+            int modeFSessionToken,
+            int modeFRelatedScene,
+            int modeESessionToken,
+            int modeESessionRelatedScene)
         {
             try
             {
@@ -1072,7 +1077,7 @@ namespace BossRush
                 // 在玩家前方生成煤球
                 Vector3 spawnPos = player.transform.position + player.transform.forward * 1.5f;
                 Vector3 dir = -player.transform.forward;
-                var coalballCharacter = await coalballPreset.CreateCharacterAsync(spawnPos, dir, relatedScene, null, false);
+                var coalballCharacter = await coalballPreset.CreateCharacterAsync(spawnPos, dir, modeFSessionToken > 0 ? modeFRelatedScene : modeESessionRelatedScene, null, false);
                 if (coalballCharacter == null)
                 {
                     ModBehaviour.DevLog("[ModeE] [WARNING] 煤球生成失败");
@@ -1081,7 +1086,12 @@ namespace BossRush
 
                 // 设置煤球为玩家阵营
                 var inst2 = ModBehaviour.Instance;
-                if (inst2 == null || !inst2.IsModeESessionStillValid(modeESessionToken, relatedScene))
+                if (inst2 == null ||
+                    !inst2.IsModeEOrModeFSpawnSessionStillValid(
+                        modeFSessionToken,
+                        modeFRelatedScene,
+                        modeESessionToken,
+                        modeESessionRelatedScene))
                 {
                     try
                     {
@@ -1092,7 +1102,7 @@ namespace BossRush
                     }
                     catch { }
 
-                    ModBehaviour.DevLog("[ModeE] 煤球生成完成时 Mode E 已结束或场景已切换，已放弃该实例");
+                    ModBehaviour.DevLog("[ModeE] 煤球生成完成时模式已结束或场景已切换，已放弃该实例");
                     return;
                 }
 

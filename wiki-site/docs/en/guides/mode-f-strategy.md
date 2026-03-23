@@ -13,7 +13,7 @@
 - Familiarize yourself with the map layout and memorize spawn point locations.
 
 # Bounty Phase (180s, 1.5%/sec)
-- The bounty list is generated — 40-50% of Bosses are marked.
+- The bounty list is generated — all surviving Bosses are marked.
 - Watch the Bounty Radar and prioritize killing high-mark bounty Bosses.
 - Killing bounty Bosses heals more (75% vs 50%) and grants extra drops.
 - Bosses also kill each other and inherit Bounty Marks — keep an eye on changes to the Bounty Leader.

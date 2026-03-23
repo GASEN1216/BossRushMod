@@ -848,36 +848,13 @@ namespace BossRush
         {
             try
             {
-                if (prePushCount < 0) return;
-                FieldInfo pendingTextsField = typeof(NotificationText).GetField("pendingTexts", BindingFlags.NonPublic | BindingFlags.Static);
-                if (pendingTextsField == null)
+                if (prePushCount < 0)
                 {
                     return;
                 }
 
-                Queue<string> queue = pendingTextsField.GetValue(null) as Queue<string>;
-                if (queue == null || queue.Count <= prePushCount)
-                {
-                    return;
-                }
-
-                int toKeep = prePushCount;
-                Queue<string> preserved = new Queue<string>();
-                while (toKeep > 0 && queue.Count > 0)
-                {
-                    preserved.Enqueue(queue.Dequeue());
-                    toKeep--;
-                }
-
-                int clearedCount = queue.Count;
-                queue.Clear();
-
-                while (preserved.Count > 0)
-                {
-                    queue.Enqueue(preserved.Dequeue());
-                }
-
-                DevLog("[ModeF] 已清除本次结算产生的寄存通知，数量: " + clearedCount);
+                // NotificationText.pendingTexts 是全局共享队列，无法可靠区分来源。
+                // 为避免误删快递员或其他系统的提示，这里保守地不做清理。
             }
             catch (Exception e)
             {
