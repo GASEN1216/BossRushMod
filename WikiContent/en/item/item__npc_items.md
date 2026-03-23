@@ -78,6 +78,19 @@ The amulet is a passive effect — just keep it in your inventory and it works a
 
 ---
 
+### Awen Courier Token
+
+A brass token stamped with Awen's duck mark. Use it to ship what you are carrying back home in one action.
+
+- Source: Purchased from the base merchant (stock 5)
+- Max Stack: 1
+- Use Time: 1.5 seconds
+- Effect: Ships your currently equipped items, backpack items, and pet inventory home in one go
+- Cost: Free in base; elsewhere it charges the same fee as Awen's normal courier service
+- Detail: The token does not ship itself away while you are using it
+
+---
+
 ### Dingdang's Drawing
 
 A painting Dingdang spent many days on. Use it to view it in fullscreen.

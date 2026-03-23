@@ -38,7 +38,7 @@
 
 ### Fortification Usage Strategy
 - **Foldable Cover Pack**: Deploy anytime for temporary cover; you get the most of these.
-- **Reinforced Roadblock Pack**: Deploy at key chokepoints or around the extraction point; 500 HP makes them very durable.
+- **Reinforced Roadblock Pack**: Deploy at key chokepoints or around the extraction point; 5000 HP makes them very durable.
 - **Barbed Wire Pack**: Deploy on Boss approach routes to slow their advance.
 - **Emergency Repair Spray**: Repair damaged fortifications to extend their lifespan.
 

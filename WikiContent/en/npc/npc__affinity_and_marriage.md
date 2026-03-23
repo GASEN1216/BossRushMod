@@ -53,6 +53,9 @@ See the individual pages for Dingdang and Yuori for details.
 
 - NPC location: Moves to the Wedding Chapel
 - Dialogue: Switches to marriage-exclusive dialogue
+- New spouse interactions: you can ask your spouse to `Follow` from the chapel, and send them `Home` again while they are following
+- Follow state is restored across common scene changes and returns to base whenever possible
+- If a following spouse's Affinity falls below Lv.10, they automatically go home and the game shows a clear prompt
 - Dingdang special perk: Gives Cold Quench Fluid during daily chat
 - Yuori special perk: Gives Calming Drops during daily chat
 - Replay wedding: The wedding cutscene can be replayed at the chapel

@@ -30,6 +30,11 @@ Your faction is determined by which Faction Banner you carry:
 - Different factions are automatically hostile
 - Lone Wolf players are hostile to all factions, with no allies
 
+#### UI Identification
+
+- In Mode E, health-bar names append a faction suffix so you can read friend-or-foe information at a glance.
+- Your own health bar also shows your name plus your current faction.
+
 #### Death Empowerment
 
 When a member of a faction dies, all surviving members of that faction receive stat boosts:
@@ -71,7 +76,7 @@ When the mode starts, a Mystery Merchant appears in front of you, offering 13 ca
 - Armor: All armor / Price multiplier ×10
 - Backpacks: All backpacks / Price multiplier ×10
 - Totems: All totems / Price multiplier ×10
-- Masks: All masks / Price multiplier ×10
+- Masks & Headsets: All masks and headsets / Price multiplier ×10
 - Medical: Medical items and injectors / Price multiplier ×10
 - Food: Food items / Price multiplier ×10
 - Decoys: Decoy items / Price multiplier ×10
