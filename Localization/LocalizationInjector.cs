@@ -963,7 +963,7 @@ namespace BossRush
                 { "BossRush_ModeE_Shop_Armor", L10n.T("护甲", "Armor") },
                 { "BossRush_ModeE_Shop_Backpack", L10n.T("背包", "Backpacks") },
                 { "BossRush_ModeE_Shop_Totem", L10n.T("图腾", "Totems") },
-                { "BossRush_ModeE_Shop_Mask", L10n.T("面具", "Masks") },
+                { "BossRush_ModeE_Shop_Mask", L10n.T("面具/耳机", "Masks & Headsets") },
                 { "BossRush_ModeE_Shop_Medical", L10n.T("医疗品", "Medical") },
                 { "BossRush_ModeE_Shop_Food", L10n.T("食物", "Food") },
                 { "BossRush_ModeE_Shop_Bait", L10n.T("诱饵", "Bait") },

@@ -594,9 +594,13 @@ namespace BossRush
 
             Duckov.Utilities.Tag maskTag = FindTagByNameInInit("Mask");
             if (maskTag == null) maskTag = FindTagByNameInInit("FaceMask");
-            if (maskTag != null)
+            Duckov.Utilities.Tag headsetTag = FindTagByNameInInit("Headset");
+            var faceWearTags = new List<Duckov.Utilities.Tag>();
+            if (maskTag != null) faceWearTags.Add(maskTag);
+            if (headsetTag != null) faceWearTags.Add(headsetTag);
+            if (faceWearTags.Count > 0)
                 categories.Add(System.Tuple.Create(
-                    new List<Duckov.Utilities.Tag> { maskTag },
+                    faceWearTags,
                     "BossRush_ModeE_Shop_Mask", "Mask"));
 
             Duckov.Utilities.Tag medTag = FindTagByNameInInit("Medic");
