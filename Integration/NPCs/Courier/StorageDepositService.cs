@@ -1893,6 +1893,21 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 检查背包中某索引处的格子是否被锁定。
+        /// </summary>
+        private static bool IsInventoryIndexLocked(Inventory inventory, int index)
+        {
+            try
+            {
+                return inventory != null && inventory.IsIndexLocked(index);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 统计玩家背包中的根物品数量。
         /// </summary>
         private static int CountPlayerInventoryItems()
@@ -1910,6 +1925,10 @@ namespace BossRush
             int count = 0;
             for (int i = 0; i < playerInventory.Content.Count; i++)
             {
+                if (IsInventoryIndexLocked(playerInventory, i))
+                {
+                    continue;
+                }
                 Item item = playerInventory.Content[i];
                 if (item != null && CanDepositItem(item))
                 {
@@ -1940,6 +1959,10 @@ namespace BossRush
 
             for (int i = 0; i < playerInventory.Content.Count; i++)
             {
+                if (IsInventoryIndexLocked(playerInventory, i))
+                {
+                    continue;
+                }
                 Item item = playerInventory.Content[i];
                 if (item != null)
                 {

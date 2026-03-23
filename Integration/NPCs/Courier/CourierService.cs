@@ -1121,6 +1121,10 @@ namespace BossRush
             int count = 0;
             for (int i = 0; i < playerInventory.Content.Count; i++)
             {
+                if (playerInventory.IsIndexLocked(i))
+                {
+                    continue;
+                }
                 if (playerInventory.Content[i] != null)
                 {
                     count++;
@@ -1149,6 +1153,10 @@ namespace BossRush
 
             for (int i = 0; i < playerInventory.Content.Count; i++)
             {
+                if (playerInventory.IsIndexLocked(i))
+                {
+                    continue;
+                }
                 Item item = playerInventory.Content[i];
                 if (item != null)
                 {
