@@ -272,6 +272,7 @@ namespace BossRush
                 }
 
                 SendSpouseHome(npcId, false);
+                ShowSpouseFollowAffinityLossBubble();
                 ShowMessage(L10n.T(
                     "配偶的好感度低于10级，已经先回家了。",
                     "Your spouse's Affinity fell below Lv.10, so they went home."));
@@ -279,6 +280,33 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[WeddingBridge] 处理配偶好感不足回家失败: " + e.Message);
+            }
+        }
+
+        private void ShowSpouseFollowAffinityLossBubble()
+        {
+            try
+            {
+                Transform playerTransform = GetPlayerTransform();
+                if (playerTransform == null)
+                {
+                    return;
+                }
+
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    L10n.T(
+                        "唔...太久没理生气了呢",
+                        "Hm... guess they're upset I ignored them too long."),
+                    playerTransform,
+                    2.5f,
+                    false,
+                    false,
+                    -1f,
+                    2.5f);
+            }
+            catch (Exception e)
+            {
+                DevLog("[WeddingBridge] 显示配偶回家提示气泡失败: " + e.Message);
             }
         }
 
