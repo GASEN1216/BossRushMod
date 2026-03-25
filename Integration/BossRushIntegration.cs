@@ -1098,7 +1098,10 @@ namespace BossRush
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_JournalStock;
             SavesSystem.OnSetFile -= OnSetFile_JournalStock;
             Health.OnDead -= OnPlayerDeathInBossRush;
+            Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
+            Health.OnDead -= RecordDeathWraithData_DeathWraith;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
+            ClearDeathWraithState_DeathWraith();
 
             // 统一销毁公共 NPC，避免卸载时残留引用
             NPCModuleRegistry.DestroyAll(this, "Mod 卸载");
@@ -1191,6 +1194,9 @@ namespace BossRush
         {
             DevLog("[BossRush] 场景加载: " + scene.name);
             
+            // 亡魂系统：场景切换时清理状态
+            ClearDeathWraithState_DeathWraith();
+
             // [内存优化] 场景切换时清理龙裔遗族相关的静态缓存，防止持有已销毁对象引用
             ClearDragonDescendantStaticCache();
             
@@ -1226,6 +1232,9 @@ namespace BossRush
             // 场景加载后重新应用龙枪弹种属性覆盖（射速/伤害/弹匣等）
             // 延迟调用确保玩家角色和武器已初始化
             StartCoroutine(DelayedApplyDragonGunAmmoOverride());
+
+            // 亡魂系统：尝试在死亡位置生成亡魂
+            StartCoroutine(DelayedSpawnDeathWraith_DeathWraith(scene));
 
             try
             {

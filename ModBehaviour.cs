@@ -2349,6 +2349,12 @@ namespace BossRush
             
             // 监听玩家死亡事件
             Health.OnDead += OnPlayerDeathInBossRush;
+
+            // 监听玩家受伤事件（亡魂系统致死前预缓存）
+            Health.OnHurt += PrimeDeathWraithData_DeathWraith;
+
+            // 监听玩家死亡事件（亡魂系统）
+            Health.OnDead += RecordDeathWraithData_DeathWraith;
             
             // 监听玩家受伤事件（用于无伤成就追踪）
             Health.OnHurt += OnPlayerHurtForAchievement;

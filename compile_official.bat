@@ -101,6 +101,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     DebugAndTools\ItemSpawner.cs ^
     DebugAndTools\NPCTeleportUI.cs ^
     Integration\BossRushIntegration.cs ^
+    Integration\DeathWraith\DeathWraithSystem.cs ^
     Integration\BossRushHarmonyPatch.cs ^
     Integration\BirthdayCakeItem.cs ^
     Integration\EquipmentFactory.cs ^
@@ -114,6 +115,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\SimpleJsonHelper.cs ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
+    Utilities\SteamHelper.cs ^
     Config\Config.cs ^
     Config\NPCSpawnConfig.cs ^
     Config\LootBlacklistRegistry.cs ^

@@ -21,8 +21,6 @@ namespace BossRush
         private static MethodInfo modeFRefreshCharacterIconMethod = null;
         private static readonly FieldInfo modeFHealthBarNameTextField =
             typeof(HealthBar).GetField("nameText", ModeFUiInstanceBindingFlags);
-        private static MethodInfo modeFSteamFriendsGetPersonaNameMethod = null;
-        private static MethodInfo modeFSteamManagerGetSteamDisplayMethod = null;
         private const int MODEF_BOUNTY_RADAR_MAX_TARGETS = 5;
         private const float MODEF_BOUNTY_RADAR_REFRESH_INTERVAL = 0.20f;
         private const float MODEF_BOUNTY_RADAR_REGULAR_RADIUS = 250f;
@@ -258,42 +256,6 @@ namespace BossRush
             return modeFRefreshCharacterIconMethod;
         }
 
-        private static MethodInfo GetModeFSteamFriendsGetPersonaNameMethod()
-        {
-            if (modeFSteamFriendsGetPersonaNameMethod != null)
-            {
-                return modeFSteamFriendsGetPersonaNameMethod;
-            }
-
-            Type steamFriendsType = AccessTools.TypeByName("Steamworks.SteamFriends");
-            if (steamFriendsType != null)
-            {
-                modeFSteamFriendsGetPersonaNameMethod = steamFriendsType.GetMethod(
-                    "GetPersonaName",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-            }
-
-            return modeFSteamFriendsGetPersonaNameMethod;
-        }
-
-        private static MethodInfo GetModeFSteamManagerGetSteamDisplayMethod()
-        {
-            if (modeFSteamManagerGetSteamDisplayMethod != null)
-            {
-                return modeFSteamManagerGetSteamDisplayMethod;
-            }
-
-            Type steamManagerType = AccessTools.TypeByName("SteamManager");
-            if (steamManagerType != null)
-            {
-                modeFSteamManagerGetSteamDisplayMethod = steamManagerType.GetMethod(
-                    "GetSteamDisplay",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-            }
-
-            return modeFSteamManagerGetSteamDisplayMethod;
-        }
-
         private static TextMeshProUGUI GetModeFHealthBarNameText(HealthBar healthBar)
         {
             if (healthBar == null || modeFHealthBarNameTextField == null)
@@ -421,7 +383,7 @@ namespace BossRush
             string previousName = modeFCachedPlayerName;
             try
             {
-                string steamName = TryGetModeFSteamPersonaName();
+                string steamName = TryGetSteamPersonaName();
                 modeFCachedPlayerName = !string.IsNullOrEmpty(steamName)
                     ? steamName
                     : L10n.T("我", "Me");
@@ -571,40 +533,6 @@ namespace BossRush
                    trimmed.StartsWith("ModeF_", StringComparison.Ordinal) ||
                    trimmed.StartsWith("BossRush_", StringComparison.Ordinal) ||
                    trimmed.StartsWith("Character(", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private string TryGetModeFSteamPersonaName()
-        {
-            try
-            {
-                MethodInfo getPersonaName = GetModeFSteamFriendsGetPersonaNameMethod();
-                if (getPersonaName != null)
-                {
-                    string personaName = getPersonaName.Invoke(null, null) as string;
-                    if (!string.IsNullOrEmpty(personaName))
-                    {
-                        return personaName;
-                    }
-                }
-            }
-            catch { }
-
-            try
-            {
-                MethodInfo getSteamDisplay = GetModeFSteamManagerGetSteamDisplayMethod();
-                if (getSteamDisplay != null)
-                {
-                    object display = getSteamDisplay.IsStatic ? getSteamDisplay.Invoke(null, null) : null;
-                    string displayName = display as string;
-                    if (!string.IsNullOrEmpty(displayName))
-                    {
-                        return displayName;
-                    }
-                }
-            }
-            catch { }
-
-            return null;
         }
 
         /// <summary>

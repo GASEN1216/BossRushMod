@@ -294,6 +294,11 @@ namespace BossRush
 
                 if (!health.IsDead)
                 {
+                    // 某些兜底死亡路径不会触发 Health.OnDead，这里手动补记亡魂数据。
+                    RecordManualDeathWraithData_DeathWraith(
+                        player,
+                        lethalDamage,
+                        "ModeFBleedFallback");
                     health.CurrentHealth = 0f;
                 }
 
