@@ -16,12 +16,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
 using Duckov;
 using Duckov.Economy;
 using Duckov.Scenes;
+using Duckov.Utilities;
 using ItemStatsSystem;
 using ItemStatsSystem.Data;
 using ItemStatsSystem.Items;
@@ -39,14 +41,32 @@ namespace BossRush
         public string sceneName;
         public string subSceneID;
         public float posX, posY, posZ;
+        // 仅保留给旧存档兼容，主角本体并不是通过 CharacterRandomPreset 创建。
         public string playerPresetName;
         public string playerPresetRuntimeName;
         public string playerName;
         public int droppedItemsValue;
         public long playerTotalWealth;
         public float playerMaxHealth;
+        public bool hasPlayerFaceData;
+        public CustomFaceSettingData playerFaceData;
+        public AudioManager.VoiceType playerVoiceType;
+        public AudioManager.FootStepMaterialType playerFootStepMaterialType;
+        public bool hasBoundMeleeSnapshot;
+        public int boundMeleeTypeId;
+        public string boundMeleeDisplayName;
+        public ItemTreeData boundMeleeItemTreeData;
         public ItemTreeData itemTreeData;
         public bool killed;
+    }
+
+    [Serializable]
+    public class WraithBoundMeleeSnapshot
+    {
+        public bool valid;
+        public int typeId;
+        public string displayName;
+        public ItemTreeData itemTreeData;
     }
 
     /// <summary>
@@ -67,9 +87,33 @@ namespace BossRush
         #region 亡魂系统 — 常量与字段
 
         private const string DEATH_WRAITH_SAVE_KEY = "BossRush_DeathWraith";
+        private const string DEATH_WRAITH_BOUND_MELEE_SAVE_KEY = "BossRush_DeathWraith_BoundMelee";
         private const string DEATH_WRAITH_NAME_KEY_PREFIX = "BossRush_DeathWraith_Name_";
         private const float DEATH_WRAITH_PENDING_MAX_AGE_SECONDS = 0.5f;
         private const int DEATH_WRAITH_PENDING_MAX_FRAME_DELTA = 1;
+        private static readonly FieldInfo LevelManager_CharacterModelField =
+            typeof(LevelManager).GetField("characterModel", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo CharacterRandomPreset_AiControllerField =
+            typeof(CharacterRandomPreset).GetField("aiController", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ItemAgentHolder_MeleeRefField_DeathWraith =
+            typeof(ItemAgentHolder).GetField("_meleeRef", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ItemAgentHolder_GunRefField_DeathWraith =
+            typeof(ItemAgentHolder).GetField("_gunRef", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ItemAgentHolder_CurrentUsingSocketCacheField_DeathWraith =
+            typeof(ItemAgentHolder).GetField("_currentUsingSocketCache", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ItemAgent_ItemField_DeathWraith =
+            typeof(ItemStatsSystem.ItemAgent).GetField("item", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo DuckovItemAgent_SocketsListField_DeathWraith =
+            typeof(DuckovItemAgent).GetField("socketsList", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ItemAgentMeleeWeapon_SoundKeyField_DeathWraith =
+            typeof(ItemAgent_MeleeWeapon).GetField("soundKey",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly FieldInfo ItemAgentMeleeWeapon_SlashFxDelayTimeField_DeathWraith =
+            typeof(ItemAgent_MeleeWeapon).GetField("slashFxDelayTime",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo ItemAgentMeleeWeapon_OnInitializeMethod_DeathWraith =
+            typeof(ItemAgent_MeleeWeapon).GetMethod("OnInitialize",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         private CharacterMainControl currentWraith;
         private bool deathWraithSpawnInProgress;
         private int deathWraithSceneToken;
@@ -247,8 +291,8 @@ namespace BossRush
                 + (string.IsNullOrEmpty(source) ? "" : ("[" + source + "]"))
                 + ": scene=" + info.sceneName
                 + ", subScene=" + info.subSceneID
-                + ", preset=" + info.playerPresetName
-                + " runtimePreset=" + info.playerPresetRuntimeName
+                + ", faceSaved=" + info.hasPlayerFaceData
+                + ", meleeSaved=" + info.hasBoundMeleeSnapshot
                 + " value=" + info.droppedItemsValue
                 + " wealth=" + info.playerTotalWealth
                 + " maxHp=" + info.playerMaxHealth
@@ -274,8 +318,32 @@ namespace BossRush
                         presetRuntimeName = NormalizeWraithRuntimePresetName_DeathWraith(
                             main.characterPreset.name);
                     }
+                    else
+                    {
+                        // characterPreset 为 null 时，尝试用 GameObject name 作为 runtimeName
+                        presetRuntimeName = NormalizeWraithRuntimePresetName_DeathWraith(main.name);
+                        DevLog("[DeathWraith] characterPreset 为 null，使用 main.name 作为 runtimeName: " + presetRuntimeName);
+                    }
                 }
                 catch { }
+
+                CustomFaceSettingData playerFaceData = default(CustomFaceSettingData);
+                bool hasPlayerFaceData = TryCapturePlayerFaceData_DeathWraith(main, out playerFaceData);
+                ItemTreeData boundMeleeItemTree = null;
+                int boundMeleeTypeId = 0;
+                string boundMeleeDisplayName = null;
+                bool hasBoundMeleeSnapshot = TryCaptureBoundMeleeSnapshot_DeathWraith(
+                    main,
+                    out boundMeleeItemTree,
+                    out boundMeleeTypeId,
+                    out boundMeleeDisplayName);
+                if (!hasBoundMeleeSnapshot)
+                {
+                    hasBoundMeleeSnapshot = TryLoadPersistedBoundMeleeSnapshot_DeathWraith(
+                        out boundMeleeItemTree,
+                        out boundMeleeTypeId,
+                        out boundMeleeDisplayName);
+                }
 
                 int droppedValue = 0;
                 try
@@ -319,6 +387,14 @@ namespace BossRush
                 }
 
                 string playerName = GetWraithPlayerName_DeathWraith();
+                AudioManager.VoiceType voiceType = AudioManager.VoiceType.Duck;
+                AudioManager.FootStepMaterialType footStepMaterialType = AudioManager.FootStepMaterialType.organic;
+                try
+                {
+                    voiceType = main.AudioVoiceType;
+                    footStepMaterialType = main.FootStepMaterialType;
+                }
+                catch { }
 
                 return new WraithInfo
                 {
@@ -336,6 +412,14 @@ namespace BossRush
                     droppedItemsValue = droppedValue,
                     playerTotalWealth = totalWealth,
                     playerMaxHealth = playerMaxHealth,
+                    hasPlayerFaceData = hasPlayerFaceData,
+                    playerFaceData = playerFaceData,
+                    playerVoiceType = voiceType,
+                    playerFootStepMaterialType = footStepMaterialType,
+                    hasBoundMeleeSnapshot = hasBoundMeleeSnapshot,
+                    boundMeleeTypeId = boundMeleeTypeId,
+                    boundMeleeDisplayName = boundMeleeDisplayName,
+                    boundMeleeItemTreeData = boundMeleeItemTree,
                     itemTreeData = itemTree,
                     killed = false
                 };
@@ -345,6 +429,188 @@ namespace BossRush
                 DevLog("[DeathWraith] BuildCurrentPlayerWraithInfo 异常: " + e.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// 主角外观由 CharacterModel + CustomFaceSettingData 驱动，而不是 characterPreset。
+        /// 优先抓取当前可见模型上的捏脸数据，失败时回退到主角专用存档。
+        /// </summary>
+        private bool TryCapturePlayerFaceData_DeathWraith(
+            CharacterMainControl main,
+            out CustomFaceSettingData faceData)
+        {
+            faceData = default(CustomFaceSettingData);
+
+            try
+            {
+                if (main != null &&
+                    main.characterModel != null &&
+                    main.characterModel.CustomFace != null)
+                {
+                    faceData = main.characterModel.CustomFace.ConvertToSaveData();
+                    faceData.savedSetting = true;
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 从当前主角模型抓取捏脸数据失败: " + e.Message);
+            }
+
+            try
+            {
+                LevelManager level = LevelManager.Instance;
+                if (level != null && level.CustomFaceManager != null)
+                {
+                    faceData = level.CustomFaceManager.LoadMainCharacterSetting();
+                    faceData.savedSetting = true;
+                    DevLog("[DeathWraith] 当前模型未提供捏脸实例，改用主角捏脸存档");
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 读取主角捏脸存档失败: " + e.Message);
+            }
+
+            return false;
+        }
+
+        private bool TryCaptureBoundMeleeSnapshot_DeathWraith(
+            CharacterMainControl main,
+            out ItemTreeData meleeItemTreeData,
+            out int meleeTypeId,
+            out string meleeDisplayName)
+        {
+            meleeItemTreeData = null;
+            meleeTypeId = 0;
+            meleeDisplayName = null;
+
+            Item meleeItem = GetCurrentPlayerBoundMeleeItem_DeathWraith(main);
+            if (meleeItem == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                meleeItemTreeData = ItemTreeData.FromItem(meleeItem);
+                meleeTypeId = meleeItem.TypeID;
+                meleeDisplayName = meleeItem.DisplayName;
+                return meleeItemTreeData != null;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 记录绑定近战快照失败: " + e.Message);
+                meleeItemTreeData = null;
+                meleeTypeId = 0;
+                meleeDisplayName = null;
+                return false;
+            }
+        }
+
+        private Item GetCurrentPlayerBoundMeleeItem_DeathWraith(CharacterMainControl main)
+        {
+            if (main == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                Slot meleeSlot = main.MeleeWeaponSlot();
+                if (meleeSlot != null && meleeSlot.Content != null)
+                {
+                    return meleeSlot.Content;
+                }
+            }
+            catch { }
+
+            try
+            {
+                ItemAgent_MeleeWeapon meleeAgent = main.GetMeleeWeapon();
+                if (meleeAgent != null)
+                {
+                    return meleeAgent.Item;
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        private bool TryLoadPersistedBoundMeleeSnapshot_DeathWraith(
+            out ItemTreeData meleeItemTreeData,
+            out int meleeTypeId,
+            out string meleeDisplayName)
+        {
+            meleeItemTreeData = null;
+            meleeTypeId = 0;
+            meleeDisplayName = null;
+
+            try
+            {
+                WraithBoundMeleeSnapshot snapshot =
+                    SavesSystem.Load<WraithBoundMeleeSnapshot>(DEATH_WRAITH_BOUND_MELEE_SAVE_KEY);
+                if (snapshot == null || !snapshot.valid || snapshot.itemTreeData == null)
+                {
+                    return false;
+                }
+
+                meleeItemTreeData = snapshot.itemTreeData;
+                meleeTypeId = snapshot.typeId;
+                meleeDisplayName = snapshot.displayName;
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 读取绑定近战快照失败: " + e.Message);
+                return false;
+            }
+        }
+
+        internal void SaveCurrentPlayerBoundMeleeSnapshot_DeathWraith(string source)
+        {
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                ItemTreeData meleeItemTreeData;
+                int meleeTypeId;
+                string meleeDisplayName;
+                if (!TryCaptureBoundMeleeSnapshot_DeathWraith(
+                    main,
+                    out meleeItemTreeData,
+                    out meleeTypeId,
+                    out meleeDisplayName))
+                {
+                    return;
+                }
+
+                SavesSystem.Save<WraithBoundMeleeSnapshot>(
+                    DEATH_WRAITH_BOUND_MELEE_SAVE_KEY,
+                    new WraithBoundMeleeSnapshot
+                    {
+                        valid = true,
+                        typeId = meleeTypeId,
+                        displayName = meleeDisplayName,
+                        itemTreeData = meleeItemTreeData
+                    });
+
+                if (!string.IsNullOrEmpty(source))
+                {
+                    DevLog("[DeathWraith] 已保存绑定近战快照[" + source + "]: "
+                        + meleeDisplayName + " (TypeID=" + meleeTypeId + ")");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] SaveCurrentPlayerBoundMeleeSnapshot 异常: " + e.Message);
+            }
+        }
+
+        internal void OnCollectSaveData_BoundMeleeSnapshot_DeathWraith()
+        {
+            SaveCurrentPlayerBoundMeleeSnapshot_DeathWraith("CollectSaveData");
         }
 
         private WraithInfo ConsumePendingDeathWraithInfo_DeathWraith(CharacterMainControl main)
@@ -540,35 +806,23 @@ namespace BossRush
                 if (!IsDeathWraithSupportedContext_DeathWraith()) return;
                 if (!IsDeathWraithSceneMatch_DeathWraith(info)) return;
 
-                EnsureWraithPresetCache_DeathWraith();
-
                 // 防重复生成
                 if (currentWraith != null) return;
 
                 DevLog("[DeathWraith] 开始生成亡魂...");
 
-                // 查找角色预设
-                CharacterRandomPreset targetPreset = FindWraithPreset_DeathWraith(info);
-                if (targetPreset == null)
-                {
-                    DevLog("[DeathWraith] 未找到可用预设，放弃生成");
-                    return;
-                }
-
                 // 生成角色
                 Vector3 spawnPos = new Vector3(info.posX, info.posY, info.posZ);
-                int relatedScene = SceneManager.GetActiveScene().buildIndex;
                 CharacterMainControl wraith = null;
 
                 try
                 {
-                    wraith = await targetPreset.CreateCharacterAsync(
-                        spawnPos, Vector3.forward, relatedScene, null, false);
+                    wraith = await CreateWraithCharacterFromPlayerSnapshot_DeathWraith(info, spawnPos);
                     spawnedWraith = wraith;
                 }
                 catch (Exception e)
                 {
-                    DevLog("[DeathWraith] CreateCharacterAsync 异常: " + e.Message);
+                    DevLog("[DeathWraith] 创建亡魂宿主异常: " + e.Message + "\n" + e.StackTrace);
                     return;
                 }
 
@@ -595,19 +849,6 @@ namespace BossRush
                     return;
                 }
 
-                // 装备复制
-                if (info.itemTreeData != null)
-                {
-                    await RestoreWraithEquipment_DeathWraith(wraith, info.itemTreeData);
-                }
-
-                if (sceneToken != deathWraithSceneToken)
-                {
-                    DestroyWraithInstance_DeathWraith(spawnedWraith, "场景已切换（装备恢复后）");
-                    spawnedWraith = null;
-                    return;
-                }
-
                 NormalizeDamageMultiplier(wraith);
                 RestoreWraithMaxHealthSnapshot_DeathWraith(wraith, info.playerMaxHealth);
                 ApplyBossStatMultiplier(wraith);
@@ -617,31 +858,14 @@ namespace BossRush
 
                 // 设置敌对阵营
                 wraith.SetTeam(Teams.scav);
+                InitializeWraithAI_DeathWraith(wraith, spawnPos, info);
 
                 // 设置显示名（克隆 preset 模式，参考 ModeFRespawn.cs:637-641）
                 WraithTier tier = ClassifyWraithTier_DeathWraith(info.droppedItemsValue, info.playerTotalWealth);
                 string displayName = GetWraithDisplayName_DeathWraith(info.playerName, tier);
                 string displayNameKey = CreateWraithDisplayNameKey_DeathWraith(displayName);
-
-                if (wraith.characterPreset != null)
-                {
-                    try
-                    {
-                        CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(wraith.characterPreset);
-                        wraith.characterPreset = customPreset; // 立即替换，确保后续清理销毁的是克隆体
-                        customPreset.aiCombatFactor = 1f;
-                        customPreset.showName = true;
-                        customPreset.showHealthBar = true;
-                        customPreset.dropBoxOnDead = false;
-                        customPreset.nameKey = !string.IsNullOrEmpty(displayNameKey)
-                            ? displayNameKey
-                            : displayName;
-                    }
-                    catch (Exception e)
-                    {
-                        DevLog("[DeathWraith] 克隆预设异常: " + e.Message);
-                    }
-                }
+                ApplyWraithRuntimePreset_DeathWraith(wraith, info, displayNameKey, displayName);
+                await PrepareWraithCombatLoadout_DeathWraith(wraith);
 
                 // 同步 Health 组件的血条显示（参考 DragonKingBoss.cs:163-167）
                 try
@@ -698,6 +922,1044 @@ namespace BossRush
                 {
                     deathWraithSpawnInProgress = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 主角本体由 CharacterCreator + LevelManager.characterModel 创建。
+        /// 亡魂应沿用同一条链创建宿主角色，再切换成敌对 AI。
+        /// </summary>
+        private async UniTask<CharacterMainControl> CreateWraithCharacterFromPlayerSnapshot_DeathWraith(
+            WraithInfo info,
+            Vector3 spawnPos)
+        {
+            if (info == null)
+            {
+                return null;
+            }
+
+            LevelManager level = LevelManager.Instance;
+            if (level == null || level.CharacterCreator == null)
+            {
+                DevLog("[DeathWraith] LevelManager.CharacterCreator 不可用，无法创建亡魂");
+                return null;
+            }
+
+            CharacterModel mainCharacterModelPrefab = GetMainCharacterModelPrefab_DeathWraith(level);
+            if (mainCharacterModelPrefab == null)
+            {
+                DevLog("[DeathWraith] 未找到主角 CharacterModel 预设，无法创建亡魂");
+                return null;
+            }
+
+            Item characterItem = null;
+            try
+            {
+                if (info.itemTreeData != null)
+                {
+                    characterItem = await ItemTreeData.InstantiateAsync(info.itemTreeData);
+                    if (characterItem != null)
+                    {
+                        RestoreWraithItemRuntimeStateRecursive_DeathWraith(
+                            characterItem,
+                            "DeathWraith.CreateCharacter");
+                    }
+                }
+
+                if (characterItem == null)
+                {
+                    characterItem = await level.CharacterCreator.LoadOrCreateCharacterItemInstance(
+                        GameplayDataSettings.ItemAssets.DefaultCharacterItemTypeID);
+                    DevLog("[DeathWraith] 未取到死亡时装备树，使用默认主角物品容器创建亡魂宿主");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 创建亡魂物品树异常: " + e.Message);
+                return null;
+            }
+
+            if (characterItem == null)
+            {
+                DevLog("[DeathWraith] 亡魂宿主物品树为空，放弃生成");
+                return null;
+            }
+
+            CharacterMainControl wraith = null;
+            try
+            {
+                wraith = await level.CharacterCreator.CreateCharacter(
+                    characterItem,
+                    mainCharacterModelPrefab,
+                    spawnPos,
+                    Quaternion.identity);
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] CharacterCreator.CreateCharacter 异常: " + e.Message);
+                return null;
+            }
+
+            if (wraith == null)
+            {
+                return null;
+            }
+
+            ApplyStoredWraithFaceData_DeathWraith(wraith, info);
+            await EnsureStoredBoundMeleeEquipped_DeathWraith(wraith, info);
+            return wraith;
+        }
+
+        private CharacterModel GetMainCharacterModelPrefab_DeathWraith(LevelManager level)
+        {
+            if (level == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                if (LevelManager_CharacterModelField == null)
+                {
+                    DevLog("[DeathWraith] 反射不到 LevelManager.characterModel");
+                    return null;
+                }
+
+                CharacterModel modelPrefab = LevelManager_CharacterModelField.GetValue(level) as CharacterModel;
+                return modelPrefab;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 获取主角 CharacterModel 预设失败: " + e.Message);
+                return null;
+            }
+        }
+
+        private void ApplyStoredWraithFaceData_DeathWraith(CharacterMainControl wraith, WraithInfo info)
+        {
+            if (wraith == null || info == null || !info.hasPlayerFaceData)
+            {
+                return;
+            }
+
+            try
+            {
+                if (wraith.characterModel != null)
+                {
+                    wraith.characterModel.SetFaceFromData(info.playerFaceData);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 应用亡魂捏脸数据失败: " + e.Message);
+            }
+        }
+
+        private async UniTask EnsureStoredBoundMeleeEquipped_DeathWraith(
+            CharacterMainControl wraith,
+            WraithInfo info)
+        {
+            if (wraith == null || info == null || !info.hasBoundMeleeSnapshot ||
+                info.boundMeleeItemTreeData == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Slot meleeSlot = wraith.MeleeWeaponSlot();
+                if (meleeSlot != null && meleeSlot.Content != null &&
+                    meleeSlot.Content.TypeID == info.boundMeleeTypeId)
+                {
+                    return;
+                }
+
+                Item meleeItem = await ItemTreeData.InstantiateAsync(info.boundMeleeItemTreeData);
+                if (meleeItem == null)
+                {
+                    DevLog("[DeathWraith] [WARNING] 绑定近战实例化失败");
+                    return;
+                }
+
+                RestoreWraithItemRuntimeStateRecursive_DeathWraith(
+                    meleeItem,
+                            "DeathWraith.BoundMelee");
+
+                bool equipped = false;
+                Item pluggedOut = null;
+                try
+                {
+                    if (meleeSlot != null)
+                    {
+                        meleeSlot.Plug(meleeItem, out pluggedOut);
+                        equipped = meleeSlot.Content == meleeItem;
+                    }
+                }
+                catch { }
+
+                if (!equipped)
+                {
+                    try
+                    {
+                        equipped = wraith.CharacterItem != null &&
+                            wraith.CharacterItem.TryPlug(meleeItem, true, null, 0);
+                    }
+                    catch { }
+                }
+
+                if (pluggedOut != null && pluggedOut != meleeItem)
+                {
+                    Inventory inventory = wraith.CharacterItem != null ? wraith.CharacterItem.Inventory : null;
+                    if (!TryAddItemToInventory_DeathWraith(inventory, pluggedOut))
+                    {
+                        DestroyDetachedItem_DeathWraith(pluggedOut, "绑定近战替换后的旧物品无法回收");
+                    }
+                }
+
+                if (!equipped)
+                {
+                    Inventory inventory = wraith.CharacterItem != null ? wraith.CharacterItem.Inventory : null;
+                    if (!TryAddItemToInventory_DeathWraith(inventory, meleeItem))
+                    {
+                        DestroyDetachedItem_DeathWraith(meleeItem, "绑定近战回填失败");
+                        return;
+                    }
+                }
+
+                DevLog("[DeathWraith] 已回填绑定近战武器: "
+                    + (string.IsNullOrEmpty(info.boundMeleeDisplayName) ? "<unknown>" : info.boundMeleeDisplayName)
+                    + " (TypeID=" + info.boundMeleeTypeId + ")");
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 回填绑定近战武器失败: " + e.Message);
+            }
+        }
+
+        private void InitializeWraithAI_DeathWraith(
+            CharacterMainControl wraith,
+            Vector3 spawnPos,
+            WraithInfo info)
+        {
+            if (wraith == null)
+            {
+                return;
+            }
+
+            try
+            {
+                wraith.AudioVoiceType = info != null
+                    ? info.playerVoiceType
+                    : AudioManager.VoiceType.Duck;
+                wraith.FootStepMaterialType = info != null
+                    ? info.playerFootStepMaterialType
+                    : AudioManager.FootStepMaterialType.organic;
+            }
+            catch { }
+
+            try
+            {
+                if (wraith.aiCharacterController == null)
+                {
+                    AICharacterController aiPrefab = GetWraithHostAIPrefab_DeathWraith();
+                    if (aiPrefab != null)
+                    {
+                        AICharacterController clonedAi = UnityEngine.Object.Instantiate(aiPrefab);
+                        wraith.aiCharacterController = clonedAi;
+                        DevLog("[DeathWraith] 已为亡魂克隆 AI 控制器: " + aiPrefab.name);
+                    }
+                    else
+                    {
+                        DevLog("[DeathWraith] [WARNING] 未找到可用 AI 控制器预设，亡魂可能无法主动战斗");
+                    }
+                }
+
+                if (wraith.aiCharacterController != null &&
+                    wraith.aiCharacterController.CharacterMainControl != wraith)
+                {
+                    wraith.aiCharacterController.Init(
+                        wraith,
+                        spawnPos,
+                        wraith.AudioVoiceType,
+                        wraith.FootStepMaterialType);
+                    DevLog("[DeathWraith] 亡魂 AI 初始化完成");
+                    try
+                    {
+                        DevLog("[DeathWraith] AI 参数: reaction=" + wraith.aiCharacterController.baseReactionTime
+                            + ", shootDelay=" + wraith.aiCharacterController.shootDelay);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        CharacterMainControl main = CharacterMainControl.Main;
+                        if (main != null && main.mainDamageReceiver != null)
+                        {
+                            wraith.aiCharacterController.forceTracePlayerDistance =
+                                Mathf.Max(wraith.aiCharacterController.forceTracePlayerDistance, 500f);
+                            wraith.aiCharacterController.searchedEnemy = main.mainDamageReceiver;
+                            wraith.aiCharacterController.SetTarget(main.mainDamageReceiver.transform);
+                            wraith.aiCharacterController.SetNoticedToTarget(main.mainDamageReceiver);
+                            wraith.aiCharacterController.noticed = true;
+                            DevLog("[DeathWraith] 已强制锁定玩家为初始仇恨目标");
+                        }
+                    }
+                    catch (Exception aggroEx)
+                    {
+                        DevLog("[DeathWraith] 设置初始仇恨目标失败: " + aggroEx.Message);
+                    }
+                }
+                else if (wraith.aiCharacterController != null)
+                {
+                    DevLog("[DeathWraith] 亡魂 AI 已绑定，无需重复初始化");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 初始化亡魂 AI 失败: " + e.Message);
+            }
+        }
+
+        private AICharacterController GetWraithHostAIPrefab_DeathWraith()
+        {
+            EnsureWraithPresetCache_DeathWraith();
+
+            try
+            {
+                if (deathWraithPresetCacheByNameKey != null)
+                {
+                    foreach (CharacterRandomPreset preset in deathWraithPresetCacheByNameKey.Values)
+                    {
+                        if (preset == null || preset.team == Teams.player)
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            if (ReflectionCache.CharacterRandomPreset_CharacterIconType != null)
+                            {
+                                CharacterIconTypes iconType = (CharacterIconTypes)
+                                    ReflectionCache.CharacterRandomPreset_CharacterIconType.GetValue(preset);
+                                if (iconType == CharacterIconTypes.merchant ||
+                                    iconType == CharacterIconTypes.pet)
+                                {
+                                    continue;
+                                }
+                            }
+                        }
+                        catch { }
+
+                        AICharacterController aiPrefab = GetAIPrefabFromPreset_DeathWraith(preset);
+                        if (aiPrefab != null)
+                        {
+                            return aiPrefab;
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 遍历 AI 宿主预设失败: " + e.Message);
+            }
+
+            return null;
+        }
+
+        private static AICharacterController GetAIPrefabFromPreset_DeathWraith(CharacterRandomPreset preset)
+        {
+            if (preset == null || CharacterRandomPreset_AiControllerField == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return CharacterRandomPreset_AiControllerField.GetValue(preset) as AICharacterController;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private async UniTask PrepareWraithCombatLoadout_DeathWraith(CharacterMainControl wraith)
+        {
+            if (wraith == null)
+            {
+                return;
+            }
+
+            try
+            {
+                ForceRefreshWraithEquipmentAgents_DeathWraith(wraith);
+
+                Item selectedWeapon = SelectPreferredCombatWeaponItem_DeathWraith(wraith);
+                if (selectedWeapon == null)
+                {
+                    DevLog("[DeathWraith] [WARNING] 亡魂没有可用武器");
+                    return;
+                }
+
+                wraith.ChangeHoldItem(selectedWeapon);
+                await UniTask.Yield();
+
+                ItemAgent_Gun gun = wraith.GetGun();
+                if (gun != null)
+                {
+                    RemoveWraithMeleeFallbackDriver_DeathWraith(wraith);
+                    SyncWraithCombatMode_DeathWraith(wraith, false);
+                    await EnsureWraithGunReady_DeathWraith(wraith, gun);
+                    DevLog("[DeathWraith] 已切换为枪械作战: " + gun.Item.DisplayName);
+                    return;
+                }
+
+                ItemAgent_MeleeWeapon melee = wraith.GetMeleeWeapon();
+                if (melee == null && IsLikelyMeleeWeaponItem_DeathWraith(wraith, selectedWeapon))
+                {
+                    melee = EnsureWraithMeleeAgentReady_DeathWraith(wraith, selectedWeapon);
+                }
+
+                if (melee != null)
+                {
+                    InstallWraithMeleeFallbackDriver_DeathWraith(wraith);
+                    SyncWraithCombatMode_DeathWraith(wraith, true);
+                    DevLog("[DeathWraith] 已切换为近战作战: " + melee.Item.DisplayName);
+                    return;
+                }
+
+                RemoveWraithMeleeFallbackDriver_DeathWraith(wraith);
+                DevLog("[DeathWraith] [WARNING] 切换武器后仍未拿到枪械/近战代理");
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 准备亡魂战斗装备失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+
+        private ItemAgent_MeleeWeapon EnsureWraithMeleeAgentReady_DeathWraith(
+            CharacterMainControl wraith,
+            Item meleeItem)
+        {
+            if (wraith == null || meleeItem == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                DuckovItemAgent holdAgent = wraith.CurrentHoldItemAgent;
+                if (holdAgent == null)
+                {
+                    DevLog("[DeathWraith] [WARNING] 近战兜底失败：当前没有手持代理");
+                    return null;
+                }
+
+                Item holdItem = null;
+                try
+                {
+                    holdItem = holdAgent.Item;
+                }
+                catch
+                {
+                }
+
+                if (holdItem != null && holdItem != meleeItem)
+                {
+                    DevLog("[DeathWraith] [WARNING] 近战兜底中止：当前手持物品与目标近战不一致");
+                    return null;
+                }
+
+                ItemAgent_MeleeWeapon meleeAgent = holdAgent as ItemAgent_MeleeWeapon;
+                if (meleeAgent == null)
+                {
+                    meleeAgent = holdAgent.GetComponent<ItemAgent_MeleeWeapon>();
+                }
+
+                bool addedAtRuntime = false;
+                if (meleeAgent == null)
+                {
+                    meleeAgent = holdAgent.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
+                    addedAtRuntime = true;
+                }
+
+                CopyMeleeAgentDefaultsFromTemplate_DeathWraith(meleeAgent, meleeItem);
+
+                if (ItemAgent_ItemField_DeathWraith != null)
+                {
+                    ItemAgent_ItemField_DeathWraith.SetValue(meleeAgent, meleeItem);
+                }
+
+                EnsureDuckovItemAgentSocketsInitialized_DeathWraith(holdAgent);
+                EnsureDuckovItemAgentSocketsInitialized_DeathWraith(meleeAgent);
+
+                if (ItemAgentMeleeWeapon_OnInitializeMethod_DeathWraith != null)
+                {
+                    try
+                    {
+                        ItemAgentMeleeWeapon_OnInitializeMethod_DeathWraith.Invoke(meleeAgent, null);
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                meleeAgent.SetHolder(wraith);
+                holdAgent.handheldSocket = meleeAgent.handheldSocket;
+                holdAgent.handAnimationType = meleeAgent.handAnimationType;
+
+                Transform weaponSocket = null;
+                if (wraith.characterModel != null)
+                {
+                    weaponSocket = wraith.characterModel.RightHandSocket;
+                    if (weaponSocket == null)
+                    {
+                        weaponSocket = wraith.characterModel.MeleeWeaponSocket;
+                    }
+                }
+
+                if (weaponSocket != null)
+                {
+                    holdAgent.transform.SetParent(weaponSocket, false);
+                    holdAgent.transform.localPosition = Vector3.zero;
+                    holdAgent.transform.localRotation = Quaternion.identity;
+                    if (wraith.agentHolder != null &&
+                        ItemAgentHolder_CurrentUsingSocketCacheField_DeathWraith != null)
+                    {
+                        ItemAgentHolder_CurrentUsingSocketCacheField_DeathWraith.SetValue(
+                            wraith.agentHolder,
+                            weaponSocket);
+                    }
+                }
+
+                if (wraith.agentHolder != null)
+                {
+                    if (ItemAgentHolder_MeleeRefField_DeathWraith != null)
+                    {
+                        ItemAgentHolder_MeleeRefField_DeathWraith.SetValue(wraith.agentHolder, meleeAgent);
+                    }
+
+                    if (ItemAgentHolder_GunRefField_DeathWraith != null)
+                    {
+                        ItemAgentHolder_GunRefField_DeathWraith.SetValue(wraith.agentHolder, null);
+                    }
+                }
+
+                ItemAgent_MeleeWeapon resolved = wraith.GetMeleeWeapon();
+                if (resolved != null)
+                {
+                    DevLog("[DeathWraith] 已补齐近战手持代理: "
+                        + meleeItem.DisplayName
+                        + " | runtimeAdded=" + addedAtRuntime);
+                    return resolved;
+                }
+
+                DevLog("[DeathWraith] [WARNING] 近战代理兜底执行后仍未拿到 _meleeRef: "
+                    + meleeItem.DisplayName);
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 近战代理兜底失败: " + e.Message + "\n" + e.StackTrace);
+            }
+
+            return null;
+        }
+
+        private void CopyMeleeAgentDefaultsFromTemplate_DeathWraith(
+            ItemAgent_MeleeWeapon target,
+            Item meleeItem)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            ItemAgent_MeleeWeapon template = null;
+            try
+            {
+                if (meleeItem != null)
+                {
+                    template = meleeItem.GetComponent<ItemAgent_MeleeWeapon>();
+                }
+            }
+            catch
+            {
+            }
+
+            target.handheldSocket = template != null
+                ? template.handheldSocket
+                : HandheldSocketTypes.normalHandheld;
+            target.handAnimationType = template != null
+                ? template.handAnimationType
+                : HandheldAnimationType.meleeWeapon;
+
+            if (template != null)
+            {
+                if (template.hitFx != null)
+                {
+                    target.hitFx = template.hitFx;
+                }
+
+                if (template.slashFx != null)
+                {
+                    target.slashFx = template.slashFx;
+                }
+
+                if (ItemAgentMeleeWeapon_SlashFxDelayTimeField_DeathWraith != null)
+                {
+                    try
+                    {
+                        object slashDelay = ItemAgentMeleeWeapon_SlashFxDelayTimeField_DeathWraith.GetValue(template);
+                        if (slashDelay != null)
+                        {
+                            ItemAgentMeleeWeapon_SlashFxDelayTimeField_DeathWraith.SetValue(target, slashDelay);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            if (ItemAgentMeleeWeapon_SoundKeyField_DeathWraith != null)
+            {
+                try
+                {
+                    string soundKey = "Default";
+                    if (template != null)
+                    {
+                        object rawKey = ItemAgentMeleeWeapon_SoundKeyField_DeathWraith.GetValue(template);
+                        if (rawKey is string templateKey && !string.IsNullOrWhiteSpace(templateKey))
+                        {
+                            soundKey = templateKey;
+                        }
+                    }
+
+                    ItemAgentMeleeWeapon_SoundKeyField_DeathWraith.SetValue(target, soundKey);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private void EnsureDuckovItemAgentSocketsInitialized_DeathWraith(DuckovItemAgent agent)
+        {
+            if (agent == null || DuckovItemAgent_SocketsListField_DeathWraith == null)
+            {
+                return;
+            }
+
+            try
+            {
+                object socketsList = DuckovItemAgent_SocketsListField_DeathWraith.GetValue(agent);
+                if (socketsList == null)
+                {
+                    DuckovItemAgent_SocketsListField_DeathWraith.SetValue(agent, new List<Transform>());
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private bool IsLikelyMeleeWeaponItem_DeathWraith(CharacterMainControl wraith, Item item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (item.GetComponent<ItemSetting_MeleeWeapon>() != null)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                Slot meleeSlot = wraith != null ? wraith.MeleeWeaponSlot() : null;
+                return meleeSlot != null && meleeSlot.Content == item;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void InstallWraithMeleeFallbackDriver_DeathWraith(CharacterMainControl wraith)
+        {
+            if (wraith == null)
+            {
+                return;
+            }
+
+            try
+            {
+                DeathWraithMeleeFallbackDriver driver =
+                    wraith.GetComponent<DeathWraithMeleeFallbackDriver>();
+                if (driver == null)
+                {
+                    driver = wraith.gameObject.AddComponent<DeathWraithMeleeFallbackDriver>();
+                }
+
+                driver.Initialize(wraith);
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 安装近战兜底驱动失败: " + e.Message);
+            }
+        }
+
+        private void RemoveWraithMeleeFallbackDriver_DeathWraith(CharacterMainControl wraith)
+        {
+            if (wraith == null)
+            {
+                return;
+            }
+
+            try
+            {
+                DeathWraithMeleeFallbackDriver driver =
+                    wraith.GetComponent<DeathWraithMeleeFallbackDriver>();
+                if (driver != null)
+                {
+                    UnityEngine.Object.Destroy(driver);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private void ForceRefreshWraithEquipmentAgents_DeathWraith(CharacterMainControl wraith)
+        {
+            if (wraith == null || wraith.CharacterItem == null || wraith.CharacterItem.Slots == null)
+            {
+                return;
+            }
+
+            try
+            {
+                foreach (Slot slot in wraith.CharacterItem.Slots)
+                {
+                    if (slot != null && slot.Content != null)
+                    {
+                        slot.ForceInvokeSlotContentChangedEvent();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 刷新亡魂装备代理失败: " + e.Message);
+            }
+        }
+
+        private void SyncWraithCombatMode_DeathWraith(CharacterMainControl wraith, bool meleeMode)
+        {
+            if (wraith == null)
+            {
+                return;
+            }
+
+            try
+            {
+                AICharacterController ai = wraith.aiCharacterController;
+                if (ai == null)
+                {
+                    DevLog("[DeathWraith] [WARNING] 无 AI 控制器，无法同步近战/枪战模式");
+                    return;
+                }
+
+                ai.melee = meleeMode;
+                ai.defaultWeaponOut = true;
+
+                if (meleeMode)
+                {
+                    ai.meleeWaitTime = Mathf.Max(0.05f, ai.meleeWaitTime);
+                    ai.meleeAlertTime = Mathf.Max(0.1f, ai.meleeAlertTime);
+                    DevLog("[DeathWraith] AI 已切换为近战态: wait="
+                        + ai.meleeWaitTime + ", alert=" + ai.meleeAlertTime);
+                }
+                else
+                {
+                    DevLog("[DeathWraith] AI 已切换为枪战态");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 同步亡魂战斗模式失败: " + e.Message);
+            }
+        }
+
+        private Item SelectPreferredCombatWeaponItem_DeathWraith(CharacterMainControl wraith)
+        {
+            if (wraith == null)
+            {
+                return null;
+            }
+
+            Slot primary = wraith.PrimWeaponSlot();
+            if (primary != null && IsGunItem_DeathWraith(primary.Content))
+            {
+                return primary.Content;
+            }
+
+            Slot secondary = wraith.SecWeaponSlot();
+            if (secondary != null && IsGunItem_DeathWraith(secondary.Content))
+            {
+                return secondary.Content;
+            }
+
+            Slot melee = wraith.MeleeWeaponSlot();
+            if (melee != null && melee.Content != null)
+            {
+                return melee.Content;
+            }
+
+            if (primary != null && primary.Content != null)
+            {
+                return primary.Content;
+            }
+
+            if (secondary != null && secondary.Content != null)
+            {
+                return secondary.Content;
+            }
+
+            return null;
+        }
+
+        private static bool IsGunItem_DeathWraith(Item item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return item.GetComponent<ItemSetting_Gun>() != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async UniTask EnsureWraithGunReady_DeathWraith(CharacterMainControl wraith, ItemAgent_Gun gun)
+        {
+            if (wraith == null || gun == null || gun.Item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                ItemSetting_Gun gunSetting = gun.GunItemSetting;
+                Inventory inventory = wraith.CharacterItem != null ? wraith.CharacterItem.Inventory : null;
+                if (gunSetting == null || inventory == null)
+                {
+                    DevLog("[DeathWraith] [WARNING] 枪械缺少 GunSetting 或库存，无法补弹");
+                    return;
+                }
+
+                Item ammoPrototype = ResolveWraithAmmoPrototype_DeathWraith(gunSetting, inventory);
+                if (ammoPrototype == null)
+                {
+                    DevLog("[DeathWraith] [WARNING] 未能解析亡魂枪械的对应子弹: " + gun.Item.DisplayName);
+                    return;
+                }
+
+                int targetBulletId = ammoPrototype.TypeID;
+                gunSetting.SetTargetBulletType(targetBulletId);
+
+                int existingAmmo = CountAmmoInInventory_DeathWraith(inventory, targetBulletId);
+                int desiredAmmo = Math.Max(gunSetting.Capacity * 3, Math.Max(30, ammoPrototype.MaxStackCount));
+                if (existingAmmo < desiredAmmo)
+                {
+                    int added = desiredAmmo - existingAmmo;
+                    AddAmmoToInventory_DeathWraith(inventory, ammoPrototype, added);
+                    DevLog("[DeathWraith] 已为枪械补充子弹: typeID=" + targetBulletId
+                        + ", added=" + added);
+                }
+
+                try
+                {
+                    gun.Item.Variables.SetInt("BulletCount", gunSetting.Capacity, true);
+                }
+                catch
+                {
+                    try
+                    {
+                        gun.Item.Variables.SetInt("BulletCount".GetHashCode(), gunSetting.Capacity);
+                    }
+                    catch { }
+                }
+
+                gunSetting.AutoSetTypeInInventory(inventory);
+                gunSetting.LoadBulletsFromInventory(inventory);
+                await UniTask.Yield();
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 补充亡魂枪械子弹失败: " + e.Message);
+            }
+        }
+
+        private Item ResolveWraithAmmoPrototype_DeathWraith(ItemSetting_Gun gunSetting, Inventory inventory)
+        {
+            if (gunSetting == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                if (gunSetting.TargetBulletID > 0)
+                {
+                    Item exactBullet = ItemAssetsCollection.InstantiateSync(gunSetting.TargetBulletID);
+                    if (exactBullet != null)
+                    {
+                        return exactBullet;
+                    }
+                }
+            }
+            catch { }
+
+            if (inventory == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                string weaponCaliber = gunSetting.Item != null
+                    ? gunSetting.Item.Constants.GetString("Caliber".GetHashCode(), null)
+                    : null;
+
+                foreach (Item item in inventory)
+                {
+                    if (item == null || !item.GetBool("IsBullet", false))
+                    {
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(weaponCaliber))
+                    {
+                        string ammoCaliber = item.Constants.GetString("Caliber".GetHashCode(), null);
+                        if (!string.Equals(ammoCaliber, weaponCaliber, StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+                    }
+
+                    return item;
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        private int CountAmmoInInventory_DeathWraith(Inventory inventory, int ammoTypeId)
+        {
+            if (inventory == null || ammoTypeId <= 0)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            try
+            {
+                foreach (Item item in inventory)
+                {
+                    if (item != null && item.TypeID == ammoTypeId)
+                    {
+                        count += Math.Max(1, item.StackCount);
+                    }
+                }
+            }
+            catch { }
+
+            return count;
+        }
+
+        private void AddAmmoToInventory_DeathWraith(Inventory inventory, Item ammoPrototype, int amountToAdd)
+        {
+            if (inventory == null || ammoPrototype == null || amountToAdd <= 0)
+            {
+                return;
+            }
+
+            int remaining = amountToAdd;
+            int maxStack = Math.Max(1, ammoPrototype.MaxStackCount);
+            while (remaining > 0)
+            {
+                Item ammo = ammoPrototype.CreateInstance();
+                if (ammo == null)
+                {
+                    break;
+                }
+
+                int stack = Math.Min(remaining, maxStack);
+                ammo.StackCount = Math.Max(1, stack);
+                inventory.AddItem(ammo);
+                remaining -= ammo.StackCount;
+            }
+        }
+
+        private void ApplyWraithRuntimePreset_DeathWraith(
+            CharacterMainControl wraith,
+            WraithInfo info,
+            string displayNameKey,
+            string displayName)
+        {
+            if (wraith == null)
+            {
+                return;
+            }
+
+            try
+            {
+                DestroyOwnedWraithPresetClone_DeathWraith(wraith);
+
+                CharacterRandomPreset runtimePreset =
+                    ScriptableObject.CreateInstance<CharacterRandomPreset>();
+                runtimePreset.name = "BossRush_DeathWraithPreset(Clone)";
+                runtimePreset.aiCombatFactor = 1f;
+                runtimePreset.showName = true;
+                runtimePreset.showHealthBar = true;
+                runtimePreset.dropBoxOnDead = false;
+                runtimePreset.team = Teams.scav;
+                runtimePreset.hasSoul = false;
+                runtimePreset.voiceType = info != null
+                    ? info.playerVoiceType
+                    : wraith.AudioVoiceType;
+                runtimePreset.footstepMaterialType = info != null
+                    ? info.playerFootStepMaterialType
+                    : wraith.FootStepMaterialType;
+                runtimePreset.nameKey = !string.IsNullOrEmpty(displayNameKey)
+                    ? displayNameKey
+                    : displayName;
+
+                if (ReflectionCache.CharacterRandomPreset_CharacterIconType != null)
+                {
+                    ReflectionCache.CharacterRandomPreset_CharacterIconType.SetValue(
+                        runtimePreset,
+                        CharacterIconTypes.pmc);
+                }
+
+                wraith.characterPreset = runtimePreset;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 创建亡魂运行时预设失败: " + e.Message);
             }
         }
 
@@ -1210,7 +2472,6 @@ namespace BossRush
         /// </summary>
         private void ApplyWraithTierStats_DeathWraith(CharacterMainControl wraith, WraithTier tier)
         {
-            if (tier == WraithTier.Weak) return;
             if (wraith == null) return;
 
             try
@@ -1218,10 +2479,27 @@ namespace BossRush
                 var item = wraith.CharacterItem;
                 if (item == null) return;
 
-                float speedMult = tier == WraithTier.Strong ? 1.9f : 1.5f;
-                float dmgMult = tier == WraithTier.Strong ? 1.5f : 1.25f;
+                float speedMult = tier == WraithTier.Strong ? 1.9f :
+                    (tier == WraithTier.Balanced ? 1.5f : 1f);
+                float dmgMult = tier == WraithTier.Strong ? 1.5f :
+                    (tier == WraithTier.Balanced ? 1.25f : 1f);
+                float hpMult = tier == WraithTier.Strong ? 10f :
+                    (tier == WraithTier.Balanced ? 6f : 3f);
 
-                // 移速加成（使用 MoveSpeed，与仓库其他系统一致）
+                try
+                {
+                    Stat hpStat = item.GetStat("MaxHealth".GetHashCode());
+                    if (hpStat != null)
+                    {
+                        float old = hpStat.BaseValue;
+                        hpStat.BaseValue *= hpMult;
+                        DevLog("[DeathWraith] MaxHealth: " + old + " -> " + hpStat.BaseValue);
+                    }
+                }
+                catch { }
+
+                // 移速加成：龙裔二阶段会改 MoveSpeed + Moveability。
+                // 亡魂额外同步 WalkSpeed/RunSpeed，确保原版移动控制真实生效。
                 try
                 {
                     Stat moveStat = item.GetStat("MoveSpeed".GetHashCode());
@@ -1230,6 +2508,42 @@ namespace BossRush
                         float old = moveStat.BaseValue;
                         moveStat.BaseValue *= speedMult;
                         DevLog("[DeathWraith] MoveSpeed: " + old + " -> " + moveStat.BaseValue);
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    Stat walkStat = item.GetStat("WalkSpeed".GetHashCode());
+                    if (walkStat != null)
+                    {
+                        float old = walkStat.BaseValue;
+                        walkStat.BaseValue *= speedMult;
+                        DevLog("[DeathWraith] WalkSpeed: " + old + " -> " + walkStat.BaseValue);
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    Stat runStat = item.GetStat("RunSpeed".GetHashCode());
+                    if (runStat != null)
+                    {
+                        float old = runStat.BaseValue;
+                        runStat.BaseValue *= speedMult;
+                        DevLog("[DeathWraith] RunSpeed: " + old + " -> " + runStat.BaseValue);
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    Stat moveabilityStat = item.GetStat("Moveability".GetHashCode());
+                    if (moveabilityStat != null)
+                    {
+                        float old = moveabilityStat.BaseValue;
+                        moveabilityStat.BaseValue = Mathf.Max(moveabilityStat.BaseValue, 10f);
+                        DevLog("[DeathWraith] Moveability: " + old + " -> " + moveabilityStat.BaseValue);
                     }
                 }
                 catch { }
@@ -1259,7 +2573,17 @@ namespace BossRush
                 }
                 catch { }
 
-                DevLog("[DeathWraith] 属性加成完成: tier=" + tier + " speedMult=" + speedMult + " dmgMult=" + dmgMult);
+                try
+                {
+                    DevLog("[DeathWraith] 当前角色移速快照: walk=" + wraith.CharacterWalkSpeed
+                        + ", run=" + wraith.CharacterRunSpeed);
+                }
+                catch { }
+
+                DevLog("[DeathWraith] 属性加成完成: tier=" + tier
+                    + " hpMult=" + hpMult
+                    + " speedMult=" + speedMult
+                    + " dmgMult=" + dmgMult);
             }
             catch (Exception e)
             {
@@ -1320,6 +2644,105 @@ namespace BossRush
         }
 
         #endregion
+
+        private sealed class DeathWraithMeleeFallbackDriver : MonoBehaviour
+        {
+            private CharacterMainControl owner;
+            private AICharacterController ai;
+            private float nextTickTime;
+
+            internal void Initialize(CharacterMainControl wraith)
+            {
+                owner = wraith;
+                ai = wraith != null ? wraith.aiCharacterController : null;
+                nextTickTime = 0f;
+                enabled = true;
+            }
+
+            private void Update()
+            {
+                if (owner == null)
+                {
+                    Destroy(this);
+                    return;
+                }
+
+                if (Time.time < nextTickTime)
+                {
+                    return;
+                }
+
+                nextTickTime = Time.time + 0.1f;
+
+                ItemAgent_Gun gun = null;
+                ItemAgent_MeleeWeapon melee = null;
+                CharacterMainControl main = null;
+                DamageReceiver mainReceiver = null;
+                try
+                {
+                    gun = owner.GetGun();
+                    melee = owner.GetMeleeWeapon();
+                    main = CharacterMainControl.Main;
+                    mainReceiver = main != null ? main.mainDamageReceiver : null;
+                }
+                catch
+                {
+                    return;
+                }
+
+                if (gun != null || melee == null || main == null || mainReceiver == null)
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (ai != null)
+                    {
+                        ai.defaultWeaponOut = true;
+                        ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, 500f);
+                        ai.searchedEnemy = mainReceiver;
+                        ai.SetTarget(mainReceiver.transform);
+                        ai.SetNoticedToTarget(mainReceiver);
+                        ai.noticed = true;
+                        ai.TakeOutWeapon();
+                    }
+                }
+                catch
+                {
+                }
+
+                Vector3 targetPos = mainReceiver.transform.position;
+                try
+                {
+                    owner.SetAimPoint(targetPos + Vector3.up * 0.6f);
+                }
+                catch
+                {
+                }
+
+                float attackRange = 1.5f;
+                try
+                {
+                    attackRange = Mathf.Max(1.25f, owner.GetAimRange());
+                }
+                catch
+                {
+                }
+
+                float distance = Vector3.Distance(owner.transform.position, targetPos);
+                if (distance <= attackRange + 0.75f)
+                {
+                    try
+                    {
+                        owner.Attack();
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
 
         #region 亡魂系统 — 玩家名获取
 
@@ -1476,21 +2899,51 @@ namespace BossRush
             try
             {
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null || main.characterPreset == null)
+                if (main == null)
                 {
                     return null;
                 }
 
                 CharacterRandomPreset preset;
-                if (TryGetWraithPresetByNameKey_DeathWraith(main.characterPreset.nameKey, out preset))
+
+                if (main.characterPreset != null)
                 {
-                    return preset;
+                    if (TryGetWraithPresetByNameKey_DeathWraith(main.characterPreset.nameKey, out preset))
+                    {
+                        return preset;
+                    }
+
+                    if (TryGetWraithPresetByRuntimeName_DeathWraith(main.characterPreset.name, out preset))
+                    {
+                        return preset;
+                    }
                 }
 
-                if (TryGetWraithPresetByRuntimeName_DeathWraith(main.characterPreset.name, out preset))
+                // characterPreset 为 null 或未命中缓存 → 用 GameObject name 匹配
+                if (!string.IsNullOrEmpty(main.name))
                 {
-                    return preset;
+                    if (TryGetWraithPresetByRuntimeName_DeathWraith(main.name, out preset))
+                    {
+                        DevLog("[DeathWraith] 回退匹配成功（main.name）: " + main.name);
+                        return preset;
+                    }
                 }
+
+                // 完全失败时输出诊断信息
+                var sb = new System.Text.StringBuilder();
+                sb.Append("[DeathWraith] 回退失败 - main.name=").Append(main.name);
+                sb.Append(" characterPreset=").Append(main.characterPreset != null ? main.characterPreset.name : "<null>");
+                sb.Append(" 可用runtimeName前5: ");
+                if (deathWraithPresetCacheByRuntimeName != null)
+                {
+                    int shown = 0;
+                    foreach (var k in deathWraithPresetCacheByRuntimeName.Keys)
+                    {
+                        if (shown++ >= 5) break;
+                        sb.Append(k).Append('|');
+                    }
+                }
+                DevLog(sb.ToString());
             }
             catch (Exception e)
             {

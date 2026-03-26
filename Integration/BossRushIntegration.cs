@@ -1066,6 +1066,9 @@ namespace BossRush
             // 注册存档系统事件，用于持久化砖石库存
             SavesSystem.OnCollectSaveData += OnCollectSaveData_BrickStoneStock;
             SavesSystem.OnSetFile += OnSetFile_BrickStoneStock;
+
+            // 亡魂系统：在切图/存档收集时记录当前绑定近战武器
+            SavesSystem.OnCollectSaveData += OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
             
             // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
@@ -1097,6 +1100,7 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_TicketStock;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_JournalStock;
             SavesSystem.OnSetFile -= OnSetFile_JournalStock;
+            SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
             Health.OnDead -= OnPlayerDeathInBossRush;
             Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
             Health.OnDead -= RecordDeathWraithData_DeathWraith;
