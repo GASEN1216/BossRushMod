@@ -34,9 +34,10 @@ item	item__npc_items	NPC 相关物品	NPC Related Items	3
 item	item__consumables	消耗品	Consumables	4
 item	item__mode_f_items	模式专属物品	Mode-Exclusive Items	5
 system	system__rewards_and_loot	掉落与奖励	Loot & Rewards	1
-system	system__reforge_and_achievements	重铸系统	Reforge System	2
-system	system__boss_filter_and_wiki	Boss 筛选器	Boss Filter	3
-system	system__achievements_list	成就大全	Achievement List	4
+system	system__death_wraith	死亡亡魂	Death Wraith	2
+system	system__reforge_and_achievements	重铸系统	Reforge System	3
+system	system__boss_filter_and_wiki	Boss 筛选器	Boss Filter	4
+system	system__achievements_list	成就大全	Achievement List	5
 config	config__overview	配置选项	Configuration Options	1
 tips	tips__new_player_route	新手推荐路线	New Player Route	1
 tips	tips__hell_and_mode_d	无间炼狱与白手起家攻略	Infinite Hell & From Scratch Guide	2

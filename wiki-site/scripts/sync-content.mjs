@@ -65,6 +65,7 @@ const ENTRY_TO_PATH = {
   'item__consumables':          'items/consumables.md',
   'item__mode_f_items':         'items/mode-items.md',
   'system__rewards_and_loot':   'systems/loot-rewards.md',
+  'system__death_wraith':       'systems/death-wraith.md',
   'system__reforge_and_achievements': 'systems/reforge.md',
   'system__boss_filter_and_wiki':     'systems/boss-filter.md',
   'system__achievements_list':        'achievements/index.md',

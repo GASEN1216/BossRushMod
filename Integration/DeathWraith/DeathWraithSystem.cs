@@ -8,7 +8,7 @@
 //   亡魂命名与属性根据掉落物品价值与玩家总财产比例分为三档：
 //   - ≥50%：强壮的XX的亡魂（移速+90%，攻击+50%）
 //   - 10%~50%：均衡的XX的亡魂（移速+50%，攻击+25%）
-//   - <10%：弱小的XX的亡魂（无额外加成）
+//   - <10%：弱小的XX的亡魂（移速+20%）
 //
 //   亡魂死后不掉落任何物品。再次死亡覆盖更新亡魂数据。
 // ============================================================================
@@ -89,6 +89,8 @@ namespace BossRush
         private const string DEATH_WRAITH_SAVE_KEY = "BossRush_DeathWraith";
         private const string DEATH_WRAITH_BOUND_MELEE_SAVE_KEY = "BossRush_DeathWraith_BoundMelee";
         private const string DEATH_WRAITH_NAME_KEY_PREFIX = "BossRush_DeathWraith_Name_";
+        private const string DEATH_WRAITH_GUN_AI_PRESET_NAME = "Cname_Boss_Red";
+        private const string DEATH_WRAITH_MELEE_AI_PRESET_NAME = "Cname_Wolf";
         private const float DEATH_WRAITH_PENDING_MAX_AGE_SECONDS = 0.5f;
         private const int DEATH_WRAITH_PENDING_MAX_FRAME_DELTA = 1;
         private static readonly FieldInfo LevelManager_CharacterModelField =
@@ -898,6 +900,16 @@ namespace BossRush
                 // 激活
                 wraith.gameObject.name = "BossRush_DeathWraith";
                 wraith.gameObject.SetActive(true);
+
+                try
+                {
+                    if (wraith.Health != null)
+                    {
+                        wraith.Health.RequestHealthBar();
+                    }
+                }
+                catch { }
+
                 spawnedWraith = null;
 
                 DevLog("[DeathWraith] 亡魂生成成功: " + displayName + " tier=" + tier);
@@ -1161,12 +1173,18 @@ namespace BossRush
             {
                 if (wraith.aiCharacterController == null)
                 {
-                    AICharacterController aiPrefab = GetWraithHostAIPrefab_DeathWraith();
+                    Item preferredWeapon = SelectPreferredCombatWeaponItem_DeathWraith(wraith);
+                    string presetName =
+                        ResolveWraithHostPresetNameForWeapon_DeathWraith(preferredWeapon);
+                    AICharacterController aiPrefab =
+                        GetWraithHostAIPrefab_DeathWraith(presetName);
                     if (aiPrefab != null)
                     {
                         AICharacterController clonedAi = UnityEngine.Object.Instantiate(aiPrefab);
                         wraith.aiCharacterController = clonedAi;
-                        DevLog("[DeathWraith] 已为亡魂克隆 AI 控制器: " + aiPrefab.name);
+                        DevLog("[DeathWraith] 已为亡魂克隆 AI 控制器: " + aiPrefab.name
+                            + " | preset=" + presetName
+                            + " | weapon=" + (preferredWeapon != null ? preferredWeapon.DisplayName : "<null>"));
                     }
                     else
                     {
@@ -1192,21 +1210,15 @@ namespace BossRush
 
                     try
                     {
-                        CharacterMainControl main = CharacterMainControl.Main;
-                        if (main != null && main.mainDamageReceiver != null)
-                        {
-                            wraith.aiCharacterController.forceTracePlayerDistance =
-                                Mathf.Max(wraith.aiCharacterController.forceTracePlayerDistance, 500f);
-                            wraith.aiCharacterController.searchedEnemy = main.mainDamageReceiver;
-                            wraith.aiCharacterController.SetTarget(main.mainDamageReceiver.transform);
-                            wraith.aiCharacterController.SetNoticedToTarget(main.mainDamageReceiver);
-                            wraith.aiCharacterController.noticed = true;
-                            DevLog("[DeathWraith] 已强制锁定玩家为初始仇恨目标");
-                        }
+                        // 与项目中其他“自然感知”AI路径保持一致：不在出生时强制锁定玩家。
+                        wraith.aiCharacterController.forceTracePlayerDistance = 0f;
+                        wraith.aiCharacterController.searchedEnemy = null;
+                        wraith.aiCharacterController.noticed = false;
+                        DevLog("[DeathWraith] 亡魂 AI 保持自然感知，不设置初始仇恨目标");
                     }
                     catch (Exception aggroEx)
                     {
-                        DevLog("[DeathWraith] 设置初始仇恨目标失败: " + aggroEx.Message);
+                        DevLog("[DeathWraith] 重置初始仇恨状态失败: " + aggroEx.Message);
                     }
                 }
                 else if (wraith.aiCharacterController != null)
@@ -1220,47 +1232,57 @@ namespace BossRush
             }
         }
 
-        private AICharacterController GetWraithHostAIPrefab_DeathWraith()
+        private string ResolveWraithHostPresetNameForWeapon_DeathWraith(Item preferredWeapon)
+        {
+            if (IsGunItem_DeathWraith(preferredWeapon))
+            {
+                return DEATH_WRAITH_GUN_AI_PRESET_NAME;
+            }
+
+            return DEATH_WRAITH_MELEE_AI_PRESET_NAME;
+        }
+
+        private AICharacterController GetWraithHostAIPrefab_DeathWraith(string presetName)
         {
             EnsureWraithPresetCache_DeathWraith();
 
             try
             {
-                if (deathWraithPresetCacheByNameKey != null)
+                CharacterRandomPreset forcedPreset;
+                bool matchedForcedPreset =
+                    TryGetWraithPresetByNameKey_DeathWraith(
+                        presetName,
+                        out forcedPreset) ||
+                    TryGetWraithPresetByRuntimeName_DeathWraith(
+                        presetName,
+                        out forcedPreset);
+
+                if (!matchedForcedPreset || forcedPreset == null)
                 {
-                    foreach (CharacterRandomPreset preset in deathWraithPresetCacheByNameKey.Values)
-                    {
-                        if (preset == null || preset.team == Teams.player)
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (ReflectionCache.CharacterRandomPreset_CharacterIconType != null)
-                            {
-                                CharacterIconTypes iconType = (CharacterIconTypes)
-                                    ReflectionCache.CharacterRandomPreset_CharacterIconType.GetValue(preset);
-                                if (iconType == CharacterIconTypes.merchant ||
-                                    iconType == CharacterIconTypes.pet)
-                                {
-                                    continue;
-                                }
-                            }
-                        }
-                        catch { }
-
-                        AICharacterController aiPrefab = GetAIPrefabFromPreset_DeathWraith(preset);
-                        if (aiPrefab != null)
-                        {
-                            return aiPrefab;
-                        }
-                    }
+                    DevLog("[DeathWraith] [WARNING] 未找到固定 AI 宿主预设: "
+                        + presetName);
+                    return null;
                 }
+
+                AICharacterController forcedAiPrefab =
+                    GetAIPrefabFromPreset_DeathWraith(forcedPreset);
+                if (forcedAiPrefab == null)
+                {
+                    DevLog("[DeathWraith] [WARNING] 固定 AI 宿主预设缺少 AI 控制器: "
+                        + forcedPreset.name
+                        + " (nameKey=" + forcedPreset.nameKey + ")");
+                    return null;
+                }
+
+                DevLog("[DeathWraith] 使用固定 AI 宿主预设: "
+                    + forcedPreset.name
+                    + " (nameKey=" + forcedPreset.nameKey
+                    + ", ai=" + forcedAiPrefab.name + ")");
+                return forcedAiPrefab;
             }
             catch (Exception e)
             {
-                DevLog("[DeathWraith] 遍历 AI 宿主预设失败: " + e.Message);
+                DevLog("[DeathWraith] 解析固定 AI 宿主预设失败: " + e.Message);
             }
 
             return null;
@@ -1307,7 +1329,6 @@ namespace BossRush
                 ItemAgent_Gun gun = wraith.GetGun();
                 if (gun != null)
                 {
-                    RemoveWraithMeleeFallbackDriver_DeathWraith(wraith);
                     SyncWraithCombatMode_DeathWraith(wraith, false);
                     await EnsureWraithGunReady_DeathWraith(wraith, gun);
                     DevLog("[DeathWraith] 已切换为枪械作战: " + gun.Item.DisplayName);
@@ -1322,13 +1343,11 @@ namespace BossRush
 
                 if (melee != null)
                 {
-                    InstallWraithMeleeFallbackDriver_DeathWraith(wraith);
                     SyncWraithCombatMode_DeathWraith(wraith, true);
                     DevLog("[DeathWraith] 已切换为近战作战: " + melee.Item.DisplayName);
                     return;
                 }
 
-                RemoveWraithMeleeFallbackDriver_DeathWraith(wraith);
                 DevLog("[DeathWraith] [WARNING] 切换武器后仍未拿到枪械/近战代理");
             }
             catch (Exception e)
@@ -1592,51 +1611,6 @@ namespace BossRush
             }
         }
 
-        private void InstallWraithMeleeFallbackDriver_DeathWraith(CharacterMainControl wraith)
-        {
-            if (wraith == null)
-            {
-                return;
-            }
-
-            try
-            {
-                DeathWraithMeleeFallbackDriver driver =
-                    wraith.GetComponent<DeathWraithMeleeFallbackDriver>();
-                if (driver == null)
-                {
-                    driver = wraith.gameObject.AddComponent<DeathWraithMeleeFallbackDriver>();
-                }
-
-                driver.Initialize(wraith);
-            }
-            catch (Exception e)
-            {
-                DevLog("[DeathWraith] 安装近战兜底驱动失败: " + e.Message);
-            }
-        }
-
-        private void RemoveWraithMeleeFallbackDriver_DeathWraith(CharacterMainControl wraith)
-        {
-            if (wraith == null)
-            {
-                return;
-            }
-
-            try
-            {
-                DeathWraithMeleeFallbackDriver driver =
-                    wraith.GetComponent<DeathWraithMeleeFallbackDriver>();
-                if (driver != null)
-                {
-                    UnityEngine.Object.Destroy(driver);
-                }
-            }
-            catch
-            {
-            }
-        }
-
         private void ForceRefreshWraithEquipmentAgents_DeathWraith(CharacterMainControl wraith)
         {
             if (wraith == null || wraith.CharacterItem == null || wraith.CharacterItem.Slots == null)
@@ -1681,10 +1655,7 @@ namespace BossRush
 
                 if (meleeMode)
                 {
-                    ai.meleeWaitTime = Mathf.Max(0.05f, ai.meleeWaitTime);
-                    ai.meleeAlertTime = Mathf.Max(0.1f, ai.meleeAlertTime);
-                    DevLog("[DeathWraith] AI 已切换为近战态: wait="
-                        + ai.meleeWaitTime + ", alert=" + ai.meleeAlertTime);
+                    DevLog("[DeathWraith] AI 已切换为近战态（保留预设近战参数）");
                 }
                 else
                 {
@@ -1927,10 +1898,12 @@ namespace BossRush
 
             try
             {
+                CharacterRandomPreset sourcePreset = wraith.characterPreset;
+                CharacterRandomPreset runtimePreset = sourcePreset != null
+                    ? UnityEngine.Object.Instantiate(sourcePreset)
+                    : ScriptableObject.CreateInstance<CharacterRandomPreset>();
                 DestroyOwnedWraithPresetClone_DeathWraith(wraith);
 
-                CharacterRandomPreset runtimePreset =
-                    ScriptableObject.CreateInstance<CharacterRandomPreset>();
                 runtimePreset.name = "BossRush_DeathWraithPreset(Clone)";
                 runtimePreset.aiCombatFactor = 1f;
                 runtimePreset.showName = true;
@@ -2470,6 +2443,19 @@ namespace BossRush
         /// <summary>
         /// 根据等级应用属性加成（参考 Utilities.cs ApplyBossStatMultiplier 模式）
         /// </summary>
+        private static float GetWraithMoveabilityTarget_DeathWraith(WraithTier tier)
+        {
+            switch (tier)
+            {
+                case WraithTier.Strong:
+                    return 1f;
+                case WraithTier.Balanced:
+                    return 0.9f;
+                default:
+                    return 0.8f;
+            }
+        }
+
         private void ApplyWraithTierStats_DeathWraith(CharacterMainControl wraith, WraithTier tier)
         {
             if (wraith == null) return;
@@ -2480,7 +2466,7 @@ namespace BossRush
                 if (item == null) return;
 
                 float speedMult = tier == WraithTier.Strong ? 1.9f :
-                    (tier == WraithTier.Balanced ? 1.5f : 1f);
+                    (tier == WraithTier.Balanced ? 1.5f : 1.2f);
                 float dmgMult = tier == WraithTier.Strong ? 1.5f :
                     (tier == WraithTier.Balanced ? 1.25f : 1f);
                 float hpMult = tier == WraithTier.Strong ? 10f :
@@ -2542,7 +2528,7 @@ namespace BossRush
                     if (moveabilityStat != null)
                     {
                         float old = moveabilityStat.BaseValue;
-                        moveabilityStat.BaseValue = Mathf.Max(moveabilityStat.BaseValue, 10f);
+                        moveabilityStat.BaseValue = GetWraithMoveabilityTarget_DeathWraith(tier);
                         DevLog("[DeathWraith] Moveability: " + old + " -> " + moveabilityStat.BaseValue);
                     }
                 }
@@ -2644,105 +2630,6 @@ namespace BossRush
         }
 
         #endregion
-
-        private sealed class DeathWraithMeleeFallbackDriver : MonoBehaviour
-        {
-            private CharacterMainControl owner;
-            private AICharacterController ai;
-            private float nextTickTime;
-
-            internal void Initialize(CharacterMainControl wraith)
-            {
-                owner = wraith;
-                ai = wraith != null ? wraith.aiCharacterController : null;
-                nextTickTime = 0f;
-                enabled = true;
-            }
-
-            private void Update()
-            {
-                if (owner == null)
-                {
-                    Destroy(this);
-                    return;
-                }
-
-                if (Time.time < nextTickTime)
-                {
-                    return;
-                }
-
-                nextTickTime = Time.time + 0.1f;
-
-                ItemAgent_Gun gun = null;
-                ItemAgent_MeleeWeapon melee = null;
-                CharacterMainControl main = null;
-                DamageReceiver mainReceiver = null;
-                try
-                {
-                    gun = owner.GetGun();
-                    melee = owner.GetMeleeWeapon();
-                    main = CharacterMainControl.Main;
-                    mainReceiver = main != null ? main.mainDamageReceiver : null;
-                }
-                catch
-                {
-                    return;
-                }
-
-                if (gun != null || melee == null || main == null || mainReceiver == null)
-                {
-                    return;
-                }
-
-                try
-                {
-                    if (ai != null)
-                    {
-                        ai.defaultWeaponOut = true;
-                        ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, 500f);
-                        ai.searchedEnemy = mainReceiver;
-                        ai.SetTarget(mainReceiver.transform);
-                        ai.SetNoticedToTarget(mainReceiver);
-                        ai.noticed = true;
-                        ai.TakeOutWeapon();
-                    }
-                }
-                catch
-                {
-                }
-
-                Vector3 targetPos = mainReceiver.transform.position;
-                try
-                {
-                    owner.SetAimPoint(targetPos + Vector3.up * 0.6f);
-                }
-                catch
-                {
-                }
-
-                float attackRange = 1.5f;
-                try
-                {
-                    attackRange = Mathf.Max(1.25f, owner.GetAimRange());
-                }
-                catch
-                {
-                }
-
-                float distance = Vector3.Distance(owner.transform.position, targetPos);
-                if (distance <= attackRange + 0.75f)
-                {
-                    try
-                    {
-                        owner.Attack();
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-        }
 
         #region 亡魂系统 — 玩家名获取
 
