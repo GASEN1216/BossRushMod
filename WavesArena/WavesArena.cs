@@ -45,7 +45,7 @@ namespace BossRush
 
         /// <summary>
         /// 前期波次需要排除的强力 Boss 名称列表
-        /// 包括：口口口口和四骑士（Cname_StormBoss1-5）
+        /// 包括：口口口口、四骑士、龙裔遗族和焚天龙皇
         /// </summary>
         private static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
         {
@@ -53,7 +53,9 @@ namespace BossRush
             "Cname_StormBoss2",    // 口口口口 或 四骑士
             "Cname_StormBoss3",    // 口口口口 或 四骑士
             "Cname_StormBoss4",    // 口口口口 或 四骑士
-            "Cname_StormBoss5"     // 口口口口 或 四骑士
+            "Cname_StormBoss5",    // 口口口口 或 四骑士
+            "DragonDescendant",    // 龙裔遗族
+            "boss_dragonking"      // 焚天龙皇
         };
 
         /// <summary>

@@ -332,7 +332,7 @@ namespace BossRush
         /// 获取随机 Boss 预设
         /// </summary>
         /// <remarks>
-        /// 前期波次（第6-10波）会过滤掉强力 Boss（口口口口和四骑士，即 StormBoss1-5），
+        /// 前期波次（第6-10波）会过滤掉强力 Boss（口口口口、四骑士、龙裔遗族、焚天龙皇），
         /// 避免白手起家模式下玩家在装备不足时遇到过强的敌人。
         /// </remarks>
         private EnemyPresetInfo GetRandomBossPreset()
