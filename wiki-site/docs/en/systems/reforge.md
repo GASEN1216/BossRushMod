@@ -15,7 +15,12 @@ For the full achievement list, see the "Achievement List" page.
   - Armor, helmets, masks, backpacks, headsets
   - Firearms, melee weapons
   - Totems
-- All visible stats on equipment (modifiers, data, variables) can be changed through Reforge.
+- The Reforge pool mainly reads visible native properties on the item (modifiers, stats, and variables).
+
+# Properties Excluded from the Reforge Pool
+- System-tracking fields, persisted reforge bookkeeping fields, and other runtime-only variables do not participate in Reforge.
+- Temporary modifiers / variables appended at runtime are not treated as normal reforgeable affixes.
+- Internal properties that directly control melee hit timing are excluded, such as `DealDamageTime`.
 
 # Reforge Process
 - Interact with Dingdang and select "Reforge".
@@ -52,7 +57,8 @@ For the full achievement list, see the "Achievement List" page.
 
 # Reforge Data Persistence
 - Reforge results are permanently saved on the equipment.
-- Reforged stats are automatically restored after scene changes or save/load.
+- Supported reforged stats are automatically restored after scene changes or save/load.
+- If an old item still carries legacy reforge data that is no longer supported, the game now removes that data automatically and rolls the affected property back to its prefab default value.
 - No need to worry about losing Reforge results.
 
 # Tips
