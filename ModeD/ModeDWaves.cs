@@ -1103,6 +1103,15 @@ namespace BossRush
                     }
                     catch {}
 
+                    // 每5波额外休息时间
+                    // modeDWaveIndex 此时尚未自增（自增在 ModeDStartNextWave 中），代表刚完成的波次编号
+                    float milestoneBonus = GetMilestoneRestBonusSeconds();
+                    if (milestoneBonus > 0f && modeDWaveIndex > 0 && modeDWaveIndex % 5 == 0)
+                    {
+                        interval += milestoneBonus;
+                        DevLog("[ModeD] 第 " + modeDWaveIndex + " 波完成，额外休息 " + milestoneBonus + " 秒");
+                    }
+
                     if (interval <= 0f)
                     {
                         if (modeDActive)

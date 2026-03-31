@@ -45,6 +45,9 @@ namespace BossRush
             public int infiniteHellBossesPerWave = 3;
             public float bossStatMultiplier = 1f;
 
+            /// <summary>每5波额外休息时间（秒），0=不额外休息</summary>
+            public float milestoneRestBonusSeconds = 30f;
+
             /// <summary>白手起家每波敌人数（1-10，默认3）</summary>
             public int modeDEnemiesPerWave = 3;
 
@@ -232,6 +235,7 @@ namespace BossRush
                 string coverKey = ModName + "_LootBoxBlocksBullets";
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
+                string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
 
                 MethodInfo loadMethod = optionsManagerType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
                 if (loadMethod != null)
@@ -296,6 +300,20 @@ namespace BossRush
                         loadedBossStat = 10f;
                     }
                     config.bossStatMultiplier = loadedBossStat;
+
+                    // 加载每5波额外休息时间
+                    float currentMilestone = (config != null) ? config.milestoneRestBonusSeconds : 30f;
+                    object milestoneResult = floatLoadMethod.Invoke(null, new object[] { milestoneRestKey, currentMilestone });
+                    float loadedMilestone = (float)milestoneResult;
+                    if (loadedMilestone < 0f)
+                    {
+                        loadedMilestone = 0f;
+                    }
+                    if (loadedMilestone > 120f)
+                    {
+                        loadedMilestone = 120f;
+                    }
+                    config.milestoneRestBonusSeconds = loadedMilestone;
 
                     // 加载 Mode D 每波敌人数
                     string modeDKey = ModName + "_ModeDEnemiesPerWave";
@@ -425,6 +443,16 @@ namespace BossRush
                     object bossStatResult = floatLoadMethod.Invoke(null, new object[] { bossStatKey, config.bossStatMultiplier });
                     float loadedBossStat = Mathf.Clamp((float)bossStatResult, 0.1f, 10f);
                     config.bossStatMultiplier = loadedBossStat;
+                    return true;
+                }
+
+                string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
+                if (changedKey == milestoneRestKey)
+                {
+                    MethodInfo floatLoadMethod = loadMethod.MakeGenericMethod(typeof(float));
+                    object milestoneResult = floatLoadMethod.Invoke(null, new object[] { milestoneRestKey, config.milestoneRestBonusSeconds });
+                    float loadedMilestone = Mathf.Clamp((float)milestoneResult, 0f, 120f);
+                    config.milestoneRestBonusSeconds = loadedMilestone;
                     return true;
                 }
 
@@ -681,6 +709,26 @@ namespace BossRush
                     DevLog("[BossRush] 注册波次间隔配置项失败: " + ex.Message);
                 }
 
+                // 每5波额外休息时间
+                try
+                {
+                    float milestoneValue = Mathf.Clamp(config.milestoneRestBonusSeconds, 0f, 120f);
+                    config.milestoneRestBonusSeconds = milestoneValue;
+
+                    string milestoneLabel = L10n.T("每5波额外休息时间(秒)", "Milestone rest bonus (seconds)");
+                    string milestoneKey = ModName + "_milestoneRestBonusSeconds";
+
+                    if (addSliderMethod != null)
+                    {
+                        addSliderMethod.Invoke(null, new object[] { ModName, milestoneKey, milestoneLabel, typeof(float), milestoneValue, new Vector2(0f, 120f) });
+                        DevLog("[BossRush] 每5波额外休息配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册每5波额外休息配置项失败: " + ex.Message);
+                }
+
                 // Boss 全局数值倍率
                 try
                 {
@@ -809,6 +857,31 @@ namespace BossRush
             if (value > 60f)
             {
                 value = 60f;
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// 获取每5波额外休息时间（秒）
+        /// </summary>
+        /// <returns>额外休息时间，范围 0-120 秒</returns>
+        private float GetMilestoneRestBonusSeconds()
+        {
+            float value = 30f;
+            if (config != null)
+            {
+                value = config.milestoneRestBonusSeconds;
+            }
+
+            if (value < 0f)
+            {
+                value = 0f;
+            }
+
+            if (value > 120f)
+            {
+                value = 120f;
             }
 
             return value;

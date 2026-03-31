@@ -1837,6 +1837,20 @@ namespace BossRush
         {
             float interval = GetWaveIntervalSeconds();
 
+            // 每5波额外休息时间
+            float milestoneBonus = GetMilestoneRestBonusSeconds();
+            if (milestoneBonus > 0f)
+            {
+                // 模式A/B: currentEnemyIndex 已在 ProceedAfterWaveFinished 中自增，代表已完成波数
+                // 模式C: infiniteHellWaveIndex 已在 OnInfiniteHellWaveCompleted 中自增，代表已完成波数
+                int completedWave = infiniteHellMode ? infiniteHellWaveIndex : currentEnemyIndex;
+                if (completedWave > 0 && completedWave % 5 == 0)
+                {
+                    interval += milestoneBonus;
+                    DevLog("[BossRush] 第 " + completedWave + " 波完成，额外休息 " + milestoneBonus + " 秒");
+                }
+            }
+
             if (!infiniteHellMode)
             {
                 try
