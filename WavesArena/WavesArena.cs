@@ -68,17 +68,17 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 预处理：确保前10波不出现强力Boss
-        /// 在挑战开始时调用一次，将前10位中的强力Boss与后面的普通Boss交换
+        /// 预处理：确保前20波不出现强力Boss
+        /// 在挑战开始时调用一次，将前20位中的强力Boss与后面的普通Boss交换
         /// </summary>
         private void EnsureEarlyWavesNoStrongBoss()
         {
-            if (enemyPresets == null || enemyPresets.Count <= 10) return;
-            
+            if (enemyPresets == null || enemyPresets.Count <= 20) return;
+
             int swapCount = 0;
-            int nextSwapTarget = 10; // 从第10位开始找可交换的普通Boss
-            
-            for (int i = 0; i < 10 && i < enemyPresets.Count; i++)
+            int nextSwapTarget = 20; // 从第20位开始找可交换的普通Boss
+
+            for (int i = 0; i < 20 && i < enemyPresets.Count; i++)
             {
                 if (!IsEarlyWaveExcludedBoss(enemyPresets[i].name)) continue;
                 
@@ -101,7 +101,7 @@ namespace BossRush
             
             if (swapCount > 0)
             {
-                DevLog("[BossRush] 前10波强力Boss预处理完成，交换了 " + swapCount + " 个Boss");
+                DevLog("[BossRush] 前20波强力Boss预处理完成，交换了 " + swapCount + " 个Boss");
             }
         }
 
@@ -1104,8 +1104,8 @@ namespace BossRush
                             }
                         }
                         
-                        // 弹指可灭/有点意思模式：预处理，确保前10波不出现强力Boss
-                        // 将前10位中的强力Boss与第10位之后的普通Boss交换
+                        // 弹指可灭/有点意思模式：预处理，确保前20波不出现强力Boss
+                        // 将前20位中的强力Boss与第20位之后的普通Boss交换
                         if (!infiniteHellMode)
                         {
                             EnsureEarlyWavesNoStrongBoss();
@@ -1550,7 +1550,7 @@ namespace BossRush
             else
             {
                 // 弹指可灭/有点意思模式：按顺序选取Boss
-                // 强力Boss已在挑战开始时预处理，前10波不会出现
+                // 强力Boss已在挑战开始时预处理，前20波不会出现
                 preset = filteredPresets[currentEnemyIndex];
             }
 
