@@ -210,10 +210,25 @@ namespace BossRush
             }
 
             var shuffledPositions = ShuffleSpawnPoints(spawnPoints);
-            int spawnIndex = 0;
 
             bool bannerShown = false;
             Vector3 bannerPos = Vector3.zero;
+
+            // 获取玩家位置，预分配所有安全刷怪位置（安全距离外、不重复）
+            Vector3 modeDPlayerPos = playerMain.transform.position;
+            int totalEnemies = bossCount + minionCount;
+            var safePositions = FindMultipleSafeSpawnPoints(totalEnemies, shuffledPositions, modeDPlayerPos);
+
+            // 洗牌安全位置，保持随机空间分布（避免敌人按距离聚集）
+            for (int i = safePositions.Count - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                Vector3 temp = safePositions[i];
+                safePositions[i] = safePositions[j];
+                safePositions[j] = temp;
+            }
+
+            int posIndex = 0;
 
             // P2-6 优化：使用复用的 reusableSpawnQueue，避免每波分配新列表
             reusableSpawnQueue.Clear();
@@ -230,8 +245,10 @@ namespace BossRush
 
                 if (bossPreset != null)
                 {
-                    Vector3 spawnPos = GetSafeBossSpawnPosition(shuffledPositions[spawnIndex % shuffledPositions.Count]);
-                    spawnIndex++;
+                    Vector3 spawnPos = posIndex < safePositions.Count
+                        ? safePositions[posIndex]
+                        : GetSafeBossSpawnPosition(shuffledPositions[posIndex % shuffledPositions.Count]);
+                    posIndex++;
 
                     if (!bannerShown)
                     {
@@ -260,8 +277,10 @@ namespace BossRush
 
                 if (minionPreset != null)
                 {
-                    Vector3 spawnPos = GetSafeBossSpawnPosition(shuffledPositions[spawnIndex % shuffledPositions.Count]);
-                    spawnIndex++;
+                    Vector3 spawnPos = posIndex < safePositions.Count
+                        ? safePositions[posIndex]
+                        : GetSafeBossSpawnPosition(shuffledPositions[posIndex % shuffledPositions.Count]);
+                    posIndex++;
 
                     if (!bannerShown)
                     {

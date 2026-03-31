@@ -19,7 +19,7 @@ namespace BossRush
         private int modeFPendingRespawnCount = 0;
         private int modeFRespawnInFlightCount = 0;
 
-        /// <summary>FindSpawnPointAwayFromPlayer 候选点缓存，避免每次 new List。改为实例字段防止重入污染。</summary>
+        /// <summary>刷怪点候选缓存（ModeFExtraction 等模块复用），避免每次 new List。改为实例字段防止重入污染。</summary>
         private readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
         private readonly List<EnemyPresetInfo> modeFRespawnBossPresetScratch = new List<EnemyPresetInfo>();
 
@@ -697,37 +697,46 @@ namespace BossRush
                 Vector3[] allSpawnPoints = GetModeEFlattenedSpawnPoints();
                 if (allSpawnPoints.Length > 0)
                 {
-                    Vector3 bestPoint = Vector3.zero;
-                    float bestDistanceSqr = 0f;
-                    float minDistanceSqr = minDistance * minDistance;
-                    reusableSpawnCandidates.Clear();
+                    // 使用统一的安全距离逻辑，取 minDistance 和 SPAWN_SAFE_DISTANCE 中较大者
+                    float effectiveMinDist = Mathf.Max(minDistance, SPAWN_SAFE_DISTANCE);
+                    float effectiveMinDistSqr = effectiveMinDist * effectiveMinDist;
+
+                    Vector3 bestSafe = Vector3.zero;
+                    float bestSafeDistSqr = float.MaxValue;
+                    bool foundSafe = false;
+
+                    Vector3 farthest = allSpawnPoints[0];
+                    float farthestDistSqr = 0f;
 
                     for (int i = 0; i < allSpawnPoints.Length; i++)
                     {
                         Vector3 point = allSpawnPoints[i];
-                        float distanceSqr = (point - playerPos).sqrMagnitude;
-                        if (distanceSqr >= minDistanceSqr)
+                        float distSqr = (point - playerPos).sqrMagnitude;
+
+                        if (distSqr > farthestDistSqr)
                         {
-                            reusableSpawnCandidates.Add(point);
+                            farthestDistSqr = distSqr;
+                            farthest = point;
                         }
 
-                        if (distanceSqr > bestDistanceSqr)
+                        // 在安全距离外，且是目前最近的
+                        if (distSqr >= effectiveMinDistSqr && distSqr < bestSafeDistSqr)
                         {
-                            bestDistanceSqr = distanceSqr;
-                            bestPoint = point;
+                            bestSafeDistSqr = distSqr;
+                            bestSafe = point;
+                            foundSafe = true;
                         }
                     }
 
-                    if (reusableSpawnCandidates.Count > 0)
+                    if (foundSafe)
                     {
-                        return GetSafeBossSpawnPosition(
-                            reusableSpawnCandidates[UnityEngine.Random.Range(0, reusableSpawnCandidates.Count)]);
+                        return GetSafeBossSpawnPosition(bestSafe);
                     }
 
-                    if (bestDistanceSqr > 0f)
+                    if (farthestDistSqr > 0f)
                     {
-                        DevLog("[ModeF] [WARNING] No spawn point was found beyond " + minDistance + "m, using the farthest point instead (" + Mathf.Sqrt(bestDistanceSqr).ToString("F0") + "m).");
-                        return GetSafeBossSpawnPosition(bestPoint);
+                        DevLog("[ModeF] [WARNING] No spawn point was found beyond " + effectiveMinDist + "m, using the farthest point instead (" + Mathf.Sqrt(farthestDistSqr).ToString("F0") + "m).");
+                        return GetSafeBossSpawnPosition(farthest);
                     }
                 }
 

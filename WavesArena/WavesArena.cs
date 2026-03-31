@@ -1203,7 +1203,213 @@ namespace BossRush
             }
             return result;
         }
-        
+
+        /// <summary>
+        /// 玩家安全距离（米）：刷怪点距玩家小于此距离时不会被选中
+        /// </summary>
+        private const float SPAWN_SAFE_DISTANCE = 15f;
+        private const float SPAWN_SAFE_DISTANCE_SQR = SPAWN_SAFE_DISTANCE * SPAWN_SAFE_DISTANCE;
+
+        /// <summary>
+        /// 从刷怪点数组中选取距玩家最近但不在安全距离内的点
+        /// <para>如果所有点都在安全距离内，回退到距玩家最远的点</para>
+        /// </summary>
+        /// <param name="spawnPoints">候选刷怪点数组</param>
+        /// <param name="playerPos">玩家当前位置</param>
+        /// <returns>经过 GetSafeBossSpawnPosition Y轴修正后的安全刷怪位置</returns>
+        private static Vector3 FindNearestSafeSpawnPoint(Vector3[] spawnPoints, Vector3 playerPos)
+        {
+            if (spawnPoints == null || spawnPoints.Length == 0)
+            {
+                return GetSafeBossSpawnPosition(playerPos + new Vector3(SPAWN_SAFE_DISTANCE, 0f, SPAWN_SAFE_DISTANCE));
+            }
+
+            Vector3 bestSafe = Vector3.zero;
+            float bestSafeDistSqr = float.MaxValue;
+            bool foundSafe = false;
+
+            Vector3 farthest = spawnPoints[0];
+            float farthestDistSqr = 0f;
+
+            for (int i = 0; i < spawnPoints.Length; i++)
+            {
+                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
+
+                // 记录最远点（兜底用）
+                if (distSqr > farthestDistSqr)
+                {
+                    farthestDistSqr = distSqr;
+                    farthest = spawnPoints[i];
+                }
+
+                // 在安全距离外，且是目前最近的
+                if (distSqr >= SPAWN_SAFE_DISTANCE_SQR && distSqr < bestSafeDistSqr)
+                {
+                    bestSafeDistSqr = distSqr;
+                    bestSafe = spawnPoints[i];
+                    foundSafe = true;
+                }
+            }
+
+            if (foundSafe)
+            {
+                return GetSafeBossSpawnPosition(bestSafe);
+            }
+
+            // 所有点都在安全距离内，使用最远的点
+            DevLog("[BossRush] FindNearestSafeSpawnPoint: 所有刷怪点都在安全距离(" + SPAWN_SAFE_DISTANCE + "m)内，使用最远点(" + Mathf.Sqrt(farthestDistSqr).ToString("F1") + "m)");
+            return GetSafeBossSpawnPosition(farthest);
+        }
+
+        /// <summary>
+        /// 从刷怪点列表中选取距玩家最近但不在安全距离内的点（List版本）
+        /// </summary>
+        private static Vector3 FindNearestSafeSpawnPoint(List<Vector3> spawnPoints, Vector3 playerPos)
+        {
+            if (spawnPoints == null || spawnPoints.Count == 0)
+            {
+                return GetSafeBossSpawnPosition(playerPos + new Vector3(SPAWN_SAFE_DISTANCE, 0f, SPAWN_SAFE_DISTANCE));
+            }
+
+            Vector3 bestSafe = Vector3.zero;
+            float bestSafeDistSqr = float.MaxValue;
+            bool foundSafe = false;
+
+            Vector3 farthest = spawnPoints[0];
+            float farthestDistSqr = 0f;
+
+            for (int i = 0; i < spawnPoints.Count; i++)
+            {
+                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
+
+                if (distSqr > farthestDistSqr)
+                {
+                    farthestDistSqr = distSqr;
+                    farthest = spawnPoints[i];
+                }
+
+                if (distSqr >= SPAWN_SAFE_DISTANCE_SQR && distSqr < bestSafeDistSqr)
+                {
+                    bestSafeDistSqr = distSqr;
+                    bestSafe = spawnPoints[i];
+                    foundSafe = true;
+                }
+            }
+
+            if (foundSafe)
+            {
+                return GetSafeBossSpawnPosition(bestSafe);
+            }
+
+            DevLog("[BossRush] FindNearestSafeSpawnPoint: 所有刷怪点都在安全距离(" + SPAWN_SAFE_DISTANCE + "m)内，使用最远点(" + Mathf.Sqrt(farthestDistSqr).ToString("F1") + "m)");
+            return GetSafeBossSpawnPosition(farthest);
+        }
+
+        /// <summary>
+        /// 从刷怪点数组中选取多个不在安全距离内的点，按距玩家由近到远排序
+        /// <para>用于多Boss同波生成时分配不重复的安全刷怪位置</para>
+        /// </summary>
+        private static List<Vector3> FindMultipleSafeSpawnPoints(int count, Vector3[] spawnPoints, Vector3 playerPos)
+        {
+            var result = new List<Vector3>(count);
+            if (spawnPoints == null || spawnPoints.Length == 0 || count <= 0)
+            {
+                return result;
+            }
+
+            // 收集所有安全距离外的点，按距玩家由近到远排序
+            var safeCandidates = new List<(int idx, Vector3 pos, float distSqr)>();
+            var allByDistance = new List<(int idx, Vector3 pos, float distSqr)>(spawnPoints.Length);
+
+            for (int i = 0; i < spawnPoints.Length; i++)
+            {
+                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
+                allByDistance.Add((i, spawnPoints[i], distSqr));
+                if (distSqr >= SPAWN_SAFE_DISTANCE_SQR)
+                {
+                    safeCandidates.Add((i, spawnPoints[i], distSqr));
+                }
+            }
+
+            // 按距离由近到远排序
+            safeCandidates.Sort((a, b) => a.distSqr.CompareTo(b.distSqr));
+
+            var usedIndices = new HashSet<int>();
+
+            // 优先使用安全距离外的点
+            for (int i = 0; i < safeCandidates.Count && result.Count < count; i++)
+            {
+                result.Add(GetSafeBossSpawnPosition(safeCandidates[i].pos));
+                usedIndices.Add(safeCandidates[i].idx);
+            }
+
+            // 不够的话，从未使用的点中按距离由远到近补充
+            if (result.Count < count)
+            {
+                allByDistance.Sort((a, b) => b.distSqr.CompareTo(a.distSqr));
+                for (int i = 0; i < allByDistance.Count && result.Count < count; i++)
+                {
+                    if (!usedIndices.Contains(allByDistance[i].idx))
+                    {
+                        result.Add(GetSafeBossSpawnPosition(allByDistance[i].pos));
+                        usedIndices.Add(allByDistance[i].idx);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 从刷怪点列表中选取多个不在安全距离内的点（List版本）
+        /// </summary>
+        private static List<Vector3> FindMultipleSafeSpawnPoints(int count, List<Vector3> spawnPoints, Vector3 playerPos)
+        {
+            var result = new List<Vector3>(count);
+            if (spawnPoints == null || spawnPoints.Count == 0 || count <= 0)
+            {
+                return result;
+            }
+
+            var safeCandidates = new List<(int idx, Vector3 pos, float distSqr)>();
+            var allByDistance = new List<(int idx, Vector3 pos, float distSqr)>(spawnPoints.Count);
+
+            for (int i = 0; i < spawnPoints.Count; i++)
+            {
+                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
+                allByDistance.Add((i, spawnPoints[i], distSqr));
+                if (distSqr >= SPAWN_SAFE_DISTANCE_SQR)
+                {
+                    safeCandidates.Add((i, spawnPoints[i], distSqr));
+                }
+            }
+
+            safeCandidates.Sort((a, b) => a.distSqr.CompareTo(b.distSqr));
+
+            var usedIndices = new HashSet<int>();
+
+            for (int i = 0; i < safeCandidates.Count && result.Count < count; i++)
+            {
+                result.Add(GetSafeBossSpawnPosition(safeCandidates[i].pos));
+                usedIndices.Add(safeCandidates[i].idx);
+            }
+
+            if (result.Count < count)
+            {
+                allByDistance.Sort((a, b) => b.distSqr.CompareTo(a.distSqr));
+                for (int i = 0; i < allByDistance.Count && result.Count < count; i++)
+                {
+                    if (!usedIndices.Contains(allByDistance[i].idx))
+                    {
+                        result.Add(GetSafeBossSpawnPosition(allByDistance[i].pos));
+                        usedIndices.Add(allByDistance[i].idx);
+                    }
+                }
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// 校验并修正Boss位置（生成后调用，防止Boss卡在地下）
         /// </summary>
@@ -1375,8 +1581,7 @@ namespace BossRush
                     bossesInCurrentWaveRemaining = 1;
                     currentWaveBosses.Clear();
 
-                    int index = UnityEngine.Random.Range(0, spawnPoints.Length);
-                    Vector3 spawnPos = GetSafeBossSpawnPosition(spawnPoints[index]);
+                    Vector3 spawnPos = FindNearestSafeSpawnPoint(spawnPoints, playerMain.transform.position);
 
                     // 显示敌人生成横幅（在生成前显示）
                     ShowEnemyBanner(preset.displayName, spawnPos, playerMain.transform.position);
@@ -1443,9 +1648,10 @@ namespace BossRush
                 if (attempt > 1)
                 {
                     DevLog("[BossRush] 单Boss生成重试 #" + attempt + ": " + preset.displayName);
-                    // 重试时使用新的随机位置
-                    int newIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-                    position = GetSafeBossSpawnPosition(spawnPoints[newIndex]);
+                    // 重试时使用安全距离外最近的刷怪点
+                    CharacterMainControl retryPlayer = CharacterMainControl.Main;
+                    Vector3 retryPlayerPos = retryPlayer != null ? retryPlayer.transform.position : Vector3.zero;
+                    position = FindNearestSafeSpawnPoint(spawnPoints, retryPlayerPos);
                 }
                 
                 spawnedBoss = await SpawnEnemyAtPositionAsync(preset, position);
@@ -1481,20 +1687,15 @@ namespace BossRush
             
             DevLog("[BossRush] 开始批量生成 " + expectedCount + " 个Boss");
             
-            // 重新分配刷怪点，确保每个Boss使用不同的位置
-            var assignedPositions = AssignUniqueSpawnPositions(expectedCount, spawnPoints);
+            // 重新分配刷怪点，确保每个Boss使用不同的安全位置
+            CharacterMainControl multiPlayer = CharacterMainControl.Main;
+            Vector3 multiPlayerPos = multiPlayer != null ? multiPlayer.transform.position : Vector3.zero;
+            var assignedPositions = FindMultipleSafeSpawnPoints(expectedCount, spawnPoints, multiPlayerPos);
             for (int i = 0; i < bossSpawnInfos.Count && i < assignedPositions.Count; i++)
             {
                 bossSpawnInfos[i] = (bossSpawnInfos[i].preset, assignedPositions[i]);
             }
-            
-            // 记录已使用的刷怪点索引，用于重试时避免冲突
-            var usedSpawnIndices = new HashSet<int>();
-            for (int i = 0; i < Mathf.Min(expectedCount, spawnPoints.Length); i++)
-            {
-                usedSpawnIndices.Add(i);
-            }
-            
+
             // 第一轮：串行生成所有Boss（避免并行时的潜在冲突）
             var results = new List<CharacterMainControl>();
             var failedInfos = new List<(EnemyPresetInfo preset, int originalIndex)>();
@@ -1555,11 +1756,18 @@ namespace BossRush
                 await UniTask.Delay(300);
                 
                 var stillFailed = new List<(EnemyPresetInfo preset, int originalIndex)>();
-                
-                foreach (var failedInfo in failedInfos)
+
+                // 为所有失败的Boss一次性分配不同的安全重试位置
+                CharacterMainControl retryPlayerRef = CharacterMainControl.Main;
+                Vector3 retryPlayerPos = retryPlayerRef != null ? retryPlayerRef.transform.position : Vector3.zero;
+                var retryPositions = FindMultipleSafeSpawnPoints(failedInfos.Count, spawnPoints, retryPlayerPos);
+
+                for (int ri = 0; ri < failedInfos.Count; ri++)
                 {
-                    // 重试时选择一个未使用过的刷怪点
-                    Vector3 newPos = GetUnusedSpawnPosition(spawnPoints, usedSpawnIndices);
+                    var failedInfo = failedInfos[ri];
+                    Vector3 newPos = ri < retryPositions.Count
+                        ? retryPositions[ri]
+                        : FindNearestSafeSpawnPoint(spawnPoints, retryPlayerPos);
                     
                     CharacterMainControl retryResult = null;
                     try
@@ -1615,73 +1823,7 @@ namespace BossRush
                 DevLog("[BossRush] 批量生成完成: 全部 " + expectedCount + " 个Boss成功生成");
             }
         }
-        
-        /// <summary>
-        /// 为多个Boss分配不重复的刷怪点位置
-        /// </summary>
-        private List<Vector3> AssignUniqueSpawnPositions(int count, Vector3[] spawnPoints)
-        {
-            var positions = new List<Vector3>();
-            
-            if (spawnPoints == null || spawnPoints.Length == 0)
-            {
-                DevLog("[BossRush] [WARNING] AssignUniqueSpawnPositions: 刷怪点数组为空");
-                return positions;
-            }
-            
-            // 打乱刷怪点顺序，然后依次分配
-            var shuffledIndices = new List<int>();
-            for (int i = 0; i < spawnPoints.Length; i++)
-            {
-                shuffledIndices.Add(i);
-            }
-            
-            // Fisher-Yates 洗牌算法
-            for (int i = shuffledIndices.Count - 1; i > 0; i--)
-            {
-                int j = UnityEngine.Random.Range(0, i + 1);
-                int temp = shuffledIndices[i];
-                shuffledIndices[i] = shuffledIndices[j];
-                shuffledIndices[j] = temp;
-            }
-            
-            // 分配位置（每个Boss使用不同的刷怪点）
-            for (int i = 0; i < count; i++)
-            {
-                int spawnIndex = shuffledIndices[i % shuffledIndices.Count];
-                Vector3 basePos = spawnPoints[spawnIndex];
-                positions.Add(GetSafeBossSpawnPosition(basePos));
-            }
-            
-            DevLog("[BossRush] 分配了 " + positions.Count + " 个不重复的刷怪位置");
-            return positions;
-        }
-        
-        /// <summary>
-        /// 获取一个未使用过的刷怪点位置（用于重试）
-        /// </summary>
-        private Vector3 GetUnusedSpawnPosition(Vector3[] spawnPoints, HashSet<int> usedIndices)
-        {
-            if (spawnPoints == null || spawnPoints.Length == 0)
-            {
-                return Vector3.zero;
-            }
-            
-            // 优先选择未使用过的刷怪点
-            for (int i = 0; i < spawnPoints.Length; i++)
-            {
-                if (!usedIndices.Contains(i))
-                {
-                    usedIndices.Add(i);
-                    return GetSafeBossSpawnPosition(spawnPoints[i]);
-                }
-            }
-            
-            // 所有刷怪点都用过了，随机选一个
-            int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-            return GetSafeBossSpawnPosition(spawnPoints[randomIndex]);
-        }
-        
+
         /// <summary>
         /// 获取当前地图的刷新点数组（使用 BossRushMapConfig 配置系统）
         /// </summary>

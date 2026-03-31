@@ -475,7 +475,30 @@ namespace BossRush
                 isThisDragonDescendant = IsDragonDescendantPreset(bossPreset);
                 if (isThisDragonDescendant) modeEDragonDescendantSpawned = true;
 
-                Vector3 spawnPos = GetSafeBossSpawnPosition(spawnPoint);
+                // 安全距离检查：如果分配的刷怪点距玩家太近，优先从本阵营刷怪点中选安全点
+                CharacterMainControl modeEPlayer = CharacterMainControl.Main;
+                Vector3 modeEPlayerPos = modeEPlayer != null ? modeEPlayer.transform.position : Vector3.zero;
+                float spawnDistSqr = (spawnPoint - modeEPlayerPos).sqrMagnitude;
+                Vector3 spawnPos;
+                if (spawnDistSqr < SPAWN_SAFE_DISTANCE_SQR)
+                {
+                    // 先尝试本阵营的刷怪点
+                    List<Vector3> factionPoints;
+                    if (modeESpawnAllocation != null && modeESpawnAllocation.TryGetValue(faction, out factionPoints) && factionPoints.Count > 0)
+                    {
+                        spawnPos = FindNearestSafeSpawnPoint(factionPoints, modeEPlayerPos);
+                    }
+                    else
+                    {
+                        // 本阵营无可用点，回退到所有刷怪点
+                        Vector3[] allModeEPoints = GetModeEFlattenedSpawnPoints();
+                        spawnPos = FindNearestSafeSpawnPoint(allModeEPoints, modeEPlayerPos);
+                    }
+                }
+                else
+                {
+                    spawnPos = GetSafeBossSpawnPosition(spawnPoint);
+                }
                 modeETotalSpawnExpected++;
 
                 Teams capturedFaction = faction;
