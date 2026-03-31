@@ -1,0 +1,13 @@
+## v2.1.29
+
+### Release Date
+- 2026-03-31
+
+### Main Theme
+- **Spawn & Wave QoL Improvements**: unified safe spawn distance across all modes, extra rest time every 5 waves, early-wave Dragon boss restrictions in From Scratch, and headset items now drop from enemies.
+
+### Detailed Update Log
+- All modes now use a unified 15 m safe spawn distance to prevent enemies from spawning on top of the player.
+- Every 5 waves now grants extra rest time (default 30 s, configurable 0–120 s).
+- Dragon Descendant and Dragon King no longer spawn in the first 20 waves of From Scratch mode.
+- From Scratch mask/face-wear loot pool now includes Headset-tagged items, so enemies can drop headsets.
