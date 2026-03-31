@@ -334,12 +334,18 @@ namespace BossRush
                     if (ids != null) modeDTotemPool.AddRange(ids);
                 }
 
-                // P1-8: 预建面具池（Mask Tag）
+                // P1-8: 预建面具/耳机池（Mask + Headset Tag）
                 Duckov.Utilities.Tag maskTag = FindTagByNameInInit("Mask");
                 if (maskTag == null) maskTag = FindTagByNameInInit("FaceMask");
                 if (maskTag != null)
                 {
                     int[] ids = SearchItemsByTag(maskTag, excludeArray);
+                    if (ids != null) modeDMaskPool.AddRange(ids);
+                }
+                Duckov.Utilities.Tag headsetTag = FindTagByNameInInit("Headset");
+                if (headsetTag != null)
+                {
+                    int[] ids = SearchItemsByTag(headsetTag, excludeArray);
                     if (ids != null) modeDMaskPool.AddRange(ids);
                 }
 
