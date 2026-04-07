@@ -519,10 +519,11 @@ namespace BossRush
                 string coverKey = ModName + "_LootBoxBlocksBullets";
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
+                string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
                 string modeDKey = ModName + "_ModeDEnemiesPerWave";
                 string achievementHotkeyKey = ModName + "_AchievementHotkey";
                 
-                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
+                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == milestoneRestKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
                 {
                     DevLog("[BossRush] 检测到配置变更: " + changedKey);
                     if (TryLoadSingleModConfigValue(changedKey))
@@ -531,11 +532,12 @@ namespace BossRush
                         DevLog("[BossRush] 配置已更新并保存到本地文件");
                     }
 	
-                    // 如果在下一波倒计时过程中修改了波次间隔，重启倒计时以使用新配置
+                    // 基础波次间隔允许立即更新当前倒计时；
+                    // 每5波额外休息时间只在下一次命中里程碑波次时生效，不影响本次已开始的休息阶段。
                     if (changedKey == waveKey && waitingForNextWave)
                     {
-                        DevLog("[BossRush] 波次间隔配置在倒计时过程中被修改，重启下一波倒计时");
-                        StartNextWaveCountdown();
+                        DevLog("[BossRush] 波次间隔配置在倒计时过程中被修改，静默重算下一波倒计时");
+                        StartNextWaveCountdown(false, true);
                     }
                 }
 

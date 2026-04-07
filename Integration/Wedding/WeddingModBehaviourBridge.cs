@@ -125,9 +125,16 @@ namespace BossRush
 
         public bool ShouldShowSpouseFollowOption(string npcId, Transform npcTransform)
         {
-            if (!CanCurrentSpouseFollowPlayer(npcId)
+            if (string.IsNullOrEmpty(npcId)
+                || !AffinityManager.IsMarriedToPlayer(npcId)
                 || AffinityManager.IsSpouseFollowingPlayer(npcId)
                 || npcTransform == null)
+            {
+                return false;
+            }
+
+            string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+            if (string.IsNullOrEmpty(spouseNpcId) || !string.Equals(spouseNpcId, npcId, StringComparison.Ordinal))
             {
                 return false;
             }
@@ -203,6 +210,48 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[WeddingBridge] 启动配偶跟随失败: " + e.Message);
+                return false;
+            }
+        }
+
+        public bool TryHandleSpouseFollowRequest(string npcId, Transform dialogueTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(npcId))
+                {
+                    return false;
+                }
+
+                if (!AffinityManager.IsMarriedToPlayer(npcId))
+                {
+                    return false;
+                }
+
+                string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+                if (string.IsNullOrEmpty(spouseNpcId) || !string.Equals(spouseNpcId, npcId, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                if (AffinityManager.GetLevel(npcId) < AffinityManager.SPOUSE_FOLLOW_REQUIRED_LEVEL)
+                {
+                    string npcName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
+                    NPCDialogueSystem.ShowDialogue(
+                        npcId,
+                        dialogueTarget,
+                        L10n.T(
+                            "今天" + npcName + "有别的选择哦~",
+                            npcName + " has other plans today~"));
+                    RefreshSpouseInteractionOptionsForNpc(npcId);
+                    return false;
+                }
+
+                return TryStartSpouseFollowingPlayer(npcId);
+            }
+            catch (Exception e)
+            {
+                DevLog("[WeddingBridge] 处理配偶跟随请求失败: " + e.Message);
                 return false;
             }
         }
@@ -314,6 +363,16 @@ namespace BossRush
         {
             spouseFollowRestoreRequestId++;
             StartCoroutine(DelayedRestoreFollowingSpouse(expectedSceneName, spouseFollowRestoreRequestId, context));
+        }
+
+        public void RefreshSpouseInteractionOptionsForNpc(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId))
+            {
+                return;
+            }
+
+            RefreshSpouseInteractionOptions(GetSpouseInstance(npcId));
         }
 
         public bool IsWeddingNpcInstance(Transform npcTransform)

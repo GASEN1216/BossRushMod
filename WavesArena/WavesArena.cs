@@ -1833,9 +1833,10 @@ namespace BossRush
             return GetCurrentSceneSpawnPoints();
         }
         
-        public void StartNextWaveCountdown()
+        public void StartNextWaveCountdown(bool showInitialBanner = true, bool suppressImmediateRepeatBanner = false)
         {
             float interval = GetWaveIntervalSeconds();
+            bool milestoneBonusApplied = false;
 
             // 每5波额外休息时间
             float milestoneBonus = GetMilestoneRestBonusSeconds();
@@ -1847,6 +1848,7 @@ namespace BossRush
                 if (completedWave > 0 && completedWave % 5 == 0)
                 {
                     interval += milestoneBonus;
+                    milestoneBonusApplied = true;
                     DevLog("[BossRush] 第 " + completedWave + " 波完成，额外休息 " + milestoneBonus + " 秒");
                 }
             }
@@ -1888,30 +1890,47 @@ namespace BossRush
             // 重置上一轮倒计时状态
             waitingForNextWave = true;
             waveCountdown = interval;
-            lastWaveCountdownSeconds = -1;
-
-            if (interval <= 5f)
+            int secondsInt = Mathf.RoundToInt(interval);
+            if (secondsInt < 1)
             {
-                int secondsInt = Mathf.RoundToInt(interval);
-                if (secondsInt < 1)
-                {
-                    secondsInt = 1;
-                }
+                secondsInt = 1;
+            }
 
-                if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
-                {
-                    ShowBigBanner(L10n.T(
-                        "<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + secondsInt + "</color> 秒后抵达战场...",
-                        "<color=red>" + nextWaveBossName + "</color> arriving in <color=yellow>" + secondsInt + "</color> seconds..."
-                    ));
-                }
-                else
-                {
-                    ShowBigBanner(L10n.T(
-                        "下一波将在 <color=yellow>" + secondsInt + "</color> 秒后开始...",
-                        "Next wave in <color=yellow>" + secondsInt + "</color> seconds..."
-                    ));
-                }
+            if (showInitialBanner && (interval <= 5f || milestoneBonusApplied))
+            {
+                ShowNextWaveCountdownBanner(secondsInt);
+                lastWaveCountdownSeconds = secondsInt;
+            }
+            else if (suppressImmediateRepeatBanner)
+            {
+                lastWaveCountdownSeconds = secondsInt;
+            }
+            else
+            {
+                lastWaveCountdownSeconds = -1;
+            }
+        }
+
+        private void ShowNextWaveCountdownBanner(int secondsInt)
+        {
+            if (secondsInt < 1)
+            {
+                secondsInt = 1;
+            }
+
+            if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
+            {
+                ShowBigBanner(L10n.T(
+                    "<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + secondsInt + "</color> 秒后抵达战场...",
+                    "<color=red>" + nextWaveBossName + "</color> arriving in <color=yellow>" + secondsInt + "</color> seconds..."
+                ));
+            }
+            else
+            {
+                ShowBigBanner(L10n.T(
+                    "下一波将在 <color=yellow>" + secondsInt + "</color> 秒后开始...",
+                    "Next wave in <color=yellow>" + secondsInt + "</color> seconds..."
+                ));
             }
         }
 

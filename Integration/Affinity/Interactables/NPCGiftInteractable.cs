@@ -156,7 +156,8 @@ namespace BossRush
             ModBehaviour.DevLog("[NPCFollow] 玩家请求配偶跟随: npc=" + npcId);
 
             StartNPCDialogue();
-            bool started = ModBehaviour.Instance != null && ModBehaviour.Instance.TryStartSpouseFollowingPlayer(npcId);
+            Transform npcTransform = npcController?.NpcTransform ?? transform.root;
+            bool started = ModBehaviour.Instance != null && ModBehaviour.Instance.TryHandleSpouseFollowRequest(npcId, npcTransform);
             CloseCurrentInteraction(started ? 0.05f : 0.2f);
         }
 

@@ -2415,6 +2415,7 @@ namespace BossRush
             if (!string.IsNullOrEmpty(npcId))
             {
                 HandleSpouseFollowAffinityLoss(npcId);
+                RefreshSpouseInteractionOptionsForNpc(npcId);
             }
         }
         
@@ -2896,20 +2897,7 @@ namespace BossRush
 
                         if (seconds % 5 == 0)
                         {
-                            if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
-                            {
-                                ShowBigBanner(L10n.T(
-                                    "<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + seconds + "</color> 秒后抵达战场...",
-                                    "<color=red>" + nextWaveBossName + "</color> arriving in <color=yellow>" + seconds + "</color> seconds..."
-                                ));
-                            }
-                            else
-                            {
-                                ShowBigBanner(L10n.T(
-                                    "下一波将在 <color=yellow>" + seconds + "</color> 秒后开始...",
-                                    "Next wave in <color=yellow>" + seconds + "</color> seconds..."
-                                ));
-                            }
+                            ShowNextWaveCountdownBanner(seconds);
                         }
                     }
                 }
