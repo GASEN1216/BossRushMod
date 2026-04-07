@@ -412,6 +412,12 @@ namespace BossRush
                     return;
                 }
 
+                // 龙系 Boss 有独立的转阶段/锁血状态机，直接位移它们容易把状态机打坏。
+                if (ShouldSuppressBossCrowdControl(targetChar))
+                {
+                    return;
+                }
+
                 // 方向：从目标指向玩家（拉扯）
                 Vector3 pullDir = holder.transform.position - target.position;
                 pullDir.y = 0f;
@@ -477,6 +483,12 @@ namespace BossRush
                     return;
                 }
 
+                // 龙系 Boss 有独立的转阶段/锁血状态机，直接位移它们容易把状态机打坏。
+                if (ShouldSuppressBossCrowdControl(targetChar))
+                {
+                    return;
+                }
+
                 // 尝试暂停敌人的地面约束，防止移动系统每帧把它拉回地面
                 TryPauseEnemyGroundConstraint(targetChar, 0.8f);
 
@@ -538,6 +550,49 @@ namespace BossRush
             {
                 target.SetForceMoveVelocity(Vector3.zero);
             }
+        }
+
+        private static bool ShouldSuppressBossCrowdControl(CharacterMainControl targetChar)
+        {
+            if (targetChar == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (targetChar.gameObject != null)
+                {
+                    string objectName = targetChar.gameObject.name;
+                    if (!string.IsNullOrEmpty(objectName) &&
+                        (objectName.Contains("DragonDescendant") || objectName.Contains("DragonKing")))
+                    {
+                        return true;
+                    }
+                }
+
+                var preset = targetChar.characterPreset;
+                if (preset != null)
+                {
+                    string nameKey = preset.nameKey;
+                    if (nameKey == DragonDescendantConfig.BOSS_NAME_KEY ||
+                        nameKey == DragonKingConfig.BossNameKey)
+                    {
+                        return true;
+                    }
+                }
+
+                if (targetChar.GetComponent<DragonDescendantAbilityController>() != null ||
+                    targetChar.GetComponent<DragonKingAbilityController>() != null)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
         }
 
         /// <summary>

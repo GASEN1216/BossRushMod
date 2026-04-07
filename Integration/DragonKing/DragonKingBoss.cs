@@ -194,6 +194,10 @@ namespace BossRush
                 
                 // 设置AI仇恨
                 SetupAIAggro(character);
+
+                // 自定义龙 Boss 也补上和普通 Boss 一样的位置兜底，避免被位移后卡进地下或掉出有效区域。
+                StartCoroutine(DelayedBossPositionValidation(character, 0.5f));
+                RegisterEnemyRecoveryAnchor(character, position);
                 
                 // 订阅死亡事件（使用闭包捕获当前character引用，支持多实例）
                 if (character.Health != null)

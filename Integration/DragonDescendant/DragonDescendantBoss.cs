@@ -208,6 +208,10 @@ namespace BossRush
                 
                 // 设置AI仇恨
                 SetupAIAggro(character);
+
+                // 自定义龙 Boss 也补上和普通 Boss 一样的位置兜底，避免被位移后卡进地下或掉出有效区域。
+                StartCoroutine(DelayedBossPositionValidation(character, 0.5f));
+                RegisterEnemyRecoveryAnchor(character, position);
                 
                 // 孩儿护我召唤的龙裔：跳过死亡事件订阅和波次追踪，但保留掉落系统
                 // 这些龙裔的死亡由龙王的OnDescendantDeath处理，不走BossRush标准流程
