@@ -26,11 +26,12 @@
 - Killing enemy faction Bosses drops loot crates — your main source of gear.
 - Killing same-faction Bosses does not drop loot.
 
-# Death Buff Mechanic
-- When a faction member dies, all surviving members of that faction gain +5% to all stats.
-- This means the longer the battle goes on, the stronger the surviving Bosses become.
-- If many of your faction's Bosses fall, the remaining allies become very powerful.
-- Conversely, the last survivor of an enemy faction can turn into a super Boss.
+# Growth Mechanic Usage
+- Boss growth is per Boss: each Boss only gains stacks from same-faction deaths that occur after that Boss has spawned.
+- Each Boss stack gives +5% health, +5% firearm damage, and +5% melee damage; newly respawned Bosses do not inherit previous stacks.
+- Player growth only triggers when you personally land the final hit on an enemy Boss, granting 1 stack.
+- Each player stack gives +0.1% health, +0.1% firearm damage, and +0.1% melee damage, and can be accumulated over time.
+- Each stack gain shows a bubble above the player with the current total bonus.
 
 # Lone Wolf Mode Guide
 - As a Lone Wolf you have no allies — Bosses from all 5 factions are your enemies.

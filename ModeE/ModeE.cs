@@ -6,7 +6,7 @@
 //   玩家裸装携带"营旗"进入竞技场，系统根据营旗类型分配阵营，
 //   地图刷怪点平均分配给所有参战阵营，每个阵营在各自领地一次性生成 Boss。
 //   同阵营实体互不伤害，不同阵营自动敌对交战。
-//   每当某阵营有单位阵亡，该阵营存活单位属性提升 5%（各阵营独立计算）。
+//   敌人按"出生时死亡基线"计算个人层数：每层生命/伤害 +5%（各阵营独立累计）。
 //
 // 主要功能：
 //   - 入场条件检测（营旗 + 裸装）
@@ -29,7 +29,7 @@ namespace BossRush
 {
     /// <summary>
     /// Mode E（划地为营）：多阵营沙盒混战模式
-    /// <para>玩家裸装+营旗入场，分配阵营，Boss一次性生成，按阵营动态缩放</para>
+    /// <para>玩家裸装+营旗入场，分配阵营，Boss一次性生成，按个人基线层数动态缩放</para>
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
@@ -57,7 +57,7 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, Teams> modeEAliveEnemyFactionMap
             = new Dictionary<CharacterMainControl, Teams>();
 
-        /// <summary>各阵营死亡计数，用于计算独立缩放倍率</summary>
+        /// <summary>各阵营死亡计数（用于计算每个敌人的个人层数：当前死亡数 - 出生基线）</summary>
         private Dictionary<Teams, int> modeEFactionDeathCount = new Dictionary<Teams, int>();
 
         /// <summary>
@@ -455,13 +455,17 @@ namespace BossRush
 
         private void ResetModeESharedRuntimeState(bool clearSpawnAllocation, bool clearSpawnerCache, bool stopWarmupCoroutine)
         {
+            // 尝试对称清理玩家缩放 Modifier；若玩家对象暂不可用，保留句柄供后续重试。
+            RemoveModeEPlayerScalingModifiers();
+
             modeEPlayerFaction = Teams.player;
             modeEAliveEnemies.Clear();
             modeEAliveEnemySet.Clear();
             modeEAliveEnemyFactionMap.Clear();
             modeEFactionDeathCount.Clear();
             modeEFactionAliveMap.Clear();
-            modeEScalingModifiers.Clear();
+            modeEEnemyScalingStates.Clear();
+            modeEPlayerLastHitKillCount = 0;
             modeEEnemyDeathHandlers.Clear();
             modeEEnemyLootHandlers.Clear();
             modeEPendingScalingFactions.Clear();
@@ -822,6 +826,8 @@ namespace BossRush
                 modeEActive = true;
                 int modeESessionToken = BeginModeESession();
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+                modeEPlayerLastHitKillCount = 0;
+                RemoveModeEPlayerScalingModifiers();
                 ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
                 ResetModeEUiCaches();
                 modeEPlayerFaction = faction;
@@ -978,6 +984,8 @@ namespace BossRush
                 InvalidateModeESession();
                 ClearEnemyRecoveryMonitorState();
                 ClearPendingBossAggroQueue();
+                RemoveModeEPlayerScalingModifiers();
+                modeEPlayerLastHitKillCount = 0;
 
                 // 恢复玩家阵营
                 try

@@ -6,19 +6,21 @@
 //   敌人生成复用 SpawnEnemyCore 通用方法（支持龙裔遗族和龙王）。
 //
 // 动态缩放规则：
-//   - 每当某阵营有单位阵亡，该阵营所有存活单位属性提升 5%
-//   - 倍率 = 1.0 + 该阵营已死亡单位数 × 0.05
-//   - 各阵营独立计算，互不影响
+//   - 每个敌人在出生时记录阵营死亡基线 deathBaseline
+//   - 个人层数 = 当前阵营死亡计数 - deathBaseline（最小为0）
+//   - 每层生命/枪伤/近战伤害 +5%，玩家层数按最终击杀独立累计
 // ============================================================================
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Events;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 using Cysharp.Threading.Tasks;
+using Duckov.UI.DialogueBubbles;
 
 namespace BossRush
 {
@@ -648,6 +650,9 @@ namespace BossRush
 
                 // 先清理该实例可能残留的旧注册，再以当前 Mode E 生命周期重新登记。
                 CleanupModeEEnemyRuntimeState(character);
+                ModeEEnemyScalingState scalingState = new ModeEEnemyScalingState();
+                scalingState.deathBaseline = GetModeEFactionDeathCount(trackedFaction);
+                modeEEnemyScalingStates[character] = scalingState;
                 TrackModeEAliveEnemy(character, trackedFaction);
                 RegisterEnemyRecoveryAnchor(character, ctx.position);
 
@@ -725,12 +730,27 @@ namespace BossRush
 
         #region Mode E 敌人死亡与动态缩放
 
-        /// <summary>
-        /// 缓存每个敌人上一次应用的缩放 Modifier，用于移除旧值避免累积叠加
-        /// Key = CharacterMainControl 实例, Value = (HP Modifier, GunDmg Modifier, MeleeDmg Modifier)
-        /// </summary>
-        private readonly Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg, Modifier meleeDmg)> modeEScalingModifiers
-            = new Dictionary<CharacterMainControl, (Modifier, Modifier, Modifier)>();
+        private sealed class ModeEEnemyScalingState
+        {
+            public int deathBaseline;
+            public Modifier hp;
+            public Modifier gunDmg;
+            public Modifier meleeDmg;
+        }
+
+        private sealed class ModeEPlayerScalingState
+        {
+            public Modifier hp;
+            public Modifier gunDmg;
+            public Modifier meleeDmg;
+        }
+
+        private readonly Dictionary<CharacterMainControl, ModeEEnemyScalingState> modeEEnemyScalingStates
+            = new Dictionary<CharacterMainControl, ModeEEnemyScalingState>();
+
+        private int modeEPlayerLastHitKillCount = 0;
+        private ModeEPlayerScalingState modeEPlayerScalingState = null;
+        private Item modeEPlayerScalingItem = null;
 
         /// <summary>缓存死亡事件句柄，避免对象复用或重复注册导致 UnityEvent 持续膨胀。</summary>
         private readonly Dictionary<CharacterMainControl, UnityAction<DamageInfo>> modeEEnemyDeathHandlers
@@ -771,7 +791,7 @@ namespace BossRush
                     handler = (dmgInfo) =>
                     {
                         UnregisterModeEEnemyDeath(capturedEnemy);
-                        OnModeEEnemyDeath(capturedEnemy);
+                        OnModeEEnemyDeath(capturedEnemy, dmgInfo);
                     };
                     modeEEnemyDeathHandlers[enemy] = handler;
                     health.OnDeadEvent.AddListener(handler);
@@ -870,6 +890,156 @@ namespace BossRush
             modeEEnemyLootHandlers.Remove(enemy);
         }
 
+        private Modifier AddModeEScalingModifier(CharacterMainControl character, string statName, float percent)
+        {
+            if (character == null || percent <= 0f) return null;
+            Item characterItem = character.CharacterItem;
+            if (characterItem == null) return null;
+
+            Stat stat = characterItem.GetStat(statName);
+            if (stat == null) return null;
+
+            Modifier mod = new Modifier(ModifierType.Add, stat.BaseValue * percent, this);
+            stat.AddModifier(mod);
+
+            return mod;
+        }
+
+        private float GetModeEMaxHealthValue(CharacterMainControl character)
+        {
+            if (character == null)
+            {
+                return -1f;
+            }
+
+            Item characterItem = character.CharacterItem;
+            if (characterItem == null)
+            {
+                return -1f;
+            }
+
+            Stat maxHealthStat = characterItem.GetStat("MaxHealth");
+            return maxHealthStat != null ? maxHealthStat.Value : -1f;
+        }
+
+        private void SyncModeEHealthAfterMaxHealthRefresh(CharacterMainControl character, float oldMaxHealth)
+        {
+            if (character == null || character.Health == null)
+            {
+                return;
+            }
+
+            Item characterItem = character.CharacterItem;
+            if (characterItem == null)
+            {
+                return;
+            }
+
+            Stat maxHealthStat = characterItem.GetStat("MaxHealth");
+            if (maxHealthStat == null)
+            {
+                return;
+            }
+
+            float newMaxHealth = maxHealthStat.Value;
+            float targetHealth = character.Health.CurrentHealth;
+            if (oldMaxHealth > 0f)
+            {
+                float healthDelta = newMaxHealth - oldMaxHealth;
+                if (healthDelta > 0f)
+                {
+                    targetHealth += healthDelta;
+                }
+            }
+
+            character.Health.CurrentHealth = Mathf.Min(targetHealth, newMaxHealth);
+        }
+
+        private void RemoveModeEPlayerScalingModifiers()
+        {
+            if (modeEPlayerScalingState == null)
+            {
+                modeEPlayerScalingItem = null;
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            Item characterItem = player != null ? player.CharacterItem : null;
+            if (characterItem == null)
+            {
+                characterItem = modeEPlayerScalingItem;
+            }
+
+            if (characterItem == null)
+            {
+                // 角色对象可能临时缺失，保留句柄等待后续时机重试清理。
+                return;
+            }
+
+            Stat hpStat = characterItem.GetStat("MaxHealth");
+            if (hpStat != null && modeEPlayerScalingState.hp != null) hpStat.RemoveModifier(modeEPlayerScalingState.hp);
+
+            Stat gunStat = characterItem.GetStat("GunDamageMultiplier");
+            if (gunStat != null && modeEPlayerScalingState.gunDmg != null) gunStat.RemoveModifier(modeEPlayerScalingState.gunDmg);
+
+            Stat meleeStat = characterItem.GetStat("MeleeDamageMultiplier");
+            if (meleeStat != null && modeEPlayerScalingState.meleeDmg != null) meleeStat.RemoveModifier(modeEPlayerScalingState.meleeDmg);
+
+            modeEPlayerScalingState = null;
+            modeEPlayerScalingItem = null;
+        }
+
+        private void RefreshModeEPlayerScaling()
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
+            {
+                RemoveModeEPlayerScalingModifiers();
+                return;
+            }
+
+            float oldMaxHealth = GetModeEMaxHealthValue(player);
+            RemoveModeEPlayerScalingModifiers();
+
+            float hpPercent = modeEPlayerLastHitKillCount * 0.001f;
+            float damagePercent = modeEPlayerLastHitKillCount * 0.001f;
+
+            if (modeEPlayerScalingState == null)
+            {
+                modeEPlayerScalingState = new ModeEPlayerScalingState();
+            }
+
+            modeEPlayerScalingItem = player.CharacterItem;
+            modeEPlayerScalingState.hp = AddModeEScalingModifier(player, "MaxHealth", hpPercent);
+            modeEPlayerScalingState.gunDmg = AddModeEScalingModifier(player, "GunDamageMultiplier", damagePercent);
+            modeEPlayerScalingState.meleeDmg = AddModeEScalingModifier(player, "MeleeDamageMultiplier", damagePercent);
+            SyncModeEHealthAfterMaxHealthRefresh(player, oldMaxHealth);
+        }
+
+        private void ShowModeEPlayerGrowthBubble()
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.transform == null)
+                {
+                    DevLog("[ModeE] [WARNING] ShowModeEPlayerGrowthBubble: 玩家或 transform 为 null");
+                    return;
+                }
+
+                float totalBonusPercent = modeEPlayerLastHitKillCount * 0.1f;
+                string bubbleText = "生命/伤害+0.1%，总加成" +
+                    totalBonusPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";
+
+                DialogueBubblesManager.Show(bubbleText, player.transform, 2.5f, false, false, -1f, 3f);
+                DevLog("[ModeE] 显示玩家成长气泡: " + bubbleText);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [ERROR] ShowModeEPlayerGrowthBubble 失败: " + e.Message);
+            }
+        }
+
         private void RemoveModeEScalingModifiers(CharacterMainControl enemy)
         {
             if (object.ReferenceEquals(enemy, null))
@@ -877,8 +1047,8 @@ namespace BossRush
                 return;
             }
 
-            (Modifier hp, Modifier gunDmg, Modifier meleeDmg) oldMods;
-            if (!modeEScalingModifiers.TryGetValue(enemy, out oldMods))
+            ModeEEnemyScalingState scalingState = null;
+            if (!modeEEnemyScalingStates.TryGetValue(enemy, out scalingState) || scalingState == null)
             {
                 return;
             }
@@ -893,21 +1063,21 @@ namespace BossRush
                         try
                         {
                             Stat oldHpStat = characterItem.GetStat("MaxHealth");
-                            if (oldHpStat != null && oldMods.hp != null) oldHpStat.RemoveModifier(oldMods.hp);
+                            if (oldHpStat != null && scalingState.hp != null) oldHpStat.RemoveModifier(scalingState.hp);
                         }
                         catch { }
 
                         try
                         {
                             Stat oldGunStat = characterItem.GetStat("GunDamageMultiplier");
-                            if (oldGunStat != null && oldMods.gunDmg != null) oldGunStat.RemoveModifier(oldMods.gunDmg);
+                            if (oldGunStat != null && scalingState.gunDmg != null) oldGunStat.RemoveModifier(scalingState.gunDmg);
                         }
                         catch { }
 
                         try
                         {
                             Stat oldMeleeStat = characterItem.GetStat("MeleeDamageMultiplier");
-                            if (oldMeleeStat != null && oldMods.meleeDmg != null) oldMeleeStat.RemoveModifier(oldMods.meleeDmg);
+                            if (oldMeleeStat != null && scalingState.meleeDmg != null) oldMeleeStat.RemoveModifier(scalingState.meleeDmg);
                         }
                         catch { }
                     }
@@ -915,7 +1085,9 @@ namespace BossRush
             }
             catch { }
 
-            modeEScalingModifiers.Remove(enemy);
+            scalingState.hp = null;
+            scalingState.gunDmg = null;
+            scalingState.meleeDmg = null;
         }
 
         private void CleanupModeEEnemyRuntimeState(CharacterMainControl enemy, Teams? faction = null)
@@ -931,6 +1103,7 @@ namespace BossRush
             UnregisterEnemyRecovery(enemy);
             modeEPendingAggroTraceDistance.Remove(enemy);
             RemoveModeEScalingModifiers(enemy);
+            modeEEnemyScalingStates.Remove(enemy);
             UntrackModeEAliveEnemy(enemy, faction);
         }
 
@@ -939,7 +1112,7 @@ namespace BossRush
         /// [性能优化] 死亡时只记录计数和标记脏阵营，不立即遍历应用缩放
         /// 缩放由 ModeEScalingBatchUpdate() 定时批量执行
         /// </summary>
-        private void OnModeEEnemyDeath(CharacterMainControl enemy)
+        private void OnModeEEnemyDeath(CharacterMainControl enemy, DamageInfo damageInfo)
         {
             try
             {
@@ -947,6 +1120,18 @@ namespace BossRush
 
                 // 获取死亡敌人的阵营
                 Teams enemyFaction = enemy.Team;
+
+                CharacterMainControl killer = null;
+                try { killer = damageInfo.fromCharacter; } catch { }
+
+                bool killedByPlayer = killer == CharacterMainControl.Main;
+                bool killedEnemyBossForPlayer = killedByPlayer && enemyFaction != modeEPlayerFaction;
+                if (killedEnemyBossForPlayer)
+                {
+                    modeEPlayerLastHitKillCount++;
+                    RefreshModeEPlayerScaling();
+                    ShowModeEPlayerGrowthBubble();
+                }
 
                 // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
                 try
@@ -1010,16 +1195,16 @@ namespace BossRush
 
         /// <summary>
         /// 对指定阵营的所有存活单位应用属性缩放（生命值 + 伤害）
-        /// 倍率 = 1.0 + 该阵营已死亡单位数 × 0.05
-        /// 每次先移除旧 Modifier 再添加新的，避免累积叠加
+        /// 个人层数 = 当前阵营死亡计数 - 该敌人出生时基线（deathBaseline）
+        /// 每层提供 5% 生命/伤害；每次先移除旧 Modifier 再添加新的，避免累积叠加
         /// [P4性能优化] 使用阵营独立存活列表，只遍历同阵营单位，避免全量遍历
         /// </summary>
         private void ApplyFactionDeathScaling(Teams faction)
         {
             try
             {
-                float multiplier = GetFactionScaleMultiplier(faction);
-                DevLog("[ModeE] 应用阵营缩放: " + faction + " 倍率=" + multiplier);
+                int factionDeathCount = GetModeEFactionDeathCount(faction);
+                DevLog("[ModeE] 应用阵营缩放: " + faction + " 死亡计数=" + factionDeathCount);
 
                 // [P4] 使用阵营独立列表，只遍历该阵营的存活单位
                 List<CharacterMainControl> factionList = GetFactionAliveList(faction);
@@ -1038,66 +1223,25 @@ namespace BossRush
 
                     try
                     {
-                        var characterItem = enemy.CharacterItem;
-                        if (characterItem == null) continue;
+                        ModeEEnemyScalingState scalingState = null;
+                        if (!modeEEnemyScalingStates.TryGetValue(enemy, out scalingState) || scalingState == null)
+                        {
+                            scalingState = new ModeEEnemyScalingState();
+                            scalingState.deathBaseline = GetModeEFactionDeathCount(faction);
+                            modeEEnemyScalingStates[enemy] = scalingState;
+                        }
 
-                        // 移除该敌人上一次的缩放 Modifier
+                        int personalStacks = Mathf.Max(0, GetModeEFactionDeathCount(faction) - scalingState.deathBaseline);
+                        float hpPercent = personalStacks * 0.05f;
+                        float damagePercent = personalStacks * 0.05f;
+                        float oldMaxHealth = GetModeEMaxHealthValue(enemy);
+
                         RemoveModeEScalingModifiers(enemy);
 
-                        // 计算新的增量（基于 BaseValue，不受 Modifier 影响）
-                        Modifier newHpMod = null;
-                        Modifier newGunMod = null;
-                        Modifier newMeleeMod = null;
-
-                        // 生命值缩放
-                        Stat maxHealthStat = characterItem.GetStat("MaxHealth");
-                        if (maxHealthStat != null)
-                        {
-                            float hpDelta = maxHealthStat.BaseValue * (multiplier - 1.0f);
-                            if (hpDelta > 0)
-                            {
-                                // 记录旧上限，用于计算本次新增量
-                                float oldMaxHp = maxHealthStat.Value;
-
-                                newHpMod = new Modifier(ModifierType.Add, hpDelta, this);
-                                maxHealthStat.AddModifier(newHpMod);
-
-                                // 当前血量 += 新增的上限部分（提升多少上限就回多少血）
-                                Health health = enemy.Health;
-                                if (health != null)
-                                {
-                                    float actualIncrease = maxHealthStat.Value - oldMaxHp;
-                                    health.CurrentHealth = Mathf.Min(health.CurrentHealth + actualIncrease, maxHealthStat.Value);
-                                }
-                            }
-                        }
-
-                        // 枪械伤害缩放
-                        Stat gunDmgStat = characterItem.GetStat("GunDamageMultiplier");
-                        if (gunDmgStat != null)
-                        {
-                            float gunDelta = gunDmgStat.BaseValue * (multiplier - 1.0f);
-                            if (gunDelta > 0)
-                            {
-                                newGunMod = new Modifier(ModifierType.Add, gunDelta, this);
-                                gunDmgStat.AddModifier(newGunMod);
-                            }
-                        }
-
-                        // 近战伤害缩放
-                        Stat meleeDmgStat = characterItem.GetStat("MeleeDamageMultiplier");
-                        if (meleeDmgStat != null)
-                        {
-                            float meleeDelta = meleeDmgStat.BaseValue * (multiplier - 1.0f);
-                            if (meleeDelta > 0)
-                            {
-                                newMeleeMod = new Modifier(ModifierType.Add, meleeDelta, this);
-                                meleeDmgStat.AddModifier(newMeleeMod);
-                            }
-                        }
-
-                        // 缓存新的 Modifier 引用
-                        modeEScalingModifiers[enemy] = (newHpMod, newGunMod, newMeleeMod);
+                        scalingState.hp = AddModeEScalingModifier(enemy, "MaxHealth", hpPercent);
+                        scalingState.gunDmg = AddModeEScalingModifier(enemy, "GunDamageMultiplier", damagePercent);
+                        scalingState.meleeDmg = AddModeEScalingModifier(enemy, "MeleeDamageMultiplier", damagePercent);
+                        SyncModeEHealthAfterMaxHealthRefresh(enemy, oldMaxHealth);
                     }
                     catch { }
                 }
@@ -1108,17 +1252,11 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 获取指定阵营的当前缩放倍率
-        /// </summary>
-        private float GetFactionScaleMultiplier(Teams faction)
+        private int GetModeEFactionDeathCount(Teams faction)
         {
             int deathCount = 0;
-            if (modeEFactionDeathCount.ContainsKey(faction))
-            {
-                deathCount = modeEFactionDeathCount[faction];
-            }
-            return 1.0f + deathCount * 0.05f;
+            modeEFactionDeathCount.TryGetValue(faction, out deathCount);
+            return deathCount;
         }
 
         #endregion

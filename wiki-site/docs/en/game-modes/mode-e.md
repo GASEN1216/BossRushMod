@@ -35,13 +35,15 @@ Your faction is determined by which Faction Banner you carry:
 - In Mode E, health-bar names append a faction suffix so you can read friend-or-foe information at a glance.
 - Your own health bar also shows your name plus your current faction.
 
-# Death Empowerment
+# Growth Mechanics
 
-When a member of a faction dies, all surviving members of that faction receive stat boosts:
-
-- Per 1 member death: Survivors gain +5% health, firearm damage, melee damage
-- Effects stack; the more a faction loses, the stronger the remaining members become
-- Health increase also restores an equal amount of HP
+- Boss growth is tracked per Boss. Each Boss only counts same-faction deaths that happen after that Boss has spawned
+- Each Boss stack grants +5% health, +5% firearm damage, and +5% melee damage
+- Max-health increases also heal the same amount of HP
+- Newly respawned Bosses do not inherit historical faction stacks and start from 0
+- Player growth triggers only when the player lands the final hit on an enemy Boss; each qualifying kill grants 1 stack
+- Each player stack grants +0.1% health, +0.1% firearm damage, and +0.1% melee damage
+- Each stack gain shows a bubble above the player with the current total bonus
 
 # Starting Gear
 
@@ -108,5 +110,6 @@ Faction War has no explicit win/lose condition. It is an open-ended sandbox mode
 - Consider the Boss pool strength distribution when choosing a faction; Boss power varies significantly between factions
 - Lone Wolf mode is the most hardcore choice — you have no allies, and all Bosses are enemies
 - Make good use of Taunt Smoke Bombs and Chaos Detonators to create chaos and let Bosses from different factions wear each other down
-- The death empowerment mechanic means the longer the fight goes on, the stronger surviving Bosses become
+- Boss growth is tracked per individual Boss, so newly respawned Bosses do not inherit old stacks
+- Secure final hits on enemy Bosses yourself to build player growth stacks
 - See the Faction War strategy guide for detailed tips
