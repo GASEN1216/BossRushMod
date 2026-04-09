@@ -1000,7 +1000,7 @@ namespace BossRush
     }
 
     /// <summary>
-    /// Harmony Patch: 在 Showcase.RefreshSlot 后为展示中的龙息武器添加火焰特效
+    /// Harmony Patch: 在 Showcase.RefreshSlot 后为展示中的特殊武器添加展示特效
     ///
     /// 设计说明：
     /// - 展示家具（假人、武器展示柜）使用 Showcase.RefreshSlot 创建物品视觉模型
@@ -1010,7 +1010,7 @@ namespace BossRush
     ///   旧对象和新对象同时存在。需要延迟1帧，等旧对象真正销毁后再操作
     /// </summary>
     [HarmonyPatch(typeof(Duckov.Buildings.Showcase), "RefreshSlot")]
-    public static class ShowcaseRefreshSlotFireEffectsPatch
+    public static class ShowcaseRefreshSlotWeaponEffectsPatch
     {
         [HarmonyPostfix]
         public static void Postfix(Duckov.Buildings.Showcase __instance, Transform slotDisplayParent)
@@ -1031,19 +1031,20 @@ namespace BossRush
                 Item content = slot.Content;
                 if (content == null) return;
                 
-                // 快速检查：只处理龙息武器
-                if (content.TypeID != DragonBreathWeaponConfig.WEAPON_TYPE_ID) return;
+                bool isDragonBreath = content.TypeID == DragonBreathWeaponConfig.WEAPON_TYPE_ID;
+                bool isFrostmourne = content.TypeID == FrostmourneIds.WeaponTypeId;
+                if (!isDragonBreath && !isFrostmourne) return;
                 
                 // 延迟1帧执行，等待 Object.Destroy 完成旧对象销毁
-                __instance.StartCoroutine(DelayedAddFireEffects(slotDisplayParent));
+                __instance.StartCoroutine(DelayedAddWeaponEffects(slotDisplayParent, content.TypeID));
             }
             catch (System.Exception e)
             {
-                ModBehaviour.DevLog("[DragonBreathWeapon] Showcase 展示火焰特效失败: " + e.Message);
+                ModBehaviour.DevLog("[WeaponDisplayFx] Showcase 展示特效失败: " + e.Message);
             }
         }
         
-        private static System.Collections.IEnumerator DelayedAddFireEffects(Transform slotDisplayParent)
+        private static System.Collections.IEnumerator DelayedAddWeaponEffects(Transform slotDisplayParent, int typeId)
         {
             // 等待1帧，确保 Object.Destroy 销毁旧对象
             yield return null;
@@ -1061,14 +1062,20 @@ namespace BossRush
                     var graphic = child.GetComponent<ItemGraphicInfo>();
                     if (graphic == null) continue;
                     
-                    // 找到视觉模型，添加火焰特效
-                    DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(graphic.gameObject);
+                    if (typeId == DragonBreathWeaponConfig.WEAPON_TYPE_ID)
+                    {
+                        DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(graphic.gameObject);
+                    }
+                    else if (typeId == FrostmourneIds.WeaponTypeId)
+                    {
+                        FrostmourneWeaponConfig.TryAddIceEffectsToGraphic(graphic.gameObject);
+                    }
                     break;
                 }
             }
             catch (System.Exception e)
             {
-                ModBehaviour.DevLog("[DragonBreathWeapon] Showcase 延迟添加火焰特效失败: " + e.Message);
+                ModBehaviour.DevLog("[WeaponDisplayFx] Showcase 延迟添加展示特效失败: " + e.Message);
             }
         }
     }

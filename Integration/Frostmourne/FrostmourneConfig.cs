@@ -28,7 +28,7 @@ namespace BossRush
         /// <summary>
         /// 基础攻击范围
         /// </summary>
-        public const float BaseAttackRange = 1.75f;
+        public const float BaseAttackRange = 2.0f;
 
         // ========== 右键技能「亡灵召唤」参数 ==========
 

@@ -9,10 +9,12 @@
 using System;
 using System.Collections.Generic;
 using BossRush.Common.Equipment;
+using BossRush.Utils;
 using Cysharp.Threading.Tasks;
 using Duckov.Utilities;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
+using Pathfinding;
 using UnityEngine;
 
 namespace BossRush
@@ -180,6 +182,7 @@ namespace BossRush
 
                         // 记录到列表
                         summonedZombies.Add(zombie);
+                        RefreshSummonedZombieFollowerSlots(player);
 
                         LogIfVerbose("方位 " + i + " 僵尸召唤成功");
                     }
@@ -287,6 +290,8 @@ namespace BossRush
 
                 // 设置 AI 战斗因子为 1（积极战斗）
                 ai.forceTracePlayerDistance = 0f; // 不强制追踪玩家（它是友军）
+                ai.searchedEnemy = null;
+                ai.noticed = false;
 
                 // 让 AI 自然寻敌（同阵营设置后，AI 会自动攻击敌对阵营）
             }
@@ -345,7 +350,42 @@ namespace BossRush
         internal static int GetActiveSummonedZombieCount()
         {
             CleanupDeadZombies();
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player != null)
+            {
+                RefreshSummonedZombieFollowerSlots(player);
+            }
             return summonedZombies.Count;
+        }
+
+        internal static bool IsSummonCapReached()
+        {
+            return GetActiveSummonedZombieCount() >= FrostmourneConfig.SummonCount;
+        }
+
+        private static void RefreshSummonedZombieFollowerSlots(CharacterMainControl player)
+        {
+            if (player == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < summonedZombies.Count; i++)
+            {
+                CharacterMainControl zombie = summonedZombies[i];
+                if (zombie == null || zombie.gameObject == null)
+                {
+                    continue;
+                }
+
+                FrostmourneZombieFollower follower = zombie.GetComponent<FrostmourneZombieFollower>();
+                if (follower == null)
+                {
+                    follower = zombie.gameObject.AddComponent<FrostmourneZombieFollower>();
+                }
+
+                follower.Initialize(player, i);
+            }
         }
 
         /// <summary>
@@ -390,6 +430,439 @@ namespace BossRush
                 catch { }
             }
             summonedZombies.Clear();
+        }
+    }
+
+    internal sealed class FrostmourneZombieFollower : NPCFollowMovementBase
+    {
+        private const float FollowRingRadius = 2.8f;
+        private const float FollowStopDistanceValue = 1.6f;
+        private const float FollowRunDistanceValue = 4.5f;
+        private const float FollowTeleportDistanceValue = 20f;
+        private const float FollowRepathIntervalValue = 0.35f;
+        private const float FollowSpeedBoostDistanceValue = 5.5f;
+        private const float FollowSpeedResetDistanceValue = 3.5f;
+        private const float NextWaypointDistance = 0.45f;
+        private const float TurnSpeed = 360f;
+        private const float Gravity = -9.8f;
+
+        private CharacterMainControl zombieCharacter;
+        private AICharacterController aiController;
+        private Seeker seeker;
+        private CharacterController characterController;
+        private Animator animator;
+        private Path path;
+        private int currentWaypoint;
+        private bool reachedEndOfPath;
+        private bool moving;
+        private bool waitingForPathResult;
+        private int activePathRequestId;
+        private float walkSpeed = 1.9f;
+        private float runSpeed = 4.6f;
+        private float verticalVelocity;
+        private int followSlotIndex;
+        private bool initialized;
+        private static readonly int HashMoveSpeed = Animator.StringToHash("MoveSpeed");
+
+        public void Initialize(CharacterMainControl player, int slotIndex)
+        {
+            bool slotChanged = followSlotIndex != Mathf.Max(0, slotIndex);
+
+            if (!initialized)
+            {
+                CacheComponents();
+                InitializeFollowDefaults();
+                initialized = true;
+                slotChanged = true;
+            }
+
+            followSlotIndex = Mathf.Max(0, slotIndex);
+            if (player != null)
+            {
+                bool targetChanged = CurrentPlayerTransform != player.transform || !IsFollowingPlayer;
+                if (targetChanged)
+                {
+                    EnablePlayerFollow(player.transform);
+                }
+
+                if (slotChanged && !targetChanged)
+                {
+                    StopMoveForFollow();
+                }
+            }
+        }
+
+        protected override float WalkSpeed
+        {
+            get { return walkSpeed; }
+            set { walkSpeed = value; }
+        }
+
+        protected override float RunSpeed
+        {
+            get { return runSpeed; }
+            set { runSpeed = value; }
+        }
+
+        protected override float FollowRepathInterval
+        {
+            get { return FollowRepathIntervalValue; }
+        }
+
+        protected override float FollowStopDistance
+        {
+            get { return FollowStopDistanceValue; }
+        }
+
+        protected override float FollowRunDistance
+        {
+            get { return FollowRunDistanceValue; }
+        }
+
+        protected override float FollowTeleportDistance
+        {
+            get { return FollowTeleportDistanceValue; }
+        }
+
+        protected override float FollowSpeedBoostDistance
+        {
+            get { return FollowSpeedBoostDistanceValue; }
+        }
+
+        protected override float FollowSpeedResetDistance
+        {
+            get { return FollowSpeedResetDistanceValue; }
+        }
+
+        protected override Seeker FollowSeeker
+        {
+            get { return seeker; }
+        }
+
+        protected override CharacterController FollowCharacterController
+        {
+            get { return characterController; }
+        }
+
+        protected override int FollowActivePathRequestId
+        {
+            get { return activePathRequestId; }
+            set { activePathRequestId = value; }
+        }
+
+        protected override bool FollowWaitingForPathResult
+        {
+            get { return waitingForPathResult; }
+            set { waitingForPathResult = value; }
+        }
+
+        protected override bool FollowReachedEndOfPath
+        {
+            get { return reachedEndOfPath; }
+            set { reachedEndOfPath = value; }
+        }
+
+        protected override Vector3 GetFollowDestination(Transform target)
+        {
+            if (target == null)
+            {
+                return transform.position;
+            }
+
+            Vector3 forward = target.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f)
+            {
+                forward = Vector3.forward;
+            }
+            forward.Normalize();
+
+            float angle = 360f * (followSlotIndex % FrostmourneConfig.SummonCount) / Mathf.Max(1, FrostmourneConfig.SummonCount);
+            Vector3 offset = Quaternion.Euler(0f, angle, 0f) * forward * FollowRingRadius;
+            Vector3 desired = target.position + offset;
+
+            return SnapToGround(desired, target.position.y);
+        }
+
+        protected override void StopCurrentFollowMovement()
+        {
+            if (seeker != null)
+            {
+                seeker.CancelCurrentPathRequest(true);
+            }
+
+            NPCPathingHelper.StopMovement(
+                ref path,
+                ref currentWaypoint,
+                ref moving,
+                ref waitingForPathResult,
+                UpdateMoveAnimation);
+        }
+
+        protected override void HandleFollowPathComplete(Path pathResult, int requestId)
+        {
+            NPCPathingHelper.HandlePathComplete(
+                pathResult,
+                requestId,
+                activePathRequestId,
+                false,
+                null,
+                ref path,
+                ref currentWaypoint,
+                ref moving,
+                ref waitingForPathResult,
+                UpdateMoveAnimation,
+                null);
+        }
+
+        private void Awake()
+        {
+            CacheComponents();
+        }
+
+        private void Start()
+        {
+            InitializeFollowDefaults();
+            initialized = true;
+        }
+
+        private void Update()
+        {
+            if (!initialized || !IsFollowingPlayer)
+            {
+                return;
+            }
+
+            UpdateGravityVelocity();
+
+            if (ShouldSuspendFollowForCombat())
+            {
+                if (moving || waitingForPathResult)
+                {
+                    StopMoveForFollow();
+                }
+
+                ApplyGravityOnly();
+                return;
+            }
+
+            UpdateFollowDecision(moving, waitingForPathResult, path != null);
+            if (!UpdatePathFollowing(ShouldRunWhileFollowing()))
+            {
+                ApplyGravityOnly();
+            }
+        }
+
+        private void CacheComponents()
+        {
+            zombieCharacter = GetComponent<CharacterMainControl>();
+            aiController = GetComponentInChildren<AICharacterController>();
+            seeker = GetComponent<Seeker>();
+            if (seeker == null)
+            {
+                seeker = GetComponentInChildren<Seeker>();
+            }
+
+            characterController = GetComponent<CharacterController>();
+            if (characterController == null)
+            {
+                characterController = GetComponentInChildren<CharacterController>();
+            }
+
+            animator = GetComponentInChildren<Animator>();
+        }
+
+        private bool ShouldSuspendFollowForCombat()
+        {
+            if (aiController == null)
+            {
+                return false;
+            }
+
+            DamageReceiver searchedEnemy = aiController.searchedEnemy;
+            if (searchedEnemy == null)
+            {
+                aiController.noticed = false;
+                return false;
+            }
+
+            try
+            {
+                if (searchedEnemy.health != null && searchedEnemy.health.IsDead)
+                {
+                    aiController.searchedEnemy = null;
+                    aiController.noticed = false;
+                    return false;
+                }
+            }
+            catch
+            {
+            }
+
+            return true;
+        }
+
+        private bool UpdatePathFollowing(bool isRunning)
+        {
+            if (waitingForPathResult && path == null)
+            {
+                return false;
+            }
+
+            if (path == null || path.vectorPath == null || path.vectorPath.Count == 0)
+            {
+                NPCPathingHelper.StopMovement(
+                    ref path,
+                    ref currentWaypoint,
+                    ref moving,
+                    ref waitingForPathResult,
+                    UpdateMoveAnimation);
+                return false;
+            }
+
+            if (currentWaypoint >= path.vectorPath.Count)
+            {
+                reachedEndOfPath = true;
+                NPCPathingHelper.StopMovement(
+                    ref path,
+                    ref currentWaypoint,
+                    ref moving,
+                    ref waitingForPathResult,
+                    UpdateMoveAnimation);
+                return false;
+            }
+
+            moving = true;
+            reachedEndOfPath = false;
+
+            float distanceToWaypoint;
+            while (true)
+            {
+                Vector3 toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
+                toWaypoint.y = 0f;
+                distanceToWaypoint = toWaypoint.magnitude;
+
+                if (distanceToWaypoint < NextWaypointDistance)
+                {
+                    if (currentWaypoint + 1 < path.vectorPath.Count)
+                    {
+                        currentWaypoint++;
+                    }
+                    else
+                    {
+                        reachedEndOfPath = true;
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            Vector3 direction = path.vectorPath[currentWaypoint] - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                NPCPathingHelper.StopMovement(
+                    ref path,
+                    ref currentWaypoint,
+                    ref moving,
+                    ref waitingForPathResult,
+                    UpdateMoveAnimation);
+                return false;
+            }
+
+            direction.Normalize();
+
+            float speedMultiplier = 1f;
+            if (reachedEndOfPath)
+            {
+                speedMultiplier = Mathf.Sqrt(Mathf.Clamp01(distanceToWaypoint / NextWaypointDistance));
+
+                if (distanceToWaypoint < FollowStopDistanceValue)
+                {
+                    NPCPathingHelper.StopMovement(
+                        ref path,
+                        ref currentWaypoint,
+                        ref moving,
+                        ref waitingForPathResult,
+                        UpdateMoveAnimation);
+                    return false;
+                }
+            }
+
+            float currentSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
+            Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, TurnSpeed * Time.deltaTime);
+
+            Vector3 move = direction * currentSpeed;
+            move.y = verticalVelocity;
+
+            if (characterController != null && characterController.enabled)
+            {
+                characterController.Move(move * Time.deltaTime);
+            }
+            else
+            {
+                transform.position += direction * currentSpeed * Time.deltaTime;
+            }
+
+            UpdateMoveAnimation(currentSpeed);
+            return true;
+        }
+
+        private void UpdateGravityVelocity()
+        {
+            if (characterController != null && characterController.enabled && characterController.isGrounded)
+            {
+                if (verticalVelocity < 0f)
+                {
+                    verticalVelocity = -2f;
+                }
+                return;
+            }
+
+            verticalVelocity += Gravity * Time.deltaTime;
+        }
+
+        private void ApplyGravityOnly()
+        {
+            if (characterController != null && characterController.enabled)
+            {
+                characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
+            }
+        }
+
+        private void UpdateMoveAnimation(float speed)
+        {
+            if (animator == null)
+            {
+                return;
+            }
+
+            try
+            {
+                animator.SetFloat(HashMoveSpeed, speed);
+            }
+            catch
+            {
+            }
+        }
+
+        private static Vector3 SnapToGround(Vector3 position, float fallbackY)
+        {
+            RaycastHit hit;
+            Vector3 samplePoint = position + Vector3.up * 5f;
+            int groundMask = GameplayDataSettings.Layers.groundLayerMask;
+
+            if (Physics.Raycast(samplePoint, Vector3.down, out hit, 15f, groundMask))
+            {
+                return hit.point;
+            }
+
+            position.y = fallbackY;
+            return position;
         }
     }
 }

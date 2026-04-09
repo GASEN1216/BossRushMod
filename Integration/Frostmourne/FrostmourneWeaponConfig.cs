@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
@@ -30,8 +31,12 @@ namespace BossRush
         // ========== 基础名匹配 ==========
         private const string FROSTMOURNE_BASE_NAME = "Frostmourne";
         private static readonly Vector3 DefaultSlashFxScale = new Vector3(1.34f, 1.34f, 0.96f); // 比断界戟更薄
-        private static GameObject cachedIceSlashFx;
+        private const string IceAuraRootName = "Frostmourne_IceAura";
+        private const string IceMistName = "Frostmourne_IceMist";
+        private const string IceSparkName = "Frostmourne_IceSpark";
+        private static GameObject cachedFallbackSlashFx;
         private static GameObject cachedFallbackHitFx;
+        private static readonly HashSet<int> iceEffectTargets = new HashSet<int>();
 
         // ========== 近战 Stats 数值（断界戟的 70%）==========
         private const float STAT_DAMAGE = 38.5f;
@@ -268,7 +273,7 @@ namespace BossRush
 
             if (meleeAgent.slashFx == null)
             {
-                meleeAgent.slashFx = GetIceSlashFx();
+                meleeAgent.slashFx = GetFallbackSlashFx();
             }
 
             if (meleeAgent.hitFx == null)
@@ -286,111 +291,14 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 获取冰色挥砍特效（复用原版特效但调整颜色和缩放）
-        /// </summary>
-        private static GameObject GetIceSlashFx()
+        private static GameObject GetFallbackSlashFx()
         {
-            if (cachedIceSlashFx == null)
+            if (cachedFallbackSlashFx == null)
             {
-                // 先找到原版的 slashFx
-                GameObject originalSlashFx = FindFallbackMeleeFx(true);
-                if (originalSlashFx != null)
-                {
-                    // 克隆并修改为冰色
-                    cachedIceSlashFx = UnityEngine.Object.Instantiate(originalSlashFx);
-                    cachedIceSlashFx.name = "Frostmourne_IceSlashFx";
-                    cachedIceSlashFx.hideFlags = HideFlags.HideAndDontSave;
-                    UnityEngine.Object.DontDestroyOnLoad(cachedIceSlashFx);
-
-                    // 调整缩放（更薄）
-                    cachedIceSlashFx.transform.localScale = DefaultSlashFxScale;
-
-                    // 修改粒子系统颜色为冰蓝色
-                    TintParticleSystemsIce(cachedIceSlashFx);
-                }
-                else
-                {
-                    // 没有原版特效可用，创建简单的模板
-                    cachedIceSlashFx = FrostmourneSlashFxCompat.CreateTemplate(DefaultSlashFxScale);
-                }
+                cachedFallbackSlashFx = FindFallbackMeleeFx(true);
             }
 
-            return cachedIceSlashFx;
-        }
-
-        /// <summary>
-        /// 将 GameObject 下所有粒子系统的颜色调整为冰蓝色
-        /// </summary>
-        private static void TintParticleSystemsIce(GameObject go)
-        {
-            if (go == null) return;
-
-            Color iceColor = new Color(0.31f, 0.76f, 0.97f, 1f);       // #4FC3F7
-            Color iceColorFade = new Color(0.51f, 0.83f, 0.98f, 0.6f); // #81D4FA
-
-            ParticleSystem[] particleSystems = go.GetComponentsInChildren<ParticleSystem>(true);
-            foreach (ParticleSystem ps in particleSystems)
-            {
-                if (ps == null) continue;
-
-                try
-                {
-                    var main = ps.main;
-                    main.startColor = new ParticleSystem.MinMaxGradient(iceColor, iceColorFade);
-                }
-                catch { }
-
-                try
-                {
-                    var colorOverLifetime = ps.colorOverLifetime;
-                    if (colorOverLifetime.enabled)
-                    {
-                        Gradient gradient = new Gradient();
-                        gradient.SetKeys(
-                            new GradientColorKey[]
-                            {
-                                new GradientColorKey(iceColor, 0f),
-                                new GradientColorKey(iceColorFade, 1f)
-                            },
-                            new GradientAlphaKey[]
-                            {
-                                new GradientAlphaKey(1f, 0f),
-                                new GradientAlphaKey(0f, 1f)
-                            }
-                        );
-                        colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
-                    }
-                }
-                catch { }
-            }
-
-            // 修改 Renderer 材质颜色
-            Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
-            foreach (Renderer r in renderers)
-            {
-                if (r == null || r.sharedMaterial == null) continue;
-
-                try
-                {
-                    // 克隆材质避免影响原版
-                    Material mat = new Material(r.sharedMaterial);
-                    if (mat.HasProperty("_Color"))
-                    {
-                        mat.color = iceColor;
-                    }
-                    if (mat.HasProperty("_TintColor"))
-                    {
-                        mat.SetColor("_TintColor", iceColor);
-                    }
-                    if (mat.HasProperty("_EmissionColor"))
-                    {
-                        mat.SetColor("_EmissionColor", iceColor * 0.5f);
-                    }
-                    r.material = mat;
-                }
-                catch { }
-            }
+            return cachedFallbackSlashFx;
         }
 
         private static GameObject GetFallbackHitFx()
@@ -413,16 +321,18 @@ namespace BossRush
                     if (candidate == null) continue;
 
                     Item candidateItem = candidate.Item;
-                    // 跳过自己和断界戟
-                    if (candidateItem != null &&
-                        (candidateItem.TypeID == FrostmourneIds.WeaponTypeId ||
-                         candidateItem.TypeID == FenHuangHalberdIds.WeaponTypeId))
+                    if (candidateItem != null && candidateItem.TypeID == FrostmourneIds.WeaponTypeId)
                     {
                         continue;
                     }
 
                     GameObject fx = slashFx ? candidate.slashFx : candidate.hitFx;
                     if (fx == null) continue;
+
+                    if (cachedFallbackSlashFx == null && candidate.slashFx != null)
+                    {
+                        cachedFallbackSlashFx = candidate.slashFx;
+                    }
 
                     if (cachedFallbackHitFx == null && candidate.hitFx != null)
                     {
@@ -438,6 +348,228 @@ namespace BossRush
             }
 
             return null;
+        }
+
+        internal static void TryAddIceEffectsToGraphic(GameObject targetVisual)
+        {
+            if (targetVisual == null)
+            {
+                return;
+            }
+
+            int instanceId = targetVisual.GetInstanceID();
+            if (iceEffectTargets.Contains(instanceId))
+            {
+                EnsureIceEffectsPlaying(targetVisual);
+                return;
+            }
+
+            try
+            {
+                CreateIceAuraEffects(targetVisual);
+                iceEffectTargets.Add(instanceId);
+                ModBehaviour.DevLog("[Frostmourne] 已为目标添加冰焰环绕: " + targetVisual.name);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Frostmourne] 添加冰焰环绕失败: " + e.Message);
+            }
+        }
+
+        internal static void PrepareRuntimeHoldAgentVisual(GameObject go)
+        {
+            if (go == null)
+            {
+                return;
+            }
+
+            DisableMotionBlur(go);
+            FixModelGraphics(go);
+            EnableRuntimeRenderers(go);
+            TryAddIceEffectsToGraphic(go);
+        }
+
+        private static void CreateIceAuraEffects(GameObject targetVisual)
+        {
+            if (targetVisual == null)
+            {
+                return;
+            }
+
+            Transform existingRoot = FindChildRecursive(targetVisual.transform, IceAuraRootName);
+            if (existingRoot != null)
+            {
+                EnsureIceEffectsPlaying(existingRoot.gameObject);
+                return;
+            }
+
+            Vector3 localCenter;
+            Vector3 localExtents;
+            GetVisualBounds(targetVisual, out localCenter, out localExtents);
+
+            GameObject auraRoot = new GameObject(IceAuraRootName);
+            auraRoot.transform.SetParent(targetVisual.transform, false);
+            auraRoot.transform.localPosition = localCenter;
+            auraRoot.transform.localRotation = Quaternion.identity;
+            auraRoot.transform.localScale = Vector3.one;
+
+            CreateIceAuraEmitter(auraRoot.transform, IceMistName, localExtents, false);
+            CreateIceAuraEmitter(auraRoot.transform, IceSparkName, localExtents, true);
+            EnsureIceEffectsPlaying(auraRoot);
+        }
+
+        private static void CreateIceAuraEmitter(Transform parent, string emitterName, Vector3 localExtents, bool sparkMode)
+        {
+            GameObject emitter = new GameObject(emitterName);
+            emitter.transform.SetParent(parent, false);
+            emitter.transform.localPosition = Vector3.zero;
+            emitter.transform.localRotation = Quaternion.identity;
+            emitter.transform.localScale = Vector3.one;
+
+            ParticleSystem ps = emitter.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.playOnAwake = true;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.maxParticles = sparkMode ? 24 : 40;
+            main.startLifetime = sparkMode
+                ? new ParticleSystem.MinMaxCurve(0.22f, 0.42f)
+                : new ParticleSystem.MinMaxCurve(0.55f, 0.95f);
+            main.startSpeed = sparkMode
+                ? new ParticleSystem.MinMaxCurve(0.12f, 0.35f)
+                : new ParticleSystem.MinMaxCurve(0.04f, 0.12f);
+            main.startSize = sparkMode
+                ? new ParticleSystem.MinMaxCurve(0.018f, 0.04f)
+                : new ParticleSystem.MinMaxCurve(0.04f, 0.08f);
+            main.startColor = sparkMode
+                ? new ParticleSystem.MinMaxGradient(
+                    new Color(0.80f, 0.95f, 1f, 0.95f),
+                    new Color(0.55f, 0.82f, 1f, 0.75f))
+                : new ParticleSystem.MinMaxGradient(
+                    new Color(0.31f, 0.76f, 0.97f, 0.55f),
+                    new Color(0.51f, 0.83f, 0.98f, 0.28f));
+            main.gravityModifier = 0f;
+
+            var emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = sparkMode ? 10f : 16f;
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(
+                Mathf.Max(0.08f, localExtents.x * 1.3f),
+                Mathf.Max(0.22f, localExtents.y * 1.2f),
+                Mathf.Max(0.08f, localExtents.z * 1.2f));
+
+            var velocityOverLifetime = ps.velocityOverLifetime;
+            velocityOverLifetime.enabled = true;
+            velocityOverLifetime.space = ParticleSystemSimulationSpace.Local;
+            velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(sparkMode ? 0.16f : 0.08f);
+            velocityOverLifetime.x = new ParticleSystem.MinMaxCurve(sparkMode ? 0.05f : 0.02f);
+            velocityOverLifetime.z = new ParticleSystem.MinMaxCurve(sparkMode ? 0.05f : 0.02f);
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(new Color(0.85f, 0.97f, 1f), 0f),
+                    new GradientColorKey(new Color(0.31f, 0.76f, 0.97f), 0.65f),
+                    new GradientColorKey(new Color(0.51f, 0.83f, 0.98f), 1f)
+                },
+                new[]
+                {
+                    new GradientAlphaKey(sparkMode ? 0.95f : 0.55f, 0f),
+                    new GradientAlphaKey(sparkMode ? 0.45f : 0.28f, 0.6f),
+                    new GradientAlphaKey(0f, 1f)
+                });
+            colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+
+            var noise = ps.noise;
+            noise.enabled = !sparkMode;
+            if (noise.enabled)
+            {
+                noise.strength = 0.18f;
+                noise.frequency = 0.35f;
+                noise.scrollSpeed = 0.15f;
+            }
+
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            if (renderer != null)
+            {
+                renderer.renderMode = ParticleSystemRenderMode.Billboard;
+                renderer.sortMode = ParticleSystemSortMode.Distance;
+            }
+
+            ps.Play(true);
+        }
+
+        private static void GetVisualBounds(GameObject targetVisual, out Vector3 localCenter, out Vector3 localExtents)
+        {
+            localCenter = Vector3.zero;
+            localExtents = new Vector3(0.08f, 0.45f, 0.08f);
+
+            if (targetVisual == null)
+            {
+                return;
+            }
+
+            Renderer[] renderers = targetVisual.GetComponentsInChildren<Renderer>(true);
+            bool hasBounds = false;
+            Bounds combinedBounds = new Bounds(targetVisual.transform.position, Vector3.zero);
+
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null || !renderer.enabled)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    combinedBounds = renderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combinedBounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            if (!hasBounds)
+            {
+                return;
+            }
+
+            localCenter = targetVisual.transform.InverseTransformPoint(combinedBounds.center);
+            localExtents = combinedBounds.extents;
+        }
+
+        private static void EnsureIceEffectsPlaying(GameObject targetVisual)
+        {
+            if (targetVisual == null)
+            {
+                return;
+            }
+
+            Transform auraRoot = FindChildRecursive(targetVisual.transform, IceAuraRootName);
+            if (auraRoot == null)
+            {
+                return;
+            }
+
+            ParticleSystem[] particles = auraRoot.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < particles.Length; i++)
+            {
+                ParticleSystem ps = particles[i];
+                if (ps != null && !ps.isPlaying)
+                {
+                    ps.Play(true);
+                }
+            }
         }
 
         /// <summary>
@@ -596,6 +728,25 @@ namespace BossRush
             catch { }
         }
 
+        private static void EnableRuntimeRenderers(GameObject go)
+        {
+            try
+            {
+                Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+                foreach (Renderer r in renderers)
+                {
+                    if (r == null)
+                    {
+                        continue;
+                    }
+
+                    r.enabled = true;
+                    r.forceRenderingOff = false;
+                }
+            }
+            catch { }
+        }
+
         private static void DisableMotionBlur(GameObject go)
         {
             try
@@ -655,36 +806,128 @@ namespace BossRush
                 SetLayerRecursively(child.gameObject, layer);
             }
         }
+
+        private static Transform FindChildRecursive(Transform root, string targetName)
+        {
+            if (root == null || string.IsNullOrEmpty(targetName))
+            {
+                return null;
+            }
+
+            if (string.Equals(root.name, targetName, StringComparison.Ordinal))
+            {
+                return root;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform found = FindChildRecursive(root.GetChild(i), targetName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
     }
 
-    /// <summary>
-    /// 冰色挥砍特效兼容组件（当找不到原版特效时使用）
-    /// </summary>
-    internal sealed class FrostmourneSlashFxCompat : MonoBehaviour
+    [HarmonyPatch(typeof(ItemAgentHolder), "ChangeHoldItem")]
+    public static class FrostmourneHoldItemPatch
     {
-        private static readonly Vector3 HiddenPosition = new Vector3(0f, -9999f, 0f);
-        private const float Lifetime = 0.3f;
+        private static FieldInfo meleeRefField;
+        private static FieldInfo gunRefField;
+        private static FieldInfo currentUsingSocketCacheField;
+        private static FieldInfo itemAgentItemField;
+        private static bool fieldsCached;
 
-        internal static GameObject CreateTemplate(Vector3 scale)
+        [HarmonyPostfix]
+        public static void Postfix(ItemAgentHolder __instance, DuckovItemAgent __result, Item item)
         {
-            GameObject template = new GameObject("Frostmourne_SlashFxTemplate");
-            template.transform.position = HiddenPosition;
-            template.transform.localScale = scale;
-            template.hideFlags = HideFlags.HideAndDontSave;
-            UnityEngine.Object.DontDestroyOnLoad(template);
-            template.AddComponent<FrostmourneSlashFxCompat>();
-            return template;
-        }
-
-        private void Awake()
-        {
-            if (gameObject.name.IndexOf("(Clone)", StringComparison.Ordinal) >= 0)
+            if (__result == null || item == null || item.TypeID != FrostmourneIds.WeaponTypeId)
             {
-                UnityEngine.Object.Destroy(gameObject, Lifetime);
                 return;
             }
 
-            transform.position = HiddenPosition;
+            try
+            {
+                if (!fieldsCached)
+                {
+                    meleeRefField = typeof(ItemAgentHolder).GetField("_meleeRef", BindingFlags.NonPublic | BindingFlags.Instance);
+                    gunRefField = typeof(ItemAgentHolder).GetField("_gunRef", BindingFlags.NonPublic | BindingFlags.Instance);
+                    currentUsingSocketCacheField = typeof(ItemAgentHolder).GetField("_currentUsingSocketCache", BindingFlags.NonPublic | BindingFlags.Instance);
+                    itemAgentItemField = typeof(ItemStatsSystem.ItemAgent).GetField("item", BindingFlags.NonPublic | BindingFlags.Instance);
+                    fieldsCached = true;
+                }
+
+                ItemAgent_MeleeWeapon existingMelee = __result as ItemAgent_MeleeWeapon;
+                if (existingMelee != null)
+                {
+                    FrostmourneWeaponConfig.EnsureMeleeAttackFx(existingMelee);
+                    FrostmourneWeaponConfig.PrepareRuntimeHoldAgentVisual(existingMelee.gameObject);
+                    return;
+                }
+
+                GameObject agentGo = __result.gameObject;
+                ItemAgent_MeleeWeapon meleeComp = agentGo.GetComponent<ItemAgent_MeleeWeapon>();
+                if (meleeComp == null)
+                {
+                    meleeComp = agentGo.AddComponent<ItemAgent_MeleeWeapon>();
+                }
+
+                if (itemAgentItemField != null)
+                {
+                    itemAgentItemField.SetValue(meleeComp, item);
+                }
+
+                meleeComp.handheldSocket = HandheldSocketTypes.normalHandheld;
+                meleeComp.handAnimationType = HandheldAnimationType.meleeWeapon;
+                FrostmourneWeaponConfig.EnsureMeleeAttackFx(meleeComp);
+                meleeComp.SetHolder(__result.Holder);
+
+                __result.handheldSocket = HandheldSocketTypes.normalHandheld;
+                __result.handAnimationType = HandheldAnimationType.meleeWeapon;
+
+                Transform meleeSocket = null;
+                if (__instance.characterController != null && __instance.characterController.characterModel != null)
+                {
+                    meleeSocket = __instance.characterController.characterModel.RightHandSocket;
+                    if (meleeSocket == null)
+                    {
+                        meleeSocket = __instance.characterController.characterModel.MeleeWeaponSocket;
+                    }
+                }
+
+                if (meleeSocket != null)
+                {
+                    __result.transform.SetParent(meleeSocket, false);
+                    __result.transform.localPosition = Vector3.zero;
+                    __result.transform.localRotation = Quaternion.identity;
+                    currentUsingSocketCacheField?.SetValue(__instance, meleeSocket);
+                }
+
+                try
+                {
+                    FieldInfo soundKeyField = typeof(ItemAgent_MeleeWeapon).GetField(
+                        "soundKey",
+                        BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                    if (soundKeyField != null)
+                    {
+                        soundKeyField.SetValue(meleeComp, "Default");
+                    }
+                }
+                catch { }
+
+                meleeRefField?.SetValue(__instance, meleeComp);
+                gunRefField?.SetValue(__instance, null);
+
+                FrostmourneWeaponConfig.PrepareRuntimeHoldAgentVisual(agentGo);
+                ModBehaviour.DevLog("[Frostmourne] 已为手持代理补齐近战组件与冰效");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Frostmourne] 持握代理修正失败: " + e.Message);
+            }
         }
     }
 }

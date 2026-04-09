@@ -3065,7 +3065,14 @@ namespace BossRush
                 DuckovItemAgent currentHoldAgent = mainChar.CurrentHoldItemAgent;
                 RestoreRuntimeStateForHoldAgent(currentHoldAgent, "SubscribeDragonBreathEffectEvent");
 
-                // 检查当前手持的武器（处理玩家进入存档时已装备龙息武器的情况）
+                // 检查当前手持的武器（处理玩家进入存档时已装备特殊武器的情况）
+                if (currentHoldAgent != null &&
+                    currentHoldAgent.Item != null &&
+                    currentHoldAgent.Item.TypeID == FrostmourneIds.WeaponTypeId)
+                {
+                    FrostmourneWeaponConfig.TryAddIceEffectsToGraphic(currentHoldAgent.gameObject);
+                }
+
                 var currentGun = mainChar.GetGun();
                 if (currentGun != null)
                 {
@@ -3105,6 +3112,9 @@ namespace BossRush
         {
             RestoreRuntimeStateForHoldAgent(newAgent, "OnHoldAgentChanged");
 
+            bool isFrostmourne = newAgent != null &&
+                                 newAgent.Item != null &&
+                                 newAgent.Item.TypeID == FrostmourneIds.WeaponTypeId;
             var gunAgent = newAgent as ItemAgent_Gun;
             
             // 检查是否为龙息武器
@@ -3115,7 +3125,11 @@ namespace BossRush
                                        gunAgent.Item != null &&
                                        gunAgent.Item.TypeID == DragonKingBossGunConfig.WeaponTypeId;
             
-            if (isDragonBreath)
+            if (isFrostmourne)
+            {
+                FrostmourneWeaponConfig.TryAddIceEffectsToGraphic(newAgent.gameObject);
+            }
+            else if (isDragonBreath)
             {
                 // 装备龙息武器：添加火焰特效
                 DragonBreathWeaponConfig.TryAddFireEffectsToAgent(gunAgent);

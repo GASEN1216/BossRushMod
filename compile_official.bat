@@ -175,6 +175,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Frostmourne\FrostmourneIds.cs ^
     Integration\Frostmourne\FrostmourneConfig.cs ^
     Integration\Frostmourne\FrostmourneWeaponConfig.cs ^
+    Integration\Frostmourne\FrostmourneSwingFx.cs ^
     Integration\Frostmourne\FrostmourneAction.cs ^
     Integration\Frostmourne\FrostmourneAbilityManager.cs ^
     Integration\Frostmourne\FrostmourneBootstrap.cs ^

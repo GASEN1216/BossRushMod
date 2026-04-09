@@ -21,7 +21,7 @@ namespace BossRush
     {
         private const float CooldownBubbleInterval = 0.35f;
         private readonly FrostmourneConfig configInstance = new FrostmourneConfig();
-        private float nextCooldownBubbleTime = -999f;
+        private float nextStatusBubbleTime = -999f;
 
         protected override void Update()
         {
@@ -116,6 +116,13 @@ namespace BossRush
                     return;
                 }
 
+                if (FrostmourneAction.IsSummonCapReached())
+                {
+                    ShowSummonLimitBubble(player);
+                    LogIfVerbose("检测到右键输入，但当前亡灵仆从数量已满");
+                    return;
+                }
+
                 LogIfVerbose("检测到右键输入，尝试召唤亡灵...");
                 bool success = TryExecuteAbility();
                 LogIfVerbose("召唤结果: " + (success ? "成功" : "失败（冷却中或条件不满足）"));
@@ -148,12 +155,12 @@ namespace BossRush
                 return;
             }
 
-            if (Time.time < nextCooldownBubbleTime)
+            if (Time.time < nextStatusBubbleTime)
             {
                 return;
             }
 
-            nextCooldownBubbleTime = Time.time + CooldownBubbleInterval;
+            nextStatusBubbleTime = Time.time + CooldownBubbleInterval;
 
             try
             {
@@ -172,6 +179,39 @@ namespace BossRush
             catch (System.Exception e)
             {
                 LogIfVerbose("显示冷却气泡异常: " + e.Message);
+            }
+        }
+
+        private void ShowSummonLimitBubble(CharacterMainControl player)
+        {
+            if (player == null || player.transform == null)
+            {
+                return;
+            }
+
+            if (Time.time < nextStatusBubbleTime)
+            {
+                return;
+            }
+
+            nextStatusBubbleTime = Time.time + CooldownBubbleInterval;
+
+            try
+            {
+                string bubbleText = L10n.T("亡灵仆从已满(5/5)", "Undead servants full (5/5)");
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    bubbleText,
+                    player.transform,
+                    2.5f,
+                    false,
+                    false,
+                    -1f,
+                    1.5f
+                );
+            }
+            catch (System.Exception e)
+            {
+                LogIfVerbose("显示亡灵已满气泡异常: " + e.Message);
             }
         }
 
