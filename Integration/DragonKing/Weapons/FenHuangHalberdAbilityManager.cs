@@ -9,6 +9,7 @@ namespace BossRush
     public class FenHuangHalberdAbilityManager
         : EquipmentAbilityManager<FenHuangHalberdConfig, FenHuangHalberdAction>
     {
+        private const float CooldownBubbleInterval = 0.35f;
         private const int PreviewFragmentCount = 20;
         private const float LandingValidationRadius = 0.5f;
         private const float LandingValidationHeight = 2f;
@@ -34,6 +35,7 @@ namespace BossRush
         private Vector3 lastPreviewOrigin;
         private GameObject previewObject;
         private FenHuangLeapPreview previewController;
+        private float nextCooldownBubbleTime = -999f;
 
         private static readonly Collider[] landingValidationBuffer = new Collider[8];
 
@@ -131,6 +133,17 @@ namespace BossRush
                 if (!OnBeforeTryExecute())
                 {
                     return;
+                }
+
+                if (adsPressed)
+                {
+                    float remainingCooldown = abilityAction.GetRemainingCooldownTime();
+                    if (remainingCooldown > 0.001f)
+                    {
+                        ShowCooldownBubble(player, remainingCooldown);
+                        LogIfVerbose("检测到 ADS 输入，但龙皇裂地仍在冷却中");
+                        return;
+                    }
                 }
 
                 if (adsPressed && CanStartPreview())
@@ -269,6 +282,40 @@ namespace BossRush
             catch (System.Exception e)
             {
                 LogIfVerbose("显示过不去气泡异常: " + e.Message);
+            }
+        }
+
+        private void ShowCooldownBubble(CharacterMainControl player, float remainingCooldown)
+        {
+            if (player == null || player.transform == null)
+            {
+                return;
+            }
+
+            if (Time.time < nextCooldownBubbleTime)
+            {
+                return;
+            }
+
+            nextCooldownBubbleTime = Time.time + CooldownBubbleInterval;
+
+            try
+            {
+                int seconds = Mathf.Max(1, Mathf.CeilToInt(remainingCooldown));
+                string bubbleText = L10n.T("冷却中" + seconds + "s...", "Cooldown " + seconds + "s...");
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    bubbleText,
+                    player.transform,
+                    2.5f,
+                    false,
+                    false,
+                    -1f,
+                    1.5f
+                );
+            }
+            catch (System.Exception e)
+            {
+                LogIfVerbose("显示冷却气泡异常: " + e.Message);
             }
         }
 

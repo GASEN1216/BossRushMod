@@ -146,6 +146,20 @@ namespace BossRush.Common.Equipment
             return IsReadyInternal();
         }
 
+        /// <summary>
+        /// 获取当前剩余冷却时间（秒）
+        /// </summary>
+        public float GetRemainingCooldownTime()
+        {
+            var config = GetConfig();
+            if (config == null || Running)
+            {
+                return 0f;
+            }
+
+            return Mathf.Max(0f, config.CooldownTime - (Time.time - lastEndTime));
+        }
+
         protected override bool OnStart()
         {
             var config = GetConfig();

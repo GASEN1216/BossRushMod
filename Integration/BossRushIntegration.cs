@@ -377,7 +377,8 @@ namespace BossRush
                 EmergencyRepairSprayConfig.RegisterConfigurator();  // 应急维修喷剂配置器（Mode F）
                 ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
                 ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
-                
+                ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
+
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
                 {
@@ -482,11 +483,24 @@ namespace BossRush
                     FenHuangHalberdWeaponConfig.TryConfigure(item, "FenHuangHalberd");
                 },
                 "焚皇断界戟");
+
+            CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
+                FrostmourneIds.WeaponTypeId,
+                delegate(Item item)
+                {
+                    FrostmourneWeaponConfig.TryConfigure(item, "Frostmourne");
+                },
+                "霜之哀伤");
         }
 
         private void OnFenHuangHalberdLoaded(Item itemPrefab)
         {
             FenHuangHalberdWeaponConfig.TryConfigure(itemPrefab, "FenHuangHalberd");
+        }
+
+        private void OnFrostmourneLoaded(Item itemPrefab)
+        {
+            FrostmourneWeaponConfig.TryConfigure(itemPrefab, "Frostmourne");
         }
 
         private void OnAdventureJournalLoaded(Item itemPrefab)
@@ -1031,6 +1045,19 @@ namespace BossRush
             {
                 DevLog("[BossRush] 绑定焚皇断界戟模型失败: " + e.Message);
             }
+
+            try
+            {
+                Item frostmourne = ItemFactory.GetLoadedItem(FrostmourneIds.WeaponTypeId);
+                if (frostmourne != null)
+                {
+                    FrostmourneWeaponConfig.TryConfigure(frostmourne, "Frostmourne");
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 绑定霜之哀伤模型失败: " + e.Message);
+            }
             
             // 初始化飞行图腾系统
             InitializeFlightTotemSystem();
@@ -1078,6 +1105,9 @@ namespace BossRush
             
             // 初始化焚皇断界戟系统（三段连招 + 右键龙皇裂地）
             InitializeFenHuangHalberdSystem();
+
+            // 初始化霜之哀伤系统（右键亡灵召唤）
+            InitializeFrostmourneSystem();
             
             // 如果当前已经在场景中，立即执行一次
             if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
@@ -1118,6 +1148,9 @@ namespace BossRush
             
             // 清理焚皇断界戟系统
             CleanupFenHuangHalberdSystem();
+
+            // 清理霜之哀伤系统
+            CleanupFrostmourneSystem();
             
             // 取消订阅龙息武器火焰特效事件
             UnsubscribeDragonBreathEffectEvent();
@@ -1232,6 +1265,9 @@ namespace BossRush
             
             // 设置焚皇断界戟系统（场景切换重绑定）
             SetupFenHuangHalberdForScene(scene);
+
+            // 设置霜之哀伤系统（场景切换重绑定）
+            SetupFrostmourneForScene(scene);
 
             // 场景加载后重新应用龙枪弹种属性覆盖（射速/伤害/弹匣等）
             // 延迟调用确保玩家角色和武器已初始化
