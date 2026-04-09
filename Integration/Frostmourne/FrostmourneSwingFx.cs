@@ -126,7 +126,7 @@ namespace BossRush
                 blurObj.transform.SetParent(trailRoot, false);
                 blurObj.transform.localPosition = new Vector3(0f, 0f, trailDistance);
 
-                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(blurObj);
+                FrostmourneWeaponConfig.TryAddIceEffectsToGraphic(blurObj);
 
                 injectedParticles = blurObj.GetComponentsInChildren<ParticleSystem>(true);
                 TintParticlesIce(injectedParticles, sizeScale);

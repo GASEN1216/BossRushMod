@@ -196,6 +196,11 @@ namespace BossRush
                 }
 
                 LogIfVerbose("亡灵召唤完成");
+
+                // 显示召唤成功气泡
+                CleanupDeadZombies();
+                int currentCount = summonedZombies.Count;
+                ShowSummonSuccessBubble(player, currentCount, availableSlots);
             }
             catch (Exception e)
             {
@@ -401,6 +406,49 @@ namespace BossRush
                 {
                     summonedZombies.RemoveAt(i);
                 }
+            }
+        }
+
+        /// <summary>
+        /// 显示召唤成功的对话气泡
+        /// </summary>
+        private static void ShowSummonSuccessBubble(CharacterMainControl player, int currentCount, int summoned)
+        {
+            if (player == null || player.transform == null) return;
+            if (summoned <= 0) return;
+
+            try
+            {
+                int max = FrostmourneConfig.SummonCount;
+                string bubbleText;
+                if (summoned >= max)
+                {
+                    // 全额召唤
+                    bubbleText = L10n.T(
+                        "<color=#81D4FA>亡灵仆从已召唤！</color>",
+                        "<color=#81D4FA>Undead summoned!</color>");
+                }
+                else
+                {
+                    // 补充召唤
+                    bubbleText = L10n.T(
+                        "<color=#81D4FA>亡灵仆从已补充！</color>",
+                        "<color=#81D4FA>Undead replenished!</color>");
+                }
+
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    bubbleText,
+                    player.transform,
+                    2.5f,
+                    false,
+                    false,
+                    -1f,
+                    2f
+                );
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[Frostmourne] 显示召唤气泡异常: " + e.Message);
             }
         }
 
