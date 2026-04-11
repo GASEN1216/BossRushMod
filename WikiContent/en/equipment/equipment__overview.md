@@ -1,6 +1,7 @@
 ## Equipment Overview
 
 BossRush Mod adds a series of custom equipment, mainly from two Boss drop lines: Dragon Descendant and Skyburner Dragon Lord.
+In addition, the vanilla `Cname_Boss_Blue` now has a chance to drop an extra custom melee weapon: Frostmourne.
 
 ### Equipment List
 - Dragon Set — Helmet + Armor (Dragon Descendant drop)
@@ -10,6 +11,7 @@ BossRush Mod adds a series of custom equipment, mainly from two Boss drop lines:
 - Skyburner Halberd — Melee weapon (Skyburner Dragon Lord drop)
 - Dragon Breath — Firearm (Dragon Descendant drop)
 - Dragon Cannon — Firearm (Skyburner Dragon Lord Boss exclusive, unobtainable)
+- Frostmourne — Ice melee weapon (`Cname_Boss_Blue` 50% extra drop)
 
 ### Set Effects
 
@@ -26,3 +28,4 @@ Both dragon-themed sets provide a core "fire-to-heal" passive; the difference li
 - Challenge Dragon Descendant first to obtain the Dragon Set and Dragon Breath as transitional gear
 - After mastering Dragon Descendant, challenge Skyburner Dragon Lord for the Dragon King Set and exclusive weapons
 - Choose totems based on playstyle: Cloud Rider for mobility, Reverse Scale for survivability
+- If you regularly farm vanilla Blue Bosses, keep an eye out for Frostmourne; its ice damage and undead summon are both excellent for BossRush

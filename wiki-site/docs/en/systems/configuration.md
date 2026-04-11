@@ -73,6 +73,11 @@ This option is off by default. When enabled, loot crates can serve as temporary 
 - Range: true/false
 - Whether the mount summoned by Wild Horn uses the wolf model
 
+# enableDeathWraithSystem
+- Default: true
+- Range: true/false
+- Whether to enable the Death Wraith system; when disabled, the mod stops recording/spawning wraiths and clears the current saved wraith record
+
 # Recommended Adjustments
 - Want a faster pace: lower waveIntervalSeconds (e.g., 5-8).
 - Want higher difficulty: increase bossStatMultiplier (e.g., 1.5-2.0).

@@ -71,6 +71,11 @@
 - 范围：true/false
 - 荒野号角召唤的坐骑是否使用狼模型
 
+#### enableDeathWraithSystem
+- 默认值：true
+- 范围：true/false
+- 是否启用死亡亡魂系统；关闭后不会再记录或生成亡魂，并会清理当前存档里的亡魂记录
+
 ### 常用调整建议
 - 想要更紧凑的节奏：降低 waveIntervalSeconds（如 5-8）。
 - 想要更高难度：提高 bossStatMultiplier（如 1.5-2.0）。
