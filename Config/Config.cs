@@ -15,6 +15,7 @@
 //   - bossStatMultiplier: Boss 全局数值倍率（0.1-10，默认1）
 //   - modeDEnemiesPerWave: 白手起家每波敌人数（1-10，默认3）
 //   - disabledBosses: 被禁用的 Boss 名称列表（用于 Boss 池筛选）
+//   - enableDeathWraithSystem: 死亡亡魂系统开关
 // ============================================================================
 
 using System;
@@ -65,6 +66,9 @@ namespace BossRush
 
             /// <summary>荒野号角使用狼模型替换坐骑（默认开启）</summary>
             public bool useWolfModelForWildHorn = true;
+
+            /// <summary>死亡亡魂系统开关（默认开启）</summary>
+            public bool enableDeathWraithSystem = true;
         }
         
         #endregion
@@ -236,6 +240,7 @@ namespace BossRush
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
                 string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
+                string deathWraithKey = ModName + "_EnableDeathWraithSystem";
 
                 MethodInfo loadMethod = optionsManagerType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
                 if (loadMethod != null)
@@ -349,7 +354,11 @@ namespace BossRush
                     bool loadedWolfModel = (bool)wolfModelResult;
                     config.useWolfModelForWildHorn = loadedWolfModel;
 
-                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel);
+                    object deathWraithResult = boolLoadMethod.Invoke(null, new object[] { deathWraithKey, config.enableDeathWraithSystem });
+                    bool loadedDeathWraith = (bool)deathWraithResult;
+                    config.enableDeathWraithSystem = loadedDeathWraith;
+
+                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith);
                 }
                 else
                 {
@@ -492,6 +501,15 @@ namespace BossRush
                     config.useWolfModelForWildHorn = (bool)wolfModelResult;
                     return true;
                 }
+
+                string deathWraithKey = ModName + "_EnableDeathWraithSystem";
+                if (changedKey == deathWraithKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object deathWraithResult = boolLoadMethod.Invoke(null, new object[] { deathWraithKey, config.enableDeathWraithSystem });
+                    config.enableDeathWraithSystem = (bool)deathWraithResult;
+                    return true;
+                }
             }
             catch (Exception ex)
             {
@@ -520,6 +538,7 @@ namespace BossRush
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
                 string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
+                string deathWraithKey = ModName + "_EnableDeathWraithSystem";
                 string modeDKey = ModName + "_ModeDEnemiesPerWave";
                 string achievementHotkeyKey = ModName + "_AchievementHotkey";
                 
@@ -560,6 +579,16 @@ namespace BossRush
                     if (TryLoadSingleModConfigValue(changedKey))
                     {
                         SaveConfigToFile();
+                    }
+                }
+
+                if (changedKey == deathWraithKey)
+                {
+                    DevLog("[BossRush] 检测到死亡亡魂系统配置变更");
+                    if (TryLoadSingleModConfigValue(changedKey))
+                    {
+                        SaveConfigToFile();
+                        HandleDeathWraithConfigChanged_DeathWraith();
                     }
                 }
             }
@@ -687,6 +716,23 @@ namespace BossRush
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册荒野号角狼模型配置项失败: " + ex.Message);
+                }
+
+                // 死亡亡魂系统
+                try
+                {
+                    string deathWraithLabel = L10n.T("死亡亡魂系统", "Death Wraith System");
+                    string deathWraithKey = ModName + "_EnableDeathWraithSystem";
+
+                    if (addBoolMethod != null)
+                    {
+                        addBoolMethod.Invoke(null, new object[] { ModName, deathWraithKey, deathWraithLabel, config.enableDeathWraithSystem });
+                        DevLog("[BossRush] 死亡亡魂配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册死亡亡魂配置项失败: " + ex.Message);
                 }
 
                 // ========== 数值滑条类配置 ==========
@@ -900,6 +946,19 @@ namespace BossRush
                 return config.useWolfModelForWildHorn;
             }
             return true; // 默认开启
+        }
+
+        /// <summary>
+        /// 获取死亡亡魂系统是否启用
+        /// </summary>
+        /// <returns>true 启用，false 关闭</returns>
+        private bool IsDeathWraithSystemEnabled()
+        {
+            if (config != null)
+            {
+                return config.enableDeathWraithSystem;
+            }
+            return true;
         }
 
         #endregion

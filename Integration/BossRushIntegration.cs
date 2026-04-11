@@ -992,6 +992,7 @@ namespace BossRush
                 SetupModConfig();
                 SaveConfigToFile();
             }
+            RefreshDeathWraithEventBindings_DeathWraith();
             ApplyDevModeRuntimeState();
 
             // 尝试注入本地化字典
@@ -1094,9 +1095,9 @@ namespace BossRush
             SavesSystem.OnCollectSaveData += OnCollectSaveData_BrickStoneStock;
             SavesSystem.OnSetFile += OnSetFile_BrickStoneStock;
 
-            // 亡魂系统：在切图/存档收集时记录当前绑定近战武器
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
-            
+            // 亡魂系统：切换存档时重置当前文件的亡魂清理状态
+            SavesSystem.OnSetFile += OnSetFile_DeathWraith;
+
             // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
 
@@ -1130,6 +1131,7 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_TicketStock;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_JournalStock;
             SavesSystem.OnSetFile -= OnSetFile_JournalStock;
+            SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
             Health.OnDead -= OnPlayerDeathInBossRush;
             Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
@@ -1166,6 +1168,9 @@ namespace BossRush
 
             // 清理婚礼教堂建筑系统
             CleanupWeddingBuilding();
+
+            // 清理布满了灰尘的星愿许愿台建筑系统
+            CleanupWishFountainBuilding();
             
             // [性能优化] 重置商店注入标记
             _shopInjectionCompleted = false;
@@ -1274,7 +1279,14 @@ namespace BossRush
             StartCoroutine(DelayedApplyDragonGunAmmoOverride());
 
             // 亡魂系统：尝试在死亡位置生成亡魂
-            StartCoroutine(DelayedSpawnDeathWraith_DeathWraith(scene));
+            if (IsDeathWraithSystemEnabled())
+            {
+                StartCoroutine(DelayedSpawnDeathWraith_DeathWraith(scene));
+            }
+            else
+            {
+                InvalidateStoredDeathWraithRecord_DeathWraith("场景加载时配置关闭");
+            }
 
             try
             {
@@ -1295,6 +1307,10 @@ namespace BossRush
                     // 初始化婚礼教堂建筑系统（注入建筑数据 + 恢复已放置建筑的NPC）
                     InitWeddingBuilding();
                     RestoreWeddingBuildingNPC();
+
+                    // 初始化布满了灰尘的星愿许愿台建筑系统
+                    InitWishFountainBuilding();
+                    RestoreWishFountainBuildings();
                 }
 
                 // 使用配置系统检查是否是有效的 BossRush 竞技场场景

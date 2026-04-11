@@ -122,8 +122,83 @@ namespace BossRush
         private WraithInfo pendingDeathWraithInfo;
         private int pendingDeathWraithPrimedFrame = -1;
         private float pendingDeathWraithPrimedRealtime = -1f;
+        private bool deathWraithStoredRecordKnownCleared;
         private Dictionary<string, CharacterRandomPreset> deathWraithPresetCacheByNameKey;
         private Dictionary<string, CharacterRandomPreset> deathWraithPresetCacheByRuntimeName;
+
+        private void HandleDeathWraithConfigChanged_DeathWraith()
+        {
+            RefreshDeathWraithEventBindings_DeathWraith();
+
+            if (IsDeathWraithSystemEnabled())
+            {
+                DevLog("[DeathWraith] 系统配置已开启");
+                TryRequestDeathWraithSpawnForActiveScene_DeathWraith("配置开启");
+                return;
+            }
+
+            DevLog("[DeathWraith] 系统配置已关闭，清理当前与已存亡魂状态");
+            ClearDeathWraithState_DeathWraith();
+            InvalidateStoredDeathWraithRecord_DeathWraith("配置关闭");
+        }
+
+        private void TryRequestDeathWraithSpawnForActiveScene_DeathWraith(string source)
+        {
+            if (!IsDeathWraithSystemEnabled())
+            {
+                return;
+            }
+
+            try
+            {
+                Scene activeScene = SceneManager.GetActiveScene();
+                if (!activeScene.IsValid() || !activeScene.isLoaded)
+                {
+                    return;
+                }
+
+                if (activeScene.name == "MainMenu" || activeScene.name == "LoadingScreen_Black")
+                {
+                    return;
+                }
+
+                DevLog("[DeathWraith] 主动检查当前场景亡魂生成: "
+                    + source + ", scene=" + activeScene.name);
+                StartCoroutine(DelayedSpawnDeathWraith_DeathWraith(activeScene));
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 主动触发亡魂生成检查失败: " + e.Message);
+            }
+        }
+
+        private void RefreshDeathWraithEventBindings_DeathWraith()
+        {
+            try
+            {
+                Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
+                Health.OnDead -= RecordDeathWraithData_DeathWraith;
+                SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+
+                if (!IsDeathWraithSystemEnabled())
+                {
+                    return;
+                }
+
+                Health.OnHurt += PrimeDeathWraithData_DeathWraith;
+                Health.OnDead += RecordDeathWraithData_DeathWraith;
+                SavesSystem.OnCollectSaveData += OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 刷新事件绑定失败: " + e.Message);
+            }
+        }
+
+        private void OnSetFile_DeathWraith()
+        {
+            deathWraithStoredRecordKnownCleared = false;
+        }
 
         #endregion
 
@@ -172,6 +247,12 @@ namespace BossRush
         {
             try
             {
+                if (!IsDeathWraithSystemEnabled())
+                {
+                    ClearPendingDeathWraithInfo_DeathWraith();
+                    return;
+                }
+
                 if (!IsMainPlayerHealth_DeathWraith(hurtHealth, out CharacterMainControl main))
                 {
                     if (hurtHealth != null)
@@ -261,6 +342,13 @@ namespace BossRush
                 return;
             }
 
+            if (!IsDeathWraithSystemEnabled())
+            {
+                ClearPendingDeathWraithInfo_DeathWraith();
+                InvalidateStoredDeathWraithRecord_DeathWraith("配置关闭，跳过死亡记录");
+                return;
+            }
+
             if (!IsDeathWraithSupportedContext_DeathWraith())
             {
                 ClearPendingDeathWraithInfo_DeathWraith();
@@ -289,6 +377,7 @@ namespace BossRush
             }
 
             SavesSystem.Save<WraithInfo>(DEATH_WRAITH_SAVE_KEY, info);
+            deathWraithStoredRecordKnownCleared = false;
             DevLog("[DeathWraith] 已记录亡魂数据"
                 + (string.IsNullOrEmpty(source) ? "" : ("[" + source + "]"))
                 + ": scene=" + info.sceneName
@@ -575,6 +664,11 @@ namespace BossRush
         {
             try
             {
+                if (!IsDeathWraithSystemEnabled())
+                {
+                    return;
+                }
+
                 CharacterMainControl main = CharacterMainControl.Main;
                 ItemTreeData meleeItemTreeData;
                 int meleeTypeId;
@@ -742,6 +836,12 @@ namespace BossRush
         internal IEnumerator DelayedSpawnDeathWraith_DeathWraith(Scene expectedScene)
         {
             int sceneToken = deathWraithSceneToken;
+            if (!IsDeathWraithSystemEnabled())
+            {
+                InvalidateStoredDeathWraithRecord_DeathWraith("场景加载时配置关闭");
+                yield break;
+            }
+
             if (deathWraithSpawnInProgress)
             {
                 DevLog("[DeathWraith] 跳过重复的生成请求");
@@ -793,6 +893,11 @@ namespace BossRush
             try
             {
                 if (sceneToken != deathWraithSceneToken) return;
+                if (!IsDeathWraithSystemEnabled())
+                {
+                    InvalidateStoredDeathWraithRecord_DeathWraith("配置关闭，跳过生成");
+                    return;
+                }
 
                 // 加载亡魂数据
                 WraithInfo info = null;
@@ -2368,6 +2473,50 @@ namespace BossRush
             }
 
             Health.OnDead -= OnWraithDied_DeathWraith;
+        }
+
+        private void InvalidateStoredDeathWraithRecord_DeathWraith(string reason)
+        {
+            try
+            {
+                if (deathWraithStoredRecordKnownCleared)
+                {
+                    return;
+                }
+
+                WraithInfo info = null;
+                try
+                {
+                    info = SavesSystem.Load<WraithInfo>(DEATH_WRAITH_SAVE_KEY);
+                }
+                catch (Exception loadEx)
+                {
+                    DevLog("[DeathWraith] 读取亡魂记录失败，无法清理: " + loadEx.Message);
+                    return;
+                }
+
+                if (info == null)
+                {
+                    deathWraithStoredRecordKnownCleared = true;
+                    return;
+                }
+
+                if (!info.valid && info.killed)
+                {
+                    deathWraithStoredRecordKnownCleared = true;
+                    return;
+                }
+
+                info.valid = false;
+                info.killed = true;
+                SavesSystem.Save<WraithInfo>(DEATH_WRAITH_SAVE_KEY, info);
+                deathWraithStoredRecordKnownCleared = true;
+                DevLog("[DeathWraith] 已清理亡魂记录: " + reason);
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 清理亡魂记录失败: " + e.Message);
+            }
         }
 
         #endregion
