@@ -198,6 +198,18 @@ namespace BossRush
                 InteractName = ReplayKey;
                 interactMarkerOffset = new Vector3(0f, 0.15f, 0f);
                 interactCollider = GetComponent<Collider>();
+                if (interactCollider == null)
+                {
+                    BoxCollider box = gameObject.AddComponent<BoxCollider>();
+                    box.isTrigger = true;
+                    box.size = new Vector3(0.1f, 0.1f, 0.1f);
+                    box.enabled = false;
+                    interactCollider = box;
+                }
+
+                // InteractableBase.Awake 会无条件遍历 otherInterablesInGroup。
+                // 子交互不使用分组选项，但仍需提前初始化为空列表，避免空引用。
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[WeddingChapel]");
             }
             catch (Exception e)
             {

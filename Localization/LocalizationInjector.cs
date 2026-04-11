@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // LocalizationInjector.cs - 统一本地化注入器
 // ============================================================================
 // 模块说明：
@@ -1236,6 +1236,35 @@ namespace BossRush
             LocalizationHelper.InjectLocalization("Building_wedding_chapel_Desc", description);
 
             ModBehaviour.DevLog("[LocalizationInjector] 婚礼教堂建筑本地化注入完成");
+        }
+
+        // ============================================================================
+        // 布满了灰尘的星愿许愿台建筑本地化
+        // ============================================================================
+
+        private const string STARWISH_BUILDING_NAME_CN = "布满了灰尘的星愿许愿台";
+        private const string STARWISH_BUILDING_NAME_EN = "Dust-Covered StarWish Fountain";
+        private const string STARWISH_BUILDING_DESC_CN = "闭上眼，将心愿写入星光…";
+        private const string STARWISH_BUILDING_DESC_EN = "Close your eyes, write your wish into the starlight...";
+        private const string STARWISH_INTERACT_CN = "许愿";
+        private const string STARWISH_INTERACT_EN = "Make a Wish";
+
+        /// <summary>
+        /// 注入布满了灰尘的星愿许愿台建筑本地化
+        /// </summary>
+        public static void InjectWishFountainLocalization()
+        {
+            string displayName = L10n.T(STARWISH_BUILDING_NAME_CN, STARWISH_BUILDING_NAME_EN);
+            string description = L10n.T(STARWISH_BUILDING_DESC_CN, STARWISH_BUILDING_DESC_EN);
+            string interact = L10n.T(STARWISH_INTERACT_CN, STARWISH_INTERACT_EN);
+
+            LocalizationHelper.InjectLocalization("Building_starwish_fountain", displayName);
+            LocalizationHelper.InjectLocalization("Building_starwish_fountain_Desc", description);
+            LocalizationHelper.InjectLocalization("BossRush_StarWish_Interact", interact);
+            LocalizationHelper.InjectLocalization(STARWISH_INTERACT_CN, interact);
+            LocalizationHelper.InjectLocalization(interact, interact);
+
+            ModBehaviour.DevLog("[LocalizationInjector] 布满了灰尘的星愿许愿台建筑本地化注入完成");
         }
     }
 }
