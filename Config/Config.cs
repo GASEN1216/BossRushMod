@@ -548,6 +548,10 @@ namespace BossRush
                     if (TryLoadSingleModConfigValue(changedKey))
                     {
                         SaveConfigToFile();
+                        if (changedKey == lootKey)
+                        {
+                            RefreshBossRushLootboxPathTrackingForTrackedBosses();
+                        }
                         DevLog("[BossRush] 配置已更新并保存到本地文件");
                     }
 	

@@ -42,3 +42,9 @@ wiki-site/node_modules/
 wiki-site/docs/.vitepress/dist/
 wiki-site/docs/.vitepress/cache/
 /codex-skills
+
+Assets/config/wish_config.dat
+Build.Obfuscated/
+dotfuscator.local.xml
+prepare_release_local.bat
+prepare_wish_config_local.bat

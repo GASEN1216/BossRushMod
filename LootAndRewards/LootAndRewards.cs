@@ -308,6 +308,51 @@ namespace BossRush
             FrostmourneBlueBossDropHandler.CancelPendingBossRushLootboxDrop(character);
         }
 
+        internal void RefreshBossRushLootboxPathTrackingForTrackedBosses()
+        {
+            if (bossSpawnTimes.Count == 0)
+            {
+                bossRushLootboxPathBosses.Clear();
+                return;
+            }
+
+            List<CharacterMainControl> staleBosses = null;
+            List<CharacterMainControl> trackedBosses =
+                new List<CharacterMainControl>(bossSpawnTimes.Keys);
+
+            for (int i = 0; i < trackedBosses.Count; i++)
+            {
+                CharacterMainControl boss = trackedBosses[i];
+                if (boss == null)
+                {
+                    if (staleBosses == null)
+                    {
+                        staleBosses = new List<CharacterMainControl>();
+                    }
+
+                    staleBosses.Add(boss);
+                    continue;
+                }
+
+                MarkBossRushLootboxPathTracking(boss);
+            }
+
+            if (staleBosses == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < staleBosses.Count; i++)
+            {
+                CharacterMainControl staleBoss = staleBosses[i];
+                bossSpawnTimes.Remove(staleBoss);
+                bossOriginalLootCounts.Remove(staleBoss);
+                countedDeadBosses.Remove(staleBoss);
+                trackedBossLootHooks.Remove(staleBoss);
+                bossRushLootboxPathBosses.Remove(staleBoss);
+            }
+        }
+
         /// <summary>
         /// 物品价值缓存条目
         /// </summary>

@@ -24,6 +24,30 @@ namespace BossRush
     /// </summary>
     public class FrostmourneAction : EquipmentAbilityAction
     {
+        private static readonly float[] SummonAngleOffsets = new float[]
+        {
+            0f,
+            -18f,
+            18f,
+            -36f,
+            36f,
+            -54f,
+            54f,
+            90f,
+            -90f,
+            144f,
+            -144f
+        };
+
+        private static readonly float[] SummonRadiusScales = new float[]
+        {
+            1f,
+            0.78f,
+            1.16f,
+            0.58f,
+            1.34f
+        };
+
         private static FrostmourneConfig _config;
         private bool spawningStarted;
         private bool spawningComplete;
@@ -136,6 +160,9 @@ namespace BossRush
                     return;
                 }
 
+                List<Vector3> reservedSpawnPositions = CollectReservedZombieSpawnPositions();
+                int summonStartSlotIndex = summonedZombies.Count;
+
                 // 仅补齐缺额，保证场上同时最多 5 只亡灵
                 for (int i = 0; i < availableSlots; i++)
                 {
@@ -144,74 +171,85 @@ namespace BossRush
                         return;
                     }
 
-                    float angle = i * 72f; // 0°, 72°, 144°, 216°, 288°
-                    Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * FrostmourneConfig.SummonRadius;
-                    Vector3 spawnPos = playerPos + offset;
+                    int slotIndex = summonStartSlotIndex + i;
+                    List<Vector3> candidateSpawnPositions = BuildCandidateZombieSpawnPositions(
+                        playerPos,
+                        playerPos.y,
+                        slotIndex,
+                        reservedSpawnPositions);
 
-                    // 尝试将生成点对齐到地面
-                    spawnPos = SnapToGround(spawnPos, playerPos.y);
-
-                    // 验证生成点是否可用（不在墙内）
-                    if (!IsSpawnPointValid(spawnPos))
+                    if (candidateSpawnPositions.Count == 0)
                     {
-                        // 尝试缩短距离
-                        spawnPos = playerPos + offset * 0.6f;
-                        spawnPos = SnapToGround(spawnPos, playerPos.y);
-                        if (!IsSpawnPointValid(spawnPos))
-                        {
-                            LogIfVerbose("方位 " + i + " 无可用生成点，跳过");
-                            continue;
-                        }
+                        LogIfVerbose("方位 " + slotIndex + " 无可用生成点，跳过");
+                        continue;
                     }
 
-                    try
+                    bool summonSucceeded = false;
+                    for (int candidateIndex = 0; candidateIndex < candidateSpawnPositions.Count; candidateIndex++)
                     {
-                        CharacterMainControl zombie = await zombiePreset.CreateCharacterAsync(
-                            spawnPos, Vector3.forward, relatedScene, null, false);
-
                         if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
                         {
-                            if (zombie != null && zombie.gameObject != null)
-                            {
-                                UnityEngine.Object.Destroy(zombie.gameObject);
-                            }
                             return;
                         }
 
-                        if (zombie == null)
+                        Vector3 spawnPos = candidateSpawnPositions[candidateIndex];
+
+                        try
                         {
-                            LogIfVerbose("方位 " + i + " 僵尸生成失败");
-                            continue;
+                            CharacterMainControl zombie = await zombiePreset.CreateCharacterAsync(
+                                spawnPos, Vector3.forward, relatedScene, null, false);
+
+                            if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                            {
+                                if (zombie != null && zombie.gameObject != null)
+                                {
+                                    UnityEngine.Object.Destroy(zombie.gameObject);
+                                }
+                                return;
+                            }
+
+                            if (zombie == null)
+                            {
+                                continue;
+                            }
+
+                            // 设置血量为 100
+                            SetZombieHealth(zombie, FrostmourneConfig.ZombieHealth);
+
+                            // 设置为玩家同阵营
+                            zombie.SetTeam(playerTeam);
+
+                            // 禁止掉落
+                            zombie.dropBoxOnDead = false;
+
+                            // 设置名称
+                            zombie.gameObject.name = "Frostmourne_Zombie_" + (summonedZombies.Count + 1);
+
+                            // 激活
+                            zombie.gameObject.SetActive(true);
+
+                            // 设置 AI 追踪最近敌人
+                            SetupZombieAI(zombie, player);
+
+                            // 记录到列表
+                            summonedZombies.Add(zombie);
+                            reservedSpawnPositions.Add(zombie.transform.position);
+                            RefreshSummonedZombieFollowerSlots(player);
+                            successfulSummons++;
+                            summonSucceeded = true;
+
+                            LogIfVerbose("方位 " + slotIndex + " 僵尸召唤成功，候选点 #" + candidateIndex);
+                            break;
                         }
-
-                        // 设置血量为 100
-                        SetZombieHealth(zombie, FrostmourneConfig.ZombieHealth);
-
-                        // 设置为玩家同阵营
-                        zombie.SetTeam(playerTeam);
-
-                        // 禁止掉落
-                        zombie.dropBoxOnDead = false;
-
-                        // 设置名称
-                        zombie.gameObject.name = "Frostmourne_Zombie_" + (summonedZombies.Count + 1);
-
-                        // 激活
-                        zombie.gameObject.SetActive(true);
-
-                        // 设置 AI 追踪最近敌人
-                        SetupZombieAI(zombie, player);
-
-                        // 记录到列表
-                        summonedZombies.Add(zombie);
-                        RefreshSummonedZombieFollowerSlots(player);
-                        successfulSummons++;
-
-                        LogIfVerbose("方位 " + i + " 僵尸召唤成功");
+                        catch (Exception e)
+                        {
+                            LogIfVerbose("方位 " + slotIndex + " 候选点 #" + candidateIndex + " 召唤异常: " + e.Message);
+                        }
                     }
-                    catch (Exception e)
+
+                    if (!summonSucceeded)
                     {
-                        LogIfVerbose("方位 " + i + " 僵尸生成异常: " + e.Message);
+                        LogIfVerbose("方位 " + slotIndex + " 所有候选生成点均失败");
                     }
 
                     // 每只之间让出一帧，避免卡顿
@@ -241,6 +279,84 @@ namespace BossRush
                     spawningComplete = true;
                 }
             }
+        }
+
+        private static List<Vector3> CollectReservedZombieSpawnPositions()
+        {
+            List<Vector3> reservedPositions = new List<Vector3>();
+            for (int i = 0; i < summonedZombies.Count; i++)
+            {
+                CharacterMainControl zombie = summonedZombies[i];
+                if (zombie == null || zombie.transform == null)
+                {
+                    continue;
+                }
+
+                reservedPositions.Add(zombie.transform.position);
+            }
+
+            return reservedPositions;
+        }
+
+        private static List<Vector3> BuildCandidateZombieSpawnPositions(
+            Vector3 playerPos,
+            float fallbackY,
+            int slotIndex,
+            List<Vector3> reservedSpawnPositions)
+        {
+            List<Vector3> candidates = new List<Vector3>();
+            int summonCount = Mathf.Max(1, FrostmourneConfig.SummonCount);
+            float baseAngle = 360f * (slotIndex % summonCount) / summonCount;
+
+            for (int radiusIndex = 0; radiusIndex < SummonRadiusScales.Length; radiusIndex++)
+            {
+                float scaledRadius = FrostmourneConfig.SummonRadius * SummonRadiusScales[radiusIndex];
+                for (int angleIndex = 0; angleIndex < SummonAngleOffsets.Length; angleIndex++)
+                {
+                    float angle = baseAngle + SummonAngleOffsets[angleIndex];
+                    Vector3 offset =
+                        Quaternion.Euler(0f, angle, 0f) * Vector3.forward * scaledRadius;
+                    Vector3 candidate = SnapToGround(playerPos + offset, fallbackY);
+
+                    if (!IsSpawnPointValid(candidate))
+                    {
+                        continue;
+                    }
+
+                    if (IsSpawnPositionReserved(candidate, reservedSpawnPositions))
+                    {
+                        continue;
+                    }
+
+                    candidates.Add(candidate);
+                }
+            }
+
+            return candidates;
+        }
+
+        private static bool IsSpawnPositionReserved(
+            Vector3 candidate,
+            List<Vector3> reservedSpawnPositions)
+        {
+            if (reservedSpawnPositions == null)
+            {
+                return false;
+            }
+
+            const float minDistance = 1.1f;
+            float minDistanceSqr = minDistance * minDistance;
+            for (int i = 0; i < reservedSpawnPositions.Count; i++)
+            {
+                Vector3 delta = reservedSpawnPositions[i] - candidate;
+                delta.y = 0f;
+                if (delta.sqrMagnitude < minDistanceSqr)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool IsSpawnRequestStillValid(int spawnRequestId, CharacterMainControl player, int relatedScene)

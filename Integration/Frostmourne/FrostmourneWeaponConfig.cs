@@ -356,6 +356,9 @@ namespace BossRush
                 return;
             }
 
+            FrostmourneRuntimeMaterialTracker materialTracker =
+                FrostmourneRuntimeMaterialTracker.GetOrAdd(targetVisual);
+
             Transform existingRoot = FindChildRecursive(targetVisual.transform, IceAuraRootName);
             if (existingRoot != null)
             {
@@ -366,7 +369,7 @@ namespace BossRush
             try
             {
                 RemoveOriginalPurpleEffects(targetVisual);
-                CreateIceAuraEffects(targetVisual);
+                CreateIceAuraEffects(targetVisual, materialTracker);
                 ModBehaviour.DevLog("[Frostmourne] 已为目标添加冰焰环绕: " + targetVisual.name);
             }
             catch (Exception e)
@@ -412,7 +415,9 @@ namespace BossRush
             }
         }
 
-        private static void CreateIceAuraEffects(GameObject targetVisual)
+        private static void CreateIceAuraEffects(
+            GameObject targetVisual,
+            FrostmourneRuntimeMaterialTracker materialTracker)
         {
             if (targetVisual == null)
             {
@@ -439,7 +444,13 @@ namespace BossRush
             GameObject sourceModel = GetFireAK47Model();
             if (sourceModel != null)
             {
-                TryCopyAndTintAura(sourceModel, "Smoke", auraRoot.transform, localExtents, false);
+                TryCopyAndTintAura(
+                    sourceModel,
+                    "Smoke",
+                    auraRoot.transform,
+                    localExtents,
+                    false,
+                    materialTracker);
             }
             EnsureIceEffectsPlaying(auraRoot);
         }
@@ -458,7 +469,13 @@ namespace BossRush
             return null;
         }
 
-        private static void TryCopyAndTintAura(GameObject sourceModel, string name, Transform parentTarget, Vector3 localExtents, bool sparkMode)
+        private static void TryCopyAndTintAura(
+            GameObject sourceModel,
+            string name,
+            Transform parentTarget,
+            Vector3 localExtents,
+            bool sparkMode,
+            FrostmourneRuntimeMaterialTracker materialTracker)
         {
             Transform sourcePS = FindChildRecursive(sourceModel.transform, name);
             if (sourcePS == null) return;
@@ -542,9 +559,13 @@ namespace BossRush
                     if (tinted.HasProperty("_EmissionColor")) tinted.SetColor("_EmissionColor", IceCoreColor * 0.45f);
 
                     tintedMaterials[j] = tinted;
+                    if (materialTracker != null)
+                    {
+                        materialTracker.Track(tinted);
+                    }
                 }
 
-                renderer.materials = tintedMaterials;
+                renderer.sharedMaterials = tintedMaterials;
             }
 
             Light[] lights = copy.GetComponentsInChildren<Light>(true);
@@ -883,6 +904,52 @@ namespace BossRush
             }
 
             return null;
+        }
+    }
+
+    internal sealed class FrostmourneRuntimeMaterialTracker : MonoBehaviour
+    {
+        private readonly List<Material> trackedMaterials = new List<Material>();
+
+        internal static FrostmourneRuntimeMaterialTracker GetOrAdd(GameObject target)
+        {
+            if (target == null)
+            {
+                return null;
+            }
+
+            FrostmourneRuntimeMaterialTracker tracker =
+                target.GetComponent<FrostmourneRuntimeMaterialTracker>();
+            if (tracker == null)
+            {
+                tracker = target.AddComponent<FrostmourneRuntimeMaterialTracker>();
+            }
+
+            return tracker;
+        }
+
+        internal void Track(Material material)
+        {
+            if (material == null || trackedMaterials.Contains(material))
+            {
+                return;
+            }
+
+            trackedMaterials.Add(material);
+        }
+
+        private void OnDestroy()
+        {
+            for (int i = 0; i < trackedMaterials.Count; i++)
+            {
+                Material material = trackedMaterials[i];
+                if (material != null)
+                {
+                    UnityEngine.Object.Destroy(material);
+                }
+            }
+
+            trackedMaterials.Clear();
         }
     }
 

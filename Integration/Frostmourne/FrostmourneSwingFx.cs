@@ -9,7 +9,6 @@
 
 using HarmonyLib;
 using ItemStatsSystem;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -108,7 +107,6 @@ namespace BossRush
         private float elapsed;
         private Transform trailRoot;
         private ParticleSystem[] injectedParticles;
-        private readonly List<Material> runtimeMaterials = new List<Material>();
 
         public void Initialize(float rangeScale)
         {
@@ -133,7 +131,6 @@ namespace BossRush
                 injectedParticles = blurObj.GetComponentsInChildren<ParticleSystem>(true);
                 TintParticlesIce(injectedParticles, sizeScale);
                 TintLightsIce(blurObj.GetComponentsInChildren<Light>(true), lightScale);
-                TintRenderersIce(blurObj.GetComponentsInChildren<Renderer>(true), runtimeMaterials);
             }
 
             elapsed = 0f;
@@ -163,20 +160,6 @@ namespace BossRush
                     }
                 }
             }
-        }
-
-        private void OnDestroy()
-        {
-            for (int i = 0; i < runtimeMaterials.Count; i++)
-            {
-                Material runtimeMaterial = runtimeMaterials[i];
-                if (runtimeMaterial != null)
-                {
-                    Object.Destroy(runtimeMaterial);
-                }
-            }
-
-            runtimeMaterials.Clear();
         }
 
         private static void TintParticlesIce(ParticleSystem[] particleSystems, float sizeScale)
@@ -252,64 +235,5 @@ namespace BossRush
             }
         }
 
-        private static void TintRenderersIce(Renderer[] renderers, List<Material> runtimeMaterials)
-        {
-            if (renderers == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                Renderer renderer = renderers[i];
-                if (renderer == null || renderer.sharedMaterials == null)
-                {
-                    continue;
-                }
-
-                Material[] materials = renderer.sharedMaterials;
-                Material[] tintedMaterials = new Material[materials.Length];
-
-                for (int j = 0; j < materials.Length; j++)
-                {
-                    Material source = materials[j];
-                    if (source == null)
-                    {
-                        continue;
-                    }
-
-                    Material tinted = new Material(source);
-                    if (tinted.HasProperty("_Color"))
-                    {
-                        tinted.color = IceCoreColor;
-                    }
-                    if (tinted.HasProperty("_TintColor"))
-                    {
-                        tinted.SetColor("_TintColor", IceCoreColor);
-                    }
-                    if (tinted.HasProperty("_EmissionColor"))
-                    {
-                        tinted.SetColor("_EmissionColor", IceCoreColor * 0.45f);
-                    }
-
-                    tintedMaterials[j] = tinted;
-                }
-
-                renderer.sharedMaterials = tintedMaterials;
-
-                if (runtimeMaterials == null)
-                {
-                    continue;
-                }
-
-                for (int j = 0; j < tintedMaterials.Length; j++)
-                {
-                    if (tintedMaterials[j] != null)
-                    {
-                        runtimeMaterials.Add(tintedMaterials[j]);
-                    }
-                }
-            }
-        }
     }
 }

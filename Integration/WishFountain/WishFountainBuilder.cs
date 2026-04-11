@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
@@ -80,6 +81,15 @@ namespace BossRush
         /// <summary>布满了灰尘的星愿许愿台粒子共享纹理</summary>
         private static Texture2D starwishParticleTexture = null;
 
+        /// <summary>场景内恢复交互点的协程句柄</summary>
+        private Coroutine starwishRestoreCoroutine = null;
+
+        /// <summary>当前场景已处理过的建筑实例缓存</summary>
+        private readonly HashSet<int> preparedStarwishBuildingInstanceIds = new HashSet<int>();
+
+        /// <summary>已处理建筑缓存对应的场景句柄</summary>
+        private int preparedStarwishSceneHandle = int.MinValue;
+
         private static readonly Color StarwishParticleTint = new Color(0.76f, 0.93f, 1f, 0.96f);
         private static readonly Color StardustIceCoreColor = new Color(0.62f, 0.86f, 1f, 0.9f);
         private static readonly Color StardustIceFadeColor = new Color(0.82f, 0.96f, 1f, 0.66f);
@@ -140,6 +150,13 @@ namespace BossRush
         {
             try
             {
+                if (starwishRestoreCoroutine != null)
+                {
+                    StopCoroutine(starwishRestoreCoroutine);
+                    starwishRestoreCoroutine = null;
+                }
+
+                ResetStarwishPreparedBuildingCache();
                 UnregisterStarwishBuildingEvents();
                 DevLog("[WishFountain] 布满了灰尘的星愿许愿台建筑系统已清理");
             }
@@ -1166,8 +1183,12 @@ namespace BossRush
         {
             try
             {
-                // 查找场景中刚放置的布满了灰尘的星愿许愿台建筑
-                StartCoroutine(RestoreWishFountainBuildingsDelayed());
+                if (!IsStarwishBuildingGuid(buildingInstanceId))
+                {
+                    return;
+                }
+
+                RequestRestoreWishFountainBuildings("OnBuildingBuilt");
             }
             catch (Exception e)
             {
@@ -1177,10 +1198,155 @@ namespace BossRush
 
         public void RestoreWishFountainBuildings()
         {
-            StartCoroutine(RestoreWishFountainBuildingsDelayed());
+            RequestRestoreWishFountainBuildings("SceneInit");
         }
 
-        private IEnumerator RestoreWishFountainBuildingsDelayed()
+        private void RequestRestoreWishFountainBuildings(string source)
+        {
+            if (starwishRestoreCoroutine != null)
+            {
+                return;
+            }
+
+            starwishRestoreCoroutine = StartCoroutine(RestoreWishFountainBuildingsDelayed(source));
+        }
+
+        private void ResetStarwishPreparedBuildingCache()
+        {
+            preparedStarwishBuildingInstanceIds.Clear();
+            preparedStarwishSceneHandle = int.MinValue;
+        }
+
+        private void RefreshStarwishPreparedBuildingCacheForActiveScene()
+        {
+            int currentSceneHandle = int.MinValue;
+            try
+            {
+                currentSceneHandle = SceneManager.GetActiveScene().handle;
+            }
+            catch
+            {
+            }
+
+            if (currentSceneHandle != preparedStarwishSceneHandle)
+            {
+                preparedStarwishBuildingInstanceIds.Clear();
+                preparedStarwishSceneHandle = currentSceneHandle;
+            }
+        }
+
+        private bool IsStarwishBuildingGuid(int buildingGuid)
+        {
+            try
+            {
+                MethodInfo getBuildingData = GetBuildingDataMethod();
+                if (getBuildingData == null)
+                {
+                    return false;
+                }
+
+                object buildingData = getBuildingData.Invoke(null, new object[] { buildingGuid, null });
+                if (buildingData == null)
+                {
+                    return false;
+                }
+
+                PropertyInfo idProp = buildingData.GetType().GetProperty("ID");
+                string buildingId = idProp != null ? idProp.GetValue(buildingData, null) as string : null;
+                return string.Equals(buildingId, STARWISH_BUILDING_ID, StringComparison.Ordinal);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool HasPendingStarwishBuildingsInManager()
+        {
+            try
+            {
+                MethodInfo anyMethod = GetBuildingManagerAnyMethod();
+                return anyMethod != null
+                    && anyMethod.Invoke(null, new object[] { STARWISH_BUILDING_ID, false }) is bool result
+                    && result;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private bool IsStarwishBuildingComponent(Component buildingComp)
+        {
+            if (buildingComp == null)
+            {
+                return false;
+            }
+
+            GameObject buildingGO = buildingComp.gameObject;
+            if (buildingGO == null || object.ReferenceEquals(buildingGO, starwishBuildingPrefabGO))
+            {
+                return false;
+            }
+
+            try
+            {
+                PropertyInfo idProperty = GetBuildingIdProperty();
+                if (idProperty != null)
+                {
+                    string buildingId = idProperty.GetValue(buildingComp, null) as string;
+                    if (string.Equals(buildingId, STARWISH_BUILDING_ID, StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+                FieldInfo idField = buildingComp.GetType().GetField("id", flags);
+                if (idField != null)
+                {
+                    string buildingId = idField.GetValue(buildingComp) as string;
+                    if (string.Equals(buildingId, STARWISH_BUILDING_ID, StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return IsStarwishBuildingObject(buildingGO);
+        }
+
+        private bool NeedsStarwishFunctionPointRepair(GameObject buildingGO)
+        {
+            if (buildingGO == null)
+            {
+                return false;
+            }
+
+            Transform interactTr = buildingGO.transform.Find("Function/WishInteractPoint");
+            if (interactTr == null)
+            {
+                return true;
+            }
+
+            if (interactTr.GetComponent<BoxCollider>() == null)
+            {
+                return true;
+            }
+
+            return interactTr.GetComponent<WishFountainInteractable>() == null;
+        }
+
+        private IEnumerator RestoreWishFountainBuildingsDelayed(string source)
         {
             // 等待一帧确保建筑完全初始化
             yield return null;
@@ -1188,25 +1354,58 @@ namespace BossRush
 
             try
             {
-                int restoredCount = 0;
-                GameObject[] allObjects = FindObjectsOfType<GameObject>();
-                for (int i = 0; i < allObjects.Length; i++)
+                RefreshStarwishPreparedBuildingCacheForActiveScene();
+
+                if (!HasPendingStarwishBuildingsInManager())
                 {
-                    GameObject obj = allObjects[i];
-                    if (!IsStarwishBuildingObject(obj))
+                    yield break;
+                }
+
+                Type buildingType = GetBuildingType();
+                if (buildingType == null)
+                {
+                    DevLog("[WishFountain] 未找到 Building 类型，跳过恢复");
+                    yield break;
+                }
+
+                int restoredCount = 0;
+                UnityEngine.Object[] allBuildings = UnityEngine.Object.FindObjectsOfType(buildingType);
+                for (int i = 0; i < allBuildings.Length; i++)
+                {
+                    Component buildingComponent = allBuildings[i] as Component;
+                    if (!IsStarwishBuildingComponent(buildingComponent))
                     {
                         continue;
                     }
 
-                    EnsureStarwishFunctionPoints(obj);
+                    GameObject buildingGO = buildingComponent.gameObject;
+                    if (buildingGO == null)
+                    {
+                        continue;
+                    }
+
+                    int instanceId = buildingGO.GetInstanceID();
+                    if (preparedStarwishBuildingInstanceIds.Contains(instanceId)
+                        && !NeedsStarwishFunctionPointRepair(buildingGO))
+                    {
+                        continue;
+                    }
+
+                    EnsureStarwishFunctionPoints(buildingGO);
+                    preparedStarwishBuildingInstanceIds.Add(instanceId);
                     restoredCount++;
                 }
 
-                DevLog("[WishFountain] 已恢复/检查场景中的布满了灰尘的星愿许愿台建筑数: " + restoredCount);
+                DevLog("[WishFountain] 已恢复/检查场景中的布满了灰尘的星愿许愿台建筑数: "
+                    + restoredCount + ", source=" + source);
             }
             catch (Exception e)
             {
                 DevLog("[WishFountain] 设置交互组件异常: " + e.Message);
+            }
+            finally
+            {
+                starwishRestoreCoroutine = null;
             }
         }
 
@@ -1280,6 +1479,11 @@ namespace BossRush
                 return false;
             }
 
+            if (object.ReferenceEquals(obj, starwishBuildingPrefabGO))
+            {
+                return false;
+            }
+
             if (obj.name.IndexOf(STARWISH_PREFAB_NAME, StringComparison.OrdinalIgnoreCase) >= 0
                 || obj.name.IndexOf("BossRush_StarWishFountain", StringComparison.OrdinalIgnoreCase) >= 0)
             {
@@ -1318,6 +1522,8 @@ namespace BossRush
 
         private void OnStarwishBuildingDestroyed(int buildingInstanceId)
         {
+            preparedStarwishBuildingInstanceIds.Clear();
+
             // 建筑拆除时 Unity 会自动销毁子物体和组件，无需额外处理
             DevLog("[WishFountain] 布满了灰尘的星愿许愿台建筑已拆除");
         }

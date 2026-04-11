@@ -393,10 +393,16 @@ namespace BossRush
             SetPreferredWidth(inputFocusHintText.rectTransform, 250f);
             SetPreferredHeight(inputFocusHintText.rectTransform, 18f);
 
-            GameObject inputContainer = CreateUIObject("InputContainer", contentCardRect, typeof(Image));
+            GameObject inputFrame = CreateUIObject("InputFrame", contentCardRect, typeof(LayoutElement));
+            RectTransform inputFrameRect = inputFrame.GetComponent<RectTransform>();
+            inputContainerLayoutElement = inputFrame.GetComponent<LayoutElement>();
+            inputContainerLayoutElement.minHeight = BASE_INPUT_HEIGHT;
+            inputContainerLayoutElement.preferredHeight = BASE_INPUT_HEIGHT;
+            inputContainerLayoutElement.flexibleHeight = 0f;
+
+            GameObject inputContainer = CreateUIObject("InputContainer", inputFrameRect, typeof(Image));
             RectTransform inputContainerRect = inputContainer.GetComponent<RectTransform>();
-            SetPreferredHeight(inputContainerRect, BASE_INPUT_HEIGHT);
-            inputContainerLayoutElement = inputContainerRect.GetComponent<LayoutElement>();
+            StretchRect(inputContainerRect);
             inputContainerImage = inputContainer.GetComponent<Image>();
             inputContainerImage.color = new Color(0.04f, 0.06f, 0.11f, 1f);
             inputContainerOutline = inputContainer.AddComponent<Outline>();
@@ -413,10 +419,15 @@ namespace BossRush
 
             GameObject inputTextGO = CreateUIObject("Text", inputViewportRect, typeof(TextMeshProUGUI));
             RectTransform inputTextRect = inputTextGO.GetComponent<RectTransform>();
-            StretchRect(inputTextRect);
+            inputTextRect.anchorMin = new Vector2(0f, 0f);
+            inputTextRect.anchorMax = new Vector2(1f, 1f);
+            inputTextRect.pivot = new Vector2(0.5f, 0.5f);
+            inputTextRect.offsetMin = Vector2.zero;
+            inputTextRect.offsetMax = Vector2.zero;
             TextMeshProUGUI inputText = inputTextGO.GetComponent<TextMeshProUGUI>();
             ConfigureTMPText(inputText, defaultFont, 18, TextAlignmentOptions.TopLeft);
             inputText.enableWordWrapping = true;
+            inputText.overflowMode = TextOverflowModes.Overflow;
 
             GameObject placeholderGO = CreateUIObject("Placeholder", inputViewportRect, typeof(TextMeshProUGUI));
             RectTransform placeholderRect = placeholderGO.GetComponent<RectTransform>();
@@ -440,7 +451,7 @@ namespace BossRush
             inputField.caretWidth = 3;
             inputField.selectionColor = new Color(0.26f, 0.57f, 0.9f, 0.38f);
             inputField.transition = Selectable.Transition.None;
-            
+
             inputField.targetGraphic = inputContainerImage;
             ColorBlock cb = inputField.colors;
             cb.normalColor = inputContainerImage.color;
@@ -586,10 +597,12 @@ namespace BossRush
                 if (defaultTotalHeight > maxPanelHeight)
                 {
                     float inputHeight = Mathf.Max(MIN_INPUT_HEIGHT, BASE_INPUT_HEIGHT - (defaultTotalHeight - maxPanelHeight));
+                    inputContainerLayoutElement.minHeight = inputHeight;
                     inputContainerLayoutElement.preferredHeight = inputHeight;
                 }
                 else
                 {
+                    inputContainerLayoutElement.minHeight = BASE_INPUT_HEIGHT;
                     inputContainerLayoutElement.preferredHeight = BASE_INPUT_HEIGHT;
                 }
             }
@@ -620,7 +633,10 @@ namespace BossRush
             }
 
             inputField.ActivateInputField();
-            inputField.MoveTextEnd(false);
+            if (string.IsNullOrEmpty(inputField.text))
+            {
+                inputField.MoveTextStart(false);
+            }
         }
 
         private void OnInputValueChanged(string _)
@@ -691,7 +707,7 @@ namespace BossRush
 
         private IEnumerator AutoCloseAfterSuccess()
         {
-            yield return new WaitForSecondsRealtime(3f);
+            yield return new WaitForSecondsRealtime(1f);
             autoCloseCoroutine = null;
             Close();
         }
@@ -920,9 +936,44 @@ namespace BossRush
         {
             try
             {
-                NotificationText.Push(L10n.T(
+                string message = L10n.T(
                     "愿这点<color=#9FE6FF>星光</color>，照亮你心中的<color=#F3C65F>乌托邦</color>~",
-                    "May this <color=#9FE6FF>starlight</color> illuminate the <color=#F3C65F>utopia</color> in your heart~"));
+                    "May this <color=#9FE6FF>starlight</color> illuminate the <color=#F3C65F>utopia</color> in your heart~");
+
+                MethodInfo[] methods = typeof(NotificationText).GetMethods(BindingFlags.Public | BindingFlags.Static);
+                for (int i = 0; i < methods.Length; i++)
+                {
+                    MethodInfo method = methods[i];
+                    if (method == null || method.Name != "Push")
+                    {
+                        continue;
+                    }
+
+                    ParameterInfo[] parameters = method.GetParameters();
+                    if (parameters == null || parameters.Length != 2)
+                    {
+                        continue;
+                    }
+
+                    if (parameters[0].ParameterType != typeof(string))
+                    {
+                        continue;
+                    }
+
+                    if (parameters[1].ParameterType == typeof(float))
+                    {
+                        method.Invoke(null, new object[] { message, 3f });
+                        return;
+                    }
+
+                    if (parameters[1].ParameterType == typeof(int))
+                    {
+                        method.Invoke(null, new object[] { message, 3 });
+                        return;
+                    }
+                }
+
+                NotificationText.Push(message);
             }
             catch
             {
