@@ -193,6 +193,7 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, float> bossSpawnTimes = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, int> bossOriginalLootCounts = new Dictionary<CharacterMainControl, int>();
         private readonly HashSet<CharacterMainControl> countedDeadBosses = new HashSet<CharacterMainControl>();
+        private readonly HashSet<CharacterMainControl> bossRushLootboxPathBosses = new HashSet<CharacterMainControl>();
         private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
             = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
         private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();
@@ -225,6 +226,7 @@ namespace BossRush
                 bossSpawnTimes[character] = Time.time + spawnTimeOffset;
                 bossOriginalLootCounts[character] = Mathf.Max(0, originalLootCount);
                 countedDeadBosses.Remove(character);
+                MarkBossRushLootboxPathTracking(character);
 
                 Action<DamageInfo> existingHandler = null;
                 if (trackedBossLootHooks.TryGetValue(character, out existingHandler) && existingHandler != null)
@@ -276,6 +278,34 @@ namespace BossRush
             bossOriginalLootCounts.Remove(character);
             countedDeadBosses.Remove(character);
             trackedBossLootHooks.Remove(character);
+        }
+
+        private void MarkBossRushLootboxPathTracking(CharacterMainControl character)
+        {
+            if (object.ReferenceEquals(character, null))
+            {
+                return;
+            }
+
+            if (config != null && config.enableRandomBossLoot && !infiniteHellMode)
+            {
+                bossRushLootboxPathBosses.Add(character);
+            }
+            else
+            {
+                bossRushLootboxPathBosses.Remove(character);
+            }
+        }
+
+        private void FinalizeBossRushLootboxPathTracking(CharacterMainControl character)
+        {
+            if (object.ReferenceEquals(character, null))
+            {
+                return;
+            }
+
+            bossRushLootboxPathBosses.Remove(character);
+            FrostmourneBlueBossDropHandler.CancelPendingBossRushLootboxDrop(character);
         }
 
         /// <summary>
@@ -1482,6 +1512,7 @@ namespace BossRush
                 bool allowModeFIndependentLoot = modeFActive;
                 if (!IsActive && !isDragonKing && !allowModeFIndependentLoot)
                 {
+                    FinalizeBossRushLootboxPathTracking(bossMain);
                     DevLog("[BossRush] 掉落事件跳过: IsActive=False，且既不是龙王Boss也不是 Mode F");
                     return;
                 }
@@ -1497,6 +1528,7 @@ namespace BossRush
                 // 只处理由 BossRush 生成且被追踪的 Boss
                 if (!bossSpawnTimes.ContainsKey(bossMain))
                 {
+                    FinalizeBossRushLootboxPathTracking(bossMain);
                     DevLog("[BossRush] 掉落事件跳过: bossSpawnTimes 不包含此Boss, 当前追踪数量=" + bossSpawnTimes.Count);
                     return;
                 }
@@ -1550,6 +1582,7 @@ namespace BossRush
                         bossMain.dropBoxOnDead = false;
                     }
                     catch {}
+                    FinalizeBossRushLootboxPathTracking(bossMain);
                     return;
                 }
 
@@ -1582,6 +1615,7 @@ namespace BossRush
 
                 if (config == null || !config.enableRandomBossLoot)
                 {
+                    FinalizeBossRushLootboxPathTracking(bossMain);
                     return; // 未启用随机掉落，保持原版掉落
                 }
 
@@ -1735,6 +1769,7 @@ namespace BossRush
                 if (prefab == null)
                 {
                     DevLog("[BossRush] 未找到可用的 Lootbox 模板，回退到原版 Boss 掉落逻辑");
+                    FinalizeBossRushLootboxPathTracking(bossMain);
                     return;
                 }
 
@@ -2380,6 +2415,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                FinalizeBossRushLootboxPathTracking(bossMain);
                 DevLog("[BossRush] RandomizeBossLoot 错误: " + e.Message);
             }
         }
@@ -2776,52 +2812,72 @@ namespace BossRush
         {
             if (lootbox == null || bossMain == null)
             {
+                FinalizeBossRushLootboxPathTracking(bossMain);
                 yield break;
             }
 
-            // 检查是否启用了随机掉落配置
-            if (config == null || !config.enableRandomBossLoot)
+            try
             {
-                yield break;
+                // 检查是否启用了随机掉落配置
+                if (config == null || !config.enableRandomBossLoot)
+                {
+                    yield break;
+                }
+
+                // 等待掉落箱Inventory加载完成
+                Inventory inv = lootbox.Inventory;
+                if (inv == null)
+                {
+                    yield break;
+                }
+
+                int tries = 0;
+                const int maxTries = 30;
+                while (tries < maxTries && inv.Loading)
+                {
+                    tries++;
+                    yield return new WaitForSeconds(0.1f);
+                }
+
+                if (modeFPlunderLootPenaltyCount > 0)
+                {
+                    ApplyModeFPlunderLootPenalty(inv, modeFPlunderLootPenaltyCount);
+                }
+
+                // 根据Boss类型添加对应的专属掉落物
+                if (IsDragonDescendantBoss(bossMain))
+                {
+                    // 龙裔遗族：按概率掉落龙套装（龙息10%、龙头30%、龙甲60%）
+                    yield return AddDragonDescendantLoot(inv);
+                }
+                else if (IsDragonKingBoss(bossMain))
+                {
+                    // 龙王：按概率掉落专属物品（飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳5%、逆鳞35%）
+                    yield return AddDragonKingLoot(inv);
+                }
+
+                if (modeFPlunderLootBonusCount > 0)
+                {
+                    AddModeFPlunderLootBonus(inv, modeFPlunderLootBonusCount);
+                }
+
+                FrostmourneBlueBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                // 未来新增Boss在此添加 else if 分支
+            }
+            finally
+            {
+                FinalizeBossRushLootboxPathTracking(bossMain);
+            }
+        }
+
+        internal bool ShouldDeferBlueBossExtraDropToBossRushLootbox(CharacterMainControl bossMain)
+        {
+            if (object.ReferenceEquals(bossMain, null))
+            {
+                return false;
             }
 
-            // 等待掉落箱Inventory加载完成
-            Inventory inv = lootbox.Inventory;
-            if (inv == null)
-            {
-                yield break;
-            }
-
-            int tries = 0;
-            const int maxTries = 30;
-            while (tries < maxTries && inv.Loading)
-            {
-                tries++;
-                yield return new WaitForSeconds(0.1f);
-            }
-
-            if (modeFPlunderLootPenaltyCount > 0)
-            {
-                ApplyModeFPlunderLootPenalty(inv, modeFPlunderLootPenaltyCount);
-            }
-
-            // 根据Boss类型添加对应的专属掉落物
-            if (IsDragonDescendantBoss(bossMain))
-            {
-                // 龙裔遗族：按概率掉落龙套装（龙息10%、龙头30%、龙甲60%）
-                yield return AddDragonDescendantLoot(inv);
-            }
-            else if (IsDragonKingBoss(bossMain))
-            {
-                // 龙王：按概率掉落专属物品（飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳5%、逆鳞35%）
-                yield return AddDragonKingLoot(inv);
-            }
-
-            if (modeFPlunderLootBonusCount > 0)
-            {
-                AddModeFPlunderLootBonus(inv, modeFPlunderLootBonusCount);
-            }
-            // 未来新增Boss在此添加 else if 分支
+            return bossRushLootboxPathBosses.Contains(bossMain);
         }
 
         private void ApplyModeFPlunderLootPenalty(Inventory inv, int penaltyCount)
