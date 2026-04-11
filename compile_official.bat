@@ -296,7 +296,11 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Wedding\NPCMarriageSystem.cs ^
     Integration\Wedding\WeddingChapelInteractable.cs ^
     Integration\Wedding\WeddingBuildingInjector.cs ^
-    Integration\Wedding\WeddingModBehaviourBridge.cs
+    Integration\Wedding\WeddingModBehaviourBridge.cs ^
+    Integration\WishFountain\WishFountainService.cs ^
+    Integration\WishFountain\WishFountainInteractable.cs ^
+    Integration\WishFountain\WishFountainUI.cs ^
+    Integration\WishFountain\WishFountainBuilder.cs
 
 if %ERRORLEVEL% EQU 0 (
     echo.
