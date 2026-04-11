@@ -30,6 +30,11 @@ public static class ModConfigAPI
         BossRush.ModBehaviour.DevLog(message);
     }
 
+    private static void LogError(string message)
+    {
+        BossRush.ModBehaviour.LogError(message);
+    }
+
     /// <summary>
     /// 检查版本兼容性
     /// Check version compatibility
@@ -51,7 +56,7 @@ public static class ModConfigAPI
 
                 if (!isVersionCompatible)
                 {
-                    Debug.LogError($"[{TAG}] 版本不匹配！API版本: {ModConfigVersion}, ModConfig版本: {modConfigVersion}");
+                    LogError($"[{TAG}] 版本不匹配！API版本: {ModConfigVersion}, ModConfig版本: {modConfigVersion}");
                     return false;
                 }
 
@@ -71,7 +76,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 版本检查失败: {ex.Message}");
+            LogError($"[{TAG}] 版本检查失败: {ex.Message}");
             isVersionCompatible = false;
             versionChecked = true;
             return false;
@@ -130,7 +135,7 @@ public static class ModConfigAPI
                 MethodInfo method = modBehaviourType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
                 if (method == null)
                 {
-                    Debug.LogError($"[{TAG}] 必要方法 {methodName} 未找到");
+                    LogError($"[{TAG}] 必要方法 {methodName} 未找到");
                     return false;
                 }
             }
@@ -141,7 +146,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 初始化失败: {ex.Message}");
+            LogError($"[{TAG}] 初始化失败: {ex.Message}");
             return false;
         }
     }
@@ -192,7 +197,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 程序集扫描失败: {ex.Message}");
+            LogError($"[{TAG}] 程序集扫描失败: {ex.Message}");
             return null;
         }
     }
@@ -224,7 +229,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 添加选项变更事件委托失败: {ex.Message}");
+            LogError($"[{TAG}] 添加选项变更事件委托失败: {ex.Message}");
             return false;
         }
     }
@@ -256,7 +261,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 移除选项变更事件委托失败: {ex.Message}");
+            LogError($"[{TAG}] 移除选项变更事件委托失败: {ex.Message}");
             return false;
         }
     }
@@ -282,7 +287,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 添加下拉列表失败 {modName}.{key}: {ex.Message}");
+            LogError($"[{TAG}] 添加下拉列表失败 {modName}.{key}: {ex.Message}");
             return false;
         }
     }
@@ -315,7 +320,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 添加滑条输入框失败 {modName}.{key}: {ex.Message}");
+            LogError($"[{TAG}] 添加滑条输入框失败 {modName}.{key}: {ex.Message}");
             return false;
         }
     }
@@ -341,7 +346,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 添加布尔下拉列表失败 {modName}.{key}: {ex.Message}");
+            LogError($"[{TAG}] 添加布尔下拉列表失败 {modName}.{key}: {ex.Message}");
             return false;
         }
     }
@@ -372,7 +377,7 @@ public static class ModConfigAPI
             MethodInfo loadMethod = optionsManagerType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
             if (loadMethod == null)
             {
-                Debug.LogError($"[{TAG}] 未找到 OptionsManager_Mod.Load 方法");
+                LogError($"[{TAG}] 未找到 OptionsManager_Mod.Load 方法");
                 return defaultValue;
             }
 
@@ -385,7 +390,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 加载配置失败 {key}: {ex.Message}");
+            LogError($"[{TAG}] 加载配置失败 {key}: {ex.Message}");
             return defaultValue;
         }
     }
@@ -416,7 +421,7 @@ public static class ModConfigAPI
             MethodInfo saveMethod = optionsManagerType.GetMethod("Save", BindingFlags.Public | BindingFlags.Static);
             if (saveMethod == null)
             {
-                Debug.LogError($"[{TAG}] 未找到 OptionsManager_Mod.Save 方法");
+                LogError($"[{TAG}] 未找到 OptionsManager_Mod.Save 方法");
                 return false;
             }
 
@@ -429,7 +434,7 @@ public static class ModConfigAPI
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[{TAG}] 保存配置失败 {key}: {ex.Message}");
+            LogError($"[{TAG}] 保存配置失败 {key}: {ex.Message}");
             return false;
         }
     }

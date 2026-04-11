@@ -240,7 +240,7 @@ namespace BossRush
             catch (Exception e)
             {
                 SetWeddingBuildingPresence(false);
-                Debug.LogError("[WeddingBuilding] 刷新建筑存在状态失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 刷新建筑存在状态失败: " + e.Message);
                 return false;
             }
         }
@@ -321,7 +321,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 初始化失败: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.LogError("[WeddingBuilding] 初始化失败: " + e.Message + "\n" + e.StackTrace);
             }
         }
         
@@ -347,7 +347,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 清理失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 清理失败: " + e.Message);
             }
         }
 
@@ -789,7 +789,7 @@ namespace BossRush
             Type buildingType = FindGameType("Duckov.Buildings.Building");
             if (buildingType == null)
             {
-                Debug.LogError("[WeddingBuilding] 无法找到 Building 类型");
+                ModBehaviour.LogError("[WeddingBuilding] 无法找到 Building 类型");
                 return;
             }
             
@@ -896,7 +896,7 @@ namespace BossRush
             Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
             if (bdcType == null)
             {
-                Debug.LogError("[WeddingBuilding] 无法找到 BuildingDataCollection 类型");
+                ModBehaviour.LogError("[WeddingBuilding] 无法找到 BuildingDataCollection 类型");
                 return;
             }
             
@@ -906,7 +906,7 @@ namespace BossRush
             
             if (bdcInstance == null)
             {
-                Debug.LogError("[WeddingBuilding] BuildingDataCollection.Instance 为 null");
+                ModBehaviour.LogError("[WeddingBuilding] BuildingDataCollection.Instance 为 null");
                 return;
             }
             
@@ -914,14 +914,14 @@ namespace BossRush
             FieldInfo infosField = bdcType.GetField("infos", BindingFlags.NonPublic | BindingFlags.Instance);
             if (infosField == null)
             {
-                Debug.LogError("[WeddingBuilding] 无法获取 infos 字段");
+                ModBehaviour.LogError("[WeddingBuilding] 无法获取 infos 字段");
                 return;
             }
             
             object infosList = infosField.GetValue(bdcInstance);
             if (infosList == null)
             {
-                Debug.LogError("[WeddingBuilding] infos 列表为 null");
+                ModBehaviour.LogError("[WeddingBuilding] infos 列表为 null");
                 return;
             }
             
@@ -929,7 +929,7 @@ namespace BossRush
             Type buildingInfoType = FindGameType("Duckov.Buildings.BuildingInfo");
             if (buildingInfoType == null)
             {
-                Debug.LogError("[WeddingBuilding] 无法找到 BuildingInfo 类型");
+                ModBehaviour.LogError("[WeddingBuilding] 无法找到 BuildingInfo 类型");
                 return;
             }
             
@@ -1079,7 +1079,7 @@ namespace BossRush
                 Type bmType = FindGameType("Duckov.Buildings.BuildingManager");
                 if (bmType == null)
                 {
-                    Debug.LogError("[WeddingBuilding] 无法找到 BuildingManager 类型");
+                    ModBehaviour.LogError("[WeddingBuilding] 无法找到 BuildingManager 类型");
                     return;
                 }
                 
@@ -1103,7 +1103,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 注册事件失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 注册事件失败: " + e.Message);
             }
         }
         
@@ -1135,7 +1135,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 取消事件订阅失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 取消事件订阅失败: " + e.Message);
             }
         }
         
@@ -1172,7 +1172,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] OnBuildingBuilt 处理失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] OnBuildingBuilt 处理失败: " + e.Message);
             }
         }
         
@@ -1208,7 +1208,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] OnBuildingDestroyed 处理失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] OnBuildingDestroyed 处理失败: " + e.Message);
             }
         }
 
@@ -1249,7 +1249,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 生成NPC失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 生成NPC失败: " + e.Message);
             }
         }
         
@@ -1390,7 +1390,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 修复渲染器失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 修复渲染器失败: " + e.Message);
             }
         }
 
@@ -1440,7 +1440,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 查找NPC站位失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 查找NPC站位失败: " + e.Message);
             }
 
             ResetWeddingBuildingLocationCache();
@@ -1589,7 +1589,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WeddingBuilding] 恢复NPC失败: " + e.Message);
+                ModBehaviour.LogError("[WeddingBuilding] 恢复NPC失败: " + e.Message);
             }
         }
         

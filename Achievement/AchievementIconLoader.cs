@@ -178,7 +178,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[AchievementIconLoader] 加载 AssetBundle 失败: " + e.Message);
+                ModBehaviour.LogError("[AchievementIconLoader] 加载 AssetBundle 失败: " + e.Message);
             }
         }
 

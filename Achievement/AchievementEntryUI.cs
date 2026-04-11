@@ -405,7 +405,7 @@ namespace BossRush
         {
             if (nameText == null || descText == null || rewardText == null)
             {
-                Debug.LogError("[AchievementEntryUI] Text组件未初始化!");
+                ModBehaviour.LogError("[AchievementEntryUI] Text组件未初始化!");
                 return;
             }
 

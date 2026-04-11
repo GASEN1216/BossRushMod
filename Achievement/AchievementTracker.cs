@@ -294,7 +294,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[Achievement] 保存统计失败: " + e.Message);
+                ModBehaviour.LogError("[Achievement] 保存统计失败: " + e.Message);
             }
         }
 

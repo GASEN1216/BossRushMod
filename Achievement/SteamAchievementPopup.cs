@@ -505,7 +505,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                Debug.LogError("[Achievement] 加载纹理失败 " + filename + ": " + e.Message);
+                ModBehaviour.LogError("[Achievement] 加载纹理失败 " + filename + ": " + e.Message);
             }
             return null;
         }

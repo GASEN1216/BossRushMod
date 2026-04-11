@@ -449,6 +449,45 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 常规信息日志（始终通过 BossRush 自有日志入口输出）
+        /// </summary>
+        internal static void LogInfo(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            Debug.Log(message);
+        }
+
+        /// <summary>
+        /// 常规警告日志（始终通过 BossRush 自有日志入口输出）
+        /// </summary>
+        internal static void LogWarning(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            Debug.LogWarning(message);
+        }
+
+        /// <summary>
+        /// 常规错误日志（始终通过 BossRush 自有日志入口输出）
+        /// </summary>
+        internal static void LogError(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            Debug.LogError(message);
+        }
+
+        /// <summary>
         /// 开发模式日志输出（仅在 DevModeEnabled = true 时输出）
         /// </summary>
         /// <param name="message">日志消息</param>
@@ -466,7 +505,7 @@ namespace BossRush
 
             if (shouldLog)
             {
-                Debug.Log(message);
+                LogInfo(message);
             }
         }
 

@@ -139,7 +139,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WishFountain] 初始化失败: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.LogError("[WishFountain] 初始化失败: " + e.Message + "\n" + e.StackTrace);
             }
         }
 
@@ -162,7 +162,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[WishFountain] 清理失败: " + e.Message);
+                ModBehaviour.LogError("[WishFountain] 清理失败: " + e.Message);
             }
         }
 
@@ -934,7 +934,7 @@ namespace BossRush
             Type buildingType = FindGameType("Duckov.Buildings.Building");
             if (buildingType == null)
             {
-                Debug.LogError("[WishFountain] 无法找到 Building 类型");
+                ModBehaviour.LogError("[WishFountain] 无法找到 Building 类型");
                 return;
             }
 
@@ -975,7 +975,7 @@ namespace BossRush
             Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
             if (bdcType == null)
             {
-                Debug.LogError("[WishFountain] 无法找到 BuildingDataCollection 类型");
+                ModBehaviour.LogError("[WishFountain] 无法找到 BuildingDataCollection 类型");
                 return;
             }
 
@@ -984,7 +984,7 @@ namespace BossRush
 
             if (bdcInstance == null)
             {
-                Debug.LogError("[WishFountain] BuildingDataCollection.Instance 为 null");
+                ModBehaviour.LogError("[WishFountain] BuildingDataCollection.Instance 为 null");
                 return;
             }
 
@@ -992,21 +992,21 @@ namespace BossRush
             FieldInfo infosField = bdcType.GetField("infos", BindingFlags.NonPublic | BindingFlags.Instance);
             if (infosField == null)
             {
-                Debug.LogError("[WishFountain] 无法获取 infos 字段");
+                ModBehaviour.LogError("[WishFountain] 无法获取 infos 字段");
                 return;
             }
 
             object infosList = infosField.GetValue(bdcInstance);
             if (infosList == null)
             {
-                Debug.LogError("[WishFountain] infos 列表为 null");
+                ModBehaviour.LogError("[WishFountain] infos 列表为 null");
                 return;
             }
 
             Type buildingInfoType = FindGameType("Duckov.Buildings.BuildingInfo");
             if (buildingInfoType == null)
             {
-                Debug.LogError("[WishFountain] 无法找到 BuildingInfo 类型");
+                ModBehaviour.LogError("[WishFountain] 无法找到 BuildingInfo 类型");
                 return;
             }
 

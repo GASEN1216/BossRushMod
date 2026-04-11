@@ -294,7 +294,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("[Achievement] 发放现金奖励失败: " + e.Message);
+                    ModBehaviour.LogError("[Achievement] 发放现金奖励失败: " + e.Message);
                 }
             }
 
@@ -352,7 +352,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                Debug.LogError("[Achievement] 保存数据失败: " + e.Message);
+                ModBehaviour.LogError("[Achievement] 保存数据失败: " + e.Message);
             }
         }
 
