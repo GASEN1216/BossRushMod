@@ -2677,21 +2677,16 @@ namespace BossRush
 
                 List<Item> keep = new List<Item>(target);
 
-                bool hasPreferred = preferred.Count > 0;
-
-                // 1) 如果存在高品质高价物品，则尽量只保留这一档（等价于每一格都是一次保底抽取）
+                // 1) 优先保留高品质高价物品
                 for (int i = 0; i < preferred.Count && keep.Count < target; i++)
                 {
                     keep.Add(preferred[i]);
                 }
 
-                // 2) 如果本次没有任何满足价格阈值的高品质物品，则退而求其次，用高品质但低价的物品补齐
-                if (!hasPreferred)
+                // 2) 如果高价高品质不足以填满目标数量，则继续用高品质但低价的物品补齐
+                for (int i = 0; i < fallbackHighQuality.Count && keep.Count < target; i++)
                 {
-                    for (int i = 0; i < fallbackHighQuality.Count && keep.Count < target; i++)
-                    {
-                        keep.Add(fallbackHighQuality[i]);
-                    }
+                    keep.Add(fallbackHighQuality[i]);
                 }
 
                 // 3) 仍然完全不使用低品质物品 (fallbackOthers)，保证 Quality>=5

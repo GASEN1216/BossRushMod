@@ -54,6 +54,11 @@ namespace BossRush
         private LayoutElement inputContainerLayoutElement;
         private int lastScreenWidth;
         private int lastScreenHeight;
+        private int lastCooldownRemaining = -1;
+        private bool lastCooldownState;
+        private bool cooldownStateInitialized;
+        private bool lastInputFocusState;
+        private bool inputFocusStateInitialized;
 
         private const float BASE_PANEL_WIDTH = 820f;
         private const float MIN_PANEL_WIDTH = 400f;
@@ -187,6 +192,11 @@ namespace BossRush
             successDisplayed = false;
             hasExplicitStatus = false;
             statusColor = new Color(1f, 0.75f, 0.35f);
+            cooldownStateInitialized = false;
+            inputFocusStateInitialized = false;
+            lastCooldownRemaining = -1;
+            lastCooldownState = false;
+            lastInputFocusState = false;
 
             if (inputField != null)
             {
@@ -238,6 +248,11 @@ namespace BossRush
             sending = false;
             successDisplayed = false;
             hasExplicitStatus = false;
+            cooldownStateInitialized = false;
+            inputFocusStateInitialized = false;
+            lastCooldownRemaining = -1;
+            lastCooldownState = false;
+            lastInputFocusState = false;
 
             if (EventSystem.current != null)
             {
@@ -292,11 +307,31 @@ namespace BossRush
                 AdjustPanelForResolution();
             }
 
-            if (!sending && !successDisplayed)
+            bool inputFocused = IsInputFieldFocused();
+            if (!inputFocusStateInitialized || inputFocused != lastInputFocusState)
             {
-                RefreshUIState();
+                lastInputFocusState = inputFocused;
+                inputFocusStateInitialized = true;
+                RefreshInputFieldVisualState();
             }
 
+            bool inCooldown = WishFountainService.IsInCooldown();
+            if (!cooldownStateInitialized || inCooldown != lastCooldownState)
+            {
+                lastCooldownState = inCooldown;
+                cooldownStateInitialized = true;
+                RefreshUIState();
+                return;
+            }
+
+            if (!sending && !successDisplayed && inCooldown)
+            {
+                int remaining = WishFountainService.GetCooldownRemaining();
+                if (remaining != lastCooldownRemaining)
+                {
+                    RefreshUIState();
+                }
+            }
         }
 
         private void BuildLayout(RectTransform rootRect)
@@ -849,6 +884,10 @@ namespace BossRush
             {
                 statusText.color = statusColor;
             }
+
+            lastCooldownState = inCooldown;
+            cooldownStateInitialized = true;
+            lastCooldownRemaining = inCooldown ? WishFountainService.GetCooldownRemaining() : -1;
         }
 
         private void RefreshInputFieldVisualState()

@@ -167,6 +167,17 @@ namespace BossRush
                     return;
                 }
 
+                if (UnityEngine.Random.value >= ExtraDropChance)
+                {
+                    return;
+                }
+
+                if (ShouldDeferToBossRushLootbox(boss))
+                {
+                    pendingBossRushLootboxDrops.Add(boss);
+                    return;
+                }
+
                 Item bossCharacterItem = boss.CharacterItem;
                 Inventory inventory = bossCharacterItem != null ? bossCharacterItem.Inventory : null;
                 if (inventory == null)
@@ -174,18 +185,7 @@ namespace BossRush
                     return;
                 }
 
-                if (UnityEngine.Random.value >= ExtraDropChance)
-                {
-                    return;
-                }
-
                 TryAddFrostmourneToInventory(inventory, null);
-
-                if (ShouldDeferToBossRushLootbox(boss))
-                {
-                    pendingBossRushLootboxDrops.Add(boss);
-                    return;
-                }
             }
             catch (Exception e)
             {
