@@ -36,7 +36,6 @@ namespace BossRush
         private const string IceSparkName = "Frostmourne_IceSpark";
         private static GameObject cachedFallbackSlashFx;
         private static GameObject cachedFallbackHitFx;
-        private static readonly HashSet<int> iceEffectTargets = new HashSet<int>();
 
         // ========== 近战 Stats 数值（断界戟的 70%）==========
         private const float STAT_DAMAGE = 38.5f;
@@ -357,8 +356,8 @@ namespace BossRush
                 return;
             }
 
-            int instanceId = targetVisual.GetInstanceID();
-            if (iceEffectTargets.Contains(instanceId))
+            Transform existingRoot = FindChildRecursive(targetVisual.transform, IceAuraRootName);
+            if (existingRoot != null)
             {
                 EnsureIceEffectsPlaying(targetVisual);
                 return;
@@ -366,8 +365,8 @@ namespace BossRush
 
             try
             {
+                RemoveOriginalPurpleEffects(targetVisual);
                 CreateIceAuraEffects(targetVisual);
-                iceEffectTargets.Add(instanceId);
                 ModBehaviour.DevLog("[Frostmourne] 已为目标添加冰焰环绕: " + targetVisual.name);
             }
             catch (Exception e)
@@ -387,6 +386,30 @@ namespace BossRush
             FixModelGraphics(go);
             EnableRuntimeRenderers(go);
             TryAddIceEffectsToGraphic(go);
+        }
+
+        private static void RemoveOriginalPurpleEffects(GameObject go)
+        {
+            if (go == null) return;
+            try
+            {
+                ParticleSystem[] particles = go.GetComponentsInChildren<ParticleSystem>(true);
+                for (int i = 0; i < particles.Length; i++)
+                {
+                    ParticleSystem ps = particles[i];
+                    if (ps == null || ps.gameObject == null) continue;
+                    string name = ps.gameObject.name;
+                    if (name.Contains("Ice") || name.Contains("Frostmourne"))
+                    {
+                        continue;
+                    }
+                    UnityEngine.Object.Destroy(ps.gameObject);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Frostmourne] RemoveOriginalPurpleEffects 失败: " + e.Message);
+            }
         }
 
         private static void CreateIceAuraEffects(GameObject targetVisual)
@@ -413,97 +436,128 @@ namespace BossRush
             auraRoot.transform.localRotation = Quaternion.identity;
             auraRoot.transform.localScale = Vector3.one;
 
-            CreateIceAuraEmitter(auraRoot.transform, IceMistName, localExtents, false);
-            CreateIceAuraEmitter(auraRoot.transform, IceSparkName, localExtents, true);
+            GameObject sourceModel = GetFireAK47Model();
+            if (sourceModel != null)
+            {
+                TryCopyAndTintAura(sourceModel, "Smoke", auraRoot.transform, localExtents, false);
+            }
             EnsureIceEffectsPlaying(auraRoot);
         }
 
-        private static void CreateIceAuraEmitter(Transform parent, string emitterName, Vector3 localExtents, bool sparkMode)
+        private static GameObject GetFireAK47Model()
         {
-            GameObject emitter = new GameObject(emitterName);
-            emitter.transform.SetParent(parent, false);
-            emitter.transform.localPosition = Vector3.zero;
-            emitter.transform.localRotation = Quaternion.identity;
-            emitter.transform.localScale = Vector3.one;
-
-            ParticleSystem ps = emitter.AddComponent<ParticleSystem>();
-            var main = ps.main;
-            main.loop = true;
-            main.playOnAwake = true;
-            main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            main.maxParticles = sparkMode ? 24 : 40;
-            main.startLifetime = sparkMode
-                ? new ParticleSystem.MinMaxCurve(0.22f, 0.42f)
-                : new ParticleSystem.MinMaxCurve(0.55f, 0.95f);
-            main.startSpeed = sparkMode
-                ? new ParticleSystem.MinMaxCurve(0.12f, 0.35f)
-                : new ParticleSystem.MinMaxCurve(0.04f, 0.12f);
-            main.startSize = sparkMode
-                ? new ParticleSystem.MinMaxCurve(0.018f, 0.04f)
-                : new ParticleSystem.MinMaxCurve(0.04f, 0.08f);
-            main.startColor = sparkMode
-                ? new ParticleSystem.MinMaxGradient(
-                    new Color(0.80f, 0.95f, 1f, 0.95f),
-                    new Color(0.55f, 0.82f, 1f, 0.75f))
-                : new ParticleSystem.MinMaxGradient(
-                    new Color(0.31f, 0.76f, 0.97f, 0.55f),
-                    new Color(0.51f, 0.83f, 0.98f, 0.28f));
-            main.gravityModifier = 0f;
-
-            var emission = ps.emission;
-            emission.enabled = true;
-            emission.rateOverTime = sparkMode ? 10f : 16f;
-
-            var shape = ps.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(
-                Mathf.Max(0.08f, localExtents.x * 1.3f),
-                Mathf.Max(0.22f, localExtents.y * 1.2f),
-                Mathf.Max(0.08f, localExtents.z * 1.2f));
-
-            var velocityOverLifetime = ps.velocityOverLifetime;
-            velocityOverLifetime.enabled = true;
-            velocityOverLifetime.space = ParticleSystemSimulationSpace.Local;
-            velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(sparkMode ? 0.16f : 0.08f);
-            velocityOverLifetime.x = new ParticleSystem.MinMaxCurve(sparkMode ? 0.05f : 0.02f);
-            velocityOverLifetime.z = new ParticleSystem.MinMaxCurve(sparkMode ? 0.05f : 0.02f);
-
-            var colorOverLifetime = ps.colorOverLifetime;
-            colorOverLifetime.enabled = true;
-            Gradient gradient = new Gradient();
-            gradient.SetKeys(
-                new[]
-                {
-                    new GradientColorKey(new Color(0.85f, 0.97f, 1f), 0f),
-                    new GradientColorKey(new Color(0.31f, 0.76f, 0.97f), 0.65f),
-                    new GradientColorKey(new Color(0.51f, 0.83f, 0.98f), 1f)
-                },
-                new[]
-                {
-                    new GradientAlphaKey(sparkMode ? 0.95f : 0.55f, 0f),
-                    new GradientAlphaKey(sparkMode ? 0.45f : 0.28f, 0.6f),
-                    new GradientAlphaKey(0f, 1f)
-                });
-            colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
-
-            var noise = ps.noise;
-            noise.enabled = !sparkMode;
-            if (noise.enabled)
+            try
             {
-                noise.strength = 0.18f;
-                noise.frequency = 0.35f;
-                noise.scrollSpeed = 0.15f;
+                var prefab = ItemAssetsCollection.GetPrefab(862);  // FIRE_AK47_TYPE_ID
+                if (prefab != null && prefab.ItemGraphic != null)
+                {
+                    return prefab.ItemGraphic.gameObject;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static void TryCopyAndTintAura(GameObject sourceModel, string name, Transform parentTarget, Vector3 localExtents, bool sparkMode)
+        {
+            Transform sourcePS = FindChildRecursive(sourceModel.transform, name);
+            if (sourcePS == null) return;
+
+            GameObject copy = UnityEngine.Object.Instantiate(sourcePS.gameObject, parentTarget);
+            copy.name = name;
+            copy.transform.localPosition = Vector3.zero;  // Centered on the Frostmourne bounds
+            copy.transform.localRotation = sourcePS.localRotation;
+            copy.transform.localScale = sourcePS.localScale;
+
+            Color IceCoreColor = new Color(0.46f, 0.86f, 1f, 0.88f);
+            Color IceFadeColor = new Color(0.88f, 0.97f, 1f, 0.55f);
+
+            ParticleSystem[] psList = copy.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < psList.Length; i++)
+            {
+                ParticleSystem ps = psList[i];
+                if (ps == null) continue;
+
+                var main = ps.main;
+                main.simulationSpace = ParticleSystemSimulationSpace.Local;
+                main.startColor = new ParticleSystem.MinMaxGradient(IceCoreColor, IceFadeColor);
+
+                var emission = ps.emission;
+                emission.rateOverTime = sparkMode ? 5f : 8f; // lowered
+
+                var shape = ps.shape;
+                shape.enabled = true;
+                shape.shapeType = ParticleSystemShapeType.Box;
+                shape.scale = new Vector3(
+                    Mathf.Max(0.06f, localExtents.x * 1.1f),
+                    Mathf.Max(0.18f, localExtents.y * 1.0f),
+                    Mathf.Max(0.06f, localExtents.z * 1.0f));
+
+                var velocityOverLifetime = ps.velocityOverLifetime;
+                velocityOverLifetime.enabled = true;
+                velocityOverLifetime.space = ParticleSystemSimulationSpace.Local;
+                velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(sparkMode ? 0.08f : 0.04f);
+                velocityOverLifetime.x = new ParticleSystem.MinMaxCurve(sparkMode ? 0.02f : 0.01f);
+                velocityOverLifetime.z = new ParticleSystem.MinMaxCurve(sparkMode ? 0.02f : 0.01f);
+
+                Gradient gradient = new Gradient();
+                gradient.SetKeys(
+                    new GradientColorKey[]
+                    {
+                        new GradientColorKey(IceCoreColor, 0f),
+                        new GradientColorKey(IceFadeColor, 1f)
+                    },
+                    new GradientAlphaKey[]
+                    {
+                        new GradientAlphaKey(sparkMode ? 0.95f : 0.65f, 0f),
+                        new GradientAlphaKey(sparkMode ? 0.45f : 0.28f, 0.6f),
+                        new GradientAlphaKey(0f, 1f)
+                    }
+                );
+
+                var colorOverLifetime = ps.colorOverLifetime;
+                if (colorOverLifetime.enabled)
+                {
+                    colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+                }
             }
 
-            var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            if (renderer != null)
+            Renderer[] renderers = copy.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
             {
-                renderer.renderMode = ParticleSystemRenderMode.Billboard;
-                renderer.sortMode = ParticleSystemSortMode.Distance;
+                Renderer renderer = renderers[i];
+                if (renderer == null || renderer.sharedMaterials == null) continue;
+
+                Material[] materials = renderer.sharedMaterials;
+                Material[] tintedMaterials = new Material[materials.Length];
+
+                for (int j = 0; j < materials.Length; j++)
+                {
+                    Material source = materials[j];
+                    if (source == null) continue;
+
+                    Material tinted = new Material(source);
+                    if (tinted.HasProperty("_Color")) tinted.color = IceCoreColor;
+                    if (tinted.HasProperty("_TintColor")) tinted.SetColor("_TintColor", IceCoreColor);
+                    if (tinted.HasProperty("_EmissionColor")) tinted.SetColor("_EmissionColor", IceCoreColor * 0.45f);
+
+                    tintedMaterials[j] = tinted;
+                }
+
+                renderer.materials = tintedMaterials;
             }
 
-            ps.Play(true);
+            Light[] lights = copy.GetComponentsInChildren<Light>(true);
+            for (int i = 0; i < lights.Length; i++)
+            {
+                Light light = lights[i];
+                if (light == null) continue;
+                light.color = IceCoreColor;
+                light.range = 1f;  // lowered for weapon aura
+                light.intensity = 1f;
+            }
+
+            copy.SetActive(true);
         }
 
         private static void GetVisualBounds(GameObject targetVisual, out Vector3 localCenter, out Vector3 localExtents)

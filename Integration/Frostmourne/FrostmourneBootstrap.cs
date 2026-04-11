@@ -8,8 +8,10 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using ItemStatsSystem;
 
 namespace BossRush
 {
@@ -130,11 +132,201 @@ namespace BossRush
                 // 清理所有召唤的僵尸
                 FrostmourneAction.CleanupAllSummonedZombies();
 
+                // 清理 Blue Boss 额外掉落订阅
+                FrostmourneBlueBossDropHandler.Cleanup();
+
                 DevLog("[Frostmourne] 系统清理完成");
             }
             catch (Exception e)
             {
                 DevLog("[Frostmourne] 系统清理失败: " + e.Message);
+            }
+        }
+    }
+
+    internal static class FrostmourneBlueBossDropHandler
+    {
+        private const string BlueBossNameKey = "Cname_Boss_Blue";
+        private const float ExtraDropChance = 0.5f;
+        private static readonly HashSet<CharacterMainControl> pendingBossRushLootboxDrops
+            = new HashSet<CharacterMainControl>();
+
+        internal static void Cleanup()
+        {
+            pendingBossRushLootboxDrops.Clear();
+        }
+
+        internal static void TryHandleBlueBossDeath(CharacterMainControl boss)
+        {
+            try
+            {
+                PruneInvalidHooks();
+
+                if (!IsBlueBoss(boss))
+                {
+                    return;
+                }
+
+                Item bossCharacterItem = boss.CharacterItem;
+                Inventory inventory = bossCharacterItem != null ? bossCharacterItem.Inventory : null;
+                if (inventory == null)
+                {
+                    return;
+                }
+
+                if (UnityEngine.Random.value >= ExtraDropChance)
+                {
+                    return;
+                }
+
+                TryAddFrostmourneToInventory(inventory, null);
+
+                if (ShouldDeferToBossRushLootbox(boss))
+                {
+                    pendingBossRushLootboxDrops.Add(boss);
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Frostmourne] Blue Boss 额外掉落处理失败: " + e.Message);
+            }
+        }
+
+        private static bool IsBlueBoss(CharacterMainControl character)
+        {
+            if (character == null || character.characterPreset == null)
+            {
+                return false;
+            }
+
+            return string.Equals(character.characterPreset.nameKey, BlueBossNameKey, StringComparison.Ordinal);
+        }
+
+        internal static void TryConsumePendingBossRushLootboxDrop(CharacterMainControl boss, Inventory inventory)
+        {
+            PruneInvalidHooks();
+
+            if (boss == null || inventory == null)
+            {
+                return;
+            }
+
+            if (!pendingBossRushLootboxDrops.Remove(boss))
+            {
+                return;
+            }
+
+            TryAddFrostmourneToInventory(inventory, "[Frostmourne] Blue Boss BossRush 奖励箱额外掉落");
+        }
+
+        internal static void CancelPendingBossRushLootboxDrop(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return;
+            }
+
+            pendingBossRushLootboxDrops.Remove(boss);
+        }
+
+        private static void EnsureExtraInventoryCapacity(Inventory inventory)
+        {
+            if (inventory == null)
+            {
+                return;
+            }
+
+            try
+            {
+                int contentCount = inventory.Content != null ? inventory.Content.Count : 0;
+                int requiredCapacity = Mathf.Max(inventory.Capacity, contentCount + 1);
+                if (requiredCapacity > inventory.Capacity)
+                {
+                    inventory.SetCapacity(requiredCapacity);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool ShouldDeferToBossRushLootbox(CharacterMainControl boss)
+        {
+            ModBehaviour instance = ModBehaviour.Instance;
+            return instance != null && instance.ShouldDeferBlueBossExtraDropToBossRushLootbox(boss);
+        }
+
+        private static bool TryAddFrostmourneToInventory(Inventory inventory, string logPrefix)
+        {
+            if (inventory == null)
+            {
+                return false;
+            }
+
+            EnsureExtraInventoryCapacity(inventory);
+
+            Item rewardItem = null;
+            try
+            {
+                rewardItem = ItemAssetsCollection.InstantiateSync(FrostmourneIds.WeaponTypeId);
+                if (rewardItem == null)
+                {
+                    if (!string.IsNullOrEmpty(logPrefix))
+                    {
+                        ModBehaviour.DevLog(logPrefix + "失败：无法实例化霜之哀伤");
+                    }
+                    return false;
+                }
+
+                if (!inventory.AddAndMerge(rewardItem, 0))
+                {
+                    if (!string.IsNullOrEmpty(logPrefix))
+                    {
+                        ModBehaviour.DevLog(logPrefix + "失败：无法加入库存");
+                    }
+                    return false;
+                }
+
+                rewardItem = null;
+                return true;
+            }
+            catch (Exception e)
+            {
+                if (!string.IsNullOrEmpty(logPrefix))
+                {
+                    ModBehaviour.DevLog(logPrefix + "失败: " + e.Message);
+                }
+                return false;
+            }
+            finally
+            {
+                try
+                {
+                    if (rewardItem != null)
+                    {
+                        rewardItem.DestroyTree();
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static void PruneInvalidHooks()
+        {
+            if (pendingBossRushLootboxDrops.Count > 0)
+            {
+                var pendingKeys = new System.Collections.Generic.List<CharacterMainControl>(pendingBossRushLootboxDrops);
+                for (int i = 0; i < pendingKeys.Count; i++)
+                {
+                    CharacterMainControl pendingKey = pendingKeys[i];
+                    if (pendingKey == null)
+                    {
+                        pendingBossRushLootboxDrops.Remove(pendingKey);
+                    }
+                }
             }
         }
     }

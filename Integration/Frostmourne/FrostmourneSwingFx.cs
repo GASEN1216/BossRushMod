@@ -9,6 +9,7 @@
 
 using HarmonyLib;
 using ItemStatsSystem;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -107,6 +108,7 @@ namespace BossRush
         private float elapsed;
         private Transform trailRoot;
         private ParticleSystem[] injectedParticles;
+        private readonly List<Material> runtimeMaterials = new List<Material>();
 
         public void Initialize(float rangeScale)
         {
@@ -131,7 +133,7 @@ namespace BossRush
                 injectedParticles = blurObj.GetComponentsInChildren<ParticleSystem>(true);
                 TintParticlesIce(injectedParticles, sizeScale);
                 TintLightsIce(blurObj.GetComponentsInChildren<Light>(true), lightScale);
-                TintRenderersIce(blurObj.GetComponentsInChildren<Renderer>(true));
+                TintRenderersIce(blurObj.GetComponentsInChildren<Renderer>(true), runtimeMaterials);
             }
 
             elapsed = 0f;
@@ -161,6 +163,20 @@ namespace BossRush
                     }
                 }
             }
+        }
+
+        private void OnDestroy()
+        {
+            for (int i = 0; i < runtimeMaterials.Count; i++)
+            {
+                Material runtimeMaterial = runtimeMaterials[i];
+                if (runtimeMaterial != null)
+                {
+                    Object.Destroy(runtimeMaterial);
+                }
+            }
+
+            runtimeMaterials.Clear();
         }
 
         private static void TintParticlesIce(ParticleSystem[] particleSystems, float sizeScale)
@@ -236,7 +252,7 @@ namespace BossRush
             }
         }
 
-        private static void TintRenderersIce(Renderer[] renderers)
+        private static void TintRenderersIce(Renderer[] renderers, List<Material> runtimeMaterials)
         {
             if (renderers == null)
             {
@@ -279,7 +295,20 @@ namespace BossRush
                     tintedMaterials[j] = tinted;
                 }
 
-                renderer.materials = tintedMaterials;
+                renderer.sharedMaterials = tintedMaterials;
+
+                if (runtimeMaterials == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < tintedMaterials.Length; j++)
+                {
+                    if (tintedMaterials[j] != null)
+                    {
+                        runtimeMaterials.Add(tintedMaterials[j]);
+                    }
+                }
             }
         }
     }

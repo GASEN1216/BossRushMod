@@ -6,7 +6,6 @@
 //   检测 ADS（右键）输入，验证是否持有霜之哀伤，触发召唤
 // ============================================================================
 
-using System.Reflection;
 using BossRush.Common.Equipment;
 using Duckov.Utilities;
 using ItemStatsSystem;
@@ -62,7 +61,7 @@ namespace BossRush
 
         protected override bool OnBeforeTryExecute()
         {
-            return IsHoldingFrostmourne(CharacterMainControl.Main);
+            return IsHoldingFrostmourne(targetCharacter);
         }
 
         protected override void OnManagerInitialized()
@@ -220,56 +219,28 @@ namespace BossRush
         /// </summary>
         internal static bool IsHoldingFrostmourne(CharacterMainControl character)
         {
-            if (character == null) return false;
+            if (character == null)
+            {
+                return false;
+            }
 
             try
             {
-                Item characterItem = character.CharacterItem;
-                if (characterItem == null) return false;
-
-                foreach (Slot slot in characterItem.Slots)
+                ItemAgent_MeleeWeapon melee = character.GetMeleeWeapon();
+                if (melee != null &&
+                    melee.Item != null &&
+                    melee.Item.TypeID == FrostmourneIds.WeaponTypeId)
                 {
-                    if (slot == null || slot.Content == null) continue;
-                    if (slot.Content.TypeID == FrostmourneIds.WeaponTypeId)
-                    {
-                        // 检查是否在手持槽位
-                        if (slot.Key != null &&
-                            (slot.Key.Contains("Hand") || slot.Key.Contains("hand") ||
-                             slot.Key.Contains("Weapon") || slot.Key.Contains("weapon")))
-                        {
-                            return true;
-                        }
-                    }
+                    return true;
                 }
 
-                // 备用检查：当前手持物品
-                try
+                DuckovItemAgent holdAgent = character.CurrentHoldItemAgent;
+                if (holdAgent != null &&
+                    holdAgent.Item != null &&
+                    holdAgent.Item.TypeID == FrostmourneIds.WeaponTypeId)
                 {
-                    var handheldField = typeof(CharacterMainControl).GetField("currentHandheldItem",
-                        BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-                    if (handheldField != null)
-                    {
-                        object handheld = handheldField.GetValue(character);
-                        if (handheld != null)
-                        {
-                            Item handheldItem = handheld as Item;
-                            if (handheldItem == null)
-                            {
-                                var itemProp = handheld.GetType().GetProperty("Item",
-                                    BindingFlags.Public | BindingFlags.Instance);
-                                if (itemProp != null)
-                                {
-                                    handheldItem = itemProp.GetValue(handheld) as Item;
-                                }
-                            }
-                            if (handheldItem != null && handheldItem.TypeID == FrostmourneIds.WeaponTypeId)
-                            {
-                                return true;
-                            }
-                        }
-                    }
+                    return true;
                 }
-                catch { }
             }
             catch { }
 

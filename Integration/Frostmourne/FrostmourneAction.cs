@@ -27,6 +27,7 @@ namespace BossRush
         private static FrostmourneConfig _config;
         private bool spawningStarted;
         private bool spawningComplete;
+        private int activeSpawnRequestId;
 
         // 缓存的僵尸预设
         private static CharacterRandomPreset cachedZombiePreset;
@@ -65,6 +66,7 @@ namespace BossRush
 
         protected override bool OnAbilityStart()
         {
+            activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
             return true;
@@ -75,7 +77,8 @@ namespace BossRush
             if (!spawningStarted)
             {
                 spawningStarted = true;
-                SpawnZombiesAsync().Forget();
+                int spawnRequestId = activeSpawnRequestId;
+                SpawnZombiesAsync(spawnRequestId).Forget();
             }
 
             if (spawningComplete || actionElapsedTime >= FrostmourneConfig.TotalActionDuration)
@@ -86,14 +89,21 @@ namespace BossRush
 
         protected override void OnAbilityStop()
         {
+            activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
+        }
+
+        private void OnDestroy()
+        {
+            activeSpawnRequestId++;
+            spawningStarted = false;
         }
 
         /// <summary>
         /// 异步生成 5 只僵尸
         /// </summary>
-        private async UniTaskVoid SpawnZombiesAsync()
+        private async UniTaskVoid SpawnZombiesAsync(int spawnRequestId)
         {
             try
             {
@@ -101,7 +111,6 @@ namespace BossRush
                 if (player == null)
                 {
                     LogIfVerbose("玩家角色为空，取消召唤");
-                    spawningComplete = true;
                     return;
                 }
 
@@ -110,13 +119,13 @@ namespace BossRush
                 if (zombiePreset == null)
                 {
                     LogIfVerbose("未找到 Cname_Zombie 预设，取消召唤");
-                    spawningComplete = true;
                     return;
                 }
 
                 Teams playerTeam = player.Team;
                 Vector3 playerPos = player.transform.position;
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+                int successfulSummons = 0;
 
                 // 清理之前已死亡的僵尸引用
                 CleanupDeadZombies();
@@ -124,13 +133,17 @@ namespace BossRush
                 if (availableSlots <= 0)
                 {
                     LogIfVerbose("当前亡灵数量已满，本次不再追加召唤");
-                    spawningComplete = true;
                     return;
                 }
 
                 // 仅补齐缺额，保证场上同时最多 5 只亡灵
                 for (int i = 0; i < availableSlots; i++)
                 {
+                    if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                    {
+                        return;
+                    }
+
                     float angle = i * 72f; // 0°, 72°, 144°, 216°, 288°
                     Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * FrostmourneConfig.SummonRadius;
                     Vector3 spawnPos = playerPos + offset;
@@ -155,6 +168,15 @@ namespace BossRush
                     {
                         CharacterMainControl zombie = await zombiePreset.CreateCharacterAsync(
                             spawnPos, Vector3.forward, relatedScene, null, false);
+
+                        if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                        {
+                            if (zombie != null && zombie.gameObject != null)
+                            {
+                                UnityEngine.Object.Destroy(zombie.gameObject);
+                            }
+                            return;
+                        }
 
                         if (zombie == null)
                         {
@@ -183,6 +205,7 @@ namespace BossRush
                         // 记录到列表
                         summonedZombies.Add(zombie);
                         RefreshSummonedZombieFollowerSlots(player);
+                        successfulSummons++;
 
                         LogIfVerbose("方位 " + i + " 僵尸召唤成功");
                     }
@@ -195,12 +218,17 @@ namespace BossRush
                     await UniTask.Yield();
                 }
 
+                if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                {
+                    return;
+                }
+
                 LogIfVerbose("亡灵召唤完成");
 
                 // 显示召唤成功气泡
                 CleanupDeadZombies();
                 int currentCount = summonedZombies.Count;
-                ShowSummonSuccessBubble(player, currentCount, availableSlots);
+                ShowSummonSuccessBubble(player, currentCount, successfulSummons);
             }
             catch (Exception e)
             {
@@ -208,8 +236,31 @@ namespace BossRush
             }
             finally
             {
-                spawningComplete = true;
+                if (spawnRequestId == activeSpawnRequestId)
+                {
+                    spawningComplete = true;
+                }
             }
+        }
+
+        private bool IsSpawnRequestStillValid(int spawnRequestId, CharacterMainControl player, int relatedScene)
+        {
+            if (this == null || spawnRequestId != activeSpawnRequestId || !spawningStarted)
+            {
+                return false;
+            }
+
+            if (!isActiveAndEnabled || player == null || CharacterMainControl.Main != player)
+            {
+                return false;
+            }
+
+            if (player.Health != null && player.Health.IsDead)
+            {
+                return false;
+            }
+
+            return UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == relatedScene;
         }
 
         /// <summary>
@@ -412,16 +463,17 @@ namespace BossRush
         /// <summary>
         /// 显示召唤成功的对话气泡
         /// </summary>
-        private static void ShowSummonSuccessBubble(CharacterMainControl player, int currentCount, int summoned)
+        private static void ShowSummonSuccessBubble(CharacterMainControl player, int currentCount, int successfulSummons)
         {
             if (player == null || player.transform == null) return;
-            if (summoned <= 0) return;
+            if (successfulSummons <= 0) return;
 
             try
             {
                 int max = FrostmourneConfig.SummonCount;
                 string bubbleText;
-                if (summoned >= max)
+                bool isFreshFullSummon = currentCount >= max && currentCount == successfulSummons;
+                if (isFreshFullSummon)
                 {
                     // 全额召唤
                     bubbleText = L10n.T(
