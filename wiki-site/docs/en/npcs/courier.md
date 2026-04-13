@@ -26,6 +26,13 @@ When you successfully extract in Blood Hunt mode, bounty reward items from the s
 - Using it ships your currently equipped items, backpack items, and pet inventory home in one action
 - It is free to use in base; elsewhere it costs the same as Awen's normal courier service
 
+# Awen Loot Sweep Token
+
+- You automatically receive 1 `Awen Loot Sweep Token` for every 20 boss deaths in Mode E/F
+- It can only be used in Mode E/F, and requires Awen to be present with lootboxes already available to clear
+- When used, Awen clears the currently existing lootboxes one by one from nearest to farthest
+- It only affects lootboxes that already exist at the moment of use, and cannot be used again while Awen is already sweeping
+
 # Locations
 - Normal Maps: ✓
 - Standard BossRush (in-mode): ✓
