@@ -120,9 +120,9 @@ namespace BossRush
         // ============================================================================
 
         /// <summary>
-        /// 判断 Modifier 是否为预制体中原生存在的属性
-        /// 只有预制体中存在的属性才应被重铸系统处理，
-        /// 非原生的动态 Modifier 不在预制体中，自动被排除
+        /// 判断 Modifier 是否为预制体中原生存在的属性。
+        /// 仅做按 Key 的快速判断，无法区分同 Key 的重复 Modifier。
+        /// 兼容其他 Mod 时，应优先使用带 item 参数的重载。
         /// </summary>
         public static bool IsNativeModifier(Item prefab, ModifierDescription mod)
         {
@@ -131,6 +131,60 @@ namespace BossRush
             {
                 if (prefabMod.Key == mod.Key) return true;
             }
+            return false;
+        }
+
+        /// <summary>
+        /// 判断当前 Modifier 是否属于物品预制体自带的那一份原生 Modifier。
+        /// 当其他 Mod 追加了同 Key 的额外 Modifier 时，只把前 N 个（N = prefab 中该 Key 的数量）
+        /// 视为原生项，避免把外部词缀错当成 BossRush 可重铸/可持久化的基础属性。
+        /// </summary>
+        public static bool IsNativeModifier(Item item, Item prefab, ModifierDescription mod)
+        {
+            if (mod == null)
+            {
+                return false;
+            }
+
+            if (item == null || item.Modifiers == null)
+            {
+                return IsNativeModifier(prefab, mod);
+            }
+
+            if (prefab == null || prefab.Modifiers == null)
+            {
+                return false;
+            }
+
+            int allowedCount = 0;
+            foreach (var prefabMod in prefab.Modifiers)
+            {
+                if (prefabMod != null && prefabMod.Key == mod.Key)
+                {
+                    allowedCount++;
+                }
+            }
+
+            if (allowedCount <= 0)
+            {
+                return false;
+            }
+
+            int seenCount = 0;
+            foreach (var itemMod in item.Modifiers)
+            {
+                if (itemMod == null || itemMod.Key != mod.Key)
+                {
+                    continue;
+                }
+
+                seenCount++;
+                if (ReferenceEquals(itemMod, mod))
+                {
+                    return seenCount <= allowedCount;
+                }
+            }
+
             return false;
         }
 
@@ -520,6 +574,18 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 判断 Modifier 是否可参与重铸。
+        /// 对同 Key 的重复 Modifier 使用更保守的原生判定，避免误伤其他 Mod 的动态词缀。
+        /// </summary>
+        public static bool IsModifierEligibleForReforge(Item item, Item prefab, ModifierDescription mod)
+        {
+            return mod != null &&
+                   mod.Display &&
+                   IsNativeModifier(item, prefab, mod) &&
+                   IsPropertySupportedForReforge(mod.Key, PropertyType.Modifier);
+        }
+
+        /// <summary>
         /// 判断 Stat 是否可参与重铸。
         /// </summary>
         public static bool IsStatEligibleForReforge(Stat stat)
@@ -566,7 +632,7 @@ namespace BossRush
 
             foreach (var mod in item.Modifiers)
             {
-                if (IsModifierEligibleForReforge(prefab, mod)) return true;
+                if (IsModifierEligibleForReforge(item, prefab, mod)) return true;
             }
             return false;
         }
@@ -617,7 +683,7 @@ namespace BossRush
                 Item prefab = GetItemPrefab(item);
                 foreach (var mod in item.Modifiers)
                 {
-                    if (IsModifierEligibleForReforge(prefab, mod)) count++;
+                    if (IsModifierEligibleForReforge(item, prefab, mod)) count++;
                 }
             }
             
@@ -774,9 +840,9 @@ namespace BossRush
                 {
                     foreach (ModifierDescription mod in item.Modifiers)
                     {
-                        if (!IsModifierEligibleForReforge(prefab, mod))
+                        if (!IsModifierEligibleForReforge(item, prefab, mod))
                         {
-                            if (mod != null && mod.Display && !IsNativeModifier(prefab, mod))
+                            if (mod != null && mod.Display && !IsNativeModifier(item, prefab, mod))
                             {
                                 ModBehaviour.DevLog("[ReforgeSystem] 跳过非原生属性: " + mod.Key);
                             }

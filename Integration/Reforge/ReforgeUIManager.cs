@@ -123,6 +123,7 @@ namespace BossRush
         public string Key;
         public float Value;
         public PropertyType PropType;
+        public int EntryOrdinal;
     }
 
     /// <summary>
@@ -1907,18 +1908,25 @@ namespace BossRush
             {
                 if (item == null) return;
                 Item prefab = GetCachedPrefab(item.TypeID);
+                Dictionary<string, int> modifierOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
+                Dictionary<string, int> statOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
+                Dictionary<string, int> variableOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
 
                 if (item.Modifiers != null)
                 {
                     foreach (var mod in item.Modifiers)
                     {
-                        if (!ReforgeSystem.IsModifierEligibleForReforge(prefab, mod)) continue;
+                        if (mod == null || string.IsNullOrEmpty(mod.Key)) continue;
+
+                        int entryOrdinal = GetNextEntryOrdinal(modifierOrdinals, mod.Key);
+                        if (!ReforgeSystem.IsModifierEligibleForReforge(item, prefab, mod)) continue;
 
                         PropertySnapshot snapshot = new PropertySnapshot
                         {
                             Key = mod.Key,
                             Value = mod.Value,
-                            PropType = PropertyType.Modifier
+                            PropType = PropertyType.Modifier,
+                            EntryOrdinal = entryOrdinal
                         };
                         originalProperties.Add(snapshot);
                     }
@@ -1928,13 +1936,17 @@ namespace BossRush
                 {
                     foreach (var stat in item.Stats)
                     {
+                        if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
+
+                        int entryOrdinal = GetNextEntryOrdinal(statOrdinals, stat.Key);
                         if (!ReforgeSystem.IsStatEligibleForReforge(stat)) continue;
 
                         PropertySnapshot snapshot = new PropertySnapshot
                         {
                             Key = stat.Key,
                             Value = stat.BaseValue,
-                            PropType = PropertyType.Stat
+                            PropType = PropertyType.Stat,
+                            EntryOrdinal = entryOrdinal
                         };
                         originalProperties.Add(snapshot);
                     }
@@ -1944,6 +1956,9 @@ namespace BossRush
                 {
                     foreach (var variable in item.Variables)
                     {
+                        if (variable == null || string.IsNullOrEmpty(variable.Key)) continue;
+
+                        int entryOrdinal = GetNextEntryOrdinal(variableOrdinals, variable.Key);
                         if (!ReforgeSystem.IsVariableEligibleForReforge(variable)) continue;
 
                         float value;
@@ -1960,7 +1975,8 @@ namespace BossRush
                         {
                             Key = variable.Key,
                             Value = value,
-                            PropType = PropertyType.Variable
+                            PropType = PropertyType.Variable,
+                            EntryOrdinal = entryOrdinal
                         };
                         originalProperties.Add(snapshot);
                     }
@@ -1974,12 +1990,30 @@ namespace BossRush
             }
         }
 
-        private static string BuildSnapshotKey(string key, PropertyType propType)
+        private static int GetNextEntryOrdinal(Dictionary<string, int> ordinalMap, string key)
         {
-            return ((int)propType).ToString() + ":" + key;
+            if (ordinalMap == null || string.IsNullOrEmpty(key))
+            {
+                return 0;
+            }
+
+            int nextOrdinal;
+            if (!ordinalMap.TryGetValue(key, out nextOrdinal))
+            {
+                ordinalMap[key] = 1;
+                return 0;
+            }
+
+            ordinalMap[key] = nextOrdinal + 1;
+            return nextOrdinal;
         }
 
-        private static bool TryGetDisplayedEntryInfo(Transform child, out string key, out PropertyType propType, out TextMeshProUGUI valueText)
+        private static string BuildSnapshotKey(string key, PropertyType propType, int entryOrdinal)
+        {
+            return ((int)propType).ToString() + ":" + key + ":" + entryOrdinal.ToString();
+        }
+
+        private static bool TryGetDisplayedEntryIdentity(Transform child, out string key, out PropertyType propType, out TextMeshProUGUI valueText)
         {
             key = null;
             propType = PropertyType.Modifier;
@@ -2104,7 +2138,50 @@ namespace BossRush
             return false;
         }
 
-        private static bool TryGetCurrentItemPropertyValue(Item item, string key, PropertyType propType, out float value)
+        private static bool TryGetDisplayedEntryInfo(Transform child, out string key, out PropertyType propType, out int entryOrdinal, out TextMeshProUGUI valueText)
+        {
+            entryOrdinal = 0;
+            if (!TryGetDisplayedEntryIdentity(child, out key, out propType, out valueText))
+            {
+                return false;
+            }
+
+            Transform parent = child.parent;
+            if (parent == null)
+            {
+                return true;
+            }
+
+            foreach (Transform sibling in parent)
+            {
+                if (sibling == child)
+                {
+                    break;
+                }
+
+                if (sibling == null || !sibling.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                string siblingKey;
+                PropertyType siblingType;
+                TextMeshProUGUI siblingValueText;
+                if (!TryGetDisplayedEntryIdentity(sibling, out siblingKey, out siblingType, out siblingValueText))
+                {
+                    continue;
+                }
+
+                if (siblingType == propType && siblingKey == key)
+                {
+                    entryOrdinal++;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool TryGetCurrentItemPropertyValue(Item item, string key, PropertyType propType, int entryOrdinal, out float value)
         {
             value = 0f;
             if (item == null || string.IsNullOrEmpty(key))
@@ -2116,10 +2193,17 @@ namespace BossRush
             {
                 case PropertyType.Modifier:
                     if (item.Modifiers == null) return false;
+                    int modifierIndex = 0;
                     foreach (var mod in item.Modifiers)
                     {
                         if (mod.Key == key)
                         {
+                            if (modifierIndex != entryOrdinal)
+                            {
+                                modifierIndex++;
+                                continue;
+                            }
+
                             value = mod.Value;
                             return true;
                         }
@@ -2128,10 +2212,17 @@ namespace BossRush
 
                 case PropertyType.Stat:
                     if (item.Stats == null) return false;
+                    int statIndex = 0;
                     foreach (var stat in item.Stats)
                     {
                         if (stat.Key == key)
                         {
+                            if (statIndex != entryOrdinal)
+                            {
+                                statIndex++;
+                                continue;
+                            }
+
                             value = stat.BaseValue;
                             return true;
                         }
@@ -2140,9 +2231,16 @@ namespace BossRush
 
                 case PropertyType.Variable:
                     if (item.Variables == null) return false;
+                    int variableIndex = 0;
                     foreach (var variable in item.Variables)
                     {
                         if (variable.Key != key) continue;
+
+                        if (variableIndex != entryOrdinal)
+                        {
+                            variableIndex++;
+                            continue;
+                        }
 
                         try
                         {
@@ -2160,18 +2258,19 @@ namespace BossRush
             return false;
         }
 
-        private static bool TryGetCachedPrefabValue(string key, PropertyType propType, out float value)
+        private static bool TryGetCachedPrefabValue(string key, PropertyType propType, int entryOrdinal, out float value)
         {
+            string snapshotKey = BuildSnapshotKey(key, propType, entryOrdinal);
             switch (propType)
             {
                 case PropertyType.Modifier:
-                    return cachedPrefabModifiers.TryGetValue(key, out value);
+                    return cachedPrefabModifiers.TryGetValue(snapshotKey, out value);
 
                 case PropertyType.Stat:
-                    return cachedPrefabStats.TryGetValue(key, out value);
+                    return cachedPrefabStats.TryGetValue(snapshotKey, out value);
 
                 case PropertyType.Variable:
-                    return cachedPrefabVariables.TryGetValue(key, out value);
+                    return cachedPrefabVariables.TryGetValue(snapshotKey, out value);
 
                 default:
                     value = 0f;
@@ -2182,21 +2281,23 @@ namespace BossRush
         private static bool TryGetComparisonValue(
             string key,
             PropertyType propType,
+            int entryOrdinal,
             Dictionary<string, float> modifiers,
             Dictionary<string, float> stats,
             Dictionary<string, float> variables,
             out float value)
         {
+            string snapshotKey = BuildSnapshotKey(key, propType, entryOrdinal);
             switch (propType)
             {
                 case PropertyType.Modifier:
-                    return modifiers.TryGetValue(key, out value);
+                    return modifiers.TryGetValue(snapshotKey, out value);
 
                 case PropertyType.Stat:
-                    return stats.TryGetValue(key, out value);
+                    return stats.TryGetValue(snapshotKey, out value);
 
                 case PropertyType.Variable:
-                    return variables.TryGetValue(key, out value);
+                    return variables.TryGetValue(snapshotKey, out value);
 
                 default:
                     value = 0f;
@@ -2231,7 +2332,7 @@ namespace BossRush
                 Dictionary<string, PropertySnapshot> oldProps = new Dictionary<string, PropertySnapshot>();
                 foreach (var snap in originalProperties)
                 {
-                    oldProps[BuildSnapshotKey(snap.Key, snap.PropType)] = snap;
+                    oldProps[BuildSnapshotKey(snap.Key, snap.PropType, snap.EntryOrdinal)] = snap;
                 }
                 
                 // 获取propertiesParent来查找属性条目
@@ -2245,20 +2346,21 @@ namespace BossRush
                         {
                             string key;
                             PropertyType propType;
+                            int entryOrdinal;
                             TextMeshProUGUI valueText;
-                            if (!TryGetDisplayedEntryInfo(child, out key, out propType, out valueText))
+                            if (!TryGetDisplayedEntryInfo(child, out key, out propType, out entryOrdinal, out valueText))
                             {
                                 continue;
                             }
 
                             PropertySnapshot oldSnapshot;
-                            if (!oldProps.TryGetValue(BuildSnapshotKey(key, propType), out oldSnapshot))
+                            if (!oldProps.TryGetValue(BuildSnapshotKey(key, propType, entryOrdinal), out oldSnapshot))
                             {
                                 continue;
                             }
 
                             float newValue;
-                            if (!TryGetCurrentItemPropertyValue(selectedItem, key, propType, out newValue))
+                            if (!TryGetCurrentItemPropertyValue(selectedItem, key, propType, entryOrdinal, out newValue))
                             {
                                 continue;
                             }
@@ -2275,7 +2377,7 @@ namespace BossRush
 
                                 string colorHex = diff > 0 ? "#66FF66" : "#FF6666";
                                 float prefabValue;
-                                string diffMarkup = TryGetCachedPrefabValue(key, propType, out prefabValue)
+                                string diffMarkup = TryGetCachedPrefabValue(key, propType, entryOrdinal, out prefabValue)
                                     ? BuildPropertyDiffMarkup(key, prefabValue, newValue, diff, colorHex, false)
                                     : string.Format(" <color={0}>({1}{2})</color>",
                                         colorHex,
@@ -2407,28 +2509,34 @@ namespace BossRush
                     cachedPrefabModifiers.Clear();
                     cachedPrefabStats.Clear();
                     cachedPrefabVariables.Clear();
+                    Dictionary<string, int> prefabModifierOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
+                    Dictionary<string, int> prefabStatOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
+                    Dictionary<string, int> prefabVariableOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
                     
                     if (prefabItem.Modifiers != null)
                     {
                         foreach (var mod in prefabItem.Modifiers)
                         {
-                            cachedPrefabModifiers[mod.Key] = mod.Value;
+                            if (mod == null || string.IsNullOrEmpty(mod.Key)) continue;
+                            cachedPrefabModifiers[BuildSnapshotKey(mod.Key, PropertyType.Modifier, GetNextEntryOrdinal(prefabModifierOrdinals, mod.Key))] = mod.Value;
                         }
                     }
                     if (prefabItem.Stats != null)
                     {
                         foreach (var stat in prefabItem.Stats)
                         {
-                            cachedPrefabStats[stat.Key] = stat.Value;
+                            if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
+                            cachedPrefabStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(prefabStatOrdinals, stat.Key))] = stat.Value;
                         }
                     }
                     if (prefabItem.Variables != null)
                     {
                         foreach (var variable in prefabItem.Variables)
                         {
+                            if (variable == null || string.IsNullOrEmpty(variable.Key)) continue;
                             if (variable.DataType == Duckov.Utilities.CustomDataType.Float)
                             {
-                                try { cachedPrefabVariables[variable.Key] = variable.GetFloat(); } catch { }
+                                try { cachedPrefabVariables[BuildSnapshotKey(variable.Key, PropertyType.Variable, GetNextEntryOrdinal(prefabVariableOrdinals, variable.Key))] = variable.GetFloat(); } catch { }
                             }
                         }
                     }
@@ -2441,28 +2549,34 @@ namespace BossRush
                 _reusablePlayerModifiers.Clear();
                 _reusablePlayerStats.Clear();
                 _reusablePlayerVariables.Clear();
+                Dictionary<string, int> playerModifierOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
+                Dictionary<string, int> playerStatOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
+                Dictionary<string, int> playerVariableOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
                 
                 if (playerItem.Modifiers != null)
                 {
                     foreach (var mod in playerItem.Modifiers)
                     {
-                        _reusablePlayerModifiers[mod.Key] = mod.Value;
+                        if (mod == null || string.IsNullOrEmpty(mod.Key)) continue;
+                        _reusablePlayerModifiers[BuildSnapshotKey(mod.Key, PropertyType.Modifier, GetNextEntryOrdinal(playerModifierOrdinals, mod.Key))] = mod.Value;
                     }
                 }
                 if (playerItem.Stats != null)
                 {
                     foreach (var stat in playerItem.Stats)
                     {
-                        _reusablePlayerStats[stat.Key] = stat.Value;
+                        if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
+                        _reusablePlayerStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(playerStatOrdinals, stat.Key))] = stat.Value;
                     }
                 }
                 if (playerItem.Variables != null)
                 {
                     foreach (var variable in playerItem.Variables)
                     {
+                        if (variable == null || string.IsNullOrEmpty(variable.Key)) continue;
                         if (variable.DataType == Duckov.Utilities.CustomDataType.Float)
                         {
-                            try { _reusablePlayerVariables[variable.Key] = variable.GetFloat(); } catch { }
+                            try { _reusablePlayerVariables[BuildSnapshotKey(variable.Key, PropertyType.Variable, GetNextEntryOrdinal(playerVariableOrdinals, variable.Key))] = variable.GetFloat(); } catch { }
                         }
                     }
                 }
@@ -2560,20 +2674,21 @@ namespace BossRush
 
                     string key;
                     PropertyType propType;
+                    int entryOrdinal;
                     TextMeshProUGUI valueText;
-                    if (!TryGetDisplayedEntryInfo(child, out key, out propType, out valueText))
+                    if (!TryGetDisplayedEntryInfo(child, out key, out propType, out entryOrdinal, out valueText))
                     {
                         continue;
                     }
 
                     float prefabValue;
-                    if (!TryGetComparisonValue(key, propType, prefabModifiers, prefabStats, prefabVariables, out prefabValue))
+                    if (!TryGetComparisonValue(key, propType, entryOrdinal, prefabModifiers, prefabStats, prefabVariables, out prefabValue))
                     {
                         continue;
                     }
 
                     float playerValue;
-                    if (!TryGetComparisonValue(key, propType, playerModifiers, playerStats, playerVariables, out playerValue))
+                    if (!TryGetComparisonValue(key, propType, entryOrdinal, playerModifiers, playerStats, playerVariables, out playerValue))
                     {
                         continue;
                     }

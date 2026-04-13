@@ -145,58 +145,95 @@ namespace BossRush
                 return;
             }
 
+            CleanupUnsupportedReforgeData(item);
+
+            // 只刷新 BossRush 已经持久化追踪的 RF_ 字段，避免把其他 Mod 运行时追加的词缀
+            // 误写成新的 BossRush 重铸数据，导致寄存/快递后覆盖基础属性。
+            if (!HasReforgeData(item))
+            {
+                return;
+            }
+
             Item prefab = GetItemPrefab(item);
             if (prefab == null)
             {
                 return;
             }
 
-            CleanupUnsupportedReforgeData(item);
-
             try
             {
-                if (item.Modifiers != null)
+                HashSet<string> trackedModifierKeys = GetTrackedPropertyKeys(item, MODIFIER_PREFIX);
+                HashSet<string> trackedStatKeys = GetTrackedPropertyKeys(item, STAT_PREFIX);
+                HashSet<string> trackedVariableKeys = GetTrackedPropertyKeys(item, VARIABLE_PREFIX);
+
+                if (item.Modifiers != null && trackedModifierKeys.Count > 0)
                 {
+                    HashSet<string> syncedModifierKeys = new HashSet<string>(StringComparer.Ordinal);
                     foreach (ModifierDescription mod in item.Modifiers)
                     {
-                        if (!ReforgeSystem.IsModifierEligibleForReforge(prefab, mod))
+                        if (mod == null || string.IsNullOrEmpty(mod.Key))
+                        {
+                            continue;
+                        }
+
+                        if (!trackedModifierKeys.Contains(mod.Key))
+                        {
+                            continue;
+                        }
+
+                        if (!ReforgeSystem.IsModifierEligibleForReforge(item, prefab, mod))
+                        {
+                            continue;
+                        }
+
+                        if (!syncedModifierKeys.Add(mod.Key))
                         {
                             continue;
                         }
 
                         float prefabValue = GetPrefabModifierValue(prefab, mod.Key);
-                        if (!ShouldSyncDelta(item, MODIFIER_PREFIX, mod.Key, prefabValue, mod.Value))
-                        {
-                            continue;
-                        }
-
                         SaveReforgeData(item, mod.Key, prefabValue, mod.Value);
                     }
                 }
 
-                if (item.Stats != null)
+                if (item.Stats != null && trackedStatKeys.Count > 0)
                 {
                     foreach (Stat stat in item.Stats)
                     {
+                        if (stat == null || string.IsNullOrEmpty(stat.Key))
+                        {
+                            continue;
+                        }
+
+                        if (!trackedStatKeys.Contains(stat.Key))
+                        {
+                            continue;
+                        }
+
                         if (!ReforgeSystem.IsStatEligibleForReforge(stat))
                         {
                             continue;
                         }
 
                         float prefabValue = GetPrefabStatValue(prefab, stat.Key);
-                        if (!ShouldSyncDelta(item, STAT_PREFIX, stat.Key, prefabValue, stat.BaseValue))
-                        {
-                            continue;
-                        }
-
                         SaveReforgeDataStat(item, stat.Key, prefabValue, stat.BaseValue);
                     }
                 }
 
-                if (item.Variables != null)
+                if (item.Variables != null && trackedVariableKeys.Count > 0)
                 {
                     foreach (var variable in item.Variables)
                     {
+                        if (variable == null || string.IsNullOrEmpty(variable.Key))
+                        {
+                            continue;
+                        }
+
+                        if (!trackedVariableKeys.Contains(variable.Key))
+                        {
+                            continue;
+                        }
+
                         if (!ReforgeSystem.IsVariableEligibleForReforge(variable))
                         {
                             continue;
@@ -213,11 +250,6 @@ namespace BossRush
                         }
 
                         float prefabValue = GetPrefabVariableValue(prefab, variable.Key);
-                        if (!ShouldSyncDelta(item, VARIABLE_PREFIX, variable.Key, prefabValue, currentValue))
-                        {
-                            continue;
-                        }
-
                         SaveReforgeDataVariable(item, variable.Key, prefabValue, currentValue);
                     }
                 }
@@ -367,15 +399,22 @@ namespace BossRush
 
             foreach (var mod in item.Modifiers)
             {
-                if (mod.Key == modifierKey)
+                if (mod == null || mod.Key != modifierKey)
                 {
-                    // 覆盖模式：最终值 = 预制体原值 + delta
-                    float newValue = prefabValue + delta;
-                    float currentValue = mod.Value;
-                    ReforgeSystem.ApplyModifierValueChangePublic(mod, newValue);
-                    ModBehaviour.DevLog($"[ReforgeData] 恢复Modifier: {item.DisplayName}.{modifierKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
-                    return true;
+                    continue;
                 }
+
+                if (prefab != null && !ReforgeSystem.IsNativeModifier(item, prefab, mod))
+                {
+                    continue;
+                }
+
+                // 覆盖模式：最终值 = 预制体原值 + delta
+                float newValue = prefabValue + delta;
+                float currentValue = mod.Value;
+                ReforgeSystem.ApplyModifierValueChangePublic(mod, newValue);
+                ModBehaviour.DevLog($"[ReforgeData] 恢复Modifier: {item.DisplayName}.{modifierKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
+                return true;
             }
             return false;
         }
@@ -609,28 +648,35 @@ namespace BossRush
             }
         }
 
-        private static bool ShouldSyncDelta(Item item, string prefix, string propertyKey, float prefabValue, float currentValue)
+        private static HashSet<string> GetTrackedPropertyKeys(Item item, string prefix)
         {
-            float delta = currentValue - prefabValue;
-            return Mathf.Abs(delta) >= 0.001f || HasVariableKey(item, prefix + propertyKey);
-        }
+            HashSet<string> result = new HashSet<string>(StringComparer.Ordinal);
 
-        private static bool HasVariableKey(Item item, string key)
-        {
-            if (item == null || item.Variables == null || string.IsNullOrEmpty(key))
+            if (item == null || item.Variables == null || string.IsNullOrEmpty(prefix))
             {
-                return false;
+                return result;
             }
 
             foreach (var variable in item.Variables)
             {
-                if (variable != null && variable.Key == key)
+                if (variable == null || string.IsNullOrEmpty(variable.Key))
                 {
-                    return true;
+                    continue;
+                }
+
+                if (!variable.Key.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                string propertyKey = variable.Key.Substring(prefix.Length);
+                if (!string.IsNullOrEmpty(propertyKey))
+                {
+                    result.Add(propertyKey);
                 }
             }
 
-            return false;
+            return result;
         }
 
         /// <summary>
