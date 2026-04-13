@@ -25,14 +25,10 @@ namespace BossRush
         private const float AWEN_SWEEP_FAILURE_BUBBLE_DURATION = 3f;
         private const float AWEN_SWEEP_FAILURE_BUBBLE_COOLDOWN = 1.25f;
 
-        private int modeEFLootboxGrantCounter = 0;
+        private int modeEFBossDeathGrantCounter = 0;
         private float nextAwenSweepFailureBubbleTime = 0f;
         private string lastAwenSweepFailureBubbleText = string.Empty;
-        private readonly HashSet<int> modeEFLootboxGrantTrackedIds = new HashSet<int>();
-        private readonly Dictionary<int, InteractableLootbox> modeEFLootboxActiveById =
-            new Dictionary<int, InteractableLootbox>();
         private readonly List<InteractableLootbox> modeEFLootboxScratch = new List<InteractableLootbox>();
-        private readonly List<int> modeEFLootboxPruneScratch = new List<int>();
         private readonly List<AwenLootSweepTarget> awenLootSweepTargetScratch = new List<AwenLootSweepTarget>();
         private AwenLootSweepRunner awenLootSweepRunner = null;
 
@@ -61,20 +57,18 @@ namespace BossRush
         private void ResetModeEFLootboxTrackerState()
         {
             CancelAwenLootSweep(false);
-            modeEFLootboxGrantCounter = 0;
-            modeEFLootboxGrantTrackedIds.Clear();
-            modeEFLootboxActiveById.Clear();
+            modeEFBossDeathGrantCounter = 0;
+            nextAwenSweepFailureBubbleTime = 0f;
+            lastAwenSweepFailureBubbleText = string.Empty;
             modeEFLootboxScratch.Clear();
-            modeEFLootboxPruneScratch.Clear();
             awenLootSweepTargetScratch.Clear();
         }
 
         internal void CaptureModeEFLootboxBaseline()
         {
-            modeEFLootboxGrantCounter = 0;
-            modeEFLootboxGrantTrackedIds.Clear();
-            modeEFLootboxActiveById.Clear();
-            modeEFLootboxPruneScratch.Clear();
+            modeEFBossDeathGrantCounter = 0;
+            nextAwenSweepFailureBubbleTime = 0f;
+            lastAwenSweepFailureBubbleText = string.Empty;
             modeEFLootboxScratch.Clear();
             awenLootSweepTargetScratch.Clear();
         }
@@ -117,8 +111,37 @@ namespace BossRush
             }
 
             BossRushLootboxUtility.StampLootboxMarker(lootbox, mode, sessionToken);
-            modeEFLootboxActiveById[lootbox.GetInstanceID()] = lootbox;
-            RegisterBossRushLootboxForGrant(lootbox, false, activeScene);
+        }
+
+        internal void RegisterModeEFBossDeathForSweepToken()
+        {
+            try
+            {
+                BossRushTrackedLootboxMode mode;
+                int sessionToken;
+                if (!TryGetActiveModeEFLootboxContext(out mode, out sessionToken))
+                {
+                    return;
+                }
+
+                int activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+                if (!IsAwenLootSweepSessionStillValid(mode, sessionToken, activeScene))
+                {
+                    return;
+                }
+
+                modeEFBossDeathGrantCounter++;
+                DevLog("[AwenLootSweep] 模式E/F Boss死亡累计: " + modeEFBossDeathGrantCounter);
+
+                if (modeEFBossDeathGrantCounter % MODEEF_SWEEP_TOKEN_GRANT_INTERVAL == 0)
+                {
+                    GrantAwenLootSweepToken();
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[AwenLootSweep] [WARNING] RegisterModeEFBossDeathForSweepToken failed: " + e.Message);
+            }
         }
 
         internal bool CanUseAwenLootSweepToken()
@@ -343,38 +366,6 @@ namespace BossRush
             return output.Count;
         }
 
-        private int CollectTrackedModeEFLootboxesForSession(
-            List<InteractableLootbox> output,
-            BossRushTrackedLootboxMode mode,
-            int sessionToken,
-            int requiredSceneBuildIndex)
-        {
-            if (output == null)
-            {
-                return 0;
-            }
-
-            int count = BossRushLootboxUtility.CollectMarkedLootboxesForSession(
-                output,
-                mode,
-                sessionToken,
-                requiredSceneBuildIndex);
-
-            modeEFLootboxActiveById.Clear();
-            for (int i = 0; i < output.Count; i++)
-            {
-                InteractableLootbox lootbox = output[i];
-                if (lootbox == null)
-                {
-                    continue;
-                }
-
-                modeEFLootboxActiveById[lootbox.GetInstanceID()] = lootbox;
-            }
-
-            return count;
-        }
-
         private bool HasTrackedModeEFLootboxes(int requiredSceneBuildIndex)
         {
             return CollectTrackedModeEFLootboxes(modeEFLootboxScratch, requiredSceneBuildIndex) > 0;
@@ -388,36 +379,7 @@ namespace BossRush
             }
 
             output.Clear();
-            int count = BossRushLootboxUtility.CollectMarkedLootboxes(output, requiredSceneBuildIndex);
-
-            modeEFLootboxActiveById.Clear();
-            for (int i = 0; i < output.Count; i++)
-            {
-                InteractableLootbox lootbox = output[i];
-                if (lootbox == null)
-                {
-                    continue;
-                }
-
-                modeEFLootboxActiveById[lootbox.GetInstanceID()] = lootbox;
-            }
-
-            return count;
-        }
-
-        private void PruneTrackedModeEFLootboxes()
-        {
-            if (modeEFLootboxPruneScratch.Count <= 0)
-            {
-                return;
-            }
-
-            for (int i = 0; i < modeEFLootboxPruneScratch.Count; i++)
-            {
-                modeEFLootboxActiveById.Remove(modeEFLootboxPruneScratch[i]);
-            }
-
-            modeEFLootboxPruneScratch.Clear();
+            return BossRushLootboxUtility.CollectMarkedLootboxes(output, requiredSceneBuildIndex);
         }
 
         private void BuildAwenLootSweepTargets(List<InteractableLootbox> source, List<AwenLootSweepTarget> output)
@@ -487,34 +449,6 @@ namespace BossRush
             }
         }
 
-        private void RegisterBossRushLootboxForGrant(
-            InteractableLootbox lootbox,
-            bool seedOnly,
-            int requiredSceneBuildIndex)
-        {
-            if (!BossRushLootboxUtility.IsMarkedLootbox(lootbox, requiredSceneBuildIndex))
-            {
-                return;
-            }
-
-            int instanceId = lootbox.GetInstanceID();
-            if (!modeEFLootboxGrantTrackedIds.Add(instanceId))
-            {
-                return;
-            }
-
-            if (seedOnly)
-            {
-                return;
-            }
-
-            modeEFLootboxGrantCounter++;
-            if (modeEFLootboxGrantCounter % MODEEF_SWEEP_TOKEN_GRANT_INTERVAL == 0)
-            {
-                GrantAwenLootSweepToken();
-            }
-        }
-
         private void GrantAwenLootSweepToken()
         {
             try
@@ -538,8 +472,8 @@ namespace BossRush
                 }
 
                 ShowBigBanner(L10n.T(
-                    "累计 <color=yellow>" + modeEFLootboxGrantCounter + "</color> 个掉落箱！获得 <color=yellow>阿稳扫箱令</color> ×1",
-                    "Reached <color=yellow>" + modeEFLootboxGrantCounter + "</color> lootboxes! Received <color=yellow>Awen Loot Sweep Token</color> x1"));
+                    "累计 <color=yellow>" + modeEFBossDeathGrantCounter + "</color> 个Boss死亡！获得 <color=yellow>阿稳扫箱令</color> ×1",
+                    "Reached <color=yellow>" + modeEFBossDeathGrantCounter + "</color> boss deaths! Received <color=yellow>Awen Loot Sweep Token</color> x1"));
             }
             catch (Exception e)
             {

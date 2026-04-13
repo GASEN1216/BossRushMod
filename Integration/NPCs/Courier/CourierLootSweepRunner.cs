@@ -15,6 +15,8 @@ namespace BossRush
         private const float MOVE_TIMEOUT_SECONDS = 8f;
         private const float ARRIVE_DISTANCE_SQR = 1.2f * 1.2f;
         private const float SWEEP_RUN_SPEED = 15f;
+        private const float SWEEP_COMPLETED_BUBBLE_Y_OFFSET = 2.5f;
+        private const float SWEEP_COMPLETED_BUBBLE_DURATION = 3f;
 
         private readonly List<AwenLootSweepTarget> activeTargets = new List<AwenLootSweepTarget>();
 
@@ -26,6 +28,8 @@ namespace BossRush
         private int activeSessionToken = 0;
         private int activeSceneIndex = -1;
         private float savedRunSpeed = -1f;
+        private bool hasSweepStartPosition = false;
+        private Vector3 sweepStartPosition = Vector3.zero;
 
         public bool IsRunning
         {
@@ -82,6 +86,8 @@ namespace BossRush
             activeMode = mode;
             activeSessionToken = sessionToken;
             activeSceneIndex = relatedScene;
+            sweepStartPosition = transform.position;
+            hasSweepStartPosition = true;
             sweepCoroutine = StartCoroutine(RunSweep());
             return true;
         }
@@ -95,6 +101,7 @@ namespace BossRush
             }
 
             activeTargets.Clear();
+            ClearSweepSessionState();
 
             if (restoreDefaultState)
             {
@@ -114,6 +121,7 @@ namespace BossRush
         private IEnumerator RunSweep()
         {
             int clearedCount = 0;
+            bool completedSweep = false;
             PrepareForSweep();
 
             try
@@ -181,12 +189,24 @@ namespace BossRush
                     controller.StopTalking();
                     yield return null;
                 }
+
+                completedSweep = true;
             }
             finally
             {
                 sweepCoroutine = null;
                 activeTargets.Clear();
+                if (completedSweep)
+                {
+                    ReturnToSweepStartPosition();
+                }
+
+                ClearSweepSessionState();
                 RestoreDefaultState();
+                if (completedSweep)
+                {
+                    ShowSweepCompletedBubble();
+                }
             }
         }
 
@@ -251,6 +271,15 @@ namespace BossRush
             SetInteractionLocked(false);
         }
 
+        private void ClearSweepSessionState()
+        {
+            activeMode = BossRushTrackedLootboxMode.None;
+            activeSessionToken = 0;
+            activeSceneIndex = -1;
+            hasSweepStartPosition = false;
+            sweepStartPosition = Vector3.zero;
+        }
+
         private bool DestroyTargetLootbox(AwenLootSweepTarget target)
         {
             if (target == null)
@@ -300,18 +329,50 @@ namespace BossRush
             catch { }
         }
 
+        private void ReturnToSweepStartPosition()
+        {
+            if (!hasSweepStartPosition)
+            {
+                return;
+            }
+
+            TeleportTo(sweepStartPosition);
+        }
+
         private void ShowSweepBubble(int clearedCount)
         {
             try
             {
                 DialogueBubblesManager.Show(
-                    L10n.T("爽吃x" + clearedCount, "Nom x" + clearedCount),
+                    L10n.T("爽吃x<color=red>" + clearedCount + "</color>", "Nom x<color=red>" + clearedCount + "</color>"),
                     transform,
                     1.5f,
                     false,
                     false,
                     -1f,
                     1.5f);
+            }
+            catch { }
+        }
+
+        private void ShowSweepCompletedBubble()
+        {
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null)
+                {
+                    return;
+                }
+
+                DialogueBubblesManager.Show(
+                    L10n.T("阿稳感谢你的箱子！", "Awen thanks for your loot!"),
+                    player.transform,
+                    SWEEP_COMPLETED_BUBBLE_Y_OFFSET,
+                    false,
+                    false,
+                    -1f,
+                    SWEEP_COMPLETED_BUBBLE_DURATION);
             }
             catch { }
         }

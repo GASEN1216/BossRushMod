@@ -489,6 +489,7 @@ namespace BossRush
                     + " | marks=" + deadBossMarks
                     + " | source=" + (string.IsNullOrEmpty(sourceTag) ? "unknown" : sourceTag)
                     + " | totalAfterRemove=" + modeFState.ActiveBosses.Count);
+                RegisterModeEFBossDeathForSweepToken();
 
                 if (killedByPlayer)
                 {

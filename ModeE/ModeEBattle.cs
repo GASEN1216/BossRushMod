@@ -1176,6 +1176,7 @@ namespace BossRush
 
                 // 累计击杀计数，每10次自动发放挑衅烟雾弹
                 CheckRespawnItemAutoGrant();
+                RegisterModeEFBossDeathForSweepToken();
 
                 // 敌方阵营 Boss 保留原掉落内容，但要补挂 BossRush 箱子交互与追踪标记。
                 if (enemyFaction != modeEPlayerFaction)
