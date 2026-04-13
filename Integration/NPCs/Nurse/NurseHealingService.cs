@@ -16,6 +16,7 @@ using BossRush.Utils;
 using Duckov;
 using Duckov.Buffs;
 using Duckov.Economy;
+using Duckov.Utilities;
 using UnityEngine;
 
 namespace BossRush
@@ -40,21 +41,46 @@ namespace BossRush
         private const float HEALTH_EPSILON = 0.01f;
         private const float DEBUFF_CACHE_INTERVAL = 0.2f;
 
-        // 仅清理确定属于负面状态的标签，避免误删正面/剧情Buff。
-        private static readonly HashSet<Buff.BuffExclusiveTags> TreatableDebuffTags = new HashSet<Buff.BuffExclusiveTags>
+        // 只清理明确确认过的负面 Buff ID，避免误删同 tag 下的增益/剧情 Buff。
+        // 原版基础 Debuff 优先复用 GameplayDataSettings.Buffs 的官方引用，其余补充项来自原版/当前模组已知负面状态。
+        private static readonly HashSet<int> SupplementalTreatableDebuffIds = new HashSet<int>
         {
-            Buff.BuffExclusiveTags.Bleeding,
-            Buff.BuffExclusiveTags.Starve,
-            Buff.BuffExclusiveTags.Thirsty,
-            Buff.BuffExclusiveTags.Weight,
-            Buff.BuffExclusiveTags.Poison,
-            Buff.BuffExclusiveTags.Pain,
-            Buff.BuffExclusiveTags.Electric,
-            Buff.BuffExclusiveTags.Burning,
-            Buff.BuffExclusiveTags.Nauseous,
-            Buff.BuffExclusiveTags.Stun,
-            Buff.BuffExclusiveTags.Freeze
+            1,      // 脱水
+            1001,   // 出血
+            1002,   // 出血
+            1003,   // 骨折
+            1004,   // 创伤
+            1016,   // 萎靡
+            1022,   // 负重
+            1023,   // 超重
+            1042,   // 震慑
+            1061,   // 中毒
+            1071,   // 触电
+            1081,   // 疼痛
+            1111,   // 扰动
+            1112,   // 扭曲
+            1117,   // 碎裂
+            1121,   // 点燃
+            1122,   // 弱毒
+            1123,   // 恶心
+            1124,   // 害怕
+            1125,   // 燃烧
+            1126,   // 冰冻
+            1127,   // 冻结
+            1128,   // 纳米机器
+            1129,   // 机器入侵
+            1130,   // 食物中毒
+            1305,   // 干枯
+            1306,   // 干枯
+            1401,   // 干枯
+            1900,   // 图腾诅咒
+            2101,   // 寒冷
+            2102,   // 失温
+            2201    // 冻伤
         };
+
+        private static readonly HashSet<int> TreatableDebuffIds = new HashSet<int>(SupplementalTreatableDebuffIds);
+        private static bool _vanillaTreatableDebuffIdsInitialized;
 
         private static NurseAffinityConfig cachedConfig => NurseAffinityConfig.Instance;
 
@@ -88,6 +114,55 @@ namespace BossRush
             _cachedDebuffOwner = null;
             _cachedHasDebuffs = false;
             _nextDebuffRefreshTime = -1f;
+        }
+
+        private static void AddTreatableDebuffId(Buff buff)
+        {
+            if (buff != null && buff.ID > 0)
+            {
+                TreatableDebuffIds.Add(buff.ID);
+            }
+        }
+
+        private static void EnsureTreatableDebuffIdsInitialized()
+        {
+            if (_vanillaTreatableDebuffIdsInitialized)
+            {
+                return;
+            }
+
+            try
+            {
+                GameplayDataSettings.BuffsData buffsData = GameplayDataSettings.Buffs;
+                if (buffsData == null)
+                {
+                    return;
+                }
+
+                AddTreatableDebuffId(buffsData.BleedSBuff);
+                AddTreatableDebuffId(buffsData.UnlimitBleedBuff);
+                AddTreatableDebuffId(buffsData.BoneCrackBuff);
+                AddTreatableDebuffId(buffsData.WoundBuff);
+                AddTreatableDebuffId(buffsData.Weight_Light);
+                AddTreatableDebuffId(buffsData.Weight_Heavy);
+                AddTreatableDebuffId(buffsData.Weight_SuperHeavy);
+                AddTreatableDebuffId(buffsData.Weight_Overweight);
+                AddTreatableDebuffId(buffsData.Pain);
+                AddTreatableDebuffId(buffsData.Starve);
+                AddTreatableDebuffId(buffsData.Thirsty);
+                AddTreatableDebuffId(buffsData.Burn);
+                AddTreatableDebuffId(buffsData.Poison);
+                AddTreatableDebuffId(buffsData.Electric);
+                AddTreatableDebuffId(buffsData.Space);
+                AddTreatableDebuffId(buffsData.Cold);
+                AddTreatableDebuffId(buffsData.SuperCold);
+
+                _vanillaTreatableDebuffIdsInitialized = true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LOG_PREFIX + "初始化原版Debuff目录失败: " + e.Message);
+            }
         }
 
         public static void NotifyDebuffStateChanged()
@@ -251,7 +326,13 @@ namespace BossRush
 
         private static bool IsTreatableDebuff(Buff buff)
         {
-            return buff != null && TreatableDebuffTags.Contains(buff.ExclusiveTag);
+            if (buff == null)
+            {
+                return false;
+            }
+
+            EnsureTreatableDebuffIdsInitialized();
+            return TreatableDebuffIds.Contains(buff.ID);
         }
 
         // ============================================================================
@@ -572,7 +653,7 @@ namespace BossRush
             try
             {
                 if (player == null) return 0;
-                cleared = ClearDebuffsByTags(player, TreatableDebuffTags);
+                cleared = ClearTreatableDebuffs(player);
             }
             catch (Exception e)
             {
@@ -587,11 +668,11 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 按标签分别清除 Debuff（原版支持按 tag 移除）
+        /// 逐个移除明确允许治疗的 Debuff，避免误删同 tag 下的增益 Buff。
         /// </summary>
-        private static int ClearDebuffsByTags(CharacterMainControl player, IEnumerable<Buff.BuffExclusiveTags> tags)
+        private static int ClearTreatableDebuffs(CharacterMainControl player)
         {
-            if (player == null || tags == null) return 0;
+            if (player == null) return 0;
 
             CharacterBuffManager buffManager = player.GetBuffManager();
             if (buffManager == null || buffManager.Buffs == null || buffManager.Buffs.Count <= 0)
@@ -600,49 +681,37 @@ namespace BossRush
             }
 
             int cleared = 0;
-            HashSet<Buff.BuffExclusiveTags> processed = new HashSet<Buff.BuffExclusiveTags>();
-            foreach (Buff.BuffExclusiveTags tag in tags)
-            {
-                if (tag == Buff.BuffExclusiveTags.NotExclusive) continue;
-                if (!processed.Add(tag)) continue;
-
-                int before = CountBuffsByTag(buffManager, tag);
-                if (before <= 0) continue;
-
-                try
-                {
-                    buffManager.RemoveBuffsByTag(tag, false);
-                    int after = CountBuffsByTag(buffManager, tag);
-                    cleared += Mathf.Max(0, before - after);
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog(LOG_PREFIX + "按Tag清除Debuff失败: " + tag + ", " + e.Message);
-                }
-            }
-
-            return cleared;
-        }
-
-        private static int CountBuffsByTag(CharacterBuffManager buffManager, Buff.BuffExclusiveTags tag)
-        {
-            if (buffManager == null || buffManager.Buffs == null || buffManager.Buffs.Count <= 0)
-            {
-                return 0;
-            }
-
-            int count = 0;
+            List<Buff> buffsToRemove = new List<Buff>();
             var buffs = buffManager.Buffs;
             for (int i = 0; i < buffs.Count; i++)
             {
                 Buff buff = buffs[i];
-                if (buff != null && buff.ExclusiveTag == tag)
+                if (IsTreatableDebuff(buff))
                 {
-                    count++;
+                    buffsToRemove.Add(buff);
                 }
             }
 
-            return count;
+            for (int i = 0; i < buffsToRemove.Count; i++)
+            {
+                Buff buff = buffsToRemove[i];
+                if (buff == null || !buffManager.Buffs.Contains(buff))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    buffManager.RemoveBuff(buff, false);
+                    cleared++;
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog(LOG_PREFIX + "按实例清除Debuff失败: " + buff.ID + ", " + e.Message);
+                }
+            }
+
+            return cleared;
         }
 
         // ============================================================================
