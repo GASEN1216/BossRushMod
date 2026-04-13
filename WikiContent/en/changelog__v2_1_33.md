@@ -1,0 +1,13 @@
+## v2.1.33
+
+### Release Date
+- 2026-04-13
+
+### Main Theme
+- **Mode E interaction polish and storage compatibility fixes**: this update adds the Awen Loot Sweep Token and a delete interaction for lootboxes, expands the nurse's treatment coverage, and fixes storage compatibility with external armor affixes.
+
+### Detailed Update Log
+- Added the item `Awen Loot Sweep Token`, which can be used to clear Mode E lootboxes in one action; `1` is automatically granted for every `20` boss deaths.
+- Added a `Delete` interaction option to Mode E lootboxes for faster cleanup.
+- Expanded the nurse's treatment coverage to be more comprehensive.
+- Fixed a storage compatibility issue involving external armor affixes.
