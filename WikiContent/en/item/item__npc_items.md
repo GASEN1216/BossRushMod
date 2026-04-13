@@ -91,6 +91,19 @@ A brass token stamped with Awen's duck mark. Use it to ship what you are carryin
 
 ---
 
+### Awen Loot Sweep Token
+
+A brass token stamped with Awen's cleanup seal. Usable only in Mode E/F. Once used, Awen takes over the lootboxes that already exist and clears them one by one from nearest to farthest.
+
+- Source: Automatically granted once per 20 boss deaths in Mode E/F
+- Max Stack: 1
+- Use Time: 1 second
+- Requirement: Mode E/F only; Awen must be present, and there must already be lootboxes available to clear
+- Effect: Commands Awen to take over the currently existing lootboxes and clear them one by one from nearest to farthest
+- Limitation: Only lootboxes that already exist when you use it are included; it cannot be used again while Awen is already sweeping
+
+---
+
 ### Dingdang's Drawing
 
 A painting Dingdang spent many days on. Use it to view it in fullscreen.
