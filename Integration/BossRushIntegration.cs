@@ -368,6 +368,7 @@ namespace BossRush
                 AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
                 ItemFactory.RegisterConfigurator(ReverseScaleConfig.TotemTypeId, ReverseScaleConfig.ConfigureItem);
                 WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
+                AwenLootSweepTokenConfig.RegisterConfigurator();  // 阿稳扫箱令配置器
                 FactionFlagConfig.RegisterConfigurators();  // 营旗配置器（Mode E）
                 RespawnItemConfig.RegisterConfigurators();  // 刷怪消耗品配置器（Mode E）
                 BloodhuntTransponderConfig.RegisterConfigurator();  // 血猎收发器配置器（Mode F）
@@ -384,6 +385,8 @@ namespace BossRush
                 {
                     DevLog("[BossRush] ItemFactory loaded " + itemCount + " items");
                 }
+
+                AwenLootSweepTokenConfig.EnsureRuntimeRegistration();
 
                 PeaceCharmRuntime.InitializeRuntime();
             }
@@ -971,6 +974,7 @@ namespace BossRush
             LocalizationInjector.InjectPeaceCharmLocalization();   // 平安护身符物品本地化
             DingdangDrawingConfig.InjectLocalization();  // 叮当涂鸦物品本地化
             WildHornConfig.InjectLocalization();  // 荒野号角物品本地化
+            AwenLootSweepTokenConfig.InjectLocalization();  // 阿稳扫箱令物品本地化
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
             RespawnItemConfig.InjectLocalization();  // 刷怪消耗品本地化（Mode E）
             InjectModeFItemLocalization();  // Mode F 物品本地化

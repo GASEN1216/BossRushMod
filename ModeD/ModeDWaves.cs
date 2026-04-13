@@ -859,7 +859,7 @@ namespace BossRush
             {
                 if (hasDeathPos)
                 {
-                    StartCoroutine(MarkModeDLootboxAtPosition(deathPosition));
+                    StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, deathPosition, false));
                 }
             }
             catch {}
@@ -874,112 +874,6 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeD] [ERROR] OnModeDEnemyDeath 关键操作失败: " + e.Message);
-            }
-        }
-
-        // P2-6 修复：复用数组避免 GC，容量提升到 128 以防极端情况截断
-        private static readonly Collider[] LootboxHits = new Collider[128];
-
-        private System.Collections.IEnumerator MarkModeDLootboxAtPosition(Vector3 deathPosition)
-        {
-            // 等待一帧，确保尸体掉落箱已经生成
-            yield return null;
-
-            const float radius = 3f;
-            const int lootboxLayerMask = -1;  // -1 = 所有层，可根据实际情况调整
-
-            // 使用 OverlapSphereNonAlloc 做局部查询（无 GC，避免数组分配）
-            int hitCount = 0;
-            try
-            {
-                hitCount = Physics.OverlapSphereNonAlloc(deathPosition, radius, LootboxHits, lootboxLayerMask);
-            }
-            catch {}
-
-            if (hitCount <= 0)
-            {
-                yield break;
-            }
-
-            for (int i = 0; i < hitCount; i++)
-            {
-                Collider col = LootboxHits[i];
-                if (col == null) continue;
-
-                InteractableLootbox box = null;
-                try
-                {
-                    box = col.GetComponent<InteractableLootbox>();
-                }
-                catch {}
-
-                if (box == null) continue;
-
-                try
-                {
-                    try
-                    {
-                        if (box.GetComponentInParent<PetAI>() != null)
-                        {
-                            continue;
-                        }
-                    }
-                    catch {}
-
-                    try
-                    {
-                        if (box.GetComponentInParent<PetProxy>() != null)
-                        {
-                            continue;
-                        }
-                    }
-                    catch {}
-
-                    BossRushLootboxMarker marker = box.GetComponent<BossRushLootboxMarker>();
-                    if (marker == null)
-                    {
-                        box.gameObject.AddComponent<BossRushLootboxMarker>();
-                    }
-
-                    BossRushDeleteLootboxInteractable deleteInteract = null;
-                    try
-                    {
-                        deleteInteract = box.gameObject.GetComponent<BossRushDeleteLootboxInteractable>();
-                    }
-                    catch {}
-
-                    if (deleteInteract == null)
-                    {
-                        try
-                        {
-                            deleteInteract = box.gameObject.AddComponent<BossRushDeleteLootboxInteractable>();
-                        }
-                        catch {}
-                    }
-
-                    try
-                    {
-                        box.interactableGroup = true;
-
-                        // 使用缓存的 FieldInfo
-                        System.Reflection.FieldInfo othersField = ReflectionCache.InteractableBase_OtherInterablesInGroup;
-                        if (othersField != null)
-                        {
-                            System.Collections.Generic.List<InteractableBase> hostList = othersField.GetValue(box) as System.Collections.Generic.List<InteractableBase>;
-                            if (hostList == null)
-                            {
-                                hostList = new System.Collections.Generic.List<InteractableBase>();
-                                othersField.SetValue(box, hostList);
-                            }
-                            if (deleteInteract != null && !hostList.Contains(deleteInteract))
-                            {
-                                hostList.Add(deleteInteract);
-                            }
-                        }
-                    }
-                    catch {}
-                }
-                catch {}
             }
         }
 

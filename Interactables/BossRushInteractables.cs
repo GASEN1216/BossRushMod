@@ -1177,48 +1177,7 @@ namespace BossRush
         {
             try
             {
-                int removed = 0;
-                InteractableLootbox[] boxes = null;
-
-                try
-                {
-                    boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
-                }
-                catch {}
-
-                if (boxes != null)
-                {
-                    for (int i = 0; i < boxes.Length; i++)
-                    {
-                        InteractableLootbox box = boxes[i];
-                        if (box == null)
-                        {
-                            continue;
-                        }
-
-                        BossRushLootboxMarker marker = null;
-                        try
-                        {
-                            marker = box.GetComponent<BossRushLootboxMarker>();
-                        }
-                        catch {}
-
-                        if (marker == null)
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (box.gameObject != null)
-                            {
-                                removed++;
-                                UnityEngine.Object.Destroy(box.gameObject);
-                            }
-                        }
-                        catch {}
-                    }
-                }
+                int removed = BossRushLootboxUtility.DestroyMarkedLootboxes();
 
                 try
                 {
@@ -1293,68 +1252,7 @@ namespace BossRush
         {
             try
             {
-                int removed = 0;
-                InteractableLootbox[] boxes = null;
-
-                try
-                {
-                    boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
-                }
-                catch {}
-
-                if (boxes != null)
-                {
-                    for (int i = 0; i < boxes.Length; i++)
-                    {
-                        InteractableLootbox box = boxes[i];
-                        if (box == null)
-                        {
-                            continue;
-                        }
-
-                        BossRushLootboxMarker marker = null;
-                        try
-                        {
-                            marker = box.GetComponent<BossRushLootboxMarker>();
-                        }
-                        catch {}
-
-                        if (marker == null)
-                        {
-                            continue;
-                        }
-
-                        bool isEmpty = false;
-                        try
-                        {
-                            Inventory inv = box.Inventory;
-                            if (inv == null)
-                            {
-                                isEmpty = true;
-                            }
-                            else
-                            {
-                                isEmpty = inv.IsEmpty();
-                            }
-                        }
-                        catch {}
-
-                        if (!isEmpty)
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (box.gameObject != null)
-                            {
-                                removed++;
-                                UnityEngine.Object.Destroy(box.gameObject);
-                            }
-                        }
-                        catch {}
-                    }
-                }
+                int removed = BossRushLootboxUtility.DestroyMarkedLootboxes(int.MinValue, true);
 
                 try
                 {
@@ -1373,9 +1271,376 @@ namespace BossRush
             }
         }
     }
-    
+
     public class BossRushLootboxMarker : MonoBehaviour
     {
+        public BossRushTrackedLootboxMode TrackedMode = BossRushTrackedLootboxMode.None;
+        public int SessionToken = 0;
+    }
+
+    internal static class BossRushLootboxUtility
+    {
+        private static readonly Collider[] NearbyLootboxHits = new Collider[128];
+
+        internal static bool IsMarkedLootbox(InteractableLootbox lootbox, int requiredSceneBuildIndex = int.MinValue)
+        {
+            if (lootbox == null || lootbox.gameObject == null)
+            {
+                return false;
+            }
+
+            if (requiredSceneBuildIndex != int.MinValue &&
+                lootbox.gameObject.scene.buildIndex != requiredSceneBuildIndex)
+            {
+                return false;
+            }
+
+            BossRushLootboxMarker marker = null;
+            try
+            {
+                marker = lootbox.GetComponent<BossRushLootboxMarker>();
+            }
+            catch {}
+
+            return marker != null;
+        }
+
+        internal static bool StampLootboxMarker(
+            InteractableLootbox lootbox,
+            BossRushTrackedLootboxMode mode,
+            int sessionToken)
+        {
+            if (lootbox == null || lootbox.gameObject == null || sessionToken <= 0)
+            {
+                return false;
+            }
+
+            BossRushLootboxMarker marker = null;
+            try
+            {
+                marker = lootbox.GetComponent<BossRushLootboxMarker>();
+            }
+            catch {}
+
+            if (marker == null)
+            {
+                return false;
+            }
+
+            marker.TrackedMode = mode;
+            marker.SessionToken = sessionToken;
+            return true;
+        }
+
+        internal static bool IsMarkedLootboxForSession(
+            InteractableLootbox lootbox,
+            BossRushTrackedLootboxMode mode,
+            int sessionToken,
+            int requiredSceneBuildIndex = int.MinValue)
+        {
+            if (!IsMarkedLootbox(lootbox, requiredSceneBuildIndex))
+            {
+                return false;
+            }
+
+            if (sessionToken <= 0 || mode == BossRushTrackedLootboxMode.None)
+            {
+                return false;
+            }
+
+            BossRushLootboxMarker marker = null;
+            try
+            {
+                marker = lootbox.GetComponent<BossRushLootboxMarker>();
+            }
+            catch {}
+
+            return marker != null &&
+                   marker.TrackedMode == mode &&
+                   marker.SessionToken == sessionToken;
+        }
+
+        internal static bool IsEmptyLootbox(InteractableLootbox lootbox)
+        {
+            if (lootbox == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                Inventory inv = lootbox.Inventory;
+                if (inv == null)
+                {
+                    return true;
+                }
+
+                return inv.IsEmpty();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static int CollectMarkedLootboxes(
+            List<InteractableLootbox> output,
+            int requiredSceneBuildIndex = int.MinValue,
+            bool onlyEmpty = false)
+        {
+            if (output == null)
+            {
+                return 0;
+            }
+
+            output.Clear();
+
+            InteractableLootbox[] boxes = null;
+            try
+            {
+                boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
+            }
+            catch {}
+
+            if (boxes == null)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < boxes.Length; i++)
+            {
+                InteractableLootbox box = boxes[i];
+                if (!IsMarkedLootbox(box, requiredSceneBuildIndex))
+                {
+                    continue;
+                }
+
+                if (onlyEmpty && !IsEmptyLootbox(box))
+                {
+                    continue;
+                }
+
+                output.Add(box);
+            }
+
+            return output.Count;
+        }
+
+        internal static int CollectMarkedLootboxesForSession(
+            List<InteractableLootbox> output,
+            BossRushTrackedLootboxMode mode,
+            int sessionToken,
+            int requiredSceneBuildIndex = int.MinValue,
+            bool onlyEmpty = false)
+        {
+            if (output == null)
+            {
+                return 0;
+            }
+
+            output.Clear();
+
+            InteractableLootbox[] boxes = null;
+            try
+            {
+                boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
+            }
+            catch {}
+
+            if (boxes == null)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < boxes.Length; i++)
+            {
+                InteractableLootbox box = boxes[i];
+                if (!IsMarkedLootboxForSession(box, mode, sessionToken, requiredSceneBuildIndex))
+                {
+                    continue;
+                }
+
+                if (onlyEmpty && !IsEmptyLootbox(box))
+                {
+                    continue;
+                }
+
+                output.Add(box);
+            }
+
+            return output.Count;
+        }
+
+        internal static int DestroyLootboxes(List<InteractableLootbox> lootboxes)
+        {
+            int removed = 0;
+            if (lootboxes == null)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < lootboxes.Count; i++)
+            {
+                InteractableLootbox box = lootboxes[i];
+                if (box == null || box.gameObject == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    if (box.gameObject != null)
+                    {
+                        removed++;
+                        UnityEngine.Object.Destroy(box.gameObject);
+                    }
+                }
+                catch {}
+            }
+
+            return removed;
+        }
+
+        internal static int DestroyMarkedLootboxes(int requiredSceneBuildIndex = int.MinValue, bool onlyEmpty = false)
+        {
+            List<InteractableLootbox> boxes = new List<InteractableLootbox>();
+            CollectMarkedLootboxes(boxes, requiredSceneBuildIndex, onlyEmpty);
+            return DestroyLootboxes(boxes);
+        }
+
+        internal static void DecorateLootbox(InteractableLootbox lootbox, ModBehaviour owner = null, bool registerSweepTracking = false)
+        {
+            if (lootbox == null || lootbox.gameObject == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (lootbox.GetComponentInParent<PetAI>() != null)
+                {
+                    return;
+                }
+            }
+            catch {}
+
+            try
+            {
+                if (lootbox.GetComponentInParent<PetProxy>() != null)
+                {
+                    return;
+                }
+            }
+            catch {}
+
+            try
+            {
+                BossRushLootboxMarker marker = lootbox.GetComponent<BossRushLootboxMarker>();
+                if (marker == null)
+                {
+                    lootbox.gameObject.AddComponent<BossRushLootboxMarker>();
+                }
+            }
+            catch {}
+
+            BossRushDeleteLootboxInteractable deleteInteract = null;
+            try
+            {
+                deleteInteract = lootbox.gameObject.GetComponent<BossRushDeleteLootboxInteractable>();
+            }
+            catch {}
+
+            if (deleteInteract == null)
+            {
+                try
+                {
+                    deleteInteract = lootbox.gameObject.AddComponent<BossRushDeleteLootboxInteractable>();
+                }
+                catch {}
+            }
+
+            try
+            {
+                lootbox.interactableGroup = true;
+
+                System.Reflection.FieldInfo othersField = ReflectionCache.InteractableBase_OtherInterablesInGroup;
+                if (othersField != null)
+                {
+                    System.Collections.Generic.List<InteractableBase> hostList =
+                        othersField.GetValue(lootbox) as System.Collections.Generic.List<InteractableBase>;
+                    if (hostList == null)
+                    {
+                        hostList = new System.Collections.Generic.List<InteractableBase>();
+                        othersField.SetValue(lootbox, hostList);
+                    }
+
+                    if (deleteInteract != null && !hostList.Contains(deleteInteract))
+                    {
+                        hostList.Add(deleteInteract);
+                    }
+                }
+            }
+            catch {}
+
+            if (!registerSweepTracking)
+            {
+                return;
+            }
+
+            try
+            {
+                if (owner == null)
+                {
+                    owner = ModBehaviour.Instance;
+                }
+
+                if (owner != null)
+                {
+                    owner.TryRegisterModeEFLootbox(lootbox);
+                }
+            }
+            catch {}
+        }
+
+        internal static IEnumerator DecorateLootboxesNearPosition(ModBehaviour owner, Vector3 deathPosition, bool registerSweepTracking, float radius = 3f)
+        {
+            yield return null;
+
+            int hitCount = 0;
+            try
+            {
+                hitCount = Physics.OverlapSphereNonAlloc(deathPosition, radius, NearbyLootboxHits, -1);
+            }
+            catch {}
+
+            if (hitCount <= 0)
+            {
+                yield break;
+            }
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider col = NearbyLootboxHits[i];
+                if (col == null)
+                {
+                    continue;
+                }
+
+                InteractableLootbox lootbox = null;
+                try
+                {
+                    lootbox = col.GetComponent<InteractableLootbox>();
+                }
+                catch {}
+
+                if (lootbox == null)
+                {
+                    continue;
+                }
+
+                DecorateLootbox(lootbox, owner, registerSweepTracking);
+            }
+        }
     }
     
     public class BossRushDeleteLootboxInteractable : InteractableBase
@@ -1906,38 +2171,7 @@ namespace BossRush
         {
             try
             {
-                int removed = 0;
-                InteractableLootbox[] boxes = null;
-
-                try
-                {
-                    boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
-                }
-                catch {}
-
-                if (boxes != null)
-                {
-                    for (int i = 0; i < boxes.Length; i++)
-                    {
-                        InteractableLootbox box = boxes[i];
-                        if (box == null) continue;
-
-                        BossRushLootboxMarker marker = null;
-                        try { marker = box.GetComponent<BossRushLootboxMarker>(); } catch {}
-
-                        if (marker == null) continue;
-
-                        try
-                        {
-                            if (box.gameObject != null)
-                            {
-                                removed++;
-                                UnityEngine.Object.Destroy(box.gameObject);
-                            }
-                        }
-                        catch {}
-                    }
-                }
+                int removed = BossRushLootboxUtility.DestroyMarkedLootboxes();
 
                 try
                 {

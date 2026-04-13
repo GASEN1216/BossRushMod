@@ -1133,6 +1133,18 @@ namespace BossRush
                     ShowModeEPlayerGrowthBubble();
                 }
 
+                bool hasDeathPos = false;
+                Vector3 deathPosition = Vector3.zero;
+                try
+                {
+                    if (enemy != null && enemy.transform != null)
+                    {
+                        deathPosition = enemy.transform.position;
+                        hasDeathPos = true;
+                    }
+                }
+                catch {}
+
                 // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
                 try
                 {
@@ -1164,6 +1176,21 @@ namespace BossRush
 
                 // 累计击杀计数，每10次自动发放挑衅烟雾弹
                 CheckRespawnItemAutoGrant();
+
+                // 敌方阵营 Boss 保留原掉落内容，但要补挂 BossRush 箱子交互与追踪标记。
+                if (enemyFaction != modeEPlayerFaction)
+                {
+                    try
+                    {
+                        if (hasDeathPos)
+                        {
+                            StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, deathPosition, true));
+                        }
+                    }
+                    catch {}
+                }
+
+                FinalizeBossRushLootboxPathTracking(enemy);
             }
             catch (Exception e)
             {

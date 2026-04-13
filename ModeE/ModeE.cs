@@ -505,6 +505,7 @@ namespace BossRush
 
             CleanupModeEVirtualSpawnerRoot();
             ClearPendingBossAggroQueue();
+            ResetModeEFLootboxTrackerState();
         }
 
         internal bool IsModeESessionStillValid(int sessionToken, int relatedScene)
@@ -905,6 +906,9 @@ namespace BossRush
                     ModeEGiveLoneWolfSupplies();
                 }
                 profiler.Mark("GiveLoadout");
+
+                CaptureModeEFLootboxBaseline();
+                profiler.Mark("CaptureLootboxBaseline");
 
                 // 一次性生成所有阵营的 Boss（UniTaskVoid fire-and-forget，抑制 CS4014 警告）
                 #pragma warning disable CS4014

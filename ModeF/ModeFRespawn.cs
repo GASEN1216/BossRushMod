@@ -466,6 +466,17 @@ namespace BossRush
 
                 bool killedByPlayer = killer == CharacterMainControl.Main;
                 bool killedByTrackedBoss = IsTrackedModeFBoss(killer);
+                bool hasDeathPos = false;
+                Vector3 deathPosition = Vector3.zero;
+                try
+                {
+                    if (deadBoss != null && deadBoss.transform != null)
+                    {
+                        deathPosition = deadBoss.transform.position;
+                        hasDeathPos = true;
+                    }
+                }
+                catch { }
 
                 DevLog("[ModeF] Boss died: " + deadBoss.gameObject.name
                     + " (source=" + (string.IsNullOrEmpty(sourceTag) ? "unknown" : sourceTag)
@@ -506,6 +517,16 @@ namespace BossRush
                     DevLog("[ModeF] Boss died to the environment or a non-ModeF actor, bounty marks were discarded.");
                 }
 
+                try
+                {
+                    if (hasDeathPos)
+                    {
+                        StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, deathPosition, true));
+                    }
+                }
+                catch { }
+
+                FinalizeBossRushLootboxPathTracking(deadBoss);
                 QueueModeFBossRespawn();
             }
             catch (Exception e)

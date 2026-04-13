@@ -287,7 +287,11 @@ namespace BossRush
                 return;
             }
 
-            if (config != null && config.enableRandomBossLoot && !infiniteHellMode)
+            if (config != null &&
+                config.enableRandomBossLoot &&
+                !infiniteHellMode &&
+                !modeEActive &&
+                !modeFActive)
             {
                 bossRushLootboxPathBosses.Add(character);
             }
@@ -1554,20 +1558,26 @@ namespace BossRush
                 // 原因：龙王第三阶段召唤龙裔遗族，龙裔死亡会先触发OnAllEnemiesDefeated设置IsActive=false
                 // 然后龙王联动死亡才触发此事件，此时需要允许龙王的掉落逻辑执行
                 bool isDragonKing = IsDragonKingBoss(bossMain);
-                bool allowModeFIndependentLoot = modeFActive;
-                if (!IsActive && !isDragonKing && !allowModeFIndependentLoot)
+                bool allowModeEFIndependentLoot = modeFActive || modeEActive;
+                if (!IsActive && !isDragonKing && !allowModeEFIndependentLoot)
                 {
                     FinalizeBossRushLootboxPathTracking(bossMain);
-                    DevLog("[BossRush] 掉落事件跳过: IsActive=False，且既不是龙王Boss也不是 Mode F");
+                    DevLog("[BossRush] 掉落事件跳过: IsActive=False，且既不是龙王Boss也不是 Mode E/F");
                     return;
                 }
                 if (!IsActive && isDragonKing)
                 {
                     DevLog("[BossRush] 龙王Boss联动死亡特殊处理: 允许继续执行掉落逻辑");
                 }
-                else if (!IsActive && allowModeFIndependentLoot)
+                else if (!IsActive && allowModeEFIndependentLoot)
                 {
-                    DevLog("[ModeF] 独立模式掉落处理: 允许继续执行Boss掉落逻辑");
+                    DevLog("[" + (modeFActive ? "ModeF" : "ModeE") + "] 独立模式掉落处理: 允许继续执行Boss掉落逻辑");
+                }
+
+                if (allowModeEFIndependentLoot)
+                {
+                    DevLog("[" + (modeFActive ? "ModeF" : "ModeE") + "] 保留原生掉落箱，不再拦截为独立奖励箱");
+                    return;
                 }
 
                 // 只处理由 BossRush 生成且被追踪的 Boss
@@ -1660,6 +1670,18 @@ namespace BossRush
 
                 if (config == null || !config.enableRandomBossLoot)
                 {
+                    if (modeEActive || modeFActive)
+                    {
+                        try
+                        {
+                            if (bossMain.transform != null)
+                            {
+                                StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, bossMain.transform.position, true));
+                            }
+                        }
+                        catch {}
+                    }
+
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     return; // 未启用随机掉落，保持原版掉落
                 }
@@ -1852,75 +1874,7 @@ namespace BossRush
 
                 try
                 {
-                    if (lootbox != null && lootbox.gameObject != null)
-                    {
-                        bool isPetRelated = false;
-
-                        try
-                        {
-                            if (lootbox.GetComponentInParent<PetAI>() != null)
-                            {
-                                isPetRelated = true;
-                            }
-                        }
-                        catch {}
-
-                        try
-                        {
-                            if (lootbox.GetComponentInParent<PetProxy>() != null)
-                            {
-                                isPetRelated = true;
-                            }
-                        }
-                        catch {}
-
-                        if (!isPetRelated)
-                        {
-                            BossRushLootboxMarker marker = lootbox.gameObject.GetComponent<BossRushLootboxMarker>();
-                            if (marker == null)
-                            {
-                                lootbox.gameObject.AddComponent<BossRushLootboxMarker>();
-                            }
-
-                            BossRushDeleteLootboxInteractable deleteInteract = null;
-                            try
-                            {
-                                deleteInteract = lootbox.gameObject.GetComponent<BossRushDeleteLootboxInteractable>();
-                            }
-                            catch {}
-
-                            if (deleteInteract == null)
-                            {
-                                try
-                                {
-                                    deleteInteract = lootbox.gameObject.AddComponent<BossRushDeleteLootboxInteractable>();
-                                }
-                                catch {}
-                            }
-
-                            try
-                            {
-                                lootbox.interactableGroup = true;
-
-                                System.Type baseType = typeof(InteractableBase);
-                                System.Reflection.FieldInfo othersField = baseType.GetField("otherInterablesInGroup", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                if (othersField != null)
-                                {
-                                    System.Collections.Generic.List<InteractableBase> hostList = othersField.GetValue(lootbox) as System.Collections.Generic.List<InteractableBase>;
-                                    if (hostList == null)
-                                    {
-                                        hostList = new System.Collections.Generic.List<InteractableBase>();
-                                        othersField.SetValue(lootbox, hostList);
-                                    }
-                                    if (deleteInteract != null && !hostList.Contains(deleteInteract))
-                                    {
-                                        hostList.Add(deleteInteract);
-                                    }
-                                }
-                            }
-                            catch {}
-                        }
-                    }
+                    BossRushLootboxUtility.DecorateLootbox(lootbox, this, modeEActive || modeFActive);
                 }
                 catch {}
 

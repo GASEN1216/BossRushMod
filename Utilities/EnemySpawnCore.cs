@@ -270,6 +270,27 @@ namespace BossRush
                             // 激活敌人
                             character.gameObject.SetActive(true);
 
+                            if (isBoss && character != null)
+                            {
+                                try
+                                {
+                                    int originalLootCount = 0;
+                                    if (character.CharacterItem != null && character.CharacterItem.Inventory != null)
+                                    {
+                                        // Keep the common spawn path aligned with the legacy BossRush flow.
+                                        originalLootCount = 3;
+                                    }
+
+                                    RegisterBossRandomLootTracking(character, originalLootCount);
+                                    DevLog("[SpawnCore] 已注册 Boss 掉落追踪: " + currentPreset.displayName
+                                        + " (原始掉落数量=" + originalLootCount + ")");
+                                }
+                                catch (Exception lootTrackEx)
+                                {
+                                    DevLog("[SpawnCore] [WARNING] 注册 Boss 掉落追踪失败: " + lootTrackEx.Message);
+                                }
+                            }
+
                             // 调用方注入差异化逻辑（阵营设置、命名、AI配置、死亡注册、列表管理等）
                             var ctx = new EnemySpawnContext
                             {

@@ -152,48 +152,7 @@ namespace BossRush
         {
             try
             {
-                int removed = 0;
-                InteractableLootbox[] boxes = null;
-
-                try
-                {
-                    boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
-                }
-                catch {}
-
-                if (boxes != null)
-                {
-                    for (int i = 0; i < boxes.Length; i++)
-                    {
-                        InteractableLootbox box = boxes[i];
-                        if (box == null)
-                        {
-                            continue;
-                        }
-
-                        BossRushLootboxMarker marker = null;
-                        try
-                        {
-                            marker = box.GetComponent<BossRushLootboxMarker>();
-                        }
-                        catch {}
-
-                        if (marker == null)
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (box.gameObject != null)
-                            {
-                                removed++;
-                                UnityEngine.Object.Destroy(box.gameObject);
-                            }
-                        }
-                        catch {}
-                    }
-                }
+                int removed = BossRushLootboxUtility.DestroyMarkedLootboxes();
 
                 try
                 {
@@ -267,68 +226,7 @@ namespace BossRush
         {
             try
             {
-                int removed = 0;
-                InteractableLootbox[] boxes = null;
-
-                try
-                {
-                    boxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
-                }
-                catch {}
-
-                if (boxes != null)
-                {
-                    for (int i = 0; i < boxes.Length; i++)
-                    {
-                        InteractableLootbox box = boxes[i];
-                        if (box == null)
-                        {
-                            continue;
-                        }
-
-                        BossRushLootboxMarker marker = null;
-                        try
-                        {
-                            marker = box.GetComponent<BossRushLootboxMarker>();
-                        }
-                        catch {}
-
-                        if (marker == null)
-                        {
-                            continue;
-                        }
-
-                        bool isEmpty = false;
-                        try
-                        {
-                            Inventory inv = box.Inventory;
-                            if (inv == null)
-                            {
-                                isEmpty = true;
-                            }
-                            else
-                            {
-                                isEmpty = inv.IsEmpty();
-                            }
-                        }
-                        catch {}
-
-                        if (!isEmpty)
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (box.gameObject != null)
-                            {
-                                removed++;
-                                UnityEngine.Object.Destroy(box.gameObject);
-                            }
-                        }
-                        catch {}
-                    }
-                }
+                int removed = BossRushLootboxUtility.DestroyMarkedLootboxes(int.MinValue, true);
 
                 try
                 {
@@ -472,19 +370,7 @@ namespace BossRush
         {
             try
             {
-                int count = 0;
-                var allLootboxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
-                foreach (var lootbox in allLootboxes)
-                {
-                    if (lootbox == null) continue;
-
-                    // 只清理 BossRush 标记的箱子
-                    if (lootbox.GetComponent<BossRushLootboxMarker>() != null)
-                    {
-                        UnityEngine.Object.Destroy(lootbox.gameObject);
-                        count++;
-                    }
-                }
+                int count = BossRushLootboxUtility.DestroyMarkedLootboxes();
 
                 DevLog("[ModeD] 已清空 " + count + " 个 BossRush 箱子");
             }
@@ -501,23 +387,7 @@ namespace BossRush
         {
             try
             {
-                int count = 0;
-                var allLootboxes = UnityEngine.Object.FindObjectsOfType<InteractableLootbox>();
-                foreach (var lootbox in allLootboxes)
-                {
-                    if (lootbox == null) continue;
-
-                    // 只清理 BossRush 标记的箱子
-                    if (lootbox.GetComponent<BossRushLootboxMarker>() == null) continue;
-
-                    // 检查箱子是否为空
-                    Inventory inv = lootbox.Inventory;
-                    if (inv == null || inv.Content == null || inv.Content.Count == 0)
-                    {
-                        UnityEngine.Object.Destroy(lootbox.gameObject);
-                        count++;
-                    }
-                }
+                int count = BossRushLootboxUtility.DestroyMarkedLootboxes(int.MinValue, true);
 
                 DevLog("[ModeD] 已清空 " + count + " 个空的 BossRush 箱子");
             }

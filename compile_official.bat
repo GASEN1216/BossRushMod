@@ -121,6 +121,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Config\LootBlacklistRegistry.cs ^
     WavesArena\WavesArena.cs ^
     LootAndRewards\LootAndRewards.cs ^
+    LootAndRewards\ModeEFLootboxTracker.cs ^
     Interactables\BossRushInteractables.cs ^
     TeleportDebugMonitor.cs ^
     ModeD\ModeD.cs ^
@@ -200,6 +201,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Utils\NPCCommonUtils.cs ^
     Integration\NPCs\Common\NPCModuleRegistry.cs ^
     Integration\NPCs\Courier\CourierNPC.cs ^
+    Integration\NPCs\Courier\CourierLootSweepRunner.cs ^
     Integration\NPCs\Goblin\GoblinNPC.cs ^
     Integration\NPCs\Goblin\GoblinNPCController.cs ^
     Integration\NPCs\Goblin\GoblinNPCAnimation.cs ^
@@ -224,6 +226,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\ItemFactory.cs ^
     Integration\Items\AwenDepositTokenConfig.cs ^
     Integration\Items\AwenDepositTokenUsage.cs ^
+    Integration\Items\AwenLootSweepTokenConfig.cs ^
+    Integration\Items\AwenLootSweepTokenUsage.cs ^
     Integration\Items\BrickStoneConfig.cs ^
     Integration\Items\BrickStoneUsage.cs ^
     Integration\Items\DiamondConfig.cs ^

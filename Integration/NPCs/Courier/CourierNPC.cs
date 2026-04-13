@@ -967,14 +967,22 @@ namespace BossRush
         /// </summary>
         public void StartTalking()
         {
+            StartTalking(true);
+        }
+
+        public void StartTalking(bool showDialogue)
+        {
             if (hasAnimator)
             {
                 SafeSetBool(hash_IsTalking, true);
                 ModBehaviour.DevLog("[CourierNPC] 开始对话动画");
             }
 
-            // 显示随机对话气泡
-            ShowRandomDialogue();
+            if (showDialogue)
+            {
+                // 显示随机对话气泡
+                ShowRandomDialogue();
+            }
         }
 
         /// <summary>
@@ -1188,6 +1196,8 @@ namespace BossRush
         // Mode E 固定模式（站在原地不移动）
         private bool isStationary = false;
         private float stationaryFaceTimer = 0f;
+        private bool scriptedOverrideActive = false;
+        private bool scriptedRunMode = false;
 
         /// <summary>
         /// 设置固定模式（Mode E 使用，快递员站在原地不移动）
@@ -1199,6 +1209,47 @@ namespace BossRush
             {
                 StopMove();
                 ModBehaviour.DevLog("[CourierNPC] 已设置为固定模式，不会移动");
+            }
+        }
+
+        public void SetScriptedOverride(bool active)
+        {
+            if (scriptedOverrideActive == active)
+            {
+                return;
+            }
+
+            scriptedOverrideActive = active;
+            if (delayedResumeCoroutine != null)
+            {
+                StopCoroutine(delayedResumeCoroutine);
+                delayedResumeCoroutine = null;
+            }
+
+            isInService = false;
+            isIdling = false;
+            idleTimer = 0f;
+            StopMove();
+            ModBehaviour.DevLog("[CourierNPC] SetScriptedOverride: " + active);
+        }
+
+        public void SetScriptedRunMode(bool active)
+        {
+            scriptedRunMode = active;
+        }
+
+        public bool IsIdling
+        {
+            get { return isIdling; }
+        }
+
+        public void ClearIdleState()
+        {
+            isIdling = false;
+            idleTimer = 0f;
+            if (controller != null)
+            {
+                controller.StopTalking();
             }
         }
 
@@ -1469,14 +1520,14 @@ namespace BossRush
 
             UpdateGravityVelocity();
 
-            if (isStationary)
+            if (isStationary && !scriptedOverrideActive)
             {
                 FacePlayer();
                 ApplyGravityOnly();
                 return;
             }
 
-            if (isInService)
+            if (isInService && !scriptedOverrideActive)
             {
                 UpdateMoveAnimation(0f);
                 ApplyGravityOnly();
@@ -1507,7 +1558,10 @@ namespace BossRush
                 catch { }
             }
 
-            UpdateMovementDecision();
+            if (!scriptedOverrideActive)
+            {
+                UpdateMovementDecision();
+            }
 
             if (!UpdatePathFollowing())
             {
@@ -1669,7 +1723,7 @@ namespace BossRush
                     idleTimer = 0f;
                     if (controller != null)
                     {
-                        controller.StartTalking();
+                        controller.StartTalking(!scriptedOverrideActive);
                     }
                     ModBehaviour.DevLog("[CourierNPC] 到达目标点，开始待机动画");
                     return false;
@@ -1681,7 +1735,7 @@ namespace BossRush
             }
 
             // 计算实际移动速度
-            float currentSpeed = (isBossFight ? runSpeed : walkSpeed) * speedMultiplier;
+            float currentSpeed = ((isBossFight || scriptedRunMode) ? runSpeed : walkSpeed) * speedMultiplier;
 
             // 使用 CharacterController 移动（因为快递员没有 CharacterMainControl）
             Vector3 moveVector = direction * currentSpeed * Time.deltaTime;

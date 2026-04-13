@@ -305,6 +305,8 @@ namespace BossRush
                 // 零度挑战地图：额外发放保暖装备
                 ModeEGiveColdWeatherGear();
 
+                CaptureModeEFLootboxBaseline();
+
                 // 额外发放折叠掩体包 x1（背包满时掉在脚下，避免静默丢失）
                 try
                 {
