@@ -59,6 +59,91 @@ namespace BossRush
         // [性能优化] 商店注入完成标记，避免每次场景加载都重复扫描
         private static bool _shopInjectionCompleted = false;
         private Coroutine runtimeStateMonitorCoroutine;
+        private const float INTEGRATION_WARNING_LOG_INTERVAL = 5f;
+        private readonly Dictionary<string, float> integrationNextWarningLogTimes = new Dictionary<string, float>();
+
+        private void LogIntegrationWarningLimited(string key, string message, Exception e = null)
+        {
+            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            float nextLogTime;
+            if (integrationNextWarningLogTimes.TryGetValue(key, out nextLogTime) && now < nextLogTime)
+            {
+                return;
+            }
+
+            integrationNextWarningLogTimes[key] = now + INTEGRATION_WARNING_LOG_INTERVAL;
+            DevLog("[BossRush] [WARNING] " + message + (e != null ? ": " + e.Message : string.Empty));
+        }
+
+        private bool ReadMainExistsWithWarning(string context)
+        {
+            try
+            {
+                return CharacterMainControl.Main != null;
+            }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(context + "_main", context + " 读取 CharacterMainControl.Main 失败", e);
+                return false;
+            }
+        }
+
+        private bool ReadLevelInitedWithWarning(string context)
+        {
+            try
+            {
+                return LevelManager.LevelInited;
+            }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(context + "_level", context + " 读取 LevelManager.LevelInited 失败", e);
+                return false;
+            }
+        }
+
+        private bool ReadSceneLoaderDoneWithWarning(string context)
+        {
+            try
+            {
+                return !SceneLoader.IsSceneLoading;
+            }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(context + "_loader", context + " 读取 SceneLoader 状态失败", e);
+                return true;
+            }
+        }
+
+        private bool ReadCameraExistsWithWarning(string context)
+        {
+            try
+            {
+                return GameCamera.Instance != null;
+            }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(context + "_camera", context + " 读取 GameCamera.Instance 失败", e);
+                return false;
+            }
+        }
+
+        private string ReadActiveSceneNameWithWarning(string context)
+        {
+            try
+            {
+                return UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(context + "_scene", context + " 读取当前场景名失败", e);
+                return string.Empty;
+            }
+        }
 
         internal bool IsBaseHubNormalMerchantShop(StockShop shop)
         {
@@ -72,7 +157,13 @@ namespace BossRush
             {
                 isNpcShop = shop.GetComponentInParent<CharacterMainControl>() != null;
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(
+                    "IsBaseHubNormalMerchantShop_npc",
+                    "IsBaseHubNormalMerchantShop 检查 NPC 商店失败",
+                    e);
+            }
 
             if (isNpcShop)
             {
@@ -81,8 +172,29 @@ namespace BossRush
 
             string sceneName = string.Empty;
             string merchantId = string.Empty;
-            try { sceneName = shop.gameObject.scene.name; } catch { }
-            try { merchantId = shop.MerchantID; } catch { }
+            try
+            {
+                sceneName = shop.gameObject.scene.name;
+            }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(
+                    "IsBaseHubNormalMerchantShop_scene",
+                    "IsBaseHubNormalMerchantShop 读取商店场景名失败",
+                    e);
+            }
+
+            try
+            {
+                merchantId = shop.MerchantID;
+            }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(
+                    "IsBaseHubNormalMerchantShop_merchant",
+                    "IsBaseHubNormalMerchantShop 读取商人 ID 失败",
+                    e);
+            }
 
             return merchantId == "Merchant_Normal" && sceneName == BaseSceneName;
         }
@@ -165,7 +277,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 计算冒险家日志价格系数失败，已回退默认价格: " + e.Message);
+            }
 
             StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
             itemEntry.typeID = ADVENTURE_JOURNAL_TYPE_ID;
@@ -222,7 +337,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[BrickStone] [WARNING] 计算砖石价格系数失败，已回退默认价格: " + e.Message);
+            }
 
             StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
             itemEntry.typeID = BrickStoneConfig.TYPE_ID;
@@ -529,7 +647,7 @@ namespace BossRush
             string currentScene = targetSceneName;
             if (string.IsNullOrEmpty(currentScene))
             {
-                try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
+                currentScene = ReadActiveSceneNameWithWarning("InjectBossRushTicketIntoShops");
             }
             if (currentScene != BaseSceneName)
             {
@@ -566,7 +684,13 @@ namespace BossRush
                             isNpcShop = true;
                         }
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        LogIntegrationWarningLimited(
+                            "InjectBossRushTicketIntoShops_npc_scan",
+                            "商店扫描时判断 NPC 商店失败",
+                            e);
+                    }
 
                     if (isNpcShop)
                     {
@@ -586,25 +710,49 @@ namespace BossRush
                     {
                         sceneName = shop.gameObject != null ? shop.gameObject.scene.name : "<no-go>";
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        LogIntegrationWarningLimited(
+                            "InjectBossRushTicketIntoShops_scene_scan",
+                            "商店扫描时读取场景名失败",
+                            e);
+                    }
 
                     try
                     {
                         goName = shop.gameObject != null ? shop.gameObject.name : "<no-go>";
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        LogIntegrationWarningLimited(
+                            "InjectBossRushTicketIntoShops_name_scan",
+                            "商店扫描时读取对象名失败",
+                            e);
+                    }
 
                     try
                     {
                         merchantId = shop.MerchantID;
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        LogIntegrationWarningLimited(
+                            "InjectBossRushTicketIntoShops_merchant_scan",
+                            "商店扫描时读取商人 ID 失败",
+                            e);
+                    }
 
                     try
                     {
                         displayName = shop.DisplayName;
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        LogIntegrationWarningLimited(
+                            "InjectBossRushTicketIntoShops_display_scan",
+                            "商店扫描时读取商店显示名失败",
+                            e);
+                    }
 
                     bool isTargetShop = IsBaseHubNormalMerchantShop(shop);
 
@@ -642,7 +790,7 @@ namespace BossRush
             string currentScene = targetSceneName;
             if (string.IsNullOrEmpty(currentScene))
             {
-                try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
+                currentScene = ReadActiveSceneNameWithWarning("InjectAdventureJournalIntoShops");
             }
             if (currentScene != BaseSceneName)
             {
@@ -766,7 +914,7 @@ namespace BossRush
             string currentScene = targetSceneName;
             if (string.IsNullOrEmpty(currentScene))
             {
-                try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
+                currentScene = ReadActiveSceneNameWithWarning("InjectBrickStoneIntoShops");
             }
             if (currentScene != BaseSceneName)
             {
@@ -1135,11 +1283,12 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_TicketStock;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_JournalStock;
             SavesSystem.OnSetFile -= OnSetFile_JournalStock;
+            SavesSystem.OnCollectSaveData -= OnCollectSaveData_MedalStock;
+            SavesSystem.OnSetFile -= OnSetFile_MedalStock;
+            SavesSystem.OnCollectSaveData -= OnCollectSaveData_BrickStoneStock;
+            SavesSystem.OnSetFile -= OnSetFile_BrickStoneStock;
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
-            Health.OnDead -= OnPlayerDeathInBossRush;
-            Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
-            Health.OnDead -= RecordDeathWraithData_DeathWraith;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
             ClearDeathWraithState_DeathWraith();
 
@@ -1193,8 +1342,9 @@ namespace BossRush
                     }
                 }
             }
-            catch
+            catch (Exception e)
             {
+                DevLog("[BossRush] [WARNING] 移除配置变更事件监听失败: " + e.Message);
             }
             
             if (arenaStartPoint != null) UnityEngine.Object.Destroy(arenaStartPoint);
@@ -1233,7 +1383,10 @@ namespace BossRush
                     }
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 处理商店购买事件失败: " + e.Message);
+            }
         }
 
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
@@ -1441,7 +1594,14 @@ namespace BossRush
                         dragonKingLootEventHandlers.Clear();
                         if (dragonKingSetBonusRegistered)
                         {
-                            try { Health.OnHurt -= OnDragonKingBossHurt; } catch {}
+                            try
+                            {
+                                Health.OnHurt -= OnDragonKingBossHurt;
+                            }
+                            catch (Exception e)
+                            {
+                                DevLog("[BossRush] [WARNING] 离开竞技场时注销龙皇受伤事件失败: " + e.Message);
+                            }
                             dragonKingSetBonusRegistered = false;
                         }
                         activeDragonKingHealths.Clear();
@@ -1460,7 +1620,10 @@ namespace BossRush
                                 }
                             }
                         }
-                        catch { }
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] 离开竞技场时清理通知队列失败: " + e.Message);
+                        }
 
                         // 最后再重置 BossRush 状态标志，避免因为 IsActive 过早被置为 false 导致某些清理逻辑被跳过
                         SetBossRushRuntimeActive(false);
@@ -1484,11 +1647,17 @@ namespace BossRush
                                         UnityEngine.Object.Destroy(ammoShop.gameObject);
                                     }
                                 }
-                                catch {}
+                                catch (Exception e)
+                                {
+                                    DevLog("[BossRush] [WARNING] 离开竞技场时销毁加油站商店对象失败: " + e.Message);
+                                }
                                 ammoShop = null;
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] 离开竞技场时清理加油站商店失败: " + e.Message);
+                        }
                         
                         // 取消敌人死亡监听
                         Health.OnDead -= OnEnemyDiedWithDamageInfo;
@@ -1519,7 +1688,10 @@ namespace BossRush
                     StartCoroutine(FindInteractionTargets(10));
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] OnSceneLoaded_Integration 处理失败: scene=" + scene.name + ", " + e.Message);
+            }
         }
 
         /// <summary>
@@ -1714,11 +1886,8 @@ namespace BossRush
             
             while (elapsed < maxWait)
             {
-                bool mainExists = false;
-                bool levelInited = false;
-                
-                try { mainExists = CharacterMainControl.Main != null; } catch { }
-                try { levelInited = LevelManager.LevelInited; } catch { }
+                bool mainExists = ReadMainExistsWithWarning("DelayedSpawnCommonNPCsInNormalMode");
+                bool levelInited = ReadLevelInitedWithWarning("DelayedSpawnCommonNPCsInNormalMode");
                 
                 if (mainExists && levelInited)
                 {
@@ -1733,8 +1902,7 @@ namespace BossRush
             yield return new WaitForSeconds(0.5f);
             
             // 再次检查是否仍在目标场景（玩家可能已切换场景）
-            string currentScene = "";
-            try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch { }
+            string currentScene = ReadActiveSceneNameWithWarning("DelayedSpawnCommonNPCsInNormalMode");
             
             if (currentScene != sceneName)
             {
@@ -1768,11 +1936,8 @@ namespace BossRush
             
             while (elapsed < maxWait)
             {
-                bool mainExists = false;
-                bool levelInited = false;
-                
-                try { mainExists = CharacterMainControl.Main != null; } catch { }
-                try { levelInited = LevelManager.LevelInited; } catch { }
+                bool mainExists = ReadMainExistsWithWarning("TeleportPlayerToCustomPosition");
+                bool levelInited = ReadLevelInitedWithWarning("TeleportPlayerToCustomPosition");
                 
                 if (mainExists && levelInited)
                 {
@@ -1910,11 +2075,8 @@ namespace BossRush
             
             while (elapsed < maxWait)
             {
-                bool mainExists = false;
-                bool levelInited = false;
-                
-                try { mainExists = CharacterMainControl.Main != null; } catch { }
-                try { levelInited = LevelManager.LevelInited; } catch { }
+                bool mainExists = ReadMainExistsWithWarning("ForceTeleportToSubScene");
+                bool levelInited = ReadLevelInitedWithWarning("ForceTeleportToSubScene");
                 
                 if (mainExists && levelInited) break;
                 
@@ -1961,7 +2123,23 @@ namespace BossRush
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        string teleporterName = string.Empty;
+                        try
+                        {
+                            teleporterName = t.name;
+                        }
+                        catch
+                        {
+                            teleporterName = "<unknown>";
+                        }
+
+                        LogIntegrationWarningLimited(
+                            "ForceTeleportToSubScene_teleporter_scan",
+                            "ForceTeleportToSubScene 读取传送器信息失败: " + teleporterName,
+                            e);
+                    }
                 }
                 
                 if (targetTeleporter != null)
@@ -1971,7 +2149,13 @@ namespace BossRush
                     yield break;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(
+                    "ForceTeleportToSubScene_search",
+                    "ForceTeleportToSubScene 查找目标传送器失败，准备回退到备用方案",
+                    e);
+            }
             
             // 方案2：使用 MultiSceneCore.LoadAndTeleport（备用方案）
             try
@@ -2504,7 +2688,13 @@ namespace BossRush
                     DevLog("[BossRush] 已禁用撤离点烟雾效果，禁用子对象数: " + disabledCount);
                 }
             }
-            catch { }  // 静默失败，不影响主流程
+            catch (Exception e)
+            {
+                LogIntegrationWarningLimited(
+                    "DisableExitSmokeEffects",
+                    "禁用撤离点烟雾效果失败",
+                    e);
+            }
         }
         
         /// <summary>
@@ -2537,7 +2727,13 @@ namespace BossRush
                         timeField.SetValue(countDown, 5f);  // 5秒撤离时间
                     }
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    LogIntegrationWarningLimited(
+                        "CreateSimpleExit_requiredExtractionTime",
+                        "设置简易撤离点倒计时失败",
+                        e);
+                }
                 
                 // 订阅撤离成功事件
                 countDown.onCountDownSucceed = new UnityEngine.Events.UnityEvent();
@@ -2971,34 +3167,10 @@ namespace BossRush
             {
                 attempt++;
                 bool sceneLoaded = scene.isLoaded;
-                bool sceneLoaderDone = true;
-                bool mainExists = false;
-                bool cameraExists = false;
-                bool levelInited = false;
-
-                try
-                {
-                    sceneLoaderDone = !SceneLoader.IsSceneLoading;
-                }
-                catch { }
-
-                try
-                {
-                    mainExists = CharacterMainControl.Main != null;
-                }
-                catch { }
-
-                try
-                {
-                    cameraExists = GameCamera.Instance != null;
-                }
-                catch { }
-
-                try
-                {
-                    levelInited = LevelManager.LevelInited;
-                }
-                catch { }
+                bool sceneLoaderDone = ReadSceneLoaderDoneWithWarning("WaitForLevelInitializedThenSetup");
+                bool mainExists = ReadMainExistsWithWarning("WaitForLevelInitializedThenSetup");
+                bool cameraExists = ReadCameraExistsWithWarning("WaitForLevelInitializedThenSetup");
+                bool levelInited = ReadLevelInitedWithWarning("WaitForLevelInitializedThenSetup");
 
                 if (sceneLoaded && sceneLoaderDone && mainExists && cameraExists && levelInited)
                 {
@@ -3112,16 +3284,22 @@ namespace BossRush
         /// </summary>
         private void UnsubscribeDragonBreathEffectEvent()
         {
+            CharacterMainControl subscribedCharacter = cachedMainCharForEffect;
             try
             {
-                if (!dragonBreathEffectEventSubscribed || cachedMainCharForEffect == null) return;
-                
-                cachedMainCharForEffect.OnHoldAgentChanged -= OnPlayerHoldAgentChanged;
-                
+                if (!dragonBreathEffectEventSubscribed || subscribedCharacter == null) return;
+
+                subscribedCharacter.OnHoldAgentChanged -= OnPlayerHoldAgentChanged;
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonBreath] [WARNING] 取消订阅火焰特效事件失败: " + e.Message);
+            }
+            finally
+            {
                 cachedMainCharForEffect = null;
                 dragonBreathEffectEventSubscribed = false;
             }
-            catch { }
         }
         
         /// <summary>

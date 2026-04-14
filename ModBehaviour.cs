@@ -85,20 +85,8 @@ namespace BossRush
                 CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(
                     "characterIconType", privateInstance);
                 
-                // NotificationText.ShowNext 方法 - 尝试多种类型名称
-                Type notificationTextType = typeof(NotificationText);
-                if (notificationTextType == null)
-                {
-                    notificationTextType = Type.GetType("Duckov.UI.NotificationText, TeamSoda.Duckov.Core");
-                }
-                if (notificationTextType == null)
-                {
-                    notificationTextType = Type.GetType("NotificationText, Assembly-CSharp");
-                }
-                if (notificationTextType != null)
-                {
-                    NotificationText_ShowNext = notificationTextType.GetMethod("ShowNext", publicStatic);
-                }
+                // NotificationText.ShowNext 方法
+                NotificationText_ShowNext = typeof(NotificationText).GetMethod("ShowNext", publicStatic);
                 
                 IsInitialized = true;
             }
@@ -3355,6 +3343,11 @@ namespace BossRush
             // 注销开枪调试监听
             UnregisterShootDebugListener();
             
+            // 对称注销 Awake 中挂上的玩家死亡/受伤事件
+            Health.OnDead -= OnPlayerDeathInBossRush;
+            Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
+            Health.OnDead -= RecordDeathWraithData_DeathWraith;
+
             // 取消订阅玩家受伤事件（成就追踪）
             Health.OnHurt -= OnPlayerHurtForAchievement;
             

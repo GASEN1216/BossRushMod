@@ -174,8 +174,9 @@ namespace BossRush
                     SaveConfigToFile();
                 }
             }
-            catch
+            catch (Exception e)
             {
+                DevLog("[BossRush] [WARNING] 从本地文件加载配置失败: " + e.Message);
             }
         }
 
@@ -206,8 +207,9 @@ namespace BossRush
                 string json = JsonUtility.ToJson(config, true);
                 File.WriteAllText(path, json);
             }
-            catch
+            catch (Exception e)
             {
+                DevLog("[BossRush] [WARNING] 保存本地配置失败: " + e.Message);
             }
         }
 
@@ -280,7 +282,7 @@ namespace BossRush
                     config.lootBoxBlocksBullets = loadedCover;
 
                     MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
-                    int currentHell = (config != null) ? config.infiniteHellBossesPerWave : 3;
+                    int currentHell = config.infiniteHellBossesPerWave;
                     object hellResult = intLoadMethod.Invoke(null, new object[] { hellBossKey, currentHell });
                     int loadedHell = (int)hellResult;
                     if (loadedHell < 1)
@@ -293,7 +295,7 @@ namespace BossRush
                     }
                     config.infiniteHellBossesPerWave = loadedHell;
 
-                    float currentBossStat = (config != null) ? config.bossStatMultiplier : 1f;
+                    float currentBossStat = config.bossStatMultiplier;
                     object bossStatResult = floatLoadMethod.Invoke(null, new object[] { bossStatKey, currentBossStat });
                     float loadedBossStat = (float)bossStatResult;
                     if (loadedBossStat < 0.1f)
@@ -307,7 +309,7 @@ namespace BossRush
                     config.bossStatMultiplier = loadedBossStat;
 
                     // 加载每5波额外休息时间
-                    float currentMilestone = (config != null) ? config.milestoneRestBonusSeconds : 30f;
+                    float currentMilestone = config.milestoneRestBonusSeconds;
                     object milestoneResult = floatLoadMethod.Invoke(null, new object[] { milestoneRestKey, currentMilestone });
                     float loadedMilestone = (float)milestoneResult;
                     if (loadedMilestone < 0f)
@@ -322,7 +324,7 @@ namespace BossRush
 
                     // 加载 Mode D 每波敌人数
                     string modeDKey = ModName + "_ModeDEnemiesPerWave";
-                    int currentModeD = (config != null) ? config.modeDEnemiesPerWave : 3;
+                    int currentModeD = config.modeDEnemiesPerWave;
                     object modeDResult = intLoadMethod.Invoke(null, new object[] { modeDKey, currentModeD });
                     int loadedModeD = (int)modeDResult;
                     if (loadedModeD < 1)
@@ -343,7 +345,7 @@ namespace BossRush
 
                     // 加载成就界面快捷键
                     string achievementHotkeyKey = ModName + "_AchievementHotkey";
-                    int currentHotkey = (config != null) ? config.achievementHotkey : (int)UnityEngine.KeyCode.L;
+                    int currentHotkey = config.achievementHotkey;
                     object hotkeyResult = intLoadMethod.Invoke(null, new object[] { achievementHotkeyKey, currentHotkey });
                     int loadedHotkey = (int)hotkeyResult;
                     config.achievementHotkey = loadedHotkey;
@@ -538,19 +540,41 @@ namespace BossRush
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
                 string bossStatKey = ModName + "_BossStatMultiplier";
                 string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
+                string dragonDashKey = ModName + "_EnableDragonDash";
+                string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
                 string deathWraithKey = ModName + "_EnableDeathWraithSystem";
                 string modeDKey = ModName + "_ModeDEnemiesPerWave";
                 string achievementHotkeyKey = ModName + "_AchievementHotkey";
                 
-                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == milestoneRestKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
+                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == milestoneRestKey || changedKey == dragonDashKey || changedKey == wolfModelKey || changedKey == deathWraithKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
                 {
-                    DevLog("[BossRush] 检测到配置变更: " + changedKey);
+                    if (changedKey == dragonDashKey)
+                    {
+                        DevLog("[BossRush] 检测到龙套装冲刺配置变更");
+                    }
+                    else if (changedKey == wolfModelKey)
+                    {
+                        DevLog("[BossRush] 检测到荒野号角狼模型配置变更");
+                    }
+                    else if (changedKey == deathWraithKey)
+                    {
+                        DevLog("[BossRush] 检测到死亡亡魂系统配置变更");
+                    }
+                    else
+                    {
+                        DevLog("[BossRush] 检测到配置变更: " + changedKey);
+                    }
+
                     if (TryLoadSingleModConfigValue(changedKey))
                     {
                         SaveConfigToFile();
                         if (changedKey == lootKey)
                         {
                             RefreshBossRushLootboxPathTrackingForTrackedBosses();
+                        }
+                        else if (changedKey == deathWraithKey)
+                        {
+                            HandleDeathWraithConfigChanged_DeathWraith();
                         }
                         DevLog("[BossRush] 配置已更新并保存到本地文件");
                     }
@@ -561,38 +585,6 @@ namespace BossRush
                     {
                         DevLog("[BossRush] 波次间隔配置在倒计时过程中被修改，静默重算下一波倒计时");
                         StartNextWaveCountdown(false, true);
-                    }
-                }
-
-                // 龙套装冲刺开关
-                string dragonDashKey = ModName + "_EnableDragonDash";
-                if (changedKey == dragonDashKey)
-                {
-                    DevLog("[BossRush] 检测到龙套装冲刺配置变更");
-                    if (TryLoadSingleModConfigValue(changedKey))
-                    {
-                        SaveConfigToFile();
-                    }
-                }
-
-                // 荒野号角狼模型开关
-                string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
-                if (changedKey == wolfModelKey)
-                {
-                    DevLog("[BossRush] 检测到荒野号角狼模型配置变更");
-                    if (TryLoadSingleModConfigValue(changedKey))
-                    {
-                        SaveConfigToFile();
-                    }
-                }
-
-                if (changedKey == deathWraithKey)
-                {
-                    DevLog("[BossRush] 检测到死亡亡魂系统配置变更");
-                    if (TryLoadSingleModConfigValue(changedKey))
-                    {
-                        SaveConfigToFile();
-                        HandleDeathWraithConfigChanged_DeathWraith();
                     }
                 }
             }
