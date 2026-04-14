@@ -148,9 +148,9 @@ namespace BossRush
                     movement.SetScriptedRunMode(true);
                     movement.MoveToPos(targetPos);
 
-                    float deadline = Time.unscaledTime + MOVE_TIMEOUT_SECONDS;
+                    float deadline = Time.time + MOVE_TIMEOUT_SECONDS;
                     bool arrivedNormally = false;
-                    while (Time.unscaledTime < deadline)
+                    while (Time.time < deadline)
                     {
                         if (lootbox != null && lootbox.gameObject != null)
                         {
@@ -306,6 +306,8 @@ namespace BossRush
 
         private void TeleportTo(Vector3 targetPos)
         {
+            CharacterController cc = null;
+            bool restoreControllerEnabled = false;
             try
             {
                 if (movement != null)
@@ -313,20 +315,36 @@ namespace BossRush
                     movement.StopMove();
                 }
 
-                CharacterController cc = GetComponent<CharacterController>();
+                cc = GetComponent<CharacterController>();
                 if (cc != null)
                 {
-                    cc.enabled = false;
+                    restoreControllerEnabled = cc.enabled;
+                    if (restoreControllerEnabled)
+                    {
+                        cc.enabled = false;
+                    }
                 }
 
                 transform.position = targetPos;
-
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[AwenLootSweep] [WARNING] 瞬移到目标掉落箱失败: " + e.Message + ", target=" + targetPos);
+            }
+            finally
+            {
                 if (cc != null)
                 {
-                    cc.enabled = true;
+                    try
+                    {
+                        cc.enabled = restoreControllerEnabled;
+                    }
+                    catch (System.Exception e)
+                    {
+                        ModBehaviour.DevLog("[AwenLootSweep] [WARNING] 恢复 CharacterController 状态失败: " + e.Message);
+                    }
                 }
             }
-            catch { }
         }
 
         private void ReturnToSweepStartPosition()
@@ -352,7 +370,10 @@ namespace BossRush
                     -1f,
                     1.5f);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[AwenLootSweep] [WARNING] 显示扫箱进度气泡失败: " + e.Message);
+            }
         }
 
         private void ShowSweepCompletedBubble()
@@ -374,7 +395,10 @@ namespace BossRush
                     -1f,
                     SWEEP_COMPLETED_BUBBLE_DURATION);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[AwenLootSweep] [WARNING] 显示扫箱完成气泡失败: " + e.Message);
+            }
         }
 
         private void SetInteractionLocked(bool locked)
