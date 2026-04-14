@@ -21,6 +21,7 @@ using System.Reflection;
 using UnityEngine;
 using TMPro;
 using ItemStatsSystem;
+using ItemStatsSystem.Items;
 using Duckov.UI.DialogueBubbles;
 using Duckov.UI;
 using HarmonyLib;
@@ -75,6 +76,7 @@ namespace BossRush
 
         private const float MODEE_PLAYER_NAME_CACHE_INTERVAL = 5f;
         private const float MODEE_HEALTHBAR_LOOKUP_INTERVAL = 1f;
+        private const float MODEE_UI_WARNING_LOG_INTERVAL = 5f;
         private static readonly BindingFlags ModeEUiInstanceBindingFlags =
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         private static MethodInfo modeERefreshCharacterIconMethod = null;
@@ -85,6 +87,7 @@ namespace BossRush
         private float modeENextPlayerNameRefreshTime = 0f;
         private HealthBar modeECachedPlayerHealthBar = null;
         private float modeENextHealthBarLookupTime = 0f;
+        private float modeENextUiWarningLogTime = 0f;
 
         #endregion
 
@@ -139,6 +142,23 @@ namespace BossRush
             modeENextPlayerNameRefreshTime = 0f;
             modeECachedPlayerHealthBar = null;
             modeENextHealthBarLookupTime = 0f;
+            modeENextUiWarningLogTime = 0f;
+        }
+
+        private void LogModeEUiWarningLimited(string message, Exception e = null)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            if (Time.unscaledTime < modeENextUiWarningLogTime)
+            {
+                return;
+            }
+
+            modeENextUiWarningLogTime = Time.unscaledTime + MODEE_UI_WARNING_LOG_INTERVAL;
+            DevLog("[ModeE] [WARNING] " + message + (e != null ? ": " + e.Message : string.Empty));
         }
 
         private static MethodInfo GetModeERefreshCharacterIconMethod()
@@ -203,7 +223,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogModeEUiWarningLimited("读取 Steam PersonaName 失败", e);
+            }
 
             try
             {
@@ -218,7 +241,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogModeEUiWarningLimited("读取 Steam 显示名失败", e);
+            }
 
             return null;
         }
@@ -237,8 +263,9 @@ namespace BossRush
                     ? steamName
                     : L10n.T("我", "Me");
             }
-            catch
+            catch (Exception e)
             {
+                LogModeEUiWarningLimited("刷新 Mode E 玩家显示名失败，已回退默认名称", e);
                 modeECachedPlayerName = L10n.T("我", "Me");
             }
 
@@ -260,7 +287,10 @@ namespace BossRush
                     return actor.CharacterItem.DisplayName;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogModeEUiWarningLimited("读取 Mode E 角色显示名失败", e);
+            }
 
             try
             {
@@ -269,7 +299,10 @@ namespace BossRush
                     return actor.gameObject.name;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogModeEUiWarningLimited("读取 Mode E 角色对象名失败", e);
+            }
 
             return L10n.T("未知目标", "Unknown");
         }
@@ -295,7 +328,10 @@ namespace BossRush
 
                 player.Health.RequestHealthBar();
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogModeEUiWarningLimited("刷新玩家血条名牌失败", e);
+            }
         }
 
         private void UpdateModeEPlayerNameTag()
@@ -369,7 +405,7 @@ namespace BossRush
             return null;
         }
 
-        private static void ForceRefreshModeEHealthBarName(HealthBar healthBar)
+        private void ForceRefreshModeEHealthBarName(HealthBar healthBar)
         {
             if (healthBar == null)
             {
@@ -384,7 +420,10 @@ namespace BossRush
                     refreshCharacterIcon.Invoke(healthBar, null);
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogModeEUiWarningLimited("强制刷新玩家血条名字失败", e);
+            }
         }
 
         #endregion
@@ -744,6 +783,227 @@ namespace BossRush
             return TryConsumeModeEntryItem(flagItem, "ModeE", "营旗");
         }
 
+        private bool CaptureModeEStartupInventorySnapshot(out HashSet<int> snapshot)
+        {
+            snapshot = new HashSet<int>();
+
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                Item characterItem = main != null ? main.CharacterItem : null;
+                if (characterItem == null)
+                {
+                    DevLog("[ModeE] [WARNING] 无法捕获启动前物资快照：玩家或 CharacterItem 为空");
+                    snapshot = null;
+                    return false;
+                }
+
+                Inventory inventory = characterItem.Inventory;
+                if (inventory != null && inventory.Content != null)
+                {
+                    for (int i = 0; i < inventory.Content.Count; i++)
+                    {
+                        Item item = inventory.Content[i];
+                        if (item != null)
+                        {
+                            snapshot.Add(item.GetInstanceID());
+                        }
+                    }
+                }
+
+                if (characterItem.Slots != null)
+                {
+                    foreach (Slot slot in characterItem.Slots)
+                    {
+                        if (slot != null && slot.Content != null)
+                        {
+                            snapshot.Add(slot.Content.GetInstanceID());
+                        }
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 捕获启动前物资快照失败: " + e.Message);
+                snapshot = null;
+                return false;
+            }
+        }
+
+        private bool RollbackModeEStartupInventory(HashSet<int> startupInventorySnapshot)
+        {
+            if (startupInventorySnapshot == null)
+            {
+                DevLog("[ModeE] [WARNING] 启动物资回滚失败：快照为空");
+                return false;
+            }
+
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                Item characterItem = main != null ? main.CharacterItem : null;
+                if (characterItem == null)
+                {
+                    DevLog("[ModeE] [WARNING] 启动物资回滚失败：玩家或 CharacterItem 为空");
+                    return false;
+                }
+
+                List<Item> rollbackItems = new List<Item>();
+                HashSet<int> queuedItemIds = new HashSet<int>();
+
+                Inventory inventory = characterItem.Inventory;
+                if (inventory != null && inventory.Content != null)
+                {
+                    for (int i = inventory.Content.Count - 1; i >= 0; i--)
+                    {
+                        Item item = inventory.Content[i];
+                        if (item == null)
+                        {
+                            continue;
+                        }
+
+                        int itemId = item.GetInstanceID();
+                        if (!startupInventorySnapshot.Contains(itemId) && queuedItemIds.Add(itemId))
+                        {
+                            rollbackItems.Add(item);
+                        }
+                    }
+                }
+
+                if (characterItem.Slots != null)
+                {
+                    foreach (Slot slot in characterItem.Slots)
+                    {
+                        if (slot == null || slot.Content == null)
+                        {
+                            continue;
+                        }
+
+                        Item item = slot.Content;
+                        int itemId = item.GetInstanceID();
+                        if (!startupInventorySnapshot.Contains(itemId) && queuedItemIds.Add(itemId))
+                        {
+                            rollbackItems.Add(item);
+                        }
+                    }
+                }
+
+                bool rollbackSucceeded = true;
+                int removedCount = 0;
+                for (int i = 0; i < rollbackItems.Count; i++)
+                {
+                    Item item = rollbackItems[i];
+                    if (item == null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        item.Detach();
+                    }
+                    catch (Exception e)
+                    {
+                        rollbackSucceeded = false;
+                        DevLog("[ModeE] [WARNING] 回滚启动新增物品时 Detach 失败: " + e.Message);
+                    }
+
+                    try
+                    {
+                        item.DestroyTree();
+                        removedCount++;
+                    }
+                    catch (Exception e)
+                    {
+                        rollbackSucceeded = false;
+                        DevLog("[ModeE] [WARNING] 回滚启动新增物品时 DestroyTree 失败: " + e.Message);
+                    }
+                }
+
+                DevLog("[ModeE] 启动失败时已回滚新增物品数量: " + removedCount);
+                return rollbackSucceeded;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 启动物资回滚失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private bool TryGetModeEStartupFlagTypeId(Item flagItem, out int typeId)
+        {
+            typeId = -1;
+            if (flagItem == null)
+            {
+                DevLog("[ModeE] [WARNING] 启动前营旗引用为空，已取消启动");
+                return false;
+            }
+
+            try
+            {
+                typeId = flagItem.TypeID;
+                if (typeId > 0)
+                {
+                    return true;
+                }
+
+                DevLog("[ModeE] [WARNING] 启动前营旗 TypeID 非法: " + typeId);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 读取营旗 TypeID 失败，已取消启动以避免吞旗: " + e.Message);
+            }
+
+            return false;
+        }
+
+        private bool TryRefundModeEStartupFlag(int typeId)
+        {
+            if (typeId <= 0)
+            {
+                return false;
+            }
+
+            bool refunded = TryGiveItemToPlayerOrDrop(typeId, L10n.T("营旗", "Faction Flag"), false);
+            if (!refunded)
+            {
+                DevLog("[ModeE] [WARNING] 返还营旗失败: typeId=" + typeId);
+            }
+
+            return refunded;
+        }
+
+        private void ShowModeEStartupFailureRecoveryMessage(bool rollbackSucceeded, bool refunded)
+        {
+            string chineseMessage;
+            string englishMessage;
+
+            if (rollbackSucceeded && refunded)
+            {
+                chineseMessage = "划地为营模式启动失败，已回滚启动物资并返还营旗。";
+                englishMessage = "Faction Battle start failed. Startup items were rolled back and the faction flag was refunded.";
+            }
+            else if (rollbackSucceeded)
+            {
+                chineseMessage = "划地为营模式启动失败，已回滚启动物资，但营旗返还失败，请查看日志。";
+                englishMessage = "Faction Battle start failed. Startup items were rolled back, but the faction flag refund failed. Check the log.";
+            }
+            else if (refunded)
+            {
+                chineseMessage = "划地为营模式启动失败，已返还营旗，但启动物资回滚失败，请查看日志。";
+                englishMessage = "Faction Battle start failed. The faction flag was refunded, but startup item rollback failed. Check the log.";
+            }
+            else
+            {
+                chineseMessage = "划地为营模式启动失败，且启动物资回滚与营旗返还均失败，请查看日志。";
+                englishMessage = "Faction Battle start failed, and both startup item rollback and faction flag refund failed. Check the log.";
+            }
+
+            ShowMessage(L10n.T(chineseMessage, englishMessage));
+        }
+
         /// <summary>
         /// 检查并尝试启动 Mode E（在进入竞技场时调用）
         /// </summary>
@@ -751,6 +1011,9 @@ namespace BossRush
         {
             ModeEStartupProfiler profiler = new ModeEStartupProfiler("TryStartModeE");
             string profileStatus = "failed";
+            bool flagConsumed = false;
+            int consumedFlagTypeId = -1;
+            HashSet<int> startupInventorySnapshot = null;
             try
             {
                 // 互斥保护：Mode D 已激活时不启动 Mode E
@@ -784,8 +1047,27 @@ namespace BossRush
                     return false;
                 }
 
+                if (!CaptureModeEStartupInventorySnapshot(out startupInventorySnapshot))
+                {
+                    profileStatus = "failed: snapshot capture failed";
+                    ShowMessage(L10n.T(
+                        "划地为营模式启动失败：无法建立启动回滚快照。",
+                        "Faction Battle start failed: unable to capture the startup rollback snapshot."
+                    ));
+                    return false;
+                }
+
                 // 消耗营旗
                 profiler.Mark("IsPlayerNaked");
+                if (!TryGetModeEStartupFlagTypeId(flagItem, out consumedFlagTypeId))
+                {
+                    profileStatus = "failed: flag type lookup failed";
+                    ShowMessage(L10n.T(
+                        "划地为营模式启动失败：营旗数据异常，已取消消耗。",
+                        "Faction Battle start failed: the faction flag data is invalid, so it was not consumed."
+                    ));
+                    return false;
+                }
                 if (!ConsumeFactionFlag(flagItem))
                 {
                     profileStatus = "failed: flag consume failed";
@@ -795,17 +1077,33 @@ namespace BossRush
                     ));
                     return false;
                 }
+                flagConsumed = true;
                 profiler.Mark("ConsumeFactionFlag");
 
                 // 启动 Mode E
-                StartModeE(faction.Value);
+                bool started = StartModeE(faction.Value);
                 profiler.Mark("StartModeE");
+                if (!started)
+                {
+                    bool rollbackSucceeded = RollbackModeEStartupInventory(startupInventorySnapshot);
+                    bool refunded = flagConsumed && TryRefundModeEStartupFlag(consumedFlagTypeId);
+                    profileStatus = "failed: startup rollback=" + rollbackSucceeded + ", refund=" + refunded;
+                    ShowModeEStartupFailureRecoveryMessage(rollbackSucceeded, refunded);
+                    return false;
+                }
                 profileStatus = "success";
                 return true;
             }
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] TryStartModeE 失败: " + e.Message);
+                if (flagConsumed)
+                {
+                    bool rollbackSucceeded = RollbackModeEStartupInventory(startupInventorySnapshot);
+                    bool refunded = TryRefundModeEStartupFlag(consumedFlagTypeId);
+                    ShowModeEStartupFailureRecoveryMessage(rollbackSucceeded, refunded);
+                    profileStatus = "failed: exception rollback=" + rollbackSucceeded + ", refund=" + refunded;
+                }
                 return false;
             }
             finally
@@ -817,7 +1115,7 @@ namespace BossRush
         /// <summary>
         /// 启动 Mode E 模式
         /// </summary>
-        private void StartModeE(Teams faction)
+        private bool StartModeE(Teams faction)
         {
             ModeEStartupProfiler profiler = new ModeEStartupProfiler("StartModeE", faction.ToString());
             try
@@ -936,11 +1234,21 @@ namespace BossRush
                 ));
                 profiler.Mark("ShowModeEUI");
                 profiler.Complete("success");
+                return true;
             }
             catch (Exception e)
             {
                 profiler.Complete("failed");
                 DevLog("[ModeE] [ERROR] StartModeE 失败: " + e.Message);
+                try
+                {
+                    EndModeE(false);
+                }
+                catch (Exception cleanupException)
+                {
+                    DevLog("[ModeE] [WARNING] StartModeE 失败后的清理异常: " + cleanupException.Message);
+                }
+                return false;
             }
         }
 
@@ -974,7 +1282,7 @@ namespace BossRush
         /// <summary>
         /// 结束 Mode E 模式
         /// </summary>
-        public void EndModeE()
+        public void EndModeE(bool showEndMessage = true)
         {
             try
             {
@@ -1024,7 +1332,10 @@ namespace BossRush
                             {
                                 enemyFaction = enemy.Team;
                             }
-                            catch { }
+                            catch (Exception e)
+                            {
+                                DevLog("[ModeE] [WARNING] 结束模式时读取敌人阵营失败: index=" + i + ", " + e.Message);
+                            }
 
                             CleanupModeEEnemyRuntimeState(enemy, enemyFaction);
 
@@ -1036,7 +1347,10 @@ namespace BossRush
                                     UnityEngine.Object.Destroy(enemy.characterPreset);
                                 }
                             }
-                            catch { }
+                            catch (Exception e)
+                            {
+                                DevLog("[ModeE] [WARNING] 结束模式时销毁敌人 characterPreset 失败: index=" + i + ", " + e.Message);
+                            }
 
                             // 阻止掉落战利品箱子（模式结束清理，不应产生掉落物）
                             enemy.dropBoxOnDead = false;
@@ -1057,7 +1371,10 @@ namespace BossRush
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        DevLog("[ModeE] [WARNING] 结束模式时清理敌人失败: index=" + i + ", " + e.Message);
+                    }
                 }
 
                 // 清理神秘商人 NPC
@@ -1075,10 +1392,13 @@ namespace BossRush
                 // 清理龙息Buff处理器（防止非 BossRush 场景中意外触发龙焰灼烧）
                 DragonBreathBuffHandler.Cleanup();
 
-                ShowMessage(L10n.T(
-                    "划地为营模式已结束！",
-                    "Faction Battle ended!"
-                ));
+                if (showEndMessage)
+                {
+                    ShowMessage(L10n.T(
+                        "划地为营模式已结束！",
+                        "Faction Battle ended!"
+                    ));
+                }
             }
             catch (Exception e)
             {
@@ -1121,7 +1441,10 @@ namespace BossRush
                                 UnityEngine.Object.Destroy(enemy.characterPreset);
                             }
                         }
-                        catch { }
+                        catch (Exception e)
+                        {
+                            DevLog("[ModeE] [WARNING] 自检时销毁敌人 characterPreset 失败: index=" + i + ", " + e.Message);
+                        }
 
                         // 从虚拟 SpawnerRoot 移除
                         UnregisterModeEEnemyFromSpawnerRoot(enemy);
@@ -1144,9 +1467,10 @@ namespace BossRush
                             CleanupModeEEnemyRuntimeState(enemy);
                         }
                     }
-                    catch
+                    catch (Exception e)
                     {
                         // Unity 已销毁对象，无法读取 Team —— 从所有阵营列表中暴力移除
+                        DevLog("[ModeE] [WARNING] 自检时读取敌人阵营失败，改为全量清理: index=" + i + ", " + e.Message);
                         CleanupModeEEnemyRuntimeState(enemy);
                         }
 
