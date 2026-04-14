@@ -75,7 +75,10 @@ namespace BossRush
                     {
                         currentPos = enemy.transform.position;
                     }
-                    catch {}
+                    catch (Exception positionEx)
+                    {
+                        DevLog("[EnemyRecovery] [WARNING] RegisterEnemyRecoveryAnchor 无法读取敌人位置: " + positionEx.Message);
+                    }
 
                     state = new EnemyRecoveryState
                     {
@@ -176,26 +179,14 @@ namespace BossRush
             {
                 for (int i = currentWaveBosses.Count - 1; i >= 0; i--)
                 {
-                    CharacterMainControl enemy = null;
-                    try
-                    {
-                        enemy = currentWaveBosses[i] as CharacterMainControl;
-                    }
-                    catch {}
-
+                    CharacterMainControl enemy = currentWaveBosses[i] as CharacterMainControl;
                     MonitorEnemyRecovery(enemy, player);
                 }
 
                 return;
             }
 
-            CharacterMainControl singleBoss = null;
-            try
-            {
-                singleBoss = currentBoss as CharacterMainControl;
-            }
-            catch {}
-
+            CharacterMainControl singleBoss = currentBoss as CharacterMainControl;
             MonitorEnemyRecovery(singleBoss, player);
         }
 
@@ -378,8 +369,9 @@ namespace BossRush
                 {
                     enemy.SetPosition(targetPos);
                 }
-                catch
+                catch (Exception setPositionEx)
                 {
+                    DevLog("[EnemyRecovery] [WARNING] SetPosition 恢复敌人失败，改用 transform.position: " + setPositionEx.Message);
                     enemy.transform.position = targetPos;
                 }
 
@@ -400,7 +392,10 @@ namespace BossRush
                         }
                     }
                 }
-                catch {}
+                catch (Exception rigidbodyEx)
+                {
+                    DevLog("[EnemyRecovery] [WARNING] 重置敌人物理状态失败: " + rigidbodyEx.Message);
+                }
 
                 RestoreRecoveredEnemyAggro(enemy, player);
 
@@ -446,7 +441,10 @@ namespace BossRush
                 ai.SetNoticedToTarget(player.mainDamageReceiver);
                 ai.noticed = true;
             }
-            catch {}
+            catch (Exception aggroEx)
+            {
+                DevLog("[EnemyRecovery] [WARNING] 恢复敌人仇恨失败: " + aggroEx.Message);
+            }
         }
 
         private bool TryGetNearestAlternateSpawnPoint(

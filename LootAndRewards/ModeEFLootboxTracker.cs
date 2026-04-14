@@ -56,7 +56,7 @@ namespace BossRush
 
         private void ResetModeEFLootboxTrackerState()
         {
-            CancelAwenLootSweep(false);
+            CancelAwenLootSweep(true);
             modeEFBossDeathGrantCounter = 0;
             nextAwenSweepFailureBubbleTime = 0f;
             lastAwenSweepFailureBubbleText = string.Empty;
@@ -232,11 +232,7 @@ namespace BossRush
             }
 
             int targetCount = CollectCurrentAwenLootSweepTargets(awenLootSweepTargetScratch);
-            try
-            {
-                DevLog("[AwenLootSweep] 当前已标记箱子数量=" + targetCount);
-            }
-            catch {}
+            DevLog("[AwenLootSweep] 当前已标记箱子数量=" + targetCount);
 
             if (targetCount <= 0)
             {
@@ -287,7 +283,10 @@ namespace BossRush
                     target = bubblePlayer.transform;
                 }
             }
-            catch { }
+            catch (Exception targetEx)
+            {
+                DevLog("[AwenLootSweep] [WARNING] 获取扫箱失败气泡目标失败: " + targetEx.Message);
+            }
 
             if (target != null)
             {
@@ -311,7 +310,10 @@ namespace BossRush
                         AWEN_SWEEP_FAILURE_BUBBLE_DURATION);
                     return;
                 }
-                catch { }
+                catch (Exception bubbleEx)
+                {
+                    DevLog("[AwenLootSweep] [WARNING] 显示扫箱失败气泡失败: " + bubbleEx.Message);
+                }
             }
 
             ShowMessage(message);
@@ -485,7 +487,14 @@ namespace BossRush
         {
             try
             {
-                try { AwenLootSweepTokenConfig.EnsureRuntimeRegistration(); } catch { }
+                try
+                {
+                    AwenLootSweepTokenConfig.EnsureRuntimeRegistration();
+                }
+                catch (Exception registerEx)
+                {
+                    DevLog("[AwenLootSweep] [WARNING] 退款前注册扫箱令失败: " + registerEx.Message);
+                }
 
                 bool refunded = TryGiveItemToPlayerOrDrop(
                     AwenLootSweepTokenConfig.TYPE_ID,

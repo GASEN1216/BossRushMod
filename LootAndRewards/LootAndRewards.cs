@@ -110,8 +110,9 @@ namespace BossRush
                     return questField.GetValue(tagsData) as Duckov.Utilities.Tag;
                 }
             }
-            catch
+            catch (Exception e)
             {
+                LogLootWarningLimited("TryFindQuestTag_field", "通过字段读取 Quest 标签失败", e);
             }
 
             try
@@ -122,8 +123,9 @@ namespace BossRush
                     return questProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
                 }
             }
-            catch
+            catch (Exception e)
             {
+                LogLootWarningLimited("TryFindQuestTag_property", "通过属性读取 Quest 标签失败", e);
             }
 
             try
@@ -140,8 +142,9 @@ namespace BossRush
                     }
                 }
             }
-            catch
+            catch (Exception e)
             {
+                LogLootWarningLimited("TryFindQuestTag_alltags", "遍历 AllTags 查找 Quest 标签失败", e);
             }
 
             return null;
@@ -197,6 +200,62 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
             = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
         private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();
+        private const float LOOT_WARNING_LOG_INTERVAL = 5f;
+        private readonly Dictionary<string, float> lootNextWarningLogTimes = new Dictionary<string, float>();
+
+        private void LogLootWarningLimited(string key, string message, Exception e = null)
+        {
+            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            float nextLogTime;
+            if (lootNextWarningLogTimes.TryGetValue(key, out nextLogTime) && now < nextLogTime)
+            {
+                return;
+            }
+
+            lootNextWarningLogTimes[key] = now + LOOT_WARNING_LOG_INTERVAL;
+            DevLog("[BossRush] [WARNING] " + message + (e != null ? ": " + e.Message : string.Empty));
+        }
+
+        private string GetBossLootTrackingDebugName(CharacterMainControl character)
+        {
+            if (object.ReferenceEquals(character, null))
+            {
+                return "<null>";
+            }
+
+            try
+            {
+                if (character.gameObject != null && !string.IsNullOrEmpty(character.gameObject.name))
+                {
+                    return character.gameObject.name;
+                }
+            }
+            catch (Exception)
+            {
+                return "<unnamed>";
+            }
+
+            return "<unnamed>";
+        }
+
+        private void RollbackBossRandomLootTrackingRegistration(CharacterMainControl character)
+        {
+            if (object.ReferenceEquals(character, null))
+            {
+                return;
+            }
+
+            bossSpawnTimes.Remove(character);
+            bossOriginalLootCounts.Remove(character);
+            countedDeadBosses.Remove(character);
+            trackedBossLootHooks.Remove(character);
+            FinalizeBossRushLootboxPathTracking(character);
+        }
 
         private bool infiniteHellMode = false;
         private int infiniteHellWaveIndex = 0;
@@ -235,7 +294,11 @@ namespace BossRush
                     {
                         character.BeforeCharacterSpawnLootOnDead -= existingHandler;
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        DevLog("[BossRush] [WARNING] 重绑随机掉落追踪前取消旧事件失败: boss="
+                            + GetBossLootTrackingDebugName(character) + ", " + e.Message);
+                    }
                 }
 
                 CharacterMainControl capturedCharacter = character;
@@ -246,7 +309,12 @@ namespace BossRush
                 {
                     character.BeforeCharacterSpawnLootOnDead += handler;
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    RollbackBossRandomLootTrackingRegistration(character);
+                    DevLog("[BossRush] [WARNING] 注册随机掉落追踪事件失败，已回滚追踪状态: boss="
+                        + GetBossLootTrackingDebugName(character) + ", " + e.Message);
+                }
             }
             catch (Exception e)
             {
@@ -271,7 +339,11 @@ namespace BossRush
                         character.BeforeCharacterSpawnLootOnDead -= handler;
                     }
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 清理随机掉落追踪事件失败: boss="
+                        + GetBossLootTrackingDebugName(character) + ", " + e.Message);
+                }
             }
 
             bossSpawnTimes.Remove(character);
@@ -455,7 +527,10 @@ namespace BossRush
                         UnityEngine.Object.Destroy(temp.gameObject);
                     }
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("InitializeItemValueCache_item", "初始化物品价值缓存时处理单个物品失败", e);
+                }
 
                 processedCount++;
 
@@ -522,7 +597,10 @@ namespace BossRush
                                 basePos = _bossRushSignGameObject.transform.position + Vector3.up * 0.2f;
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            LogLootWarningLimited("InfiniteHellCash_basePos", "定位无间炼狱现金掉落基准点失败", e);
+                        }
 
                         int stackCount = (cashThisWave >= perStack * 3L) ? 3 : 1;
                         for (int i = 0; i < stackCount; i++)
@@ -535,7 +613,10 @@ namespace BossRush
                             {
                                 cashItem = ItemAssetsCollection.InstantiateSync(EconomyManager.CashItemID);
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                LogLootWarningLimited("InfiniteHellCash_create", "创建无间炼狱现金物品失败", e);
+                            }
 
                             if (cashItem == null)
                             {
@@ -546,7 +627,10 @@ namespace BossRush
                             {
                                 cashItem.StackCount = (int)Mathf.Clamp(stackValue, 1, int.MaxValue);
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                LogLootWarningLimited("InfiniteHellCash_stack", "设置无间炼狱现金堆叠数失败", e);
+                            }
 
                             Vector3 offset = (stackCount == 1) ? Vector3.zero : (new Vector3(i - 1, 0f, 0f) * 0.3f);
                             Vector3 dropPos = basePos + offset;
@@ -555,11 +639,17 @@ namespace BossRush
                             {
                                 cashItem.Drop(dropPos, true, UnityEngine.Random.insideUnitSphere.normalized, 45f);
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                LogLootWarningLimited("InfiniteHellCash_drop", "掉落无间炼狱现金失败", e);
+                            }
                         }
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 无间炼狱单波现金奖励发放失败: " + e.Message);
+                }
 
                 // 只在无间炼狱下显示现金池文案
                 try
@@ -569,16 +659,19 @@ namespace BossRush
                         bossRushSignInteract.UpdateInfiniteHellCashDisplay(infiniteHellCashPool);
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 更新无间炼狱现金池路牌显示失败: " + e.Message);
+                }
 
                 // 玩家头顶气泡提示现金池累积
                 try
                 {
                     CharacterMainControl player = null;
-                    try { player = CharacterMainControl.Main; } catch {}
+                    try { player = CharacterMainControl.Main; } catch (Exception e) { LogLootWarningLimited("InfiniteHellBubble_main", "读取无间炼狱现金池气泡玩家失败", e); }
                     if (player == null && playerCharacter != null)
                     {
-                        try { player = playerCharacter as CharacterMainControl; } catch {}
+                        try { player = playerCharacter as CharacterMainControl; } catch (Exception e) { LogLootWarningLimited("InfiniteHellBubble_playerCharacter", "从 playerCharacter 解析无间炼狱现金池气泡玩家失败", e); }
                     }
 
                     if (player != null)
@@ -588,7 +681,10 @@ namespace BossRush
                         await DialogueBubblesManager.Show(bubble, player.transform);
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 显示无间炼狱现金池气泡失败: " + e.Message);
+                }
 
                 // 每 5 波奖励一次 1253 号物品（在路牌位置掉落）
                 try
@@ -606,7 +702,10 @@ namespace BossRush
                         {
                             reward5 = ItemAssetsCollection.InstantiateSync(rewardTypeId);
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            LogLootWarningLimited("InfiniteHellWave5_create", "创建无间炼狱 5 波奖励物品失败", e);
+                        }
 
                         if (reward5 != null)
                         {
@@ -621,19 +720,31 @@ namespace BossRush
                                         basePos = _bossRushSignGameObject.transform.position + Vector3.up * 0.3f;
                                     }
                                 }
-                                catch {}
+                                catch (Exception e)
+                                {
+                                    LogLootWarningLimited("InfiniteHellWave5_basePos", "定位无间炼狱 5 波奖励基准点失败", e);
+                                }
 
                                 try
                                 {
                                     reward5.Drop(basePos, true, UnityEngine.Random.insideUnitSphere.normalized, 45f);
                                 }
-                                catch {}
+                                catch (Exception e)
+                                {
+                                    LogLootWarningLimited("InfiniteHellWave5_drop", "掉落无间炼狱 5 波奖励失败", e);
+                                }
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                LogLootWarningLimited("InfiniteHellWave5_inner", "准备无间炼狱 5 波奖励失败", e);
+                            }
                         }
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 发放无间炼狱 5 波奖励失败: " + e.Message);
+                }
 
                 // 每100波递进式里程碑奖励（在路牌位置掉落）
                 try
@@ -656,7 +767,10 @@ namespace BossRush
                                 basePos = _bossRushSignGameObject.transform.position + Vector3.up * 0.3f;
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            LogLootWarningLimited("InfiniteHellMilestone_basePos", "定位无间炼狱 100 波里程碑基准点失败", e);
+                        }
 
                         // 掉落皇冠（TypeID 1254）
                         for (int ci = 0; ci < crownCount; ci++)
@@ -670,7 +784,10 @@ namespace BossRush
                                     crown.Drop(basePos, true, dir, UnityEngine.Random.Range(30f, 60f));
                                 }
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                LogLootWarningLimited("InfiniteHellMilestone_crown", "掉落无间炼狱里程碑皇冠失败", e);
+                            }
                         }
 
                         // 掉落现金（100叠，每叠 cashPerStack）
@@ -686,14 +803,20 @@ namespace BossRush
                                     cashReward.Drop(basePos, true, dir, UnityEngine.Random.Range(30f, 60f));
                                 }
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                LogLootWarningLimited("InfiniteHellMilestone_cash", "掉落无间炼狱里程碑现金失败", e);
+                            }
                         }
 
                         // 更新已发放里程碑阶数
                         infiniteHellMilestoneRewardTier = currentTier;
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 发放无间炼狱 100 波里程碑奖励失败: " + e.Message);
+                }
 
                 // 准备下一波（无终点：不调用 OnAllEnemiesDefeated）
                 if (config != null && config.useInteractBetweenWaves)
@@ -708,14 +831,20 @@ namespace BossRush
                             bossRushSignInteract.AddNextWaveOnly();
                         }
                     }
-                    catch {}
+                    catch (Exception e)
+                    {
+                        LogLootWarningLimited("InfiniteHellNextWaveInteract", "无间炼狱切换下一波交互失败", e);
+                    }
                 }
                 else
                 {
                     StartNextWaveCountdown();
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] OnInfiniteHellWaveCompleted 处理失败: " + e.Message);
+            }
         }
 
         /// <summary>
@@ -915,7 +1044,10 @@ namespace BossRush
                     return;
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] OnAllEnemiesDefeated 场景校验失败，继续按通关流程收尾: " + e.Message);
+            }
 
             SetBossRushRuntimeActive(false);
             // 注意：胜利后保持 bossRushArenaActive = true，确保大兴兴清理逻辑持续运行
@@ -942,7 +1074,10 @@ namespace BossRush
                     bossRushSignInteract.SetVictoryMode();
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 切换 BossRush 路牌到凯旋状态失败: " + e.Message);
+            }
 
             // 根据本次难度在“下一波”交互点附近生成通关奖励箱，并播放彩虹横幅
             try
@@ -962,7 +1097,10 @@ namespace BossRush
                 ShowBigBanner(banner);
                 SpawnDifficultyRewardLootbox_LootAndRewards(rewardHighCount);
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 生成 BossRush 通关奖励失败: " + e.Message);
+            }
 
             // 等待2秒后显示气泡对话
             await UniTask.Delay(2000);
@@ -1011,8 +1149,9 @@ namespace BossRush
                 {
                     main = CharacterMainControl.Main;
                 }
-                catch
+                catch (Exception e)
                 {
+                    LogLootWarningLimited("SpawnDifficultyRewardLootbox_main", "读取 CharacterMainControl.Main 失败", e);
                 }
 
                 if (main == null)
@@ -1021,8 +1160,9 @@ namespace BossRush
                     {
                         main = playerCharacter as CharacterMainControl;
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        LogLootWarningLimited("SpawnDifficultyRewardLootbox_playerCharacter", "从 playerCharacter 解析玩家失败", e);
                     }
                 }
 
@@ -1052,8 +1192,9 @@ namespace BossRush
                         var groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
                         hitGround = UnityEngine.Physics.Raycast(rayStart, Vector3.down, out hit, 5f, groundMask, UnityEngine.QueryTriggerInteraction.Ignore);
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        LogLootWarningLimited("SpawnDifficultyRewardLootbox_groundRaycast", "仅读取地面层的奖励箱落点射线失败，回退到全层检测", e);
                         hitGround = false;
                     }
 
@@ -1075,8 +1216,9 @@ namespace BossRush
                         pos += Vector3.up * 0.1f;
                     }
                 }
-                catch
+                catch (Exception e)
                 {
+                    LogLootWarningLimited("SpawnDifficultyRewardLootbox_adjustPos", "修正通关奖励箱落点失败，回退到抬高位置", e);
                     pos += Vector3.up * 0.1f;
                 }
 
@@ -1095,7 +1237,10 @@ namespace BossRush
                            ", finalPos=" + pos +
                            ", prefabName=" + prefab.name);
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("SpawnDifficultyRewardLootbox_debug1", "输出通关奖励箱调试信息失败", e);
+                }
 
                 InteractableLootbox lootbox = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
                 lootbox.needInspect = true;
@@ -1107,7 +1252,10 @@ namespace BossRush
                            ", type=" + (lootbox != null ? lootbox.GetType().FullName : "<null>") +
                            ", position=" + pos);
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("SpawnDifficultyRewardLootbox_debug2", "输出通关奖励箱实例调试信息失败", e);
+                }
 
                 // 为通关奖励箱创建独立本地 Inventory，避免与其他 Lootbox 通过位置哈希共享同一个库存
                 try
@@ -1120,26 +1268,29 @@ namespace BossRush
                         createLocalInventoryMethod.Invoke(lootbox, null);
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] SpawnDifficultyRewardLootbox: 创建独立奖励箱库存失败: " + e.Message);
+                }
 
                 // 根据配置决定是否让通关奖励箱作为子弹掩体
                 try
                 {
                     ApplyLootBoxCoverSetting(lootbox, true);
                 }
-                catch {}
-
-                // 为奖励箱添加伪搬运交互（与 Boss 奖励箱一致）
-                try
+                catch (Exception e)
                 {
+                    DevLog("[BossRush] [WARNING] SpawnDifficultyRewardLootbox: 应用奖励箱掩体配置失败: " + e.Message);
                 }
-                catch {}
 
                 try
                 {
                     MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex);
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] SpawnDifficultyRewardLootbox: 将奖励箱移动到当前场景失败: " + e.Message);
+                }
 
                 Duckov.Utilities.LootBoxLoader loader = lootbox.GetComponent<Duckov.Utilities.LootBoxLoader>();
                 if (loader != null)
@@ -1327,7 +1478,10 @@ namespace BossRush
                                                             highValueCandidates.Add(candidateId);
                                                         }
                                                     }
-                                                    catch {}
+                                                    catch (Exception e)
+                                                    {
+                                                        LogLootWarningLimited("SpawnDifficultyRewardLootbox_candidateEval", "评估通关奖励候选物品元数据失败", e);
+                                                    }
                                                 }
                                             }
                                             catch (Exception evalEx)
@@ -1359,7 +1513,10 @@ namespace BossRush
                                 }
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            LogLootWarningLimited("SpawnDifficultyRewardLootbox_buildPool", "构建通关奖励随机池失败", e);
+                        }
 
                         System.Reflection.FieldInfo fixedItemsField = loaderType.GetField("fixedItems", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                         System.Reflection.FieldInfo fixedChanceField = loaderType.GetField("fixedItemSpawnChance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -1454,11 +1611,17 @@ namespace BossRush
                                 UnityEngine.Object.Destroy(ammoShop.gameObject);
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            LogLootWarningLimited("OnPlayerDeathInBossRush_ammoShopDestroy", "玩家死亡时销毁加油站商店对象失败", e);
+                        }
                         ammoShop = null;
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("OnPlayerDeathInBossRush_ammoShopCleanup", "玩家死亡时清理加油站商店失败", e);
+                }
 
                 // 取消敌人死亡监听
                 Health.OnDead -= OnEnemyDiedWithDamageInfo;
@@ -1502,7 +1665,10 @@ namespace BossRush
                 {
                     main = CharacterMainControl.Main;
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("OnMainCharacterBeforeSpawnLoot_main", "读取玩家主角色失败", e);
+                }
 
                 if (main == null)
                 {
@@ -1636,7 +1802,10 @@ namespace BossRush
                     {
                         bossMain.dropBoxOnDead = false;
                     }
-                    catch {}
+                    catch (Exception e)
+                    {
+                        LogLootWarningLimited("OnBossBeforeSpawnLoot_disableDrop", "无间炼狱关闭 Boss 掉落箱失败", e);
+                    }
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     return;
                 }
@@ -1647,7 +1816,7 @@ namespace BossRush
                 if (modeFActive)
                 {
                     CharacterMainControl killer = null;
-                    try { killer = dmgInfo.fromCharacter; } catch { }
+                    try { killer = dmgInfo.fromCharacter; } catch (Exception e) { LogLootWarningLimited("OnBossBeforeSpawnLoot_killer", "读取击杀者失败", e); }
 
                     if (killer != null)
                     {
@@ -1679,7 +1848,10 @@ namespace BossRush
                                 StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, bossMain.transform.position, true));
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            LogLootWarningLimited("OnBossBeforeSpawnLoot_decorateOriginal", "装饰 Mode E/F 原生掉落箱失败", e);
+                        }
                     }
 
                     FinalizeBossRushLootboxPathTracking(bossMain);
@@ -1699,7 +1871,10 @@ namespace BossRush
                         maxHealth = bossMain.Health.MaxHealth;
                     }
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("OnBossBeforeSpawnLoot_maxHealth", "读取 Boss 最大生命失败，回退默认值", e);
+                }
 
                 // 基础掉落格子数量：按 Boss 池的基础血量范围，将当前 Boss 血量线性映射到 [5,15]
                 int baseCount = 10;
@@ -1774,7 +1949,10 @@ namespace BossRush
                         ClearBossRandomLootTracking(bossMain);
                     }
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("ClearBossRandomLootTracking", "清理随机掉落追踪时处理单个物品失败", e);
+                }
             }
         }
 
@@ -1824,8 +2002,9 @@ namespace BossRush
                         DevLog("[BossRush] 使用 Boss 死亡掉落的 Lootbox 模板作为奖励箱");
                     }
                 }
-                catch
+                catch (Exception e)
                 {
+                    LogLootWarningLimited("BossRewardLootbox_prefab", "读取 Boss 原生掉落箱模板失败，回退到通用模板", e);
                 }
 
                 if (prefab == null)
@@ -1844,8 +2023,9 @@ namespace BossRush
                 {
                     bossMain.dropBoxOnDead = false;
                 }
-                catch
+                catch (Exception e)
                 {
+                    LogLootWarningLimited("BossRewardLootbox_disableDrop", "关闭 Boss 原生掉落箱失败", e);
                 }
 
                 Vector3 position = bossMain.transform.position + Vector3.up * 0.1f;
@@ -1876,7 +2056,10 @@ namespace BossRush
                 {
                     BossRushLootboxUtility.DecorateLootbox(lootbox, this, modeEActive || modeFActive);
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 装饰 Boss 奖励箱外观失败: " + e.Message);
+                }
 
                 // 仅在使用 BossRush 专用奖励箱模板时，按配置处理“挡子弹”和伪搬运交互
                 if (!useBossDeadBoxPrefab)
@@ -1886,8 +2069,9 @@ namespace BossRush
                     {
                         ApplyLootBoxCoverSetting(lootbox);
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        LogLootWarningLimited("BossRewardLootbox_cover", "应用 Boss 奖励箱掩体配置失败", e);
                     }
 
                     // 为 Boss 奖励箱添加伪搬运交互（BossRushCarryInteractable），并与 Lootbox 组成同一个交互组
@@ -1920,12 +2104,14 @@ namespace BossRush
                                 }
                             }
                         }
-                        catch
+                        catch (Exception e)
                         {
+                            LogLootWarningLimited("BossRewardLootbox_group", "配置 Boss 奖励箱交互组失败", e);
                         }
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        LogLootWarningLimited("BossRewardLootbox_carry", "添加 Boss 奖励箱搬运交互失败", e);
                     }
                 }
 
@@ -1933,8 +2119,9 @@ namespace BossRush
                 {
                     MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex);
                 }
-                catch
+                catch (Exception e)
                 {
+                    LogLootWarningLimited("BossRewardLootbox_scene", "将 Boss 奖励箱移动到当前场景失败", e);
                 }
 
                 Duckov.Utilities.LootBoxLoader loader = lootbox.GetComponent<Duckov.Utilities.LootBoxLoader>();
@@ -1944,8 +2131,9 @@ namespace BossRush
                     {
                         loader = lootbox.gameObject.AddComponent<Duckov.Utilities.LootBoxLoader>();
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        LogLootWarningLimited("BossRewardLootbox_loader", "添加 Boss 奖励箱 LootBoxLoader 失败", e);
                     }
                 }
 
@@ -2081,8 +2269,9 @@ namespace BossRush
                                     randomPoolObj = Activator.CreateInstance(randomPoolField.FieldType);
                                     randomPoolField.SetValue(loader, randomPoolObj);
                                 }
-                                catch
+                                catch (Exception e)
                                 {
+                                    LogLootWarningLimited("BossRewardLootbox_randomPool", "创建 Boss 奖励箱 randomPool 失败", e);
                                 }
                             }
 
@@ -2112,8 +2301,9 @@ namespace BossRush
                                         entriesField.SetValue(randomPoolObj, newEntries);
                                         entriesList = newEntries as System.Collections.IList;
                                     }
-                                    catch
+                                    catch (Exception e)
                                     {
+                                        LogLootWarningLimited("BossRewardLootbox_entries", "创建 Boss 奖励箱 randomPool.entries 失败", e);
                                     }
                                 }
 
@@ -2454,7 +2644,10 @@ namespace BossRush
             {
                 DevLog("[BossRush] Boss 掉落实际物品列表开始, 总数=" + content.Count);
             }
-            catch {}
+            catch (Exception)
+            {
+                // 调试输出失败不应影响后续逻辑。
+            }
 
             for (int i = 0; i < content.Count; i++)
             {
@@ -2473,25 +2666,37 @@ namespace BossRush
                 {
                     q = item.Quality;
                 }
-                catch {}
+                catch (Exception)
+                {
+                    q = -1;
+                }
 
                 try
                 {
                     v = item.Value;
                 }
-                catch {}
+                catch (Exception)
+                {
+                    v = -1;
+                }
 
                 try
                 {
                     name = item.DisplayName;
                 }
-                catch {}
+                catch (Exception)
+                {
+                    name = "<unknown>";
+                }
 
                 try
                 {
                     displayQ = item.DisplayQuality.ToString();
                 }
-                catch {}
+                catch (Exception)
+                {
+                    displayQ = "<unknown>";
+                }
 
                 DevLog("[BossRush] 实际掉落物: typeID=" + item.TypeID + ", 名称=" + name + ", Quality=" + q + ", DisplayQuality=" + displayQ + ", Value=" + v);
             }
@@ -2500,7 +2705,10 @@ namespace BossRush
             {
                 DevLog("[BossRush] Boss 掉落实际物品列表结束");
             }
-            catch {}
+            catch (Exception)
+            {
+                // 调试输出失败不应影响奖励箱处理。
+            }
 
             // LootBoxLoader 填充完成后，根据实际物品数量调整 Inventory 容量
             // 这是解决"格子为64"问题的关键
@@ -2564,16 +2772,19 @@ namespace BossRush
                         string name = "<unknown>";
                         string displayQ = "<unknown>";
 
-                        try { q = item.Quality; } catch {}
-                        try { v = item.Value; } catch {}
-                        try { name = item.DisplayName; } catch {}
-                        try { displayQ = item.DisplayQuality.ToString(); } catch {}
+                        try { q = item.Quality; } catch (Exception) { q = -1; }
+                        try { v = item.Value; } catch (Exception) { v = -1; }
+                        try { name = item.DisplayName; } catch (Exception) { name = "<unknown>"; }
+                        try { displayQ = item.DisplayQuality.ToString(); } catch (Exception) { displayQ = "<unknown>"; }
 
                         DevLog("[BossRush] 通关奖励实际物品(清理前): typeID=" + item.TypeID + ", 名称=" + name + ", Quality=" + q + ", DisplayQuality=" + displayQ + ", Value=" + v);
                     }
                     DevLog("[BossRush] 通关奖励清理前物品列表结束");
                 }
-                catch {}
+                catch (Exception)
+                {
+                    // 调试输出失败不影响通关奖励清理逻辑。
+                }
 
                 int beforeCount = content.Count;
 
@@ -2680,17 +2891,20 @@ namespace BossRush
                             string name2 = "<unknown>";
                             string displayQ2 = "<unknown>";
 
-                            try { q2 = item.Quality; } catch {}
-                            try { v2 = item.Value; } catch {}
-                            try { name2 = item.DisplayName; } catch {}
-                            try { displayQ2 = item.DisplayQuality.ToString(); } catch {}
+                            try { q2 = item.Quality; } catch (Exception) { q2 = -1; }
+                            try { v2 = item.Value; } catch (Exception) { v2 = -1; }
+                            try { name2 = item.DisplayName; } catch (Exception) { name2 = "<unknown>"; }
+                            try { displayQ2 = item.DisplayQuality.ToString(); } catch (Exception) { displayQ2 = "<unknown>"; }
 
                             DevLog("[BossRush] 通关奖励实际物品(清理后): typeID=" + item.TypeID + ", 名称=" + name2 + ", Quality=" + q2 + ", DisplayQuality=" + displayQ2 + ", Value=" + v2);
                         }
                         DevLog("[BossRush] 通关奖励清理后物品列表结束");
                     }
                 }
-                catch {}
+                catch (Exception)
+                {
+                    // 调试输出失败不影响通关奖励清理逻辑。
+                }
 
                 if (removed > 0)
                 {
@@ -2726,7 +2940,10 @@ namespace BossRush
                     return true;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogLootWarningLimited("IsDragonDescendantBoss", "判断龙裔遗族 Boss 失败", e);
+            }
             
             return false;
         }
@@ -2754,7 +2971,10 @@ namespace BossRush
                     return true;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogLootWarningLimited("IsDragonKingBoss", "判断龙王 Boss 失败", e);
+            }
             
             return false;
         }
@@ -2778,7 +2998,10 @@ namespace BossRush
                     return durabilityStat.Value.ToString("F1");
                 }
             }
-            catch { }
+            catch (Exception)
+            {
+                return "N/A";
+            }
             return "N/A";
         }
 
@@ -2897,7 +3120,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                LogLootWarningLimited("ApplyModeFPlunderLootPenalty_scan", "扫描 Mode F 掠夺惩罚候选物失败", e);
+            }
 
             modeFPlunderPenaltyScratch.Sort((a, b) =>
             {
@@ -2922,8 +3148,8 @@ namespace BossRush
                     continue;
                 }
 
-                try { item.Detach(); } catch { }
-                try { item.DestroyTree(); } catch { }
+                try { item.Detach(); } catch (Exception e) { LogLootWarningLimited("ApplyModeFPlunderLootPenalty_detach", "移除 Mode F 掠夺惩罚物品时 Detach 失败", e); }
+                try { item.DestroyTree(); } catch (Exception e) { LogLootWarningLimited("ApplyModeFPlunderLootPenalty_destroy", "移除 Mode F 掠夺惩罚物品时 DestroyTree 失败", e); }
                 removed++;
             }
 
@@ -2979,7 +3205,10 @@ namespace BossRush
                             reward.DestroyTree();
                         }
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        LogLootWarningLimited("AddModeFPlunderLootBonus_cleanup", "清理未加入掉落箱的掠夺奖励失败", e);
+                    }
                 }
             }
 
@@ -3050,7 +3279,10 @@ namespace BossRush
                     AchievementTracker.OnCollectDragonDescendantLoot(selectedTypeId);
                     CheckDragonDescendantCollectionAchievement();
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("AddDragonDescendantLoot_achievement", "记录龙裔收藏成就失败", e);
+                }
             }
             catch (Exception addEx)
             {
@@ -3157,8 +3389,9 @@ namespace BossRush
                     AchievementTracker.OnCollectDragonKingLoot(typeId);
                     CheckDragonKingCollectionAchievement();
                 }
-                catch
+                catch (Exception e)
                 {
+                    LogLootWarningLimited("TryAddDragonKingLootItem_achievement", "记录龙王收藏成就失败", e);
                 }
 
                 return true;

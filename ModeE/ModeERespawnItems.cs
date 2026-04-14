@@ -172,7 +172,10 @@ namespace BossRush
                         UnityEngine.Object.Destroy(smokeItem.gameObject);
                     }
                 }
-                catch { }
+                catch (Exception destroyEx)
+                {
+                    DevLog("[ModeE] [WARNING] 清理原版烟雾弹临时物体失败: " + destroyEx.Message);
+                }
             }
         }
 
@@ -436,13 +439,19 @@ namespace BossRush
                 {
                     Duckov.Utilities.SetActiveByPlayerDistance.Unregister(enemyObject, enemyObject.scene.buildIndex);
                 }
-                catch { }
+                catch (Exception unregisterEx)
+                {
+                    DevLog("[ModeE] [WARNING] 取消玩家距离休眠注册失败: " + unregisterEx.Message);
+                }
 
                 try
                 {
                     enemy.SetSleeping(false);
                 }
-                catch { }
+                catch (Exception sleepEx)
+                {
+                    DevLog("[ModeE] [WARNING] 唤醒休眠Boss失败: " + sleepEx.Message);
+                }
 
                 if (!enemyObject.activeSelf)
                 {

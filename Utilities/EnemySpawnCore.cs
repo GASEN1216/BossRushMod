@@ -193,7 +193,10 @@ namespace BossRush
                                         UnityEngine.Object.Destroy(character.gameObject);
                                     }
                                 }
-                                catch { }
+                                catch (Exception destroyEx)
+                                {
+                                    DevLog("[SpawnCore] [WARNING] 模式结束时销毁特殊生成敌人失败: " + destroyEx.Message);
+                                }
 
                                 DevLog("[SpawnCore] 模式已结束，销毁特殊生成的敌人");
                                 return;
@@ -211,17 +214,7 @@ namespace BossRush
                             onSpawned(ctx);
 
                             // 标记大兴兴（防止被误清理）
-                            try
-                            {
-                                if (IsDaXingXingPreset(currentPreset))
-                                {
-                                    if (bossRushOwnedDaXingXing != null && !bossRushOwnedDaXingXing.Contains(character))
-                                    {
-                                        bossRushOwnedDaXingXing.Add(character);
-                                    }
-                                }
-                            }
-                            catch { }
+                            TryTrackSpawnCoreDaXingXing(character, currentPreset);
 
                             // 统一伤害倍率（龙裔/龙王也需要）
                             NormalizeDamageMultiplier(character);
@@ -246,17 +239,7 @@ namespace BossRush
                             }
 
                             // 标记大兴兴（防止被误清理）
-                            try
-                            {
-                                if (IsDaXingXingPreset(currentPreset))
-                                {
-                                    if (bossRushOwnedDaXingXing != null && !bossRushOwnedDaXingXing.Contains(character))
-                                    {
-                                        bossRushOwnedDaXingXing.Add(character);
-                                    }
-                                }
-                            }
-                            catch { }
+                            TryTrackSpawnCoreDaXingXing(character, currentPreset);
 
                             // 统一伤害倍率
                             NormalizeDamageMultiplier(character);
@@ -315,14 +298,52 @@ namespace BossRush
                 DevLog("[SpawnCore] [ERROR] 多次尝试仍然失败");
 
                 // 所有重试均失败，调用失败回调（用于 Mode D 波次计数兜底等）
-                try { onFailed?.Invoke(); } catch { }
+                InvokeSpawnCoreFailureCallback(onFailed, "重试耗尽");
             }
             catch (Exception e)
             {
                 DevLog("[SpawnCore] [ERROR] SpawnEnemyCore 异常: " + e.Message);
 
                 // 异常情况也调用失败回调，确保调用方计数不会卡住
-                try { onFailed?.Invoke(); } catch { }
+                InvokeSpawnCoreFailureCallback(onFailed, "主流程异常");
+            }
+        }
+
+        private void TryTrackSpawnCoreDaXingXing(CharacterMainControl character, EnemyPresetInfo preset)
+        {
+            try
+            {
+                if (!IsDaXingXingPreset(preset))
+                {
+                    return;
+                }
+
+                if (bossRushOwnedDaXingXing != null && !bossRushOwnedDaXingXing.Contains(character))
+                {
+                    bossRushOwnedDaXingXing.Add(character);
+                }
+            }
+            catch (Exception trackEx)
+            {
+                string presetName = preset != null ? preset.displayName : "null";
+                DevLog("[SpawnCore] [WARNING] 标记大兴兴归属失败: " + presetName + ", " + trackEx.Message);
+            }
+        }
+
+        private void InvokeSpawnCoreFailureCallback(Action onFailed, string reason)
+        {
+            if (onFailed == null)
+            {
+                return;
+            }
+
+            try
+            {
+                onFailed.Invoke();
+            }
+            catch (Exception callbackEx)
+            {
+                DevLog("[SpawnCore] [WARNING] 失败回调执行异常 (" + reason + "): " + callbackEx.Message);
             }
         }
     }

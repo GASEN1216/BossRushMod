@@ -484,7 +484,11 @@ namespace BossRush
                         ModBehaviour.DevLog($"[ReforgeData] 恢复Variable: {item.DisplayName}.{varKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
                         return true;
                     }
-                    catch { }
+                    catch (Exception variableEx)
+                    {
+                        string itemName = item != null ? item.DisplayName : "null";
+                        ModBehaviour.DevLog($"[ReforgeData] [WARNING] 恢复Variable失败: {itemName}.{varKey}, {variableEx.Message}");
+                    }
                 }
             }
             return false;
@@ -738,7 +742,15 @@ namespace BossRush
             {
                 if (variable.Key == key)
                 {
-                    try { return variable.GetFloat(); } catch { }
+                    try
+                    {
+                        return variable.GetFloat();
+                    }
+                    catch (Exception variableEx)
+                    {
+                        string prefabName = prefab != null ? prefab.DisplayName : "null";
+                        ModBehaviour.DevLog($"[ReforgeData] [WARNING] 读取预制体Variable失败: {prefabName}.{key}, {variableEx.Message}");
+                    }
                 }
             }
             return 0f;

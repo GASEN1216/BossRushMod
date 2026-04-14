@@ -205,7 +205,10 @@ namespace BossRush
                         item.Tags.Add(specialTag);
                     }
                 }
-                catch { }
+                catch (Exception specialTagEx)
+                {
+                    ModBehaviour.DevLog("[RespawnItemConfig] [WARNING] 添加 Special 标签失败: " + specialTagEx.Message);
+                }
 
                 // ============================================================
                 // 注册 UsageBehavior，使物品可通过原版 CA_UseItem 流程使用
@@ -287,7 +290,11 @@ namespace BossRush
                     currentType = currentType.BaseType;
                 }
             }
-            catch { }
+            catch (Exception masterEx)
+            {
+                string componentName = component != null ? component.GetType().Name : "null";
+                ModBehaviour.DevLog("[RespawnItemConfig] [WARNING] 设置组件 Master 失败: component=" + componentName + ", " + masterEx.Message);
+            }
         }
 
         /// <summary>
@@ -301,7 +308,11 @@ namespace BossRush
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 field?.SetValue(item, usageUtils);
             }
-            catch { }
+            catch (Exception usageUtilsEx)
+            {
+                string itemTypeId = item != null ? item.TypeID.ToString() : "null";
+                ModBehaviour.DevLog("[RespawnItemConfig] [WARNING] 设置 usageUtilities 失败: typeId=" + itemTypeId + ", " + usageUtilsEx.Message);
+            }
         }
 
         /// <summary>
@@ -328,7 +339,11 @@ namespace BossRush
                     field.SetValue(target, value);
                 }
             }
-            catch { }
+            catch (Exception hiddenMemberEx)
+            {
+                string targetType = target != null ? target.GetType().Name : "null";
+                ModBehaviour.DevLog("[RespawnItemConfig] [WARNING] 设置隐藏成员失败: target=" + targetType + ", member=" + memberName + ", " + hiddenMemberEx.Message);
+            }
         }
 
         // ============================================================================

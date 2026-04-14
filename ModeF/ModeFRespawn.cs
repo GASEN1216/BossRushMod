@@ -209,6 +209,66 @@ namespace BossRush
             return removed;
         }
 
+        private Teams? TryGetModeFBossTeam(CharacterMainControl boss, string context)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return null;
+            }
+
+            try
+            {
+                return boss.Team;
+            }
+            catch (Exception teamEx)
+            {
+                DevLog("[ModeF] [WARNING] " + context + " 读取Boss阵营失败: " + teamEx.Message);
+                return null;
+            }
+        }
+
+        private CharacterMainControl TryGetModeFKiller(DamageInfo damageInfo, string context)
+        {
+            try
+            {
+                return damageInfo.fromCharacter;
+            }
+            catch (Exception killerEx)
+            {
+                DevLog("[ModeF] [WARNING] " + context + " 读取击杀者失败: " + killerEx.Message);
+                return null;
+            }
+        }
+
+        private bool TryGetModeFBountyMarks(int bossId, out int marks, string context)
+        {
+            marks = 0;
+
+            try
+            {
+                return modeFState.BountyMarksByCharacterId.TryGetValue(bossId, out marks);
+            }
+            catch (Exception marksEx)
+            {
+                DevLog("[ModeF] [WARNING] " + context + " 读取悬赏印记失败: " + marksEx.Message);
+                marks = 0;
+                return false;
+            }
+        }
+
+        private bool TryRemoveModeFBountyMarks(int bossId, string context)
+        {
+            try
+            {
+                return modeFState.BountyMarksByCharacterId.Remove(bossId);
+            }
+            catch (Exception marksEx)
+            {
+                DevLog("[ModeF] [WARNING] " + context + " 清理悬赏印记失败: " + marksEx.Message);
+                return false;
+            }
+        }
+
         private void UnregisterModeFBossDeath(CharacterMainControl boss)
         {
             if (object.ReferenceEquals(boss, null))
@@ -229,7 +289,10 @@ namespace BossRush
                     boss.Health.OnDeadEvent.RemoveListener(handler);
                 }
             }
-            catch { }
+            catch (Exception unregisterEx)
+            {
+                DevLog("[ModeF] [WARNING] 取消Boss死亡事件订阅失败: " + unregisterEx.Message);
+            }
 
             modeFBossDeathHandlers.Remove(boss);
         }
@@ -254,7 +317,10 @@ namespace BossRush
                     boss.BeforeCharacterSpawnLootOnDead -= handler;
                 }
             }
-            catch { }
+            catch (Exception unregisterEx)
+            {
+                DevLog("[ModeF] [WARNING] 取消Boss掉落预处理订阅失败: " + unregisterEx.Message);
+            }
 
             modeFBossLootHandlers.Remove(boss);
         }
@@ -295,7 +361,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception cleanupEx)
+            {
+                DevLog("[ModeF] [WARNING] 清理ModeE共享运行时失败: " + cleanupEx.Message);
+            }
 
             modeEPendingAggroTraceDistance.Remove(boss);
             UnregisterModeEEnemyFromSpawnerRoot(boss);
@@ -314,7 +383,7 @@ namespace BossRush
             {
                 if (!faction.HasValue)
                 {
-                    try { faction = boss.Team; } catch { }
+                    faction = TryGetModeFBossTeam(boss, "CleanupModeFBossRuntimeState");
                 }
 
                 RemoveModeFBossGrowthModifiers(boss);
@@ -336,11 +405,7 @@ namespace BossRush
 
             if (removeBountyMarks && !object.ReferenceEquals(boss, null))
             {
-                try
-                {
-                    modeFState.BountyMarksByCharacterId.Remove(boss.GetInstanceID());
-                }
-                catch { }
+                TryRemoveModeFBountyMarks(boss.GetInstanceID(), "CleanupModeFBossRuntimeState");
             }
         }
 
@@ -376,10 +441,9 @@ namespace BossRush
                         return;
                     }
 
-                    CharacterMainControl killer = null;
-                    try { killer = damageInfo.fromCharacter; } catch { }
+                    CharacterMainControl killer = TryGetModeFKiller(damageInfo, "RegisterModeFBoss/BeforeSpawnLoot");
                     int victimMarks = 0;
-                    try { modeFState.BountyMarksByCharacterId.TryGetValue(capturedLootBoss.GetInstanceID(), out victimMarks); } catch { }
+                    TryGetModeFBountyMarks(capturedLootBoss.GetInstanceID(), out victimMarks, "RegisterModeFBoss/BeforeSpawnLoot");
                     if (killer != null &&
                         !object.ReferenceEquals(killer, capturedLootBoss) &&
                         IsTrackedModeFBoss(killer) &&
@@ -448,11 +512,10 @@ namespace BossRush
                 Teams? deadBossTeam = null;
                 if (!(deadBoss == null))
                 {
-                    try { deadBossTeam = deadBoss.Team; } catch { }
+                    deadBossTeam = TryGetModeFBossTeam(deadBoss, "OnModeFBossDied");
                 }
 
-                CharacterMainControl killer = null;
-                try { killer = damageInfo.fromCharacter; } catch { }
+                CharacterMainControl killer = TryGetModeFKiller(damageInfo, "OnModeFBossDied");
 
                 int deadBossMarks = 0;
                 modeFState.BountyMarksByCharacterId.TryGetValue(deadBossId, out deadBossMarks);
@@ -476,7 +539,10 @@ namespace BossRush
                         hasDeathPos = true;
                     }
                 }
-                catch { }
+                catch (Exception deathPosEx)
+                {
+                    DevLog("[ModeF] [WARNING] 读取Boss死亡位置失败: " + deathPosEx.Message);
+                }
 
                 DevLog("[ModeF] Boss died: " + deadBoss.gameObject.name
                     + " (source=" + (string.IsNullOrEmpty(sourceTag) ? "unknown" : sourceTag)
@@ -525,7 +591,10 @@ namespace BossRush
                         StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, deathPosition, true));
                     }
                 }
-                catch { }
+                catch (Exception decorateEx)
+                {
+                    DevLog("[ModeF] [WARNING] 标记死亡点附近掉落箱失败: " + decorateEx.Message);
+                }
 
                 FinalizeBossRushLootboxPathTracking(deadBoss);
                 QueueModeFBossRespawn();
@@ -831,31 +900,26 @@ namespace BossRush
                     CharacterMainControl boss = modeFState.ActiveBosses[i];
                     if (boss == null || boss.gameObject == null || boss.Health == null || boss.Health.IsDead)
                     {
-                        Teams? bossTeam = null;
-
-                        try
-                        {
-                            if (!(boss == null))
-                            {
-                                try { bossTeam = boss.Team; } catch { }
-                            }
-                        }
-                        catch { }
+                        Teams? bossTeam = TryGetModeFBossTeam(boss, "ModeFBossIntegrityCheck");
 
                         modeFState.ActiveBosses.RemoveAt(i);
                         CleanupModeFBossRuntimeState(boss, bossTeam);
-                        try
+
+                        if (!(boss == null))
                         {
-                            if (!(boss == null))
+                            try
                             {
                                 modeFHandledBossDeathIds.Add(boss.GetInstanceID());
-                                if (modeFState.BountyMarksByCharacterId.Remove(boss.GetInstanceID()))
+                                if (TryRemoveModeFBountyMarks(boss.GetInstanceID(), "ModeFBossIntegrityCheck"))
                                 {
                                     MarkModeFHealthBarNamesDirty();
                                 }
                             }
+                            catch (Exception cleanupEx)
+                            {
+                                DevLog("[ModeF] [WARNING] IntegrityCheck 清理死亡Boss状态失败: " + cleanupEx.Message);
+                            }
                         }
-                        catch { }
 
                         MarkModeFBountyLeaderDirty();
                         QueueModeFBossRespawn();
