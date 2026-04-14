@@ -669,6 +669,7 @@ namespace BossRush
 
                 // 更新生成计数
                 modeESpawnResolved++;
+                MarkModeEStartupBossSpawned();
                 DevLog("[ModeE] 生成结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
             }
             catch (Exception e)

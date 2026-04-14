@@ -73,6 +73,13 @@ namespace BossRush
 
         /// <summary>当前预热对应的场景名，用于避免跨场景误复用协程状态。</summary>
         private string modeEStartupWarmupSceneName = null;
+        private const float MODEE_STARTUP_VERIFICATION_TIMEOUT_SECONDS = 8f;
+        private HashSet<int> modeEStartupInventorySnapshot = null;
+        private int modeEStartupFlagTypeId = -1;
+        private bool modeEStartupRecoveryArmed = false;
+        private bool modeEStartupFirstBossSpawned = false;
+        private bool modeEStartupHasPlayerPosition = false;
+        private Vector3 modeEStartupPlayerPosition = Vector3.zero;
 
         private const float MODEE_PLAYER_NAME_CACHE_INTERVAL = 5f;
         private const float MODEE_HEALTHBAR_LOOKUP_INTERVAL = 1f;
@@ -614,6 +621,17 @@ namespace BossRush
             }
         }
 
+        private void StopModeEStartupWarmupIfPending()
+        {
+            if (modeEStartupWarmupCoroutine != null)
+            {
+                StopCoroutine(modeEStartupWarmupCoroutine);
+                modeEStartupWarmupCoroutine = null;
+            }
+
+            modeEStartupWarmupSceneName = null;
+        }
+
         private bool TryRunModeEStartupWarmupStep(Action action, ModeEStartupProfiler profiler, string stageName, string errorContext, string sceneName)
         {
             try
@@ -783,6 +801,51 @@ namespace BossRush
             return TryConsumeModeEntryItem(flagItem, "ModeE", "营旗");
         }
 
+        private void ResetModeEStartupRecoveryState()
+        {
+            modeEStartupInventorySnapshot = null;
+            modeEStartupFlagTypeId = -1;
+            modeEStartupRecoveryArmed = false;
+            modeEStartupFirstBossSpawned = false;
+            modeEStartupHasPlayerPosition = false;
+            modeEStartupPlayerPosition = Vector3.zero;
+        }
+
+        private void ArmModeEStartupRecovery(HashSet<int> startupInventorySnapshot, int flagTypeId, Vector3 playerPosition)
+        {
+            modeEStartupInventorySnapshot = startupInventorySnapshot != null
+                ? new HashSet<int>(startupInventorySnapshot)
+                : null;
+            modeEStartupFlagTypeId = flagTypeId;
+            modeEStartupRecoveryArmed = true;
+            modeEStartupFirstBossSpawned = false;
+            modeEStartupHasPlayerPosition = true;
+            modeEStartupPlayerPosition = playerPosition;
+        }
+
+        private void DisarmModeEStartupRecovery(string reason)
+        {
+            if (!modeEStartupRecoveryArmed)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(reason))
+            {
+                DevLog("[ModeE] 启动验证通过，结束回滚监控: " + reason);
+            }
+
+            ResetModeEStartupRecoveryState();
+        }
+
+        private void MarkModeEStartupBossSpawned()
+        {
+            if (modeEStartupRecoveryArmed)
+            {
+                modeEStartupFirstBossSpawned = true;
+            }
+        }
+
         private bool CaptureModeEStartupInventorySnapshot(out HashSet<int> snapshot)
         {
             snapshot = new HashSet<int>();
@@ -829,6 +892,87 @@ namespace BossRush
                 DevLog("[ModeE] [WARNING] 捕获启动前物资快照失败: " + e.Message);
                 snapshot = null;
                 return false;
+            }
+        }
+
+        private bool TryCaptureModeEStartupPlayerPosition(out Vector3 playerPosition)
+        {
+            playerPosition = Vector3.zero;
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.transform == null)
+                {
+                    DevLog("[ModeE] [WARNING] 无法记录启动前玩家位置：玩家或 transform 为空");
+                    return false;
+                }
+
+                playerPosition = player.transform.position;
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 记录启动前玩家位置失败: " + e.Message);
+                playerPosition = Vector3.zero;
+                return false;
+            }
+        }
+
+        private bool TryRestoreModeEStartupPlayerPosition(Vector3 playerPosition)
+        {
+            CharacterController cc = null;
+            bool controllerWasEnabled = false;
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.transform == null)
+                {
+                    DevLog("[ModeE] [WARNING] 恢复启动前玩家位置失败：玩家或 transform 为空");
+                    return false;
+                }
+
+                cc = player.GetComponent<CharacterController>();
+                if (cc != null)
+                {
+                    controllerWasEnabled = cc.enabled;
+                    if (controllerWasEnabled)
+                    {
+                        cc.enabled = false;
+                    }
+                }
+
+                try
+                {
+                    player.SetPosition(playerPosition);
+                }
+                catch (Exception setPositionEx)
+                {
+                    DevLog("[ModeE] [WARNING] 恢复玩家位置时 SetPosition 失败，改用 transform.position: " + setPositionEx.Message);
+                    player.transform.position = playerPosition;
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 恢复启动前玩家位置失败: " + e.Message);
+                return false;
+            }
+            finally
+            {
+                if (cc != null)
+                {
+                    try
+                    {
+                        cc.enabled = controllerWasEnabled;
+                    }
+                    catch (Exception e)
+                    {
+                        DevLog("[ModeE] [WARNING] 恢复玩家位置后还原 CharacterController 状态失败: " + e.Message);
+                    }
+                }
             }
         }
 
@@ -975,33 +1119,112 @@ namespace BossRush
             return refunded;
         }
 
-        private void ShowModeEStartupFailureRecoveryMessage(bool rollbackSucceeded, bool refunded)
+        private bool HandleModeEStartupFailureRecovery(string reason)
+        {
+            if (!modeEStartupRecoveryArmed)
+            {
+                DevLog("[ModeE] [WARNING] 启动失败，但未找到可用的回滚上下文: " + reason);
+                return false;
+            }
+
+            HashSet<int> startupInventorySnapshot = modeEStartupInventorySnapshot != null
+                ? new HashSet<int>(modeEStartupInventorySnapshot)
+                : null;
+            int consumedFlagTypeId = modeEStartupFlagTypeId;
+            bool hasPlayerPosition = modeEStartupHasPlayerPosition;
+            Vector3 startupPlayerPosition = modeEStartupPlayerPosition;
+
+            DevLog("[ModeE] [WARNING] " + reason + "，开始回滚启动现场");
+            StopModeEStartupWarmupIfPending();
+            ResetModeEStartupRecoveryState();
+
+            try
+            {
+                if (modeEActive)
+                {
+                    EndModeE(false);
+                }
+            }
+            catch (Exception cleanupException)
+            {
+                DevLog("[ModeE] [WARNING] 启动失败后的 EndModeE 清理异常: " + cleanupException.Message);
+            }
+
+            bool restoredPlayerPosition = !hasPlayerPosition || TryRestoreModeEStartupPlayerPosition(startupPlayerPosition);
+            bool rollbackSucceeded = RollbackModeEStartupInventory(startupInventorySnapshot);
+            bool refunded = TryRefundModeEStartupFlag(consumedFlagTypeId);
+            ShowModeEStartupFailureRecoveryMessage(rollbackSucceeded, refunded, restoredPlayerPosition);
+            return false;
+        }
+
+        private void ShowModeEStartupFailureRecoveryMessage(bool rollbackSucceeded, bool refunded, bool restoredPlayerPosition)
         {
             string chineseMessage;
             string englishMessage;
 
-            if (rollbackSucceeded && refunded)
+            if (rollbackSucceeded && refunded && restoredPlayerPosition)
             {
-                chineseMessage = "划地为营模式启动失败，已回滚启动物资并返还营旗。";
-                englishMessage = "Faction Battle start failed. Startup items were rolled back and the faction flag was refunded.";
-            }
-            else if (rollbackSucceeded)
-            {
-                chineseMessage = "划地为营模式启动失败，已回滚启动物资，但营旗返还失败，请查看日志。";
-                englishMessage = "Faction Battle start failed. Startup items were rolled back, but the faction flag refund failed. Check the log.";
-            }
-            else if (refunded)
-            {
-                chineseMessage = "划地为营模式启动失败，已返还营旗，但启动物资回滚失败，请查看日志。";
-                englishMessage = "Faction Battle start failed. The faction flag was refunded, but startup item rollback failed. Check the log.";
+                chineseMessage = "划地为营模式启动失败，已恢复玩家位置、回滚启动物资并返还营旗。";
+                englishMessage = "Faction Battle start failed. Player position was restored, startup items were rolled back, and the faction flag was refunded.";
             }
             else
             {
-                chineseMessage = "划地为营模式启动失败，且启动物资回滚与营旗返还均失败，请查看日志。";
-                englishMessage = "Faction Battle start failed, and both startup item rollback and faction flag refund failed. Check the log.";
+                chineseMessage = "划地为营模式启动失败，已尝试恢复玩家位置、回滚启动物资并返还营旗；其中部分恢复失败，请查看日志。";
+                englishMessage = "Faction Battle start failed. Player position restore, startup rollback, and faction flag refund were attempted, but some recovery steps failed. Check the log.";
             }
 
             ShowMessage(L10n.T(chineseMessage, englishMessage));
+        }
+
+        private IEnumerator WaitForModeEStartupVerification(Action<bool> onCompleted)
+        {
+            bool verified = false;
+
+            try
+            {
+                if (!modeEStartupRecoveryArmed)
+                {
+                    yield break;
+                }
+
+                float deadline = Time.unscaledTime + MODEE_STARTUP_VERIFICATION_TIMEOUT_SECONDS;
+                while (Time.unscaledTime < deadline)
+                {
+                    if (modeEStartupFirstBossSpawned || modeESpawnResolved > 0 || modeEAliveEnemies.Count > 0)
+                    {
+                        DisarmModeEStartupRecovery("已检测到首个成功生成的Boss");
+                        verified = true;
+                        break;
+                    }
+
+                    if (!modeEActive)
+                    {
+                        HandleModeEStartupFailureRecovery("Mode E 在启动验证阶段提前退出");
+                        break;
+                    }
+
+                    yield return null;
+                }
+
+                if (!verified && modeEStartupRecoveryArmed)
+                {
+                    if (modeEStartupFirstBossSpawned || modeESpawnResolved > 0 || modeEAliveEnemies.Count > 0)
+                    {
+                        DisarmModeEStartupRecovery("超时前已检测到成功生成的Boss");
+                        verified = true;
+                    }
+                    else
+                    {
+                        HandleModeEStartupFailureRecovery(
+                            "Mode E 启动验证超时，未检测到任何成功生成的Boss (resolved="
+                            + modeESpawnResolved + "/" + modeETotalSpawnExpected + ")");
+                    }
+                }
+            }
+            finally
+            {
+                onCompleted?.Invoke(verified);
+            }
         }
 
         /// <summary>
@@ -1011,11 +1234,13 @@ namespace BossRush
         {
             ModeEStartupProfiler profiler = new ModeEStartupProfiler("TryStartModeE");
             string profileStatus = "failed";
-            bool flagConsumed = false;
             int consumedFlagTypeId = -1;
             HashSet<int> startupInventorySnapshot = null;
+            Vector3 startupPlayerPosition = Vector3.zero;
             try
             {
+                ResetModeEStartupRecoveryState();
+
                 // 互斥保护：Mode D 已激活时不启动 Mode E
                 if (modeDActive)
                 {
@@ -1043,6 +1268,16 @@ namespace BossRush
                     ShowMessage(L10n.T(
                         "划地为营模式需要裸装入场！请清空所有装备后重试。",
                         "Faction Battle requires naked entry! Please remove all equipment."
+                    ));
+                    return false;
+                }
+
+                if (!TryCaptureModeEStartupPlayerPosition(out startupPlayerPosition))
+                {
+                    profileStatus = "failed: player position capture failed";
+                    ShowMessage(L10n.T(
+                        "划地为营模式启动失败：无法记录玩家当前位置。",
+                        "Faction Battle start failed: unable to capture the player's current position."
                     ));
                     return false;
                 }
@@ -1077,7 +1312,7 @@ namespace BossRush
                     ));
                     return false;
                 }
-                flagConsumed = true;
+                ArmModeEStartupRecovery(startupInventorySnapshot, consumedFlagTypeId, startupPlayerPosition);
                 profiler.Mark("ConsumeFactionFlag");
 
                 // 启动 Mode E
@@ -1085,10 +1320,8 @@ namespace BossRush
                 profiler.Mark("StartModeE");
                 if (!started)
                 {
-                    bool rollbackSucceeded = RollbackModeEStartupInventory(startupInventorySnapshot);
-                    bool refunded = flagConsumed && TryRefundModeEStartupFlag(consumedFlagTypeId);
-                    profileStatus = "failed: startup rollback=" + rollbackSucceeded + ", refund=" + refunded;
-                    ShowModeEStartupFailureRecoveryMessage(rollbackSucceeded, refunded);
+                    profileStatus = "failed: startup rejected after consume";
+                    HandleModeEStartupFailureRecovery("StartModeE 返回失败");
                     return false;
                 }
                 profileStatus = "success";
@@ -1097,12 +1330,10 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] TryStartModeE 失败: " + e.Message);
-                if (flagConsumed)
+                if (modeEStartupRecoveryArmed)
                 {
-                    bool rollbackSucceeded = RollbackModeEStartupInventory(startupInventorySnapshot);
-                    bool refunded = TryRefundModeEStartupFlag(consumedFlagTypeId);
-                    ShowModeEStartupFailureRecoveryMessage(rollbackSucceeded, refunded);
-                    profileStatus = "failed: exception rollback=" + rollbackSucceeded + ", refund=" + refunded;
+                    HandleModeEStartupFailureRecovery("TryStartModeE 异常: " + e.Message);
+                    profileStatus = "failed: exception recovery invoked";
                 }
                 return false;
             }

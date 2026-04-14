@@ -2222,11 +2222,22 @@ namespace BossRush
                 ClearEnemiesForBossRush();
                 
                 yield return new UnityEngine.WaitForSeconds(0.5f);
-                TryStartModeE();
-                SpawnCommonNPCs("GroundZero场景 Mode E 初始化完成");
-                ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "GroundZero场景 Mode E 初始化完成");
-                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
-                yield break;
+                bool startedModeE = TryStartModeE();
+                if (startedModeE)
+                {
+                    bool verifiedModeE = false;
+                    yield return StartCoroutine(WaitForModeEStartupVerification(result => verifiedModeE = result));
+                    if (verifiedModeE)
+                    {
+                        SpawnCommonNPCs("GroundZero场景 Mode E 初始化完成");
+                        ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "GroundZero场景 Mode E 初始化完成");
+                        BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                        yield break;
+                    }
+                }
+
+                StopModeEStartupWarmupIfPending();
+                DevLog("[BossRush] [WARNING] SetupBossRushInGroundZero: Mode E 启动未通过验证，回退到普通 BossRush 初始化流程");
             }
 
             // Mode F 提前分支：复用 DEMO 的初始化顺序，跳过普通 BossRush 竞技场入口流程

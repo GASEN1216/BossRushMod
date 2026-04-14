@@ -3576,11 +3576,22 @@ namespace BossRush
                 ClearEnemiesForBossRush();
                 
                 yield return new UnityEngine.WaitForSeconds(0.5f);
-                TryStartModeE();
-                SpawnCommonNPCs("DEMO场景 Mode E 初始化完成");
-                ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "DEMO场景 Mode E 初始化完成");
-                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
-                yield break;
+                bool startedModeE = TryStartModeE();
+                if (startedModeE)
+                {
+                    bool verifiedModeE = false;
+                    yield return StartCoroutine(WaitForModeEStartupVerification(result => verifiedModeE = result));
+                    if (verifiedModeE)
+                    {
+                        SpawnCommonNPCs("DEMO场景 Mode E 初始化完成");
+                        ScheduleRestoreFollowingSpouse(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "DEMO场景 Mode E 初始化完成");
+                        BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                        yield break;
+                    }
+                }
+
+                StopModeEStartupWarmupIfPending();
+                DevLog("[BossRush] [WARNING] Mode E 启动未通过验证，回退到普通 BossRush DEMO 初始化流程");
             }
 
             // Mode F 提前分支：复用 Mode E 的地图初始化，叠加 Mode F 状态机
