@@ -266,36 +266,53 @@ namespace BossRush
                 return;
             }
 
-            if (NurseHealingService.PerformHealing(cost))
+            NurseHealingService.HealingExecutionResult result = NurseHealingService.PerformHealing(cost);
+            switch (result)
             {
-                int level = NPCExceptionHandler.TryExecute(
-                    () => AffinityManager.GetLevel("nurse_yuzhi"),
-                    "NurseHealInteractable.ExecuteHealing.GetAffinityLevel",
-                    1,
-                    logException: false);
+                case NurseHealingService.HealingExecutionResult.Success:
+                    int level = NPCExceptionHandler.TryExecute(
+                        () => AffinityManager.GetLevel("nurse_yuzhi"),
+                        "NurseHealInteractable.ExecuteHealing.GetAffinityLevel",
+                        1,
+                        logException: false);
 
-                string specialDialogue = NPCDialogueSystem.GetSpecialDialogue("nurse_yuzhi", "heal_success", level);
-                if (controller != null)
-                {
-                    controller.ShowDialogueBubble(specialDialogue);
-                    EndDialogueWithMark(10f);
-                }
+                    string specialDialogue = NPCDialogueSystem.GetSpecialDialogue("nurse_yuzhi", "heal_success", level);
+                    if (controller != null)
+                    {
+                        controller.ShowDialogueBubble(specialDialogue);
+                        EndDialogueWithMark(10f);
+                    }
 
-                ModBehaviour.DevLog("[NurseNPC] 治疗成功，费用: " + cost);
-            }
-            else
-            {
-                string failedText = L10n.T(
-                    "治疗过程中出现问题，请稍后再试。",
-                    "Something went wrong during treatment. Please try again.");
+                    ModBehaviour.DevLog("[NurseNPC] 治疗成功，费用: " + cost);
+                    break;
 
-                if (controller != null)
-                {
-                    controller.ShowDialogueBubble(failedText);
-                    EndDialogueWithMark(5f);
-                }
+                case NurseHealingService.HealingExecutionResult.PartialSuccess:
+                    string partialSuccessText = L10n.T(
+                        "先稳住了，但还没完全好。别硬撑，再来找我。",
+                        "You're stable, but not fully healed. Don't push it. Come back to me.");
 
-                ModBehaviour.DevLog("[NurseNPC] 治疗失败。");
+                    if (controller != null)
+                    {
+                        controller.ShowDialogueBubble(partialSuccessText);
+                        EndDialogueWithMark(10f);
+                    }
+
+                    ModBehaviour.DevLog("[NurseNPC] 治疗部分成功，费用: " + cost + "，已提醒玩家尚未完全治愈。");
+                    break;
+
+                default:
+                    string failedText = L10n.T(
+                        "这次治疗没能完全处理好，稍后再来找我看看吧。",
+                        "I couldn't finish the treatment this time. Come back and let me check again in a bit.");
+
+                    if (controller != null)
+                    {
+                        controller.ShowDialogueBubble(failedText);
+                        EndDialogueWithMark(5f);
+                    }
+
+                    ModBehaviour.DevLog("[NurseNPC] 治疗未完成。");
+                    break;
             }
 
             UpdateHealOptionName();

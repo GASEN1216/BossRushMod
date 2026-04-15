@@ -18,6 +18,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using BossRush.Utils;
 using UnityEngine;
 
 namespace BossRush
@@ -335,6 +336,9 @@ namespace BossRush
             {
                 UnregisterWeddingBuildingEvents();
                 SetWeddingBuildingPresence(false);
+                AssetBundleUnloadHelper.TryUnload(weddingAssetBundle, "[WeddingBuilding]");
+                weddingAssetBundle = null;
+                weddingModelPrefab = null;
                  
                 // 清理NPC实例
                 if (weddingNPCInstance != null)
@@ -431,7 +435,7 @@ namespace BossRush
                     
                     if (weddingAssetBundle != null)
                     {
-                        weddingAssetBundle.Unload(false);
+                        AssetBundleUnloadHelper.TryUnload(weddingAssetBundle, "[WeddingBuilding]");
                         weddingAssetBundle = null;
                     }
                     

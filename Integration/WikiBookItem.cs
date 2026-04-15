@@ -11,6 +11,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using BossRush.Utils;
 using UnityEngine;
 using Duckov.ItemUsage;
 using ItemStatsSystem;
@@ -145,6 +146,7 @@ namespace BossRush
         /// <returns>是否加载成功</returns>
         private bool LoadWikiAssetBundle()
         {
+            AssetBundle bundle = null;
             try
             {
                 string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
@@ -157,26 +159,7 @@ namespace BossRush
                     return false;
                 }
                 
-                // 通过反射加载 AssetBundle（与 BirthdayCakeItem 保持一致）
-                Type assetBundleType = Type.GetType("UnityEngine.AssetBundle, UnityEngine.AssetBundleModule");
-                if (assetBundleType == null)
-                {
-                    assetBundleType = Type.GetType("UnityEngine.AssetBundle, UnityEngine");
-                }
-                if (assetBundleType == null)
-                {
-                    DevLog("[WikiBook] 无法找到 AssetBundle 类型");
-                    return false;
-                }
-                
-                MethodInfo loadFromFile = assetBundleType.GetMethod("LoadFromFile", new Type[] { typeof(string) });
-                if (loadFromFile == null)
-                {
-                    DevLog("[WikiBook] 未找到 LoadFromFile 方法");
-                    return false;
-                }
-                
-                object bundle = loadFromFile.Invoke(null, new object[] { bundlePath });
+                bundle = AssetBundle.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     DevLog("[WikiBook] 加载 AssetBundle 失败: " + bundlePath);
@@ -184,29 +167,18 @@ namespace BossRush
                 }
                 
                 // 获取所有资源名称（用于调试）
-                MethodInfo getAllAssetNames = assetBundleType.GetMethod("GetAllAssetNames");
-                if (getAllAssetNames != null)
+                string[] assetNames = bundle.GetAllAssetNames();
+                if (assetNames != null)
                 {
-                    string[] assetNames = getAllAssetNames.Invoke(bundle, null) as string[];
-                    if (assetNames != null)
+                    DevLog("[WikiBook] AssetBundle 包含 " + assetNames.Length + " 个资源:");
+                    foreach (string name in assetNames)
                     {
-                        DevLog("[WikiBook] AssetBundle 包含 " + assetNames.Length + " 个资源:");
-                        foreach (string name in assetNames)
-                        {
-                            DevLog("  - " + name);
-                        }
+                        DevLog("  - " + name);
                     }
                 }
                 
                 // 加载所有 GameObject 资源
-                MethodInfo loadAllAssets = assetBundleType.GetMethod("LoadAllAssets", new Type[] { typeof(Type) });
-                if (loadAllAssets == null)
-                {
-                    DevLog("[WikiBook] 未找到 LoadAllAssets 方法");
-                    return false;
-                }
-                
-                UnityEngine.Object[] assets = loadAllAssets.Invoke(bundle, new object[] { typeof(GameObject) }) as UnityEngine.Object[];
+                UnityEngine.Object[] assets = bundle.LoadAllAssets<GameObject>();
                 if (assets == null || assets.Length == 0)
                 {
                     DevLog("[WikiBook] AssetBundle 中未找到任何 GameObject");
@@ -252,6 +224,10 @@ namespace BossRush
             {
                 DevLog("[WikiBook] 加载 AssetBundle 异常: " + e.Message);
                 return false;
+            }
+            finally
+            {
+                AssetBundleUnloadHelper.TryUnload(bundle, "[WikiBook]");
             }
         }
         

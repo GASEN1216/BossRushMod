@@ -190,6 +190,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Constants\GoblinNPCConstants.cs ^
     Integration\Constants\GoblinMovementConstants.cs ^
     Integration\Constants\NurseNPCConstants.cs ^
+    Utilities\AssetBundleUnloadHelper.cs ^
     Integration\Utils\NPCExceptionHandler.cs ^
     Integration\Utils\NPCAssetBundleHelper.cs ^
     Integration\Utils\NPCUIAssetCache.cs ^

@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using BossRush.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Duckov.ItemUsage;
@@ -384,6 +385,7 @@ namespace BossRush
             }
             dynamicItemsInitialized = true;
 
+            AssetBundle bundle = null;
             try
             {
                 string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
@@ -396,41 +398,15 @@ namespace BossRush
                     return;
                 }
 
-                // 通过反射加载 AssetBundle，避免编译期依赖 UnityEngine.AssetBundleModule
-                Type assetBundleType = Type.GetType("UnityEngine.AssetBundle, UnityEngine.AssetBundleModule");
-                if (assetBundleType == null)
-                {
-                    assetBundleType = Type.GetType("UnityEngine.AssetBundle, UnityEngine");
-                }
-                if (assetBundleType == null)
-                {
-                    DevLog("[BossRush] 无法找到 UnityEngine.AssetBundle 类型，跳过动态物品加载");
-                    return;
-                }
-
-                MethodInfo loadFromFile = assetBundleType.GetMethod("LoadFromFile", new Type[] { typeof(string) });
-                if (loadFromFile == null)
-                {
-                    DevLog("[BossRush] 未找到 AssetBundle.LoadFromFile 方法，跳过动态物品加载");
-                    return;
-                }
-
-                object bundle = loadFromFile.Invoke(null, new object[] { bundlePath });
+                bundle = AssetBundle.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
-                    DevLog("[BossRush] 反射调用 LoadFromFile 失败: " + bundlePath);
-                    return;
-                }
-
-                MethodInfo loadAllAssets = assetBundleType.GetMethod("LoadAllAssets", new Type[] { typeof(Type) });
-                if (loadAllAssets == null)
-                {
-                    DevLog("[BossRush] 未找到 AssetBundle.LoadAllAssets(Type) 方法，跳过动态物品加载");
+                    DevLog("[BossRush] AssetBundle.LoadFromFile 失败: " + bundlePath);
                     return;
                 }
 
                 // 加载所有资源，然后从 GameObject 中查找挂载的 Item 组件
-                UnityEngine.Object[] assets = loadAllAssets.Invoke(bundle, new object[] { typeof(UnityEngine.Object) }) as UnityEngine.Object[];
+                UnityEngine.Object[] assets = bundle.LoadAllAssets<UnityEngine.Object>();
                 if (assets == null || assets.Length == 0)
                 {
                     DevLog("[BossRush] bossrush_ticket AssetBundle 中未找到任何资源");
@@ -469,6 +445,11 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[BossRush] InitializeDynamicItems 出错: " + e.Message);
+            }
+            finally
+            {
+                // 资源已完成加载和注册，释放 bundle 句柄即可。
+                AssetBundleUnloadHelper.TryUnload(bundle, "[BossRush]");
             }
             
             // 初始化 ItemFactory（加载消耗品等非装备类物品）

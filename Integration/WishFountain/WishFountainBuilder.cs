@@ -18,6 +18,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using BossRush.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -158,6 +159,9 @@ namespace BossRush
 
                 ResetStarwishPreparedBuildingCache();
                 UnregisterStarwishBuildingEvents();
+                AssetBundleUnloadHelper.TryUnload(starwishAssetBundle, "[WishFountain]");
+                starwishAssetBundle = null;
+                starwishModelPrefab = null;
                 DevLog("[WishFountain] 布满了灰尘的星愿许愿台建筑系统已清理");
             }
             catch (Exception e)
@@ -232,7 +236,7 @@ namespace BossRush
 
                 if (starwishAssetBundle != null)
                 {
-                    starwishAssetBundle.Unload(false);
+                    AssetBundleUnloadHelper.TryUnload(starwishAssetBundle, "[WishFountain]");
                     starwishAssetBundle = null;
                 }
 

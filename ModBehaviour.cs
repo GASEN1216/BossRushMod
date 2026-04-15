@@ -3375,6 +3375,10 @@ namespace BossRush
             }
 
             OnDestroy_Integration();
+            if (ReferenceEquals(Instance, this))
+            {
+                Instance = null;
+            }
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

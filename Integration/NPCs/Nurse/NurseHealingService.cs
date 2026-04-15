@@ -464,11 +464,21 @@ namespace BossRush
         // ============================================================================
 
         /// <summary>
-        /// 执行治疗（扣费 + 回满血 + 清除Debuff）
+        /// 执行治疗（扣费后尝试回血，并在适用时清除可治疗 Debuff）
         /// </summary>
         /// <param name="cost">期望扣费金额（将以实时报价为准）</param>
-        /// <returns>治疗是否成功</returns>
-        public static bool PerformHealing(int cost)
+        public enum HealingExecutionResult
+        {
+            /// <summary>没有产生有效治疗结果，必要时会尝试退款。</summary>
+            Failure,
+            /// <summary>治疗产生了部分效果，但仍有未解决的治疗目标。</summary>
+            PartialSuccess,
+            /// <summary>本次治疗目标已全部完成。</summary>
+            Success
+        }
+
+        /// <returns>治疗执行结果</returns>
+        public static HealingExecutionResult PerformHealing(int cost)
         {
             int finalCost = 0;
             bool paymentDeducted = false;
@@ -479,26 +489,26 @@ namespace BossRush
                 if (!TryBuildHealingQuote(out quote, true))
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 无法获取玩家状态");
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
 
                 if (quote.Status == HealingStatus.FullHealthNoDebuff)
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗取消: 当前不需要治疗");
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
 
                 if (quote.Status == HealingStatus.InsufficientFunds)
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 资金不足");
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
 
                 finalCost = quote.Cost;
                 if (finalCost <= 0)
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 非法费用 " + finalCost);
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
 
                 if (cost > 0 && cost != finalCost)
@@ -510,13 +520,13 @@ namespace BossRush
                 if (targetPlayer == null || targetPlayer.Health == null)
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 扣费前玩家或Health组件为null");
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
 
                 if (!DeductMoney(finalCost))
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 扣费失败");
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
                 paymentDeducted = true;
 
@@ -525,7 +535,7 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 扣费后玩家上下文发生变化，尝试退款");
                     TryRefundMoney(finalCost, "玩家上下文变化");
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
 
                 bool shouldClearDebuffs = quote.HasDebuffs;
@@ -540,19 +550,38 @@ namespace BossRush
                     {
                         TryRefundMoney(finalCost, "治疗回血未生效");
                     }
-                    return false;
+                    return HealingExecutionResult.Failure;
                 }
 
-                int debuffsCleared = ClearAllDebuffs(player);
-                if (shouldClearDebuffs && HasDebuffsInternal(player))
+                int debuffsCleared = 0;
+                bool debuffsRemain = false;
+                if (shouldClearDebuffs)
                 {
-                    player.Health.SetHealth(oldHealth);
-                    ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: Debuff 未清除干净，尝试退款");
-                    if (paymentDeducted && finalCost > 0)
+                    debuffsCleared = ClearAllDebuffs(player);
+                    debuffsRemain = HasDebuffsInternal(player);
+                }
+
+                bool restoredHealth = maxHealth - oldHealth > HEALTH_EPSILON;
+                if (shouldClearDebuffs && debuffsRemain)
+                {
+                    bool partialBenefitApplied = restoredHealth || debuffsCleared > 0;
+                    if (!partialBenefitApplied)
                     {
-                        TryRefundMoney(finalCost, "Debuff清除失败");
+                        ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: Debuff 未清除干净且未产生有效治疗，尝试退款");
+                        if (paymentDeducted && finalCost > 0)
+                        {
+                            TryRefundMoney(finalCost, "Debuff清除失败");
+                        }
+                        return HealingExecutionResult.Failure;
                     }
-                    return false;
+
+                    treatmentApplied = true;
+                    ModBehaviour.DevLog(
+                        LOG_PREFIX + "治疗部分成功! 费用: " + finalCost +
+                        ", HP恢复: " + (maxHealth - oldHealth).ToString("F1") +
+                        ", Debuff清除: " + debuffsCleared +
+                        ", 剩余Debuff: true");
+                    return HealingExecutionResult.PartialSuccess;
                 }
 
                 treatmentApplied = true;
@@ -562,7 +591,7 @@ namespace BossRush
                     ", HP恢复: " + (maxHealth - oldHealth).ToString("F1") +
                     ", Debuff清除: " + debuffsCleared);
 
-                return true;
+                return HealingExecutionResult.Success;
             }
             catch (Exception e)
             {
@@ -571,7 +600,7 @@ namespace BossRush
                     TryRefundMoney(finalCost, "治疗执行异常");
                 }
                 NPCExceptionHandler.LogAndIgnore(e, "NurseHealingService.PerformHealing");
-                return false;
+                return HealingExecutionResult.Failure;
             }
         }
 

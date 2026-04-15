@@ -1176,7 +1176,7 @@ namespace BossRush
             ShowMessage(L10n.T(chineseMessage, englishMessage));
         }
 
-        private IEnumerator WaitForModeEStartupVerification(Action<bool> onCompleted)
+        private System.Collections.IEnumerator WaitForModeEStartupVerification(Action<bool> onCompleted)
         {
             bool verified = false;
 

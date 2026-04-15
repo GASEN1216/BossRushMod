@@ -1084,7 +1084,8 @@ namespace BossRush
                         }
                     }
                 }
-                item.SetFloat("ReforgeCount", count, false);
+                // 首次重铸时需要允许创建变量，否则原版会直接打 Error 并丢失计数。
+                item.SetFloat("ReforgeCount", count, true);
             }
             catch (Exception e)
             {
@@ -1264,11 +1265,12 @@ namespace BossRush
         /// </summary>
         private static int GenerateRandomSeed(string userId, int itemId)
         {
-            // 使用当前时间（秒级）+ 用户ID哈希 + 物品ID
-            int timeSeed = (int)(DateTime.Now.Ticks / TimeSpan.TicksPerSecond);
+            // 使用更细粒度的时间与运行时种子，避免同一秒内连续重铸复现相同随机序列。
+            int timeSeed = unchecked((int)DateTime.UtcNow.Ticks);
+            int runtimeSeed = Environment.TickCount;
             int userSeed = string.IsNullOrEmpty(userId) ? 0 : userId.GetHashCode();
             
-            return timeSeed ^ userSeed ^ itemId;
+            return timeSeed ^ runtimeSeed ^ userSeed ^ itemId;
         }
         
         /// <summary>

@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using BossRush.Utils;
 using UnityEngine;
 using Duckov.ItemUsage;
 using Duckov.Buffs;
@@ -107,6 +108,7 @@ namespace BossRush
             }
             birthdayCakeInitialized = true;
             
+            AssetBundle bundle = null;
             try
             {
                 string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
@@ -119,40 +121,14 @@ namespace BossRush
                     return;
                 }
                 
-                // 通过反射加载 AssetBundle
-                Type assetBundleType = Type.GetType("UnityEngine.AssetBundle, UnityEngine.AssetBundleModule");
-                if (assetBundleType == null)
-                {
-                    assetBundleType = Type.GetType("UnityEngine.AssetBundle, UnityEngine");
-                }
-                if (assetBundleType == null)
-                {
-                    DevLog("[BirthdayCake] 无法找到 AssetBundle 类型");
-                    return;
-                }
-                
-                MethodInfo loadFromFile = assetBundleType.GetMethod("LoadFromFile", new Type[] { typeof(string) });
-                if (loadFromFile == null)
-                {
-                    DevLog("[BirthdayCake] 未找到 LoadFromFile 方法");
-                    return;
-                }
-                
-                object bundle = loadFromFile.Invoke(null, new object[] { bundlePath });
+                bundle = AssetBundle.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     DevLog("[BirthdayCake] 加载 AssetBundle 失败: " + bundlePath);
                     return;
                 }
-                
-                MethodInfo loadAllAssets = assetBundleType.GetMethod("LoadAllAssets", new Type[] { typeof(Type) });
-                if (loadAllAssets == null)
-                {
-                    DevLog("[BirthdayCake] 未找到 LoadAllAssets 方法");
-                    return;
-                }
-                
-                UnityEngine.Object[] assets = loadAllAssets.Invoke(bundle, new object[] { typeof(UnityEngine.Object) }) as UnityEngine.Object[];
+
+                UnityEngine.Object[] assets = bundle.LoadAllAssets<UnityEngine.Object>();
                 if (assets == null || assets.Length == 0)
                 {
                     DevLog("[BirthdayCake] AssetBundle 中未找到任何资源");
@@ -188,6 +164,10 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[BirthdayCake] 初始化失败: " + e.Message);
+            }
+            finally
+            {
+                AssetBundleUnloadHelper.TryUnload(bundle, "[BirthdayCake]");
             }
         }
         
