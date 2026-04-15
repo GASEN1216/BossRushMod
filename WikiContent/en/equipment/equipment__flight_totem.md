@@ -7,7 +7,7 @@
 ### Basic Info
 - Type: Totem
 - Quality: 6 (Legendary)
-- Drop source: Skyburner Dragon Lord (20% drop rate)
+- Drop source: Skyburner Dragon Lord (15% drop rate)
 - Death drop: Will not drop on death
 
 ### Flight Controls

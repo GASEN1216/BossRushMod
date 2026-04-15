@@ -232,7 +232,7 @@ namespace BossRush
                         
                         // 真情流露
                         L10n.T("哇...真好看。谢、谢谢你。", "Wow... it's really beautiful. Th-thank you."),
-                        L10n.T("这个比J-Lab里那些冷冰冰的器械顺眼多了。", "This is far gentler on the eyes than those cold instruments in J-Lab."),
+                        L10n.T("这个比以前那些冷冰冰的器械顺眼多了。", "This is far gentler on the eyes than those cold instruments I used to work with."),
                         L10n.T("你是第一个...会认真替我挑礼物的人。", "You're the first person to... seriously pick out a gift for me."),
                         L10n.T("我...真的很开心。", "I... really am happy."),
                         L10n.T("太好了——咳，我是说，确实不错。", "This is wonderful— ahem, I mean, it's quite nice."),
@@ -252,12 +252,12 @@ namespace BossRush
                         L10n.T("这份心意我会记很久的。嘴上不说，不代表我不在意。", "I'll remember this kindness for a long time. Just because I don't say it doesn't mean I don't care."),
                         L10n.T("谢谢你让我在这片硝烟里，还能觉得心里暖了一下。", "Thank you for making my heart feel a little warmer in the middle of all this smoke and ruin."),
                         L10n.T("这对心情的效果，比很多药都好。", "This works better on the heart than a lot of medicine does."),
-                        L10n.T("我在J-Lab看惯了冷脸，反而有点招架不住你的温柔。", "I got used to cold faces in J-Lab, so your kindness catches me off guard."),
+                        L10n.T("我看惯了冷脸，反而有点招架不住你的温柔。", "I got used to cold faces, so your kindness catches me off guard."),
                         
                         // 深情反应
                         L10n.T("这个真的很美。像...算了，我不说了。", "This is really beautiful. Like... never mind, I won't say it."),
                         L10n.T("哼，以后给你的折扣可以再多一点。...不是因为被收买了。", "Hmph. I can give you a slightly better discount from now on. ...Not because I've been bribed."),
-                        L10n.T("你让我觉得，当初拼命逃离J-Lab，确实是对的。", "You make me feel that struggling to escape J-Lab really was the right choice."),
+                        L10n.T("你让我觉得，当初拼命逃离那个地方，确实是对的。", "You make me feel that struggling to escape that place really was the right choice."),
                         L10n.T("每次收到你的礼物，我这一天都会轻松一点。", "Every time I receive something from you, my whole day feels a little lighter."),
                         L10n.T("我嘴上总是不饶人...但我心里是真的很感激你。", "My mouth is always sharper than it should be... but I truly am grateful to you."),
                         L10n.T("至少这一刻，我是真的在笑。", "At least in this moment, I'm really smiling.")
@@ -289,7 +289,7 @@ namespace BossRush
                         
                         // 委屈反应
                         L10n.T("我还以为...至少你会更懂一点。", "I thought... at least you'd understand me a little better than this."),
-                        L10n.T("这让我想起J-Lab那些让人反胃的废料。", "This reminds me of the kind of waste in J-Lab that made me sick just looking at it."),
+                        L10n.T("这让我想起以前那些让人反胃的废料。", "This reminds me of the kind of waste that made me sick just looking at it."),
                         L10n.T("你真觉得一个护士会喜欢这种东西？", "Do you really think a nurse would appreciate something like this?"),
                         L10n.T("我很失望。不是装的。", "I'm disappointed. And no, I'm not pretending."),
                         L10n.T("别再送我这种东西了，我不是垃圾桶。", "Don't bring me things like this again. I'm not a trash bin."),
@@ -304,7 +304,7 @@ namespace BossRush
                         // 失望反应
                         L10n.T("我原本还有点期待的...算了。", "I actually had some expectations... forget it."),
                         L10n.T("原来在你眼里，我只配收到这种东西。", "So this is the kind of thing you think suits me."),
-                        L10n.T("这种玩意儿，J-Lab的垃圾区都未必会留。", "Even the trash pits in J-Lab might not have bothered keeping something like this."),
+                        L10n.T("这种玩意儿，丢进废料堆都没人捡。", "Even the trash pits wouldn't bother keeping something like this."),
                         L10n.T("鸭科夫已经够让人疲惫了，别再拿这种东西给我添堵。", "Duckov is exhausting enough already. Don't add to it by putting this in my hands."),
                         L10n.T("我现在真的不想说话。走开。", "I really don't want to talk right now. Go away.")
                     };
@@ -348,7 +348,7 @@ namespace BossRush
                         L10n.T("作为护士，我对各种材料都挺有兴趣。", "As a nurse, I tend to be interested in all sorts of materials."),
                         L10n.T("这个...也许能做成药膏或者敷料。", "This... might be turned into an ointment or some kind of dressing."),
                         L10n.T("至少比战场上随手捡来的东西体面得多。", "At least it's far more decent than things scavenged off a battlefield."),
-                        L10n.T("在J-Lab的时候，从来没人会这样给我东西。", "Back in J-Lab, no one ever handed me things like this."),
+                        L10n.T("以前在实验室的时候，从来没人会这样给我东西。", "Back in the lab, no one ever handed me things like this."),
                         
                         // 背景相关
                         L10n.T("你...为什么总是对我这么好？...算了，你别回答。", "Why... are you always this kind to me? ...Forget it, don't answer that."),
@@ -387,7 +387,7 @@ namespace BossRush
                     L10n.T("你今天已经把我哄开心了，别得寸进尺。", "You've already succeeded in cheering me up today. Don't push your luck."),
                     L10n.T("礼物我已经放进柜子最里面了...这样才安全。", "I've already put the gift in the back of the cabinet... that's the safest place for it."),
                     L10n.T("收到这么好的东西，我今天大概都会心情不错。", "After receiving something this nice, I'll probably stay in a good mood all day."),
-                    L10n.T("在J-Lab的时候，从来没人会这样对我...所以我才会这么在意。", "Back in J-Lab, no one ever treated me like this... that's why it means so much to me."),
+                    L10n.T("以前从来没人会这样对我...所以我才会这么在意。", "No one ever treated me like this before... that's why it means so much to me."),
                     L10n.T("今天这份礼物已经够让我惦记一整天了。", "Today's gift is enough to stay on my mind for the rest of the day."),
                     L10n.T("明天再带吧，不然我会开始期待得太明显。", "Bring something tomorrow instead, or I might start looking too obviously expectant."),
                     L10n.T("你送的东西让我想起和平一点的日子...这就已经很好了。", "What you gave me reminds me of gentler days... and that's already more than enough."),
@@ -418,7 +418,7 @@ namespace BossRush
                     L10n.T("现在先别提礼物，我需要冷静一下。", "Don't bring up gifts right now. I need to calm down first."),
                     L10n.T("你今天就老实一点，别再挑战我的耐心。", "Behave yourself for the rest of the day and stop testing my patience."),
                     L10n.T("再送下去，我怕自己会说更难听的话。", "If you keep going, I'm afraid I'll start saying things even harsher than this."),
-                    L10n.T("我在J-Lab都没这么烦过，别逼我回想那些东西。", "Even in J-Lab I wasn't this irritated. Don't push me into remembering that kind of disgust."),
+                    L10n.T("我以前都没这么烦过，别逼我回想那些东西。", "Even before I wasn't this irritated. Don't push me into remembering that kind of disgust."),
                     L10n.T("今天到这里，别让我把火气迁到治疗费上。", "That's enough for today. Don't make me take this irritation out on your treatment bill."),
                     L10n.T("你要是真在意我，就别再拿这种东西来试我。", "If you really care about me, don't test me with things like that again."),
                     L10n.T("别想靠礼物蒙混过关，问题还摆在这儿。", "Don't think a new gift will smooth this over. The problem is still right here."),
@@ -669,13 +669,13 @@ namespace BossRush
                     L10n.T("看到你平安回来真好。来，让我看看有没有受伤。", "It's good to see you back safe. Come, let me check for injuries."),
                     L10n.T("你每次过来，我就...松一口气。别误会，只是少了个麻烦患者。", "Every time you come by, I feel... relieved. Don't misunderstand, just one less troublesome patient."),
                     L10n.T("今天的风很舒服呢...偶尔停下来休息也好。", "The breeze is nice today... it's okay to rest once in a while."),
-                    L10n.T("我...我以前在J-Lab的时候，从来没有人像你这样关心过我。", "I... when I was at J-Lab, no one ever cared about me like you do."),
+                    L10n.T("我...我以前在那里的时候，从来没有人像你这样关心过我。", "I... when I was back there, no one ever cared about me like you do."),
                     L10n.T("你想听我的故事吗？...也没什么好说的就是了。", "Want to hear my story? ...Not that there's much to tell."),
                     L10n.T("谢谢你...经常来看我。这里虽然危险，但有你在就觉得安心了一些。", "Thank you... for visiting me often. It's dangerous here, but I feel safer with you around."),
                     L10n.T("我给你泡了杯药草茶，对身体好的。快喝了。", "I made you some herbal tea, it's good for your health. Drink up."),
                     L10n.T("你知道吗，鸭科夫的夕阳很美。有时候我会在这里看很久...", "You know, the sunset in Duckov is beautiful. Sometimes I watch it for a long time..."),
                     L10n.T("如果...如果有一天你不来了，我大概会有点不习惯吧。", "If... if you stopped coming one day, I'd probably feel a bit lost."),
-                    L10n.T("在J-Lab的时候，我曾以为自己再也不会对谁敞开心扉了...", "When I was at J-Lab, I thought I'd never open up to anyone again..."),
+                    L10n.T("在那里的日子，我曾以为自己再也不会对谁敞开心扉了...", "When I was back there, I thought I'd never open up to anyone again..."),
                     L10n.T("你每次站在门口，我都会先看你有没有缺胳膊少腿。", "Every time you appear in the doorway, the first thing I do is check whether you're still in one piece."),
                     L10n.T("有些话我以前谁都不想说，但对你，好像没那么难。", "There are things I never wanted to say to anyone before, but with you... it doesn't feel so hard."),
                     L10n.T("如果你累了，就在这儿坐着，我不赶你。", "If you're tired, just sit here for a while. I'm not chasing you away."),
@@ -695,7 +695,7 @@ namespace BossRush
                     L10n.T("你怎么才来看我啊...我、我才没有在等你呢！", "What took you so long... I wasn't waiting for you or anything!"),
                     L10n.T("唔...你身上有血腥味。快过来让我检查，不许拒绝。", "Ugh... you smell like blood. Come here and let me check, no refusing."),
                     L10n.T("我特意给你留了最好的药，别跟别人说哦。", "I saved the best medicine for you, don't tell anyone."),
-                    L10n.T("有时候我会想...如果我们是在J-Lab之外认识的就好了。", "Sometimes I think... if only we had met outside of J-Lab."),
+                    L10n.T("有时候我会想...如果我们是在另一个世界认识的就好了。", "Sometimes I think... if only we had met in a different world."),
                     L10n.T("你今天不来我会担心的...啊不是！我是说我会很清闲的！", "I'd worry if you didn't come today... no wait! I mean I'd be bored!"),
                     L10n.T("给你，这是我特制的恢复药。只有你有哦...才不是偏心！", "Here, this is my special recovery medicine. Only for you... it's not favoritism!"),
                     L10n.T("你受伤的时候...我比谁都着急。所以你要好好保护自己。", "When you're hurt... I worry more than anyone. So please take care of yourself."),
@@ -751,7 +751,7 @@ namespace BossRush
                     L10n.T("累了就靠近一点吧。我这里有热药汤，也有位置留给你。", "If you're tired, come a little closer. I've got warm herbal soup, and a place saved for you."),
                     L10n.T("我会继续给你留灯，也会继续替你备药。这个习惯，我不打算改。", "I'll keep a light on for you, and I'll keep setting medicine aside. That's one habit I don't plan to change."),
                     L10n.T("以前我觉得自己只配站在灯下替别人止血。现在我也想替自己争一个“以后”。", "I used to think all I deserved was to stand under a lamp and stop other people's bleeding. Now I want to claim a future for myself too."),
-                    L10n.T("你总说我救了你，可如果没有你，我大概还困在J-Lab留下的影子里。", "You always say I saved you, but without you, I'd probably still be trapped in the shadow J-Lab left behind."),
+                    L10n.T("你总说我救了你，可如果没有你，我大概还困在过去的影子里。", "You always say I saved you, but without you, I'd probably still be trapped in the shadow of my past."),
                     L10n.T("你在的时候，连消毒水的味道都像是安静下来了。", "When you're here, even the smell of disinfectant seems to soften."),
                     L10n.T("我想和你一起看很多次日落，而不是每次都在门口匆匆告别。", "I want to watch many sunsets with you, instead of saying hurried goodbyes at the doorway every time."),
                     L10n.T("哪怕外面一直是战场，只要你回来，我这里就是春天。", "Even if the world outside stays a battlefield, when you come back, it becomes spring here."),
@@ -789,7 +789,7 @@ namespace BossRush
                     L10n.T("处理好了。真撑不住的时候，要第一时间来找我。", "You're patched up. If you really can't hold out, come find me first."),
                     L10n.T("别皱眉，只是包扎而已，还不至于把你送上手术台。", "Stop frowning. It's just bandaging, not enough to put you on an operating table."),
                     L10n.T("身体不是拿来硬扛的。下次记得早点撤。", "Your body isn't meant to be used for stubborn endurance. Next time, pull back sooner."),
-                    L10n.T("交给我就行。J-Lab留下来的东西，至少医术还算有用。", "Leave it to me. Of all the things J-Lab left behind, at least the medical training is still useful."),
+                    L10n.T("交给我就行。过去学到的东西，至少医术还算有用。", "Leave it to me. Of all the things from the past, at least the medical training is still useful."),
                     L10n.T("嗯，这次伤势不算重。但下次可不一定还有这么走运。", "Mm, your injuries aren't too serious this time. Next time, you may not be this lucky."),
                     L10n.T("好了，又能活蹦乱跳了。前提是你别再自己找伤。", "There, you can move around again. Assuming you don't go looking for new injuries."),
                     L10n.T("账我还是会记的...不过这次算你便宜点。", "I'm still keeping the bill on record... but I'll go easy on you this time."),
@@ -883,7 +883,7 @@ namespace BossRush
                         L10n.T("叮当...你现在过得好吗...", "Dingdang... are you doing well now..."),
                         L10n.T("这把钳子需要消毒...还有那个纱布也快用完了。", "This pair of forceps needs sterilizing... and that gauze is almost used up too."),
                         L10n.T("唉，羽毛又乱了。战场上保持体面真的好难...", "Sigh, my feathers are messy again. It's hard to stay presentable on a battlefield..."),
-                        L10n.T("J-Lab的事...不能再想了。这里才是我的现在。", "J-Lab stuff... I need to stop thinking about it. Here is my present."),
+                        L10n.T("以前的事...不能再想了。这里才是我的现在。", "The past... I need to stop thinking about it. Here is my present."),
                         L10n.T("今天有冒险者会来吗...希望不要太严重的伤势。", "Will any adventurers come today... hopefully no serious injuries."),
                         L10n.T("这个药方的配比好像可以优化一下...", "The ratio of this prescription could probably be optimized..."),
                         L10n.T("偶尔也想像普通的鸭子一样...安安静静地生活。", "Sometimes I wish I could live quietly... like an ordinary duck."),

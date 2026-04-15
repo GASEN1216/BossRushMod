@@ -64,7 +64,7 @@ Do not ignore the "Protect me, my child!" phase. Prioritize killing the Dragon D
 :::
 
 # Drops
-- Cloud Rider (Totem): 20% drop rate
+- Cloud Rider (Totem): 15% drop rate
 - Dragon King Crown (Helmet): 15% drop rate
 - Dragon King Scale Armor (Armor): 15% drop rate
 - Reverse Scale (Totem): 35% drop rate

@@ -79,7 +79,7 @@ When killing a custom Boss, in addition to the regular loot crate, exclusive equ
 - Dragon Breath (Firearm): 10% drop rate
 
 # Skyburner Dragon Lord
-- Cloud Rider (Totem): 20% drop rate
+- Cloud Rider (Totem): 15% drop rate
 - Dragon King Crown (Helmet): 15% drop rate
 - Dragon King Scale Armor (Armor): 15% drop rate
 - Reverse Scale (Totem): 35% drop rate

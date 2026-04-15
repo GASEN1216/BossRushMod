@@ -221,74 +221,210 @@ namespace BossRush
         };
 
         // 快递员随机对话（中英文对照）
-        // 包含：快递业务、世界观、龙皇Boss、叮当NPC、好感度系统、重铸系统、飞行图腾、成就系统、火龙相关
+        // 包含：全部mod内容的角色口吻提示——游戏模式、Boss、装备、物品、地图、NPC、系统、日常世界观
         private static readonly string[][] COURIER_DIALOGUES = new string[][]
         {
             // ============ 快递业务相关 ============
             new string[] { "补给到了……先把伞可乐灌了，灵魂别掉地上。", "Supplies arrived... drink your Umbrella Cola first, don't let your soul drop." },
-            new string[] { "有什么需要寄存的尽管找我，收费公道童叟无欺！", "Need to store anything? Come find me, fair prices for all!" },
+            new string[] { "有啥要寄存尽管来，我这人信得过，童叟无欺。", "Need to store something? Come find me. I've never lost a package." },
             new string[] { "有时候送的快也很重要，直接就把钱拿过来，概不赊账！", "Sometimes speed matters, just hand over the money, no credit!" },
             new string[] { "你要是能活到下一波，我给你盖个章，再塞你一瓶'有糖的'——有灵魂那种。", "If you survive the next wave, I'll stamp your card and slip you a 'sugared' one - the kind with soul." },
             new string[] { "我这把年纪了还在跑单，外星水熊虫母舰来了都得排队签收。", "At my age still running deliveries. Even alien tardigrade motherships have to queue for pickup." },
             new string[] { "签收方式：按爪印、按羽毛、或者交一块蓝色方块当押金。", "Sign for delivery: paw print, feather, or leave a blue cube as deposit." },
 
             // ============ 焚天龙皇Boss相关 ============
-            new string[] { "听说了吗？有人在深处见到了焚天龙皇...那可是龙族的王！", "Heard the news? Someone spotted the Dragon King in the depths... the king of all dragons!" },
-            new string[] { "焚天龙皇的鳞片能做成顶级装备，不过你得先活着把它打下来。", "Dragon King's scales make top-tier gear, but you gotta survive taking it down first." },
-            new string[] { "龙皇发怒的时候整个天都是红的，我的快递差点被烧成灰。", "When the Dragon King rages, the whole sky turns red. My deliveries almost got burned to ash." },
-            new string[] { "龙皇掉落的装备？飞行图腾、龙王之冕、龙王鳞铠、还有逆鳞...都是好东西。", "Dragon King drops? Flight Totem, Dragon Crown, Dragon Scale Armor, and Reverse Scale... all good stuff." },
-            new string[] { "别小看龙皇，它可是有好几个阶段的，每个阶段都够你喝一壶的。", "Don't underestimate the Dragon King, it has multiple phases, each one's a handful." },
+            new string[] { "深处那头龙皇……我送快递的时候撞见过一次，那气势，整个天都压下来了。", "The Dragon King in the depths... I bumped into it once on a delivery run. The pressure it gives off feels like the sky is collapsing." },
+            new string[] { "龙皇的鳞片那是真值钱，不过你得先有命把它剥下来。", "Dragon King scales are worth a fortune, but you need to be alive to peel them off." },
+            new string[] { "龙皇发怒那次，我正跑在路上，满天通红差点把快递连人一起烧成灰。", "When the Dragon King raged last time, I was mid-delivery. The whole sky turned red, almost burned me and the packages to ash." },
+            new string[] { "龙皇掉的东西都好——飞行图腾、龙王之冕、龙王鳞铠、逆鳞……但凡拿到一样都够吹一年。", "Everything the Dragon King drops is top-tier—Flight Totem, Dragon Crown, Scale Armor, Reverse Scale... just one piece and you can brag about it for a year." },
+            new string[] { "别小看龙皇，那家伙变了好几个阶段，每一阶段都够你喝一壶。别冲上去就莽。", "Don't underestimate the Dragon King. It has multiple phases and each one hits like a truck. Don't just charge in blindly." },
 
-            // ============ 火龙相关（保留） ============
-            new string[] { "看到那只到处乱创的火龙了吗？", "See that fire dragon causing chaos everywhere?" },
-            new string[] { "嗯...火龙怕毒，哪天毒死它", "Hmm... fire dragons fear poison. Maybe poison it someday." },
+            // ============ 火龙相关 ============
+            new string[] { "看到那只到处乱创的火龙了吗？离远点，烧坏了快递我找你赔。", "See that fire dragon causing chaos everywhere? Stay away from it. If it burns my deliveries, you're paying." },
+            new string[] { "火龙怕毒，这我是亲眼见过的。哪天你想对付它，记得备点带毒的家伙。", "Fire dragons fear poison. I've seen it with my own eyes. If you ever want to take it on, bring something toxic." },
             new string[] { "你知道火龙也怕冰吗？我有一次都把它打坠机了哈哈哈哈", "Did you know fire dragons also fear ice? I once made it crash land hahaha" },
             new string[] { "这该死的火龙把我的快递都创飞了", "That damn fire dragon knocked all my deliveries flying" },
             new string[] { "那头火龙在叽里咕噜的时候最好跑远点", "When that fire dragon starts gurgling, you better run far away" },
             new string[] { "离火龙太近可是会被炸的哦", "Get too close to the fire dragon and you'll get blown up" },
 
             // ============ 叮当NPC相关 ============
-            new string[] { "那个哥布林叮当？别看它长得怪，重铸手艺可是一绝。", "That goblin Dingdang? Don't let the looks fool you, its reforging skills are top-notch." },
-            new string[] { "叮当那家伙总是笑嘻嘻的，不过我总觉得那笑容背后藏着什么故事。", "Dingdang's always grinning, but I feel there's a story behind that smile." },
-            new string[] { "想重铸装备就去找叮当，多送点礼物说不定能打折呢。", "Want to reforge gear? Find Dingdang. Send some gifts and maybe you'll get a discount." },
-            new string[] { "叮当收集的那些涂鸦...据说是它自己画的，挺有意思。", "Those graffiti Dingdang collects... heard it draws them itself, pretty interesting." },
+            new string[] { "叮当那小子别看长得怪，手艺活是真没话说，重铸装备找它准没错。", "Don't let Dingdang's looks fool you. Its craftsmanship is impeccable—if you need gear reforged, it's the one to find." },
+            new string[] { "叮当那家伙总笑嘻嘻的，我跑了这么多年单，总觉得那笑容背后有事儿。", "Dingdang's always grinning. After all my years on the road, I can tell there's something behind that smile." },
+            new string[] { "想找叮当重铸就去呗，顺便带点小礼物，说不定能讨个好价。", "Want Dingdang to reforge your gear? Bring a little gift along, might get yourself a better deal." },
+            new string[] { "叮当画的那些涂鸦……还别说，有几幅我看着挺有意思的。", "Those graffiti Dingdang draws... gotta say, a few of them are actually pretty interesting." },
 
             // ============ 护士NPC相关 ============
             new string[] { "羽织那边的药材单我刚送到，她记账比我还细。", "I just delivered Yu Zhi's medicine order. She keeps records even more carefully than I do." },
             new string[] { "你要是受了伤就先去找羽织，别硬扛。她嘴上凶，手上可稳。", "If you're hurt, go see Yu Zhi first. She sounds strict, but her hands are steady." },
-            new string[] { "她腿上的紫色裂纹不是装饰，是旧实验留下的诅咒。", "Those purple cracks on her thighs are no decoration. They're a curse left by old experiments." },
+            new string[] { "她腿上的紫色裂纹不是装饰，是旧实验留下的。别盯着看，她会不高兴。", "Those purple cracks on her legs are no decoration. Left by old experiments. Don't stare—she'll get mad." },
             new string[] { "别在羽织面前逞强，她最烦不把命当回事的人。", "Don't act tough in front of Yu Zhi. She hates people who don't value their own lives." },
 
-            // ============ 好感度系统相关 ============
-            new string[] { "多跟NPC打好关系，好感度高了说不定有惊喜。", "Build good relations with NPCs, high affinity might bring surprises." },
-            new string[] { "送礼物能提升好感度，不过得送对东西，别乱送。", "Gifts raise affinity, but send the right stuff, don't just give random things." },
-            new string[] { "听说好感度满了会有特殊剧情？我也想知道是什么。", "Heard there's special story at max affinity? I wanna know what it is too." },
+            // ============ 好感度系统相关（用角色口吻传递信息） ============
+            new string[] { "叮当和羽织这两个家伙都挺记人情的，你对他们好，他们迟早会还。", "Dingdang and Yu Zhi both remember who treats them well. Be good to them, and they'll return the favor eventually." },
+            new string[] { "送礼也有讲究，送对了人家记你一辈子的好，送错了……嘿嘿，自求多福。", "Gift-giving is an art. Get it right and they'll remember your kindness forever. Get it wrong... heh, good luck." },
+            new string[] { "听说好感度拉满了会有大事发生？具体的我也不清楚，你可以自己去试试。", "Heard something big happens at max affinity? I don't know the details. Go find out yourself." },
 
             // ============ 重铸系统相关 ============
-            new string[] { "装备属性不满意？去找叮当重铸，投入越多品质越好。", "Not happy with gear stats? Go reforge at Dingdang's, more investment means better quality." },
-            new string[] { "重铸需要钱，不过比起打到一件完美装备，这点钱算什么。", "Reforging costs money, but compared to finding perfect gear, it's nothing." },
-            new string[] { "叮当的重铸工坊生意不错，我经常给它送材料。", "Dingdang's reforge workshop does good business, I deliver materials there often." },
+            new string[] { "装备属性不满意？叮当那能重铸。不过别忘了带够钱，投入越多出来的东西越好。", "Not happy with your gear stats? Dingdang can reforge them. Just bring enough cash—more investment, better results." },
+            new string[] { "重铸要花钱，但比起在战场上碰运气，花钱买个靠谱强多了。", "Reforging costs money, but compared to hoping for a lucky drop on the battlefield, paying for certainty is way better." },
+            new string[] { "叮当的重铸工坊最近生意不错，我老给它送材料过去。", "Dingdang's reforge workshop has been busy lately. I keep delivering materials there." },
 
             // ============ 飞行图腾相关 ============
-            new string[] { "腾云驾雾图腾？那玩意儿能让你飞起来，送快递要是有这个就好了。", "Cloud Riding Totem? That thing lets you fly. Wish I had one for deliveries." },
-            new string[] { "飞行图腾是好东西，不过别飞太高，摔下来可不是闹着玩的。", "Flight totem's great, but don't fly too high, falling's no joke." },
-            new string[] { "有了飞行图腾，躲Boss技能就方便多了，强烈推荐。", "With the flight totem, dodging boss skills is way easier. Highly recommend." },
+            new string[] { "飞行图腾？那玩意儿能让你飞起来，送快递要是有这个就好了……", "Flight Totem? That thing lets you fly. Wish I had one for deliveries..." },
+            new string[] { "飞行图腾好用是好用，就是别飞太高，摔下来可不是闹着玩的。", "Flight totem's great and all, just don't fly too high. Falling's no joke." },
+            new string[] { "有了飞行图腾，躲Boss技能就方便多了。你有机会搞到一个的话，一定要试试。", "With the flight totem, dodging boss skills is way easier. If you ever get the chance, definitely try one out." },
 
             // ============ 成就系统相关 ============
-            new string[] { "成就勋章收集得怎么样了？按L键可以查看进度。", "How's the achievement medal collection going? Press L to check progress." },
-            new string[] { "听说集齐所有成就有特殊奖励，我也在努力呢。", "Heard there's special rewards for all achievements, I'm working on it too." },
-            new string[] { "有些成就挺难拿的，不过挑战不就是乐趣所在吗？", "Some achievements are tough to get, but isn't challenge the fun part?" },
+            new string[] { "成就勋章你收了多少了？上次我看你那个勋章盒还空着大半呢。", "How many achievement medals have you collected? Last time I checked, your medal case was still mostly empty." },
+            new string[] { "听说集齐所有成就会有什么好东西，我也没见过，你要是集齐了给我看看。", "Heard there's something good for collecting all achievements. Never seen it myself. Show me if you get them all." },
+            new string[] { "有些成就挺难拿的，不过话说回来，要是不难那也没意思了。", "Some achievements are tough to get, but then again, if it were easy it wouldn't be fun." },
 
             // ============ 新物品相关 ============
-            new string[] { "砖石和钻石？那是召唤叮当用的，想找它帮忙就得先准备好。", "Brickstone and diamonds? Those are for summoning Dingdang, gotta prepare them if you want its help." },
-            new string[] { "冷淬液是好东西，能把装备属性固定住，重铸的时候不怕洗掉好词条。", "Cold Quench Fluid is great stuff, locks equipment stats so you won't lose good modifiers when reforging." },
-            new string[] { "叮当涂鸦是那小家伙的心血之作，收集起来挺有意思。", "Dingdang Graffiti is that little guy's masterpiece, fun to collect." },
+            new string[] { "砖石和钻石？那是召唤叮当用的。砖石它会生气，钻石它会开心。你看着办。", "Brickstone and diamonds? Those summon Dingdang. Brickstone makes it angry, diamonds make it happy. Your call." },
+            new string[] { "冷淬液是好东西，能把装备上你看中的属性锁住，重铸的时候就不怕洗掉了。", "Cold Quench Fluid is great stuff—locks the stats you like on your gear, so reforging won't wash them away." },
+            new string[] { "叮当涂鸦是那小家伙自己画的，收藏起来还挺有意思。", "Dingdang Graffiti is that little guy's own artwork. Fun to collect." },
 
             // ============ 世界观/日常 ============
-            new string[] { "这地方路况真差，不过习惯了也就那样。", "Roads here are terrible, but you get used to it." },
+            new string[] { "这破地方路况是真差，不过跑久了也就习惯了。", "Roads here are terrible, but you get used to it after a while." },
             new string[] { "别跟我讲热血，我只认单号、撤离路线，以及'有糖才有灵魂'。", "Don't talk passion to me. I only care about order numbers, evacuation routes, and 'sugar means soul'." },
             new string[] { "星球都快崩了还要准点，KPI不讲情面啊。", "Planet's about to collapse and we still need to be on time. KPIs show no mercy." },
-            new string[] { "我不怕Boss，我怕紫毒把快递标签腐蚀了——到时候谁也别想对账。", "I'm not afraid of bosses. I'm afraid the purple poison will corrode the delivery labels - then no one can reconcile accounts." }
+            new string[] { "我不怕Boss，我怕紫毒把快递标签腐蚀了——到时候谁也别想对账。", "I'm not afraid of bosses. I'm afraid the purple poison will corrode the delivery labels—then no one can reconcile accounts." },
+
+            // ============ 标准BossRush模式 ============
+            new string[] { "船票你买了吧？拿着它选张图就能进竞技场。路牌上有难度选项，别上来就找刺激。", "Got your ticket? Pick a map and you're in. The signpost has difficulty options—don't go looking for trouble on day one." },
+            new string[] { "竞技场里的路牌可不止是摆设——弹药、维修、清箱子、回出生点，全在它周围。", "The signpost in the arena isn't just decoration—ammo, repairs, cleanup, respawn point, all right there." },
+            new string[] { "打完了记得去中央领通关奖励箱，那可是你拼死拼活换来的。", "Don't forget to grab the victory chest in the center after clearing all waves. That's what you bled for." },
+            new string[] { "打完Boss走撤离点出去，别在里面发呆，又不是旅游景点。", "Use the extraction point when you're done. It's not a tourist attraction." },
+            new string[] { "前二十个波次不会出四骑士、龙裔遗族和焚天龙皇这种狠角色，给你热身的时间。别浪费了。", "First twenty waves won't spawn the Four Horsemen, Dragon Descendant, or the Dragon King. That's your warm-up—don't waste it." },
+
+            // ============ 无间炼狱 ============
+            new string[] { "无间炼狱没有终点，Boss每波都变强，撑得越久赚得越多。真正的亡命徒才玩这个。", "Infinite Hell has no finish line. Bosses get stronger every wave. The longer you last, the more you earn. Only madmen play this." },
+            new string[] { "我听说有人撑到了一百波。一百波的奖励是皇冠加一千万现金。每多一百波翻一倍。疯子。", "Heard someone made it to wave 100. Reward was a crown plus ten million cash. Doubles every hundred waves. Lunatic." },
+            new string[] { "无间炼狱里不掉箱子，全换成现金，还会自动飞过来。这方面倒是挺省心的。", "Infinite Hell drops cash instead of loot boxes. Flies right to you too. Convenient, at least." },
+            new string[] { "无间炼狱每五波送一件好东西，每百波给大奖。活得够久你就是首富。", "Infinite Hell gives quality loot every 5 waves and a jackpot every 100. Survive long enough and you'll be the richest duck around." },
+            new string[] { "无间炼狱里路牌上会显示你攒了多少钱，那数字看着是挺爽，但你得活着带走才行。", "The signpost in Infinite Hell shows your cash pool. Nice number to look at, but you gotta stay alive to keep it." },
+
+            // ============ 白手起家 ============
+            new string[] { "白手起家啊，啥都不带就进去，装备全靠抢。说实话这种活法我挺佩服的。", "Rags to Riches—go in with nothing, gear up from what you kill. Gotta respect that kind of hustle." },
+            new string[] { "白手起家前五波没有Boss，好好利用这段时间从小兵身上扒装备，后面才扛得住。", "No bosses in the first five waves of Rags to Riches. Scrape gear off the grunts while you can—you'll need it later." },
+            new string[] { "白手起家越往后敌人装备越好，有时候你打死的小兵掉的比你全身都强。讽刺吧？", "In Rags to Riches, later enemies carry better gear than you. Sometimes the grunt you just killed drops something nicer than everything you're wearing. Ironic, huh?" },
+            new string[] { "白手起家开局装备全是随机的，拿到什么用什么。别纠结完美开局了。", "Rags to Riches gives you random starting gear. Work with what you get. Don't obsess over a perfect start." },
+
+            // ============ 划地为营 ============
+            new string[] { "划地为营是真正的群魔乱舞——几拨Boss分了阵营互相打，你选一边站就完事了。", "Zone Defense is pure chaos—bosses split into factions and fight each other. Just pick a side." },
+            new string[] { "划地为营里有个神秘商人，啥都卖，就是贵。不过弹药用完了去他那能救命。", "Zone Defense has a mystery merchant. Sells everything, but pricey. Good for emergency ammo though." },
+            new string[] { "你要是觉得自己够硬，就带爷的营旗——全场都是你的敌人，没有任何友军。真·独狼。", "If you think you're tough enough, bring the Lone Wolf flag. Everyone's your enemy. No backup. True lone wolf." },
+            new string[] { "划地为营里可以召唤煤球帮你打架，那小家伙打起架来还挺凶的。", "You can summon Meiqiu in Zone Defense to help you fight. That little guy's fiercer than he looks." },
+            new string[] { "划地为营里有挑衅烟雾弹和混沌引爆器这些东西，用了能让不同阵营的Boss互相消耗，坐山观虎斗。", "Zone Defense has smokes and detonators that spawn bosses everywhere. Let the factions tear each other apart while you watch." },
+            new string[] { "划地为营里Boss每死一个，剩下的就会变强一点。别磨叽，速战速决。", "In Zone Defense, surviving bosses get stronger each time one dies. Don't drag it out." },
+
+            // ============ 血猎追击 ============
+            new string[] { "血猎追击是最狠的模式。进去之后一直在流血，只有杀Boss才能回血。", "Blood Hunt is the hardest mode. You bleed constantly. Only killing bosses stops it." },
+            new string[] { "血猎追击分四个阶段，越往后流得越快，最后还得跑到撤离点才能活下来。", "Blood Hunt has four stages. Bleeding gets faster each phase. You have to reach the extraction point to survive." },
+            new string[] { "血猎追击里可以用工事——掩体、路障、铁丝网——提前摆好了能保命。", "Blood Hunt lets you deploy fortifications—barricades, wire, barriers. Set them up early, they'll save your life." },
+            new string[] { "血猎追击的Boss身上有悬赏印记，杀了它印记归你，最后成功撤离每个印记换一件好装备。", "Bosses in Blood Hunt carry bounty marks. Kill them, take the marks. Each mark becomes quality gear if you extract." },
+            new string[] { "血猎追击开场的三分钟准备阶段很重要，先搜刮装备再打几个Boss回口血。", "Those 3 minutes of prep time in Blood Hunt are crucial. Scavenge gear, kill a few bosses, heal up. Don't waste them." },
+
+            // ============ 龙裔遗族Boss ============
+            new string[] { "龙裔遗族比龙皇弱一档，但也不是吃素的。掉的东西够你用很长一段时间。", "Dragon Descendant is weaker than the King, but still no pushover. Its drops will last you a good while." },
+            new string[] { "赤龙首和焰鳞甲都是龙裔遗族掉的，过渡期穿这两件挺管用。", "Red Dragon Head and Flame Scale Armor drop from the Dragon Descendant. Solid gear for the mid-game." },
+            new string[] { "先打龙裔遗族攒一身龙裔套装，再去挑战龙皇。这是我给每个新人的建议。", "My advice to every newcomer: farm the Dragon Descendant first, gear up, then challenge the King." },
+
+            // ============ 龙裔套装 ============
+            new string[] { "龙裔套装和龙王套装都能把火焰伤害转成回血，被烧了反而越打越精神。", "Both Dragon sets convert fire damage into healing. Get burned, get stronger. Kind of poetic." },
+            new string[] { "龙裔套装能冲刺，双击方向键就出去了，三米距离够躲大部分技能。", "Dragon set lets you dash. Double-tap a direction, three meters. Enough to dodge most attacks." },
+
+            // ============ 龙王套装 ============
+            new string[] { "龙王套装冲刺的时候地上会冒岩浆，穿着它跑酷又帅又危险。", "Dragon King set leaves lava trails when you dash. Stylish and dangerous." },
+            new string[] { "龙王套装能连着冲两下，六米远，比龙裔套装灵活一倍。有钱就冲它去。", "Dragon King set has a double-dash—six meters. Twice as nimble as the regular set. Save up for it." },
+
+            // ============ 逆鳞 ============
+            new string[] { "逆鳞这东西就是保命符——快死的时候自动触发，回一半血还往四面八方打棱彩弹。不过用一次就碎了。", "Reverse Scale is a lifesaver—triggers when you're about to die, heals half your HP and fires prismatic shots everywhere. But it shatters after one use." },
+            new string[] { "打龙皇之前我建议你带个逆鳞。多一条命总不是坏事。", "I recommend bringing a Reverse Scale before fighting the Dragon King. An extra life never hurts." },
+
+            // ============ 焚皇断界戟 ============
+            new string[] { "焚皇断界戟，龙皇掉的那把大戟。使好了伤害爆炸，不过近战打Boss得盯紧走位。", "The Halberd drops from the Dragon King. Massive damage if you use it right, but melee means you gotta watch your positioning." },
+
+            // ============ 龙息 ============
+            new string[] { "龙息是龙裔遗族掉的一把枪，掉率大概一成。算是稀罕货，拿到了别乱卖。", "Dragon Breath drops from the Dragon Descendant—about a 10% chance. Rare stuff. Don't sell it if you get one." },
+
+            // ============ 霜之哀伤 ============
+            new string[] { "霜之哀伤那把冰剑你见过没？打Blue Boss有概率出，右键能召唤五个亡灵小弟帮你打架。", "Seen Frostmourne? That ice sword drops from Blue Bosses sometimes. Right-click summons five undead minions to fight for you." },
+            new string[] { "霜之哀伤自带冰属性和寒冷防护，去雪地地图带上它，不吃亏。", "Frostmourne has ice damage and cold protection built in. Bring it to snow maps, you won't regret it." },
+
+            // ============ 焚天龙铳 ============
+            new string[] { "焚天龙铳那是龙皇自己扛的枪，咱们拿不到。不过看到它开枪的时候——躲远点。", "The Dragon Cannon belongs to the Dragon King. We can't get it. But when you see it firing—get out of the way." },
+
+            // ============ 地图 ============
+            new string[] { "九张图随你选。新手去DEMO终极挑战，场地平视野好，适合练手。", "Nine maps to choose from. Beginners should try DEMO Ultimate Challenge—flat, open, good for learning." },
+            new string[] { "零度挑战是雪地地图，进去会发防寒装备。不然你还没见到Boss就先冻死了。", "Zero Challenge is a snow map. They issue cold protection gear at the start. Otherwise you'd freeze before seeing a boss." },
+            new string[] { "J-Lab实验室那张图……我不喜欢送那边的单。总觉得背后有东西在看我。", "The J-Lab Laboratory map... I don't like delivering there. Always feels like something's watching me from behind." },
+            new string[] { "迷宫那张图视野差，拐角多，打Boss的时候容易被偷袭。不建议新手去。", "The Maze map has terrible visibility. Too many corners. Easy to get ambushed by a boss. Not for beginners." },
+            new string[] { "农场镇场地开阔刷怪点又多，打Boss和划地为营都不错。", "Farm Town is open with lots of spawn points. Good for boss fights and Zone Defense alike." },
+
+            // ============ 死亡亡魂 ============
+            new string[] { "你死过的地方，下次回去会在原地冒出一个你的亡魂——带着你死时的装备，用你自己的招式打你。", "Where you die, a wraith of you appears next time—wearing your gear, using your own moves against you." },
+            new string[] { "死的时候身上带的东西越贵，下次遇到的亡魂就越猛。出门别把全部家当都带上。", "The more expensive the gear you die with, the stronger your wraith becomes. Don't carry your life savings into battle." },
+            new string[] { "打赢自己的亡魂记录就清了，不会再来了。直到你下次再死。", "Beat your own wraith and the record clears. Won't come back—until you die again, that is." },
+
+            // ============ 许愿台 ============
+            new string[] { "基地里那个布满灰尘的许愿台看到了吗？在上面写心愿就行。不过别写垃圾话，真的有人会看。", "Seen that dusty wish fountain in the base? Write your wishes there. Just don't write garbage—someone actually reads them." },
+
+            // ============ 婚姻系统 ============
+            new string[] { "叮当和羽织好感度拉满了可以结婚，送钻石戒指就行。不过一次只能娶一个。", "Max out affinity with Dingdang or Yu Zhi and you can propose with a diamond ring. One spouse at a time though." },
+            new string[] { "结婚之后他们每天都会送东西——叮当送冷淬液，羽织送安神滴剂。过日子嘛。", "After marriage they give you daily gifts—Dingdang gives Cold Quench Fluid, Yu Zhi gives Calming Drops. Domestic bliss." },
+            new string[] { "结了婚就别朝三暮四的。把戒指送别人会被抓包，扣好感度不说还得挨骂。", "Don't cheat after marrying. Send a ring to someone else and you'll get caught—lose affinity AND get scolded." },
+            new string[] { "离婚也可以，不过好感度直接归零，还得重新追。想清楚再动手。", "Divorce is an option, but affinity resets to zero and you start over. Think before you act." },
+            new string[] { "结了婚可以让配偶跟着你到处跑，不过好感度要是掉下去了人家会自己回家。", "Married spouses can follow you around. But if affinity drops too low, they'll head home on their own." },
+
+            // ============ 安神滴剂 ============
+            new string[] { "安神滴剂是羽织亲手调的，用了能清掉身上的负面效果。打完Boss一身debuff的时候来一瓶。", "Calming Drops are Yu Zhi's own brew. Clears debuffs. Chug one after a boss fight leaves you covered in status effects." },
+
+            // ============ 平安护身符 ============
+            new string[] { "羽织那有个平安护身符，好感度到了她会给。放在背包里就行，快死的时候有概率满血复活。", "Yu Zhi gives out Peace Charms at high affinity. Keep it in your bag—it might fully revive you when you're about to die." },
+
+            // ============ 钻石戒指 ============
+            new string[] { "钻石戒指在叮当那买，送NPC加五百好感度。好感度满的时候送出去还能求婚。一物两用。", "Buy diamond rings from Dingdang. +500 affinity as a gift, or use it to propose when affinity is maxed. Two birds, one ring." },
+
+            // ============ 快递牌 ============
+            new string[] { "快递牌你买了吗？用了能把身上所有东西一键寄回家，关键时刻能保住全部家当。", "Got an Express Token? Use it to ship everything you're carrying back home instantly. Saves your loot when things go south." },
+
+            // ============ 扫箱令 ============
+            new string[] { "划地为营和血猎追击里每打死二十个Boss会给你扫箱令，用了我帮你把场上的箱子全收了。", "Every 20 boss kills in Zone Defense or Blood Hunt earns you a Loot Sweep Token. Use it and I'll clean up all the boxes on the field." },
+
+            // ============ 荒野号角 ============
+            new string[] { "荒野号角能召唤坐骑，跑图省力不少。配了狼模型的话坐骑还会变成狼。", "The Wild Horn summons a mount. Much easier to get around. With the wolf model enabled, it becomes a wolf instead." },
+
+            // ============ Boss筛选器 ============
+            new string[] { "按Ctrl+F10能打开Boss筛选器，不想见到的Boss直接禁掉。跟快递一样，不想送的件就拒单。", "Ctrl+F10 opens the Boss Filter. Ban any boss you don't want to see. Just like declining a delivery—don't want it, don't take it." },
+
+            // ============ 配置选项 ============
+            new string[] { "很多设置是可以改的——波次间隔、每波Boss数量、Boss血量倍率。嫌太难或太简单就调一调。", "Lots of settings are configurable—wave intervals, boss count per wave, HP multipliers. Adjust if it's too hard or too easy." },
+
+            // ============ 掉落/战利品 ============
+            new string[] { "打Boss越快，掉的东西品质越高。所以别磨叽，能速杀就速杀。", "Kill bosses faster, get better loot. Don't dawdle—speed is rewarded." },
+            new string[] { "在BossRush里死了不会掉身上的东西，放心去打。死了也就是丢点面子。", "You don't drop your gear when you die in BossRush. Go fight without worry. You only lose face." },
+            new string[] { "战利品箱有时候会挡子弹，要是箱子堆太多了得注意别把自己卡住。", "Loot boxes can block bullets sometimes. When they pile up, watch out you don't box yourself in." },
+
+            // ============ 成就系统补充 ============
+            new string[] { "按L键能看成就面板，有些成就奖金很高——比如无伤杀龙皇给五十万。", "Press L to check achievements. Some pay really well—500,000 for flawlessing the Dragon King." },
+            new string[] { "成就勋章在商人那免费领，不拿白不拿。", "Achievement medals are free at the merchant. Don't leave them sitting there." },
+
+            // ============ 营旗/血猎收发器 ============
+            new string[] { "营旗有六种加一个随机的，不同的旗子进不同的阵营。想清楚再买。", "Six camp flags plus a random one—different flags, different factions. Think before you buy." },
+            new string[] { "血猎收发器是血猎追击的入场钥匙，和船票一起带才能进去。别光带一个。", "Blood Hunt Transceiver is the key to Blood Hunt mode. Bring it with a ticket. Don't show up with just one." },
+
+            // ============ 入场优先级 ============
+            new string[] { "同时带了营旗、收发器和船票的话，系统会优先让你进划地为营。想玩别的就别带营旗。", "If you carry a flag, transceiver, and ticket at the same time, the system sends you to Zone Defense first. Leave the flag behind if you want something else." },
+
+            // ============ 龙皇掉落细节 ============
+            new string[] { "龙皇掉的东西里，腾云驾雾图腾一成半概率，逆鳞三成五，其他的就看你造化了。", "Of the Dragon King's drops: Flight Totem's about 15%, Reverse Scale 35%. The rest is up to luck." },
+
+            // ============ 更多日常/世界观 ============
+            new string[] { "当快递员最怕的不是Boss，是送到了没人签收。你知道老板催单多凶吗？", "The scariest thing about being a courier isn't bosses—it's delivering to nobody. You know how hard the boss pushes?" },
+            new string[] { "有些路线我跑了好几百遍了，闭着眼都能到。但每次Boss出来还是得绕路。", "I've run some routes hundreds of times. Could do them blindfolded. But bosses always make me detour." },
+            new string[] { "我以前也想过当冒险家来着，后来算了一下快递赚得更多。", "I used to dream of being an adventurer. Then I did the math—courier pays better." },
+            new string[] { "今天风有点大，快递差点被吹跑了。你们在里面打得热火朝天，我在外面追包裹。", "Windy today. Almost lost a package. You're in there fighting for your life, I'm out here chasing boxes." }
         };
 
         // ============================================================================
