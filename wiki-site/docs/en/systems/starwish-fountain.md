@@ -26,7 +26,7 @@
 - While sending, the panel shows `Sending your wish to the stars…`
 - On success, the game shows the original large banner:
   - `May this starlight illuminate the utopia in your heart~`
-- The panel closes automatically about 3 seconds after success.
+- The panel closes automatically about 1 second after success.
 - The cooldown is currently a global `30 seconds`, not per individual fountain.
 
 # Privacy

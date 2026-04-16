@@ -54,10 +54,10 @@ All attacks apply:
 - Mark detonation: Automatically detonates all Dragon Flame Marks on enemies within range
 
 # Recommended Combat Loop
-1. Three-hit combo to stack 5 Dragon Flame Marks
-2. Right click leap to detonate marks + fire pillar coverage
-3. Continue comboing to stack marks during cooldown
-4. Repeat
+- Use the three-hit combo to stack 5 Dragon Flame Marks
+- Follow with the leap slam to detonate the marks and cover the area with fire pillars
+- Keep comboing during cooldown to rebuild marks
+- Repeat that rhythm
 
 # Usage Tips
 - Hit 2's launch and Hit 3's pull can control enemy positioning, synergizing excellently with the leap's area damage

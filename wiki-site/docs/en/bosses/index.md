@@ -4,11 +4,11 @@ BossRush Mod adds 2 fully custom bosses on top of the game's original boss pool,
 
 # Custom Boss List
 - Dragon Descendant — HP 500, mid-tier difficulty, exclusive drops: Crimson Dragon Helm, Flame Scale Armor, Dragon Breath
-- Skyburner Dragon Lord — HP 800, highest difficulty, exclusive drops: Dragon King Crown, Dragon King Scale Armor, Cloud Rider, Reverse Scale, Skyburner Halberd
+- Skyburner Dragon Lord — HP 800, highest difficulty, exclusive drops: Dragon King Crown, Dragon King Scale Armor, Cloud Rider, Reverse Scale, Skyburner Halberd, Dragon Cannon
 
 # Boss Pool Rules
-- Standard BossRush and Infinite Hell: The strongest elite bosses (Four Horsemen series) do not appear in the first 10 waves, giving players time to warm up
-- From Scratch: No bosses in the first 5 waves, elite bosses excluded from waves 6-10, full boss pool opens after wave 16
+- Standard BossRush and Infinite Hell: The first 20 waves exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord to give players time to warm up
+- From Scratch: No bosses in the first 5 waves, waves 6-10 exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord, and the full Boss pool opens after wave 16
 - Faction War: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear
 - Blood Hunt: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear; a new boss is automatically added after a boss is killed
 

@@ -2,7 +2,7 @@
 
 # Overview
 - The exclusive firearm used by the Skyburner Dragon Lord in combat
-- Players could not obtain it previously, but it has now been added to the Dragon Lord's loot pool
+- It is now part of the Skyburner Dragon Lord's exclusive drop pool at a 5% drop rate
 - Features 15 ammo configurations that dynamically switch during combat, making the Boss's shooting patterns highly varied
 
 ::: tip

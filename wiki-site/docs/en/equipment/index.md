@@ -10,7 +10,7 @@ In addition, the vanilla `Cname_Boss_Blue` now has a chance to drop an extra cus
 - Reverse Scale — Totem (Skyburner Dragon Lord drop)
 - Skyburner Halberd — Melee weapon (Skyburner Dragon Lord drop)
 - Dragon Breath — Firearm (Dragon Descendant drop)
-- Dragon Cannon — Firearm (Skyburner Dragon Lord Boss exclusive, unobtainable)
+- Dragon Cannon — Firearm (Skyburner Dragon Lord drop, 5%)
 - Frostmourne — Ice melee weapon (`Cname_Boss_Blue` 50% extra drop)
 
 # Set Effects
