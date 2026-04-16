@@ -29,6 +29,17 @@
 - The panel closes automatically about 1 second after success.
 - The cooldown is currently a global `30 seconds`, not per individual fountain.
 
+### Wish Gacha Reward
+
+- After each successful wish submission, the system also checks whether the `Wish Gacha` reward is available.
+- The reward cooldown is a global `4 hours`, not tracked per individual fountain.
+- If the reward cooldown is ready, a successful submission will trigger the `Starwish Draw` animation and grant 1 reward item when it finishes.
+- If the reward is still on cooldown, your wish is still submitted normally, but the game only shows the remaining gacha cooldown and does not grant another reward.
+- The content of your wish influences the reward direction:
+  - Mentioning certain item types or keywords makes related rewards more likely.
+  - The current bias can lean toward weapons, melee gear, armor, helmets, totems, gifts, healing, faction flags, summon items, fortification items, and travel-related items.
+- You can press `Esc` to skip the draw animation, and the reward will still be granted normally.
+
 ### Privacy
 
 - If anonymous mode is enabled, the submitted player name becomes `Anonymous`.
@@ -42,4 +53,4 @@
 - Links, contact info, and traffic-pulling text are rejected.
 - Profanity, abusive language, and ad-like content are rejected.
 
-[tip] If the submit button is disabled, first check whether you have at least 20 characters or whether the shared 30-second cooldown is still active.
+[tip] If the submit button is disabled, first check whether you have at least 20 characters or whether the shared 30-second cooldown is still active. If your wish submits successfully but no reward appears, check whether the 4-hour reward cooldown is still active.
