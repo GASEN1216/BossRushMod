@@ -33,13 +33,18 @@
 
 #### infiniteHellBossesPerWave
 - Default: 3
-- Range: 1+
+- Range: 1-10
 - Number of Bosses per wave in Infinite Hell
 
 #### bossStatMultiplier
 - Default: 1.0
-- Range: 0.1+
+- Range: 0.1-10
 - Global Boss stat multiplier (affects health and damage)
+
+#### milestoneRestBonusSeconds
+- Default: 30
+- Range: 0-120
+- Extra rest time added every 5 completed waves; set it to 0 to disable the bonus rest entirely
 
 #### modeDEnemiesPerWave
 - Default: 3
@@ -59,11 +64,12 @@
 #### enableDragonDash
 - Default: true
 - Range: true/false
-- Whether to enable the dash ability for Dragon Descendant/Skyburner Dragon Lord sets
+- Whether to enable the dash ability for Dragon Descendant / Skyburner Dragon Lord sets
 
 #### achievementHotkey
 - Default: L
-- Range: any key
+- ModConfig dropdown options: L / K / J / H / G / Y / U / O / P / F5 / F6 / F7 / F8
+- Config-file storage: integer value of the corresponding `KeyCode`
 - Achievement panel hotkey
 
 #### useWolfModelForWildHorn
@@ -77,8 +83,9 @@
 - Whether to enable the Death Wraith system; when disabled, the mod stops recording/spawning wraiths and clears the current saved wraith record
 
 ### Recommended Adjustments
-- Want a faster pace: lower waveIntervalSeconds (e.g., 5-8).
-- Want higher difficulty: increase bossStatMultiplier (e.g., 1.5-2.0).
-- Want manual pacing control: enable useInteractBetweenWaves.
-- From Scratch too easy: increase modeDEnemiesPerWave (e.g., 5-8).
-- Infinite Hell too crowded: lower infiniteHellBossesPerWave (e.g., 1-2).
+- Want a faster pace: lower `waveIntervalSeconds` (for example `5-8`).
+- Want higher difficulty: increase `bossStatMultiplier` (for example `1.5-2.0`).
+- Want manual pacing control: enable `useInteractBetweenWaves`.
+- From Scratch too easy: increase `modeDEnemiesPerWave` (for example `5-8`).
+- Infinite Hell too crowded: lower `infiniteHellBossesPerWave` (for example `1-2`).
+- Do not want the extra rest every 5 waves: set `milestoneRestBonusSeconds` to `0`.

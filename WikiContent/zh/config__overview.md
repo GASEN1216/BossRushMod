@@ -33,13 +33,18 @@
 
 #### infiniteHellBossesPerWave
 - 默认值：3
-- 范围：1+
+- 范围：1-10
 - 无间炼狱每波 Boss 数量
 
 #### bossStatMultiplier
 - 默认值：1.0
-- 范围：0.1+
+- 范围：0.1-10
 - Boss 全局属性倍率（影响生命值和伤害）
+
+#### milestoneRestBonusSeconds
+- 默认值：30
+- 范围：0-120
+- 每完成 5 波额外增加的休息时间；设为 0 表示关闭这段额外休息
 
 #### modeDEnemiesPerWave
 - 默认值：3
@@ -63,7 +68,8 @@
 
 #### achievementHotkey
 - 默认值：L
-- 范围：任意按键
+- ModConfig 下拉选项：L / K / J / H / G / Y / U / O / P / F5 / F6 / F7 / F8
+- 配置文件存储：`KeyCode` 对应的整数值
 - 成就面板快捷键
 
 #### useWolfModelForWildHorn
@@ -77,8 +83,9 @@
 - 是否启用死亡亡魂系统；关闭后不会再记录或生成亡魂，并会清理当前存档里的亡魂记录
 
 ### 常用调整建议
-- 想要更紧凑的节奏：降低 waveIntervalSeconds（如 5-8）。
-- 想要更高难度：提高 bossStatMultiplier（如 1.5-2.0）。
-- 想要手动控制节奏：启用 useInteractBetweenWaves。
-- 白手起家太简单：提高 modeDEnemiesPerWave（如 5-8）。
-- 无间炼狱太拥挤：降低 infiniteHellBossesPerWave（如 1-2）。
+- 想要更紧凑的节奏：降低 `waveIntervalSeconds`（如 `5-8`）。
+- 想要更高难度：提高 `bossStatMultiplier`（如 `1.5-2.0`）。
+- 想要手动控制节奏：启用 `useInteractBetweenWaves`。
+- 白手起家太简单：提高 `modeDEnemiesPerWave`（如 `5-8`）。
+- 无间炼狱太拥挤：降低 `infiniteHellBossesPerWave`（如 `1-2`）。
+- 不想每 5 波多歇 30 秒：把 `milestoneRestBonusSeconds` 调到 `0`。

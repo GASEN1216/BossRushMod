@@ -1,7 +1,7 @@
 ## Skyburner Dragon Lord
 
 ### Overview
-Skyburner Dragon Lord is the strongest custom boss in BossRush Mod. It hovers in the air and possesses 7 attack skills with a two-phase combat system. Defeating it yields the mod's top-tier equipment, including the Dragon King Set, Cloud Rider totem, Reverse Scale, and Skyburner Halberd.
+Skyburner Dragon Lord is the strongest custom boss in BossRush Mod. It hovers in the air and possesses 7 attack skills with a two-phase combat system. Defeating it yields the mod's top-tier equipment, including the Dragon King Set, Cloud Rider Totem, Reverse Scale, Skyburner Halberd, and Dragon Cannon.
 
 ### Base Stats
 - HP: 800

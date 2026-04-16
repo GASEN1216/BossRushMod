@@ -13,9 +13,9 @@
 - Reverse Scale serves as a last-resort lifesaver.
 
 #### Combat Pacing
-- The first 10 waves are a warm-up (elite Bosses won't appear) — use this time to get into rhythm.
+- The first 20 waves are a warm-up (powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord are excluded) — use this time to get into rhythm.
 - Use the ammo shop near the signpost to resupply promptly.
-- Cash pickups within 2 meters automatically fly toward you — no need to collect them manually.
+- Cash pickups within 2 meters automatically fly toward you, but you still need to move into that radius first.
 - A high-quality item drops every 5 waves — make sure to pick it up.
 
 #### Late-Game Survival

@@ -28,7 +28,7 @@ After entering the arena, interact with the central signpost to choose a difficu
 ### Boss Pool
 
 - Includes all in-game Boss presets
-- The strongest elite Bosses (Four Horsemen series) will not appear in the first 10 waves, giving you warm-up time
+- The first 20 waves exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord to give you warm-up time
 - You can use the Boss Filter to disable specific Bosses
 
 ### Clear Rewards

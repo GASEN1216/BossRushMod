@@ -26,7 +26,7 @@
 - From Scratch uses an unlimited wave system with enemy types progressing by wave:
 - Waves 1-2: Weakest grunts only (low HP, no ghosts), 0 Bosses.
 - Waves 3-5: All grunts (no ghosts), 0 Bosses.
-- Waves 6-10: Grunts + Bosses (no elite Bosses), 1 Boss.
+- Waves 6-10: Grunts + Bosses (excluding powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord), 1 Boss.
 - Waves 11-15: Grunts + Bosses, 2 Bosses.
 - Waves 16+: Full enemy pool + full Boss pool, 2+ Bosses.
 - Each wave spawns 3 enemies by default (adjustable to 1-10 in config).

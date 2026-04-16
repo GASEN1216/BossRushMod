@@ -20,10 +20,11 @@
 - Infinite Hell does not drop loot crates; instead it uses a cash pool system.
 - Each Boss kill adds its value to the cash pool.
 - The cash pool total is displayed on the signpost.
-- Cash pickups within 2 meters on the field will automatically fly toward you.
+- Cash pickups within 2 meters on the field will automatically fly toward you; outside that radius you still need to move closer.
 
 #### Milestone Rewards
-- Every 5 waves: 1 high-quality random item (quality ≥ 5, value ≥ 10000).
+- Every 5 waves: 1 high-quality random item.
+- The reward pool prefers items with quality ≥ 5 and value ≥ 10000; if no candidate meets that value threshold, it falls back to other quality ≥ 5 items.
 - Every 100 waves: Milestone grand prize: Crown(s) + large cash reward (amount grows exponentially with each milestone).
 
 #### 100-Wave Milestone Rewards (Exponential Growth)

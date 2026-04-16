@@ -33,14 +33,11 @@
 #### Per-Wave Cash
 - Each Boss kill grants cash = Boss max health × 10.
 - Example: a Boss with 1000 health drops 10,000 cash on kill.
-- Cash automatically flies toward the player for pickup, no manual looting required.
-
-#### Kill Speed Bonus
-- The faster you kill a Boss, the higher the drop chance for high quality items (up to an extra +10%).
-- The reference time window scales with Boss health — higher health allows more time.
+- Cash pickups within 2 meters of the player automatically fly in; outside that radius you still need to move closer.
 
 #### Random High Quality Items
-- Every 5 waves, 1 item with quality ≥ 5 and value ≥ 10,000 drops.
+- Every 5 waves, 1 high-quality item drops.
+- The reward pool prefers items with quality ≥ 5 and value ≥ 10,000; if no candidate meets that value threshold, it falls back to other quality ≥ 5 items.
 
 #### Milestone Grand Rewards
 - Every 100 waves triggers a milestone reward containing Crowns and large amounts of cash, scaling exponentially:
