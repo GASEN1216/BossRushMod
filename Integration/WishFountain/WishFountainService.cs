@@ -169,6 +169,20 @@ namespace BossRush
             public int quality;
             public string displayName;
             public readonly HashSet<string> categoryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            public readonly HashSet<string> tagNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private sealed class WishRewardPoolSelection
+        {
+            public string poolMode = "legacy_no_match";
+            public string fallbackReason = string.Empty;
+            public readonly HashSet<int> filteredTypeIds = new HashSet<int>();
+            public readonly HashSet<string> matchedItemTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            public bool HasFilteredPool
+            {
+                get { return filteredTypeIds.Count > 0; }
+            }
         }
 
         private sealed class WishRewardMatchResult
@@ -283,6 +297,24 @@ namespace BossRush
                 new string[] { "船票", "门票", "快递", "日志", "百科", "扫箱", "令牌", "通行" },
                 new string[] { "ticket", "courier", "delivery", "journal", "encyclopedia", "sweep", "token" })
         };
+
+        private static void CollectWishRewardTagNames(Item item, HashSet<string> destination)
+        {
+            if (item == null || item.Tags == null || destination == null)
+            {
+                return;
+            }
+
+            foreach (Duckov.Utilities.Tag tag in item.Tags)
+            {
+                if (tag == null || string.IsNullOrEmpty(tag.name))
+                {
+                    continue;
+                }
+
+                destination.Add(tag.name);
+            }
+        }
 
         private static readonly WishRewardItemDefinition[] WishRewardCustomItems =
         {
@@ -2109,6 +2141,7 @@ namespace BossRush
                     displayName = displayName
                 };
 
+                CollectWishRewardTagNames(temp, candidate.tagNames);
                 context.candidatesByTypeId[typeId] = candidate;
                 AddWishRewardQualityBucket(context, quality, typeId);
                 return true;
@@ -2131,6 +2164,147 @@ namespace BossRush
                 {
                 }
             }
+        }
+
+        private static WishRewardPoolSelection BuildWishRewardPoolSelectionFromMatchedItems(WishRewardMatchResult match)
+        {
+            WishRewardPoolSelection selection = new WishRewardPoolSelection();
+            if (match == null || match.matchedItemTypeIds.Count <= 0)
+            {
+                return selection;
+            }
+
+            selection.poolMode = "matched_item_tags";
+
+            HashSet<string> filterTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (int typeId in match.matchedItemTypeIds)
+            {
+                WishRewardCandidate matchedCandidate;
+                if (!wishRewardCandidatesByTypeId.TryGetValue(typeId, out matchedCandidate) || matchedCandidate == null)
+                {
+                    continue;
+                }
+
+                foreach (string tagName in matchedCandidate.tagNames)
+                {
+                    if (string.IsNullOrEmpty(tagName))
+                    {
+                        continue;
+                    }
+
+                    filterTags.Add(tagName);
+                    selection.matchedItemTags.Add(tagName);
+                }
+            }
+
+            foreach (KeyValuePair<int, WishRewardCandidate> kvp in wishRewardCandidatesByTypeId)
+            {
+                WishRewardCandidate candidate = kvp.Value;
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                // Intentionally OR across all cached item tags: approved design is full-tag OR filtering.
+                foreach (string tagName in candidate.tagNames)
+                {
+                    if (filterTags.Contains(tagName))
+                    {
+                        selection.filteredTypeIds.Add(candidate.typeId);
+                        break;
+                    }
+                }
+            }
+
+            return selection;
+        }
+
+        private static WishRewardPoolSelection BuildWishRewardPoolSelectionFromMatchedCategories(WishRewardMatchResult match)
+        {
+            WishRewardPoolSelection selection = new WishRewardPoolSelection();
+            if (match == null || match.matchedCategoryIds.Count <= 0)
+            {
+                return selection;
+            }
+
+            selection.poolMode = "matched_categories";
+
+            foreach (string categoryId in match.matchedCategoryIds)
+            {
+                HashSet<int> categoryCandidates;
+                if (!wishRewardCategoryCandidateIds.TryGetValue(categoryId, out categoryCandidates) ||
+                    categoryCandidates == null)
+                {
+                    continue;
+                }
+
+                foreach (int typeId in categoryCandidates)
+                {
+                    selection.filteredTypeIds.Add(typeId);
+                }
+            }
+
+            return selection;
+        }
+
+        private static WishRewardPoolSelection BuildWishRewardPoolSelection(WishRewardMatchResult match)
+        {
+            WishRewardPoolSelection selection = BuildWishRewardPoolSelectionFromMatchedItems(match);
+            if (selection.HasFilteredPool)
+            {
+                return selection;
+            }
+
+            selection = BuildWishRewardPoolSelectionFromMatchedCategories(match);
+            if (selection.HasFilteredPool)
+            {
+                return selection;
+            }
+
+            if (match != null && match.HasAnyMatch)
+            {
+                selection.poolMode = "legacy_empty_filtered_pool";
+                selection.fallbackReason = "empty_filtered_pool";
+            }
+            return selection;
+        }
+
+        private static bool ShouldUseLegacyWishRewardOdds(WishRewardPoolSelection selection)
+        {
+            return selection != null && string.Equals(selection.poolMode, "legacy_empty_filtered_pool", StringComparison.Ordinal);
+        }
+
+        private static Dictionary<int, List<int>> BuildWishRewardQualityBucketsForSelection(WishRewardPoolSelection selection)
+        {
+            Dictionary<int, List<int>> buckets = new Dictionary<int, List<int>>();
+            if (selection == null || !selection.HasFilteredPool)
+            {
+                foreach (KeyValuePair<int, List<int>> kvp in wishRewardQualityBuckets)
+                {
+                    buckets[kvp.Key] = new List<int>(kvp.Value);
+                }
+                return buckets;
+            }
+
+            foreach (int typeId in selection.filteredTypeIds)
+            {
+                WishRewardCandidate candidate;
+                if (!wishRewardCandidatesByTypeId.TryGetValue(typeId, out candidate) || candidate == null)
+                {
+                    continue;
+                }
+
+                List<int> bucket;
+                if (!buckets.TryGetValue(candidate.quality, out bucket))
+                {
+                    bucket = new List<int>();
+                    buckets[candidate.quality] = bucket;
+                }
+
+                bucket.Add(typeId);
+            }
+
+            return buckets;
         }
 
         private static string GetWishRewardDisplayNameFromItem(
@@ -2403,9 +2577,22 @@ namespace BossRush
             return string.Join(",", itemEntries.ToArray());
         }
 
+        private static string FormatWishRewardMatchedItemTagsForLog(WishRewardPoolSelection selection)
+        {
+            if (selection == null || selection.matchedItemTags.Count <= 0)
+            {
+                return "(none)";
+            }
+
+            List<string> tags = new List<string>(selection.matchedItemTags);
+            tags.Sort(StringComparer.OrdinalIgnoreCase);
+            return string.Join(",", tags.ToArray());
+        }
+
         private static void LogWishRewardRoll(
             string wishText,
             WishRewardMatchResult match,
+            WishRewardPoolSelection selection,
             int rolledQuality,
             int selectedTypeId,
             string rewardDisplayName)
@@ -2415,6 +2602,16 @@ namespace BossRush
                 string normalizedWishText = TruncateWishRewardLogValue(NormalizeWishRewardText(wishText), 120);
                 string matchedCategories = FormatWishRewardCategoryMatchesForLog(match);
                 string matchedItems = FormatWishRewardItemMatchesForLog(match);
+                string matchedItemTags = FormatWishRewardMatchedItemTagsForLog(selection);
+                string poolMode = selection != null && !string.IsNullOrEmpty(selection.poolMode)
+                    ? selection.poolMode
+                    : "(unknown)";
+                string filteredCandidateCount = selection != null
+                    ? selection.filteredTypeIds.Count.ToString()
+                    : "0";
+                string fallbackReason = selection != null && !string.IsNullOrEmpty(selection.fallbackReason)
+                    ? selection.fallbackReason
+                    : "(none)";
                 string selectedReward = string.IsNullOrEmpty(rewardDisplayName)
                     ? "(none)"
                     : TruncateWishRewardLogValue(rewardDisplayName, 80);
@@ -2423,6 +2620,10 @@ namespace BossRush
                     "[WishFountain] reward roll normalizedWishText=\"" + normalizedWishText +
                     "\" matchedCategories=" + matchedCategories +
                     " matchedItems=" + matchedItems +
+                    " matchedItemTags=" + matchedItemTags +
+                    " poolMode=" + poolMode +
+                    " filteredCandidateCount=" + filteredCandidateCount +
+                    " fallbackReason=" + fallbackReason +
                     " rolledQuality=Q" + rolledQuality +
                     " selectedTypeId=" + selectedTypeId +
                     " selectedReward=" + selectedReward);
@@ -2430,6 +2631,30 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[WishFountain] [WARNING] 记录许愿奖励抽取日志失败: " + e.Message);
+            }
+        }
+
+        private static void LogWishRewardAnimationDiagnostics(
+            WishRewardPoolSelection selection,
+            int rewardTypeId,
+            int winnerIndex,
+            int legacyFillCount)
+        {
+            try
+            {
+                string poolMode = selection != null && !string.IsNullOrEmpty(selection.poolMode)
+                    ? selection.poolMode
+                    : "(unknown)";
+
+                ModBehaviour.DevLog(
+                    "[WishFountain] reward animation poolMode=" + poolMode +
+                    " winnerTypeId=" + rewardTypeId +
+                    " winnerIndex=" + winnerIndex +
+                    " animationLegacyFillCount=" + legacyFillCount);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 记录许愿奖励动画日志失败: " + e.Message);
             }
         }
 
@@ -2453,7 +2678,7 @@ namespace BossRush
             return WISH_REWARD_ITEM_BIAS_CAP_Q8;
         }
 
-        private static int RollWishRewardQuality(WishRewardMatchResult match)
+        private static int RollWishRewardQuality(WishRewardMatchResult match, Dictionary<int, List<int>> availableBuckets)
         {
             float[] weights = new float[WishRewardBaseQualityWeights.Length];
             float[] multipliers = new float[WishRewardBaseQualityWeights.Length];
@@ -2507,6 +2732,17 @@ namespace BossRush
 
             for (int i = 0; i < weights.Length; i++)
             {
+                List<int> bucket;
+                if (availableBuckets != null && availableBuckets.TryGetValue(i + 1, out bucket) && bucket != null && bucket.Count > 0)
+                {
+                    continue;
+                }
+
+                weights[i] = 0f;
+            }
+
+            for (int i = 0; i < weights.Length; i++)
+            {
                 weights[i] *= multipliers[i];
             }
 
@@ -2554,12 +2790,16 @@ namespace BossRush
             return weights.Length - 1;
         }
 
-        private static int RollWishRewardItemInQuality(int rolledQuality, WishRewardMatchResult match, out string rewardDisplayName)
+        private static int RollWishRewardItemInQuality(
+            int rolledQuality,
+            WishRewardMatchResult match,
+            Dictionary<int, List<int>> activeBuckets,
+            out string rewardDisplayName)
         {
             rewardDisplayName = null;
 
             List<int> bucket;
-            if (!wishRewardQualityBuckets.TryGetValue(rolledQuality, out bucket) || bucket == null || bucket.Count <= 0)
+            if (activeBuckets == null || !activeBuckets.TryGetValue(rolledQuality, out bucket) || bucket == null || bucket.Count <= 0)
             {
                 return -1;
             }
@@ -2637,19 +2877,26 @@ namespace BossRush
             }
 
             WishRewardMatchResult match = MatchWishRewardKeywords(wishText);
-            int rolledQuality = RollWishRewardQuality(match);
-            int selectedTypeId = RollWishRewardItemInQuality(rolledQuality, match, out rewardDisplayName);
-            LogWishRewardRoll(wishText, match, rolledQuality, selectedTypeId, rewardDisplayName);
+            WishRewardPoolSelection selection = BuildWishRewardPoolSelection(match);
+            Dictionary<int, List<int>> activeBuckets = BuildWishRewardQualityBucketsForSelection(selection);
+            WishRewardMatchResult effectiveMatch = ShouldUseLegacyWishRewardOdds(selection)
+                ? new WishRewardMatchResult()
+                : match;
+            int rolledQuality = RollWishRewardQuality(effectiveMatch, activeBuckets);
+            int selectedTypeId = RollWishRewardItemInQuality(rolledQuality, effectiveMatch, activeBuckets, out rewardDisplayName);
+            LogWishRewardRoll(wishText, match, selection, rolledQuality, selectedTypeId, rewardDisplayName);
             return selectedTypeId;
         }
 
-        private static int PickWishRewardAnimationCandidate(
+        private static bool TryPickWishRewardAnimationCandidate(
             List<int> primaryPool,
             List<int> secondaryPool,
             List<int> tertiaryPool,
             List<int> existingSequence,
-            int winningTypeId)
+            int winningTypeId,
+            out int pickedTypeId)
         {
+            pickedTypeId = -1;
             List<int>[] pools = new List<int>[] { primaryPool, secondaryPool, tertiaryPool };
             int lastTypeId = existingSequence.Count > 0 ? existingSequence[existingSequence.Count - 1] : -1;
 
@@ -2677,57 +2924,114 @@ namespace BossRush
 
                     if (candidateTypeId != lastTypeId)
                     {
-                        return candidateTypeId;
+                        pickedTypeId = candidateTypeId;
+                        return true;
                     }
                 }
 
                 if (fallbackTypeId > 0)
                 {
-                    return fallbackTypeId;
+                    pickedTypeId = fallbackTypeId;
+                    return true;
                 }
             }
 
-            return winningTypeId;
+            return false;
         }
 
-        private static List<int> BuildWishRewardAnimationSequence(int rewardTypeId, out int outWinnerIndex)
+        private static void AddWishRewardAnimationCandidateToBuckets(
+            WishRewardCandidate candidate,
+            int rewardTypeId,
+            List<int> lowQuality,
+            List<int> midQuality,
+            List<int> highQuality)
+        {
+            if (candidate == null || candidate.typeId == rewardTypeId)
+            {
+                return;
+            }
+
+            if (candidate.quality <= 3)
+            {
+                lowQuality.Add(candidate.typeId);
+            }
+            else if (candidate.quality <= 5)
+            {
+                midQuality.Add(candidate.typeId);
+            }
+            else
+            {
+                highQuality.Add(candidate.typeId);
+            }
+        }
+
+        private static void BuildWishRewardAnimationBucketsFromSelection(
+            WishRewardPoolSelection selection,
+            int rewardTypeId,
+            List<int> lowQuality,
+            List<int> midQuality,
+            List<int> highQuality)
+        {
+            if (selection == null || !selection.HasFilteredPool)
+            {
+                return;
+            }
+
+            foreach (int typeId in selection.filteredTypeIds)
+            {
+                WishRewardCandidate candidate;
+                if (!wishRewardCandidatesByTypeId.TryGetValue(typeId, out candidate))
+                {
+                    continue;
+                }
+
+                AddWishRewardAnimationCandidateToBuckets(candidate, rewardTypeId, lowQuality, midQuality, highQuality);
+            }
+        }
+
+        private static void BuildWishRewardAnimationBucketsFromLegacyPool(
+            int rewardTypeId,
+            List<int> lowQuality,
+            List<int> midQuality,
+            List<int> highQuality)
+        {
+            foreach (KeyValuePair<int, WishRewardCandidate> kvp in wishRewardCandidatesByTypeId)
+            {
+                AddWishRewardAnimationCandidateToBuckets(kvp.Value, rewardTypeId, lowQuality, midQuality, highQuality);
+            }
+        }
+
+        private static List<int> BuildWishRewardAnimationSequence(int rewardTypeId, WishRewardPoolSelection selection,
+            out int outWinnerIndex,
+            out int legacyFillCount)
         {
             const int sequenceLength = 45;
             const int winnerIndex = 32;
             outWinnerIndex = winnerIndex;
+            legacyFillCount = 0;
 
             EnsureWishRewardPoolInitialized();
 
-            List<int> lowQuality = new List<int>();
-            List<int> midQuality = new List<int>();
-            List<int> highQuality = new List<int>();
+            List<int> filteredLowQuality = new List<int>();
+            List<int> filteredMidQuality = new List<int>();
+            List<int> filteredHighQuality = new List<int>();
+            List<int> legacyLowQuality = new List<int>();
+            List<int> legacyMidQuality = new List<int>();
+            List<int> legacyHighQuality = new List<int>();
 
-            foreach (KeyValuePair<int, WishRewardCandidate> kvp in wishRewardCandidatesByTypeId)
-            {
-                WishRewardCandidate candidate = kvp.Value;
-                if (candidate == null)
-                {
-                    continue;
-                }
+            BuildWishRewardAnimationBucketsFromSelection(
+                selection,
+                rewardTypeId,
+                filteredLowQuality,
+                filteredMidQuality,
+                filteredHighQuality);
+            BuildWishRewardAnimationBucketsFromLegacyPool(
+                rewardTypeId,
+                legacyLowQuality,
+                legacyMidQuality,
+                legacyHighQuality);
 
-                if (candidate.typeId == rewardTypeId)
-                {
-                    continue;
-                }
-
-                if (candidate.quality <= 3)
-                {
-                    lowQuality.Add(candidate.typeId);
-                }
-                else if (candidate.quality <= 5)
-                {
-                    midQuality.Add(candidate.typeId);
-                }
-                else
-                {
-                    highQuality.Add(candidate.typeId);
-                }
-            }
+            bool useFilteredPool = selection != null && selection.HasFilteredPool;
 
             List<int> sequence = new List<int>(sequenceLength);
             for (int i = 0; i < sequenceLength; i++)
@@ -2738,18 +3042,67 @@ namespace BossRush
                     continue;
                 }
 
-                int pickedTypeId;
+                List<int> filteredPrimaryPool;
+                List<int> filteredSecondaryPool;
+                List<int> filteredTertiaryPool;
+                List<int> legacyPrimaryPool;
+                List<int> legacySecondaryPool;
+                List<int> legacyTertiaryPool;
+
                 if (i % 7 == 0)
                 {
-                    pickedTypeId = PickWishRewardAnimationCandidate(highQuality, midQuality, lowQuality, sequence, rewardTypeId);
+                    filteredPrimaryPool = filteredHighQuality;
+                    filteredSecondaryPool = filteredMidQuality;
+                    filteredTertiaryPool = filteredLowQuality;
+                    legacyPrimaryPool = legacyHighQuality;
+                    legacySecondaryPool = legacyMidQuality;
+                    legacyTertiaryPool = legacyLowQuality;
                 }
                 else if (i % 3 == 0)
                 {
-                    pickedTypeId = PickWishRewardAnimationCandidate(midQuality, lowQuality, highQuality, sequence, rewardTypeId);
+                    filteredPrimaryPool = filteredMidQuality;
+                    filteredSecondaryPool = filteredLowQuality;
+                    filteredTertiaryPool = filteredHighQuality;
+                    legacyPrimaryPool = legacyMidQuality;
+                    legacySecondaryPool = legacyLowQuality;
+                    legacyTertiaryPool = legacyHighQuality;
                 }
                 else
                 {
-                    pickedTypeId = PickWishRewardAnimationCandidate(lowQuality, midQuality, highQuality, sequence, rewardTypeId);
+                    filteredPrimaryPool = filteredLowQuality;
+                    filteredSecondaryPool = filteredMidQuality;
+                    filteredTertiaryPool = filteredHighQuality;
+                    legacyPrimaryPool = legacyLowQuality;
+                    legacySecondaryPool = legacyMidQuality;
+                    legacyTertiaryPool = legacyHighQuality;
+                }
+
+                int pickedTypeId = rewardTypeId;
+                bool pickedFromFiltered = useFilteredPool && TryPickWishRewardAnimationCandidate(
+                    filteredPrimaryPool,
+                    filteredSecondaryPool,
+                    filteredTertiaryPool,
+                    sequence,
+                    rewardTypeId,
+                    out pickedTypeId);
+
+                if (!pickedFromFiltered)
+                {
+                    if (!TryPickWishRewardAnimationCandidate(
+                        legacyPrimaryPool,
+                        legacySecondaryPool,
+                        legacyTertiaryPool,
+                        sequence,
+                        rewardTypeId,
+                        out pickedTypeId))
+                    {
+                        pickedTypeId = rewardTypeId;
+                    }
+
+                    if (useFilteredPool && pickedTypeId != rewardTypeId)
+                    {
+                        legacyFillCount++;
+                    }
                 }
 
                 sequence.Add(pickedTypeId);
@@ -2841,8 +3194,16 @@ namespace BossRush
                 return;
             }
 
+            WishRewardMatchResult animationMatch = MatchWishRewardKeywords(wishText);
+            WishRewardPoolSelection selection = BuildWishRewardPoolSelection(animationMatch);
             int animWinnerIndex;
-            List<int> animSequence = BuildWishRewardAnimationSequence(rewardTypeId, out animWinnerIndex);
+            int legacyFillCount;
+            List<int> animSequence = BuildWishRewardAnimationSequence(
+                rewardTypeId,
+                selection,
+                out animWinnerIndex,
+                out legacyFillCount);
+            LogWishRewardAnimationDiagnostics(selection, rewardTypeId, animWinnerIndex, legacyFillCount);
             WishFountainRewardAnimationView.PlayRuntime(
                 rewardTypeId,
                 rewardDisplayName,

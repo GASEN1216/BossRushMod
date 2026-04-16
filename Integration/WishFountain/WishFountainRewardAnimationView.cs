@@ -22,7 +22,7 @@ namespace BossRush
         private const float SlotWidth = 132f;
         private const float SlotHeight = 132f;
         private const float SlotSpacing = 18f;
-        private const float ViewportWidth = 860f;
+        private const float ViewportWidth = 1728f;
         private const float ViewportHeight = 184f;
         private const float MarkerWidth = 10f;
         private const float MarkerHeight = 184f;
@@ -31,6 +31,7 @@ namespace BossRush
         private const float DimmedAlpha = 0.3f;
         private const float QualityBarHeight = 6f;
         private const float FastSpinTargetProgress = 0.86f;
+        private const float SafetyTimeoutSeconds = 15f;
 
         private static WishFountainRewardAnimationView activeInstance;
         private static readonly Dictionary<int, Sprite> iconCache = new Dictionary<int, Sprite>();
@@ -46,6 +47,7 @@ namespace BossRush
         private string rewardDisplayName;
         private int winnerIndex;
         private bool finished;
+        private float createdTime;
 
         // ====================================================================
         // 品质颜色映射 (Q1~Q8) — 灵感来源 CS:GO 稀有度配色
@@ -137,8 +139,26 @@ namespace BossRush
 
         private void Initialize()
         {
+            createdTime = Time.realtimeSinceStartup;
             CreateOverlayUI();
             StartCoroutine(PlayAnimationCoroutine());
+        }
+
+        private void Update()
+        {
+            // Escape 键跳过动画
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                Complete();
+                return;
+            }
+
+            // 安全超时：防止协程异常中断导致遮罩卡死
+            if (Time.realtimeSinceStartup - createdTime > SafetyTimeoutSeconds)
+            {
+                ModBehaviour.DevLog("[WishFountainAnimation] 安全超时触发，强制关闭动画遮罩");
+                Complete();
+            }
         }
 
         private void CreateOverlayUI()
@@ -188,27 +208,63 @@ namespace BossRush
             reelContentRect.anchoredPosition = Vector2.zero;
             reelContentRect.sizeDelta = new Vector2(GetSequenceTotalWidth(), ViewportHeight);
 
+            // 细线激光指示器 (发光层)
+            GameObject markerGlow = CreateUiObject("MarkerGlow", rootRect, typeof(Image));
+            RectTransform markerGlowRect = markerGlow.GetComponent<RectTransform>();
+            markerGlowRect.anchorMin = new Vector2(0.5f, 0.5f);
+            markerGlowRect.anchorMax = new Vector2(0.5f, 0.5f);
+            markerGlowRect.pivot = new Vector2(0.5f, 0.5f);
+            markerGlowRect.anchoredPosition = Vector2.zero;
+            markerGlowRect.sizeDelta = new Vector2(16f, MarkerHeight + 16f);
+            Image markerGlowImage = markerGlow.GetComponent<Image>();
+            markerGlowImage.color = new Color(1f, 0.85f, 0.3f, 0.15f);
+            markerGlowImage.raycastTarget = false;
+
+            // 细线激光指示器 (黑色背衬)
+            GameObject markerShadow = CreateUiObject("MarkerShadow", rootRect, typeof(Image));
+            RectTransform markerShadowRect = markerShadow.GetComponent<RectTransform>();
+            markerShadowRect.anchorMin = new Vector2(0.5f, 0.5f);
+            markerShadowRect.anchorMax = new Vector2(0.5f, 0.5f);
+            markerShadowRect.pivot = new Vector2(0.5f, 0.5f);
+            markerShadowRect.anchoredPosition = Vector2.zero;
+            markerShadowRect.sizeDelta = new Vector2(4f, MarkerHeight + 8f);
+            Image markerShadowImage = markerShadow.GetComponent<Image>();
+            markerShadowImage.color = new Color(0f, 0f, 0f, 0.6f);
+            markerShadowImage.raycastTarget = false;
+
+            // 细线激光指示器 (核心高亮层)
             GameObject marker = CreateUiObject("Marker", rootRect, typeof(Image));
             RectTransform markerRect = marker.GetComponent<RectTransform>();
             markerRect.anchorMin = new Vector2(0.5f, 0.5f);
             markerRect.anchorMax = new Vector2(0.5f, 0.5f);
             markerRect.pivot = new Vector2(0.5f, 0.5f);
             markerRect.anchoredPosition = Vector2.zero;
-            markerRect.sizeDelta = new Vector2(MarkerWidth, MarkerHeight);
+            markerRect.sizeDelta = new Vector2(2f, MarkerHeight + 8f);
             Image markerImage = marker.GetComponent<Image>();
             markerImage.color = new Color(1f, 0.88f, 0.42f, 0.96f);
             markerImage.raycastTarget = false;
 
-            GameObject markerCap = CreateUiObject("MarkerCap", rootRect, typeof(Image));
-            RectTransform markerCapRect = markerCap.GetComponent<RectTransform>();
-            markerCapRect.anchorMin = new Vector2(0.5f, 0.5f);
-            markerCapRect.anchorMax = new Vector2(0.5f, 0.5f);
-            markerCapRect.pivot = new Vector2(0.5f, 0.5f);
-            markerCapRect.anchoredPosition = new Vector2(0f, 104f);
-            markerCapRect.sizeDelta = new Vector2(88f, 10f);
-            Image markerCapImage = markerCap.GetComponent<Image>();
-            markerCapImage.color = markerImage.color;
-            markerCapImage.raycastTarget = false;
+            // 顶部小指示定点
+            GameObject topDot = CreateUiObject("MarkerTopLocator", rootRect, typeof(Image));
+            RectTransform topDotRect = topDot.GetComponent<RectTransform>();
+            topDotRect.anchorMin = new Vector2(0.5f, 0.5f);
+            topDotRect.anchorMax = new Vector2(0.5f, 0.5f);
+            topDotRect.pivot = new Vector2(0.5f, 0.5f);
+            topDotRect.anchoredPosition = new Vector2(0f, MarkerHeight * 0.5f + 6f);
+            topDotRect.sizeDelta = new Vector2(12f, 4f);
+            topDot.GetComponent<Image>().color = markerImage.color;
+            topDot.GetComponent<Image>().raycastTarget = false;
+
+            // 底部小指示定点
+            GameObject botDot = CreateUiObject("MarkerBotLocator", rootRect, typeof(Image));
+            RectTransform botDotRect = botDot.GetComponent<RectTransform>();
+            botDotRect.anchorMin = new Vector2(0.5f, 0.5f);
+            botDotRect.anchorMax = new Vector2(0.5f, 0.5f);
+            botDotRect.pivot = new Vector2(0.5f, 0.5f);
+            botDotRect.anchoredPosition = new Vector2(0f, -MarkerHeight * 0.5f - 6f);
+            botDotRect.sizeDelta = new Vector2(12f, 4f);
+            botDot.GetComponent<Image>().color = markerImage.color;
+            botDot.GetComponent<Image>().raycastTarget = false;
 
             BuildSlots();
         }
@@ -280,6 +336,18 @@ namespace BossRush
                 rightBorderImage.color = new Color(qualityColor.r, qualityColor.g, qualityColor.b, 0.5f);
                 rightBorderImage.raycastTarget = false;
 
+                // 品质颜色顶部边框条
+                GameObject topBorder = CreateUiObject("TopBorder", slotRect, typeof(Image));
+                RectTransform topBorderRect = topBorder.GetComponent<RectTransform>();
+                topBorderRect.anchorMin = new Vector2(0f, 1f);
+                topBorderRect.anchorMax = new Vector2(1f, 1f);
+                topBorderRect.pivot = new Vector2(0.5f, 1f);
+                topBorderRect.anchoredPosition = Vector2.zero;
+                topBorderRect.sizeDelta = new Vector2(0f, 3f);
+                Image topBorderImage = topBorder.GetComponent<Image>();
+                topBorderImage.color = new Color(qualityColor.r, qualityColor.g, qualityColor.b, 0.5f);
+                topBorderImage.raycastTarget = false;
+
                 GameObject iconObject = CreateUiObject("Icon", slotRect, typeof(Image));
                 RectTransform iconRect = iconObject.GetComponent<RectTransform>();
                 iconRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -318,7 +386,7 @@ namespace BossRush
                 nameRect.anchorMin = new Vector2(0.5f, 0f);
                 nameRect.anchorMax = new Vector2(0.5f, 0f);
                 nameRect.pivot = new Vector2(0.5f, 0f);
-                nameRect.anchoredPosition = new Vector2(0f, 10f);
+                nameRect.anchoredPosition = new Vector2(0f, 12f);
                 nameRect.sizeDelta = new Vector2(SlotWidth - 18f, 28f);
                 TextMeshProUGUI nameText = nameObject.GetComponent<TextMeshProUGUI>();
                 nameText.text = GetCompactName(typeId);
@@ -401,7 +469,9 @@ namespace BossRush
             if (elapsed <= FastSpinDurationSeconds)
             {
                 float fastT = Mathf.Clamp01(elapsed / FastSpinDurationSeconds);
-                return FastSpinTargetProgress * fastT;
+                // ease-in 二次曲线，模拟加速启动感
+                float easedFastT = fastT * fastT;
+                return FastSpinTargetProgress * easedFastT;
             }
 
             float slowT = Mathf.Clamp01((elapsed - FastSpinDurationSeconds) / SlowSpinDurationSeconds);
@@ -424,6 +494,13 @@ namespace BossRush
             if (safeWinnerIndex < 0 || safeWinnerIndex >= slotCount)
             {
                 safeWinnerIndex = slotCount - 1;
+            }
+
+            // 将获奖 Slot 提至最顶层渲染，确保缩放动画不被相邻 Slot 遮挡
+            // 注意：位置靠 anchoredPosition 控制，SetAsLastSibling 仅影响渲染层级
+            if (slotRects[safeWinnerIndex] != null)
+            {
+                slotRects[safeWinnerIndex].SetAsLastSibling();
             }
 
             // 阶段1: 其他物品变暗 + 获奖物品缩放弹出
@@ -504,7 +581,7 @@ namespace BossRush
             }
 
             float winnerX = startX + stepX * safeWinnerIndex;
-            float randomOffset = UnityEngine.Random.Range(-SlotWidth * 0.45f, SlotWidth * 0.45f);
+            float randomOffset = UnityEngine.Random.Range(-SlotWidth * 0.3f, SlotWidth * 0.3f);
             return -(winnerX + randomOffset);
         }
 
@@ -768,6 +845,24 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            // 安全保底：如果动画被意外中断（协程异常、对象被外部 Destroy），
+            // 确保 finishedCallback 仍然被调用，防止奖励发放路径丢失
+            if (!finished && finishedCallback != null)
+            {
+                try
+                {
+                    finishedCallback(rewardTypeId, rewardDisplayName);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[WishFountainAnimation] [WARNING] OnDestroy 保底回调异常: " + e.Message);
+                }
+                finally
+                {
+                    finished = true;
+                }
+            }
+
             if (activeInstance == this)
             {
                 activeInstance = null;

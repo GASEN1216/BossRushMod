@@ -489,16 +489,9 @@ namespace BossRush
             inputField.caretColor = new Color(0.78f, 0.94f, 1f, 1f);
             inputField.caretWidth = 3;
             inputField.selectionColor = new Color(0.26f, 0.57f, 0.9f, 0.38f);
+            // 颜色过渡由 RefreshInputFieldVisualState() 手动控制，不使用 Unity 内置 ColorBlock
             inputField.transition = Selectable.Transition.None;
-
             inputField.targetGraphic = inputContainerImage;
-            ColorBlock cb = inputField.colors;
-            cb.normalColor = inputContainerImage.color;
-            cb.highlightedColor = new Color(0.08f, 0.12f, 0.21f, 1f);
-            cb.selectedColor = new Color(0.12f, 0.17f, 0.3f, 1f);
-            cb.pressedColor = new Color(0.05f, 0.08f, 0.14f, 1f);
-            cb.colorMultiplier = 1f;
-            inputField.colors = cb;
 
             GameObject scrollbarGO = CreateUIObject("VerticalScrollbar", inputContainerRect, typeof(Image), typeof(Scrollbar));
             RectTransform scrollbarRect = scrollbarGO.GetComponent<RectTransform>();
