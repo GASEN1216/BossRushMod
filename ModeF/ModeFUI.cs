@@ -1558,6 +1558,13 @@ namespace BossRush
         private const int HEALTHBAR_CACHE_STALE_FRAMES = 300;
         private const int HEALTHBAR_CLEANUP_INTERVAL = 600;
 
+        /// <summary>
+        /// 缓存玩家 HealthBar 的 InstanceID，避免每帧调用 TryGetCharacter。
+        /// -1 表示尚未识别；识别后每 HEALTHBAR_CLEANUP_INTERVAL 帧重新校验一次。
+        /// </summary>
+        private static int cachedPlayerBarId = -1;
+        private static int playerBarIdCheckFrame = -1;
+
         [HarmonyPostfix]
         public static void Postfix(HealthBar __instance, TextMeshProUGUI ___nameText)
         {
@@ -1572,6 +1579,7 @@ namespace BossRush
             {
                 if (lastProcessedFrameByBarId.Count > 0)
                     lastProcessedFrameByBarId.Clear();
+                cachedPlayerBarId = -1;
                 return;
             }
 
@@ -1582,6 +1590,7 @@ namespace BossRush
             {
                 if (lastProcessedFrameByBarId.Count > 0)
                     lastProcessedFrameByBarId.Clear();
+                cachedPlayerBarId = -1;
                 return;
             }
 
@@ -1589,6 +1598,7 @@ namespace BossRush
             if (currentFrame - lastCleanupFrame >= HEALTHBAR_CLEANUP_INTERVAL)
             {
                 lastCleanupFrame = currentFrame;
+                cachedPlayerBarId = -1;
                 var toRemove = new System.Collections.Generic.List<int>();
                 foreach (var kv in lastProcessedFrameByBarId)
                 {
@@ -1600,13 +1610,35 @@ namespace BossRush
             }
 
             int barId = __instance.GetInstanceID();
-            int lastFrame;
-            if (lastProcessedFrameByBarId.TryGetValue(barId, out lastFrame) &&
-                currentFrame - lastFrame < HEALTHBAR_PATCH_FRAME_INTERVAL)
+
+            // 玩家血条：原版 LateUpdate 每帧会隐藏玩家 nameText，必须每帧强制恢复，否则闪烁。
+            // Boss 血条：原版不会隐藏，可以节流处理。
+            // 用缓存的 InstanceID 判断，避免每帧 TryGetCharacter 开销。
+            bool isPlayerBar = barId == cachedPlayerBarId;
+            if (!isPlayerBar && (cachedPlayerBarId == -1 || currentFrame - playerBarIdCheckFrame >= HEALTHBAR_CLEANUP_INTERVAL))
             {
-                return;
+                Health patchTarget = __instance.target;
+                CharacterMainControl patchChar = patchTarget != null ? patchTarget.TryGetCharacter() : null;
+                if (patchChar != null && patchChar.IsMainCharacter)
+                {
+                    cachedPlayerBarId = barId;
+                    playerBarIdCheckFrame = currentFrame;
+                    isPlayerBar = true;
+                }
             }
-            lastProcessedFrameByBarId[barId] = currentFrame;
+
+            if (!isPlayerBar)
+            {
+                int lastFrame;
+                if (lastProcessedFrameByBarId.TryGetValue(barId, out lastFrame) &&
+                    currentFrame - lastFrame < HEALTHBAR_PATCH_FRAME_INTERVAL)
+                {
+                    return;
+                }
+                lastProcessedFrameByBarId[barId] = currentFrame;
+            }
+            // 玩家血条不节流：原版 LateUpdate 每帧会隐藏/重置玩家 nameText，
+            // 必须每帧执行 override 恢复。场上只有一个玩家血条，开销可忽略。
 
             if (isModeF)
                 cachedInstance.ApplyModeFHealthBarNameOverride(__instance, ___nameText);

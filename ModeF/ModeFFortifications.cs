@@ -1325,15 +1325,9 @@ namespace BossRush
                 wallObj.transform.localRotation = Quaternion.identity;
                 wallObj.transform.localScale = Vector3.one;
 
+                // WallCollider 始终使用 Wall 层，这样子弹射线检测才能命中并被阻挡。
+                // HalfObstacle 的注册由单独的 ModeF_HalfObstacleTrigger 子对象负责。
                 int wallLayer = FortLayers.Wall;
-                if ((FortDef.Get(type)?.IsHalfObstacle ?? false))
-                {
-                    int halfObstacleLayer = FortLayers.HalfObstacle;
-                    if (halfObstacleLayer >= 0)
-                    {
-                        wallLayer = halfObstacleLayer;
-                    }
-                }
                 if (wallLayer >= 0)
                 {
                     wallObj.layer = wallLayer;
@@ -1390,6 +1384,8 @@ namespace BossRush
                 blockerObj.transform.localRotation = Quaternion.identity;
                 blockerObj.transform.localScale = Vector3.one;
 
+                // CharacterBlocker 使用 Wall 层 + 非 trigger 碰撞体，
+                // 让物理引擎自然阻挡角色移动，不再用脚本推挤。
                 int wallLayer = FortLayers.Wall;
                 if (wallLayer >= 0)
                 {
@@ -1419,17 +1415,16 @@ namespace BossRush
                     fortObj.transform,
                     (FortDef.Get(type)?.CharacterBlockerBounds ?? GetModeFFortificationDefaultBounds(type)));
                 blockerCollider.enabled = true;
-                blockerCollider.isTrigger = true;
+                blockerCollider.isTrigger = false;
                 blockerCollider.center = bounds.center;
                 blockerCollider.size = bounds.size;
 
-                ModeFFortificationCharacterBlocker blocker = blockerObj.GetComponent<ModeFFortificationCharacterBlocker>();
-                if (blocker == null)
+                // 清理旧版 ModeFFortificationCharacterBlocker 脚本（如果存在）
+                ModeFFortificationCharacterBlocker oldBlocker = blockerObj.GetComponent<ModeFFortificationCharacterBlocker>();
+                if (oldBlocker != null)
                 {
-                    blocker = blockerObj.AddComponent<ModeFFortificationCharacterBlocker>();
+                    UnityEngine.Object.Destroy(oldBlocker);
                 }
-
-                blocker.Bind(blockerCollider);
             }
             catch (Exception e)
             {
@@ -2735,114 +2730,13 @@ namespace BossRush
         }
     }
 
+    /// <summary>
+    /// 已弃用：旧版用 trigger+SetPosition 推挤角色，导致低端机严重卡顿。
+    /// 现在 CharacterBlocker 改为非 trigger 物理碰撞体，由引擎自然阻挡。
+    /// 保留空壳以兼容已存在的序列化实例，EnsureModeFFortificationCharacterBlocker 会自动清理。
+    /// </summary>
     public class ModeFFortificationCharacterBlocker : MonoBehaviour
     {
-        private const float PushOutPadding = 0.05f;
-        private const float PushOutCooldown = 0.08f;
-        private BoxCollider blockerCollider;
-        private float nextPushAllowedTime = 0f;
-
-        public void Bind(BoxCollider collider)
-        {
-            blockerCollider = collider;
-        }
-
-        private void Awake()
-        {
-            if (blockerCollider == null)
-            {
-                blockerCollider = GetComponent<BoxCollider>();
-            }
-        }
-
-        private void OnTriggerEnter(Collider other)
-        {
-            TryPushCharacterOut(other);
-        }
-
-        private void OnTriggerStay(Collider other)
-        {
-            TryPushCharacterOut(other);
-        }
-
-        private void TryPushCharacterOut(Collider other)
-        {
-            if (blockerCollider == null || other == null)
-            {
-                return;
-            }
-
-            CharacterMainControl character = GetCharacter(other);
-            if (!ShouldPushCharacter(character))
-            {
-                return;
-            }
-
-            if (Time.unscaledTime < nextPushAllowedTime)
-            {
-                return;
-            }
-
-            Vector3 direction;
-            float distance;
-            if (!Physics.ComputePenetration(
-                blockerCollider,
-                blockerCollider.transform.position,
-                blockerCollider.transform.rotation,
-                other,
-                other.transform.position,
-                other.transform.rotation,
-                out direction,
-                out distance))
-            {
-                return;
-            }
-
-            direction.y = 0f;
-            if (direction.sqrMagnitude <= 0.0001f)
-            {
-                Vector3 fallback = character.transform.position - blockerCollider.bounds.center;
-                fallback.y = 0f;
-                direction = fallback.sqrMagnitude > 0.0001f ? fallback.normalized : blockerCollider.transform.forward;
-            }
-            else
-            {
-                direction.Normalize();
-            }
-
-            Vector3 currentPos = character.transform.position;
-            Vector3 targetPos = currentPos + direction * (distance + PushOutPadding);
-            targetPos.y = currentPos.y;
-            character.SetPosition(targetPos);
-            nextPushAllowedTime = Time.unscaledTime + PushOutCooldown;
-        }
-
-        private CharacterMainControl GetCharacter(Collider other)
-        {
-            CharacterMainControl character = other.GetComponent<CharacterMainControl>();
-            if (character != null)
-            {
-                return character;
-            }
-
-            return other.GetComponentInParent<CharacterMainControl>();
-        }
-
-        private static bool ShouldPushCharacter(CharacterMainControl character)
-        {
-            if (character == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                return character.IsMainCharacter || character == CharacterMainControl.Main;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        public void Bind(BoxCollider collider) { }
     }
 }

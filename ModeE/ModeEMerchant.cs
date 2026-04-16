@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
 using Cysharp.Threading.Tasks;
 using Duckov.Economy;
 using Duckov.Economy.UI;
@@ -21,6 +22,7 @@ using Duckov.Scenes;
 using Duckov.UI;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
+using TMPro;
 
 namespace BossRush
 {
@@ -236,19 +238,22 @@ namespace BossRush
                     field.SetValue(mainInteract, groupList);
                 }
 
-                bool hasRepairOption = false;
+                // 清理 null 元素
                 for (int i = groupList.Count - 1; i >= 0; i--)
                 {
-                    InteractableBase option = groupList[i];
-                    if (option == null)
+                    if (groupList[i] == null)
                     {
                         groupList.RemoveAt(i);
-                        continue;
                     }
+                }
 
-                    if (option is BossRushRepairInteractable)
+                bool hasRepairOption = false;
+                for (int i = 0; i < groupList.Count; i++)
+                {
+                    if (groupList[i] is BossRushRepairInteractable)
                     {
                         hasRepairOption = true;
+                        break;
                     }
                 }
 
@@ -326,7 +331,6 @@ namespace BossRush
                     catch { }
 
                     // 填充商品（子弹原价，其余 ×10）
-                    // 注意：不预缓存 itemInstances，由 StockShop 按需加载，节省内存
                     float shopPriceFactor = (suffix == "Bullet") ? 1.0f : 10.0f;
                     if (shop.entries == null)
                         shop.entries = new List<StockShop.Entry>();
@@ -352,6 +356,8 @@ namespace BossRush
                         }
                         catch { }
                     }
+
+                    // itemInstances 预缓存在末尾由协程统一异步分帧执行
 
                     // 创建交互选项并注入到主交互组（使用本地化键）
                     var interact = shopObj.AddComponent<ModeEShopInteractable>();
@@ -394,7 +400,6 @@ namespace BossRush
                     catch { }
 
                     // 填充商品（ID=388，原价）
-                    // 注意：不预缓存 itemInstances，由 StockShop 按需加载
                     if (otherShop.entries == null)
                         otherShop.entries = new List<StockShop.Entry>();
                     else
@@ -428,6 +433,8 @@ namespace BossRush
                         modeFItemCount = TryInjectModeFItemsIntoMerchantShop(otherShop);
                     }
 
+                    // itemInstances 预缓存在末尾由协程统一异步分帧执行
+
                     // 创建交互选项
                     var otherInteract = otherShopObj.AddComponent<ModeEShopInteractable>();
                     otherInteract.Setup(otherShop, "BossRush_ModeE_Shop_Other");
@@ -438,6 +445,10 @@ namespace BossRush
                 }
 
                 DevLog("[ModeE] 分类商店注入完成，共 " + (categories.Count + 1) + " 个分类，" + totalItems + " 个商品");
+
+                // 异步分帧预缓存所有商店的 itemInstances，避免打开商店时同步实例化导致卡顿
+                // 在缓存完成前打开商店仍可正常使用（原版按需加载兜底）
+                StartCoroutine(CacheAllModeEShopItemInstancesAsync());
             }
             catch (Exception e)
             {
@@ -806,6 +817,71 @@ namespace BossRush
         }
 
         // ====================================================================
+        // 预缓存商店物品实例
+        // ====================================================================
+
+        /// <summary>
+        /// 异步分帧预缓存所有 Mode E 商店的 itemInstances。
+        /// 每帧实例化一批物品（BATCH_SIZE 个），避免低端机商人生成时一次性加载数百物品导致卡顿。
+        /// 在缓存完成前打开商店仍可正常使用（原版按需加载兜底），缓存完成后打开商店不再卡顿。
+        /// </summary>
+        private System.Collections.IEnumerator CacheAllModeEShopItemInstancesAsync()
+        {
+            const int BATCH_SIZE = 8;
+
+            var fItems = ReflectionCache.StockShop_ItemInstances;
+            if (fItems == null) yield break;
+
+            // 快照商店列表，防止 CleanupModeEMerchant 清空列表导致迭代异常
+            StockShop[] shops = modeEMerchantShops.ToArray();
+
+            for (int s = 0; s < shops.Length; s++)
+            {
+                StockShop shop = shops[s];
+                if (shop == null || shop.entries == null) continue;
+
+                Dictionary<int, Item> dict;
+                try
+                {
+                    dict = fItems.GetValue(shop) as Dictionary<int, Item>;
+                    if (dict == null)
+                    {
+                        dict = new Dictionary<int, Item>();
+                        fItems.SetValue(shop, dict);
+                    }
+                }
+                catch { continue; }
+
+                int entryCount = shop.entries.Count;
+                int count = 0;
+                for (int i = 0; i < entryCount; i++)
+                {
+                    // 商店已被销毁则提前退出
+                    if (shop == null) break;
+
+                    var entry = shop.entries[i];
+                    if (entry == null) continue;
+                    int id = entry.ItemTypeID;
+                    if (dict.ContainsKey(id)) continue;
+
+                    try
+                    {
+                        Item item = ItemAssetsCollection.InstantiateSync(id);
+                        if (item != null)
+                            dict[id] = item;
+                    }
+                    catch { }
+
+                    count++;
+                    if (count % BATCH_SIZE == 0)
+                        yield return null;
+                }
+            }
+
+            DevLog("[ModeE] 所有商店物品实例异步预缓存完成");
+        }
+
+        // ====================================================================
         // 清理神秘商人
         // ====================================================================
 
@@ -937,11 +1013,485 @@ namespace BossRush
                     return;
                 }
                 _shop.ShowUI();
+                ModeEMerchantSellAllUI.Attach(_shop);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeE] [ERROR] ModeEShopInteractable.OnTimeOut 失败: " + e.Message);
             }
+        }
+    }
+
+    internal static class ModeEMerchantSellAllUI
+    {
+        private static FieldInfo playerInventoryDisplayField;
+        private static FieldInfo characterInventoryDisplayField;
+        private static FieldInfo sortButtonField;
+        private static MethodInfo sellMethod;
+        private static bool reflectionInitialized;
+
+        private static StockShop currentShop;
+        private static Inventory currentPlayerInventory;
+        private static GameObject sellAllButtonObject;
+        private static Button sellAllButton;
+        private static TextMeshProUGUI sellAllButtonText;
+        private static bool isSelling;
+
+        internal static void Attach(StockShop shop)
+        {
+            Cleanup();
+
+            if (shop == null || string.IsNullOrEmpty(shop.MerchantID) || !shop.MerchantID.StartsWith("ModeE_", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            InitializeReflection();
+            currentShop = shop;
+            BindPlayerInventory();
+            RegisterEvents();
+            CreateSellAllButton();
+            UpdateButtonState();
+        }
+
+        private static void InitializeReflection()
+        {
+            if (reflectionInitialized)
+            {
+                return;
+            }
+
+            BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
+            playerInventoryDisplayField = typeof(StockShopView).GetField("playerInventoryDisplay", privateInstance);
+            characterInventoryDisplayField = typeof(StockShopView).GetField("characterInventoryDisplay", privateInstance);
+            sortButtonField = typeof(Duckov.UI.InventoryDisplay).GetField("sortButton", privateInstance);
+            sellMethod = typeof(StockShop).GetMethod("Sell", privateInstance, null, new Type[] { typeof(Item) }, null);
+            reflectionInitialized = true;
+        }
+
+        private static void RegisterEvents()
+        {
+            StockShop.OnAfterItemSold += OnAfterItemSold;
+            ManagedUIElement.onClose += OnManagedUIElementClose;
+        }
+
+        private static void UnregisterEvents()
+        {
+            StockShop.OnAfterItemSold -= OnAfterItemSold;
+            ManagedUIElement.onClose -= OnManagedUIElementClose;
+        }
+
+        private static void BindPlayerInventory()
+        {
+            if (currentPlayerInventory != null)
+            {
+                currentPlayerInventory.onContentChanged -= OnPlayerInventoryContentChanged;
+                currentPlayerInventory = null;
+            }
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.CharacterItem != null)
+                {
+                    currentPlayerInventory = player.CharacterItem.Inventory;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeE] [WARNING] 绑定玩家背包失败: " + e.Message);
+            }
+
+            if (currentPlayerInventory != null)
+            {
+                currentPlayerInventory.onContentChanged += OnPlayerInventoryContentChanged;
+            }
+        }
+
+        private static void CreateSellAllButton()
+        {
+            StockShopView shopView = StockShopView.Instance;
+            if (shopView == null || shopView.Target != currentShop)
+            {
+                return;
+            }
+
+            try
+            {
+                Duckov.UI.InventoryDisplay playerInventoryDisplay = null;
+                if (playerInventoryDisplayField != null)
+                {
+                    playerInventoryDisplay = playerInventoryDisplayField.GetValue(shopView) as Duckov.UI.InventoryDisplay;
+                }
+
+                if (playerInventoryDisplay == null && characterInventoryDisplayField != null)
+                {
+                    playerInventoryDisplay = characterInventoryDisplayField.GetValue(shopView) as Duckov.UI.InventoryDisplay;
+                }
+
+                if (playerInventoryDisplay == null)
+                {
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 无法获取玩家背包 InventoryDisplay，跳过创建一键卖出按钮");
+                    return;
+                }
+
+                Button sortButton = null;
+                if (sortButtonField != null)
+                {
+                    sortButton = sortButtonField.GetValue(playerInventoryDisplay) as Button;
+                }
+
+                if (sortButton == null)
+                {
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 无法获取整理按钮，跳过创建一键卖出按钮");
+                    return;
+                }
+
+                sellAllButtonObject = UnityEngine.Object.Instantiate(sortButton.gameObject, sortButton.transform.parent);
+                sellAllButtonObject.name = "ModeEMerchantSellAllButton";
+                sellAllButtonObject.SetActive(true);
+
+                RectTransform rt = sellAllButtonObject.GetComponent<RectTransform>();
+                RectTransform sortRt = sortButton.GetComponent<RectTransform>();
+                if (rt != null && sortRt != null)
+                {
+                    rt.anchorMin = sortRt.anchorMin;
+                    rt.anchorMax = sortRt.anchorMax;
+                    rt.pivot = sortRt.pivot;
+                    rt.anchoredPosition = sortRt.anchoredPosition + new Vector2(0f, sortRt.sizeDelta.y + 8f);
+                    rt.sizeDelta = new Vector2(sortRt.sizeDelta.x + 80f, sortRt.sizeDelta.y);
+                }
+
+                LayoutElement layoutElement = sellAllButtonObject.GetComponent<LayoutElement>();
+                if (layoutElement != null)
+                {
+                    if (layoutElement.preferredWidth > 0f)
+                    {
+                        layoutElement.preferredWidth += 80f;
+                    }
+
+                    if (layoutElement.minWidth > 0f)
+                    {
+                        layoutElement.minWidth += 80f;
+                    }
+                }
+
+                ContentSizeFitter contentSizeFitter = sellAllButtonObject.GetComponent<ContentSizeFitter>();
+                if (contentSizeFitter != null)
+                {
+                    contentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                }
+
+                sellAllButton = sellAllButtonObject.GetComponent<Button>();
+                if (sellAllButton != null)
+                {
+                    sellAllButton.onClick.RemoveAllListeners();
+                    sellAllButton.onClick.AddListener(OnSellAllButtonClicked);
+                }
+
+                sellAllButtonText = sellAllButtonObject.GetComponentInChildren<TextMeshProUGUI>();
+                UpdateButtonState();
+
+                ModBehaviour.DevLog("[ModeE] 一键卖出按钮创建成功");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeE] [WARNING] 创建一键卖出按钮失败: " + e.Message);
+            }
+        }
+
+        private static void UpdateButtonState()
+        {
+            if (sellAllButton == null)
+            {
+                return;
+            }
+
+            string sellAllLabel = L10n.T("一键卖出", "Sell All");
+            string displayText;
+            bool interactable;
+            Color buttonColor;
+
+            if (isSelling)
+            {
+                displayText = L10n.T("卖出中...", "Selling...");
+                interactable = false;
+                buttonColor = Color.gray;
+            }
+            else
+            {
+                int itemCount = CountSellableInventoryItems();
+                bool canSell = currentShop != null && itemCount > 0;
+                displayText = canSell ? sellAllLabel + " (" + itemCount + ")" : sellAllLabel;
+                interactable = canSell;
+                buttonColor = canSell ? new Color(0.2f, 0.8f, 0.2f) : Color.gray;
+            }
+
+            ApplyButtonState(sellAllButton, sellAllButtonObject, sellAllButtonText, displayText, interactable, buttonColor);
+        }
+
+        private static int CountSellableInventoryItems()
+        {
+            if (currentPlayerInventory == null)
+            {
+                BindPlayerInventory();
+            }
+
+            if (currentPlayerInventory == null || currentPlayerInventory.Content == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < currentPlayerInventory.Content.Count; i++)
+            {
+                if (IsInventoryIndexLocked(currentPlayerInventory, i))
+                {
+                    continue;
+                }
+
+                Item item = currentPlayerInventory.Content[i];
+                if (item != null && item.CanBeSold)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static List<Item> CollectSellableInventoryItems()
+        {
+            List<Item> items = new List<Item>();
+
+            if (currentPlayerInventory == null)
+            {
+                BindPlayerInventory();
+            }
+
+            if (currentPlayerInventory == null || currentPlayerInventory.Content == null)
+            {
+                return items;
+            }
+
+            for (int i = 0; i < currentPlayerInventory.Content.Count; i++)
+            {
+                if (IsInventoryIndexLocked(currentPlayerInventory, i))
+                {
+                    continue;
+                }
+
+                Item item = currentPlayerInventory.Content[i];
+                if (item != null && item.CanBeSold)
+                {
+                    items.Add(item);
+                }
+            }
+
+            return items;
+        }
+
+        private static void OnSellAllButtonClicked()
+        {
+            if (currentShop == null || isSelling)
+            {
+                return;
+            }
+
+            SellAllInventoryItemsAsync().Forget();
+        }
+
+        private static async UniTaskVoid SellAllInventoryItemsAsync()
+        {
+            StockShop targetShop = currentShop;
+            if (targetShop == null)
+            {
+                UpdateButtonState();
+                return;
+            }
+
+            List<Item> itemsToSell = CollectSellableInventoryItems();
+            if (itemsToSell.Count <= 0)
+            {
+                UpdateButtonState();
+                return;
+            }
+
+            isSelling = true;
+            UpdateButtonState();
+
+            int soldCount = 0;
+            int failedCount = 0;
+
+            try
+            {
+                for (int i = 0; i < itemsToSell.Count; i++)
+                {
+                    Item item = itemsToSell[i];
+                    if (item == null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await SellItemAsync(targetShop, item);
+                        soldCount++;
+                    }
+                    catch (Exception e)
+                    {
+                        failedCount++;
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 一键卖出失败: " + item.DisplayName + ", " + e.Message);
+                    }
+                }
+
+                if (soldCount > 0 && failedCount > 0)
+                {
+                    NotificationText.Push(L10n.T(
+                        "已卖出 " + soldCount + " 件物品，" + failedCount + " 件未能卖出",
+                        "Sold " + soldCount + " items, " + failedCount + " could not be sold"));
+                }
+                else if (soldCount > 0)
+                {
+                    NotificationText.Push(L10n.T(
+                        "已卖出 " + soldCount + " 件物品",
+                        "Sold " + soldCount + " items"));
+                }
+                else
+                {
+                    NotificationText.Push(L10n.T(
+                        "没有物品被卖出",
+                        "No items were sold"));
+                }
+            }
+            finally
+            {
+                isSelling = false;
+                UpdateButtonState();
+            }
+        }
+
+        private static async UniTask SellItemAsync(StockShop shop, Item item)
+        {
+            if (shop == null)
+            {
+                throw new InvalidOperationException("shop is null");
+            }
+
+            if (item == null)
+            {
+                throw new InvalidOperationException("item is null");
+            }
+
+            if (sellMethod == null)
+            {
+                throw new MissingMethodException(typeof(StockShop).FullName, "Sell");
+            }
+
+            object taskObject = sellMethod.Invoke(shop, new object[] { item });
+            if (!(taskObject is UniTask))
+            {
+                throw new InvalidOperationException("StockShop.Sell did not return UniTask");
+            }
+
+            await (UniTask)taskObject;
+        }
+
+        private static void OnPlayerInventoryContentChanged(Inventory inventory, int index)
+        {
+            UpdateButtonState();
+        }
+
+        private static void OnAfterItemSold(StockShop shop)
+        {
+            if (shop != currentShop)
+            {
+                return;
+            }
+
+            UpdateButtonState();
+        }
+
+        private static void OnManagedUIElementClose(ManagedUIElement element)
+        {
+            StockShopView shopView = element as StockShopView;
+            if (shopView == null || shopView.Target != currentShop)
+            {
+                return;
+            }
+
+            Cleanup();
+        }
+
+        private static void Cleanup()
+        {
+            UnregisterEvents();
+
+            if (currentPlayerInventory != null)
+            {
+                currentPlayerInventory.onContentChanged -= OnPlayerInventoryContentChanged;
+                currentPlayerInventory = null;
+            }
+
+            if (sellAllButtonObject != null)
+            {
+                UnityEngine.Object.Destroy(sellAllButtonObject);
+                sellAllButtonObject = null;
+            }
+
+            sellAllButton = null;
+            sellAllButtonText = null;
+            currentShop = null;
+            isSelling = false;
+        }
+
+        private static bool IsInventoryIndexLocked(Inventory inventory, int index)
+        {
+            try
+            {
+                return inventory != null && inventory.IsIndexLocked(index);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void ApplyButtonState(
+            Button targetButton,
+            GameObject targetObject,
+            TextMeshProUGUI targetText,
+            string displayText,
+            bool interactable,
+            Color buttonColor)
+        {
+            if (targetButton == null)
+            {
+                return;
+            }
+
+            if (targetText != null)
+            {
+                targetText.text = displayText;
+                targetText.richText = false;
+            }
+            else if (targetObject != null)
+            {
+                Text legacyText = targetObject.GetComponentInChildren<Text>();
+                if (legacyText != null)
+                {
+                    legacyText.text = displayText;
+                    legacyText.supportRichText = false;
+                }
+            }
+
+            targetButton.interactable = interactable;
+            ColorBlock colors = targetButton.colors;
+            colors.normalColor = buttonColor;
+            colors.highlightedColor = buttonColor * 1.1f;
+            colors.pressedColor = buttonColor * 0.9f;
+            colors.disabledColor = Color.gray;
+            targetButton.colors = colors;
         }
     }
 
