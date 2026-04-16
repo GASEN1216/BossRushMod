@@ -447,6 +447,7 @@ namespace BossRush
                 reelContentRect.anchoredPosition = new Vector2(finalX, 0f);
             }
 
+            TryPlayWinningRewardResultSfx();
             yield return StartCoroutine(HighlightWinningSlotAnimated());
             float remainingDisplayTime = Mathf.Max(0f, ResultDisplayDurationSeconds - HighlightAnimDuration);
             if (remainingDisplayTime > 0f)
@@ -479,6 +480,34 @@ namespace BossRush
             float slowT = Mathf.Clamp01((elapsed - FastSpinDurationSeconds) / SlowSpinDurationSeconds);
             float easedSlowT = 1f - Mathf.Pow(1f - slowT, 3f);
             return Mathf.LerpUnclamped(FastSpinTargetProgress, 1f, easedSlowT);
+        }
+
+        private void TryPlayWinningRewardResultSfx()
+        {
+            if (rewardTypeId <= 0)
+            {
+                return;
+            }
+
+            int rewardQuality = GetItemQuality(rewardTypeId);
+            if (rewardQuality < 7)
+            {
+                return;
+            }
+
+            string modPath = ModBehaviour.GetModPath();
+            if (string.IsNullOrEmpty(modPath))
+            {
+                return;
+            }
+
+            string specialSoundPath = System.IO.Path.Combine(modPath, "Assets", "Sounds", "lottery", "special.mp3");
+            if (!System.IO.File.Exists(specialSoundPath))
+            {
+                return;
+            }
+
+            ModBehaviour.Instance?.PlaySoundEffect(specialSoundPath);
         }
 
         /// <summary>

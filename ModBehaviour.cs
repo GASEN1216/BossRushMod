@@ -2985,18 +2985,19 @@ namespace BossRush
                 DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
             }
             
-            // 调试快捷键 F3：清除星愿奖励冷却
+            // 调试快捷键 F3：清除星愿奖励冷却和发送冷却
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F3))
             {
                 try
                 {
                     WishFountainService.ClearWishRewardCooldownForDevMode();
-                    ShowMessage(L10n.T("已清除星愿奖励冷却", "Wish reward cooldown cleared"));
-                    DevLog("[BossRush] F3 已清除星愿奖励冷却");
+                    WishFountainService.ClearSendCooldownForDevMode();
+                    ShowMessage(L10n.T("已清除星愿奖励与发送冷却", "Wish reward and send cooldowns cleared"));
+                    DevLog("[BossRush] F3 已清除星愿奖励冷却和发送冷却");
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] F3 清除星愿奖励冷却失败: " + e.Message + "\n" + e.StackTrace);
+                    DevLog("[BossRush] F3 清除星愿奖励冷却和发送冷却失败: " + e.Message + "\n" + e.StackTrace);
                 }
             }
             

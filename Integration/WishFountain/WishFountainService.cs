@@ -1378,6 +1378,12 @@ namespace BossRush
             }
         }
 
+        internal static void ClearSendCooldownForDevMode()
+        {
+            lastSendTime = -999f;
+            IsSending = false;
+        }
+
         private static string FormatWishRewardCooldownForBubble(int remainingSeconds)
         {
             TimeSpan remain = TimeSpan.FromSeconds(Mathf.Max(0, remainingSeconds));
