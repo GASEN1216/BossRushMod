@@ -1,0 +1,13 @@
+## v2.1.34
+
+### Release Date
+- 2026-04-16
+
+### Main Theme
+- **Wish Gacha, Mode E / F merchant upgrades, and storage QoL**: the StarWish Fountain now supports a 4-hour reward draw, the Faction War / Blood Hunt mystery merchant gains repair and batch-selling support, and one-click deposit is fixed.
+
+### Detailed Update Log
+- After a successful wish submission, the `Dust-Covered StarWish Fountain` can now trigger 1 extra `Wish Gacha` reward every `4 hours`.
+- The Mystery Merchant in Mode E / Mode F now includes a `Repair` option that opens the repair UI directly.
+- Opening any Mode E / Mode F Mystery Merchant category shop now adds a `Sell All` button to the player's inventory area, allowing batch-selling of eligible root items in the current backpack; locked slots are excluded.
+- Fixed a bug where the storage service `One-Click Deposit` could stop working in some cases.

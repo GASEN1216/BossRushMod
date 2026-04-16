@@ -59,6 +59,12 @@ All three NPCs appear in Blood Hunt mode:
 - Dingdang (Goblin Smith): Provides Reforge and shop services
 - Yuori (Nurse): Provides healing services
 
+### Mystery Merchant
+
+- A Mystery Merchant also appears in Blood Hunt, offering categorized battle-supply shops.
+- The merchant now includes a `Repair` option that opens the repair UI directly.
+- Opening any Mystery Merchant category shop also adds a `Sell All` button beside the player inventory, allowing batch-selling of eligible root items from the current backpack; locked slots are excluded.
+
 ### Fortification System
 
 Blood Hunt provides 4 deployable fortification items:

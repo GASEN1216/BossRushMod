@@ -68,7 +68,7 @@ All three NPCs appear in Faction War mode:
 
 # Mystery Merchant
 
-When the mode starts, a Mystery Merchant appears in front of you, offering 13 categorized shops:
+When the mode starts, a Mystery Merchant appears in front of you, offering a `Repair` option plus 13 categorized shops:
 
 - Firearms: All firearms / Price multiplier ×10
 - Melee: Melee weapons / Price multiplier ×10
@@ -85,6 +85,8 @@ When the mode starts, a Mystery Merchant appears in front of you, offering 13 ca
 - Other: Tactical consumables, etc. / Price multiplier ×1
 
 The merchant is on your faction and has extremely high HP, making them virtually unkillable.
+- The `Repair` option opens the standard repair UI directly.
+- Opening any category shop also adds a `Sell All` button beside the player inventory, allowing batch-selling of eligible root items from the current backpack; locked slots are excluded.
 
 # Summon Coalball
 
