@@ -236,6 +236,34 @@ namespace BossRush
                     field.SetValue(mainInteract, groupList);
                 }
 
+                bool hasRepairOption = false;
+                for (int i = groupList.Count - 1; i >= 0; i--)
+                {
+                    InteractableBase option = groupList[i];
+                    if (option == null)
+                    {
+                        groupList.RemoveAt(i);
+                        continue;
+                    }
+
+                    if (option is BossRushRepairInteractable)
+                    {
+                        hasRepairOption = true;
+                    }
+                }
+
+                if (!hasRepairOption)
+                {
+                    GameObject repairObj = new GameObject("ModeEOption_Repair");
+                    repairObj.transform.SetParent(mainInteract.transform);
+                    repairObj.transform.localPosition = Vector3.zero;
+                    repairObj.transform.localRotation = Quaternion.identity;
+                    repairObj.transform.localScale = Vector3.one;
+
+                    BossRushRepairInteractable repairInteract = repairObj.AddComponent<BossRushRepairInteractable>();
+                    groupList.Insert(0, repairInteract);
+                }
+
                 // 获取 Tag 系统
                 var tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
                 if (tagsData == null)
