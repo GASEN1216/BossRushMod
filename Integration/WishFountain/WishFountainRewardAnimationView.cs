@@ -37,6 +37,8 @@ namespace BossRush
         private static readonly Dictionary<int, Sprite> iconCache = new Dictionary<int, Sprite>();
         private static readonly Dictionary<int, string> displayNameCache = new Dictionary<int, string>();
         private static readonly Dictionary<int, int> qualityCache = new Dictionary<int, int>();
+        /// <summary>反射缓存：Item 子类型 → 返回 Sprite 的 MemberInfo（null 表示该类型无可用成员）</summary>
+        private static readonly Dictionary<Type, MemberInfo> spriteMemberCache = new Dictionary<Type, MemberInfo>();
 
         private RectTransform reelContentRect;
         private readonly List<RectTransform> slotRects = new List<RectTransform>();
@@ -768,6 +770,36 @@ namespace BossRush
                 return null;
             }
 
+            Type itemType = item.GetType();
+            MemberInfo cachedMember;
+            if (spriteMemberCache.TryGetValue(itemType, out cachedMember))
+            {
+                if (cachedMember == null)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    FieldInfo cachedField = cachedMember as FieldInfo;
+                    if (cachedField != null)
+                    {
+                        return cachedField.GetValue(item) as Sprite;
+                    }
+
+                    PropertyInfo cachedProperty = cachedMember as PropertyInfo;
+                    if (cachedProperty != null)
+                    {
+                        return cachedProperty.GetValue(item, null) as Sprite;
+                    }
+                }
+                catch
+                {
+                }
+
+                return null;
+            }
+
             const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase;
             string[] candidateMemberNames =
             {
@@ -780,7 +812,6 @@ namespace BossRush
                 "iconReference"
             };
 
-            Type itemType = item.GetType();
             for (int i = 0; i < candidateMemberNames.Length; i++)
             {
                 string memberName = candidateMemberNames[i];
@@ -793,6 +824,7 @@ namespace BossRush
                         Sprite sprite = property.GetValue(item, null) as Sprite;
                         if (sprite != null)
                         {
+                            spriteMemberCache[itemType] = property;
                             return sprite;
                         }
                     }
@@ -809,6 +841,7 @@ namespace BossRush
                         Sprite sprite = field.GetValue(item) as Sprite;
                         if (sprite != null)
                         {
+                            spriteMemberCache[itemType] = field;
                             return sprite;
                         }
                     }
@@ -818,7 +851,15 @@ namespace BossRush
                 }
             }
 
+            spriteMemberCache[itemType] = null;
             return null;
+        }
+
+        private static void ClearItemCaches()
+        {
+            iconCache.Clear();
+            displayNameCache.Clear();
+            qualityCache.Clear();
         }
 
         private void Complete()
@@ -839,6 +880,7 @@ namespace BossRush
             finally
             {
                 activeInstance = null;
+                ClearItemCaches();
                 Destroy(gameObject);
             }
         }

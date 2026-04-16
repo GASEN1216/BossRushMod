@@ -141,6 +141,10 @@ namespace BossRush
         private static readonly Dictionary<int, WishRewardItemDefinition> wishRewardCustomItemsByTypeId =
             new Dictionary<int, WishRewardItemDefinition>();
 
+        /// <summary>反射成员缓存：TagsData 上的 Field/Property 查找结果（null 表示已查找但不存在）</summary>
+        private static readonly Dictionary<string, MemberInfo> wishRewardTagMemberCache =
+            new Dictionary<string, MemberInfo>(StringComparer.OrdinalIgnoreCase);
+
         private sealed class WishRewardCategoryDefinition
         {
             public string categoryId;
@@ -1876,13 +1880,14 @@ namespace BossRush
             Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
             if (tagsData != null)
             {
-                RegisterWishRewardTagCategory(context, tagsData, "gun", new string[] { "Gun" });
-                RegisterWishRewardTagCategory(context, tagsData, "weapon", new string[] { "Gun", "Weapon", "MeleeWeapon" });
-                RegisterWishRewardTagCategory(context, tagsData, "helmet", new string[] { "Helmat", "Helmet" });
-                RegisterWishRewardTagCategory(context, tagsData, "armor", new string[] { "Armor" });
-                RegisterWishRewardTagCategory(context, tagsData, "travel", new string[] { "Backpack" });
-                RegisterWishRewardTagCategory(context, tagsData, "gift", new string[] { "Food", "Special" });
-                RegisterWishRewardTagCategory(context, tagsData, "healing", new string[] { "Food", "Medical", "Special" });
+                Duckov.Utilities.Tag[] excludeTagsArray = BuildWishRewardExcludeTags(tagsData).ToArray();
+                RegisterWishRewardTagCategory(context, tagsData, excludeTagsArray, "gun", new string[] { "Gun" });
+                RegisterWishRewardTagCategory(context, tagsData, excludeTagsArray, "weapon", new string[] { "Gun", "Weapon", "MeleeWeapon" });
+                RegisterWishRewardTagCategory(context, tagsData, excludeTagsArray, "helmet", new string[] { "Helmat", "Helmet" });
+                RegisterWishRewardTagCategory(context, tagsData, excludeTagsArray, "armor", new string[] { "Armor" });
+                RegisterWishRewardTagCategory(context, tagsData, excludeTagsArray, "travel", new string[] { "Backpack" });
+                RegisterWishRewardTagCategory(context, tagsData, excludeTagsArray, "gift", new string[] { "Food", "Special" });
+                RegisterWishRewardTagCategory(context, tagsData, excludeTagsArray, "healing", new string[] { "Food", "Medical", "Special" });
             }
 
             foreach (KeyValuePair<int, WishRewardCandidate> kvp in context.candidatesByTypeId)
@@ -1925,6 +1930,7 @@ namespace BossRush
         private static void RegisterWishRewardTagCategory(
             WishRewardPoolBuildContext context,
             Duckov.Utilities.GameplayDataSettings.TagsData tagsData,
+            Duckov.Utilities.Tag[] excludeTagsArray,
             string categoryId,
             string[] memberNames)
         {
@@ -1932,8 +1938,6 @@ namespace BossRush
             {
                 return;
             }
-
-            List<Duckov.Utilities.Tag> excludeTags = BuildWishRewardExcludeTags(tagsData);
 
             for (int i = 0; i < memberNames.Length; i++)
             {
@@ -1945,7 +1949,7 @@ namespace BossRush
 
                 ItemFilter filter = default(ItemFilter);
                 filter.requireTags = new Duckov.Utilities.Tag[] { requiredTag };
-                filter.excludeTags = excludeTags.ToArray();
+                filter.excludeTags = excludeTagsArray;
                 filter.minQuality = WISH_REWARD_MIN_QUALITY;
                 filter.maxQuality = 8;
 
@@ -1977,6 +1981,35 @@ namespace BossRush
                 return null;
             }
 
+            MemberInfo cached;
+            if (wishRewardTagMemberCache.TryGetValue(memberName, out cached))
+            {
+                if (cached == null)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    FieldInfo cachedField = cached as FieldInfo;
+                    if (cachedField != null)
+                    {
+                        return cachedField.GetValue(tagsData) as Duckov.Utilities.Tag;
+                    }
+
+                    PropertyInfo cachedProperty = cached as PropertyInfo;
+                    if (cachedProperty != null)
+                    {
+                        return cachedProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
+                    }
+                }
+                catch
+                {
+                }
+
+                return null;
+            }
+
             const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
 
             try
@@ -1984,6 +2017,7 @@ namespace BossRush
                 FieldInfo field = tagsData.GetType().GetField(memberName, flags);
                 if (field != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(field.FieldType))
                 {
+                    wishRewardTagMemberCache[memberName] = field;
                     return field.GetValue(tagsData) as Duckov.Utilities.Tag;
                 }
             }
@@ -1996,6 +2030,7 @@ namespace BossRush
                 PropertyInfo property = tagsData.GetType().GetProperty(memberName, flags);
                 if (property != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(property.PropertyType))
                 {
+                    wishRewardTagMemberCache[memberName] = property;
                     return property.GetValue(tagsData, null) as Duckov.Utilities.Tag;
                 }
             }
@@ -2003,6 +2038,7 @@ namespace BossRush
             {
             }
 
+            wishRewardTagMemberCache[memberName] = null;
             return null;
         }
 
@@ -2023,32 +2059,14 @@ namespace BossRush
                 return null;
             }
 
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
-
-            try
+            // 先走缓存反射路径
+            Duckov.Utilities.Tag result = TryGetWishRewardTagByMemberName(tagsData, "Quest");
+            if (result != null)
             {
-                FieldInfo questField = tagsData.GetType().GetField("Quest", flags);
-                if (questField != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questField.FieldType))
-                {
-                    return questField.GetValue(tagsData) as Duckov.Utilities.Tag;
-                }
-            }
-            catch
-            {
+                return result;
             }
 
-            try
-            {
-                PropertyInfo questProperty = tagsData.GetType().GetProperty("Quest", flags);
-                if (questProperty != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questProperty.PropertyType))
-                {
-                    return questProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
-                }
-            }
-            catch
-            {
-            }
-
+            // 回退：遍历 AllTags 按名称查找
             try
             {
                 if (tagsData.AllTags != null)
@@ -2106,29 +2124,28 @@ namespace BossRush
                 return true;
             }
 
-            Item temp = null;
             try
             {
-                temp = ItemAssetsCollection.InstantiateSync(typeId);
-                if (temp == null)
+                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                if (prefab == null)
                 {
                     return false;
                 }
 
                 int quality = 0;
-                try { quality = temp.Quality; } catch { quality = 0; }
+                try { quality = prefab.Quality; } catch { quality = 0; }
                 if (quality < WISH_REWARD_MIN_QUALITY || quality > 8)
                 {
                     return false;
                 }
 
-                if (HasSpecialWishRewardTag(temp)
+                if (HasSpecialWishRewardTag(prefab)
                     && !IsWishRewardExplicitlyAllowedCustomItem(context.customItemsByTypeId, typeId))
                 {
                     return false;
                 }
 
-                string displayName = GetWishRewardDisplayNameFromItem(context.customItemsByTypeId, typeId, temp);
+                string displayName = GetWishRewardDisplayNameFromItem(context.customItemsByTypeId, typeId, prefab);
                 if (string.IsNullOrEmpty(displayName))
                 {
                     displayName = "Item " + typeId;
@@ -2141,7 +2158,7 @@ namespace BossRush
                     displayName = displayName
                 };
 
-                CollectWishRewardTagNames(temp, candidate.tagNames);
+                CollectWishRewardTagNames(prefab, candidate.tagNames);
                 context.candidatesByTypeId[typeId] = candidate;
                 AddWishRewardQualityBucket(context, quality, typeId);
                 return true;
@@ -2150,19 +2167,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[WishFountain] [WARNING] 注册许愿奖励候选失败 typeId=" + typeId + ": " + e.Message);
                 return false;
-            }
-            finally
-            {
-                try
-                {
-                    if (temp != null)
-                    {
-                        temp.DestroyTree();
-                    }
-                }
-                catch
-                {
-                }
             }
         }
 
@@ -2866,9 +2870,14 @@ namespace BossRush
             return selectedTypeId;
         }
 
-        private static int RollWishRewardTypeId(string wishText, out string rewardDisplayName)
+        private static int RollWishRewardTypeIdCore(
+            string wishText,
+            WishRewardMatchResult match,
+            out string rewardDisplayName,
+            out WishRewardPoolSelection outSelection)
         {
             rewardDisplayName = null;
+            outSelection = null;
 
             EnsureWishRewardPoolInitialized();
             if (!wishRewardPoolInitialized)
@@ -2876,8 +2885,8 @@ namespace BossRush
                 return -1;
             }
 
-            WishRewardMatchResult match = MatchWishRewardKeywords(wishText);
             WishRewardPoolSelection selection = BuildWishRewardPoolSelection(match);
+            outSelection = selection;
             Dictionary<int, List<int>> activeBuckets = BuildWishRewardQualityBucketsForSelection(selection);
             WishRewardMatchResult effectiveMatch = ShouldUseLegacyWishRewardOdds(selection)
                 ? new WishRewardMatchResult()
@@ -2886,6 +2895,15 @@ namespace BossRush
             int selectedTypeId = RollWishRewardItemInQuality(rolledQuality, effectiveMatch, activeBuckets, out rewardDisplayName);
             LogWishRewardRoll(wishText, match, selection, rolledQuality, selectedTypeId, rewardDisplayName);
             return selectedTypeId;
+        }
+
+        private static int RollWishRewardTypeId(string wishText, out string rewardDisplayName)
+        {
+            rewardDisplayName = null;
+
+            WishRewardMatchResult match = MatchWishRewardKeywords(wishText);
+            WishRewardPoolSelection discardedSelection;
+            return RollWishRewardTypeIdCore(wishText, match, out rewardDisplayName, out discardedSelection);
         }
 
         private static bool TryPickWishRewardAnimationCandidate(
@@ -3186,16 +3204,16 @@ namespace BossRush
                 return;
             }
 
+            WishRewardMatchResult match = MatchWishRewardKeywords(wishText);
             string rewardDisplayName;
-            int rewardTypeId = RollWishRewardTypeId(wishText, out rewardDisplayName);
+            WishRewardPoolSelection selection;
+            int rewardTypeId = RollWishRewardTypeIdCore(wishText, match, out rewardDisplayName, out selection);
             if (rewardTypeId <= 0 || string.IsNullOrEmpty(rewardDisplayName))
             {
                 ShowWishRewardFailureBubble();
                 return;
             }
 
-            WishRewardMatchResult animationMatch = MatchWishRewardKeywords(wishText);
-            WishRewardPoolSelection selection = BuildWishRewardPoolSelection(animationMatch);
             int animWinnerIndex;
             int legacyFillCount;
             List<int> animSequence = BuildWishRewardAnimationSequence(
