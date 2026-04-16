@@ -307,8 +307,11 @@ namespace BossRush
         {
             try
             {
-                long playerFunds = Duckov.Economy.EconomyManager.Money;
-                return playerFunds >= fee;
+                // 与实际扣费保持同一口径：同时检查账户余额与身上现金。
+                return Duckov.Economy.EconomyManager.IsEnough(
+                    new Duckov.Economy.Cost((long)fee),
+                    true,
+                    true);
             }
             catch (Exception e)
             {

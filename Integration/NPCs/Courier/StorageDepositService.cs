@@ -2497,8 +2497,7 @@ namespace BossRush
                 {
                     // 计算总费用
                     int totalFee = CalculateTotalRetrieveFee();
-                    long playerMoney = EconomyManager.Money;
-                    bool canAfford = playerMoney >= totalFee;
+                    bool canAfford = CanAffordRetrieveFee(totalFee);
                     
                     // 获取本地化文本
                     string retrieveAllLabel = LocalizationHelper.GetLocalizedText("BossRush_StorageDeposit_RetrieveAll");
@@ -2772,6 +2771,28 @@ namespace BossRush
             
             return totalFee;
         }
+
+        /// <summary>
+        /// 检查玩家是否能支付全部取回费用。
+        /// 与实际扣费保持同一口径：同时计算账户余额与身上现金。
+        /// </summary>
+        private static bool CanAffordRetrieveFee(int totalFee)
+        {
+            if (totalFee <= 0)
+            {
+                return true;
+            }
+
+            try
+            {
+                return new Cost(totalFee).Enough;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 检查取回费用失败: " + e.Message);
+                return false;
+            }
+        }
         
         /// <summary>
         /// "全部取出"按钮点击事件
@@ -2788,9 +2809,8 @@ namespace BossRush
             }
             
             int totalFee = CalculateTotalRetrieveFee();
-            long playerMoney = EconomyManager.Money;
-            
-            if (playerMoney < totalFee)
+
+            if (!CanAffordRetrieveFee(totalFee))
             {
                 // 金钱不足，显示提示
                 string msg = LocalizationHelper.GetLocalizedText("BossRush_StorageService_InsufficientFunds");
