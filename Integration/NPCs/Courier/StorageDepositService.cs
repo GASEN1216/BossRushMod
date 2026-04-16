@@ -988,40 +988,10 @@ namespace BossRush
         {
             try
             {
-                string itemName = soldItem.DisplayName;
-                
-                // 扣除玩家获得的钱（寄存是免费的）
-                if (price > 0)
+                int newIndex = await StoreItemInDepositDataAsync(soldItem, price, "StorageDeposit.HandleDeposit");
+                if (newIndex < 0)
                 {
-                    var cost = new Cost(price);
-                    if (cost.Enough)
-                    {
-                        cost.Pay();
-                        ModBehaviour.DevLog("[StorageDepositService] 已扣除售出所得: " + price);
-                    }
-                    else
-                    {
-                        ModBehaviour.DevLog("[StorageDepositService] [WARNING] 余额不足以扣除售出所得: " + price + "，跳过扣费");
-                    }
-                }
-                
-                // 保存物品数据到寄存系统
-                int newIndex;
-                if (!TryStoreItemInDepositData(soldItem, out newIndex))
-                {
-                    ModBehaviour.DevLog("[StorageDepositService] [WARNING] 写入寄存数据失败: " + itemName);
                     return;
-                }
-                ModBehaviour.DevLog("[StorageDepositService] 物品已存入寄存数据: " + itemName + ", index=" + newIndex);
-
-                bool cached = await CacheDepositedItemInstanceAsync(newIndex, "StorageDeposit.HandleDeposit");
-                if (cached)
-                {
-                    Item restoredItem;
-                    if (depositItemInstances.TryGetValue(newIndex, out restoredItem) && restoredItem != null)
-                    {
-                        ModBehaviour.DevLog("[StorageDepositService] 恢复新寄存物品实例: index=" + newIndex + ", Name=" + restoredItem.DisplayName);
-                    }
                 }
                 
                 // 刷新商品列表（添加新条目）
@@ -1038,11 +1008,82 @@ namespace BossRush
                 NotificationText.Push(msg);
                 UpdateQuickDepositButtonState();
                 
-                ModBehaviour.DevLog("[StorageDepositService] 寄存完成: " + itemName);
+                ModBehaviour.DevLog("[StorageDepositService] 寄存完成: " + (soldItem != null ? soldItem.DisplayName : "null"));
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[StorageDepositService] [ERROR] 处理寄存失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 单件/批量寄存共用的核心写入流程。
+        /// 保持与单件寄存相同的扣费、写入和实例缓存口径。
+        /// </summary>
+        private static async UniTask<int> StoreItemInDepositDataAsync(Item item, int price, string runtimeContext)
+        {
+            if (item == null)
+            {
+                return -1;
+            }
+
+            string itemName = item.DisplayName;
+
+            // 与单件寄存保持同一扣费口径。
+            if (price > 0)
+            {
+                var cost = new Cost(price);
+                if (cost.Enough)
+                {
+                    cost.Pay();
+                    ModBehaviour.DevLog("[StorageDepositService] 已扣除售出所得: " + price);
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[StorageDepositService] [WARNING] 余额不足以扣除售出所得: " + price + "，跳过扣费");
+                }
+            }
+
+            int newIndex;
+            if (!TryStoreItemInDepositData(item, out newIndex))
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 写入寄存数据失败: " + itemName);
+                return -1;
+            }
+
+            ModBehaviour.DevLog("[StorageDepositService] 物品已存入寄存数据: " + itemName + ", index=" + newIndex);
+
+            bool cached = await CacheDepositedItemInstanceAsync(newIndex, runtimeContext);
+            if (cached)
+            {
+                Item restoredItem;
+                if (depositItemInstances.TryGetValue(newIndex, out restoredItem) && restoredItem != null)
+                {
+                    ModBehaviour.DevLog("[StorageDepositService] 恢复新寄存物品实例: index=" + newIndex + ", Name=" + restoredItem.DisplayName);
+                }
+            }
+
+            return newIndex;
+        }
+
+        /// <summary>
+        /// 获取单件寄存对应的卖出价格，保持与原版商店卖出一致。
+        /// </summary>
+        private static int GetDepositSellPrice(Item item)
+        {
+            if (item == null || depositShop == null)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return Mathf.Max(0, depositShop.ConvertPrice(item, true));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 计算寄存卖出价格失败: " + item.DisplayName + ", " + e.Message);
+                return 0;
             }
         }
         
@@ -1883,7 +1924,7 @@ namespace BossRush
 
             try
             {
-                return EconomyManager.IsUnlocked(item.TypeID);
+                return item.CanBeSold;
             }
             catch (Exception e)
             {
@@ -2178,7 +2219,7 @@ namespace BossRush
             {
                 if (blockedCount > 0)
                 {
-                    string blockedMessage = LocalizationHelper.GetLocalizedText("BossRush_StorageDeposit_ItemNotUnlocked");
+                    string blockedMessage = L10n.T("背包里的物品都不符合寄存规则", "No items in inventory are eligible for deposit");
                     NotificationText.Push(blockedMessage);
                 }
                 else
@@ -2210,10 +2251,11 @@ namespace BossRush
 
                     try
                     {
+                        int price = GetDepositSellPrice(item);
                         item.Detach();
 
-                        int newIndex;
-                        if (!TryStoreItemInDepositData(item, out newIndex))
+                        int newIndex = await StoreItemInDepositDataAsync(item, price, "StorageDeposit.QuickDeposit");
+                        if (newIndex < 0)
                         {
                             throw new InvalidOperationException("写入寄存数据失败");
                         }
@@ -2256,8 +2298,8 @@ namespace BossRush
                 if (depositedCount > 0 && failedCount > 0 && blockedCount > 0)
                 {
                     NotificationText.Push(L10n.T(
-                        "已寄存 " + depositedCount + " 件物品，" + failedCount + " 件失败，" + blockedCount + " 件未解锁",
-                        "Deposited " + depositedCount + " items, " + failedCount + " failed, " + blockedCount + " were not unlocked"));
+                        "已寄存 " + depositedCount + " 件物品，" + failedCount + " 件失败，" + blockedCount + " 件不符合寄存规则",
+                        "Deposited " + depositedCount + " items, " + failedCount + " failed, " + blockedCount + " were not eligible"));
                 }
                 else if (depositedCount > 0 && failedCount > 0)
                 {
@@ -2268,8 +2310,8 @@ namespace BossRush
                 else if (depositedCount > 0 && blockedCount > 0)
                 {
                     NotificationText.Push(L10n.T(
-                        "已寄存 " + depositedCount + " 件物品，" + blockedCount + " 件未解锁",
-                        "Deposited " + depositedCount + " items, " + blockedCount + " were not unlocked"));
+                        "已寄存 " + depositedCount + " 件物品，" + blockedCount + " 件不符合寄存规则",
+                        "Deposited " + depositedCount + " items, " + blockedCount + " were not eligible"));
                 }
                 else if (depositedCount > 0)
                 {
@@ -2280,8 +2322,8 @@ namespace BossRush
                 else if (failedCount > 0 && blockedCount > 0)
                 {
                     NotificationText.Push(L10n.T(
-                        "没有物品被寄存，" + failedCount + " 件失败，" + blockedCount + " 件未解锁",
-                        "No items were deposited, " + failedCount + " failed, " + blockedCount + " were not unlocked"));
+                        "没有物品被寄存，" + failedCount + " 件失败，" + blockedCount + " 件不符合寄存规则",
+                        "No items were deposited, " + failedCount + " failed, " + blockedCount + " were not eligible"));
                 }
                 else if (failedCount > 0)
                 {
@@ -2291,7 +2333,7 @@ namespace BossRush
                 }
                 else if (blockedCount > 0)
                 {
-                    string blockedMessage = LocalizationHelper.GetLocalizedText("BossRush_StorageDeposit_ItemNotUnlocked");
+                    string blockedMessage = L10n.T("背包里的物品都不符合寄存规则", "No items in inventory are eligible for deposit");
                     NotificationText.Push(blockedMessage);
                 }
                 else
