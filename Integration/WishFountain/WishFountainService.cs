@@ -2911,6 +2911,7 @@ namespace BossRush
             List<int> secondaryPool,
             List<int> tertiaryPool,
             List<int> existingSequence,
+            HashSet<int> usedTypeIds,
             int winningTypeId,
             out int pickedTypeId)
         {
@@ -2926,35 +2927,71 @@ namespace BossRush
                     continue;
                 }
 
-                int fallbackTypeId = -1;
-                for (int attempt = 0; attempt < 8; attempt++)
+                List<int> eligibleCandidates = new List<int>();
+                List<int> preferredCandidates = new List<int>();
+                for (int i = 0; i < pool.Count; i++)
                 {
-                    int candidateTypeId = pool[UnityEngine.Random.Range(0, pool.Count)];
+                    int candidateTypeId = pool[i];
                     if (candidateTypeId <= 0 || candidateTypeId == winningTypeId)
                     {
                         continue;
                     }
 
-                    if (fallbackTypeId <= 0)
+                    if (usedTypeIds != null && usedTypeIds.Contains(candidateTypeId))
                     {
-                        fallbackTypeId = candidateTypeId;
+                        continue;
                     }
 
+                    eligibleCandidates.Add(candidateTypeId);
                     if (candidateTypeId != lastTypeId)
                     {
-                        pickedTypeId = candidateTypeId;
-                        return true;
+                        preferredCandidates.Add(candidateTypeId);
                     }
                 }
 
-                if (fallbackTypeId > 0)
+                if (preferredCandidates.Count > 0)
                 {
-                    pickedTypeId = fallbackTypeId;
+                    pickedTypeId = preferredCandidates[UnityEngine.Random.Range(0, preferredCandidates.Count)];
+                    return true;
+                }
+
+                if (eligibleCandidates.Count > 0)
+                {
+                    pickedTypeId = eligibleCandidates[UnityEngine.Random.Range(0, eligibleCandidates.Count)];
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private static void ResolveWishRewardAnimationPoolsForSlotIndex(
+            int slotIndex,
+            List<int> lowQuality,
+            List<int> midQuality,
+            List<int> highQuality,
+            out List<int> primaryPool,
+            out List<int> secondaryPool,
+            out List<int> tertiaryPool)
+        {
+            if (slotIndex % 7 == 0)
+            {
+                primaryPool = highQuality;
+                secondaryPool = midQuality;
+                tertiaryPool = lowQuality;
+            }
+            else if (slotIndex % 3 == 0)
+            {
+                primaryPool = midQuality;
+                secondaryPool = lowQuality;
+                tertiaryPool = highQuality;
+            }
+            else
+            {
+                primaryPool = lowQuality;
+                secondaryPool = midQuality;
+                tertiaryPool = highQuality;
+            }
         }
 
         private static void AddWishRewardAnimationCandidateToBuckets(
@@ -3019,13 +3056,90 @@ namespace BossRush
             }
         }
 
+        private static bool TryAppendWishRewardAnimationCandidateForSlot(
+            int slotIndex,
+            bool useFilteredPool,
+            List<int> filteredLowQuality,
+            List<int> filteredMidQuality,
+            List<int> filteredHighQuality,
+            List<int> legacyLowQuality,
+            List<int> legacyMidQuality,
+            List<int> legacyHighQuality,
+            List<int> sequence,
+            HashSet<int> usedTypeIds,
+            int rewardTypeId,
+            ref int legacyFillCount)
+        {
+            List<int> filteredPrimaryPool;
+            List<int> filteredSecondaryPool;
+            List<int> filteredTertiaryPool;
+            List<int> legacyPrimaryPool;
+            List<int> legacySecondaryPool;
+            List<int> legacyTertiaryPool;
+
+            ResolveWishRewardAnimationPoolsForSlotIndex(
+                slotIndex,
+                filteredLowQuality,
+                filteredMidQuality,
+                filteredHighQuality,
+                out filteredPrimaryPool,
+                out filteredSecondaryPool,
+                out filteredTertiaryPool);
+            ResolveWishRewardAnimationPoolsForSlotIndex(
+                slotIndex,
+                legacyLowQuality,
+                legacyMidQuality,
+                legacyHighQuality,
+                out legacyPrimaryPool,
+                out legacySecondaryPool,
+                out legacyTertiaryPool);
+
+            int pickedTypeId = -1;
+            bool pickedFromFiltered = useFilteredPool && TryPickWishRewardAnimationCandidate(
+                filteredPrimaryPool,
+                filteredSecondaryPool,
+                filteredTertiaryPool,
+                sequence,
+                usedTypeIds,
+                rewardTypeId,
+                out pickedTypeId);
+
+            if (!pickedFromFiltered)
+            {
+                if (!TryPickWishRewardAnimationCandidate(
+                    legacyPrimaryPool,
+                    legacySecondaryPool,
+                    legacyTertiaryPool,
+                    sequence,
+                    usedTypeIds,
+                    rewardTypeId,
+                    out pickedTypeId))
+                {
+                    return false;
+                }
+
+                if (useFilteredPool)
+                {
+                    legacyFillCount++;
+                }
+            }
+
+            sequence.Add(pickedTypeId);
+            if (usedTypeIds != null)
+            {
+                usedTypeIds.Add(pickedTypeId);
+            }
+
+            return true;
+        }
+
         private static List<int> BuildWishRewardAnimationSequence(int rewardTypeId, WishRewardPoolSelection selection,
             out int outWinnerIndex,
             out int legacyFillCount)
         {
-            const int sequenceLength = 45;
-            const int winnerIndex = 32;
-            outWinnerIndex = winnerIndex;
+            const int targetSequenceLength = 45;
+            const int desiredWinnerIndex = 32;
+            outWinnerIndex = desiredWinnerIndex;
             legacyFillCount = 0;
 
             EnsureWishRewardPoolInitialized();
@@ -3051,79 +3165,53 @@ namespace BossRush
 
             bool useFilteredPool = selection != null && selection.HasFilteredPool;
 
-            List<int> sequence = new List<int>(sequenceLength);
-            for (int i = 0; i < sequenceLength; i++)
+            HashSet<int> usedTypeIds = new HashSet<int>();
+            usedTypeIds.Add(rewardTypeId);
+
+            List<int> prefixSequence = new List<int>(desiredWinnerIndex);
+            for (int i = 0; i < desiredWinnerIndex; i++)
             {
-                if (i == winnerIndex)
-                {
-                    sequence.Add(rewardTypeId);
-                    continue;
-                }
-
-                List<int> filteredPrimaryPool;
-                List<int> filteredSecondaryPool;
-                List<int> filteredTertiaryPool;
-                List<int> legacyPrimaryPool;
-                List<int> legacySecondaryPool;
-                List<int> legacyTertiaryPool;
-
-                if (i % 7 == 0)
-                {
-                    filteredPrimaryPool = filteredHighQuality;
-                    filteredSecondaryPool = filteredMidQuality;
-                    filteredTertiaryPool = filteredLowQuality;
-                    legacyPrimaryPool = legacyHighQuality;
-                    legacySecondaryPool = legacyMidQuality;
-                    legacyTertiaryPool = legacyLowQuality;
-                }
-                else if (i % 3 == 0)
-                {
-                    filteredPrimaryPool = filteredMidQuality;
-                    filteredSecondaryPool = filteredLowQuality;
-                    filteredTertiaryPool = filteredHighQuality;
-                    legacyPrimaryPool = legacyMidQuality;
-                    legacySecondaryPool = legacyLowQuality;
-                    legacyTertiaryPool = legacyHighQuality;
-                }
-                else
-                {
-                    filteredPrimaryPool = filteredLowQuality;
-                    filteredSecondaryPool = filteredMidQuality;
-                    filteredTertiaryPool = filteredHighQuality;
-                    legacyPrimaryPool = legacyLowQuality;
-                    legacySecondaryPool = legacyMidQuality;
-                    legacyTertiaryPool = legacyHighQuality;
-                }
-
-                int pickedTypeId = rewardTypeId;
-                bool pickedFromFiltered = useFilteredPool && TryPickWishRewardAnimationCandidate(
-                    filteredPrimaryPool,
-                    filteredSecondaryPool,
-                    filteredTertiaryPool,
-                    sequence,
+                if (!TryAppendWishRewardAnimationCandidateForSlot(
+                    i,
+                    useFilteredPool,
+                    filteredLowQuality,
+                    filteredMidQuality,
+                    filteredHighQuality,
+                    legacyLowQuality,
+                    legacyMidQuality,
+                    legacyHighQuality,
+                    prefixSequence,
+                    usedTypeIds,
                     rewardTypeId,
-                    out pickedTypeId);
-
-                if (!pickedFromFiltered)
+                    ref legacyFillCount))
                 {
-                    if (!TryPickWishRewardAnimationCandidate(
-                        legacyPrimaryPool,
-                        legacySecondaryPool,
-                        legacyTertiaryPool,
-                        sequence,
-                        rewardTypeId,
-                        out pickedTypeId))
-                    {
-                        pickedTypeId = rewardTypeId;
-                    }
-
-                    if (useFilteredPool && pickedTypeId != rewardTypeId)
-                    {
-                        legacyFillCount++;
-                    }
+                    break;
                 }
+            }
 
-                sequence.Add(pickedTypeId);
+            List<int> sequence = new List<int>(targetSequenceLength);
+            sequence.AddRange(prefixSequence);
+            outWinnerIndex = sequence.Count;
+            sequence.Add(rewardTypeId);
+
+            for (int i = outWinnerIndex + 1; i < targetSequenceLength; i++)
+            {
+                if (!TryAppendWishRewardAnimationCandidateForSlot(
+                    i,
+                    useFilteredPool,
+                    filteredLowQuality,
+                    filteredMidQuality,
+                    filteredHighQuality,
+                    legacyLowQuality,
+                    legacyMidQuality,
+                    legacyHighQuality,
+                    sequence,
+                    usedTypeIds,
+                    rewardTypeId,
+                    ref legacyFillCount))
+                {
+                    break;
+                }
             }
 
             return sequence;
