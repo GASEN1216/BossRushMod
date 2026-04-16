@@ -1370,6 +1370,11 @@ namespace BossRush
             }
         }
 
+        private void ScheduleWishRewardPoolWarmup()
+        {
+            StartCoroutine(WishFountainService.WarmupWishRewardPoolAfterDelay());
+        }
+
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
         {
             DevLog("[BossRush] 场景加载: " + scene.name);
@@ -1449,6 +1454,7 @@ namespace BossRush
                     // 初始化布满了灰尘的星愿许愿台建筑系统
                     InitWishFountainBuilding();
                     RestoreWishFountainBuildings();
+                    ScheduleWishRewardPoolWarmup();
                 }
 
                 // 使用配置系统检查是否是有效的 BossRush 竞技场场景

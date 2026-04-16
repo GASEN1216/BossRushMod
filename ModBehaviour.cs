@@ -2180,7 +2180,7 @@ namespace BossRush
             }
         }
 
-        // F3 婚姻系统测试面板（仅 DevMode）
+        // 保留的婚姻系统测试面板（仅 DevMode）
         private bool marriageTestUIVisible = false;
         private Rect marriageTestWindowRect = new Rect(430f, 40f, 560f, 760f);
         private Vector2 marriageTestLogScroll = Vector2.zero;
@@ -2423,7 +2423,7 @@ namespace BossRush
             // 绘制物品生成器 UI（F1 呼出）
             DrawItemSpawnerUI();
 
-            // 绘制婚姻系统测试面板（F3 呼出，DevMode）
+            // 绘制婚姻系统测试面板（DevMode）
             DrawMarriageTestUI();
             
             // 绘制帧率显示（DevMode）
@@ -2437,7 +2437,7 @@ namespace BossRush
                 19870613,
                 marriageTestWindowRect,
                 DrawMarriageTestWindow,
-                "婚姻系统测试面板 (DevMode / F3)");
+                "婚姻系统测试面板 (DevMode)");
         }
 
         private void DrawMarriageTestWindow(int windowId)
@@ -2985,17 +2985,18 @@ namespace BossRush
                 DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
             }
             
-            // 调试快捷键 F3：切换“婚姻系统测试面板”
+            // 调试快捷键 F3：清除星愿奖励冷却
             if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F3))
             {
                 try
                 {
-                    marriageTestUIVisible = !marriageTestUIVisible;
-                    AppendMarriageTestLog("测试面板已" + (marriageTestUIVisible ? "打开" : "关闭"));
+                    WishFountainService.ClearWishRewardCooldownForDevMode();
+                    ShowMessage(L10n.T("已清除星愿奖励冷却", "Wish reward cooldown cleared"));
+                    DevLog("[BossRush] F3 已清除星愿奖励冷却");
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] F3 切换婚姻测试面板失败: " + e.Message + "\n" + e.StackTrace);
+                    DevLog("[BossRush] F3 清除星愿奖励冷却失败: " + e.Message + "\n" + e.StackTrace);
                 }
             }
             

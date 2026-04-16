@@ -305,6 +305,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\WishFountain\WishFountainService.cs ^
     Integration\WishFountain\WishFountainInteractable.cs ^
     Integration\WishFountain\WishFountainUI.cs ^
+    Integration\WishFountain\WishFountainRewardAnimationView.cs ^
     Integration\WishFountain\WishFountainBuilder.cs
 
 if %ERRORLEVEL% EQU 0 (

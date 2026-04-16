@@ -46,6 +46,7 @@ namespace BossRush
 
         private bool sending;
         private bool successDisplayed;
+        private bool submittedThisSession;
         private bool hasExplicitStatus;
         private Color statusColor = new Color(1f, 0.75f, 0.35f);
         private Coroutine autoCloseCoroutine;
@@ -190,6 +191,7 @@ namespace BossRush
 
             sending = false;
             successDisplayed = false;
+            submittedThisSession = false;
             hasExplicitStatus = false;
             statusColor = new Color(1f, 0.75f, 0.35f);
             cooldownStateInitialized = false;
@@ -244,6 +246,8 @@ namespace BossRush
             {
                 fadeGroup.SkipHide();
             }
+
+            MaybeShowCloseReminder();
 
             sending = false;
             successDisplayed = false;
@@ -674,6 +678,16 @@ namespace BossRush
             }
         }
 
+        private void MaybeShowCloseReminder()
+        {
+            if (sending || successDisplayed || submittedThisSession)
+            {
+                return;
+            }
+
+            WishFountainService.ShowWishCloseReminderBubble();
+        }
+
         private void OnInputValueChanged(string _)
         {
             if (!sending)
@@ -686,6 +700,12 @@ namespace BossRush
         private void OnAnonymousToggleChanged(bool _)
         {
             RefreshUIState();
+        }
+
+        private void NotifyClosedAfterSuccessfulWish()
+        {
+            string standardized = WishFountainService.StandardizeText(inputField != null ? inputField.text : "");
+            WishFountainService.TryStartWishRewardAnimationAfterSuccessfulSend(standardized);
         }
 
         private void OnConfirmButtonClicked()
@@ -715,15 +735,11 @@ namespace BossRush
                 {
                     sending = false;
                     successDisplayed = true;
-                    ShowOriginalSuccessBanner();
+                    submittedThisSession = true;
                     SetStatus(L10n.T("心愿已被星空收纳", "Your wish has been received by the stars"), new Color(0.75f, 0.95f, 0.75f), true);
                     RefreshUIState();
-
-                    if (autoCloseCoroutine != null)
-                    {
-                        StopCoroutine(autoCloseCoroutine);
-                    }
-                    autoCloseCoroutine = StartCoroutine(AutoCloseAfterSuccess());
+                    Close();
+                    NotifyClosedAfterSuccessfulWish();
                 },
                 error =>
                 {
@@ -740,13 +756,6 @@ namespace BossRush
             Close();
         }
 
-        private IEnumerator AutoCloseAfterSuccess()
-        {
-            yield return new WaitForSecondsRealtime(1f);
-            autoCloseCoroutine = null;
-            Close();
-        }
-
         private void RefreshLocalizedTexts()
         {
             if (titleText != null)
@@ -757,8 +766,8 @@ namespace BossRush
             if (hintText != null)
             {
                 hintText.text = L10n.T(
-                    "把那些还没被实现的想法，认真地交给星空保管。",
-                    "Entrust the stars with the ideas the game has not reached yet.");
+                    "许愿对抽奖有加成哦，另外有想要实现的功能也可以写下来，我可以看到~",
+                    "Feel free to write down any features you'd like to implement, and I'll see them~");
             }
 
             if (placeholderText != null)

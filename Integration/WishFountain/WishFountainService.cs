@@ -26,6 +26,8 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
+using ItemStatsSystem;
+using Saves;
 
 namespace BossRush
 {
@@ -99,6 +101,313 @@ namespace BossRush
         /// <summary>tenant access token 到期时间（UTC）</summary>
         private static DateTime cachedTenantAccessTokenExpiryUtc = DateTime.MinValue;
 
+        /// <summary>许愿奖励冷却（小时）</summary>
+        private const int WISH_REWARD_COOLDOWN_HOURS = 4;
+
+        /// <summary>许愿奖励存档键</summary>
+        private const string WISH_REWARD_NEXT_AVAILABLE_SAVE_KEY = "BossRush_WishReward_NextAvailableTicks";
+
+        /// <summary>基础品质权重（Q1~Q8）</summary>
+        private const int WISH_REWARD_MIN_QUALITY = 4;
+
+        private static readonly float[] WishRewardBaseQualityWeights =
+        {
+            0f, 0f, 0f, 13f, 9f, 5f, 3f, 2f
+        };
+
+        private const float WISH_REWARD_QUALITY_BIAS_CAP = 1.6f;
+        private const float WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER = 2f;
+        private const float WISH_REWARD_ITEM_BIAS_CAP_Q1_TO_Q4 = 1.9f;
+        private const float WISH_REWARD_ITEM_BIAS_CAP_Q5_TO_Q6 = 1.7f;
+        private const float WISH_REWARD_ITEM_BIAS_CAP_Q7 = 1.5f;
+        private const float WISH_REWARD_ITEM_BIAS_CAP_Q8 = 1.2f;
+        private const float WISH_REWARD_EXACT_ITEM_QUALITY_BIAS = 1.25f;
+        private const float WISH_REWARD_POOL_INIT_RETRY_SECONDS = 8f;
+        private const int WISH_REWARD_POOL_BUILD_YIELD_INTERVAL = 24;
+
+        private static long cachedWishRewardNextAvailableTicks = 0L;
+        private static bool wishRewardCooldownLoaded = false;
+        private static bool wishRewardPoolInitialized = false;
+        private static float lastWishRewardPoolInitAttemptRealtime = -999f;
+        private static bool wishRewardPoolWarmupInProgress = false;
+        private static readonly Dictionary<int, WishRewardCandidate> wishRewardCandidatesByTypeId =
+            new Dictionary<int, WishRewardCandidate>();
+        private static readonly Dictionary<int, List<int>> wishRewardQualityBuckets =
+            new Dictionary<int, List<int>>();
+        private static readonly Dictionary<string, WishRewardCategoryDefinition> wishRewardCategoriesById =
+            new Dictionary<string, WishRewardCategoryDefinition>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, HashSet<int>> wishRewardCategoryCandidateIds =
+            new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<int, WishRewardItemDefinition> wishRewardCustomItemsByTypeId =
+            new Dictionary<int, WishRewardItemDefinition>();
+
+        private sealed class WishRewardCategoryDefinition
+        {
+            public string categoryId;
+            public string[] zhAliases;
+            public string[] enAliases;
+            public int[] preferredQualities;
+            public float qualityBiasMultiplier;
+            public float itemBiasMultiplier;
+        }
+
+        private sealed class WishRewardItemDefinition
+        {
+            public int typeId;
+            public string categoryId;
+            public string displayNameCN;
+            public string displayNameEN;
+            public string[] zhAliases;
+            public string[] enAliases;
+            public float itemBiasMultiplier;
+            public bool enabledInWishRewardPool;
+        }
+
+        private sealed class WishRewardCandidate
+        {
+            public int typeId;
+            public int quality;
+            public string displayName;
+            public readonly HashSet<string> categoryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private sealed class WishRewardMatchResult
+        {
+            public readonly HashSet<string> matchedCategoryIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            public readonly HashSet<int> matchedItemTypeIds = new HashSet<int>();
+
+            public bool HasAnyMatch
+            {
+                get { return matchedCategoryIds.Count > 0 || matchedItemTypeIds.Count > 0; }
+            }
+        }
+
+        private sealed class WishRewardPoolBuildContext
+        {
+            public readonly Dictionary<int, WishRewardCandidate> candidatesByTypeId =
+                new Dictionary<int, WishRewardCandidate>();
+            public readonly Dictionary<int, List<int>> qualityBuckets =
+                new Dictionary<int, List<int>>();
+            public readonly Dictionary<string, WishRewardCategoryDefinition> categoriesById =
+                new Dictionary<string, WishRewardCategoryDefinition>(StringComparer.OrdinalIgnoreCase);
+            public readonly Dictionary<string, HashSet<int>> categoryCandidateIds =
+                new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+            public readonly Dictionary<int, WishRewardItemDefinition> customItemsByTypeId =
+                new Dictionary<int, WishRewardItemDefinition>();
+        }
+
+        private static readonly WishRewardCategoryDefinition[] WishRewardCategories =
+        {
+            CreateWishRewardCategory(
+                "weapon",
+                1.2f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 4, 5, 6, 7, 8 },
+                new string[] { "武器", "战斗装备", "输出" },
+                new string[] { "weapon", "weapons", "combat gear" }),
+            CreateWishRewardCategory(
+                "gun",
+                1.35f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 4, 5, 6, 7, 8 },
+                new string[] { "枪", "枪械", "手枪", "步枪", "冲锋枪", "狙", "狙击", "霰弹", "炮", "铳", "火力" },
+                new string[] { "gun", "guns", "rifle", "smg", "sniper", "shotgun", "pistol", "cannon" }),
+            CreateWishRewardCategory(
+                "melee",
+                1.3f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 4, 5, 6, 7, 8 },
+                new string[] { "近战", "刀", "剑", "大剑", "戟", "斩击" },
+                new string[] { "melee", "sword", "blade", "halberd" }),
+            CreateWishRewardCategory(
+                "armor",
+                1.25f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 3, 4, 5, 6, 7 },
+                new string[] { "护甲", "防具", "盔甲", "护具", "甲" },
+                new string[] { "armor", "armour", "protective gear" }),
+            CreateWishRewardCategory(
+                "helmet",
+                1.25f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 3, 4, 5, 6, 7 },
+                new string[] { "头盔", "头甲", "盔", "冠" },
+                new string[] { "helmet", "helm", "crown" }),
+            CreateWishRewardCategory(
+                "totem",
+                1.35f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 5, 6, 7, 8 },
+                new string[] { "图腾", "圣物", "遗物", "护符", "鳞片" },
+                new string[] { "totem", "relic", "artifact", "scale" }),
+            CreateWishRewardCategory(
+                "gift",
+                1.15f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 2, 3, 4, 5, 6 },
+                new string[] { "礼物", "礼品", "纪念", "蛋糕", "钻石", "戒指", "涂鸦", "勋章" },
+                new string[] { "gift", "present", "cake", "diamond", "ring", "drawing", "medal" }),
+            CreateWishRewardCategory(
+                "healing",
+                1.2f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 2, 3, 4, 5 },
+                new string[] { "药", "治疗", "回血", "恢复", "喷剂", "滴剂", "护身符", "平安" },
+                new string[] { "heal", "healing", "recovery", "drops", "spray", "charm" }),
+            CreateWishRewardCategory(
+                "flag",
+                1.18f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 3, 4, 5 },
+                new string[] { "营旗", "旗", "战旗", "阵营", "派系" },
+                new string[] { "flag", "banner", "faction" }),
+            CreateWishRewardCategory(
+                "summon",
+                1.25f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 4, 5, 6 },
+                new string[] { "召唤", "刷怪", "引怪", "boss", "首领", "烟雾弹", "引爆器", "响哨", "烽火" },
+                new string[] { "summon", "spawn", "boss", "smoke", "detonator", "whistle", "beacon" }),
+            CreateWishRewardCategory(
+                "fortification",
+                1.2f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 3, 4, 5, 6 },
+                new string[] { "工事", "掩体", "路障", "铁丝网", "防线", "维修", "修理" },
+                new string[] { "fortification", "cover", "roadblock", "barbed wire", "repair", "defense" }),
+            CreateWishRewardCategory(
+                "travel",
+                1.1f,
+                WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER,
+                new int[] { 1, 2, 3, 4 },
+                new string[] { "船票", "门票", "快递", "日志", "百科", "扫箱", "令牌", "通行" },
+                new string[] { "ticket", "courier", "delivery", "journal", "encyclopedia", "sweep", "token" })
+        };
+
+        private static readonly WishRewardItemDefinition[] WishRewardCustomItems =
+        {
+            CreateWishRewardItem(BossRushItemIds.BossRushTicket, "travel", "BossRush 船票", "Boss Rush Ticket", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "船票", "门票", "bossrush船票", "bossrush票" },
+                new string[] { "boss rush ticket", "bossrush ticket", "ticket" }),
+            CreateWishRewardItem(BossRushItemIds.BirthdayCake, "gift", "生日蛋糕", "Birthday Cake", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "蛋糕", "生日蛋糕" },
+                new string[] { "birthday cake", "cake" }),
+            CreateWishRewardItem(DragonDescendantConfig.DRAGON_HELM_TYPE_ID, "helmet", "赤龙首", "Dragon Helm", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "赤龙首", "龙盔", "龙头盔" },
+                new string[] { "dragon helm", "dragon helmet" }),
+            CreateWishRewardItem(DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID, "armor", "焰鳞甲", "Dragon Armor", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "焰鳞甲", "龙甲", "龙护甲" },
+                new string[] { "dragon armor", "dragon armour" }),
+            CreateWishRewardItem(DragonBreathConfig.WEAPON_TYPE_ID, "gun", "龙息", "Dragon Breath", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "龙息", "龙息枪", "龙枪" },
+                new string[] { "dragon breath" }),
+            CreateWishRewardItem(BossRushItemIds.AdventureJournal, "travel", "冒险家日志", "Adventure Journal", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "冒险家日志", "日志", "百科", "图鉴" },
+                new string[] { "adventure journal", "journal", "encyclopedia", "wiki book" }),
+            CreateWishRewardItem(AwenCourierTokenConfig.TYPE_ID, "travel", "阿稳快递牌", "Awen Courier Token", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "阿稳快递牌", "快递牌", "快递令牌", "寄存牌" },
+                new string[] { "awen courier token", "courier token", "delivery token" }),
+            CreateWishRewardItem(FlightConfig.TotemTypeIdBase, "totem", "腾云驾雾 I", "Cloud Soar I", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "腾云驾雾", "飞行图腾", "飞天图腾", "飞行" },
+                new string[] { "cloud soar", "flight totem", "flying totem" }),
+            CreateWishRewardItem(DragonKingConfig.DRAGON_KING_HELM_TYPE_ID, "helmet", "龙王之冕", "Dragon King Helm", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "龙王之冕", "龙王头盔", "龙王冠" },
+                new string[] { "dragon king helm", "dragon king helmet" }),
+            CreateWishRewardItem(DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID, "armor", "龙王鳞铠", "Dragon King Armor", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "龙王鳞铠", "龙王甲", "龙王护甲" },
+                new string[] { "dragon king armor", "dragon king armour" }),
+            CreateWishRewardItem(ReverseScaleConfig.TotemTypeId, "totem", "逆鳞", "Reverse Scale", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "逆鳞", "逆鳞图腾" },
+                new string[] { "reverse scale" }),
+            CreateWishRewardItem(ColdQuenchFluidConfig.TYPE_ID, "gift", "冷淬液", "Cold Quench Fluid", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "冷淬液", "冷萃液", "冷却液", "重铸液" },
+                new string[] { "cold quench fluid", "quench fluid" }),
+            CreateWishRewardItem(BrickStoneConfig.TYPE_ID, "gift", "砖石", "Brick Stone", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "砖石", "假钻石" },
+                new string[] { "brick stone", "fake diamond" }),
+            CreateWishRewardItem(DingdangDrawingConfig.TYPE_ID, "gift", "叮当涂鸦", "Dingdang's Doodle", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "叮当涂鸦", "涂鸦", "叮当画" },
+                new string[] { "dingdang doodle", "doodle" }),
+            CreateWishRewardItem(DiamondConfig.TYPE_ID, "gift", "钻石", "Diamond", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "钻石", "真钻石" },
+                new string[] { "diamond" }),
+            CreateWishRewardItem(AchievementMedalConfig.TYPE_ID, "gift", "成就勋章", "Achievement Medal", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "成就勋章", "勋章", "奖章" },
+                new string[] { "achievement medal", "medal" }),
+            CreateWishRewardItem(WildHornConfig.TYPE_ID, "gift", "荒野号角", "Wild Horn", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "荒野号角", "号角", "狼号角", "坐骑号角" },
+                new string[] { "wild horn", "horn" }),
+            CreateWishRewardItem(FactionFlagConfig.RANDOM_FLAG_TYPE_ID, "flag", FactionFlagConfig.RANDOM_FLAG_NAME_CN, FactionFlagConfig.RANDOM_FLAG_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "随机营旗", "随机旗" },
+                new string[] { "random faction flag", "random flag" }),
+            CreateWishRewardItem(FactionFlagConfig.SCAV_FLAG_TYPE_ID, "flag", FactionFlagConfig.SCAV_FLAG_NAME_CN, FactionFlagConfig.SCAV_FLAG_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "拾荒者营旗", "拾荒旗", "scav旗" },
+                new string[] { "scav faction flag", "scav flag" }),
+            CreateWishRewardItem(FactionFlagConfig.USEC_FLAG_TYPE_ID, "flag", FactionFlagConfig.USEC_FLAG_NAME_CN, FactionFlagConfig.USEC_FLAG_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "usec营旗", "usec旗" },
+                new string[] { "usec faction flag", "usec flag" }),
+            CreateWishRewardItem(FactionFlagConfig.BEAR_FLAG_TYPE_ID, "flag", FactionFlagConfig.BEAR_FLAG_NAME_CN, FactionFlagConfig.BEAR_FLAG_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "bear营旗", "bear旗" },
+                new string[] { "bear faction flag", "bear flag" }),
+            CreateWishRewardItem(FactionFlagConfig.LAB_FLAG_TYPE_ID, "flag", FactionFlagConfig.LAB_FLAG_NAME_CN, FactionFlagConfig.LAB_FLAG_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "实验室营旗", "实验室旗", "lab旗" },
+                new string[] { "lab faction flag", "lab flag" }),
+            CreateWishRewardItem(FactionFlagConfig.WOLF_FLAG_TYPE_ID, "flag", FactionFlagConfig.WOLF_FLAG_NAME_CN, FactionFlagConfig.WOLF_FLAG_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "狼群营旗", "狼旗" },
+                new string[] { "wolf faction flag", "wolf flag" }),
+            CreateWishRewardItem(FactionFlagConfig.PLAYER_FLAG_TYPE_ID, "flag", FactionFlagConfig.PLAYER_FLAG_NAME_CN, FactionFlagConfig.PLAYER_FLAG_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "爷的营旗", "独狼旗", "玩家旗" },
+                new string[] { "lone wolf flag", "player flag" }),
+            CreateWishRewardItem(RespawnItemConfig.TAUNT_SMOKE_TYPE_ID, "summon", RespawnItemConfig.TAUNT_SMOKE_NAME_CN, RespawnItemConfig.TAUNT_SMOKE_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "挑衅烟雾弹", "烟雾弹", "挑衅弹" },
+                new string[] { "taunt smoke", "smoke" }),
+            CreateWishRewardItem(RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID, "summon", RespawnItemConfig.CHAOS_DETONATOR_NAME_CN, RespawnItemConfig.CHAOS_DETONATOR_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "混沌引爆器", "引爆器", "混沌装置" },
+                new string[] { "chaos detonator", "detonator" }),
+            CreateWishRewardItem(DiamondRingConfig.TYPE_ID, "gift", "钻石戒指", "Diamond Ring", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "钻石戒指", "戒指", "婚戒" },
+                new string[] { "diamond ring", "ring", "wedding ring" }),
+            CreateWishRewardItem(CalmingDropsConfig.TYPE_ID, "healing", "安神滴剂", "Calming Drops", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "安神滴剂", "滴剂", "药滴", "安神药" },
+                new string[] { "calming drops", "drops" }),
+            CreateWishRewardItem(PeaceCharmConfig.TYPE_ID, "healing", "平安护身符", "Peace Charm", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "平安护身符", "护身符", "护符" },
+                new string[] { "peace charm", "charm" }),
+            CreateWishRewardItem(RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID, "summon", RespawnItemConfig.BOSSCALL_WHISTLE_NAME_CN, RespawnItemConfig.BOSSCALL_WHISTLE_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "猎王响哨", "响哨", "boss哨", "首领哨" },
+                new string[] { "bosscall whistle", "boss whistle", "whistle" }),
+            CreateWishRewardItem(RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID, "summon", RespawnItemConfig.ALL_KINGS_BANNER_NAME_CN, RespawnItemConfig.ALL_KINGS_BANNER_NAME_EN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "血狩烽火", "烽火", "血猎烽火", "引战旗" },
+                new string[] { "bloodhunt beacon", "beacon" }),
+            CreateWishRewardItem(FenHuangHalberdIds.WeaponTypeId, "melee", "焚皇断界戟", "Inferno Emperor's Realm-Breaking Halberd", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "焚皇断界戟", "断界戟", "焚皇戟" },
+                new string[] { "realm-breaking halberd", "fenhuang halberd", "halberd" }),
+            CreateWishRewardItem(DragonKingBossGunConfig.WeaponTypeId, "gun", DragonKingBossGunConfig.WeaponNameCN, DragonKingBossGunConfig.WeaponNameEN, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "焚天龙铳", "龙皇铳", "龙铳" },
+                new string[] { "skyburn dragon cannon", "dragon king gun", "dragon cannon" }),
+            CreateWishRewardItem(BloodhuntTransponderConfig.TYPE_ID, "travel", "血猎收发器", "Bloodhunt Transponder", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "血猎收发器", "收发器", "血猎器" },
+                new string[] { "bloodhunt transponder", "transponder" }),
+            CreateWishRewardItem(FoldableCoverPackConfig.TYPE_ID, "fortification", "折叠掩体包", "Foldable Cover Pack", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "折叠掩体包", "掩体包", "折叠掩体" },
+                new string[] { "foldable cover pack", "cover pack" }),
+            CreateWishRewardItem(ReinforcedRoadblockPackConfig.TYPE_ID, "fortification", "加固路障包", "Reinforced Roadblock Pack", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "加固路障包", "路障包", "加固路障" },
+                new string[] { "reinforced roadblock pack", "roadblock pack" }),
+            CreateWishRewardItem(BarbedWirePackConfig.TYPE_ID, "fortification", "阻滞铁丝网包", "Barbed Wire Pack", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "阻滞铁丝网包", "铁丝网包", "铁丝网" },
+                new string[] { "barbed wire pack", "barbed wire" }),
+            CreateWishRewardItem(EmergencyRepairSprayConfig.TYPE_ID, "healing", "应急维修喷剂", "Emergency Repair Spray", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "应急维修喷剂", "维修喷剂", "修理喷剂" },
+                new string[] { "emergency repair spray", "repair spray" }),
+            CreateWishRewardItem(FrostmourneIds.WeaponTypeId, "melee", "霜之哀伤", "Frostmourne", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "霜之哀伤", "霜伤", "冰剑" },
+                new string[] { "frostmourne" }),
+            CreateWishRewardItem(AwenLootSweepTokenConfig.TYPE_ID, "travel", "阿稳扫箱令", "Awen Loot Sweep Token", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+                new string[] { "阿稳扫箱令", "扫箱令", "扫箱牌" },
+                new string[] { "awen loot sweep token", "loot sweep token", "sweep token" })
+        };
+
         [Serializable]
         private sealed class FeishuAppConfig
         {
@@ -114,6 +423,59 @@ namespace BossRush
                     && !string.IsNullOrEmpty(appToken)
                     && !string.IsNullOrEmpty(tableId);
             }
+        }
+
+        static WishFountainService()
+        {
+            try
+            {
+                SavesSystem.OnSetFile += OnWishRewardSaveFileChanged;
+            }
+            catch
+            {
+            }
+        }
+
+        private static WishRewardCategoryDefinition CreateWishRewardCategory(
+            string categoryId,
+            float qualityBiasMultiplier,
+            float itemBiasMultiplier,
+            int[] preferredQualities,
+            string[] zhAliases,
+            string[] enAliases)
+        {
+            return new WishRewardCategoryDefinition
+            {
+                categoryId = categoryId,
+                qualityBiasMultiplier = qualityBiasMultiplier,
+                itemBiasMultiplier = Mathf.Clamp(itemBiasMultiplier, 1f, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER),
+                preferredQualities = preferredQualities ?? new int[0],
+                zhAliases = zhAliases ?? new string[0],
+                enAliases = enAliases ?? new string[0]
+            };
+        }
+
+        private static WishRewardItemDefinition CreateWishRewardItem(
+            int typeId,
+            string categoryId,
+            string displayNameCN,
+            string displayNameEN,
+            float itemBiasMultiplier,
+            bool enabledInWishRewardPool,
+            string[] zhAliases,
+            string[] enAliases)
+        {
+            return new WishRewardItemDefinition
+            {
+                typeId = typeId,
+                categoryId = categoryId,
+                displayNameCN = displayNameCN ?? string.Empty,
+                displayNameEN = displayNameEN ?? string.Empty,
+                itemBiasMultiplier = Mathf.Clamp(itemBiasMultiplier, 1f, WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER),
+                enabledInWishRewardPool = enabledInWishRewardPool,
+                zhAliases = zhAliases ?? new string[0],
+                enAliases = enAliases ?? new string[0]
+            };
         }
 
         // ============================================================================
@@ -895,6 +1257,1598 @@ namespace BossRush
                 lowerText,
                 @"(?<![a-z0-9])" + Regex.Escape(term) + @"(?![a-z0-9])",
                 RegexOptions.CultureInvariant);
+        }
+
+        // ============================================================================
+        // 许愿奖励
+        // ============================================================================
+
+        private static void OnWishRewardSaveFileChanged()
+        {
+            wishRewardCooldownLoaded = false;
+            cachedWishRewardNextAvailableTicks = 0L;
+        }
+
+        private static void EnsureWishRewardCooldownLoaded()
+        {
+            if (wishRewardCooldownLoaded)
+            {
+                return;
+            }
+
+            wishRewardCooldownLoaded = true;
+            cachedWishRewardNextAvailableTicks = 0L;
+
+            try
+            {
+                if (SavesSystem.KeyExisits(WISH_REWARD_NEXT_AVAILABLE_SAVE_KEY))
+                {
+                    cachedWishRewardNextAvailableTicks = SavesSystem.Load<long>(WISH_REWARD_NEXT_AVAILABLE_SAVE_KEY);
+                }
+            }
+            catch (Exception e)
+            {
+                cachedWishRewardNextAvailableTicks = 0L;
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 读取许愿奖励冷却失败: " + e.Message);
+            }
+        }
+
+        private static void SaveWishRewardNextAvailableUtc(DateTime nextAvailableUtc)
+        {
+            cachedWishRewardNextAvailableTicks = nextAvailableUtc.Ticks;
+            wishRewardCooldownLoaded = true;
+
+            try
+            {
+                SavesSystem.Save<long>(WISH_REWARD_NEXT_AVAILABLE_SAVE_KEY, cachedWishRewardNextAvailableTicks);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 保存许愿奖励冷却失败: " + e.Message);
+            }
+        }
+
+        public static bool IsWishRewardReady()
+        {
+            EnsureWishRewardCooldownLoaded();
+            return DateTime.UtcNow.Ticks >= cachedWishRewardNextAvailableTicks;
+        }
+
+        public static int GetWishRewardCooldownRemainingSeconds()
+        {
+            EnsureWishRewardCooldownLoaded();
+
+            long remainingTicks = cachedWishRewardNextAvailableTicks - DateTime.UtcNow.Ticks;
+            if (remainingTicks <= 0L)
+            {
+                return 0;
+            }
+
+            return Mathf.CeilToInt((float)TimeSpan.FromTicks(remainingTicks).TotalSeconds);
+        }
+
+        internal static void ClearWishRewardCooldownForDevMode()
+        {
+            cachedWishRewardNextAvailableTicks = 0L;
+            wishRewardCooldownLoaded = true;
+
+            try
+            {
+                SavesSystem.Save<long>(WISH_REWARD_NEXT_AVAILABLE_SAVE_KEY, 0L);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 清除许愿奖励冷却失败: " + e.Message);
+            }
+        }
+
+        private static string FormatWishRewardCooldownForBubble(int remainingSeconds)
+        {
+            TimeSpan remain = TimeSpan.FromSeconds(Mathf.Max(0, remainingSeconds));
+            StringBuilder sb = new StringBuilder(32);
+
+            if (remain.Hours > 0)
+            {
+                sb.Append(remain.Hours).Append("h");
+            }
+
+            if (remain.Minutes > 0)
+            {
+                sb.Append(remain.Minutes).Append("m");
+            }
+
+            sb.Append(remain.Seconds).Append("s");
+            return sb.ToString();
+        }
+
+        private static void ShowWishRewardBubble(string text, float duration = 2.4f)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    text,
+                    player.transform,
+                    2.5f,
+                    false,
+                    false,
+                    -1f,
+                    duration);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 显示许愿奖励气泡失败: " + e.Message);
+            }
+        }
+
+        private static void ShowWishRewardCooldownBubble()
+        {
+            int remaining = GetWishRewardCooldownRemainingSeconds();
+            string formatted = FormatWishRewardCooldownForBubble(remaining);
+            ShowWishRewardBubble(L10n.T(
+                "许愿抽奖冷却：" + formatted,
+                "Wish Gacha Cooldown: " + formatted));
+        }
+
+        private static void ShowWishRewardResultBubble(string rewardDisplayName)
+        {
+            if (string.IsNullOrEmpty(rewardDisplayName))
+            {
+                rewardDisplayName = L10n.T("未知奖励", "Unknown reward");
+            }
+
+            ShowWishRewardBubble(L10n.T(
+                "我许到了一件：" + rewardDisplayName,
+                "I wished for: " + rewardDisplayName), 2.8f);
+        }
+
+        private static void ShowWishRewardFailureBubble()
+        {
+            ShowWishRewardBubble(L10n.T(
+                "星愿奖励发放失败，请稍后再试",
+                "Wish reward delivery failed. Please try again later"), 2.8f);
+        }
+
+        internal static void ShowWishCloseReminderBubble()
+        {
+            if (IsWishRewardReady())
+            {
+                ShowWishRewardBubble(L10n.T(
+                    "你这家伙快去许愿领奖励！！",
+                    "Hey you, go make a wish and claim your reward!!"), 2.8f);
+                return;
+            }
+
+            ShowWishRewardCooldownBubble();
+        }
+
+        private static bool HasSpecialWishRewardTag(Item item)
+        {
+            if (item == null || item.Tags == null)
+            {
+                return false;
+            }
+
+            Duckov.Utilities.Tag specialTag = null;
+            try { specialTag = Duckov.Utilities.GameplayDataSettings.Tags.Special; } catch { }
+            return specialTag != null && item.Tags.Contains(specialTag);
+        }
+
+        private static bool IsWishRewardExplicitlyAllowedCustomItem(
+            Dictionary<int, WishRewardItemDefinition> customItemsByTypeId,
+            int typeId)
+        {
+            WishRewardItemDefinition definition;
+            return customItemsByTypeId != null
+                && customItemsByTypeId.TryGetValue(typeId, out definition)
+                && definition != null
+                && definition.enabledInWishRewardPool;
+        }
+
+        private static void ResetWishRewardPoolCaches()
+        {
+            wishRewardCandidatesByTypeId.Clear();
+            wishRewardQualityBuckets.Clear();
+            wishRewardCategoriesById.Clear();
+            wishRewardCategoryCandidateIds.Clear();
+            wishRewardCustomItemsByTypeId.Clear();
+            wishRewardPoolInitialized = false;
+        }
+
+        private static bool CanAttemptWishRewardPoolInitialization()
+        {
+            return Time.realtimeSinceStartup - lastWishRewardPoolInitAttemptRealtime >= WISH_REWARD_POOL_INIT_RETRY_SECONDS;
+        }
+
+        private static WishRewardPoolBuildContext CreateWishRewardPoolBuildContext()
+        {
+            WishRewardPoolBuildContext context = new WishRewardPoolBuildContext();
+
+            for (int i = 0; i < WishRewardCategories.Length; i++)
+            {
+                WishRewardCategoryDefinition category = WishRewardCategories[i];
+                if (category == null || string.IsNullOrEmpty(category.categoryId))
+                {
+                    continue;
+                }
+
+                context.categoriesById[category.categoryId] = category;
+                context.categoryCandidateIds[category.categoryId] = new HashSet<int>();
+            }
+
+            for (int i = 0; i < WishRewardCustomItems.Length; i++)
+            {
+                WishRewardItemDefinition itemDefinition = WishRewardCustomItems[i];
+                if (itemDefinition == null || itemDefinition.typeId <= 0)
+                {
+                    continue;
+                }
+
+                context.customItemsByTypeId[itemDefinition.typeId] = itemDefinition;
+            }
+
+            return context;
+        }
+
+        private static void CommitWishRewardPoolBuild(WishRewardPoolBuildContext context)
+        {
+            ResetWishRewardPoolCaches();
+            if (context == null)
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<int, WishRewardCandidate> kvp in context.candidatesByTypeId)
+            {
+                wishRewardCandidatesByTypeId[kvp.Key] = kvp.Value;
+            }
+
+            foreach (KeyValuePair<int, List<int>> kvp in context.qualityBuckets)
+            {
+                wishRewardQualityBuckets[kvp.Key] = kvp.Value;
+            }
+
+            foreach (KeyValuePair<string, WishRewardCategoryDefinition> kvp in context.categoriesById)
+            {
+                wishRewardCategoriesById[kvp.Key] = kvp.Value;
+            }
+
+            foreach (KeyValuePair<string, HashSet<int>> kvp in context.categoryCandidateIds)
+            {
+                wishRewardCategoryCandidateIds[kvp.Key] = kvp.Value;
+            }
+
+            foreach (KeyValuePair<int, WishRewardItemDefinition> kvp in context.customItemsByTypeId)
+            {
+                wishRewardCustomItemsByTypeId[kvp.Key] = kvp.Value;
+            }
+
+            wishRewardPoolInitialized = wishRewardCandidatesByTypeId.Count > 0;
+        }
+
+        private static void AddWishRewardCategoryCandidate(WishRewardPoolBuildContext context, string categoryId, int typeId)
+        {
+            if (context == null || string.IsNullOrEmpty(categoryId) || typeId <= 0)
+            {
+                return;
+            }
+
+            HashSet<int> set;
+            if (!context.categoryCandidateIds.TryGetValue(categoryId, out set))
+            {
+                set = new HashSet<int>();
+                context.categoryCandidateIds[categoryId] = set;
+            }
+
+            set.Add(typeId);
+
+            WishRewardCandidate candidate;
+            if (context.candidatesByTypeId.TryGetValue(typeId, out candidate))
+            {
+                candidate.categoryIds.Add(categoryId);
+            }
+        }
+
+        private static void AddWishRewardQualityBucket(WishRewardPoolBuildContext context, int quality, int typeId)
+        {
+            if (context == null)
+            {
+                return;
+            }
+
+            List<int> bucket;
+            if (!context.qualityBuckets.TryGetValue(quality, out bucket))
+            {
+                bucket = new List<int>();
+                context.qualityBuckets[quality] = bucket;
+            }
+
+            if (!bucket.Contains(typeId))
+            {
+                bucket.Add(typeId);
+            }
+        }
+
+        private static void EnsureWishRewardPoolInitialized()
+        {
+            if (wishRewardPoolInitialized)
+            {
+                return;
+            }
+
+            if (!CanAttemptWishRewardPoolInitialization())
+            {
+                return;
+            }
+
+            TryBuildWishRewardPoolSynchronously();
+        }
+
+        private static bool TryBuildWishRewardPoolSynchronously()
+        {
+            lastWishRewardPoolInitAttemptRealtime = Time.realtimeSinceStartup;
+
+            try
+            {
+                WishRewardPoolBuildContext context = CreateWishRewardPoolBuildContext();
+                BuildWishRewardPoolSynchronously(context);
+                CommitWishRewardPoolBuild(context);
+                return wishRewardPoolInitialized;
+            }
+            catch (Exception e)
+            {
+                ResetWishRewardPoolCaches();
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 同步构建许愿奖励池失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private static IEnumerable<int> EnumerateWishRewardBasePoolCandidateIds()
+        {
+            Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+            if (tagsData == null || tagsData.AllTags == null || tagsData.AllTags.Count == 0)
+            {
+                yield break;
+            }
+
+            List<Duckov.Utilities.Tag> excludeTags = BuildWishRewardExcludeTags(tagsData);
+            HashSet<int> yieldedIds = new HashSet<int>();
+
+            for (int i = 0; i < tagsData.AllTags.Count; i++)
+            {
+                Duckov.Utilities.Tag requireTag = tagsData.AllTags[i];
+                if (requireTag == null || excludeTags.Contains(requireTag))
+                {
+                    continue;
+                }
+
+                ItemFilter filter = default(ItemFilter);
+                filter.requireTags = new Duckov.Utilities.Tag[] { requireTag };
+                filter.excludeTags = excludeTags.ToArray();
+                filter.minQuality = WISH_REWARD_MIN_QUALITY;
+                filter.maxQuality = 8;
+
+                int[] ids = ItemAssetsCollection.Search(filter);
+                if (ids == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < ids.Length; j++)
+                {
+                    int id = ids[j];
+                    if (id <= 0 || LootBlacklistRegistry.Contains(id))
+                    {
+                        continue;
+                    }
+
+                    if (yieldedIds.Add(id))
+                    {
+                        yield return id;
+                    }
+                }
+            }
+        }
+
+        private static void BuildWishRewardPoolSynchronously(WishRewardPoolBuildContext context)
+        {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            BuildWishRewardBasePool(context);
+            BuildWishRewardCategoryMemberships(context);
+            AddWishRewardCustomOverrides(context);
+
+            if (context.candidatesByTypeId.Count <= 0)
+            {
+                throw new InvalidOperationException("Wish reward pool build produced no candidates.");
+            }
+        }
+
+        private static IEnumerator BuildWishRewardPoolIncrementally(WishRewardPoolBuildContext context)
+        {
+            if (context == null)
+            {
+                yield break;
+            }
+
+            int processed = 0;
+            foreach (int typeId in EnumerateWishRewardBasePoolCandidateIds())
+            {
+                TryRegisterWishRewardCandidate(context, typeId, false);
+                processed++;
+
+                if (processed % WISH_REWARD_POOL_BUILD_YIELD_INTERVAL == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            BuildWishRewardCategoryMemberships(context);
+            yield return null;
+            AddWishRewardCustomOverrides(context);
+
+            if (context.candidatesByTypeId.Count <= 0)
+            {
+                throw new InvalidOperationException("Wish reward pool build produced no candidates.");
+            }
+        }
+
+        private static bool TryAdvanceWishRewardPoolBuildEnumerator(
+            IEnumerator enumerator,
+            out object current,
+            out Exception error)
+        {
+            current = null;
+            error = null;
+
+            if (enumerator == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!enumerator.MoveNext())
+                {
+                    return false;
+                }
+
+                current = enumerator.Current;
+                return true;
+            }
+            catch (Exception e)
+            {
+                error = e;
+                return false;
+            }
+        }
+
+        internal static IEnumerator WarmupWishRewardPoolAfterDelay()
+        {
+            if (wishRewardPoolInitialized || wishRewardPoolWarmupInProgress)
+            {
+                yield break;
+            }
+
+            wishRewardPoolWarmupInProgress = true;
+            try
+            {
+                yield return null;
+                yield return null;
+
+                WishRewardPoolBuildContext context = null;
+                Exception warmupError = null;
+
+                try
+                {
+                    context = CreateWishRewardPoolBuildContext();
+                }
+                catch (Exception e)
+                {
+                    warmupError = e;
+                }
+
+                if (warmupError == null && context != null)
+                {
+                    IEnumerator incrementalBuilder = BuildWishRewardPoolIncrementally(context);
+                    while (warmupError == null)
+                    {
+                        object currentYield;
+                        Exception stepError;
+                        if (!TryAdvanceWishRewardPoolBuildEnumerator(incrementalBuilder, out currentYield, out stepError))
+                        {
+                            warmupError = stepError;
+                            break;
+                        }
+
+                        yield return currentYield;
+                    }
+                }
+
+                if (warmupError == null && context != null && !wishRewardPoolInitialized)
+                {
+                    try
+                    {
+                        CommitWishRewardPoolBuild(context);
+                    }
+                    catch (Exception e)
+                    {
+                        warmupError = e;
+                    }
+                }
+
+                if (warmupError != null)
+                {
+                    if (!wishRewardPoolInitialized)
+                    {
+                        ResetWishRewardPoolCaches();
+                    }
+
+                    ModBehaviour.DevLog("[WishFountain] [WARNING] 预热构建许愿奖励池失败: " + warmupError.Message);
+                }
+            }
+            finally
+            {
+                wishRewardPoolWarmupInProgress = false;
+            }
+        }
+
+        private static void BuildWishRewardBasePool(WishRewardPoolBuildContext context)
+        {
+            foreach (int id in EnumerateWishRewardBasePoolCandidateIds())
+            {
+                TryRegisterWishRewardCandidate(context, id, false);
+            }
+        }
+
+        private static void AddWishRewardCustomOverrides(WishRewardPoolBuildContext context)
+        {
+            if (context == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < WishRewardCustomItems.Length; i++)
+            {
+                WishRewardItemDefinition definition = WishRewardCustomItems[i];
+                if (definition == null || definition.typeId <= 0 || !definition.enabledInWishRewardPool)
+                {
+                    continue;
+                }
+
+                TryRegisterWishRewardCandidate(context, definition.typeId, true);
+                AddWishRewardCategoryCandidate(context, definition.categoryId, definition.typeId);
+            }
+        }
+
+        private static void BuildWishRewardCategoryMemberships(WishRewardPoolBuildContext context)
+        {
+            if (context == null)
+            {
+                return;
+            }
+
+            Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+            if (tagsData != null)
+            {
+                RegisterWishRewardTagCategory(context, tagsData, "gun", new string[] { "Gun" });
+                RegisterWishRewardTagCategory(context, tagsData, "weapon", new string[] { "Gun", "Weapon", "MeleeWeapon" });
+                RegisterWishRewardTagCategory(context, tagsData, "helmet", new string[] { "Helmat", "Helmet" });
+                RegisterWishRewardTagCategory(context, tagsData, "armor", new string[] { "Armor" });
+                RegisterWishRewardTagCategory(context, tagsData, "travel", new string[] { "Backpack" });
+                RegisterWishRewardTagCategory(context, tagsData, "gift", new string[] { "Food", "Special" });
+                RegisterWishRewardTagCategory(context, tagsData, "healing", new string[] { "Food", "Medical", "Special" });
+            }
+
+            foreach (KeyValuePair<int, WishRewardCandidate> kvp in context.candidatesByTypeId)
+            {
+                int typeId = kvp.Key;
+                WishRewardCandidate candidate = kvp.Value;
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                WishRewardItemDefinition customItem;
+                if (context.customItemsByTypeId.TryGetValue(typeId, out customItem))
+                {
+                    AddWishRewardCategoryCandidate(context, customItem.categoryId, typeId);
+                }
+
+                string normalizedName = NormalizeWishRewardText(candidate.displayName);
+                if (string.IsNullOrEmpty(normalizedName))
+                {
+                    continue;
+                }
+
+                foreach (KeyValuePair<string, WishRewardCategoryDefinition> categoryKvp in context.categoriesById)
+                {
+                    WishRewardCategoryDefinition category = categoryKvp.Value;
+                    if (category == null)
+                    {
+                        continue;
+                    }
+
+                    if (MatchesAnyWishRewardAlias(normalizedName, category.zhAliases, category.enAliases))
+                    {
+                        AddWishRewardCategoryCandidate(context, category.categoryId, typeId);
+                    }
+                }
+            }
+        }
+
+        private static void RegisterWishRewardTagCategory(
+            WishRewardPoolBuildContext context,
+            Duckov.Utilities.GameplayDataSettings.TagsData tagsData,
+            string categoryId,
+            string[] memberNames)
+        {
+            if (context == null || tagsData == null || string.IsNullOrEmpty(categoryId) || memberNames == null)
+            {
+                return;
+            }
+
+            List<Duckov.Utilities.Tag> excludeTags = BuildWishRewardExcludeTags(tagsData);
+
+            for (int i = 0; i < memberNames.Length; i++)
+            {
+                Duckov.Utilities.Tag requiredTag = TryGetWishRewardTagByMemberName(tagsData, memberNames[i]);
+                if (requiredTag == null)
+                {
+                    continue;
+                }
+
+                ItemFilter filter = default(ItemFilter);
+                filter.requireTags = new Duckov.Utilities.Tag[] { requiredTag };
+                filter.excludeTags = excludeTags.ToArray();
+                filter.minQuality = WISH_REWARD_MIN_QUALITY;
+                filter.maxQuality = 8;
+
+                int[] ids = ItemAssetsCollection.Search(filter);
+                if (ids == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < ids.Length; j++)
+                {
+                    int typeId = ids[j];
+                    if (!context.candidatesByTypeId.ContainsKey(typeId))
+                    {
+                        continue;
+                    }
+
+                    AddWishRewardCategoryCandidate(context, categoryId, typeId);
+                }
+            }
+        }
+
+        private static Duckov.Utilities.Tag TryGetWishRewardTagByMemberName(
+            Duckov.Utilities.GameplayDataSettings.TagsData tagsData,
+            string memberName)
+        {
+            if (tagsData == null || string.IsNullOrEmpty(memberName))
+            {
+                return null;
+            }
+
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
+
+            try
+            {
+                FieldInfo field = tagsData.GetType().GetField(memberName, flags);
+                if (field != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(field.FieldType))
+                {
+                    return field.GetValue(tagsData) as Duckov.Utilities.Tag;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                PropertyInfo property = tagsData.GetType().GetProperty(memberName, flags);
+                if (property != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(property.PropertyType))
+                {
+                    return property.GetValue(tagsData, null) as Duckov.Utilities.Tag;
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        private static void AddWishRewardExcludeTag(List<Duckov.Utilities.Tag> excludeTags, Duckov.Utilities.Tag tag)
+        {
+            if (excludeTags == null || tag == null || excludeTags.Contains(tag))
+            {
+                return;
+            }
+
+            excludeTags.Add(tag);
+        }
+
+        private static Duckov.Utilities.Tag TryFindWishRewardQuestTag(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
+        {
+            if (tagsData == null)
+            {
+                return null;
+            }
+
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
+
+            try
+            {
+                FieldInfo questField = tagsData.GetType().GetField("Quest", flags);
+                if (questField != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questField.FieldType))
+                {
+                    return questField.GetValue(tagsData) as Duckov.Utilities.Tag;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                PropertyInfo questProperty = tagsData.GetType().GetProperty("Quest", flags);
+                if (questProperty != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questProperty.PropertyType))
+                {
+                    return questProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (tagsData.AllTags != null)
+                {
+                    for (int i = 0; i < tagsData.AllTags.Count; i++)
+                    {
+                        Duckov.Utilities.Tag tag = tagsData.AllTags[i];
+                        if (tag != null && string.Equals(tag.name, "Quest", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return tag;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        private static List<Duckov.Utilities.Tag> BuildWishRewardExcludeTags(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
+        {
+            List<Duckov.Utilities.Tag> excludeTags = new List<Duckov.Utilities.Tag>();
+            if (tagsData == null)
+            {
+                return excludeTags;
+            }
+
+            AddWishRewardExcludeTag(excludeTags, tagsData.Character);
+            AddWishRewardExcludeTag(excludeTags, tagsData.DestroyOnLootBox);
+            AddWishRewardExcludeTag(excludeTags, tagsData.DontDropOnDeadInSlot);
+            AddWishRewardExcludeTag(excludeTags, tagsData.LockInDemoTag);
+            AddWishRewardExcludeTag(excludeTags, TryFindWishRewardQuestTag(tagsData));
+            return excludeTags;
+        }
+
+        private static bool TryRegisterWishRewardCandidate(
+            WishRewardPoolBuildContext context,
+            int typeId,
+            bool allowBlacklistedOverride)
+        {
+            if (context == null || typeId <= 0)
+            {
+                return false;
+            }
+
+            if (!allowBlacklistedOverride && LootBlacklistRegistry.Contains(typeId))
+            {
+                return false;
+            }
+
+            if (context.candidatesByTypeId.ContainsKey(typeId))
+            {
+                return true;
+            }
+
+            Item temp = null;
+            try
+            {
+                temp = ItemAssetsCollection.InstantiateSync(typeId);
+                if (temp == null)
+                {
+                    return false;
+                }
+
+                int quality = 0;
+                try { quality = temp.Quality; } catch { quality = 0; }
+                if (quality < WISH_REWARD_MIN_QUALITY || quality > 8)
+                {
+                    return false;
+                }
+
+                if (HasSpecialWishRewardTag(temp)
+                    && !IsWishRewardExplicitlyAllowedCustomItem(context.customItemsByTypeId, typeId))
+                {
+                    return false;
+                }
+
+                string displayName = GetWishRewardDisplayNameFromItem(context.customItemsByTypeId, typeId, temp);
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    displayName = "Item " + typeId;
+                }
+
+                WishRewardCandidate candidate = new WishRewardCandidate
+                {
+                    typeId = typeId,
+                    quality = quality,
+                    displayName = displayName
+                };
+
+                context.candidatesByTypeId[typeId] = candidate;
+                AddWishRewardQualityBucket(context, quality, typeId);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 注册许愿奖励候选失败 typeId=" + typeId + ": " + e.Message);
+                return false;
+            }
+            finally
+            {
+                try
+                {
+                    if (temp != null)
+                    {
+                        temp.DestroyTree();
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static string GetWishRewardDisplayNameFromItem(
+            Dictionary<int, WishRewardItemDefinition> customItemsByTypeId,
+            int typeId,
+            Item item)
+        {
+            WishRewardItemDefinition customItem;
+            if (customItemsByTypeId != null && customItemsByTypeId.TryGetValue(typeId, out customItem))
+            {
+                return L10n.T(customItem.displayNameCN, customItem.displayNameEN);
+            }
+
+            if (item != null)
+            {
+                try
+                {
+                    if (!string.IsNullOrEmpty(item.DisplayName))
+                    {
+                        return item.DisplayName;
+                    }
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    if (!string.IsNullOrEmpty(item.name))
+                    {
+                        return item.name;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return null;
+        }
+
+        private static string GetWishRewardDisplayNameFromItem(int typeId, Item item)
+        {
+            return GetWishRewardDisplayNameFromItem(wishRewardCustomItemsByTypeId, typeId, item);
+        }
+
+        private static string NormalizeWishRewardText(string text)
+        {
+            text = StandardizeText(text);
+            if (string.IsNullOrEmpty(text))
+            {
+                return string.Empty;
+            }
+
+            StringBuilder sb = new StringBuilder(text.Length + 8);
+            bool previousWasSpace = true;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = char.ToLowerInvariant(text[i]);
+                if (char.IsLetterOrDigit(c) || c > 127)
+                {
+                    sb.Append(c);
+                    previousWasSpace = false;
+                }
+                else
+                {
+                    if (!previousWasSpace)
+                    {
+                        sb.Append(' ');
+                        previousWasSpace = true;
+                    }
+                }
+            }
+
+            return sb.ToString().Trim();
+        }
+
+        private static bool IsWishRewardLatinAlias(string alias)
+        {
+            if (string.IsNullOrEmpty(alias))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < alias.Length; i++)
+            {
+                char c = alias[i];
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == ' ')
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ShouldUseWishRewardChineseAlias(string normalizedAlias)
+        {
+            if (string.IsNullOrEmpty(normalizedAlias))
+            {
+                return false;
+            }
+
+            if (normalizedAlias.Length < 2)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool MatchesAnyWishRewardAlias(string normalizedText, string[] zhAliases, string[] enAliases)
+        {
+            if (string.IsNullOrEmpty(normalizedText))
+            {
+                return false;
+            }
+
+            if (zhAliases != null)
+            {
+                for (int i = 0; i < zhAliases.Length; i++)
+                {
+                    string normalizedAlias = NormalizeWishRewardText(zhAliases[i]);
+                    if (!ShouldUseWishRewardChineseAlias(normalizedAlias))
+                    {
+                        continue;
+                    }
+
+                    if (normalizedText.Contains(normalizedAlias))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            if (enAliases != null)
+            {
+                string paddedText = " " + normalizedText + " ";
+                for (int i = 0; i < enAliases.Length; i++)
+                {
+                    string alias = NormalizeWishRewardText(enAliases[i]);
+                    if (string.IsNullOrEmpty(alias) || !IsWishRewardLatinAlias(alias))
+                    {
+                        continue;
+                    }
+
+                    if (paddedText.Contains(" " + alias + " "))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static WishRewardMatchResult MatchWishRewardKeywords(string standardizedWishText)
+        {
+            WishRewardMatchResult result = new WishRewardMatchResult();
+            string normalizedText = NormalizeWishRewardText(standardizedWishText);
+            if (string.IsNullOrEmpty(normalizedText))
+            {
+                return result;
+            }
+
+            foreach (KeyValuePair<string, WishRewardCategoryDefinition> kvp in wishRewardCategoriesById)
+            {
+                WishRewardCategoryDefinition category = kvp.Value;
+                if (category == null)
+                {
+                    continue;
+                }
+
+                if (MatchesAnyWishRewardAlias(normalizedText, category.zhAliases, category.enAliases))
+                {
+                    result.matchedCategoryIds.Add(category.categoryId);
+                }
+            }
+
+            foreach (KeyValuePair<int, WishRewardItemDefinition> kvp in wishRewardCustomItemsByTypeId)
+            {
+                WishRewardItemDefinition itemDefinition = kvp.Value;
+                if (itemDefinition == null)
+                {
+                    continue;
+                }
+
+                if (MatchesAnyWishRewardAlias(normalizedText, itemDefinition.zhAliases, itemDefinition.enAliases) ||
+                    MatchesAnyWishRewardAlias(normalizedText,
+                        new string[] { itemDefinition.displayNameCN },
+                        new string[] { itemDefinition.displayNameEN }))
+                {
+                    result.matchedItemTypeIds.Add(itemDefinition.typeId);
+                    if (!string.IsNullOrEmpty(itemDefinition.categoryId))
+                    {
+                        result.matchedCategoryIds.Add(itemDefinition.categoryId);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private static string TruncateWishRewardLogValue(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return "(empty)";
+            }
+
+            if (maxLength <= 0 || value.Length <= maxLength)
+            {
+                return value;
+            }
+
+            return value.Substring(0, maxLength) + "...";
+        }
+
+        private static string FormatWishRewardCategoryMatchesForLog(WishRewardMatchResult match)
+        {
+            if (match == null || match.matchedCategoryIds.Count <= 0)
+            {
+                return "(none)";
+            }
+
+            List<string> categoryIds = new List<string>(match.matchedCategoryIds);
+            categoryIds.Sort(StringComparer.OrdinalIgnoreCase);
+            return string.Join(",", categoryIds.ToArray());
+        }
+
+        private static string FormatWishRewardItemMatchesForLog(WishRewardMatchResult match)
+        {
+            if (match == null || match.matchedItemTypeIds.Count <= 0)
+            {
+                return "(none)";
+            }
+
+            List<string> itemEntries = new List<string>();
+            foreach (int typeId in match.matchedItemTypeIds)
+            {
+                string displayName = null;
+
+                WishRewardItemDefinition itemDefinition;
+                if (wishRewardCustomItemsByTypeId.TryGetValue(typeId, out itemDefinition) && itemDefinition != null)
+                {
+                    displayName = L10n.T(itemDefinition.displayNameCN, itemDefinition.displayNameEN);
+                }
+
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    WishRewardCandidate candidate;
+                    if (wishRewardCandidatesByTypeId.TryGetValue(typeId, out candidate) && candidate != null)
+                    {
+                        displayName = candidate.displayName;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    displayName = "Item " + typeId;
+                }
+
+                itemEntries.Add(typeId + ":" + displayName);
+            }
+
+            itemEntries.Sort(StringComparer.OrdinalIgnoreCase);
+            return string.Join(",", itemEntries.ToArray());
+        }
+
+        private static void LogWishRewardRoll(
+            string wishText,
+            WishRewardMatchResult match,
+            int rolledQuality,
+            int selectedTypeId,
+            string rewardDisplayName)
+        {
+            try
+            {
+                string normalizedWishText = TruncateWishRewardLogValue(NormalizeWishRewardText(wishText), 120);
+                string matchedCategories = FormatWishRewardCategoryMatchesForLog(match);
+                string matchedItems = FormatWishRewardItemMatchesForLog(match);
+                string selectedReward = string.IsNullOrEmpty(rewardDisplayName)
+                    ? "(none)"
+                    : TruncateWishRewardLogValue(rewardDisplayName, 80);
+
+                ModBehaviour.DevLog(
+                    "[WishFountain] reward roll normalizedWishText=\"" + normalizedWishText +
+                    "\" matchedCategories=" + matchedCategories +
+                    " matchedItems=" + matchedItems +
+                    " rolledQuality=Q" + rolledQuality +
+                    " selectedTypeId=" + selectedTypeId +
+                    " selectedReward=" + selectedReward);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 记录许愿奖励抽取日志失败: " + e.Message);
+            }
+        }
+
+        private static float GetWishRewardMaxItemBiasForQuality(int quality)
+        {
+            if (quality <= 4)
+            {
+                return WISH_REWARD_ITEM_BIAS_CAP_Q1_TO_Q4;
+            }
+
+            if (quality <= 6)
+            {
+                return WISH_REWARD_ITEM_BIAS_CAP_Q5_TO_Q6;
+            }
+
+            if (quality == 7)
+            {
+                return WISH_REWARD_ITEM_BIAS_CAP_Q7;
+            }
+
+            return WISH_REWARD_ITEM_BIAS_CAP_Q8;
+        }
+
+        private static int RollWishRewardQuality(WishRewardMatchResult match)
+        {
+            float[] weights = new float[WishRewardBaseQualityWeights.Length];
+            float[] multipliers = new float[WishRewardBaseQualityWeights.Length];
+
+            for (int i = 0; i < WishRewardBaseQualityWeights.Length; i++)
+            {
+                weights[i] = WishRewardBaseQualityWeights[i];
+                multipliers[i] = 1f;
+            }
+
+            foreach (string categoryId in match.matchedCategoryIds)
+            {
+                WishRewardCategoryDefinition category;
+                if (!wishRewardCategoriesById.TryGetValue(categoryId, out category) || category == null)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < category.preferredQualities.Length; i++)
+                {
+                    int quality = category.preferredQualities[i];
+                    if (quality < 1 || quality > weights.Length)
+                    {
+                        continue;
+                    }
+
+                    multipliers[quality - 1] = Mathf.Min(
+                        WISH_REWARD_QUALITY_BIAS_CAP,
+                        multipliers[quality - 1] * Mathf.Max(1f, category.qualityBiasMultiplier));
+                }
+            }
+
+            foreach (int typeId in match.matchedItemTypeIds)
+            {
+                WishRewardCandidate candidate;
+                if (!wishRewardCandidatesByTypeId.TryGetValue(typeId, out candidate) || candidate == null)
+                {
+                    continue;
+                }
+
+                int qualityIndex = candidate.quality - 1;
+                if (qualityIndex < 0 || qualityIndex >= multipliers.Length)
+                {
+                    continue;
+                }
+
+                multipliers[qualityIndex] = Mathf.Min(
+                    WISH_REWARD_QUALITY_BIAS_CAP,
+                    multipliers[qualityIndex] * WISH_REWARD_EXACT_ITEM_QUALITY_BIAS);
+            }
+
+            for (int i = 0; i < weights.Length; i++)
+            {
+                weights[i] *= multipliers[i];
+            }
+
+            return RollWishRewardWeightedIndex(weights) + 1;
+        }
+
+        private static int RollWishRewardWeightedIndex(float[] weights)
+        {
+            if (weights == null || weights.Length == 0)
+            {
+                return -1;
+            }
+
+            float totalWeight = 0f;
+            for (int i = 0; i < weights.Length; i++)
+            {
+                if (weights[i] > 0f)
+                {
+                    totalWeight += weights[i];
+                }
+            }
+
+            if (totalWeight <= 0f)
+            {
+                return 0;
+            }
+
+            float roll = UnityEngine.Random.Range(0f, totalWeight);
+            float cursor = 0f;
+
+            for (int i = 0; i < weights.Length; i++)
+            {
+                if (weights[i] <= 0f)
+                {
+                    continue;
+                }
+
+                cursor += weights[i];
+                if (roll <= cursor)
+                {
+                    return i;
+                }
+            }
+
+            return weights.Length - 1;
+        }
+
+        private static int RollWishRewardItemInQuality(int rolledQuality, WishRewardMatchResult match, out string rewardDisplayName)
+        {
+            rewardDisplayName = null;
+
+            List<int> bucket;
+            if (!wishRewardQualityBuckets.TryGetValue(rolledQuality, out bucket) || bucket == null || bucket.Count <= 0)
+            {
+                return -1;
+            }
+
+            float[] weights = new float[bucket.Count];
+            for (int i = 0; i < bucket.Count; i++)
+            {
+                int typeId = bucket[i];
+                WishRewardCandidate candidate;
+                if (!wishRewardCandidatesByTypeId.TryGetValue(typeId, out candidate) || candidate == null)
+                {
+                    weights[i] = 0f;
+                    continue;
+                }
+
+                float weight = 1f;
+                float itemBiasCap = GetWishRewardMaxItemBiasForQuality(candidate.quality);
+
+                foreach (string categoryId in match.matchedCategoryIds)
+                {
+                    if (!candidate.categoryIds.Contains(categoryId))
+                    {
+                        continue;
+                    }
+
+                    WishRewardCategoryDefinition category;
+                    if (!wishRewardCategoriesById.TryGetValue(categoryId, out category) || category == null)
+                    {
+                        continue;
+                    }
+
+                    weight = Mathf.Min(
+                        itemBiasCap,
+                        weight * Mathf.Max(1f, category.itemBiasMultiplier));
+                }
+
+                if (match.matchedItemTypeIds.Contains(typeId))
+                {
+                    WishRewardItemDefinition itemDefinition;
+                    if (wishRewardCustomItemsByTypeId.TryGetValue(typeId, out itemDefinition) && itemDefinition != null)
+                    {
+                        weight = Mathf.Min(
+                            itemBiasCap,
+                            weight * Mathf.Max(1f, itemDefinition.itemBiasMultiplier));
+                    }
+                }
+
+                weights[i] = weight;
+            }
+
+            int selectedIndex = RollWishRewardWeightedIndex(weights);
+            if (selectedIndex < 0 || selectedIndex >= bucket.Count)
+            {
+                return -1;
+            }
+
+            int selectedTypeId = bucket[selectedIndex];
+            WishRewardCandidate selectedCandidate;
+            if (wishRewardCandidatesByTypeId.TryGetValue(selectedTypeId, out selectedCandidate) && selectedCandidate != null)
+            {
+                rewardDisplayName = selectedCandidate.displayName;
+            }
+
+            return selectedTypeId;
+        }
+
+        private static int RollWishRewardTypeId(string wishText, out string rewardDisplayName)
+        {
+            rewardDisplayName = null;
+
+            EnsureWishRewardPoolInitialized();
+            if (!wishRewardPoolInitialized)
+            {
+                return -1;
+            }
+
+            WishRewardMatchResult match = MatchWishRewardKeywords(wishText);
+            int rolledQuality = RollWishRewardQuality(match);
+            int selectedTypeId = RollWishRewardItemInQuality(rolledQuality, match, out rewardDisplayName);
+            LogWishRewardRoll(wishText, match, rolledQuality, selectedTypeId, rewardDisplayName);
+            return selectedTypeId;
+        }
+
+        private static int PickWishRewardAnimationCandidate(
+            List<int> primaryPool,
+            List<int> secondaryPool,
+            List<int> tertiaryPool,
+            List<int> existingSequence,
+            int winningTypeId)
+        {
+            List<int>[] pools = new List<int>[] { primaryPool, secondaryPool, tertiaryPool };
+            int lastTypeId = existingSequence.Count > 0 ? existingSequence[existingSequence.Count - 1] : -1;
+
+            for (int poolIndex = 0; poolIndex < pools.Length; poolIndex++)
+            {
+                List<int> pool = pools[poolIndex];
+                if (pool == null || pool.Count <= 0)
+                {
+                    continue;
+                }
+
+                int fallbackTypeId = -1;
+                for (int attempt = 0; attempt < 8; attempt++)
+                {
+                    int candidateTypeId = pool[UnityEngine.Random.Range(0, pool.Count)];
+                    if (candidateTypeId <= 0 || candidateTypeId == winningTypeId)
+                    {
+                        continue;
+                    }
+
+                    if (fallbackTypeId <= 0)
+                    {
+                        fallbackTypeId = candidateTypeId;
+                    }
+
+                    if (candidateTypeId != lastTypeId)
+                    {
+                        return candidateTypeId;
+                    }
+                }
+
+                if (fallbackTypeId > 0)
+                {
+                    return fallbackTypeId;
+                }
+            }
+
+            return winningTypeId;
+        }
+
+        private static List<int> BuildWishRewardAnimationSequence(int rewardTypeId, out int outWinnerIndex)
+        {
+            const int sequenceLength = 45;
+            const int winnerIndex = 32;
+            outWinnerIndex = winnerIndex;
+
+            EnsureWishRewardPoolInitialized();
+
+            List<int> lowQuality = new List<int>();
+            List<int> midQuality = new List<int>();
+            List<int> highQuality = new List<int>();
+
+            foreach (KeyValuePair<int, WishRewardCandidate> kvp in wishRewardCandidatesByTypeId)
+            {
+                WishRewardCandidate candidate = kvp.Value;
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (candidate.typeId == rewardTypeId)
+                {
+                    continue;
+                }
+
+                if (candidate.quality <= 3)
+                {
+                    lowQuality.Add(candidate.typeId);
+                }
+                else if (candidate.quality <= 5)
+                {
+                    midQuality.Add(candidate.typeId);
+                }
+                else
+                {
+                    highQuality.Add(candidate.typeId);
+                }
+            }
+
+            List<int> sequence = new List<int>(sequenceLength);
+            for (int i = 0; i < sequenceLength; i++)
+            {
+                if (i == winnerIndex)
+                {
+                    sequence.Add(rewardTypeId);
+                    continue;
+                }
+
+                int pickedTypeId;
+                if (i % 7 == 0)
+                {
+                    pickedTypeId = PickWishRewardAnimationCandidate(highQuality, midQuality, lowQuality, sequence, rewardTypeId);
+                }
+                else if (i % 3 == 0)
+                {
+                    pickedTypeId = PickWishRewardAnimationCandidate(midQuality, lowQuality, highQuality, sequence, rewardTypeId);
+                }
+                else
+                {
+                    pickedTypeId = PickWishRewardAnimationCandidate(lowQuality, midQuality, highQuality, sequence, rewardTypeId);
+                }
+
+                sequence.Add(pickedTypeId);
+            }
+
+            return sequence;
+        }
+
+        private static bool TryGiveWishRewardItem(int typeId)
+        {
+            Item item = null;
+            try
+            {
+                item = ItemAssetsCollection.InstantiateSync(typeId);
+                if (item == null)
+                {
+                    return false;
+                }
+
+                bool sent = false;
+                try
+                {
+                    sent = ItemUtilities.SendToPlayerCharacterInventory(item, false);
+                }
+                catch
+                {
+                }
+
+                if (!sent)
+                {
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player != null)
+                    {
+                        item.Drop(player.transform.position + Vector3.up * 0.3f, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
+                        sent = true;
+                    }
+                }
+
+                if (!sent)
+                {
+                    try { item.DestroyTree(); } catch { }
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishFountain] [WARNING] 发放许愿奖励失败: " + e.Message);
+                try
+                {
+                    if (item != null)
+                    {
+                        item.DestroyTree();
+                    }
+                }
+                catch
+                {
+                }
+                return false;
+            }
+        }
+
+        private static void OnWishRewardAnimationFinished(int rewardTypeId, string rewardDisplayName)
+        {
+            if (!TryGiveWishRewardItem(rewardTypeId))
+            {
+                ShowWishRewardFailureBubble();
+                return;
+            }
+
+            SaveWishRewardNextAvailableUtc(DateTime.UtcNow.AddHours(WISH_REWARD_COOLDOWN_HOURS));
+            ShowWishRewardResultBubble(rewardDisplayName);
+        }
+
+        internal static void TryStartWishRewardAnimationAfterSuccessfulSend(string wishText)
+        {
+            if (!IsWishRewardReady())
+            {
+                ShowWishRewardCooldownBubble();
+                return;
+            }
+
+            string rewardDisplayName;
+            int rewardTypeId = RollWishRewardTypeId(wishText, out rewardDisplayName);
+            if (rewardTypeId <= 0 || string.IsNullOrEmpty(rewardDisplayName))
+            {
+                ShowWishRewardFailureBubble();
+                return;
+            }
+
+            int animWinnerIndex;
+            List<int> animSequence = BuildWishRewardAnimationSequence(rewardTypeId, out animWinnerIndex);
+            WishFountainRewardAnimationView.PlayRuntime(
+                rewardTypeId,
+                rewardDisplayName,
+                animSequence,
+                animWinnerIndex,
+                OnWishRewardAnimationFinished);
         }
 
         // ============================================================================
