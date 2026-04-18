@@ -1251,7 +1251,7 @@ namespace BossRush
                 }
 
                 Item item = currentPlayerInventory.Content[i];
-                if (item != null && item.CanBeSold)
+                if (item != null && item.CanBeSold && !IsItemWishlisted(item))
                 {
                     count++;
                 }
@@ -1282,7 +1282,7 @@ namespace BossRush
                 }
 
                 Item item = currentPlayerInventory.Content[i];
-                if (item != null && item.CanBeSold)
+                if (item != null && item.CanBeSold && !IsItemWishlisted(item))
                 {
                     items.Add(item);
                 }
@@ -1453,6 +1453,24 @@ namespace BossRush
             }
             catch
             {
+                return false;
+            }
+        }
+
+        private static bool IsItemWishlisted(Item item)
+        {
+            try
+            {
+                return item != null
+                    && ItemWishlist.Instance != null
+                    && ItemWishlist.Instance.IsManuallyWishlisted(item.TypeID);
+            }
+            catch (Exception e)
+            {
+                // 异常时返回 false（允许卖出），但记录日志便于排障：
+                // 若 ItemWishlist.Instance 状态异常或 IsManuallyWishlisted 抛异常，
+                // 玩家的愿望清单物品可能被误卖，需要定位原因。
+                ModBehaviour.DevLog("[ModeEMerchant] IsItemWishlisted 检查异常，默认允许卖出: " + e.Message);
                 return false;
             }
         }
