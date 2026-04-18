@@ -414,10 +414,8 @@ namespace BossRush
             int w = 0;
             foreach (char c in s)
             {
-                // CJK 统一表意 + 标点 + 符号
+                // CJK 统一表意 + 标点 + 符号 + 日文平/片假名（0x3000-0x9FFF 已包含 0x3040-0x30FF）
                 if (c >= 0x3000 && c <= 0x9FFF) w += 2;
-                // 日文平/片假名
-                else if (c >= 0x3040 && c <= 0x30FF) w += 2;
                 // 韩文
                 else if (c >= 0xAC00 && c <= 0xD7AF) w += 2;
                 // 全角

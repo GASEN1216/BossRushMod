@@ -2154,7 +2154,8 @@ namespace BossRush
                     {
                         // ★低端机优化：Highlight 关闭超过阈值后销毁 outline 对象，下次再 Highlight 时按需重建。
                         // 避免每个工事永远保留一份 MeshFilter+MeshRenderer 副本，累积 draw call 和 GPU 内存。
-                        try { UnityEngine.Object.Destroy(marker.HighlightRoot); } catch { }
+                        try { UnityEngine.Object.Destroy(marker.HighlightRoot); }
+                        catch (Exception e) { DevLog("[ModeF] [WARNING] Highlight outline 销毁失败: " + e.Message); }
                         marker.HighlightRoot = null;
                         marker.HighlightUntilTime = 0f;
                     }
