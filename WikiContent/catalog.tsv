@@ -5,13 +5,11 @@ start	start__how_to_enter	安装与启用	Installation & Activation	2
 start	start__first_run	新手上路	Getting Started	3
 mode	mode__overview	游戏模式总览	Game Mode Overview	1
 mode	mode__mode_a	标准 BossRush	Standard BossRush	2
-mode	mode__mode_b	标准 BossRush	Standard BossRush	3
-mode	mode__mode_c	无间炼狱	Infinite Hell	4
-mode	mode__mode_d	白手起家	From Scratch	5
-mode	mode__mode_e	划地为营	Faction War	6
-mode	mode__mode_f	血猎追击	Blood Hunt	7
+mode	mode__mode_c	无间炼狱	Infinite Hell	3
+mode	mode__mode_d	白手起家	From Scratch	4
+mode	mode__mode_e	划地为营	Faction War	5
+mode	mode__mode_f	血猎追击	Blood Hunt	6
 map	map__overview	地图总览	Map Overview	1
-map	map__all_maps	地图总览	Map Overview	2
 boss	boss__overview	Boss 总览	Boss Overview	1
 boss	boss__dragon_descendant	龙裔遗族	Dragon Descendant	2
 boss	boss__dragon_king	焚天龙皇	Skyburner Dragon Lord	3
