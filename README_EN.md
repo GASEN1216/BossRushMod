@@ -12,17 +12,17 @@
 
 ## Overview
 
-BossRushMod is a large-scale integrated mod for Escape from Duckov. It started from the BossRush arena loop, but the current source baseline now includes multiple gameplay modes, custom bosses, custom gear and items, persistent NPC storylines, achievements, reforging, an in-game wiki, localization, audio work, and runtime stability systems.
+BossRushMod is a large-scale integrated mod for Escape from Duckov. It started from the BossRush arena loop, but the current source baseline now includes multiple gameplay modes (including the Bloodhunt battle royale mode), custom bosses, custom gear and items (including the Frostmourne weapon), persistent NPC storylines, achievements, reforging, a wish fountain, death wraith system, an in-game wiki, an online wiki site, localization, audio work, and runtime stability systems.
 
 This README reflects the current source baseline in the repository. For the full developer-facing overview, see [docs/项目全景文档.md](docs/项目全景文档.md).
 
 ## At a Glance
 
-- 5 major gameplay modes: 3 standard BossRush variants, Mode D, and Mode E
+- 6 major gameplay modes: 3 standard BossRush variants, Mode D, Mode E, and Mode F
 - 9 maps integrated into the BossRush flow
 - 2 major custom bosses: Dragon Descendant and the Dragon King
 - 3 persistent NPCs: Awen, Dingdang, and Yu Zhi
-- Multiple long-running systems: gear abilities, items, reforge, affinity, marriage, achievements, and the in-game wiki
+- Multiple long-running systems: gear abilities, items, reforge, affinity, marriage, achievements, in-game wiki, wish fountain, and death wraith
 
 ## Game Modes
 
@@ -33,6 +33,7 @@ This README reflects the current source baseline in the repository. For the full
 | **Infinite Hell** | Enter with a BossRush Ticket | Endless waves, configurable bosses per wave, includes cash pool and auto-collection |
 | **Mode D: Rags to Riches** | Enter naked with a BossRush Ticket | Random starting loadout, separate enemy pool, separate drop and growth curve |
 | **Mode E: Faction War** | Enter naked with a faction flag | Multi-faction sandbox battle with random flag, fixed faction flags, and the solo `Player Flag` route |
+| **Mode F: Bloodhunt** | Enter naked with a BossRush Ticket + Bloodhunt Transponder | Four-phase battle royale: Preparation → Bounty → Hunt Storm → Extraction, with constant bleed, kill-to-heal growth, bounty mark tracking, and a fortification system |
 
 ## Supported Maps
 
@@ -70,6 +71,7 @@ Map selection is integrated into the original game UI flow, and that integration
 - Flight Totem
 - Reverse Scale
 - Dragon King signature weapons
+- Frostmourne: custom melee weapon with right-click undead summoning and frost flame effects
 
 ### Key Items
 
@@ -78,6 +80,8 @@ Map selection is integrated into the original game UI flow, and that integration
 - Adventurer's Journal / Wiki Book
 - Diamond, Diamond Ring, Brickstone, Calming Drops, Peace Charm, Dingdang Graffiti, Wild Horn
 - Mode E faction flags
+- Mode F Bloodhunt Transponder
+- Awen Loot Sweep Token (auto-granted on Mode E/F boss kill milestones, one-click collection of scattered loot crates)
 - Mode E battlefield items: Taunt Smoke, Chaos Detonator, Bosscall Whistle, Bloodhunt Beacon
 - Achievement Medal
 
@@ -87,6 +91,8 @@ Map selection is integrated into the original game UI flow, and that integration
 - Equipment reforge
 - Achievement system with Steam-style popups
 - In-game wiki
+- Wish Fountain: players write wishes at the Star Wish Fountain, validated and recorded via Feishu API, with lottery animation and reward distribution
+- Death Wraith system: spawns a boss-grade wraith copying the player's appearance and gear at the death location, scaled to three tiers by dropped item value
 - BossFilter for boss pool control and Infinite Hell weight editing
 - Wave rewards, loot crates, and arena interactables
 - Runtime recovery and stability systems such as cash magnet and enemy recovery monitoring
@@ -114,6 +120,8 @@ Key config fields:
 | `enableDragonDash` | `true` | Enables Dragon Dash related abilities |
 | `achievementHotkey` | `L` | Achievement panel hotkey, stored internally as an integer `KeyCode` |
 | `useWolfModelForWildHorn` | `true` | Uses the wolf model for Wild Horn |
+| `enableDeathWraithSystem` | `true` | Enables or disables the death wraith system |
+| `milestoneRestBonusSeconds` | `30` | Extra rest time every 5 waves (seconds), 0 = no extra rest |
 
 ## Tech Stack and Runtime
 
@@ -158,19 +166,26 @@ BossRushMod/
 ├── Achievement/                     # Achievements, medal item, Steam-style popups
 ├── Audio/                           # Audio management
 ├── BossFilter/                      # Boss pool filtering and Infinite Hell factors
+├── Common/                          # Shared effects, equipment utilities, common helpers
 ├── Config/                          # Runtime config and data
 ├── DebugAndTools/                   # ItemSpawner, InventoryInspector, NPC teleport UI
+├── Injection/                       # Runtime injection helpers
 ├── Integration/                     # Dynamic items, equipment, NPCs, shops, wiki, affinity systems
+│   ├── DeathWraith/                 # Death wraith system
+│   ├── Frostmourne/                 # Frostmourne weapon system
+│   └── WishFountain/                # Star Wish Fountain
 ├── Interactables/                   # Signposts, supplies, repair, cleanup, teleport
 ├── Localization/                    # Localization injection and text management
-├── LootAndRewards/                  # Loot, rewards, reward crates
+├── LootAndRewards/                  # Loot, rewards, reward crates, loot sweep token
 ├── MapSelection/                    # BossRush map selection integration
 ├── ModeD/                           # Rags to Riches
 ├── ModeE/                           # Faction War, flags, merchant, battlefield items
+├── ModeF/                           # Bloodhunt, phase state machine, bounty, fortifications, extraction
 ├── UIAndSigns/                      # Arena prompts, banners, sign UI
 ├── Utilities/                       # Spawn logic, caches, enemy recovery monitoring
 ├── WavesArena/                      # Standard BossRush and Infinite Hell core logic
 ├── WikiContent/                     # In-game wiki content
+├── wiki-site/                       # VitePress online wiki site (Cloudflare Pages / GitHub Pages)
 └── docs/                            # Design and project documentation
 ```
 
@@ -181,7 +196,7 @@ The project includes an extensive built-in debug layer. Common hotkeys:
 | Hotkey | Action |
 |--------|--------|
 | `F2` | Toggle `ItemSpawner` |
-| `F3` | Toggle the marriage test panel |
+| `F3` | Clear Wish Fountain cooldowns (dev mode) |
 | `F4` | Clear achievement data |
 | `F5` | Dump nearby building/object info |
 | `F6` | Toggle placement mode |
@@ -199,6 +214,7 @@ The project includes an extensive built-in debug layer. Common hotkeys:
 - Project overview: [docs/项目全景文档.md](docs/项目全景文档.md)
 - Design docs: [docs/](docs/)
 - In-game wiki content: [WikiContent/](WikiContent/)
+- Online wiki site: [wiki-site/](wiki-site/) (VitePress, dual-deployed to Cloudflare Pages and GitHub Pages)
 
 ## License
 

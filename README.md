@@ -12,17 +12,17 @@
 
 ## 项目概览
 
-BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 竞技场玩法为核心，但当前源码已经扩展成一个包含多模式玩法、自定义 Boss、自定义装备与物品、NPC 关系线、成就、重铸、游戏内 Wiki、本地化、音频和运行时稳定性修复的完整内容包。
+BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 竞技场玩法为核心，但当前源码已经扩展成一个包含多模式玩法（含血猎追击大逃杀模式）、自定义 Boss、自定义装备与物品（含霜之哀伤等自定义武器）、NPC 关系线、成就、重铸、许愿台、死亡亡魂、游戏内 Wiki、在线 Wiki 站点、本地化、音频和运行时稳定性修复的完整内容包。
 
 这份 README 反映当前仓库源码基线。更完整的开发向说明见 [docs/项目全景文档.md](docs/项目全景文档.md)。
 
 ## 内容总览
 
-- 5 个主要玩法模式：标准 BossRush 3 档、Mode D、Mode E
+- 6 个主要玩法模式：标准 BossRush 3 档、Mode D、Mode E、Mode F
 - 9 张已接入 BossRush 的地图
 - 2 个核心自定义 Boss：龙裔遗族、焚天龙皇
 - 3 位常驻 NPC：阿稳、叮当、羽织
-- 多条系统线：装备能力、物品、重铸、好感度、婚姻、成就、游戏内百科
+- 多条系统线：装备能力、物品、重铸、好感度、婚姻、成就、游戏内百科、许愿台、亡魂
 
 ## 玩法模式
 
@@ -32,7 +32,8 @@ BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 
 | **有点意思** | 携带 BossRush 船票进入 | 每波 3 个 Boss，标准多目标战斗 |
 | **无间炼狱** | 携带 BossRush 船票进入 | 无限波次，每波 Boss 数由配置决定，带现金池与自动吸附 |
 | **Mode D：白手起家** | 裸装携带 BossRush 船票进入 | 随机起装，独立敌池、掉落和成长节奏 |
-| **Mode E：划地为营** | 裸装携带营旗进入 | 多阵营沙盒混战，支持随机旗、指定旗和“爷的营旗”独狼模式 |
+| **Mode E：划地为营** | 裸装携带营旗进入 | 多阵营沙盒混战，支持随机旗、指定旗和”爷的营旗”独狼模式 |
+| **Mode F：血猎追击** | 裸装携带 BossRush 船票 + 血猎收发器进入 | 四阶段大逃杀：准备→赏金→猎杀风暴→撤离，持续失血、击杀回血与成长，赏金标记追踪，工事系统 |
 
 ## 支持地图
 
@@ -70,6 +71,7 @@ BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 
 - 飞行图腾
 - 逆鳞
 - 龙王专属武器系统
+- 霜之哀伤（Frostmourne）：自定义近战武器，带右键召唤亡灵与冰焰特效
 
 ### 关键物品
 
@@ -78,6 +80,8 @@ BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 
 - 冒险家日志 / Wiki Book
 - 钻石、钻戒、砖石、安神滴剂、平安护身符、叮当涂鸦、荒野号角
 - Mode E 营旗
+- Mode F 血猎收发器
+- 阿稳扫箱令（Mode E/F Boss 击杀累计自动发放，一键收集散落掉落箱）
 - Mode E 战场道具：挑衅烟雾弹、混沌引爆器、猎王响哨、血狩烽火
 - 成就勋章
 
@@ -87,6 +91,8 @@ BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 
 - 装备重铸系统
 - 成就系统与 Steam 风格弹窗
 - 游戏内 Wiki
+- 星愿许愿台：玩家可在许愿台写下心愿，经内容校验后通过飞书 API 记录，支持抽奖动画与奖励发放
+- 死亡亡魂系统：玩家死亡后在原地生成复制外观与装备的 Boss 级亡魂，按掉落价值分三档强度
 - BossFilter：Boss 池筛选与无间炼狱权重编辑
 - 波次奖励、掉落箱、地图交互物
 - 现金自动吸附、敌人卡住/坠落恢复等稳定性逻辑
@@ -114,6 +120,8 @@ BossRush 目前同时支持两种配置入口：
 | `enableDragonDash` | `true` | 是否启用龙冲刺相关能力 |
 | `achievementHotkey` | `L` | 成就面板热键，内部存储为 `KeyCode` 整数值 |
 | `useWolfModelForWildHorn` | `true` | 荒野号角是否使用狼模型 |
+| `enableDeathWraithSystem` | `true` | 死亡亡魂系统开关 |
+| `milestoneRestBonusSeconds` | `30` | 每 5 波额外休息时间（秒），0 = 不额外休息 |
 
 ## 技术栈与运行方式
 
@@ -158,19 +166,26 @@ BossRushMod/
 ├── Achievement/                     # 成就、勋章、Steam 风格弹窗
 ├── Audio/                           # 音频管理
 ├── BossFilter/                      # Boss 池筛选与无间炼狱因子
+├── Common/                          # 共享特效、装备工具、通用辅助
 ├── Config/                          # 运行时配置与数据
 ├── DebugAndTools/                   # ItemSpawner、InventoryInspector、NPC 传送 UI
+├── Injection/                       # 运行时注入辅助
 ├── Integration/                     # 动态物品、装备、NPC、商店、Wiki、关系系统总线
+│   ├── DeathWraith/                 # 死亡亡魂系统
+│   ├── Frostmourne/                 # 霜之哀伤武器系统
+│   └── WishFountain/                # 星愿许愿台
 ├── Interactables/                   # 路牌、补给、维修、清箱、传送
 ├── Localization/                    # 本地化注入与文本管理
-├── LootAndRewards/                  # 掉落、奖励、奖励箱
+├── LootAndRewards/                  # 掉落、奖励、奖励箱、扫箱令
 ├── MapSelection/                    # BossRush 地图选择接入
 ├── ModeD/                           # 白手起家
 ├── ModeE/                           # 划地为营、营旗、商人、战场道具
+├── ModeF/                           # 血猎追击、阶段状态机、赏金、工事、撤离
 ├── UIAndSigns/                      # 场内提示、横幅、路牌 UI
 ├── Utilities/                       # 刷怪、缓存、敌人恢复监控等工具
 ├── WavesArena/                      # 标准 BossRush / 无间炼狱核心逻辑
 ├── WikiContent/                     # 游戏内百科内容
+├── wiki-site/                       # VitePress 在线 Wiki 站点（Cloudflare Pages / GitHub Pages）
 └── docs/                            # 设计文档与项目说明
 ```
 
@@ -181,7 +196,7 @@ BossRushMod/
 | 热键 | 功能 |
 |------|------|
 | `F2` | 打开 / 关闭 `ItemSpawner` |
-| `F3` | 打开 / 关闭婚姻系统测试面板 |
+| `F3` | 清除星愿许愿台冷却（开发模式） |
 | `F4` | 清空成就数据 |
 | `F5` | 输出附近建筑 / 对象信息 |
 | `F6` | 切换放置模式 |
@@ -199,6 +214,7 @@ BossRushMod/
 - 开发总览：[docs/项目全景文档.md](docs/项目全景文档.md)
 - 设计文档目录：[docs/](docs/)
 - 游戏内百科内容：[WikiContent/](WikiContent/)
+- 在线 Wiki 站点：[wiki-site/](wiki-site/)（VitePress，支持 Cloudflare Pages 与 GitHub Pages 双部署）
 
 ## 许可
 
