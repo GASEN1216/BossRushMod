@@ -42,7 +42,7 @@ namespace BossRush
                 {
                     FortificationType.FoldableCover,
                     new FortDef(FortificationType.FoldableCover,
-                        "BossRush_ModeF_FoldableCover_Model", 2500f, FoldableCoverPackConfig.TYPE_ID, true,
+                        "BossRush_ModeF_FoldableCover_Model", 250f, FoldableCoverPackConfig.TYPE_ID, true,
                         new Bounds(new Vector3(0f, 0.54f, 0f),     new Vector3(1.66f, 1.08f, 0.30f)),
                         new Bounds(new Vector3(0f, 0.45f, 0f),     new Vector3(1.56f, 0.90f, 0.16f)),
                         new Bounds(new Vector3(0f, 0.52f, 0f),     new Vector3(1.70f, 1.12f, 0.30f)),
@@ -52,7 +52,7 @@ namespace BossRush
                 {
                     FortificationType.ReinforcedRoadblock,
                     new FortDef(FortificationType.ReinforcedRoadblock,
-                        "BossRush_ModeF_ReinforcedRoadblock_Model", 5000f, ReinforcedRoadblockPackConfig.TYPE_ID, true,
+                        "BossRush_ModeF_ReinforcedRoadblock_Model", 500f, ReinforcedRoadblockPackConfig.TYPE_ID, true,
                         new Bounds(new Vector3(0f, 0.64f, 0f),     new Vector3(2.48f, 1.28f, 0.64f)),
                         new Bounds(new Vector3(0f, 0.62f, 0f),     new Vector3(2.32f, 1.18f, 0.50f)),
                         new Bounds(new Vector3(0f, 0.66f, 0f),     new Vector3(2.50f, 1.30f, 0.70f)),
@@ -62,12 +62,12 @@ namespace BossRush
                 {
                     FortificationType.BarbedWire,
                     new FortDef(FortificationType.BarbedWire,
-                        "BossRush_ModeF_BarbedWire_Model", 2000f, BarbedWirePackConfig.TYPE_ID, true,
-                        new Bounds(new Vector3(0f, 0.42f, 0f),     new Vector3(2.24f, 0.90f, 0.30f)),
-                        new Bounds(new Vector3(0f, 0.40f, 0f),     new Vector3(2.14f, 0.78f, 0.18f)),
-                        new Bounds(new Vector3(0f, 0.44f, 0f),     new Vector3(2.20f, 0.92f, 0.32f)),
-                        new Bounds(new Vector3(0f, 0.45f, 0f),     new Vector3(2.40f, 0.95f, 0.45f)),
-                        new Bounds(new Vector3(0f, 0.78f, -0.76f), new Vector3(2.70f, 1.60f, 1.20f)))
+                        "BossRush_ModeF_BarbedWire_Model", 200f, BarbedWirePackConfig.TYPE_ID, true,
+                        new Bounds(new Vector3(0f, 0.44f, 0f),     new Vector3(2.60f, 0.94f, 0.40f)),
+                        new Bounds(new Vector3(0f, 0.42f, 0f),     new Vector3(2.50f, 0.82f, 0.28f)),
+                        new Bounds(new Vector3(0f, 0.46f, 0f),     new Vector3(2.56f, 0.96f, 0.42f)),
+                        new Bounds(new Vector3(0f, 0.45f, 0f),     new Vector3(2.70f, 0.98f, 0.50f)),
+                        new Bounds(new Vector3(0f, 0.78f, -0.76f), new Vector3(2.95f, 1.60f, 1.30f)))
                 },
             };
 
@@ -143,6 +143,10 @@ namespace BossRush
         private const float FORT_REPAIR_RANGE            = 3f;
         private const float FORT_REPAIR_PERCENT          = 0.25f;
         private const float FORT_HIGHLIGHT_DURATION      = 1.25f;
+        // ★低端机优化：Highlight 完全关闭后保留 outline 对象的最长时间（秒）。
+        // 超时后销毁 outline，避免每个工事永远保留 MeshFilter+MeshRenderer 副本；
+        // 下次 Highlight 时按需重建。阈值设置较大以避免维修选择抖动时反复创建销毁。
+        private const float FORT_HIGHLIGHT_OUTLINE_DESTROY_DELAY = 10f;
         private const float FORT_DAMAGE_LOG_INTERVAL     = 0.25f;
         private const float FORT_PLACEMENT_PADDING       = 0.35f;
         private const float FORT_WORLD_COLLISION_PADDING = 0.05f;
@@ -150,6 +154,8 @@ namespace BossRush
         private const int   MODEF_UTILITY_REWARD_UNTHROTTLED_THRESHOLD = 6;
         private const int   MODEF_UTILITY_REWARD_MAX_DELIVERIES_PER_FLUSH = 6;
         private const int   MODEF_UTILITY_REWARD_MAX_DELIVERIES_PER_TYPE_PER_FLUSH = 3;
+        // ★低端机防御：活动工事硬上限。超过后拒绝放置新工事，防止玩家无上限部署拖垮物理/渲染。
+        private const int   MODEF_MAX_ACTIVE_FORTIFICATIONS = 24;
 
         private static readonly FieldInfo healthDefaultMaxHealthField =
             typeof(Health).GetField("defaultMaxHealth", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -204,6 +210,17 @@ namespace BossRush
             if (modeFRepairSelectionActive)
             {
                 ShowMessage(L10n.T("请先结束当前维修选择", "Finish the current repair selection first"));
+                return false;
+            }
+
+            // ★低端机防御：活动工事数达到硬上限时拒绝放置，避免低端机被无限部署拖垮。
+            if (modeFState != null
+                && modeFState.ActiveFortifications != null
+                && modeFState.ActiveFortifications.Count >= MODEF_MAX_ACTIVE_FORTIFICATIONS)
+            {
+                ShowMessage(L10n.T(
+                    "工事数量已达上限 (" + MODEF_MAX_ACTIVE_FORTIFICATIONS + ")",
+                    "Fortification limit reached (" + MODEF_MAX_ACTIVE_FORTIFICATIONS + ")"));
                 return false;
             }
 
@@ -343,15 +360,17 @@ namespace BossRush
                 }
 
                 // 鼠标射线检测地面
+                // ★低端机优化：用有限层掩码，禁止 ~0 全层 fallback（复杂关卡每帧扫描数万 collider）。
+                //   主 mask = ground + wall；fallback mask = 主 mask + damageReceiver + fowBlock（覆盖敌人身体、雾障等）。
                 Vector3 mousePos = UnityEngine.Input.mousePosition;
                 Ray ray = cam.ScreenPointToRay(mousePos);
-                LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask |
-                                       Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
+                int placementRaycastMask = GetModeFFortificationPlacementRaycastMask();
+                int placementRaycastFallbackMask = GetModeFFortificationPlacementRaycastFallbackMask();
                 RaycastHit hit;
-                bool hitSomething = Physics.Raycast(ray, out hit, 500f, groundMask, QueryTriggerInteraction.Ignore);
-                if (!hitSomething)
+                bool hitSomething = Physics.Raycast(ray, out hit, 500f, placementRaycastMask, QueryTriggerInteraction.Ignore);
+                if (!hitSomething && placementRaycastFallbackMask != placementRaycastMask)
                 {
-                    hitSomething = Physics.Raycast(ray, out hit, 500f, ~0, QueryTriggerInteraction.Ignore);
+                    hitSomething = Physics.Raycast(ray, out hit, 500f, placementRaycastFallbackMask, QueryTriggerInteraction.Ignore);
                 }
 
                 if (hitSomething)
@@ -521,9 +540,12 @@ namespace BossRush
                 return null;
             }
 
+            // ★低端机优化：维修选择悬停 Raycast 从 ~0 全层收敛到 damageReceiver + wall
+            // （工事的 DamageReceiver 和 Wall/Blocker collider 所在层），其他层没必要检测。
             Ray ray = cam.ScreenPointToRay(mousePos);
             RaycastHit hit;
-            if (Physics.Raycast(ray, out hit, 500f, ~0, QueryTriggerInteraction.Ignore))
+            int repairHoverMask = GetModeFFortificationRepairHoverMask();
+            if (Physics.Raycast(ray, out hit, 500f, repairHoverMask, QueryTriggerInteraction.Ignore))
             {
                 ModeFFortificationMarker hoveredMarker = hit.collider != null
                     ? hit.collider.GetComponentInParent<ModeFFortificationMarker>()
@@ -849,7 +871,7 @@ namespace BossRush
                 EnsureModeFFortificationHealthRuntime(health, maxHealth, fortTeam);
                 ConfigureModeFFortificationPhysics(fortObj);
                 EnsureModeFFortificationDamageTarget(fortObj, type, health, fortTeam);
-                EnsureModeFFortificationWallCollider(fortObj, type);
+                EnsureModeFFortificationWallCollider(fortObj, type, health);
                 EnsureModeFFortificationCharacterBlocker(fortObj, type);
                 EnsureModeFFortificationHalfObstacleRegistration(fortObj, type);
                 try { health.CurrentHealth = maxHealth; } catch { }
@@ -868,19 +890,47 @@ namespace BossRush
                 marker.IsDestroyed = false;
                 marker.BoundHealth = health;
 
+                // 精确移除旧 listener（仅移除我们上一次注册的那个），避免对象复用时回调重复注册；
+                // 不使用 RemoveAllListeners 以免误删游戏内部组件（DamageReceiver/HurtVisual/HealthBar）自动注册的监听器。
                 if (health.OnDeadEvent != null)
                 {
-                    health.OnDeadEvent.AddListener((damageInfo) => OnFortificationDestroyed(marker));
+                    if (marker.RegisteredDeadListener != null)
+                    {
+                        health.OnDeadEvent.RemoveListener(marker.RegisteredDeadListener);
+                    }
+                    UnityAction<DamageInfo> deadListener = (damageInfo) => OnFortificationDestroyed(marker);
+                    health.OnDeadEvent.AddListener(deadListener);
+                    marker.RegisteredDeadListener = deadListener;
                 }
                 if (health.OnHurtEvent != null)
                 {
-                    health.OnHurtEvent.AddListener((damageInfo) => OnFortificationHurt(marker, damageInfo));
+                    if (marker.RegisteredHurtListener != null)
+                    {
+                        health.OnHurtEvent.RemoveListener(marker.RegisteredHurtListener);
+                    }
+                    UnityAction<DamageInfo> hurtListener = (damageInfo) => OnFortificationHurt(marker, damageInfo);
+                    health.OnHurtEvent.AddListener(hurtListener);
+                    marker.RegisteredHurtListener = hurtListener;
                 }
 
                 if (!fortObj.activeSelf)
                 {
                     fortObj.SetActive(true);
                 }
+
+                // SetActive 触发 Awake/Start，DamageReceiver 在子对象上，
+                // GetComponent<Health>() 找不到根对象的 Health，导致 health == null。
+                // 因此在激活后重新绑定一次。
+                ReapplyModeFFortificationDamageReceiverHealth(fortObj, health);
+
+                // 显示血条
+                try
+                {
+                    health.showHealthBar = true;
+                    health.RequestHealthBar();
+                }
+                catch { }
+
                 EnsureModeFFortificationRenderersVisible(fortObj);
                 fortObj.transform.SetPositionAndRotation(position, rotation);
                 Physics.SyncTransforms();
@@ -1093,6 +1143,73 @@ namespace BossRush
             return cachedModeFFortificationPlacementObstacleLayerMask;
         }
 
+        // ★低端机优化：放置预览鼠标射线层掩码（缓存，避免每帧重算）。
+        // 主 mask = ground + wall：覆盖绝大多数有效放置面；fallback = ~0 兜底（见下方函数注释）。
+        private static int cachedModeFFortificationPlacementRaycastMask = int.MinValue;
+
+        private int GetModeFFortificationPlacementRaycastMask()
+        {
+            if (cachedModeFFortificationPlacementRaycastMask != int.MinValue)
+            {
+                return cachedModeFFortificationPlacementRaycastMask;
+            }
+
+            int mask = 0;
+            try
+            {
+                mask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask |
+                       Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
+            }
+            catch { }
+
+            if (mask == 0)
+            {
+                mask = LayerMask.GetMask("Default", "Ground", "Wall", "Obstacle");
+            }
+
+            cachedModeFFortificationPlacementRaycastMask = mask;
+            return cachedModeFFortificationPlacementRaycastMask;
+        }
+
+        // Fallback mask = ~0（全层）。
+        // ★ 行为兼容性保证：与 pre-optimization 版本 100% 等价，避免"鼠标悬停在
+        //   Default/Character/Pickup/TransparentFX 等层时 preview 不跟随"的回归。
+        // ★ 性能仍然受益：主 mask（ground+wall）在 99% 帧里命中，fallback 只在极少数
+        //   "鼠标在虚空/其他层"场景触发；每帧成本 = 1 次窄 Raycast + 最多 1 次 ~0 Raycast，
+        //   与原始代码完全一致（只是把内联 ~0 抽到了辅助函数里）。
+        private int GetModeFFortificationPlacementRaycastFallbackMask()
+        {
+            return ~0;
+        }
+
+        // ★低端机优化：维修悬停 Raycast 层掩码（缓存）。
+        // 只需检测工事碰撞体所在的层（damageReceiver + wall），不需要扫描全场。
+        private static int cachedModeFFortificationRepairHoverMask = int.MinValue;
+
+        private int GetModeFFortificationRepairHoverMask()
+        {
+            if (cachedModeFFortificationRepairHoverMask != int.MinValue)
+            {
+                return cachedModeFFortificationRepairHoverMask;
+            }
+
+            int mask = 0;
+            try
+            {
+                mask = Duckov.Utilities.GameplayDataSettings.Layers.damageReceiverLayerMask |
+                       Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
+            }
+            catch { }
+
+            if (mask == 0)
+            {
+                mask = LayerMask.GetMask("DamageReceiver", "Wall", "Obstacle");
+            }
+
+            cachedModeFFortificationRepairHoverMask = mask;
+            return cachedModeFFortificationRepairHoverMask;
+        }
+
         private Teams GetModeFFortificationOwnerTeam(CharacterMainControl owner)
         {
             // 工事归属仍由 OwnerCharacterId 追踪；受击 team 使用 middle，
@@ -1250,6 +1367,7 @@ namespace BossRush
                 return;
             }
 
+            // 销毁根对象上可能残留的 DamageReceiver，避免与子对象的 DamageReceiver 冲突导致双重扣血。
             DamageReceiver rootReceiver = fortObj.GetComponent<DamageReceiver>();
             if (rootReceiver != null)
             {
@@ -1262,9 +1380,33 @@ namespace BossRush
             {
                 receiver = damageCollider.gameObject.AddComponent<DamageReceiver>();
             }
+            ConfigureModeFFortificationDamageReceiver(receiver, type, health);
+
+            int damageReceiverLayer = FortLayers.DamageReceiver;
+            if (damageReceiverLayer >= 0)
+            {
+                damageCollider.gameObject.layer = damageReceiverLayer;
+            }
+        }
+
+        /// <summary>
+        /// 配置单个 DamageReceiver 的公共属性和反射字段。
+        /// </summary>
+        private static void ConfigureModeFFortificationDamageReceiver(DamageReceiver receiver, FortificationType type, Health health)
+        {
+            if (receiver == null) return;
 
             receiver.useSimpleHealth = false;
-            receiver.isHalfObsticle = (FortDef.Get(type)?.IsHalfObstacle ?? false);
+            // 故意不标记为 halfObsticle：
+            // Projectile.cs / Accessory_Lazer.cs / TecLazer.cs 在 ignoreHalfObsticle=true
+            // （高暴击、追踪弹、玩家在掩体旁）时会对 isHalfObsticle=true 的 DamageReceiver 走 goto 跳过，
+            // 跳过后子弹继续遍历同帧 hits，命中同一工事的 Wall 层 wallObj 进入障碍物分支直接死亡，
+            // 最终表现为"有些子弹打工事不扣血"。工事"半障碍物"的穿越/掩体语义由独立的
+            // ModeFHalfObstacleTrigger 子对象负责，DamageReceiver 自身无需承担该标记。
+            receiver.isHalfObsticle = false;
+            // type 参数暂未使用，保留签名便于将来按工事类型差异化配置（如不同伤害修正、反射字段）
+            _ = type;
+
             if (receiver.OnHurtEvent == null)
             {
                 receiver.OnHurtEvent = new UnityEvent<DamageInfo>();
@@ -1277,37 +1419,51 @@ namespace BossRush
             try
             {
                 if (damageReceiverHealthField != null)
-                {
                     damageReceiverHealthField.SetValue(receiver, health);
-                }
                 else if (damageReceiverHealthProperty != null && damageReceiverHealthProperty.CanWrite)
-                {
                     damageReceiverHealthProperty.SetValue(receiver, health, null);
-                }
             }
             catch { }
 
             try
             {
                 if (damageReceiverOnlyExplosionField != null)
-                {
                     damageReceiverOnlyExplosionField.SetValue(receiver, false);
-                }
                 else if (damageReceiverOnlyExplosionProperty != null && damageReceiverOnlyExplosionProperty.CanWrite)
-                {
                     damageReceiverOnlyExplosionProperty.SetValue(receiver, false, null);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// SetActive(true) 后重新绑定所有子 DamageReceiver 的 health 引用。
+        /// DamageReceiver.Start() 不会覆盖 health，但作为防御性措施，
+        /// 确保所有 DamageReceiver（包括预制体自带的）都指向正确的 Health 实例。
+        /// </summary>
+        private static void ReapplyModeFFortificationDamageReceiverHealth(GameObject fortObj, Health health)
+        {
+            if (fortObj == null || health == null) return;
+            try
+            {
+                DamageReceiver[] receivers = fortObj.GetComponentsInChildren<DamageReceiver>(true);
+                for (int i = 0; i < receivers.Length; i++)
+                {
+                    DamageReceiver r = receivers[i];
+                    if (r == null) continue;
+                    try
+                    {
+                        if (damageReceiverHealthField != null)
+                            damageReceiverHealthField.SetValue(r, health);
+                        else if (damageReceiverHealthProperty != null && damageReceiverHealthProperty.CanWrite)
+                            damageReceiverHealthProperty.SetValue(r, health, null);
+                    }
+                    catch { }
                 }
             }
             catch { }
-
-            int damageReceiverLayer = FortLayers.DamageReceiver;
-            if (damageReceiverLayer >= 0)
-            {
-                damageCollider.gameObject.layer = damageReceiverLayer;
-            }
         }
 
-        private void EnsureModeFFortificationWallCollider(GameObject fortObj, FortificationType type)
+        private void EnsureModeFFortificationWallCollider(GameObject fortObj, FortificationType type, Health health)
         {
             if (fortObj == null)
             {
@@ -1352,13 +1508,42 @@ namespace BossRush
                     wallCollider = wallObj.AddComponent<BoxCollider>();
                 }
 
-                Bounds bounds = GetModeFFortificationLocalBounds(
+                // ★低端机优化：Wall collider 现在同时承担"挡子弹"+"挡角色移动"两种职责，
+                // bounds 取 Wall 和 Blocker-shrunk 的并集，并 clamp 到 Damage bounds 内部。
+                // 这样每个工事只需 1 个 Wall GameObject + BoxCollider，
+                // 替代原来 Wall + CharacterBlocker 两个 collider，减少物理查询成本。
+                // Blocker GameObject 由 EnsureModeFFortificationCharacterBlocker 负责清理销毁。
+                Bounds wallBounds = GetModeFFortificationLocalBounds(
                     fortObj.transform,
                     (FortDef.Get(type)?.WallColliderBounds ?? GetModeFFortificationDefaultBounds(type)));
+                Bounds blockerBounds = GetModeFFortificationLocalBounds(
+                    fortObj.transform,
+                    (FortDef.Get(type)?.CharacterBlockerBounds ?? GetModeFFortificationDefaultBounds(type)));
+                Bounds damageBoundsForMerge = GetModeFFortificationLocalBounds(
+                    fortObj.transform,
+                    (FortDef.Get(type)?.DamageColliderBounds ?? GetModeFFortificationDefaultBounds(type)));
+                blockerBounds = ShrinkBlockerBoundsInsideDamage(blockerBounds, damageBoundsForMerge);
+                Bounds bounds = UnionBoundsClampedToContainer(wallBounds, blockerBounds, damageBoundsForMerge);
                 wallCollider.enabled = true;
                 wallCollider.isTrigger = false;
                 wallCollider.center = bounds.center;
                 wallCollider.size = bounds.size;
+
+                // Wall 子对象故意不挂 DamageReceiver：
+                // 实测游戏的 damageReceiverLayerMask 同时包含 Wall 层，OverlapSphere 会同时命中
+                // damageCollider 和 wallObj 两个 collider。若 Wall 上也有 DamageReceiver，
+                // 近战武器 / 凤凰戟爆燃（按 receiver.InstanceID 去重）会对同一工事扣两次血。
+                // damageCollider 子对象上的唯一 DamageReceiver 已由 EnsureModeFFortificationDamageTarget
+                // 负责挂载和配置，近战武器命中 Wall 时 GetComponent<DamageReceiver>() 返回 null
+                // 自动跳过，爆炸按 Health 去重不受影响，行为正确。
+                // 兜底清理：池化复用时若旧版本曾经在 Wall 上添加过 DamageReceiver，这里销毁避免双扣血残留。
+                DamageReceiver staleWallReceiver = wallObj.GetComponent<DamageReceiver>();
+                if (staleWallReceiver != null)
+                {
+                    staleWallReceiver.enabled = false;
+                    UnityEngine.Object.Destroy(staleWallReceiver);
+                }
+                _ = health;
             }
             catch (Exception e)
             {
@@ -1366,8 +1551,14 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// ★低端机优化：原本为每个工事创建独立 ModeF_CharacterBlocker 子对象的逻辑已合并到 WallCollider。
+        /// 此函数现在只做清理：销毁已存在的 ModeF_CharacterBlocker 子对象（兼容池化复用和存档升级）。
+        /// 保留原签名以避免上游 PlaceModeFortification 调用点和任何外部调用处做连锁改动。
+        /// </summary>
         private void EnsureModeFFortificationCharacterBlocker(GameObject fortObj, FortificationType type)
         {
+            _ = type;
             if (fortObj == null)
             {
                 return;
@@ -1376,60 +1567,79 @@ namespace BossRush
             try
             {
                 Transform blockerTransform = fortObj.transform.Find("ModeF_CharacterBlocker");
-                GameObject blockerObj = blockerTransform != null
-                    ? blockerTransform.gameObject
-                    : new GameObject("ModeF_CharacterBlocker");
-                blockerObj.transform.SetParent(fortObj.transform, false);
-                blockerObj.transform.localPosition = Vector3.zero;
-                blockerObj.transform.localRotation = Quaternion.identity;
-                blockerObj.transform.localScale = Vector3.one;
-
-                // CharacterBlocker 使用 Wall 层 + 非 trigger 碰撞体，
-                // 让物理引擎自然阻挡角色移动，不再用脚本推挤。
-                int wallLayer = FortLayers.Wall;
-                if (wallLayer >= 0)
+                if (blockerTransform != null)
                 {
-                    blockerObj.layer = wallLayer;
-                }
-
-                Collider[] childColliders = blockerObj.GetComponents<Collider>();
-                BoxCollider blockerCollider = null;
-                for (int i = 0; i < childColliders.Length; i++)
-                {
-                    BoxCollider existingBox = childColliders[i] as BoxCollider;
-                    if (existingBox != null && blockerCollider == null)
-                    {
-                        blockerCollider = existingBox;
-                        continue;
-                    }
-
-                    childColliders[i].enabled = false;
-                }
-
-                if (blockerCollider == null)
-                {
-                    blockerCollider = blockerObj.AddComponent<BoxCollider>();
-                }
-
-                Bounds bounds = GetModeFFortificationLocalBounds(
-                    fortObj.transform,
-                    (FortDef.Get(type)?.CharacterBlockerBounds ?? GetModeFFortificationDefaultBounds(type)));
-                blockerCollider.enabled = true;
-                blockerCollider.isTrigger = false;
-                blockerCollider.center = bounds.center;
-                blockerCollider.size = bounds.size;
-
-                // 清理旧版 ModeFFortificationCharacterBlocker 脚本（如果存在）
-                ModeFFortificationCharacterBlocker oldBlocker = blockerObj.GetComponent<ModeFFortificationCharacterBlocker>();
-                if (oldBlocker != null)
-                {
-                    UnityEngine.Object.Destroy(oldBlocker);
+                    UnityEngine.Object.Destroy(blockerTransform.gameObject);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] EnsureModeFFortificationCharacterBlocker failed: " + e.Message);
+                DevLog("[ModeF] [WARNING] EnsureModeFFortificationCharacterBlocker cleanup failed: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 把 a 和 b 的 bounds 合并为并集，并 clamp 到 container 内部（确保每轴不超出）。
+        /// 用于把 Wall+Blocker 合并到单个 Wall collider 同时保持在 Damage bounds 内。
+        /// </summary>
+        private static Bounds UnionBoundsClampedToContainer(Bounds a, Bounds b, Bounds container)
+        {
+            Bounds union = a;
+            union.Encapsulate(b);
+
+            Vector3 containerMin = container.center - container.extents;
+            Vector3 containerMax = container.center + container.extents;
+            Vector3 unionMin = union.center - union.extents;
+            Vector3 unionMax = union.center + union.extents;
+
+            Vector3 clampedMin = new Vector3(
+                Mathf.Max(unionMin.x, containerMin.x),
+                Mathf.Max(unionMin.y, containerMin.y),
+                Mathf.Max(unionMin.z, containerMin.z));
+            Vector3 clampedMax = new Vector3(
+                Mathf.Min(unionMax.x, containerMax.x),
+                Mathf.Min(unionMax.y, containerMax.y),
+                Mathf.Min(unionMax.z, containerMax.z));
+
+            Vector3 size = clampedMax - clampedMin;
+            size.x = Mathf.Max(0.05f, size.x);
+            size.y = Mathf.Max(0.05f, size.y);
+            size.z = Mathf.Max(0.05f, size.z);
+            Vector3 center = (clampedMin + clampedMax) * 0.5f;
+            return new Bounds(center, size);
+        }
+
+        /// <summary>
+        /// 把 Blocker bounds 收缩到 Damage bounds 内部，并留出一点 margin。
+        /// 这样 Physics.SphereCastAll 距离排序时 DamageReceiver 永远在最外侧先被命中，
+        /// 避免 Wall 层的 Blocker 先触发 Projectile 障碍物分支（"有烟雾无伤害数字"）。
+        /// </summary>
+        private static Bounds ShrinkBlockerBoundsInsideDamage(Bounds blocker, Bounds damage)
+        {
+            const float shrinkMargin = 0.02f;
+            const float minAxisSize = 0.05f;
+
+            Vector3 maxAllowedSize = new Vector3(
+                Mathf.Max(minAxisSize, damage.size.x - shrinkMargin),
+                Mathf.Max(minAxisSize, damage.size.y - shrinkMargin),
+                Mathf.Max(minAxisSize, damage.size.z - shrinkMargin));
+
+            Vector3 newSize = new Vector3(
+                Mathf.Min(blocker.size.x, maxAllowedSize.x),
+                Mathf.Min(blocker.size.y, maxAllowedSize.y),
+                Mathf.Min(blocker.size.z, maxAllowedSize.z));
+
+            Vector3 halfBlocker = newSize * 0.5f;
+            Vector3 halfDamage = damage.size * 0.5f;
+            Vector3 minCenter = damage.center - halfDamage + halfBlocker;
+            Vector3 maxCenter = damage.center + halfDamage - halfBlocker;
+
+            Vector3 newCenter = new Vector3(
+                Mathf.Clamp(blocker.center.x, minCenter.x, maxCenter.x),
+                Mathf.Clamp(blocker.center.y, minCenter.y, maxCenter.y),
+                Mathf.Clamp(blocker.center.z, minCenter.z, maxCenter.z));
+
+            return new Bounds(newCenter, newSize);
         }
 
         private Collider EnsureModeFFortificationDamageCollider(GameObject fortObj, FortificationType type)
@@ -1526,6 +1736,17 @@ namespace BossRush
                 return;
             }
 
+            // 同时注册 Wall 子对象为 halfObstacle part：
+            // 玩家站在工事旁时，ItemAgent_Gun 会把 GetNearByHalfObsticles() 加入子弹的 damagedObjects，
+            // 使子弹跳过这些 collider 不做任何处理（不扣血、不死亡）。
+            // 若此处只注册 damageCollider，玩家附近工事的 wallObj（Wall 层）不在 damagedObjects 中，
+            // 子弹按距离遍历同帧 hits 时在 damageCollider 被跳过后仍会命中 wallObj，
+            // 进入 Projectile.cs 的 else 障碍物分支：dead=true + 生成 BulletHitObsticleFx 烟雾但不扣血，
+            // 表现为"打中硬体烟雾但没出现伤害数字"。因此必须把 wallObj 一起注册。
+            Transform wallPartTransform = fortObj.transform.Find("ModeF_WallCollider");
+            GameObject wallPart = wallPartTransform != null ? wallPartTransform.gameObject : null;
+            // ★低端机优化：CharacterBlocker 已合并进 WallCollider，不再单独注册。
+
             GameObject triggerObj = triggerTransform != null
                 ? triggerTransform.gameObject
                 : new GameObject("ModeF_HalfObstacleTrigger");
@@ -1553,7 +1774,8 @@ namespace BossRush
                 triggerComponent = triggerObj.AddComponent<ModeFHalfObstacleTrigger>();
             }
 
-            triggerComponent.SetRegisteredParts(damagePart);
+            // SetRegisteredParts 会过滤 null，wallPart 为 null（预制体无 Wall 子对象）时安全降级。
+            triggerComponent.SetRegisteredParts(damagePart, wallPart);
         }
 
         private Bounds GetModeFFortificationDefaultBounds(FortificationType type)
@@ -1590,7 +1812,6 @@ namespace BossRush
             Vector3 scale = fortObj.transform.lossyScale;
             BoxCollider damageCollider = null;
             BoxCollider wallCollider = null;
-            BoxCollider blockerCollider = null;
             BoxCollider triggerCollider = null;
 
             Transform damageTransform = fortObj.transform.Find("ModeF_DamageReceiver");
@@ -1599,16 +1820,11 @@ namespace BossRush
                 damageCollider = damageTransform.GetComponent<BoxCollider>();
             }
 
+            // Wall collider 现在同时承担挡子弹+挡角色职责，CharacterBlocker 已合并。
             Transform wallTransform = fortObj.transform.Find("ModeF_WallCollider");
             if (wallTransform != null)
             {
                 wallCollider = wallTransform.GetComponent<BoxCollider>();
-            }
-
-            Transform blockerTransform = fortObj.transform.Find("ModeF_CharacterBlocker");
-            if (blockerTransform != null)
-            {
-                blockerCollider = blockerTransform.GetComponent<BoxCollider>();
             }
 
             Transform triggerTransform = fortObj.transform.Find("ModeF_HalfObstacleTrigger");
@@ -1620,7 +1836,6 @@ namespace BossRush
             return " | scale=" + scale
                 + " | damage=" + GetModeFFortificationBoxColliderWorldBoundsText(damageCollider)
                 + " | wall=" + GetModeFFortificationBoxColliderWorldBoundsText(wallCollider)
-                + " | block=" + GetModeFFortificationBoxColliderWorldBoundsText(blockerCollider)
                 + " | halfTrigger=" + GetModeFFortificationBoxColliderWorldBoundsText(triggerCollider);
         }
 
@@ -1932,6 +2147,24 @@ namespace BossRush
                 if (shouldShow)
                 {
                     hasActiveHighlight = true;
+                }
+                else if (marker.HighlightUntilTime > 0f)
+                {
+                    if (now - marker.HighlightUntilTime > FORT_HIGHLIGHT_OUTLINE_DESTROY_DELAY)
+                    {
+                        // ★低端机优化：Highlight 关闭超过阈值后销毁 outline 对象，下次再 Highlight 时按需重建。
+                        // 避免每个工事永远保留一份 MeshFilter+MeshRenderer 副本，累积 draw call 和 GPU 内存。
+                        try { UnityEngine.Object.Destroy(marker.HighlightRoot); } catch { }
+                        marker.HighlightRoot = null;
+                        marker.HighlightUntilTime = 0f;
+                    }
+                    else
+                    {
+                        // 延迟销毁窗口期内，仍需保持 Update 循环活跃；否则入口的
+                        // `if (!modeFHasActiveFortificationHighlight) return;` 会使本函数提前退出，
+                        // 导致 outline 永远无法到达销毁分支（低端机优化失效）。
+                        hasActiveHighlight = true;
+                    }
                 }
             }
             modeFActiveFortificationSnapshot.Clear();

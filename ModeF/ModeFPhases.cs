@@ -304,7 +304,12 @@ namespace BossRush
 
                 OnModeFPlayerDeath();
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] ApplyModeFBleedDamage 失败: " + e.Message);
+                // 致死路径异常时仍需确保死亡处理被触发，否则玩家卡在 1HP 不死不活
+                try { OnModeFPlayerDeath(); } catch { }
+            }
         }
 
         /// <summary>

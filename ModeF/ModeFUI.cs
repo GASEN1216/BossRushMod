@@ -1564,6 +1564,7 @@ namespace BossRush
         /// </summary>
         private static int cachedPlayerBarId = -1;
         private static int playerBarIdCheckFrame = -1;
+        private static readonly List<int> staleBarIdScratch = new List<int>();
 
         [HarmonyPostfix]
         public static void Postfix(HealthBar __instance, TextMeshProUGUI ___nameText)
@@ -1599,14 +1600,15 @@ namespace BossRush
             {
                 lastCleanupFrame = currentFrame;
                 cachedPlayerBarId = -1;
-                var toRemove = new System.Collections.Generic.List<int>();
+                staleBarIdScratch.Clear();
                 foreach (var kv in lastProcessedFrameByBarId)
                 {
                     if (currentFrame - kv.Value >= HEALTHBAR_CACHE_STALE_FRAMES)
-                        toRemove.Add(kv.Key);
+                        staleBarIdScratch.Add(kv.Key);
                 }
-                for (int ri = 0; ri < toRemove.Count; ri++)
-                    lastProcessedFrameByBarId.Remove(toRemove[ri]);
+                for (int ri = 0; ri < staleBarIdScratch.Count; ri++)
+                    lastProcessedFrameByBarId.Remove(staleBarIdScratch[ri]);
+                staleBarIdScratch.Clear();
             }
 
             int barId = __instance.GetInstanceID();
