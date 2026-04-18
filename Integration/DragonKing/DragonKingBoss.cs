@@ -81,6 +81,9 @@ namespace BossRush
             // 清理能力控制器缓存
             DragonKingAbilityController.ClearStaticCache();
 
+            // 清理龙枪场景级缓存（命中追踪、弹幕引用），保留事件订阅
+            DragonKingBossGunRuntime.ClearSceneCaches();
+
             // 重置BGM播放状态
             BossRushAudioManager.Instance?.ResetDragonKingBGMState();
         }

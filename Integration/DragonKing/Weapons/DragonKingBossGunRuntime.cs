@@ -107,6 +107,14 @@ namespace BossRush
 
             Health.OnHurt -= OnDragonKingBossGunHurt;
             hurtEventSubscribed = false;
+            ClearSceneCaches();
+        }
+
+        /// <summary>
+        /// 场景切换时清理临时缓存，但保留 Health.OnHurt 订阅（龙枪可能仍在玩家手中）。
+        /// </summary>
+        public static void ClearSceneCaches()
+        {
             processedHitPairs.Clear();
             processedGroundZoneShots.Clear();
             processedHitKeysToRemove.Clear();
@@ -464,7 +472,10 @@ namespace BossRush
 
         private static long ComposeProcessedHitKey(int shotId, int receiverId, DragonKingBossGunHitStage hitStage)
         {
-            return ((long)shotId << 32) ^ ((long)hitStage << 28) ^ (uint)receiverId;
+            // bit 布局：[shotId:bit34-53 / 20bit][hitStage:bit32-33 / 2bit][receiverId:bit0-31 / 32bit]
+            // NextShotId 保证 shotId ∈ [1, MaxEncodedShotId=99999] < 2^17；& 0xFFFFF 为防御性截断
+            // 避免 XOR 方案在 (shotId, hitStage, receiverId) 不同组合时产生碰撞。
+            return ((long)(shotId & 0xFFFFF) << 34) | ((long)hitStage << 32) | (uint)receiverId;
         }
 
         private static int NextShotId()
