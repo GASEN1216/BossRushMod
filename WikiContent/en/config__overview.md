@@ -19,6 +19,11 @@
 - Range: true/false
 - Whether to enable random Boss loot (disabled = use original drops)
 
+#### useLegacyBossLootProbabilities
+- Default: true
+- Range: true/false
+- Quality distribution algorithm: `true` uses Legacy Probability Mode (per-quality independent probabilities + Q6+ guarantee), `false` uses Simplified Probability Mode (combined high-quality probability, no guarantee)
+
 #### useInteractBetweenWaves
 - Default: false
 - Range: true/false

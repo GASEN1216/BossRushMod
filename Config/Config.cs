@@ -9,6 +9,7 @@
 // 配置项：
 //   - waveIntervalSeconds: 波次间休息时间（2-60秒，默认15秒）
 //   - enableRandomBossLoot: Boss 掉落随机化（时间加成）
+//   - useLegacyBossLootProbabilities: 标准 Boss 战利品原版概率掉落
 //   - useInteractBetweenWaves: 波次间使用交互点开启下一波
 //   - lootBoxBlocksBullets: Boss 掉落箱作为掩体（挡子弹）
 //   - infiniteHellBossesPerWave: 无间炼狱每波 Boss 数量（1-10，默认3）
@@ -41,6 +42,7 @@ namespace BossRush
         {
             public float waveIntervalSeconds = 15f;
             public bool enableRandomBossLoot = true;
+            public bool useLegacyBossLootProbabilities = true;
             public bool useInteractBetweenWaves = false;
             public bool lootBoxBlocksBullets = false;
             public int infiniteHellBossesPerWave = 3;
@@ -165,6 +167,12 @@ namespace BossRush
                             {
                                 loaded.waveIntervalSeconds = 15f;
                             }
+
+                            if (json.IndexOf("\"useLegacyBossLootProbabilities\"", StringComparison.OrdinalIgnoreCase) < 0)
+                            {
+                                loaded.useLegacyBossLootProbabilities = true;
+                            }
+
                             config = loaded;
                         }
                     }
@@ -237,6 +245,7 @@ namespace BossRush
                 float currentWave = config.waveIntervalSeconds;
                 string waveKey = ModName + "_waveIntervalSeconds";
                 string lootKey = ModName + "_EnableRandomBossLoot";
+                string legacyLootKey = ModName + "_UseLegacyBossLootProbabilities";
                 string interactKey = ModName + "_UseInteractBetweenWaves";
                 string coverKey = ModName + "_LootBoxBlocksBullets";
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
@@ -272,6 +281,10 @@ namespace BossRush
                     object lootResult = boolLoadMethod.Invoke(null, new object[] { lootKey, config.enableRandomBossLoot });
                     bool loadedLoot = (bool)lootResult;
                     config.enableRandomBossLoot = loadedLoot;
+
+                    object legacyLootResult = boolLoadMethod.Invoke(null, new object[] { legacyLootKey, config.useLegacyBossLootProbabilities });
+                    bool loadedLegacyLoot = (bool)legacyLootResult;
+                    config.useLegacyBossLootProbabilities = loadedLegacyLoot;
 
                     object interactResult = boolLoadMethod.Invoke(null, new object[] { interactKey, config.useInteractBetweenWaves });
                     bool loadedInteract = (bool)interactResult;
@@ -360,7 +373,7 @@ namespace BossRush
                     bool loadedDeathWraith = (bool)deathWraithResult;
                     config.enableDeathWraithSystem = loadedDeathWraith;
 
-                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith);
+                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith);
                 }
                 else
                 {
@@ -416,6 +429,15 @@ namespace BossRush
                     MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
                     object lootResult = boolLoadMethod.Invoke(null, new object[] { lootKey, config.enableRandomBossLoot });
                     config.enableRandomBossLoot = (bool)lootResult;
+                    return true;
+                }
+
+                string legacyLootKey = ModName + "_UseLegacyBossLootProbabilities";
+                if (changedKey == legacyLootKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object legacyLootResult = boolLoadMethod.Invoke(null, new object[] { legacyLootKey, config.useLegacyBossLootProbabilities });
+                    config.useLegacyBossLootProbabilities = (bool)legacyLootResult;
                     return true;
                 }
 
@@ -535,6 +557,7 @@ namespace BossRush
             {
                 string waveKey = ModName + "_waveIntervalSeconds";
                 string lootKey = ModName + "_EnableRandomBossLoot";
+                string legacyLootKey = ModName + "_UseLegacyBossLootProbabilities";
                 string interactKey = ModName + "_UseInteractBetweenWaves";
                 string coverKey = ModName + "_LootBoxBlocksBullets";
                 string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
@@ -546,7 +569,7 @@ namespace BossRush
                 string modeDKey = ModName + "_ModeDEnemiesPerWave";
                 string achievementHotkeyKey = ModName + "_AchievementHotkey";
                 
-                if (changedKey == waveKey || changedKey == lootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == milestoneRestKey || changedKey == dragonDashKey || changedKey == wolfModelKey || changedKey == deathWraithKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
+                if (changedKey == waveKey || changedKey == lootKey || changedKey == legacyLootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == milestoneRestKey || changedKey == dragonDashKey || changedKey == wolfModelKey || changedKey == deathWraithKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
                 {
                     if (changedKey == dragonDashKey)
                     {
@@ -572,9 +595,18 @@ namespace BossRush
                         {
                             RefreshBossRushLootboxPathTrackingForTrackedBosses();
                         }
+                        else if (changedKey == legacyLootKey)
+                        {
+                            RefreshBossRushLootboxPathTrackingForTrackedBosses();
+                        }
                         else if (changedKey == deathWraithKey)
                         {
                             HandleDeathWraithConfigChanged_DeathWraith();
+                        }
+                        else if (changedKey == hellBossKey && infiniteHellMode && config != null && config.infiniteHellBossesPerWave > 0)
+                        {
+                            bossesPerWave = config.infiniteHellBossesPerWave;
+                            DevLog("[BossRush] 无间炼狱每波Boss数量已同步更新: " + bossesPerWave);
                         }
                         DevLog("[BossRush] 配置已更新并保存到本地文件");
                     }
@@ -644,6 +676,23 @@ namespace BossRush
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册随机掉落配置项失败: " + ex.Message);
+                }
+
+                // 标准 Boss 战利品原版概率掉落
+                try
+                {
+                    string legacyLootLabel = L10n.T("战利品原版概率掉落", "Legacy boss loot probabilities");
+                    string legacyLootKey = ModName + "_UseLegacyBossLootProbabilities";
+
+                    if (addBoolMethod != null)
+                    {
+                        addBoolMethod.Invoke(null, new object[] { ModName, legacyLootKey, legacyLootLabel, config.useLegacyBossLootProbabilities });
+                        DevLog("[BossRush] 原版战利品概率配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册原版战利品概率配置项失败: " + ex.Message);
                 }
 
                 // Boss 掉落箱作为掩体

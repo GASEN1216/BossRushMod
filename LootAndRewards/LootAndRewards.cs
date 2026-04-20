@@ -57,17 +57,14 @@ namespace BossRush
         /// <summary>高品质最大值</summary>
         private const int LOOT_HIGH_QUALITY_MAX = 8;
         
-        /// <summary>高品质数量计算除数（Boss血量 / 此值 = 高品质数量上限）</summary>
-        private const float LOOT_HIGH_QUALITY_DIVISOR = 100f;
-        
-        /// <summary>高品质数量上限</summary>
-        private const int LOOT_HIGH_QUALITY_COUNT_MAX = 10;
-        
-        /// <summary>血量加成系数（每100血量增加的高品质概率，0.01即5%）</summary>
+        /// <summary>血量加成系数（每100血量增加的高品质概率，0.05即5%）</summary>
         private const float LOOT_HEALTH_BONUS_RATE = 0.05f;
         
         /// <summary>击杀时间加成系数（最快击杀时的最大加成，0.1即10%）</summary>
         private const float LOOT_TIME_BONUS_RATE = 0.1f;
+
+        /// <summary>原版 Boss 战利品 Q6+ 保底的最小 Boss 最大生命值门槛</summary>
+        private const float LEGACY_BOSS_GUARANTEE_MIN_MAX_HEALTH = 250f;
         
         // ============================================================================
         
@@ -272,6 +269,9 @@ namespace BossRush
         private static Dictionary<int, ItemValueCacheEntry> _itemValueCache = null;
         private static bool _itemValueCacheInitialized = false;
         private static bool _itemValueCacheInitializing = false;
+        private static List<int> _legacyBossLootCandidateIds = null;
+        private static Dictionary<int, List<int>> _legacyBossLootCandidateIdsByQuality = null;
+        private static bool _legacyBossLootCandidateCacheInitialized = false;
 
         private void RegisterBossRandomLootTracking(CharacterMainControl character, int originalLootCount = 3, float spawnTimeOffset = 1f)
         {
@@ -465,45 +465,30 @@ namespace BossRush
                 _itemValueCache.Clear();
             }
 
+            if (_legacyBossLootCandidateIds == null)
+            {
+                _legacyBossLootCandidateIds = new List<int>();
+            }
+            else
+            {
+                _legacyBossLootCandidateIds.Clear();
+            }
+
+            if (_legacyBossLootCandidateIdsByQuality == null)
+            {
+                _legacyBossLootCandidateIdsByQuality = new Dictionary<int, List<int>>();
+            }
+            else
+            {
+                _legacyBossLootCandidateIdsByQuality.Clear();
+            }
+
+            _legacyBossLootCandidateCacheInitialized = false;
+
             DevLog("[BossRush] 开始初始化物品价值缓存...");
 
             // 收集所有候选物品ID
-            HashSet<int> idSet = new HashSet<int>();
-            try
-            {
-                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
-                if (tagsData != null && tagsData.AllTags != null)
-                {
-                    List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
-
-                    foreach (Duckov.Utilities.Tag tag in tagsData.AllTags)
-                    {
-                        if (tag == null || baseExclude.Contains(tag)) continue;
-
-                        ItemFilter filter = default(ItemFilter);
-                        filter.requireTags = new Duckov.Utilities.Tag[] { tag };
-                        filter.excludeTags = baseExclude.ToArray();
-                        filter.minQuality = 1;
-                        filter.maxQuality = 8;
-
-                        int[] ids = ItemAssetsCollection.Search(filter);
-                        if (ids != null)
-                        {
-                            foreach (int id in ids)
-                            {
-                                if (id > 0 && !IsItemBlacklisted(id))
-                                {
-                                    idSet.Add(id);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 收集候选物品ID失败: " + e.Message);
-            }
+            HashSet<int> idSet = BuildGeneralBossLootCandidateIdSet();
 
             DevLog("[BossRush] 物品价值缓存：共需处理 " + idSet.Count + " 个物品");
 
@@ -524,6 +509,9 @@ namespace BossRush
                         try { entry.value = temp.Value; } catch { entry.value = 0; }
                         try { entry.quality = temp.Quality; } catch { entry.quality = -1; }
                         _itemValueCache[itemId] = entry;
+
+                        _legacyBossLootCandidateIds.Add(itemId);
+                        AddLegacyBossLootCandidateToQualityBucket(itemId, entry.quality);
                         UnityEngine.Object.Destroy(temp.gameObject);
                     }
                 }
@@ -543,8 +531,9 @@ namespace BossRush
             }
 
             _itemValueCacheInitialized = true;
+            _legacyBossLootCandidateCacheInitialized = true;
             _itemValueCacheInitializing = false;
-            DevLog("[BossRush] 物品价值缓存初始化完成，共缓存 " + _itemValueCache.Count + " 个物品");
+            DevLog("[BossRush] 物品价值缓存初始化完成，共缓存 " + _itemValueCache.Count + " 个物品，Boss 掉落候选缓存=" + _legacyBossLootCandidateIds.Count);
         }
 
         /// <summary>
@@ -562,6 +551,213 @@ namespace BossRush
             value = 0;
             quality = -1;
             return false;
+        }
+
+        private HashSet<int> BuildGeneralBossLootCandidateIdSet()
+        {
+            HashSet<int> idSet = new HashSet<int>();
+            try
+            {
+                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+                if (tagsData != null && tagsData.AllTags != null)
+                {
+                    List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
+
+                    foreach (Duckov.Utilities.Tag tag in tagsData.AllTags)
+                    {
+                        if (tag == null || baseExclude.Contains(tag))
+                        {
+                            continue;
+                        }
+
+                        ItemFilter filter = default(ItemFilter);
+                        filter.requireTags = new Duckov.Utilities.Tag[] { tag };
+                        filter.excludeTags = baseExclude.ToArray();
+                        filter.minQuality = 1;
+                        filter.maxQuality = 8;
+
+                        int[] ids = ItemAssetsCollection.Search(filter);
+                        if (ids == null)
+                        {
+                            continue;
+                        }
+
+                        for (int i = 0; i < ids.Length; i++)
+                        {
+                            int id = ids[i];
+                            if (id > 0 && !IsItemBlacklisted(id))
+                            {
+                                idSet.Add(id);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 收集候选物品ID失败: " + e.Message);
+            }
+
+            return idSet;
+        }
+
+        private void AddLegacyBossLootCandidateToQualityBucket(int itemId, int quality)
+        {
+            if (itemId <= 0 || quality < 1 || quality > 8)
+            {
+                return;
+            }
+
+            if (_legacyBossLootCandidateIdsByQuality == null)
+            {
+                _legacyBossLootCandidateIdsByQuality = new Dictionary<int, List<int>>();
+            }
+
+            List<int> bucket = null;
+            if (!_legacyBossLootCandidateIdsByQuality.TryGetValue(quality, out bucket) || bucket == null)
+            {
+                bucket = new List<int>();
+                _legacyBossLootCandidateIdsByQuality[quality] = bucket;
+            }
+
+            bucket.Add(itemId);
+        }
+
+        private int GetBossLootCandidateQuality(int itemId)
+        {
+            int value = 0;
+            int quality = -1;
+            if (TryGetCachedItemValue(itemId, out value, out quality) && quality > 0)
+            {
+                return quality;
+            }
+
+            try
+            {
+                var meta = ItemAssetsCollection.GetMetaData(itemId);
+                if (meta.id > 0 && meta.quality > 0)
+                {
+                    return meta.quality;
+                }
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited("GetBossLootCandidateQuality_meta", "读取 Boss 掉落候选品质元数据失败", e);
+            }
+
+            return 1;
+        }
+
+        private void BuildLegacyBossLootQualityBucketsFromIds(IEnumerable<int> ids, Dictionary<int, List<int>> buckets)
+        {
+            if (ids == null || buckets == null)
+            {
+                return;
+            }
+
+            foreach (int itemId in ids)
+            {
+                int quality = GetBossLootCandidateQuality(itemId);
+                if (quality < 1 || quality > 8)
+                {
+                    continue;
+                }
+
+                List<int> bucket = null;
+                if (!buckets.TryGetValue(quality, out bucket) || bucket == null)
+                {
+                    bucket = new List<int>();
+                    buckets[quality] = bucket;
+                }
+
+                bucket.Add(itemId);
+            }
+        }
+
+        private void CopyLegacyBossLootQualityBuckets(Dictionary<int, List<int>> destination)
+        {
+            if (destination == null || _legacyBossLootCandidateIdsByQuality == null)
+            {
+                return;
+            }
+
+            destination.Clear();
+            foreach (KeyValuePair<int, List<int>> pair in _legacyBossLootCandidateIdsByQuality)
+            {
+                if (pair.Value == null || pair.Value.Count == 0)
+                {
+                    continue;
+                }
+
+                destination[pair.Key] = new List<int>(pair.Value);
+            }
+        }
+
+        private bool TryGetLegacyBossLootCandidates(List<int> candidateIds, Dictionary<int, List<int>> qualityBuckets = null)
+        {
+            if (candidateIds == null)
+            {
+                return false;
+            }
+
+            candidateIds.Clear();
+
+            if (_legacyBossLootCandidateCacheInitialized && _legacyBossLootCandidateIds != null && _legacyBossLootCandidateIds.Count > 0)
+            {
+                candidateIds.AddRange(_legacyBossLootCandidateIds);
+                if (qualityBuckets != null)
+                {
+                    CopyLegacyBossLootQualityBuckets(qualityBuckets);
+                }
+                return true;
+            }
+
+            HashSet<int> dynamicIds = BuildGeneralBossLootCandidateIdSet();
+            if (dynamicIds.Count == 0)
+            {
+                return false;
+            }
+
+            candidateIds.AddRange(dynamicIds);
+            if (qualityBuckets != null)
+            {
+                qualityBuckets.Clear();
+                BuildLegacyBossLootQualityBucketsFromIds(candidateIds, qualityBuckets);
+            }
+
+            return true;
+        }
+
+        private float ComputeLegacyBossLootBonusFactor(float maxHealth, float killDuration)
+        {
+            float healthFactor = 0f;
+            float refMin = minBossBaseHealth;
+            float refMax = maxBossBaseHealth;
+            if (refMax > refMin && refMin > 0f)
+            {
+                healthFactor = Mathf.InverseLerp(refMin, refMax, maxHealth);
+            }
+            else
+            {
+                healthFactor = Mathf.Clamp01((maxHealth - 100f) / 1000f);
+            }
+
+            float speedFactor = ComputeBossKillSpeedFactor(maxHealth, killDuration);
+            return Mathf.Clamp01((healthFactor * 0.8f) + (speedFactor * 0.2f));
+        }
+
+        /// <summary>
+        /// 基于 Boss 最大血量和击杀耗时的 0..1 击杀速度评分。
+        /// 血量越高 referenceWindow 越宽（容忍更长耗时），越早击杀评分越高。
+        /// </summary>
+        private static float ComputeBossKillSpeedFactor(float maxHealth, float killDuration)
+        {
+            float referenceWindow = 60f * (1f + maxHealth / 500f);
+            if (referenceWindow <= 0f)
+            {
+                return 0f;
+            }
+            return Mathf.Clamp01(1f - (killDuration / referenceWindow));
         }
 
         /// <summary>
@@ -1810,6 +2006,10 @@ namespace BossRush
                     return;
                 }
 
+                // ModConfig 变更已由 Config.TryLoadSingleModConfigValue 在事件回调里直接写入 config，
+                // 此处无需再做反射式热刷新。
+                bool useLegacyBossLootProbabilities = config != null && config.useLegacyBossLootProbabilities;
+
                 int modeFPlunderLootPenaltyCount = 0;
                 int modeFPlunderLootBonusCount = 0;
                 bool useModeFAbstractPlunderLootTracking = modeFActive && config != null && config.enableRandomBossLoot;
@@ -1858,11 +2058,11 @@ namespace BossRush
                     return; // 未启用随机掉落，保持原版掉落
                 }
 
-                // 计算击杀耗时（仅用于日志）
+                // 计算击杀耗时（用于概率加成与日志）
                 float spawnTime = bossSpawnTimes[bossMain];
                 float killDuration = Time.time - spawnTime;
 
-                // 计算 Boss 最大生命（用于格子数量和高品质数量）
+                // 计算 Boss 最大生命（用于掉落格子数量、概率加成与日志）
                 float maxHealth = 100f;
                 try
                 {
@@ -1876,7 +2076,7 @@ namespace BossRush
                     LogLootWarningLimited("OnBossBeforeSpawnLoot_maxHealth", "读取 Boss 最大生命失败，回退默认值", e);
                 }
 
-                // 基础掉落格子数量：按 Boss 池的基础血量范围，将当前 Boss 血量线性映射到 [5,15]
+                // 基础掉落格子数量：按 Boss 池的基础血量范围，将当前 Boss 血量线性映射到 [7,15]
                 int baseCount = 10;
                 float refMin = minBossBaseHealth;
                 float refMax = maxBossBaseHealth;
@@ -1894,44 +2094,30 @@ namespace BossRush
                 }
                 baseCount = Mathf.Clamp(baseCount, 7, 15);
 
-                // 高品质最高数量：MaxHealth / 除数，限制在[1, 上限]（降低高品质概率）
-                int lootHighQualityCountMax = LOOT_HIGH_QUALITY_COUNT_MAX;
-                float lootHighQualityDivisor = LOOT_HIGH_QUALITY_DIVISOR;
-                int maxHighByHealth = Mathf.Clamp(Mathf.FloorToInt(maxHealth / lootHighQualityDivisor), 1, lootHighQualityCountMax);
-                int highCount = maxHighByHealth;
-
-                // 高品质数量不能超过总格子数
-                if (highCount > baseCount)
-                {
-                    highCount = baseCount;
-                }
-
                 // 每100血量增加的高品质概率加成
                 float lootHealthBonusRate = LOOT_HEALTH_BONUS_RATE;
                 float highChanceBonusByHealth = (maxHealth / 100f) * lootHealthBonusRate;
+                float legacyBonusFactor = ComputeLegacyBossLootBonusFactor(maxHealth, killDuration);
 
                 // 击杀时间加成：击杀越快，加成越高，最多 LOOT_TIME_BONUS_RATE
-                float referenceWindow = 60f * (1f + maxHealth / 500f);
-                if (referenceWindow > 0f)
-                {
-                    float timeRatio = 1f - (killDuration / referenceWindow);
-                    timeRatio = Mathf.Clamp01(timeRatio);
-                    float timeBonus = timeRatio * LOOT_TIME_BONUS_RATE;
-                    highChanceBonusByHealth += timeBonus;
-                }
+                float timeBonus = ComputeBossKillSpeedFactor(maxHealth, killDuration) * LOOT_TIME_BONUS_RATE;
+                highChanceBonusByHealth += timeBonus;
 
                 DevLog("[BossRush] Boss击杀耗时: " + killDuration.ToString("F1")
                     + "秒, MaxHP=" + maxHealth
                     + ", 基础掉落数量=" + baseCount
-                    + ", 高品质最高数量=" + highCount);
+                    + ", 高品质概率加成=" + highChanceBonusByHealth.ToString("P3")
+                    + ", legacyBonusFactor=" + legacyBonusFactor.ToString("F3"));
 
                 // 随机生成物品并填充到Boss掉落源（CharacterItem.Inventory），由原版逻辑创建LootBox
                 RandomizeBossLoot_LootAndRewards(
                     bossMain,
                     baseCount,
-                    highCount,
                     killDuration,
                     highChanceBonusByHealth,
+                    useLegacyBossLootProbabilities,
+                    legacyBonusFactor,
+                    maxHealth,
                     modeFPlunderLootBonusCount,
                     modeFPlunderLootPenaltyCount);
 
@@ -1959,9 +2145,11 @@ namespace BossRush
         private void RandomizeBossLoot_LootAndRewards(
             CharacterMainControl bossMain,
             int totalCount,
-            int highQualityCount,
             float killDuration,
             float highChanceBonusByHealth,
+            bool useLegacyProbabilities,
+            float legacyBonusFactor,
+            float bossMaxHealth,
             int modeFPlunderLootBonusCount = 0,
             int modeFPlunderLootPenaltyCount = 0)
         {
@@ -1977,17 +2165,12 @@ namespace BossRush
                 {
                     totalCount = 1;
                 }
-                if (highQualityCount < 0)
+                float highChance = Mathf.Clamp01(highChanceBonusByHealth);
+                LegacyBossLootQualityDistribution legacyDistribution = default(LegacyBossLootQualityDistribution);
+                if (useLegacyProbabilities)
                 {
-                    highQualityCount = 0;
+                    legacyDistribution = LegacyBossLootProbabilityModel.BuildDistribution(Mathf.Clamp01(legacyBonusFactor));
                 }
-                if (highQualityCount > totalCount)
-                {
-                    highQualityCount = totalCount;
-                }
-                // highChance 仅由血量加成和时间加成组成，不再有基础比例
-                float highChance = highChanceBonusByHealth;
-                highChance = Mathf.Clamp01(highChance);
 
                 bool useBossDeadBoxPrefab = false;
                 InteractableLootbox prefab = null;
@@ -2154,7 +2337,7 @@ namespace BossRush
                             randomCountField.SetValue(loader, rc);
                         }
 
-                        // 调整品质权重：品质1~4共享普通概率，品质5及以上共享高品质概率
+                        // 调整品质权重：开启原版概率开关时使用固定区间分布，否则沿用旧的高品质总概率逻辑
                         System.Reflection.FieldInfo qualitiesField = loaderType.GetField("qualities", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                         if (qualitiesField != null)
                         {
@@ -2163,44 +2346,57 @@ namespace BossRush
                             {
                                 qualities.entries.Clear();
 
-                                float clampedHigh = Mathf.Clamp01(highChance);
-                                float lowWeight = 1f - clampedHigh;
-                                float highWeight = clampedHigh;
-
-                                if (lowWeight <= 0f)
+                                if (useLegacyProbabilities)
                                 {
-                                    lowWeight = 0.01f;
-                                }
-                                if (highWeight <= 0f)
-                                {
-                                    highWeight = 0.01f;
-                                }
-
-                                // 使用内部常量定义的品质范围
-                                int lowQualityMin = LOOT_LOW_QUALITY_MIN;
-                                int lowQualityMax = LOOT_LOW_QUALITY_MAX;
-                                int highQualityMin = LOOT_HIGH_QUALITY_MIN;
-                                int highQualityMax = LOOT_HIGH_QUALITY_MAX;
-
-                                // 普通品质
-                                int lowQualityTiers = lowQualityMax - lowQualityMin + 1;
-                                float perLowQualityWeight = lowWeight / lowQualityTiers;
-                                for (int q = lowQualityMin; q <= lowQualityMax; q++)
-                                {
-                                    qualities.AddEntry(q, perLowQualityWeight);
-                                }
-
-                                // 高品质：按 4:3:2:1 比例分配（品质5占4份，品质6占3份，品质7占2份，品质8占1份）
-                                // 总份数 = 4+3+2+1 = 10
-                                float[] highQualityRatios = new float[] { 4f, 3f, 2f, 1f };
-                                float totalRatio = 10f;
-                                for (int i = 0; i < highQualityRatios.Length; i++)
-                                {
-                                    int q = highQualityMin + i;
-                                    if (q <= highQualityMax)
+                                    for (int q = 1; q <= 8; q++)
                                     {
-                                        float weight = highWeight * (highQualityRatios[i] / totalRatio);
-                                        qualities.AddEntry(q, weight);
+                                        double probability = legacyDistribution.GetProbabilityForQuality(q);
+                                        if (probability > 0.0)
+                                        {
+                                            qualities.AddEntry(q, (float)probability);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    float clampedHigh = Mathf.Clamp01(highChance);
+                                    float lowWeight = 1f - clampedHigh;
+                                    float highWeight = clampedHigh;
+
+                                    if (lowWeight <= 0f)
+                                    {
+                                        lowWeight = 0.01f;
+                                    }
+                                    if (highWeight <= 0f)
+                                    {
+                                        highWeight = 0.01f;
+                                    }
+
+                                    // 使用内部常量定义的品质范围
+                                    int lowQualityMin = LOOT_LOW_QUALITY_MIN;
+                                    int lowQualityMax = LOOT_LOW_QUALITY_MAX;
+                                    int highQualityMin = LOOT_HIGH_QUALITY_MIN;
+                                    int highQualityMax = LOOT_HIGH_QUALITY_MAX;
+
+                                    // 普通品质
+                                    int lowQualityTiers = lowQualityMax - lowQualityMin + 1;
+                                    float perLowQualityWeight = lowWeight / lowQualityTiers;
+                                    for (int q = lowQualityMin; q <= lowQualityMax; q++)
+                                    {
+                                        qualities.AddEntry(q, perLowQualityWeight);
+                                    }
+
+                                    // 高品质：按 4:3:2:1 比例分配（品质5占4份，品质6占3份，品质7占2份，品质8占1份）
+                                    float[] highQualityRatios = new float[] { 4f, 3f, 2f, 1f };
+                                    float totalRatio = 10f;
+                                    for (int i = 0; i < highQualityRatios.Length; i++)
+                                    {
+                                        int q = highQualityMin + i;
+                                        if (q <= highQualityMax)
+                                        {
+                                            float weight = highWeight * (highQualityRatios[i] / totalRatio);
+                                            qualities.AddEntry(q, weight);
+                                        }
                                     }
                                 }
 
@@ -2222,6 +2418,8 @@ namespace BossRush
                                 if (tagsData != null && tagsData.AllTags != null)
                                 {
                                     var allTags = tagsData.AllTags;
+                                    // Quest-tag filtering should stay aligned with the pre-legacy Boss loot path
+                                    // even when the legacy probability toggle is turned off.
                                     List<Duckov.Utilities.Tag> tagExclude = BuildGeneralLootExcludeTags(tagsData, true);
                                     for (int i = 0; i < allTags.Count; i++)
                                     {
@@ -2317,71 +2515,25 @@ namespace BossRush
 
                                     if (lootEntryItemIdField != null && rcValueField != null && rcWeightField != null)
                                     {
-                                        HashSet<int> idSet = new HashSet<int>();
-
-                                        Duckov.Utilities.GameplayDataSettings.TagsData tagsData3 = Duckov.Utilities.GameplayDataSettings.Tags;
-                                        if (tagsData3 != null)
+                                        List<int> candidateIds = new List<int>();
+                                        bool hasCandidateCache = false;
+                                        if (useLegacyProbabilities)
                                         {
-                                            List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData3);
-
-                                            List<Duckov.Utilities.Tag> includeTags = new List<Duckov.Utilities.Tag>();
-                                            if (tagsData3.AllTags != null)
+                                            hasCandidateCache = TryGetLegacyBossLootCandidates(candidateIds);
+                                        }
+                                        else
+                                        {
+                                            HashSet<int> idSet = BuildGeneralBossLootCandidateIdSet();
+                                            if (idSet.Count > 0)
                                             {
-                                                foreach (Duckov.Utilities.Tag tag in tagsData3.AllTags)
-                                                {
-                                                    if (tag == null)
-                                                    {
-                                                        continue;
-                                                    }
-                                                    if (baseExclude.Contains(tag))
-                                                    {
-                                                        continue;
-                                                    }
-                                                    includeTags.Add(tag);
-                                                }
-                                            }
-
-                                            for (int i = 0; i < includeTags.Count; i++)
-                                            {
-                                                Duckov.Utilities.Tag requireTag = includeTags[i];
-                                                if (requireTag == null)
-                                                {
-                                                    continue;
-                                                }
-
-                                                ItemFilter filter = default(ItemFilter);
-                                                filter.requireTags = new Duckov.Utilities.Tag[]
-                                                {
-                                                    requireTag
-                                                };
-                                                filter.excludeTags = baseExclude.ToArray();
-                                                filter.minQuality = 1;
-                                                filter.maxQuality = 8;
-
-                                                int[] ids = ItemAssetsCollection.Search(filter);
-                                                if (ids == null)
-                                                {
-                                                    continue;
-                                                }
-
-                                                for (int j = 0; j < ids.Length; j++)
-                                                {
-                                                    int id = ids[j];
-                                                    if (id > 0)
-                                                    {
-                                                        if (IsItemBlacklisted(id))
-                                                        {
-                                                            continue;
-                                                        }
-                                                        idSet.Add(id);
-                                                    }
-                                                }
+                                                candidateIds.AddRange(idSet);
+                                                hasCandidateCache = true;
                                             }
                                         }
 
-                                        DevLog("[BossRush] Boss 奖励候选物品数量=" + idSet.Count);
+                                        DevLog("[BossRush] Boss 奖励候选物品数量=" + candidateIds.Count + ", useLegacyBossLootProbabilities=" + useLegacyProbabilities + ", candidateCacheReady=" + _legacyBossLootCandidateCacheInitialized + ", candidateCacheUsed=" + hasCandidateCache);
 
-                                        if (idSet.Count > 0)
+                                        if (candidateIds.Count > 0)
                                         {
                                             // 使用内部常量定义的品质范围
                                             int highQualityMin = LOOT_HIGH_QUALITY_MIN;
@@ -2392,32 +2544,14 @@ namespace BossRush
                                             Dictionary<int, int> itemQualities = new Dictionary<int, int>();
                                             // 统计各高品质等级的物品数量：quality5Count, quality6Count, quality7Count, quality8Count
                                             int[] highQualityCounts = new int[4]; // 索引0=品质5, 1=品质6, 2=品质7, 3=品质8
+                                            // 低品质按 Q1-Q4 分别统计，供 legacy 分支直接使用，避免后续重复遍历 itemQualities
+                                            int[] lowQualityCountsByGrade = new int[4]; // 索引0=Q1, 1=Q2, 2=Q3, 3=Q4
 
-                                            foreach (int id2 in idSet)
+                                            for (int candidateIndex = 0; candidateIndex < candidateIds.Count; candidateIndex++)
                                             {
+                                                int id2 = candidateIds[candidateIndex];
                                                 int quality = -1;
-                                                int cachedValue = 0;
-                                                if (TryGetCachedItemValue(id2, out cachedValue, out quality))
-                                                {
-                                                    // 缓存命中
-                                                }
-                                                else
-                                                {
-                                                    // 缓存未命中，尝试从元数据获取品质
-                                                    try
-                                                    {
-                                                        var meta = ItemAssetsCollection.GetMetaData(id2);
-                                                        // ItemMetaData 是 struct，检查 id 是否有效
-                                                        if (meta.id > 0)
-                                                        {
-                                                            quality = meta.quality;
-                                                        }
-                                                    }
-                                                    catch
-                                                    {
-                                                        quality = 1; // 默认普通品质
-                                                    }
-                                                }
+                                                quality = GetBossLootCandidateQuality(id2);
 
                                                 itemQualities[id2] = quality;
 
@@ -2429,8 +2563,19 @@ namespace BossRush
                                                         highQualityCounts[idx]++;
                                                     }
                                                 }
+                                                else if (quality >= LOOT_LOW_QUALITY_MIN && quality <= LOOT_LOW_QUALITY_MAX)
+                                                {
+                                                    lowQualityItemCount++;
+                                                    int lowIdx = quality - LOOT_LOW_QUALITY_MIN;
+                                                    if (lowIdx >= 0 && lowIdx < 4)
+                                                    {
+                                                        lowQualityCountsByGrade[lowIdx]++;
+                                                    }
+                                                }
                                                 else
                                                 {
+                                                    // quality 不在 1-8 范围内（GetBossLootCandidateQuality 回退时可能返回 1，
+                                                    // 但为防御其它异常取值，这里仍按低品质计入总数但不入任何具体分档）
                                                     lowQualityItemCount++;
                                                 }
                                             }
@@ -2438,79 +2583,132 @@ namespace BossRush
                                             int totalHighQualityItemCount = highQualityCounts[0] + highQualityCounts[1] + highQualityCounts[2] + highQualityCounts[3];
                                             DevLog("[BossRush] Boss 奖励品质统计: 普通品质=" + lowQualityItemCount + ", 高品质=" + totalHighQualityItemCount + " (Q5=" + highQualityCounts[0] + ", Q6=" + highQualityCounts[1] + ", Q7=" + highQualityCounts[2] + ", Q8=" + highQualityCounts[3] + ")");
 
-                                            // 计算权重：使品质分布符合 highChance 设定，高品质内部按 4:3:2:1 比例分配
-                                            // 普通品质总权重 = 1 - highChance，高品质总权重 = highChance
-                                            float clampedHigh = Mathf.Clamp01(highChance);
-                                            float lowTotalWeight = 1f - clampedHigh;
-                                            float highTotalWeight = clampedHigh;
-
-                                            // 避免除零
-                                            int safeLowCount = (lowQualityItemCount == 0) ? 1 : lowQualityItemCount;
-                                            float perLowWeight = lowTotalWeight / safeLowCount;
-
-                                            // 高品质按 4:3:2:1 比例分配（品质5占4份，品质6占3份，品质7占2份，品质8占1份）
-                                            float[] highQualityRatios = new float[] { 4f, 3f, 2f, 1f };
-                                            float totalRatio = 10f;
-                                            // 计算每个品质等级的单个物品权重
+                                            float perLowWeight = 0f;
                                             float[] perHighWeightByQuality = new float[4];
-                                            for (int i = 0; i < 4; i++)
+                                            if (useLegacyProbabilities)
                                             {
-                                                float qualityTotalWeight = highTotalWeight * (highQualityRatios[i] / totalRatio);
-                                                int count = highQualityCounts[i];
-                                                if (count == 0) count = 1; // 避免除零
-                                                perHighWeightByQuality[i] = qualityTotalWeight / count;
-                                            }
+                                                // 直接复用第一遍统计的 lowQualityCountsByGrade / highQualityCounts，
+                                                // 避免对 itemQualities（通常 600+ 元素）再做 4 次冗余 foreach。
+                                                DevLog("[BossRush] Legacy Boss 概率分布: Q1=" + legacyDistribution.Quality1.ToString("P4")
+                                                    + ", Q2=" + legacyDistribution.Quality2.ToString("P4")
+                                                    + ", Q3=" + legacyDistribution.Quality3.ToString("P4")
+                                                    + ", Q4=" + legacyDistribution.Quality4.ToString("P4")
+                                                    + ", Q5=" + legacyDistribution.Quality5.ToString("P4")
+                                                    + ", Q6=" + legacyDistribution.Quality6.ToString("P4")
+                                                    + ", Q7=" + legacyDistribution.Quality7.ToString("P4")
+                                                    + ", Q8=" + legacyDistribution.Quality8.ToString("P4")
+                                                    + ", bonusFactor=" + legacyBonusFactor.ToString("P2"));
 
-                                            DevLog("[BossRush] Boss 奖励权重: 普通单个=" + perLowWeight.ToString("F4") + ", Q5单个=" + perHighWeightByQuality[0].ToString("F4") + ", Q6单个=" + perHighWeightByQuality[1].ToString("F4") + ", Q7单个=" + perHighWeightByQuality[2].ToString("F4") + ", Q8单个=" + perHighWeightByQuality[3].ToString("F4"));
-
-                                            // 第二遍：添加物品到 randomPool，根据品质设置权重
-                                            foreach (int id2 in idSet)
-                                            {
-                                                object lootEntry = Activator.CreateInstance(loaderEntryType);
-                                                lootEntryItemIdField.SetValue(lootEntry, id2);
-
-                                                object rcEntry = Activator.CreateInstance(randomContainerEntryType);
-                                                rcValueField.SetValue(rcEntry, lootEntry);
-                                                
-                                                // 根据品质设置权重
-                                                int quality = 1;
-                                                itemQualities.TryGetValue(id2, out quality);
-
-                                                float itemWeight;
-                                                if (quality >= highQualityMin && quality <= highQualityMax)
+                                                for (int i = 0; i < 4; i++)
                                                 {
-                                                    // 高品质：按 4:3:2:1 比例分配
-                                                    int idx = quality - highQualityMin;
-                                                    if (idx >= 0 && idx < 4)
+                                                    int count = highQualityCounts[i];
+                                                    double qualityTotalWeight = legacyDistribution.GetProbabilityForQuality(i + 5);
+                                                    perHighWeightByQuality[i] = count > 0 ? (float)(qualityTotalWeight / count) : 0f;
+                                                }
+
+                                                int quality1Count = lowQualityCountsByGrade[0];
+                                                int quality2Count = lowQualityCountsByGrade[1];
+                                                int quality3Count = lowQualityCountsByGrade[2];
+                                                int quality4Count = lowQualityCountsByGrade[3];
+                                                float perQuality1Weight = quality1Count > 0 ? (float)(legacyDistribution.Quality1 / quality1Count) : 0f;
+                                                float perQuality2Weight = quality2Count > 0 ? (float)(legacyDistribution.Quality2 / quality2Count) : 0f;
+                                                float perQuality3Weight = quality3Count > 0 ? (float)(legacyDistribution.Quality3 / quality3Count) : 0f;
+                                                float perQuality4Weight = quality4Count > 0 ? (float)(legacyDistribution.Quality4 / quality4Count) : 0f;
+
+                                                for (int candidateIndex = 0; candidateIndex < candidateIds.Count; candidateIndex++)
+                                                {
+                                                    int id2 = candidateIds[candidateIndex];
+                                                    object lootEntry = Activator.CreateInstance(loaderEntryType);
+                                                    lootEntryItemIdField.SetValue(lootEntry, id2);
+
+                                                    object rcEntry = Activator.CreateInstance(randomContainerEntryType);
+                                                    rcValueField.SetValue(rcEntry, lootEntry);
+
+                                                    int quality = 1;
+                                                    itemQualities.TryGetValue(id2, out quality);
+
+                                                    float itemWeight = perQuality1Weight;
+                                                    switch (quality)
                                                     {
-                                                        itemWeight = perHighWeightByQuality[idx];
+                                                        case 1: itemWeight = perQuality1Weight; break;
+                                                        case 2: itemWeight = perQuality2Weight; break;
+                                                        case 3: itemWeight = perQuality3Weight; break;
+                                                        case 4: itemWeight = perQuality4Weight; break;
+                                                        case 5: itemWeight = perHighWeightByQuality[0]; break;
+                                                        case 6: itemWeight = perHighWeightByQuality[1]; break;
+                                                        case 7: itemWeight = perHighWeightByQuality[2]; break;
+                                                        case 8: itemWeight = perHighWeightByQuality[3]; break;
+                                                    }
+
+                                                    if (id2 == 1254)
+                                                    {
+                                                        itemWeight *= 0.1f;
+                                                    }
+
+                                                    rcWeightField.SetValue(rcEntry, itemWeight);
+                                                    entriesList.Add(rcEntry);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // 计算权重：使品质分布符合 highChance 设定，高品质内部按 4:3:2:1 比例分配
+                                                float clampedHigh = Mathf.Clamp01(highChance);
+                                                float lowTotalWeight = 1f - clampedHigh;
+                                                float highTotalWeight = clampedHigh;
+
+                                                int safeLowCount = (lowQualityItemCount == 0) ? 1 : lowQualityItemCount;
+                                                perLowWeight = lowTotalWeight / safeLowCount;
+
+                                                float[] highQualityRatios = new float[] { 4f, 3f, 2f, 1f };
+                                                float totalRatio = 10f;
+                                                for (int i = 0; i < 4; i++)
+                                                {
+                                                    float qualityTotalWeight = highTotalWeight * (highQualityRatios[i] / totalRatio);
+                                                    int count = highQualityCounts[i];
+                                                    if (count == 0) count = 1;
+                                                    perHighWeightByQuality[i] = qualityTotalWeight / count;
+                                                }
+
+                                                DevLog("[BossRush] Boss 奖励权重: 普通单个=" + perLowWeight.ToString("F4") + ", Q5单个=" + perHighWeightByQuality[0].ToString("F4") + ", Q6单个=" + perHighWeightByQuality[1].ToString("F4") + ", Q7单个=" + perHighWeightByQuality[2].ToString("F4") + ", Q8单个=" + perHighWeightByQuality[3].ToString("F4"));
+
+                                                for (int candidateIndex = 0; candidateIndex < candidateIds.Count; candidateIndex++)
+                                                {
+                                                    int id2 = candidateIds[candidateIndex];
+                                                    object lootEntry = Activator.CreateInstance(loaderEntryType);
+                                                    lootEntryItemIdField.SetValue(lootEntry, id2);
+
+                                                    object rcEntry = Activator.CreateInstance(randomContainerEntryType);
+                                                    rcValueField.SetValue(rcEntry, lootEntry);
+
+                                                    int quality = 1;
+                                                    itemQualities.TryGetValue(id2, out quality);
+
+                                                    float itemWeight;
+                                                    if (quality >= highQualityMin && quality <= highQualityMax)
+                                                    {
+                                                        int idx = quality - highQualityMin;
+                                                        itemWeight = (idx >= 0 && idx < 4) ? perHighWeightByQuality[idx] : perHighWeightByQuality[0];
                                                     }
                                                     else
                                                     {
-                                                        itemWeight = perHighWeightByQuality[0]; // 兜底
+                                                        itemWeight = perLowWeight;
                                                     }
-                                                }
-                                                else
-                                                {
-                                                    itemWeight = perLowWeight;
-                                                }
 
-                                                // 皇冠（1254）权重额外降为原来的0.1倍
-                                                if (id2 == 1254)
-                                                {
-                                                    itemWeight *= 0.1f;
+                                                    if (id2 == 1254)
+                                                    {
+                                                        itemWeight *= 0.1f;
+                                                    }
+
+                                                    rcWeightField.SetValue(rcEntry, itemWeight);
+                                                    entriesList.Add(rcEntry);
                                                 }
-
-                                                rcWeightField.SetValue(rcEntry, itemWeight);
-
-                                                entriesList.Add(rcEntry);
                                             }
 
                                             DevLog("[BossRush] Boss 奖励 randomPool 条目数=" + entriesList.Count);
                                         }
 
-                                        // 保底机制已移除 - 掉落完全依赖随机池的品质权重分配
-                                        // 但仍需初始化 fixedItems 字段，避免 LootBoxLoader.Setup() 空引用
+                                        // 不使用 LootBoxLoader 自带的 fixedItems 保底；legacy Q6+ 保底在后续协程中追加
+                                        // 这里仍需初始化 fixedItems 字段，避免 LootBoxLoader.Setup() 空引用
                                         System.Reflection.FieldInfo fixedItemsField = loaderType.GetField("fixedItems", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                                         System.Reflection.FieldInfo fixedChanceField = loaderType.GetField("fixedItemSpawnChance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
@@ -2525,7 +2723,7 @@ namespace BossRush
                                             fixedItems.Clear();
                                         }
 
-                                        // 设置保底概率为0，确保不会触发保底掉落
+                                        // 禁用 LootBoxLoader 自带的 fixedItems 保底，避免与后续协程追加的保底重复
                                         if (fixedChanceField != null)
                                         {
                                             fixedChanceField.SetValue(loader, 0f);
@@ -2575,7 +2773,14 @@ namespace BossRush
                     inventory.SetCapacity(512);
                 }
 
-                DevLog("[BossRush] 已为 Boss 生成专用奖励盒子，总目标物品数量=" + totalCount + ", 期望高品质比例=" + highChance.ToString("P0") + "（击杀耗时: " + killDuration.ToString("F1") + "秒）");
+                if (useLegacyProbabilities)
+                {
+                    DevLog("[BossRush] 已为 Boss 生成专用奖励盒子，总目标物品数量=" + totalCount + ", legacyBonusFactor=" + legacyBonusFactor.ToString("P1") + "（击杀耗时: " + killDuration.ToString("F1") + "秒）");
+                }
+                else
+                {
+                    DevLog("[BossRush] 已为 Boss 生成专用奖励盒子，总目标物品数量=" + totalCount + ", 期望高品质比例=" + highChance.ToString("P0") + "（击杀耗时: " + killDuration.ToString("F1") + "秒）");
+                }
 
                 // Boss特殊掉落：在掉落箱创建后添加专属掉落物
                 // 统一使用一个协程处理所有Boss的特殊掉落
@@ -2584,6 +2789,8 @@ namespace BossRush
                     this.StartCoroutine(AddBossSpecialLootToLootboxCoroutine(
                         lootbox,
                         bossMain,
+                        useLegacyProbabilities,
+                        bossMaxHealth,
                         modeFPlunderLootBonusCount,
                         modeFPlunderLootPenaltyCount));
                 }
@@ -2722,6 +2929,141 @@ namespace BossRush
             catch (Exception capEx)
             {
                 DevLog("[BossRush] 调整 Boss 奖励箱容量失败: " + capEx.Message);
+            }
+        }
+
+        private bool InventoryContainsItemAtLeastQuality(Inventory inv, int minimumQuality)
+        {
+            if (inv == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                List<Item> content = inv.Content;
+                if (content == null)
+                {
+                    return false;
+                }
+
+                for (int i = 0; i < content.Count; i++)
+                {
+                    Item item = content[i];
+                    if (item == null)
+                    {
+                        continue;
+                    }
+
+                    int quality = 0;
+                    try
+                    {
+                        quality = item.Quality;
+                    }
+                    catch (Exception e)
+                    {
+                        LogLootWarningLimited("InventoryContainsItemAtLeastQuality_quality", "读取掉落箱物品品质失败", e);
+                    }
+
+                    if (quality >= minimumQuality)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited("InventoryContainsItemAtLeastQuality_scan", "扫描掉落箱保底品质失败", e);
+            }
+
+            return false;
+        }
+
+        private int GetLegacyBossGuaranteeTypeId(int desiredQuality, out int actualQuality)
+        {
+            actualQuality = -1;
+
+            List<int> candidateIds = new List<int>();
+            Dictionary<int, List<int>> qualityBuckets = new Dictionary<int, List<int>>();
+            if (!TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets))
+            {
+                return -1;
+            }
+
+            for (int quality = desiredQuality; quality >= 6; quality--)
+            {
+                List<int> bucket = null;
+                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
+                {
+                    continue;
+                }
+
+                actualQuality = quality;
+                return bucket[UnityEngine.Random.Range(0, bucket.Count)];
+            }
+
+            return -1;
+        }
+
+        private bool TryAddLegacyBossGuaranteeItem(Inventory inv)
+        {
+            if (inv == null)
+            {
+                return false;
+            }
+
+            if (InventoryContainsItemAtLeastQuality(inv, 6))
+            {
+                return false;
+            }
+
+            int desiredQuality = LegacyBossLootProbabilityModel.RollGuaranteeQuality(UnityEngine.Random.value);
+            int actualQuality = -1;
+            int rewardTypeId = GetLegacyBossGuaranteeTypeId(desiredQuality, out actualQuality);
+            if (rewardTypeId <= 0)
+            {
+                DevLog("[BossRush] [WARNING] 原版战利品保底失败：未找到可用的 Q6+ 候选，desiredQuality=" + desiredQuality);
+                return false;
+            }
+
+            Item reward = null;
+            try
+            {
+                reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
+                if (reward == null)
+                {
+                    DevLog("[BossRush] [WARNING] 原版战利品保底失败：实例化物品失败, typeId=" + rewardTypeId);
+                    return false;
+                }
+
+                if (!inv.AddItem(reward))
+                {
+                    DevLog("[BossRush] [WARNING] 原版战利品保底失败：AddItem 失败, typeId=" + rewardTypeId);
+                    return false;
+                }
+
+                DevLog("[BossRush] 原版战利品保底已追加: desiredQuality=" + desiredQuality + ", actualQuality=" + actualQuality + ", typeId=" + rewardTypeId);
+                reward = null;
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 原版战利品保底追加失败: " + e.Message);
+                return false;
+            }
+            finally
+            {
+                try
+                {
+                    if (reward != null)
+                    {
+                        reward.DestroyTree();
+                    }
+                }
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("TryAddLegacyBossGuaranteeItem_cleanup", "清理未成功追加的保底物品失败", e);
+                }
             }
         }
 
@@ -3004,18 +3346,6 @@ namespace BossRush
             }
             return "N/A";
         }
-
-        /// <summary>
-        /// [已废弃] 在掉落物品生成之前，检查是否是龙裔遗族Boss并添加龙套装到库存
-        /// 注意：此方法已不再使用，因为BossRush创建独立的掉落箱，不使用Boss库存
-        /// 请使用 AddBossSpecialLootToLootboxCoroutine 代替
-        /// </summary>
-        [System.Obsolete("使用 AddBossSpecialLootToLootboxCoroutine 代替")]
-        private void TryAddDragonSetToLootBeforeSpawn(CharacterMainControl bossMain)
-        {
-            // 此方法已废弃，保留仅为兼容性
-            DevLog("[DragonDescendant] TryAddDragonSetToLootBeforeSpawn 已废弃");
-        }
         
         /// <summary>
         /// Boss特殊掉落：统一处理所有Boss的专属掉落物（协程版本）
@@ -3024,6 +3354,8 @@ namespace BossRush
         private IEnumerator AddBossSpecialLootToLootboxCoroutine(
             InteractableLootbox lootbox,
             CharacterMainControl bossMain,
+            bool useLegacyBossLootProbabilities,
+            float bossMaxHealth,
             int modeFPlunderLootBonusCount = 0,
             int modeFPlunderLootPenaltyCount = 0)
         {
@@ -3054,6 +3386,11 @@ namespace BossRush
                 {
                     tries++;
                     yield return new WaitForSeconds(0.1f);
+                }
+
+                if (useLegacyBossLootProbabilities && bossMaxHealth > LEGACY_BOSS_GUARANTEE_MIN_MAX_HEALTH)
+                {
+                    TryAddLegacyBossGuaranteeItem(inv);
                 }
 
                 if (modeFPlunderLootPenaltyCount > 0)

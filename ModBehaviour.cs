@@ -4901,34 +4901,10 @@ namespace BossRush
             return;
         }
 
-        /// <summary>
-        /// 在Boss真正生成掉落物之前拦截并随机化掉落
-        /// （事件来源：CharacterMainControl.BeforeCharacterSpawnLootOnDead）
-        /// </summary>
         private void OnBossBeforeSpawnLoot(CharacterMainControl bossMain, DamageInfo dmgInfo)
         {
             OnBossBeforeSpawnLoot_LootAndRewards(bossMain, dmgInfo);
             return;
-        }
-
-        /// <summary>
-        /// 随机化Boss掉落物品 - 生成专用奖励盒子，并交给 LootBoxLoader 按品质概率随机物品
-        /// </summary>
-        private void RandomizeBossLoot(CharacterMainControl bossMain, int totalCount, int highQualityCount, float killDuration, float highChanceBonusByHealth)
-        {
-            RandomizeBossLoot_LootAndRewards(bossMain, totalCount, highQualityCount, killDuration, highChanceBonusByHealth);
-            return;
-        }
-
-        private void SpawnDifficultyRewardLootbox(int highQualityCount)
-        {
-            SpawnDifficultyRewardLootbox_LootAndRewards(highQualityCount);
-            return;
-        }
-
-        private IEnumerator LogBossLootInventory(InteractableLootbox lootbox)
-        {
-            return LogBossLootInventory_LootAndRewards(lootbox);
         }
 
         private static InteractableLootbox GetLootBoxTemplateWithLoader()
@@ -5086,11 +5062,6 @@ namespace BossRush
             {
                 DevLog("[BossRush] ApplyLootBoxCoverSetting 失败: " + e.Message);
             }
-        }
-
-        private IEnumerator CleanupDifficultyRewardLootboxInventory(InteractableLootbox lootbox, int highQualityCount)
-        {
-            return CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount);
         }
         
         /// <summary>

@@ -110,6 +110,7 @@ BossRush 目前同时支持两种配置入口：
 |------|--------|------|
 | `waveIntervalSeconds` | `15` | 波次间休息时间 |
 | `enableRandomBossLoot` | `true` | 启用 Boss 随机掉落加成 |
+| `useLegacyBossLootProbabilities` | `true` | 标准 Boss 战利品箱使用原版概率区间；若未出 Q6+ 则额外追加 1 件保底 |
 | `useInteractBetweenWaves` | `false` | 波次间改为手动交互开下一波 |
 | `lootBoxBlocksBullets` | `false` | 掉落箱是否可作为掩体挡子弹 |
 | `infiniteHellBossesPerWave` | `3` | 无间炼狱每波 Boss 数 |

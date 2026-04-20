@@ -110,6 +110,7 @@ Key config fields:
 |-----|---------|-------------|
 | `waveIntervalSeconds` | `15` | Rest time between waves |
 | `enableRandomBossLoot` | `true` | Enables randomized boss loot bonus |
+| `useLegacyBossLootProbabilities` | `true` | Use legacy-style quality odds for standard Boss lootboxes and append one Q6+ guarantee item when needed |
 | `useInteractBetweenWaves` | `false` | Requires manual interaction to start the next wave |
 | `lootBoxBlocksBullets` | `false` | Makes loot crates act as bullet-blocking cover |
 | `infiniteHellBossesPerWave` | `3` | Boss count per Infinite Hell wave |

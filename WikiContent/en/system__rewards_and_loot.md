@@ -5,16 +5,40 @@
 
 ### Standard BossRush Loot
 
+#### Random Loot Toggle
+- The config option `enableRandomBossLoot` (default: on) controls whether the BossRush random loot system is active.
+- When disabled, Bosses use the game's original drop logic and all quality distribution rules below do not apply.
+
 #### Loot Crates
 - After each Boss is killed, a loot crate spawns at its death location.
 - The number of drops is determined by the Boss's health, ranging from 7 to 15 items (higher health = more drops).
 
-#### Quality Distribution
+#### Quality Distribution Modes
+The config option `useLegacyBossLootProbabilities` controls the quality distribution algorithm. Default is `true` (Legacy Probability Mode).
+
+##### Legacy Probability Mode (Default)
+- Each quality tier has an independent drop probability determined by a `bonusFactor`.
+- `bonusFactor` = 80% × health factor + 20% × kill speed factor, range [0, 1].
+  - Health factor: normalized position of the Boss's max health within the Boss pool's min–max health range.
+  - Speed factor: remaining ratio of kill time relative to a reference time window (faster = higher).
+- Quality probabilities scale linearly as bonusFactor goes from 0→1:
+  - Quality 8: 0.05% → 0.10%
+  - Quality 7: 0.10% → 1.00%
+  - Quality 6: 1.00% → 5.00%
+  - Quality 5: 5.00% → 10.00%
+  - Quality 1-4: remaining probability split by weights 0.1345 : 0.3655 : 0.3655 : 0.1345
+- **Q6+ Guarantee**: when the Boss's max health > 250 and the loot crate contains no quality 6+ item, one extra Q6+ item is appended (99% Q6, 0.9% Q7, 0.1% Q8).
+
+##### Simplified Probability Mode
+- Set `useLegacyBossLootProbabilities` to `false` to switch to this mode.
 - Item quality is divided into two tiers: normal (1-4) and high quality (5-8).
-- High quality weight is affected by two factors:
+- Total high quality probability is affected by two additive factors:
   - Boss health bonus: +5% per 100 health points
-  - Kill speed bonus: the faster the kill, the higher the high quality chance (up to +10%)
+  - Kill speed bonus: the faster the kill, the higher the bonus (up to +10%)
 - Internal high quality distribution: quality 5 : 6 : 7 : 8 = 4 : 3 : 2 : 1
+- No Q6+ guarantee mechanism.
+
+> **Note**: Both modes exclude quest-tagged items from the candidate pool. The only differences are the probability distribution algorithm and the Q6+ guarantee mechanism.
 
 #### Completion Reward Crate
 - After defeating all waves, a completion reward crate spawns at the center of the arena:
@@ -23,9 +47,9 @@
 
 #### Loot Blacklist
 - The following types of items will not appear in the loot pool:
-  - Quest items
   - Items flagged as non-droppable
   - Demo-locked items
+  - Quest-tagged items (excluded in both probability modes)
 - Crown drop weight is reduced to 0.1x, lowering its appearance frequency.
 
 ### Infinite Hell Rewards

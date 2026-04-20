@@ -19,6 +19,11 @@
 - 范围：true/false
 - 是否启用随机 Boss 掉落（关闭则使用原始掉落）
 
+# useLegacyBossLootProbabilities
+- 默认值：true
+- 范围：true/false
+- 战利品品质分布算法：`true` 使用原版概率模式（各品质独立概率 + Q6+ 保底），`false` 使用简化概率模式（高品质总概率 + 无保底）
+
 # useInteractBetweenWaves
 - 默认值：false
 - 范围：true/false

@@ -121,6 +121,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Config\NPCSpawnConfig.cs ^
     Config\LootBlacklistRegistry.cs ^
     WavesArena\WavesArena.cs ^
+    LootAndRewards\LegacyBossLootProbabilityModel.cs ^
     LootAndRewards\LootAndRewards.cs ^
     LootAndRewards\ModeEFLootboxTracker.cs ^
     Interactables\BossRushInteractables.cs ^
