@@ -5393,7 +5393,6 @@ namespace BossRush
             // TODO: 清理地面物品
         }
 
-        
         /// <summary>
         /// 在指定位置生成敌人（使用CharacterRandomPreset）
         /// 返回生成的角色，如果失败返回 null
@@ -5406,7 +5405,10 @@ namespace BossRush
                 if (IsDragonDescendantPreset(preset))
                 {
                     // 龙裔遗族使用独立生成逻辑，等待生成完成并返回结果
-                    var dragonBoss = await SpawnDragonDescendant(position);
+                    var dragonBoss = await SpawnDragonDescendant(
+                        position,
+                        isChildProtectionSummon: false,
+                        notifyBossRushOnFailure: false);
                     return dragonBoss;
                 }
                 
@@ -5414,10 +5416,15 @@ namespace BossRush
                 if (IsDragonKingPreset(preset))
                 {
                     // 龙王使用独立生成逻辑
-                    var dragonKingBoss = await SpawnDragonKing(position);
-                    return dragonKingBoss;
+                    return await SpawnDragonKing(position, notifyBossRushOnFailure: false);
                 }
-                
+
+                // 检查是否是幽灵女巫Boss，使用专门的生成方法
+                if (IsPhantomWitchPreset(preset))
+                {
+                    return await SpawnPhantomWitch(position, notifyBossRushOnFailure: false);
+                }
+
                 // 查找所有CharacterRandomPreset（从Resources中查找）
                 var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
                 CharacterRandomPreset targetPreset = null;

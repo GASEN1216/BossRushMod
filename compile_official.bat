@@ -174,6 +174,18 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\DragonKing\Weapons\FenHuangComboManager.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdBootstrap.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdWeaponConfig.cs ^
+    Integration\PhantomWitch\PhantomWitchConfig.cs ^
+    Integration\PhantomWitch\PhantomWitchPerformancePolicy.cs ^
+    Integration\PhantomWitch\PhantomWitchAssetManager.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController.cs ^
+    Integration\PhantomWitch\PhantomWitchBoss.cs ^
+    Integration\PhantomWitch\PhantomWitchScytheIds.cs ^
+    Integration\PhantomWitch\PhantomWitchScytheConfig.cs ^
+    Integration\PhantomWitch\PhantomWitchScytheWeaponConfig.cs ^
+    Integration\PhantomWitch\PhantomWitchScytheAction.cs ^
+    Integration\PhantomWitch\PhantomWitchScytheAbilityManager.cs ^
+    Integration\PhantomWitch\PhantomWitchCurseSweatVfx.cs ^
+    Integration\PhantomWitch\PhantomWitchScytheBootstrap.cs ^
     Integration\Frostmourne\FrostmourneIds.cs ^
     Integration\Frostmourne\FrostmourneConfig.cs ^
     Integration\Frostmourne\FrostmourneWeaponConfig.cs ^

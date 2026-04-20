@@ -104,6 +104,12 @@ namespace BossRush
                             currentPreset = null;
                             continue;
                         }
+                        if (isRetry && IsPhantomWitchPreset(currentPreset))
+                        {
+                            DevLog("[SpawnCore] 重试跳过幽灵女巫（同一波次不重复）");
+                            currentPreset = null;
+                            continue;
+                        }
 
                         DevLog("[SpawnCore] 生成敌人: " + currentPreset.displayName + " (isBoss=" + isBoss + ", attempt=" + attempt + ")");
 
@@ -115,7 +121,10 @@ namespace BossRush
                         {
                             try
                             {
-                                character = await SpawnDragonDescendant(position);
+                                character = await SpawnDragonDescendant(
+                                    position,
+                                    isChildProtectionSummon: false,
+                                    notifyBossRushOnFailure: false);
                             }
                             catch (Exception dragonEx)
                             {
@@ -129,11 +138,25 @@ namespace BossRush
                         {
                             try
                             {
-                                character = await SpawnDragonKing(position);
+                                character = await SpawnDragonKing(position, notifyBossRushOnFailure: false);
                             }
                             catch (Exception kingEx)
                             {
                                 DevLog("[SpawnCore] 龙王生成异常: " + kingEx.Message);
+                                currentPreset = null;
+                                continue;
+                            }
+                        }
+                        // 幽灵女巫Boss：使用专用生成方法
+                        else if (IsPhantomWitchPreset(currentPreset))
+                        {
+                            try
+                            {
+                                character = await SpawnPhantomWitch(position, notifyBossRushOnFailure: false);
+                            }
+                            catch (Exception witchEx)
+                            {
+                                DevLog("[SpawnCore] 幽灵女巫生成异常: " + witchEx.Message);
                                 currentPreset = null;
                                 continue;
                             }
@@ -180,9 +203,9 @@ namespace BossRush
                         //   - SetActive(true)（角色激活）
                         // 因此这里需要跳过重复操作，并在 Yield 之前立即调用 onSpawned
                         // 以确保 Mode E 的 SetTeam 在角色激活后尽快执行
-                        bool isDragonSpecialSpawn = IsDragonDescendantPreset(currentPreset) || IsDragonKingPreset(currentPreset);
+                        bool isManagedBossSpawn = IsManagedBossPreset(currentPreset);
 
-                        if (isDragonSpecialSpawn)
+                        if (isManagedBossSpawn)
                         {
                             if (!isActiveCheck())
                             {

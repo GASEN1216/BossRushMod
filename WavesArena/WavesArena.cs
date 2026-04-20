@@ -1641,7 +1641,7 @@ namespace BossRush
             int attempt = 0;
             CharacterMainControl spawnedBoss = null;
             
-            while (attempt < maxRetries && spawnedBoss == null)
+            while (attempt < maxRetries)
             {
                 attempt++;
                 
@@ -1655,8 +1655,12 @@ namespace BossRush
                 }
                 
                 spawnedBoss = await SpawnEnemyAtPositionAsync(preset, position);
+                if (spawnedBoss != null)
+                {
+                    break;
+                }
                 
-                if (spawnedBoss == null && attempt < maxRetries)
+                if (attempt < maxRetries)
                 {
                     // 等待一小段时间后重试
                     await UniTask.Delay(200);
@@ -1665,7 +1669,7 @@ namespace BossRush
             
             if (spawnedBoss == null)
             {
-                DevLog("[BossRush] [ERROR] 单Boss生成失败，已重试 " + maxRetries + " 次: " + preset.displayName);
+                DevLog("[BossRush] [ERROR] 单Boss生成失败，尝试次数: " + attempt + ", preset=" + preset.displayName);
                 OnBossSpawnFailed(preset);
             }
             else
@@ -1703,20 +1707,20 @@ namespace BossRush
             for (int i = 0; i < bossSpawnInfos.Count; i++)
             {
                 var info = bossSpawnInfos[i];
-                CharacterMainControl spawned = null;
+                CharacterMainControl spawnResult = null;
                 
                 try
                 {
-                    spawned = await SpawnEnemyAtPositionAsync(info.preset, info.position);
+                    spawnResult = await SpawnEnemyAtPositionAsync(info.preset, info.position);
                 }
                 catch (Exception e)
                 {
                     DevLog("[BossRush] Boss生成异常 #" + i + ": " + e.Message);
                 }
                 
-                results.Add(spawned);
+                results.Add(spawnResult);
                 
-                if (spawned == null && !IsDragonDescendantPreset(info.preset) && !IsDragonKingPreset(info.preset))
+                if (spawnResult == null)
                 {
                     failedInfos.Add((info.preset, i));
                 }
@@ -1729,21 +1733,16 @@ namespace BossRush
             }
             
             // 统计成功生成的数量
-            int successCount = 0;
+            int resolvedCount = 0;
             for (int i = 0; i < results.Count; i++)
             {
                 if (results[i] != null)
                 {
-                    successCount++;
-                }
-                else if (IsDragonDescendantPreset(bossSpawnInfos[i].preset) || IsDragonKingPreset(bossSpawnInfos[i].preset))
-                {
-                    // 龙裔遗族和龙王返回 null 但不视为失败
-                    successCount++;
+                    resolvedCount++;
                 }
             }
             
-            DevLog("[BossRush] 首轮生成完成: 成功=" + successCount + ", 失败=" + failedInfos.Count);
+            DevLog("[BossRush] 首轮生成完成: 已处理=" + resolvedCount + ", 失败=" + failedInfos.Count);
             
             // 重试失败的Boss
             int retryAttempt = 0;
@@ -1781,16 +1780,12 @@ namespace BossRush
                     
                     if (retryResult != null)
                     {
-                        successCount++;
+                        resolvedCount++;
                         DevLog("[BossRush] 重试成功: " + failedInfo.preset.displayName);
-                    }
-                    else if (!IsDragonDescendantPreset(failedInfo.preset) && !IsDragonKingPreset(failedInfo.preset))
-                    {
-                        stillFailed.Add(failedInfo);
                     }
                     else
                     {
-                        successCount++;
+                        stillFailed.Add(failedInfo);
                     }
                     
                     // 每次重试后短暂等待
@@ -1798,21 +1793,22 @@ namespace BossRush
                 }
                 
                 failedInfos = stillFailed;
-                DevLog("[BossRush] 重试轮 " + retryAttempt + " 完成: 当前成功总数=" + successCount + ", 仍失败=" + failedInfos.Count);
+                DevLog("[BossRush] 重试轮 " + retryAttempt + " 完成: 当前已处理总数=" + resolvedCount + ", 仍失败=" + failedInfos.Count);
             }
             
             // 最终验证
-            int finalFailCount = expectedCount - successCount;
+            int finalFailCount = expectedCount - resolvedCount;
             if (finalFailCount > 0)
             {
                 DevLog("[BossRush] [WARNING] 最终有 " + finalFailCount + " 个Boss生成失败，修正波次计数");
-                
-                // 修正波次计数，避免卡住
-                bossesInCurrentWaveTotal = successCount;
-                bossesInCurrentWaveRemaining = successCount;
+                int liveBossCount = PruneAndCountTrackedWaveBosses();
+
+                // 修正波次计数，remaining 必须与当前仍存活并被追踪的 Boss 数量一致，避免卡波
+                bossesInCurrentWaveTotal = liveBossCount;
+                bossesInCurrentWaveRemaining = liveBossCount;
                 
                 // 如果全部失败，直接推进下一波
-                if (successCount <= 0)
+                if (liveBossCount <= 0)
                 {
                     DevLog("[BossRush] [ERROR] 本波所有Boss生成失败，跳过本波");
                     ProceedAfterWaveFinished();
@@ -1820,8 +1816,31 @@ namespace BossRush
             }
             else
             {
-                DevLog("[BossRush] 批量生成完成: 全部 " + expectedCount + " 个Boss成功生成");
+                DevLog("[BossRush] 批量生成完成: 本波 " + expectedCount + " 个目标Boss已全部处理");
             }
+        }
+
+        private int PruneAndCountTrackedWaveBosses()
+        {
+            if (currentWaveBosses == null || currentWaveBosses.Count == 0)
+            {
+                return 0;
+            }
+
+            int liveBossCount = 0;
+            for (int i = currentWaveBosses.Count - 1; i >= 0; i--)
+            {
+                MonoBehaviour boss = currentWaveBosses[i];
+                if (boss == null)
+                {
+                    currentWaveBosses.RemoveAt(i);
+                    continue;
+                }
+
+                liveBossCount++;
+            }
+
+            return liveBossCount;
         }
 
         /// <summary>
@@ -2293,6 +2312,9 @@ namespace BossRush
             // 注册龙王Boss
             RegisterDragonKingPreset();
 
+            // 注册幽灵女巫Boss
+            RegisterPhantomWitchPreset();
+
             PruneNonBossEnemyPresetsFromCache();
 
             // 计算 Boss 池基础血量范围
@@ -2524,7 +2546,7 @@ namespace BossRush
                         continue;
                     }
 
-                    if (IsDragonDescendantPreset(preset) || IsDragonKingPreset(preset))
+                    if (IsManagedBossPreset(preset))
                     {
                         continue;
                     }

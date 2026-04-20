@@ -5868,6 +5868,11 @@ namespace BossRush
         public bool IsPaused { get; private set; }
 
         /// <summary>
+        /// Pause 前保存的 defaultWeaponOut 原始值，Resume 时恢复
+        /// </summary>
+        private bool savedDefaultWeaponOut;
+
+        /// <summary>
         /// 日志前缀（用于区分不同Boss）
         /// </summary>
         private readonly string logPrefix;
@@ -5972,7 +5977,8 @@ namespace BossRush
                     // 停止AI移动（清除寻路路径）
                     cachedAI.StopMove();
 
-                    // 收起武器（停止射击行为）
+                    // 收起武器（停止射击行为），保存原始值以便 Resume 恢复
+                    savedDefaultWeaponOut = cachedAI.defaultWeaponOut;
                     cachedAI.PutBackWeapon();
                     cachedAI.defaultWeaponOut = false;
 
@@ -6041,8 +6047,10 @@ namespace BossRush
                 {
                     // 重新启用AI控制器
                     cachedAI.enabled = true;
-                    // 【修复】不再设置defaultWeaponOut=true，龙王使用自定义射击系统
-                    // cachedAI.defaultWeaponOut = true;
+                    // 恢复 Pause 前保存的 defaultWeaponOut 原始值
+                    // 近战 Boss（幽灵女巫等）需要 true 才能在技能间隙正常攻击
+                    // 远程 Boss（龙王等）原始值本身为 false，恢复后不受影响
+                    cachedAI.defaultWeaponOut = savedDefaultWeaponOut;
 
                     // 恢复目标追踪
                     if (playerCharacter != null && playerCharacter.mainDamageReceiver != null)

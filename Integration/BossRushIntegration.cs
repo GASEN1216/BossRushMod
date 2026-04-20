@@ -478,6 +478,23 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
                 ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
                 ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
+                // 幽灵女巫镰刀（500044）资源可能尚未随 AssetBundle 发布；
+                // 仅在 prefab 存在时注册 configurator，避免为一个永远不会加载的 TypeID 留下无效回调。
+                try
+                {
+                    if (ItemAssetsCollection.GetPrefab(PhantomWitchConfig.ReservedScytheTypeId) != null)
+                    {
+                        ItemFactory.RegisterConfigurator(PhantomWitchConfig.ReservedScytheTypeId, OnPhantomWitchScytheLoaded);
+                    }
+                    else
+                    {
+                        DevLog("[BossRush] 幽灵女巫镰刀 prefab 缺失，跳过 ItemFactory configurator 注册 (TypeID=" + PhantomWitchConfig.ReservedScytheTypeId + ")");
+                    }
+                }
+                catch (Exception scytheCheckEx)
+                {
+                    DevLog("[BossRush] 检查幽灵女巫镰刀 prefab 失败，按未发布处理: " + scytheCheckEx.Message);
+                }
 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
@@ -593,6 +610,14 @@ namespace BossRush
                     FrostmourneWeaponConfig.TryConfigure(item, "Frostmourne");
                 },
                 "霜之哀伤");
+
+            CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
+                PhantomWitchConfig.ReservedScytheTypeId,
+                delegate(Item item)
+                {
+                    PhantomWitchScytheWeaponConfig.TryConfigure(item);
+                },
+                "噬魂挽歌");
         }
 
         private void OnFenHuangHalberdLoaded(Item itemPrefab)
@@ -603,6 +628,11 @@ namespace BossRush
         private void OnFrostmourneLoaded(Item itemPrefab)
         {
             FrostmourneWeaponConfig.TryConfigure(itemPrefab, "Frostmourne");
+        }
+
+        private void OnPhantomWitchScytheLoaded(Item itemPrefab)
+        {
+            PhantomWitchScytheWeaponConfig.TryConfigure(itemPrefab);
         }
 
         private void OnAdventureJournalLoaded(Item itemPrefab)
@@ -1123,6 +1153,10 @@ namespace BossRush
             if (modConfigType != null)
             {
                 SetupModConfig();
+                // ModConfig 已安装：以 ModConfig 当前值为准回拉并覆盖本地 config.cfg，
+                // 保证玩家在 ModConfig 面板里的设置始终是唯一事实源。
+                LoadConfigFromModConfig();
+                DevLog("[BossRush] 已从 ModConfig 同步配置并将覆盖本地 config.cfg");
                 SaveConfigToFile();
             }
             RefreshDeathWraithEventBindings_DeathWraith();
@@ -1242,6 +1276,9 @@ namespace BossRush
 
             // 初始化霜之哀伤系统（右键亡灵召唤）
             InitializeFrostmourneSystem();
+
+            // 初始化幽灵女巫大镰系统（右键诅咒领域）
+            InitializePhantomWitchScytheSystem();
             
             // 如果当前已经在场景中，立即执行一次
             if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
@@ -1287,6 +1324,9 @@ namespace BossRush
 
             // 清理霜之哀伤系统
             CleanupFrostmourneSystem();
+
+            // 清理幽灵女巫大镰系统
+            CleanupPhantomWitchScytheSystem();
             
             // 取消订阅龙息武器火焰特效事件
             UnsubscribeDragonBreathEffectEvent();
@@ -1387,7 +1427,10 @@ namespace BossRush
             
             // [内存优化] 场景切换时清理龙王相关的静态缓存
             ClearDragonKingStaticCache();
-            
+
+            // [内存优化] 场景切换时清理幽灵女巫相关的静态缓存
+            ClearPhantomWitchStaticCache();
+
             // [内存优化] 场景切换时清理荒野号角坐骑缓存
             WildHornUsage.ClearMountCache();
 
@@ -1416,6 +1459,9 @@ namespace BossRush
 
             // 设置霜之哀伤系统（场景切换重绑定）
             SetupFrostmourneForScene(scene);
+
+            // 设置幽灵女巫大镰系统（场景切换重绑定）
+            SetupPhantomWitchScytheForScene(scene);
 
             // 场景加载后重新应用龙枪弹种属性覆盖（射速/伤害/弹匣等）
             // 延迟调用确保玩家角色和武器已初始化
@@ -1576,9 +1622,11 @@ namespace BossRush
                         // [多次进入优化] 清理大兴兴追踪集合，防止持有已销毁对象引用
                         bossRushOwnedDaXingXing.Clear();
                         
+                        // 清理龙裔遗族实例
+                        CleanupDragonDescendant();
+
                         // [多龙皇修复] 清理龙皇实例字典和套装效果
-                        dragonKingInstances.Clear();
-                        dragonKingLootEventHandlers.Clear();
+                        CleanupTrackedDragonKingsOnArenaExit();
                         if (dragonKingSetBonusRegistered)
                         {
                             try
@@ -1592,6 +1640,9 @@ namespace BossRush
                             dragonKingSetBonusRegistered = false;
                         }
                         activeDragonKingHealths.Clear();
+
+                        // 清理幽灵女巫实例字典
+                        CleanupPhantomWitchTrackedStateOnArenaExit();
 
                         // 清理 NotificationText.pendingTexts 队列
                         try

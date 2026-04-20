@@ -65,6 +65,13 @@ namespace BossRush
         private static readonly string DragonKingArmorDescEN = "Forged from the core scales near the Dragon King's heart, a faint heartbeat still echoes within. When worn with the Dragon King's Crown, a mysterious resonance occurs, granting the Dragon King's protection, but forever marking you with the dragon's soul, bound to the fate of flames.\n<color=#FFD700>[Dragon King Set]</color> When worn with Dragon King's Crown: double-tap movement to Dragon King Dash (6m), chain a second dash (3m), leaving lava trails that burn enemies; fire damage heals you.";
         
         #endregion
+
+        #region 幽灵女巫Boss本地化数据
+
+        private static readonly string PhantomWitchBossNameCN = "<color=red>幽灵女巫</color>";
+        private static readonly string PhantomWitchBossNameEN = "<color=red>Phantom Witch</color>";
+
+        #endregion
         
         #region 龙息武器本地化数据
         
@@ -101,6 +108,7 @@ namespace BossRush
             {
                 InjectDragonSetLocalization();
                 InjectDragonKingSetLocalization();  // 龙王套装
+                InjectPhantomWitchBossLocalization();
                 InjectDragonDescendantLocalization();
                 InjectDragonBreathWeaponLocalization();
                 InjectDragonBurnBuffLocalization();
@@ -198,6 +206,25 @@ namespace BossRush
         public static string GetDragonKingBossName()
         {
             return L10n.T(DragonKingBossNameCN, DragonKingBossNameEN);
+        }
+
+        /// <summary>
+        /// 注入幽灵女巫Boss名称本地化
+        /// </summary>
+        public static void InjectPhantomWitchBossLocalization()
+        {
+            try
+            {
+                string displayName = L10n.T(PhantomWitchBossNameCN, PhantomWitchBossNameEN);
+
+                LocalizationHelper.InjectLocalization(PhantomWitchConfig.BossNameKey, displayName);
+
+                ModBehaviour.DevLog("[EquipmentLocalization] 幽灵女巫Boss本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入幽灵女巫Boss本地化失败: " + e.Message);
+            }
         }
         
         /// <summary>
