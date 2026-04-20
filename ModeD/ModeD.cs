@@ -136,6 +136,16 @@ namespace BossRush
             {
                 DevLog("[ModeD] 启动 Mode D 模式");
 
+                // 清理可能从无间炼狱残留的状态：ConfigureBossRushMode 是 infiniteHellMode
+                // 的唯一赋值点，玩家若先玩无间炼狱后直接进白手起家，残留的 true 会让
+                // OnBossBeforeSpawnLoot_LootAndRewards 禁用 Boss 掉落箱并在路牌旁掉钞票。
+                infiniteHellMode = false;
+                infiniteHellWaveIndex = 0;
+                infiniteHellCashPool = 0L;
+                infiniteHellMilestoneRewardTier = 0;
+                infiniteHellWaveCashThisWave = 0L;
+                ClearCashMagnetState();
+
                 modeDActive = true;
                 modeDWaveIndex = 0;
                 modeDWaveCompletePending = false;

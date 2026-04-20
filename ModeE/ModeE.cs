@@ -1353,6 +1353,14 @@ namespace BossRush
             {
                 DevLog("[ModeE] 启动 Mode E 模式，阵营: " + faction);
 
+                // 清理可能从无间炼狱残留的状态，避免 InfiniteHellCashMagnet/UI 提示误激活
+                infiniteHellMode = false;
+                infiniteHellWaveIndex = 0;
+                infiniteHellCashPool = 0L;
+                infiniteHellMilestoneRewardTier = 0;
+                infiniteHellWaveCashThisWave = 0L;
+                ClearCashMagnetState();
+
                 modeEActive = true;
                 int modeESessionToken = BeginModeESession();
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
