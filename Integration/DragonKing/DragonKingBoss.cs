@@ -102,13 +102,102 @@ namespace BossRush
                 DragonKingAbilityController.ClearStaticCache();
             }
         }
+
+        private void CleanupTrackedDragonKingsOnArenaExit()
+        {
+            // 取两个跟踪字典键的并集：通常两者等同，但拆分防御一致性破损。
+            HashSet<CharacterMainControl> trackedCharacters = new HashSet<CharacterMainControl>();
+            foreach (var kv in dragonKingInstances)
+            {
+                if (kv.Key != null) trackedCharacters.Add(kv.Key);
+            }
+            foreach (var kv in dragonKingLootEventHandlers)
+            {
+                if (kv.Key != null) trackedCharacters.Add(kv.Key);
+            }
+
+            HashSet<CharacterMainControl> destroyed = new HashSet<CharacterMainControl>();
+            foreach (CharacterMainControl character in trackedCharacters)
+            {
+                DragonKingAbilityController abilities;
+                if (dragonKingInstances.TryGetValue(character, out abilities) && abilities != null)
+                {
+                    try
+                    {
+                        abilities.OnBossDeath();
+                    }
+                    catch (Exception e)
+                    {
+                        DevLog("[DragonKing] [WARNING] 离开竞技场时清理能力控制器失败: " + e.Message);
+                    }
+                }
+
+                Action<DamageInfo> lootHandler;
+                if (dragonKingLootEventHandlers.TryGetValue(character, out lootHandler) && lootHandler != null)
+                {
+                    try
+                    {
+                        character.BeforeCharacterSpawnLootOnDead -= lootHandler;
+                    }
+                    catch (Exception e)
+                    {
+                        DevLog("[DragonKing] [WARNING] 离开竞技场时注销掉落事件失败: " + e.Message);
+                    }
+                }
+
+                if (currentBoss == character)
+                {
+                    currentBoss = null;
+                }
+
+                bossSpawnTimes.Remove(character);
+                bossOriginalLootCounts.Remove(character);
+
+                CleanupTrackedDragonKingCharacter(character, destroyed);
+            }
+
+            dragonKingInstances.Clear();
+            dragonKingLootEventHandlers.Clear();
+        }
+
+        private void CleanupTrackedDragonKingCharacter(
+            CharacterMainControl character,
+            HashSet<CharacterMainControl> cleanedCharacters)
+        {
+            if (character == null || !cleanedCharacters.Add(character))
+            {
+                return;
+            }
+
+            BossCleanupHelpers.DestroyRuntimePreset(
+                character,
+                DragonKingConfig.BossNameKey,
+                "DragonKing_Preset",
+                "[DragonKing]");
+
+            try
+            {
+                if (character.gameObject != null)
+                {
+                    UnityEngine.Object.Destroy(character.gameObject);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[DragonKing] [WARNING] 离开竞技场时销毁实例失败: " + e.Message);
+            }
+
+            ReleaseDragonKingInstance();
+        }
         
         // ========== 生成方法 ==========
         
         /// <summary>
         /// 生成龙王Boss
         /// </summary>
-        public async UniTask<CharacterMainControl> SpawnDragonKing(Vector3 position)
+        public async UniTask<CharacterMainControl> SpawnDragonKing(
+            Vector3 position,
+            bool notifyBossRushOnFailure = true)
         {
             try
             {
@@ -120,7 +209,10 @@ namespace BossRush
                 if (basePreset == null)
                 {
                     DevLog("[DragonKing] [ERROR] 未找到基础敌人预设");
-                    NotifyBossSpawnFailed();
+                    if (notifyBossRushOnFailure)
+                    {
+                        NotifyBossSpawnFailed();
+                    }
                     return null;
                 }
                 
@@ -134,7 +226,10 @@ namespace BossRush
                 if (character == null)
                 {
                     DevLog("[DragonKing] [ERROR] 生成角色失败");
-                    NotifyBossSpawnFailed();
+                    if (notifyBossRushOnFailure)
+                    {
+                        NotifyBossSpawnFailed();
+                    }
                     return null;
                 }
                 
@@ -247,6 +342,10 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog($"[DragonKing] [ERROR] 生成Boss失败: {e.Message}\n{e.StackTrace}");
+                if (notifyBossRushOnFailure)
+                {
+                    NotifyBossSpawnFailed();
+                }
                 return null;
             }
         }
@@ -466,7 +565,25 @@ namespace BossRush
             dragonKingInstances.Remove(deadKing);
             
             // 清理掉落事件委托引用
+            Action<DamageInfo> lootHandler = null;
+            if (deadKing != null && dragonKingLootEventHandlers.TryGetValue(deadKing, out lootHandler) && lootHandler != null)
+            {
+                try
+                {
+                    deadKing.BeforeCharacterSpawnLootOnDead -= lootHandler;
+                }
+                catch (Exception e)
+                {
+                    DevLog("[DragonKing] [WARNING] 注销掉落事件失败: " + e.Message);
+                }
+            }
             dragonKingLootEventHandlers.Remove(deadKing);
+
+            BossCleanupHelpers.DestroyRuntimePreset(
+                deadKing,
+                DragonKingConfig.BossNameKey,
+                "DragonKing_Preset",
+                "[DragonKing]");
 
             // 释放Boss实例资源（使用引用计数）
             ReleaseDragonKingInstance();
