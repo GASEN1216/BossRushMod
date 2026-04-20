@@ -184,5 +184,106 @@ namespace BossRush
         {
             AddTagToItem(item, "Repairable");
         }
+
+        // ========== 宝石槽位 ==========
+
+        private static Tag _cachedGemTag;
+        private static bool _gemTagSearched;
+
+        /// <summary>
+        /// 为物品添加指定数量的宝石槽位（requireTag = "Gem"）
+        /// </summary>
+        /// <param name="item">目标物品</param>
+        /// <param name="slotCount">槽位数量（默认 2）</param>
+        public static void ConfigureGemSlots(Item item, int slotCount = 2)
+        {
+            if (item == null)
+            {
+                ModBehaviour.DevLog("[EquipmentHelper] ConfigureGemSlots: item 为空");
+                return;
+            }
+
+            try
+            {
+                // 确保 SlotCollection 存在
+                if (item.Slots == null)
+                {
+                    item.CreateSlotsComponent();
+                }
+
+                if (item.Slots == null)
+                {
+                    ModBehaviour.DevLog("[EquipmentHelper] 无法获取或创建 SlotCollection: " + item.name);
+                    return;
+                }
+
+                // 查找 Gem Tag（缓存结果）
+                Tag gemTag = GetGemTag();
+
+                int added = 0;
+                for (int i = 1; i <= slotCount; i++)
+                {
+                    string slotKey = "Gem" + i;
+
+                    // 跳过已存在的槽位
+                    if (item.Slots.GetSlot(slotKey) != null)
+                    {
+                        continue;
+                    }
+
+                    Slot slot = new Slot(slotKey);
+                    if (gemTag != null)
+                    {
+                        slot.requireTags.Add(gemTag);
+                    }
+                    item.Slots.Add(slot);
+                    added++;
+                }
+
+                ModBehaviour.DevLog("[EquipmentHelper] 已为 " + item.name + " 添加 " + added + " 个宝石槽位"
+                    + (gemTag != null ? " (Gem 标签已设置)" : " (警告: 未找到 Gem 标签)"));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentHelper] ConfigureGemSlots 出错: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+
+        private static Tag GetGemTag()
+        {
+            if (_gemTagSearched)
+            {
+                return _cachedGemTag;
+            }
+
+            _gemTagSearched = true;
+
+            try
+            {
+                var allTags = GameplayDataSettings.Tags.AllTags;
+                if (allTags != null)
+                {
+                    foreach (Tag tag in allTags)
+                    {
+                        if (tag != null && tag.name == "Gem")
+                        {
+                            _cachedGemTag = tag;
+                            break;
+                        }
+                    }
+                }
+
+                if (_cachedGemTag == null)
+                {
+                    ModBehaviour.DevLog("[EquipmentHelper] 未在 GameplayDataSettings.Tags.AllTags 中找到 Gem 标签");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentHelper] GetGemTag 出错: " + e.Message);
+            }
+
+            return _cachedGemTag;
+        }
     }
 }

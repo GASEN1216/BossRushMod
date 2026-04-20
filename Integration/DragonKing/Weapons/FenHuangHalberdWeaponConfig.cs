@@ -100,6 +100,9 @@ namespace BossRush
                 // 4. 添加标签
                 ConfigureTags(item);
 
+                // 4.5 添加宝石槽位（2 个 Gem 槽）
+                EquipmentHelper.ConfigureGemSlots(item, 2);
+
                 if (modelAgent != null)
                 {
                     EquipmentFactory.TryBindLoadedMeleeModel(item, FenHuangHalberdIds.ModelBaseName, HALBERD_BASE_NAME);

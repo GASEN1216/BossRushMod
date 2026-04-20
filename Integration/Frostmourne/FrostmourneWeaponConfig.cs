@@ -109,6 +109,9 @@ namespace BossRush
                 // 5. 添加 ColdProtection +2 modifier
                 ConfigureModifiers(item);
 
+                // 5.5 添加宝石槽位（2 个 Gem 槽）
+                EquipmentHelper.ConfigureGemSlots(item, 2);
+
                 if (modelAgent != null)
                 {
                     EquipmentFactory.TryBindLoadedMeleeModel(item, FrostmourneIds.ModelBaseName, FROSTMOURNE_BASE_NAME);
