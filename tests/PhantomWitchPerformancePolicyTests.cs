@@ -31,23 +31,23 @@ internal static class PhantomWitchPerformancePolicyTests
     {
         AssertEqual(
             "ResolveFxDetailLevel normal",
-            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(0, false, 6, 10),
+            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(0, 6, 10),
             PhantomWitchFxDetailLevel.Full);
 
         AssertEqual(
             "ResolveFxDetailLevel reduced threshold",
-            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(6, false, 6, 10),
+            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(6, 6, 10),
             PhantomWitchFxDetailLevel.Reduced);
 
         AssertEqual(
             "ResolveFxDetailLevel minimal threshold",
-            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(10, false, 6, 10),
+            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(10, 6, 10),
             PhantomWitchFxDetailLevel.Minimal);
 
         AssertEqual(
-            "ResolveFxDetailLevel low spec prefers minimal",
-            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(0, true, 6, 10),
-            PhantomWitchFxDetailLevel.Minimal);
+            "ResolveFxDetailLevel ignores machine class and follows active roots only",
+            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(0, 6, 10),
+            PhantomWitchFxDetailLevel.Full);
     }
 
     private static void TestShouldSkipEffect()
@@ -87,12 +87,39 @@ internal static class PhantomWitchPerformancePolicyTests
                 6,
                 10,
                 PhantomWitchFxEffectImportance.Standard));
+
+        AssertFalse(
+            "Standard effect kept on minimal before saturation",
+            PhantomWitchPerformancePolicy.ShouldSkipEffect(
+                PhantomWitchFxDetailLevel.Minimal,
+                5,
+                6,
+                10,
+                PhantomWitchFxEffectImportance.Standard));
+    }
+
+    private static void TestThresholdNormalization()
+    {
+        AssertEqual(
+            "ResolveFxDetailLevel normalizes negative thresholds",
+            PhantomWitchPerformancePolicy.ResolveFxDetailLevel(0, -2, -1),
+            PhantomWitchFxDetailLevel.Minimal);
+
+        AssertTrue(
+            "Optional effect skipped when active roots reach normalized minimal threshold",
+            PhantomWitchPerformancePolicy.ShouldSkipEffect(
+                PhantomWitchFxDetailLevel.Reduced,
+                5,
+                5,
+                3,
+                PhantomWitchFxEffectImportance.Optional));
     }
 
     public static int Main()
     {
         TestResolveFxDetailLevel();
         TestShouldSkipEffect();
+        TestThresholdNormalization();
         Console.WriteLine("PhantomWitchPerformancePolicyTests: PASS");
         return 0;
     }
