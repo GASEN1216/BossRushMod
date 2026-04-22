@@ -219,6 +219,11 @@ namespace BossRush
 
                 // 查找 Gem Tag（缓存结果）
                 Tag gemTag = GetGemTag();
+                if (gemTag == null)
+                {
+                    ModBehaviour.DevLog("[EquipmentHelper] 未找到 Gem 标签，取消为 " + item.name + " 创建宝石槽位");
+                    return;
+                }
 
                 int added = 0;
                 for (int i = 1; i <= slotCount; i++)
@@ -232,16 +237,12 @@ namespace BossRush
                     }
 
                     Slot slot = new Slot(slotKey);
-                    if (gemTag != null)
-                    {
-                        slot.requireTags.Add(gemTag);
-                    }
+                    slot.requireTags.Add(gemTag);
                     item.Slots.Add(slot);
                     added++;
                 }
 
-                ModBehaviour.DevLog("[EquipmentHelper] 已为 " + item.name + " 添加 " + added + " 个宝石槽位"
-                    + (gemTag != null ? " (Gem 标签已设置)" : " (警告: 未找到 Gem 标签)"));
+                ModBehaviour.DevLog("[EquipmentHelper] 已为 " + item.name + " 添加 " + added + " 个宝石槽位 (Gem 标签已设置)");
             }
             catch (Exception e)
             {
@@ -256,11 +257,10 @@ namespace BossRush
                 return _cachedGemTag;
             }
 
-            _gemTagSearched = true;
-
             try
             {
-                var allTags = GameplayDataSettings.Tags.AllTags;
+                var tags = GameplayDataSettings.Tags;
+                var allTags = tags != null ? tags.AllTags : null;
                 if (allTags != null)
                 {
                     foreach (Tag tag in allTags)
@@ -272,6 +272,8 @@ namespace BossRush
                         }
                     }
                 }
+
+                _gemTagSearched = _cachedGemTag != null;
 
                 if (_cachedGemTag == null)
                 {
