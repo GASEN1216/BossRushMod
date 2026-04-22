@@ -284,6 +284,12 @@ namespace BossRush
                     continue;
                 }
 
+                CharacterMainControl realmTarget = receiver.health.TryGetCharacter();
+                if (realmTarget == null)
+                {
+                    continue;
+                }
+
                 // 2D 距离二次过滤
                 Vector3 delta = receiver.transform.position - realmOrigin;
                 delta.y = 0f;
@@ -316,9 +322,8 @@ namespace BossRush
                 {
                     try
                     {
-                        receiver.AddBuff(curseBuff, caster);
-                        CharacterMainControl realmTarget = (receiver.health != null) ? receiver.health.TryGetCharacter() : null;
-                        PhantomWitchCurseSweatVfx.TryAttach(realmTarget != null ? realmTarget.gameObject : receiver.gameObject);
+                        realmTarget.AddBuff(curseBuff, caster, PhantomWitchScytheIds.WeaponTypeId);
+                        PhantomWitchCurseSweatVfx.TryAttach(realmTarget.gameObject);
                     }
                     catch (Exception e)
                     {
@@ -378,9 +383,9 @@ namespace BossRush
         private static Material cachedParticleMaterial;
         private static Mesh cachedQuadMesh;
 
-        private const int OuterRingSegments = 48;
-        private const int InnerRingSegments = 32;
-        private const int RuneMarkCount = 6;
+        private const int OuterRingSegments = 32;
+        private const int InnerRingSegments = 20;
+        private const int RuneMarkCount = 5;
         private const float RotationSpeedOuter = 14f;
         private const float RotationSpeedInner = -22f;
 
@@ -420,13 +425,18 @@ namespace BossRush
             root.transform.position = origin;
             PhantomWitchFxRuntime.RegisterEffectRoot(root);
 
-            Shader unlit = Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Transparent") ?? Shader.Find("Unlit/Color");
+            Shader unlit = Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Particles/Additive") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Transparent") ?? Shader.Find("Unlit/Color");
 
-            // 按"远→近"顺序搭建层级：地面染色 → 冲击波 → 外环 → 内环 → 符文 → 五芒线 → 中心光 → 粒子
+            if (detailLevel != PhantomWitchFxDetailLevel.Minimal)
+            {
+                CreatePointLight(root.transform, new Vector3(0f, 1f, 0f), CoreGlowColor, radius * 1.5f, 6.5f, duration);
+            }
+
             CreateGroundStain(root.transform, radius, unlit);
             CreateShockwave(root.transform, radius, outerSegments, unlit);
             CreateRingChild(root.transform, "OuterRing", radius, outerSegments, 0.22f, RingColorOuter, RotationSpeedOuter, unlit, pulse: detailLevel == PhantomWitchFxDetailLevel.Full);
             CreateRingChild(root.transform, "InnerRing", radius * 0.72f, innerSegments, 0.14f, RingColorInner, RotationSpeedInner, unlit, pulse: detailLevel != PhantomWitchFxDetailLevel.Minimal);
+
             if (runeCount > 0)
             {
                 CreateRuneMarks(root.transform, radius * 0.55f, runeCount, unlit);
@@ -438,6 +448,10 @@ namespace BossRush
             CreateCoreGlow(root.transform, radius * 0.32f, unlit, detailLevel != PhantomWitchFxDetailLevel.Minimal);
             CreateRisingWisps(root.transform, radius, duration, detailLevel);
             CreateOrbitSparks(root.transform, radius, duration, detailLevel);
+            if (detailLevel != PhantomWitchFxDetailLevel.Minimal)
+            {
+                PhantomWitchVfxRedesign.CreateStardustEmitter(root.transform, radius * 0.95f, 10f, duration);
+            }
 
             // 淡入淡出 + 总时长自毁
             PhantomWitchCurseRealmFader fader = root.AddComponent<PhantomWitchCurseRealmFader>();
@@ -452,6 +466,23 @@ namespace BossRush
             return root;
         }
 
+        private static void CreatePointLight(Transform parent, Vector3 localPos, Color color, float range, float intensity, float duration)
+        {
+            GameObject lightGo = new GameObject("PW_PointLight");
+            lightGo.transform.SetParent(parent, false);
+            lightGo.transform.localPosition = localPos;
+            Light light = lightGo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = color;
+            light.range = range;
+            light.intensity = intensity;
+            light.shadows = LightShadows.None;
+            light.renderMode = LightRenderMode.ForceVertex;
+
+            PhantomWitchLightPulse pulser = lightGo.AddComponent<PhantomWitchLightPulse>();
+            pulser.Configure(intensity, range, duration);
+        }
+
         // ---------- 地面染色：放在最底层的柔化紫色圆盘，给一种"被污染的土地"感 ----------
         private static void CreateGroundStain(Transform parent, float radius, Shader unlit)
         {
@@ -463,26 +494,10 @@ namespace BossRush
         {
             GameObject shock = new GameObject("Shockwave");
             shock.transform.SetParent(parent, false);
-            shock.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+            shock.transform.localPosition = new Vector3(0f, 0.01f, 0f);
 
-            LineRenderer lr = shock.AddComponent<LineRenderer>();
-            lr.useWorldSpace = false;
-            lr.loop = true;
-            lr.positionCount = segments;
-            lr.widthMultiplier = 0.10f;
-            Material sharedLine = GetSharedLineMaterial(unlit);
-            if (sharedLine != null)
-            {
-                lr.sharedMaterial = sharedLine;
-            }
-            lr.startColor = ShockwaveColor;
-            lr.endColor = ShockwaveColor;
-
-            for (int i = 0; i < segments; i++)
-            {
-                float angle = (float)i / segments * Mathf.PI * 2f;
-                lr.SetPosition(i, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)));
-            }
+            PhantomWitchFlatRingMesh ringMesh = shock.AddComponent<PhantomWitchFlatRingMesh>();
+            ringMesh.Configure(Mathf.Max(12, segments), 0.01f, 0.28f, GetSharedLineMaterial(unlit), ShockwaveColor);
 
             PhantomWitchShockwaveAnimation shockAnim = shock.AddComponent<PhantomWitchShockwaveAnimation>();
             shockAnim.Configure(radius * 1.15f, 0.35f, ShockwaveColor);
@@ -493,26 +508,10 @@ namespace BossRush
         {
             GameObject ring = new GameObject(name);
             ring.transform.SetParent(parent, false);
-            ring.transform.localPosition = new Vector3(0f, 0.08f, 0f);
+            ring.transform.localPosition = new Vector3(0f, 0.03f, 0f);
 
-            LineRenderer lr = ring.AddComponent<LineRenderer>();
-            lr.useWorldSpace = false;
-            lr.loop = true;
-            lr.positionCount = segments;
-            lr.widthMultiplier = width;
-            Material sharedLine = GetSharedLineMaterial(unlit);
-            if (sharedLine != null)
-            {
-                lr.sharedMaterial = sharedLine;
-            }
-            lr.startColor = color;
-            lr.endColor = color;
-
-            for (int i = 0; i < segments; i++)
-            {
-                float angle = (float)i / segments * Mathf.PI * 2f;
-                lr.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
-            }
+            PhantomWitchFlatRingMesh ringMesh = ring.AddComponent<PhantomWitchFlatRingMesh>();
+            ringMesh.Configure(Mathf.Max(12, segments), radius, width, GetSharedLineMaterial(unlit), color);
 
             PhantomWitchRingSpin spin = ring.AddComponent<PhantomWitchRingSpin>();
             spin.rotationSpeed = rotationSpeed;
@@ -520,7 +519,7 @@ namespace BossRush
             if (pulse)
             {
                 PhantomWitchRingPulse pulseAnim = ring.AddComponent<PhantomWitchRingPulse>();
-                pulseAnim.Configure(width, 0.25f, 1.6f, color);
+                pulseAnim.Configure(1f, 0.03f, 1.6f, color);
             }
         }
 
@@ -534,32 +533,16 @@ namespace BossRush
 
             GameObject runeRoot = new GameObject("RuneMarks");
             runeRoot.transform.SetParent(parent, false);
-            runeRoot.transform.localPosition = new Vector3(0f, 0.10f, 0f);
+            runeRoot.transform.localPosition = new Vector3(0f, 0.05f, 0f);
             Material sharedLine = GetSharedLineMaterial(unlit);
+            Color runeColor = new Color(RuneMarkColor.r, RuneMarkColor.g, RuneMarkColor.b, 0.78f);
 
             for (int i = 0; i < count; i++)
             {
-                GameObject seg = new GameObject("Rune_" + i);
-                seg.transform.SetParent(runeRoot.transform, false);
-
                 float baseAngle = (float)i / count * Mathf.PI * 2f;
                 Vector3 center = new Vector3(Mathf.Cos(baseAngle) * radius, 0f, Mathf.Sin(baseAngle) * radius);
-
-                LineRenderer lr = seg.AddComponent<LineRenderer>();
-                lr.useWorldSpace = false;
-                lr.loop = false;
-                lr.widthMultiplier = 0.11f;
-                lr.positionCount = 2;
-                if (sharedLine != null)
-                {
-                    lr.sharedMaterial = sharedLine;
-                }
-                lr.startColor = RuneMarkColor;
-                lr.endColor = new Color(RuneMarkColor.r, RuneMarkColor.g, RuneMarkColor.b, 0.45f);
-
                 Vector3 tangent = new Vector3(-Mathf.Sin(baseAngle), 0f, Mathf.Cos(baseAngle)) * 0.55f;
-                lr.SetPosition(0, center - tangent);
-                lr.SetPosition(1, center + tangent);
+                CreateFlatSegment(runeRoot.transform, "Rune_" + i, center - tangent, center + tangent, 0.11f, runeColor, sharedLine, 0f);
             }
 
             PhantomWitchRingSpin spin = runeRoot.AddComponent<PhantomWitchRingSpin>();
@@ -571,19 +554,9 @@ namespace BossRush
         {
             GameObject pent = new GameObject("Pentagram");
             pent.transform.SetParent(parent, false);
-            pent.transform.localPosition = new Vector3(0f, 0.11f, 0f);
-
-            LineRenderer lr = pent.AddComponent<LineRenderer>();
-            lr.useWorldSpace = false;
-            lr.loop = true;
-            lr.widthMultiplier = 0.06f;
+            pent.transform.localPosition = new Vector3(0f, 0.07f, 0f);
             Material sharedLine = GetSharedLineMaterial(unlit);
-            if (sharedLine != null)
-            {
-                lr.sharedMaterial = sharedLine;
-            }
-            lr.startColor = new Color(RingColorInner.r, RingColorInner.g, RingColorInner.b, 0.55f);
-            lr.endColor = new Color(RingColorInner.r, RingColorInner.g, RingColorInner.b, 0.55f);
+            Color pentagramColor = new Color(RingColorInner.r, RingColorInner.g, RingColorInner.b, 0.55f);
 
             // 5 点五芒星：按 i * 2 跳点连接形成星形
             Vector3[] points = new Vector3[5];
@@ -598,8 +571,11 @@ namespace BossRush
             {
                 order[i] = points[(i * 2) % 5];
             }
-            lr.positionCount = 5;
-            lr.SetPositions(order);
+
+            for (int i = 0; i < order.Length; i++)
+            {
+                CreateFlatSegment(pent.transform, "Edge_" + i, order[i], order[(i + 1) % order.Length], 0.06f, pentagramColor, sharedLine, i * 0.002f);
+            }
 
             PhantomWitchRingSpin spin = pent.AddComponent<PhantomWitchRingSpin>();
             spin.rotationSpeed = RotationSpeedOuter * 0.4f;
@@ -620,8 +596,8 @@ namespace BossRush
         // ---------- 上升亡魂粒子：从地面缓缓升起，偏冷蓝紫的光点 ----------
         private static void CreateRisingWisps(Transform parent, float radius, float duration, PhantomWitchFxDetailLevel detailLevel)
         {
-            int maxParticles = ResolveAdaptiveCount(detailLevel, 48, 24, 0);
-            float emissionRate = ResolveAdaptiveFloat(detailLevel, 14f, 8f, 0f);
+            int maxParticles = ResolveAdaptiveCount(detailLevel, 28, 14, 0);
+            float emissionRate = ResolveAdaptiveFloat(detailLevel, 8f, 4f, 0f);
             if (maxParticles <= 0 || emissionRate <= 0f)
             {
                 return;
@@ -700,8 +676,8 @@ namespace BossRush
         // ---------- 外缘星火：沿领域边缘绕圈的小亮点，加强"阵法运转"感 ----------
         private static void CreateOrbitSparks(Transform parent, float radius, float duration, PhantomWitchFxDetailLevel detailLevel)
         {
-            int maxParticles = ResolveAdaptiveCount(detailLevel, 64, 28, 0);
-            float emissionRate = ResolveAdaptiveFloat(detailLevel, 24f, 10f, 0f);
+            int maxParticles = ResolveAdaptiveCount(detailLevel, 32, 16, 0);
+            float emissionRate = ResolveAdaptiveFloat(detailLevel, 12f, 6f, 0f);
             if (maxParticles <= 0 || emissionRate <= 0f)
             {
                 return;
@@ -756,30 +732,8 @@ namespace BossRush
 
         private static void ConfigureDefaultParticleRenderer(ParticleSystem ps)
         {
-            ParticleSystemRenderer renderer = ps.GetComponent<ParticleSystemRenderer>();
-            if (renderer == null)
-            {
-                return;
-            }
-
-            // 使用游戏内置 Sprites/Default 透明材质；该 Shader 在 URP/Built-in 都可用
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null)
-            {
-                shader = Shader.Find("Unlit/Transparent");
-            }
-            if (shader != null)
-            {
-                Material sharedParticle = GetSharedParticleMaterial(shader);
-                if (sharedParticle != null)
-                {
-                    renderer.sharedMaterial = sharedParticle;
-                }
-            }
-
-            renderer.renderMode = ParticleSystemRenderMode.Billboard;
-            renderer.alignment = ParticleSystemRenderSpace.View;
-            renderer.sortMode = ParticleSystemSortMode.Distance;
+            // 复用 AssetManager 的共享软圆粒子材质（Additive 混合 + 柔和渐变纹理）
+            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
         }
 
         private static Material GetSharedLineMaterial(Shader shader)
@@ -796,47 +750,24 @@ namespace BossRush
             }
 
             cachedLineMaterial = new Material(shader);
-            cachedLineMaterial.name = "PW_CurseRealm_Line";
+            cachedLineMaterial.name = "PW_CurseRealm_FlatLine";
             cachedLineMaterial.enableInstancing = true;
+            if (cachedLineMaterial.HasProperty("_MainTex"))
+            {
+                cachedLineMaterial.mainTexture = Texture2D.whiteTexture;
+            }
+            cachedLineMaterial.renderQueue = 3000;
             return cachedLineMaterial;
         }
 
         private static Material GetSharedQuadMaterial(Shader shader)
         {
-            if (cachedQuadMaterial != null)
-            {
-                return cachedQuadMaterial;
-            }
-
-            shader = ResolveShader(shader);
-            if (shader == null)
-            {
-                return null;
-            }
-
-            cachedQuadMaterial = new Material(shader);
-            cachedQuadMaterial.name = "PW_CurseRealm_Quad";
-            cachedQuadMaterial.enableInstancing = true;
-            return cachedQuadMaterial;
+            return PhantomWitchAssetManager.GetQuadMaterial();
         }
 
         private static Material GetSharedParticleMaterial(Shader shader)
         {
-            if (cachedParticleMaterial != null)
-            {
-                return cachedParticleMaterial;
-            }
-
-            shader = ResolveShader(shader);
-            if (shader == null)
-            {
-                return null;
-            }
-
-            cachedParticleMaterial = new Material(shader);
-            cachedParticleMaterial.name = "PW_CurseRealm_Particle";
-            cachedParticleMaterial.enableInstancing = true;
-            return cachedParticleMaterial;
+            return PhantomWitchAssetManager.GetParticleMaterial();
         }
 
         private static Mesh GetSharedQuadMesh()
@@ -865,6 +796,106 @@ namespace BossRush
             cachedQuadMesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
             cachedQuadMesh.RecalculateNormals();
             return cachedQuadMesh;
+        }
+
+        private static GameObject CreateFlatSegment(Transform parent, string name, Vector3 start, Vector3 end, float width, Color color, Material material, float yOffset)
+        {
+            GameObject segment = new GameObject(name);
+            segment.transform.SetParent(parent, false);
+            segment.transform.localPosition = new Vector3(0f, yOffset, 0f);
+
+            MeshFilter meshFilter = segment.AddComponent<MeshFilter>();
+            Mesh mesh = BuildSegmentMesh(start, end, width);
+            meshFilter.sharedMesh = mesh;
+
+            MeshRenderer meshRenderer = segment.AddComponent<MeshRenderer>();
+            if (material != null)
+            {
+                meshRenderer.sharedMaterial = material;
+                PhantomWitchFxRenderUtil.SetRendererColor(meshRenderer, color);
+            }
+
+            PhantomWitchRuntimeMesh runtimeMesh = segment.AddComponent<PhantomWitchRuntimeMesh>();
+            runtimeMesh.SetMesh(mesh);
+            return segment;
+        }
+
+        private static Mesh BuildSegmentMesh(Vector3 start, Vector3 end, float width)
+        {
+            Vector3 direction = end - start;
+            if (direction.sqrMagnitude < 0.0001f)
+            {
+                direction = Vector3.right * 0.001f;
+            }
+
+            Vector3 side = Vector3.Cross(Vector3.up, direction.normalized) * (Mathf.Max(0.001f, width) * 0.5f);
+            Mesh mesh = new Mesh();
+            mesh.name = "PW_CurseRealm_SegmentMesh";
+            mesh.vertices = new Vector3[]
+            {
+                start - side,
+                start + side,
+                end + side,
+                end - side
+            };
+            mesh.uv = new Vector2[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+                new Vector2(1f, 0f)
+            };
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        internal static void BuildRingMesh(Mesh mesh, float radius, float width, int segments)
+        {
+            if (mesh == null)
+            {
+                return;
+            }
+
+            segments = Mathf.Max(3, segments);
+            radius = Mathf.Max(0.001f, radius);
+            width = Mathf.Max(0.001f, width);
+
+            float outerRadius = radius + width * 0.5f;
+            float innerRadius = Mathf.Max(0.001f, radius - width * 0.5f);
+            Vector3[] vertices = new Vector3[segments * 2];
+            Vector2[] uv = new Vector2[segments * 2];
+            int[] triangles = new int[segments * 6];
+
+            for (int i = 0; i < segments; i++)
+            {
+                float angle = (float)i / segments * Mathf.PI * 2f;
+                float cos = Mathf.Cos(angle);
+                float sin = Mathf.Sin(angle);
+                int vertexIndex = i * 2;
+                vertices[vertexIndex] = new Vector3(cos * outerRadius, 0f, sin * outerRadius);
+                vertices[vertexIndex + 1] = new Vector3(cos * innerRadius, 0f, sin * innerRadius);
+                float u = (float)i / segments;
+                uv[vertexIndex] = new Vector2(u, 1f);
+                uv[vertexIndex + 1] = new Vector2(u, 0f);
+
+                int nextVertexIndex = ((i + 1) % segments) * 2;
+                int triangleIndex = i * 6;
+                triangles[triangleIndex] = vertexIndex;
+                triangles[triangleIndex + 1] = vertexIndex + 1;
+                triangles[triangleIndex + 2] = nextVertexIndex;
+                triangles[triangleIndex + 3] = vertexIndex + 1;
+                triangles[triangleIndex + 4] = nextVertexIndex + 1;
+                triangles[triangleIndex + 5] = nextVertexIndex;
+            }
+
+            mesh.Clear();
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
         }
 
         internal static void ClearCache()
@@ -922,7 +953,7 @@ namespace BossRush
                 return shader;
             }
 
-            shader = Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Transparent") ?? Shader.Find("Unlit/Color");
+            shader = Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Particles/Additive") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Transparent") ?? Shader.Find("Unlit/Color");
             return shader;
         }
     }
@@ -938,45 +969,153 @@ namespace BossRush
         }
     }
 
+    internal sealed class PhantomWitchRuntimeMesh : MonoBehaviour
+    {
+        private Mesh mesh;
+
+        internal void SetMesh(Mesh mesh)
+        {
+            this.mesh = mesh;
+        }
+
+        private void OnDestroy()
+        {
+            if (mesh != null)
+            {
+                Destroy(mesh);
+                mesh = null;
+            }
+        }
+    }
+
+    internal sealed class PhantomWitchFlatRingMesh : MonoBehaviour
+    {
+        private MeshFilter meshFilter;
+        private MeshRenderer meshRenderer;
+        private MaterialPropertyBlock propertyBlock;
+        private Mesh mesh;
+        private int segments;
+
+        internal void Configure(int segments, float radius, float width, Material material, Color color)
+        {
+            this.segments = Mathf.Max(3, segments);
+            meshFilter = GetComponent<MeshFilter>();
+            if (meshFilter == null)
+            {
+                meshFilter = gameObject.AddComponent<MeshFilter>();
+            }
+
+            meshRenderer = GetComponent<MeshRenderer>();
+            if (meshRenderer == null)
+            {
+                meshRenderer = gameObject.AddComponent<MeshRenderer>();
+            }
+
+            if (mesh == null)
+            {
+                mesh = new Mesh();
+                mesh.name = "PW_CurseRealm_RingMesh";
+            }
+
+            meshFilter.sharedMesh = mesh;
+            if (material != null)
+            {
+                meshRenderer.sharedMaterial = material;
+            }
+
+            if (propertyBlock == null)
+            {
+                propertyBlock = new MaterialPropertyBlock();
+            }
+
+            SetShape(radius, width);
+            SetColor(color);
+        }
+
+        internal void SetShape(float radius, float width)
+        {
+            if (mesh == null)
+            {
+                return;
+            }
+
+            PhantomWitchCurseRealmVisual.BuildRingMesh(mesh, radius, width, segments);
+        }
+
+        internal void SetColor(Color color)
+        {
+            if (meshRenderer == null)
+            {
+                return;
+            }
+
+            if (propertyBlock == null)
+            {
+                propertyBlock = new MaterialPropertyBlock();
+            }
+
+            PhantomWitchFxRenderUtil.SetRendererColor(meshRenderer, propertyBlock, color);
+        }
+
+        private void OnDestroy()
+        {
+            if (mesh != null)
+            {
+                Destroy(mesh);
+                mesh = null;
+            }
+        }
+    }
+
     /// <summary>LineRenderer 宽度/颜色呼吸，给环增加"能量流动"感。</summary>
     internal sealed class PhantomWitchRingPulse : MonoBehaviour
     {
-        private LineRenderer lineRenderer;
-        private float baseWidth;
+        private Renderer targetRenderer;
+        private MaterialPropertyBlock propertyBlock;
+        private float baseScale;
         private float amplitude;
         private float frequency;
         private Color baseColor;
+        private Vector3 initialScale;
+        private float lastPulseAlpha;
 
-        public void Configure(float baseWidth, float amplitude, float frequency, Color baseColor)
+        public void Configure(float baseScale, float amplitude, float frequency, Color baseColor)
         {
-            this.lineRenderer = GetComponent<LineRenderer>();
-            this.baseWidth = baseWidth;
-            this.amplitude = amplitude * baseWidth;
+            this.targetRenderer = GetComponent<Renderer>();
+            this.propertyBlock = new MaterialPropertyBlock();
+            this.baseScale = baseScale;
+            this.amplitude = amplitude;
             this.frequency = frequency;
             this.baseColor = baseColor;
+            this.initialScale = transform.localScale;
+            this.lastPulseAlpha = Mathf.Max(0.0001f, baseColor.a);
         }
 
         private void Update()
         {
-            if (lineRenderer == null)
+            if (targetRenderer == null)
             {
                 return;
             }
 
             float s = 0.5f + 0.5f * Mathf.Sin(Time.time * frequency * Mathf.PI * 2f);
-            lineRenderer.widthMultiplier = baseWidth + amplitude * s;
+            float factor = baseScale + amplitude * s;
+            transform.localScale = initialScale * factor;
 
+            Color currentColor = PhantomWitchFxRenderUtil.GetRendererColor(targetRenderer, propertyBlock);
+            float fadeFactor = Mathf.Clamp01(currentColor.a / Mathf.Max(0.0001f, lastPulseAlpha));
+            float pulseAlpha = Mathf.Lerp(baseColor.a * 0.7f, baseColor.a, s);
             Color c = baseColor;
-            c.a = Mathf.Lerp(baseColor.a * 0.7f, baseColor.a, s);
-            lineRenderer.startColor = c;
-            lineRenderer.endColor = c;
+            c.a = pulseAlpha * fadeFactor;
+            lastPulseAlpha = Mathf.Max(0.0001f, pulseAlpha);
+            PhantomWitchFxRenderUtil.SetRendererColor(targetRenderer, propertyBlock, c);
         }
     }
 
     /// <summary>开场冲击波：半径 0→target，持续很短，自毁。</summary>
     internal sealed class PhantomWitchShockwaveAnimation : MonoBehaviour
     {
-        private LineRenderer lineRenderer;
+        private PhantomWitchFlatRingMesh ringMesh;
         private float targetRadius;
         private float duration;
         private Color baseColor;
@@ -984,7 +1123,7 @@ namespace BossRush
 
         public void Configure(float targetRadius, float duration, Color color)
         {
-            this.lineRenderer = GetComponent<LineRenderer>();
+            this.ringMesh = GetComponent<PhantomWitchFlatRingMesh>();
             this.targetRadius = targetRadius;
             this.duration = duration;
             this.baseColor = color;
@@ -993,7 +1132,7 @@ namespace BossRush
 
         private void Update()
         {
-            if (lineRenderer == null)
+            if (ringMesh == null)
             {
                 Destroy(this);
                 return;
@@ -1004,19 +1143,12 @@ namespace BossRush
             // 开场快、尾端收（easeOutQuad）
             float eased = 1f - (1f - t) * (1f - t);
             float radius = Mathf.Lerp(0f, targetRadius, eased);
-
-            int count = lineRenderer.positionCount;
-            for (int i = 0; i < count; i++)
-            {
-                float angle = (float)i / count * Mathf.PI * 2f;
-                lineRenderer.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
-            }
+            float width = Mathf.Lerp(0.28f, 0.06f, t);
+            ringMesh.SetShape(radius, width);
 
             Color c = baseColor;
             c.a = baseColor.a * (1f - t);
-            lineRenderer.startColor = c;
-            lineRenderer.endColor = c;
-            lineRenderer.widthMultiplier = Mathf.Lerp(0.28f, 0.06f, t);
+            ringMesh.SetColor(c);
 
             if (t >= 1f)
             {

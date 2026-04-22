@@ -88,6 +88,8 @@ namespace BossRush
                 yield break;
             }
 
+            PhantomWitchScytheWeaponConfig.RefreshExistingCurseBindings();
+
             var mgr = PhantomWitchScytheAbilityManager.Instance;
             if (mgr == null)
             {

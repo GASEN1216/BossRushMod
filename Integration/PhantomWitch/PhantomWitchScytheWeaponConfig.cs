@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Duckov.Buffs;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using ItemStatsSystem.Stats;
@@ -36,24 +37,24 @@ namespace BossRush
         private static GameObject cachedFallbackHitFx;
         private static PhantomWitchScytheConfig cachedConfig;
 
-        // ========== 近战 Stats 数值（介于断界戟 55 / 霜之哀伤 38.5 之间）==========
+        // ========== 近战 Stats 数值（偏手感与机动，白板略低于霜之哀伤）==========
         // AttackSpeed 在游戏内解释为"每秒攻击次数"，攻击间隔 cd = 1 / AttackSpeed。
-        // 1.75 对应 ~0.57s/次，介于断界戟 (2.2, 0.45s) 与霜之哀伤 (1.54, 0.65s) 之间，符合设计定位。
+        // 1.56 对应 ~0.64s/次，接近霜之哀伤但配合更高移速与略长攻击范围，强调镰刀轻快手感。
         // 之前"A一下要等好久"的根因是 StatCollection._cachedStatsDictionary 缓存失效（见 InvalidateStatsDictionary），
         // 不是数值问题 —— 缓存没刷新时 GetStatValue 返回 0，Mathf.Max(0.1, 0) 让 cd 直接变成 10s。
         private static readonly Dictionary<string, float> WeaponStats = new Dictionary<string, float>
         {
-            { "Damage", 42f },
-            { "MoveSpeedMultiplier", 1.06f },
-            { "BlockBullet", 0.4f },
-            { "CritRate", 0.08f },
-            { "CritDamageFactor", 1.45f },
-            { "ArmorPiercing", 4.5f },
-            { "AttackSpeed", 1.75f },
+            { "Damage", 35.5f },
+            { "MoveSpeedMultiplier", 1.2f },
+            { "BlockBullet", 0.45f },
+            { "CritRate", 0.055f },
+            { "CritDamageFactor", 1.33f },
+            { "ArmorPiercing", 3.8f },
+            { "AttackSpeed", 1.56f },
             { "AttackRange", PhantomWitchScytheConfig.BaseAttackRange },
-            { "DealDamageTime", 0.1f },
-            { "StaminaCost", 8f },
-            { "BleedChance", 0.1f }
+            { "DealDamageTime", 0.09f },
+            { "StaminaCost", 6.5f },
+            { "BleedChance", 0.08f }
         };
 
         private static readonly HashSet<string> DisplayStats = new HashSet<string>
@@ -118,6 +119,7 @@ namespace BossRush
 
                 // 4. 添加 ItemSetting_MeleeWeapon 组件（Ghost 元素 + 诅咒 Buff）
                 ConfigureMeleeSetting(item);
+                SyncMeleeSettingToAgents(item, modelAgent);
 
                 // 5. 追加物品标签（含 PhantomWitch）
                 ConfigureTags(item);
@@ -424,6 +426,75 @@ namespace BossRush
         /// </summary>
         private static void ConfigureMeleeSetting(Item item)
         {
+            ItemSetting_MeleeWeapon meleeSetting = EnsureMeleeSettingConfigured(item, PhantomWitchAssetManager.GetCurseBuff());
+            if (meleeSetting == null)
+            {
+                return;
+            }
+
+            ModBehaviour.DevLog("[PhantomWitchScythe] 已配置 ItemSetting_MeleeWeapon (element=Ghost, curse="
+                + (meleeSetting.buff != null ? "50%" : "null") + ")");
+        }
+
+        public static void RefreshExistingCurseBindings()
+        {
+            try
+            {
+                Buff curseBuff = PhantomWitchAssetManager.GetCurseBuff();
+                if (curseBuff == null)
+                {
+                    return;
+                }
+
+                Item[] items = Resources.FindObjectsOfTypeAll<Item>();
+                for (int i = 0; i < items.Length; i++)
+                {
+                    Item item = items[i];
+                    if (item == null || item.TypeID != PhantomWitchScytheIds.WeaponTypeId)
+                    {
+                        continue;
+                    }
+
+                    ItemSetting_MeleeWeapon meleeSetting = EnsureMeleeSettingConfigured(item, curseBuff);
+                    if (meleeSetting == null)
+                    {
+                        continue;
+                    }
+
+                    SyncMeleeSettingToAgent(item.GetComponent<ItemAgent_MeleeWeapon>(), meleeSetting);
+                }
+
+                ItemAgent_MeleeWeapon[] meleeAgents = Resources.FindObjectsOfTypeAll<ItemAgent_MeleeWeapon>();
+                for (int i = 0; i < meleeAgents.Length; i++)
+                {
+                    ItemAgent_MeleeWeapon meleeAgent = meleeAgents[i];
+                    if (meleeAgent == null || meleeAgent.Item == null || meleeAgent.Item.TypeID != PhantomWitchScytheIds.WeaponTypeId)
+                    {
+                        continue;
+                    }
+
+                    ItemSetting_MeleeWeapon meleeSetting = EnsureMeleeSettingConfigured(meleeAgent.Item, curseBuff);
+                    if (meleeSetting == null)
+                    {
+                        continue;
+                    }
+
+                    SyncMeleeSettingToAgent(meleeAgent, meleeSetting);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitchScythe] 刷新已加载镰刀诅咒绑定失败: " + e.Message);
+            }
+        }
+
+        private static ItemSetting_MeleeWeapon EnsureMeleeSettingConfigured(Item item, Buff curseBuff)
+        {
+            if (item == null)
+            {
+                return null;
+            }
+
             ItemSetting_MeleeWeapon meleeSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
             if (meleeSetting == null)
             {
@@ -432,11 +503,53 @@ namespace BossRush
 
             meleeSetting.element = ElementTypes.ghost;
             meleeSetting.dealExplosionDamage = false;
-            meleeSetting.buff = PhantomWitchAssetManager.GetCurseBuff();
-            meleeSetting.buffChance = meleeSetting.buff != null ? 0.5f : 0f;
+            meleeSetting.buff = curseBuff;
+            meleeSetting.buffChance = curseBuff != null ? PhantomWitchScytheConfig.NormalAttackCurseChance : 0f;
+            return meleeSetting;
+        }
 
-            ModBehaviour.DevLog("[PhantomWitchScythe] 已配置 ItemSetting_MeleeWeapon (element=Ghost, curse="
-                + (meleeSetting.buff != null ? "50%" : "null") + ")");
+        private static void SyncMeleeSettingToAgents(Item item, ItemAgent modelAgent)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            ItemSetting_MeleeWeapon meleeSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
+            if (meleeSetting == null)
+            {
+                return;
+            }
+
+            SyncMeleeSettingToAgent(item.GetComponent<ItemAgent_MeleeWeapon>(), meleeSetting);
+
+            if (modelAgent != null)
+            {
+                SyncMeleeSettingToAgent(modelAgent.GetComponent<ItemAgent_MeleeWeapon>(), meleeSetting);
+            }
+        }
+
+        private static void SyncMeleeSettingToAgent(ItemAgent_MeleeWeapon meleeAgent, ItemSetting_MeleeWeapon meleeSetting)
+        {
+            if (meleeAgent == null || meleeSetting == null)
+            {
+                return;
+            }
+
+            try
+            {
+                FieldInfo settingField = typeof(ItemAgent_MeleeWeapon).GetField(
+                    "setting",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (settingField != null)
+                {
+                    settingField.SetValue(meleeAgent, meleeSetting);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitchScythe] 同步 ItemSetting_MeleeWeapon 到近战 Agent 失败: " + e.Message);
+            }
         }
 
         // ========== 标签配置 ==========

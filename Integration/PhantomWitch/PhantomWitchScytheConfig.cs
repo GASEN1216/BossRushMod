@@ -48,7 +48,8 @@ namespace BossRush
         /// <summary>
         /// 基础攻击范围（与 WeaponStats 中的 AttackRange 保持一致）
         /// </summary>
-        public const float BaseAttackRange = 2.55f;
+        public const float BaseAttackRange = 2.22f;
+        public const float NormalAttackCurseChance = 0.5f;
 
         // ========== 右键技能「诅咒领域」参数 ==========
 

@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Reflection;
 
 namespace BossRush
 {
@@ -20,7 +22,6 @@ namespace BossRush
     {
         internal static PhantomWitchFxDetailLevel ResolveFxDetailLevel(
             int activeRootCount,
-            bool isLowSpecHardware,
             int reducedThreshold,
             int minimalThreshold)
         {
@@ -28,11 +29,6 @@ namespace BossRush
             int safeMinimalThreshold = Math.Max(safeReducedThreshold, minimalThreshold);
 
             if (activeRootCount >= safeMinimalThreshold)
-            {
-                return PhantomWitchFxDetailLevel.Minimal;
-            }
-
-            if (isLowSpecHardware)
             {
                 return PhantomWitchFxDetailLevel.Minimal;
             }
@@ -66,6 +62,50 @@ namespace BossRush
 
             return detailLevel == PhantomWitchFxDetailLevel.Minimal &&
                    activeRootCount >= safeMinimalThreshold;
+        }
+
+        internal static bool SupportsAlphaModulation(IList renderers)
+        {
+            if (renderers == null || renderers.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                object renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                PropertyInfo sharedMaterialProperty = renderer.GetType().GetProperty("sharedMaterial", BindingFlags.Public | BindingFlags.Instance);
+                if (sharedMaterialProperty == null)
+                {
+                    continue;
+                }
+
+                object material = sharedMaterialProperty.GetValue(renderer, null);
+                if (material == null)
+                {
+                    continue;
+                }
+
+                MethodInfo hasPropertyMethod = material.GetType().GetMethod("HasProperty", new[] { typeof(string) });
+                if (hasPropertyMethod == null)
+                {
+                    continue;
+                }
+
+                if ((bool)hasPropertyMethod.Invoke(material, new object[] { "_Color" }) ||
+                    (bool)hasPropertyMethod.Invoke(material, new object[] { "_TintColor" }) ||
+                    (bool)hasPropertyMethod.Invoke(material, new object[] { "_BaseColor" }))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
