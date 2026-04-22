@@ -82,35 +82,57 @@ namespace BossRush.Utils
 
             Transform existingChild = parent.Find(childName);
             GameObject childObj = existingChild != null ? existingChild.gameObject : new GameObject(childName);
-            childObj.transform.SetParent(parent, false);
-            childObj.transform.localPosition = Vector3.zero;
-            childObj.transform.localRotation = Quaternion.identity;
-            childObj.transform.localScale = Vector3.one;
-
-            BoxCollider boxCollider = childObj.GetComponent<BoxCollider>();
-            if (boxCollider == null)
+            bool restoreActive = childObj.activeSelf;
+            if (restoreActive)
             {
-                boxCollider = childObj.AddComponent<BoxCollider>();
+                childObj.SetActive(false);
             }
 
-            boxCollider.isTrigger = true;
-            boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
-            boxCollider.enabled = false;
-
-            T component = childObj.GetComponent<T>();
-            if (component == null)
+            try
             {
-                component = childObj.AddComponent<T>();
+                childObj.transform.SetParent(parent, false);
+                childObj.transform.localPosition = Vector3.zero;
+                childObj.transform.localRotation = Quaternion.identity;
+                childObj.transform.localScale = Vector3.one;
+
+                int interactableLayer = LayerMask.NameToLayer("Interactable");
+                if (interactableLayer != -1)
+                {
+                    childObj.layer = interactableLayer;
+                }
+
+                BoxCollider boxCollider = childObj.GetComponent<BoxCollider>();
+                if (boxCollider == null)
+                {
+                    boxCollider = childObj.AddComponent<BoxCollider>();
+                }
+
+                boxCollider.isTrigger = true;
+                boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
+                boxCollider.enabled = false;
+
+                T component = childObj.GetComponent<T>();
+                if (component == null)
+                {
+                    component = childObj.AddComponent<T>();
+                }
+
+                setup?.Invoke(component);
+
+                if (!groupList.Contains(component))
+                {
+                    groupList.Add(component);
+                }
+
+                return component;
             }
-
-            setup?.Invoke(component);
-
-            if (!groupList.Contains(component))
+            finally
             {
-                groupList.Add(component);
+                if (restoreActive)
+                {
+                    childObj.SetActive(true);
+                }
             }
-
-            return component;
         }
 
         /// <summary>
