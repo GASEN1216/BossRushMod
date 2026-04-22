@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="PhantomWitchPerformancePolicyTests.cs" />
+    <Compile Include="..\Integration\PhantomWitch\PhantomWitchPerformancePolicy.cs" Link="PhantomWitchPerformancePolicy.cs" />
+  </ItemGroup>
+</Project>
