@@ -4,7 +4,7 @@ Guard the remaining Rev.2 Phantom Witch spec gaps found during static review.
 This repository cannot reliably run the Windows Unity compile/runtime loop from
 WSL, so this source guard locks the remaining boss-side contracts:
 - teleport-driven stealth must be tracked through the stealth state machine
-- FlankPressure must become a real two-scythe weapon package
+- FlankPressure must stay on the tracked-teleport strike path with a fallback sweep
 - WraithTrailObserve must have explicit boss-side windup telegraph/fallback
 - WraithTrailObserve follow-up must keep the windup-locked direction
 - semi-stealth must create its own boss-side readability effect and downgrade cleanly
@@ -59,8 +59,8 @@ def main() -> int:
             ),
             require(
                 ability_text,
-                r"private\s+IEnumerator\s+ExecuteFlankPressurePackage\s*\([^)]*\)\s*\{.*?ExecuteScytheSweep\s*\(\s*\).*?ExecuteHeavyScytheSlash\s*\(\s*\)",
-                "FlankPressure package still lacks second scythe strike",
+                r"private\s+IEnumerator\s+ExecuteFlankPressurePackage\s*\([^)]*\)\s*\{.*?if\s*\(\s*target\s*!=\s*null\s*\).*?ExecuteTrackedTeleportStrike\s*\(target\).*?else.*?ExecuteImmediateScytheSweep\s*\(null\)",
+                "FlankPressure package no longer matches the tracked-teleport plus fallback-sweep contract",
                 re.S,
             ),
             require(

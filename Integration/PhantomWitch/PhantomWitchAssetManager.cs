@@ -38,6 +38,7 @@ namespace BossRush
         private static GameObject cachedEffectTemplate = null;
         private static Material cachedEffectMaterial = null;
         private static int activeReferenceCount = 0;
+        private static bool pendingCacheCleanup = false;
 
         private static readonly string[] PreferredCurseIconRelativePaths = new string[]
         {
@@ -981,7 +982,12 @@ namespace BossRush
                 {
                     return null;
                 }
-                return PhantomWitchVfxRedesign.CreateCurseRealmVisual(position, radius, duration);
+                GameObject visual = PhantomWitchCurseRealmVisual.Create(position, radius, duration);
+                if (visual != null)
+                {
+                    visual.name = "PhantomWitch_BossCurseRealm_Visual";
+                }
+                return visual;
             }
             catch (Exception e)
             {
@@ -1029,21 +1035,28 @@ namespace BossRush
                 return;
             }
 
-            PhantomWitchVfxRedesign.ClearCache();
-
-            if (cachedCurseBuffGO != null)
+            if (PhantomWitchFxRuntime.HasActiveRoots)
             {
-                UnityEngine.Object.Destroy(cachedCurseBuffGO);
-                cachedCurseBuffGO = null;
+                pendingCacheCleanup = true;
+                return;
             }
 
-            cachedCurseBuff = null;
+            FinalizeCacheCleanup();
         }
 
         public static void ForceCleanup()
         {
             activeReferenceCount = 0;
+            pendingCacheCleanup = false;
 
+            FinalizeCacheCleanup();
+            PhantomWitchFxRuntime.Reset();
+
+            ModBehaviour.DevLog("[PhantomWitch] 强制清理完成");
+        }
+
+        private static void FinalizeCacheCleanup()
+        {
             if (cachedCurseBuffGO != null)
             {
                 UnityEngine.Object.Destroy(cachedCurseBuffGO);
@@ -1099,17 +1112,26 @@ namespace BossRush
 
             cachedCurseBuff = null;
             PhantomWitchVfxRedesign.ClearCache();
-            PhantomWitchFxRuntime.Reset();
-
-            ModBehaviour.DevLog("[PhantomWitch] 强制清理完成");
+            pendingCacheCleanup = false;
         }
 
         public static bool HasActiveReferences => activeReferenceCount > 0;
+
+        internal static void TryFinalizePendingCacheCleanup()
+        {
+            if (!pendingCacheCleanup || activeReferenceCount > 0 || PhantomWitchFxRuntime.HasActiveRoots)
+            {
+                return;
+            }
+
+            FinalizeCacheCleanup();
+        }
     }
 
     internal static class PhantomWitchFxRuntime
     {
         private static int activeRootCount = 0;
+        internal static bool HasActiveRoots => activeRootCount > 0;
 
         internal static PhantomWitchFxDetailLevel CurrentDetailLevel
         {
@@ -1149,6 +1171,8 @@ namespace BossRush
             {
                 activeRootCount = 0;
             }
+
+            PhantomWitchAssetManager.TryFinalizePendingCacheCleanup();
         }
 
         internal static void Reset()
@@ -1161,7 +1185,7 @@ namespace BossRush
     {
         private bool registered = false;
 
-        private void Awake()
+        private void OnEnable()
         {
             if (registered)
             {
@@ -1172,7 +1196,7 @@ namespace BossRush
             PhantomWitchFxRuntime.AdjustActiveRootCount(1);
         }
 
-        private void OnDestroy()
+        private void OnDisable()
         {
             if (!registered)
             {
@@ -1181,6 +1205,15 @@ namespace BossRush
 
             registered = false;
             PhantomWitchFxRuntime.AdjustActiveRootCount(-1);
+        }
+
+        private void OnDestroy()
+        {
+            if (registered)
+            {
+                registered = false;
+                PhantomWitchFxRuntime.AdjustActiveRootCount(-1);
+            }
         }
     }
 

@@ -89,11 +89,11 @@ namespace BossRush
 
     public class PhantomWitchScytheSwingFx : MonoBehaviour
     {
-        private const float BaseTrailDistance = 1.35f;
+        private const float BaseTrailDistance = 1.45f;
         private const float MinTrailDistance = 0.35f;
         private const float Duration = 0.22f;
         private const float StartAngle = -75f;
-        private const float SweepAngle = 180f;
+        private const float SweepAngle = FenHuangHalberdConfig.Combo1Angle + 18f;
         private const int MaxPoolSize = 6;
 
         // 核心亮点
@@ -144,6 +144,161 @@ namespace BossRush
             swingFx.transform.rotation = rotation;
             swingFx.gameObject.SetActive(true);
             swingFx.Initialize(rangeScale);
+        }
+
+        internal static GameObject SpawnSmokeBurst(Transform parent, Vector3 localPosition, Quaternion localRotation, float rangeScale, float duration)
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            GameObject root = new GameObject("ScytheSmokeBurst");
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = localPosition;
+            root.transform.localRotation = localRotation;
+
+            float clampedRangeScale = Mathf.Max(0.35f, rangeScale);
+            GameObject node = new GameObject("SmokeNode");
+            node.transform.SetParent(root.transform, false);
+            node.transform.localPosition = Vector3.zero;
+
+            BuildSharedSmokeParticles(node);
+            AttachSharedSmokeAccents(
+                node,
+                5f,
+                5.5f,
+                Mathf.Max(0.35f, duration),
+                Mathf.Max(0.95f, 1.2f * clampedRangeScale),
+                Mathf.Lerp(22f, 35f, Mathf.Clamp01(clampedRangeScale - 0.35f)),
+                Mathf.Max(0.35f, duration));
+
+            ParticleSystem[] particles = node.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < particles.Length; i++)
+            {
+                ParticleSystem ps = particles[i];
+                if (ps == null)
+                {
+                    continue;
+                }
+
+                var main = ps.main;
+                main.loop = true;
+            }
+
+            ParticleSystem primarySmoke = node.GetComponent<ParticleSystem>();
+            if (primarySmoke != null)
+            {
+                var emission = primarySmoke.emission;
+                emission.rateOverDistance = new ParticleSystem.MinMaxCurve(0f);
+                emission.rateOverTime = new ParticleSystem.MinMaxCurve(Mathf.Lerp(16f, 26f, Mathf.Clamp01(clampedRangeScale - 0.35f)));
+            }
+
+            ParticleSystem stardust = node.GetComponentsInChildren<ParticleSystem>(true).Length > 1
+                ? node.GetComponentsInChildren<ParticleSystem>(true)[1]
+                : null;
+            if (stardust != null)
+            {
+                stardust.transform.localPosition = Vector3.zero;
+            }
+
+            ParticleSystem[] particlesForTint = node.GetComponentsInChildren<ParticleSystem>(true);
+            Light[] lights = node.GetComponentsInChildren<Light>(true);
+            TintParticles(particlesForTint, Mathf.Lerp(1.1f, clampedRangeScale, 0.45f));
+            RestartParticles(particlesForTint);
+            TintLights(lights, Mathf.Lerp(1.1f, clampedRangeScale, 0.40f));
+
+            UnityEngine.Object.Destroy(root, Mathf.Max(0.35f, duration));
+
+            return root;
+        }
+
+        private static void BuildSharedSmokeParticles(GameObject node)
+        {
+            if (node == null)
+            {
+                return;
+            }
+
+            ParticleSystem ps = node.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.duration = 1f;
+            main.loop = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.12f, 0.22f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.10f, 0.22f);
+            main.maxParticles = 28;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.playOnAwake = false;
+            main.gravityModifier = -0.04f;
+
+            var emission = ps.emission;
+            emission.rateOverDistance = new ParticleSystem.MinMaxCurve(8f);
+            emission.rateOverTime = new ParticleSystem.MinMaxCurve(6f);
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.14f;
+            shape.radiusThickness = 0.9f;
+
+            var colorOverLife = ps.colorOverLifetime;
+            colorOverLife.enabled = true;
+
+            var velocityOverLife = ps.velocityOverLifetime;
+            velocityOverLife.enabled = true;
+            velocityOverLife.space = ParticleSystemSimulationSpace.Local;
+            velocityOverLife.x = new ParticleSystem.MinMaxCurve(-0.10f, 0.10f);
+            velocityOverLife.y = new ParticleSystem.MinMaxCurve(0.10f, 0.35f);
+            velocityOverLife.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            AnimationCurve sizeCurve = new AnimationCurve(
+                new Keyframe(0f, 0.35f),
+                new Keyframe(0.28f, 1f),
+                new Keyframe(1f, 0.12f));
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+            var noise = ps.noise;
+            noise.enabled = true;
+            noise.strength = 0.1f;
+            noise.frequency = 0.45f;
+
+            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
+            ParticleSystemRenderer renderer = ps.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        }
+
+        private static void AttachSharedSmokeAccents(
+            GameObject node,
+            float lightIntensity,
+            float lightRange,
+            float pulseDuration,
+            float stardustRadius,
+            float stardustRate,
+            float stardustDuration)
+        {
+            if (node == null)
+            {
+                return;
+            }
+
+            Light light = node.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.intensity = lightIntensity;
+            light.range = lightRange;
+            light.color = ScytheCoreColor;
+
+            PhantomWitchLightPulse pulser = node.AddComponent<PhantomWitchLightPulse>();
+            pulser.Configure(lightIntensity, lightRange, pulseDuration);
+
+            ParticleSystem stardust = PhantomWitchVfxRedesign.CreateStardustEmitter(
+                node.transform,
+                stardustRadius,
+                stardustRate,
+                stardustDuration);
+            stardust.transform.localPosition = Vector3.zero;
         }
 
         private static PhantomWitchScytheSwingFx Acquire()
@@ -204,53 +359,8 @@ namespace BossRush
         {
             // 如果后续可以加载真正的镰刀刀光粒子模型，这里可以直接复制。
             // 当前我们使用代码动态构建一个基础的漂亮拖尾粒子。
-
-            ParticleSystem ps = node.AddComponent<ParticleSystem>();
-            var main = ps.main;
-            main.duration = 1f;
-            main.loop = true;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.4f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
-            main.startSize = new ParticleSystem.MinMaxCurve(1.5f, 2.5f);
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.playOnAwake = false;
-
-            var emission = ps.emission;
-            emission.rateOverDistance = new ParticleSystem.MinMaxCurve(18f);
-            emission.rateOverTime = new ParticleSystem.MinMaxCurve(15f);
-
-            var shape = ps.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(0.5f, 2.5f, 0.1f); // 高度拉长以模拟剑气
-
-            var colorOverLife = ps.colorOverLifetime;
-            colorOverLife.enabled = true;
-
-            var velocityOverLife = ps.velocityOverLifetime;
-            velocityOverLife.enabled = true;
-            velocityOverLife.space = ParticleSystemSimulationSpace.Local;
-            velocityOverLife.x = new ParticleSystem.MinMaxCurve(-0.5f, 0.5f);
-            velocityOverLife.y = new ParticleSystem.MinMaxCurve(-1f, 1f);
-            velocityOverLife.z = new ParticleSystem.MinMaxCurve(0f, 0f);
-
-            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
-            var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.renderMode = ParticleSystemRenderMode.Billboard;
-
-            // 附加光源与动态脉冲
-            Light light = node.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.intensity = 5f;
-            light.range = 5.5f;
-            light.color = ScytheCoreColor;
-
-            PhantomWitchLightPulse pulser = node.AddComponent<PhantomWitchLightPulse>();
-            pulser.Configure(5f, 5.5f, 0.35f);
-
-            // 附加额外星屑层
-            ParticleSystem stardust = PhantomWitchVfxRedesign.CreateStardustEmitter(node.transform, 1.2f, 35f, 0.3f);
-            stardust.transform.localPosition = Vector3.zero;
+            BuildSharedSmokeParticles(node);
+            AttachSharedSmokeAccents(node, 5f, 5.5f, 0.35f, 1.2f, 35f, 0.3f);
         }
 
         private void Update()

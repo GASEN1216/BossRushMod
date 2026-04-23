@@ -30,12 +30,6 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, PhantomWitchAbilityController>();
 
         /// <summary>
-        /// 幽灵女巫掉落事件委托映射
-        /// </summary>
-        private Dictionary<CharacterMainControl, Action<DamageInfo>> phantomWitchLootEventHandlers
-            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
-
-        /// <summary>
         /// 幽灵女巫是否已注册到预设列表
         /// </summary>
         #pragma warning disable CS0414
@@ -87,7 +81,7 @@ namespace BossRush
             {
                 if (kv.Key != null) trackedCharacters.Add(kv.Key);
             }
-            foreach (var kv in phantomWitchLootEventHandlers)
+            foreach (var kv in bossSpawnTimes)
             {
                 if (kv.Key != null) trackedCharacters.Add(kv.Key);
             }
@@ -111,32 +105,15 @@ namespace BossRush
                     }
                 }
 
-                Action<DamageInfo> lootHandler;
-                if (phantomWitchLootEventHandlers.TryGetValue(character, out lootHandler) && lootHandler != null)
-                {
-                    try
-                    {
-                        character.BeforeCharacterSpawnLootOnDead -= lootHandler;
-                    }
-                    catch (Exception e)
-                    {
-                        DevLog("[PhantomWitch] [WARNING] 离开竞技场时注销掉落事件失败: " + e.Message);
-                    }
-                }
-
                 if (currentBoss == character)
                 {
                     currentBoss = null;
                 }
 
-                bossSpawnTimes.Remove(character);
-                bossOriginalLootCounts.Remove(character);
-
                 CleanupTrackedPhantomWitchCharacter(character, destroyed, releasedByController);
             }
 
             phantomWitchInstances.Clear();
-            phantomWitchLootEventHandlers.Clear();
         }
 
         private void CleanupTrackedPhantomWitchCharacter(
@@ -148,6 +125,9 @@ namespace BossRush
             {
                 return;
             }
+
+            ClearBossRandomLootTracking(character);
+            FinalizeBossRushLootboxPathTracking(character);
 
             BossCleanupHelpers.DestroyRuntimePreset(
                 character,
@@ -333,17 +313,13 @@ namespace BossRush
                 // 记录Boss生成信息
                 try
                 {
-                    bossSpawnTimes[character] = Time.time;
-                    bossOriginalLootCounts[character] = 3;
-
-                    CharacterMainControl capturedCharForLoot = character;
-                    Action<DamageInfo> lootHandler = (dmgInfo) =>
+                    int originalLootCount = 3;
+                    if (character.CharacterItem != null && character.CharacterItem.Inventory != null)
                     {
-                        DevLog("[PhantomWitch] BeforeCharacterSpawnLootOnDead 事件触发");
-                        OnBossBeforeSpawnLoot(capturedCharForLoot, dmgInfo);
-                    };
-                    phantomWitchLootEventHandlers[character] = lootHandler;
-                    character.BeforeCharacterSpawnLootOnDead += lootHandler;
+                        originalLootCount = 3;
+                    }
+
+                    RegisterBossRandomLootTracking(character, originalLootCount, 0f);
                 }
                 catch (Exception recordEx)
                 {
@@ -386,23 +362,8 @@ namespace BossRush
             }
 
             phantomWitchInstances.Remove(character);
-
-            Action<DamageInfo> lootHandler = null;
-            if (phantomWitchLootEventHandlers.TryGetValue(character, out lootHandler) && lootHandler != null)
-            {
-                try
-                {
-                    character.BeforeCharacterSpawnLootOnDead -= lootHandler;
-                }
-                catch (Exception e)
-                {
-                    DevLog("[PhantomWitch] [WARNING] 回滚失败的掉落事件时异常: " + e.Message);
-                }
-            }
-            phantomWitchLootEventHandlers.Remove(character);
-
-            bossSpawnTimes.Remove(character);
-            bossOriginalLootCounts.Remove(character);
+            ClearBossRandomLootTracking(character);
+            FinalizeBossRushLootboxPathTracking(character);
             BossCleanupHelpers.DestroyRuntimePreset(
                 character,
                 PhantomWitchConfig.BossNameKey,
@@ -705,21 +666,8 @@ namespace BossRush
 
             // 从实例字典中移除
             phantomWitchInstances.Remove(deadWitch);
-
-            // 清理掉落事件委托引用
-            Action<DamageInfo> lootHandler = null;
-            if (deadWitch != null && phantomWitchLootEventHandlers.TryGetValue(deadWitch, out lootHandler) && lootHandler != null)
-            {
-                try
-                {
-                    deadWitch.BeforeCharacterSpawnLootOnDead -= lootHandler;
-                }
-                catch (Exception e)
-                {
-                    DevLog("[PhantomWitch] [WARNING] 注销掉落事件失败: " + e.Message);
-                }
-            }
-            phantomWitchLootEventHandlers.Remove(deadWitch);
+            ClearBossRandomLootTracking(deadWitch);
+            FinalizeBossRushLootboxPathTracking(deadWitch);
 
             BossCleanupHelpers.DestroyRuntimePreset(
                 deadWitch,

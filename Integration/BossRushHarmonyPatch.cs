@@ -4,7 +4,7 @@
 // 说明：
 //   1. Patch StockShop.Awake：在目标售货机实例完成原版初始化后，直接向该实例注入 BossRush 商品
 //   2. Patch InteractableBase.Start：在目标船点实例完成原版初始化后，直接向该实例注入 BossRush 交互
-//   3. Patch CharacterMainControl.OnDead：在角色死亡前缀中处理 Blue Boss 额外掉落
+//   3. Patch CharacterMainControl.OnDead：在角色死亡前缀中处理额外追加掉落
 //   4. 保留现有场景扫描逻辑作为兜底，处理热加载和已存在对象
 // ============================================================================
 
@@ -61,6 +61,7 @@ namespace BossRush
         public static void Prefix(CharacterMainControl __instance)
         {
             FrostmourneBlueBossDropHandler.TryHandleBlueBossDeath(__instance);
+            PhantomWitchScytheBossDropHandler.TryHandlePhantomWitchDeath(__instance);
         }
     }
 

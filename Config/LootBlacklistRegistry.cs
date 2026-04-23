@@ -53,6 +53,7 @@ namespace BossRush
                 DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID,
                 DragonKingBossGunConfig.WeaponTypeId,
                 FrostmourneIds.WeaponTypeId,
+                PhantomWitchScytheIds.WeaponTypeId,
 
                 FactionFlagConfig.RANDOM_FLAG_TYPE_ID,
                 FactionFlagConfig.SCAV_FLAG_TYPE_ID,

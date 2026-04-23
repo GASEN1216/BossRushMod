@@ -377,6 +377,9 @@ namespace BossRush
         private static readonly Color ShockwaveColor = new Color(1.00f, 0.75f, 1.00f, 0.85f);
         private static readonly Color WispColor = new Color(0.75f, 0.55f, 1.00f, 1.00f);
         private static readonly Color SparkColor = new Color(1.00f, 0.90f, 1.00f, 1.00f);
+        private static readonly Color BlackSmokeCoreColor = new Color(0.10f, 0.08f, 0.12f, 0.90f);
+        private static readonly Color BlackSmokeMidColor = new Color(0.20f, 0.14f, 0.26f, 0.68f);
+        private static readonly Color BlackSmokeEdgeColor = new Color(0.42f, 0.28f, 0.56f, 0.12f);
 
         private static Material cachedLineMaterial;
         private static Material cachedQuadMaterial;
@@ -433,6 +436,7 @@ namespace BossRush
             }
 
             CreateGroundStain(root.transform, radius, unlit);
+            CreateAreaBlackSmoke(root.transform, radius, duration, detailLevel);
             CreateShockwave(root.transform, radius, outerSegments, unlit);
             CreateRingChild(root.transform, "OuterRing", radius, outerSegments, 0.22f, RingColorOuter, RotationSpeedOuter, unlit, pulse: detailLevel == PhantomWitchFxDetailLevel.Full);
             CreateRingChild(root.transform, "InnerRing", radius * 0.72f, innerSegments, 0.14f, RingColorInner, RotationSpeedInner, unlit, pulse: detailLevel != PhantomWitchFxDetailLevel.Minimal);
@@ -487,6 +491,145 @@ namespace BossRush
         private static void CreateGroundStain(Transform parent, float radius, Shader unlit)
         {
             CreateFlatQuad(parent, "GroundStain", radius * 2.15f, 0.02f, GroundStainColor, unlit);
+        }
+
+        // ---------- 整区黑烟覆盖：以 billbord 粒子铺满法阵区域，让整个领域都带有左键那种黑紫雾感 ----------
+        private static void CreateAreaBlackSmoke(Transform parent, float radius, float duration, PhantomWitchFxDetailLevel detailLevel)
+        {
+            int innerMaxParticles = ResolveAdaptiveCount(detailLevel, 72, 40, 0);
+            float innerEmissionRate = ResolveAdaptiveFloat(detailLevel, 20f, 12f, 0f);
+            int outerMaxParticles = ResolveAdaptiveCount(detailLevel, 56, 32, 0);
+            float outerEmissionRate = ResolveAdaptiveFloat(detailLevel, 14f, 8f, 0f);
+
+            if ((innerMaxParticles <= 0 || innerEmissionRate <= 0f) &&
+                (outerMaxParticles <= 0 || outerEmissionRate <= 0f))
+            {
+                return;
+            }
+
+            if (innerMaxParticles > 0 && innerEmissionRate > 0f)
+            {
+                CreateBlackSmokeEmitter(
+                    parent,
+                    "RealmBlackSmoke_Inner",
+                    duration,
+                    0.08f,
+                    radius * 0.82f,
+                    1f,
+                    innerMaxParticles,
+                    innerEmissionRate,
+                    Mathf.Max(0.18f, radius * 0.14f),
+                    Mathf.Max(0.32f, radius * 0.32f),
+                    0.07f,
+                    0.12f,
+                    detailLevel);
+            }
+
+            if (outerMaxParticles > 0 && outerEmissionRate > 0f)
+            {
+                CreateBlackSmokeEmitter(
+                    parent,
+                    "RealmBlackSmoke_Outer",
+                    duration,
+                    0.12f,
+                    radius * 1.08f,
+                    0.92f,
+                    outerMaxParticles,
+                    outerEmissionRate,
+                    Mathf.Max(0.24f, radius * 0.18f),
+                    Mathf.Max(0.40f, radius * 0.38f),
+                    0.09f,
+                    0.16f,
+                    detailLevel);
+            }
+        }
+
+        private static void CreateBlackSmokeEmitter(
+            Transform parent,
+            string name,
+            float duration,
+            float yOffset,
+            float emitterRadius,
+            float radiusThickness,
+            int maxParticles,
+            float emissionRate,
+            float minSize,
+            float maxSize,
+            float horizontalDrift,
+            float verticalDrift,
+            PhantomWitchFxDetailLevel detailLevel)
+        {
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, yOffset, 0f);
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+            ParticleSystem ps = go.AddComponent<ParticleSystem>();
+            ConfigureDefaultParticleRenderer(ps);
+
+            var main = ps.main;
+            main.duration = Mathf.Max(0.5f, duration);
+            main.loop = false;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 1.9f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.06f, 0.18f);
+            main.startSize = new ParticleSystem.MinMaxCurve(minSize, maxSize);
+            main.startColor = Color.white;
+            main.gravityModifier = -0.02f;
+            main.maxParticles = maxParticles;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+
+            var emission = ps.emission;
+            emission.rateOverTime = emissionRate;
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = emitterRadius;
+            shape.radiusThickness = radiusThickness;
+
+            var velocity = ps.velocityOverLifetime;
+            velocity.enabled = true;
+            velocity.space = ParticleSystemSimulationSpace.Local;
+            velocity.x = new ParticleSystem.MinMaxCurve(-horizontalDrift, horizontalDrift);
+            velocity.y = new ParticleSystem.MinMaxCurve(0.03f, verticalDrift);
+            velocity.z = new ParticleSystem.MinMaxCurve(-horizontalDrift, horizontalDrift);
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(BlackSmokeCoreColor, 0f),
+                    new GradientColorKey(BlackSmokeMidColor, 0.45f),
+                    new GradientColorKey(BlackSmokeEdgeColor, 1f)
+                },
+                new[]
+                {
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(0.82f, 0.18f),
+                    new GradientAlphaKey(0.55f, 0.62f),
+                    new GradientAlphaKey(0f, 1f)
+                });
+            colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            AnimationCurve sizeCurve = new AnimationCurve(
+                new Keyframe(0f, 0.45f),
+                new Keyframe(0.28f, 1f),
+                new Keyframe(1f, 0.55f));
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+            var noise = ps.noise;
+            noise.enabled = detailLevel == PhantomWitchFxDetailLevel.Full;
+            if (noise.enabled)
+            {
+                noise.strength = 0.14f;
+                noise.frequency = 0.42f;
+            }
+
+            ps.Play();
         }
 
         // ---------- 开场冲击波：0→1 快速扩张再立即消失，给施法瞬间的"咚"一下反馈 ----------

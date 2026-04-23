@@ -335,23 +335,9 @@ namespace BossRush
                 return;
             }
 
-            if (meleeAgent.slashFx == null)
-            {
-                meleeAgent.slashFx = GetFallbackSlashFx();
-            }
-
             if (meleeAgent.hitFx == null)
             {
                 meleeAgent.hitFx = GetFallbackHitFx();
-            }
-
-            if (meleeAgent.slashFx != null && meleeAgent.slashFx.transform != null)
-            {
-                Vector3 scale = meleeAgent.slashFx.transform.localScale;
-                if (scale.sqrMagnitude <= 0.0001f)
-                {
-                    meleeAgent.slashFx.transform.localScale = DefaultSlashFxScale;
-                }
             }
         }
 

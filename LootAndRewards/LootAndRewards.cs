@@ -382,6 +382,7 @@ namespace BossRush
 
             bossRushLootboxPathBosses.Remove(character);
             FrostmourneBlueBossDropHandler.CancelPendingBossRushLootboxDrop(character);
+            PhantomWitchScytheBossDropHandler.CancelPendingBossRushLootboxDrop(character);
         }
 
         internal void RefreshBossRushLootboxPathTrackingForTrackedBosses()
@@ -3417,6 +3418,7 @@ namespace BossRush
 
                 FrostmourneBlueBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 // 未来新增Boss在此添加 else if 分支
+                PhantomWitchScytheBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
             }
             finally
             {

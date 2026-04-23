@@ -10,8 +10,10 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using ItemStatsSystem;
 
 namespace BossRush
 {
@@ -20,6 +22,8 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour
     {
+        private static bool phantomWitchScytheSharedAssetReferenceHeld = false;
+
         // ========== 初始化 ==========
 
         /// <summary>
@@ -29,6 +33,16 @@ namespace BossRush
         {
             try
             {
+                if (!phantomWitchScytheSharedAssetReferenceHeld)
+                {
+                    // 噬魂挽歌玩家侧挥击/诅咒特效与 Boss 共用同一批缓存资源，
+                    // 不能只依赖 Boss 生命周期持有引用。
+                    PhantomWitchAssetManager.AddReference();
+                    phantomWitchScytheSharedAssetReferenceHeld = true;
+                }
+
+                EnsurePhantomWitchScytheSharedAssetReference();
+
                 if (PhantomWitchScytheAbilityManager.Instance == null)
                 {
                     GameObject mgrObj = new GameObject("PhantomWitchScytheAbilityManager");
@@ -55,6 +69,8 @@ namespace BossRush
         {
             try
             {
+                EnsurePhantomWitchScytheSharedAssetReference();
+
                 var abilityMgr = PhantomWitchScytheAbilityManager.Instance;
                 if (abilityMgr != null)
                 {
@@ -127,12 +143,253 @@ namespace BossRush
             {
                 PhantomWitchCurseSweatVfx.UnregisterGlobalHook();
                 PhantomWitchScytheAbilityManager.CleanupStatic();
+                PhantomWitchScytheBossDropHandler.Cleanup();
                 PhantomWitchCurseRealmVisual.ClearCache();
+                if (phantomWitchScytheSharedAssetReferenceHeld)
+                {
+                    PhantomWitchAssetManager.ClearCache();
+                    phantomWitchScytheSharedAssetReferenceHeld = false;
+                }
                 DevLog("[PhantomWitchScythe] 系统清理完成");
             }
             catch (Exception e)
             {
                 DevLog("[PhantomWitchScythe] 系统清理失败: " + e.Message);
+            }
+        }
+
+        private void EnsurePhantomWitchScytheSharedAssetReference()
+        {
+            if (phantomWitchScytheSharedAssetReferenceHeld && PhantomWitchAssetManager.HasActiveReferences)
+            {
+                return;
+            }
+
+            // 场景切换时 ClearPhantomWitchStaticCache() 会先 ForceCleanup Boss 侧缓存；
+            // 大镰系统本体仍会保留，因此这里要在重绑路径里把共享引用补回来。
+            PhantomWitchAssetManager.AddReference();
+            phantomWitchScytheSharedAssetReferenceHeld = true;
+        }
+    }
+
+    internal static class PhantomWitchScytheBossDropHandler
+    {
+        private const float ExtraDropChance = 0.5f;
+        private static readonly HashSet<CharacterMainControl> pendingBossRushLootboxDrops
+            = new HashSet<CharacterMainControl>();
+
+        internal static void Cleanup()
+        {
+            pendingBossRushLootboxDrops.Clear();
+        }
+
+        internal static void TryHandlePhantomWitchDeath(CharacterMainControl boss)
+        {
+            try
+            {
+                PruneInvalidHooks();
+
+                if (!IsPhantomWitchBoss(boss))
+                {
+                    return;
+                }
+
+                if (UnityEngine.Random.value >= ExtraDropChance)
+                {
+                    return;
+                }
+
+                if (ShouldDeferToBossRushLootbox(boss))
+                {
+                    pendingBossRushLootboxDrops.Add(boss);
+                    return;
+                }
+
+                Item bossCharacterItem = boss.CharacterItem;
+                Inventory inventory = bossCharacterItem != null ? bossCharacterItem.Inventory : null;
+                if (inventory == null)
+                {
+                    return;
+                }
+
+                TryAddScytheToInventory(inventory, null);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitchScythe] 幽灵女巫额外掉落处理失败: " + e.Message);
+            }
+        }
+
+        private static bool IsPhantomWitchBoss(CharacterMainControl character)
+        {
+            if (character == null || character.characterPreset == null)
+            {
+                return false;
+            }
+
+            return string.Equals(
+                character.characterPreset.nameKey,
+                PhantomWitchConfig.BossNameKey,
+                StringComparison.Ordinal);
+        }
+
+        internal static void TryConsumePendingBossRushLootboxDrop(CharacterMainControl boss, Inventory inventory)
+        {
+            PruneInvalidHooks();
+
+            if (boss == null || inventory == null)
+            {
+                return;
+            }
+
+            if (!pendingBossRushLootboxDrops.Remove(boss))
+            {
+                return;
+            }
+
+            TryAddScytheToInventory(inventory, "[PhantomWitchScythe] 幽灵女巫 BossRush 奖励箱额外掉落");
+        }
+
+        internal static void CancelPendingBossRushLootboxDrop(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return;
+            }
+
+            pendingBossRushLootboxDrops.Remove(boss);
+        }
+
+        private static bool ShouldDeferToBossRushLootbox(CharacterMainControl boss)
+        {
+            ModBehaviour instance = ModBehaviour.Instance;
+            return instance != null && instance.ShouldDeferBlueBossExtraDropToBossRushLootbox(boss);
+        }
+
+        private static void EnsureExtraInventoryCapacity(Inventory inventory)
+        {
+            if (inventory == null)
+            {
+                return;
+            }
+
+            try
+            {
+                int contentCount = inventory.Content != null ? inventory.Content.Count : 0;
+                int requiredCapacity = Mathf.Max(inventory.Capacity, contentCount + 1);
+                if (requiredCapacity > inventory.Capacity)
+                {
+                    inventory.SetCapacity(requiredCapacity);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool EnsureScytheRewardPrefabLoaded()
+        {
+            try
+            {
+                if (ItemAssetsCollection.GetPrefab(PhantomWitchScytheIds.WeaponTypeId) != null)
+                {
+                    return true;
+                }
+
+                EquipmentFactory.LoadBundle("phantom_scythe");
+
+                if (ItemAssetsCollection.GetPrefab(PhantomWitchScytheIds.WeaponTypeId) != null)
+                {
+                    return true;
+                }
+
+                ModBehaviour.DevLog("[PhantomWitchScythe] [WARNING] phantom_scythe bundle 加载后仍未找到噬魂挽歌 prefab (TypeID=" + PhantomWitchScytheIds.WeaponTypeId + ")");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitchScythe] [WARNING] 兜底加载噬魂挽歌奖励 prefab 失败: " + e.Message);
+            }
+
+            return false;
+        }
+
+        private static bool TryAddScytheToInventory(Inventory inventory, string logPrefix)
+        {
+            if (inventory == null)
+            {
+                return false;
+            }
+
+            EnsureExtraInventoryCapacity(inventory);
+
+            if (!EnsureScytheRewardPrefabLoaded())
+            {
+                return false;
+            }
+
+            Item rewardItem = null;
+            try
+            {
+                rewardItem = ItemAssetsCollection.InstantiateSync(PhantomWitchScytheIds.WeaponTypeId);
+                if (rewardItem == null)
+                {
+                    if (!string.IsNullOrEmpty(logPrefix))
+                    {
+                        ModBehaviour.DevLog(logPrefix + "失败：无法实例化噬魂挽歌");
+                    }
+                    return false;
+                }
+
+                if (!inventory.AddAndMerge(rewardItem, 0))
+                {
+                    if (!string.IsNullOrEmpty(logPrefix))
+                    {
+                        ModBehaviour.DevLog(logPrefix + "失败：无法加入库存");
+                    }
+                    return false;
+                }
+
+                rewardItem = null;
+                return true;
+            }
+            catch (Exception e)
+            {
+                if (!string.IsNullOrEmpty(logPrefix))
+                {
+                    ModBehaviour.DevLog(logPrefix + "失败: " + e.Message);
+                }
+                return false;
+            }
+            finally
+            {
+                try
+                {
+                    if (rewardItem != null)
+                    {
+                        rewardItem.DestroyTree();
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static void PruneInvalidHooks()
+        {
+            if (pendingBossRushLootboxDrops.Count <= 0)
+            {
+                return;
+            }
+
+            List<CharacterMainControl> pendingKeys = new List<CharacterMainControl>(pendingBossRushLootboxDrops);
+            for (int i = 0; i < pendingKeys.Count; i++)
+            {
+                CharacterMainControl pendingKey = pendingKeys[i];
+                if (pendingKey == null)
+                {
+                    pendingBossRushLootboxDrops.Remove(pendingKey);
+                }
             }
         }
     }

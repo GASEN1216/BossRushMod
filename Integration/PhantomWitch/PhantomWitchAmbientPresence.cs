@@ -102,6 +102,7 @@ namespace BossRush
         private void OnDestroy()
         {
             CleanupTransientEffects();
+            CleanupOwnedObjects();
 
             if (haloMaterial != null)
             {
@@ -119,6 +120,59 @@ namespace BossRush
             {
                 Destroy(haloTexture);
                 haloTexture = null;
+            }
+        }
+
+        private void CleanupOwnedObjects()
+        {
+            if (veilParticles != null)
+            {
+                try
+                {
+                    Destroy(veilParticles.gameObject);
+                }
+                catch
+                {
+                }
+                veilParticles = null;
+            }
+
+            if (groundMistParticles != null)
+            {
+                try
+                {
+                    Destroy(groundMistParticles.gameObject);
+                }
+                catch
+                {
+                }
+                groundMistParticles = null;
+            }
+
+            if (coldHaloTransform != null)
+            {
+                try
+                {
+                    Destroy(coldHaloTransform.gameObject);
+                }
+                catch
+                {
+                }
+                coldHaloTransform = null;
+                coldHaloRenderer = null;
+            }
+
+            if (heartbeatTransform != null)
+            {
+                try
+                {
+                    Destroy(heartbeatTransform.gameObject);
+                }
+                catch
+                {
+                }
+                heartbeatTransform = null;
+                heartbeatRenderer = null;
             }
         }
 

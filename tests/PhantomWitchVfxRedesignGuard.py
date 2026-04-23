@@ -12,7 +12,6 @@ import sys
 
 ASSET = Path("Integration/PhantomWitch/PhantomWitchAssetManager.cs")
 ABILITY = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
-REALM = Path("Integration/PhantomWitch/PhantomWitchScytheAction.cs")
 CURSE = Path("Integration/PhantomWitch/PhantomWitchCurseSweatVfx.cs")
 REDESIGN = Path("Integration/PhantomWitch/PhantomWitchVfxRedesign.cs")
 COMPILE = Path("compile_official.bat")
@@ -54,7 +53,6 @@ def require(text: str, pattern: str, description: str, flags: int = 0) -> str | 
 def main() -> int:
     asset_text = ASSET.read_text(encoding="utf-8")
     ability_text = ABILITY.read_text(encoding="utf-8")
-    realm_text = REALM.read_text(encoding="utf-8")
     curse_text = CURSE.read_text(encoding="utf-8")
     redesign_text = REDESIGN.read_text(encoding="utf-8")
     compile_text = COMPILE.read_text(encoding="utf-8")
@@ -64,7 +62,7 @@ def main() -> int:
     teleport_block = extract_block(redesign_text, "internal static GameObject CreateTeleportEffect")
     hit_block = extract_block(redesign_text, "internal static GameObject CreateDamageHitEffect")
     transition_block = extract_block(redesign_text, "internal static GameObject CreatePhaseTransitionEffect")
-    realm_block = extract_block(realm_text, "internal static GameObject Create")
+    realm_block = extract_block(redesign_text, "internal static GameObject CreateCurseRealmVisual")
 
     missing = [
         require(asset_text, r"public\s+static\s+GameObject\s+CreateChannelChargeEffect\s*\(", "CreateChannelChargeEffect"),
@@ -85,8 +83,10 @@ def main() -> int:
     if "CreatePentagramLR" in death_block or "CreateHexagramLR" in death_block:
         missing.append("death effect still uses pentagram/hexagram geometry")
 
-    if "CreatePentagram(" in realm_block or "CreateHexagram(" in realm_block or "InscribedRing" in realm_block:
-        missing.append("curse realm still uses legacy pentagram/hexagram/inscribed ring stack")
+    if not realm_block:
+        missing.append("boss curse realm visual block is missing")
+    elif "CreatePentagram(" in realm_block or "CreateHexagram(" in realm_block or "InscribedRing" in realm_block:
+        missing.append("boss curse realm visual still uses legacy pentagram/hexagram/inscribed ring stack")
 
     missing = [item for item in missing if item is not None]
     if missing:

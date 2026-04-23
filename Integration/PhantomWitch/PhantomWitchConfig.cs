@@ -61,7 +61,7 @@ namespace BossRush
     {
         // ========== Boss基础属性 ==========
 
-        public const float BaseHealth = 700f;
+        public const float BaseHealth = 1000f;
         public const float DamageMultiplier = 1.1f;
         /// <summary>
         /// BossRush 中幽灵女巫模型整体缩放倍率（2f = 放大 1 倍）。
@@ -97,12 +97,12 @@ namespace BossRush
         public const float BlinkMinDistance = 1f;
         public const float BlinkMaxDistance = 4f;
         public const float BlinkRecovery = 0f;
-        public const float BlinkHideDuration = 0.1f;
-        public const float NavMeshSampleRadius = 3f;
+        public const float BlinkHideDuration = 0.3f;
+        public const float NavMeshSampleRadius = 2f;
         public const float NavMeshFallbackRadius = 5f;
         public const float BlinkFallbackDistance = 6f;
-        public const float BlinkTrackedOffsetDistance = 0.2f;
-        public const float BlinkTrackedTelegraphDuration = 0.5f;
+        public const float BlinkTrackedOffsetDistance = 2.2f;
+        public const float BlinkTrackedTelegraphDuration = 2f;
         public const float BlinkTrackedFlashLeadDuration = 0.1f;
 
         // ========== 诅咒范围技参数 ==========
@@ -167,7 +167,6 @@ namespace BossRush
 
         // ========== Boss 专属中距招式参数 ==========
 
-        public const float DoublePressureFollowupDelay = 0.22f;
         public const float RequiemArcWindup = 0.55f;
         public const float RequiemArcRange = 4.8f;
         public const float RequiemArcDamage = 16f;

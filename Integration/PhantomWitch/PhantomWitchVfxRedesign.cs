@@ -21,37 +21,12 @@ namespace BossRush
 
         private static GameObject GetOrBuildVfx(string key, Vector3 position, float duration, System.Action<GameObject> builder)
         {
-            GameObject root = null;
-            if (VfxPools.TryGetValue(key, out Stack<GameObject> stack))
-            {
-                while (stack.Count > 0)
-                {
-                    GameObject obj = stack.Pop();
-                    if (obj != null)
-                    {
-                        root = obj;
-                        root.transform.position = position;
-                        root.SetActive(true);
-                        
-                        ParticleSystem[] pss = root.GetComponentsInChildren<ParticleSystem>(true);
-                        for (int i = 0; i < pss.Length; i++)
-                        {
-                            if (pss[i] != null)
-                            {
-                                pss[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                                pss[i].Play(true);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-
-            if (root == null)
+            GameObject root;
+            if (!TryAcquireCleanPooledRoot(key, position, out root))
             {
                 root = CreateRoot(key, position);
-                builder(root);
             }
+            builder(root);
 
             PhantomWitchVfxRecycler recycler = root.GetComponent<PhantomWitchVfxRecycler>();
             if (recycler == null)
@@ -61,6 +36,105 @@ namespace BossRush
             recycler.Schedule(key, duration);
 
             return root;
+        }
+
+        private static bool TryAcquireCleanPooledRoot(string key, Vector3 position, out GameObject root)
+        {
+            root = null;
+
+            if (!VfxPools.TryGetValue(key, out Stack<GameObject> stack))
+            {
+                return false;
+            }
+
+            while (stack.Count > 0)
+            {
+                GameObject candidate = stack.Pop();
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (!IsReusablePooledRoot(candidate))
+                {
+                    Object.Destroy(candidate);
+                    continue;
+                }
+
+                root = candidate;
+                root.transform.position = position;
+                root.transform.rotation = Quaternion.identity;
+                root.transform.localScale = Vector3.one;
+                root.SetActive(true);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsReusablePooledRoot(GameObject root)
+        {
+            if (root == null)
+            {
+                return false;
+            }
+
+            if (root.transform.childCount > 0)
+            {
+                return false;
+            }
+
+            Component[] components = root.GetComponents<Component>();
+            for (int i = 0; i < components.Length; i++)
+            {
+                Component component = components[i];
+                if (component == null ||
+                    component is Transform ||
+                    component is PhantomWitchVfxRecycler ||
+                    component is PhantomWitchFxRootTracker)
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void CleanupRootForPooling(GameObject root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            for (int i = root.transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = root.transform.GetChild(i);
+                if (child != null)
+                {
+                    Object.Destroy(child.gameObject);
+                }
+            }
+
+            Component[] components = root.GetComponents<Component>();
+            for (int i = 0; i < components.Length; i++)
+            {
+                Component component = components[i];
+                if (component == null ||
+                    component is Transform ||
+                    component is PhantomWitchVfxRecycler ||
+                    component is PhantomWitchFxRootTracker)
+                {
+                    continue;
+                }
+
+                Object.Destroy(component);
+            }
+
+            root.transform.rotation = Quaternion.identity;
+            root.transform.localScale = Vector3.one;
         }
 
         internal sealed class PhantomWitchVfxRecycler : MonoBehaviour
@@ -81,6 +155,7 @@ namespace BossRush
                 if (isScheduled && Time.time >= recycleTime)
                 {
                     isScheduled = false;
+                    CleanupRootForPooling(gameObject);
                     gameObject.SetActive(false);
                     if (!VfxPools.TryGetValue(poolKey, out Stack<GameObject> stack))
                     {
@@ -102,12 +177,16 @@ namespace BossRush
         internal static GameObject CreateChannelChargeEffect(Vector3 position, float radius, float duration, bool useBloodAccent)
         {
             GameObject root = CreateRoot("PW_ChannelChargeFX", position);
-            CreatePointLight(root.transform, new Vector3(0f, 1.2f, 0f), PhantomWitchConfig.VioletVoidCore, radius * 1.5f, 3f);
+            CreatePointLight(root.transform, new Vector3(0f, 1.2f, 0f), PhantomWitchConfig.VioletVoidCore, radius * 1.8f, 4.8f);
             CreateFakeWarpField(root.transform, Mathf.Max(0.8f, radius), 0.10f, duration);
-            CreateSoulFlameEmitter(root.transform, new Vector3(0f, 1.15f, 0f), 6f, 1.2f, 1.8f, 0.3f, 0.8f, 0.08f, 0.14f, false, ParticleSystemShapeType.Cone);
-            CreatePartialRing(root.transform, Mathf.Max(0.45f, radius * 0.75f), 0.03f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.55f), 0.08f, ResolveRingSegments(), 0.72f, 0.01f);
-            CreateRuneFlashSpawner(root.transform, Mathf.Max(0.35f, radius * 0.55f), 5, 0.14f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.6f));
-            CreateStardustEmitter(root.transform, Mathf.Max(0.45f, radius * 0.8f), 18f, duration);
+            CreateSoulFlameEmitter(root.transform, new Vector3(0f, 1.15f, 0f), 8f, 1.2f, 1.8f, 0.3f, 0.8f, 0.08f, 0.16f, false, ParticleSystemShapeType.Cone);
+            CreateSoulMistEmitter(root.transform, Mathf.Max(0.42f, radius * 0.55f), 10f, 0.9f, 1.4f, false, 0.08f);
+            CreateBrokenRing(root.transform, Mathf.Max(0.52f, radius * 0.88f), 0.04f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.82f), 0.09f, ResolveRingSegments(), 0.80f, 0.008f);
+            CreatePartialRing(root.transform, Mathf.Max(0.45f, radius * 0.75f), 0.04f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.72f), 0.10f, ResolveRingSegments(), 0.72f, 0.01f);
+            CreateRuneFlashSpawner(root.transform, Mathf.Max(0.35f, radius * 0.55f), 7, 0.14f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.72f));
+            CreateStardustEmitter(root.transform, Mathf.Max(0.45f, radius * 0.8f), 26f, duration);
+            AttachTransientRequiemLine(root, Mathf.Max(0.95f, radius * 0.9f), Mathf.Max(0.22f, duration * 0.35f), true, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.84f));
+            AttachTransientSilverCrossFlash(root, Mathf.Max(0.20f, radius * 0.22f), 1.08f, useBloodAccent, 0.22f);
 
             GameObject heart = CreateBillboardQuad(root.transform, 0.08f, 0.08f, new Vector3(0f, 1.35f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.55f), true);
             heart.AddComponent<PhantomWitchPulseScale>().Configure(new Vector3(0.04f, 0.04f, 1f), new Vector3(0.09f, 0.09f, 1f), duration);
@@ -129,35 +208,62 @@ namespace BossRush
                 ? Mathf.Max(PhantomWitchConfig.TeleportFxDuration, 0.8f)
                 : Mathf.Max(PhantomWitchConfig.TeleportFxDuration, 1.5f);
 
-            return GetOrBuildVfx(isAppear ? "PW_BlinkInFX" : "PW_BlinkOutFX", position, rootLifetime, (root) =>
+            GameObject root = GetOrBuildVfx(isAppear ? "PW_BlinkInFX" : "PW_BlinkOutFX", position, rootLifetime, (rootObj) =>
             {
                 if (isAppear)
                 {
-                    CreatePointLight(root.transform, new Vector3(0f, 1f, 0f), PhantomWitchConfig.VioletVoidCore, PhantomWitchConfig.TeleportExpandRadius * 1.5f, 4.5f);
-                    PhantomWitchFlatRingMesh ring = CreateRing(root.transform, PhantomWitchConfig.TeleportShrinkRadius, 0.045f, WithAlpha(PhantomWitchConfig.SilverAshMid, 0.7f), 0.05f);
+                    CreatePointLight(rootObj.transform, new Vector3(0f, 1f, 0f), PhantomWitchConfig.VioletVoidCore, PhantomWitchConfig.TeleportExpandRadius * 1.8f, 6.2f);
+                    PhantomWitchFlatRingMesh ring = CreateRing(rootObj.transform, PhantomWitchConfig.TeleportShrinkRadius, 0.055f, WithAlpha(PhantomWitchConfig.SilverAshMid, 0.82f), 0.06f);
                     PhantomWitchShrinkRing shrink = ring.gameObject.AddComponent<PhantomWitchShrinkRing>();
-                    shrink.Configure(PhantomWitchConfig.TeleportShrinkRadius, 0.22f, WithAlpha(PhantomWitchConfig.SilverAshMid, 0.7f), 0.045f);
+                    shrink.Configure(PhantomWitchConfig.TeleportShrinkRadius, 0.22f, WithAlpha(PhantomWitchConfig.SilverAshMid, 0.82f), 0.055f);
 
-                    CreateRuneFlashSpawner(root.transform, PhantomWitchConfig.TeleportExpandRadius * 0.55f, 6, 0.10f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.65f));
-                    CreateSoulMistEmitter(root.transform, 0.65f, 8f, 1.0f, 1.6f, false, 0.03f);
-                    CreateStardustEmitter(root.transform, PhantomWitchConfig.TeleportExpandRadius, 18f, rootLifetime);
-                    CreateBillboardQuad(root.transform, 0.22f, 0.22f, new Vector3(0f, 0.95f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.25f), true);
+                    CreateRuneFlashSpawner(rootObj.transform, PhantomWitchConfig.TeleportExpandRadius * 0.65f, 8, 0.10f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.78f));
+                    CreateSoulMistEmitter(rootObj.transform, 0.82f, 11f, 1.0f, 1.6f, false, 0.03f);
+                    CreateStardustEmitter(rootObj.transform, PhantomWitchConfig.TeleportExpandRadius * 1.2f, 28f, rootLifetime);
+                    CreateBillboardQuad(rootObj.transform, 0.28f, 0.28f, new Vector3(0f, 0.95f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.38f), true);
+                    PhantomWitchScytheSwingFx.SpawnSmokeBurst(
+                        rootObj.transform,
+                        new Vector3(0f, 0.95f, 0f),
+                        Quaternion.identity,
+                        0.95f,
+                        0.55f);
                 }
                 else
                 {
-                    CreateEdgeDissolveBurst(root.transform, 36, 0.42f, 0.6f, PhantomWitchConfig.VioletVoidMid);
-                    CreateSilverCrossFlash(root.transform, 0.34f, 0.95f, false, 0.20f);
-                    CreateGroundStain(root.transform, 1.3f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.08f), 1.5f);
-                    CreateSoulMistEmitter(root.transform, 0.72f, 7f, 0.8f, 1.2f, false, 0.03f);
-                    CreateStardustEmitter(root.transform, 1.5f, 22f, rootLifetime);
+                    CreateEdgeDissolveBurst(rootObj.transform, 42, 0.46f, 0.7f, PhantomWitchConfig.VioletVoidMid);
+                    CreateGroundStain(rootObj.transform, 1.6f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.12f), 1.5f);
+                    CreateSoulMistEmitter(rootObj.transform, 0.90f, 9f, 0.8f, 1.2f, false, 0.03f);
+                    CreateStardustEmitter(rootObj.transform, 1.8f, 28f, rootLifetime);
+                    PhantomWitchScytheSwingFx.SpawnSmokeBurst(
+                        rootObj.transform,
+                        new Vector3(0f, 0.95f, 0f),
+                        Quaternion.identity,
+                        1.15f,
+                        0.95f);
                 }
             });
+
+            AttachTransientRequiemLine(
+                root,
+                isAppear ? 1.05f : 1.25f,
+                isAppear ? 0.18f : 0.24f,
+                isAppear,
+                WithAlpha(PhantomWitchConfig.SilverAshCore, 0.80f));
+            AttachTransientSilverCrossFlash(root, isAppear ? 0.28f : 0.38f, 0.98f, !isAppear, isAppear ? 0.18f : 0.22f);
+            return root;
         }
 
         internal static GameObject CreateTrackedTeleportMarkerEffect(Vector3 position, float duration)
         {
             float safeDuration = Mathf.Max(duration, PhantomWitchConfig.BlinkTrackedMarkerFxDuration);
             GameObject root = CreateRoot("PW_BlinkTrackedMarkerFX", position);
+            CreatePointLight(root.transform, new Vector3(0f, 0.22f, 0f), PhantomWitchConfig.VioletVoidCore, 4.2f, 5.5f, safeDuration);
+            PhantomWitchScytheSwingFx.SpawnSmokeBurst(
+                root.transform,
+                new Vector3(0f, 0.95f, 0f),
+                Quaternion.identity,
+                1.9f,
+                safeDuration);
 
             GameObject auraAnchor = new GameObject("PW_BlinkTrackedAuraAnchor");
             auraAnchor.transform.SetParent(root.transform, false);
@@ -165,11 +271,11 @@ namespace BossRush
             FrostmourneWeaponConfig.TryAddIceEffectsToGraphic(auraAnchor);
             RetintTeleportMarkerAura(auraAnchor, 2.2f);
 
-            CreateBrokenRing(root.transform, 0.34f, 0.03f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.82f), 0.05f, ResolveRingSegments(), 0.82f, 0.01f);
-            CreatePartialRing(root.transform, 0.24f, 0.02f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.62f), 0.09f, ResolveRingSegments(), 0.68f, 0.008f);
-            CreateSoulMistEmitter(root.transform, 0.32f, 10f, 0.8f, 1.2f, false, 0.08f);
-            CreateStardustEmitter(root.transform, 0.55f, 18f, safeDuration);
-            CreateBillboardQuad(root.transform, 0.16f, 0.16f, new Vector3(0f, 0.06f, 0f), WithAlpha(PhantomWitchConfig.VioletVoidVeil, 0.32f), true);
+            CreateBrokenRing(root.transform, 0.56f, 0.04f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.88f), 0.06f, ResolveRingSegments(), 0.82f, 0.01f);
+            CreatePartialRing(root.transform, 0.40f, 0.03f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.74f), 0.10f, ResolveRingSegments(), 0.68f, 0.008f);
+            CreateSoulMistEmitter(root.transform, 0.58f, 12f, 0.8f, 1.2f, false, 0.08f);
+            CreateStardustEmitter(root.transform, 0.85f, 24f, safeDuration);
+            CreateBillboardQuad(root.transform, 0.24f, 0.24f, new Vector3(0f, 0.08f, 0f), WithAlpha(PhantomWitchConfig.VioletVoidVeil, 0.42f), true);
 
             PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
             fade.Configure(safeDuration, Mathf.Min(0.22f, safeDuration * 0.4f));
@@ -181,10 +287,11 @@ namespace BossRush
         {
             float duration = Mathf.Max(0.18f, PhantomWitchConfig.BlinkTrackedFlashLeadDuration + 0.08f);
             GameObject root = CreateRoot("PW_BlinkTrackedFlashFX", position);
-            CreatePointLight(root.transform, new Vector3(0f, 0.18f, 0f), PhantomWitchConfig.VioletVoidCore, 3.2f, 8f, duration);
-            CreateEdgeDissolveBurst(root.transform, 18, 0.24f, 0.22f, PhantomWitchConfig.VioletVoidCore);
-            CreateStardustEmitter(root.transform, 0.42f, 24f, duration);
-            CreateBillboardQuad(root.transform, 0.22f, 0.22f, new Vector3(0f, 0.10f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.45f), true);
+            CreatePointLight(root.transform, new Vector3(0f, 0.18f, 0f), PhantomWitchConfig.VioletVoidCore, 5.2f, 11f, duration);
+            CreateEdgeDissolveBurst(root.transform, 28, 0.34f, 0.32f, PhantomWitchConfig.VioletVoidCore);
+            CreateStardustEmitter(root.transform, 0.65f, 32f, duration);
+            CreateBillboardQuad(root.transform, 0.36f, 0.36f, new Vector3(0f, 0.12f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.62f), true);
+            CreateSilverCrossFlash(root.transform, 0.38f, 0.96f, false, duration);
 
             PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
             fade.Configure(duration, duration);
@@ -194,120 +301,126 @@ namespace BossRush
 
         internal static GameObject CreateCurseAuraEffect(Vector3 position, float radius)
         {
-            return GetOrBuildVfx("PW_CurseAuraFX", position, PhantomWitchConfig.CurseAuraFxDuration, (root) =>
+            GameObject root = GetOrBuildVfx("PW_CurseAuraFX", position, PhantomWitchConfig.CurseAuraFxDuration, (rootObj) =>
             {
-                CreatePointLight(root.transform, new Vector3(0f, 0.8f, 0f), PhantomWitchConfig.VioletVoidMid, radius * 1.2f, 4.5f);
-                CreateGroundStain(root.transform, radius * 2.4f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.10f), PhantomWitchConfig.CurseAuraFxDuration);
+                CreatePointLight(rootObj.transform, new Vector3(0f, 0.8f, 0f), PhantomWitchConfig.VioletVoidMid, radius * 1.4f, 6.0f);
+                CreateGroundStain(rootObj.transform, radius * 2.6f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.14f), PhantomWitchConfig.CurseAuraFxDuration);
 
-                PhantomWitchFlatRingMesh ring = CreateRing(root.transform, radius, 0.05f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.75f), 0.06f);
+                PhantomWitchFlatRingMesh ring = CreateRing(rootObj.transform, radius, 0.06f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.88f), 0.07f);
                 PhantomWitchExpandRing expand = ring.gameObject.AddComponent<PhantomWitchExpandRing>();
-                expand.Configure(radius, 0.25f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.75f), 0.05f);
+                expand.Configure(radius, 0.25f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.88f), 0.06f);
+                CreateBrokenRing(rootObj.transform, radius * 0.92f, 0.04f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.72f), 0.07f, ResolveRingSegments(), 0.85f, 0.008f);
 
-                CreateRuneFlashSpawner(root.transform, radius * 0.85f, 6, 0.10f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.6f));
-                CreateSoulMistEmitter(root.transform, radius * 0.7f, 6f, 1.0f, 1.8f, true, 0.03f);
-                CreateStardustEmitter(root.transform, radius * 1.1f, 15f, PhantomWitchConfig.CurseAuraFxDuration);
-                CreateBillboardQuad(root.transform, 0.18f, 0.18f, new Vector3(0f, 0.7f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.4f), true);
+                CreateRuneFlashSpawner(rootObj.transform, radius * 0.90f, 8, 0.10f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.72f));
+                CreateSoulMistEmitter(rootObj.transform, radius * 0.78f, 10f, 1.0f, 1.8f, true, 0.03f);
+                CreateSoulFlameEmitter(rootObj.transform, new Vector3(0f, 0.14f, 0f), 6f, 0.9f, 1.4f, 0.18f, 0.42f, 0.08f, 0.13f, false, ParticleSystemShapeType.Circle);
+                CreateStardustEmitter(rootObj.transform, radius * 1.2f, 24f, PhantomWitchConfig.CurseAuraFxDuration);
+                CreateBillboardQuad(rootObj.transform, 0.22f, 0.22f, new Vector3(0f, 0.7f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.52f), true);
 
-                PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
+                PhantomWitchFadeDestroy fade = rootObj.AddComponent<PhantomWitchFadeDestroy>();
                 fade.Configure(PhantomWitchConfig.CurseAuraFxDuration, 0.45f);
             });
+            AttachTransientRequiemLine(root, Mathf.Max(1.1f, radius * 0.42f), 0.26f, true, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.86f));
+            AttachTransientSilverCrossFlash(root, Mathf.Max(0.26f, radius * 0.12f), 0.86f, false, 0.22f);
+            return root;
         }
 
         internal static GameObject CreateScytheSweepEffect(Vector3 position, Vector3 forward, float radius, float halfAngle)
         {
-            return GetOrBuildVfx("PW_ScytheSweepFX", position, 0.72f, (root) =>
+            forward = NormalizeFlatForward(forward);
+            PlayBossScytheSwingOverlay(position + Vector3.up * 0.18f, forward, radius * 1.02f);
+
+            GameObject root = GetOrBuildVfx("PW_ScytheSweepFX", position, 0.72f, (rootObj) =>
             {
-                forward.y = 0f;
-                if (forward.sqrMagnitude < 0.01f)
-                {
-                    forward = Vector3.forward;
-                }
-                forward.Normalize();
+                CreatePointLight(rootObj.transform, new Vector3(0f, 0.5f, 0f), PhantomWitchConfig.SilverAshCore, radius * 1.45f, 4.8f);
 
-                CreatePointLight(root.transform, new Vector3(0f, 0.5f, 0f), PhantomWitchConfig.SilverAshCore, radius * 1.25f, 3f);
-
-                PhantomWitchFlatPathMesh mainArc = CreateArc(root.transform, radius * 0.22f, halfAngle, forward, 0.055f, WithAlpha(PhantomWitchConfig.SilverAshMid, 0.9f), 0.12f);
+                PhantomWitchFlatPathMesh mainArc = CreateArc(rootObj.transform, radius * 0.18f, halfAngle, forward, 0.075f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.98f), 0.14f);
                 PhantomWitchExpandArc mainExpand = mainArc.gameObject.AddComponent<PhantomWitchExpandArc>();
-                mainExpand.Configure(radius * 0.22f, radius, halfAngle, forward, 0.16f, WithAlpha(PhantomWitchConfig.SilverAshMid, 0.9f), 0.055f);
+                mainExpand.Configure(radius * 0.18f, radius, halfAngle, forward, 0.16f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.98f), 0.075f);
 
-                PhantomWitchFlatPathMesh ghostArcA = CreateArc(root.transform, radius * 0.18f, halfAngle * 0.9f, forward, 0.025f, WithAlpha(PhantomWitchConfig.VioletVoidVeil, 0.45f), 0.16f);
+                PhantomWitchFlatPathMesh ghostArcA = CreateArc(rootObj.transform, radius * 0.15f, halfAngle * 0.92f, forward, 0.038f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.70f), 0.18f);
                 PhantomWitchExpandArc ghostExpandA = ghostArcA.gameObject.AddComponent<PhantomWitchExpandArc>();
-                ghostExpandA.Configure(radius * 0.18f, radius * 0.95f, halfAngle * 0.9f, forward, 0.22f, WithAlpha(PhantomWitchConfig.VioletVoidVeil, 0.45f), 0.025f);
+                ghostExpandA.Configure(radius * 0.15f, radius * 0.96f, halfAngle * 0.92f, forward, 0.22f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.70f), 0.038f);
 
-                PhantomWitchFlatPathMesh ghostArcB = CreateArc(root.transform, radius * 0.14f, halfAngle * 0.82f, forward, 0.018f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.3f), 0.20f);
+                PhantomWitchFlatPathMesh ghostArcB = CreateArc(rootObj.transform, radius * 0.10f, halfAngle * 0.84f, forward, 0.026f, WithAlpha(PhantomWitchConfig.VioletVoidVeil, 0.52f), 0.22f);
                 PhantomWitchExpandArc ghostExpandB = ghostArcB.gameObject.AddComponent<PhantomWitchExpandArc>();
-                ghostExpandB.Configure(radius * 0.14f, radius * 0.88f, halfAngle * 0.82f, forward, 0.26f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.3f), 0.018f);
+                ghostExpandB.Configure(radius * 0.10f, radius * 0.90f, halfAngle * 0.84f, forward, 0.26f, WithAlpha(PhantomWitchConfig.VioletVoidVeil, 0.52f), 0.026f);
 
-                CreateArcRuneFlashes(root.transform, radius * 0.72f, halfAngle, forward, 10, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.8f));
-                CreateSoulMistEmitter(root.transform, radius * 0.45f, 10f, 0.8f, 1.4f, true, 0.03f);
-                CreateStardustEmitter(root.transform, radius * 0.6f, 20f, 0.7f);
+                CreateArcRuneFlashes(rootObj.transform, radius * 0.78f, halfAngle, forward, 14, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.9f));
+                CreateSoulMistEmitter(rootObj.transform, radius * 0.55f, 14f, 0.8f, 1.4f, true, 0.03f);
+                CreateStardustEmitter(rootObj.transform, radius * 0.8f, 30f, 0.7f);
+                CreateBrokenRing(rootObj.transform, radius * 0.60f, 0.032f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.58f), 0.07f, ResolveRingSegments(), 0.82f, 0.01f);
 
                 Vector3 start = ArcPoint(forward, radius * 0.28f, -halfAngle * Mathf.Deg2Rad);
                 Vector3 end = ArcPoint(forward, radius, halfAngle * Mathf.Deg2Rad);
-                CreateSoulTendril(root.transform, start + new Vector3(0f, 0.08f, 0f), end + new Vector3(0f, 0.08f, 0f), 0.18f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.85f), true);
+                CreateSoulTendril(rootObj.transform, start + new Vector3(0f, 0.08f, 0f), end + new Vector3(0f, 0.08f, 0f), 0.22f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.90f), true);
 
-                PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
+                PhantomWitchFadeDestroy fade = rootObj.AddComponent<PhantomWitchFadeDestroy>();
                 fade.Configure(0.72f, 0.32f);
             });
+            AttachTransientRequiemLine(root, Mathf.Max(1.1f, radius * 0.33f), 0.20f, true, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.84f));
+            AttachTransientSilverCrossFlash(root, Mathf.Max(0.22f, radius * 0.10f), 0.78f, false, 0.18f);
+            return root;
         }
 
         internal static GameObject CreateHeavySlashEffect(Vector3 position, Vector3 forward, float radius)
         {
-            return GetOrBuildVfx("PW_HeavySlashFX", position, 0.78f, (root) =>
+            forward = NormalizeFlatForward(forward);
+            PlayBossScytheSwingOverlay(position + Vector3.up * 0.24f, forward, radius * 1.18f);
+
+            GameObject root = GetOrBuildVfx("PW_HeavySlashFX", position, 0.78f, (rootObj) =>
             {
-                forward.y = 0f;
-                if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
-                forward.Normalize();
+                CreatePointLight(rootObj.transform, new Vector3(0f, 0.8f, 0f), PhantomWitchConfig.VioletVoidCore, radius * 1.75f, 8.2f, 1.5f);
 
-                CreatePointLight(root.transform, new Vector3(0f, 0.8f, 0f), PhantomWitchConfig.VioletVoidCore, radius * 1.5f, 6.5f, 1.5f);
-
-                PhantomWitchFlatPathMesh burstRing = CreatePartialRing(root.transform, radius * 0.85f, 0.05f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.78f), 0.08f, ResolveRingSegments(), 0.84f, 0.008f);
+                PhantomWitchFlatPathMesh burstRing = CreatePartialRing(rootObj.transform, radius * 0.92f, 0.065f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.88f), 0.10f, ResolveRingSegments(), 0.84f, 0.008f);
                 PhantomWitchRingSpin spin = burstRing.gameObject.AddComponent<PhantomWitchRingSpin>();
                 spin.rotationSpeed = 8f;
 
-                PhantomWitchFlatPathMesh slashArc = CreateArc(root.transform, 0.01f, 40f, forward, 0.08f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.8f), 0.12f);
+                PhantomWitchFlatPathMesh slashArc = CreateArc(rootObj.transform, 0.01f, 40f, forward, 0.10f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.96f), 0.14f);
                 PhantomWitchExpandArc arcExpand = slashArc.gameObject.AddComponent<PhantomWitchExpandArc>();
-                arcExpand.Configure(0.01f, radius, 40f, forward, 0.18f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.8f), 0.08f);
+                arcExpand.Configure(0.01f, radius, 40f, forward, 0.18f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.96f), 0.10f);
+                CreateBrokenRing(rootObj.transform, radius * 0.72f, 0.04f, WithAlpha(PhantomWitchConfig.VioletVoidCore, 0.72f), 0.09f, ResolveRingSegments(), 0.88f, 0.008f);
+                CreateSoulTendril(rootObj.transform, new Vector3(0f, 0.10f, 0f), forward * radius, 0.26f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.92f), true);
 
-                CreateRuneFlashSpawner(root.transform, radius * 0.65f, 12, 0.12f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.65f));
-                CreateSoulMistEmitter(root.transform, radius * 0.55f, 12f, 0.9f, 1.5f, true, 0.04f);
-                CreateStardustEmitter(root.transform, radius * 0.7f, 24f, 0.8f);
-                CreateBillboardQuad(root.transform, 0.14f, 0.14f, new Vector3(0f, 0.9f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.32f), true);
+                CreateRuneFlashSpawner(rootObj.transform, radius * 0.72f, 14, 0.12f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.78f));
+                CreateSoulMistEmitter(rootObj.transform, radius * 0.62f, 14f, 0.9f, 1.5f, true, 0.04f);
+                CreateStardustEmitter(rootObj.transform, radius * 0.88f, 32f, 0.8f);
+                CreateBillboardQuad(rootObj.transform, 0.18f, 0.18f, new Vector3(0f, 0.9f, 0f), WithAlpha(PhantomWitchConfig.GhostBreathCore, 0.44f), true);
 
-                PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
+                PhantomWitchFadeDestroy fade = rootObj.AddComponent<PhantomWitchFadeDestroy>();
                 fade.Configure(0.78f, 0.38f);
             });
+            AttachTransientRequiemLine(root, Mathf.Max(1.35f, radius * 0.42f), 0.24f, true, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.90f));
+            AttachTransientSilverCrossFlash(root, Mathf.Max(0.28f, radius * 0.12f), 0.96f, true, 0.20f);
+            return root;
         }
 
         internal static GameObject CreateWraithWindupOutlineEffect(Vector3 position, Vector3 forward, float radius, float duration)
         {
-            return GetOrBuildVfx("PW_WraithWindupOutlineFX", position, duration, (root) =>
+            forward = NormalizeFlatForward(forward);
+            GameObject root = GetOrBuildVfx("PW_WraithWindupOutlineFX", position, duration, (rootObj) =>
             {
-                forward.y = 0f;
-                if (forward.sqrMagnitude < 0.01f)
-                {
-                    forward = Vector3.forward;
-                }
-                forward.Normalize();
-
                 float safeRadius = Mathf.Max(radius, 0.8f);
                 float safeDuration = Mathf.Max(duration, 0.1f);
-                CreatePointLight(root.transform, new Vector3(0f, 0.55f, 0f), PhantomWitchConfig.SilverAshCore, safeRadius * 1.1f, 2.4f, safeDuration);
+                CreatePointLight(rootObj.transform, new Vector3(0f, 0.55f, 0f), PhantomWitchConfig.SilverAshCore, safeRadius * 1.25f, 3.8f, safeDuration);
 
-                PhantomWitchFlatPathMesh outlineArc = CreateArc(root.transform, safeRadius * 0.45f, 52f, forward, 0.045f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.82f), 0.10f);
+                PhantomWitchFlatPathMesh outlineArc = CreateArc(rootObj.transform, safeRadius * 0.42f, 52f, forward, 0.055f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.92f), 0.12f);
                 PhantomWitchExpandArc outlineExpand = outlineArc.gameObject.AddComponent<PhantomWitchExpandArc>();
-                outlineExpand.Configure(safeRadius * 0.45f, safeRadius, 52f, forward, safeDuration * 0.55f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.82f), 0.045f);
+                outlineExpand.Configure(safeRadius * 0.42f, safeRadius, 52f, forward, safeDuration * 0.55f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.92f), 0.055f);
 
-                PhantomWitchFlatPathMesh ghostArc = CreateArc(root.transform, safeRadius * 0.35f, 58f, forward, 0.022f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.55f), 0.13f);
+                PhantomWitchFlatPathMesh ghostArc = CreateArc(rootObj.transform, safeRadius * 0.30f, 58f, forward, 0.032f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.68f), 0.15f);
                 PhantomWitchExpandArc ghostExpand = ghostArc.gameObject.AddComponent<PhantomWitchExpandArc>();
-                ghostExpand.Configure(safeRadius * 0.35f, safeRadius * 0.92f, 58f, forward, safeDuration * 0.70f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.55f), 0.022f);
+                ghostExpand.Configure(safeRadius * 0.30f, safeRadius * 0.92f, 58f, forward, safeDuration * 0.70f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.68f), 0.032f);
 
-                CreateArcRuneFlashes(root.transform, safeRadius * 0.78f, 58f, forward, 5, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.66f));
-                CreateSoulMistEmitter(root.transform, safeRadius * 0.42f, 4f, 0.7f, 1.1f, true, 0.02f);
+                CreateArcRuneFlashes(rootObj.transform, safeRadius * 0.82f, 58f, forward, 8, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.78f));
+                CreateSoulMistEmitter(rootObj.transform, safeRadius * 0.52f, 7f, 0.7f, 1.1f, true, 0.02f);
+                CreateStardustEmitter(rootObj.transform, safeRadius * 0.85f, 18f, safeDuration);
 
-                PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
+                PhantomWitchFadeDestroy fade = rootObj.AddComponent<PhantomWitchFadeDestroy>();
                 fade.Configure(safeDuration, Mathf.Min(safeDuration * 0.45f, 0.18f));
             });
+            AttachTransientRequiemLine(root, Mathf.Max(0.95f, radius * 0.34f), Mathf.Min(Mathf.Max(duration * 0.35f, 0.18f), 0.30f), true, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.80f));
+            return root;
         }
 
         internal static GameObject CreateSemiStealthWindupEffect(Transform bossBody)
@@ -330,35 +443,42 @@ namespace BossRush
 
         internal static GameObject CreateSummonCircleEffect(Vector3 position)
         {
-            return GetOrBuildVfx("PW_SummonCircleFX", position, PhantomWitchConfig.SummonCircleFxDuration, (root) =>
+            GameObject root = GetOrBuildVfx("PW_SummonCircleFX", position, PhantomWitchConfig.SummonCircleFxDuration, (rootObj) =>
             {
-                CreatePointLight(root.transform, new Vector3(0f, 1f, 0f), PhantomWitchConfig.VioletVoidMid, PhantomWitchConfig.SummonCircleRadius * 1.5f, 4f);
-                CreateAltarProjection(root.transform, PhantomWitchConfig.SummonCircleRadius, 0.02f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.42f), PhantomWitchConfig.SummonCircleFxDuration, false);
-                CreateFakeWarpField(root.transform, PhantomWitchConfig.SummonCircleRadius * 0.85f, 0.08f, PhantomWitchConfig.SummonCircleFxDuration);
+                CreatePointLight(rootObj.transform, new Vector3(0f, 1f, 0f), PhantomWitchConfig.VioletVoidMid, PhantomWitchConfig.SummonCircleRadius * 1.8f, 5.8f);
+                CreateAltarProjection(rootObj.transform, PhantomWitchConfig.SummonCircleRadius, 0.02f, WithAlpha(PhantomWitchConfig.VioletVoidDust, 0.52f), PhantomWitchConfig.SummonCircleFxDuration, false);
+                CreateFakeWarpField(rootObj.transform, PhantomWitchConfig.SummonCircleRadius * 0.95f, 0.10f, PhantomWitchConfig.SummonCircleFxDuration);
                 
-                CreateBrokenRing(root.transform, PhantomWitchConfig.SummonCircleRadius, 0.035f, WithAlpha(PhantomWitchConfig.VioletVoidCore, 0.85f), 0.08f, ResolveRingSegments(), 0.85f, 0.01f);
-                PhantomWitchFlatPathMesh reverseRing = CreatePartialRing(root.transform, PhantomWitchConfig.SummonCircleRadius * 0.8f, 0.025f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.7f), 0.12f, ResolveRingSegments(), 0.7f, 0.005f);
+                CreateBrokenRing(rootObj.transform, PhantomWitchConfig.SummonCircleRadius, 0.045f, WithAlpha(PhantomWitchConfig.VioletVoidCore, 0.92f), 0.09f, ResolveRingSegments(), 0.85f, 0.01f);
+                PhantomWitchFlatPathMesh reverseRing = CreatePartialRing(rootObj.transform, PhantomWitchConfig.SummonCircleRadius * 0.8f, 0.035f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.82f), 0.14f, ResolveRingSegments(), 0.7f, 0.005f);
                 reverseRing.gameObject.AddComponent<PhantomWitchRingSpin>().rotationSpeed = -6f;
+                CreateSoulMistEmitter(rootObj.transform, PhantomWitchConfig.SummonCircleRadius * 0.78f, 10f, 0.9f, 1.5f, true, 0.05f);
 
-                CreateSoulFlameEmitter(root.transform, Vector3.zero, 5f, 1.2f, 1.8f, 0.25f, 0.55f, 0.08f, 0.12f, false, ParticleSystemShapeType.Circle);
-                CreateStardustEmitter(root.transform, PhantomWitchConfig.SummonCircleRadius, 15f, PhantomWitchConfig.SummonCircleFxDuration);
-                CreateRuneFlashSpawner(root.transform, PhantomWitchConfig.SummonCircleRadius * 0.75f, 5, 0.12f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.65f));
+                CreateSoulFlameEmitter(rootObj.transform, Vector3.zero, 7f, 1.2f, 1.8f, 0.25f, 0.55f, 0.09f, 0.14f, false, ParticleSystemShapeType.Circle);
+                CreateStardustEmitter(rootObj.transform, PhantomWitchConfig.SummonCircleRadius * 1.1f, 24f, PhantomWitchConfig.SummonCircleFxDuration);
+                CreateRuneFlashSpawner(rootObj.transform, PhantomWitchConfig.SummonCircleRadius * 0.78f, 7, 0.12f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.76f));
 
-                PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
+                PhantomWitchFadeDestroy fade = rootObj.AddComponent<PhantomWitchFadeDestroy>();
                 fade.Configure(PhantomWitchConfig.SummonCircleFxDuration, 0.55f);
             });
+            AttachTransientRequiemLine(root, 1.45f, 0.28f, true, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.86f));
+            AttachTransientSilverCrossFlash(root, 0.38f, 1.05f, true, 0.24f);
+            return root;
         }
 
         internal static GameObject CreateMinionSpawnEffect(Vector3 position)
         {
-            return GetOrBuildVfx("PW_MinionSpawnFX", position, PhantomWitchConfig.MinionSpawnFxDuration, (root) =>
+            GameObject root = GetOrBuildVfx("PW_MinionSpawnFX", position, PhantomWitchConfig.MinionSpawnFxDuration, (rootObj) =>
             {
-                CreateTearLine(root.transform, 0.8f, WithAlpha(PhantomWitchConfig.VioletVoidCore, 0.8f), 0.04f);
-                CreateSoulTendril(root.transform, Vector3.zero, new Vector3(0f, 1.5f, 0f), 0.38f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.82f), true);
-                CreateSoulFlameEmitter(root.transform, new Vector3(0f, 0.02f, 0f), 5f, 1.0f, 1.4f, 0.12f, 0.32f, 0.06f, 0.10f, false, ParticleSystemShapeType.Cone);
-                CreateSoulMistEmitter(root.transform, 0.45f, 4f, 0.8f, 1.2f, true, 0.03f);
-                CreateStardustEmitter(root.transform, 1.2f, 12f, PhantomWitchConfig.MinionSpawnFxDuration);
+                CreatePointLight(rootObj.transform, new Vector3(0f, 0.7f, 0f), PhantomWitchConfig.VioletVoidMid, 2.4f, 3.6f, PhantomWitchConfig.MinionSpawnFxDuration);
+                CreateTearLine(rootObj.transform, 0.9f, WithAlpha(PhantomWitchConfig.VioletVoidCore, 0.88f), 0.05f);
+                CreateSoulTendril(rootObj.transform, Vector3.zero, new Vector3(0f, 1.5f, 0f), 0.46f, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.90f), true);
+                CreateSoulFlameEmitter(rootObj.transform, new Vector3(0f, 0.02f, 0f), 6f, 1.0f, 1.4f, 0.12f, 0.32f, 0.07f, 0.11f, false, ParticleSystemShapeType.Cone);
+                CreateSoulMistEmitter(rootObj.transform, 0.58f, 7f, 0.8f, 1.2f, true, 0.03f);
+                CreateStardustEmitter(rootObj.transform, 1.4f, 18f, PhantomWitchConfig.MinionSpawnFxDuration);
             });
+            AttachTransientSilverCrossFlash(root, 0.22f, 0.95f, false, 0.18f);
+            return root;
         }
 
         internal static GameObject CreateDamageHitEffect(Vector3 position)
@@ -452,29 +572,34 @@ namespace BossRush
         internal static GameObject CreateCurseRealmWarningCircle(Vector3 origin, float radius, float duration)
         {
             GameObject root = CreateRoot("PhantomWitch_CurseRealmWarning", origin);
-            CreatePointLight(root.transform, new Vector3(0f, 0.15f, 0f), PhantomWitchConfig.SilverAshCore, radius * 1.2f, 3f, duration);
-            CreateGroundStain(root.transform, radius * 2.2f, WithAlpha(PhantomWitchConfig.BloodRoseVeil, 0.08f), duration);
+            CreatePointLight(root.transform, new Vector3(0f, 0.15f, 0f), PhantomWitchConfig.SilverAshCore, radius * 1.45f, 4.8f, duration);
+            CreateGroundStain(root.transform, radius * 2.35f, WithAlpha(PhantomWitchConfig.BloodRoseVeil, 0.13f), duration);
 
             PhantomWitchFlatRingMesh outerRing = CreateRing(
                 root.transform,
                 Mathf.Max(radius, PhantomWitchConfig.CurseRealmWarningMinRadius),
-                0.04f,
-                WithAlpha(PhantomWitchConfig.SilverAshCore, 0.80f),
-                0.03f);
+                0.055f,
+                WithAlpha(PhantomWitchConfig.SilverAshCore, 0.92f),
+                0.04f);
             PhantomWitchShrinkRing shrink = outerRing.gameObject.AddComponent<PhantomWitchShrinkRing>();
-            shrink.Configure(Mathf.Max(radius, PhantomWitchConfig.CurseRealmWarningMinRadius), duration, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.80f), 0.04f);
+            shrink.Configure(Mathf.Max(radius, PhantomWitchConfig.CurseRealmWarningMinRadius), duration, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.92f), 0.055f);
 
             PhantomWitchFlatRingMesh innerRing = CreateRing(
                 root.transform,
                 Mathf.Max(radius * 0.72f, PhantomWitchConfig.CurseRealmWarningMinRadius),
-                0.025f,
-                WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.65f),
-                0.035f);
+                0.035f,
+                WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.82f),
+                0.045f);
             PhantomWitchShrinkRing innerShrink = innerRing.gameObject.AddComponent<PhantomWitchShrinkRing>();
-            innerShrink.Configure(Mathf.Max(radius * 0.72f, PhantomWitchConfig.CurseRealmWarningMinRadius), duration, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.65f), 0.025f);
+            innerShrink.Configure(Mathf.Max(radius * 0.72f, PhantomWitchConfig.CurseRealmWarningMinRadius), duration, WithAlpha(PhantomWitchConfig.VioletVoidMid, 0.82f), 0.035f);
 
-            CreateRuneFlashSpawner(root.transform, Mathf.Max(radius * 0.65f, 0.6f), 4, 0.12f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.55f));
-            CreateBillboardQuad(root.transform, 0.12f, 0.12f, new Vector3(0f, 0.12f, 0f), WithAlpha(PhantomWitchConfig.BloodRoseCore, 0.28f), true);
+            CreateBrokenRing(root.transform, Mathf.Max(radius * 0.88f, 0.5f), 0.032f, WithAlpha(PhantomWitchConfig.BloodRoseCore, 0.70f), 0.06f, ResolveRingSegments(), 0.86f, 0.008f);
+            CreateRuneFlashSpawner(root.transform, Mathf.Max(radius * 0.65f, 0.6f), 6, 0.12f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.70f));
+            CreateSoulMistEmitter(root.transform, Mathf.Max(radius * 0.72f, 0.6f), 8f, 0.8f, 1.2f, true, 0.04f);
+            CreateStardustEmitter(root.transform, Mathf.Max(radius * 0.95f, 0.8f), 18f, duration);
+            CreateBillboardQuad(root.transform, 0.16f, 0.16f, new Vector3(0f, 0.12f, 0f), WithAlpha(PhantomWitchConfig.BloodRoseCore, 0.42f), true);
+            AttachTransientRequiemLine(root, Mathf.Max(1.05f, radius * 0.30f), Mathf.Min(duration, 0.22f), true, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.82f));
+            AttachTransientSilverCrossFlash(root, Mathf.Max(0.22f, radius * 0.10f), 0.84f, true, Mathf.Min(duration, 0.18f));
 
             PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
             fade.Configure(duration, Mathf.Min(duration, 0.2f));
@@ -484,6 +609,24 @@ namespace BossRush
 
         internal static void ClearCache()
         {
+            foreach (var kv in VfxPools)
+            {
+                if (kv.Value == null)
+                {
+                    continue;
+                }
+
+                while (kv.Value.Count > 0)
+                {
+                    GameObject pooledRoot = kv.Value.Pop();
+                    if (pooledRoot != null)
+                    {
+                        Object.Destroy(pooledRoot);
+                    }
+                }
+            }
+            VfxPools.Clear();
+
             if (cachedLineMaterial != null)
             {
                 Object.Destroy(cachedLineMaterial);
@@ -573,6 +716,48 @@ namespace BossRush
         private static Color WithAlpha(Color color, float alpha)
         {
             return new Color(color.r, color.g, color.b, alpha);
+        }
+
+        private static Vector3 NormalizeFlatForward(Vector3 forward)
+        {
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.01f)
+            {
+                forward = Vector3.forward;
+            }
+
+            return forward.normalized;
+        }
+
+        private static void PlayBossScytheSwingOverlay(Vector3 position, Vector3 forward, float radius)
+        {
+            float rangeScale = 1f;
+            if (PhantomWitchScytheConfig.BaseAttackRange > 0.01f)
+            {
+                rangeScale = Mathf.Max(0.9f, radius / PhantomWitchScytheConfig.BaseAttackRange);
+            }
+
+            PhantomWitchScytheSwingFx.PlayAt(position, Quaternion.LookRotation(NormalizeFlatForward(forward)), rangeScale);
+        }
+
+        private static void AttachTransientSilverCrossFlash(GameObject root, float size, float yOffset, bool inverted, float duration)
+        {
+            if (root == null || duration <= 0f)
+            {
+                return;
+            }
+
+            CreateSilverCrossFlash(root.transform, size, yOffset, inverted, duration);
+        }
+
+        private static void AttachTransientRequiemLine(GameObject root, float height, float duration, bool rise, Color color)
+        {
+            if (root == null || duration <= 0f)
+            {
+                return;
+            }
+
+            CreateRequiemLine(root.transform, height, duration, rise, color);
         }
 
         private static Shader ResolveTransparentShader()

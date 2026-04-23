@@ -478,23 +478,9 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
                 ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
                 ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
-                // 幽灵女巫镰刀（500044）资源可能尚未随 AssetBundle 发布；
-                // 仅在 prefab 存在时注册 configurator，避免为一个永远不会加载的 TypeID 留下无效回调。
-                try
-                {
-                    if (ItemAssetsCollection.GetPrefab(PhantomWitchConfig.ReservedScytheTypeId) != null)
-                    {
-                        ItemFactory.RegisterConfigurator(PhantomWitchConfig.ReservedScytheTypeId, OnPhantomWitchScytheLoaded);
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] 幽灵女巫镰刀 prefab 缺失，跳过 ItemFactory configurator 注册 (TypeID=" + PhantomWitchConfig.ReservedScytheTypeId + ")");
-                    }
-                }
-                catch (Exception scytheCheckEx)
-                {
-                    DevLog("[BossRush] 检查幽灵女巫镰刀 prefab 失败，按未发布处理: " + scytheCheckEx.Message);
-                }
+                // 与霜之哀伤一致：500044 的 configurator 无条件注册。
+                // 资源是否最终可实例化由后续加载链自己决定，不在这里提前短路。
+                ItemFactory.RegisterConfigurator(PhantomWitchConfig.ReservedScytheTypeId, OnPhantomWitchScytheLoaded);
 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)

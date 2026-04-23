@@ -12,6 +12,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using Cysharp.Threading.Tasks;
 using Duckov.Buffs;
 using ItemStatsSystem;
@@ -32,20 +33,15 @@ namespace BossRush
         private static readonly WaitForSeconds wait1s = new WaitForSeconds(1.0f);
         private static readonly WaitForSeconds waitBlinkHide = new WaitForSeconds(PhantomWitchConfig.BlinkHideDuration);
         private static readonly WaitForSeconds waitBlinkRecovery = new WaitForSeconds(PhantomWitchConfig.BlinkRecovery);
-        private static readonly WaitForSeconds waitCurseAuraWindup = new WaitForSeconds(PhantomWitchConfig.CurseAuraWindup);
-        private static readonly WaitForSeconds waitCurseAuraRecovery = new WaitForSeconds(PhantomWitchConfig.CurseAuraRecovery);
         private static readonly WaitForSeconds waitScytheSweepWindup = new WaitForSeconds(PhantomWitchConfig.ScytheSweepWindup);
         private static readonly WaitForSeconds waitScytheSweepRecovery = new WaitForSeconds(PhantomWitchConfig.ScytheSweepRecovery);
-        private static readonly WaitForSeconds waitHeavySlashWindup = new WaitForSeconds(PhantomWitchConfig.HeavyScytheSlashWindup);
-        private static readonly WaitForSeconds waitHeavySlashRecovery = new WaitForSeconds(PhantomWitchConfig.HeavyScytheSlashRecovery);
         private static readonly WaitForSeconds waitSummonWindup = new WaitForSeconds(PhantomWitchConfig.SummonWindup);
         private static readonly WaitForSeconds waitSummonRecovery = new WaitForSeconds(PhantomWitchConfig.SummonRecovery);
-        private static readonly WaitForSeconds waitCurseRealmWindup = new WaitForSeconds(PhantomWitchConfig.BossCurseRealmWindup);
-        private static readonly WaitForSeconds waitCurseRealmRecovery = new WaitForSeconds(PhantomWitchConfig.BossCurseRealmRecovery);
         private static readonly WaitForSeconds waitPhase1PackageInterval = new WaitForSeconds(PhantomWitchConfig.Phase1PackageInterval);
         private static readonly WaitForSeconds waitPhase2PackageInterval = new WaitForSeconds(PhantomWitchConfig.Phase2PackageInterval);
         private static readonly WaitForSeconds waitPhase3PackageInterval = new WaitForSeconds(PhantomWitchConfig.Phase3PackageInterval);
-        private static readonly WaitForSeconds waitDoublePressureFollowup = new WaitForSeconds(PhantomWitchConfig.DoublePressureFollowupDelay);
+        private static FieldInfo attackAnimationHoldAgentField;
+        private static bool attackAnimationHoldAgentFieldCached;
 
         public PhantomWitchPhase CurrentPhase { get; private set; } = PhantomWitchPhase.Phase1;
 
@@ -504,11 +500,6 @@ namespace BossRush
             {
                 yield return ExecuteImmediateScytheSweep(null);
             }
-            if (CanContinueAttacking())
-            {
-                yield return waitDoublePressureFollowup;
-                yield return ExecuteHeavyScytheSlash();
-            }
         }
 
         private IEnumerator ExecuteMidrangeRequiemPackage()
@@ -517,7 +508,6 @@ namespace BossRush
             TryResolveCombatTarget(out target);
             PauseAI();
             SetStealthMode(PhantomWitchStealthMode.SemiStealthWindup);
-            FaceTarget(target);
 
             TrackEffect(PhantomWitchAssetManager.CreateChannelChargeEffect(
                 bossCharacter.transform.position,
@@ -534,6 +524,7 @@ namespace BossRush
             }
 
             SetStealthMode(PhantomWitchStealthMode.Visible);
+            ForceScytheAttackAnimation(target);
             Vector3 forward = ResolveAttackForward(target);
             Vector3 origin = bossCharacter.transform.position + forward * 1.0f;
             TrackEffect(PhantomWitchAssetManager.CreateScytheSweepEffect(
@@ -565,7 +556,6 @@ namespace BossRush
 
             PauseAI();
             SetStealthMode(PhantomWitchStealthMode.SemiStealthWindup);
-            FaceTarget(target);
             float windupDuration = Mathf.Max(PhantomWitchConfig.WraithWindupDuration, PhantomWitchConfig.WraithWindupMinGate);
             Vector3 lockedForward = ResolveAttackForward(target);
 
@@ -601,6 +591,7 @@ namespace BossRush
             }
 
             SetStealthMode(PhantomWitchStealthMode.Visible);
+            ForceScytheAttackAnimation(target);
             Vector3 origin = bossCharacter.transform.position + lockedForward * 1.15f;
             TrackEffect(PhantomWitchAssetManager.CreateHeavySlashEffect(origin, lockedForward, 3.2f));
             DealConeDamage(3.2f, 48f, PhantomWitchConfig.WraithTrailDamage, true, 1.15f, target);
@@ -608,6 +599,7 @@ namespace BossRush
 
             if (CanContinueAttacking())
             {
+                ForceScytheAttackAnimation(target);
                 TrackEffect(PhantomWitchAssetManager.CreateScytheSweepEffect(origin, lockedForward, 3.6f, 54f));
                 DealConeDamage(3.6f, 54f, PhantomWitchConfig.WraithTrailDamage, false, 1.0f, target);
             }
@@ -660,11 +652,6 @@ namespace BossRush
             else
             {
                 yield return ExecuteImmediateScytheSweep(null);
-            }
-            if (CanContinueAttacking())
-            {
-                yield return waitDoublePressureFollowup;
-                yield return ExecuteHeavyScytheSlash();
             }
         }
 
@@ -898,78 +885,6 @@ namespace BossRush
             }
         }
 
-        private IEnumerator ExecuteBlink()
-        {
-            CharacterMainControl target;
-            TryResolveCombatTarget(out target);
-            LogSkillState("Blink", "before PauseAI", target);
-
-            if (target != null)
-            {
-                yield return ExecuteTrackedTeleportStrike(target);
-            }
-            else
-            {
-                PauseAI();
-                Vector3 targetPos = ResolveTeleportPosition(target,
-                    PhantomWitchConfig.BlinkMinDistance,
-                    PhantomWitchConfig.BlinkMaxDistance);
-                ModBehaviour.DevLog("[PhantomWitch] [Blink] resolved teleport targetPos=" + targetPos);
-                yield return TeleportTo(targetPos);
-                FaceTarget(target);
-            }
-            LogSkillState("Blink", "before ResumeAI", target);
-            ResumeAI(target);
-        }
-
-        private IEnumerator ExecuteCurseAura()
-        {
-            CharacterMainControl target;
-            TryResolveCombatTarget(out target);
-            LogSkillState("CurseAura", "before PauseAI", target);
-
-            PauseAI();
-            FaceTarget(target);
-
-            if (target != null && GetFlatDistance(bossCharacter.transform.position, target.transform.position) >
-                PhantomWitchConfig.CurseAuraRadius + 0.75f)
-            {
-                Vector3 targetPos = ResolveTeleportPosition(target, 1.6f, 2.8f);
-                ModBehaviour.DevLog("[PhantomWitch] [CurseAura] target out of range, teleporting to " + targetPos);
-                yield return TeleportTo(targetPos);
-                FaceTarget(target);
-            }
-
-            TrackEffect(PhantomWitchAssetManager.CreateCurseAuraEffect(
-                bossCharacter.transform.position,
-                PhantomWitchConfig.CurseAuraRadius));
-            TrackEffect(PhantomWitchAssetManager.CreateChannelChargeEffect(
-                bossCharacter.transform.position,
-                PhantomWitchConfig.CurseAuraRadius * 0.45f,
-                PhantomWitchConfig.CurseAuraWindup,
-                false));
-            yield return waitCurseAuraWindup;
-
-            if (!CanContinueAttacking())
-            {
-                LogSkillState("CurseAura", "CanContinueAttacking=false, before ResumeAI", target);
-                ResumeAI(target);
-                yield break;
-            }
-
-            DealConeDamage(
-                PhantomWitchConfig.CurseAuraRadius,
-                180f,
-                PhantomWitchConfig.CurseAuraDamage,
-                true,
-                0.2f,
-                target);
-
-            yield return waitCurseAuraRecovery;
-            LogSkillState("CurseAura", "before ResumeAI", target);
-            ResumeAI(target);
-        }
-
         private IEnumerator ExecuteScytheSweep()
         {
             CharacterMainControl target;
@@ -1015,16 +930,18 @@ namespace BossRush
                 yield break;
             }
 
-            FaceTarget(target);
+            ForceScytheAttackAnimation(target);
             Vector3 sweepForward = ResolveAttackForward(target);
+            float sweepVisualScale = ResolveBossSweepVisualScale();
             Vector3 sweepOrigin = bossCharacter.transform.position +
-                sweepForward * PhantomWitchConfig.ScytheSweepForwardOffset;
+                sweepForward * (PhantomWitchConfig.ScytheSweepForwardOffset * sweepVisualScale);
             TrackEffect(PhantomWitchAssetManager.CreateScytheSweepEffect(
                 sweepOrigin,
                 sweepForward,
-                PhantomWitchConfig.ScytheSweepRadius,
+                PhantomWitchConfig.ScytheSweepRadius * sweepVisualScale,
                 PhantomWitchConfig.ScytheSweepHalfAngle));
 
+            // Keep the gameplay hitbox unchanged; this request only enlarges the visuals.
             DealConeDamage(
                 PhantomWitchConfig.ScytheSweepRadius,
                 PhantomWitchConfig.ScytheSweepHalfAngle,
@@ -1042,12 +959,14 @@ namespace BossRush
                 yield break;
             }
 
-            PauseAI();
             SetStealthMode(PhantomWitchStealthMode.SemiStealthWindup);
 
             GameObject markerEffect = null;
             float telegraphStartedAt = Time.time;
-            float markerDuration = PhantomWitchConfig.BlinkTrackedMarkerFxDuration;
+            Vector3 lockedTeleportPos = ResolveTrackedTeleportStrikePosition(target);
+            float markerDuration = Mathf.Max(
+                PhantomWitchConfig.BlinkTrackedMarkerFxDuration,
+                PhantomWitchConfig.BlinkTrackedTelegraphDuration + 0.2f);
 
             while (Time.time - telegraphStartedAt < PhantomWitchConfig.BlinkTrackedTelegraphDuration)
             {
@@ -1057,8 +976,10 @@ namespace BossRush
                     yield break;
                 }
 
+                TouchAttackLoopProgress();
                 Vector3 currentTargetPosition = target.transform.position;
                 Vector3 trackedTeleportPos = ResolveTrackedTeleportStrikePosition(target);
+                lockedTeleportPos = trackedTeleportPos;
                 if (markerEffect == null)
                 {
                     markerEffect = PhantomWitchAssetManager.CreateTrackedTeleportMarkerEffect(trackedTeleportPos, markerDuration);
@@ -1089,83 +1010,20 @@ namespace BossRush
                 yield break;
             }
 
-            Vector3 teleportPos = ResolveTrackedTeleportStrikePosition(target);
+            PauseAI();
+            TouchAttackLoopProgress();
+
+            // Teleport exactly to the last tracked marker position instead of recalculating again.
             if (markerEffect != null)
             {
-                markerEffect.transform.position = teleportPos;
+                markerEffect.transform.position = lockedTeleportPos;
             }
 
-            TrackEffect(PhantomWitchAssetManager.CreateTrackedTeleportFlashEffect(teleportPos));
-            yield return TeleportTo(teleportPos);
-            FaceTarget(target);
+            TrackEffect(PhantomWitchAssetManager.CreateTrackedTeleportFlashEffect(lockedTeleportPos));
+            yield return TeleportTo(lockedTeleportPos);
             SetStealthMode(PhantomWitchStealthMode.Visible);
             yield return ExecuteImmediateScytheSweep(target);
-        }
-
-        private IEnumerator ExecuteHeavyScytheSlash()
-        {
-            CharacterMainControl target;
-            TryResolveCombatTarget(out target);
-            LogSkillState("HeavyScytheSlash", "before PauseAI", target);
-
-            PauseAI();
-            if (target != null && GetFlatDistance(bossCharacter.transform.position, target.transform.position) >
-                PhantomWitchConfig.HeavyScytheSlashRadius + 0.45f)
-            {
-                Vector3 targetPos = ResolveTeleportPosition(
-                    target,
-                    PhantomWitchConfig.HeavySlashBlinkMinDistance,
-                    PhantomWitchConfig.HeavySlashBlinkMaxDistance);
-                ModBehaviour.DevLog("[PhantomWitch] [HeavyScytheSlash] resolved teleport targetPos=" + targetPos);
-
-                yield return TeleportTo(targetPos);
-            }
-
-            FaceTarget(target);
-
-            TrackEffect(PhantomWitchAssetManager.CreateChannelChargeEffect(
-                bossCharacter.transform.position,
-                PhantomWitchConfig.HeavyScytheSlashRadius * 0.45f,
-                PhantomWitchConfig.HeavyScytheSlashWindup,
-                true));
-            yield return waitHeavySlashWindup;
-
-            if (!CanContinueAttacking())
-            {
-                LogSkillState("HeavyScytheSlash", "CanContinueAttacking=false, before ResumeAI", target);
-                ResumeAI(target);
-                yield break;
-            }
-
-            Vector3 heavyForward = ResolveAttackForward(target);
-            Vector3 heavyOrigin = bossCharacter.transform.position +
-                heavyForward * PhantomWitchConfig.HeavyScytheSlashForwardOffset;
-            TrackEffect(PhantomWitchAssetManager.CreateHeavySlashEffect(
-                heavyOrigin,
-                heavyForward,
-                PhantomWitchConfig.HeavyScytheSlashRadius));
-
-            DealConeDamage(
-                PhantomWitchConfig.HeavyScytheSlashRadius,
-                PhantomWitchConfig.HeavyScytheSlashHalfAngle,
-                PhantomWitchConfig.HeavyScytheSlashDamage,
-                true,
-                PhantomWitchConfig.HeavyScytheSlashForwardOffset,
-                target);
-
-            yield return waitHeavySlashRecovery;
-            LogSkillState("HeavyScytheSlash", "before ResumeAI", target);
             ResumeAI(target);
-        }
-
-        private IEnumerator ExecuteCurseRealm()
-        {
-            yield return ExecuteTelegraphedCurseRealm(1f, 1f);
-        }
-
-        private IEnumerator ExecuteSummonMinions()
-        {
-            yield return SpawnMinionPair();
         }
 
         private async UniTask SpawnMinion(int index, int totalCount, PhantomWitchMinionRole role)
@@ -2020,6 +1878,7 @@ namespace BossRush
             RestoreVisibleState();
             CleanupMinions();
             CleanupAllEffects();
+            CleanupControllerRuntimeState();
             ReleaseAssetReferenceIfNeeded();
             PrintTelemetrySummary();
 
@@ -2046,17 +1905,8 @@ namespace BossRush
             RestoreVisibleState();
             CleanupMinions();
             CleanupAllEffects();
-
-            try
-            {
-                if (aiController != null)
-                {
-                    aiController.Resume();
-                }
-            }
-            catch
-            {
-            }
+            CleanupControllerRuntimeState();
+            ReleaseAssetReferenceIfNeeded();
 
             ModBehaviour.DevLog("[PhantomWitch] 玩家死亡清理完成");
 
@@ -2073,6 +1923,51 @@ namespace BossRush
 
             assetReferenceReleased = true;
             ModBehaviour.ReleasePhantomWitchInstance();
+        }
+
+        private void CleanupControllerRuntimeState()
+        {
+            attackLoopCoroutine = null;
+            currentAttackCoroutine = null;
+
+            if (activeSemiStealthEffect != null)
+            {
+                try
+                {
+                    UnityEngine.Object.Destroy(activeSemiStealthEffect);
+                }
+                catch
+                {
+                }
+                activeSemiStealthEffect = null;
+            }
+
+            if (ambientPresence != null)
+            {
+                try
+                {
+                    ambientPresence.Pause();
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    UnityEngine.Object.Destroy(ambientPresence);
+                }
+                catch
+                {
+                }
+
+                ambientPresence = null;
+            }
+
+            if (aiController != null)
+            {
+                aiController.Cleanup();
+                aiController = null;
+            }
         }
 
         private bool CanContinueAttacking()
@@ -2139,12 +2034,11 @@ namespace BossRush
             }
 
             // 若目标位置就在原地（ResolveTeleportPosition 找不到 NavMesh 时会回退），
-            // 跳过 Hide/Wait/Show，避免出现"原地隐身 0.22s 却像卡住"的观感，
-            // 同时规避罕见的 Unity 协程在 Hide/Show 期间被静默中断的死局。
+            // 直接跳过，避免出现"原地隐身却像卡住"的观感。
             float teleportDistanceSq = (targetPos - bossCharacter.transform.position).sqrMagnitude;
             if (teleportDistanceSq < 0.16f)
             {
-                ModBehaviour.DevLog("[PhantomWitch] [Teleport] targetPos 与当前位置几乎一致，跳过 Hide/Show");
+                ModBehaviour.DevLog("[PhantomWitch] [Teleport] targetPos 与当前位置几乎一致，跳过传送主体");
                 yield break;
             }
 
@@ -2163,21 +2057,18 @@ namespace BossRush
                 false));
             bossHealth.SetInvincible(true);
             ModBehaviour.DevLog("[PhantomWitch] [Teleport] invincible=true");
-            bossCharacter.Hide();
-            ModBehaviour.DevLog("[PhantomWitch] [Teleport] hide called");
+            TouchAttackLoopProgress();
 
             yield return waitBlinkHide;
 
             if (bossCharacter == null || bossHealth == null)
             {
-                ModBehaviour.DevLog("[PhantomWitch] [Teleport] aborted after hide because bossCharacter/bossHealth is null");
+                ModBehaviour.DevLog("[PhantomWitch] [Teleport] aborted after delay because bossCharacter/bossHealth is null");
                 yield break;
             }
 
-            bossCharacter.SetPosition(targetPos);
-            ModBehaviour.DevLog("[PhantomWitch] [Teleport] SetPosition done, currentPos=" + bossCharacter.transform.position);
-            bossCharacter.Show();
-            ModBehaviour.DevLog("[PhantomWitch] [Teleport] show called");
+            ApplyTeleportPosition(targetPos);
+            TouchAttackLoopProgress();
             bossHealth.SetInvincible(false);
             ModBehaviour.DevLog("[PhantomWitch] [Teleport] invincible=false");
             TrackEffect(PhantomWitchAssetManager.CreateTeleportEffect(targetPos, true));
@@ -2191,6 +2082,41 @@ namespace BossRush
                 phase3TeleportCount++;
             }
             ModBehaviour.DevLog("[PhantomWitch] [Teleport] end | boss=" + DescribeBossState());
+        }
+
+        private void TouchAttackLoopProgress()
+        {
+            attackLoopLastTickTime = Time.time;
+        }
+
+        private void ApplyTeleportPosition(Vector3 targetPos)
+        {
+            if (bossCharacter == null)
+            {
+                return;
+            }
+
+            bool usedSetPosition = false;
+            try
+            {
+                bossCharacter.SetPosition(targetPos);
+                usedSetPosition = true;
+            }
+            catch (Exception setPositionEx)
+            {
+                ModBehaviour.DevLog("[PhantomWitch] [Teleport] SetPosition 失败，改用 transform.position: " + setPositionEx.Message);
+            }
+
+            Vector3 currentPos = bossCharacter.transform.position;
+            Vector3 delta = currentPos - targetPos;
+            if (!usedSetPosition || delta.sqrMagnitude > 0.0001f)
+            {
+                bossCharacter.transform.position = targetPos;
+                ModBehaviour.DevLog("[PhantomWitch] [Teleport] hard snap -> " + bossCharacter.transform.position);
+                return;
+            }
+
+            ModBehaviour.DevLog("[PhantomWitch] [Teleport] SetPosition done, currentPos=" + currentPos);
         }
 
         private void RestoreVisibleState()
@@ -2323,7 +2249,16 @@ namespace BossRush
 
             Vector3 candidate = currentTargetPos + offsetDirection.normalized * PhantomWitchConfig.BlinkTrackedOffsetDistance;
             candidate.y = currentTargetPos.y;
-            return SampleNavMeshOrFallback(candidate, currentTargetPos);
+            Vector3 sampledCandidate = SampleNavMeshOrFallback(candidate, currentTargetPos);
+            if ((sampledCandidate - fallback).sqrMagnitude < 1.0f)
+            {
+                return ResolveTeleportPosition(
+                    target,
+                    Mathf.Max(PhantomWitchConfig.BlinkMinDistance, 1.6f),
+                    Mathf.Max(PhantomWitchConfig.BlinkMaxDistance, 2.8f));
+            }
+
+            return sampledCandidate;
         }
 
         private Vector3 SampleNavMeshOrFallback(Vector3 candidate, Vector3 fallback)
@@ -2364,7 +2299,19 @@ namespace BossRush
                 return;
             }
 
-            bossCharacter.transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            Vector3 desiredForward = dir.normalized;
+            Vector3 currentForward = bossCharacter.transform.forward;
+            currentForward.y = 0f;
+            if (currentForward.sqrMagnitude > 0.01f)
+            {
+                float yawDelta = Vector3.Angle(currentForward.normalized, desiredForward);
+                if (yawDelta < 12f)
+                {
+                    return;
+                }
+            }
+
+            bossCharacter.transform.rotation = Quaternion.LookRotation(desiredForward, Vector3.up);
         }
 
         private int DealConeDamage(
@@ -2506,6 +2453,80 @@ namespace BossRush
             }
 
             return forward.normalized;
+        }
+
+        private void ForceScytheAttackAnimation(CharacterMainControl target)
+        {
+            if (bossCharacter == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (target != null)
+                {
+                    Vector3 aimPoint = target.transform.position;
+                    aimPoint.y = bossCharacter.transform.position.y;
+                    bossCharacter.SetAimPoint(aimPoint);
+                }
+
+                FaceTarget(target);
+
+                Slot meleeSlot = bossCharacter.MeleeWeaponSlot();
+                if (meleeSlot != null && meleeSlot.Content != null)
+                {
+                    DuckovItemAgent currentHoldAgent = bossCharacter.CurrentHoldItemAgent;
+                    if (currentHoldAgent == null || currentHoldAgent.Item != meleeSlot.Content)
+                    {
+                        bossCharacter.ChangeHoldItem(meleeSlot.Content);
+                    }
+                }
+
+                if (bossCharacter.characterModel == null)
+                {
+                    return;
+                }
+
+                CharacterAnimationControl animControl =
+                    bossCharacter.characterModel.GetComponentInChildren<CharacterAnimationControl>();
+                if (animControl == null)
+                {
+                    return;
+                }
+
+                if (!attackAnimationHoldAgentFieldCached)
+                {
+                    attackAnimationHoldAgentField = typeof(CharacterAnimationControl).GetField(
+                        "holdAgent",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    attackAnimationHoldAgentFieldCached = true;
+                }
+
+                DuckovItemAgent currentAgent = bossCharacter.CurrentHoldItemAgent;
+                if (currentAgent != null && attackAnimationHoldAgentField != null)
+                {
+                    attackAnimationHoldAgentField.SetValue(animControl, currentAgent);
+                }
+
+                bossCharacter.characterModel.ForcePlayAttackAnimation();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitch] [WARNING] ForceScytheAttackAnimation失败: " + e.Message);
+            }
+        }
+
+        private float ResolveBossSweepVisualScale()
+        {
+            if (bossCharacter == null)
+            {
+                return 1f;
+            }
+
+            Vector3 lossyScale = bossCharacter.transform.lossyScale;
+            float maxAxisScale = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z));
+            return Mathf.Max(1f, maxAxisScale);
         }
 
         private bool IsEnemyReceiver(DamageReceiver receiver)
@@ -2844,13 +2865,8 @@ namespace BossRush
             RestoreVisibleState();
             CleanupMinions();
             CleanupAllEffects();
+            CleanupControllerRuntimeState();
             ReleaseAssetReferenceIfNeeded();
-
-            if (aiController != null)
-            {
-                aiController.Cleanup();
-                aiController = null;
-            }
 
             bossCharacter = null;
             bossHealth = null;
