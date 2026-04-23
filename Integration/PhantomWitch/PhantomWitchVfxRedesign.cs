@@ -1712,7 +1712,7 @@ namespace BossRush
     {
         private void LateUpdate()
         {
-            Camera camera = Camera.main;
+            Camera camera = PhantomWitchFxRuntime.CurrentCamera;
             if (camera != null)
             {
                 transform.rotation = camera.transform.rotation;

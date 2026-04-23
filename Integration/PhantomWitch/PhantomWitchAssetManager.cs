@@ -1131,7 +1131,24 @@ namespace BossRush
     internal static class PhantomWitchFxRuntime
     {
         private static int activeRootCount = 0;
+        private static Camera cachedMainCamera = null;
+        private static int cachedMainCameraFrame = -1;
         internal static bool HasActiveRoots => activeRootCount > 0;
+
+        internal static Camera CurrentCamera
+        {
+            get
+            {
+                // Collapse repeated per-frame Camera.main lookups across PhantomWitch FX.
+                if (cachedMainCameraFrame != Time.frameCount || cachedMainCamera == null)
+                {
+                    cachedMainCamera = Camera.main;
+                    cachedMainCameraFrame = Time.frameCount;
+                }
+
+                return cachedMainCamera;
+            }
+        }
 
         internal static PhantomWitchFxDetailLevel CurrentDetailLevel
         {
@@ -1178,6 +1195,8 @@ namespace BossRush
         internal static void Reset()
         {
             activeRootCount = 0;
+            cachedMainCamera = null;
+            cachedMainCameraFrame = -1;
         }
     }
 

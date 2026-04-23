@@ -506,7 +506,7 @@ namespace BossRush
                 return;
             }
 
-            Camera camera = Camera.main;
+            Camera camera = PhantomWitchFxRuntime.CurrentCamera;
             if (camera != null)
             {
                 coldHaloTransform.rotation = camera.transform.rotation;
@@ -573,7 +573,7 @@ namespace BossRush
                 return;
             }
 
-            Camera camera = Camera.main;
+            Camera camera = PhantomWitchFxRuntime.CurrentCamera;
             if (camera != null)
             {
                 heartbeatTransform.rotation = camera.transform.rotation;
