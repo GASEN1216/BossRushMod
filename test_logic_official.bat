@@ -12,7 +12,10 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo [1/4] Running LegacyBossLootProbabilityTests...
+if exist tests\bin rd /s /q tests\bin
+if exist tests\obj rd /s /q tests\obj
+
+echo [1/6] Running LegacyBossLootProbabilityTests...
 dotnet run --project tests\LegacyBossLootProbabilityTests.csproj -c Release --nologo
 if %ERRORLEVEL% NEQ 0 (
     echo [FAIL] LegacyBossLootProbabilityTests failed.
@@ -20,7 +23,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [2/4] Running PhantomWitchPerformancePolicyTests...
+echo [2/6] Running PhantomWitchPerformancePolicyTests...
 dotnet run --project tests\PhantomWitchPerformancePolicyTests.csproj -c Release --nologo
 if %ERRORLEVEL% NEQ 0 (
     echo [FAIL] PhantomWitchPerformancePolicyTests failed.
@@ -28,7 +31,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [3/4] Running SimpleJsonHelperTests...
+echo [3/6] Running SimpleJsonHelperTests...
 dotnet run --project tests\SimpleJsonHelperTests.csproj -c Release --nologo
 if %ERRORLEVEL% NEQ 0 (
     echo [FAIL] SimpleJsonHelperTests failed.
@@ -36,10 +39,26 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [4/4] Running AffinityJsonSerializerTests...
+echo [4/6] Running AffinityJsonSerializerTests...
 dotnet run --project tests\AffinityJsonSerializerTests.csproj -c Release --nologo
 if %ERRORLEVEL% NEQ 0 (
     echo [FAIL] AffinityJsonSerializerTests failed.
+    exit /b 1
+)
+
+echo.
+echo [5/6] Running F3DebugCheatMathTests...
+dotnet run --project tests\F3DebugCheatMathTests.csproj -c Release --nologo
+if %ERRORLEVEL% NEQ 0 (
+    echo [FAIL] F3DebugCheatMathTests failed.
+    exit /b 1
+)
+
+echo.
+echo [6/6] Running F3DebugCheatLifecycleTests...
+dotnet run --project tests\F3DebugCheatLifecycleTests.csproj -c Release --nologo
+if %ERRORLEVEL% NEQ 0 (
+    echo [FAIL] F3DebugCheatLifecycleTests failed.
     exit /b 1
 )
 

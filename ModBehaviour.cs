@@ -2856,6 +2856,8 @@ namespace BossRush
             
             // 检测物品生成器快捷键（F2）
             CheckItemSpawnerHotkey();
+            CheckF3DebugCheatMenuHotkey();
+            TickF3DebugCheatMenu();
             
             // 持续清理功能已移除，改为禁用spawner
             
@@ -2985,20 +2987,9 @@ namespace BossRush
                 DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
             }
             
-            // 调试快捷键 F3：清除星愿奖励冷却和发送冷却
-            if (DevModeEnabled && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.F3))
+            if (f3DebugCheatMenuVisible)
             {
-                try
-                {
-                    WishFountainService.ClearWishRewardCooldownForDevMode();
-                    WishFountainService.ClearSendCooldownForDevMode();
-                    ShowMessage(L10n.T("已清除星愿奖励与发送冷却", "Wish reward and send cooldowns cleared"));
-                    DevLog("[BossRush] F3 已清除星愿奖励冷却和发送冷却");
-                }
-                catch (Exception e)
-                {
-                    DevLog("[BossRush] F3 清除星愿奖励冷却和发送冷却失败: " + e.Message + "\n" + e.StackTrace);
-                }
+                return;
             }
             
             // 调试快捷键 F4：清空所有成就数据（DevMode专用测试功能）
@@ -3316,6 +3307,7 @@ namespace BossRush
             
             // NPC传送UI的暂停和鼠标状态控制
             NPCTeleportUILateUpdate();
+            F3DebugCheatMenuLateUpdate();
         }
         
         private static void InjectBossRushTicketLocalization()
@@ -3339,6 +3331,8 @@ namespace BossRush
 
         void OnDestroy()
         {
+            OnDestroy_F3DebugCheatMenu();
+
             // 注销交互调试监听
             UnregisterInteractDebugListener();
             
@@ -3409,6 +3403,7 @@ namespace BossRush
             // 场景切换时清理现金磁铁飞行状态
             try { ClearCashMagnetState(); } catch (System.Exception ex) { DevLog($"[CashMagnet] 场景切换清理异常: {ex.Message}"); }
             
+            OnSceneLoaded_F3DebugCheatMenu(scene, mode);
             OnSceneLoaded_Integration(scene, mode);
         }
 

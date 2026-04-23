@@ -99,6 +99,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     UIAndSigns\UIAndSigns.cs ^
     DebugAndTools\DebugAndTools.cs ^
     DebugAndTools\ItemSpawner.cs ^
+    DebugAndTools\F3DebugCheatMenu.cs ^
     DebugAndTools\NPCTeleportUI.cs ^
     Integration\BossRushIntegration.cs ^
     Integration\DeathWraith\DeathWraithSystem.cs ^
@@ -113,6 +114,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\Utilities.cs ^
     Utilities\EntityModelFactory.cs ^
     Utilities\SimpleJsonHelper.cs ^
+    Utilities\F3DebugCheatMath.cs ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
     Utilities\SteamHelper.cs ^

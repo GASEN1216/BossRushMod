@@ -197,7 +197,7 @@ The project includes an extensive built-in debug layer. Common hotkeys:
 | Hotkey | Action |
 |--------|--------|
 | `F2` | Toggle `ItemSpawner` |
-| `F3` | Clear Wish Fountain cooldowns (dev mode) |
+| `F3` | Open the unified debug/cheat control menu (teleport, stat tuning, items, money, cooldown clears, etc.) |
 | `F4` | Clear achievement data |
 | `F5` | Dump nearby building/object info |
 | `F6` | Toggle placement mode |

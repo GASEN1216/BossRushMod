@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Duckov.UI;
 using ItemStatsSystem;
 using UnityEngine;
 
@@ -17,6 +18,12 @@ namespace BossRush
         private readonly List<ItemInfo> cachedItems = new List<ItemInfo>();
         private int cachedItemCount;
         private string statusMessage = string.Empty;
+        private float previousTimeScale = 1f;
+        private bool previousCursorVisible;
+        private CursorLockMode previousCursorLockState = CursorLockMode.Locked;
+        private bool presentationStateCaptured;
+        private bool inputDisabled;
+        private GameObject inputDisableToken;
 
         private struct ItemInfo
         {
@@ -43,15 +50,19 @@ namespace BossRush
         {
             if (!ModBehaviour.DevModeEnabled)
             {
+                HideWindow();
                 return;
             }
 
             if (Input.GetKeyDown(KeyCode.F11))
             {
-                windowVisible = !windowVisible;
                 if (windowVisible)
                 {
-                    RefreshInventory(true);
+                    HideWindow();
+                }
+                else
+                {
+                    ShowAndRefresh();
                 }
             }
         }
@@ -81,7 +92,7 @@ namespace BossRush
 
             if (GUILayout.Button("关闭", GUILayout.Height(28f)))
             {
-                windowVisible = false;
+                HideWindow();
             }
             GUILayout.EndHorizontal();
 
@@ -187,6 +198,143 @@ namespace BossRush
                 statusMessage = "读取异常: " + e.Message;
                 ModBehaviour.DevLog("[InventoryInspector] 刷新异常: " + e);
             }
+        }
+
+        public void ShowAndRefresh()
+        {
+            if (!CapturePresentationState())
+            {
+                return;
+            }
+
+            windowVisible = true;
+            RefreshInventory(true);
+        }
+
+        private void OnDisable()
+        {
+            HideWindow();
+        }
+
+        private void OnDestroy()
+        {
+            HideWindow();
+
+            if (inputDisableToken != null)
+            {
+                Destroy(inputDisableToken);
+                inputDisableToken = null;
+            }
+        }
+
+        private void HideWindow()
+        {
+            windowVisible = false;
+            RestorePresentationState();
+        }
+
+        private bool CapturePresentationState()
+        {
+            if (presentationStateCaptured)
+            {
+                return true;
+            }
+
+            float currentTimeScale = Time.timeScale;
+            bool currentCursorVisible = Cursor.visible;
+            CursorLockMode currentCursorLockState = Cursor.lockState;
+
+            try
+            {
+                EnsureInputDisableToken();
+                InputManager.DisableInput(inputDisableToken);
+                inputDisabled = true;
+
+                previousTimeScale = currentTimeScale;
+                previousCursorVisible = currentCursorVisible;
+                previousCursorLockState = currentCursorLockState;
+                presentationStateCaptured = true;
+
+                Time.timeScale = 0f;
+                Cursor.visible = true;
+                Cursor.lockState = CursorLockMode.None;
+                return true;
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    if (inputDisabled && inputDisableToken != null)
+                    {
+                        InputManager.ActiveInput(inputDisableToken);
+                    }
+                }
+                catch { }
+
+                inputDisabled = false;
+
+                try
+                {
+                    Time.timeScale = currentTimeScale;
+                    Cursor.visible = currentCursorVisible;
+                    Cursor.lockState = currentCursorLockState;
+                }
+                catch { }
+
+                statusMessage = "打开检查器失败: " + e.Message;
+                ModBehaviour.DevLog("[InventoryInspector] 捕获显示状态失败: " + e);
+                return false;
+            }
+        }
+
+        private void RestorePresentationState()
+        {
+            if (!presentationStateCaptured)
+            {
+                return;
+            }
+
+            try
+            {
+                if (inputDisabled && inputDisableToken != null)
+                {
+                    InputManager.ActiveInput(inputDisableToken);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[InventoryInspector] 恢复输入失败: " + e);
+            }
+            finally
+            {
+                inputDisabled = false;
+            }
+
+            try
+            {
+                Time.timeScale = previousTimeScale;
+                Cursor.visible = previousCursorVisible;
+                Cursor.lockState = previousCursorLockState;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[InventoryInspector] 恢复显示状态失败: " + e);
+            }
+            finally
+            {
+                presentationStateCaptured = false;
+            }
+        }
+
+        private void EnsureInputDisableToken()
+        {
+            if (inputDisableToken != null)
+            {
+                return;
+            }
+
+            inputDisableToken = new GameObject("InventoryInspectorInputToken");
+            DontDestroyOnLoad(inputDisableToken);
         }
 
         private void LogAllItemsToDevLog()
