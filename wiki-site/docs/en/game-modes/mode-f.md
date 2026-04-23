@@ -2,7 +2,7 @@
 
 # Overview
 
-Blood Hunt is the hardest mode in BossRush Mod. Upon entering, you continuously lose health, and the only way to heal is by killing Bosses. The mode is divided into four phases, with bleed rate increasing and Boss aggression escalating. The ultimate goal is to find the evacuation point during the extraction phase and successfully evacuate.
+Blood Hunt is the hardest mode in BossRush Mod. Upon entering, you continuously lose health, and killing Bosses is your main sustain tool. The mode is divided into four phases, with bleed rate increasing and Boss aggression escalating. The ultimate goal is to find the evacuation point during the extraction phase and successfully evacuate.
 
 # Entry Requirements
 
@@ -63,7 +63,7 @@ All three NPCs appear in Blood Hunt mode:
 
 - A Mystery Merchant also appears in Blood Hunt, offering categorized battle-supply shops.
 - The merchant now includes a `Repair` option that opens the repair UI directly.
-- Opening any Mystery Merchant category shop also adds a `Sell All` button beside the player inventory, allowing batch-selling of eligible root items from the current backpack; locked slots are excluded.
+- Opening any Mystery Merchant category shop also adds a `Sell All` button beside the player inventory, allowing batch-selling of eligible root items from the current backpack; locked slots and manually wishlisted items are excluded.
 
 # Fortification System
 

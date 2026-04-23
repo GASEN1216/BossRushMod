@@ -23,6 +23,7 @@
 - Stamina Cost: 10 per hit
 - Move Speed: 110%
 - Deal Damage Time: 0.12 sec
+- Gem Slots: 2
 
 # Three-Hit Combo (Left Click)
 Clicking left click consecutively triggers a three-hit combo, each hit with different attack range and effects. The combo window is 0.75 seconds; exceeding it resets the chain.

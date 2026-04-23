@@ -6,6 +6,7 @@
 # Configuration Methods
 - **Config file**: `StreamingAssets/BossRushModConfig.txt` (JSON format), auto-generated on first run.
 - **In-game settings**: If the game supports ModConfig UI, you can modify settings directly in the Mod settings interface.
+- When you change BossRush-registered options through ModConfig UI, supported settings now sync immediately to the running Mod and are written back to the local config file.
 
 # Configuration Reference
 
@@ -17,12 +18,12 @@
 # enableRandomBossLoot
 - Default: true
 - Range: true/false
-- Whether to enable random Boss loot (disabled = use original drops)
+- Whether to enable BossRush random Boss loot logic (when disabled, BossRush no longer takes over the vanilla Boss drop flow)
 
 # useLegacyBossLootProbabilities
 - Default: true
 - Range: true/false
-- Quality distribution algorithm: `true` uses Legacy Probability Mode (per-quality independent probabilities + Q6+ guarantee), `false` uses Simplified Probability Mode (combined high-quality probability, no guarantee)
+- Quality distribution algorithm: `true` uses Legacy Probability Mode (per-quality independent probabilities + Q5+ guarantee), `false` uses Simplified Probability Mode (combined high-quality probability, no guarantee)
 
 # useInteractBetweenWaves
 - Default: false

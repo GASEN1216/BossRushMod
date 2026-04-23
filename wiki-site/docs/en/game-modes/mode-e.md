@@ -86,7 +86,7 @@ When the mode starts, a Mystery Merchant appears in front of you, offering a `Re
 
 The merchant is on your faction and has extremely high HP, making them virtually unkillable.
 - The `Repair` option opens the standard repair UI directly.
-- Opening any category shop also adds a `Sell All` button beside the player inventory, allowing batch-selling of eligible root items from the current backpack; locked slots are excluded.
+- Opening any category shop also adds a `Sell All` button beside the player inventory, allowing batch-selling of eligible root items from the current backpack; locked slots and manually wishlisted items are excluded.
 
 # Summon Coalball
 

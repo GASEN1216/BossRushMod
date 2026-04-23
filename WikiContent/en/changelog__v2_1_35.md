@@ -1,0 +1,28 @@
+## v2.1.35
+
+### Release Date
+- 2026-04-22
+
+### Main Theme
+- **Phantom Witch, Soulreaper's Requiem, Legacy Probability Loot Mode**: the third custom Boss — Phantom Witch — and her exclusive scythe weapon Soulreaper's Requiem join the roster; a new "Legacy Probability" loot config is now on by default with a Q5+ guarantee for high-HP Bosses; Skyburner Halberd and Frostmourne each gain 2 gem slots.
+
+### Detailed Update Log
+
+#### New
+- Added custom Boss **Phantom Witch** (HP 1000) with a three-phase fight: blink approach, scythe sweep / heavy slash, Curse Realm, Requiem Arc, Wraith Trail; Phase 3 enters a last-stand mode with dual ghost minion summoning.
+- Added exclusive melee weapon **Soulreaper's Requiem** (Ghost element, quality 6), 50% extra-drop chance on Phantom Witch kill; right click casts a Curse Realm.
+- Added config option `useLegacyBossLootProbabilities` (Legacy boss loot probabilities, default: on): per-quality independent probability + Q5+ guarantee. When a Boss's max HP > 250 and its loot crate contains no Q5+ item, one extra item is appended (90% Q5 / 9% Q6 / 0.9% Q7 / 0.1% Q8).
+- Skyburner Halberd and Frostmourne each gain **2 gem slots**.
+
+#### Improvements
+- Wiki in-game browser UI rendering overhaul: precompiled regex for faster parsing, dynamic title font sizing with NBSP to fix long-title line breaks, right-column pagination switched to source-text slicing + RichText repair to fix first-character offset.
+- Unified Boss runtime preset cleanup via `BossCleanupHelpers`, fixing ScriptableObject memory leak on scene transitions.
+
+#### Fixes
+- Fixed an issue where switching from Infinite Hell to From Scratch / Faction War / Blood Hunt left residual `infiniteHellMode` state, causing Boss loot crates to disappear and cash to spawn erroneously near signposts.
+- Fixed the "Sell All" button in Faction War / Blood Hunt mystery merchant accidentally selling wishlisted items.
+- Fixed an issue where some ModConfig changes did not take effect immediately; supported options now sync by changed key and are written back to the local config file.
+- Fixed gem slot creation failing silently when the Gem Tag was missing, with no retry.
+- Fixed NPC grouped-interaction child nodes failing to initialize under certain timing conditions.
+- Fixed Skyburner Dragon Lord's `ComposeProcessedHitKey` bit-field encoding collision that could merge distinct hit checks.
+- Fixed Blood Hunt fortification collider merging that broke half-cover penetration and degraded performance on low-end machines.

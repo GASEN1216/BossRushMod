@@ -8,9 +8,9 @@ BossRush Mod is a large-scale content expansion mod for Escape from Duckov (Stea
 
 - Game Modes: 5 — Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt
 - Available Maps: 9, covering most in-game scenes
-- Custom Bosses: 2 — Dragon Descendant, Skyburner Dragon Lord (each with unique skill sets and exclusive drops)
+- Custom Bosses: 3 — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (each with unique skill sets and exclusive drops)
 - NPCs: 3 — Dingdang (Goblin Craftsman), Yuori (Nurse), Awen (Courier)
-- Custom Equipment: Dragon Set, Dragon King Set, Cloud Rider Totem, Reverse Scale, Skyburner Halberd, Dragon Breath
+- Custom Equipment: Dragon Set, Dragon King Set, Cloud Rider Totem, Reverse Scale, Skyburner Halberd, Frostmourne, Soulreaper's Requiem, Dragon Breath, Dragon Cannon
 - Custom Items: 20+ functional items, consumables, and mode-exclusive props
 - Base Interaction Buildings: Wedding Chapel, Dust-Covered StarWish Fountain
 - Reforge System: Equipment stat Reforge + Cold Quench Fluid to lock affixes

@@ -25,6 +25,7 @@
 - Move Speed: 107%
 - Deal Damage Time: 0.084 sec
 - Cold Protection: +2
+- Gem Slots: 2
 
 ### Frost Power
 - All melee attacks are converted to ice-element damage

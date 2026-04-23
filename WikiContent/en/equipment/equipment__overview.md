@@ -1,6 +1,6 @@
 ## Equipment Overview
 
-BossRush Mod adds a series of custom equipment, mainly from two Boss drop lines: Dragon Descendant and Skyburner Dragon Lord.
+BossRush Mod adds a series of custom equipment, mainly from three drop lines: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch.
 In addition, the vanilla `Cname_Boss_Blue` now has a chance to drop an extra custom melee weapon: Frostmourne.
 
 ### Equipment List
@@ -9,6 +9,7 @@ In addition, the vanilla `Cname_Boss_Blue` now has a chance to drop an extra cus
 - Cloud Rider Totem — Totem (Skyburner Dragon Lord drop)
 - Reverse Scale — Totem (Skyburner Dragon Lord drop)
 - Skyburner Halberd — Melee weapon (Skyburner Dragon Lord drop)
+- Soulreaper's Requiem — Ghost melee weapon (50% extra drop from Phantom Witch)
 - Dragon Breath — Firearm (Dragon Descendant drop)
 - Dragon Cannon — Firearm (Skyburner Dragon Lord drop, 5%)
 - Frostmourne — Ice melee weapon (`Cname_Boss_Blue` 50% extra drop)
@@ -27,5 +28,6 @@ Both dragon-themed sets provide a core "fire-to-heal" passive; the difference li
 ### Equipment Acquisition Tips
 - Challenge Dragon Descendant first to obtain the Dragon Set and Dragon Breath as transitional gear
 - After mastering Dragon Descendant, challenge Skyburner Dragon Lord for the Dragon King Set and exclusive weapons
+- If you want a high-mobility control-focused melee option, challenge the Phantom Witch for Soulreaper's Requiem
 - Choose totems based on playstyle: Cloud Rider for mobility, Reverse Scale for survivability
 - If you regularly farm vanilla Blue Bosses, keep an eye out for Frostmourne; its ice damage and undead summon are both excellent for BossRush

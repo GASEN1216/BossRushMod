@@ -7,7 +7,7 @@
 
 #### Random Loot Toggle
 - The config option `enableRandomBossLoot` (default: on) controls whether the BossRush random loot system is active.
-- When disabled, Bosses use the game's original drop logic and all quality distribution rules below do not apply.
+- When disabled, BossRush no longer takes over the vanilla Boss drop flow, and all quality distribution rules below do not apply.
 
 #### Loot Crates
 - After each Boss is killed, a loot crate spawns at its death location.
@@ -27,7 +27,7 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
   - Quality 6: 1.00% → 5.00%
   - Quality 5: 5.00% → 10.00%
   - Quality 1-4: remaining probability split by weights 0.1345 : 0.3655 : 0.3655 : 0.1345
-- **Q6+ Guarantee**: when the Boss's max health > 250 and the loot crate contains no quality 6+ item, one extra Q6+ item is appended (99% Q6, 0.9% Q7, 0.1% Q8).
+- **Q5+ Guarantee**: when the Boss's max health > 250 and the loot crate contains no quality 5+ item, one extra Q5+ item is appended (90% Q5, 9% Q6, 0.9% Q7, 0.1% Q8).
 
 ##### Simplified Probability Mode
 - Set `useLegacyBossLootProbabilities` to `false` to switch to this mode.
@@ -36,9 +36,9 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
   - Boss health bonus: +5% per 100 health points
   - Kill speed bonus: the faster the kill, the higher the bonus (up to +10%)
 - Internal high quality distribution: quality 5 : 6 : 7 : 8 = 4 : 3 : 2 : 1
-- No Q6+ guarantee mechanism.
+- No Q5+ guarantee mechanism.
 
-> **Note**: Both modes exclude quest-tagged items from the candidate pool. The only differences are the probability distribution algorithm and the Q6+ guarantee mechanism.
+> **Note**: Both modes exclude quest-tagged items from the candidate pool. The only differences are the probability distribution algorithm and the Q5+ guarantee mechanism.
 
 #### Completion Reward Crate
 - After defeating all waves, a completion reward crate spawns at the center of the arena:
@@ -107,6 +107,5 @@ When killing a custom Boss, in addition to the regular loot crate, exclusive equ
 - Skyburner Halberd (Melee): 15% drop rate
 - Dragon Cannon (Firearm): 5% drop rate
 
-### Death Protection
-
-[tip] In all BossRush modes, players do not drop their items on death.
+#### Phantom Witch
+- Soulreaper's Requiem (Melee): 50% drop rate

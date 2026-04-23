@@ -6,6 +6,7 @@
 ### 配置方式
 - **配置文件**：`StreamingAssets/BossRushModConfig.txt`（JSON 格式），首次运行自动生成。
 - **游戏内设置**：如果游戏支持 ModConfig UI，可在 Mod 设置界面中直接修改。
+- 通过 ModConfig UI 修改由 BossRush 注册的配置项时，当前支持的选项会即时同步到运行中的 Mod，并写回本地配置文件。
 
 ### 配置项一览
 
@@ -17,12 +18,12 @@
 #### enableRandomBossLoot
 - 默认值：true
 - 范围：true/false
-- 是否启用随机 Boss 掉落（关闭则使用原始掉落）
+- 是否启用 BossRush 随机 Boss 掉落逻辑（关闭后 BossRush 不再接手原版 Boss 掉落逻辑）
 
 #### useLegacyBossLootProbabilities
 - 默认值：true
 - 范围：true/false
-- 战利品品质分布算法：`true` 使用原版概率模式（各品质独立概率 + Q6+ 保底），`false` 使用简化概率模式（高品质总概率 + 无保底）
+- 战利品品质分布算法：`true` 使用原版概率模式（各品质独立概率 + Q5+ 保底），`false` 使用简化概率模式（高品质总概率 + 无保底）
 
 #### useInteractBetweenWaves
 - 默认值：false

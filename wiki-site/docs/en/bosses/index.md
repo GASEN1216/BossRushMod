@@ -1,16 +1,17 @@
 # Boss Overview
 
-BossRush Mod adds 2 fully custom bosses on top of the game's original boss pool, each with independent skill sets, phase transitions, and exclusive drops.
+BossRush Mod adds 3 fully custom bosses on top of the game's original boss pool, each with independent skill sets, phase transitions, and exclusive drops.
 
 # Custom Boss List
 - Dragon Descendant — HP 500, mid-tier difficulty, exclusive drops: Crimson Dragon Helm, Flame Scale Armor, Dragon Breath
 - Skyburner Dragon Lord — HP 800, highest difficulty, exclusive drops: Dragon King Crown, Dragon King Scale Armor, Cloud Rider, Reverse Scale, Skyburner Halberd, Dragon Cannon
+- Phantom Witch — HP 1000, high difficulty, three-phase fight (blink + scythe + Curse Realm + summoning), exclusive drop: Soulreaper's Requiem
 
 # Boss Pool Rules
-- Standard BossRush and Infinite Hell: The first 20 waves exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord to give players time to warm up
-- From Scratch: No bosses in the first 5 waves, waves 6-10 exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord, and the full Boss pool opens after wave 16
-- Faction War: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear
-- Blood Hunt: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear; a new boss is automatically added after a boss is killed
+- Standard BossRush and Infinite Hell: The first 20 waves exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch to give players time to warm up
+- From Scratch: No bosses in the first 5 waves, waves 6-10 exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch, and the full Boss pool opens after wave 16
+- Faction War: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear, Phantom Witch joins the normal draw
+- Blood Hunt: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear, Phantom Witch joins the normal draw; a new boss is automatically added after a boss is killed
 
 # Boss Filter
 You can customize the boss pool through the Boss Filter (Ctrl+F10):

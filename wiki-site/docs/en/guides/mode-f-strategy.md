@@ -2,7 +2,7 @@
 
 # Core Concept
 - Blood Hunt is the hardest mode in the Mod.
-- You continuously lose health, and the only way to heal is by killing Bosses.
+- You continuously lose health, and killing Bosses is your main sustain tool.
 - Health drain accelerates across four phases, with the ultimate goal of successfully extracting during the extraction phase.
 
 # Preparation Phase (180s, 1%/sec)

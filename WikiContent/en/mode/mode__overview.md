@@ -21,7 +21,6 @@ When you carry multiple entry items at the same time, the system determines whic
 
 ### General Rules
 
-- In all modes, players do not drop items on death
 - All modes support 9 maps
 - The arena provides basic facilities such as ammo shop, repair station, and trash can
 - Standard BossRush, From Scratch, and Blood Hunt spawn loot crates after Boss kills; Infinite Hell uses a cash pool instead, and Faction War only drops crates from enemy-faction Bosses

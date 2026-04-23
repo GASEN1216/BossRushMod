@@ -23,7 +23,7 @@ After entering the arena, a signpost appears in the center. Interact with the si
 
 ### Step 4: Fight and Loot
 
-- Each wave of Bosses drops a loot crate upon defeat
+- In standard BossRush difficulties, each defeated wave drops a loot crate; Infinite Hell does not use loot crates and instead pays out cash plus milestone rewards
 - There is a countdown interval between waves to organize equipment and resupply
 - An ammo shop, repair station, and trash bin are available near the signpost
 
@@ -37,8 +37,6 @@ Once you are familiar with standard BossRush, try:
 - Infinite Hell: Select Infinite Hell difficulty for an endless survival challenge
 
 ### Tips
-
-[tip] You do not drop items on death during BossRush, so feel free to experiment.
 
 [tip] The "Return to Spawn" option on the signpost lets you quickly get back to the safe zone.
 
