@@ -76,6 +76,11 @@ namespace BossRush
         public static int RollGuaranteeQuality(double roll)
         {
             double clampedRoll = Clamp01(roll);
+            if (clampedRoll < 0.9)
+            {
+                return 5;
+            }
+
             if (clampedRoll < 0.99)
             {
                 return 6;

@@ -63,7 +63,7 @@ namespace BossRush
         /// <summary>击杀时间加成系数（最快击杀时的最大加成，0.1即10%）</summary>
         private const float LOOT_TIME_BONUS_RATE = 0.1f;
 
-        /// <summary>原版 Boss 战利品 Q6+ 保底的最小 Boss 最大生命值门槛</summary>
+        /// <summary>原版 Boss 战利品 Q5+ 保底的最小 Boss 最大生命值门槛</summary>
         private const float LEGACY_BOSS_GUARANTEE_MIN_MAX_HEALTH = 250f;
         
         // ============================================================================
@@ -1739,6 +1739,7 @@ namespace BossRush
                         loader.ignoreLevelConfig = true;
                         loader.CalculateChances();
                         loader.StartSetup();
+                        StartCoroutine(CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount));
                     }
                     catch (Exception cfgEx)
                     {
@@ -2708,7 +2709,7 @@ namespace BossRush
                                             DevLog("[BossRush] Boss 奖励 randomPool 条目数=" + entriesList.Count);
                                         }
 
-                                        // 不使用 LootBoxLoader 自带的 fixedItems 保底；legacy Q6+ 保底在后续协程中追加
+                                        // 不使用 LootBoxLoader 自带的 fixedItems 保底；legacy Q5+ 保底在后续协程中追加
                                         // 这里仍需初始化 fixedItems 字段，避免 LootBoxLoader.Setup() 空引用
                                         System.Reflection.FieldInfo fixedItemsField = loaderType.GetField("fixedItems", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                                         System.Reflection.FieldInfo fixedChanceField = loaderType.GetField("fixedItemSpawnChance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -2991,7 +2992,7 @@ namespace BossRush
                 return -1;
             }
 
-            for (int quality = desiredQuality; quality >= 6; quality--)
+            for (int quality = desiredQuality; quality >= 5; quality--)
             {
                 List<int> bucket = null;
                 if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
@@ -3013,7 +3014,7 @@ namespace BossRush
                 return false;
             }
 
-            if (InventoryContainsItemAtLeastQuality(inv, 6))
+            if (InventoryContainsItemAtLeastQuality(inv, 5))
             {
                 return false;
             }
@@ -3023,7 +3024,7 @@ namespace BossRush
             int rewardTypeId = GetLegacyBossGuaranteeTypeId(desiredQuality, out actualQuality);
             if (rewardTypeId <= 0)
             {
-                DevLog("[BossRush] [WARNING] 原版战利品保底失败：未找到可用的 Q6+ 候选，desiredQuality=" + desiredQuality);
+                DevLog("[BossRush] [WARNING] 原版战利品保底失败：未找到可用的 Q5+ 候选，desiredQuality=" + desiredQuality);
                 return false;
             }
 
@@ -3417,8 +3418,8 @@ namespace BossRush
                 }
 
                 FrostmourneBlueBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
-                // 未来新增Boss在此添加 else if 分支
                 PhantomWitchScytheBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                // 未来新增Boss在此添加 else if 分支
             }
             finally
             {

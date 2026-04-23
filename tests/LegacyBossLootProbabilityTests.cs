@@ -45,7 +45,9 @@ internal static class LegacyBossLootProbabilityTests
 
     private static void TestGuaranteeQualityRolls()
     {
-        AssertEqual("Guarantee Q6", LegacyBossLootProbabilityModel.RollGuaranteeQuality(0.5000), 6);
+        AssertEqual("Guarantee Q5", LegacyBossLootProbabilityModel.RollGuaranteeQuality(0.5000), 5);
+        AssertEqual("Guarantee boundary Q6", LegacyBossLootProbabilityModel.RollGuaranteeQuality(0.9000), 6);
+        AssertEqual("Guarantee Q6", LegacyBossLootProbabilityModel.RollGuaranteeQuality(0.9500), 6);
         AssertEqual("Guarantee boundary Q7", LegacyBossLootProbabilityModel.RollGuaranteeQuality(0.9900), 7);
         AssertEqual("Guarantee Q7", LegacyBossLootProbabilityModel.RollGuaranteeQuality(0.9950), 7);
         AssertEqual("Guarantee boundary Q8", LegacyBossLootProbabilityModel.RollGuaranteeQuality(0.9990), 8);
