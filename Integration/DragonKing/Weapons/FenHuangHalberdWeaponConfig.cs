@@ -487,6 +487,37 @@ namespace BossRush
             catch { }
         }
 
+        internal static void PrepareRuntimeHoldAgentVisual(GameObject go)
+        {
+            if (go == null)
+            {
+                return;
+            }
+
+            DisableMotionBlur(go);
+            FixModelGraphics(go);
+            EnableRuntimeRenderers(go);
+        }
+
+        private static void EnableRuntimeRenderers(GameObject go)
+        {
+            try
+            {
+                Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+                foreach (Renderer r in renderers)
+                {
+                    if (r == null)
+                    {
+                        continue;
+                    }
+
+                    r.enabled = true;
+                    r.forceRenderingOff = false;
+                }
+            }
+            catch { }
+        }
+
         /// <summary>
         /// 禁用武器模型的运动模糊，使其与原版武器表现一致
         /// </summary>

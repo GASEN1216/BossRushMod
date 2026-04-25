@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Duckov.Buildings;
 using Duckov.Utilities;
 using HarmonyLib;
@@ -785,10 +786,20 @@ namespace BossRush
             public Func<Item, bool> NeedsConfigure;
             public Action<Item> AfterRestore;
             public string DebugName;
+            public bool EnableMeleeHoldAgentCompat;
+            public Action<GameObject> PrepareRuntimeHoldVisual;
         }
 
         private static readonly Dictionary<int, RuntimeConfigEntry> runtimeConfigEntries =
             new Dictionary<int, RuntimeConfigEntry>();
+
+        private static FieldInfo meleeRefField;
+        private static FieldInfo gunRefField;
+        private static FieldInfo currentUsingSocketCacheField;
+        private static FieldInfo itemAgentItemField;
+        private static FieldInfo meleeSettingField;
+        private static FieldInfo meleeSoundKeyField;
+        private static bool meleeCompatFieldsCached;
 
         public static void RegisterRuntimeConfiguredItem(
             int typeId,
@@ -833,7 +844,8 @@ namespace BossRush
             int typeId,
             Action<Item> configure,
             string debugName,
-            Action<Item> afterRestore = null)
+            Action<Item> afterRestore = null,
+            Action<GameObject> prepareRuntimeHoldVisual = null)
         {
             RegisterRuntimeConfiguredItem(
                 typeId,
@@ -841,6 +853,13 @@ namespace BossRush
                 NeedsMeleeRuntimeConfig,
                 afterRestore,
                 debugName);
+
+            RuntimeConfigEntry entry;
+            if (runtimeConfigEntries.TryGetValue(typeId, out entry) && entry != null)
+            {
+                entry.EnableMeleeHoldAgentCompat = true;
+                entry.PrepareRuntimeHoldVisual = prepareRuntimeHoldVisual;
+            }
         }
 
         public static bool IsRuntimeConfiguredType(int typeId)
@@ -965,6 +984,238 @@ namespace BossRush
                    item.Stats.GetStat("AttackRange") == null ||
                    item.Stats.GetStat("AttackSpeed") == null ||
                    item.Value <= 0;
+        }
+
+        public static bool TryApplyRegisteredMeleeHoldAgentCompatibility(
+            ItemAgentHolder holder,
+            DuckovItemAgent holdAgent,
+            Item item)
+        {
+            if (holder == null || holdAgent == null || item == null)
+            {
+                return false;
+            }
+
+            RuntimeConfigEntry entry;
+            if (!runtimeConfigEntries.TryGetValue(item.TypeID, out entry) || entry == null || !entry.EnableMeleeHoldAgentCompat)
+            {
+                return false;
+            }
+
+            try
+            {
+                EnsureCustomItemConfigured(item);
+                CacheMeleeCompatFields();
+
+                ItemAgent_MeleeWeapon sourceMeleeAgent = item.GetComponent<ItemAgent_MeleeWeapon>();
+                ItemSetting_MeleeWeapon sourceSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
+
+                ItemAgent_MeleeWeapon runtimeMeleeAgent = holdAgent as ItemAgent_MeleeWeapon;
+                if (runtimeMeleeAgent == null)
+                {
+                    runtimeMeleeAgent = holdAgent.gameObject.GetComponent<ItemAgent_MeleeWeapon>();
+                    if (runtimeMeleeAgent == null)
+                    {
+                        runtimeMeleeAgent = holdAgent.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
+                    }
+                }
+
+                if (itemAgentItemField != null)
+                {
+                    itemAgentItemField.SetValue(runtimeMeleeAgent, item);
+                }
+
+                ConfigureRuntimeMeleeAgentFromItem(sourceMeleeAgent, sourceSetting, runtimeMeleeAgent);
+                runtimeMeleeAgent.SetHolder(holdAgent.Holder);
+
+                holdAgent.handheldSocket = runtimeMeleeAgent.handheldSocket;
+                holdAgent.handAnimationType = runtimeMeleeAgent.handAnimationType;
+
+                Transform targetSocket = ResolveHandheldSocket(holder, runtimeMeleeAgent.handheldSocket);
+                if (targetSocket != null)
+                {
+                    holdAgent.transform.SetParent(targetSocket, false);
+                    holdAgent.transform.localPosition = Vector3.zero;
+                    holdAgent.transform.localRotation = Quaternion.identity;
+                    if (currentUsingSocketCacheField != null)
+                    {
+                        currentUsingSocketCacheField.SetValue(holder, targetSocket);
+                    }
+                }
+
+                if (meleeRefField != null)
+                {
+                    meleeRefField.SetValue(holder, runtimeMeleeAgent);
+                }
+
+                if (gunRefField != null)
+                {
+                    gunRefField.SetValue(holder, null);
+                }
+
+                PrepareGenericRuntimeHoldVisual(holdAgent.gameObject);
+                if (entry.PrepareRuntimeHoldVisual != null)
+                {
+                    entry.PrepareRuntimeHoldVisual(holdAgent.gameObject);
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CustomItemRestore] 近战手持代理兼容失败: " + entry.DebugName + ", " + e.Message);
+            }
+
+            return false;
+        }
+
+        private static void CacheMeleeCompatFields()
+        {
+            if (meleeCompatFieldsCached)
+            {
+                return;
+            }
+
+            meleeRefField = typeof(ItemAgentHolder).GetField(
+                "_meleeRef",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            gunRefField = typeof(ItemAgentHolder).GetField(
+                "_gunRef",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            currentUsingSocketCacheField = typeof(ItemAgentHolder).GetField(
+                "_currentUsingSocketCache",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            itemAgentItemField = typeof(ItemStatsSystem.ItemAgent).GetField(
+                "item",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            meleeSettingField = typeof(ItemAgent_MeleeWeapon).GetField(
+                "setting",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            meleeSoundKeyField = typeof(ItemAgent_MeleeWeapon).GetField(
+                "soundKey",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            meleeCompatFieldsCached = true;
+        }
+
+        private static void ConfigureRuntimeMeleeAgentFromItem(
+            ItemAgent_MeleeWeapon sourceMeleeAgent,
+            ItemSetting_MeleeWeapon sourceSetting,
+            ItemAgent_MeleeWeapon runtimeMeleeAgent)
+        {
+            if (runtimeMeleeAgent == null)
+            {
+                return;
+            }
+
+            runtimeMeleeAgent.handheldSocket = sourceMeleeAgent != null
+                ? sourceMeleeAgent.handheldSocket
+                : HandheldSocketTypes.normalHandheld;
+            runtimeMeleeAgent.handAnimationType = sourceMeleeAgent != null
+                ? sourceMeleeAgent.handAnimationType
+                : HandheldAnimationType.meleeWeapon;
+
+            if (runtimeMeleeAgent.slashFx == null && sourceMeleeAgent != null && sourceMeleeAgent.slashFx != null)
+            {
+                runtimeMeleeAgent.slashFx = sourceMeleeAgent.slashFx;
+            }
+
+            if (runtimeMeleeAgent.hitFx == null && sourceMeleeAgent != null && sourceMeleeAgent.hitFx != null)
+            {
+                runtimeMeleeAgent.hitFx = sourceMeleeAgent.hitFx;
+            }
+
+            if (runtimeMeleeAgent.slashFx != null &&
+                runtimeMeleeAgent.slashFx.transform != null &&
+                sourceMeleeAgent != null &&
+                sourceMeleeAgent.slashFx != null &&
+                sourceMeleeAgent.slashFx.transform != null)
+            {
+                Vector3 currentScale = runtimeMeleeAgent.slashFx.transform.localScale;
+                if (currentScale.sqrMagnitude <= 0.0001f)
+                {
+                    Vector3 sourceScale = sourceMeleeAgent.slashFx.transform.localScale;
+                    if (sourceScale.sqrMagnitude > 0.0001f)
+                    {
+                        runtimeMeleeAgent.slashFx.transform.localScale = sourceScale;
+                    }
+                }
+            }
+
+            runtimeMeleeAgent.slashFxDelayTime = sourceMeleeAgent != null
+                ? sourceMeleeAgent.slashFxDelayTime
+                : 0.06f;
+
+            if (meleeSoundKeyField != null)
+            {
+                meleeSoundKeyField.SetValue(
+                    runtimeMeleeAgent,
+                    sourceMeleeAgent != null ? sourceMeleeAgent.SoundKey : "Default");
+            }
+
+            if (sourceSetting != null && meleeSettingField != null)
+            {
+                meleeSettingField.SetValue(runtimeMeleeAgent, sourceSetting);
+            }
+        }
+
+        private static Transform ResolveHandheldSocket(ItemAgentHolder holder, HandheldSocketTypes socketType)
+        {
+            if (holder == null || holder.characterController == null || holder.characterController.characterModel == null)
+            {
+                return null;
+            }
+
+            switch (socketType)
+            {
+                case HandheldSocketTypes.normalHandheld:
+                    return holder.characterController.characterModel.RightHandSocket;
+                case HandheldSocketTypes.meleeWeapon:
+                    return holder.characterController.characterModel.MeleeWeaponSocket;
+                case HandheldSocketTypes.leftHandSocket:
+                    return holder.characterController.characterModel.LefthandSocket != null
+                        ? holder.characterController.characterModel.LefthandSocket
+                        : holder.characterController.characterModel.RightHandSocket;
+                default:
+                    return holder.characterController.characterModel.RightHandSocket;
+            }
+        }
+
+        private static void PrepareGenericRuntimeHoldVisual(GameObject go)
+        {
+            if (go == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < renderers.Length; i++)
+                {
+                    Renderer renderer = renderers[i];
+                    if (renderer == null)
+                    {
+                        continue;
+                    }
+
+                    renderer.enabled = true;
+                    renderer.forceRenderingOff = false;
+                    renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(ItemAgentHolder), "ChangeHoldItem")]
+    public static class RuntimeConfiguredMeleeHoldItemPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(ItemAgentHolder __instance, DuckovItemAgent __result, Item item)
+        {
+            CustomItemRuntimeStateHelper.TryApplyRegisteredMeleeHoldAgentCompatibility(__instance, __result, item);
         }
     }
 

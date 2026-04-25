@@ -587,7 +587,9 @@ namespace BossRush
                 {
                     FenHuangHalberdWeaponConfig.TryConfigure(item, "FenHuangHalberd");
                 },
-                "焚皇断界戟");
+                "焚皇断界戟",
+                null,
+                FenHuangHalberdWeaponConfig.PrepareRuntimeHoldAgentVisual);
 
             CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
                 FrostmourneIds.WeaponTypeId,
@@ -595,7 +597,9 @@ namespace BossRush
                 {
                     FrostmourneWeaponConfig.TryConfigure(item, "Frostmourne");
                 },
-                "霜之哀伤");
+                "霜之哀伤",
+                null,
+                FrostmourneWeaponConfig.PrepareRuntimeHoldAgentVisual);
 
             CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
                 PhantomWitchConfig.ReservedScytheTypeId,
@@ -603,7 +607,9 @@ namespace BossRush
                 {
                     PhantomWitchScytheWeaponConfig.TryConfigure(item);
                 },
-                "噬魂挽歌");
+                "噬魂挽歌",
+                null,
+                PhantomWitchScytheWeaponConfig.PrepareRuntimeHoldAgentVisual);
         }
 
         private void OnFenHuangHalberdLoaded(Item itemPrefab)

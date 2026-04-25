@@ -335,9 +335,74 @@ namespace BossRush
                 return;
             }
 
+            if (meleeAgent.slashFx == null)
+            {
+                meleeAgent.slashFx = GetFallbackSlashFx();
+            }
+
             if (meleeAgent.hitFx == null)
             {
                 meleeAgent.hitFx = GetFallbackHitFx();
+            }
+
+            if (meleeAgent.slashFx != null && meleeAgent.slashFx.transform != null)
+            {
+                Vector3 scale = meleeAgent.slashFx.transform.localScale;
+                if (scale.sqrMagnitude <= 0.0001f)
+                {
+                    meleeAgent.slashFx.transform.localScale = DefaultSlashFxScale;
+                }
+            }
+        }
+
+        internal static void EnsureRuntimeMeleeAgent(Item item, ItemAgent_MeleeWeapon meleeAgent)
+        {
+            if (item == null || meleeAgent == null)
+            {
+                return;
+            }
+
+            meleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
+            meleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
+            EnsureMeleeAttackFx(meleeAgent);
+
+            try
+            {
+                FieldInfo soundKeyField = typeof(ItemAgent_MeleeWeapon).GetField(
+                    "soundKey",
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                if (soundKeyField != null)
+                {
+                    soundKeyField.SetValue(meleeAgent, "Default");
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                FieldInfo slashDelayField = typeof(ItemAgent_MeleeWeapon).GetField(
+                    "slashFxDelayTime",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (slashDelayField != null)
+                {
+                    slashDelayField.SetValue(meleeAgent, 0.06f);
+                }
+            }
+            catch
+            {
+            }
+
+            ItemSetting_MeleeWeapon meleeSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
+            if (meleeSetting == null)
+            {
+                meleeSetting = EnsureMeleeSettingConfigured(item, PhantomWitchAssetManager.GetCurseBuff());
+            }
+
+            if (meleeSetting != null)
+            {
+                SyncMeleeSettingToAgent(meleeAgent, meleeSetting);
             }
         }
 
@@ -620,6 +685,39 @@ namespace BossRush
             }
         }
 
+        internal static void PrepareRuntimeHoldAgentVisual(GameObject go)
+        {
+            if (go == null)
+            {
+                return;
+            }
+
+            DisableMotionBlur(go);
+            FixModelGraphics(go);
+            EnableRuntimeRenderers(go);
+        }
+
+        private static void EnableRuntimeRenderers(GameObject go)
+        {
+            try
+            {
+                Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+                foreach (Renderer r in renderers)
+                {
+                    if (r == null)
+                    {
+                        continue;
+                    }
+
+                    r.enabled = true;
+                    r.forceRenderingOff = false;
+                }
+            }
+            catch
+            {
+            }
+        }
+
         /// <summary>
         /// 禁用武器模型的运动模糊
         /// </summary>
@@ -696,5 +794,9 @@ namespace BossRush
                 SetLayerRecursively(child.gameObject, layer);
             }
         }
+    }
+
+    public static class PhantomWitchScytheHoldItemPatch
+    {
     }
 }
