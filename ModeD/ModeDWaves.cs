@@ -356,9 +356,10 @@ namespace BossRush
         /// </remarks>
         private EnemyPresetInfo GetRandomBossPreset()
         {
-            if (modeDBossPool == null || modeDBossPool.Count == 0)
+            List<EnemyPresetInfo> filteredBossPool = GetFilteredEnemyPresets();
+            if (filteredBossPool == null || filteredBossPool.Count == 0)
             {
-                DevLog("[ModeD] Boss池为空");
+                DevLog("[ModeD] Boss池为空（过滤后）");
                 return null;
             }
 
@@ -368,9 +369,9 @@ namespace BossRush
             {
                 // 使用复用缓存避免 GC
                 presetFilterCache.Clear();
-                for (int i = 0; i < modeDBossPool.Count; i++)
+                for (int i = 0; i < filteredBossPool.Count; i++)
                 {
-                    EnemyPresetInfo boss = modeDBossPool[i];
+                    EnemyPresetInfo boss = filteredBossPool[i];
                     if (boss == null || string.IsNullOrEmpty(boss.name))
                     {
                         continue;
@@ -387,15 +388,15 @@ namespace BossRush
 
                 if (presetFilterCache.Count > 0)
                 {
-                    DevLog("[ModeD] 前期波次Boss过滤：可用Boss数=" + presetFilterCache.Count + "/" + modeDBossPool.Count);
+                    DevLog("[ModeD] 前期波次Boss过滤：可用Boss数=" + presetFilterCache.Count + "/" + filteredBossPool.Count);
                     return presetFilterCache[UnityEngine.Random.Range(0, presetFilterCache.Count)];
                 }
 
                 // 如果过滤后没有可用Boss，回退到完整池
-                DevLog("[ModeD] 前期波次过滤后无可用Boss，使用完整池");
+                DevLog("[ModeD] 前期波次过滤后无可用Boss，使用过滤后的完整池");
             }
 
-            return modeDBossPool[UnityEngine.Random.Range(0, modeDBossPool.Count)];
+            return filteredBossPool[UnityEngine.Random.Range(0, filteredBossPool.Count)];
         }
 
         /// <summary>

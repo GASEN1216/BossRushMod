@@ -143,10 +143,11 @@ namespace BossRush
 
         private void BuildModeEFactionPresetCaches()
         {
-            int bossPoolCount = modeDBossPool != null ? modeDBossPool.Count : 0;
+            List<EnemyPresetInfo> filteredBossPool = GetFilteredEnemyPresets();
+            int bossPoolCount = filteredBossPool != null ? filteredBossPool.Count : 0;
             int minionPoolCount = modeDMinionPool != null ? modeDMinionPool.Count : 0;
             if (modeEFactionPresetCachesBuilt &&
-                object.ReferenceEquals(modeECachedBossPoolSource, modeDBossPool) &&
+                object.ReferenceEquals(modeECachedBossPoolSource, filteredBossPool) &&
                 modeECachedBossPoolCount == bossPoolCount &&
                 modeECachedMinionPoolCount == minionPoolCount)
             {
@@ -158,11 +159,11 @@ namespace BossRush
             modeEMinionPoolByFaction.Clear();
             modeEWeightedMinionTotalHealthByFaction.Clear();
 
-            if (modeDBossPool != null)
+            if (filteredBossPool != null)
             {
-                for (int i = 0; i < modeDBossPool.Count; i++)
+                for (int i = 0; i < filteredBossPool.Count; i++)
                 {
-                    EnemyPresetInfo boss = modeDBossPool[i];
+                    EnemyPresetInfo boss = filteredBossPool[i];
                     if (boss == null || string.IsNullOrEmpty(boss.name) || IsDragonKingPreset(boss))
                     {
                         continue;
@@ -196,7 +197,7 @@ namespace BossRush
                 }
             }
 
-            modeECachedBossPoolSource = modeDBossPool;
+            modeECachedBossPoolSource = filteredBossPool;
             modeECachedBossPoolCount = bossPoolCount;
             modeECachedMinionPoolCount = minionPoolCount;
             modeEFactionPresetCachesBuilt = true;

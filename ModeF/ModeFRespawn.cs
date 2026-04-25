@@ -846,20 +846,21 @@ namespace BossRush
             InitializeModeDEnemyPools();
             BuildModeEFactionPresetCaches();
 
-            if (modeDBossPool == null || modeDBossPool.Count == 0)
+            List<EnemyPresetInfo> filteredBossPool = GetFilteredEnemyPresets();
+            if (filteredBossPool == null || filteredBossPool.Count == 0)
             {
                 return null;
             }
 
-            if (modeFRespawnBossPresetScratch.Capacity < modeDBossPool.Count)
+            if (modeFRespawnBossPresetScratch.Capacity < filteredBossPool.Count)
             {
-                modeFRespawnBossPresetScratch.Capacity = modeDBossPool.Count;
+                modeFRespawnBossPresetScratch.Capacity = filteredBossPool.Count;
             }
 
             modeFRespawnBossPresetScratch.Clear();
-            for (int i = 0; i < modeDBossPool.Count; i++)
+            for (int i = 0; i < filteredBossPool.Count; i++)
             {
-                EnemyPresetInfo preset = modeDBossPool[i];
+                EnemyPresetInfo preset = filteredBossPool[i];
                 if (preset == null || string.IsNullOrEmpty(preset.name))
                 {
                     continue;

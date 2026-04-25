@@ -28,6 +28,8 @@ namespace BossRush
         private static float lastGlobalPoolAttemptTime = -999f;
         /// <summary>全局掉落池构建尝试的最小间隔（秒）</summary>
         private const float GLOBAL_POOL_RETRY_INTERVAL = 5f;
+        /// <summary>按品质缓存的全局掉落池，供 Legacy 品质分布精确选档使用。</summary>
+        private static Dictionary<int, List<int>> modeDGlobalItemPoolByQuality = null;
 
         /// <summary>
         /// 仅在 TagsData 已就绪时预热全局掉落池，避免触发重试节流影响正式入口构建
@@ -80,6 +82,25 @@ namespace BossRush
             else
             {
                 modeDGlobalItemPool.Clear();
+            }
+
+            if (modeDGlobalItemPoolByQuality == null)
+            {
+                modeDGlobalItemPoolByQuality = new Dictionary<int, List<int>>();
+            }
+
+            for (int quality = 1; quality <= 8; quality++)
+            {
+                List<int> bucket;
+                if (!modeDGlobalItemPoolByQuality.TryGetValue(quality, out bucket) || bucket == null)
+                {
+                    bucket = new List<int>();
+                    modeDGlobalItemPoolByQuality[quality] = bucket;
+                }
+                else
+                {
+                    bucket.Clear();
+                }
             }
 
             try
@@ -149,7 +170,23 @@ namespace BossRush
 
                 if (idSet.Count > 0)
                 {
-                    modeDGlobalItemPool.AddRange(idSet);
+                    foreach (int id in idSet)
+                    {
+                        modeDGlobalItemPool.Add(id);
+
+                        int quality = 1;
+                        try
+                        {
+                            quality = Mathf.Clamp(ItemAssetsCollection.GetMetaData(id).quality, 1, 8);
+                        }
+                        catch {}
+
+                        List<int> bucket;
+                        if (modeDGlobalItemPoolByQuality.TryGetValue(quality, out bucket) && bucket != null)
+                        {
+                            bucket.Add(id);
+                        }
+                    }
                 }
 
                 // P1-3 修复：只在池非空时设置初始化标记，避免"空池锁死"
@@ -170,6 +207,74 @@ namespace BossRush
             }
         }
 
+        private bool TryPickRandomModeDGlobalItemIdInRange(int minQ, int maxQ, out int selectedId)
+        {
+            selectedId = 0;
+
+            int clampedMin = Mathf.Clamp(minQ, 1, 8);
+            int clampedMax = Mathf.Clamp(maxQ, clampedMin, 8);
+            int seen = 0;
+
+            if (modeDGlobalItemPoolByQuality == null)
+            {
+                return false;
+            }
+
+            for (int quality = clampedMin; quality <= clampedMax; quality++)
+            {
+                List<int> bucket;
+                if (!modeDGlobalItemPoolByQuality.TryGetValue(quality, out bucket) ||
+                    bucket == null ||
+                    bucket.Count == 0)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < bucket.Count; i++)
+                {
+                    int id = bucket[i];
+                    if (id <= 0)
+                    {
+                        continue;
+                    }
+
+                    seen++;
+                    if (seen == 1 || UnityEngine.Random.Range(0, seen) == 0)
+                    {
+                        selectedId = id;
+                    }
+                }
+            }
+
+            return selectedId > 0;
+        }
+
+        private int ApplyModeDGlobalItemSpecialSelectionRules(int selectedId, int minQ, int maxQ)
+        {
+            if (selectedId <= 0)
+            {
+                return 0;
+            }
+
+            // 皇冠（1254）权重降为0.1，与其他模式保持一致
+            // 实现方式：90%概率在同一品质区间内重新抽取一次
+            const int CROWN_TYPE_ID = 1254;
+            const float CROWN_REROLL_CHANCE = 0.9f;
+
+            if (selectedId != CROWN_TYPE_ID || UnityEngine.Random.value >= CROWN_REROLL_CHANCE)
+            {
+                return selectedId;
+            }
+
+            int rerolledId;
+            if (TryPickRandomModeDGlobalItemIdInRange(minQ, maxQ, out rerolledId) && rerolledId > 0)
+            {
+                return rerolledId;
+            }
+
+            return selectedId;
+        }
+
         /// <summary>
         /// 从全物品池中随机选一个物品实例
         /// </summary>
@@ -187,23 +292,104 @@ namespace BossRush
                     return null;
                 }
 
-                // 皇冠（1254）权重降为0.1，与其他模式保持一致
-                // 实现方式：90%概率重新抽取（如果抽到皇冠）
-                const int CROWN_TYPE_ID = 1254;
-                const float CROWN_REROLL_CHANCE = 0.9f;
-
-                int id = modeDGlobalItemPool[UnityEngine.Random.Range(0, modeDGlobalItemPool.Count)];
-                
-                // 如果抽到皇冠，90%概率重新抽取
-                if (id == CROWN_TYPE_ID && UnityEngine.Random.value < CROWN_REROLL_CHANCE)
+                int id;
+                if (!TryPickRandomModeDGlobalItemIdInRange(1, 8, out id))
                 {
-                    id = modeDGlobalItemPool[UnityEngine.Random.Range(0, modeDGlobalItemPool.Count)];
+                    return null;
                 }
 
+                id = ApplyModeDGlobalItemSpecialSelectionRules(id, 1, 8);
                 return ItemAssetsCollection.InstantiateSync(id);
             }
             catch
             {
+                return null;
+            }
+        }
+
+        internal Item CreateRandomGlobalItemForModeD(int minQ, int maxQ, float enemyHealth)
+        {
+            try
+            {
+                EnsureModeDGlobalItemPool();
+
+                if (modeDGlobalItemPool == null || modeDGlobalItemPool.Count == 0)
+                {
+                    return null;
+                }
+
+                int clampedMin = Mathf.Clamp(minQ, 1, 8);
+                int clampedMax = Mathf.Clamp(maxQ, clampedMin, 8);
+                float bonusFactor = ComputeModeDStyleEnemyLootBonusFactorFromHealth(enemyHealth);
+
+                int selectedId = 0;
+                if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                {
+                    LegacyBossLootQualityDistribution distribution =
+                        LegacyBossLootProbabilityModel.BuildDistribution(bonusFactor);
+                    int selectedQuality = PickBossRushStyleQualityByLegacyDistribution(
+                        distribution,
+                        modeDGlobalItemPoolByQuality,
+                        clampedMin,
+                        clampedMax);
+
+                    List<int> bucket;
+                    if (selectedQuality > 0 &&
+                        modeDGlobalItemPoolByQuality != null &&
+                        modeDGlobalItemPoolByQuality.TryGetValue(selectedQuality, out bucket) &&
+                        bucket != null &&
+                        bucket.Count > 0)
+                    {
+                        selectedId = bucket[UnityEngine.Random.Range(0, bucket.Count)];
+                    }
+                }
+                else
+                {
+                    int selectedQuality = PickBossRushStyleQualityByNonLegacyWeights(
+                        bonusFactor,
+                        modeDGlobalItemPoolByQuality,
+                        clampedMin,
+                        clampedMax);
+
+                    List<int> bucket;
+                    if (selectedQuality > 0 &&
+                        modeDGlobalItemPoolByQuality != null &&
+                        modeDGlobalItemPoolByQuality.TryGetValue(selectedQuality, out bucket) &&
+                        bucket != null &&
+                        bucket.Count > 0)
+                    {
+                        selectedId = bucket[UnityEngine.Random.Range(0, bucket.Count)];
+                    }
+                }
+
+                if (selectedId <= 0)
+                {
+                    if (!TryPickRandomModeDGlobalItemIdInRange(clampedMin, clampedMax, out selectedId))
+                    {
+                        return null;
+                    }
+                }
+
+                selectedId = ApplyModeDGlobalItemSpecialSelectionRules(selectedId, clampedMin, clampedMax);
+                return ItemAssetsCollection.InstantiateSync(selectedId);
+            }
+            catch
+            {
+                try
+                {
+                    int clampedMin = Mathf.Clamp(minQ, 1, 8);
+                    int clampedMax = Mathf.Clamp(maxQ, clampedMin, 8);
+                    int fallbackId;
+                    if (TryPickRandomModeDGlobalItemIdInRange(clampedMin, clampedMax, out fallbackId))
+                    {
+                        fallbackId = ApplyModeDGlobalItemSpecialSelectionRules(fallbackId, clampedMin, clampedMax);
+                        return ItemAssetsCollection.InstantiateSync(fallbackId);
+                    }
+                }
+                catch
+                {
+                }
+
                 return null;
             }
         }

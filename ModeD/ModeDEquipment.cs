@@ -313,7 +313,7 @@ namespace BossRush
                 DevLog("[ModeD] [ERROR] GiveRandomMeleeWeaponToEnemy 失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 发放随机护甲
         /// </summary>
@@ -829,10 +829,359 @@ namespace BossRush
             }
         }
 
+        private bool ShouldUseLegacyModeDStyleEnemyLootQualityDistribution()
+        {
+            return config != null && config.useLegacyBossLootProbabilities;
+        }
+
+        private const float BossRushStyleCrownWeightScale = 0.1f;
+
+        private float ComputeModeDStyleEnemyLootBonusFactor(int qualityLevel)
+        {
+            return Mathf.InverseLerp(1f, 6f, Mathf.Clamp(qualityLevel, 1, 6));
+        }
+
+        private float ComputeModeDStyleEnemyLootBonusFactorFromHealth(float enemyHealth)
+        {
+            float clampedHealth = Mathf.Max(0f, enemyHealth);
+            float refMin = minBossBaseHealth;
+            float refMax = maxBossBaseHealth;
+
+            if (refMax > refMin && refMin > 0f)
+            {
+                return Mathf.Clamp01(Mathf.InverseLerp(refMin, refMax, clampedHealth));
+            }
+
+            return Mathf.Clamp01((clampedHealth - 100f) / 1000f);
+        }
+
+        private int RollLegacyDesiredQualityForModeDStyleEnemyLoot(int qualityLevel, int minQuality, int maxQuality)
+        {
+            int clampedMin = Mathf.Clamp(minQuality, 1, 8);
+            int clampedMax = Mathf.Clamp(maxQuality, clampedMin, 8);
+            if (clampedMin >= clampedMax)
+            {
+                return clampedMin;
+            }
+
+            LegacyBossLootQualityDistribution distribution =
+                LegacyBossLootProbabilityModel.BuildDistribution(ComputeModeDStyleEnemyLootBonusFactor(qualityLevel));
+
+            double totalProbability = 0.0;
+            for (int q = clampedMin; q <= clampedMax; q++)
+            {
+                totalProbability += distribution.GetProbabilityForQuality(q);
+            }
+
+            if (totalProbability <= 0.0)
+            {
+                return UnityEngine.Random.Range(clampedMin, clampedMax + 1);
+            }
+
+            double roll = UnityEngine.Random.value * totalProbability;
+            for (int q = clampedMin; q <= clampedMax; q++)
+            {
+                roll -= distribution.GetProbabilityForQuality(q);
+                if (roll <= 0.0)
+                {
+                    return q;
+                }
+            }
+
+            return clampedMax;
+        }
+
+        private int TryGetRandomItemByExactQualityBucket(Dictionary<int, List<int>> poolByQuality, int exactQuality)
+        {
+            if (poolByQuality == null)
+            {
+                return 0;
+            }
+
+            int clampedQuality = Mathf.Clamp(exactQuality, 1, 8);
+            List<int> bucket;
+            if (!poolByQuality.TryGetValue(clampedQuality, out bucket) || bucket == null || bucket.Count == 0)
+            {
+                return 0;
+            }
+
+            return bucket[UnityEngine.Random.Range(0, bucket.Count)];
+        }
+
+        private int PickBossRushStyleBucketItemId(List<int> bucket)
+        {
+            if (bucket == null || bucket.Count == 0)
+            {
+                return 0;
+            }
+
+            float totalWeight = 0f;
+            for (int i = 0; i < bucket.Count; i++)
+            {
+                int id = bucket[i];
+                totalWeight += (id == 1254) ? BossRushStyleCrownWeightScale : 1f;
+            }
+
+            if (totalWeight <= 0f)
+            {
+                return bucket[UnityEngine.Random.Range(0, bucket.Count)];
+            }
+
+            float roll = UnityEngine.Random.value * totalWeight;
+            for (int i = 0; i < bucket.Count; i++)
+            {
+                int id = bucket[i];
+                roll -= (id == 1254) ? BossRushStyleCrownWeightScale : 1f;
+                if (roll <= 0f)
+                {
+                    return id;
+                }
+            }
+
+            return bucket[bucket.Count - 1];
+        }
+
+        private bool TryCreateBossRushStyleInventoryLootItemForSharedModes(float enemyHealth, out Item item)
+        {
+            item = null;
+            float bonusFactor = ComputeModeDStyleEnemyLootBonusFactorFromHealth(enemyHealth);
+
+            Dictionary<int, List<int>> qualityBuckets = new Dictionary<int, List<int>>();
+            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+            {
+                List<int> candidateIds = new List<int>();
+                if (!TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets))
+                {
+                    return false;
+                }
+
+                LegacyBossLootQualityDistribution distribution =
+                    LegacyBossLootProbabilityModel.BuildDistribution(bonusFactor);
+                int selectedQuality = PickBossRushStyleQualityByLegacyDistribution(distribution, qualityBuckets, 1, 8);
+                if (selectedQuality <= 0)
+                {
+                    return false;
+                }
+
+                List<int> bucket;
+                if (!qualityBuckets.TryGetValue(selectedQuality, out bucket) || bucket == null || bucket.Count == 0)
+                {
+                    return false;
+                }
+
+                int typeId = PickBossRushStyleBucketItemId(bucket);
+                if (typeId <= 0)
+                {
+                    return false;
+                }
+
+                item = ItemAssetsCollection.InstantiateSync(typeId);
+                return item != null;
+            }
+
+            HashSet<int> dynamicIds = BuildGeneralBossLootCandidateIdSet();
+            if (dynamicIds.Count <= 0)
+            {
+                return false;
+            }
+
+            BuildLegacyBossLootQualityBucketsFromIds(dynamicIds, qualityBuckets);
+            int quality = PickBossRushStyleQualityByNonLegacyWeights(bonusFactor, qualityBuckets, 1, 8);
+            if (quality <= 0)
+            {
+                return false;
+            }
+
+            List<int> selectedBucket;
+            if (!qualityBuckets.TryGetValue(quality, out selectedBucket) || selectedBucket == null || selectedBucket.Count == 0)
+            {
+                return false;
+            }
+
+            int selectedTypeId = PickBossRushStyleBucketItemId(selectedBucket);
+            if (selectedTypeId <= 0)
+            {
+                return false;
+            }
+
+            item = ItemAssetsCollection.InstantiateSync(selectedTypeId);
+            return item != null;
+        }
+
+        private int PickBossRushStyleQualityByLegacyDistribution(
+            LegacyBossLootQualityDistribution distribution,
+            Dictionary<int, List<int>> qualityBuckets,
+            int minQuality,
+            int maxQuality)
+        {
+            double totalWeight = 0.0;
+            for (int quality = minQuality; quality <= maxQuality; quality++)
+            {
+                List<int> bucket;
+                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
+                {
+                    continue;
+                }
+
+                totalWeight += distribution.GetProbabilityForQuality(quality);
+            }
+
+            if (totalWeight <= 0.0)
+            {
+                return 0;
+            }
+
+            double roll = UnityEngine.Random.value * totalWeight;
+            for (int quality = minQuality; quality <= maxQuality; quality++)
+            {
+                List<int> bucket;
+                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
+                {
+                    continue;
+                }
+
+                roll -= distribution.GetProbabilityForQuality(quality);
+                if (roll <= 0.0)
+                {
+                    return quality;
+                }
+            }
+
+            return 0;
+        }
+
+        private int PickBossRushStyleQualityByNonLegacyWeights(
+            float bonusFactor,
+            Dictionary<int, List<int>> qualityBuckets,
+            int minQuality,
+            int maxQuality)
+        {
+            float highChance = Mathf.Clamp01(bonusFactor);
+            float lowTotalWeight = 1f - highChance;
+            float[] qualityWeights = new float[9];
+
+            for (int quality = 1; quality <= 4; quality++)
+            {
+                qualityWeights[quality] = lowTotalWeight * 0.25f;
+            }
+
+            qualityWeights[5] = highChance * 0.4f;
+            qualityWeights[6] = highChance * 0.3f;
+            qualityWeights[7] = highChance * 0.2f;
+            qualityWeights[8] = highChance * 0.1f;
+
+            float totalWeight = 0f;
+            for (int quality = minQuality; quality <= maxQuality; quality++)
+            {
+                List<int> bucket;
+                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
+                {
+                    continue;
+                }
+
+                totalWeight += qualityWeights[quality];
+            }
+
+            if (totalWeight <= 0f)
+            {
+                return 0;
+            }
+
+            float roll = UnityEngine.Random.value * totalWeight;
+            for (int quality = minQuality; quality <= maxQuality; quality++)
+            {
+                List<int> bucket;
+                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
+                {
+                    continue;
+                }
+
+                roll -= qualityWeights[quality];
+                if (roll <= 0f)
+                {
+                    return quality;
+                }
+            }
+
+            return 0;
+        }
+
+        private int GetRandomItemIdForModeDStyleEnemyLoot(
+            List<int> pool,
+            Dictionary<int, List<int>> poolByQuality,
+            int qualityLevel,
+            int minQuality,
+            int maxQuality)
+        {
+            if (pool == null || pool.Count == 0)
+            {
+                return 0;
+            }
+
+            int clampedMin = Mathf.Clamp(minQuality, 1, 8);
+            int clampedMax = Mathf.Clamp(maxQuality, clampedMin, 8);
+            int desiredQuality = RollLegacyDesiredQualityForModeDStyleEnemyLoot(qualityLevel, clampedMin, clampedMax);
+
+            int id = TryGetRandomItemByExactQualityBucket(poolByQuality, desiredQuality);
+            if (id > 0)
+            {
+                return id;
+            }
+
+            for (int offset = 1; offset <= 7; offset++)
+            {
+                int lower = desiredQuality - offset;
+                if (lower >= clampedMin)
+                {
+                    id = TryGetRandomItemByExactQualityBucket(poolByQuality, lower);
+                    if (id > 0)
+                    {
+                        return id;
+                    }
+                }
+
+                int upper = desiredQuality + offset;
+                if (upper <= clampedMax)
+                {
+                    id = TryGetRandomItemByExactQualityBucket(poolByQuality, upper);
+                    if (id > 0)
+                    {
+                        return id;
+                    }
+                }
+            }
+
+            return GetRandomItemByQuality(pool, clampedMin, clampedMax);
+        }
+
+        private Item CreateModeDStyleEnemyLootItemFromPool(
+            List<int> pool,
+            Dictionary<int, List<int>> poolByQuality,
+            int qualityLevel,
+            int minQuality,
+            int maxQuality)
+        {
+            int itemId = GetRandomItemIdForModeDStyleEnemyLoot(pool, poolByQuality, qualityLevel, minQuality, maxQuality);
+            if (itemId <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                return ItemAssetsCollection.InstantiateSync(itemId);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// Mode D 配件池（Accessory Tag）
         /// </summary>
         private readonly List<int> modeDAccessoryPool = new List<int>();
+        private readonly Dictionary<int, List<int>> modeDAccessoryPoolByQuality = CreateModeDQualityBuckets();
 
         /// <summary>
         /// 初始化配件池（包含游戏所有配件）
@@ -842,6 +1191,7 @@ namespace BossRush
             try
             {
                 modeDAccessoryPool.Clear();
+                ClearModeDQualityBuckets(modeDAccessoryPoolByQuality);
 
                 // 通过名字查找配件 Tag
                 Duckov.Utilities.Tag accessoryTag = FindTagByName("Accessory");
@@ -857,10 +1207,9 @@ namespace BossRush
                 filter.maxQuality = 8; // 包含所有品质
                 int[] accessoryIds = ItemAssetsCollection.Search(filter);
 
-                if (accessoryIds != null)
-                {
-                    modeDAccessoryPool.AddRange(accessoryIds);
-                }
+                AddDistinctItemIds(modeDAccessoryPool, accessoryIds);
+
+                RebuildModeDQualityBuckets(modeDAccessoryPool, modeDAccessoryPoolByQuality);
 
                 DevLog("[ModeD] 配件池初始化完成，数量: " + modeDAccessoryPool.Count);
             }
@@ -1030,7 +1379,7 @@ namespace BossRush
                         int meleeRemainingToFill = Mathf.Max(0, meleeTargetItemCount - meleeCurrentCount);
                         if (meleeRemainingToFill > 0)
                         {
-                            FillEnemyInventoryForModeD(enemy, qualityLevel, meleeRemainingToFill);
+                            FillEnemyInventoryForModeD(enemy, qualityLevel, enemyHealth, meleeRemainingToFill);
                         }
                     }
                     else
@@ -1053,20 +1402,13 @@ namespace BossRush
                 {
                     int extraItems = 3;
 
-                    ItemCategory[] nonWeaponCategories = new ItemCategory[]
-                    {
-                        ItemCategory.Accessory,
-                        ItemCategory.Helmet,
-                        ItemCategory.Armor,
-                        ItemCategory.Medical,
-                        ItemCategory.Totem,
-                        ItemCategory.Mask
-                    };
-
                     for (int i = 0; i < extraItems; i++)
                     {
-                        ItemCategory randomCategory = nonWeaponCategories[UnityEngine.Random.Range(0, nonWeaponCategories.Length)];
-                        GiveEnemyItemByCategoryNoWeapon(enemy, randomCategory, qualityLevel);
+                        Item randomExtraItem = null;
+                        if (TryCreateBossRushStyleInventoryLootItemForSharedModes(enemyHealth, out randomExtraItem) && randomExtraItem != null)
+                        {
+                            inventory.AddAndMerge(randomExtraItem, 0);
+                        }
                     }
                 }
 
@@ -1096,7 +1438,7 @@ namespace BossRush
                     int remainingToFill = Mathf.Max(0, targetItemCount - currentCount);
                     if (remainingToFill > 0)
                     {
-                        FillEnemyInventoryForModeD(enemy, qualityLevel, remainingToFill);
+                        FillEnemyInventoryForModeD(enemy, qualityLevel, enemyHealth, remainingToFill);
                     }
                 }
             }
@@ -1149,7 +1491,6 @@ namespace BossRush
                         {
                             int id = GetRandomItemByQuality(modeDWeaponPool, minQ, maxQ);
                             item = ItemAssetsCollection.InstantiateSync(id);
-                            // 武器也随机加配件
                             if (item != null) TryAddRandomAttachmentsFullRandom(item);
                         }
                         break;
@@ -1158,53 +1499,97 @@ namespace BossRush
                         if (modeDAccessoryPool.Count == 0) InitializeAccessoryPool();
                         if (modeDAccessoryPool.Count > 0)
                         {
-                            int id = modeDAccessoryPool[UnityEngine.Random.Range(0, modeDAccessoryPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDAccessoryPool, modeDAccessoryPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDAccessoryPool[UnityEngine.Random.Range(0, modeDAccessoryPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Helmet:
                         if (modeDHelmetPool.Count > 0)
                         {
-                            int id = GetRandomItemByQuality(modeDHelmetPool, minQ, maxQ);
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDHelmetPool, modeDHelmetPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = GetRandomItemByQuality(modeDHelmetPool, minQ, maxQ);
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Armor:
                         if (modeDArmortPool.Count > 0)
                         {
-                            int id = GetRandomItemByQuality(modeDArmortPool, minQ, maxQ);
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDArmortPool, modeDArmortPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = GetRandomItemByQuality(modeDArmortPool, minQ, maxQ);
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Ammo:
-                        item = CreateRandomAmmo(minQ, maxQ);
+                        item = ShouldUseLegacyModeDStyleEnemyLootQualityDistribution()
+                            ? CreateRandomAmmoForEnemyLoot(qualityLevel, minQ, maxQ)
+                            : CreateRandomAmmo(minQ, maxQ);
                         if (item != null) item.StackCount = UnityEngine.Random.Range(30, 90);
                         break;
 
                     case ItemCategory.Medical:
                         if (modeDMedicalPool.Count > 0)
                         {
-                            int id = modeDMedicalPool[UnityEngine.Random.Range(0, modeDMedicalPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDMedicalPool, modeDMedicalPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDMedicalPool[UnityEngine.Random.Range(0, modeDMedicalPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Totem:
                         if (modeDTotemPool.Count > 0)
                         {
-                            int id = modeDTotemPool[UnityEngine.Random.Range(0, modeDTotemPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDTotemPool, modeDTotemPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDTotemPool[UnityEngine.Random.Range(0, modeDTotemPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Mask:
                         if (modeDMaskPool.Count > 0)
                         {
-                            int id = modeDMaskPool[UnityEngine.Random.Range(0, modeDMaskPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDMaskPool, modeDMaskPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDMaskPool[UnityEngine.Random.Range(0, modeDMaskPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
                 }
@@ -1245,48 +1630,90 @@ namespace BossRush
                         if (modeDAccessoryPool.Count == 0) InitializeAccessoryPool();
                         if (modeDAccessoryPool.Count > 0)
                         {
-                            int id = modeDAccessoryPool[UnityEngine.Random.Range(0, modeDAccessoryPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDAccessoryPool, modeDAccessoryPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDAccessoryPool[UnityEngine.Random.Range(0, modeDAccessoryPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Helmet:
                         if (modeDHelmetPool.Count > 0)
                         {
-                            int id = GetRandomItemByQuality(modeDHelmetPool, minQ, maxQ);
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDHelmetPool, modeDHelmetPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = GetRandomItemByQuality(modeDHelmetPool, minQ, maxQ);
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Armor:
                         if (modeDArmortPool.Count > 0)
                         {
-                            int id = GetRandomItemByQuality(modeDArmortPool, minQ, maxQ);
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDArmortPool, modeDArmortPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = GetRandomItemByQuality(modeDArmortPool, minQ, maxQ);
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Medical:
                         if (modeDMedicalPool.Count > 0)
                         {
-                            int id = modeDMedicalPool[UnityEngine.Random.Range(0, modeDMedicalPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDMedicalPool, modeDMedicalPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDMedicalPool[UnityEngine.Random.Range(0, modeDMedicalPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Totem:
                         if (modeDTotemPool.Count > 0)
                         {
-                            int id = modeDTotemPool[UnityEngine.Random.Range(0, modeDTotemPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDTotemPool, modeDTotemPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDTotemPool[UnityEngine.Random.Range(0, modeDTotemPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
                     case ItemCategory.Mask:
                         if (modeDMaskPool.Count > 0)
                         {
-                            int id = modeDMaskPool[UnityEngine.Random.Range(0, modeDMaskPool.Count)];
-                            item = ItemAssetsCollection.InstantiateSync(id);
+                            if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                            {
+                                item = CreateModeDStyleEnemyLootItemFromPool(modeDMaskPool, modeDMaskPoolByQuality, qualityLevel, minQ, maxQ);
+                            }
+                            else
+                            {
+                                int id = modeDMaskPool[UnityEngine.Random.Range(0, modeDMaskPool.Count)];
+                                item = ItemAssetsCollection.InstantiateSync(id);
+                            }
                         }
                         break;
 
@@ -1312,7 +1739,7 @@ namespace BossRush
         /// <summary>
         /// 尝试将敌人背包进一步填满一些（仅 Mode D 使用）
         /// </summary>
-        private void FillEnemyInventoryForModeD(CharacterMainControl enemy, int qualityLevel, int maxItemsToAdd)
+        private void FillEnemyInventoryForModeD(CharacterMainControl enemy, int qualityLevel, float enemyHealth, int maxItemsToAdd)
         {
             try
             {
@@ -1348,7 +1775,11 @@ namespace BossRush
                         break; // 背包已满
                     }
 
-                    Item randomItem = CreateRandomGlobalItemForModeD(minQ, maxQ);
+                    Item randomItem = null;
+                    if (!TryCreateBossRushStyleInventoryLootItemForSharedModes(enemyHealth, out randomItem))
+                    {
+                        randomItem = CreateRandomGlobalItemForModeD(minQ, maxQ, enemyHealth);
+                    }
                     if (randomItem != null)
                     {
                         inventory.AddAndMerge(randomItem, 0);
@@ -1457,6 +1888,50 @@ namespace BossRush
             return null;
         }
 
+        private Item CreateRandomAmmoForEnemyLoot(int qualityLevel, int minQ, int maxQ)
+        {
+            try
+            {
+                if (!ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
+                {
+                    return CreateRandomAmmo(minQ, maxQ);
+                }
+
+                Duckov.Utilities.Tag bulletTag = GameplayDataSettings.Tags.Bullet;
+                if (bulletTag == null) return null;
+
+                int clampedMin = Mathf.Clamp(minQ, 1, 8);
+                int clampedMax = Mathf.Clamp(maxQ, clampedMin, 8);
+                int desiredQuality = RollLegacyDesiredQualityForModeDStyleEnemyLoot(qualityLevel, clampedMin, clampedMax);
+
+                for (int offset = 0; offset <= 7; offset++)
+                {
+                    int lower = desiredQuality - offset;
+                    if (lower >= clampedMin)
+                    {
+                        int lowerId = TryGetRandomItemByExactQualityBucket(modeDAmmoPoolByQuality, lower);
+                        if (lowerId > 0)
+                        {
+                            return ItemAssetsCollection.InstantiateSync(lowerId);
+                        }
+                    }
+
+                    int upper = desiredQuality + offset;
+                    if (offset > 0 && upper <= clampedMax)
+                    {
+                        int upperId = TryGetRandomItemByExactQualityBucket(modeDAmmoPoolByQuality, upper);
+                        if (upperId > 0)
+                        {
+                            return ItemAssetsCollection.InstantiateSync(upperId);
+                        }
+                    }
+                }
+            }
+            catch {}
+
+            return CreateRandomAmmo(minQ, maxQ);
+        }
+
         /// <summary>
         /// P1-10 优化：给敌人装备武器（装在手上用于战斗），检查返回值防止泄漏
         /// </summary>
@@ -1525,9 +2000,14 @@ namespace BossRush
                                 enemyInventory.AddAndMerge(ammo, 0);
                             }
 
-                            Item randomAmmo = CreateRandomAmmo(
-                                Mathf.Max(1, qualityLevel - 1),
-                                Mathf.Min(8, qualityLevel + 2));
+                            Item randomAmmo = ShouldUseLegacyModeDStyleEnemyLootQualityDistribution()
+                                ? CreateRandomAmmoForEnemyLoot(
+                                    qualityLevel,
+                                    Mathf.Max(1, qualityLevel - 1),
+                                    Mathf.Min(8, qualityLevel + 2))
+                                : CreateRandomAmmo(
+                                    Mathf.Max(1, qualityLevel - 1),
+                                    Mathf.Min(8, qualityLevel + 2));
                             if (randomAmmo != null)
                             {
                                 randomAmmo.StackCount = UnityEngine.Random.Range(60, 121);

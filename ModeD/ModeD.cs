@@ -64,24 +64,30 @@ namespace BossRush
         
         /// <summary>Mode D 护甲池（Armor Tag）</summary>
         private readonly List<int> modeDArmortPool = new List<int>();
+        private readonly Dictionary<int, List<int>> modeDArmortPoolByQuality = CreateModeDQualityBuckets();
         
         /// <summary>Mode D 头盔池（Helmat Tag）</summary>
         private readonly List<int> modeDHelmetPool = new List<int>();
+        private readonly Dictionary<int, List<int>> modeDHelmetPoolByQuality = CreateModeDQualityBuckets();
         
         /// <summary>Mode D 弹药池（Bullet Tag）</summary>
         private readonly List<int> modeDAmmoPool = new List<int>();
+        private readonly Dictionary<int, List<int>> modeDAmmoPoolByQuality = CreateModeDQualityBuckets();
         
         /// <summary>Mode D 医疗品池</summary>
         private readonly List<int> modeDMedicalPool = new List<int>();
+        private readonly Dictionary<int, List<int>> modeDMedicalPoolByQuality = CreateModeDQualityBuckets();
 
         /// <summary>Mode D 近战武器池（MeleeWeapon Tag，预建）</summary>
         private readonly List<int> modeDMeleePool = new List<int>();
 
         /// <summary>Mode D 图腾池（Totem Tag，预建）</summary>
         private readonly List<int> modeDTotemPool = new List<int>();
+        private readonly Dictionary<int, List<int>> modeDTotemPoolByQuality = CreateModeDQualityBuckets();
 
         /// <summary>Mode D 面具池（Mask Tag，预建）</summary>
         private readonly List<int> modeDMaskPool = new List<int>();
+        private readonly Dictionary<int, List<int>> modeDMaskPoolByQuality = CreateModeDQualityBuckets();
 
         /// <summary>Mode D 背包池（Backpack Tag，预建）</summary>
         private readonly List<int> modeDBackpackPool = new List<int>();
@@ -273,6 +279,12 @@ namespace BossRush
                 modeDTotemPool.Clear();
                 modeDMaskPool.Clear();
                 modeDBackpackPool.Clear();
+                ClearModeDQualityBuckets(modeDArmortPoolByQuality);
+                ClearModeDQualityBuckets(modeDHelmetPoolByQuality);
+                ClearModeDQualityBuckets(modeDAmmoPoolByQuality);
+                ClearModeDQualityBuckets(modeDMedicalPoolByQuality);
+                ClearModeDQualityBuckets(modeDTotemPoolByQuality);
+                ClearModeDQualityBuckets(modeDMaskPoolByQuality);
 
                 // 获取 Tag 系统
                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
@@ -285,36 +297,36 @@ namespace BossRush
                     return;
                 }
 
-                // 基础排除标签（demo锁定、不可掉落等）
-                List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData, true);
+                // 发装池保留更多“带标签即可入池”的物品，只排除 demo / quest。
+                List<Duckov.Utilities.Tag> baseExclude = BuildModeDEquipmentPoolExcludeTags(tagsData);
                 Duckov.Utilities.Tag[] excludeArray = baseExclude.ToArray();
 
                 // 武器池（Gun Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
                 if (tagsData.Gun != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Gun, excludeArray);
-                    if (ids != null) modeDWeaponPool.AddRange(ids);
+                    AddDistinctItemIds(modeDWeaponPool, ids);
                 }
 
                 // 护甲池（Armor Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
                 if (tagsData.Armor != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Armor, excludeArray);
-                    if (ids != null) modeDArmortPool.AddRange(ids);
+                    AddDistinctItemIds(modeDArmortPool, ids);
                 }
 
                 // 头盔池（Helmat Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
                 if (tagsData.Helmat != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Helmat, excludeArray);
-                    if (ids != null) modeDHelmetPool.AddRange(ids);
+                    AddDistinctItemIds(modeDHelmetPool, ids);
                 }
 
                 // 弹药池（Bullet Tag）
                 if (tagsData.Bullet != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Bullet, excludeArray);
-                    if (ids != null) modeDAmmoPool.AddRange(ids);
+                    AddDistinctItemIds(modeDAmmoPool, ids);
                 }
 
                 // 医疗品池（优先使用原版 Medic Tag，兼容旧 Medical/Consumable/Healing）
@@ -325,7 +337,7 @@ namespace BossRush
                 if (medicalTag != null)
                 {
                     int[] ids = SearchItemsByTag(medicalTag, excludeArray);
-                    if (ids != null) modeDMedicalPool.AddRange(ids);
+                    AddDistinctItemIds(modeDMedicalPool, ids);
                 }
 
                 // P1-8: 预建近战武器池（MeleeWeapon Tag）
@@ -333,7 +345,7 @@ namespace BossRush
                 if (meleeTag != null)
                 {
                     int[] ids = SearchItemsByTag(meleeTag, excludeArray);
-                    if (ids != null) modeDMeleePool.AddRange(ids);
+                    AddDistinctItemIds(modeDMeleePool, ids);
                 }
 
                 // P1-8: 预建图腾池（Totem Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
@@ -341,30 +353,44 @@ namespace BossRush
                 if (totemTag != null)
                 {
                     int[] ids = SearchItemsByTag(totemTag, excludeArray);
-                    if (ids != null) modeDTotemPool.AddRange(ids);
+                    AddDistinctItemIds(modeDTotemPool, ids);
                 }
 
-                // P1-8: 预建面具/耳机池（Mask + Headset Tag）
+                // P1-8: 预建面具池（Mask / FaceMask / Headset 任一标签都算）
                 Duckov.Utilities.Tag maskTag = FindTagByNameInInit("Mask");
-                if (maskTag == null) maskTag = FindTagByNameInInit("FaceMask");
                 if (maskTag != null)
                 {
                     int[] ids = SearchItemsByTag(maskTag, excludeArray);
-                    if (ids != null) modeDMaskPool.AddRange(ids);
+                    AddDistinctItemIds(modeDMaskPool, ids);
                 }
+
+                Duckov.Utilities.Tag faceMaskTag = FindTagByNameInInit("FaceMask");
+                if (faceMaskTag != null)
+                {
+                    int[] ids = SearchItemsByTag(faceMaskTag, excludeArray);
+                    AddDistinctItemIds(modeDMaskPool, ids);
+                }
+
                 Duckov.Utilities.Tag headsetTag = FindTagByNameInInit("Headset");
                 if (headsetTag != null)
                 {
                     int[] ids = SearchItemsByTag(headsetTag, excludeArray);
-                    if (ids != null) modeDMaskPool.AddRange(ids);
+                    AddDistinctItemIds(modeDMaskPool, ids);
                 }
 
                 // P1-8: 预建背包池（使用 GameplayDataSettings.Tags.Backpack）
                 if (tagsData.Backpack != null)
                 {
                     int[] ids = SearchItemsByTag(tagsData.Backpack, excludeArray);
-                    if (ids != null) modeDBackpackPool.AddRange(ids);
+                    AddDistinctItemIds(modeDBackpackPool, ids);
                 }
+
+                RebuildModeDQualityBuckets(modeDArmortPool, modeDArmortPoolByQuality);
+                RebuildModeDQualityBuckets(modeDHelmetPool, modeDHelmetPoolByQuality);
+                RebuildModeDQualityBuckets(modeDAmmoPool, modeDAmmoPoolByQuality);
+                RebuildModeDQualityBuckets(modeDMedicalPool, modeDMedicalPoolByQuality);
+                RebuildModeDQualityBuckets(modeDTotemPool, modeDTotemPoolByQuality);
+                RebuildModeDQualityBuckets(modeDMaskPool, modeDMaskPoolByQuality);
 
                 modeDItemPoolsInitialized = true;
                 if (logEnabled)
@@ -384,6 +410,104 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeD] [ERROR] InitializeModeDItemPools 失败: " + e.Message);
+            }
+        }
+
+        private static Dictionary<int, List<int>> CreateModeDQualityBuckets()
+        {
+            Dictionary<int, List<int>> buckets = new Dictionary<int, List<int>>();
+            for (int quality = 1; quality <= 8; quality++)
+            {
+                buckets[quality] = new List<int>();
+            }
+
+            return buckets;
+        }
+
+        private static void ClearModeDQualityBuckets(Dictionary<int, List<int>> buckets)
+        {
+            if (buckets == null)
+            {
+                return;
+            }
+
+            for (int quality = 1; quality <= 8; quality++)
+            {
+                List<int> bucket;
+                if (!buckets.TryGetValue(quality, out bucket) || bucket == null)
+                {
+                    buckets[quality] = new List<int>();
+                    continue;
+                }
+
+                bucket.Clear();
+            }
+        }
+
+        private static void AddDistinctItemIds(List<int> targetPool, int[] ids)
+        {
+            if (targetPool == null || ids == null || ids.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ids.Length; i++)
+            {
+                int id = ids[i];
+                if (id > 0 && !targetPool.Contains(id))
+                {
+                    targetPool.Add(id);
+                }
+            }
+        }
+
+        private List<Duckov.Utilities.Tag> BuildModeDEquipmentPoolExcludeTags(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
+        {
+            List<Duckov.Utilities.Tag> excludeTags = new List<Duckov.Utilities.Tag>();
+            if (tagsData == null)
+            {
+                return excludeTags;
+            }
+
+            AddUniqueLootExcludeTag(excludeTags, tagsData.LockInDemoTag);
+            AddUniqueLootExcludeTag(excludeTags, TryFindQuestTag(tagsData));
+
+            return excludeTags;
+        }
+
+        private void RebuildModeDQualityBuckets(List<int> sourcePool, Dictionary<int, List<int>> buckets)
+        {
+            ClearModeDQualityBuckets(buckets);
+            if (sourcePool == null || buckets == null || sourcePool.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < sourcePool.Count; i++)
+            {
+                int id = sourcePool[i];
+                if (id <= 0)
+                {
+                    continue;
+                }
+
+                int quality = 1;
+                try
+                {
+                    quality = Mathf.Clamp(ItemAssetsCollection.GetMetaData(id).quality, 1, 8);
+                }
+                catch
+                {
+                }
+
+                List<int> bucket;
+                if (!buckets.TryGetValue(quality, out bucket) || bucket == null)
+                {
+                    bucket = new List<int>();
+                    buckets[quality] = bucket;
+                }
+
+                bucket.Add(id);
             }
         }
 
