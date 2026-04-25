@@ -33,6 +33,8 @@ Interact with the arena signpost to pick:
 
 # Clear Rewards
 
+- The completion reward crate no longer appears instantly by the signpost.
+- It now first shows up as a highlighted ghost crate above you, then slowly descends and becomes a normal interactable reward crate.
 - **Easy**: Reward crate with 3 high-quality items
 - **Normal**: Reward crate with 10 high-quality items
 

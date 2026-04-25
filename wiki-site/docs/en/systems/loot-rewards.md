@@ -15,6 +15,7 @@
 
 # Quality Distribution Modes
 The config option `useLegacyBossLootProbabilities` controls the quality distribution algorithm. Default is `true` (Legacy Probability Mode).
+- This setting no longer affects only Standard BossRush; it also applies to the corresponding regular loot-quality paths in From Scratch / Faction War / Blood Hunt as described below.
 
 ##### Legacy Probability Mode (Default)
 - Each quality tier has an independent drop probability determined by a `bonusFactor`.
@@ -38,10 +39,11 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
 - Internal high quality distribution: quality 5 : 6 : 7 : 8 = 4 : 3 : 2 : 1
 - No Q5+ guarantee mechanism.
 
-> **Note**: Both modes exclude quest-tagged items from the candidate pool. The only differences are the probability distribution algorithm and the Q5+ guarantee mechanism.
+> **Note**: The main gameplay-facing differences between the two modes are the probability distribution algorithm and the Q5+ guarantee behavior. Candidate-pool filtering details can also differ between the two paths.
 
 # Completion Reward Crate
-- After defeating all waves, a completion reward crate spawns at the center of the arena:
+- After defeating all waves, the completion reward crate no longer appears instantly by the signpost.
+- It now first shows up as a highlighted ghost crate above the player, then materializes and descends slowly before becoming a normal interactable reward crate:
 - Easy (1 Boss/wave): 3 high quality items
 - Normal (multiple Bosses/wave): 10 high quality items
 
@@ -49,7 +51,7 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
 - The following types of items will not appear in the loot pool:
   - Items flagged as non-droppable
   - Demo-locked items
-  - Quest-tagged items (excluded in both probability modes)
+- Quest-tagged item handling depends on the active loot-probability path; Legacy mode applies the stricter exclusion rule
 - Crown drop weight is reduced to 0.1x, lowering its appearance frequency.
 
 # Infinite Hell Rewards

@@ -28,6 +28,7 @@
   - Standard BossRush: affects the quality distribution of Boss loot crates and keeps the Q5+ guarantee for high-HP Bosses
   - From Scratch / Faction War / Blood Hunt: affects the quality distribution of regular on-death backpack bonus items, backpack refill items, and extra backpack ammo stacks
   - Does not affect drop counts, currently equipped weapons, equipped armor/helmets/accessories, melee weapons, current bullet type, or Blood Hunt bounty / extraction bonus rewards
+  - Current versions now apply this scope correctly across Standard BossRush and the corresponding regular loot paths in From Scratch / Faction War / Blood Hunt, rather than only Standard BossRush
 
 # useInteractBetweenWaves
 - Default: false

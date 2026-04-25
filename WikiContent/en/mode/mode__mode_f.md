@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-The hardest mode in BossRush. **You're bleeding out from the moment you enter.** Kill Bosses to heal, survive four escalating phases, and evacuate before you bleed dry. Good luck.
+The hardest mode in BossRush. **You're bleeding out from the moment you enter.** Killing Bosses is your main sustain tool, but not your only support option. Survive four escalating phases and evacuate before you bleed dry. Good luck.
 
 ### Entry
 
@@ -46,7 +46,7 @@ Bounty Boss drops = additional high-quality items equal to its mark count.
 ### Arena NPCs
 
 All three present:
-- **Awen** — Storage & retrieval
+- **Awen** — Storage & retrieval, plus **`Sweep Loot`** for fast cleanup of tracked BossRush lootboxes in the current scene
 - **Dingdang** — Reforge & shop
 - **Yuori** — Healing
 
@@ -73,6 +73,7 @@ Deploy 2m in front of you. Can't overlap, can't clip into scenery. Failed deploy
 - **Extraction** — All chase you. All +50% speed. Unmarked +100% speed
 
 Dead Bosses auto-replaced with new ones.
+[tip] Boss Filter also applies to Blood Hunt; disabled Bosses will not enter this mode's Boss pool.
 
 ### Extraction
 

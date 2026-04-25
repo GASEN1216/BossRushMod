@@ -2,6 +2,7 @@
 
 # Overview
 - The Boss Filter allows you to customize the Boss pool by disabling Bosses you don't want to encounter or adjusting the appearance weight of specific Bosses in Infinite Hell.
+- Disabled entries now also affect the Boss pools used by **Standard BossRush, From Scratch, Faction War, and Blood Hunt**; Infinite Hell still supports its own per-Boss weight multipliers.
 - The filter follows the current Boss preset list, and temporary minion presets created at runtime by Faction War / Blood Hunt are excluded from the Boss list.
 
 # How to Open

@@ -47,12 +47,13 @@ Multi-faction sandbox chaos. Pick a faction, watch Bosses from different faction
 - All Bosses spawn at once when the mode starts
 - Your faction gets the closest spawn points
 - Dragon Descendant: max 1 per session
+- Boss Filter also applies here; disabled Bosses will not enter the Faction War Boss pool
 - Skyburner Dragon Lord: doesn't appear
 
 # Arena NPCs
 
 All three NPCs present:
-- **Awen** — Storage & retrieval
+- **Awen** — Storage & retrieval, plus **`Sweep Loot`** for fast cleanup of tracked BossRush lootboxes in the current scene
 - **Dingdang** — Reforge & shop
 - **Yuori** — Healing
 

@@ -29,6 +29,10 @@ A lite roguelike run. You enter **completely naked**, get a random starter kit, 
 
 3 enemies/wave by default (adjustable 1-10 in config).
 
+::: tip
+Boss Filter also applies to this mode; disabled Bosses will not enter the From Scratch Boss pool.
+:::
+
 # Enemy Gear
 
 Enemies carry random gear too — quality scales with wave and HP: `Quality = 1 + (Wave/5) + (HP/500)`, max 6. Later grunts may drop better gear than what you started with. Boss enemies keep their original helmet and armor.

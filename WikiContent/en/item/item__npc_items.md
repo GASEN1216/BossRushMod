@@ -76,6 +76,7 @@ Awen sweeps all existing lootboxes nearest-to-farthest. Faction War / Blood Hunt
 - **Source**: Auto-granted per 20 Boss deaths in Mode E/F
 - Stack 1 / Use time 1s / Requires Awen present + lootboxes on field
 - Can't reuse while Awen is already sweeping
+- **Note**: this is the consumable version; Awen also now provides a permanent **`Sweep Loot`** interaction service
 
 ---
 
