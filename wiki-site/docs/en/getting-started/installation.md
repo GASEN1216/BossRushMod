@@ -1,22 +1,20 @@
 # Installation & Activation
 
-# Install via Steam Workshop
+# Install
 
-- 1. Open the Steam Workshop page for Escape from Duckov
-- 2. Search for "BossRush" or go directly to the Mod page
-- 3. Click "Subscribe"
-- 4. Launch the game, and the Mod will load automatically
+1. Open **Steam Workshop** for Escape from Duckov
+2. Search "BossRush" or go to the mod page directly
+3. Click **Subscribe**
+4. Launch the game — mod loads automatically
 
-# Confirm the Mod is Active
+# Confirm It's Working
 
-After entering the game, you can verify the Mod is working properly by:
+- **BossRush Ticket** appears at the base merchant
+- Press **L** → achievement panel opens
+- **Dingdang** and **Yuori** visible on normal maps
 
-- New items such as the **BossRush Ticket** are available at the base merchant
-- Press **L** (default) to open the achievement panel
-- NPCs **Dingdang** (Goblin) and **Yuori** (Nurse) are visible in normal maps
+# Config
 
-# Configuration File
+First run generates `BossRushModConfig.txt` in `StreamingAssets/`. Edit it to tweak wave intervals, Boss count, difficulty, etc.
 
-On first run, the Mod automatically generates a configuration file BossRushModConfig.txt in the StreamingAssets/ directory. You can edit this file to adjust various parameters — see the configuration options for details.
-
-If the game supports ModConfig UI, you can also modify settings directly in the in-game Mod settings interface.
+If the game supports ModConfig UI, you can also change settings in-game.

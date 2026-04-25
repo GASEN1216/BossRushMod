@@ -1,30 +1,32 @@
 # Boss Overview
 
-BossRush Mod adds 3 fully custom bosses on top of the game's original boss pool, each with independent skill sets, phase transitions, and exclusive drops.
+3 fully custom Bosses on top of the vanilla pool. Each has its own skill set, phase transitions, and exclusive loot.
 
-# Custom Boss List
-- Dragon Descendant — HP 500, mid-tier difficulty, exclusive drops: Crimson Dragon Helm, Flame Scale Armor, Dragon Breath
-- Skyburner Dragon Lord — HP 800, highest difficulty, exclusive drops: Dragon King Crown, Dragon King Scale Armor, Cloud Rider, Reverse Scale, Skyburner Halberd, Dragon Cannon
-- Phantom Witch — HP 1000, high difficulty, three-phase fight (blink + scythe + Curse Realm + summoning), exclusive drop: Soulreaper's Requiem
+# The Roster
 
-# Boss Pool Rules
-- Standard BossRush and Infinite Hell: The first 20 waves exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch to give players time to warm up
-- From Scratch: No bosses in the first 5 waves, waves 6-10 exclude powerful Bosses such as the Four Horsemen, Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch, and the full Boss pool opens after wave 16
-- Faction War: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear, Phantom Witch joins the normal draw
-- Blood Hunt: Dragon Descendant appears at most once per session, Skyburner Dragon Lord does not appear, Phantom Witch joins the normal draw; a new boss is automatically added after a boss is killed
+- **Dragon Descendant** — 500 HP, mid difficulty. Drops: Crimson Dragon Helm, Flame Scale Armor, Dragon Breath
+- **Skyburner Dragon Lord** — 800 HP, **highest difficulty**. Drops: Dragon King Crown, Dragon King Scale Armor, Cloud Rider, Reverse Scale, Skyburner Halberd, Dragon Cannon
+- **Phantom Witch** — 1000 HP, high difficulty. Blink + scythe + Curse Realm + summoning. Drops: Soulreaper's Requiem
+
+# When Do They Appear?
+
+- **Standard / Infinite Hell** — First 20 waves exclude heavy hitters (Four Horsemen, Dragon Descendant, Dragon Lord, Phantom Witch)
+- **From Scratch** — No Bosses for waves 1-5; waves 6-10 exclude heavy hitters; full pool after wave 16
+- **Faction War** — Dragon Descendant max 1/session, Dragon Lord doesn't appear, Phantom Witch in normal draw
+- **Blood Hunt** — Same as Faction War; dead Bosses auto-replaced
 
 # Boss Filter
-You can customize the boss pool through the Boss Filter (Ctrl+F10):
-- Disable specific bosses to prevent them from appearing
-- Adjust each boss's spawn weight in Infinite Hell
 
-See Boss Filter for details.
+Customize the pool via **Ctrl+F10**:
+- Disable specific Bosses entirely
+- Adjust spawn weights in Infinite Hell
 
-# Related Achievements
-- Dragon Heir Hunter — First kill of Dragon Descendant (reward: 30,000)
-- Perfect Dragon Hunt — No-damage kill of Dragon Descendant (reward: 200,000)
-- Dragon Slayer — First kill of Skyburner Dragon Lord (reward: 100,000)
-- Perfect Dragon Slayer — No-damage kill of Skyburner Dragon Lord (reward: 500,000)
-- Dragon Master — 10 cumulative kills of Skyburner Dragon Lord (reward: 600,000)
-- Dragon Heir Collection — Collect all exclusive drops from Dragon Descendant (reward: 300,000)
-- Dragon King's Vault — Collect all exclusive drops from Skyburner Dragon Lord (reward: 500,000)
+# Achievements
+
+- **Dragon Heir Hunter** — First Dragon Descendant kill (30K)
+- **Perfect Dragon Hunt** — No-damage Dragon Descendant kill (200K)
+- **Dragon Slayer** — First Dragon Lord kill (100K)
+- **Perfect Dragon Slayer** — No-damage Dragon Lord kill (500K)
+- **Dragon Master** — 10 Dragon Lord kills (600K)
+- **Dragon Heir Collection** — All Dragon Descendant drops (300K)
+- **Dragon King's Vault** — All Dragon Lord drops (500K)

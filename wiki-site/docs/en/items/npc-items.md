@@ -2,43 +2,34 @@
 
 # Diamond
 
-A real diamond. Can be used directly to summon Dingdang, or gifted to an NPC.
+Real diamond. Use it to summon Dingdang (+5 Affinity), or gift it (+80 to either NPC).
 
-- Source: Purchasable after unlocking Dingdang Affinity Lv.2; Dingdang Affinity level-up reward
-- Use Effect: Summons Dingdang to run toward you, Dingdang Affinity +5
-- As a Gift: Counts as a "Liked" item, Affinity +80 (universal for Dingdang/Yuori)
-- Used without Dingdang present: Item is still consumed, displays "Nothing seems to happen..."
+- **Source**: Dingdang shop (Lv.2+) / Affinity level-up reward
+- Without Dingdang present: consumed, "Nothing seems to happen..."
 
 ---
 
 # Brick Stone
 
-A light, sparkly-looking stone... but it's fake.
+Sparkly, light... and **fake**. Dingdang will know.
 
-- Source: Purchased from the base merchant (stock 5)
-- Use Effect: Summons Dingdang to run toward you, Dingdang Affinity -20 (recognized as a fake diamond)
-- As a Gift: Dingdang -40, Yuori -60 (reminds her of the lab)
-- Used without Dingdang present: Item is still consumed, displays "Nothing seems to happen..."
+- **Source**: Base merchant (stock 5)
+- **Use**: Summons Dingdang, Affinity **-20** (he's insulted)
+- **Gift**: Dingdang -40 / Yuori -60
 
 ::: warning
-Gift a fake diamond to the Goblin Craftsman at your own risk.
+Gift a fake diamond at your own risk.
 :::
 
 ---
 
 # Diamond Ring
 
-An exquisite ring set with a brilliant diamond. Gifting it to a max-Affinity NPC triggers a proposal.
+The proposal item. +500 Affinity. At Lv.10: triggers a wedding.
 
-- Source: Unlocked in Dingdang's shop after Dingdang Affinity Lv.7
-- Affinity Bonus: +500
-- Proposal Requirement: NPC Affinity at Lv.10
-
-# Proposal Rules
-
-- Gift the ring at max Affinity → triggers a wedding
-- Gift to the same spouse while already married → rejected, ring is not consumed
-- Gift to a different NPC while already married → triggers "cheating penalty", ring is consumed, Affinity decreases
+- **Source**: Dingdang shop (Lv.7+)
+- Already married + gift to spouse → rejected, ring kept
+- Already married + gift to someone else → **cheating penalty**, ring consumed, Affinity drops
 
 See Affinity & Marriage for details.
 
@@ -46,87 +37,65 @@ See Affinity & Marriage for details.
 
 # Cold Quench Fluid
 
-An extremely cold liquid used by the Goblin Craftsman during Reforge, allowing you to lock a specific stat during the process.
+**Locks one stat** during Reforge. The most critical Reforge material.
 
-- Source: Dingdang Affinity Lv.4 level-up reward; Dingdang's shop; daily chat gift from married Dingdang
-- Usage: Lock a stat you don't want changed in the Reforge interface
-
-This is the most critical material in the Reforge system. See Reforge System for details.
+- **Source**: Dingdang Lv.4 reward / shop / daily chat gift (married)
 
 ---
 
 # Calming Drops
 
-Calming drops hand-prepared by Yuori, with a faint herbal fragrance.
+**Clears most negative buffs.** Herbal fragrance included.
 
-- Source: One-time reward of 5 bottles at Yuori Affinity Lv.3
-- Max Stack: 20
-- Use Time: 2.5 seconds
-- Effect: Clears most negative buffs
+- **Source**: 5 free at Yuori Lv.3
+- Stack 20 / Use time 2.5s
 
 ---
 
 # Peace Amulet
 
-An amulet carrying the wish for a safe return.
+Passive lifesaver. 10% proc when HP drops below 50% → **full heal**. Once per scene.
 
-- Source: One-time reward at Yuori Affinity Lv.8
-- Max Stack: 1
-- Trigger Condition: 10% chance to trigger when HP drops below 50%
-- Effect: Fully restores HP
-- Limitation: Can only trigger once per scene
-
-The amulet is a passive effect — just keep it in your inventory and it works automatically; no need to use it manually.
+- **Source**: Yuori Lv.8 reward / Stack 1
+- Just keep it in your inventory — no manual use needed
 
 ---
 
 # Awen Courier Token
 
-A brass token stamped with Awen's duck mark. Use it to ship what you are carrying back home in one action.
+Ships everything you're carrying home in one action. Brass token with Awen's duck mark.
 
-- Source: Purchased from the base merchant (stock 5)
-- Max Stack: 1
-- Use Time: 1.5 seconds
-- Effect: Ships your currently equipped items, backpack items, and pet inventory home in one go
-- Cost: Free in base; elsewhere it charges the same fee as Awen's normal courier service
-- Detail: The token does not ship itself away while you are using it
+- **Source**: Base merchant (stock 5) / Stack 1 / Use time 1.5s
+- Free at base; elsewhere charges standard courier fee
+- Token doesn't ship itself (smart design)
 
 ---
 
 # Awen Loot Sweep Token
 
-A brass token stamped with Awen's cleanup seal. Usable only in Mode E/F. Once used, Awen takes over the lootboxes that already exist and clears them one by one from nearest to farthest.
+Awen sweeps all existing lootboxes nearest-to-farthest. Faction War / Blood Hunt only.
 
-- Source: Automatically granted once per 20 boss deaths in Mode E/F
-- Max Stack: 1
-- Use Time: 1 second
-- Requirement: Mode E/F only; Awen must be present, and there must already be lootboxes available to clear
-- Effect: Commands Awen to take over the currently existing lootboxes and clear them one by one from nearest to farthest
-- Limitation: Only lootboxes that already exist when you use it are included; it cannot be used again while Awen is already sweeping
+- **Source**: Auto-granted per 20 Boss deaths in Mode E/F
+- Stack 1 / Use time 1s / Requires Awen present + lootboxes on field
+- Can't reuse while Awen is already sweeping
 
 ---
 
 # Dingdang's Drawing
 
-A painting Dingdang spent many days on. Use it to view it in fullscreen.
+A painting he spent days on. Use to view fullscreen. Durability 999 — it's indestructible.
 
-- Source: Special gift at Dingdang Affinity Lv.10
-- Consumed on Use: No (durability 999)
-- Use Effect: Opens a fullscreen image viewer
+- **Source**: Dingdang Lv.10 special gift
 
 ::: warning
-Note: If you gift this painting back to Dingdang, he will be very upset (Affinity -300).
+Gift it back to him = **-300 Affinity**. He will be devastated. Don't.
 :::
 
 ---
 
 # Wild Horn
 
-An ancient horn. Blow it to summon a mount.
+Ancient horn. Blow it to summon a mount (3s cooldown). Use again to call it over.
 
-- Source: Shop or drops
-- Consumed on Use: No (durability 999)
-- Cooldown: 3 seconds
-- Effect: First use summons a mount; using it again when the mount is nearby calls it over
-
-If the wolf model is enabled in the config, the mount's appearance changes to a wolf, and it eats dumplings instead of carrots.
+- **Source**: Shop or drops / Durability 999
+- Wolf model enabled in config → mount becomes a wolf (eats dumplings instead of carrots)

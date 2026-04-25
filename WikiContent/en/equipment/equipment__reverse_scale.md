@@ -1,30 +1,29 @@
 ## Reverse Scale
 
-### Overview
-- The dragon's Reverse Scale — Touch the Scale, and face its wrath
-- A one-time lifesaving Totem — automatically triggers when near death, restoring health and firing Prismatic Bolts in all directions as a counterattack, then the Totem shatters
+### What Is It?
 
-### Basic Info
-- Type: Totem
-- Quality: 6 (Legendary)
-- Drop source: Skyburner Dragon Lord (35% drop rate)
-- Death drop: Will not drop on death
+Touch the dragon's scale, and face its wrath. **A one-time lifesave totem**: auto-triggers at death's door, heals you, fires counterattack bolts, then shatters. Gone forever.
 
-### Trigger Mechanism
-- Trigger condition: Health drops to 1 or below
-- Recovery: 50% of max health
-- Counterattack: Fires Prismatic Bolts in 8 directions, auto-tracking the nearest enemy within 15 meters
-- Prismatic Bolt damage: 15 per bolt
-- Prismatic Bolt tracking: Tracks for 2.5 seconds then flies in a straight line, total lifetime 5 seconds
-- After trigger: The Totem shatters and is removed from the equipment slot
+### Stats
 
-[warn] A message will appear when triggered: "The Reverse Scale shattered..."
+- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (35%) / Won't drop on death
 
-### Usage Tips
-- Reverse Scale is a pure insurance mechanism, ideal for high-risk scenarios (first attempt at the Skyburner Dragon Lord, high waves in Infinite Hell, Blood Hunt, etc.)
-- Single use — you need to obtain a new one after it triggers
-- Prismatic Bolt tracking damage works best in close-range multi-enemy scenarios
-- Can be swapped with the Cloud Rider Totem — use the flight Totem during stable periods, switch to Reverse Scale during high-risk periods
+### How It Works
 
-### Related Achievement
-- Touch the Scale — Trigger the Reverse Scale effect for the first time (reward: $80,000)
+- **Trigger**: HP drops to 1 or below
+- **Heal**: 50% of max HP
+- **Counterattack**: 8 Prismatic Bolts in all directions, auto-tracking nearest enemy within 15m (15 dmg each, 2.5s tracking + 5s lifetime)
+- **Then**: Totem shatters, removed from slot
+
+[warn] "The Reverse Scale shattered..." — you'll see this message. Then it's gone.
+
+### Tips
+
+- Pure insurance — save it for high-risk moments (first Dragon Lord attempt, deep Infinite Hell, Blood Hunt)
+- **Single use.** Get a new one after it triggers
+- Bolt tracking works best in close-range multi-enemy scenarios
+- Swap with Cloud Rider: fly during safe periods, equip Reverse Scale for danger
+
+### Achievement
+
+- **Touch the Scale** — First trigger ($80K)

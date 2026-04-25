@@ -1,26 +1,26 @@
 ## Game Mode Overview
 
-BossRush Mod offers 5 game modes with different focuses, catering to everything from casual to hardcore playstyles.
+5 modes, from chill to "why did I do this to myself."
 
-### Mode Comparison
+### At a Glance
 
-- Standard BossRush: Entry Requirement Ticket / Waves Limited / Core Experience Classic Boss wave challenge / Difficulty ★★☆☆☆
-- Infinite Hell: Entry Requirement Ticket (select Infinite Hell difficulty) / Waves Unlimited / Core Experience Endless survival, Bosses grow stronger each wave / Difficulty ★★★★☆
-- From Scratch: Entry Requirement Naked + Ticket / Waves Unlimited / Core Experience Random start, grow from zero / Difficulty ★★★☆☆
-- Faction War: Entry Requirement Naked + Faction Banner / Waves None (Sandbox) / Core Experience Multi-faction Boss brawl / Difficulty ★★★☆☆
-- Blood Hunt: Entry Requirement Naked + Ticket + Bloodhunt Transponder / Waves Four phases / Core Experience Constant bleed, kill to heal / Difficulty ★★★★★
+- **Standard BossRush** — Ticket / Limited waves / Classic Boss wave challenge / ★★☆☆☆
+- **Infinite Hell** — Ticket (select at signpost) / Unlimited waves / Bosses get stronger forever / ★★★★☆
+- **From Scratch** — Naked + Ticket / Unlimited waves / Random start, grow from zero / ★★★☆☆
+- **Faction War** — Naked + Banner / Sandbox / Multi-faction Boss brawl / ★★★☆☆
+- **Blood Hunt** — Naked + Ticket + Transponder / 4 phases / Constant bleed, kill to heal / ★★★★★
 
-### Entry Detection Priority
+### Mode Detection Priority
 
-When you carry multiple entry items at the same time, the system determines which mode to enter based on the following priority:
+Carrying multiple entry items? The system picks by priority:
 
-- 1. Faction War — Faction Banner detected
-- 2. Blood Hunt — Bloodhunt Transponder + Ticket detected
-- 3. From Scratch — Naked + Ticket detected
-- 4. Standard BossRush — Ticket only
+1. **Faction War** — Banner detected
+2. **Blood Hunt** — Transponder + Ticket detected
+3. **From Scratch** — Naked + Ticket detected
+4. **Standard BossRush** — Ticket only
 
 ### General Rules
 
 - All modes support 9 maps
-- The arena provides basic facilities such as ammo shop, repair station, and trash can
-- Standard BossRush, From Scratch, and Blood Hunt spawn loot crates after Boss kills; Infinite Hell uses a cash pool instead, and Faction War only drops crates from enemy-faction Bosses
+- Arenas include ammo shop, repair station, and trash can
+- Standard, From Scratch, and Blood Hunt drop loot crates from Boss kills; Infinite Hell uses a cash pool; Faction War only drops crates from **enemy-faction** Bosses

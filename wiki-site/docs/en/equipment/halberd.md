@@ -1,71 +1,52 @@
 # Skyburner Halberd
 
-# Overview
-- An exclusive melee weapon dropped by the Skyburner Dragon Lord, the most mechanically rich melee weapon in the Mod
-- Features a three-hit combo system and the Dragon King Slam leap attack skill
+# What Is It?
 
-# Basic Info
-- Type: Melee weapon
-- Quality: 7 (Legendary)
-- Element: Fire
-- Drop source: Skyburner Dragon Lord (15% drop rate)
-- Death drop: Will not drop on death
+The most mechanically rich melee weapon in the mod. Three-hit combo + Dragon King Slam leap attack. Dropped by the Dragon Lord. **High skill ceiling, massive reward.**
 
-# Weapon Stats
-- Base Damage: 55
-- Attack Speed: 2.2
-- Attack Range: 2.5m
-- Crit Rate: 10%
-- Crit Damage: 2.0x
-- Armor Piercing: 6
-- Bleed Chance: 15%
-- Block Bullet: 1
-- Stamina Cost: 10 per hit
-- Move Speed: 110%
-- Deal Damage Time: 0.12 sec
-- Gem Slots: 2
+# Stats
+
+- **Type**: Melee / **Quality**: 7 / **Element**: Fire / **Drop**: Dragon Lord (15%) / Won't drop on death
+- Dmg 55 / Speed 2.2 / Range 2.5m / Crit 10% / Crit Dmg 2.0x / Pierce 6 / Bleed 15%
+- Block 1 / Stamina 10/hit / Move Speed 110% / Gem Slots 2
 
 # Three-Hit Combo (Left Click)
-Clicking left click consecutively triggers a three-hit combo, each hit with different attack range and effects. The combo window is 0.75 seconds; exceeding it resets the chain.
 
-- Hit 1 "Flame Sweep": Range 2.8m, angle 150°, damage 55
-- Hit 2 "Dragon Flame Uppercut": Range 2.2m, angle 90°, damage 65, launches enemies 1.5m upward
-- Hit 3 "Realm Cleave": Range 3.3m, angle 120°, damage 85, pulls enemies 1.0m toward you
+Combo window: 0.75s. Exceed it = chain resets.
 
-All attacks apply:
-- +15 fire bonus damage
-- 2-second burn debuff
-- Stack 1 Dragon Flame Mark (per hit)
+1. **Flame Sweep** — 2.8m, 150°, 55 dmg
+2. **Dragon Flame Uppercut** — 2.2m, 90°, 65 dmg, **launches enemies 1.5m**
+3. **Realm Cleave** — 3.3m, 120°, 85 dmg, **pulls enemies 1m toward you**
+
+Every hit applies: +15 fire bonus, 2s burn, +1 Dragon Flame Mark.
 
 # Dragon Flame Mark
-- Max stacks: 5 per enemy
-- Duration: 6 seconds (refreshed on each stack)
-- Detonation: Dragon King Slam automatically detonates all marks on enemies within range upon landing
-- Detonation damage: 30 per stack (5 full stacks = 150 damage)
+
+- Max 5 stacks / 6s duration (refreshed per stack)
+- **Detonated by Dragon King Slam** — 30 dmg/stack (5 stacks = 150 bonus damage)
 
 # Dragon King Slam (Right Click)
-- Cooldown: 5 seconds
-- Stamina cost: 20
-- Controls: Hold right click to display the jump preview arc, release to execute
-- Preview indicator: Orange = can land, Red + forbidden icon = blocked
 
-# Landing Effects
-- Landing impact damage: 80 (3.5m radius)
-- Fire pillars: 6 fire pillars spawn in a ring around the landing point (1.8m radius), each dealing 45 damage, 1.2m radius, lasting 2 seconds
-- Mark detonation: Automatically detonates all Dragon Flame Marks on enemies within range
+- **Cooldown**: 5s / **Stamina**: 20
+- Hold to show jump arc (orange = safe, red = blocked), release to execute
+- **Landing**: 80 dmg in 3.5m radius
+- **Fire Pillars**: 6 pillars in a ring (1.8m), 45 dmg each, 1.2m radius, 2s duration
+- **Auto-detonates** all Dragon Flame Marks on enemies in range
 
-# Recommended Combat Loop
-- Use the three-hit combo to stack 5 Dragon Flame Marks
-- Follow with the leap slam to detonate the marks and cover the area with fire pillars
-- Keep comboing during cooldown to rebuild marks
-- Repeat that rhythm
+# Combat Loop
 
-# Usage Tips
-- Hit 2's launch and Hit 3's pull can control enemy positioning, synergizing excellently with the leap's area damage
-- The leap preview arc helps you precisely choose your landing spot — don't use it blindly
-- Fire pillars are distributed in a ring around the landing point; leaping into dense enemy clusters maximizes coverage
-- Combine with the Dragon King Set's dash to quickly close in on targets before comboing
+1. Combo 3 hits → stack marks
+2. Slam → detonate + fire pillars
+3. Combo during cooldown → rebuild marks
+4. **Repeat**
+
+# Tips
+
+- Hit 2 launches, Hit 3 pulls — great for positioning enemies into your Slam
+- Preview arc = precision landing. Don't leap blind
+- Jump into dense clusters for max fire pillar coverage
+- Pair with Dragon King Set dash → close gap → combo → slam
 
 ::: tip
-This weapon has an extremely high skill ceiling, but requires you to understand the combo rhythm and leap timing.
+Extremely high skill ceiling. Master the combo rhythm and leap timing to dominate.
 :::

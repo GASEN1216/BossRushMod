@@ -1,60 +1,47 @@
 # Dragon Cannon
 
-# Overview
-- The exclusive firearm used by the Skyburner Dragon Lord in combat
-- It is now part of the Skyburner Dragon Lord's exclusive drop pool at a 5% drop rate
-- Features 15 ammo configurations that dynamically switch during combat, making the Boss's shooting patterns highly varied
+# What Is It?
+
+The Skyburner Dragon Lord's personal gun. **15 ammo types** that dynamically switch during combat. Also a 5% player drop — the rarest weapon in the mod.
 
 ::: tip
-Defeating the Skyburner Dragon Lord has a very small chance to drop this exclusive weapon (5% drop rate).
+5% drop from the Dragon Lord. You'll earn this one.
 :::
 
-# Basic Info
-- Type: Firearm
-- Owner: Skyburner Dragon Lord (Boss exclusive)
-- Player obtainable: Yes
+# Stats
 
-# Weapon Stats
-- Base damage: 26
-- Fire rate: 9.2
-- Magazine capacity: 15
-- Reload time: 3.35 sec
-- Bullet speed: 108
-- Range: 24
-- Crit rate: 28%
-- Crit damage: 1.6x
-- Element: Fire
-- Move speed while held: 85%
+- **Type**: Firearm / **Element**: Fire / Player-obtainable: Yes
+- Dmg 26 / ROF 9.2 / Mag 15 / Reload 3.35s / Speed 108 / Range 24
+- Crit 28% / Crit Dmg 1.6x / Move 85%
 
-# Ammo System
-
-The Dragon Cannon supports 15 ammo configurations. Each ammo type dynamically changes the weapon's fire rate, damage, magazine capacity, reload time, range, and other parameters. Here are the ammo types by category:
+# 15 Ammo Types
 
 # High Damage
-- Sniper (SNP): 4 pierce, extremely slow fire rate (×0.12), extremely high damage (×4), range 36 — long-range precision strikes
-- Heavy (BR): 2 pierce, damage ×1.4, range 28, decaying pierce
-- Rocket: Arc trajectory, damage ×2.2, splits on impact, magazine of only 5
-- IceBlade: Ice element, damage ×2, half fire rate, explosion radius 1.25
+- **Sniper** — 4 pierce, ROF ×0.12, dmg ×4, range 36. One-shot potential
+- **Heavy** — 2 pierce, dmg ×1.4, range 28
+- **Rocket** — Arc trajectory, dmg ×2.2, splits on impact, mag 5
+- **IceBlade** — Ice, dmg ×2, half ROF, 1.25m explosion
 
-# Spread / Multi-Projectile
-- Shotgun (SHT): 10 pellets, 26° spread, damage ×1.5, creates burning ground zone on impact (lasts 1.25 sec)
-- Assault (AR): 3 pellets, bullets bounce once, range 24
-- SMG: 2-round burst, helix trajectory, fire rate ×1.6, magazine 30
-- Candy: 6 pellets in 180° random spread, bullets bounce, fire rate ×1.2, magazine 20
+# Spread / Multi-Shot
+- **Shotgun** — 10 pellets, 26° spread, dmg ×1.5, burning ground on impact
+- **Assault** — 3 pellets, bullets bounce once
+- **SMG** — 2-round burst, helix trajectory, ROF ×1.6, mag 30
+- **Candy** — 6 pellets in 180° random, bounce, ROF ×1.2, mag 20
 
 # Special Trajectory
-- Magnum (MAG): 3 pierce, boomerang return trajectory, damage ×1.9
-- Arrow (ARR): Arc trajectory, sticks on hit then detonates after 1 sec delay, damage ×1.8
-- Energy (PWS): Electricity element, tracking trajectory, splits into 3 on hit
-- Nano (NM): Strong tracking trajectory, splits into 5 on hit
-- Firework: Helix arc trajectory, airbursts mid-flight splitting into 8
+- **Magnum** — 3 pierce, boomerang return, dmg ×1.9
+- **Arrow** — Arc, sticks then detonates after 1s, dmg ×1.8
+- **Energy** — Electric, tracking, splits into 3
+- **Nano** — Strong tracking, splits into 5
+- **Firework** — Helix arc, airbursts into 8
 
 # Special Element
-- Snow: Ice element, high arc trajectory, splits into 4, creates ice zone on impact (lasts 2.4 sec)
-- Poop: Poison element, high arc aimed trajectory, damage ×3.2, creates poison pool on impact (lasts 4 sec), range 60
+- **Snow** — Ice, high arc, splits into 4, creates ice zone (2.4s)
+- **Poop** — Poison, high arc, dmg ×3.2, poison pool (4s), range 60. **Yes, it's called Poop.**
 
-# Why You Should Know About It
-- Understanding the ammo types helps you recognize projectile patterns and react accordingly when fighting the Skyburner Dragon Lord
-- Sniper and Rocket rounds deal extreme damage but have predictable trajectories; Shotgun and SMG are dangerous up close but short-ranged
-- Watch for ground effects: Shotgun's burning zones, Snow's ice areas, and Poop's poison pools all need to be dodged promptly
-- If you want a player-usable dragon-type firearm, challenge the Dragon Descendant to obtain Dragon Breath
+# Why This Matters
+
+- Knowing the ammo types helps you **dodge** when fighting the Dragon Lord
+- Sniper/Rocket = high damage but predictable. Shotgun/SMG = dangerous close-range
+- Watch ground effects: burning zones, ice patches, poison pools
+- Want a dragon gun you can actually farm? Get **Dragon Breath** from Dragon Descendant

@@ -1,41 +1,43 @@
 ## Faction War Guide
 
 ### Core Concept
-- Faction War is a sandbox free-for-all mode with no fixed win/loss conditions.
-- Your goals can be:
-- Help your faction eliminate other factions.
-- Exploit the inter-faction chaos to profit.
-- Challenge all Bosses on the map as a Lone Wolf.
 
-### Faction Selection Advice
-- **Random**: Randomly assigned — adds uncertainty, for players who want surprises.
-- **Scav / USEC / Lab**: Standard factions with balanced Boss pools, a conventional experience.
-- **BEAR**: Bosses receive massive stat bonuses (x2.5), allies are stronger — for players who want powerful allies.
-- **Wolves**: Prioritizes spawning all unique Wolf Bosses — for players who want the Wolf faction experience.
-- **Lone Wolf**: No allies, hostile to all factions — for hardcore players seeking the ultimate challenge.
+Sandbox free-for-all. No win/loss conditions. Set your own goals:
+- Help your faction dominate
+- Exploit inter-faction chaos for profit
+- Go Lone Wolf against everyone
 
-### Tactical Consumable Timing
-- **Taunt Smoke Bomb**: When the number of Bosses on the field drops, use it to spawn new combat targets.
-- **Chaos Detonator**: Use when you want to create a map-wide brawl — the spectacle will be impressive.
-- **Hunter's Whistle**: When you want to concentrate nearby Bosses for a focused takedown.
-- **Blood Hunt Beacon**: When you want every Boss on the map chasing you (high risk, high reward).
+### Picking a Faction
 
-### Economy Strategy
-- The Mystery Merchant sells ammo at base price; all other goods are x10 price.
-- Prioritize buying ammo supplies — purchased ammo automatically fills the stack.
-- Killing enemy faction Bosses drops loot crates — your main source of gear.
-- Killing same-faction Bosses does not drop loot.
+- **Random** — Surprise assignment. For the adventurous
+- **Scav / USEC / Lab** — Balanced pools, standard experience
+- **BEAR** — Boss stats x2.5, allies are beefy. Want strong friends? Pick this
+- **Wolves** — Unique Wolf Bosses prioritized
+- **Lone Wolf** — No allies, everyone hostile. **Hardcore only**
 
-### Growth Mechanic Usage
-- Boss growth is per Boss: each Boss only gains stacks from same-faction deaths that occur after that Boss has spawned.
-- Each Boss stack gives +5% health, +5% firearm damage, and +5% melee damage; newly respawned Bosses do not inherit previous stacks.
-- Player growth only triggers when you personally land the final hit on an enemy Boss, granting 1 stack.
-- Each player stack gives +0.1% health, +0.1% firearm damage, and +0.1% melee damage, and can be accumulated over time.
-- Each stack gain shows a bubble above the player with the current total bonus.
+### When to Use Tactical Items
 
-### Lone Wolf Mode Guide
-- As a Lone Wolf you have no allies — Bosses from all 5 factions are your enemies.
-- You receive extra supplies at the start.
-- Exploit inter-faction Boss fights to wear them down.
-- Blood Hunt Beacon can lure all map Bosses together for a massive free-for-all.
-- This is the hardest mode variant — recommended only after your gear is well-established.
+- **Taunt Smoke Bomb** — Low Boss count on field? Spawn more targets
+- **Chaos Detonator** — Want map-wide mayhem? Hit the button
+- **Hunter's Whistle** — Concentrate nearby Bosses for focused kills
+- **Blood Hunt Beacon** — Every Boss on the map chases you. High risk, high reward
+
+### Economy
+
+- Mystery Merchant: ammo at base price, everything else **x10**
+- Prioritize ammo — auto-fills your stack on purchase
+- **Enemy faction** Boss kills drop loot crates. Same-faction kills don't
+
+### Growth System
+
+- **Boss growth**: Per Boss, +5% HP/firearm/melee per same-faction death (only counts deaths after that Boss spawned; new spawns start fresh)
+- **Player growth**: Land the killing blow on enemy Bosses → +0.1% HP/firearm/melee per stack (accumulates over time)
+- Stack gains show a bubble above your head
+
+### Lone Wolf Tips
+
+- No allies — all 5 factions are hostile
+- Extra starting supplies to compensate
+- **Let Bosses fight each other** — clean up the survivors
+- Blood Hunt Beacon → map-wide free-for-all (spectacular and dangerous)
+- Only attempt with solid gear

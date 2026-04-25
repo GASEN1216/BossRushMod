@@ -1,47 +1,35 @@
 # Dragon Breath
 
-# Overview
-- An exclusive firearm dropped by Dragon Descendant, the first custom weapon you can obtain
-- Has a chance to inflict Dragon Flame Burn on hit, dealing continuous true damage
-- Muzzle features fire smoke and spark particle effects
+# What Is It?
 
-# Basic Info
-- Type: Firearm
-- Drop Source: Dragon Descendant (10% drop rate)
-- Death Drop: Drops normally
+Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but the **% max HP burn** makes it a Boss-killing machine.
 
-# Weapon Stats
-- Base Damage: 23
-- Fire Rate: 13
-- Magazine Capacity: 20
-- Reload Time: 3 sec
-- Bullet Speed: 122
-- Range: 28
-- Crit Rate: 25%
-- Crit Damage: 1.5x
-- Move Speed (holding): 82%
-- Move Speed (aiming): 45%
-- Spread (hip fire): 27
-- Spread (ADS): 8
-- Element: Fire
+# Stats
 
-# Dragon Flame Burn Effect
-- Trigger Chance: 50% per hit
-- Burn Damage: (0.1% of target's max HP + 1) true fire damage per stack per second
-- Max Stacks: 10
-- Duration: 10 seconds
-- Player Damage Cap: 2 points per tick (base damage capped)
-- Fire resistance can reduce burn damage
+- **Type**: Firearm / **Element**: Fire / **Drop**: Dragon Descendant (10%) / Drops on death
+- Dmg 23 / ROF 13 / Mag 20 / Reload 3s / Speed 122 / Range 28
+- Crit 25% / Crit Dmg 1.5x / Move 82% (hip) / 45% (ADS) / Spread 27/8
 
-# Usage Tips
-- The core value lies in the max HP percentage burn — especially effective against high-HP bosses
-- Fire rate of 13 combined with 50% trigger rate lets you quickly stack to 10 layers
-- At full 10 stacks, deals (1% of target's max HP + 10) true damage per second — very significant
-- Pair with the Dragon Set for a complete Dragon Descendant equipment combo
+# Dragon Flame Burn
 
-# Related Achievements
-- Dragon Descendant Collection — Collect all exclusive drops from Dragon Descendant (Crimson Dragon Helm, Flame Scale Armor, Dragon Breath)
+- **50% chance** per hit to apply burn
+- Burn: **(0.1% target max HP + 1) true fire damage** per stack per second
+- Max 10 stacks / 10s duration
+- Player damage cap: 2 per tick
+- Fire resistance can reduce burn
+
+At full 10 stacks: **1% max HP + 10 true damage per second.** Against a 1000 HP Boss, that's 20 DPS from burns alone.
+
+# Tips
+
+- ROF 13 + 50% proc = rapid stacking. **Just hold the trigger**
+- The real damage is the burn, not the bullet. Sustained DPS far exceeds paper stats
+- Pair with Dragon Set for full Dragon Descendant combo
+
+# Achievement
+
+- **Dragon Heir Collection** — All Dragon Descendant drops (300K)
 
 ::: tip
-Dragon Breath is your entry point into the custom equipment system — don't underestimate its burn stacking against high-HP targets; sustained DPS far exceeds its on-paper damage.
+Your entry point to custom gear. Don't sleep on the burn — it melts high-HP targets.
 :::

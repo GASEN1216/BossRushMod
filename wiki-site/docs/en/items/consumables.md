@@ -2,34 +2,27 @@
 
 # Birthday Cake
 
-A special event item that can be gifted to an NPC.
+- **Source**: Special events / **Affinity**: +150 to any NPC
 
-- Source: Special events
-- Affinity Bonus: +150 when gifted to any NPC
-- Type: Consumable
-
-Birthday Cake is one of the highest Affinity-gain regular gifts (second only to Diamond Ring at +500). If you obtain one during an event, it's recommended to gift it to the NPC you're building Affinity with.
+Second only to Diamond Ring (+500) for raw Affinity gain. If you get one, **give it to whoever you're courting**.
 
 ---
 
 # Calming Drops
 
-Calming drops hand-prepared by Yuori. Clears most negative buffs on use.
+Yuori's hand-prepared herbal drops. **Clears most negative buffs.**
 
-- Source: One-time reward of 5 bottles at Yuori Affinity Lv.3
-- Max Stack: 20
-- Use Time: 2.5 seconds
-- Effect: Clears most negative buffs
+- **Source**: 5 free at Yuori Affinity Lv.3
+- Stack 20 / Use time 2.5s
 
-See NPC Related Items for details.
+Clutch item in hard modes. See NPC Items for details.
 
 ---
 
 # Cold Quench Fluid
 
-The key material for the Reforge system. Locks a chosen stat during Reforging.
+The Reforge system's key material. **Locks one stat during Reforging** so it doesn't change.
 
-- Source: Dingdang Affinity Lv.4 reward; Dingdang's shop; daily gift from married Dingdang
-- Usage: Lock a stat you don't want changed during Reforge
+- **Source**: Dingdang Lv.4 reward / Dingdang's shop / daily gift from married Dingdang
 
-See NPC Related Items and Reforge System for details.
+See NPC Items and Reforge System for details.

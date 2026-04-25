@@ -24,6 +24,10 @@
 - Default: true
 - Range: true/false
 - Quality distribution algorithm: `true` uses Legacy Probability Mode (per-quality independent probabilities + Q5+ guarantee), `false` uses Simplified Probability Mode (combined high-quality probability, no guarantee)
+- Scope:
+  - Standard BossRush: affects the quality distribution of Boss loot crates and keeps the Q5+ guarantee for high-HP Bosses
+  - From Scratch / Faction War / Blood Hunt: affects the quality distribution of regular on-death backpack bonus items, backpack refill items, and extra backpack ammo stacks
+  - Does not affect drop counts, currently equipped weapons, equipped armor/helmets/accessories, melee weapons, current bullet type, or Blood Hunt bounty / extraction bonus rewards
 
 # useInteractBetweenWaves
 - Default: false

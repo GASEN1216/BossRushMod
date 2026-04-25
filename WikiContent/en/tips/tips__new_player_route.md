@@ -1,47 +1,47 @@
 ## New Player Recommended Route
 
-### First Time Entering BossRush
-- Purchase a **BossRush Ticket** from the base merchant.
-- Pick up the free **Achievement Medal** and buy the **Adventurer's Journal**.
-- Select the **DEMO Ultimate Challenge** map (default map, easiest).
-- After entering the arena, choose **Easy** difficulty (1 Boss per wave).
-- Defeat all Bosses, collect the completion reward crate, and extract.
+### Your First Run
 
-[tip] Congratulations — you've unlocked the "First Steps" and "Easy" achievements.
+1. Buy a **BossRush Ticket** from the base merchant
+2. Grab the free **Achievement Medal** + buy the **Adventurer's Journal**
+3. Pick the **DEMO Ultimate Challenge** map (default, easiest)
+4. Choose **Easy** difficulty (1 Boss/wave)
+5. Beat everything, grab the reward crate, extract
 
-### What to Do Next
+[tip] You just unlocked "First Steps" and "Easy" achievements. Nice.
 
-#### Increase Difficulty
-- Try "Normal" difficulty (3 Bosses per wave).
-- Try Infinite Hell and see how many waves you can survive.
+### What Next?
+
+#### Crank Up the Heat
+- Try Normal (3 Bosses/wave)
+- Try Infinite Hell — see how long you last
 
 #### Meet the NPCs
-- Return to normal maps and find **Dingdang** (Goblin) and **Yuori** (Nurse).
-- Chat with them and give gifts daily to increase Affinity.
-- Dingdang Lv.2 unlocks the shop, Lv.4 grants Cold Quench Fluid — after which you can start Reforging equipment.
+- Find **Dingdang** and **Yuori** on normal maps
+- Chat + gift daily → build Affinity
+- Dingdang Lv.2 = shop / Lv.4 = Cold Quench Fluid → start Reforging
 
-#### Challenge Custom Bosses
-- Encounter the **Dragon Descendant** in standard BossRush and learn its two-phase mechanic.
-- Defeat the Dragon Descendant to obtain the Dragon Set (Crimson Dragon Head + Flame Scale Armor).
-- Collect the full set to experience fire immunity and dash abilities.
+#### Custom Bosses
+- Fight the **Dragon Descendant** → learn its two-phase trick
+- Get the Dragon Set (Crimson Helm + Flame Scale Armor) → fire immunity + dash
 
-#### Try Other Modes
-- **From Scratch**: Enter with no gear + Ticket, experience the random-start progression challenge.
-- **Faction War**: Enter with no gear + Faction Banner, experience multi-faction warfare.
-- **Blood Hunt**: Enter with no gear + Ticket + Bloodhunt Transponder, the hardest survival challenge.
+#### Other Modes
+- **From Scratch** — Naked + Ticket. Random start, grow from zero
+- **Faction War** — Naked + Banner. Multi-faction chaos
+- **Blood Hunt** — Naked + Ticket + Transponder. The hardest challenge
 
-### Equipment Progression Route
-- Basic equipment (shop/drops)
-- → Dragon Set (Dragon Descendant drops) + Dragon Breath
-- → Dragon King Set (Skyburner Dragon Lord drops) + Cloud Rider/Reverse Scale + Skyburner Halberd
-- → Reforge enhancement (Dingdang's Reforge service + Cold Quench Fluid lock)
+### Gear Progression
 
-### Economy Tips
-- Early cash mainly comes from selling items in completion reward crates.
-- Mid-game, start pursuing achievements — achievement bonuses are a stable source of large income.
-- Infinite Hell's cash pool and milestone rewards are the main late-game economy source.
-- Affinity discounts can significantly reduce Reforge and healing costs.
+Basic gear → **Dragon Set + Dragon Breath** → **Dragon King Set + Halberd + Totems** → **Reforge** with Cold Quench Fluid
 
-### Useful Hotkeys
-- L: Open the achievement panel.
-- Ctrl+F10: Open the Boss Filter.
+### Economy
+
+- Early: sell items from reward crates
+- Mid: chase achievements for big payouts
+- Late: Infinite Hell cash pool + milestone rewards
+- Always: Affinity discounts cut Reforge and healing costs
+
+### Hotkeys
+
+- **L** — Achievement panel
+- **Ctrl+F10** — Boss Filter

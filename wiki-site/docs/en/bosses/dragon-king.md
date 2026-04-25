@@ -1,92 +1,72 @@
 # Skyburner Dragon Lord
 
-# Overview
-Skyburner Dragon Lord is the strongest custom boss in BossRush Mod. It hovers in the air and possesses 7 attack skills with a two-phase combat system. Defeating it yields the mod's top-tier equipment, including the Dragon King Set, Cloud Rider Totem, Reverse Scale, Skyburner Halberd, and Dragon Cannon.
+# What Is It?
 
-# Base Stats
-- HP: 800
-- Damage Multiplier: 0.3x
-- Contact Damage: 15
-- Contact Range: 1.5m
-- Hover Height: 3-5m (above the player)
-- Follow Speed: 8 units/sec
+The hardest custom Boss in the mod. Hovers in the air, packs 7 attack skills, two combat phases, and a "Protect me, my child!" last stand. Beating it drops the best gear in the game. **Prepare accordingly.**
 
-# Attack Skills
+# Stats
 
-# Prismatic Bolt
-Fires 8 homing bolts at the player. Bolts track for 2.5 seconds then fly straight, 15 damage per bolt.
+- **HP**: 800 / **Damage**: 0.3x / **Contact**: 15 / **Hover**: 3-5m / **Speed**: 8 u/s
 
-# Spiral Prismatic Bolt (Phase 2)
-Rapidly fires prismatic bolts in a spiral pattern, one bolt per 0.1 seconds for 1 second, angle increments by 15°.
+# Skills
 
-# Charge
-- 0.8 second windup then high-speed charge at the player
-- Warning ring appears on the ground during the last 0.3 seconds of windup
-- 30 damage on hit, leaves a magma trail (5 damage per 0.5 seconds, lasts 3 seconds)
-- Phase 2: charges twice in succession
+- **Prismatic Bolt** — 8 homing bolts, track 2.5s then go straight, 15 damage each
+- **Spiral Prismatic Bolt** (P2) — Rapid spiral fire, 1 bolt per 0.1s for 1s, 15° angle increments
+- **Charge** — 0.8s windup + ground warning ring, 30 damage, leaves magma trail (5 dmg/0.5s, 3s). P2: **charges twice**
+- **Solar Dance** — Teleports near you, 6 rotating beams (30°/s), 3 waves offset 20°, 5s duration + 24-direction barrage
+- **Rainbow Ring** — 13 orbs spiral out to 10m then contract, 5 trail damage, 8s duration
+- **Phantom Spear** — 12 spears with 1s warning lines, 25 damage each
+- **Phantom Spear Barrage** (P2) — 4 waves × 16 spears, 0.5s between waves
 
-# Solar Dance
-- Teleports near the player, releases 6 rotating beams (30°/sec rotation)
-- 3 waves offset by 20°, 10 damage per 0.2 seconds, lasts 5 seconds
-- Simultaneously fires a 24-direction rotating barrage
+# Phase 1 (100% → 50% HP)
 
-# Rainbow Ring
-- Releases 13 orbs spiraling outward to 10m then contracting
-- Trail deals 5 damage, rotation speed 45°/sec, lasts 8 seconds
+- Attack interval: 1.0s
+- Rotation: Bolt → Charge → Solar Dance → Charge → Ring → Bolt → Charge → Spear → Charge → Ring → Loop
 
-# Phantom Spear
-- 12 spears with 1-second warning lines
-- Fire at speed 40, 25 damage each
+# Phase 2 (Below 50%)
 
-# Phantom Spear Barrage (Phase 2)
-- 4 waves of 16 spears each, 0.5 second interval between waves, wider coverage
+- Attack interval: **0.5s** — double the tempo
+- Skills upgraded, rotation reshuffled with Barrage and Spiral Bolt added
+- Teleports above you on transition with a frenzy alert
 
-# Combat Phases
+# "Protect me, my child!"
 
-# Phase 1 (100% ~ 50% HP)
-- Attack interval: 1.0 second
-- Skill rotation: Prismatic Bolt → Charge → Solar Dance → Charge → Rainbow Ring → Prismatic Bolt → Charge → Phantom Spear → Charge → Rainbow Ring → Loop
+At 1 HP, the Dragon Lord doesn't die. It **ascends to 5m and summons a half-stat Dragon Descendant**. Junior responds: "Father!"
 
-# Phase 2 (Below 50% HP)
-- Attack interval reduced to 0.5 seconds, skills upgraded
-- Skill rotation: Phantom Spear Barrage → Prismatic Bolt → Charge → Rainbow Ring → Prismatic Bolt → Solar Dance → Phantom Spear → Charge → Spiral Prismatic Bolt → Loop
-- On phase transition, the Dragon Lord teleports above the player and displays a frenzy alert
-
-# Special Mechanic: "Protect me, my child!"
-When the Skyburner Dragon Lord's HP drops to 1, it does not die immediately. Instead it ascends to 5m and calls out: "Protect me, my child!"
-
-- Summons a half-stat Dragon Descendant (which responds: "Father!")
-- While the Dragon Descendant is alive, the Skyburner Dragon Lord fires Prismatic Bolts every 3 seconds
-- The Skyburner Dragon Lord only truly dies after the Dragon Descendant is killed
+- Dragon Lord fires Prismatic Bolts every 3s while Junior is alive
+- **Kill the Descendant first** — the Dragon Lord only truly dies after
 
 ::: warning
-Do not ignore the "Protect me, my child!" phase. Prioritize killing the Dragon Descendant while dodging the Dragon Lord's Prismatic Bolts.
+Don't ignore this phase. Kill the Descendant while dodging Bolts.
 :::
 
 # Drops
-- Cloud Rider (Totem): 15% drop rate
-- Dragon King Crown (Helmet): 15% drop rate
-- Dragon King Scale Armor (Armor): 15% drop rate
-- Reverse Scale (Totem): 35% drop rate
-- Skyburner Halberd (Melee): 15% drop rate
-- Dragon Cannon (Firearm): 5% drop rate
 
-# Combat Strategy
-- The Skyburner Dragon Lord hovers in the air — melee weapons can barely reach it, prioritize firearms
-- Charge has a clear windup animation and warning ring; move laterally immediately on seeing the warning
-- Solar Dance beams rotate in fixed directions; find the gaps between beams
-- Rainbow Ring expands then contracts — run outward during expansion, move inward during contraction
-- Phase 2 doubles the attack frequency; constant movement is essential
-- "Protect me, my child!" phase: prioritize killing the Dragon Descendant while dodging the Dragon Lord's Prismatic Bolts
-- Wearing Dragon Set or Dragon King Set makes you immune to fire damage and heals you, significantly reducing difficulty
-- For no-damage kills, use the Boss Filter to clear other bosses and face the Dragon Lord alone
+- **Reverse Scale** (Totem): 35%
+- **Cloud Rider** (Totem): 15%
+- **Dragon King Crown** (Helmet): 15%
+- **Dragon King Scale Armor** (Armor): 15%
+- **Skyburner Halberd** (Melee): 15%
+- **Dragon Cannon** (Firearm): 5% — the rarest drop
+
+# How to Fight It
+
+- It **flies** — melee barely reaches. **Use guns**
+- Charge has clear windup + ground ring — dodge sideways immediately
+- Solar Dance beams have gaps — find them and stand there
+- Rainbow Ring: run OUT during expansion, IN during contraction
+- Phase 2 doubles attack speed — **never stop moving**
+- Dragon Set / Dragon King Set = fire immunity + healing. Huge advantage
+- No-damage attempts: Boss Filter to solo it
 
 # Spawn Limits
-- Faction War: Does not appear
-- Blood Hunt: Does not appear
 
-# Related Achievements
-- Dragon Slayer — First kill (reward: 100,000)
-- Perfect Dragon Slayer — No-damage kill (reward: 500,000)
-- Dragon Master — 10 cumulative kills (reward: 600,000)
-- Dragon King's Vault — Collect all exclusive drops (reward: 500,000)
+- Faction War: **Does not appear**
+- Blood Hunt: **Does not appear**
+
+# Achievements
+
+- **Dragon Slayer** — First kill (100K)
+- **Perfect Dragon Slayer** — No-damage kill (500K)
+- **Dragon Master** — 10 kills (600K)
+- **Dragon King's Vault** — All exclusive drops (500K)

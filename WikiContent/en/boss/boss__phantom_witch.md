@@ -1,111 +1,61 @@
 ## Phantom Witch
 
-### Overview
-The Phantom Witch is the third custom Boss in BossRush Mod. She roams the battlefield by alternating between blinks and stealth, combining Curse Realms, scythe sweeps, and undead summoning in a three-phase fight. Defeating her grants a 50% chance to drop her exclusive melee weapon, Soulreaper's Requiem.
+### What Is It?
 
-### Base Stats
-- HP: 1000
-- Damage Multiplier: 1.1x
-- Model Scale: 2x
-- Base Model: Ghost preset
+The third custom Boss. She blinks around the field, alternating stealth with scythe sweeps, Curse Realms, and undead summoning across three phases. **1000 HP of pure menace.** Drops the exclusive Soulreaper's Requiem (50% chance).
 
-### Phase Thresholds
-- Phase 1: 100% ~ 60% HP
-- Phase 2: 60% ~ 25% HP
-- Phase 3: below 25% (last-stand summoning)
+### Stats
 
-### Attack Skills
+- **HP**: 1000 / **Damage**: 1.1x / **Scale**: 2x / **Base**: Ghost preset
 
-#### Blink Teleport
-- Blink distance: 1 ~ 4m
-- Stealth duration: 0.3s
-- Tracked variant: places a marker 2.2m near the player (lingers 2s), then blinks to the marker and attacks
+### Phases
 
-#### Scythe Sweep
-- Windup: 0.35s
-- Damage: 18
-- Range: 3.1m, 170° arc
-- Forward offset: 1.15m
+- **Phase 1** (100% → 60%) — Learning the dance
+- **Phase 2** (60% → 25%) — Tempo ramps up hard
+- **Phase 3** (below 25%) — Last stand with minion summons
 
-#### Heavy Scythe Slash
-- Windup: 0.5s
-- Damage: 30
-- Range: 3.6m, 130° arc
-- Forward offset: 1.35m
-- Pre-blinks 1.8 ~ 3.6m to close the gap before striking
+### Skills
 
-#### Curse Aura
-- Windup: 0.45s
-- Damage: 12
-- Radius: 3.5m
+- **Blink Teleport** — 1-4m blink + 0.3s stealth. Tracked variant drops a marker near you (2.2m, lingers 2s) then blinks to it
+- **Scythe Sweep** — 0.35s windup, 18 dmg, 3.1m 170° arc
+- **Heavy Scythe Slash** — 0.5s windup, 30 dmg, 3.6m 130° arc. Pre-blinks 1.8-3.6m to close the gap
+- **Curse Aura** — 0.45s windup, 12 dmg, 3.5m radius
+- **Curse Realm** — 0.5s windup, 4.5m radius, 4s duration, 15 dmg/0.5s. ~1s warning ring. P3: 80% radius, 75% duration
+- **Requiem Arc** — 0.55s windup, 4.8m range, 16 dmg
+- **Wraith Trail** — 0.45s windup, 18 dmg, 0.3s delay, 3m warning outline
+- **Undead Summoning** (P3) — 1s windup, 2 ghost minions (150 HP, 15 HP/s regen, max 2 alive). One heals the witch (6 HP/s within 6m), one harasses you (every 2.4s within 3.2m)
 
-#### Curse Realm (Boss-exclusive)
-- Windup: 0.5s
-- Radius: 4.5m
-- Duration: 4s
-- Deals 15 damage every 0.5s
-- Warning ring telegraph: 1.05s
-- Phase 3: radius scaled to 80%, duration to 75%
-- Active realms are cleared on phase transition
+### Tactical Rotation
 
-#### Requiem Arc
-- Windup: 0.55s
-- Range: 4.8m
-- Damage: 16
+- **P1** (1.2s interval): Flank Pressure → Midrange Requiem → Wraith Trail Observe
+- **P2** (0.85s interval): Flank Pressure → Midrange Double → Curse Trap → Flank Pressure
+- **P3** (1.1s interval): Short Drift → Last Stand Summon → Curse Trap → Minion Retreat
 
-#### Wraith Trail
-- Windup: 0.45s
-- Damage: 18
-- Trigger delay: 0.3s
-- Warning outline radius: 3.0m
+### Stealth
 
-#### Undead Summoning (Phase 3)
-- Windup: 1.0s
-- Summons 2 ghost minions simultaneously
-- Minion HP: 150
-- Minion regen: 15 HP/s
-- Spawn distance: 3.0m
-- Max alive at once: 2
-- Two minion roles:
-  - Sustain: heals the witch at 6 HP/s within 6m (1.5x bonus at close range)
-  - Harass: pressures the player every 2.4s within 3.2m
-
-### Tactical Package Rotation
-
-#### Phase 1 (interval 1.2s)
-Flank Pressure → Midrange Requiem → Wraith Trail Observe
-
-#### Phase 2 (interval 0.85s)
-Flank Pressure → Midrange Double → Curse Trap → Flank Pressure
-
-#### Phase 3 (interval 1.1s)
-Short Drift Pressure → Last Stand Summon → Curse Trap → Minion Retreat
-
-### Stealth System
-The Phantom Witch cycles between true stealth, semi-stealth, and visible states:
-- Phase 1: target stealth ratio 38%
-- Phase 2: target stealth ratio 32%
-- Phase 3: target stealth ratio 18%
-- True stealth max duration: 1.1s
+Cycles between true stealth, semi-stealth, and visible:
+- P1: 38% stealth / P2: 32% / P3: 18%
+- True stealth max: 1.1s
 
 ### Curse Debuff
-- Buff ID: 500043
-- Duration: 5s
-- Max stacks: 3
-- Per-stack slow: -30% move speed
 
-### Drops
-- Soulreaper's Requiem (melee weapon): 50% extra drop chance
+- Duration: 5s, max 3 stacks, **-30% move speed per stack**
+- At 3 stacks = **90% slow.** Don't let this happen.
 
-### Combat Tips
-- Watch for the tracked marker (purple ground indicator); dodge sideways immediately when it appears
-- Curse Realm has a ~1s warning ring — leave the area as soon as you see it
-- Phase 2 ramps up attack tempo; keep moving
-- In Phase 3, prioritize killing the sustain minion to stop the witch from regenerating
-- At 3 curse stacks you lose 90% move speed — avoid eating consecutive curse abilities
+### Drop
+
+- **Soulreaper's Requiem** (melee): 50% extra drop chance
+
+### How to Fight Her
+
+- **Purple ground marker** = she's about to blink-strike. Dodge sideways immediately
+- **Curse Realm warning ring** (~1s) = get out NOW
+- Phase 2 ramps tempo hard — keep moving, don't get greedy
+- Phase 3: **kill the sustain minion first** to stop her regeneration
+- Avoid eating consecutive curse abilities — 3 stacks = near-immobile
 
 ### Spawn Restrictions
-- Standard BossRush and Infinite Hell: excluded from the first 20 waves
-- From Scratch: excluded from the first 10 waves
-- Faction War: joins the normal draw
-- Blood Hunt: joins the normal draw
+
+- Standard / Infinite Hell: excluded first 20 waves
+- From Scratch: excluded first 10 waves
+- Faction War / Blood Hunt: normal draw

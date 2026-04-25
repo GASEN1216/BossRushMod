@@ -1,61 +1,55 @@
 # Infinite Hell & From Scratch Guide
 
-# Infinite Hell Guide
+# Infinite Hell
 
-# Core Concept
-- Infinite Hell has no end — Bosses gain +2% stats per wave.
-- Your goal is to survive as long as possible.
+No end. Bosses gain +2% stats per wave. **Survive as long as you can.**
 
-# Preparation
-- Bring your best gear, especially high-quality weapons and plenty of ammo.
-- The Dragon King Set's dash and fire immunity are critical in later waves.
-- The Cloud Rider totem provides aerial evasion capability.
-- Reverse Scale serves as a last-resort lifesaver.
+# Prep
+- Best gear, best weapons, max ammo
+- Dragon King Set (dash + fire immunity) is critical late
+- Cloud Rider for aerial dodging, Reverse Scale for emergency saves
 
-# Combat Pacing
-- The first 20 waves are a warm-up (powerful Bosses such as the Four Horsemen, Dragon Descendant, and Skyburner Dragon Lord are excluded) — use this time to get into rhythm.
-- Use the ammo shop near the signpost to resupply promptly.
-- Cash pickups within 2 meters automatically fly toward you, but you still need to move into that radius first.
-- A high-quality item drops every 5 waves — make sure to pick it up.
+# Pacing
+- First 20 waves = warm-up (heavy hitters excluded) — find your rhythm
+- Ammo shop near signpost — resupply often
+- Cash within 2m auto-flies to you, but you need to walk into range first
+- High-quality item every 5 waves — don't miss it
 
-# Late-Game Survival
-- Boss stats scale cumulatively — beyond wave 50, things get terrifying.
-- Keep moving; don't stand still to deal damage.
-- Use the Boss Filter to adjust weights and reduce the spawn rate of the toughest Bosses.
-- Milestone rewards (every 100 waves) scale exponentially — the longer you last, the greater the payoff.
+# Late Game
+- Past wave 50, Boss stats get terrifying
+- **Never stand still.** Always moving, always shooting
+- Boss Filter to reduce spawn rate of the worst Bosses
+- Milestone rewards (every 100 waves) scale exponentially
 
-# Related Achievement Goals
-- 10 waves: Infinite Hell - Ten
+# Achievements
+- 10 waves / 25 / 50 / 100 / 200 — escalating milestones
 - 10 waves no damage: Iron Will
 - 10 waves no healing: Iron Man Challenge (hidden)
-- 25 waves: Infinite Hell - Twenty-Five
-- 50 waves: Infinite Hell - Fifty
-- 100 waves: Infinite Hell - Hundred
-- 200 waves: Infinite Hell - Two Hundred
 
-# From Scratch Guide
+---
 
-# Core Concept
-- The key to From Scratch is adapting to a random start and using the early low-difficulty waves to quickly accumulate gear.
+# From Scratch
 
-# Opening Strategy
-- Starting equipment is completely random — don't chase a perfect start.
-- Check what weapon type and ammo you received, then decide your combat style.
-- If you got a melee weapon but no gun, you can melee-clear the first few waves.
-- You only get 3 medical items — they're very precious, so minimize taking damage.
+Random start, grow from nothing. Adapt or die.
+
+# Opening
+- Starting gear is random — **don't restart for perfection**
+- Check your weapon + ammo, adapt your playstyle
+- Got melee only? Melee-clear first waves
+- Only 3 medical items — they're precious
 
 # Wave Strategy
-- Waves 1-2: Weakest grunts, easy to clear, loot for gear upgrades.
-- Waves 3-5: Grunts get stronger but still no Bosses — focus on looting weapons and armor.
-- Waves 6-10: 1 Boss appears — prioritize killing the Boss for its drops.
-- Waves 11-15: 2 Bosses — watch your positioning to avoid getting pinched.
-- Waves 16+: Full Boss pool unlocked — your gear should be well-established by now.
+- **1-2**: Weakest grunts, easy loot
+- **3-5**: Stronger grunts, no Bosses — focus on gear upgrades
+- **6-10**: 1 Boss appears — kill it for drops
+- **11-15**: 2 Bosses — watch positioning, don't get pinched
+- **16+**: Full pool — gear should be solid by now
 
-# Equipment Upgrade Pacing
-- Enemy equipment quality increases with wave number; late-game grunts may drop quality 5-6 gear.
-- After each wave, quickly check the loot crates and prioritize replacing your weakest gear slot.
-- Boss drops are generally better than grunt drops.
+# Gear Upgrades
+- Enemy gear quality scales with wave number (late = Q5-6 drops)
+- After each wave: check crates, replace weakest slot first
+- Boss drops > grunt drops
 
-# Related Achievement Goals
+# Achievements
 - Complete 10 waves: From Scratch
 - 5 waves no damage: Perfect From Scratch

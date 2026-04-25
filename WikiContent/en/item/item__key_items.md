@@ -2,71 +2,42 @@
 
 ### BossRush Ticket
 
-The basic entry ticket for standard BossRush, Infinite Hell, From Scratch, and Blood Hunt.
+Your gateway to every mode. Consumed on arena entry.
 
-- Source: Purchased from the base merchant
-- Stock Limit: 10
-- Consumed: Automatically consumed when selecting a map to enter the arena
-
-The ticket is the entry requirement for all BossRush modes. From Scratch requires naked entry + ticket; Blood Hunt requires naked entry + ticket + Bloodhunt Transponder.
+- **Source**: Base merchant / **Stock**: 10
+- Required for: Standard, Infinite Hell, From Scratch, Blood Hunt
 
 ---
 
 ### Adventurer's Journal
 
-An in-game encyclopedia. Use it to open the Wiki interface and browse all Mod content.
+In-game Wiki. Use it to browse all mod content. Supports CN/EN, updated each version.
 
-- Source: Purchased from the base merchant
-- Stock Limit: 1
-- Consumed on Use: No, can be used repeatedly
-
-The encyclopedia supports both Chinese and English, and is updated with each Mod version.
+- **Source**: Base merchant / **Stock**: 1 / Reusable
 
 ---
 
 ### Achievement Medal
 
-The entry item for the achievement system. Right-click to open the achievement panel (or press L to open it directly).
+Opens the achievement panel (or press **L** directly). Free from the base merchant.
 
-- Source: Free from the base merchant
-- Stock Limit: 1
-- Consumed on Use: No
-
-See Achievements for details.
+- **Stock**: 1 / Reusable
 
 ---
 
 ### Bloodhunt Transponder
 
-The exclusive entry key for Blood Hunt mode.
+Entry key for Blood Hunt. Carried naked + ticket to trigger the mode.
 
-- Source: Purchased from the base merchant
-- Stock Limit: 5
-- Quality: Epic (Purple)
-- Consumed: Automatically consumed when entering Blood Hunt
-
-Must be carried naked along with a ticket to trigger Blood Hunt mode. See Blood Hunt for details.
+- **Source**: Base merchant / **Stock**: 5 / **Quality**: Epic / Consumed on entry
 
 ---
 
-### Faction Banner (6 types + 1 random)
+### Faction Banner (7 variants)
 
-The entry ticket for Faction War mode, determining which faction you join.
+Determines your faction in Faction War. Consumed on entry.
 
-#### Banner-to-Faction Mapping
-
-- Random Banner: Randomly assigned to one of the 5 NPC factions
-- Scav Banner: Scav
-- USEC Banner: USEC
-- BEAR Banner: BEAR
-- Lab Banner: Lab
-- Wolf Pack Banner: Wolf Pack
-- My Banner: Lone Wolf (hostile to all factions)
-
-#### Banner Properties
-
-- Source: Purchased from the base merchant
-- Stock per type: 5
-- Consumed: Automatically consumed when entering Faction War
+- **Random** → 1 of 5 NPC factions / **Scav / USEC / BEAR / Lab / Wolf Pack** → corresponding faction / **My Banner** → Lone Wolf (hostile to all)
+- **Source**: Base merchant / **Stock**: 5 per type
 
 See Faction War for details.

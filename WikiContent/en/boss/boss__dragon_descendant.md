@@ -1,52 +1,50 @@
 ## Dragon Descendant
 
-### Overview
-Dragon Descendant is the first custom boss in BossRush Mod, featuring a two-phase combat system. It is your entry point to the custom boss drop system — defeating it yields the Dragon Set and Dragon Breath weapon.
+### What Is It?
 
-### Base Stats
-- HP: 500
-- Contact Damage: 20
-- Contact Range: 1.5m
-- Knockback Force: 10
+Your first custom Boss. Two-phase fight, mid-tier difficulty. Beat it for the Dragon Set and Dragon Breath — your gateway to fire-themed gear.
 
-### Combat Phases
+### Stats
 
-#### Phase 1 (100% ~ 50% HP)
-- Shooting: Standard gunfire; every 10th shot includes a rocket (5 direct + 5 explosion damage, 1m blast radius)
-- Incendiary Grenade: Thrown every 5 seconds
+- **HP**: 500 / **Contact Damage**: 20 / **Contact Range**: 1.5m / **Knockback**: 10
 
-Phase 1 damage multiplier is low (0.3x), mainly to let you learn its attack patterns.
+### Phase 1 (100% → 50% HP) — Warm-Up
 
-#### Phase 2 (Triggered at 50% HP)
-When HP drops to 50%, the Dragon Descendant "dies" and says: "I... will not fall!"
+- Standard gunfire; every 10th shot sneaks in a rocket (5+5 damage, 1m blast radius)
+- Incendiary grenade every 5 seconds
+- Damage multiplier only 0.3x — **this phase exists to teach you the patterns**
 
-It then revives at 50% HP and enters a frenzy:
-- Damage Multiplier: Increased to 1.1x, crit damage 1.5x
-- Movement Speed: Chase speed x1.5
-- Contact Damage: Deals damage on touch
-- Aura: 5m glowing aura around its body
-- Incendiary Grenade: Frequency increased to every 1 second; also throws at itself (self-healing via fire)
-- Ice Vulnerability: Slowed by ice-element damage
+### Phase 2 (50% HP) — "I... will not fall!"
 
-[warn] Revival triggers only once. Do not let your guard down at 50% HP — it enters frenzy immediately.
+It "dies," delivers a dramatic one-liner, then **revives at 50% HP and goes berserk**:
+
+- Damage x1.1, crit x1.5, chase speed x1.5
+- **Touching it hurts** — keep your distance
+- 5m glowing aura
+- Incendiary grenades now every 1 second, and it throws them at itself to heal
+- Vulnerable to ice (slows it)
+
+[warn] Revival triggers once. Don't celebrate at 50% — it's about to get real.
 
 ### Drops
-- Crimson Dragon Helm (Helmet): 30% drop rate
-- Flame Scale Armor (Armor): 60% drop rate
-- Dragon Breath (Firearm): 10% drop rate
 
-### Combat Strategy
-- Phase 1 pressure is low; focus on dodging rocket blast radius
-- Do not let your guard down at 50% HP — it revives and enters frenzy immediately
-- In Phase 2 it heals itself with incendiary grenades — maintain high DPS to suppress
-- Wearing Dragon Set or Dragon King Set turns fire damage into healing for you
-- Ice weapons/ammo effectively slow it in Phase 2
+- **Flame Scale Armor** (Armor): 60%
+- **Crimson Dragon Helm** (Helmet): 30%
+- **Dragon Breath** (Firearm): 10%
+
+### How to Fight It
+
+- Phase 1 is chill — just dodge rockets and fireballs
+- At 50%, **don't stop shooting** — it heals itself with fire
+- Dragon Set / Dragon King Set turns fire damage into healing for YOU
+- Ice weapons are very effective in Phase 2
 
 ### Spawn Limits
-- Faction War: Max 1 per session
-- Blood Hunt: Max 1 per session
 
-### Related Achievements
-- Dragon Heir Hunter — First kill (reward: 30,000)
-- Perfect Dragon Hunt — No-damage kill (reward: 200,000)
-- Dragon Heir Collection — Collect all exclusive drops (reward: 300,000)
+- Faction War / Blood Hunt: Max 1 per session
+
+### Achievements
+
+- **Dragon Heir Hunter** — First kill (30K)
+- **Perfect Dragon Hunt** — No-damage kill (200K)
+- **Dragon Heir Collection** — All exclusive drops (300K)

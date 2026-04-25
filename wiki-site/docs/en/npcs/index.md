@@ -1,30 +1,29 @@
 # NPC Overview
 
-BossRush Mod adds 3 NPCs, each providing different services. They appear in normal maps, and some NPCs also appear within specific modes.
+3 custom NPCs, each with their own services and personality.
 
-# NPC List
-- Dingdang: Goblin Smith, main services are Reforge, shop, chat
-- Yuori: Nurse, main services are healing, Debuff removal
-- Awen: Courier, main services are item storage and retrieval
+# The Cast
+
+- **Dingdang** (Goblin Smith) — Reforge, shop, daily chat
+- **Yuori** (Nurse) — Healing, debuff removal
+- **Awen** (Courier) — Item storage & retrieval
 
 # Affinity System
 
-Dingdang and Yuori have a full Affinity system:
+Dingdang and Yuori have a full Affinity system (Awen doesn't — he's all business):
 
-- 10 levels, raised through daily chat and gift-giving
-- Each level unlocks new services, discounts, or rewards
-- At max Affinity you can propose with a Diamond Ring
-- Not interacting for a day causes Affinity to slowly decay
+- 10 levels, raised through daily chat + gifts
+- Each level unlocks services, discounts, or rewards
+- Max Affinity = propose with a Diamond Ring
+- Skip a day = Affinity decays. **Don't ghost them**
 
 See Affinity and Marriage for details.
 
-# NPC Locations
-- Normal Maps: Dingdang ✓ / Yuori ✓ / Awen ✓
-- Wedding Chapel (after marriage): Dingdang ✓ / Yuori ✓ / Awen —
-- Standard BossRush / From Scratch (in-mode): One of Dingdang or Yuori (random) ✓ / Awen ✓
-- Faction War (in-mode): Dingdang ✓ / Yuori ✓ / Awen ✓
-- Blood Hunt (in-mode): Dingdang ✓ / Yuori ✓ / Awen ✓
+# Where Do They Show Up?
 
-In Standard BossRush and From Scratch modes, one of Dingdang or Yuori is randomly selected to appear (married NPCs are excluded from the random pool). In Faction War and Blood Hunt modes, all three NPCs appear.
+- **Normal Maps** — All three ✓
+- **Wedding Chapel** — Dingdang ✓ / Yuori ✓ (after marriage)
+- **Standard / From Scratch** — Awen ✓ + one of Dingdang or Yuori (random; married NPCs excluded)
+- **Faction War / Blood Hunt** — All three ✓
 
-A Mystery Merchant also appears within Faction War and Blood Hunt modes, offering categorized shop services.
+Faction War and Blood Hunt also spawn a **Mystery Merchant** with categorized shops.

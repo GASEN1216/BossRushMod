@@ -2,44 +2,42 @@
 
 ### Step 1: Buy a Ticket
 
-Visit the merchant at the base and purchase a **BossRush Ticket**. This is the basic pass required to enter all BossRush modes.
+Base merchant → **BossRush Ticket**. Required for all modes.
 
-It is also recommended to pick up:
+Also grab:
+- **Adventurer's Journal** — In-game Wiki
+- **Achievement Medal** — Free. Right-click to open achievements
 
-- **Adventurer's Journal** — An in-game encyclopedia for browsing Mod content at any time
-- **Achievement Medal** — Free to claim; right-click to open the achievement panel
+### Step 2: Pick a Map
 
-### Step 2: Choose a Map
+9 maps available. Beginners: start with **DEMO Ultimate Challenge** (default, simple layout).
 
-With a ticket in hand, the map selection screen shows 9 available BossRush maps. Beginners should start with **DEMO Ultimate Challenge** — it is the default map with a simple and straightforward layout.
+### Step 3: Pick a Difficulty
 
-### Step 3: Choose a Difficulty
+Interact with the arena signpost:
 
-After entering the arena, a signpost appears in the center. Interact with the signpost to select a difficulty:
-
-- Easy: 1 Boss per wave, limited waves, beginner difficulty, defeat them one by one
-- Normal: 3 Bosses per wave, limited waves, standard difficulty, multiple Bosses appear simultaneously
-- Infinite Hell: 3 Bosses per wave (configurable), unlimited waves, survival mode, enemies grow stronger, no end
+- **Easy** — 1 Boss/wave, limited waves. Learn the ropes
+- **Normal** — 3 Bosses/wave, limited waves. The real deal
+- **Infinite Hell** — 3 Bosses/wave (configurable), unlimited. They get stronger forever
 
 ### Step 4: Fight and Loot
 
-- In standard BossRush difficulties, each defeated wave drops a loot crate; Infinite Hell does not use loot crates and instead pays out cash plus milestone rewards
-- There is a countdown interval between waves to organize equipment and resupply
-- An ammo shop, repair station, and trash bin are available near the signpost
+- Standard difficulties: loot crate per wave. Infinite Hell: cash pool + milestone rewards
+- Countdown between waves for restocking and organizing
+- Ammo shop, repair station, and trash bin near the signpost
 
-### Advanced Paths
+### Advanced Modes
 
-Once you are familiar with standard BossRush, try:
+Once you're comfortable:
 
-- From Scratch: Unequipped + ticket, random start, gradual progression
-- Faction War: Unequipped + Faction Banner, multi-faction sandbox brawl
-- Blood Hunt: Unequipped + ticket + Bloodhunt Transponder, constant bleeding, kill to survive
-- Infinite Hell: Select Infinite Hell difficulty for an endless survival challenge
+- **From Scratch** — Naked + Ticket. Random start, grow from zero
+- **Faction War** — Naked + Banner. Multi-faction sandbox
+- **Blood Hunt** — Naked + Ticket + Transponder. Constant bleed, kill to survive
 
-### Tips
+### Quick Tips
 
-[tip] The "Return to Spawn" option on the signpost lets you quickly get back to the safe zone.
+[tip] "Return to Spawn" on the signpost = quick trip to safety.
 
-[tip] Press L at any time to check your achievement progress.
+[tip] Press **L** anytime for achievement progress.
 
-[tip] Interact with Dingdang and Yuori in normal maps to unlock more content.
+[tip] Chat with Dingdang and Yuori on normal maps to unlock more content.

@@ -1,47 +1,31 @@
 # Dragon Set
 
-# Overview
-- The Dragon Set is the first custom set you encounter, dropped by Dragon Descendant
-- Collect both pieces to activate the set effect: fire immunity + dash ability
-- It has quite a few negative stats, but the survivability boost far outweighs the cost
+# What Is It?
 
-# Set Pieces
+Your first custom set. Dropped by Dragon Descendant. Equip both pieces for fire immunity + dash. Yes, the stats have downsides — **but the survivability is worth it.**
 
-# Crimson Dragon Helm (Helmet)
-- Armor: 7
-- Durability: 200
-- Physical Resistance: -10%
-- Storm Resistance: +1
-- Cold Resistance: +1
-- Critical Damage: +10%
-- Fire Resistance: -15%
-- Shock Resistance: -15%
-- Poison vulnerability: +30%
-- Field of view: -20%
-- Drop Source: Dragon Descendant (30% drop rate)
+# Pieces
 
-# Flame Scale Armor (Armor)
-- Armor: 7
-- Durability: 200
-- Physical Resistance: -20%
-- Storm Resistance: +1
-- Cold Resistance: +1
-- Fire Resistance: -20%
-- Shock Resistance: -20%
-- Poison vulnerability: +40%
-- Drop Source: Dragon Descendant (60% drop rate)
+# Crimson Dragon Helm
+Armor 7 / Durability 200 / Phys Res -10% / Storm +1 / Cold +1 / Crit Dmg +10% / Fire Res -15% / Shock -15% / **Poison vuln +30%** / **FOV -20%**
+- Drop: Dragon Descendant (30%)
 
-# Set Effect (Both Pieces Equipped)
-- Fire-to-heal: Fire damage no longer hurts you; instead it restores 80% of the equivalent amount as health
-- Dragon Eye glow effect: A red breathing light effect appears on the head
-- Dash: Triggered by double-tapping a direction key, 3-meter distance, 1.5-second cooldown, leaves an orange-red afterimage
+# Flame Scale Armor
+Armor 7 / Durability 200 / Phys Res -20% / Storm +1 / Cold +1 / Fire Res -20% / Shock -20% / **Poison vuln +40%**
+- Drop: Dragon Descendant (60%)
+
+# Set Effect (Both Equipped)
+
+- **Fire-to-heal** — Fire damage heals you for 80% of its value instead of hurting
+- **Dragon Eye** — Red breathing glow on your head (cosmetic)
+- **Dash** — Double-tap direction key, 3m distance, 1.5s cooldown, orange-red afterimage
 
 ::: tip
-The dash feature can be disabled in the config (enableDragonDash).
+Dash can be disabled in config (`enableDragonDash`).
 :::
 
-# Usage Tips
-- Fire-to-heal is especially powerful against Dragon Descendant — the Boss's Dragon Breath actually heals you
-- Poison vulnerability and reduced field of view are the main drawbacks; be careful against poison-type enemies
-- If you later obtain the Dragon King Set, it is recommended to upgrade and replace directly
-- Master the Dragon Descendant line first, then pursue the Dragon King line for a more complete experience
+# Tips
+
+- Fire-to-heal makes Dragon Descendant trivial — its fire literally heals you
+- Poison vulnerability and FOV loss are the real downsides; watch out for poison enemies
+- Once you get the Dragon King Set, **replace immediately** — it's a direct upgrade

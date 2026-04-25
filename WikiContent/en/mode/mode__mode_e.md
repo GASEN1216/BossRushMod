@@ -1,117 +1,95 @@
 ## Faction War
 
-### Overview
+### What Is It?
 
-Faction War is a multi-faction sandbox brawl mode. You choose a faction to join, and all Bosses on the field belong to different factions. Same-faction units do not harm each other, while different factions fight each other. There are no fixed waves and no clear conditions — this is the most free and chaotic mode in BossRush.
+Multi-faction sandbox chaos. Pick a faction, watch Bosses from different factions rip each other apart, and profit from the carnage. No waves, no win condition — just pure, beautiful mayhem.
 
-### Entry Requirements
+### Entry
 
-- Naked: Cannot wear any equipment
-- Carry a Faction Banner (purchased from the base merchant)
-- The Faction Banner is consumed upon entry
+- **Naked** — no equipment
+- Carry a **Faction Banner** (consumed on entry)
 
-### Faction Selection
+### Factions
 
-Your faction is determined by which Faction Banner you carry:
-
-- Random Banner: Join a randomly assigned faction / Randomly join one of 5 NPC factions
-- Scav Banner: Join the Scav faction
-- USEC Banner: Join the USEC faction
-- BEAR Banner: Join the BEAR faction / Since the base game has no BEAR presets, BEAR faction units receive a 150% stat boost (×2.5) as compensation
-- Lab Banner: Join the Lab faction
-- Wolf Banner: Join the Wolf faction / Prioritizes spawning all unique Wolf Bosses; remaining spawn points produce minions promoted to Boss tier
-- Lone Wolf Banner: Join the Lone Wolf faction / Do not join any faction, hostile to all Bosses
+- **Random** — Surprise assignment to 1 of 5 NPC factions
+- **Scav / USEC / Lab** — Standard factions, balanced Boss pools
+- **BEAR** — No base-game BEAR presets, so BEAR units get a x2.5 stat boost. **Beefy allies**
+- **Wolf** — Prioritizes all unique Wolf Bosses; extras become promoted minions
+- **Lone Wolf** — No allies. Every faction is your enemy. **Are you sure about this?**
 
 ### Core Mechanics
 
-#### Faction Friendly Fire Rules
+#### Friendly Fire
 
-- Same-faction units cannot damage each other
-- Different factions are automatically hostile
-- Lone Wolf players are hostile to all factions, with no allies
+- Same faction = can't hurt each other
+- Different faction = auto-hostile
+- Lone Wolf = hostile to everyone, no allies
 
-#### UI Identification
+#### UI
 
-- In Mode E, health-bar names append a faction suffix so you can read friend-or-foe information at a glance.
-- Your own health bar also shows your name plus your current faction.
+- Health bars show a faction tag so you can instantly tell friend from foe
+- Your own bar shows your name + current faction
 
-#### Growth Mechanics
+#### Growth
 
-- Boss growth is tracked per Boss. Each Boss only counts same-faction deaths that happen after that Boss has spawned
-- Each Boss stack grants +5% health, +5% firearm damage, and +5% melee damage
-- Max-health increases also heal the same amount of HP
-- Newly respawned Bosses do not inherit historical faction stacks and start from 0
-- Player growth triggers only when the player lands the final hit on an enemy Boss; each qualifying kill grants 1 stack
-- Each player stack grants +0.1% health, +0.1% firearm damage, and +0.1% melee damage
-- Each stack gain shows a bubble above the player with the current total bonus
+- **Boss growth**: Per-Boss tracking. Each same-faction death after spawn = +1 stack (+5% HP / +5% gun damage / +5% melee damage). New respawns start at 0
+- **Player growth**: Land the final hit on an enemy Boss = +1 stack (+0.1% HP / +0.1% gun / +0.1% melee). Stacks accumulate indefinitely
+- Each player stack pops a bubble showing total bonus
 
 #### Starting Gear
 
-- Same random starting gear as From Scratch
-- Snow maps additionally issue cold-weather gear (helmet + armor)
-- Lone Wolf players receive extra supply items
+- Same random kit as From Scratch
+- Snow maps add cold-weather gear
+- Lone Wolf gets extra supplies
 
 ### Boss Spawning
 
 - All Bosses spawn at once when the mode starts
-- Each faction's spawn points are assigned by distance; your faction gets the closest spawn points
-- Dragon Descendant appears at most once per session
-- Skyburner Dragon Lord does not appear in Faction War
+- Your faction gets the closest spawn points
+- Dragon Descendant: max 1 per session
+- Skyburner Dragon Lord: doesn't appear
 
 ### Arena NPCs
 
-All three NPCs appear in Faction War mode:
-
-- Awen (Courier): Provides item storage and retrieval services
-- Dingdang (Goblin Smith): Provides Reforge and shop services
-- Yuori (Nurse): Provides healing services
+All three NPCs present:
+- **Awen** — Storage & retrieval
+- **Dingdang** — Reforge & shop
+- **Yuori** — Healing
 
 ### Mystery Merchant
 
-When the mode starts, a Mystery Merchant appears in front of you, offering a `Repair` option plus 13 categorized shops:
+Spawns in front of you with a `Repair` option + 13 categorized shops:
 
-- Firearms: All firearms / Price multiplier ×10
-- Melee: Melee weapons / Price multiplier ×10
-- Attachments: Weapon attachments / Price multiplier ×10
-- Ammo: All ammo (purchase auto-refills) / Price multiplier ×1 (original price)
-- Helmets: All helmets / Price multiplier ×10
-- Armor: All armor / Price multiplier ×10
-- Backpacks: All backpacks / Price multiplier ×10
-- Totems: All totems / Price multiplier ×10
-- Masks & Headsets: All masks and headsets / Price multiplier ×10
-- Medical: Medical items and injectors / Price multiplier ×10
-- Food: Food items / Price multiplier ×10
-- Decoys: Decoy items / Price multiplier ×10
-- Other: Tactical consumables, etc. / Price multiplier ×1
+- **Ammo** — ×1 price (original). **Buy this first**
+- **Other** (tactical consumables) — ×1 price
+- Everything else (Firearms, Melee, Attachments, Helmets, Armor, Backpacks, Totems, Masks, Medical, Food, Decoys) — **×10 price**
 
-The merchant is on your faction and has extremely high HP, making them virtually unkillable.
-- The `Repair` option opens the standard repair UI directly.
-- Opening any category shop also adds a `Sell All` button beside the player inventory, allowing batch-selling of eligible root items from the current backpack; locked slots and manually wishlisted items are excluded.
+Merchant is on your faction with insane HP — virtually unkillable. Every shop adds a `Sell All` button for batch-selling backpack items.
 
 #### Summon Coalball
 
-The main interaction option with the Mystery Merchant allows you to summon a "Coalball" — a pet NPC combat companion that joins your faction. Coalball follows you and participates in combat, helping you fight Bosses from hostile factions.
+Main interaction with the merchant lets you summon **Coalball** — a pet combat companion on your faction. Follows you and fights hostile Bosses.
 
 ### Tactical Consumables
 
-Faction War provides 4 exclusive consumables (purchasable from the Mystery Merchant's "Other" shop):
+4 exclusive items (Mystery Merchant "Other" shop):
 
-- Taunt Smoke Bomb: Spawns random-faction Bosses at the 10 nearest spawn points
-- Chaos Detonator: Spawns random-faction Bosses at all spawn points across the map
-- Hunter's Whistle: Forces all hostile Bosses within 50 meters to chase you
-- Blood Hunt Beacon: Forces all hostile Bosses across the entire map to chase you
+- **Taunt Smoke Bomb** — Spawn Bosses at 10 nearest points
+- **Chaos Detonator** — Spawn Bosses at ALL spawn points. **Total chaos**
+- **Hunter's Whistle** — All hostile Bosses within 50m chase you
+- **Blood Hunt Beacon** — ALL hostile Bosses on the map chase you. **Brave souls only**
 
-Every 10 Boss kills, the system automatically grants 1 Taunt Smoke Bomb.
+Every 10 Boss kills auto-grants 1 Taunt Smoke Bomb.
 
 ### End Condition
 
-Faction War has no explicit win/lose condition. It is an open-ended sandbox mode. Leaving the arena scene ends the session.
+None. It's a sandbox. Leave the scene when you're done.
 
-### Strategy Tips
+### Tips
 
-- Consider the Boss pool strength distribution when choosing a faction; Boss power varies significantly between factions
-- Lone Wolf mode is the most hardcore choice — you have no allies, and all Bosses are enemies
-- Make good use of Taunt Smoke Bombs and Chaos Detonators to create chaos and let Bosses from different factions wear each other down
-- Boss growth is tracked per individual Boss, so newly respawned Bosses do not inherit old stacks
-- Secure final hits on enemy Bosses yourself to build player growth stacks
+- Faction choice matters — Boss pools vary wildly in strength
+- Lone Wolf is the ultimate challenge. **No allies, everyone wants you dead**
+- Use Smoke Bombs and Detonators to make factions fight each other
+- New Boss respawns don't inherit old stacks — fresh meat
+- Secure final hits yourself to build your player growth
 - See the Faction War strategy guide for detailed tips

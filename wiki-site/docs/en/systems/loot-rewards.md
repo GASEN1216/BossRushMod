@@ -79,13 +79,19 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
 - Enemies carry random equipment, all of which drops in a loot crate on kill.
 - Equipment quality increases with waves: quality = 1 + (wave/5) + (enemy health/500).
 - Later enemies may drop equipment better than what you currently have.
+- When `useLegacyBossLootProbabilities = true`, From Scratch uses the Legacy Probability Mode for the quality distribution of enemy backpack bonus items, backpack refill items, and extra backpack ammo stacks.
+- This toggle does not change drop counts, equipped weapons, melee weapons, equipped gear, or the ammo currently loaded for combat.
 
 # Faction War Loot
 - Killing an enemy faction's Boss drops a loot crate.
 - Killing a same-faction Boss does not drop a loot crate.
 - Dragon Descendant and BEAR faction promoted minions carry random equipment.
+- When `useLegacyBossLootProbabilities = true`, regular on-death backpack loot in Faction War also switches to the Legacy Probability Mode.
+- The toggle only affects backpack bonus items / backpack refill items / extra backpack ammo stacks, not the enemy's live combat loadout.
 
 # Blood Hunt Loot
+- When `useLegacyBossLootProbabilities = true`, regular on-death backpack loot in Blood Hunt also switches to the Legacy Probability Mode.
+- This only affects regular backpack loot quality. It does not affect drop counts, bounty bonus drops, extraction rewards, or any other shared high-quality reward-pool payouts.
 - Killing a bounty Boss drops extra items from the shared high-quality reward pool, with the quantity equal to the number of Bounty Marks on that Boss.
 - Upon successful extraction, each Bounty Mark on a player = 1 item from the shared high-quality reward pool, sent to the Storage Point.
 - Both reward sources currently reuse the same shared reward-pool rules.

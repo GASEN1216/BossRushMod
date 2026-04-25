@@ -1,23 +1,21 @@
 # Item Overview
 
-BossRush Mod adds over 20 custom items, categorized as follows.
+20+ custom items across 4 categories. For equipment (sets, totems, weapons), see Equipment Overview.
 
-# Item Categories
+# Categories
 
-- Entry & Utility Items: Tickets for entering various modes, the journal, Achievement Medal, etc.
-- NPC Related Items: Gifts, materials, and special items for NPC interactions
-- Consumables: Healing, buff, and summoning consumables
-- Mode-Exclusive Items: Exclusive items for Faction War and Blood Hunt
+- **Entry & Utility** — Tickets, journal, Achievement Medal
+- **NPC Items** — Gifts, materials, special interaction items
+- **Consumables** — Healing, buffs, summoning
+- **Mode-Exclusive** — Faction War and Blood Hunt only
 
-For equipment (sets, totems, weapons), see Equipment Overview.
+# Where to Get Them
 
-# Item Sources
-
-- Base Merchant: BossRush Ticket, Faction Banner, Bloodhunt Transponder, Adventurer's Journal, Achievement Medal, Brick Stone, etc.
-- NPC Dingdang: Diamond, Diamond Ring (unlocked at required Affinity level), Cold Quench Fluid
-- NPC Yuori: Calming Drops (Affinity reward), Peace Amulet (Affinity reward)
-- Boss Drops: Exclusive equipment drops from Dragon Descendant and Dragon King
-- Loot Crates: Random item drops after defeating a Boss
-- Achievement Rewards: Cash rewards (claimed via the achievement panel)
-- System Gifts: Dingdang's Drawing (max Affinity gift), consumables automatically granted during modes
-- Mystery Merchant: Categorized shops within Faction War and Blood Hunt modes
+- **Base Merchant** — Tickets, Banners, Transponder, Journal, Medal, Brick Stone
+- **Dingdang** — Diamond, Diamond Ring (Affinity-gated), Cold Quench Fluid
+- **Yuori** — Calming Drops (Lv.3), Peace Amulet (Lv.8)
+- **Boss Drops** — Exclusive equipment
+- **Loot Crates** — Random drops post-Boss
+- **Achievements** — Cash rewards via the panel
+- **System** — Dingdang's Drawing (Lv.10), auto-granted consumables in modes
+- **Mystery Merchant** — Categorized shops in Faction War / Blood Hunt
