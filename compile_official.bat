@@ -114,6 +114,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\Utilities.cs ^
     Utilities\EntityModelFactory.cs ^
     Utilities\SimpleJsonHelper.cs ^
+    Utilities\AwenLootSweepMath.cs ^
+    Utilities\VictoryRewardShadowMath.cs ^
     Utilities\F3DebugCheatMath.cs ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
@@ -125,6 +127,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     WavesArena\WavesArena.cs ^
     LootAndRewards\LegacyBossLootProbabilityModel.cs ^
     LootAndRewards\LootAndRewards.cs ^
+    LootAndRewards\VictoryRewardShadowCrateController.cs ^
     LootAndRewards\ModeEFLootboxTracker.cs ^
     Interactables\BossRushInteractables.cs ^
     TeleportDebugMonitor.cs ^
@@ -223,6 +226,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\NPCs\Common\NPCModuleRegistry.cs ^
     Integration\NPCs\Courier\CourierNPC.cs ^
     Integration\NPCs\Courier\CourierLootSweepRunner.cs ^
+    Integration\NPCs\Courier\CourierPaidLootSweepService.cs ^
     Integration\NPCs\Goblin\GoblinNPC.cs ^
     Integration\NPCs\Goblin\GoblinNPCController.cs ^
     Integration\NPCs\Goblin\GoblinNPCAnimation.cs ^

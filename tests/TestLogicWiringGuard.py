@@ -11,6 +11,9 @@ Guard: 纯逻辑 C# 测试必须接入官方测试流程。
   - AffinityJsonSerializerTests.csproj
   - F3DebugCheatMathTests.csproj
   - F3DebugCheatLifecycleTests.csproj
+  - VictoryRewardShadowMathTests.csproj
+  - AwenLootSweepMathTests.csproj
+- test_logic_official.bat 的进度标号应统一为 1/8 到 8/8
 - test_bossrush_official.bat 会调用 test_logic_official.bat
 """
 
@@ -53,11 +56,22 @@ def main() -> int:
     if "F3DebugCheatLifecycleTests.csproj" not in logic_text:
         return fail("TestLogicWiringGuard: test_logic_official.bat does not run F3DebugCheatLifecycleTests.csproj")
 
+    if "VictoryRewardShadowMathTests.csproj" not in logic_text:
+        return fail("TestLogicWiringGuard: test_logic_official.bat does not run VictoryRewardShadowMathTests.csproj")
+
+    if "AwenLootSweepMathTests.csproj" not in logic_text:
+        return fail("TestLogicWiringGuard: test_logic_official.bat does not run AwenLootSweepMathTests.csproj")
+
     if re.search(r"if\s+exist\s+tests\\bin\s+rd\s+/s\s+/q\s+tests\\bin", logic_text, re.IGNORECASE) is None:
         return fail("TestLogicWiringGuard: test_logic_official.bat does not clear tests\\bin before running logic tests")
 
     if re.search(r"if\s+exist\s+tests\\obj\s+rd\s+/s\s+/q\s+tests\\obj", logic_text, re.IGNORECASE) is None:
         return fail("TestLogicWiringGuard: test_logic_official.bat does not clear tests\\obj before running logic tests")
+
+    for step in range(1, 9):
+        marker = f"[{step}/8]"
+        if marker not in logic_text:
+            return fail(f"TestLogicWiringGuard: test_logic_official.bat is missing progress marker {marker}")
 
     if re.search(r"call\s+test_logic_official\.bat", test_text, re.IGNORECASE) is None:
         return fail("TestLogicWiringGuard: test_bossrush_official.bat does not call test_logic_official.bat")
