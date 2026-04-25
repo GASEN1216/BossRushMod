@@ -40,7 +40,7 @@ namespace BossRush
                 835, 910, 913, 1046, 1047, 1048, 1049, 1050, 1051,
                 1052, 1053, 1054, 1062, 1064, 1065, 1066, 1067, 1068,
                 1069, 1073, 1092, 1158, 1164, 1214, 1225, 1249, 1273,
-                500018,500007
+                500018, 500007,
 
                 DragonDescendantConfig.DRAGON_HELM_TYPE_ID,
                 DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID,
