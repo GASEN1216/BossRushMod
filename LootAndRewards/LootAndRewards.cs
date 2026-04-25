@@ -70,6 +70,10 @@ namespace BossRush
         
         private static InteractableLootbox _cachedLootBoxTemplateWithLoader = null;
         private static InteractableLootbox _cachedDifficultyRewardLootBoxTemplate = null;
+        private static InteractableLootbox _cachedVictoryRewardVisualLootBoxTemplate = null;
+        private VictoryRewardShadowCrateController _activeVictoryRewardShadowCrateController = null;
+        private bool _difficultyRewardSpawnPositionOverrideActive = false;
+        private Vector3 _difficultyRewardSpawnPositionOverride = Vector3.zero;
         
         /// <summary>
         /// 检查物品ID是否在掉落黑名单中
@@ -1276,7 +1280,7 @@ namespace BossRush
                 DevLog("[BossRush] [WARNING] 切换 BossRush 路牌到凯旋状态失败: " + e.Message);
             }
 
-            // 根据本次难度在“下一波”交互点附近生成通关奖励箱，并播放彩虹横幅
+            // 根据本次难度播放通关横幅，并启动延迟落地的奖励箱虚影演出
             try
             {
                 int rewardHighCount = (bossesPerWave <= 1) ? 3 : 10;
@@ -1285,14 +1289,14 @@ namespace BossRush
                 string banner = L10n.T(
                     "<color=#FF0000>恭</color><color=#FF7F00>喜</color><color=#FFFF00>通</color><color=#00FF00>关</color> " +
                     "<color=#00FFFF>\u300c" + diffName + "\u300d</color>！ " +
-                    "请到场地中心领取奖励\\o/",
+                    "战利品宝箱正在显现\\o/",
                     "<color=#FF0000>C</color><color=#FF7F00>o</color><color=#FFFF00>n</color><color=#00FF00>g</color><color=#00FFFF>r</color><color=#0000FF>a</color><color=#8B00FF>t</color><color=#FF0000>s</color>! " +
                     "<color=#00FFFF>\u300c" + diffName + "\u300d</color> " +
-                    "Claim your rewards at the center! \\o/"
+                    "Your reward crate is materializing! \\o/"
                 );
 
                 ShowBigBanner(banner);
-                SpawnDifficultyRewardLootbox_LootAndRewards(rewardHighCount);
+                StartVictoryRewardShadowCrate_LootAndRewards(rewardHighCount);
             }
             catch (Exception e)
             {
@@ -1322,14 +1326,245 @@ namespace BossRush
                         5f
                     );
                 }
-
-                // 生成返回出生点的交互点
-                TryCreateReturnInteractable();
             }
             catch (Exception e)
             {
                 DevLog("[BossRush] 显示完成对话失败: " + e.Message);
             }
+            finally
+            {
+                CompleteVictoryRewardShadowCrate_LootAndRewards();
+            }
+
+            try
+            {
+                // 生成返回出生点的交互点
+                TryCreateReturnInteractable();
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] 生成返回交互点失败: " + e.Message);
+            }
+        }
+
+        private CharacterMainControl TryGetMainCharacterForVictoryRewardShadowCrate_LootAndRewards()
+        {
+            CharacterMainControl main = null;
+
+            try
+            {
+                main = CharacterMainControl.Main;
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited("VictoryRewardShadow_main", "读取 CharacterMainControl.Main 失败", e);
+            }
+
+            if (main == null)
+            {
+                try
+                {
+                    main = playerCharacter as CharacterMainControl;
+                }
+                catch (Exception e)
+                {
+                    LogLootWarningLimited("VictoryRewardShadow_playerCharacter", "从 playerCharacter 解析玩家失败", e);
+                }
+            }
+
+            return main;
+        }
+
+        private InteractableLootbox GetVictoryRewardVisualLootBoxTemplate_LootAndRewards()
+        {
+            if (_cachedVictoryRewardVisualLootBoxTemplate != null)
+            {
+                try
+                {
+                    if (_cachedVictoryRewardVisualLootBoxTemplate.gameObject != null)
+                    {
+                        return _cachedVictoryRewardVisualLootBoxTemplate;
+                    }
+                }
+                catch {}
+
+                _cachedVictoryRewardVisualLootBoxTemplate = null;
+            }
+
+            try
+            {
+                InteractableLootbox[] all = Resources.FindObjectsOfTypeAll<InteractableLootbox>();
+                if (all == null || all.Length <= 0)
+                {
+                    return GetDifficultyRewardLootBoxTemplate();
+                }
+
+                InteractableLootbox preferredBag = null;
+                InteractableLootbox preferredNonDeliver = null;
+                InteractableLootbox deliverFallback = null;
+
+                for (int i = 0; i < all.Length; i++)
+                {
+                    InteractableLootbox box = all[i];
+                    if (box == null || box.gameObject == null)
+                    {
+                        continue;
+                    }
+
+                    string name = box.name ?? string.Empty;
+                    bool hasRenderer = false;
+
+                    try
+                    {
+                        Renderer[] renderers = box.GetComponentsInChildren<Renderer>(true);
+                        hasRenderer = renderers != null && renderers.Length > 0;
+                    }
+                    catch {}
+
+                    if (!hasRenderer)
+                    {
+                        continue;
+                    }
+
+                    bool isDeliver = name.IndexOf("DeliverBox", StringComparison.OrdinalIgnoreCase) >= 0;
+                    bool looksLikeBag =
+                        name.IndexOf("EnemyDie", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Bag", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                    if (!isDeliver && looksLikeBag)
+                    {
+                        preferredBag = box;
+                        break;
+                    }
+
+                    if (!isDeliver && preferredNonDeliver == null)
+                    {
+                        preferredNonDeliver = box;
+                    }
+
+                    if (isDeliver && deliverFallback == null)
+                    {
+                        deliverFallback = box;
+                    }
+                }
+
+                if (preferredBag != null)
+                {
+                    _cachedVictoryRewardVisualLootBoxTemplate = preferredBag;
+                    DevLog("[BossRush] 通关奖励视觉模板优先使用可见战利品箱: " + preferredBag.name);
+                }
+                else if (preferredNonDeliver != null)
+                {
+                    _cachedVictoryRewardVisualLootBoxTemplate = preferredNonDeliver;
+                    DevLog("[BossRush] 通关奖励视觉模板使用非快递箱 Lootbox: " + preferredNonDeliver.name);
+                }
+                else if (deliverFallback != null)
+                {
+                    _cachedVictoryRewardVisualLootBoxTemplate = deliverFallback;
+                    DevLog("[BossRush] [WARNING] 通关奖励视觉模板未找到更合适箱体，回退使用快递箱: " + deliverFallback.name);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 查找通关奖励视觉模板失败: " + e.Message);
+            }
+
+            if (_cachedVictoryRewardVisualLootBoxTemplate == null)
+            {
+                _cachedVictoryRewardVisualLootBoxTemplate = GetDifficultyRewardLootBoxTemplate();
+            }
+
+            return _cachedVictoryRewardVisualLootBoxTemplate;
+        }
+
+        private void StartVictoryRewardShadowCrate_LootAndRewards(int highQualityCount)
+        {
+            if (highQualityCount <= 0)
+            {
+                return;
+            }
+
+            if (_activeVictoryRewardShadowCrateController != null &&
+                _activeVictoryRewardShadowCrateController.gameObject != null)
+            {
+                UnityEngine.Object.Destroy(_activeVictoryRewardShadowCrateController.gameObject);
+            }
+            _activeVictoryRewardShadowCrateController = null;
+
+            CharacterMainControl main = TryGetMainCharacterForVictoryRewardShadowCrate_LootAndRewards();
+            InteractableLootbox prefab = GetDifficultyRewardLootBoxTemplate();
+            InteractableLootbox visualPrefab = GetVictoryRewardVisualLootBoxTemplate_LootAndRewards();
+
+            if (main == null || prefab == null)
+            {
+                SpawnDifficultyRewardLootbox_LootAndRewards(highQualityCount);
+                return;
+            }
+
+            try
+            {
+                GameObject controllerObject = new GameObject("BossRush_VictoryRewardShadowCrateController");
+                MultiSceneCore.MoveToActiveWithScene(controllerObject, SceneManager.GetActiveScene().buildIndex);
+                VictoryRewardShadowCrateController controller = controllerObject.AddComponent<VictoryRewardShadowCrateController>();
+
+                if (!controller.Initialize(this, main, visualPrefab, highQualityCount))
+                {
+                    UnityEngine.Object.Destroy(controllerObject);
+                    SpawnDifficultyRewardLootbox_LootAndRewards(highQualityCount);
+                    return;
+                }
+
+                _activeVictoryRewardShadowCrateController = controller;
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 启动通关奖励箱虚影失败，回退立即生成: " + e.Message);
+                SpawnDifficultyRewardLootbox_LootAndRewards(highQualityCount);
+            }
+        }
+
+        private void CompleteVictoryRewardShadowCrate_LootAndRewards()
+        {
+            try
+            {
+                if (_activeVictoryRewardShadowCrateController != null)
+                {
+                    _activeVictoryRewardShadowCrateController.CompleteAndLand();
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 完成通关奖励箱虚影失败: " + e.Message);
+            }
+        }
+
+        internal void NotifyVictoryRewardShadowCrateDisposed_LootAndRewards(VictoryRewardShadowCrateController controller)
+        {
+            if (controller == null || controller == _activeVictoryRewardShadowCrateController)
+            {
+                _activeVictoryRewardShadowCrateController = null;
+            }
+        }
+
+        internal void SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards(int highQualityCount, Vector3 worldPosition)
+        {
+            _difficultyRewardSpawnPositionOverrideActive = true;
+            _difficultyRewardSpawnPositionOverride = worldPosition;
+
+            try
+            {
+                SpawnDifficultyRewardLootbox_LootAndRewards(highQualityCount);
+            }
+            finally
+            {
+                _difficultyRewardSpawnPositionOverrideActive = false;
+                _difficultyRewardSpawnPositionOverride = Vector3.zero;
+            }
+        }
+
+        internal void SpawnDifficultyRewardLootboxFallback_LootAndRewards(int highQualityCount)
+        {
+            SpawnDifficultyRewardLootbox_LootAndRewards(highQualityCount);
         }
 
         private void SpawnDifficultyRewardLootbox_LootAndRewards(int highQualityCount)
@@ -1363,17 +1598,21 @@ namespace BossRush
                     }
                 }
 
-                Vector3 pos = demoChallengeStartPosition;
-                if (pos == Vector3.zero)
+                Vector3 pos = _difficultyRewardSpawnPositionOverride;
+                if (!_difficultyRewardSpawnPositionOverrideActive)
                 {
-                    if (main != null)
+                    pos = demoChallengeStartPosition;
+                    if (pos == Vector3.zero)
                     {
-                        pos = main.transform.position;
-                    }
-                    else
-                    {
-                        // 从配置系统获取当前地图的默认位置
-                        pos = GetCurrentSceneDefaultPosition();
+                        if (main != null)
+                        {
+                            pos = main.transform.position;
+                        }
+                        else
+                        {
+                            // 从配置系统获取当前地图的默认位置
+                            pos = GetCurrentSceneDefaultPosition();
+                        }
                     }
                 }
 
@@ -1441,6 +1680,15 @@ namespace BossRush
 
                 InteractableLootbox lootbox = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
                 lootbox.needInspect = true;
+
+                try
+                {
+                    VictoryRewardCrateHeroVisual.AttachToLootbox(lootbox, GetVictoryRewardVisualLootBoxTemplate_LootAndRewards());
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] 为通关奖励箱附加英雄视觉外壳失败: " + e.Message);
+                }
 
                 try
                 {
@@ -1940,6 +2188,18 @@ namespace BossRush
 
                 if (allowModeEFIndependentLoot)
                 {
+                    try
+                    {
+                        if (bossMain != null && bossMain.transform != null)
+                        {
+                            StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, bossMain.transform.position, true));
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        LogLootWarningLimited("OnBossBeforeSpawnLoot_decorateModeEFOriginal", "登记 Mode E/F 原生掉落箱扫箱追踪失败", e);
+                    }
+
                     DevLog("[" + (modeFActive ? "ModeF" : "ModeE") + "] 保留原生掉落箱，不再拦截为独立奖励箱");
                     return;
                 }
