@@ -21,15 +21,18 @@ namespace BossRush
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         private const int MODEEF_SWEEP_TOKEN_GRANT_INTERVAL = 20;
+        private const float AWEN_SWEEP_TARGET_CACHE_REFRESH_INTERVAL = 0.2f;
         private const float AWEN_SWEEP_FAILURE_BUBBLE_Y_OFFSET = 2.5f;
         private const float AWEN_SWEEP_FAILURE_BUBBLE_DURATION = 3f;
         private const float AWEN_SWEEP_FAILURE_BUBBLE_COOLDOWN = 1.25f;
 
         private int modeEFBossDeathGrantCounter = 0;
         private float nextAwenSweepFailureBubbleTime = 0f;
+        private float nextAwenSweepTargetCacheRefreshTime = 0f;
         private string lastAwenSweepFailureBubbleText = string.Empty;
         private readonly List<InteractableLootbox> modeEFLootboxScratch = new List<InteractableLootbox>();
         private readonly List<AwenLootSweepTarget> awenLootSweepTargetScratch = new List<AwenLootSweepTarget>();
+        private readonly List<AwenLootSweepTarget> cachedAwenLootSweepTargets = new List<AwenLootSweepTarget>();
         private AwenLootSweepRunner awenLootSweepRunner = null;
 
         private bool TryGetActiveModeEFLootboxContext(out BossRushTrackedLootboxMode mode, out int sessionToken)
@@ -62,6 +65,7 @@ namespace BossRush
             lastAwenSweepFailureBubbleText = string.Empty;
             modeEFLootboxScratch.Clear();
             awenLootSweepTargetScratch.Clear();
+            InvalidateAwenLootSweepTargetCache();
         }
 
         internal void CaptureModeEFLootboxBaseline()
@@ -71,6 +75,71 @@ namespace BossRush
             lastAwenSweepFailureBubbleText = string.Empty;
             modeEFLootboxScratch.Clear();
             awenLootSweepTargetScratch.Clear();
+            InvalidateAwenLootSweepTargetCache();
+        }
+
+        internal bool CanUseAwenLootSweepInCurrentMode()
+        {
+            return (IsActive && !IsModeDActive) || (IsBossRushArenaActive && !IsModeDActive) || modeEActive || modeFActive;
+        }
+
+        internal void InvalidateAwenLootSweepTargetCache()
+        {
+            nextAwenSweepTargetCacheRefreshTime = 0f;
+            cachedAwenLootSweepTargets.Clear();
+        }
+
+        internal int GetCurrentAwenLootSweepTargetCount()
+        {
+            return EnsureAwenLootSweepTargetCache();
+        }
+
+        internal int CopyCurrentAwenLootSweepTargets(List<AwenLootSweepTarget> output)
+        {
+            if (output == null)
+            {
+                return 0;
+            }
+
+            output.Clear();
+            EnsureAwenLootSweepTargetCache();
+            for (int i = 0; i < cachedAwenLootSweepTargets.Count; i++)
+            {
+                AwenLootSweepTarget source = cachedAwenLootSweepTargets[i];
+                if (source == null || source.Lootbox == null)
+                {
+                    continue;
+                }
+
+                AwenLootSweepTarget copy = new AwenLootSweepTarget();
+                copy.Lootbox = source.Lootbox;
+                copy.VisitPosition = source.VisitPosition;
+                output.Add(copy);
+            }
+
+            return output.Count;
+        }
+
+        internal int CopyFreshAwenLootSweepTargets(List<AwenLootSweepTarget> output)
+        {
+            if (output == null)
+            {
+                return 0;
+            }
+
+            output.Clear();
+            if (!CanUseAwenLootSweepInCurrentMode() || courierNPCInstance == null)
+            {
+                return 0;
+            }
+
+            if (CollectTrackedModeEFLootboxes(modeEFLootboxScratch, int.MinValue) <= 0)
+            {
+                return 0;
+            }
+
+            BuildAwenLootSweepTargets(modeEFLootboxScratch, output);
+            return output.Count;
         }
 
         internal void NotifyAwenLootSweepRunnerDestroyed(AwenLootSweepRunner runner)
@@ -111,6 +180,7 @@ namespace BossRush
             }
 
             BossRushLootboxUtility.StampLootboxMarker(lootbox, mode, sessionToken);
+            InvalidateAwenLootSweepTargetCache();
         }
 
         internal void RegisterModeEFBossDeathForSweepToken()
@@ -151,14 +221,14 @@ namespace BossRush
 
         internal bool CanUseAwenLootSweepToken(CharacterMainControl player, bool showFailureFeedback)
         {
-            if (!modeEActive && !modeFActive)
+            if (!CanUseAwenLootSweepInCurrentMode())
             {
                 return ReportAwenLootSweepFailure(
                     player,
                     showFailureFeedback,
                     L10n.T(
-                        "现在还不能叫阿稳扫箱，得在模式E/F里用。",
-                        "You can only call Awen to sweep in Mode E/F."));
+                        "现在还不能叫阿稳扫箱，得在可用的BossRush战场里用。",
+                        "You can only call Awen to sweep in supported BossRush modes."));
             }
 
             if (courierNPCInstance == null || courierController == null)
@@ -182,9 +252,11 @@ namespace BossRush
                         "Awen is already sweeping. Let him finish first."));
             }
 
+            int freshTargetCount = CopyFreshAwenLootSweepTargets(awenLootSweepTargetScratch);
+
             // 与垃圾桶“清空所有箱子”保持一致：不按 active scene buildIndex 过滤，
             // 只要当前已加载场景里带 BossRushLootboxMarker 就算可扫目标。
-            if (!HasTrackedModeEFLootboxes(int.MinValue))
+            if (freshTargetCount <= 0)
             {
                 return ReportAwenLootSweepFailure(
                     player,
@@ -213,15 +285,9 @@ namespace BossRush
                 return false;
             }
 
-            BossRushTrackedLootboxMode mode;
-            int sessionToken;
-            if (!TryGetActiveModeEFLootboxContext(out mode, out sessionToken))
-            {
-                ReportAwenLootSweepFailure(player, true, L10n.T(
-                    "阿稳这会儿腾不开手，稍后再试。",
-                    "Awen can't start sweeping right now. Try again in a moment."));
-                return false;
-            }
+            BossRushTrackedLootboxMode mode = BossRushTrackedLootboxMode.None;
+            int sessionToken = 0;
+            TryGetActiveModeEFLootboxContext(out mode, out sessionToken);
 
             if (!AwenLootSweepTokenConfig.EnsureRuntimeRegistration())
             {
@@ -231,7 +297,7 @@ namespace BossRush
                 return false;
             }
 
-            int targetCount = CollectCurrentAwenLootSweepTargets(awenLootSweepTargetScratch);
+            int targetCount = CopyFreshAwenLootSweepTargets(awenLootSweepTargetScratch);
             DevLog("[AwenLootSweep] 当前已标记箱子数量=" + targetCount);
 
             if (targetCount <= 0)
@@ -348,29 +414,46 @@ namespace BossRush
 
         private int CollectCurrentAwenLootSweepTargets(List<AwenLootSweepTarget> output)
         {
-            if (output == null)
-            {
-                return 0;
-            }
-
-            output.Clear();
-            if (courierNPCInstance == null)
-            {
-                return 0;
-            }
-
-            if (CollectTrackedModeEFLootboxes(modeEFLootboxScratch, int.MinValue) <= 0)
-            {
-                return 0;
-            }
-
-            BuildAwenLootSweepTargets(modeEFLootboxScratch, output);
-            return output.Count;
+            return CopyCurrentAwenLootSweepTargets(output);
         }
 
         private bool HasTrackedModeEFLootboxes(int requiredSceneBuildIndex)
         {
+            if (requiredSceneBuildIndex == int.MinValue)
+            {
+                return GetCurrentAwenLootSweepTargetCount() > 0;
+            }
+
             return CollectTrackedModeEFLootboxes(modeEFLootboxScratch, requiredSceneBuildIndex) > 0;
+        }
+
+        private int EnsureAwenLootSweepTargetCache()
+        {
+            float now = Time.realtimeSinceStartup;
+            if (now >= nextAwenSweepTargetCacheRefreshTime)
+            {
+                RefreshAwenLootSweepTargetCache();
+            }
+
+            return cachedAwenLootSweepTargets.Count;
+        }
+
+        private void RefreshAwenLootSweepTargetCache()
+        {
+            nextAwenSweepTargetCacheRefreshTime = Time.realtimeSinceStartup + AWEN_SWEEP_TARGET_CACHE_REFRESH_INTERVAL;
+            cachedAwenLootSweepTargets.Clear();
+
+            if (!CanUseAwenLootSweepInCurrentMode() || courierNPCInstance == null)
+            {
+                return;
+            }
+
+            if (CollectTrackedModeEFLootboxes(modeEFLootboxScratch, int.MinValue) <= 0)
+            {
+                return;
+            }
+
+            BuildAwenLootSweepTargets(modeEFLootboxScratch, cachedAwenLootSweepTargets);
         }
 
         private int CollectTrackedModeEFLootboxes(List<InteractableLootbox> output, int requiredSceneBuildIndex)

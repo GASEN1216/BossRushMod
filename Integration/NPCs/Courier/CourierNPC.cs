@@ -2160,12 +2160,228 @@ namespace BossRush
         }
     }
 
+    public class CourierPaidLootSweepInteractable : InteractableBase
+    {
+        private CourierNPCController controller;
+        private CourierMovement movement;
+        private bool isInitialized = false;
+        private string lastInjectedText = string.Empty;
+
+        protected override void Awake()
+        {
+            NPCExceptionHandler.TryExecute(() =>
+            {
+                overrideInteractName = true;
+                _overrideInteractNameKey = CourierPaidLootSweepService.PaidSweepInteractKey;
+                InteractName = CourierPaidLootSweepService.PaidSweepInteractKey;
+                interactMarkerOffset = new Vector3(0f, 0.15f, 0f);
+                UpdateOptionName();
+            }, "CourierPaidLootSweepInteractable.Awake.SetupInteractName", false);
+
+            NPCExceptionHandler.TryExecute(
+                () => base.Awake(),
+                "CourierPaidLootSweepInteractable.Awake.BaseAwake",
+                false);
+
+            NPCExceptionHandler.TryExecute(
+                () => controller = GetComponentInParent<CourierNPCController>(),
+                "CourierPaidLootSweepInteractable.Awake.GetController",
+                false);
+
+            NPCExceptionHandler.TryExecute(
+                () => movement = GetComponentInParent<CourierMovement>(),
+                "CourierPaidLootSweepInteractable.Awake.GetMovement",
+                false);
+
+            NPCExceptionHandler.TryExecute(
+                () => MarkerActive = false,
+                "CourierPaidLootSweepInteractable.Awake.SetMarkerActive",
+                false);
+
+            isInitialized = true;
+        }
+
+        protected override void Start()
+        {
+            NPCExceptionHandler.TryExecute(
+                () => base.Start(),
+                "CourierPaidLootSweepInteractable.Start.BaseStart",
+                false);
+
+            UpdateOptionName();
+        }
+
+        private void OnEnable()
+        {
+            UpdateOptionName();
+        }
+
+        public void UpdateOptionName()
+        {
+            try
+            {
+                string optionText = CourierPaidLootSweepService.GetInteractText();
+                if (!string.Equals(lastInjectedText, optionText, StringComparison.Ordinal))
+                {
+                    LocalizationHelper.InjectLocalization(CourierPaidLootSweepService.PaidSweepInteractKey, optionText);
+                    lastInjectedText = optionText;
+                }
+
+                _overrideInteractNameKey = CourierPaidLootSweepService.PaidSweepInteractKey;
+                InteractName = CourierPaidLootSweepService.PaidSweepInteractKey;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [WARNING] 更新付费扫箱选项失败: " + e.Message);
+            }
+        }
+
+        protected override bool IsInteractable()
+        {
+            UpdateOptionName();
+
+            ModBehaviour mod = ModBehaviour.Instance;
+            return isInitialized && mod != null && mod.CanUseAwenLootSweepInCurrentMode();
+        }
+
+        protected override void OnInteractStart(CharacterMainControl interactCharacter)
+        {
+            try
+            {
+                base.OnInteractStart(interactCharacter);
+                ModBehaviour.DevLog("[CourierNPC] 玩家选择付费扫箱");
+
+                if (controller == null)
+                {
+                    controller = GetComponentInParent<CourierNPCController>();
+                }
+
+                if (controller != null)
+                {
+                    controller.StartTalking();
+                }
+
+                if (movement != null)
+                {
+                    movement.SetInService(true);
+                }
+
+                bool started = CourierPaidLootSweepService.TryRunPaidSweep(controller != null ? controller.transform : transform, interactCharacter);
+                if (!started)
+                {
+                    if (controller != null)
+                    {
+                        controller.StopTalking();
+                    }
+
+                    if (movement != null)
+                    {
+                        movement.SetInService(false);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 付费扫箱交互出错: " + e.Message);
+            }
+        }
+
+        protected override void OnInteractStop()
+        {
+            NPCExceptionHandler.TryExecute(
+                () => base.OnInteractStop(),
+                "CourierPaidLootSweepInteractable.OnInteractStop.BaseStop",
+                false);
+        }
+    }
+
+    public class CourierServiceOptionInteractable : InteractableBase
+    {
+        private CourierNPCController controller;
+        private bool isInitialized = false;
+
+        protected override void Awake()
+        {
+            NPCExceptionHandler.TryExecute(() =>
+            {
+                overrideInteractName = true;
+                _overrideInteractNameKey = "BossRush_CourierService";
+                InteractName = "BossRush_CourierService";
+                interactMarkerOffset = new Vector3(0f, 0.15f, 0f);
+            }, "CourierServiceOptionInteractable.Awake.SetupInteractName", false);
+
+            NPCExceptionHandler.TryExecute(
+                () => base.Awake(),
+                "CourierServiceOptionInteractable.Awake.BaseAwake",
+                false);
+
+            NPCExceptionHandler.TryExecute(
+                () => controller = GetComponentInParent<CourierNPCController>(),
+                "CourierServiceOptionInteractable.Awake.GetController",
+                false);
+
+            NPCExceptionHandler.TryExecute(
+                () => MarkerActive = false,
+                "CourierServiceOptionInteractable.Awake.SetMarkerActive",
+                false);
+
+            isInitialized = true;
+        }
+
+        protected override void Start()
+        {
+            NPCExceptionHandler.TryExecute(
+                () => base.Start(),
+                "CourierServiceOptionInteractable.Start.BaseStart",
+                false);
+        }
+
+        protected override bool IsInteractable()
+        {
+            return isInitialized;
+        }
+
+        protected override void OnInteractStart(CharacterMainControl interactCharacter)
+        {
+            try
+            {
+                base.OnInteractStart(interactCharacter);
+                ModBehaviour.DevLog("[CourierNPC] 玩家选择快递服务（子选项）");
+
+                if (controller == null)
+                {
+                    controller = GetComponentInParent<CourierNPCController>();
+                }
+
+                if (controller != null)
+                {
+                    controller.StartTalking();
+                }
+
+                CourierService.OpenService(controller != null ? controller.transform : transform);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 快递服务子交互出错: " + e.Message);
+            }
+        }
+
+        protected override void OnInteractStop()
+        {
+            NPCExceptionHandler.TryExecute(
+                () => base.OnInteractStop(),
+                "CourierServiceOptionInteractable.OnInteractStop.BaseStop",
+                false);
+        }
+    }
+
     /// <summary>
     /// 快递员主交互组件。
-    /// 主交互处理快递服务，寄存服务通过原生 grouped interaction 提供。
+    /// 主交互处理扫箱，快递服务/寄存服务通过原生 grouped interaction 提供。
     /// </summary>
     public class CourierInteractable : InteractableBase
     {
+        private CourierServiceOptionInteractable serviceInteractable;
         private CourierStorageInteractable storageInteractable;
 
         protected override void Awake()
@@ -2174,8 +2390,8 @@ namespace BossRush
             {
                 // 设置主交互名称
                 this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_CourierService";
-                this.InteractName = "BossRush_CourierService";
+                this._overrideInteractNameKey = CourierPaidLootSweepService.PaidSweepInteractKey;
+                this.InteractName = CourierPaidLootSweepService.PaidSweepInteractKey;
 
                 // 设置交互标记偏移（显示在人物中间）
                 this.interactMarkerOffset = new Vector3(0f, 1.0f, 0f);
@@ -2255,12 +2471,62 @@ namespace BossRush
                 return;
             }
 
+            RemoveLegacyPaidSweepSubOption(groupList);
+
+            if (serviceInteractable == null)
+            {
+                serviceInteractable = NPCInteractionGroupHelper.AddSubInteractable<CourierServiceOptionInteractable>(
+                    transform,
+                    "CourierServiceOption",
+                    groupList);
+            }
+
             if (storageInteractable == null)
             {
                 storageInteractable = NPCInteractionGroupHelper.AddSubInteractable<CourierStorageInteractable>(
                     transform,
                     "StorageOption",
                     groupList);
+            }
+
+            if (serviceInteractable != null)
+            {
+                groupList.Remove(serviceInteractable);
+            }
+
+            if (storageInteractable != null)
+            {
+                groupList.Remove(storageInteractable);
+            }
+
+            if (serviceInteractable != null)
+            {
+                groupList.Insert(0, serviceInteractable);
+            }
+
+            if (storageInteractable != null)
+            {
+                groupList.Add(storageInteractable);
+            }
+        }
+
+        private void RemoveLegacyPaidSweepSubOption(List<InteractableBase> groupList)
+        {
+            if (groupList != null)
+            {
+                for (int i = groupList.Count - 1; i >= 0; i--)
+                {
+                    if (groupList[i] is CourierPaidLootSweepInteractable)
+                    {
+                        groupList.RemoveAt(i);
+                    }
+                }
+            }
+
+            Transform legacyChild = transform.Find("PaidLootSweepOption");
+            if (legacyChild != null)
+            {
+                UnityEngine.Object.Destroy(legacyChild.gameObject);
             }
         }
 
@@ -2278,24 +2544,40 @@ namespace BossRush
 
         protected override void OnTimeOut()
         {
-            // 主交互选项"快递服务"被选中
+            // 主交互选项"扫箱"被选中
             try
             {
-                ModBehaviour.DevLog("[CourierNPC] 玩家选择快递服务（主选项）");
+                ModBehaviour.DevLog("[CourierNPC] 玩家选择付费扫箱（主交互）");
 
-                // 获取控制器并开始对话
                 var controller = GetComponent<CourierNPCController>();
                 if (controller != null)
                 {
                     controller.StartTalking();
                 }
 
-                // 打开快递服务
-                CourierService.OpenService(transform);
+                CourierMovement movement = GetComponent<CourierMovement>();
+                if (movement != null)
+                {
+                    movement.SetInService(true);
+                }
+
+                bool started = CourierPaidLootSweepService.TryRunPaidSweep(controller != null ? controller.transform : transform, CharacterMainControl.Main);
+                if (!started)
+                {
+                    if (controller != null)
+                    {
+                        controller.StopTalking();
+                    }
+
+                    if (movement != null)
+                    {
+                        movement.SetInService(false);
+                    }
+                }
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[CourierNPC] [ERROR] 快递服务交互出错: " + e.Message);
+                ModBehaviour.DevLog("[CourierNPC] [ERROR] 扫箱主交互出错: " + e.Message);
             }
         }
     }

@@ -133,6 +133,82 @@ namespace BossRush
 
             return sentCount;
         }
+
+        public static bool TryCreateTransientLootbox(
+            string objectName,
+            int capacity,
+            string displayNameKey,
+            out GameObject transientObject,
+            out Inventory transientInventory,
+            out InteractableLootbox transientLootbox)
+        {
+            transientObject = null;
+            transientInventory = null;
+            transientLootbox = null;
+
+            try
+            {
+                InitializeReflection();
+
+                transientObject = new GameObject(string.IsNullOrEmpty(objectName) ? "TransientLootboxContainer" : objectName);
+                transientObject.SetActive(false);
+
+                transientInventory = transientObject.AddComponent<Inventory>();
+                transientInventory.SetCapacity(Mathf.Max(1, capacity));
+
+                BoxCollider boxCollider = transientObject.AddComponent<BoxCollider>();
+                boxCollider.isTrigger = true;
+                boxCollider.size = new Vector3(0.1f, 0.1f, 0.1f);
+                boxCollider.enabled = false;
+
+                transientLootbox = transientObject.AddComponent<InteractableLootbox>();
+                NPCInteractionGroupHelper.GetOrCreateGroupList(transientLootbox, "[CourierServiceTransient]");
+                transientLootbox.enabled = false;
+
+                if (inventoryReferenceField != null)
+                {
+                    inventoryReferenceField.SetValue(transientLootbox, transientInventory);
+                }
+
+                SetLootboxDisplayNameKey(transientLootbox, displayNameKey);
+                transientObject.SetActive(true);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 创建临时 Lootbox 失败: " + e.Message);
+
+                if (transientObject != null)
+                {
+                    UnityEngine.Object.Destroy(transientObject);
+                }
+
+                transientObject = null;
+                transientInventory = null;
+                transientLootbox = null;
+                return false;
+            }
+        }
+
+        public static bool TryOpenTransientLootbox(InteractableLootbox lootbox)
+        {
+            try
+            {
+                InitializeReflection();
+                if (LootView.Instance == null || lootbox == null || lootbox.Inventory == null)
+                {
+                    return false;
+                }
+
+                TriggerOnStartLootEvent(lootbox);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [ERROR] 打开临时 Lootbox 失败: " + e.Message);
+                return false;
+            }
+        }
         
         // 发送结果（用于显示告别气泡）
         private static int lastSentItemCount = 0;

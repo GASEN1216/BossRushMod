@@ -20,8 +20,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_AwenLootSweepToken";
         public const string DISPLAY_NAME_CN = "阿稳扫箱令";
         public const string DISPLAY_NAME_EN = "Awen Loot Sweep Token";
-        public const string DESCRIPTION_CN = "一枚刻着鸭邮回收章的铜令。仅可在模式E/F中使用，使用后阿稳会接手当前已存在的掉落箱，按由近到远的顺序逐个清理。";
-        public const string DESCRIPTION_EN = "A brass token stamped with Awen's cleanup seal. Usable only in Mode E/F. Awen will take over the already-existing lootboxes and clear them from nearest to farthest.";
+        public const string DESCRIPTION_CN = "一枚刻着鸭邮回收章的铜令。可在普通BossRush、模式E、模式F中使用，使用后阿稳会接手当前已存在的掉落箱，按由近到远的顺序逐个清理。";
+        public const string DESCRIPTION_EN = "A brass token stamped with Awen's cleanup seal. Usable in standard BossRush, Mode E, and Mode F. Awen will take over the already-existing lootboxes and clear them from nearest to farthest.";
         public const string USE_DESC_CN = "使用：命令阿稳清理当前已存在的掉落箱";
         public const string USE_DESC_EN = "Use: Command Awen to clear the currently existing lootboxes";
         public const float USE_TIME_SECONDS = 1f;

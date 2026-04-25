@@ -182,6 +182,10 @@ namespace BossRush
                     if (cleared)
                     {
                         clearedCount++;
+                        if (mod != null)
+                        {
+                            mod.InvalidateAwenLootSweepTargetCache();
+                        }
                         ShowSweepBubble(clearedCount);
                     }
 
@@ -202,6 +206,10 @@ namespace BossRush
                 }
 
                 ClearSweepSessionState();
+                if (mod != null)
+                {
+                    mod.InvalidateAwenLootSweepTargetCache();
+                }
                 RestoreDefaultState();
                 if (completedSweep)
                 {

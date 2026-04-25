@@ -1087,6 +1087,9 @@ namespace BossRush
 
                 // 快递员NPC
                 { "BossRush_CourierService", L10n.T("快递服务", "Courier Service") },
+                { "BossRush_CourierPaidLootSweep", L10n.T("扫箱", "Sweep Loot") },
+                { "BossRush_CourierPaidLootSweep_ResultTitle", L10n.T("阿稳代收箱", "Awen Sweep Crate") },
+                { "BossRush_CourierPaidLootSweep_Partial", L10n.T("阿稳这趟只扫了一部分，先看结果箱。", "Awen only cleared part of the field. Check the result crate first.") },
 
                 // Mode E 神秘商人分类商店
                 { "BossRush_ModeE_Shop_Title", L10n.T("神秘商人", "Mysterious Merchant") },

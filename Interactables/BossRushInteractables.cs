@@ -1281,6 +1281,7 @@ namespace BossRush
     internal static class BossRushLootboxUtility
     {
         private static readonly Collider[] NearbyLootboxHits = new Collider[128];
+        private const int DecorateLootboxesRetryFrames = 15;
 
         internal static bool IsMarkedLootbox(InteractableLootbox lootbox, int requiredSceneBuildIndex = int.MinValue)
         {
@@ -1604,41 +1605,46 @@ namespace BossRush
 
         internal static IEnumerator DecorateLootboxesNearPosition(ModBehaviour owner, Vector3 deathPosition, bool registerSweepTracking, float radius = 3f)
         {
-            yield return null;
-
-            int hitCount = 0;
-            try
+            for (int attempt = 0; attempt < DecorateLootboxesRetryFrames; attempt++)
             {
-                hitCount = Physics.OverlapSphereNonAlloc(deathPosition, radius, NearbyLootboxHits, -1);
-            }
-            catch {}
+                yield return null;
 
-            if (hitCount <= 0)
-            {
-                yield break;
-            }
-
-            for (int i = 0; i < hitCount; i++)
-            {
-                Collider col = NearbyLootboxHits[i];
-                if (col == null)
-                {
-                    continue;
-                }
-
-                InteractableLootbox lootbox = null;
+                int hitCount = 0;
                 try
                 {
-                    lootbox = col.GetComponent<InteractableLootbox>();
+                    hitCount = Physics.OverlapSphereNonAlloc(deathPosition, radius, NearbyLootboxHits, -1);
                 }
                 catch {}
 
-                if (lootbox == null)
+                if (hitCount <= 0)
                 {
                     continue;
                 }
 
-                DecorateLootbox(lootbox, owner, registerSweepTracking);
+                for (int i = 0; i < hitCount; i++)
+                {
+                    Collider col = NearbyLootboxHits[i];
+                    if (col == null)
+                    {
+                        continue;
+                    }
+
+                    InteractableLootbox lootbox = null;
+                    try
+                    {
+                        lootbox = col.GetComponent<InteractableLootbox>();
+                    }
+                    catch {}
+
+                    if (lootbox == null)
+                    {
+                        continue;
+                    }
+
+                    DecorateLootbox(lootbox, owner, registerSweepTracking);
+                }
+
+                yield break;
             }
         }
     }

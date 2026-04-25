@@ -31,6 +31,9 @@ namespace BossRush.UI
         private static Button cancelButton;
         private static TextMeshProUGUI confirmButtonText;
         private static TextMeshProUGUI cancelButtonText;
+        private static RectTransform panelRect;
+        private static RectTransform messageRect;
+        private static RectTransform buttonContainerRect;
         
         // ============================================================================
         // 回调
@@ -65,6 +68,7 @@ namespace BossRush.UI
             if (dialogRoot != null)
             {
                 UpdateDialogContent(message, confirmText, cancelText);
+                ApplyResponsiveLayout();
                 dialogRoot.SetActive(true);
                 return;
             }
@@ -117,6 +121,8 @@ namespace BossRush.UI
             {
                 cancelButtonText.text = cancelText;
             }
+
+            ApplyResponsiveLayout();
         }
         
         /// <summary>
@@ -155,10 +161,9 @@ namespace BossRush.UI
                 Image panelBg = panel.AddComponent<Image>();
                 panelBg.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
                 
-                RectTransform panelRect = panel.GetComponent<RectTransform>();
+                panelRect = panel.GetComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-                panelRect.sizeDelta = new Vector2(300f, 150f);
                 
                 // 创建消息文本
                 GameObject textObj = new GameObject("Message");
@@ -166,26 +171,29 @@ namespace BossRush.UI
                 
                 messageText = textObj.AddComponent<TextMeshProUGUI>();
                 messageText.text = message;
-                messageText.fontSize = 18;
+                messageText.fontSize = 20;
                 messageText.alignment = TextAlignmentOptions.Center;
                 messageText.color = Color.white;
                 messageText.richText = true;  // 支持富文本
+                messageText.enableAutoSizing = true;
+                messageText.fontSizeMin = 15f;
+                messageText.fontSizeMax = 24f;
+                messageText.enableWordWrapping = true;
+                messageText.overflowMode = TextOverflowModes.Ellipsis;
+                messageText.lineSpacing = 6f;
                 
-                RectTransform textRect = textObj.GetComponent<RectTransform>();
-                textRect.anchorMin = new Vector2(0, 0.4f);
-                textRect.anchorMax = new Vector2(1, 1);
-                textRect.offsetMin = new Vector2(15f, 0);
-                textRect.offsetMax = new Vector2(-15f, -15f);
+                messageRect = textObj.GetComponent<RectTransform>();
+                messageRect.anchorMin = new Vector2(0f, 0f);
+                messageRect.anchorMax = new Vector2(1f, 1f);
                 
                 // 创建按钮容器
                 GameObject buttonContainer = new GameObject("Buttons");
                 buttonContainer.transform.SetParent(panel.transform, false);
                 
-                RectTransform btnContainerRect = buttonContainer.AddComponent<RectTransform>();
-                btnContainerRect.anchorMin = new Vector2(0, 0);
-                btnContainerRect.anchorMax = new Vector2(1, 0.4f);
-                btnContainerRect.offsetMin = new Vector2(20f, 15f);
-                btnContainerRect.offsetMax = new Vector2(-20f, -5f);
+                buttonContainerRect = buttonContainer.AddComponent<RectTransform>();
+                buttonContainerRect.anchorMin = new Vector2(0f, 0f);
+                buttonContainerRect.anchorMax = new Vector2(1f, 0f);
+                buttonContainerRect.pivot = new Vector2(0.5f, 0f);
                 
                 // 默认按钮文本
                 string defaultConfirmText = confirmText ?? L10n.T("确认", "Confirm");
@@ -193,16 +201,52 @@ namespace BossRush.UI
                 
                 // 创建确认按钮
                 CreateButton(buttonContainer, "ConfirmButton", defaultConfirmText,
-                    new Color(0.2f, 0.6f, 0.2f, 1f), new Vector2(0, 0), new Vector2(0.45f, 1),
+                    new Color(0.2f, 0.6f, 0.2f, 1f), new Vector2(0f, 0f), new Vector2(0.47f, 1f),
                     OnConfirmClicked, out confirmButton, out confirmButtonText);
                 
                 // 创建取消按钮
                 CreateButton(buttonContainer, "CancelButton", defaultCancelText,
-                    new Color(0.6f, 0.2f, 0.2f, 1f), new Vector2(0.55f, 0), new Vector2(1, 1),
+                    new Color(0.6f, 0.2f, 0.2f, 1f), new Vector2(0.53f, 0f), new Vector2(1f, 1f),
                     OnCancelClicked, out cancelButton, out cancelButtonText);
+
+                ApplyResponsiveLayout();
                 
                 ModBehaviour.DevLog("[ConfirmDialogUI] 确认对话框创建成功");
             }, "ConfirmDialogUI.CreateDialog");
+        }
+
+        private static void ApplyResponsiveLayout()
+        {
+            if (panelRect == null || messageRect == null || buttonContainerRect == null)
+            {
+                return;
+            }
+
+            float screenWidth = Mathf.Max(1280f, Screen.width);
+            float screenHeight = Mathf.Max(720f, Screen.height);
+
+            float width = Mathf.Clamp(screenWidth * 0.34f, 440f, 760f);
+            float height = Mathf.Clamp(screenHeight * 0.30f, 230f, 360f);
+            float horizontalPadding = Mathf.Clamp(width * 0.07f, 26f, 44f);
+            float topPadding = Mathf.Clamp(height * 0.08f, 18f, 28f);
+            float bottomPadding = Mathf.Clamp(height * 0.08f, 18f, 28f);
+            float buttonHeight = Mathf.Clamp(height * 0.24f, 54f, 72f);
+            float textBottomInset = bottomPadding + buttonHeight + 16f;
+
+            panelRect.sizeDelta = new Vector2(width, height);
+
+            messageRect.offsetMin = new Vector2(horizontalPadding, textBottomInset);
+            messageRect.offsetMax = new Vector2(-horizontalPadding, -topPadding);
+
+            buttonContainerRect.anchoredPosition = new Vector2(0f, bottomPadding);
+            buttonContainerRect.sizeDelta = new Vector2(-horizontalPadding * 2f, buttonHeight);
+
+            if (messageText != null)
+            {
+                messageText.margin = new Vector4(2f, 2f, 2f, 2f);
+            }
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
         }
         
         /// <summary>
@@ -236,6 +280,11 @@ namespace BossRush.UI
             buttonText.fontSize = 16;
             buttonText.alignment = TextAlignmentOptions.Center;
             buttonText.color = Color.white;
+            buttonText.enableAutoSizing = true;
+            buttonText.fontSizeMin = 12f;
+            buttonText.fontSizeMax = 18f;
+            buttonText.enableWordWrapping = false;
+            buttonText.overflowMode = TextOverflowModes.Ellipsis;
             
             RectTransform textRect = textObj.GetComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;
