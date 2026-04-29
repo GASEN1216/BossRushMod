@@ -50,3 +50,5 @@ prepare_release_local.bat
 prepare_wish_config_local.bat
 /tests/bin
 /tests/obj
+__pycache__/
+*.pyc
