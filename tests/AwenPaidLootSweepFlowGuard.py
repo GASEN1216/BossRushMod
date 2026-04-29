@@ -67,14 +67,18 @@ def main() -> int:
     if 'return L10n.T("扫箱", "Sweep Loot")' not in service_text:
         return fail("AwenPaidLootSweepFlowGuard: interact text is not static sweep label")
 
-    if "ConfirmDialogUI.Show(" not in service_text:
-        return fail("AwenPaidLootSweepFlowGuard: missing confirm popup flow")
+    custom_confirm_type = "Confirm" + "Dialog" + "UI"
+    if custom_confirm_type in service_text:
+        return fail("AwenPaidLootSweepFlowGuard: paid sweep still depends on legacy prompt type")
+
+    if "OriginalConfirmDialogueAdapter.Execute(" not in service_text:
+        return fail("AwenPaidLootSweepFlowGuard: missing original ConfirmDialogue popup flow")
 
     if "TryExecuteFreshPaidSweep(" not in service_text:
         return fail("AwenPaidLootSweepFlowGuard: missing confirm-time fresh recompute path")
 
     if "if (!TryExecuteFreshPaidSweep" not in service_text:
-        return fail("AwenPaidLootSweepFlowGuard: confirm callback does not branch on fresh execution result")
+        return fail("AwenPaidLootSweepFlowGuard: confirm result does not branch on fresh execution result")
 
     if "TryCreateTransientLootbox" in service_text and "ExitServiceState();" not in service_text:
         return fail("AwenPaidLootSweepFlowGuard: service state cleanup is missing from failure paths")
@@ -94,13 +98,6 @@ def main() -> int:
 
     if "黑掉 1 件" in service_text or "consume 1 item" in service_text:
         return fail("AwenPaidLootSweepFlowGuard: paid sweep popup still reveals hidden loot tax")
-
-    confirm_text = Path("Integration/Affinity/UI/ConfirmDialogUI.cs").read_text(encoding="utf-8")
-    if "ApplyResponsiveLayout(" not in confirm_text:
-        return fail("AwenPaidLootSweepFlowGuard: confirm dialog still lacks responsive layout helper")
-
-    if "sizeDelta = new Vector2(300f, 150f)" in confirm_text:
-        return fail("AwenPaidLootSweepFlowGuard: confirm dialog still uses fixed 300x150 panel")
 
     print("AwenPaidLootSweepFlowGuard: PASS")
     return 0

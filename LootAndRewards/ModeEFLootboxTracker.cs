@@ -60,6 +60,7 @@ namespace BossRush
         private void ResetModeEFLootboxTrackerState()
         {
             CancelAwenLootSweep(true);
+            CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);
             modeEFBossDeathGrantCounter = 0;
             nextAwenSweepFailureBubbleTime = 0f;
             lastAwenSweepFailureBubbleText = string.Empty;

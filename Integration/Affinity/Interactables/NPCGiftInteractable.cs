@@ -10,7 +10,6 @@ using System;
 using UnityEngine;
 using ItemStatsSystem;
 using Duckov.UI;
-using BossRush.UI;
 using BossRush.Utils;
 
 namespace BossRush

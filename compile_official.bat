@@ -226,6 +226,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\NPCs\Common\NPCModuleRegistry.cs ^
     Integration\NPCs\Courier\CourierNPC.cs ^
     Integration\NPCs\Courier\CourierLootSweepRunner.cs ^
+    Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs ^
     Integration\NPCs\Courier\CourierPaidLootSweepService.cs ^
     Integration\NPCs\Goblin\GoblinNPC.cs ^
     Integration\NPCs\Goblin\GoblinNPCController.cs ^
@@ -293,7 +294,6 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Affinity\Interactables\NPCInteractableBase.cs ^
     Integration\Affinity\Interactables\NPCGiftInteractable.cs ^
     Integration\Affinity\Interactables\NPCShopInteractable.cs ^
-    Integration\Affinity\UI\ConfirmDialogUI.cs ^
     Integration\Affinity\NPCs\GoblinAffinityConfig.cs ^
     Integration\Affinity\NPCs\NurseAffinityConfig.cs ^
     Integration\Affinity\AffinityUIManager.cs ^

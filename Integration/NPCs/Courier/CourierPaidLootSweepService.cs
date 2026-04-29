@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using Cysharp.Threading.Tasks;
 using Duckov.Economy;
 using Duckov.UI;
 using Duckov.UI.DialogueBubbles;
@@ -10,7 +11,6 @@ using ItemStatsSystem;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using BossRush.UI;
 
 namespace BossRush
 {
@@ -40,6 +40,7 @@ namespace BossRush
         private static FieldInfo sortButtonField = null;
         private static bool reflectionInitialized = false;
         private static bool lootStopHookRegistered = false;
+        private static bool sweepPromptInProgress = false;
 
         private sealed class PaidSweepBoxPlan
         {
@@ -70,6 +71,30 @@ namespace BossRush
             DiscardPendingSweepResultInternal(closeLootView, true);
         }
 
+        public static void ReleasePendingSweepResultToPlayer(bool closeLootView, bool showMessage)
+        {
+            bool hadPending = HasPendingSweepResult();
+            if (!hadPending)
+            {
+                DestroyStartNextSweepButton();
+                return;
+            }
+
+            TryReturnResultItemsToPlayer(pendingResultInventory);
+            DiscardPendingSweepResultInternal(closeLootView, false);
+
+            if (showMessage)
+            {
+                ModBehaviour mod = ModBehaviour.Instance;
+                if (mod != null)
+                {
+                    mod.ShowMessage(L10n.T(
+                        "旧扫箱结果已返还到玩家背包或仓库。",
+                        "Old sweep crate contents were returned to the player."));
+                }
+            }
+        }
+
         public static bool TryRunPaidSweep(Transform npcTransform, CharacterMainControl player)
         {
             ModBehaviour mod = ModBehaviour.Instance;
@@ -78,9 +103,15 @@ namespace BossRush
                 return false;
             }
 
+            if (sweepPromptInProgress)
+            {
+                return IsCurrentServiceNpc(npcTransform);
+            }
+
+            BindServiceNpc(npcTransform);
+
             if (HasPendingSweepResult())
             {
-                BindServiceNpc(npcTransform);
                 return ShowPendingSweepResultPrompt();
             }
 
@@ -249,27 +280,53 @@ namespace BossRush
 
         private static bool ShowPendingSweepResultPrompt()
         {
-            ConfirmDialogUI.Show(
-                L10n.T(
-                    "阿稳这边还保留着上一批代收箱。\n是否现在免费取回？",
-                    "Awen is still holding your previous sweep crate.\nReopen it for free now?"),
-                () =>
-                {
-                    ConfirmDialogUI.Hide();
-                    if (!OpenPendingSweepResult())
-                    {
-                        ExitServiceState();
-                    }
-                },
-                () =>
-                {
-                    ConfirmDialogUI.Hide();
-                    ExitServiceState();
-                },
-                L10n.T("免费取回", "Free Reopen"),
-                L10n.T("取消", "Cancel"));
+            if (sweepPromptInProgress)
+            {
+                return true;
+            }
 
-            return ConfirmDialogUI.IsVisible;
+            sweepPromptInProgress = true;
+            RunPendingSweepResultPromptAsync().Forget();
+            return true;
+        }
+
+        private static async UniTaskVoid RunPendingSweepResultPromptAsync()
+        {
+            try
+            {
+                OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.Execute(
+                    L10n.T(
+                        "阿稳这边还保留着上一批代收箱。\n是否现在打开箱子？",
+                        "Awen is still holding your previous sweep crate.\nOpen it now?"),
+                    L10n.T("打开箱子", "Open Crate"),
+                    L10n.T("取消", "Cancel"));
+
+                if (!result.Completed)
+                {
+                    HandleOriginalConfirmFailure(pendingResultNpcTransform, result);
+                    return;
+                }
+
+                if (!result.Confirmed)
+                {
+                    ExitServiceState();
+                    return;
+                }
+
+                if (!OpenPendingSweepResult())
+                {
+                    ExitServiceState();
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierPaidLootSweep] [ERROR] Pending sweep confirm failed: " + e.Message);
+                ExitServiceState();
+            }
+            finally
+            {
+                sweepPromptInProgress = false;
+            }
         }
 
         private static bool ShowFreshSweepPrompt(Transform npcTransform, List<PaidSweepBoxPlan> plans, int cost)
@@ -279,29 +336,69 @@ namespace BossRush
                 return false;
             }
 
+            if (sweepPromptInProgress)
+            {
+                return true;
+            }
+
             string message = L10n.T(
                 "当前可扫箱子：<color=#FFD700>" + plans.Count + "</color> 个\n本次费用：<color=#FFD700>￥" + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
                 "Sweepable lootboxes: <color=#FFD700>" + plans.Count + "</color>\nCost: <color=#FFD700>$" + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?");
 
-            ConfirmDialogUI.Show(
-                message,
-                () =>
-                {
-                    ConfirmDialogUI.Hide();
-                    if (!TryExecuteFreshPaidSweep(npcTransform))
-                    {
-                        ExitServiceState();
-                    }
-                },
-                () =>
-                {
-                    ConfirmDialogUI.Hide();
-                    ExitServiceState();
-                },
-                L10n.T("确认扫箱", "Start Sweep"),
-                L10n.T("取消", "Cancel"));
+            sweepPromptInProgress = true;
+            RunFreshSweepPromptAsync(npcTransform, message).Forget();
+            return true;
+        }
 
-            return ConfirmDialogUI.IsVisible;
+        private static async UniTaskVoid RunFreshSweepPromptAsync(Transform npcTransform, string message)
+        {
+            try
+            {
+                OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.Execute(
+                    message,
+                    L10n.T("确认扫箱", "Start Sweep"),
+                    L10n.T("取消", "Cancel"));
+
+                if (!result.Completed)
+                {
+                    HandleOriginalConfirmFailure(npcTransform, result);
+                    return;
+                }
+
+                if (!result.Confirmed)
+                {
+                    ExitServiceState();
+                    return;
+                }
+
+                if (!TryExecuteFreshPaidSweep(npcTransform))
+                {
+                    ExitServiceState();
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierPaidLootSweep] [ERROR] Fresh sweep confirm failed: " + e.Message);
+                ExitServiceState();
+            }
+            finally
+            {
+                sweepPromptInProgress = false;
+            }
+        }
+
+        private static void HandleOriginalConfirmFailure(Transform npcTransform, OriginalConfirmDialogueResult result)
+        {
+            string message = result.FailureMessage;
+            if (string.IsNullOrEmpty(message))
+            {
+                message = L10n.T(
+                    "扫箱确认框不可用，扫箱已取消。",
+                    "Sweep confirmation UI was unavailable. Sweep was cancelled.");
+            }
+
+            ShowBubbleOrMessage(npcTransform, message);
+            ExitServiceState();
         }
 
         private static void SetPendingSweepResult(
@@ -336,8 +433,26 @@ namespace BossRush
                 return;
             }
 
-            activeServiceMovement = npcTransform.GetComponent<CourierMovement>();
-            activeServiceController = npcTransform.GetComponent<CourierNPCController>();
+            activeServiceMovement = npcTransform.GetComponentInParent<CourierMovement>();
+            activeServiceController = npcTransform.GetComponentInParent<CourierNPCController>();
+        }
+
+        private static bool IsCurrentServiceNpc(Transform npcTransform)
+        {
+            if (npcTransform == null)
+            {
+                return activeServiceMovement == null && activeServiceController == null;
+            }
+
+            CourierMovement movement = npcTransform.GetComponentInParent<CourierMovement>();
+            CourierNPCController controller = npcTransform.GetComponentInParent<CourierNPCController>();
+
+            if (activeServiceMovement != null || movement != null)
+            {
+                return object.ReferenceEquals(activeServiceMovement, movement);
+            }
+
+            return object.ReferenceEquals(activeServiceController, controller);
         }
 
         private static void RegisterLootStopHook()

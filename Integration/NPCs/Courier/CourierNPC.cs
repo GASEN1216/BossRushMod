@@ -299,6 +299,15 @@ namespace BossRush
         /// </summary>
         public void DestroyCourierNPC()
         {
+            try
+            {
+                CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);
+            }
+            catch (Exception e)
+            {
+                DevLog("[CourierNPC] 清理付费扫箱待领结果失败: " + e.Message);
+            }
+
             if (courierNPCInstance != null)
             {
                 UnityEngine.Object.Destroy(courierNPCInstance);
@@ -2258,7 +2267,7 @@ namespace BossRush
 
                 if (controller != null)
                 {
-                    controller.StartTalking();
+                    controller.StartTalking(false);
                 }
 
                 if (movement != null)
@@ -2355,7 +2364,7 @@ namespace BossRush
 
                 if (controller != null)
                 {
-                    controller.StartTalking();
+                    controller.StartTalking(false);
                 }
 
                 CourierService.OpenService(controller != null ? controller.transform : transform);
@@ -2552,7 +2561,7 @@ namespace BossRush
                 var controller = GetComponent<CourierNPCController>();
                 if (controller != null)
                 {
-                    controller.StartTalking();
+                    controller.StartTalking(false);
                 }
 
                 CourierMovement movement = GetComponent<CourierMovement>();
