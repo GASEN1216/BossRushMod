@@ -9,6 +9,9 @@
 // ============================================================================
 
 using HarmonyLib;
+using ItemStatsSystem;
+using UnityEngine;
+using Duckov;
 using Duckov.Economy;
 
 namespace BossRush
@@ -106,6 +109,65 @@ namespace BossRush
                     __instance.damagedObjects.Add(obstacle);
                 }
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(DeadBodyManager), "SpawnDeadBody")]
+    public static class BossRushDeathWraithDeadBodySpawnPatch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(DeadBodyManager.DeathInfo info)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null || info == null)
+            {
+                return;
+            }
+
+            inst.NotifyOriginalDeadBodySpawnRequested_DeathWraith(info);
+        }
+    }
+
+    [HarmonyPatch(typeof(InteractableLootbox), "CreateFromItem")]
+    public static class BossRushDeathWraithTombLootboxPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(
+            Item item,
+            Vector3 position,
+            Quaternion rotation,
+            bool moveToMainScene,
+            InteractableLootbox prefab,
+            bool filterDontDropOnDead,
+            InteractableLootbox __result)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null || __result == null)
+            {
+                return;
+            }
+
+            inst.NotifyOriginalDeadBodyLootboxCreated_DeathWraith(
+                __result,
+                item,
+                position,
+                prefab);
+        }
+    }
+
+    [HarmonyPatch(typeof(DeadBodyManager), "NotifyDeadbodyTouched")]
+    public static class BossRushDeathWraithDeadBodyTouchedPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(DeadBodyManager.DeathInfo info)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null || info == null)
+            {
+                return;
+            }
+
+            inst.NotifyOriginalDeadBodyTouched_DeathWraith(info);
         }
     }
 }

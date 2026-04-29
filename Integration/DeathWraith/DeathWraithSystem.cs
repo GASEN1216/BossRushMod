@@ -38,6 +38,7 @@ namespace BossRush
     public class WraithInfo
     {
         public bool valid;
+        public uint raidID;
         public string sceneName;
         public string subSceneID;
         public float posX, posY, posZ;
@@ -69,6 +70,13 @@ namespace BossRush
         public ItemTreeData itemTreeData;
     }
 
+    internal sealed class DeadBodySpawnContext_DeathWraith
+    {
+        public uint raidID;
+        public string subSceneID;
+        public Vector3 worldPosition;
+    }
+
     /// <summary>
     /// 亡魂强度等级
     /// </summary>
@@ -86,7 +94,7 @@ namespace BossRush
     {
         #region 亡魂系统 — 常量与字段
 
-        private const string DEATH_WRAITH_SAVE_KEY = "BossRush_DeathWraith";
+        private const string DEATH_WRAITH_LIST_SAVE_KEY = "BossRush_DeathWraith_List";
         private const string DEATH_WRAITH_BOUND_MELEE_SAVE_KEY = "BossRush_DeathWraith_BoundMelee";
         private const string DEATH_WRAITH_NAME_KEY_PREFIX = "BossRush_DeathWraith_Name_";
         private const string DEATH_WRAITH_GUN_AI_PRESET_NAME = "Cname_Boss_Red";
@@ -116,15 +124,18 @@ namespace BossRush
         private static readonly MethodInfo ItemAgentMeleeWeapon_OnInitializeMethod_DeathWraith =
             typeof(ItemAgent_MeleeWeapon).GetMethod("OnInitialize",
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        private CharacterMainControl currentWraith;
-        private bool deathWraithSpawnInProgress;
-        private int deathWraithSceneToken;
         private WraithInfo pendingDeathWraithInfo;
         private int pendingDeathWraithPrimedFrame = -1;
         private float pendingDeathWraithPrimedRealtime = -1f;
-        private bool deathWraithStoredRecordKnownCleared;
         private Dictionary<string, CharacterRandomPreset> deathWraithPresetCacheByNameKey;
         private Dictionary<string, CharacterRandomPreset> deathWraithPresetCacheByRuntimeName;
+        private readonly Dictionary<uint, CharacterMainControl> activeWraithsByRaidId =
+            new Dictionary<uint, CharacterMainControl>();
+        private readonly Dictionary<CharacterMainControl, uint> activeWraithRaidIdByCharacter =
+            new Dictionary<CharacterMainControl, uint>();
+        private readonly HashSet<uint> spawningWraithRaidIds = new HashSet<uint>();
+        private readonly List<DeadBodySpawnContext_DeathWraith> pendingDeadBodySpawnContexts =
+            new List<DeadBodySpawnContext_DeathWraith>();
 
         private void HandleDeathWraithConfigChanged_DeathWraith()
         {
@@ -133,43 +144,12 @@ namespace BossRush
             if (IsDeathWraithSystemEnabled())
             {
                 DevLog("[DeathWraith] 系统配置已开启");
-                TryRequestDeathWraithSpawnForActiveScene_DeathWraith("配置开启");
                 return;
             }
 
             DevLog("[DeathWraith] 系统配置已关闭，清理当前与已存亡魂状态");
             ClearDeathWraithState_DeathWraith();
-            InvalidateStoredDeathWraithRecord_DeathWraith("配置关闭");
-        }
-
-        private void TryRequestDeathWraithSpawnForActiveScene_DeathWraith(string source)
-        {
-            if (!IsDeathWraithSystemEnabled())
-            {
-                return;
-            }
-
-            try
-            {
-                Scene activeScene = SceneManager.GetActiveScene();
-                if (!activeScene.IsValid() || !activeScene.isLoaded)
-                {
-                    return;
-                }
-
-                if (activeScene.name == "MainMenu" || activeScene.name == "LoadingScreen_Black")
-                {
-                    return;
-                }
-
-                DevLog("[DeathWraith] 主动检查当前场景亡魂生成: "
-                    + source + ", scene=" + activeScene.name);
-                StartCoroutine(DelayedSpawnDeathWraith_DeathWraith(activeScene));
-            }
-            catch (Exception e)
-            {
-                DevLog("[DeathWraith] 主动触发亡魂生成检查失败: " + e.Message);
-            }
+            InvalidateStoredDeathWraithRecords_DeathWraith("配置关闭");
         }
 
         private void RefreshDeathWraithEventBindings_DeathWraith()
@@ -178,6 +158,7 @@ namespace BossRush
             {
                 Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
                 Health.OnDead -= RecordDeathWraithData_DeathWraith;
+                Health.OnDead -= OnWraithDied_DeathWraith;
                 SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
 
                 if (!IsDeathWraithSystemEnabled())
@@ -187,6 +168,7 @@ namespace BossRush
 
                 Health.OnHurt += PrimeDeathWraithData_DeathWraith;
                 Health.OnDead += RecordDeathWraithData_DeathWraith;
+                Health.OnDead += OnWraithDied_DeathWraith;
                 SavesSystem.OnCollectSaveData += OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
             }
             catch (Exception e)
@@ -197,7 +179,8 @@ namespace BossRush
 
         private void OnSetFile_DeathWraith()
         {
-            deathWraithStoredRecordKnownCleared = false;
+            pendingDeadBodySpawnContexts.Clear();
+            spawningWraithRaidIds.Clear();
         }
 
         #endregion
@@ -345,7 +328,7 @@ namespace BossRush
             if (!IsDeathWraithSystemEnabled())
             {
                 ClearPendingDeathWraithInfo_DeathWraith();
-                InvalidateStoredDeathWraithRecord_DeathWraith("配置关闭，跳过死亡记录");
+                InvalidateStoredDeathWraithRecords_DeathWraith("配置关闭，跳过死亡记录");
                 return;
             }
 
@@ -353,14 +336,6 @@ namespace BossRush
             {
                 ClearPendingDeathWraithInfo_DeathWraith();
                 return;
-            }
-
-            // 若当前场景有存活亡魂 → 销毁
-            if (currentWraith != null)
-            {
-                DestroyWraithInstance_DeathWraith(currentWraith, "玩家再次死亡");
-                currentWraith = null;
-                Health.OnDead -= OnWraithDied_DeathWraith;
             }
 
             WraithInfo info = ConsumePendingDeathWraithInfo_DeathWraith(main);
@@ -376,10 +351,10 @@ namespace BossRush
                 return;
             }
 
-            SavesSystem.Save<WraithInfo>(DEATH_WRAITH_SAVE_KEY, info);
-            deathWraithStoredRecordKnownCleared = false;
+            AppendStoredDeathWraithInfo_DeathWraith(info);
             DevLog("[DeathWraith] 已记录亡魂数据"
                 + (string.IsNullOrEmpty(source) ? "" : ("[" + source + "]"))
+                + ": raidID=" + info.raidID
                 + ": scene=" + info.sceneName
                 + ", subScene=" + info.subSceneID
                 + ", faceSaved=" + info.hasPlayerFaceData
@@ -490,6 +465,7 @@ namespace BossRush
                 return new WraithInfo
                 {
                     valid = true,
+                    raidID = GetCurrentRaidId_DeathWraith(),
                     sceneName = GetActiveSceneName_DeathWraith(),
                     subSceneID = GetActiveSubSceneId_DeathWraith(),
                     posX = main.transform.position.x,
@@ -830,98 +806,138 @@ namespace BossRush
 
         #region 亡魂系统 — 生成
 
-        /// <summary>
-        /// 延迟等待关卡初始化完成后生成亡魂
-        /// </summary>
-        internal IEnumerator DelayedSpawnDeathWraith_DeathWraith(Scene expectedScene)
+        internal void NotifyOriginalDeadBodySpawnRequested_DeathWraith(DeadBodyManager.DeathInfo info)
         {
-            int sceneToken = deathWraithSceneToken;
-            if (!IsDeathWraithSystemEnabled())
+            if (!IsDeathWraithSystemEnabled() || info == null || !info.valid)
             {
-                InvalidateStoredDeathWraithRecord_DeathWraith("场景加载时配置关闭");
-                yield break;
+                return;
             }
 
-            if (deathWraithSpawnInProgress)
+            RemovePendingDeadBodySpawnContextByRaidId_DeathWraith(info.raidID);
+            pendingDeadBodySpawnContexts.Add(new DeadBodySpawnContext_DeathWraith
             {
-                DevLog("[DeathWraith] 跳过重复的生成请求");
-                yield break;
+                raidID = info.raidID,
+                subSceneID = info.subSceneID ?? string.Empty,
+                worldPosition = info.worldPosition
+            });
+        }
+
+        internal void NotifyOriginalDeadBodyLootboxCreated_DeathWraith(
+            InteractableLootbox lootbox,
+            Item item,
+            Vector3 position,
+            InteractableLootbox prefab)
+        {
+            if (!IsDeathWraithSystemEnabled() || lootbox == null)
+            {
+                return;
             }
 
-            deathWraithSpawnInProgress = true;
-            bool handedOffToAsync = false;
-            float elapsed = 0f;
+            InteractableLootbox tombPrefab = null;
             try
             {
-                while (!IsDeathWraithSceneReady_DeathWraith(expectedScene) && elapsed < 30f)
+                if (GameplayDataSettings.Prefabs != null)
                 {
-                    if (sceneToken != deathWraithSceneToken)
-                    {
-                        yield break;
-                    }
-
-                    yield return new WaitForSeconds(0.5f);
-                    elapsed += 0.5f;
-                }
-
-                if (sceneToken != deathWraithSceneToken)
-                {
-                    yield break;
-                }
-
-                if (IsDeathWraithSceneReady_DeathWraith(expectedScene))
-                {
-                    handedOffToAsync = true;
-                    TrySpawnDeathWraith_DeathWraith(sceneToken);
+                    tombPrefab = GameplayDataSettings.Prefabs.LootBoxPrefab_Tomb;
                 }
             }
-            finally
+            catch { }
+
+            InteractableLootbox actualPrefab = prefab != null ? prefab : InteractableLootbox.Prefab;
+            if (tombPrefab == null || actualPrefab != tombPrefab)
             {
-                if (!handedOffToAsync && sceneToken == deathWraithSceneToken)
+                return;
+            }
+
+            DeadBodySpawnContext_DeathWraith context =
+                TryConsumePendingDeadBodySpawnContext_DeathWraith(position, GetActiveSubSceneId_DeathWraith());
+            if (context == null)
+            {
+                return;
+            }
+
+            TrySpawnStoredDeathWraithForRaid_DeathWraith(context.raidID, lootbox.transform.position);
+        }
+
+        internal void NotifyOriginalDeadBodyTouched_DeathWraith(DeadBodyManager.DeathInfo info)
+        {
+            if (info == null)
+            {
+                return;
+            }
+
+            RemovePendingDeadBodySpawnContextByRaidId_DeathWraith(info.raidID);
+            RemoveStoredDeathWraithInfoByRaidId_DeathWraith(info.raidID, "原版遗失物被开启");
+        }
+
+        private DeadBodySpawnContext_DeathWraith TryConsumePendingDeadBodySpawnContext_DeathWraith(
+            Vector3 worldPosition,
+            string subSceneID)
+        {
+            const float positionTolerance = 0.05f;
+            for (int i = 0; i < pendingDeadBodySpawnContexts.Count; i++)
+            {
+                DeadBodySpawnContext_DeathWraith context = pendingDeadBodySpawnContexts[i];
+                if (context == null)
                 {
-                    deathWraithSpawnInProgress = false;
+                    continue;
+                }
+
+                if (!string.Equals(context.subSceneID ?? string.Empty, subSceneID ?? string.Empty, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if ((context.worldPosition - worldPosition).sqrMagnitude > positionTolerance * positionTolerance)
+                {
+                    continue;
+                }
+
+                pendingDeadBodySpawnContexts.RemoveAt(i);
+                return context;
+            }
+
+            return null;
+        }
+
+        private void RemovePendingDeadBodySpawnContextByRaidId_DeathWraith(uint raidID)
+        {
+            for (int i = pendingDeadBodySpawnContexts.Count - 1; i >= 0; i--)
+            {
+                DeadBodySpawnContext_DeathWraith context = pendingDeadBodySpawnContexts[i];
+                if (context != null && context.raidID == raidID)
+                {
+                    pendingDeadBodySpawnContexts.RemoveAt(i);
                 }
             }
         }
 
-        /// <summary>
-        /// 尝试在死亡位置生成亡魂（async void）
-        /// </summary>
-        private async void TrySpawnDeathWraith_DeathWraith(int sceneToken)
+        private async void TrySpawnStoredDeathWraithForRaid_DeathWraith(uint raidID, Vector3 spawnPos)
         {
             CharacterMainControl spawnedWraith = null;
+            bool registered = false;
             try
             {
-                if (sceneToken != deathWraithSceneToken) return;
                 if (!IsDeathWraithSystemEnabled())
                 {
-                    InvalidateStoredDeathWraithRecord_DeathWraith("配置关闭，跳过生成");
                     return;
                 }
 
-                // 加载亡魂数据
-                WraithInfo info = null;
-                try
+                if (spawningWraithRaidIds.Contains(raidID) || activeWraithsByRaidId.ContainsKey(raidID))
                 {
-                    info = SavesSystem.Load<WraithInfo>(DEATH_WRAITH_SAVE_KEY);
+                    return;
                 }
-                catch { }
 
-                if (info == null || !info.valid || info.killed) return;
+                WraithInfo info = FindStoredDeathWraithInfoByRaidId_DeathWraith(raidID);
+                if (info == null || !info.valid)
+                {
+                    return;
+                }
 
-                // 仅在对应场景/子场景生成
-                if (!IsDeathWraithSupportedContext_DeathWraith()) return;
-                if (!IsDeathWraithSceneMatch_DeathWraith(info)) return;
+                spawningWraithRaidIds.Add(raidID);
+                DevLog("[DeathWraith] 开始生成与原版遗失物绑定的亡魂: raidID=" + raidID);
 
-                // 防重复生成
-                if (currentWraith != null) return;
-
-                DevLog("[DeathWraith] 开始生成亡魂...");
-
-                // 生成角色
-                Vector3 spawnPos = new Vector3(info.posX, info.posY, info.posZ);
                 CharacterMainControl wraith = null;
-
                 try
                 {
                     wraith = await CreateWraithCharacterFromPlayerSnapshot_DeathWraith(info, spawnPos);
@@ -933,48 +949,28 @@ namespace BossRush
                     return;
                 }
 
-                if (sceneToken != deathWraithSceneToken)
-                {
-                    DestroyWraithInstance_DeathWraith(spawnedWraith, "场景已切换（创建后）");
-                    spawnedWraith = null;
-                    return;
-                }
-
                 if (wraith == null)
                 {
                     DevLog("[DeathWraith] 角色生成失败");
                     return;
                 }
 
-                // 让出一帧（参考 EnemySpawnCore.cs:238）
                 await UniTask.Yield();
-
-                if (sceneToken != deathWraithSceneToken)
-                {
-                    DestroyWraithInstance_DeathWraith(spawnedWraith, "场景已切换（等待初始化后）");
-                    spawnedWraith = null;
-                    return;
-                }
 
                 NormalizeDamageMultiplier(wraith);
                 RestoreWraithMaxHealthSnapshot_DeathWraith(wraith, info.playerMaxHealth);
                 ApplyBossStatMultiplier(wraith);
 
-                // 禁止掉落
                 wraith.dropBoxOnDead = false;
-
-                // 设置敌对阵营
                 wraith.SetTeam(Teams.scav);
                 InitializeWraithAI_DeathWraith(wraith, spawnPos, info);
 
-                // 设置显示名（克隆 preset 模式，参考 ModeFRespawn.cs:637-641）
                 WraithTier tier = ClassifyWraithTier_DeathWraith(info.droppedItemsValue, info.playerTotalWealth);
                 string displayName = GetWraithDisplayName_DeathWraith(info.playerName, tier);
                 string displayNameKey = CreateWraithDisplayNameKey_DeathWraith(displayName);
                 ApplyWraithRuntimePreset_DeathWraith(wraith, info, displayNameKey, displayName);
                 await PrepareWraithCombatLoadout_DeathWraith(wraith);
 
-                // 同步 Health 组件的血条显示（参考 DragonKingBoss.cs:163-167）
                 try
                 {
                     if (wraith.Health != null)
@@ -984,10 +980,8 @@ namespace BossRush
                 }
                 catch { }
 
-                // 应用等级属性加成
                 ApplyWraithTierStats_DeathWraith(wraith, tier);
 
-                // 同步血量
                 try
                 {
                     if (wraith.Health != null)
@@ -997,13 +991,7 @@ namespace BossRush
                 }
                 catch { }
 
-                // 注册死亡回调
-                currentWraith = wraith;
-                Health.OnDead -= OnWraithDied_DeathWraith;
-                Health.OnDead += OnWraithDied_DeathWraith;
-
-                // 激活
-                wraith.gameObject.name = "BossRush_DeathWraith";
+                wraith.gameObject.name = "BossRush_DeathWraith_" + raidID;
                 wraith.gameObject.SetActive(true);
 
                 try
@@ -1015,30 +1003,28 @@ namespace BossRush
                 }
                 catch { }
 
+                RegisterActiveWraith_DeathWraith(raidID, wraith);
+                registered = true;
                 spawnedWraith = null;
 
-                DevLog("[DeathWraith] 亡魂生成成功: " + displayName + " tier=" + tier);
+                DevLog("[DeathWraith] 亡魂生成成功: " + displayName + " tier=" + tier + " raidID=" + raidID);
             }
             catch (Exception e)
             {
-                DevLog("[DeathWraith] TrySpawnDeathWraith 异常: " + e.Message + "\n" + e.StackTrace);
+                DevLog("[DeathWraith] TrySpawnStoredDeathWraithForRaid 异常: " + e.Message + "\n" + e.StackTrace);
             }
             finally
             {
                 if (spawnedWraith != null)
                 {
                     DestroyWraithInstance_DeathWraith(spawnedWraith, "生成流程异常中断");
-                    if (currentWraith == spawnedWraith)
-                    {
-                        currentWraith = null;
-                        Health.OnDead -= OnWraithDied_DeathWraith;
-                    }
                 }
 
-                if (sceneToken == deathWraithSceneToken)
+                if (!registered)
                 {
-                    deathWraithSpawnInProgress = false;
+                    activeWraithsByRaidId.Remove(raidID);
                 }
+                spawningWraithRaidIds.Remove(raidID);
             }
         }
 
@@ -2422,30 +2408,26 @@ namespace BossRush
         {
             try
             {
-                if (currentWraith == null) return;
-
-                // 校验是否为亡魂
-                var character = deadHealth.TryGetCharacter();
-                if (character == null || character != currentWraith) return;
-
-                // 标记已击杀
-                try
+                if (deadHealth == null)
                 {
-                    WraithInfo info = SavesSystem.Load<WraithInfo>(DEATH_WRAITH_SAVE_KEY);
-                    if (info != null)
-                    {
-                        info.killed = true;
-                        SavesSystem.Save<WraithInfo>(DEATH_WRAITH_SAVE_KEY, info);
-                    }
+                    return;
                 }
-                catch { }
 
-                // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
-                DestroyOwnedWraithPresetClone_DeathWraith(currentWraith);
+                var character = deadHealth.TryGetCharacter();
+                if (character == null)
+                {
+                    return;
+                }
 
-                currentWraith = null;
-                Health.OnDead -= OnWraithDied_DeathWraith;
-                DevLog("[DeathWraith] 亡魂已被击杀");
+                uint raidID;
+                if (!activeWraithRaidIdByCharacter.TryGetValue(character, out raidID))
+                {
+                    return;
+                }
+
+                ForgetActiveWraith_DeathWraith(character);
+                DestroyOwnedWraithPresetClone_DeathWraith(character);
+                DevLog("[DeathWraith] 亡魂已被击杀: raidID=" + raidID);
             }
             catch (Exception e)
             {
@@ -2462,60 +2444,22 @@ namespace BossRush
         /// </summary>
         private void ClearDeathWraithState_DeathWraith()
         {
-            deathWraithSceneToken++;
-            deathWraithSpawnInProgress = false;
             ClearPendingDeathWraithInfo_DeathWraith();
+            pendingDeadBodySpawnContexts.Clear();
+            spawningWraithRaidIds.Clear();
 
-            if (currentWraith != null)
+            List<CharacterMainControl> activeWraiths =
+                new List<CharacterMainControl>(activeWraithsByRaidId.Values);
+            activeWraithsByRaidId.Clear();
+            activeWraithRaidIdByCharacter.Clear();
+
+            for (int i = 0; i < activeWraiths.Count; i++)
             {
-                DestroyWraithInstance_DeathWraith(currentWraith, "场景清理");
-                currentWraith = null;
-            }
-
-            Health.OnDead -= OnWraithDied_DeathWraith;
-        }
-
-        private void InvalidateStoredDeathWraithRecord_DeathWraith(string reason)
-        {
-            try
-            {
-                if (deathWraithStoredRecordKnownCleared)
+                CharacterMainControl wraith = activeWraiths[i];
+                if (wraith != null)
                 {
-                    return;
+                    DestroyWraithInstance_DeathWraith(wraith, "场景清理");
                 }
-
-                WraithInfo info = null;
-                try
-                {
-                    info = SavesSystem.Load<WraithInfo>(DEATH_WRAITH_SAVE_KEY);
-                }
-                catch (Exception loadEx)
-                {
-                    DevLog("[DeathWraith] 读取亡魂记录失败，无法清理: " + loadEx.Message);
-                    return;
-                }
-
-                if (info == null)
-                {
-                    deathWraithStoredRecordKnownCleared = true;
-                    return;
-                }
-
-                if (!info.valid && info.killed)
-                {
-                    deathWraithStoredRecordKnownCleared = true;
-                    return;
-                }
-
-                info.valid = false;
-                info.killed = true;
-                SavesSystem.Save<WraithInfo>(DEATH_WRAITH_SAVE_KEY, info);
-                deathWraithStoredRecordKnownCleared = true;
-                DevLog("[DeathWraith] 已清理亡魂记录: " + reason);
-            }
-            catch (Exception e)
-            {
-                DevLog("[DeathWraith] 清理亡魂记录失败: " + e.Message);
             }
         }
 
@@ -2825,28 +2769,231 @@ namespace BossRush
             }
         }
 
-        private bool IsDeathWraithSceneMatch_DeathWraith(WraithInfo info)
+        private uint GetCurrentRaidId_DeathWraith()
+        {
+            try
+            {
+                return RaidUtilities.CurrentRaid.ID;
+            }
+            catch
+            {
+                return 0U;
+            }
+        }
+
+        private List<WraithInfo> LoadStoredDeathWraithInfos_DeathWraith()
+        {
+            try
+            {
+                List<WraithInfo> infos =
+                    SavesSystem.Load<List<WraithInfo>>(DEATH_WRAITH_LIST_SAVE_KEY);
+                return infos ?? new List<WraithInfo>();
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 读取亡魂记录列表失败: " + e.Message);
+                return new List<WraithInfo>();
+            }
+        }
+
+        private void SaveStoredDeathWraithInfos_DeathWraith(List<WraithInfo> infos)
+        {
+            try
+            {
+                SavesSystem.Save<List<WraithInfo>>(
+                    DEATH_WRAITH_LIST_SAVE_KEY,
+                    infos ?? new List<WraithInfo>());
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] 保存亡魂记录列表失败: " + e.Message);
+            }
+        }
+
+        private int GetStoredDeathWraithLimit_DeathWraith()
+        {
+            try
+            {
+                return Mathf.Max(1, Duckov.Rules.GameRulesManager.Current.SaveDeadbodyCount);
+            }
+            catch
+            {
+                return 4;
+            }
+        }
+
+        private void AppendStoredDeathWraithInfo_DeathWraith(WraithInfo info)
         {
             if (info == null)
             {
-                return false;
+                return;
             }
 
-            string currentSceneName = GetActiveSceneName_DeathWraith();
-            if (!string.IsNullOrEmpty(info.sceneName) &&
-                !string.Equals(currentSceneName, info.sceneName, StringComparison.Ordinal))
+            List<WraithInfo> infos = LoadStoredDeathWraithInfos_DeathWraith();
+            for (int i = infos.Count - 1; i >= 0; i--)
+            {
+                WraithInfo existing = infos[i];
+                if (existing != null && existing.raidID == info.raidID)
+                {
+                    infos.RemoveAt(i);
+                }
+            }
+
+            infos.Add(info);
+
+            int limit = GetStoredDeathWraithLimit_DeathWraith();
+            while (infos.Count > limit)
+            {
+                WraithInfo removed = infos[0];
+                if (removed != null)
+                {
+                    DestroyActiveWraithByRaidId_DeathWraith(removed.raidID, "超出原版遗失物记录上限");
+                }
+                infos.RemoveAt(0);
+            }
+
+            SaveStoredDeathWraithInfos_DeathWraith(infos);
+        }
+
+        private WraithInfo FindStoredDeathWraithInfoByRaidId_DeathWraith(uint raidID)
+        {
+            List<WraithInfo> infos = LoadStoredDeathWraithInfos_DeathWraith();
+            for (int i = 0; i < infos.Count; i++)
+            {
+                WraithInfo info = infos[i];
+                if (info != null && info.raidID == raidID && info.valid)
+                {
+                    return info;
+                }
+            }
+
+            return null;
+        }
+
+        private bool RemoveStoredDeathWraithInfoByRaidId_DeathWraith(uint raidID, string reason)
+        {
+            bool removed = false;
+            List<WraithInfo> infos = LoadStoredDeathWraithInfos_DeathWraith();
+            for (int i = infos.Count - 1; i >= 0; i--)
+            {
+                WraithInfo info = infos[i];
+                if (info != null && info.raidID == raidID)
+                {
+                    infos.RemoveAt(i);
+                    removed = true;
+                }
+            }
+
+            if (removed)
+            {
+                SaveStoredDeathWraithInfos_DeathWraith(infos);
+                DevLog("[DeathWraith] 已移除亡魂记录: raidID=" + raidID
+                    + (string.IsNullOrEmpty(reason) ? string.Empty : (", reason=" + reason)));
+            }
+
+            return removed;
+        }
+
+        private void InvalidateStoredDeathWraithRecords_DeathWraith(string reason)
+        {
+            SaveStoredDeathWraithInfos_DeathWraith(new List<WraithInfo>());
+            DevLog("[DeathWraith] 已清空全部亡魂记录: " + reason);
+        }
+
+        private bool IsDeathWraithCharacter_DeathWraith(CharacterMainControl character)
+        {
+            if (character == null)
             {
                 return false;
             }
 
-            string currentSubSceneId = GetActiveSubSceneId_DeathWraith();
-            if (!string.IsNullOrEmpty(info.subSceneID) &&
-                !string.Equals(currentSubSceneId, info.subSceneID, StringComparison.Ordinal))
+            try
             {
-                return false;
+                if (activeWraithRaidIdByCharacter.ContainsKey(character))
+                {
+                    return true;
+                }
+            }
+            catch { }
+
+            try
+            {
+                GameObject go = character.gameObject;
+                if (go != null &&
+                    !string.IsNullOrEmpty(go.name) &&
+                    go.name.StartsWith("BossRush_DeathWraith_", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            catch { }
+
+            try
+            {
+                CharacterRandomPreset preset = character.characterPreset;
+                if (preset != null)
+                {
+                    string presetName = preset.name;
+                    if (!string.IsNullOrEmpty(presetName) &&
+                        presetName.StartsWith("BossRush_DeathWraithPreset", StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+
+                    string nameKey = preset.nameKey;
+                    if (!string.IsNullOrEmpty(nameKey) &&
+                        nameKey.StartsWith(DEATH_WRAITH_NAME_KEY_PREFIX, StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        private void RegisterActiveWraith_DeathWraith(uint raidID, CharacterMainControl wraith)
+        {
+            if (wraith == null)
+            {
+                return;
             }
 
-            return true;
+            activeWraithsByRaidId[raidID] = wraith;
+            activeWraithRaidIdByCharacter[wraith] = raidID;
+        }
+
+        private void ForgetActiveWraith_DeathWraith(CharacterMainControl wraith)
+        {
+            if (wraith == null)
+            {
+                return;
+            }
+
+            uint raidID;
+            if (activeWraithRaidIdByCharacter.TryGetValue(wraith, out raidID))
+            {
+                activeWraithRaidIdByCharacter.Remove(wraith);
+
+                CharacterMainControl existing;
+                if (activeWraithsByRaidId.TryGetValue(raidID, out existing) && existing == wraith)
+                {
+                    activeWraithsByRaidId.Remove(raidID);
+                }
+            }
+        }
+
+        private void DestroyActiveWraithByRaidId_DeathWraith(uint raidID, string reason)
+        {
+            CharacterMainControl wraith;
+            if (!activeWraithsByRaidId.TryGetValue(raidID, out wraith) || wraith == null)
+            {
+                return;
+            }
+
+            ForgetActiveWraith_DeathWraith(wraith);
+            DestroyWraithInstance_DeathWraith(wraith, reason);
         }
 
         private void EnsureWraithPresetCache_DeathWraith()

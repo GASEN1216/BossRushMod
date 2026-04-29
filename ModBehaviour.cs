@@ -3859,6 +3859,12 @@ namespace BossRush
                     }
                     catch {}
                     if (isMain) continue;
+
+                    // 亡魂使用敌对阵营预设生成，但它属于死亡记录系统，不能被 BossRush 清场吞掉。
+                    if (IsDeathWraithCharacter_DeathWraith(c))
+                    {
+                        continue;
+                    }
                     
                     // 跳过宠物
                     bool isPet = false;
@@ -3998,6 +4004,12 @@ namespace BossRush
                     catch {}
 
                     if (isMain)
+                    {
+                        continue;
+                    }
+
+                    // 亡魂使用敌对阵营预设生成，但它属于死亡记录系统，不能被 BossRush 清场吞掉。
+                    if (IsDeathWraithCharacter_DeathWraith(c))
                     {
                         continue;
                     }

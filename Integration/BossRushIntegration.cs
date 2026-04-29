@@ -1299,6 +1299,7 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_BrickStoneStock;
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+            Health.OnDead -= OnWraithDied_DeathWraith;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
             ClearDeathWraithState_DeathWraith();
 
@@ -1459,14 +1460,10 @@ namespace BossRush
             // 延迟调用确保玩家角色和武器已初始化
             StartCoroutine(DelayedApplyDragonGunAmmoOverride());
 
-            // 亡魂系统：尝试在死亡位置生成亡魂
-            if (IsDeathWraithSystemEnabled())
+            // 亡魂系统改为直接绑定原版遗失物创建链，这里不再做场景重试生成。
+            if (!IsDeathWraithSystemEnabled())
             {
-                StartCoroutine(DelayedSpawnDeathWraith_DeathWraith(scene));
-            }
-            else
-            {
-                InvalidateStoredDeathWraithRecord_DeathWraith("场景加载时配置关闭");
+                InvalidateStoredDeathWraithRecords_DeathWraith("场景加载时配置关闭");
             }
 
             try
