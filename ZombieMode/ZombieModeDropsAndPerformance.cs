@@ -526,33 +526,18 @@ namespace BossRush
 
         private void EvaluateZombieModePerformanceTier()
         {
-            int count = zombieModeRunState.LivingZombieCount;
-            ZombieModePerformanceTier current = zombieModeRunState.PerformanceTier;
-            ZombieModePerformanceTier next;
-            if (count >= ZombieModeTuning.PerfTierExtreme ||
-                (current == ZombieModePerformanceTier.ExtremeProtect &&
-                 count > ZombieModeTuning.PerfTierExtreme - ZombieModeTuning.PerfTierHysteresis - 1))
-            {
-                next = ZombieModePerformanceTier.ExtremeProtect;
-            }
-            else if (count >= ZombieModeTuning.PerfTierSoft ||
-                     (current == ZombieModePerformanceTier.SoftProtect &&
-                      count > ZombieModeTuning.PerfTierSoft - ZombieModeTuning.PerfTierHysteresis - 1))
-            {
-                next = ZombieModePerformanceTier.SoftProtect;
-            }
-            else if (count >= ZombieModeTuning.PerfTierWatch ||
-                     (current == ZombieModePerformanceTier.Watch &&
-                      count > ZombieModeTuning.PerfTierWatch - ZombieModeTuning.PerfTierHysteresis - 1))
-            {
-                next = ZombieModePerformanceTier.Watch;
-            }
-            else
-            {
-                next = ZombieModePerformanceTier.Normal;
-            }
+            PerformanceTierAdjuster.Thresholds thresholds;
+            thresholds.Watch = ZombieModeTuning.Performance.TierWatch;
+            thresholds.Soft = ZombieModeTuning.Performance.TierSoft;
+            thresholds.Extreme = ZombieModeTuning.Performance.TierExtreme;
+            thresholds.Hysteresis = ZombieModeTuning.Performance.TierHysteresis;
 
-            if (next != current)
+            PerformanceTierAdjuster.Tier current = (PerformanceTierAdjuster.Tier)(int)zombieModeRunState.PerformanceTier;
+            PerformanceTierAdjuster.Tier resolved = PerformanceTierAdjuster.Evaluate(
+                current, zombieModeRunState.LivingZombieCount, thresholds);
+            ZombieModePerformanceTier next = (ZombieModePerformanceTier)(int)resolved;
+
+            if (next != zombieModeRunState.PerformanceTier)
             {
                 zombieModeRunState.PerformanceTier = next;
                 if (DevModeEnabled && next >= ZombieModePerformanceTier.SoftProtect)

@@ -53,6 +53,7 @@
 ## 其他模式 / 共享层守护
 
 - `OfficialCompileListFileExistenceGuard.py`：`compile_official.bat` 列出的 `.cs` 源文件必须存在。
+- `PerformanceTierAdjusterGuard.py`：通用性能层级判定的 invariant；ZombieMode 必须复用 helper 而非自走 if/else。
 - `ModeD*Guard.py`：Mode D 波次/装备/掉落 invariant。
 - `ModeE*Guard.py`、`ModeF*Guard.py`：对应模式守护。
 - `MapSelectionInjectionReuseGuard.py`：BossRush 与 Zombie 都用 `MapSelectionEntryInjectionHelper`。

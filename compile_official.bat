@@ -121,6 +121,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
     Utilities\SpawnPositionHelper.cs ^
+    Utilities\PerformanceTierAdjuster.cs ^
     Utilities\SteamHelper.cs ^
     Utilities\BossCleanupHelpers.cs ^
     Utilities\OriginalExtractionPointIsolationHelper.cs ^
