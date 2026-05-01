@@ -543,32 +543,7 @@ namespace BossRush
         /// <param name="maxRadius">最大半径</param>
         private Vector3[] GenerateFallbackSpawnPointsAroundPlayer(Vector3 playerPos, int pointCount = 10, float minRadius = 8f, float maxRadius = 15f)
         {
-            Vector3[] points = new Vector3[pointCount];
-            for (int i = 0; i < pointCount; i++)
-            {
-                float angle = (360f / pointCount) * i;
-                float radius = UnityEngine.Random.Range(minRadius, maxRadius);
-                float rad = angle * Mathf.Deg2Rad;
-
-                float x = playerPos.x + Mathf.Cos(rad) * radius;
-                float z = playerPos.z + Mathf.Sin(rad) * radius;
-
-                // 尝试找到地面高度
-                float y = playerPos.y;
-                try
-                {
-                    // 从高处向下射线检测地面
-                    RaycastHit hit;
-                    if (Physics.Raycast(new Vector3(x, playerPos.y + 50f, z), Vector3.down, out hit, 100f))
-                    {
-                        y = hit.point.y;
-                    }
-                }
-                catch {}
-
-                points[i] = new Vector3(x, y, z);
-            }
-            return points;
+            return SpawnPositionHelper.BuildRingPoints(playerPos, pointCount, minRadius, maxRadius);
         }
 
         /// <summary>

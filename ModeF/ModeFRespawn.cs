@@ -786,52 +786,22 @@ namespace BossRush
                 Vector3 playerPos = player != null ? player.transform.position : Vector3.zero;
 
                 Vector3[] allSpawnPoints = GetModeEFlattenedSpawnPoints();
-                if (allSpawnPoints.Length > 0)
+                float effectiveMinDist = Mathf.Max(minDistance, SPAWN_SAFE_DISTANCE);
+
+                if (allSpawnPoints.Length <= 0)
                 {
-                    // 使用统一的安全距离逻辑，取 minDistance 和 SPAWN_SAFE_DISTANCE 中较大者
-                    float effectiveMinDist = Mathf.Max(minDistance, SPAWN_SAFE_DISTANCE);
-                    float effectiveMinDistSqr = effectiveMinDist * effectiveMinDist;
-
-                    Vector3 bestSafe = Vector3.zero;
-                    float bestSafeDistSqr = float.MaxValue;
-                    bool foundSafe = false;
-
-                    Vector3 farthest = allSpawnPoints[0];
-                    float farthestDistSqr = 0f;
-
-                    for (int i = 0; i < allSpawnPoints.Length; i++)
-                    {
-                        Vector3 point = allSpawnPoints[i];
-                        float distSqr = (point - playerPos).sqrMagnitude;
-
-                        if (distSqr > farthestDistSqr)
-                        {
-                            farthestDistSqr = distSqr;
-                            farthest = point;
-                        }
-
-                        // 在安全距离外，且是目前最近的
-                        if (distSqr >= effectiveMinDistSqr && distSqr < bestSafeDistSqr)
-                        {
-                            bestSafeDistSqr = distSqr;
-                            bestSafe = point;
-                            foundSafe = true;
-                        }
-                    }
-
-                    if (foundSafe)
-                    {
-                        return GetSafeBossSpawnPosition(bestSafe);
-                    }
-
-                    if (farthestDistSqr > 0f)
-                    {
-                        DevLog("[ModeF] [WARNING] No spawn point was found beyond " + effectiveMinDist + "m, using the farthest point instead (" + Mathf.Sqrt(farthestDistSqr).ToString("F0") + "m).");
-                        return GetSafeBossSpawnPosition(farthest);
-                    }
+                    return GetSafeBossSpawnPosition(playerPos + new Vector3(60f, 0f, 60f));
                 }
 
-                return GetSafeBossSpawnPosition(playerPos + new Vector3(60f, 0f, 60f));
+                Vector3 result = SpawnPositionHelper.FindNearestSafeSpawnPoint(allSpawnPoints, playerPos, effectiveMinDist);
+                Vector3 delta = result - playerPos;
+                delta.y = 0f;
+                float resultDist = delta.magnitude;
+                if (resultDist < effectiveMinDist)
+                {
+                    DevLog("[ModeF] [WARNING] No spawn point was found beyond " + effectiveMinDist + "m, using the farthest point instead (" + resultDist.ToString("F0") + "m).");
+                }
+                return result;
             }
             catch (Exception e)
             {

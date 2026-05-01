@@ -232,6 +232,38 @@ namespace BossRush
             return false;
         }
 
+        /// <summary>
+        /// 在 player 周围生成 count 个等距候选点（半径 [minRadius, maxRadius] 随机），
+        /// 每点 SnapToGround 修正 Y 后返回。失败的点仍保留 raw（不丢点），便于
+        /// EnemyRecovery 等系统在没有任何预设点时拿到完整候选数组。
+        /// </summary>
+        internal static Vector3[] BuildRingPoints(
+            Vector3 playerPos,
+            int count,
+            float minRadius,
+            float maxRadius,
+            float liftOffset = DefaultLiftOffset)
+        {
+            if (count <= 0)
+            {
+                return new Vector3[0];
+            }
+
+            Vector3[] points = new Vector3[count];
+            for (int i = 0; i < count; i++)
+            {
+                float angle = (360f / count) * i;
+                float radius = Random.Range(minRadius, maxRadius);
+                float rad = angle * Mathf.Deg2Rad;
+                Vector3 raw = new Vector3(
+                    playerPos.x + Mathf.Cos(rad) * radius,
+                    playerPos.y,
+                    playerPos.z + Mathf.Sin(rad) * radius);
+                points[i] = SnapToGround(raw, liftOffset);
+            }
+            return points;
+        }
+
         private static bool TryRaycastSnapPreserveXZ(Vector3 rawPosition, float liftOffset, out Vector3 resolved)
         {
             resolved = rawPosition;
