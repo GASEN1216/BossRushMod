@@ -91,7 +91,7 @@ def main() -> int:
         if snippet not in entry_text:
             return fail("ZombieModeStateModelGuard: entry missing snippet -> " + snippet)
 
-    if "TickZombieMode(Time.deltaTime);" not in mod_text:
+    if "TickZombieMode(Time.unscaledDeltaTime);" not in mod_text:
         return fail("ZombieModeStateModelGuard: ModBehaviour.Update does not tick ZombieMode")
 
     print("ZombieModeStateModelGuard: PASS")
