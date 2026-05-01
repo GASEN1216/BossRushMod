@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 
 namespace BossRush
@@ -182,77 +181,28 @@ namespace BossRush
 
         private bool TryFindZombieModeVirtualSpawnAroundPlayer(Vector3 playerPos, out Vector3 resolved)
         {
-            resolved = playerPos;
-            for (int i = 0; i < 12; i++)
-            {
-                float angle = 360f * i / 12f;
-                Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * 24f;
-                if (TryResolveZombieModeSpawnPoint(playerPos + offset, true, out resolved))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return SpawnPointGeometryHelper.TryFindAroundPlayer(
+                playerPos,
+                ringCount: 12,
+                radius: 24f,
+                navSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius,
+                liftOffset: ZombieModeTuning.NavMeshLiftOffset,
+                minPlayerDistance: ZombieModeTuning.SpawnPointMinPlayerDistance,
+                out resolved);
         }
 
         private bool TryResolveZombieModeSpawnPoint(Vector3 position, bool virtualPoint, out Vector3 resolved)
         {
-            resolved = position;
             float sampleRadius = virtualPoint
                 ? ZombieModeTuning.NavMeshVirtualSpawnRadius
                 : ZombieModeTuning.SpawnPointNavMeshSampleRadius;
-
-            NavMeshHit navHit;
-            if (NavMesh.SamplePosition(position, out navHit, sampleRadius, NavMesh.AllAreas))
-            {
-                resolved = navHit.position + Vector3.up * ZombieModeTuning.NavMeshLiftOffset;
-                return IsZombieModeSpawnPointAccepted(resolved, virtualPoint);
-            }
-
-            if (virtualPoint)
-            {
-                return false;
-            }
-
-            if (TrySnapZombieModeSpawnPointToGround(position, out resolved))
-            {
-                return IsZombieModeSpawnPointAccepted(resolved, virtualPoint);
-            }
-
-            return false;
-        }
-
-        private bool IsZombieModeSpawnPointAccepted(Vector3 position, bool virtualPoint)
-        {
-            if (!virtualPoint)
-            {
-                return true;
-            }
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null)
-            {
-                return true;
-            }
-
-            Vector3 delta = position - player.transform.position;
-            delta.y = 0f;
-            return delta.sqrMagnitude >= ZombieModeTuning.SpawnPointMinPlayerDistance * ZombieModeTuning.SpawnPointMinPlayerDistance;
-        }
-
-        private bool TrySnapZombieModeSpawnPointToGround(Vector3 position, out Vector3 resolved)
-        {
-            resolved = position;
-            RaycastHit hit;
-            Vector3 origin = position + Vector3.up * 24f;
-            if (Physics.Raycast(origin, Vector3.down, out hit, 80f))
-            {
-                resolved = hit.point + Vector3.up * ZombieModeTuning.NavMeshLiftOffset;
-                return true;
-            }
-
-            return false;
+            return SpawnPointGeometryHelper.TryResolve(
+                position,
+                sampleRadius,
+                ZombieModeTuning.NavMeshLiftOffset,
+                virtualPoint,
+                ZombieModeTuning.SpawnPointMinPlayerDistance,
+                out resolved);
         }
 
         private UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
