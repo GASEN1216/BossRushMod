@@ -46,7 +46,10 @@ namespace BossRush
                     return _cachedFont;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] UIHelper TMP_Settings 读取失败: " + e.Message);
+            }
 
             // 回退：从 HealthBar prefab 的 nameText 获取
             try
@@ -69,7 +72,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] UIHelper HealthBar 字体读取失败: " + e.Message);
+            }
 
             // 回退：从场景中任意已有的 TMP_Text 获取
             try
@@ -81,7 +87,10 @@ namespace BossRush
                     return _cachedFont;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] UIHelper TMP_Text 扫描失败: " + e.Message);
+            }
 
             // 最后回退：从已加载的资源中查找
             try
@@ -92,7 +101,10 @@ namespace BossRush
                     _cachedFont = fonts[0];
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] UIHelper 字体资源回退失败: " + e.Message);
+            }
 
             return _cachedFont;
         }

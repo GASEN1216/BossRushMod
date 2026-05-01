@@ -24,6 +24,12 @@ namespace BossRush
         public float AdaptiveReductionEndTime;
         public bool AdaptiveRangedActive;
         public bool AdaptiveMeleeActive;
+
+        // Hot path 缓存：HandleZombieModeHealthHurt 每次玩家命中都会查 ally shield；
+        // 改读字段而非 GetComponent。激活护盾时由 ApplyZombieModeShielderGroupShield /
+        // Shielder 自盾路径写入；护盾过期由 ZombieModeBossShieldRuntime 自身管理状态，
+        // 字段保留指向已失活的组件即可（IsShieldActive() 会返回 false）。
+        public ZombieModeBossShieldRuntime AllyShield;
     }
 
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
@@ -61,6 +67,7 @@ namespace BossRush
             marker.EnemyKind = isBoss ? ZombieModeEnemyKind.Elite : enemyKind;
             marker.SpecialKind = specialKind;
             marker.EliteAffixes.Clear();
+            marker.AllyShield = null;
             if (eliteAffixes != null)
             {
                 marker.EliteAffixes.AddRange(eliteAffixes);

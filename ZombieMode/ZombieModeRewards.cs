@@ -1024,7 +1024,10 @@ namespace BossRush
                 zombieModeRunState.AttributeModifierRecords.Add(record);
                 RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.Buff, null, player.CharacterItem, RemoveZombieModeAttributeModifiers);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] Attribute Modifier 注册失败: " + e.Message);
+            }
         }
 
         private void RemoveZombieModeAttributeModifiers()
@@ -1050,7 +1053,10 @@ namespace BossRush
                         stat.RemoveModifier(record.Modifier);
                     }
                 }
-                catch { }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] Attribute Modifier 清理失败: " + e.Message);
+                }
             }
 
             zombieModeRunState.AttributeModifierRecords.Clear();
@@ -1172,7 +1178,10 @@ namespace BossRush
                     health.SetInvincible(true);
                     health.SetHealth(health.MaxHealth);
                 }
-                catch { }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] Heal 设置无敌+血量失败: " + e.Message);
+                }
             }
         }
 
@@ -1246,7 +1255,10 @@ namespace BossRush
                            character.GetComponentInParent<ZombieModeTemporaryNpcProtectionMarker>() != null;
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] TemporaryNpcProtection 判定失败: " + e.Message);
+            }
 
             return false;
         }
@@ -1607,7 +1619,10 @@ namespace BossRush
                         return PlayerStorage.Inventory.AddItem(item);
                     }
                 }
-                catch { }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] PlayerStorage.AddItem 失败: " + e.Message);
+                }
             }
 
             return false;
@@ -1928,7 +1943,7 @@ namespace BossRush
                 }
 
                 bool sent = false;
-                try { sent = ItemUtilities.SendToPlayerCharacterInventory(item, false); } catch { }
+                try { sent = ItemUtilities.SendToPlayerCharacterInventory(item, false); } catch (System.Exception e) { DevLog("[ZombieMode] SendToPlayerCharacterInventory 失败: " + e.Message); }
                 if (!sent)
                 {
                     CharacterMainControl player = CharacterMainControl.Main;
@@ -1950,7 +1965,10 @@ namespace BossRush
                         item.DestroyTree();
                     }
                 }
-                catch { }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] reward item DestroyTree 失败: " + e.Message);
+                }
                 return false;
             }
         }
@@ -2144,14 +2162,17 @@ namespace BossRush
                 interactCollider = GetComponent<Collider>();
                 interactMarkerOffset = new Vector3(0f, 1.4f, 0f);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] TemporaryNpc Awake collider 获取失败: " + e.Message);
+            }
 
-            try { base.Awake(); } catch { }
+            try { base.Awake(); } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] TemporaryNpc base.Awake 失败: " + e.Message); }
         }
 
         protected override void Start()
         {
-            try { base.Start(); } catch { }
+            try { base.Start(); } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] TemporaryNpc base.Start 失败: " + e.Message); }
             ApplyInteractName();
         }
 
@@ -2166,7 +2187,10 @@ namespace BossRush
             {
                 base.OnInteractStart(interactCharacter);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] TemporaryNpc base.OnInteractStart 失败: " + e.Message);
+            }
 
             if (ModBehaviour.Instance != null)
             {
@@ -2180,7 +2204,10 @@ namespace BossRush
             {
                 base.OnTimeOut();
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] TemporaryNpc base.OnTimeOut 失败: " + e.Message);
+            }
 
             if (ModBehaviour.Instance != null)
             {
@@ -2199,7 +2226,10 @@ namespace BossRush
                 _overrideInteractNameKey = key;
                 InteractName = key;
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] TemporaryNpc InteractName 设置失败: " + e.Message);
+            }
         }
     }
 

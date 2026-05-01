@@ -181,28 +181,38 @@ namespace BossRush
 
         private bool TryFindZombieModeVirtualSpawnAroundPlayer(Vector3 playerPos, out Vector3 resolved)
         {
-            return SpawnPointGeometryHelper.TryFindAroundPlayer(
+            return SpawnPositionHelper.TryFindAroundPlayer(
                 playerPos,
                 ringCount: 12,
                 radius: 24f,
-                navSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius,
+                resolved: out resolved,
                 liftOffset: ZombieModeTuning.NavMeshLiftOffset,
                 minPlayerDistance: ZombieModeTuning.SpawnPointMinPlayerDistance,
-                out resolved);
+                navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius);
         }
 
         private bool TryResolveZombieModeSpawnPoint(Vector3 position, bool virtualPoint, out Vector3 resolved)
         {
-            float sampleRadius = virtualPoint
-                ? ZombieModeTuning.NavMeshVirtualSpawnRadius
-                : ZombieModeTuning.SpawnPointNavMeshSampleRadius;
-            return SpawnPointGeometryHelper.TryResolve(
+            // 虚拟点（玩家附近回退环）：raw 是几何构造点，需要 NavMesh 优先 + 通过 minPlayerDistance。
+            // 预设点（地图配置 / 原 spawner）：raw 已是预设位置，Raycast 优先且不再做 minPlayerDistance 过滤。
+            if (virtualPoint)
+            {
+                if (!SpawnPositionHelper.TrySampleNavMesh(
+                        position,
+                        out resolved,
+                        liftOffset: ZombieModeTuning.NavMeshLiftOffset,
+                        navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius))
+                {
+                    return false;
+                }
+                return SpawnPositionHelper.PassesMinPlayerDistance(resolved, ZombieModeTuning.SpawnPointMinPlayerDistance);
+            }
+
+            return SpawnPositionHelper.TrySnapToGround(
                 position,
-                sampleRadius,
-                ZombieModeTuning.NavMeshLiftOffset,
-                virtualPoint,
-                ZombieModeTuning.SpawnPointMinPlayerDistance,
-                out resolved);
+                out resolved,
+                liftOffset: ZombieModeTuning.NavMeshLiftOffset,
+                navMeshSampleRadius: ZombieModeTuning.SpawnPointNavMeshSampleRadius);
         }
 
         private UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
@@ -309,8 +319,6 @@ namespace BossRush
                     instance.LastKnownPosition = boss.transform.position;
                     instance.LastReachableTime = Time.unscaledTime;
                     instance.LastHurtTime = Time.unscaledTime;
-                    instance.NextSkillTime = Time.unscaledTime + UnityEngine.Random.Range(2f, 5f);
-                    instance.SkillSequence = 0;
                     zombieModeRunState.CurrentWaveBossInstances.Add(instance);
                     RegisterZombieModeBossRuntime(runId, boss, kind);
                     tcs.TrySetResult(boss);

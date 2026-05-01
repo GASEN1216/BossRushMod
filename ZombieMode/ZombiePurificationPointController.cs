@@ -151,7 +151,7 @@ namespace BossRush
 
             if (pointObject != null)
             {
-                try { Destroy(pointObject); } catch { }
+                try { Destroy(pointObject); } catch (System.Exception e) { Debug.LogWarning("[ZombieMode] PurificationPoint Destroy 失败: " + e.Message); }
             }
 
             if (starRecord != null)

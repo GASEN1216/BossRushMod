@@ -182,8 +182,8 @@ namespace BossRush
                         continue;
                     }
 
-                    try { item.Detach(); } catch { }
-                    try { item.DestroyTree(); } catch { try { Destroy(item.gameObject); } catch { } }
+                    try { item.Detach(); } catch (Exception ex) { DevLog("[ZombieMode] item.Detach 失败: " + ex.Message); }
+                    try { item.DestroyTree(); } catch (Exception ex) { DevLog("[ZombieMode] item.DestroyTree 失败: " + ex.Message); try { Destroy(item.gameObject); } catch (Exception ex2) { DevLog("[ZombieMode] Destroy item.gameObject 失败: " + ex2.Message); } }
                 }
             }
             catch (Exception e)
@@ -253,7 +253,7 @@ namespace BossRush
                 {
                     if (item != null)
                     {
-                        try { item.DestroyTree(); } catch { try { Destroy(item.gameObject); } catch { } }
+                        try { item.DestroyTree(); } catch (Exception ex) { DevLog("[ZombieMode] item.DestroyTree 失败: " + ex.Message); try { Destroy(item.gameObject); } catch (Exception ex2) { DevLog("[ZombieMode] Destroy item.gameObject 失败: " + ex2.Message); } }
                     }
                 }
             }
@@ -263,7 +263,10 @@ namespace BossRush
                 lootbox.needInspect = true;
                 lootbox.Inventory.NeedInspection = true;
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[ZombieMode] lootbox needInspect 标记失败: " + e.Message);
+            }
 
             return added;
         }
@@ -297,7 +300,7 @@ namespace BossRush
                 if (containerLock != null)
                 {
                     containerLock.RestoreZombieModeContainerLock();
-                    try { Destroy(containerLock); } catch { }
+                    try { Destroy(containerLock); } catch (Exception e) { DevLog("[ZombieMode] Destroy containerLock 失败: " + e.Message); }
                 }
             });
         }
@@ -442,9 +445,9 @@ namespace BossRush
                 TryCreateZombieModeLootboxLocalInventory(lootbox);
                 ClearZombieModeLootboxInventory(lootbox);
                 RefillZombieModeLootboxInventory(runId, lootbox, 1, 2, 3, maxQuality, true);
-                try { MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex); } catch { }
-                try { ApplyLootBoxCoverSetting(lootbox, true); } catch { }
-                try { BossRushLootboxUtility.DecorateLootbox(lootbox, this, false); } catch { }
+                try { MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex); } catch (Exception e) { DevLog("[ZombieMode] MoveToActiveWithScene 失败: " + e.Message); }
+                try { ApplyLootBoxCoverSetting(lootbox, true); } catch (Exception e) { DevLog("[ZombieMode] ApplyLootBoxCoverSetting 失败: " + e.Message); }
+                try { BossRushLootboxUtility.DecorateLootbox(lootbox, this, false); } catch (Exception e) { DevLog("[ZombieMode] DecorateLootbox 失败: " + e.Message); }
                 RegisterZombieModeDropCandidate(runId, lootbox.gameObject, true, true);
                 return lootbox.gameObject;
             }
@@ -637,7 +640,10 @@ namespace BossRush
                         return false;
                     }
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    DevLog("[ZombieMode] AI hurt 状态读取失败: " + e.Message);
+                }
             }
 
             return true;
@@ -695,7 +701,7 @@ namespace BossRush
                     continue;
                 }
 
-                try { Destroy(candidate.GameObject); } catch { }
+                try { Destroy(candidate.GameObject); } catch (Exception e) { DevLog("[ZombieMode] Destroy 掉落候选 失败: " + e.Message); }
                 zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
             }
         }
@@ -712,7 +718,7 @@ namespace BossRush
                 ZombieModeTemporaryNpc npc = zombieModeRunState.TemporaryNpcs[i];
                 if (npc != null && npc.GameObject != null)
                 {
-                    try { Destroy(npc.GameObject); } catch { }
+                    try { Destroy(npc.GameObject); } catch (Exception e) { DevLog("[ZombieMode] Destroy temporary NPC 失败: " + e.Message); }
                 }
             }
 
@@ -756,7 +762,7 @@ namespace BossRush
         public void UnlockZombieModeContainer()
         {
             RestoreZombieModeContainerLock();
-            try { Destroy(this); } catch { }
+            try { Destroy(this); } catch (Exception e) { DevLog("[ZombieMode] Destroy ContainerLock self 失败: " + e.Message); }
         }
 
         public void RestoreZombieModeContainerLock()

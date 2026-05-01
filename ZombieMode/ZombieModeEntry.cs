@@ -16,6 +16,8 @@ namespace BossRush
 
         private readonly ZombieModeRunState zombieModeRunState = new ZombieModeRunState();
         private readonly ZombieModeEntryTransaction zombieModeEntryTransaction = new ZombieModeEntryTransaction();
+        private readonly Dictionary<string, int[]> zombieModeRewardCandidateCache = new Dictionary<string, int[]>();
+        private readonly List<int> zombieModeRewardSafeCandidateScratch = new List<int>();
         private static int nextZombieModeRunId = 0;
         private bool pendingZombieModeEntry = false;
 
@@ -606,7 +608,10 @@ namespace BossRush
                     Cysharp.Threading.Tasks.UniTaskExtensions.Forget(SceneLoader.Instance.LoadBaseScene(null, true));
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] Entry 失败回主场景失败: " + e.Message);
+            }
         }
 
         private void ShowZombieModeStarterChoice(int runId)
@@ -727,7 +732,10 @@ namespace BossRush
                 string caliber = item.Constants.GetString("Caliber", null);
                 return caliber ?? string.Empty;
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] 弹药 caliber 读取失败: " + e.Message);
+            }
             return string.Empty;
         }
 
@@ -759,7 +767,7 @@ namespace BossRush
                     return false;
                 }
 
-                try { ammoItem.StackCount = totalCount; } catch { }
+                try { ammoItem.StackCount = totalCount; } catch (System.Exception e) { DevLog("[ZombieMode] ammoItem.StackCount 设置失败: " + e.Message); }
                 ItemUtilities.SendToPlayer(ammoItem, true, true);
                 return true;
             }
@@ -792,48 +800,77 @@ namespace BossRush
         {
             try
             {
-                if (ItemAssetsCollection.Instance == null)
-                {
-                    return -1;
-                }
-
-                Tag[] tags = ResolveZombieModeTags(requiredTags);
-                if (requiredTags != null && requiredTags.Length > 0 && (tags == null || tags.Length <= 0))
-                {
-                    return -1;
-                }
-
-                ItemFilter filter = new ItemFilter();
-                filter.requireTags = tags;
-                filter.minQuality = minQuality;
-                filter.maxQuality = maxQuality;
-                filter.caliber = string.Empty;
-                int[] candidates = ItemAssetsCollection.Search(filter);
+                int[] candidates = GetZombieModeRewardCandidateIds(requiredTags, minQuality, maxQuality);
                 if (candidates == null || candidates.Length <= 0)
                 {
                     return -1;
                 }
 
-                List<int> safeCandidates = new List<int>();
-                for (int i = 0; i < candidates.Length; i++)
-                {
-                    if (IsZombieModeRewardCandidateAllowed(candidates[i]))
-                    {
-                        safeCandidates.Add(candidates[i]);
-                    }
-                }
-
-                if (safeCandidates.Count <= 0)
-                {
-                    return -1;
-                }
-
-                return safeCandidates[UnityEngine.Random.Range(0, safeCandidates.Count)];
+                return candidates[UnityEngine.Random.Range(0, candidates.Length)];
             }
             catch
             {
                 return -1;
             }
+        }
+
+        private int[] GetZombieModeRewardCandidateIds(string[] requiredTags, int minQuality, int maxQuality)
+        {
+            if (ItemAssetsCollection.Instance == null)
+            {
+                return new int[0];
+            }
+
+            string cacheKey = BuildZombieModeRewardCandidateCacheKey(requiredTags, minQuality, maxQuality);
+            int[] cached;
+            if (zombieModeRewardCandidateCache.TryGetValue(cacheKey, out cached))
+            {
+                return cached;
+            }
+
+            Tag[] tags = ResolveZombieModeTags(requiredTags);
+            if (requiredTags != null && requiredTags.Length > 0 && (tags == null || tags.Length <= 0))
+            {
+                return new int[0];
+            }
+
+            ItemFilter filter = new ItemFilter();
+            filter.requireTags = tags;
+            filter.minQuality = minQuality;
+            filter.maxQuality = maxQuality;
+            filter.caliber = string.Empty;
+            int[] candidates = ItemAssetsCollection.Search(filter);
+            if (candidates == null || candidates.Length <= 0)
+            {
+                cached = new int[0];
+                zombieModeRewardCandidateCache[cacheKey] = cached;
+                return cached;
+            }
+
+            zombieModeRewardSafeCandidateScratch.Clear();
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (IsZombieModeRewardCandidateAllowed(candidates[i]))
+                {
+                    zombieModeRewardSafeCandidateScratch.Add(candidates[i]);
+                }
+            }
+
+            cached = zombieModeRewardSafeCandidateScratch.ToArray();
+            zombieModeRewardSafeCandidateScratch.Clear();
+            zombieModeRewardCandidateCache[cacheKey] = cached;
+            return cached;
+        }
+
+        private string BuildZombieModeRewardCandidateCacheKey(string[] requiredTags, int minQuality, int maxQuality)
+        {
+            string tagsKey = "*";
+            if (requiredTags != null && requiredTags.Length > 0)
+            {
+                tagsKey = string.Join("|", requiredTags);
+            }
+
+            return tagsKey + "#" + minQuality.ToString() + "#" + maxQuality.ToString();
         }
 
         private Tag[] ResolveZombieModeTags(string[] tagNames)
@@ -873,7 +910,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] Tag.AllTags 扫描失败: " + e.Message);
+            }
 
             return null;
         }

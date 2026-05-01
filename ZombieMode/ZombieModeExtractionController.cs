@@ -139,7 +139,7 @@ namespace BossRush
             ClearZombieModeExtractionOpportunityUi();
             zombieModeRunState.ExtractionChanneling = true;
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.ExtractionOpportunity;
-            try { EvacuationCountdownUI.Request(zombieModeRunState.ActiveExtractionArea); } catch { }
+            try { EvacuationCountdownUI.Request(zombieModeRunState.ActiveExtractionArea); } catch (System.Exception e) { DevLog("[ZombieMode] EvacuationCountdownUI.Request 失败: " + e.Message); }
             StartZombieModeCoroutine(ZombieModeExtractionCountdownCoroutine(runId), runId);
             ShowBigBanner(string.Format(
                 L10n.T("BossRush_ZombieMode_Banner_ExtractionCountdown"),
@@ -169,7 +169,10 @@ namespace BossRush
                     UniTaskExtensions.Forget(SceneLoader.Instance.LoadBaseScene(null, true));
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] 撤离后回主场景失败: " + e.Message);
+            }
         }
 
         private void SettleZombieModeExtractionCashShell()
@@ -295,7 +298,10 @@ namespace BossRush
                     EvacuationCountdownUI.Release(zombieModeRunState.ActiveExtractionArea);
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] EvacuationCountdownUI.Release 失败: " + e.Message);
+            }
         }
 
         private void TryNotifyZombieModeExtraction()
@@ -313,7 +319,10 @@ namespace BossRush
                 EvacuationInfo info = new EvacuationInfo(MultiSceneCore.ActiveSubSceneID, position);
                 LevelManager.Instance.NotifyEvacuated(info);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] NotifyEvacuated 失败: " + e.Message);
+            }
         }
 
         private void ClearZombieModeExtractionOpportunityUi()
@@ -340,13 +349,13 @@ namespace BossRush
             {
                 CountDownArea area = zombieModeRunState.ActiveExtractionArea;
                 zombieModeRunState.ActiveExtractionArea = null;
-                try { EvacuationCountdownUI.Release(area); } catch { }
-                try { Destroy(area.gameObject); } catch { }
+                try { EvacuationCountdownUI.Release(area); } catch (System.Exception e) { DevLog("[ZombieMode] EvacuationCountdownUI.Release(area) 失败: " + e.Message); }
+                try { Destroy(area.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ExtractionArea 失败: " + e.Message); }
             }
 
             if (zombieModeRunState.ActiveSafeZoneVisual != null)
             {
-                try { Destroy(zombieModeRunState.ActiveSafeZoneVisual); } catch { }
+                try { Destroy(zombieModeRunState.ActiveSafeZoneVisual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ActiveSafeZoneVisual 失败: " + e.Message); }
             }
 
             zombieModeRunState.ActiveSafeZoneCenter = Vector3.zero;

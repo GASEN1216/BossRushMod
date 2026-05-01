@@ -1156,52 +1156,12 @@ namespace BossRush
         /// 获取安全的Boss生成位置（只修正Y轴高度，不改变XZ坐标）
         /// </summary>
         /// <remarks>
-        /// 保持原始XZ坐标不变，只通过Raycast修正Y轴高度到地面
-        /// 避免NavMesh采样导致敌人刷在预设点位之外
+        /// 委托 SpawnPositionHelper.SnapToGround：Raycast(groundLayerMask) 优先 → NavMesh 兜底 → +0.5m 兜底。
+        /// 避免 NavMesh 采样把敌人吸到非预设点（屋顶、楼梯下、墙体内的 NavMesh）。
         /// </remarks>
         private static Vector3 GetSafeBossSpawnPosition(Vector3 rawPosition)
         {
-            Vector3 result = rawPosition;
-            string method = "原始";
-            try
-            {
-                // 从略高的位置向下射线检测地面高度（1m，防止卡到屋顶）
-                Vector3 origin = rawPosition + Vector3.up * 1f;
-                float maxDistance = 5f;
-                LayerMask groundMask = Duckov.Utilities.GameplayDataSettings.Layers.groundLayerMask;
-                RaycastHit hit;
-                if (Physics.Raycast(origin, Vector3.down, out hit, maxDistance, groundMask))
-                {
-                    // 只修正Y轴，保持XZ不变
-                    result = new Vector3(rawPosition.x, hit.point.y + 0.15f, rawPosition.z);
-                    method = "Raycast(仅Y轴)";
-                }
-                else
-                {
-                    // Raycast失败，尝试用NavMesh获取高度（但不改变XZ）
-                    NavMeshHit navHit;
-                    if (NavMesh.SamplePosition(rawPosition, out navHit, 5f, NavMesh.AllAreas))
-                    {
-                        // 只取NavMesh的Y值，XZ保持原始
-                        result = new Vector3(rawPosition.x, navHit.position.y + 0.15f, rawPosition.z);
-                        method = "NavMesh(仅Y轴)";
-                    }
-                    else
-                    {
-                        // 都失败了，使用原始位置但抬高一点
-                        result = rawPosition + Vector3.up * 0.5f;
-                        method = "回退(+0.5m)";
-                    }
-                }
-                
-                DevLog($"[BossRush] 刷新点修正: 原始={rawPosition}, 结果={result}, 方法={method}");
-            }
-            catch (Exception e)
-            {
-                result = rawPosition + Vector3.up * 0.5f;
-                DevLog($"[BossRush] GetSafeBossSpawnPosition 异常: {e.Message}");
-            }
-            return result;
+            return SpawnPositionHelper.SnapToGround(rawPosition);
         }
 
         /// <summary>
@@ -1219,46 +1179,7 @@ namespace BossRush
         /// <returns>经过 GetSafeBossSpawnPosition Y轴修正后的安全刷怪位置</returns>
         private static Vector3 FindNearestSafeSpawnPoint(Vector3[] spawnPoints, Vector3 playerPos)
         {
-            if (spawnPoints == null || spawnPoints.Length == 0)
-            {
-                return GetSafeBossSpawnPosition(playerPos + new Vector3(SPAWN_SAFE_DISTANCE, 0f, SPAWN_SAFE_DISTANCE));
-            }
-
-            Vector3 bestSafe = Vector3.zero;
-            float bestSafeDistSqr = float.MaxValue;
-            bool foundSafe = false;
-
-            Vector3 farthest = spawnPoints[0];
-            float farthestDistSqr = 0f;
-
-            for (int i = 0; i < spawnPoints.Length; i++)
-            {
-                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
-
-                // 记录最远点（兜底用）
-                if (distSqr > farthestDistSqr)
-                {
-                    farthestDistSqr = distSqr;
-                    farthest = spawnPoints[i];
-                }
-
-                // 在安全距离外，且是目前最近的
-                if (distSqr >= SPAWN_SAFE_DISTANCE_SQR && distSqr < bestSafeDistSqr)
-                {
-                    bestSafeDistSqr = distSqr;
-                    bestSafe = spawnPoints[i];
-                    foundSafe = true;
-                }
-            }
-
-            if (foundSafe)
-            {
-                return GetSafeBossSpawnPosition(bestSafe);
-            }
-
-            // 所有点都在安全距离内，使用最远的点
-            DevLog("[BossRush] FindNearestSafeSpawnPoint: 所有刷怪点都在安全距离(" + SPAWN_SAFE_DISTANCE + "m)内，使用最远点(" + Mathf.Sqrt(farthestDistSqr).ToString("F1") + "m)");
-            return GetSafeBossSpawnPosition(farthest);
+            return SpawnPositionHelper.FindNearestSafeSpawnPoint(spawnPoints, playerPos, SPAWN_SAFE_DISTANCE);
         }
 
         /// <summary>
@@ -1266,43 +1187,7 @@ namespace BossRush
         /// </summary>
         private static Vector3 FindNearestSafeSpawnPoint(List<Vector3> spawnPoints, Vector3 playerPos)
         {
-            if (spawnPoints == null || spawnPoints.Count == 0)
-            {
-                return GetSafeBossSpawnPosition(playerPos + new Vector3(SPAWN_SAFE_DISTANCE, 0f, SPAWN_SAFE_DISTANCE));
-            }
-
-            Vector3 bestSafe = Vector3.zero;
-            float bestSafeDistSqr = float.MaxValue;
-            bool foundSafe = false;
-
-            Vector3 farthest = spawnPoints[0];
-            float farthestDistSqr = 0f;
-
-            for (int i = 0; i < spawnPoints.Count; i++)
-            {
-                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
-
-                if (distSqr > farthestDistSqr)
-                {
-                    farthestDistSqr = distSqr;
-                    farthest = spawnPoints[i];
-                }
-
-                if (distSqr >= SPAWN_SAFE_DISTANCE_SQR && distSqr < bestSafeDistSqr)
-                {
-                    bestSafeDistSqr = distSqr;
-                    bestSafe = spawnPoints[i];
-                    foundSafe = true;
-                }
-            }
-
-            if (foundSafe)
-            {
-                return GetSafeBossSpawnPosition(bestSafe);
-            }
-
-            DevLog("[BossRush] FindNearestSafeSpawnPoint: 所有刷怪点都在安全距离(" + SPAWN_SAFE_DISTANCE + "m)内，使用最远点(" + Mathf.Sqrt(farthestDistSqr).ToString("F1") + "m)");
-            return GetSafeBossSpawnPosition(farthest);
+            return SpawnPositionHelper.FindNearestSafeSpawnPoint(spawnPoints, playerPos, SPAWN_SAFE_DISTANCE);
         }
 
         /// <summary>

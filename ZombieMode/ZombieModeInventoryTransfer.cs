@@ -54,7 +54,10 @@ namespace BossRush
                             ItemUtilities.SendToPlayer(item, false, false);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex2)
+                    {
+                        DevLog("[ZombieMode] 裸装回退 SendToPlayer 失败: " + ex2.Message);
+                    }
                     RollbackZombieModeInventoryTransferShell();
                     return false;
                 }

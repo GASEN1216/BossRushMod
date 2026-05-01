@@ -34,7 +34,7 @@ namespace BossRush
             {
                 RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Coroutine, null, null, delegate
                 {
-                    try { StopCoroutine(coroutine); } catch { }
+                    try { StopCoroutine(coroutine); } catch (System.Exception e) { DevLog("[ZombieMode] StopCoroutine 失败: " + e.Message); }
                 });
             }
 

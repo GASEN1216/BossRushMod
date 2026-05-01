@@ -10,6 +10,8 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        private readonly Dictionary<int, bool> zombieModeMeleeWeaponTypeCache = new Dictionary<int, bool>();
+
         private ZombieModeEnemyKind RollZombieModeEnemyKind()
         {
             int pollution = zombieModeRunState.TotalPollution;
@@ -412,22 +414,45 @@ namespace BossRush
                 return false;
             }
 
+            bool cached;
+            if (zombieModeMeleeWeaponTypeCache.TryGetValue(damageInfo.fromWeaponItemID, out cached))
+            {
+                return cached;
+            }
+
+            return CacheZombieModeMeleeWeaponType(damageInfo.fromWeaponItemID);
+        }
+
+        private bool CacheZombieModeMeleeWeaponType(int typeId)
+        {
+            bool melee = false;
+            bool resolved = false;
             try
             {
-                ItemStatsSystem.Item item = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(damageInfo.fromWeaponItemID);
+                ItemStatsSystem.Item item = null;
+                try { item = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeId); } catch (System.Exception e) { DevLog("[ZombieMode] GetPrefab(" + typeId + ") 失败，回退 ItemFactory: " + e.Message); }
                 if (item == null)
                 {
-                    return false;
+                    try { item = ItemFactory.GetLoadedItem(typeId); } catch (System.Exception e) { DevLog("[ZombieMode] ItemFactory.GetLoadedItem(" + typeId + ") 失败: " + e.Message); }
                 }
 
-                bool melee = ItemHasZombieModeTag(item, "MeleeWeapon") || item.GetComponent<ItemAgent_MeleeWeapon>() != null;
-                try { Destroy(item.gameObject); } catch { }
-                return melee;
+                if (item != null)
+                {
+                    melee = ItemHasZombieModeTag(item, "MeleeWeapon") ||
+                            item.GetComponent<ItemAgent_MeleeWeapon>() != null;
+                    resolved = true;
+                }
             }
-            catch
+            catch (System.Exception e)
             {
-                return false;
+                DevLog("[ZombieMode] 近战武器类型缓存失败: " + e.Message);
             }
+
+            if (resolved)
+            {
+                zombieModeMeleeWeaponTypeCache[typeId] = melee;
+            }
+            return melee;
         }
 
         private bool ItemHasZombieModeTag(ItemStatsSystem.Item item, string tagName)
@@ -501,7 +526,10 @@ namespace BossRush
                 Modifier modifier = new Modifier(ModifierType.Add, stat.BaseValue * (multiplier - 1f), this);
                 stat.AddModifier(modifier);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] AI 倍率 Modifier 应用失败: " + e.Message);
+            }
         }
 
         private void ApplyZombieModeAiSpeedMultiplier(CharacterMainControl enemy, float speedMultiplier)
@@ -996,7 +1024,10 @@ namespace BossRush
                     renderer.material.color = new Color(1f, 0.16f, 0.08f, 0.35f);
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] telegraph renderer 调色失败: " + e.Message);
+            }
 
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, telegraph, null);
             StartZombieModeCoroutine(
@@ -1022,7 +1053,7 @@ namespace BossRush
 
             if (telegraph != null)
             {
-                try { Destroy(telegraph); } catch { }
+                try { Destroy(telegraph); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy telegraph 失败: " + e.Message); }
             }
         }
 

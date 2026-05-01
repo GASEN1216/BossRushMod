@@ -77,7 +77,7 @@ namespace BossRush
                 else if (damageInfo.fromCharacter.IsMainCharacter)
                 {
                     float absorbedFinalDamage = 0f;
-                    ZombieModeBossShieldRuntime allyShield = victim.gameObject.GetComponent<ZombieModeBossShieldRuntime>();
+                    ZombieModeBossShieldRuntime allyShield = marker.AllyShield;
                     if (allyShield != null && allyShield.IsShieldActive())
                     {
                         absorbedFinalDamage += allyShield.AbsorbDamage(Mathf.Max(0f, damageInfo.finalDamage - absorbedFinalDamage));
@@ -532,7 +532,10 @@ namespace BossRush
                     UniTaskExtensions.Forget(SceneLoader.Instance.LoadBaseScene(null, true));
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] 死亡后回主场景失败: " + e.Message);
+            }
         }
     }
 }

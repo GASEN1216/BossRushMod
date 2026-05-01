@@ -120,7 +120,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\F3DebugCheatMath.cs ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
-    Utilities\SpawnPointGeometryHelper.cs ^
+    Utilities\SpawnPositionHelper.cs ^
     Utilities\SteamHelper.cs ^
     Utilities\BossCleanupHelpers.cs ^
     Utilities\OriginalExtractionPointIsolationHelper.cs ^

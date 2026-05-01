@@ -542,19 +542,22 @@ namespace BossRush
 
     public sealed class ZombieModeBossInstance
     {
+        // 身份
         public CharacterMainControl Character;
         public ZombieModeBossKind Kind;
+
+        // 生命周期标记
         public bool Alive;
         public bool LootSettled;
         public bool PointsSettled;
+        public bool RuntimeRegistered;
+
+        // 卡死检测追踪（由 TickZombieModeBossController / HandleZombieModeBossHurt 维护）
         public Vector3 LastKnownPosition;
         public float LastReachableTime;
         public float LastHurtTime;
-        public bool RuntimeRegistered;
-        public float NextSkillTime;
-        public int SkillSequence;
 
-        // per-kind 技能状态（按 Kind 实例化对应子类）
+        // per-kind 技能状态（按 Kind 实例化对应子类，承载 NextDashTime / FrenzyEndTime 等）
         public ZombieModeBossSkillState SkillState;
     }
 

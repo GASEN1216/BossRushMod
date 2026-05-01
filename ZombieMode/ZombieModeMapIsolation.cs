@@ -40,7 +40,14 @@ namespace BossRush
                 GameObject obj = zombieModeDisabledMapObjects[i];
                 if (obj != null)
                 {
-                    try { obj.SetActive(true); } catch { }
+                    try
+                    {
+                        obj.SetActive(true);
+                    }
+                    catch (Exception e)
+                    {
+                        DevLog("[ZombieMode] [WARNING] 恢复原始 spawner GameObject 失败: " + e.Message);
+                    }
                 }
             }
 
@@ -67,7 +74,10 @@ namespace BossRush
                                 disabledObject.SetActive(wasActive);
                             }
                         }
-                        catch { }
+                        catch (Exception e)
+                        {
+                            DevLog("[ZombieMode] [WARNING] 恢复原版撤离点 SetActive 失败: " + e.Message);
+                        }
                     });
                 },
                 out usedExitCreatorSnapshot,
@@ -89,7 +99,14 @@ namespace BossRush
 
         private void RestoreZombieModeOriginalExtractionPoints()
         {
-            try { OriginalExtractionPointIsolationHelper.Restore(zombieModeDisabledOriginalExtractionObjects, zombieModeOriginalExtractionActiveStateByObjectId); } catch { }
+            try
+            {
+                OriginalExtractionPointIsolationHelper.Restore(zombieModeDisabledOriginalExtractionObjects, zombieModeOriginalExtractionActiveStateByObjectId);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] 恢复原版撤离点失败: " + e.Message);
+            }
             if (zombieModeRunState.MapProfile != null)
             {
                 zombieModeRunState.MapProfile.DisabledExtractionAreaIds = new int[0];
@@ -130,7 +147,10 @@ namespace BossRush
                             disabledObject.SetActive(true);
                         }
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        DevLog("[ZombieMode] [WARNING] 恢复原版 spawner SetActive 失败: " + e.Message);
+                    }
                 });
             }
         }
@@ -171,7 +191,10 @@ namespace BossRush
                 {
                     Destroy(character.gameObject);
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    DevLog("[ZombieMode] [WARNING] 清理原版敌人 Destroy 失败: " + e.Message);
+                }
             }
         }
 
@@ -189,7 +212,10 @@ namespace BossRush
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] Team.IsEnemy 检查失败: " + e.Message);
+            }
 
             if (IsZombieModeRetainedNeutralWhitelisted(character))
             {
@@ -203,7 +229,10 @@ namespace BossRush
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] DuckovDialogueActor 检查失败: " + e.Message);
+            }
 
             try
             {
@@ -212,7 +241,10 @@ namespace BossRush
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] StockShop 检查失败: " + e.Message);
+            }
 
             try
             {
@@ -242,7 +274,10 @@ namespace BossRush
                     }
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] 中立 NPC 类型扫描失败: " + e.Message);
+            }
 
             return false;
         }

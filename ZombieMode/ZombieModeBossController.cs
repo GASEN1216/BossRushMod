@@ -25,8 +25,6 @@ namespace BossRush
                 instance.LastReachableTime = Time.unscaledTime;
                 instance.LastHurtTime = Time.unscaledTime;
                 instance.RuntimeRegistered = true;
-                instance.NextSkillTime = Time.unscaledTime + UnityEngine.Random.Range(2f, 5f);
-                instance.SkillSequence = 0;
                 instance.SkillState = CreateZombieModeBossSkillState(kind);
                 instance.SkillState.Reset(Time.unscaledTime, boss.transform.localScale.x);
                 break;
@@ -220,6 +218,11 @@ namespace BossRush
                                 shield = boss.gameObject.AddComponent<ZombieModeBossShieldRuntime>();
                             }
                             shield.ActivateShield(runId, amount, ZombieModeTuning.ShielderSelfShieldDurationSeconds);
+                            ZombieModeEnemyRuntimeMarker bossMarker = boss.gameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                            if (bossMarker != null)
+                            {
+                                bossMarker.AllyShield = shield;
+                            }
                         }
                     }
                     if (now >= shielder.NextGroupShieldTime)
@@ -267,7 +270,10 @@ namespace BossRush
                 Renderer r = zone.GetComponent<Renderer>();
                 if (r != null) r.material.color = new Color(0.45f, 0.10f, 0.65f, 0.50f);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] CorruptorZone renderer 调色失败: " + e.Message);
+            }
 
             ZombieModeCorruptionZoneRuntime runtime = zone.AddComponent<ZombieModeCorruptionZoneRuntime>();
             runtime.Initialize(
@@ -296,7 +302,10 @@ namespace BossRush
                 Renderer r = seg.GetComponent<Renderer>();
                 if (r != null) r.material.color = new Color(0.30f, 0.65f, 0.20f, 0.45f);
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] PoisonPath segment renderer 调色失败: " + e.Message);
+            }
 
             ZombieModePoisonPathRuntime runtime = seg.AddComponent<ZombieModePoisonPathRuntime>();
             runtime.Initialize(
@@ -347,6 +356,7 @@ namespace BossRush
                     shield = ch.gameObject.AddComponent<ZombieModeBossShieldRuntime>();
                 }
                 shield.ActivateShield(runId, amount, ZombieModeTuning.ShielderGroupShieldDurationSeconds);
+                marker.AllyShield = shield;
                 ch.PopText(L10n.T("BossRush_ZombieMode_Affix_Shielded"));
             }
 
@@ -637,7 +647,10 @@ namespace BossRush
                     r.material.color = new Color(0.55f, 0.20f, 0.85f, 0.40f);
                 }
             }
-            catch { }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] DeathCloud renderer 调色失败: " + e.Message);
+            }
 
             ZombieModeDeathCloudRuntime runtime = cloud.AddComponent<ZombieModeDeathCloudRuntime>();
             runtime.Initialize(
