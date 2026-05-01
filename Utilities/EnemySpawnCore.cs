@@ -63,7 +63,10 @@ namespace BossRush
             Action onFailed = null,
             int waveIndex = 1,
             bool skipDragonDescendant = false,
-            bool skipDragonKing = false)
+            bool skipDragonKing = false,
+            bool applyEquipment = true,
+            bool applyBossMultiplier = true,
+            CharacterRandomPreset directPreset = null)
         {
             try
             {
@@ -164,8 +167,8 @@ namespace BossRush
                         // 普通预设：通过 CharacterRandomPreset 生成
                         else
                         {
-                            CharacterRandomPreset targetPreset = null;
-                            if (cachedCharacterPresets != null)
+                            CharacterRandomPreset targetPreset = directPreset;
+                            if (targetPreset == null && cachedCharacterPresets != null)
                             {
                                 cachedCharacterPresets.TryGetValue(currentPreset.name, out targetPreset);
                             }
@@ -268,10 +271,16 @@ namespace BossRush
                             NormalizeDamageMultiplier(character);
 
                             // 应用配装（Boss 保留原有头盔和护甲）
-                            EquipEnemyForModeD(character, waveIndex, currentPreset.baseHealth, isBoss);
+                            if (applyEquipment)
+                            {
+                                EquipEnemyForModeD(character, waveIndex, currentPreset.baseHealth, isBoss);
+                            }
 
                             // 应用全局 Boss 数值倍率
-                            ApplyBossStatMultiplier(character);
+                            if (applyBossMultiplier)
+                            {
+                                ApplyBossStatMultiplier(character);
+                            }
 
                             // 激活敌人
                             character.gameObject.SetActive(true);
