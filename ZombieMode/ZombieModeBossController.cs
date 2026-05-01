@@ -27,17 +27,21 @@ namespace BossRush
                 instance.RuntimeRegistered = true;
                 instance.NextSkillTime = Time.unscaledTime + UnityEngine.Random.Range(2f, 5f);
                 instance.SkillSequence = 0;
-                float now = Time.unscaledTime;
-                instance.NextTitanShockwaveTime = now + UnityEngine.Random.Range(2f, 5f);
-                instance.NextTitanDamageReductionTime = now + UnityEngine.Random.Range(8f, 12f);
-                instance.NextHunterDashTime = now + UnityEngine.Random.Range(2f, 4f);
-                instance.NextSplitterSummonTime = now + UnityEngine.Random.Range(3f, 6f);
-                instance.NextShielderSelfShieldTime = now + UnityEngine.Random.Range(4f, 8f);
-                instance.NextShielderGroupShieldTime = now + UnityEngine.Random.Range(10f, 14f);
-                instance.NextCorruptorZoneTime = now + UnityEngine.Random.Range(2f, 5f);
-                instance.NextCorruptorPoisonPathTime = now + UnityEngine.Random.Range(1f, 3f);
-                instance.HunterFrenzyOriginalScale = boss.transform.localScale.x;
+                instance.SkillState = CreateZombieModeBossSkillState(kind);
+                instance.SkillState.Reset(Time.unscaledTime, boss.transform.localScale.x);
                 break;
+            }
+        }
+
+        private static ZombieModeBossSkillState CreateZombieModeBossSkillState(ZombieModeBossKind kind)
+        {
+            switch (kind)
+            {
+                case ZombieModeBossKind.Titan: return new ZombieModeTitanState();
+                case ZombieModeBossKind.Hunter: return new ZombieModeHunterState();
+                case ZombieModeBossKind.Splitter: return new ZombieModeSplitterState();
+                case ZombieModeBossKind.Shielder: return new ZombieModeShielderState();
+                default: return new ZombieModeCorruptorState();
             }
         }
 
@@ -73,18 +77,20 @@ namespace BossRush
                 }
 
                 // Tick state expirations (Titan DR, Hunter frenzy)
-                if (instance.TitanDamageReductionActive && now >= instance.TitanDamageReductionEndTime)
+                ZombieModeTitanState titanState = instance.SkillState as ZombieModeTitanState;
+                if (titanState != null && titanState.DamageReductionActive && now >= titanState.DamageReductionEndTime)
                 {
-                    instance.TitanDamageReductionActive = false;
+                    titanState.DamageReductionActive = false;
                 }
 
-                if (instance.HunterFrenzyActive && now >= instance.HunterFrenzyEndTime)
+                ZombieModeHunterState hunterState = instance.SkillState as ZombieModeHunterState;
+                if (hunterState != null && hunterState.FrenzyActive && now >= hunterState.FrenzyEndTime)
                 {
-                    instance.HunterFrenzyActive = false;
-                    if (instance.Character != null && instance.HunterFrenzyOriginalScale > 0f)
+                    hunterState.FrenzyActive = false;
+                    if (instance.Character != null && hunterState.FrenzyOriginalScale > 0f)
                     {
                         Vector3 s = instance.Character.transform.localScale;
-                        float ratio = instance.HunterFrenzyOriginalScale / Mathf.Max(0.01f, s.x);
+                        float ratio = hunterState.FrenzyOriginalScale / Mathf.Max(0.01f, s.x);
                         instance.Character.transform.localScale = s * ratio;
                     }
                 }
@@ -133,9 +139,11 @@ namespace BossRush
             switch (instance.Kind)
             {
                 case ZombieModeBossKind.Titan:
-                    if (now >= instance.NextTitanShockwaveTime)
+                {
+                    ZombieModeTitanState titan = (ZombieModeTitanState)instance.SkillState;
+                    if (now >= titan.NextShockwaveTime)
                     {
-                        instance.NextTitanShockwaveTime = now + ZombieModeTuning.TitanShockwaveCooldownSeconds;
+                        titan.NextShockwaveTime = now + ZombieModeTuning.TitanShockwaveCooldownSeconds;
                         StartZombieModeTelegraphedAreaDamage(
                             runId,
                             boss,
@@ -145,21 +153,24 @@ namespace BossRush
                             ZombieModeTuning.TitanShockwaveStartupSeconds,
                             L10n.T("BossRush_ZombieMode_Boss_Titan"));
                     }
-                    if (now >= instance.NextTitanDamageReductionTime && !instance.TitanDamageReductionActive)
+                    if (now >= titan.NextDamageReductionTime && !titan.DamageReductionActive)
                     {
-                        instance.NextTitanDamageReductionTime = now + ZombieModeTuning.TitanDamageReductionCooldownSeconds;
-                        instance.TitanDamageReductionActive = true;
-                        instance.TitanDamageReductionEndTime = now
+                        titan.NextDamageReductionTime = now + ZombieModeTuning.TitanDamageReductionCooldownSeconds;
+                        titan.DamageReductionActive = true;
+                        titan.DamageReductionEndTime = now
                             + ZombieModeTuning.TitanDamageReductionStartupSeconds
                             + ZombieModeTuning.TitanDamageReductionDurationSeconds;
                         boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Titan"));
                     }
                     break;
+                }
 
                 case ZombieModeBossKind.Hunter:
-                    if (now >= instance.NextHunterDashTime)
+                {
+                    ZombieModeHunterState hunter = (ZombieModeHunterState)instance.SkillState;
+                    if (now >= hunter.NextDashTime)
                     {
-                        instance.NextHunterDashTime = now + ZombieModeTuning.HunterDashCooldownSeconds;
+                        hunter.NextDashTime = now + ZombieModeTuning.HunterDashCooldownSeconds;
                         boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Hunter"));
                         Vector3 target = Vector3.MoveTowards(boss.transform.position, player.transform.position, ZombieModeTuning.HunterDashDistance);
                         target.y = boss.transform.position.y;
@@ -174,12 +185,15 @@ namespace BossRush
                             L10n.T("BossRush_ZombieMode_Boss_Hunter"));
                     }
                     break;
+                }
 
                 case ZombieModeBossKind.Splitter:
-                    if (now >= instance.NextSplitterSummonTime &&
+                {
+                    ZombieModeSplitterState splitter = (ZombieModeSplitterState)instance.SkillState;
+                    if (now >= splitter.NextSummonTime &&
                         zombieModeRunState.PerformanceTier < ZombieModePerformanceTier.SoftProtect)
                     {
-                        instance.NextSplitterSummonTime = now + ZombieModeTuning.SplitterBossSummonCooldownSeconds;
+                        splitter.NextSummonTime = now + ZombieModeTuning.SplitterBossSummonCooldownSeconds;
                         boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Splitter"));
                         for (int i = 0; i < ZombieModeTuning.SplitterBossSummonCount; i++)
                         {
@@ -188,11 +202,14 @@ namespace BossRush
                         }
                     }
                     break;
+                }
 
                 case ZombieModeBossKind.Shielder:
-                    if (now >= instance.NextShielderSelfShieldTime)
+                {
+                    ZombieModeShielderState shielder = (ZombieModeShielderState)instance.SkillState;
+                    if (now >= shielder.NextSelfShieldTime)
                     {
-                        instance.NextShielderSelfShieldTime = now + ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
+                        shielder.NextSelfShieldTime = now + ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
                         boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Shielder"));
                         if (boss.Health != null)
                         {
@@ -205,26 +222,30 @@ namespace BossRush
                             shield.ActivateShield(runId, amount, ZombieModeTuning.ShielderSelfShieldDurationSeconds);
                         }
                     }
-                    if (now >= instance.NextShielderGroupShieldTime)
+                    if (now >= shielder.NextGroupShieldTime)
                     {
-                        instance.NextShielderGroupShieldTime = now + ZombieModeTuning.ShielderGroupShieldCooldownSeconds;
+                        shielder.NextGroupShieldTime = now + ZombieModeTuning.ShielderGroupShieldCooldownSeconds;
                         ApplyZombieModeBossShieldPulse(runId, boss.transform.position);
                     }
                     break;
+                }
 
                 case ZombieModeBossKind.Corruptor:
-                    if (now >= instance.NextCorruptorZoneTime)
+                {
+                    ZombieModeCorruptorState corruptor = (ZombieModeCorruptorState)instance.SkillState;
+                    if (now >= corruptor.NextZoneTime)
                     {
-                        instance.NextCorruptorZoneTime = now + ZombieModeTuning.CorruptorZoneCooldownSeconds;
+                        corruptor.NextZoneTime = now + ZombieModeTuning.CorruptorZoneCooldownSeconds;
                         SpawnZombieModeCorruptionZone(runId, player.transform.position);
                         boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Corruptor"));
                     }
-                    if (now >= instance.NextCorruptorPoisonPathTime)
+                    if (now >= corruptor.NextPoisonPathTime)
                     {
-                        instance.NextCorruptorPoisonPathTime = now + ZombieModeTuning.CorruptorPoisonPathTickIntervalSeconds;
+                        corruptor.NextPoisonPathTime = now + ZombieModeTuning.CorruptorPoisonPathTickIntervalSeconds;
                         SpawnZombieModePoisonPathSegment(runId, boss.transform.position);
                     }
                     break;
+                }
             }
         }
 
@@ -375,8 +396,10 @@ namespace BossRush
                 instance.LastKnownPosition = victim.transform.position;
 
                 // Hunter low-HP frenzy trigger
+                ZombieModeHunterState hunterDamageState = instance.SkillState as ZombieModeHunterState;
                 if (instance.Kind == ZombieModeBossKind.Hunter &&
-                    !instance.HunterFrenzyActive &&
+                    hunterDamageState != null &&
+                    !hunterDamageState.FrenzyActive &&
                     victim.Health != null &&
                     victim.Health.MaxHealth > 0f &&
                     victim.Health.CurrentHealth / victim.Health.MaxHealth <= ZombieModeTuning.HunterFrenzyHpThreshold)
@@ -385,17 +408,18 @@ namespace BossRush
                 }
 
                 // Splitter HP-threshold split
-                if (instance.Kind == ZombieModeBossKind.Splitter && victim.Health != null && victim.Health.MaxHealth > 0f)
+                ZombieModeSplitterState splitterDamageState = instance.SkillState as ZombieModeSplitterState;
+                if (instance.Kind == ZombieModeBossKind.Splitter && splitterDamageState != null && victim.Health != null && victim.Health.MaxHealth > 0f)
                 {
                     float ratio = victim.Health.CurrentHealth / victim.Health.MaxHealth;
-                    if (!instance.SplitterFirstSplitTriggered && ratio <= ZombieModeTuning.SplitterBossSplitFirstHpThreshold)
+                    if (!splitterDamageState.FirstSplitTriggered && ratio <= ZombieModeTuning.SplitterBossSplitFirstHpThreshold)
                     {
-                        instance.SplitterFirstSplitTriggered = true;
+                        splitterDamageState.FirstSplitTriggered = true;
                         TriggerZombieModeSplitterHpSplit(runId, victim);
                     }
-                    if (!instance.SplitterSecondSplitTriggered && ratio <= ZombieModeTuning.SplitterBossSplitSecondHpThreshold)
+                    if (!splitterDamageState.SecondSplitTriggered && ratio <= ZombieModeTuning.SplitterBossSplitSecondHpThreshold)
                     {
-                        instance.SplitterSecondSplitTriggered = true;
+                        splitterDamageState.SecondSplitTriggered = true;
                         TriggerZombieModeSplitterHpSplit(runId, victim);
                     }
                 }
@@ -406,8 +430,10 @@ namespace BossRush
         private void ActivateZombieModeHunterFrenzy(ZombieModeBossInstance instance)
         {
             if (instance == null || instance.Character == null) return;
-            instance.HunterFrenzyActive = true;
-            instance.HunterFrenzyEndTime = Time.unscaledTime + ZombieModeTuning.HunterFrenzyDurationSeconds;
+            ZombieModeHunterState hunter = instance.SkillState as ZombieModeHunterState;
+            if (hunter == null) return;
+            hunter.FrenzyActive = true;
+            hunter.FrenzyEndTime = Time.unscaledTime + ZombieModeTuning.HunterFrenzyDurationSeconds;
             // Visual feedback: scale up slightly via the existing speed-multiplier helper
             instance.Character.PopText(L10n.T("BossRush_ZombieMode_Boss_Hunter"));
             ApplyZombieModeAiSpeedMultiplier(instance.Character, 1f + ZombieModeTuning.HunterFrenzyMoveSpeedBonus);
@@ -437,9 +463,11 @@ namespace BossRush
 
             // Titan damage reduction self-buff
             ZombieModeBossInstance titan = FindZombieModeBossInstanceFor(boss);
+            ZombieModeTitanState titanReductionState = titan != null ? titan.SkillState as ZombieModeTitanState : null;
             if (titan != null &&
                 titan.Kind == ZombieModeBossKind.Titan &&
-                titan.TitanDamageReductionActive)
+                titanReductionState != null &&
+                titanReductionState.DamageReductionActive)
             {
                 damageValue *= (1f - ZombieModeTuning.TitanDamageReductionPercent);
                 return true;
@@ -476,9 +504,11 @@ namespace BossRush
             }
 
             ZombieModeBossInstance titan = FindZombieModeBossInstanceFor(boss);
+            ZombieModeTitanState titanReductionState = titan != null ? titan.SkillState as ZombieModeTitanState : null;
             if (titan != null &&
                 titan.Kind == ZombieModeBossKind.Titan &&
-                titan.TitanDamageReductionActive)
+                titanReductionState != null &&
+                titanReductionState.DamageReductionActive)
             {
                 damageAfterAbsorb *= (1f - ZombieModeTuning.TitanDamageReductionPercent);
                 changed = true;

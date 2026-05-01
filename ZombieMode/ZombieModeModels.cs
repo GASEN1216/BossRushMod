@@ -464,6 +464,82 @@ namespace BossRush
         public GameObject Visual;
     }
 
+    /// <summary>
+    /// Boss 技能状态基类。每个 Boss kind 实例化一个对应子类，
+    /// 把 5 种 Boss 的独占冷却字段从 ZombieModeBossInstance 拆出来。
+    /// </summary>
+    public abstract class ZombieModeBossSkillState
+    {
+        /// <summary>
+        /// 在 Boss 出生时初始化所有 Next*Time 与 scale 缓存。
+        /// </summary>
+        public abstract void Reset(float now, float bossScale);
+    }
+
+    public sealed class ZombieModeTitanState : ZombieModeBossSkillState
+    {
+        public float NextShockwaveTime;
+        public float NextDamageReductionTime;
+        public bool DamageReductionActive;
+        public float DamageReductionEndTime;
+
+        public override void Reset(float now, float bossScale)
+        {
+            NextShockwaveTime = now + UnityEngine.Random.Range(2f, 5f);
+            NextDamageReductionTime = now + UnityEngine.Random.Range(8f, 12f);
+        }
+    }
+
+    public sealed class ZombieModeHunterState : ZombieModeBossSkillState
+    {
+        public float NextDashTime;
+        public bool FrenzyActive;
+        public float FrenzyEndTime;
+        public float FrenzyOriginalScale = 1f;
+
+        public override void Reset(float now, float bossScale)
+        {
+            NextDashTime = now + UnityEngine.Random.Range(2f, 4f);
+            FrenzyOriginalScale = bossScale;
+        }
+    }
+
+    public sealed class ZombieModeSplitterState : ZombieModeBossSkillState
+    {
+        public float NextSummonTime;
+        public bool FirstSplitTriggered;
+        public bool SecondSplitTriggered;
+
+        public override void Reset(float now, float bossScale)
+        {
+            NextSummonTime = now + UnityEngine.Random.Range(3f, 6f);
+        }
+    }
+
+    public sealed class ZombieModeShielderState : ZombieModeBossSkillState
+    {
+        public float NextSelfShieldTime;
+        public float NextGroupShieldTime;
+
+        public override void Reset(float now, float bossScale)
+        {
+            NextSelfShieldTime = now + UnityEngine.Random.Range(4f, 8f);
+            NextGroupShieldTime = now + UnityEngine.Random.Range(10f, 14f);
+        }
+    }
+
+    public sealed class ZombieModeCorruptorState : ZombieModeBossSkillState
+    {
+        public float NextZoneTime;
+        public float NextPoisonPathTime;
+
+        public override void Reset(float now, float bossScale)
+        {
+            NextZoneTime = now + UnityEngine.Random.Range(2f, 5f);
+            NextPoisonPathTime = now + UnityEngine.Random.Range(1f, 3f);
+        }
+    }
+
     public sealed class ZombieModeBossInstance
     {
         public CharacterMainControl Character;
@@ -478,28 +554,8 @@ namespace BossRush
         public float NextSkillTime;
         public int SkillSequence;
 
-        // 各 Boss 独立技能冷却时间
-        public float NextTitanShockwaveTime;
-        public float NextTitanDamageReductionTime;
-        public float NextHunterDashTime;
-        public float NextSplitterSummonTime;
-        public float NextShielderSelfShieldTime;
-        public float NextShielderGroupShieldTime;
-        public float NextCorruptorZoneTime;
-        public float NextCorruptorPoisonPathTime;
-
-        // Titan damage reduction self-buff state
-        public bool TitanDamageReductionActive;
-        public float TitanDamageReductionEndTime;
-
-        // Hunter frenzy state
-        public bool HunterFrenzyActive;
-        public float HunterFrenzyEndTime;
-        public float HunterFrenzyOriginalScale = 1f;
-
-        // Splitter HP-threshold split tracking
-        public bool SplitterFirstSplitTriggered;
-        public bool SplitterSecondSplitTriggered;
+        // per-kind 技能状态（按 Kind 实例化对应子类）
+        public ZombieModeBossSkillState SkillState;
     }
 
     public sealed class ZombieModeRewardNode
