@@ -292,7 +292,7 @@ namespace BossRush
             return character;
         }
 
-        private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
+        private UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
             int runId,
             Vector3 position,
             ZombieModeEnemyKind forcedEnemyKind = ZombieModeEnemyKind.Normal,
@@ -300,37 +300,55 @@ namespace BossRush
         {
             if (!IsZombieModeRunValid(runId))
             {
-                return null;
+                return UniTask.FromResult<CharacterMainControl>(null);
             }
 
             CharacterRandomPreset preset = FindZombieModeNormalZombiePreset();
             if (preset == null)
             {
-                return null;
+                return UniTask.FromResult<CharacterMainControl>(null);
             }
 
-            CharacterMainControl zombie = await TryCreateZombieModePresetCharacterAsync(runId, preset, position, "[ZombieMode] 丧尸生成失败: ");
-            if (zombie == null)
+            UniTaskCompletionSource<CharacterMainControl> tcs = new UniTaskCompletionSource<CharacterMainControl>();
+            EnemyPresetInfo info = new EnemyPresetInfo
             {
-                return null;
-            }
+                name = ZOMBIE_MODE_NORMAL_PRESET_NAME,
+                displayName = "ZombieMode_NormalZombie",
+                baseHealth = 100f,
+            };
 
-            ZombieModeEnemyKind enemyKind = forceEnemyKind ? forcedEnemyKind : RollZombieModeEnemyKind();
-            ZombieModeSpecialKind specialKind = enemyKind == ZombieModeEnemyKind.Special
-                ? RollZombieModeSpecialKind()
-                : ZombieModeSpecialKind.None;
-            List<ZombieModeEliteAffix> eliteAffixes = enemyKind == ZombieModeEnemyKind.Elite
-                ? RollZombieModeEliteAffixes()
-                : null;
+            SpawnEnemyCore(
+                info,
+                position,
+                isBoss: false,
+                isActiveCheck: () => IsZombieModeRunValid(runId),
+                onSpawned: ctx =>
+                {
+                    CharacterMainControl zombie = ctx.character;
 
-            zombie.gameObject.name = "ZombieMode_NormalZombie_Run" + runId;
-            PrepareZombieModeSpawnedEnemy(zombie, 100f);
+                    ZombieModeEnemyKind enemyKind = forceEnemyKind ? forcedEnemyKind : RollZombieModeEnemyKind();
+                    ZombieModeSpecialKind specialKind = enemyKind == ZombieModeEnemyKind.Special
+                        ? RollZombieModeSpecialKind()
+                        : ZombieModeSpecialKind.None;
+                    List<ZombieModeEliteAffix> eliteAffixes = enemyKind == ZombieModeEnemyKind.Elite
+                        ? RollZombieModeEliteAffixes()
+                        : null;
 
-            ZombieModeEnemyRuntimeMarker marker = RegisterZombieModeEnemyRuntimeShell(runId, zombie, false, ZombieModeBossKind.Titan, -1, enemyKind, specialKind, eliteAffixes);
-            ApplyZombieModeEnemyTuning(zombie, marker);
-            RegisterEnemyRecoveryAnchor(zombie, position);
-            zombieModeRunState.LivingZombieCount++;
-            return zombie;
+                    zombie.gameObject.name = "ZombieMode_NormalZombie_Run" + runId;
+                    PrepareZombieModeSpawnedEnemy(zombie, 100f);
+
+                    ZombieModeEnemyRuntimeMarker marker = RegisterZombieModeEnemyRuntimeShell(runId, zombie, false, ZombieModeBossKind.Titan, -1, enemyKind, specialKind, eliteAffixes);
+                    ApplyZombieModeEnemyTuning(zombie, marker);
+                    RegisterEnemyRecoveryAnchor(zombie, ctx.position);
+                    zombieModeRunState.LivingZombieCount++;
+                    tcs.TrySetResult(zombie);
+                },
+                onFailed: () => tcs.TrySetResult(null),
+                applyEquipment: false,
+                applyBossMultiplier: false,
+                directPreset: preset);
+
+            return tcs.Task;
         }
 
         private async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync(int runId, Vector3 position, ZombieModeBossKind kind)
