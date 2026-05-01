@@ -390,7 +390,7 @@ namespace BossRush
             if (mod == null || string.IsNullOrEmpty(sceneName)) return false;
 
             // BossRush相关模式下始终允许（内部会按场景坐标规则处理）
-            if (mod.IsActive || mod.IsModeDActive || mod.IsBossRushArenaActive || mod.IsModeEActive || mod.IsModeFActive)
+            if (mod.IsAnyBossRushLikeModeActive())
             {
                 return true;
             }
@@ -434,8 +434,7 @@ namespace BossRush
             {
                 return mod.IsValidBossRushArenaScene(sceneName);
             }
-
-            if (mod.IsModeEActive || mod.IsModeFActive)
+            if (mod.UsesArenaSupportNpcPlacement())
             {
                 return mod.IsValidBossRushArenaScene(sceneName);
             }
@@ -478,8 +477,7 @@ namespace BossRush
             {
                 return mod.IsValidBossRushArenaScene(sceneName);
             }
-
-            if (mod.IsModeEActive || mod.IsModeFActive)
+            if (mod.UsesArenaSupportNpcPlacement())
             {
                 return mod.IsValidBossRushArenaScene(sceneName);
             }

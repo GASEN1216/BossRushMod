@@ -1878,7 +1878,7 @@ namespace BossRush
         /// </summary>
         public bool ShouldUseBossRushCommonNPCSpawnPoints(string sceneName = null)
         {
-            if (IsModeEActive)
+            if (UsesArenaSupportNpcPlacement())
             {
                 return false;
             }
@@ -2949,6 +2949,8 @@ namespace BossRush
                 TickModeF(Time.deltaTime);
             }
 
+            TickZombieMode(Time.deltaTime);
+
             // BossRush 期间，定期清理任何非 BossRush 召唤的“大兴兴”Boss
             if (IsActive || bossRushArenaActive)
             {
@@ -3371,6 +3373,7 @@ namespace BossRush
             }
 
             OnDestroy_Integration();
+            CleanupZombieModeOnDestroy();
             if (ReferenceEquals(Instance, this))
             {
                 Instance = null;
@@ -3393,6 +3396,10 @@ namespace BossRush
             AffinityUIManager.OnSceneUnload();
             AffinityManager.OnSceneUnload();
             ClearEnemyRecoveryMonitorState();
+            if (!ShouldPreserveZombieModeStartupForSceneLoad(scene))
+            {
+                CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);
+            }
 
             // Mode F 场景切换清理
             if (modeFActive)

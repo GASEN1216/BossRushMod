@@ -741,6 +741,11 @@ namespace BossRush
             GameObject row2 = CreateF3Row(section.transform);
             CreateActionButton(row2.transform, font, L10n.T("发船票并打开地图", "Grant Ticket + Map"), new Color(0.20f, 0.32f, 0.42f, 1f), GrantTicketAndOpenMapSelectionFromF3);
             CreateActionButton(row2.transform, font, L10n.T("切换放置模式", "Toggle Placement"), new Color(0.30f, 0.25f, 0.42f, 1f), TogglePlacementModeFromF3);
+
+            GameObject row3 = CreateF3Row(section.transform);
+            CreateActionButton(row3.transform, font, L10n.T("尸潮邀请函+地图", "Zombie Invite + Map"), new Color(0.20f, 0.32f, 0.42f, 1f), GrantZombieInvitationAndOpenMapSelectionFromF3);
+            CreateActionButton(row3.transform, font, L10n.T("触发尸潮撤离", "Trigger Zombie Extract"), new Color(0.22f, 0.42f, 0.28f, 1f), TriggerZombieModeExtractionFromF3);
+            CreateActionButton(row3.transform, font, L10n.T("重置尸潮模式", "Reset Zombie Mode"), new Color(0.44f, 0.22f, 0.22f, 1f), ResetZombieModeFromF3);
         }
 
         private void BuildF3NpcStoryPage()
@@ -2065,6 +2070,82 @@ namespace BossRush
             {
                 DevLog("[BossRush] F3 发船票并打开地图失败: " + e.Message);
                 SetF3DebugCheatStatus(L10n.T("打开地图失败", "Failed to open map selection"), true);
+            }
+        }
+
+        private void GrantZombieInvitationAndOpenMapSelectionFromF3()
+        {
+            try
+            {
+                string failureReason;
+                if (!CanStartZombieModeMapSelectionPhase1(out failureReason))
+                {
+                    SetF3DebugCheatStatus(string.IsNullOrEmpty(failureReason) ? L10n.T("当前无法开始尸潮模式", "Cannot start Zombie Mode now") : failureReason, true);
+                    return;
+                }
+
+                ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();
+                Item invitation = ItemAssetsCollection.InstantiateSync(BossRushItemIds.ZombieTideInvitation);
+                if (invitation == null)
+                {
+                    SetF3DebugCheatStatus(L10n.T("尸潮邀请函创建失败", "Failed to create Zombie Tide Invitation"), true);
+                    return;
+                }
+
+                ItemUtilities.SendToPlayerCharacterInventory(invitation, false);
+                if (!ZombieModeMapSelectionHelper.ShowZombieModeMapSelection(out failureReason))
+                {
+                    SetF3DebugCheatStatus(string.IsNullOrEmpty(failureReason) ? L10n.T("打开尸潮地图失败", "Failed to open Zombie Mode map") : failureReason, true);
+                    return;
+                }
+
+                HideF3DebugCheatMenu();
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] F3 打开尸潮地图失败: " + e.Message);
+                SetF3DebugCheatStatus(L10n.T("打开尸潮地图失败", "Failed to open Zombie Mode map"), true);
+            }
+        }
+
+        private void TriggerZombieModeExtractionFromF3()
+        {
+            try
+            {
+                if (!IsZombieModeActive)
+                {
+                    SetF3DebugCheatStatus(L10n.T("尸潮模式未激活", "Zombie Mode is not active"), true);
+                    return;
+                }
+
+                if (TryUseZombieModeBeacon())
+                {
+                    SetF3DebugCheatStatus(L10n.T("已触发尸潮撤离", "Zombie extraction triggered"), false);
+                }
+                else
+                {
+                    SetF3DebugCheatStatus(L10n.T("当前无法触发尸潮撤离", "Cannot trigger Zombie extraction now"), true);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] F3 触发尸潮撤离失败: " + e.Message);
+                SetF3DebugCheatStatus(L10n.T("触发尸潮撤离失败", "Failed to trigger Zombie extraction"), true);
+            }
+        }
+
+        private void ResetZombieModeFromF3()
+        {
+            try
+            {
+                DebugResetZombieModeShell();
+                SetF3DebugCheatStatus(L10n.T("已重置尸潮模式", "Zombie Mode reset"), false);
+                RefreshF3DebugCheatSummary();
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] F3 重置尸潮模式失败: " + e.Message);
+                SetF3DebugCheatStatus(L10n.T("重置尸潮模式失败", "Failed to reset Zombie Mode"), true);
             }
         }
 

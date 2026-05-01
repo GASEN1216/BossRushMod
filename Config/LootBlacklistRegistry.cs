@@ -76,6 +76,8 @@ namespace BossRush
                 EmergencyRepairSprayConfig.TYPE_ID,
 
                 DingdangDrawingConfig.TYPE_ID,
+                ZombieTideInvitationConfig.TYPE_ID,
+                ZombieTideBeaconConfig.TYPE_ID,
             };
 
             foreach (int id in blacklistIds)

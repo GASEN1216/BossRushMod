@@ -1018,5 +1018,7 @@ namespace BossRush
         public const int BossRushTicket = 500001;
         public const int BirthdayCake = 500002;
         public const int AdventureJournal = 500007;
+        public const int ZombieTideInvitation = 500045;
+        public const int ZombieTideBeacon = 500046;
     }
 }

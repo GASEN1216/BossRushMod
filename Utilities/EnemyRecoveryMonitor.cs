@@ -114,7 +114,7 @@ namespace BossRush
         {
             try
             {
-                if (!modeDActive && !modeEActive && !modeFActive && !IsActive)
+                if (!modeDActive && !modeEActive && !modeFActive && !IsActive && !IsZombieModeActive)
                 {
                     ClearEnemyRecoveryMonitorState();
                     return;
@@ -147,6 +147,10 @@ namespace BossRush
                 {
                     MonitorEnemyRecoveryList(modeFState.ActiveBosses, player);
                 }
+                else if (IsZombieModeActive)
+                {
+                    MonitorZombieModeEnemyRecovery(player);
+                }
                 else
                 {
                     MonitorNormalBossRushRecovery(player);
@@ -157,6 +161,33 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[EnemyRecovery] [ERROR] UpdateEnemyRecoveryMonitor failed: " + e.Message);
+            }
+        }
+
+        private void MonitorZombieModeEnemyRecovery(CharacterMainControl player)
+        {
+            if (zombieModeRunState == null || zombieModeRunState.RunOnlyObjects.Count <= 0)
+            {
+                return;
+            }
+
+            for (int i = zombieModeRunState.RunOnlyObjects.Count - 1; i >= 0; i--)
+            {
+                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                if (record == null ||
+                    (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss) ||
+                    record.GameObject == null)
+                {
+                    continue;
+                }
+
+                CharacterMainControl enemy = record.GameObject.GetComponent<CharacterMainControl>();
+                if (enemy == null)
+                {
+                    enemy = record.GameObject.GetComponentInChildren<CharacterMainControl>(true);
+                }
+
+                MonitorEnemyRecovery(enemy, player);
             }
         }
 
@@ -358,6 +389,18 @@ namespace BossRush
             try
             {
                 Vector3 currentPos = enemy.transform.position;
+                float preservedCurrentHealth = 0f;
+                bool hasPreservedCurrentHealth = false;
+                try
+                {
+                    if (enemy.Health != null && !enemy.Health.IsDead)
+                    {
+                        preservedCurrentHealth = enemy.Health.CurrentHealth;
+                        hasPreservedCurrentHealth = true;
+                    }
+                }
+                catch {}
+
                 Vector3 targetPos;
                 if (!TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos))
                 {
@@ -398,6 +441,7 @@ namespace BossRush
                 }
 
                 RestoreRecoveredEnemyAggro(enemy, player);
+                RestoreEnemyHealthAfterRecovery(enemy, preservedCurrentHealth, hasPreservedCurrentHealth);
 
                 state.excludedAnchorPosition = targetPos;
                 state.hasExcludedAnchorPosition = true;
@@ -411,6 +455,34 @@ namespace BossRush
             {
                 DevLog("[EnemyRecovery] [ERROR] TryRecoverEnemyToNearestSpawnPoint failed: " + e.Message);
                 return false;
+            }
+        }
+
+        private void RestoreEnemyHealthAfterRecovery(CharacterMainControl enemy, float preservedCurrentHealth, bool hasPreservedCurrentHealth)
+        {
+            if (!hasPreservedCurrentHealth || enemy == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Health health = enemy.Health;
+                if (health == null || health.IsDead)
+                {
+                    return;
+                }
+
+                float clampedHealth = Mathf.Clamp(preservedCurrentHealth, 1f, health.MaxHealth);
+                if (health.CurrentHealth > clampedHealth + 0.01f)
+                {
+                    health.SetHealth(clampedHealth);
+                    DevLog("[EnemyRecovery] Preserved damaged health after recovery for " + enemy.name + ": " + clampedHealth);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[EnemyRecovery] [WARNING] RestoreEnemyHealthAfterRecovery failed: " + e.Message);
             }
         }
 
@@ -477,6 +549,11 @@ namespace BossRush
 
         private void CollectPrimaryRecoverySpawnCandidates(CharacterMainControl player)
         {
+            if (IsZombieModeActive)
+            {
+                AppendZombieModeRecoverySpawnCandidates();
+            }
+
             if ((modeEActive || modeFActive) && modeESpawnAllocation != null && modeESpawnAllocation.Count > 0)
             {
                 foreach (KeyValuePair<Teams, List<Vector3>> pair in modeESpawnAllocation)
@@ -503,6 +580,35 @@ namespace BossRush
             if (enemyRecoverySpawnCandidates.Count == 0 && player != null)
             {
                 AppendRecoverySpawnCandidates(GenerateFallbackSpawnPointsAroundPlayer(player.transform.position));
+            }
+        }
+
+        private void AppendZombieModeRecoverySpawnCandidates()
+        {
+            if (zombieModeRunState == null)
+            {
+                return;
+            }
+
+            List<ZombieModeSpawnPoint> effectivePoints = zombieModeRunState.EffectiveSpawnPoints;
+            if (effectivePoints != null && effectivePoints.Count > 0)
+            {
+                for (int i = 0; i < effectivePoints.Count; i++)
+                {
+                    enemyRecoverySpawnCandidates.Add(effectivePoints[i].Position);
+                }
+                return;
+            }
+
+            List<ZombieModeSpawnPoint> spawnPoints = zombieModeRunState.SpawnPoints;
+            if (spawnPoints == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < spawnPoints.Count; i++)
+            {
+                enemyRecoverySpawnCandidates.Add(spawnPoints[i].Position);
             }
         }
 

@@ -245,7 +245,7 @@ namespace BossRush
         private void RestoreDefaultState()
         {
             CacheReferences();
-            bool shouldStationary = mod != null && (mod.IsModeEActive || mod.IsModeFActive);
+            bool shouldStationary = mod != null && mod.UsesArenaSupportNpcPlacement();
 
             if (movement != null)
             {

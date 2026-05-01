@@ -102,9 +102,6 @@ namespace BossRush
         // 保留兼容性的单个条目引用
         private static GameObject bossRushEntryObject = null;
         
-        // 动态创建的溢出容器（兜底，正常情况不使用）
-        private static GameObject overflowColumnContainer = null;
-        
         /// <summary>
         /// 获取 BossRush 船票的 TypeID
         /// </summary>
@@ -321,16 +318,8 @@ namespace BossRush
                 if (entryObj == null) continue;
                 
                 ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[i];
-                string displayName = mapConfig.displayName;
-                
-                // 如果配置的显示名称为空，尝试从场景信息获取
-                if (string.IsNullOrEmpty(displayName))
-                {
-                    SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(mapConfig.sceneID);
-                    displayName = sceneInfo != null ? sceneInfo.DisplayName : "未知地图";
-                }
-                
-                SetEntryDisplayNameDirect(entryObj, displayName);
+                string displayName = GetBossRushEntryDisplayName(mapConfig);
+                MapSelectionEntryInjectionHelper.SetEntryDisplayNameDirect(entryObj, displayName);
                 ModBehaviour.DevLog("[BossRush] 延迟刷新显示名称(" + debugTag + "): " + displayName + " (index=" + i + ")");
             }
         }
@@ -368,272 +357,52 @@ namespace BossRush
         {
             try
             {
-                // 查找 MapSelectionView 中的条目容器
-                Transform viewTransform = mapView.transform;
-                
-                // 查找现有的 MapSelectionEntry 作为模板
-                MapSelectionEntry[] existingEntries = viewTransform.GetComponentsInChildren<MapSelectionEntry>(true);
-                
-                if (existingEntries == null || existingEntries.Length == 0)
-                {
-                    ModBehaviour.DevLog("[BossRush] MapSelectionView 中未找到任何 MapSelectionEntry，无法注入");
-                    return false;
-                }
-                
-                // 清空之前隐藏的条目列表和创建的条目列表
-                hiddenEntries.Clear();
-                foreach (GameObject obj in bossRushEntryObjects)
-                {
-                    if (obj != null)
-                    {
-                        UnityEngine.Object.Destroy(obj);
-                    }
-                }
-                bossRushEntryObjects.Clear();
-                
-                // 销毁之前创建的溢出容器
-                if (overflowColumnContainer != null)
-                {
-                    UnityEngine.Object.Destroy(overflowColumnContainer);
-                    overflowColumnContainer = null;
-                }
-                
-                // ============================================================
-                // 第一步：收集原版条目，按 parent 分组发现所有列容器
-                // ============================================================
-                List<MapSelectionEntry> templateCandidates = new List<MapSelectionEntry>();
-                // 按 sceneID 索引模板，用于精确匹配
-                Dictionary<string, MapSelectionEntry> templateBySceneID = new Dictionary<string, MapSelectionEntry>();
-                // 按 parent 分组，发现所有列容器及其容量
-                Dictionary<Transform, List<MapSelectionEntry>> columnGroups = new Dictionary<Transform, List<MapSelectionEntry>>();
-                // 保持列容器的发现顺序
-                List<Transform> columnOrder = new List<Transform>();
-                
-                foreach (MapSelectionEntry entry in existingEntries)
-                {
-                    if (entry == null) continue;
-                    
-                    // 跳过我们之前创建的 BossRush 条目
-                    if (entry.gameObject.name.StartsWith("BossRush_"))
-                    {
-                        UnityEngine.Object.Destroy(entry.gameObject);
-                        continue;
-                    }
-                    
-                    // 保存为模板候选
-                    templateCandidates.Add(entry);
-                    
-                    // 按 sceneID 索引（用于后续精确匹配模板）
-                    string sid = entry.SceneID;
-                    if (!string.IsNullOrEmpty(sid) && !templateBySceneID.ContainsKey(sid))
-                    {
-                        templateBySceneID[sid] = entry;
-                    }
-                    
-                    // 按 parent 分组
-                    Transform parent = entry.transform.parent;
-                    if (parent != null)
-                    {
-                        if (!columnGroups.ContainsKey(parent))
-                        {
-                            columnGroups[parent] = new List<MapSelectionEntry>();
-                            columnOrder.Add(parent);
-                        }
-                        columnGroups[parent].Add(entry);
-                    }
-                    
-                    // 隐藏原有条目
-                    entry.gameObject.SetActive(false);
-                    hiddenEntries.Add(entry.gameObject);
-                }
-                
-                // 没有可用的模板
-                if (templateCandidates.Count == 0)
-                {
-                    ModBehaviour.DevLog("[BossRush] 没有可用的模板 MapSelectionEntry");
-                    return false;
-                }
-                
-                ModBehaviour.DevLog("[BossRush] 发现 " + columnOrder.Count + " 个列容器，共 " + templateCandidates.Count + " 个原版条目");
-                for (int c = 0; c < columnOrder.Count; c++)
-                {
-                    Transform col = columnOrder[c];
-                    ModBehaviour.DevLog("[BossRush] 列容器[" + c + "]: " + col.name + ", 条目数: " + columnGroups[col].Count);
-                }
-                
-                // ============================================================
-                // 第二步：获取 BossRush 地图配置
-                // ============================================================
                 ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
                 if (mapConfigs == null || mapConfigs.Length == 0)
                 {
                     ModBehaviour.DevLog("[BossRush] 没有可用的地图配置");
                     return false;
                 }
-                
-                // ============================================================
-                // 第三步：确定目标容器，所有条目放到同一个容器中
-                // 原版使用单个 Content 容器 + GridLayoutGroup 自动排列成多列
-                // ============================================================
-                
-                // 默认模板（第一个原版条目）
-                MapSelectionEntry defaultTemplate = templateCandidates[0];
-                
-                // 所有条目放到第一个（也是唯一的）列容器中，由原版布局组件自动排列
-                Transform targetParent = columnOrder.Count > 0 ? columnOrder[0] : viewTransform;
-                ModBehaviour.DevLog("[BossRush] 所有条目将放入容器: " + targetParent.name + "，由原版布局组件自动排列");
-                
-                // ============================================================
-                // 第四步：为每个 BossRush 地图创建条目
-                // ============================================================
-                for (int i = 0; i < mapConfigs.Length; i++)
+
+                MapSelectionEntryInjectionHelper.RestoreHiddenEntries(hiddenEntries);
+                MapSelectionEntryInjectionHelper.DestroyCreatedEntries(bossRushEntryObjects);
+                bossRushEntryObject = null;
+
+                MapSelectionEntryInjectionHelper.TemplateContext context;
+                int createdCount = MapSelectionEntryInjectionHelper.InjectEntries(
+                    mapView,
+                    "BossRush_MapSelectionEntry_",
+                    bossRushEntryObjects,
+                    hiddenEntries,
+                    mapConfigs,
+                    ConfigureBossRushEntryWithMapConfig,
+                    GetBossRushEntryDisplayName,
+                    SetupBossRushCostDisplay,
+                    OnBossRushEntryCreated,
+                    out context);
+
+                bossRushEntryObject = bossRushEntryObjects.Count > 0 ? bossRushEntryObjects[0] : null;
+
+                if (context != null)
                 {
-                    ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[i];
-                    
-                    // 选择模板：优先按 sceneID 精确匹配原版模板（继承缩略图等样式）
-                    MapSelectionEntry templateToUse = defaultTemplate;
-                    if (!string.IsNullOrEmpty(mapConfig.sceneID) && templateBySceneID.ContainsKey(mapConfig.sceneID))
+                    ModBehaviour.DevLog("[BossRush] 发现 " + context.ColumnOrder.Count + " 个列容器，共 " + context.TemplateCandidates.Count + " 个原版条目");
+                    for (int i = 0; i < context.ColumnOrder.Count; i++)
                     {
-                        templateToUse = templateBySceneID[mapConfig.sceneID];
-                    }
-                    
-                    // 克隆模板（先保持禁用状态，避免 OnEnable 触发 Refresh 使用原模板的 cost）
-                    GameObject cloned = UnityEngine.Object.Instantiate(templateToUse.gameObject, targetParent);
-                    cloned.name = "BossRush_MapSelectionEntry_" + i;
-                    cloned.SetActive(false);  // 先禁用，配置完成后再激活
-                    
-                    // 获取克隆的 MapSelectionEntry 组件
-                    MapSelectionEntry uiEntry = cloned.GetComponent<MapSelectionEntry>();
-                    if (uiEntry == null)
-                    {
-                        ModBehaviour.DevLog("[BossRush] 克隆的对象上没有 MapSelectionEntry 组件");
-                        UnityEngine.Object.Destroy(cloned);
-                        continue;
-                    }
-                    
-                    // 配置条目字段（使用统一配置）- 在激活前设置，确保 cost 正确
-                    ConfigureBossRushEntryWithMapConfig(uiEntry, mapConfig, i);
-                    
-                    // 现在激活条目，OnEnable -> Refresh 会使用我们设置的 cost
-                    cloned.SetActive(true);
-                    
-                    // 调用 Setup 方法关联到 MapSelectionView
-                    uiEntry.Setup(mapView);
-                    
-                    // 设置显示名称
-                    SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(mapConfig.sceneID);
-                    string displayName = !string.IsNullOrEmpty(mapConfig.displayName) ? mapConfig.displayName : 
-                                         (sceneInfo != null ? sceneInfo.DisplayName : "未知地图");
-                    SetEntryDisplayNameDirect(cloned, displayName);
-                    
-                    string columnInfo = "容器=" + targetParent.name;
-                    ModBehaviour.DevLog("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ", 模板=" + templateToUse.gameObject.name + ", " + columnInfo + ")");
-                    
-                    // 更新缩略图（如果有自定义预览图）
-                    if (!string.IsNullOrEmpty(mapConfig.previewImageName))
-                    {
-                        UpdateEntryThumbnailWithImage(uiEntry, mapConfig.previewImageName);
-                    }
-                    
-                    // 保存引用
-                    bossRushEntryObjects.Add(cloned);
-                    
-                    // 第一个条目保存到兼容性引用
-                    if (i == 0)
-                    {
-                        bossRushEntryObject = cloned;
+                        Transform column = context.ColumnOrder[i];
+                        List<MapSelectionEntry> entries = context.ColumnGroups.ContainsKey(column)
+                            ? context.ColumnGroups[column]
+                            : null;
+                        ModBehaviour.DevLog("[BossRush] 列容器[" + i + "]: " + column.name + ", 条目数: " + (entries != null ? entries.Count : 0));
                     }
                 }
-                
-                // 将 BossRush 条目移到容器最前面（按顺序）
-                for (int i = bossRushEntryObjects.Count - 1; i >= 0; i--)
-                {
-                    if (bossRushEntryObjects[i] != null)
-                    {
-                        bossRushEntryObjects[i].transform.SetAsFirstSibling();
-                    }
-                }
-                
-                // 验证所有条目的状态
-                MapSelectionEntry[] allEntries = mapView.GetComponentsInChildren<MapSelectionEntry>(true);
-                ModBehaviour.DevLog("[BossRush] MapSelectionView 中共有 " + allEntries.Length + " 个条目");
-                foreach (MapSelectionEntry e in allEntries)
-                {
-                    bool isActive = e.gameObject.activeInHierarchy;
-                    int siblingIndex = e.transform.GetSiblingIndex();
-                    string parentName = e.transform.parent != null ? e.transform.parent.name : "null";
-                    ModBehaviour.DevLog("[BossRush] 条目: " + e.gameObject.name + ", sceneID=" + e.SceneID + ", active=" + isActive + ", siblingIndex=" + siblingIndex + ", parent=" + parentName);
-                }
-                
-                ModBehaviour.DevLog("[BossRush] 成功注入 " + bossRushEntryObjects.Count + " 个 BossRush 条目，已隐藏 " + hiddenEntries.Count + " 个原有条目");
-                return bossRushEntryObjects.Count > 0;
+
+                ModBehaviour.DevLog("[BossRush] 成功注入 " + createdCount + " 个 BossRush 条目，已隐藏 " + hiddenEntries.Count + " 个原有条目");
+                return createdCount > 0;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[BossRush] InjectBossRushEntry 失败: " + e.Message + "\n" + e.StackTrace);
                 return false;
-            }
-        }
-        
-        /// <summary>
-        /// 创建溢出容器（仅当原版列容器放不下时使用）
-        /// 克隆指定列容器并调整位置到其右侧
-        /// </summary>
-        private static Transform CreateOverflowContainer(Transform referenceColumn)
-        {
-            try
-            {
-                if (referenceColumn == null)
-                {
-                    ModBehaviour.DevLog("[BossRush] 参考列容器为 null，无法创建溢出容器");
-                    return null;
-                }
-                
-                // 克隆参考列容器
-                GameObject overflow = UnityEngine.Object.Instantiate(referenceColumn.gameObject, referenceColumn.parent);
-                overflow.name = "BossRush_OverflowColumn";
-                overflowColumnContainer = overflow;
-                
-                // 清空溢出容器中的所有子对象（克隆时会复制所有子对象）
-                for (int i = overflow.transform.childCount - 1; i >= 0; i--)
-                {
-                    UnityEngine.Object.DestroyImmediate(overflow.transform.GetChild(i).gameObject);
-                }
-                
-                // 调整溢出容器的位置
-                RectTransform refRect = referenceColumn as RectTransform;
-                RectTransform overflowRect = overflow.transform as RectTransform;
-                
-                if (refRect != null && overflowRect != null)
-                {
-                    float refWidth = refRect.rect.width;
-                    float spacing = 20f;
-                    
-                    overflowRect.anchorMin = refRect.anchorMin;
-                    overflowRect.anchorMax = refRect.anchorMax;
-                    overflowRect.pivot = refRect.pivot;
-                    overflowRect.sizeDelta = refRect.sizeDelta;
-                    
-                    Vector3 newPos = refRect.localPosition;
-                    newPos.x += refWidth + spacing;
-                    overflowRect.localPosition = newPos;
-                    
-                    ModBehaviour.DevLog("[BossRush] 溢出容器位置: " + overflowRect.localPosition + ", 参考容器: " + referenceColumn.name);
-                }
-                else
-                {
-                    Vector3 newPos = referenceColumn.localPosition;
-                    newPos.x += 300f;
-                    overflow.transform.localPosition = newPos;
-                }
-                
-                overflow.SetActive(true);
-                return overflow.transform;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] CreateOverflowContainer 失败: " + e.Message);
-                return null;
             }
         }
         
@@ -644,52 +413,13 @@ namespace BossRush
         {
             try
             {
-                // 使用反射设置私有字段
-                Type entryType = typeof(MapSelectionEntry);
-                
-                // 设置 sceneID（使用加载用场景ID）
-                FieldInfo sceneIdField = entryType.GetField("sceneID", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (sceneIdField != null)
-                {
-                    sceneIdField.SetValue(entry, mapConfig.sceneID);
-                }
-                
-                // 设置 beaconIndex
-                FieldInfo beaconField = entryType.GetField("beaconIndex", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (beaconField != null)
-                {
-                    beaconField.SetValue(entry, mapConfig.beaconIndex);
-                }
-                
-                // 设置 cost 并刷新 CostDisplay UI
+                MapSelectionEntryInjectionHelper.SetMapSelectionEntryField(entry, "sceneID", mapConfig.sceneID);
+                MapSelectionEntryInjectionHelper.SetMapSelectionEntryField(entry, "beaconIndex", mapConfig.beaconIndex);
                 Cost bossRushCost = CreateBossRushCost();
-                FieldInfo costField = entryType.GetField("cost", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (costField != null)
-                {
-                    costField.SetValue(entry, bossRushCost);
-                }
+                MapSelectionEntryInjectionHelper.SetMapSelectionEntryField(entry, "cost", bossRushCost);
                 
-                // 刷新 CostDisplay UI，清除原模板的消耗品显示（如实验室凭证）
-                CostDisplay costDisplay = entry.GetComponentInChildren<CostDisplay>(true);
-                if (costDisplay != null)
-                {
-                    // 清除克隆时复制过来的消耗品显示子对象
-                    // CostDisplay 使用 PrefabPool，克隆时 _itemPool 为 null，但 itemsContainer 下已有子对象
-                    // 需要手动销毁这些子对象，只保留模板（itemAmountTemplate）
-                    ClearCostDisplayItems(costDisplay);
-                    
-                    costDisplay.Setup(bossRushCost, 1);
-                    ModBehaviour.DevLog("[BossRush] 已刷新 CostDisplay，显示 BossRush 船票");
-                }
+                MapSelectionEntryInjectionHelper.SetMapSelectionEntryField(entry, "conditions", null);
                 
-                // 清除 conditions（无解锁条件）
-                FieldInfo conditionsField = entryType.GetField("conditions", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (conditionsField != null)
-                {
-                    conditionsField.SetValue(entry, null);
-                }
-                
-                // 添加点击事件监听，记录选中的地图索引
                 BossRushMapEntryClickHandler clickHandler = entry.gameObject.GetComponent<BossRushMapEntryClickHandler>();
                 if (clickHandler == null)
                 {
@@ -704,57 +434,67 @@ namespace BossRush
                 ModBehaviour.DevLog("[BossRush] ConfigureBossRushEntryWithMapConfig 失败: " + e.Message);
             }
         }
-        
-        /// <summary>
-        /// 清除 CostDisplay 中克隆时复制过来的消耗品显示子对象
-        /// </summary>
-        private static void ClearCostDisplayItems(CostDisplay costDisplay)
+
+        private static string GetBossRushEntryDisplayName(ModBehaviour.BossRushMapConfig mapConfig)
         {
-            try
+            if (mapConfig == null)
             {
-                Type costDisplayType = typeof(CostDisplay);
-                
-                // 获取 itemsContainer 字段
-                FieldInfo itemsContainerField = costDisplayType.GetField("itemsContainer", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (itemsContainerField == null) return;
-                
-                GameObject itemsContainer = itemsContainerField.GetValue(costDisplay) as GameObject;
-                if (itemsContainer == null) return;
-                
-                // 获取 itemAmountTemplate 字段（模板，不能删除）
-                FieldInfo templateField = costDisplayType.GetField("itemAmountTemplate", BindingFlags.NonPublic | BindingFlags.Instance);
-                ItemAmountDisplay template = templateField != null ? templateField.GetValue(costDisplay) as ItemAmountDisplay : null;
-                GameObject templateGO = template != null ? template.gameObject : null;
-                
-                // 销毁 itemsContainer 下除了模板之外的所有子对象
-                List<GameObject> toDestroy = new List<GameObject>();
-                for (int i = 0; i < itemsContainer.transform.childCount; i++)
-                {
-                    Transform child = itemsContainer.transform.GetChild(i);
-                    // 跳过模板
-                    if (templateGO != null && child.gameObject == templateGO)
-                    {
-                        continue;
-                    }
-                    toDestroy.Add(child.gameObject);
-                }
-                
-                foreach (GameObject go in toDestroy)
-                {
-                    UnityEngine.Object.DestroyImmediate(go);
-                }
-                
-                if (toDestroy.Count > 0)
-                {
-                    ModBehaviour.DevLog("[BossRush] 已清除 CostDisplay 中 " + toDestroy.Count + " 个克隆的消耗品显示");
-                }
+                return "未知地图";
             }
-            catch (Exception e)
+
+            if (!string.IsNullOrEmpty(mapConfig.displayName))
             {
-                ModBehaviour.DevLog("[BossRush] ClearCostDisplayItems 失败: " + e.Message);
+                return mapConfig.displayName;
             }
+
+            SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(mapConfig.sceneID);
+            return sceneInfo != null ? sceneInfo.DisplayName : "未知地图";
         }
-        
+
+        private static void SetupBossRushCostDisplay(GameObject entryObject)
+        {
+            if (entryObject == null)
+            {
+                return;
+            }
+
+            CostDisplay costDisplay = entryObject.GetComponentInChildren<CostDisplay>(true);
+            if (costDisplay == null)
+            {
+                return;
+            }
+
+            Cost bossRushCost = CreateBossRushCost();
+            MapSelectionEntryInjectionHelper.ClearCostDisplayItems(costDisplay);
+            costDisplay.Setup(bossRushCost, 1);
+            costDisplay.gameObject.SetActive(true);
+            ModBehaviour.DevLog("[BossRush] 已刷新 CostDisplay，显示 BossRush 船票");
+        }
+
+        private static void OnBossRushEntryCreated(
+            MapSelectionEntry uiEntry,
+            GameObject entryObject,
+            ModBehaviour.BossRushMapConfig mapConfig,
+            int entryIndex,
+            MapSelectionEntry template,
+            Transform targetParent)
+        {
+            if (uiEntry == null || entryObject == null || mapConfig == null)
+            {
+                return;
+            }
+
+            string displayName = GetBossRushEntryDisplayName(mapConfig);
+            if (!string.IsNullOrEmpty(mapConfig.previewImageName))
+            {
+                UpdateEntryThumbnailWithImage(uiEntry, mapConfig.previewImageName);
+            }
+
+            string templateName = template != null && template.gameObject != null ? template.gameObject.name : "null";
+            string parentName = targetParent != null ? targetParent.name : "null";
+            ModBehaviour.DevLog("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ", 模板=" + templateName + ", 容器=" + parentName + ")");
+        }
+
         /// <summary>
         /// 配置 BossRush 条目的字段（旧版方法，保留兼容性）
         /// </summary>
@@ -1197,55 +937,7 @@ namespace BossRush
             return path;
         }
         
-        /// <summary>
-        /// 直接设置克隆对象内部的显示名称（不依赖 SerializeField 绑定）
-        /// </summary>
-        private static void SetEntryDisplayNameDirect(GameObject clonedObject, string displayName)
-        {
-            try
-            {
-                // 直接查找克隆对象内部的所有 TextMeshProUGUI 组件
-                TextMeshProUGUI[] textComps = clonedObject.GetComponentsInChildren<TextMeshProUGUI>(true);
-                ModBehaviour.DevLog("[BossRush] 克隆对象内部找到 " + textComps.Length + " 个 TextMeshProUGUI 组件");
-                
-                bool found = false;
-                foreach (TextMeshProUGUI tmp in textComps)
-                {
-                    string objName = tmp.gameObject.name;
-                    string hierarchyPath = GetHierarchyPath(tmp.transform);
-                    ModBehaviour.DevLog("[BossRush] TextMeshProUGUI: " + objName + ", text=" + tmp.text + ", path=" + hierarchyPath);
-                    
-                    // 查找名为 "Text_MapName" 的组件（这是显示名称的组件）
-                    if (objName == "Text_MapName")
-                    {
-                        ModBehaviour.DevLog("[BossRush] 找到 Text_MapName，设置显示名称: " + displayName);
-                        tmp.text = displayName;
-                        found = true;
-                    }
-                }
-                
-                if (!found)
-                {
-                    ModBehaviour.DevLog("[BossRush] 未找到 Text_MapName 组件，尝试查找包含 'name' 的组件");
-                    // 回退：查找名称包含 "name" 的组件
-                    foreach (TextMeshProUGUI tmp in textComps)
-                    {
-                        string objName = tmp.gameObject.name.ToLower();
-                        if (objName.Contains("name") || objName.Contains("title") || objName.Contains("display"))
-                        {
-                            ModBehaviour.DevLog("[BossRush] 回退设置 TextMeshProUGUI: " + tmp.gameObject.name + " -> " + displayName);
-                            tmp.text = displayName;
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] SetEntryDisplayNameDirect 失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
+/// <summary>
         /// 设置条目的显示名称（通过 MapSelectionEntry 组件）
         /// </summary>
         private static void SetEntryDisplayName(MapSelectionEntry entry, string displayName)
@@ -1494,14 +1186,7 @@ namespace BossRush
                 bossRushEntryObjects.Clear();
                 bossRushEntryObject = null;
                 
-                // 销毁溢出容器
-                if (overflowColumnContainer != null)
-                {
-                    UnityEngine.Object.Destroy(overflowColumnContainer);
-                    overflowColumnContainer = null;
-                }
-                
-                ModBehaviour.DevLog("[BossRush] 已恢复所有隐藏的条目并清理 BossRush 条目和溢出容器");
+                ModBehaviour.DevLog("[BossRush] 已恢复所有隐藏的条目并清理 BossRush 条目");
             }
             catch (Exception e)
             {
@@ -1529,13 +1214,6 @@ namespace BossRush
                 }
                 bossRushEntryObjects.Clear();
                 bossRushEntryObject = null;
-                
-                // 销毁溢出容器
-                if (overflowColumnContainer != null)
-                {
-                    UnityEngine.Object.Destroy(overflowColumnContainer);
-                    overflowColumnContainer = null;
-                }
                 
                 // 清除待处理的地图索引
                 pendingMapEntryIndex = -1;

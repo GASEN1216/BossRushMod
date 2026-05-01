@@ -1,30 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Duckov.Utilities;
 using ItemStatsSystem;
 using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>
-    /// 阿稳扫箱令配置。
-    /// 使用后会让阿稳按由近到远的顺序清理当前局快照中的掉落箱。
+    /// 尸潮信标配置。
+    /// 末日丧尸模式局内专用消耗品：在准备/撤离窗口内使用可立即开启下一波。
     /// </summary>
-    public static class AwenLootSweepTokenConfig
+    public static class ZombieTideBeaconConfig
     {
-        public const int TYPE_ID = 500042;
-        public const string BUNDLE_NAME = "awen_loot_sweep_token";
-        public const string PREFAB_NAME = "BossRush_AwenLootSweepToken";
-        public const string ICON_NAME = "BossRush_AwenLootSweepToken_Icon";
-        public const string LOC_KEY_DISPLAY = "BossRush_AwenLootSweepToken";
-        public const string DISPLAY_NAME_CN = "阿稳扫箱令";
-        public const string DISPLAY_NAME_EN = "Awen Loot Sweep Token";
-        public const string DESCRIPTION_CN = "一枚刻着鸭邮回收章的铜令。可在普通BossRush、模式E、模式F中使用，使用后阿稳会接手当前已存在的掉落箱，按由近到远的顺序逐个清理。";
-        public const string DESCRIPTION_EN = "A brass token stamped with Awen's cleanup seal. Usable in standard BossRush, Mode E, and Mode F. Awen will take over the already-existing lootboxes and clear them from nearest to farthest.";
-        public const string USE_DESC_CN = "使用：命令阿稳清理当前已存在的掉落箱";
-        public const string USE_DESC_EN = "Use: Command Awen to clear the currently existing lootboxes";
-        public const float USE_TIME_SECONDS = 1f;
+        public const int TYPE_ID = BossRushItemIds.ZombieTideBeacon;
+        public const string BUNDLE_NAME = "zombie_tide_beacon";
+        public const string PREFAB_NAME = "BossRush_ZombieTideBeacon";
+        public const string LOC_KEY_DISPLAY = "BossRush_ZombieTideBeacon";
+        public const string DISPLAY_NAME_CN = "尸潮信标";
+        public const string DISPLAY_NAME_EN = "Zombie Tide Beacon";
+        public const string DESCRIPTION_CN = "末日丧尸模式局内专用信标。";
+        public const string DESCRIPTION_EN = "A run-only beacon for Zombie Mode.";
+        public const string USE_DESC_CN = "使用：准备撤离。";
+        public const string USE_DESC_EN = "Use: prepare extraction.";
+        public const int VALUE = 0;
+        public const int MAX_STACK = 1;
+        public const float USE_TIME_SECONDS = 0.5f;
 
         private static bool runtimeFallbackRegistered = false;
 
@@ -46,34 +46,7 @@ namespace BossRush
         public static void RegisterConfigurator()
         {
             ItemFactory.RegisterConfigurator(TYPE_ID, ConfigureItem);
-            ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Registered item configurator");
-        }
-
-        public static void ConfigureItem(Item item)
-        {
-            if (item == null)
-            {
-                return;
-            }
-
-            try
-            {
-                item.DisplayNameRaw = LOC_KEY_DISPLAY;
-                item.name = DISPLAY_NAME_EN;
-                item.MaxStackCount = 1;
-                item.StackCount = 1;
-                item.Value = 3200;
-                item.Quality = 4;
-                SetHiddenMember(item, "description", GetDescription());
-                SetHiddenMember(item, "DescriptionRaw", GetDescription());
-                EquipmentHelper.AddTagToItem(item, "Special");
-                ConfigureUsage(item);
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Item configured: TypeID=" + TYPE_ID);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] ConfigureItem failed: " + e.Message);
-            }
+            ModBehaviour.DevLog("[ZombieTideBeaconConfig] Registered item configurator");
         }
 
         public static bool EnsureRuntimeRegistration()
@@ -104,14 +77,14 @@ namespace BossRush
                 Item source = FindRuntimeFallbackSource();
                 if (source == null)
                 {
-                    ModBehaviour.DevLog("[AwenLootSweepTokenConfig] No runtime fallback source item was found");
+                    ModBehaviour.DevLog("[ZombieTideBeaconConfig] No runtime fallback source item was found");
                     return false;
                 }
 
                 Item clone = UnityEngine.Object.Instantiate(source);
                 if (clone == null || clone.gameObject == null)
                 {
-                    ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Failed to clone runtime fallback item");
+                    ModBehaviour.DevLog("[ZombieTideBeaconConfig] Failed to clone runtime fallback item");
                     return false;
                 }
 
@@ -120,18 +93,54 @@ namespace BossRush
                 clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
 
-                SetItemTypeId(clone, TYPE_ID);
+                clone.SetTypeID(TYPE_ID);
                 ConfigureItem(clone);
                 ItemAssetsCollection.AddDynamicEntry(clone);
                 runtimeFallbackRegistered = true;
 
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Runtime fallback item registered");
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] Runtime fallback item registered");
                 return true;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] EnsureRuntimeRegistration failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] EnsureRuntimeRegistration failed: " + e.Message);
                 return false;
+            }
+        }
+
+        public static bool EnsureRuntimeFallbackRegistrationShell()
+        {
+            return EnsureRuntimeRegistration();
+        }
+
+        public static void ConfigureItem(Item item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                item.DisplayNameRaw = LOC_KEY_DISPLAY;
+                item.name = DISPLAY_NAME_EN;
+                item.MaxStackCount = MAX_STACK;
+                if (item.StackCount <= 0)
+                {
+                    item.StackCount = 1;
+                }
+                item.Value = VALUE;
+                item.Quality = 1;
+                ModeFItemConfigHelper.SetHiddenMember(item, "description", GetDescription());
+                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
+                EquipmentHelper.AddTagToItem(item, "Special");
+                EquipmentHelper.AddTagToItem(item, "RunOnly");
+                ConfigureUsage(item);
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] Item configured: TypeID=" + TYPE_ID);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] ConfigureItem failed: " + e.Message);
             }
         }
 
@@ -151,11 +160,11 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization(DISPLAY_NAME_EN, displayName);
                 LocalizationHelper.InjectLocalization(DISPLAY_NAME_CN + "_Desc", description);
                 LocalizationHelper.InjectLocalization(DISPLAY_NAME_EN + "_Desc", description);
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Localization injected");
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] Localization injected");
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] InjectLocalization failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] InjectLocalization failed: " + e.Message);
             }
         }
 
@@ -163,9 +172,10 @@ namespace BossRush
         {
             int[] fallbackIds = new int[]
             {
-                AwenCourierTokenConfig.TYPE_ID,
+                AwenLootSweepTokenConfig.TYPE_ID,
                 RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID,
-                RespawnItemConfig.TAUNT_SMOKE_TYPE_ID
+                RespawnItemConfig.TAUNT_SMOKE_TYPE_ID,
+                RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID
             };
 
             for (int i = 0; i < fallbackIds.Length; i++)
@@ -214,32 +224,14 @@ namespace BossRush
             SetUsageUtilitiesMaster(usageUtils, item);
             SetUsageTime(usageUtils, USE_TIME_SECONDS);
 
-            AwenLootSweepTokenUsage usage = item.GetComponent<AwenLootSweepTokenUsage>();
+            ZombieTideBeaconUsage usage = item.GetComponent<ZombieTideBeaconUsage>();
             if (usage == null)
             {
-                usage = item.gameObject.AddComponent<AwenLootSweepTokenUsage>();
+                usage = item.gameObject.AddComponent<ZombieTideBeaconUsage>();
             }
 
             usageUtils.behaviors.Add(usage);
             SetItemUsageUtilities(item, usageUtils);
-        }
-
-        private static void SetItemTypeId(Item item, int typeId)
-        {
-            if (item == null)
-            {
-                return;
-            }
-
-            // Item 类提供公开方法 SetTypeID 来安全设置 TypeID，无需反射。
-            try
-            {
-                item.SetTypeID(typeId);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetTypeID failed: " + e.Message);
-            }
         }
 
         private static void SetUsageUtilitiesMaster(UsageUtilities usageUtils, Item item)
@@ -253,7 +245,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetUsageUtilitiesMaster failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] SetUsageUtilitiesMaster failed: " + e.Message);
             }
         }
 
@@ -268,7 +260,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetItemUsageUtilities failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] SetItemUsageUtilities failed: " + e.Message);
             }
         }
 
@@ -283,24 +275,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetUsageTime failed: " + e.Message);
-            }
-        }
-
-        private static void SetHiddenMember(object target, string memberName, object value)
-        {
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            PropertyInfo property = target.GetType().GetProperty(memberName, flags);
-            if (property != null && property.SetMethod != null)
-            {
-                property.SetValue(target, value, null);
-                return;
-            }
-
-            FieldInfo field = target.GetType().GetField(memberName, flags);
-            if (field != null)
-            {
-                field.SetValue(target, value);
+                ModBehaviour.DevLog("[ZombieTideBeaconConfig] SetUsageTime failed: " + e.Message);
             }
         }
     }

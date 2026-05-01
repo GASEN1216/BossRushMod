@@ -78,6 +78,16 @@ namespace BossRush
             
             return IsChinese ? cn : en;
         }
+
+        public static string T(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return "";
+            }
+
+            return LocalizationHelper.GetLocalizedText(key);
+        }
         
         /// <summary>
         /// 方位名称本地化

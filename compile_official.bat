@@ -121,6 +121,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\EnemyRecoveryMonitor.cs ^
     Utilities\SteamHelper.cs ^
     Utilities\BossCleanupHelpers.cs ^
+    Utilities\OriginalExtractionPointIsolationHelper.cs ^
+    Utilities\ModeExtractionPointFactory.cs ^
+    Utilities\MapSelectionEntryInjectionHelper.cs ^
     Config\Config.cs ^
     Config\NPCSpawnConfig.cs ^
     Config\LootBlacklistRegistry.cs ^
@@ -154,6 +157,28 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFFortifications.cs ^
     ModeF\ModeFUI.cs ^
     ModeF\ModeFMerchant.cs ^
+    ZombieMode\ZombieModeModels.cs ^
+    ZombieMode\ZombieModeEntry.cs ^
+    ZombieMode\ZombieModeMapSelection.cs ^
+    ZombieMode\ZombieModeMapSelectionHelper.cs ^
+    ZombieMode\ZombieModeInventoryTransfer.cs ^
+    ZombieMode\ZombieModeMapIsolation.cs ^
+    ZombieMode\ZombieModePollution.cs ^
+    ZombieMode\ZombieModeBossController.cs ^
+    ZombieMode\ZombieModeSpawner.cs ^
+    ZombieMode\ZombieModeWaveController.cs ^
+    ZombieMode\ZombieModeEnemyRuntime.cs ^
+    ZombieMode\ZombieModeRewards.cs ^
+    ZombieMode\ZombieModeDropsAndPerformance.cs ^
+    ZombieMode\ZombiePurificationPointController.cs ^
+    ZombieMode\ZombieModeSafeZoneController.cs ^
+    ZombieMode\ZombieModeExtractionController.cs ^
+    ZombieMode\ZombieModeHudController.cs ^
+    ZombieMode\ZombieModeUIHelper.cs ^
+    ZombieMode\ZombieModeCleanup.cs ^
+    ZombieMode\ZombieModeDebug.cs ^
+    ZombieMode\ZombieModeNpcCatalog.cs ^
+    ZombieMode\ZombieModeCashInvestmentView.cs ^
     BossFilter\BossFilter.cs ^
     MapSelection\BossRushMapSelectionHelper.cs ^
     Integration\DragonDescendant\DragonDescendantConfig.cs ^
@@ -273,6 +298,10 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Items\ReinforcedRoadblockPackConfig.cs ^
     Integration\Items\BarbedWirePackConfig.cs ^
     Integration\Items\EmergencyRepairSprayConfig.cs ^
+    Integration\Items\ZombieTideInvitationConfig.cs ^
+    Integration\Items\ZombieTideInvitationUsage.cs ^
+    Integration\Items\ZombieTideBeaconConfig.cs ^
+    Integration\Items\ZombieTideBeaconUsage.cs ^
     Integration\UI\ImageViewerUI.cs ^
     Integration\Affinity\INPCAffinityConfig.cs ^
     Integration\Affinity\AffinityConfig.cs ^

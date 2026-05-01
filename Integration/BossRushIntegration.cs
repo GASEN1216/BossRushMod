@@ -370,6 +370,7 @@ namespace BossRush
             if (TryInjectAchievementMedalIntoShop(shop)) injectedCount++;
             if (AwenCourierTokenConfig.TryInjectIntoShop(shop, this)) injectedCount++;
             if (TryInjectBrickStoneIntoShop(shop)) injectedCount++;
+            if (ZombieTideInvitationConfig.TryInjectIntoShop(shop, this)) injectedCount++;
             injectedCount += FactionFlagConfig.TryInjectIntoShop(shop);
             return injectedCount;
         }
@@ -475,6 +476,8 @@ namespace BossRush
                 ReinforcedRoadblockPackConfig.RegisterConfigurator();  // 加固路障包配置器（Mode F）
                 BarbedWirePackConfig.RegisterConfigurator();  // 阻滞铁丝网包配置器（Mode F）
                 EmergencyRepairSprayConfig.RegisterConfigurator();  // 应急维修喷剂配置器（Mode F）
+                ZombieTideInvitationConfig.RegisterConfigurator();
+                ZombieTideBeaconConfig.RegisterConfigurator();
                 ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
                 ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
                 ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
@@ -489,6 +492,8 @@ namespace BossRush
                 }
 
                 AwenLootSweepTokenConfig.EnsureRuntimeRegistration();
+                ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();
+                ZombieTideBeaconConfig.EnsureRuntimeFallbackRegistrationShell();
 
                 PeaceCharmRuntime.InitializeRuntime();
             }
@@ -1128,10 +1133,13 @@ namespace BossRush
             AwenLootSweepTokenConfig.InjectLocalization();  // 阿稳扫箱令物品本地化
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
             RespawnItemConfig.InjectLocalization();  // 刷怪消耗品本地化（Mode E）
+            ZombieTideInvitationConfig.InjectLocalization();
+            ZombieTideBeaconConfig.InjectLocalization();
             InjectModeFItemLocalization();  // Mode F 物品本地化
             AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
             FactionFlagConfig.InjectIntoShops();  // 将营旗注入到售货机
             BloodhuntTransponderConfig.InjectIntoShops();  // 将血猎收发器注入到售货机（Mode F）
+            ZombieTideInvitationConfig.InjectIntoShops();
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             LocalizationInjector.InjectWeddingBuildingLocalization();  // 婚礼教堂建筑本地化
@@ -1185,6 +1193,7 @@ namespace BossRush
             InjectAchievementMedalIntoShops();  // 将成就勋章注入到售货机（排在最前面）
             AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
             InjectBrickStoneIntoShops();  // 将砖石注入到售货机
+            ZombieTideInvitationConfig.InjectIntoShops();
             
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
             int equipCount = EquipmentFactory.LoadAllEquipment();
@@ -1473,6 +1482,7 @@ namespace BossRush
                 InjectAchievementMedalIntoShops(scene.name);  // 注入成就勋章
                 AwenCourierTokenConfig.InjectIntoShops(scene.name);  // 注入阿稳快递牌
                 InjectBrickStoneIntoShops(scene.name);  // 注入砖石
+                ZombieTideInvitationConfig.InjectIntoShops(scene.name);
                 FactionFlagConfig.InjectIntoShops(scene.name);  // 注入营旗（Mode E）
                 BloodhuntTransponderConfig.InjectIntoShops(scene.name);  // 注入血猎收发器（Mode F）
                 // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
@@ -1494,6 +1504,10 @@ namespace BossRush
 
                 // 使用配置系统检查是否是有效的 BossRush 竞技场场景
                 BossRushMapConfig loadedMapConfig = GetMapConfigBySceneName(scene.name);
+                if (TryHandleZombieModePendingMapSceneLoaded(scene, loadedMapConfig))
+                {
+                    return;
+                }
                 if (loadedMapConfig != null && !loadedMapConfig.customSpawnPos.HasValue)
                 {
                     // 只有在通过 BossRush 启动且是默认传送位置的地图时才执行竞技场逻辑
@@ -1938,7 +1952,7 @@ namespace BossRush
             }
             
             // 检查是否已进入 BossRush 模式（玩家可能在等待期间启动了 BossRush）
-            if (IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive || IsModeFActive)
+            if (ShouldSuppressBaseNpcSpawnForCurrentMode())
             {
                 DevLog("[NPCSpawn] 已进入 BossRush 模式，跳过普通模式公共NPC生成");
                 yield break;
