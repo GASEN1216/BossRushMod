@@ -1320,17 +1320,17 @@ namespace BossRush
         public void Initialize(int newRunId)
         {
             runId = newRunId;
-            nextTick = Time.time + 1f;
+            nextTick = Time.unscaledTime + 1f;
         }
 
         private void Update()
         {
-            if (Time.time < nextTick)
+            if (Time.unscaledTime < nextTick)
             {
                 return;
             }
 
-            nextTick = Time.time + 1f;
+            nextTick = Time.unscaledTime + 1f;
             ModBehaviour inst = ModBehaviour.Instance;
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {

@@ -2949,7 +2949,7 @@ namespace BossRush
                 TickModeF(Time.deltaTime);
             }
 
-            TickZombieMode(Time.deltaTime);
+            TickZombieMode(Time.unscaledDeltaTime);
 
             // BossRush 期间，定期清理任何非 BossRush 召唤的“大兴兴”Boss
             if (IsActive || bossRushArenaActive)

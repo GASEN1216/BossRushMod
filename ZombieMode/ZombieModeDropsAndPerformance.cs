@@ -632,7 +632,7 @@ namespace BossRush
                 {
                     if (player.mainDamageReceiver != null &&
                         ai.searchedEnemy == player.mainDamageReceiver &&
-                        (ai.isNoticing(0.5f) || Time.time - ai.hurtTimeMarker < 1.5f))
+                        (ai.isNoticing(0.5f) || Time.time - ai.hurtTimeMarker < 1.5f)) // scaled-ok: ai.hurtTimeMarker 在 scaled 时间域
                     {
                         return false;
                     }
