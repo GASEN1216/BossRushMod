@@ -49,6 +49,12 @@ namespace BossRush
 
         private void HandleZombieModeHealthHurt(int runId, Health health, DamageInfo damageInfo)
         {
+            // 全局事件 hot path 早返：丧尸模式未激活时直接 return，
+            // 避免对所有非丧尸伤害事件做 marker 查询。
+            if (zombieModeRunState.LifecyclePhase == ZombieModeLifecyclePhase.None)
+            {
+                return;
+            }
             if (!IsZombieModeRunValid(runId) || health == null || damageInfo.fromCharacter == null)
             {
                 return;
@@ -131,6 +137,11 @@ namespace BossRush
 
         private void HandleZombieModeHealthDead(int runId, Health health, DamageInfo damageInfo)
         {
+            // 全局事件 hot path 早返：丧尸模式未激活时直接 return。
+            if (zombieModeRunState.LifecyclePhase == ZombieModeLifecyclePhase.None)
+            {
+                return;
+            }
             if (!IsZombieModeRunValid(runId) || health == null)
             {
                 return;
