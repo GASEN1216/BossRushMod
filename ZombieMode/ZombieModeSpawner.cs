@@ -331,7 +331,7 @@ namespace BossRush
             }
 
             enemy.dropBoxOnDead = false;
-            // SPEC 16 §4.3: 默认 Teams.scav；若与玩家不敌对则切换到 Teams.wolf
+            // 默认 Teams.scav；若与玩家不敌对则切换到 Teams.wolf
             enemy.SetTeam(Teams.scav);
             try
             {

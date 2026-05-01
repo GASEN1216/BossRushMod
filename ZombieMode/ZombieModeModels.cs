@@ -296,7 +296,7 @@ namespace BossRush
         public const float HarasserProjectileDamage = 25f;
         public const float HarasserProjectileLifetimeSeconds = 2f;
 
-        // SPEC 17 §4.1 Titan
+        // Titan
         public const float TitanShockwaveRadius = 6f;
         public const float TitanShockwaveDamage = 60f;
         public const float TitanShockwaveCooldownSeconds = 12f;
@@ -306,7 +306,7 @@ namespace BossRush
         public const float TitanDamageReductionCooldownSeconds = 20f;
         public const float TitanDamageReductionStartupSeconds = 0.6f;
 
-        // SPEC 17 §4.2 Hunter
+        // Hunter
         public const float HunterDashDistance = 15f;
         public const float HunterDashDamage = 40f;
         public const float HunterDashRadius = 3.5f;
@@ -317,7 +317,7 @@ namespace BossRush
         public const float HunterFrenzyMoveSpeedBonus = 0.30f;
         public const float HunterFrenzyDurationSeconds = 15f;
 
-        // SPEC 17 §4.3 Splitter
+        // Splitter
         public const int SplitterBossSummonCount = 4;
         public const float SplitterBossSummonScale = 0.7f;
         public const float SplitterBossSummonCooldownSeconds = 15f;
@@ -327,7 +327,7 @@ namespace BossRush
         public const int SplitterBossSplitCount = 2;
         public const float SplitterBossSplitChildScale = 0.5f;
 
-        // SPEC 17 §4.4 Shielder
+        // Shielder
         public const float ShielderSelfShieldPercent = 0.35f;
         public const float ShielderSelfShieldDurationSeconds = 8f;
         public const float ShielderSelfShieldCooldownSeconds = 25f;
@@ -340,7 +340,7 @@ namespace BossRush
         public const float ShielderAuraRadius = 6f;
         public const float ShielderAuraDamageReductionPercent = 0.15f;
 
-        // SPEC 17 §4.5 Corruptor
+        // Corruptor
         public const float CorruptorZoneRadius = 4f;
         public const float CorruptorZoneDurationSeconds = 8f;
         public const float CorruptorZoneDamagePerSecond = 6f;
@@ -356,7 +356,7 @@ namespace BossRush
         public const float CorruptorDeathCloudDamagePerSecond = 5f;
         public const float CorruptorDeathCloudTickIntervalSeconds = 0.5f;
 
-        // SPEC 17 §9.2 Extraction area
+        // 撤离区域几何
         public const float ExtractionAreaTriggerRadius = 2.0f;
         public const float ExtractionAreaLeaveRadius = 2.5f;
     }
@@ -446,7 +446,7 @@ namespace BossRush
         public float NextSkillTime;
         public int SkillSequence;
 
-        // SPEC 17 §4 per-skill cooldowns (independent per Boss kind)
+        // 各 Boss 独立技能冷却时间
         public float NextTitanShockwaveTime;
         public float NextTitanDamageReductionTime;
         public float NextHunterDashTime;

@@ -1,4 +1,3 @@
-// SPEC 19 NPC 服务价目表配置。
 // 临时商人 / 临时护士 / 即时工事补给的商品列表、库存、价格曲线和生成站位。
 // TypeId = -1 表示运行时按 GrantTag 与品质范围从 ItemFilter 抽取。
 
@@ -24,7 +23,6 @@ namespace BossRush
             public int Uses;          // 次数上限
         }
 
-        // SPEC 19 §3.2.1 普通波后生成
         public static readonly MerchantStockEntry[] NormalWaveStock =
         {
             // 弹药按标签抽取，避免硬编码具体口径 TypeID。
@@ -46,7 +44,6 @@ namespace BossRush
             new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 350, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomHelmet",  GrantTag = "Helmet",  GrantMinQuality = 1, GrantMaxQuality = 4 }
         };
 
-        // SPEC 19 §3.2.2 Boss 节点后生成
         public static readonly MerchantStockEntry[] BossNodeStock =
         {
             new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 2,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Ammo",    GrantMinQuality = 2, GrantMaxQuality = 5 },
@@ -63,7 +60,6 @@ namespace BossRush
             new MerchantStockEntry { TypeId = ReinforcedRoadblockPackConfig.TYPE_ID, StockCount = 2,   BasePrice = 350, DisplayKey = "BossRush_ZombieMode_Reward_FortificationPack", GrantTag = "", GrantMinQuality = 1, GrantMaxQuality = 1 }
         };
 
-        // SPEC 19 §4.2 临时护士服务
         public static readonly NurseServiceEntry[] NurseServices =
         {
             new NurseServiceEntry { ServiceKey = "BossRush_ZombieMode_Npc_NurseService_HealHalf",  BasePrice = 120, Uses = 5 },
@@ -73,7 +69,7 @@ namespace BossRush
             new NurseServiceEntry { ServiceKey = "BossRush_ZombieMode_Npc_NurseService_FirstAid",  BasePrice = 500, Uses = 1 }
         };
 
-        // SPEC 19 §5 工事补给包数量（普通波 / Boss 节点）
+        // 工事补给包数量（普通波 / Boss 节点）
         public const int RepairPackFoldableCoverNormal = 1;
         public const int RepairPackReinforcedRoadblockNormal = 1;
         public const int RepairPackBarbedWireNormal = 1;
@@ -83,7 +79,6 @@ namespace BossRush
         public const int RepairPackBarbedWireBoss = 2;
         public const int RepairPackEmergencyRepairSprayBoss = 2;
 
-        // SPEC 19 §2.6 价格污染倍率
         public static float GetPollutionPriceMultiplier(int totalPollution)
         {
             if (totalPollution >= 25) return 1.50f;
@@ -94,7 +89,7 @@ namespace BossRush
             return 1.00f;
         }
 
-        // SPEC 19 §2.1 多 NPC 角度均分（0° / +120° / -120°）
+        // 多 NPC 角度均分
         public static readonly float[] NpcAngleArrangement = { 0f, 120f, -120f };
     }
 }

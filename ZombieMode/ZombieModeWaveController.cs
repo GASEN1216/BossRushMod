@@ -84,9 +84,8 @@ namespace BossRush
                 }
             }
 
-            // SPEC 15 §7 安全区破隐 5 触发：玩家任意武器开火 / 投掷 / 仇恨道具 / 命中 / 出区外射击。
-            // 实现：只要玩家是伤害源（damageInfo.fromCharacter 是主角），就视为破隐；
-            // 这一统一口径覆盖 SPEC 列出的开火、近战命中、投掷、仇恨道具、被命中后反击 5 种情形。
+            // 安全区破隐：只要玩家是伤害源（damageInfo.fromCharacter 是主角），就视为破隐；
+            // 这一统一口径覆盖开火、近战命中、投掷、仇恨道具、被命中后反击 5 种情形。
             // 出区外射击：SafeZoneStealthBroken 在 EnterPreparation 才重置；本准备期内任意时刻破隐都会持续到下一波。
             if (!damageInfo.fromCharacter.IsMainCharacter ||
                 !zombieModeRunState.ActiveSafeZoneActive ||

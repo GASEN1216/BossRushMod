@@ -82,7 +82,7 @@ namespace BossRush
 
         public void MarkZombieModeMapConfirmedPhase1()
         {
-            // SPEC 15 §2: SelectingMap → Prechecking → CommittingResources → LoadingMap
+            // 状态机：SelectingMap → Prechecking → CommittingResources → LoadingMap
             if (!pendingZombieModeEntry)
             {
                 return;
@@ -124,7 +124,7 @@ namespace BossRush
             FailZombieModeBeforeActive(reason);
         }
 
-        // SPEC 15 §2 / SPEC 14 §7: 入场预检查（邀请函/仓储/任务物品/其他模式互斥）
+        // 入场预检查（邀请函/仓储/任务物品/其他模式互斥）
         private bool TryRunZombieModePrechecks(out ZombieModeFailureReason reason)
         {
             reason = ZombieModeFailureReason.None;
@@ -156,7 +156,7 @@ namespace BossRush
             return true;
         }
 
-        // SPEC 14 §4 / SPEC 15 §4: 资源暂扣。丧尸模式自行提交邀请函与现金，地图选择条目只借用原版 UI 外观。
+        // 资源暂扣：丧尸模式自行提交邀请函与现金，地图选择条目只借用原版 UI 外观。
         private bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason)
         {
             reason = ZombieModeFailureReason.None;
@@ -311,13 +311,13 @@ namespace BossRush
             {
                 ZombieModeMapSelectionHelper.MarkTargetSceneLoadStarted();
                 int runId = BeginZombieModeRunShell(scene.buildIndex, scene.name);
-                // SPEC 15 §2: LoadingMap → InitializingRun（WaitingStarterChoice 由 InitializeZombieModeRunAfterMapLoaded 末尾设置）
+                // 状态机推进：LoadingMap → InitializingRun（WaitingStarterChoice 由 InitializeZombieModeRunAfterMapLoaded 末尾设置）
                 zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
                 zombieModeRunState.CombatPhase = ZombieModeCombatPhase.None;
                 zombieModeRunState.PurificationPoints = ZOMBIE_MODE_INITIAL_PURIFICATION_POINTS;
                 if (zombieModeRunState.ConfirmedCashInvested > 0L)
                 {
-                    // SPEC 17 §7.4 / SPEC 14 §3.3: 100 现金 = 1 净化点数（向下取整）
+                    // 100 现金 = 1 净化点数（向下取整）
                     zombieModeRunState.PurificationPoints = (int)System.Math.Min(
                         int.MaxValue,
                         zombieModeRunState.ConfirmedCashInvested / ZombieModeTuning.CashToPurificationRatio);
@@ -644,7 +644,7 @@ namespace BossRush
             ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_Started"));
         }
 
-        // SPEC 17 §12.1: Melee = 近战×1（品质≤5）+ 医疗品×5 + 食物×3 + 饮料×2
+        // Melee = 近战×1（品质≤5）+ 医疗品×5 + 食物×3 + 饮料×2
         // Gunner = 枪械×1 + 匹配口径×1000 + 医疗×3 + 食物×2 + 饮料×1
         private bool GrantZombieModeStarterLoadout(ZombieModeStarterLoadout loadout)
         {

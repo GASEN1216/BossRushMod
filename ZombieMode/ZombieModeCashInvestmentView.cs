@@ -6,7 +6,6 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        // SPEC 18 §5 / SPEC 14 §3.3 / SPEC 17 §7.4
         // 玩家在地图选择确认后、场景切换前可设置投入金额。100 现金 = 1 净化点数（向下取整）。
         // 投入 0 合法（直接跳过）；现金不足时拒绝并保留弹窗。
         public bool ConfigureZombieModePendingCashInvestment(long requestedAmount, out string failureReasonKey)
@@ -72,7 +71,6 @@ namespace BossRush
         }
     }
 
-    // SPEC 18 §5 现金投入弹窗
     public sealed class ZombieModeCashInvestmentView : MonoBehaviour
     {
         private ModBehaviour owner;
