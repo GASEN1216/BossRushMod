@@ -193,31 +193,36 @@ namespace BossRush
 
     public static class ZombieModeTuning
     {
+        // ──────────────────────────────────────────────────────────
+        // 节奏 / 倒计时（影响：玩家从准备到下一波的节奏感）
+        // ──────────────────────────────────────────────────────────
         public const float PreparationCountdownSeconds = 30f;
         public const float BeaconChannelDurationSeconds = 3f;
         public const float ExtractionCountdownSeconds = 15f;
         public const float PeriodicSpawnIntervalSeconds = 30f;
         public const float SettlementMaxWaitSeconds = 3.5f;
-        public const float SafeZoneTickIntervalSeconds = 0.2f;
-        public const float PerformanceEvalIntervalSeconds = 0.5f;
-        public const float BossStuckTimeoutSeconds = 45f;
-        public const int DropCleanupWaveAge = 3;
-        public const float DropCleanupAgeSeconds = 300f;
         public const float BannerDurationSeconds = 2.5f;
+
+        // ──────────────────────────────────────────────────────────
+        // 安全区（影响：每波准备阶段的破隐节奏与可见性闪烁）
+        // ──────────────────────────────────────────────────────────
+        public const float SafeZoneTickIntervalSeconds = 0.2f;
         public const float SafeZoneFlashStartSeconds = 5f;
         public const float SafeZoneFlashCycleSeconds = 0.5f;
         public const float SafeZoneRadius = 8f;
         public const float SafeZoneCenterPlayerRange = 30f;
-        public const float BossSpreadMinDistance = 8f;
+        public const float NavMeshSafeZoneRadius = 5f;
+
+        // ──────────────────────────────────────────────────────────
+        // 性能 / 回收（影响：高密度敌人时的 fps 稳定性）
+        // ──────────────────────────────────────────────────────────
+        public const float PerformanceEvalIntervalSeconds = 0.5f;
+        public const float BossStuckTimeoutSeconds = 45f;
+        public const int DropCleanupWaveAge = 3;
+        public const float DropCleanupAgeSeconds = 300f;
         public const float PerformanceFarDistance = 60f;
         public const float StarMagnetRadius = 30f;
         public const float StarPickupDistance = 0.3f;
-        public const float NavMeshSafeZoneRadius = 5f;
-        public const float NavMeshVirtualSpawnRadius = 10f;
-        public const float SpawnPointNavMeshSampleRadius = 8f;
-        public const float SpawnPointDuplicateDistance = 4f;
-        public const float SpawnPointMinPlayerDistance = 12f;
-        public const float NavMeshLiftOffset = 0.05f;
         public const int PerfTierWatch = 150;
         public const int PerfTierSoft = 250;
         public const int PerfTierExtreme = 350;
@@ -226,6 +231,20 @@ namespace BossRush
         public const float PerfSoftSpawnMultiplier = 0.7f;
         public const float PerfExtremeSpawnMultiplier = 0.4f;
         public const float PerfExtremeSpawnFarSkipDistance = 50f;
+
+        // ──────────────────────────────────────────────────────────
+        // 刷怪点几何（影响：丧尸生成位置离玩家的距离与可达性）
+        // ──────────────────────────────────────────────────────────
+        public const float BossSpreadMinDistance = 8f;
+        public const float NavMeshVirtualSpawnRadius = 10f;
+        public const float SpawnPointNavMeshSampleRadius = 8f;
+        public const float SpawnPointDuplicateDistance = 4f;
+        public const float SpawnPointMinPlayerDistance = 12f;
+        public const float NavMeshLiftOffset = 0.05f;
+
+        // ──────────────────────────────────────────────────────────
+        // 净化点数 / 奖励（影响：经济曲线与 reroll 体验）
+        // ──────────────────────────────────────────────────────────
         public const int CashToPurificationRatio = 100;
         public const int FreeRefreshCapPerNode = 3;
         public static readonly int[] PaidRefreshCosts = { 100, 200, 350, 550, 800 };
@@ -238,6 +257,10 @@ namespace BossRush
         public const int BossLootCrateGrowthEvery5Waves = 1;
         public const int StarterMaxQuality = 5;
         public const int StarterGunnerExtraAmmoCount = 1000;
+
+        // ──────────────────────────────────────────────────────────
+        // 普通敌人 / 精英 / 特殊（影响：单只丧尸难度倍率）
+        // ──────────────────────────────────────────────────────────
         public const float SpecialHealthMultiplier = 1.4f;
         public const float SpecialDamageMultiplier = 1.2f;
         public const float SpecialMoveSpeedMultiplier = 1.1f;
@@ -256,6 +279,10 @@ namespace BossRush
         public const int SpecialPurificationMax = 60;
         public const int ElitePurificationMin = 80;
         public const int ElitePurificationMax = 150;
+
+        // ──────────────────────────────────────────────────────────
+        // 词缀 / 死亡爆裂 / 自适应抗性（影响：精英战斗节奏）
+        // ──────────────────────────────────────────────────────────
         public const float ExploderDeathRadius = 4f;
         public const float ExploderDeathDamage = 80f;
         public const float BurstAffixDeathRadius = 4f;
@@ -295,6 +322,11 @@ namespace BossRush
         public const float HarasserProjectileSpeed = 12f;
         public const float HarasserProjectileDamage = 25f;
         public const float HarasserProjectileLifetimeSeconds = 2f;
+
+        // ──────────────────────────────────────────────────────────
+        // Boss 技能（影响：5 种 Boss 战的循环节奏与威胁度）
+        // 5 类共享倍率统一在这里；各 kind 独占字段紧跟其后。
+        // ──────────────────────────────────────────────────────────
 
         // Titan
         public const float TitanShockwaveRadius = 6f;
