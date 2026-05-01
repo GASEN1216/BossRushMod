@@ -32,7 +32,7 @@ def main() -> int:
     for snippet in [
         "public float LastSafeZoneTickTime;",
         "public bool SafeZoneThreatSuppressed;",
-        "SafeZoneTickIntervalSeconds = 0.2f",
+        "TickIntervalSeconds = 0.2f",
     ]:
         result = require(models, snippet, "safe zone state model")
         if result:

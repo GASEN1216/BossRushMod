@@ -465,7 +465,24 @@ namespace BossRush
             try
             {
                 Duckov.Utilities.Tag target = FindZombieModeTagByName(tagName);
-                return target != null && item.Tags != null && item.Tags.Contains(target);
+                if (target == null || item.Tags == null)
+                {
+                    return false;
+                }
+                if (item.Tags.Contains(target))
+                {
+                    return true;
+                }
+                // 名称回退：避免 Tag 实例不一致（hot reload / 不同程序集）导致 Contains 漏判
+                for (int i = 0; i < item.Tags.Count; i++)
+                {
+                    Duckov.Utilities.Tag tag = item.Tags[i];
+                    if (tag != null && string.Equals(tag.name, target.name, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
             catch
             {

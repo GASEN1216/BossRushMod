@@ -63,6 +63,16 @@ def main() -> int:
     if re.search(r"InstantiateSync\s*\(", helper_body):
         return fail("ZombieModeHotPathMeleeCacheGuard: melee cache helper must inspect prefabs, not instantiate items")
 
+    tag_body = extract_method_body(text, "private bool ItemHasZombieModeTag(")
+    if tag_body is None:
+        return fail("ZombieModeHotPathMeleeCacheGuard: missing ItemHasZombieModeTag helper")
+
+    if "item.Tags.Contains(target)" not in tag_body:
+        return fail("ZombieModeHotPathMeleeCacheGuard: ItemHasZombieModeTag lost direct tag lookup")
+
+    if "string.Equals(tag.name, target.name, System.StringComparison.OrdinalIgnoreCase)" not in tag_body:
+        return fail("ZombieModeHotPathMeleeCacheGuard: ItemHasZombieModeTag must keep name-based tag fallback")
+
     print("ZombieModeHotPathMeleeCacheGuard: PASS")
     return 0
 
