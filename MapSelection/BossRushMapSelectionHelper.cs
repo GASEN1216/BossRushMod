@@ -279,24 +279,13 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 延迟后刷新所有 BossRush 条目的显示名称
-        /// 防止被 UI 系统的 Refresh() 覆盖
-        /// 使用多次刷新机制确保名称正确显示
+        /// 延迟后刷新所有 BossRush 条目的显示名称（防止被 UI 系统的 Refresh() 覆盖）。
+        /// 三连刷实现已抽到 MapSelectionEntryInjectionHelper.DelayedRefreshDisplayNames。
         /// </summary>
         private static System.Collections.IEnumerator DelayedRefreshDisplayNames()
         {
-            // 多次刷新：在不同时机刷新显示名称，确保覆盖 UI 系统的 Refresh()
-            // 第一次：等待帧结束后立即刷新
-            yield return new WaitForEndOfFrame();
-            RefreshAllEntryDisplayNames("帧结束后");
-            
-            // 第二次：等待 0.1 秒后刷新（覆盖可能的延迟 Refresh）
-            yield return new WaitForSeconds(0.1f);
-            RefreshAllEntryDisplayNames("0.1秒后");
-            
-            // 第三次：等待 0.3 秒后刷新（最终保障）
-            yield return new WaitForSeconds(0.2f);
-            RefreshAllEntryDisplayNames("0.3秒后");
+            return MapSelectionEntryInjectionHelper.DelayedRefreshDisplayNames(
+                () => RefreshAllEntryDisplayNames("延迟刷新"));
         }
         
         /// <summary>

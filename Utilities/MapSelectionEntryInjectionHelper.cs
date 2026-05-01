@@ -212,6 +212,33 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 延迟三连刷：帧结束、+0.1 s、+0.3 s 三次回调，确保 BossRush/Zombie 注入条目的显示名不被
+        /// 原版 UI Refresh() 覆盖。两个模式的 helper 都用同一份实现，避免分叉。
+        /// </summary>
+        internal static System.Collections.IEnumerator DelayedRefreshDisplayNames(System.Action refresh)
+        {
+            if (refresh == null)
+            {
+                yield break;
+            }
+            yield return new UnityEngine.WaitForEndOfFrame();
+            try { refresh(); } catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[MapSelection] DelayedRefresh frame-end failed: " + e.Message);
+            }
+            yield return new UnityEngine.WaitForSeconds(0.1f);
+            try { refresh(); } catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[MapSelection] DelayedRefresh +0.1s failed: " + e.Message);
+            }
+            yield return new UnityEngine.WaitForSeconds(0.2f);
+            try { refresh(); } catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[MapSelection] DelayedRefresh +0.3s failed: " + e.Message);
+            }
+        }
+
         internal static void SetMapSelectionEntryField(MapSelectionEntry entry, string fieldName, object value)
         {
             if (entry == null)

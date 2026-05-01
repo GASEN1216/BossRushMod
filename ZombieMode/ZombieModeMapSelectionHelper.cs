@@ -300,12 +300,7 @@ namespace BossRush
 
         private static IEnumerator DelayedRefreshDisplayNames()
         {
-            yield return new WaitForEndOfFrame();
-            RefreshAllEntryDisplayNames();
-            yield return new WaitForSeconds(0.1f);
-            RefreshAllEntryDisplayNames();
-            yield return new WaitForSeconds(0.2f);
-            RefreshAllEntryDisplayNames();
+            return MapSelectionEntryInjectionHelper.DelayedRefreshDisplayNames(RefreshAllEntryDisplayNames);
         }
 
         private static void RefreshAllEntryDisplayNames()
