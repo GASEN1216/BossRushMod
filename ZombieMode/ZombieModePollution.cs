@@ -459,18 +459,15 @@ namespace BossRush
             }
 
             marker.BaseMaxHealth = enemy.Health.MaxHealth;
-            int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(enemy.Health.MaxHealth * healthMultiplier));
-            try
-            {
-                if (zombieModeHealthDefaultMaxHealthField != null)
-                {
-                    zombieModeHealthDefaultMaxHealthField.SetValue(enemy.Health, newMaxHealth);
-                }
-            }
-            catch { }
+
+            // 通过 ApplyBossStatMultiplier 调整 MaxHealth Stat（避免反射写 Health 私有字段）。
+            ApplyBossStatMultiplier(enemy, healthMultiplier);
 
             enemy.Health.showHealthBar = marker.EnemyKind == ZombieModeEnemyKind.Elite;
-            enemy.Health.CurrentHealth = newMaxHealth;
+            if (enemy.Health.MaxHealth > 0f)
+            {
+                enemy.Health.CurrentHealth = enemy.Health.MaxHealth;
+            }
         }
 
         private void ApplyZombieModeEnemyCombatStatMultipliers(CharacterMainControl enemy, float damageMultiplier, float speedMultiplier)

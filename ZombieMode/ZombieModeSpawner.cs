@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -10,8 +9,6 @@ namespace BossRush
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         private const string ZOMBIE_MODE_NORMAL_PRESET_NAME = "Cname_Zombie";
-        private static readonly FieldInfo zombieModeHealthDefaultMaxHealthField =
-            BossRush.Common.Utils.ReflectionCache.GetField(typeof(Health), "defaultMaxHealth", BindingFlags.NonPublic | BindingFlags.Instance);
         private CharacterRandomPreset zombieModeCachedNormalZombiePreset;
         private bool zombieModeNormalZombiePresetSearched;
 
@@ -258,40 +255,6 @@ namespace BossRush
             return false;
         }
 
-        private async UniTask<CharacterMainControl> TryCreateZombieModePresetCharacterAsync(
-            int runId,
-            CharacterRandomPreset preset,
-            Vector3 position,
-            string failureLogPrefix)
-        {
-            if (!IsZombieModeRunValid(runId) || preset == null)
-            {
-                return null;
-            }
-
-            CharacterMainControl character = null;
-            try
-            {
-                character = await preset.CreateCharacterAsync(position, Vector3.forward, SceneManager.GetActiveScene().buildIndex, null, false);
-            }
-            catch (System.Exception e)
-            {
-                DevLog(failureLogPrefix + e.Message);
-                return null;
-            }
-
-            if (!IsZombieModeRunValid(runId))
-            {
-                if (character != null && character.gameObject != null)
-                {
-                    Destroy(character.gameObject);
-                }
-                return null;
-            }
-
-            return character;
-        }
-
         private UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
             int runId,
             Vector3 position,
@@ -351,46 +314,63 @@ namespace BossRush
             return tcs.Task;
         }
 
-        private async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync(int runId, Vector3 position, ZombieModeBossKind kind)
+        private UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync(int runId, Vector3 position, ZombieModeBossKind kind)
         {
             if (!IsZombieModeRunValid(runId))
             {
-                return null;
+                return UniTask.FromResult<CharacterMainControl>(null);
             }
 
             CharacterRandomPreset preset = FindZombieModeNormalZombiePreset();
             if (preset == null)
             {
-                return null;
+                return UniTask.FromResult<CharacterMainControl>(null);
             }
 
-            CharacterMainControl boss = await TryCreateZombieModePresetCharacterAsync(runId, preset, position, "[ZombieMode] Boss 生成失败: ");
-            if (boss == null)
+            UniTaskCompletionSource<CharacterMainControl> tcs = new UniTaskCompletionSource<CharacterMainControl>();
+            EnemyPresetInfo info = new EnemyPresetInfo
             {
-                return null;
-            }
+                name = ZOMBIE_MODE_NORMAL_PRESET_NAME,
+                displayName = "ZombieMode_Boss_" + kind.ToString(),
+                baseHealth = 180f,
+            };
 
-            boss.gameObject.name = "ZombieMode_Boss_" + kind.ToString() + "_Run" + runId;
-            PrepareZombieModeSpawnedEnemy(boss, 180f);
-            ApplyZombieModeBossTuning(boss, kind);
-            RegisterZombieModeEnemyRuntimeShell(runId, boss, true, kind, GetZombieModeBossPointValue(kind));
-            RegisterEnemyRecoveryAnchor(boss, position);
-            zombieModeRunState.LivingZombieCount++;
+            SpawnEnemyCore(
+                info,
+                position,
+                isBoss: true,
+                isActiveCheck: () => IsZombieModeRunValid(runId),
+                onSpawned: ctx =>
+                {
+                    CharacterMainControl boss = ctx.character;
+                    boss.gameObject.name = "ZombieMode_Boss_" + kind.ToString() + "_Run" + runId;
+                    PrepareZombieModeSpawnedEnemy(boss, 180f);
+                    ApplyZombieModeBossTuning(boss, kind);
+                    RegisterZombieModeEnemyRuntimeShell(runId, boss, true, kind, GetZombieModeBossPointValue(kind));
+                    RegisterEnemyRecoveryAnchor(boss, ctx.position);
+                    zombieModeRunState.LivingZombieCount++;
 
-            ZombieModeBossInstance instance = new ZombieModeBossInstance();
-            instance.Character = boss;
-            instance.Kind = kind;
-            instance.Alive = true;
-            instance.LootSettled = false;
-            instance.PointsSettled = false;
-            instance.LastKnownPosition = boss.transform.position;
-            instance.LastReachableTime = Time.unscaledTime;
-            instance.LastHurtTime = Time.unscaledTime;
-            instance.NextSkillTime = Time.unscaledTime + UnityEngine.Random.Range(2f, 5f);
-            instance.SkillSequence = 0;
-            zombieModeRunState.CurrentWaveBossInstances.Add(instance);
-            RegisterZombieModeBossRuntime(runId, boss, kind);
-            return boss;
+                    ZombieModeBossInstance instance = new ZombieModeBossInstance();
+                    instance.Character = boss;
+                    instance.Kind = kind;
+                    instance.Alive = true;
+                    instance.LootSettled = false;
+                    instance.PointsSettled = false;
+                    instance.LastKnownPosition = boss.transform.position;
+                    instance.LastReachableTime = Time.unscaledTime;
+                    instance.LastHurtTime = Time.unscaledTime;
+                    instance.NextSkillTime = Time.unscaledTime + UnityEngine.Random.Range(2f, 5f);
+                    instance.SkillSequence = 0;
+                    zombieModeRunState.CurrentWaveBossInstances.Add(instance);
+                    RegisterZombieModeBossRuntime(runId, boss, kind);
+                    tcs.TrySetResult(boss);
+                },
+                onFailed: () => tcs.TrySetResult(null),
+                applyEquipment: false,
+                applyBossMultiplier: false,
+                directPreset: preset);
+
+            return tcs.Task;
         }
 
         private void PrepareZombieModeSpawnedEnemy(CharacterMainControl enemy, float forceTraceDistance)
@@ -570,18 +550,15 @@ namespace BossRush
                     break;
             }
 
-            int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(boss.Health.MaxHealth * healthMultiplier));
-            try
-            {
-                if (zombieModeHealthDefaultMaxHealthField != null)
-                {
-                    zombieModeHealthDefaultMaxHealthField.SetValue(boss.Health, newMaxHealth);
-                }
-            }
-            catch { }
+            // 通过 ApplyBossStatMultiplier 调整 MaxHealth Stat（与项目其它 Boss 一致），
+            // 避免反射写 Health 私有字段（鸭科夫一改字段名就静默失效）。
+            ApplyBossStatMultiplier(boss, healthMultiplier);
 
             boss.Health.showHealthBar = true;
-            boss.Health.CurrentHealth = newMaxHealth;
+            if (boss.Health.MaxHealth > 0f)
+            {
+                boss.Health.CurrentHealth = boss.Health.MaxHealth;
+            }
             boss.transform.localScale = boss.transform.localScale * scaleMultiplier;
             ApplyZombieModeEnemyCombatStatMultipliers(boss, damageMultiplier, speedMultiplier);
             AICharacterController ai = boss.GetComponentInChildren<AICharacterController>();
