@@ -29,7 +29,6 @@ namespace BossRush
             };
             Health.OnDead += zombieModeOnDeadHandler;
             Health.OnHurt += zombieModeOnHurtHandler;
-            zombieModeRunState.EventListenerHandles.Add(UnregisterZombieModeEventListeners);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.EventListener, null, null, UnregisterZombieModeEventListeners);
         }
 

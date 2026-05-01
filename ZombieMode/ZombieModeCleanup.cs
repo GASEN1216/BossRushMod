@@ -32,11 +32,9 @@ namespace BossRush
             Coroutine coroutine = StartCoroutine(routine);
             if (coroutine != null)
             {
-                zombieModeRunState.RegisteredCoroutines.Add(coroutine);
                 RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Coroutine, null, null, delegate
                 {
                     try { StopCoroutine(coroutine); } catch { }
-                    zombieModeRunState.RegisteredCoroutines.Remove(coroutine);
                 });
             }
 
@@ -82,8 +80,6 @@ namespace BossRush
             }
 
             zombieModeRunState.RunOnlyObjects.Clear();
-            zombieModeRunState.RegisteredCoroutines.Clear();
-            zombieModeRunState.EventListenerHandles.Clear();
             ClearZombieModeRewardShell();
             RestoreZombieModeMapIsolationShell();
         }

@@ -38,7 +38,6 @@ def main() -> int:
         "CleanupZombieModeForSceneChange",
         "CleanupZombieModeOnDestroy",
         "zombieModeRunState.RunOnlyObjects.Clear();",
-        "zombieModeRunState.RegisteredCoroutines.Clear();",
         "zombieModeEntryTransaction.Reset();",
     ]:
         if snippet not in cleanup_text:

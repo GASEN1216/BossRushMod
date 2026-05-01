@@ -49,8 +49,6 @@ REQUIRED_MODEL_SNIPPETS = [
     "public ZombieModeRewardNode CurrentRewardNode;",
     "public readonly ZombieModeInsuranceState InsuranceState",
     "public readonly List<ZombieModeDropCandidate> EntityDropCleanupCandidates",
-    "public readonly List<Coroutine> RegisteredCoroutines",
-    "public readonly List<Action> EventListenerHandles",
     "public string StarterAmmoCaliber",
     "public readonly List<ZombieModeRunOnlyRecord> RunOnlyObjects",
     "public sealed class ZombieModeMapProfile",

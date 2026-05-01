@@ -674,8 +674,6 @@ namespace BossRush
         public readonly List<ZombieModeTemporaryNpc> TemporaryNpcs = new List<ZombieModeTemporaryNpc>();
         public readonly List<ZombieModeDropCandidate> EntityDropCleanupCandidates = new List<ZombieModeDropCandidate>();
         public readonly List<ZombieModeBossDrop> BossDropEntries = new List<ZombieModeBossDrop>();
-        public readonly List<Coroutine> RegisteredCoroutines = new List<Coroutine>();
-        public readonly List<Action> EventListenerHandles = new List<Action>();
         public float LastPerformanceEvalTime;
         public bool ContainersRefilled;
         public ZombieModeStarterLoadout StarterLoadout = ZombieModeStarterLoadout.None;
@@ -739,8 +737,6 @@ namespace BossRush
             TemporaryNpcs.Clear();
             EntityDropCleanupCandidates.Clear();
             BossDropEntries.Clear();
-            RegisteredCoroutines.Clear();
-            EventListenerHandles.Clear();
             LastPerformanceEvalTime = 0f;
             ContainersRefilled = false;
             StarterLoadout = ZombieModeStarterLoadout.None;
@@ -763,8 +759,6 @@ namespace BossRush
             TemporaryNpcs.Clear();
             EntityDropCleanupCandidates.Clear();
             BossDropEntries.Clear();
-            RegisteredCoroutines.Clear();
-            EventListenerHandles.Clear();
             InsuranceState.Reset();
             SceneBuildIndex = -1;
             SceneName = string.Empty;
