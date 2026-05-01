@@ -313,12 +313,10 @@ namespace BossRush
                     ZombieModeBossInstance instance = new ZombieModeBossInstance();
                     instance.Character = boss;
                     instance.Kind = kind;
-                    instance.Alive = true;
-                    instance.LootSettled = false;
-                    instance.PointsSettled = false;
-                    instance.LastKnownPosition = boss.transform.position;
-                    instance.LastReachableTime = Time.unscaledTime;
-                    instance.LastHurtTime = Time.unscaledTime;
+                    instance.Lifecycle.Alive = true;
+                    instance.Lifecycle.LastKnownPosition = boss.transform.position;
+                    instance.Lifecycle.LastReachableTime = Time.unscaledTime;
+                    instance.Lifecycle.LastHurtTime = Time.unscaledTime;
                     zombieModeRunState.CurrentWaveBossInstances.Add(instance);
                     RegisterZombieModeBossRuntime(runId, boss, kind);
                     tcs.TrySetResult(boss);

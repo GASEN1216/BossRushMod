@@ -540,22 +540,28 @@ namespace BossRush
         }
     }
 
+    /// <summary>
+    /// Boss 运行期生命周期 + 卡死检测追踪。
+    /// 字段写入由 ZombieModeSpawner / TickZombieModeBossController / HandleZombieModeBossHurt 维护。
+    /// 与 SkillState 的差别：本类记录"是否还活着 / 上次能动 / 上次受伤"等通用追踪字段；
+    /// SkillState 记录 per-kind 的技能冷却（NextDashTime / FrenzyEndTime 等）。
+    /// </summary>
+    public sealed class ZombieModeBossLifecycleTrack
+    {
+        public bool Alive;
+        public Vector3 LastKnownPosition;
+        public float LastReachableTime;
+        public float LastHurtTime;
+    }
+
     public sealed class ZombieModeBossInstance
     {
         // 身份
         public CharacterMainControl Character;
         public ZombieModeBossKind Kind;
 
-        // 生命周期标记
-        public bool Alive;
-        public bool LootSettled;
-        public bool PointsSettled;
-        public bool RuntimeRegistered;
-
-        // 卡死检测追踪（由 TickZombieModeBossController / HandleZombieModeBossHurt 维护）
-        public Vector3 LastKnownPosition;
-        public float LastReachableTime;
-        public float LastHurtTime;
+        // 生命周期 + 卡死检测追踪（独立子对象，便于扩展新 Boss kind 时不必改 BossInstance）
+        public readonly ZombieModeBossLifecycleTrack Lifecycle = new ZombieModeBossLifecycleTrack();
 
         // per-kind 技能状态（按 Kind 实例化对应子类，承载 NextDashTime / FrenzyEndTime 等）
         public ZombieModeBossSkillState SkillState;

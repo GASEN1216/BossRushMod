@@ -404,8 +404,7 @@ namespace BossRush
                     continue;
                 }
 
-                instance.Alive = false;
-                instance.PointsSettled = true;
+                instance.Lifecycle.Alive = false;
                 break;
             }
 

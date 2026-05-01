@@ -21,10 +21,9 @@ namespace BossRush
                 }
 
                 instance.Kind = kind;
-                instance.LastKnownPosition = boss.transform.position;
-                instance.LastReachableTime = Time.unscaledTime;
-                instance.LastHurtTime = Time.unscaledTime;
-                instance.RuntimeRegistered = true;
+                instance.Lifecycle.LastKnownPosition = boss.transform.position;
+                instance.Lifecycle.LastReachableTime = Time.unscaledTime;
+                instance.Lifecycle.LastHurtTime = Time.unscaledTime;
                 instance.SkillState = CreateZombieModeBossSkillState(kind);
                 instance.SkillState.Reset(Time.unscaledTime, boss.transform.localScale.x);
                 break;
@@ -56,20 +55,20 @@ namespace BossRush
             for (int i = 0; i < zombieModeRunState.CurrentWaveBossInstances.Count; i++)
             {
                 ZombieModeBossInstance instance = zombieModeRunState.CurrentWaveBossInstances[i];
-                if (instance == null || !instance.Alive || instance.Character == null)
+                if (instance == null || !instance.Lifecycle.Alive || instance.Character == null)
                 {
                     continue;
                 }
 
                 Vector3 current = instance.Character.transform.position;
-                if ((current - instance.LastKnownPosition).sqrMagnitude > 1f)
+                if ((current - instance.Lifecycle.LastKnownPosition).sqrMagnitude > 1f)
                 {
-                    instance.LastKnownPosition = current;
-                    instance.LastReachableTime = now;
+                    instance.Lifecycle.LastKnownPosition = current;
+                    instance.Lifecycle.LastReachableTime = now;
                 }
 
-                if (now - instance.LastReachableTime >= ZombieModeTuning.BossStuckTimeoutSeconds &&
-                    now - instance.LastHurtTime >= ZombieModeTuning.BossStuckTimeoutSeconds)
+                if (now - instance.Lifecycle.LastReachableTime >= ZombieModeTuning.BossStuckTimeoutSeconds &&
+                    now - instance.Lifecycle.LastHurtTime >= ZombieModeTuning.BossStuckTimeoutSeconds)
                 {
                     TeleportZombieModeBossNearPlayer(instance);
                 }
@@ -381,8 +380,8 @@ namespace BossRush
 
             Vector3 target = center + offset.normalized * 16f + Vector3.up * ZombieModeTuning.NavMeshLiftOffset;
             instance.Character.transform.position = target;
-            instance.LastKnownPosition = target;
-            instance.LastReachableTime = Time.unscaledTime;
+            instance.Lifecycle.LastKnownPosition = target;
+            instance.Lifecycle.LastReachableTime = Time.unscaledTime;
             DevLog("[ZombieMode] Boss stuck fallback teleport: " + instance.Kind.ToString());
         }
 
@@ -401,9 +400,9 @@ namespace BossRush
                     continue;
                 }
 
-                instance.LastHurtTime = Time.unscaledTime;
-                instance.LastReachableTime = Time.unscaledTime;
-                instance.LastKnownPosition = victim.transform.position;
+                instance.Lifecycle.LastHurtTime = Time.unscaledTime;
+                instance.Lifecycle.LastReachableTime = Time.unscaledTime;
+                instance.Lifecycle.LastKnownPosition = victim.transform.position;
 
                 // Hunter low-HP frenzy trigger
                 ZombieModeHunterState hunterDamageState = instance.SkillState as ZombieModeHunterState;
@@ -556,7 +555,7 @@ namespace BossRush
             for (int i = 0; i < zombieModeRunState.CurrentWaveBossInstances.Count; i++)
             {
                 ZombieModeBossInstance instance = zombieModeRunState.CurrentWaveBossInstances[i];
-                if (instance == null || !instance.Alive || instance.Character == null) continue;
+                if (instance == null || !instance.Lifecycle.Alive || instance.Character == null) continue;
                 if (instance.Kind != ZombieModeBossKind.Shielder) continue;
                 if (instance.Character == target) continue;
 

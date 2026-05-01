@@ -32,6 +32,7 @@
 | `ZombieModeExtractionFactoryGuard.py` | 撤离 NPC/Area 通过 `ModeExtractionPointFactory` 创建。 |
 | `ZombieModePerformanceRegistryGuard.py` | 性能层级队列引用 run-only 注册表。 |
 | `ZombieModeHotPathMeleeCacheGuard.py` | 受伤热路径不得实例化临时物品判断近战类型。 |
+| `ZombieModeBossLifecycleGuard.py` | BossInstance 必须通过 Lifecycle 子对象访问运行期追踪字段；死字段不得回归。 |
 | `ZombieModeRewardCandidateCacheGuard.py` | 奖励/掉落随机物品候选必须缓存 `ItemAssetsCollection.Search` 结果。 |
 | `ZombieModeSpawnPositionHelperGuard.py` | 刷怪位置 helper 迁移后，旧引用和编译列表必须一致。 |
 | `ZombieModeTemporaryNpcBoundaryGuard.py` | 临时 NPC 是 run-only service terminal 的边界。 |
