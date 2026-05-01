@@ -102,6 +102,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     DebugAndTools\F3DebugCheatMenu.cs ^
     DebugAndTools\NPCTeleportUI.cs ^
     Integration\BossRushIntegration.cs ^
+    Integration\ZombieModeIntegration.cs ^
     Integration\DeathWraith\DeathWraithSystem.cs ^
     Integration\BossRushHarmonyPatch.cs ^
     Integration\BirthdayCakeItem.cs ^
