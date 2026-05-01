@@ -61,23 +61,10 @@ namespace BossRush
             RemoveZombieModeAttributeModifiers();
             InvalidateZombieModeRun();
 
-            for (int i = zombieModeRunState.RunOnlyObjects.Count - 1; i >= 0; i--)
-            {
-                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
-                if (record == null)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    record.Cleanup(destroyGameObjects);
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ZombieMode] Run-only cleanup failed: " + reason.ToString() + " - " + e.Message);
-                }
-            }
+            RunScopedRegistry.ForEachReverse(
+                zombieModeRunState.RunOnlyObjects,
+                record => record.Cleanup(destroyGameObjects),
+                (e, record) => DevLog("[ZombieMode] Run-only cleanup failed: " + reason.ToString() + " - " + e.Message));
 
             zombieModeRunState.RunOnlyObjects.Clear();
             ClearZombieModeRewardShell();
