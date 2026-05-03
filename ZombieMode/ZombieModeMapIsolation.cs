@@ -35,21 +35,17 @@ namespace BossRush
         {
             RestoreZombieModeOriginalExtractionPoints();
 
-            for (int i = zombieModeDisabledMapObjects.Count - 1; i >= 0; i--)
-            {
-                GameObject obj = zombieModeDisabledMapObjects[i];
-                if (obj != null)
+            // 反向迭代清理用通用 helper（审查 §1.3）。
+            RunScopedRegistry.ForEachReverse(
+                zombieModeDisabledMapObjects,
+                obj =>
                 {
-                    try
+                    if (obj != null)
                     {
                         obj.SetActive(true);
                     }
-                    catch (Exception e)
-                    {
-                        DevLog("[ZombieMode] [WARNING] 恢复原始 spawner GameObject 失败: " + e.Message);
-                    }
-                }
-            }
+                },
+                (e, obj) => DevLog("[ZombieMode] [WARNING] 恢复原始 spawner GameObject 失败: " + e.Message));
 
             zombieModeDisabledMapObjects.Clear();
         }

@@ -69,23 +69,17 @@ namespace BossRush
 
         private void RollbackZombieModeInventoryTransferShell()
         {
-            for (int i = zombieModeEntryTransaction.InventoryTransferredItems.Count - 1; i >= 0; i--)
-            {
-                Item item = zombieModeEntryTransaction.InventoryTransferredItems[i];
-                if (item == null || item.IsBeingDestroyed)
+            // 反向迭代清理走 RunScopedRegistry.ForEachReverse（审查 §1.3）。
+            RunScopedRegistry.ForEachReverse(
+                zombieModeEntryTransaction.InventoryTransferredItems,
+                item =>
                 {
-                    continue;
-                }
-
-                try
-                {
-                    ItemUtilities.SendToPlayer(item, false, false);
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[ZombieMode] 裸装转移回滚失败: " + e.Message);
-                }
-            }
+                    if (item != null && !item.IsBeingDestroyed)
+                    {
+                        ItemUtilities.SendToPlayer(item, false, false);
+                    }
+                },
+                (e, item) => DevLog("[ZombieMode] 裸装转移回滚失败: " + e.Message));
 
             zombieModeEntryTransaction.InventoryTransferredItems.Clear();
             zombieModeEntryTransaction.InventoryTransferStarted = false;
@@ -141,6 +135,97 @@ namespace BossRush
             {
                 result.Add(item);
             }
+        }
+
+        private bool HasZombieModeBlockedTransferItem(out string itemName)
+        {
+            itemName = string.Empty;
+            List<Item> items = CollectZombieModeTopLevelPlayerItems();
+            for (int i = 0; i < items.Count; i++)
+            {
+                Item item = items[i];
+                if (!IsZombieModeBlockedTransferItem(item))
+                {
+                    continue;
+                }
+
+                itemName = GetZombieModeTransferItemDisplayName(item);
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsZombieModeBlockedTransferItem(Item item)
+        {
+            if (item == null || item.IsBeingDestroyed)
+            {
+                return false;
+            }
+
+            Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+            if (tagsData == null)
+            {
+                return false;
+            }
+
+            if (ItemHasZombieModeTransferBlockTag(item, tagsData.DontDropOnDeadInSlot))
+            {
+                return true;
+            }
+
+            return ItemHasZombieModeTransferBlockTag(item, TryFindQuestTag(tagsData));
+        }
+
+        private bool ItemHasZombieModeTransferBlockTag(Item item, Duckov.Utilities.Tag targetTag)
+        {
+            if (item == null || targetTag == null || item.Tags == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (item.Tags.Contains(targetTag))
+                {
+                    return true;
+                }
+
+                foreach (Duckov.Utilities.Tag tag in item.Tags)
+                {
+                    if (tag != null && string.Equals(tag.name, targetTag.name, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] 转移物品 Tag 检查失败: " + e.Message);
+            }
+
+            return false;
+        }
+
+        private string GetZombieModeTransferItemDisplayName(Item item)
+        {
+            if (item == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(item.DisplayName))
+                {
+                    return item.DisplayName;
+                }
+            }
+            catch
+            {
+            }
+
+            return item.name;
         }
     }
 }

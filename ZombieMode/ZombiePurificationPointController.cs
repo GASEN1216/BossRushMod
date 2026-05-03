@@ -95,7 +95,7 @@ namespace BossRush
                 Renderer renderer = point.GetComponent<Renderer>();
                 if (renderer != null)
                 {
-                    renderer.material.color = new Color(0.25f, 1f, 0.65f, 0.9f);
+                    SetZombieModeRendererColor(renderer, new Color(0.25f, 1f, 0.65f, 0.9f));
                 }
 
                 ZombiePurificationStar star = new ZombiePurificationStar();

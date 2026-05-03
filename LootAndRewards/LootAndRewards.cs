@@ -93,12 +93,37 @@ namespace BossRush
             excludeTags.Add(tag);
         }
 
+        // ============================================================
+        // Quest tag 反射查找缓存（审查 §2.5）
+        // ============================================================
+        // 之前每次 inventory 转移检查都对 N 件物品做 3 段反射；当前鸭科夫版本
+        // GameplayDataSettings.TagsData 没有 Quest 字段，AllTags 也无同名 Tag，
+        // 反射永远失败。第一次失败后用 sentinel 把后续调用降为 O(1)。
+        private static Duckov.Utilities.Tag s_cachedQuestTag;
+        private static bool s_questTagSearched;
+        private static bool s_questTagPermanentlyMissing;
+
         private Duckov.Utilities.Tag TryFindQuestTag(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
         {
             if (tagsData == null)
             {
                 return null;
             }
+
+            if (s_cachedQuestTag != null)
+            {
+                return s_cachedQuestTag;
+            }
+            if (s_questTagPermanentlyMissing)
+            {
+                return null;
+            }
+            if (s_questTagSearched)
+            {
+                return s_cachedQuestTag;
+            }
+
+            s_questTagSearched = true;
 
             const BindingFlags publicInstanceIgnoreCase =
                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
@@ -108,7 +133,8 @@ namespace BossRush
                 FieldInfo questField = tagsData.GetType().GetField("Quest", publicInstanceIgnoreCase);
                 if (questField != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questField.FieldType))
                 {
-                    return questField.GetValue(tagsData) as Duckov.Utilities.Tag;
+                    s_cachedQuestTag = questField.GetValue(tagsData) as Duckov.Utilities.Tag;
+                    if (s_cachedQuestTag != null) return s_cachedQuestTag;
                 }
             }
             catch (Exception e)
@@ -121,7 +147,8 @@ namespace BossRush
                 PropertyInfo questProperty = tagsData.GetType().GetProperty("Quest", publicInstanceIgnoreCase);
                 if (questProperty != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questProperty.PropertyType))
                 {
-                    return questProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
+                    s_cachedQuestTag = questProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
+                    if (s_cachedQuestTag != null) return s_cachedQuestTag;
                 }
             }
             catch (Exception e)
@@ -138,6 +165,7 @@ namespace BossRush
                         Duckov.Utilities.Tag tag = tagsData.AllTags[i];
                         if (tag != null && string.Equals(tag.name, "Quest", StringComparison.OrdinalIgnoreCase))
                         {
+                            s_cachedQuestTag = tag;
                             return tag;
                         }
                     }
@@ -148,6 +176,10 @@ namespace BossRush
                 LogLootWarningLimited("TryFindQuestTag_alltags", "遍历 AllTags 查找 Quest 标签失败", e);
             }
 
+            // 三段反射全部失败：标记永久缺失，下次直接早返。让维护者从日志看出
+            // "Quest tag 转移阻断永久 disable"是当前鸭科夫版本的事实而非 mod bug。
+            s_questTagPermanentlyMissing = true;
+            ModBehaviour.DevLog("[LootAndRewards] Quest tag lookup failed; transfer-block by Quest tag is permanently disabled in this build");
             return null;
         }
 
