@@ -340,7 +340,11 @@ namespace BossRush
 
         private void BuildLayout(RectTransform rootRect)
         {
-            TMP_FontAsset defaultFont = TMP_Settings.defaultFontAsset;
+            TMP_FontAsset defaultFont = ZombieModeUIHelper.GetGameFont();
+            if (defaultFont == null)
+            {
+                defaultFont = TMP_Settings.defaultFontAsset;
+            }
 
             GameObject panel = CreateUIObject("Panel", rootRect, typeof(Image), typeof(VerticalLayoutGroup), typeof(Shadow), typeof(ContentSizeFitter));
             RectTransform panelRect = panel.GetComponent<RectTransform>();

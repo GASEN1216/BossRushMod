@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Duckov.Economy;
 using Duckov.Utilities;
 using ItemStatsSystem;
@@ -307,9 +306,6 @@ namespace BossRush
                 usageUtils.behaviors.Clear();
             }
 
-            SetUsageUtilitiesMaster(usageUtils, item);
-            SetUsageTime(usageUtils, USE_TIME_SECONDS);
-
             ZombieTideInvitationUsage usage = item.GetComponent<ZombieTideInvitationUsage>();
             if (usage == null)
             {
@@ -317,52 +313,7 @@ namespace BossRush
             }
 
             usageUtils.behaviors.Add(usage);
-            SetItemUsageUtilities(item, usageUtils);
-        }
-
-        private static void SetUsageUtilitiesMaster(UsageUtilities usageUtils, Item item)
-        {
-            try
-            {
-                FieldInfo masterField = typeof(UsageUtilities).BaseType.GetField(
-                    "master",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                masterField?.SetValue(usageUtils, item);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieTideInvitationConfig] SetUsageUtilitiesMaster failed: " + e.Message);
-            }
-        }
-
-        private static void SetItemUsageUtilities(Item item, UsageUtilities usageUtils)
-        {
-            try
-            {
-                FieldInfo field = typeof(Item).GetField(
-                    "usageUtilities",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                field?.SetValue(item, usageUtils);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieTideInvitationConfig] SetItemUsageUtilities failed: " + e.Message);
-            }
-        }
-
-        private static void SetUsageTime(UsageUtilities usageUtils, float useTime)
-        {
-            try
-            {
-                FieldInfo field = typeof(UsageUtilities).GetField(
-                    "useTime",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                field?.SetValue(usageUtils, useTime);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieTideInvitationConfig] SetUsageTime failed: " + e.Message);
-            }
+            ModeFItemConfigHelper.BindUsageUtilitiesToItem(item, usageUtils, USE_TIME_SECONDS);
         }
     }
 

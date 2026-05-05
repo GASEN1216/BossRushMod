@@ -211,9 +211,6 @@ namespace BossRush
                 usageUtils.behaviors.Clear();
             }
 
-            SetUsageUtilitiesMaster(usageUtils, item);
-            SetUsageTime(usageUtils, USE_TIME_SECONDS);
-
             AwenLootSweepTokenUsage usage = item.GetComponent<AwenLootSweepTokenUsage>();
             if (usage == null)
             {
@@ -221,7 +218,7 @@ namespace BossRush
             }
 
             usageUtils.behaviors.Add(usage);
-            SetItemUsageUtilities(item, usageUtils);
+            ModeFItemConfigHelper.BindUsageUtilitiesToItem(item, usageUtils, USE_TIME_SECONDS);
         }
 
         private static void SetItemTypeId(Item item, int typeId)
@@ -239,51 +236,6 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetTypeID failed: " + e.Message);
-            }
-        }
-
-        private static void SetUsageUtilitiesMaster(UsageUtilities usageUtils, Item item)
-        {
-            try
-            {
-                FieldInfo masterField = typeof(UsageUtilities).BaseType.GetField(
-                    "master",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                masterField?.SetValue(usageUtils, item);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetUsageUtilitiesMaster failed: " + e.Message);
-            }
-        }
-
-        private static void SetItemUsageUtilities(Item item, UsageUtilities usageUtils)
-        {
-            try
-            {
-                FieldInfo field = typeof(Item).GetField(
-                    "usageUtilities",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                field?.SetValue(item, usageUtils);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetItemUsageUtilities failed: " + e.Message);
-            }
-        }
-
-        private static void SetUsageTime(UsageUtilities usageUtils, float useTime)
-        {
-            try
-            {
-                FieldInfo field = typeof(UsageUtilities).GetField(
-                    "useTime",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                field?.SetValue(usageUtils, useTime);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetUsageTime failed: " + e.Message);
             }
         }
 

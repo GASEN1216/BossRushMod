@@ -39,8 +39,6 @@ namespace BossRush.Utils
         private static Camera _cachedCamera;
         private static float _nextCameraRefreshTime;
 
-        private static TMP_FontAsset _cachedGameFont;
-
         private sealed class OriginalHealthBarEntry
         {
             public Transform Target;
@@ -189,7 +187,7 @@ namespace BossRush.Utils
                 nameTagText.sortingOrder = DEFAULT_SORTING_ORDER;
                 nameTagText.richText = false;
 
-                TMP_FontAsset gameFont = GetGameFont();
+                TMP_FontAsset gameFont = BossRush.ZombieModeUIHelper.GetGameFont();
                 if (gameFont != null)
                 {
                     nameTagText.font = gameFont;
@@ -207,67 +205,6 @@ namespace BossRush.Utils
                 ModBehaviour.DevLog(logPrefix + " [WARNING] 创建名字标签失败: " + e.Message);
                 return false;
             }
-        }
-
-        /// <summary>
-        /// 从原版 HealthBar prefab 的 nameText 上获取游戏字体，
-        /// 与 Boss 名字显示使用完全相同的 TMP_FontAsset。
-        /// </summary>
-        private static TMP_FontAsset GetGameFont()
-        {
-            if (_cachedGameFont != null) return _cachedGameFont;
-
-            try
-            {
-                // 优先从 HealthBarManager.Instance.healthBarPrefab 的 nameText 获取
-                var manager = Duckov.UI.HealthBarManager.Instance;
-                if (manager != null && manager.healthBarPrefab != null)
-                {
-                    var field = typeof(Duckov.UI.HealthBar).GetField("nameText",
-                        BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (field != null)
-                    {
-                        var nameText = field.GetValue(manager.healthBarPrefab) as TMP_Text;
-                        if (nameText != null && nameText.font != null)
-                        {
-                            _cachedGameFont = nameText.font;
-                            ModBehaviour.DevLog("[NPCNameTagHelper] 从 HealthBar prefab 获取到游戏字体: " + _cachedGameFont.name);
-                            return _cachedGameFont;
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NPCNameTagHelper] 从 HealthBar 获取字体失败: " + e.Message);
-            }
-
-            try
-            {
-                // 回退：从场景中任意已有的 TMP_Text 获取
-                var existingTMP = UnityEngine.Object.FindObjectOfType<TMP_Text>();
-                if (existingTMP != null && existingTMP.font != null)
-                {
-                    _cachedGameFont = existingTMP.font;
-                    ModBehaviour.DevLog("[NPCNameTagHelper] 从场景 TMP_Text 获取到字体: " + _cachedGameFont.name);
-                    return _cachedGameFont;
-                }
-
-                // 最后回退：从已加载的资源中查找
-                var fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
-                if (fonts != null && fonts.Length > 0)
-                {
-                    _cachedGameFont = fonts[0];
-                    ModBehaviour.DevLog("[NPCNameTagHelper] 从 Resources 获取到字体: " + _cachedGameFont.name);
-                    return _cachedGameFont;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NPCNameTagHelper] 获取游戏字体失败: " + e.Message);
-            }
-
-            return null;
         }
 
         public static void UpdateNameTagRotation(GameObject nameTagObject)

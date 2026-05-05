@@ -348,7 +348,7 @@ namespace BossRush
         {
             try
             {
-                TMP_FontAsset gameFont = GetGameFont();
+                TMP_FontAsset gameFont = ZombieModeUIHelper.GetGameFont();
                 if (gameFont == null) return;
 
                 var tmpComponents = uiRoot.GetComponentsInChildren<TMP_Text>(true);
@@ -362,23 +362,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[WikiUI] 字体替换失败: " + e.Message);
             }
-        }
-
-        private TMP_FontAsset GetGameFont()
-        {
-            try
-            {
-                var existingTMP = UnityEngine.Object.FindObjectOfType<TMP_Text>();
-                if (existingTMP != null && existingTMP.font != null) return existingTMP.font;
-
-                var fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
-                if (fonts != null && fonts.Length > 0) return fonts[0];
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[WikiUI] 获取字体失败: " + e.Message);
-            }
-            return null;
         }
 
         // ============================================================================

@@ -896,18 +896,16 @@ namespace BossRush
                 ModeEPetSpawner.ClearCache();
 
                 // 销毁所有分类商店的子 GameObject
-                for (int i = modeEMerchantShops.Count - 1; i >= 0; i--)
-                {
-                    try
+                RunScopedRegistry.ForEachReverse(
+                    modeEMerchantShops,
+                    shop =>
                     {
-                        StockShop shop = modeEMerchantShops[i];
                         if (shop != null && shop.gameObject != null)
                         {
                             UnityEngine.Object.Destroy(shop.gameObject);
                         }
-                    }
-                    catch { }
-                }
+                    },
+                    (e, shop) => DevLog("[ModeE] [WARNING] 清理商店子物体失败: " + e.Message));
                 modeEMerchantShops.Clear();
                 modeEMerchantMainInteract = null;
 

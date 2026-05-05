@@ -19,6 +19,8 @@ namespace BossRush
 
         public override bool CanBeUsed(Item item, object user)
         {
+            ZombieTideBeaconConfig.EnsureReusableInstance(item);
+
             ModBehaviour inst = ModBehaviour.Instance;
             if (inst == null || !inst.IsZombieModeActive)
             {
@@ -37,6 +39,8 @@ namespace BossRush
 
         protected override void OnUse(Item item, object user)
         {
+            ZombieTideBeaconConfig.EnsureReusableInstance(item);
+
             ModBehaviour inst = ModBehaviour.Instance;
             if (inst != null)
             {

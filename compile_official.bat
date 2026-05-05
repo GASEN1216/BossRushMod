@@ -94,6 +94,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Common\Equipment\EquipmentAbilityManager.cs ^
     Common\Equipment\EquipmentEffectManager.cs ^
     Common\Equipment\AbilitySystemHelper.cs ^
+    Common\Stats\RuntimeStatModifierTracker.cs ^
     ModBehaviour.cs ^
     ModConfigApi.cs ^
     UIAndSigns\UIAndSigns.cs ^

@@ -1595,7 +1595,11 @@ namespace BossRush
             return DestroyLootboxes(boxes);
         }
 
-        internal static void DecorateLootbox(InteractableLootbox lootbox, ModBehaviour owner = null, bool registerSweepTracking = false)
+        internal static void DecorateLootbox(
+            InteractableLootbox lootbox,
+            ModBehaviour owner = null,
+            bool registerSweepTracking = false,
+            bool includeCarryInteraction = false)
         {
             if (lootbox == null || lootbox.gameObject == null)
             {
@@ -1646,6 +1650,20 @@ namespace BossRush
                 catch {}
             }
 
+            BossRushCarryInteractable carryInteract = null;
+            if (includeCarryInteraction)
+            {
+                try
+                {
+                    carryInteract = lootbox.gameObject.GetComponent<BossRushCarryInteractable>();
+                    if (carryInteract == null)
+                    {
+                        carryInteract = lootbox.gameObject.AddComponent<BossRushCarryInteractable>();
+                    }
+                }
+                catch {}
+            }
+
             try
             {
                 lootbox.interactableGroup = true;
@@ -1664,6 +1682,10 @@ namespace BossRush
                     if (deleteInteract != null && !hostList.Contains(deleteInteract))
                     {
                         hostList.Add(deleteInteract);
+                    }
+                    if (carryInteract != null && !hostList.Contains(carryInteract))
+                    {
+                        hostList.Add(carryInteract);
                     }
                 }
             }

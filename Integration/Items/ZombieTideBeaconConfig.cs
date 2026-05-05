@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ItemStatsSystem;
 using UnityEngine;
 
@@ -8,7 +7,7 @@ namespace BossRush
 {
     /// <summary>
     /// 尸潮信标配置。
-    /// 末日丧尸模式局内专用消耗品：在准备/撤离窗口内使用可立即开启下一波。
+    /// 末日丧尸模式专用信标：在准备/撤离窗口内可反复使用以立即开启下一波。
     /// </summary>
     public static class ZombieTideBeaconConfig
     {
@@ -18,12 +17,13 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_ZombieTideBeacon";
         public const string DISPLAY_NAME_CN = "尸潮信标";
         public const string DISPLAY_NAME_EN = "Zombie Tide Beacon";
-        public const string DESCRIPTION_CN = "末日丧尸模式局内专用信标。";
-        public const string DESCRIPTION_EN = "A run-only beacon for Zombie Mode.";
-        public const string USE_DESC_CN = "使用：准备撤离。";
-        public const string USE_DESC_EN = "Use: prepare extraction.";
+        public const string DESCRIPTION_CN = "末日丧尸模式专用信标，可反复使用。";
+        public const string DESCRIPTION_EN = "A reusable beacon for Zombie Mode.";
+        public const string USE_DESC_CN = "使用：准备期快速开始下一波。";
+        public const string USE_DESC_EN = "Use: start the next wave during preparation.";
         public const int VALUE = 0;
         public const int MAX_STACK = 1;
+        public const float INFINITE_DURABILITY = 999f;
         public const float USE_TIME_SECONDS = 0.5f;
 
         private static bool runtimeFallbackRegistered = false;
@@ -131,6 +131,7 @@ namespace BossRush
                 }
                 item.Value = VALUE;
                 item.Quality = 1;
+                EnsureReusableInstance(item);
                 ModeFItemConfigHelper.SetHiddenMember(item, "description", GetDescription());
                 ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
                 EquipmentHelper.AddTagToItem(item, "Special");
@@ -142,6 +143,17 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ZombieTideBeaconConfig] ConfigureItem failed: " + e.Message);
             }
+        }
+
+        public static void EnsureReusableInstance(Item item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            item.MaxDurability = INFINITE_DURABILITY;
+            item.Durability = INFINITE_DURABILITY;
         }
 
         public static void InjectLocalization()
@@ -220,9 +232,8 @@ namespace BossRush
             {
                 usageUtils.behaviors.Clear();
             }
-
-            SetUsageUtilitiesMaster(usageUtils, item);
-            SetUsageTime(usageUtils, USE_TIME_SECONDS);
+            usageUtils.useDurability = false;
+            usageUtils.durabilityUsage = 0;
 
             ZombieTideBeaconUsage usage = item.GetComponent<ZombieTideBeaconUsage>();
             if (usage == null)
@@ -231,52 +242,7 @@ namespace BossRush
             }
 
             usageUtils.behaviors.Add(usage);
-            SetItemUsageUtilities(item, usageUtils);
-        }
-
-        private static void SetUsageUtilitiesMaster(UsageUtilities usageUtils, Item item)
-        {
-            try
-            {
-                FieldInfo masterField = typeof(UsageUtilities).BaseType.GetField(
-                    "master",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                masterField?.SetValue(usageUtils, item);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieTideBeaconConfig] SetUsageUtilitiesMaster failed: " + e.Message);
-            }
-        }
-
-        private static void SetItemUsageUtilities(Item item, UsageUtilities usageUtils)
-        {
-            try
-            {
-                FieldInfo field = typeof(Item).GetField(
-                    "usageUtilities",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                field?.SetValue(item, usageUtils);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieTideBeaconConfig] SetItemUsageUtilities failed: " + e.Message);
-            }
-        }
-
-        private static void SetUsageTime(UsageUtilities usageUtils, float useTime)
-        {
-            try
-            {
-                FieldInfo field = typeof(UsageUtilities).GetField(
-                    "useTime",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                field?.SetValue(usageUtils, useTime);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieTideBeaconConfig] SetUsageTime failed: " + e.Message);
-            }
+            ModeFItemConfigHelper.BindUsageUtilitiesToItem(item, usageUtils, USE_TIME_SECONDS);
         }
     }
 }

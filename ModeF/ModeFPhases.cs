@@ -509,11 +509,10 @@ namespace BossRush
                 RestoreOriginalExtractionPoints();
 
                 // 清理所有存活 Boss
-                for (int i = modeFState.ActiveBosses.Count - 1; i >= 0; i--)
-                {
-                    try
+                RunScopedRegistry.ForEachReverse(
+                    modeFState.ActiveBosses,
+                    boss =>
                     {
-                        CharacterMainControl boss = modeFState.ActiveBosses[i];
                         Teams? bossTeam = null;
                         if (!(boss == null))
                         {
@@ -538,9 +537,8 @@ namespace BossRush
                                 UnityEngine.Object.Destroy(boss.gameObject);
                             }
                         }
-                    }
-                    catch { }
-                }
+                    },
+                    (e, boss) => DevLog("[ModeF] [WARNING] Cleanup active boss failed: " + e.Message));
 
                 // H2: 清理 Boss 成长 Modifier 缓存
                 modeFBossModifiers.Clear();

@@ -2531,7 +2531,7 @@ namespace BossRush
 
                 try
                 {
-                    BossRushLootboxUtility.DecorateLootbox(lootbox, this, modeEActive || modeFActive);
+                    BossRushLootboxUtility.DecorateLootbox(lootbox, this, modeEActive || modeFActive, !useBossDeadBoxPrefab);
                 }
                 catch (Exception e)
                 {
@@ -2551,45 +2551,6 @@ namespace BossRush
                         LogLootWarningLimited("BossRewardLootbox_cover", "应用 Boss 奖励箱掩体配置失败", e);
                     }
 
-                    // 为 Boss 奖励箱添加伪搬运交互（BossRushCarryInteractable），并与 Lootbox 组成同一个交互组
-                    try
-                    {
-                        BossRushCarryInteractable carryInteract = lootbox.gameObject.GetComponent<BossRushCarryInteractable>();
-                        if (carryInteract == null)
-                        {
-                            carryInteract = lootbox.gameObject.AddComponent<BossRushCarryInteractable>();
-                        }
-
-                        // 仅让 Lootbox 作为组的 master，搬起交互只是成员，避免交互组状态混乱
-                        try
-                        {
-                            lootbox.interactableGroup = true;
-
-                            System.Type baseType = typeof(InteractableBase);
-                            System.Reflection.FieldInfo othersField = baseType.GetField("otherInterablesInGroup", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                            if (othersField != null)
-                            {
-                                System.Collections.Generic.List<InteractableBase> hostList = othersField.GetValue(lootbox) as System.Collections.Generic.List<InteractableBase>;
-                                if (hostList == null)
-                                {
-                                    hostList = new System.Collections.Generic.List<InteractableBase>();
-                                    othersField.SetValue(lootbox, hostList);
-                                }
-                                if (!hostList.Contains(carryInteract))
-                                {
-                                    hostList.Add(carryInteract);
-                                }
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            LogLootWarningLimited("BossRewardLootbox_group", "配置 Boss 奖励箱交互组失败", e);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        LogLootWarningLimited("BossRewardLootbox_carry", "添加 Boss 奖励箱搬运交互失败", e);
-                    }
                 }
 
                 try
