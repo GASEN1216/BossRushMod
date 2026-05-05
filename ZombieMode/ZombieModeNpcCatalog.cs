@@ -1,10 +1,12 @@
-// 临时商人 / 临时护士 / 即时工事补给的商品列表、库存、价格曲线和生成站位。
+// 补给终端 / 医疗终端 / 即时工事补给的商品列表、库存、价格曲线和生成站位。
 // TypeId = -1 表示运行时按 GrantTag 与品质范围从 ItemFilter 抽取。
 
 namespace BossRush
 {
     public static class ZombieModeNpcCatalog
     {
+        public const int MaxMerchantStockButtons = 16;
+
         public sealed class MerchantStockEntry
         {
             public int TypeId;       // 物品 TypeID

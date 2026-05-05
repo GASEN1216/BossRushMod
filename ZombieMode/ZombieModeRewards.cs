@@ -3,7 +3,6 @@ using Cysharp.Threading.Tasks;
 using Duckov.Buffs;
 using Duckov.UI;
 using ItemStatsSystem;
-using ItemStatsSystem.Stats;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -699,233 +698,182 @@ namespace BossRush
         private void ApplyZombieModeReward(ZombieModeRewardType rewardType)
         {
             bool bossNode = zombieModeRunState.CurrentRewardNode != null && zombieModeRunState.CurrentRewardNode.BossNode;
-            if (rewardType == ZombieModeRewardType.PurificationPoints)
+            switch (rewardType)
             {
-                int points = CalculateZombieModePurificationRewardPoints(bossNode);
-                zombieModeRunState.PurificationPoints += points;
-                NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_RewardGranted"), points));
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.Heal)
-            {
-                CharacterMainControl player = CharacterMainControl.Main;
-                if (player != null && player.Health != null)
+                case ZombieModeRewardType.PurificationPoints:
                 {
-                    player.Health.SetHealth(player.Health.MaxHealth);
+                    int points = CalculateZombieModePurificationRewardPoints(bossNode);
+                    zombieModeRunState.PurificationPoints += points;
+                    NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_RewardGranted"), points));
+                    return;
                 }
-                NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_Heal"));
-                return;
-            }
 
-            if (rewardType == ZombieModeRewardType.AttributeMaxHealth)
-            {
-                ApplyZombieModeAttributeReward(ZombieModeAttributeMaxHealthKey, 0.10f, 1.00f);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.AttributeMoveSpeed)
-            {
-                ApplyZombieModeAttributeReward(ZombieModeAttributeMoveSpeedKey, 0.05f, 0.30f);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.AttributeMeleeDamage)
-            {
-                ApplyZombieModeAttributeReward(ZombieModeAttributeMeleeDamageKey, 0.12f, 1.20f);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.AttributeRangedDamage)
-            {
-                ApplyZombieModeAttributeReward(ZombieModeAttributeRangedDamageKey, 0.10f, 1.00f);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.AttributeReloadSpeed)
-            {
-                ApplyZombieModeAttributeReward(ZombieModeAttributeReloadSpeedKey, 0.10f, 0.80f);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.AttributeDamageReduction)
-            {
-                ApplyZombieModeAttributeReward(ZombieModeAttributeDamageReductionKey, 0.05f, 0.40f);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.TempMerchant)
-            {
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.TempNurse)
-            {
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.RandomMeleeWeapon)
-            {
-                GrantZombieModeRandomMeleeReward(bossNode);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.RandomGunWithAmmo)
-            {
-                GrantZombieModeRandomGunWithAmmoReward(bossNode);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.AmmoSupply)
-            {
-                GrantZombieModeAmmoSupplyReward();
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.MedicalSupply)
-            {
-                GrantZombieModeMedicalSupplyReward();
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.ArmorOrHelmet)
-            {
-                GrantZombieModeArmorOrHelmetReward(bossNode);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.FortificationPack)
-            {
-                GrantZombieModeFortificationPack(bossNode);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.ContractPollutionDeal)
-            {
-                ApplyZombieModeContractPollutionDeal(bossNode);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.ContractGearDeal)
-            {
-                ApplyZombieModeContractGearDeal(bossNode);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.ContractHugePurification)
-            {
-                ApplyZombieModeContractHugePurification();
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.ContractInsurance)
-            {
-                ApplyZombieModeContractInsurance();
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.InsuranceKeepOne)
-            {
-                ApplyZombieModeInsuranceReward(0.10f, true);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.InsuranceRandom10)
-            {
-                ApplyZombieModeInsuranceReward(0.10f, false);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.InsuranceRandom20)
-            {
-                ApplyZombieModeInsuranceReward(0.20f, false);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.InsuranceNearFull)
-            {
-                zombieModeRunState.PollutionFromContracts += 5;
-                ApplyZombieModeInsuranceReward(0.80f, false);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.MapEventHighValueAirdrop || rewardType == ZombieModeRewardType.MapEventEliteSquad)
-            {
-                ApplyZombieModeMapEventReward(rewardType);
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.NextNodeFreeRefresh)
-            {
-                zombieModeRunState.PendingFreeRefreshNextNode = Mathf.Clamp(
-                    zombieModeRunState.PendingFreeRefreshNextNode + 1,
-                    0,
-                    ZombieModeTuning.FreeRefreshCapPerNode);
-                NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_NextNodeFreeRefresh"));
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.HalfPricePaidRefresh)
-            {
-                zombieModeRunState.HalfPriceNextPaidRefresh = true;
-                NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_HalfPricePaidRefresh"));
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.CurrentNodeFreeRefresh)
-            {
-                if (zombieModeRunState.FreeRefreshesRemainingCurrentNode >= ZombieModeTuning.FreeRefreshCapPerNode)
+                case ZombieModeRewardType.Heal:
                 {
-                    zombieModeRunState.PurificationPoints += 30;
-                    NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_RewardGranted"), 30));
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player != null && player.Health != null)
+                    {
+                        player.Health.SetHealth(player.Health.MaxHealth);
+                    }
+                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_Heal"));
+                    return;
                 }
-                else
-                {
-                    zombieModeRunState.FreeRefreshesRemainingCurrentNode = Mathf.Clamp(
-                        zombieModeRunState.FreeRefreshesRemainingCurrentNode + 1,
+
+                case ZombieModeRewardType.AttributeMaxHealth:
+                    ApplyZombieModeAttributeReward(ZombieModeAttributeMaxHealthKey, 0.10f, 1.00f);
+                    return;
+                case ZombieModeRewardType.AttributeMoveSpeed:
+                    ApplyZombieModeAttributeReward(ZombieModeAttributeMoveSpeedKey, 0.05f, 0.30f);
+                    return;
+                case ZombieModeRewardType.AttributeMeleeDamage:
+                    ApplyZombieModeAttributeReward(ZombieModeAttributeMeleeDamageKey, 0.12f, 1.20f);
+                    return;
+                case ZombieModeRewardType.AttributeRangedDamage:
+                    ApplyZombieModeAttributeReward(ZombieModeAttributeRangedDamageKey, 0.10f, 1.00f);
+                    return;
+                case ZombieModeRewardType.AttributeReloadSpeed:
+                    ApplyZombieModeAttributeReward(ZombieModeAttributeReloadSpeedKey, 0.10f, 0.80f);
+                    return;
+                case ZombieModeRewardType.AttributeDamageReduction:
+                    ApplyZombieModeAttributeReward(ZombieModeAttributeDamageReductionKey, -0.05f, -0.40f);
+                    return;
+
+                case ZombieModeRewardType.TempMerchant:
+                case ZombieModeRewardType.TempNurse:
+                    return;
+
+                case ZombieModeRewardType.RandomMeleeWeapon:
+                    GrantZombieModeRandomMeleeReward(bossNode);
+                    return;
+                case ZombieModeRewardType.RandomGunWithAmmo:
+                    GrantZombieModeRandomGunWithAmmoReward(bossNode);
+                    return;
+                case ZombieModeRewardType.AmmoSupply:
+                    GrantZombieModeAmmoSupplyReward();
+                    return;
+                case ZombieModeRewardType.MedicalSupply:
+                    GrantZombieModeMedicalSupplyReward();
+                    return;
+                case ZombieModeRewardType.ArmorOrHelmet:
+                    GrantZombieModeArmorOrHelmetReward(bossNode);
+                    return;
+                case ZombieModeRewardType.FortificationPack:
+                    GrantZombieModeFortificationPack(bossNode);
+                    return;
+
+                case ZombieModeRewardType.ContractPollutionDeal:
+                    ApplyZombieModeContractPollutionDeal(bossNode);
+                    return;
+                case ZombieModeRewardType.ContractGearDeal:
+                    ApplyZombieModeContractGearDeal(bossNode);
+                    return;
+                case ZombieModeRewardType.ContractHugePurification:
+                    ApplyZombieModeContractHugePurification();
+                    return;
+                case ZombieModeRewardType.ContractInsurance:
+                    ApplyZombieModeContractInsurance();
+                    return;
+
+                case ZombieModeRewardType.InsuranceKeepOne:
+                    ApplyZombieModeInsuranceReward(0.10f, true);
+                    return;
+                case ZombieModeRewardType.InsuranceRandom10:
+                    ApplyZombieModeInsuranceReward(0.10f, false);
+                    return;
+                case ZombieModeRewardType.InsuranceRandom20:
+                    ApplyZombieModeInsuranceReward(0.20f, false);
+                    return;
+                case ZombieModeRewardType.InsuranceNearFull:
+                    zombieModeRunState.PollutionFromContracts += 5;
+                    ApplyZombieModeInsuranceReward(0.80f, false);
+                    return;
+
+                case ZombieModeRewardType.MapEventHighValueAirdrop:
+                case ZombieModeRewardType.MapEventEliteSquad:
+                    ApplyZombieModeMapEventReward(rewardType);
+                    return;
+
+                case ZombieModeRewardType.NextNodeFreeRefresh:
+                    zombieModeRunState.PendingFreeRefreshNextNode = Mathf.Clamp(
+                        zombieModeRunState.PendingFreeRefreshNextNode + 1,
                         0,
                         ZombieModeTuning.FreeRefreshCapPerNode);
-                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_CurrentNodeFreeRefresh"));
+                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_NextNodeFreeRefresh"));
+                    return;
+                case ZombieModeRewardType.HalfPricePaidRefresh:
+                    zombieModeRunState.HalfPriceNextPaidRefresh = true;
+                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_HalfPricePaidRefresh"));
+                    return;
+                case ZombieModeRewardType.CurrentNodeFreeRefresh:
+                {
+                    if (zombieModeRunState.FreeRefreshesRemainingCurrentNode >= ZombieModeTuning.FreeRefreshCapPerNode)
+                    {
+                        zombieModeRunState.PurificationPoints += 30;
+                        NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_RewardGranted"), 30));
+                    }
+                    else
+                    {
+                        zombieModeRunState.FreeRefreshesRemainingCurrentNode = Mathf.Clamp(
+                            zombieModeRunState.FreeRefreshesRemainingCurrentNode + 1,
+                            0,
+                            ZombieModeTuning.FreeRefreshCapPerNode);
+                        NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_CurrentNodeFreeRefresh"));
+                    }
+                    return;
                 }
-                return;
+
+                case ZombieModeRewardType.RandomHighQualityItem:
+                {
+                    int typeId = FindRandomItemTypeByTags(null, 4, ZombieModeTuning.StarterMaxQuality + 1);
+                    if (TryGiveZombieModeItemToPlayerOrDrop(typeId))
+                    {
+                        NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomHighQualityItem"));
+                        return;
+                    }
+                    GrantZombieModeFallbackPurificationReward("RandomHighQualityItem", 120);
+                    return;
+                }
+
+                case ZombieModeRewardType.StarterReroll:
+                {
+                    bool granted = false;
+                    if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Gunner)
+                    {
+                        granted = TryGiveRandomItemByTags(new string[] { "Gun" }, 2, ZombieModeTuning.StarterMaxQuality);
+                    }
+                    else if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Melee)
+                    {
+                        granted = TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 2, ZombieModeTuning.StarterMaxQuality);
+                    }
+
+                    granted |= TryGiveRandomItemByTags(new string[] { "Weapon" }, 2, ZombieModeTuning.StarterMaxQuality);
+                    if (granted)
+                    {
+                        NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_StarterReroll"));
+                        return;
+                    }
+                    GrantZombieModeFallbackPurificationReward("StarterReroll", 80);
+                    return;
+                }
+
+                case ZombieModeRewardType.RandomSupply:
+                default:
+                    bool supplyGranted = false;
+                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Medic" }, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Medical" }, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Healing" }, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Ammo" }, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Bullet" }, 1, 4);
+                    if (supplyGranted)
+                    {
+                        NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomSupply"));
+                    }
+                    else
+                    {
+                        GrantZombieModeFallbackPurificationReward("RandomSupply", 60);
+                    }
+                    return;
             }
-
-            if (rewardType == ZombieModeRewardType.RandomHighQualityItem)
-            {
-                int typeId = FindRandomItemTypeByTags(null, 4, ZombieModeTuning.StarterMaxQuality + 1);
-                if (TryGiveZombieModeItemToPlayerOrDrop(typeId))
-                {
-                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomHighQualityItem"));
-                }
-                return;
-            }
-
-            if (rewardType == ZombieModeRewardType.StarterReroll)
-            {
-                bool granted = false;
-                if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Gunner)
-                {
-                    granted = TryGiveRandomItemByTags(new string[] { "Gun" }, 2, ZombieModeTuning.StarterMaxQuality);
-                }
-                else if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Melee)
-                {
-                    granted = TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 2, ZombieModeTuning.StarterMaxQuality);
-                }
-
-                granted |= TryGiveRandomItemByTags(new string[] { "Weapon" }, 2, ZombieModeTuning.StarterMaxQuality);
-                if (granted)
-                {
-                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_StarterReroll"));
-                }
-                return;
-            }
-
-            TryGiveRandomItemByTags(new string[] { "Medic" }, 1, 4);
-            TryGiveRandomItemByTags(new string[] { "Medical" }, 1, 4);
-            TryGiveRandomItemByTags(new string[] { "Healing" }, 1, 4);
-            TryGiveRandomItemByTags(new string[] { "Ammo" }, 1, 4);
-            TryGiveRandomItemByTags(new string[] { "Bullet" }, 1, 4);
-            NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomSupply"));
         }
 
         private string GetZombieModePendingTemporaryNpcServiceType(ZombieModeRewardType rewardType)
@@ -952,13 +900,47 @@ namespace BossRush
 
             float current = 0f;
             zombieModeRunState.AttributeBonuses.TryGetValue(key, out current);
-            float next = Mathf.Min(cap, current + Mathf.Max(0f, increment));
+            float next = increment < 0f
+                ? Mathf.Max(cap, current + increment)
+                : Mathf.Min(cap, current + increment);
             zombieModeRunState.AttributeBonuses[key] = next;
             ApplyZombieModePlayerAttributeModifiers();
 
             NotificationText.Push(string.Format(
-                L10n.T("BossRush_ZombieMode_Notify_AttributeMaxHealth"),
-                Mathf.RoundToInt(next * 100f)));
+                L10n.T("BossRush_ZombieMode_Notify_AttributeBonus"),
+                GetZombieModeAttributeDisplayName(key),
+                Mathf.RoundToInt(Mathf.Abs(next) * 100f)));
+        }
+
+        private string GetZombieModeAttributeDisplayName(string key)
+        {
+            if (key == ZombieModeAttributeMaxHealthKey)
+            {
+                return L10n.T("BossRush_ZombieMode_Reward_AttributeName_MaxHealth");
+            }
+            if (key == ZombieModeAttributeMoveSpeedKey ||
+                key == ZombieModeAttributeWalkSpeedKey ||
+                key == ZombieModeAttributeRunSpeedKey)
+            {
+                return L10n.T("BossRush_ZombieMode_Reward_AttributeName_MoveSpeed");
+            }
+            if (key == ZombieModeAttributeMeleeDamageKey)
+            {
+                return L10n.T("BossRush_ZombieMode_Reward_AttributeName_MeleeDamage");
+            }
+            if (key == ZombieModeAttributeRangedDamageKey)
+            {
+                return L10n.T("BossRush_ZombieMode_Reward_AttributeName_RangedDamage");
+            }
+            if (key == ZombieModeAttributeReloadSpeedKey)
+            {
+                return L10n.T("BossRush_ZombieMode_Reward_AttributeName_ReloadSpeed");
+            }
+            if (key == ZombieModeAttributeDamageReductionKey)
+            {
+                return L10n.T("BossRush_ZombieMode_Reward_AttributeName_DamageReduction");
+            }
+            return key;
         }
 
         private void ApplyZombieModePlayerAttributeModifiers()
@@ -973,7 +955,7 @@ namespace BossRush
             RemoveZombieModeAttributeModifiers();
             foreach (KeyValuePair<string, float> pair in zombieModeRunState.AttributeBonuses)
             {
-                if (pair.Value <= 0f)
+                if (Mathf.Approximately(pair.Value, 0f))
                 {
                     continue;
                 }
@@ -1001,28 +983,30 @@ namespace BossRush
 
         private void AddZombieModeAttributeModifier(CharacterMainControl player, string statName, float percent)
         {
-            if (player == null || player.CharacterItem == null || string.IsNullOrEmpty(statName) || percent <= 0f)
+            if (player == null || player.CharacterItem == null || string.IsNullOrEmpty(statName) || Mathf.Approximately(percent, 0f))
             {
                 return;
             }
 
             try
             {
-                Stat stat = player.CharacterItem.GetStat(statName);
-                if (stat == null)
+                bool added = RuntimeStatModifierTracker.TryAdd(
+                    player,
+                    statName,
+                    percent,
+                    this,
+                    zombieModeRunState.AttributeModifierRecords,
+                    "ZombieMode Reward Attribute");
+                if (!added)
                 {
                     return;
                 }
 
-                Modifier modifier = new Modifier(ModifierType.Add, stat.BaseValue * percent, this);
-                stat.AddModifier(modifier);
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
-                record.CharacterItem = player.CharacterItem;
-                record.Stat = stat;
-                record.Modifier = modifier;
-                record.StatName = statName;
-                zombieModeRunState.AttributeModifierRecords.Add(record);
-                RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.Buff, null, player.CharacterItem, RemoveZombieModeAttributeModifiers);
+                if (!zombieModeRunState.AttributeModifierCleanupRegistered)
+                {
+                    zombieModeRunState.AttributeModifierCleanupRegistered = true;
+                    RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.Buff, null, player.CharacterItem, RemoveZombieModeAttributeModifiers);
+                }
             }
             catch (System.Exception e)
             {
@@ -1032,34 +1016,10 @@ namespace BossRush
 
         private void RemoveZombieModeAttributeModifiers()
         {
-            for (int i = zombieModeRunState.AttributeModifierRecords.Count - 1; i >= 0; i--)
-            {
-                ZombieModeAttributeModifierRecord record = zombieModeRunState.AttributeModifierRecords[i];
-                if (record == null || record.Modifier == null)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    Stat stat = record.Stat;
-                    if (stat == null && record.CharacterItem != null && !string.IsNullOrEmpty(record.StatName))
-                    {
-                        stat = record.CharacterItem.GetStat(record.StatName);
-                    }
-
-                    if (stat != null)
-                    {
-                        stat.RemoveModifier(record.Modifier);
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[ZombieMode] Attribute Modifier 清理失败: " + e.Message);
-                }
-            }
-
-            zombieModeRunState.AttributeModifierRecords.Clear();
+            RuntimeStatModifierTracker.RemoveAll(
+                zombieModeRunState.AttributeModifierRecords,
+                "ZombieMode Reward Attribute");
+            zombieModeRunState.AttributeModifierCleanupRegistered = false;
         }
 
         private void SpawnZombieModeTemporaryNpc(int runId, string serviceType, bool bossNodeStock)
@@ -1114,9 +1074,11 @@ namespace BossRush
             Renderer renderer = terminal.GetComponent<Renderer>();
             if (renderer != null)
             {
-                renderer.material.color = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
-                    ? new Color(0.85f, 0.25f, 0.28f, 0.95f)
-                    : new Color(0.25f, 0.65f, 0.35f, 0.95f);
+                SetZombieModeRendererColor(
+                    renderer,
+                    string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
+                        ? new Color(0.85f, 0.25f, 0.28f, 0.95f)
+                        : new Color(0.25f, 0.65f, 0.35f, 0.95f));
             }
 
             ZombieModeTemporaryNpcInteractable interactable = terminal.GetComponent<ZombieModeTemporaryNpcInteractable>();
@@ -1191,6 +1153,13 @@ namespace BossRush
             {
                 return;
             }
+
+            if (Time.unscaledTime - zombieModeRunState.LastTemporaryNpcProtectionTickTime <
+                ZombieModeTuning.TemporaryNpcProtectionTickIntervalSeconds)
+            {
+                return;
+            }
+            zombieModeRunState.LastTemporaryNpcProtectionTickTime = Time.unscaledTime;
 
             for (int i = zombieModeRunState.TemporaryNpcs.Count - 1; i >= 0; i--)
             {
@@ -1518,25 +1487,14 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            Vector3 center = player != null ? player.transform.position : zombieModeRunState.ActiveSafeZoneCenter;
-            Vector3 position = center + Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward * Random.Range(6f, 15f);
-            position.y = center.y + 0.4f;
-
-            GameObject drop = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            drop.name = "ZombieMode_HighValueAirdrop";
-            drop.transform.position = position;
-            drop.transform.localScale = new Vector3(1.4f, 1.0f, 1.4f);
-            Renderer renderer = drop.GetComponent<Renderer>();
-            if (renderer != null)
+            bool granted = false;
+            granted |= TryGiveRandomItemByTags(new string[] { "Gun" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
+            granted |= TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
+            granted |= TryGiveRandomItemByTags(new string[] { "Armor" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
+            if (!granted)
             {
-                renderer.material.color = new Color(0.92f, 0.64f, 0.22f, 0.95f);
+                GrantZombieModeFallbackPurificationReward("HighValueSupply", 180);
             }
-
-            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.MapEvent, drop, drop, null);
-            TryGiveRandomItemByTags(new string[] { "Gun" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
-            TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
-            TryGiveRandomItemByTags(new string[] { "Armor" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
             ShowBigBanner(L10n.T("BossRush_ZombieMode_Reward_MapEventHighValueAirdrop"));
         }
 
@@ -1973,6 +1931,16 @@ namespace BossRush
             }
         }
 
+        private void GrantZombieModeFallbackPurificationReward(string reason, int points)
+        {
+            points = Mathf.Max(1, points);
+            zombieModeRunState.PurificationPoints += points;
+            NotificationText.Push(string.Format(
+                L10n.T("BossRush_ZombieMode_Notify_RewardFallbackPurification"),
+                points));
+            DevLog("[ZombieMode] Reward fallback purification: " + reason + ", points=" + points);
+        }
+
         private int CalculateZombieModePurificationRewardPoints(bool bossNode)
         {
             int basePoints = bossNode ? ZombieModeTuning.InstantPurificationBossBase : ZombieModeTuning.InstantPurificationNormalBase;
@@ -1994,12 +1962,14 @@ namespace BossRush
     {
         private int runId;
         private ModBehaviour owner;
+        private ZombieModeUIHelper.ModalInputLease inputLease;
 
         public void Initialize(int newRunId, ModBehaviour newOwner)
         {
             runId = newRunId;
             owner = newOwner;
             Build();
+            ClaimInputAndPause();
         }
 
         private void Build()
@@ -2011,11 +1981,11 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
-            GameObject panel = CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 420f));
+            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 420f));
             Image panelImage = panel.AddComponent<Image>();
             panelImage.color = new Color(0f, 0f, 0f, 0.86f);
-            CreateText("Title", panel.transform, owner.GetZombieModeRewardTitle(runId), 28, new Vector2(0f, 150f), new Vector2(680f, 60f));
-            CreateText(
+            ZombieModeUIHelper.CreateText("Title", panel.transform, owner.GetZombieModeRewardTitle(runId), 28, new Vector2(0f, 150f), new Vector2(680f, 60f), TextAlignmentOptions.Center, Color.white);
+            ZombieModeUIHelper.CreateText(
                 "Info",
                 panel.transform,
                 string.Format(
@@ -2025,7 +1995,9 @@ namespace BossRush
                     owner.GetZombieModeRewardPaidRefreshCost(runId).ToString("N0")),
                 18,
                 new Vector2(0f, 102f),
-                new Vector2(700f, 36f));
+                new Vector2(700f, 36f),
+                TextAlignmentOptions.Center,
+                Color.white);
 
             IList<ZombieModeRewardType> options = owner.GetZombieModeRewardOptions(runId);
             bool bossNode = owner.IsZombieModeBossRewardNode(runId);
@@ -2071,41 +2043,15 @@ namespace BossRush
                 true);
         }
 
-        private GameObject CreateRect(string name, Transform parent, Vector2 anchor, Vector2 size)
-        {
-            GameObject obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            RectTransform rect = obj.AddComponent<RectTransform>();
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = size;
-            rect.anchoredPosition = Vector2.zero;
-            return obj;
-        }
-
-        private TextMeshProUGUI CreateText(string name, Transform parent, string text, int fontSize, Vector2 position, Vector2 size)
-        {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), size);
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchoredPosition = position;
-            return ZombieModeUIHelper.CreateTMPText(
-                obj,
-                text,
-                fontSize,
-                TextAlignmentOptions.Center,
-                Color.white);
-        }
-
         private void CreateRewardButton(string name, Transform parent, string text, Vector2 position, ZombieModeRewardType rewardType)
         {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(220f, 82f));
+            GameObject obj = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(220f, 82f));
             RectTransform rect = obj.GetComponent<RectTransform>();
             rect.anchoredPosition = position;
             Image image = obj.AddComponent<Image>();
             image.color = new Color(0.18f, 0.28f, 0.34f, 0.95f);
             Button button = obj.AddComponent<Button>();
-            CreateText("Text", obj.transform, text, 19, Vector2.zero, new Vector2(206f, 72f));
+            ZombieModeUIHelper.CreateText("Text", obj.transform, text, 19, Vector2.zero, new Vector2(206f, 72f), TextAlignmentOptions.Center, Color.white);
             button.onClick.AddListener(delegate
             {
                 if (owner != null)
@@ -2117,7 +2063,7 @@ namespace BossRush
 
         private void CreateRefreshButton(string name, Transform parent, string text, Vector2 position, bool paid, bool interactable)
         {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(230f, 68f));
+            GameObject obj = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(230f, 68f));
             RectTransform rect = obj.GetComponent<RectTransform>();
             rect.anchoredPosition = position;
             Image image = obj.AddComponent<Image>();
@@ -2126,7 +2072,7 @@ namespace BossRush
                 : new Color(0.22f, 0.22f, 0.22f, 0.75f);
             Button button = obj.AddComponent<Button>();
             button.interactable = interactable;
-            CreateText("Text", obj.transform, text, 18, Vector2.zero, new Vector2(220f, 58f));
+            ZombieModeUIHelper.CreateText("Text", obj.transform, text, 18, Vector2.zero, new Vector2(220f, 58f), TextAlignmentOptions.Center, Color.white);
             if (!interactable)
             {
                 return;
@@ -2139,6 +2085,25 @@ namespace BossRush
                     owner.RefreshZombieModeRewardSelection(runId, paid);
                 }
             });
+        }
+
+        private void ClaimInputAndPause()
+        {
+            inputLease = ZombieModeUIHelper.ClaimModalInput(gameObject, "RewardSelection");
+        }
+
+        private void RestoreInputState()
+        {
+            if (inputLease != null)
+            {
+                inputLease.Release();
+                inputLease = null;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            RestoreInputState();
         }
     }
 
@@ -2238,6 +2203,7 @@ namespace BossRush
         private int runId;
         private ModBehaviour owner;
         private string serviceType = string.Empty;
+        private ZombieModeUIHelper.ModalInputLease inputLease;
 
         public void Initialize(int newRunId, ModBehaviour newOwner, string newServiceType)
         {
@@ -2245,24 +2211,36 @@ namespace BossRush
             owner = newOwner;
             serviceType = newServiceType ?? string.Empty;
             Build();
+            ClaimInputAndPause();
         }
 
         private void Build()
         {
-            Canvas canvas = gameObject.AddComponent<Canvas>();
+            Canvas canvas = gameObject.GetComponent<Canvas>();
+            if (canvas == null)
+            {
+                canvas = gameObject.AddComponent<Canvas>();
+            }
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 30500;
-            CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
+            CanvasScaler scaler = gameObject.GetComponent<CanvasScaler>();
+            if (scaler == null)
+            {
+                scaler = gameObject.AddComponent<CanvasScaler>();
+            }
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
-            gameObject.AddComponent<GraphicRaycaster>();
+            if (gameObject.GetComponent<GraphicRaycaster>() == null)
+            {
+                gameObject.AddComponent<GraphicRaycaster>();
+            }
 
-            GameObject panel = CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 560f));
+            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 560f));
             Image panelImage = panel.AddComponent<Image>();
             panelImage.color = new Color(0f, 0f, 0f, 0.88f);
             string titleKey = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
                 ? "BossRush_ZombieMode_Npc_TempNurse"
                 : "BossRush_ZombieMode_Npc_TempMerchant";
-            CreateText("Title", panel.transform, L10n.T(titleKey), 28, new Vector2(0f, 230f), new Vector2(700f, 48f));
+            ZombieModeUIHelper.CreateText("Title", panel.transform, L10n.T(titleKey), 28, new Vector2(0f, 230f), new Vector2(700f, 48f), TextAlignmentOptions.Center, Color.white);
 
             if (string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal))
             {
@@ -2281,7 +2259,7 @@ namespace BossRush
             ZombieModeNpcCatalog.MerchantStockEntry[] stock = owner != null
                 ? owner.GetZombieModeMerchantStock(runId, serviceType)
                 : new ZombieModeNpcCatalog.MerchantStockEntry[0];
-            for (int i = 0; i < stock.Length && i < 12; i++)
+            for (int i = 0; i < stock.Length && i < ZombieModeNpcCatalog.MaxMerchantStockButtons; i++)
             {
                 ZombieModeNpcCatalog.MerchantStockEntry entry = stock[i];
                 int index = i;
@@ -2326,9 +2304,9 @@ namespace BossRush
 
         private Vector2 GetGridPosition(int index)
         {
-            int col = index % 3;
-            int row = index / 3;
-            return new Vector2(-230f + col * 230f, 145f - row * 92f);
+            int col = index % 4;
+            int row = index / 4;
+            return new Vector2(-300f + col * 200f, 145f - row * 92f);
         }
 
         private void Rebuild()
@@ -2340,42 +2318,16 @@ namespace BossRush
             Build();
         }
 
-        private GameObject CreateRect(string name, Transform parent, Vector2 anchor, Vector2 size)
-        {
-            GameObject obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            RectTransform rect = obj.AddComponent<RectTransform>();
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = size;
-            rect.anchoredPosition = Vector2.zero;
-            return obj;
-        }
-
-        private TextMeshProUGUI CreateText(string name, Transform parent, string text, int fontSize, Vector2 position, Vector2 size)
-        {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), size);
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchoredPosition = position;
-            return ZombieModeUIHelper.CreateTMPText(
-                obj,
-                text,
-                fontSize,
-                TextAlignmentOptions.Center,
-                Color.white);
-        }
-
         private void CreateServiceButton(Transform parent, string name, string text, Vector2 position, bool interactable, UnityEngine.Events.UnityAction action)
         {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(214f, 74f));
+            GameObject obj = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(214f, 74f));
             RectTransform rect = obj.GetComponent<RectTransform>();
             rect.anchoredPosition = position;
             Image image = obj.AddComponent<Image>();
             image.color = interactable ? new Color(0.18f, 0.30f, 0.34f, 0.95f) : new Color(0.18f, 0.18f, 0.18f, 0.70f);
             Button button = obj.AddComponent<Button>();
             button.interactable = interactable;
-            CreateText("Text", obj.transform, text, 15, Vector2.zero, new Vector2(204f, 66f));
+            ZombieModeUIHelper.CreateText("Text", obj.transform, text, 15, Vector2.zero, new Vector2(204f, 66f), TextAlignmentOptions.Center, Color.white);
             if (interactable && action != null)
             {
                 button.onClick.AddListener(action);
@@ -2386,8 +2338,28 @@ namespace BossRush
         {
             CreateServiceButton(parent, "Close", L10n.T("BossRush_ZombieMode_Npc_Close"), new Vector2(0f, -240f), true, delegate
             {
+                RestoreInputState();
                 Destroy(gameObject);
             });
+        }
+
+        private void ClaimInputAndPause()
+        {
+            inputLease = ZombieModeUIHelper.ClaimModalInput(gameObject, "TemporaryNpcService");
+        }
+
+        private void RestoreInputState()
+        {
+            if (inputLease != null)
+            {
+                inputLease.Release();
+                inputLease = null;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            RestoreInputState();
         }
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections;
+using Duckov.MiniMaps;
 using Cysharp.Threading.Tasks;
 using Duckov.Scenes;
 using Duckov.Economy;
@@ -51,8 +52,8 @@ namespace BossRush
 
         private IEnumerator ZombieModeBeaconChannelCoroutine(int runId)
         {
-            float deadline = Time.unscaledTime + zombieModeRunState.BeaconChannelDuration;
-            while (Time.unscaledTime < deadline)
+            float remaining = zombieModeRunState.BeaconChannelDuration;
+            while (remaining > 0f)
             {
                 if (!IsZombieModeRunValid(runId))
                 {
@@ -64,6 +65,11 @@ namespace BossRush
                     zombieModeRunState.BeaconChanneling = false;
                     zombieModeRunState.BeaconChannelStartTime = 0f;
                     yield break;
+                }
+
+                if (!IsZombieModeGamePaused())
+                {
+                    remaining -= Time.unscaledDeltaTime;
                 }
 
                 yield return null;
@@ -101,7 +107,21 @@ namespace BossRush
                 return;
             }
 
+            CloseZombieModeExtractionOpportunityAndContinue(runId);
+        }
+
+        private void CloseZombieModeExtractionOpportunityAndContinue(int runId)
+        {
+            if (!IsZombieModeRunValid(runId) || zombieModeRunState.CombatPhase != ZombieModeCombatPhase.ExtractionOpportunity)
+            {
+                return;
+            }
+
             ClearZombieModeExtractionOpportunityUi();
+            zombieModeRunState.ExtractionChanneling = false;
+            DestroyZombieModeActiveExtractionArea();
+            zombieModeRunState.CombatPhase = ZombieModeCombatPhase.Preparation;
+            ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_PreparationNextWave"));
         }
 
         public void StartZombieModeExtractionFromUi(int runId)
@@ -193,8 +213,8 @@ namespace BossRush
         private IEnumerator ZombieModeExtractionCountdownCoroutine(int runId)
         {
             CountDownArea area = zombieModeRunState.ActiveExtractionArea;
-            float deadline = Time.unscaledTime + ZombieModeTuning.ExtractionCountdownSeconds;
-            while (Time.unscaledTime < deadline)
+            float remaining = ZombieModeTuning.ExtractionCountdownSeconds;
+            while (remaining > 0f)
             {
                 if (!IsZombieModeRunValid(runId) ||
                     zombieModeRunState.ActiveExtractionArea != area ||
@@ -213,6 +233,11 @@ namespace BossRush
                         StartZombieModeWave(zombieModeRunState.RunId);
                     }
                     yield break;
+                }
+
+                if (!IsZombieModeGamePaused())
+                {
+                    remaining -= Time.unscaledDeltaTime;
                 }
 
                 yield return null;
@@ -345,18 +370,13 @@ namespace BossRush
             TryReleaseZombieModeExtractionCountdownUi();
             ReleaseZombieModeSafeZoneThreatSuppression();
 
-            if (zombieModeRunState.ActiveExtractionArea != null)
-            {
-                CountDownArea area = zombieModeRunState.ActiveExtractionArea;
-                zombieModeRunState.ActiveExtractionArea = null;
-                try { EvacuationCountdownUI.Release(area); } catch (System.Exception e) { DevLog("[ZombieMode] EvacuationCountdownUI.Release(area) 失败: " + e.Message); }
-                try { Destroy(area.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ExtractionArea 失败: " + e.Message); }
-            }
+            DestroyZombieModeActiveExtractionArea();
 
             if (zombieModeRunState.ActiveSafeZoneVisual != null)
             {
                 try { Destroy(zombieModeRunState.ActiveSafeZoneVisual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ActiveSafeZoneVisual 失败: " + e.Message); }
             }
+            DestroyZombieModeSafeZoneMapPoi();
 
             zombieModeRunState.ActiveSafeZoneCenter = Vector3.zero;
             zombieModeRunState.ActiveSafeZoneRadius = 0f;
@@ -366,6 +386,20 @@ namespace BossRush
             zombieModeRunState.SafeZoneThreatSuppressed = false;
             zombieModeRunState.LastSafeZoneTickTime = 0f;
             zombieModeRunState.ActiveSafeZoneVisual = null;
+            zombieModeRunState.ActiveSafeZoneMapPoi = null;
+        }
+
+        private void DestroyZombieModeActiveExtractionArea()
+        {
+            if (zombieModeRunState.ActiveExtractionArea == null)
+            {
+                return;
+            }
+
+            CountDownArea area = zombieModeRunState.ActiveExtractionArea;
+            zombieModeRunState.ActiveExtractionArea = null;
+            try { EvacuationCountdownUI.Release(area); } catch (System.Exception e) { DevLog("[ZombieMode] EvacuationCountdownUI.Release(area) 失败: " + e.Message); }
+            try { Destroy(area.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ExtractionArea 失败: " + e.Message); }
         }
 
         private void BreakZombieModeSafeZoneStealth(int runId)
@@ -390,21 +424,14 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             Vector3 position = player != null ? player.transform.position : Vector3.zero;
             position = ValidateZombieModeSafeZonePosition(position);
-            GameObject safeZone = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            safeZone.name = "ZombieMode_SafeZone";
-            safeZone.transform.position = position + Vector3.up * 0.03f;
-            safeZone.transform.localScale = new Vector3(ZombieModeTuning.SafeZoneRadius * 2f, 0.05f, ZombieModeTuning.SafeZoneRadius * 2f);
-            Collider collider = safeZone.GetComponent<Collider>();
-            if (collider != null)
-            {
-                Destroy(collider);
-            }
-
-            Renderer renderer = safeZone.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.material.color = new Color(0.18f, 0.78f, 0.32f, 0.45f);
-            }
+            // 共享 disk mesh 替代 CreatePrimitive(Cylinder)（审查 §3.3）。
+            // 安全区也复用同一个 disk mesh / material，避免每个准备期都构造 Cylinder primitive。
+            GameObject safeZone = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_SafeZone",
+                position + Vector3.up * 0.03f,
+                ZombieModeTuning.SafeZoneRadius,
+                0.05f,
+                new Color(0.18f, 0.78f, 0.32f, 0.45f));
 
             ZombieModeSafeZoneController controller = safeZone.AddComponent<ZombieModeSafeZoneController>();
             controller.Initialize(runId);
@@ -414,8 +441,94 @@ namespace BossRush
             zombieModeRunState.LastSafeZoneTickTime = 0f;
             zombieModeRunState.ActiveSafeZoneVisual = safeZone;
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.SafeZone, safeZone, controller, null);
+            CreateZombieModeSafeZoneMapPoi(runId, position);
             TryRegisterZombieModeShootStealthBreaker(runId);
             TickZombieModeSafeZone();
+        }
+
+        private void CreateZombieModeSafeZoneMapPoi(int runId, Vector3 position)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return;
+            }
+
+            DestroyZombieModeSafeZoneMapPoi();
+
+            string sceneId = ResolveZombieModeSafeZoneMapSceneId();
+            string displayName = L10n.T("BossRush_ZombieMode_Map_SafeZone");
+            SimplePointOfInterest poi = null;
+            try
+            {
+                poi = SimplePointOfInterest.Create(
+                    position,
+                    sceneId,
+                    displayName,
+                    null,
+                    false);
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] 创建安全区地图标记失败: " + e.Message);
+            }
+
+            if (poi == null)
+            {
+                return;
+            }
+
+            poi.Color = new Color(0.18f, 0.78f, 0.32f, 0.75f);
+            poi.ShadowColor = new Color(0.02f, 0.18f, 0.06f, 0.75f);
+            poi.ShadowDistance = 1.5f;
+            poi.IsArea = true;
+            poi.AreaRadius = ZombieModeTuning.SafeZoneRadius;
+            poi.Setup(null, displayName, false, sceneId);
+            zombieModeRunState.ActiveSafeZoneMapPoi = poi;
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.SafeZone, poi.gameObject, poi, null);
+            DevLog("[ZombieMode] 安全区地图标记已创建: sceneId=" + sceneId
+                + ", activeScene=" + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
+                + ", position=" + position
+                + ", radius=" + ZombieModeTuning.SafeZoneRadius);
+        }
+
+        private string ResolveZombieModeSafeZoneMapSceneId()
+        {
+            try
+            {
+                UnityEngine.SceneManagement.Scene activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                string sceneId = SceneInfoCollection.GetSceneID(activeScene.buildIndex);
+                if (!string.IsNullOrEmpty(sceneId))
+                {
+                    return sceneId;
+                }
+
+                if (!string.IsNullOrEmpty(activeScene.name))
+                {
+                    return activeScene.name;
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] Resolve safe-zone map scene id failed: " + e.Message);
+            }
+
+            if (!string.IsNullOrEmpty(MultiSceneCore.ActiveSubSceneID))
+            {
+                return MultiSceneCore.ActiveSubSceneID;
+            }
+
+            return zombieModeRunState.SceneName;
+        }
+
+        private void DestroyZombieModeSafeZoneMapPoi()
+        {
+            if (zombieModeRunState.ActiveSafeZoneMapPoi == null)
+            {
+                return;
+            }
+
+            try { Destroy(zombieModeRunState.ActiveSafeZoneMapPoi.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ActiveSafeZoneMapPoi 失败: " + e.Message); }
+            zombieModeRunState.ActiveSafeZoneMapPoi = null;
         }
 
         private Vector3 ValidateZombieModeSafeZonePosition(Vector3 candidate)
@@ -459,7 +572,8 @@ namespace BossRush
 
             if (zombieModeRunState.SafeZoneStealthBroken)
             {
-                renderer.material.color = new Color(0.85f, 0.42f, 0.20f, 0.40f);
+                SetZombieModeRendererColor(renderer, new Color(0.85f, 0.42f, 0.20f, 0.40f));
+                UpdateZombieModeSafeZoneMapPoiColor(new Color(0.85f, 0.42f, 0.20f, 0.75f));
                 return;
             }
 
@@ -468,11 +582,23 @@ namespace BossRush
             {
                 float flash = Mathf.PingPong(Time.unscaledTime / ZombieModeTuning.SafeZoneFlashCycleSeconds, 1f);
                 float alpha = Mathf.Lerp(0.15f, 0.55f, flash);
-                renderer.material.color = new Color(0.92f, 0.72f, 0.18f, alpha);
+                SetZombieModeRendererColor(renderer, new Color(0.92f, 0.72f, 0.18f, alpha));
+                UpdateZombieModeSafeZoneMapPoiColor(new Color(0.92f, 0.72f, 0.18f, 0.75f));
                 return;
             }
 
-            renderer.material.color = new Color(0.18f, 0.78f, 0.32f, 0.45f);
+            SetZombieModeRendererColor(renderer, new Color(0.18f, 0.78f, 0.32f, 0.45f));
+            UpdateZombieModeSafeZoneMapPoiColor(new Color(0.18f, 0.78f, 0.32f, 0.75f));
+        }
+
+        private void UpdateZombieModeSafeZoneMapPoiColor(Color color)
+        {
+            if (zombieModeRunState.ActiveSafeZoneMapPoi == null)
+            {
+                return;
+            }
+
+            zombieModeRunState.ActiveSafeZoneMapPoi.Color = color;
         }
     }
 
@@ -492,12 +618,14 @@ namespace BossRush
     {
         private int runId;
         private ModBehaviour owner;
+        private ZombieModeUIHelper.ModalInputLease inputLease;
 
         public void Initialize(int newRunId, ModBehaviour newOwner)
         {
             runId = newRunId;
             owner = newOwner;
             Build();
+            ClaimInputAndPause();
         }
 
         private void Build()
@@ -509,65 +637,64 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
-            GameObject panel = CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(540f, 260f));
+            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(540f, 260f));
             Image panelImage = panel.AddComponent<Image>();
             panelImage.color = new Color(0f, 0f, 0f, 0.86f);
-            CreateText("Title", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_Title"), 28, new Vector2(0f, 80f), new Vector2(500f, 60f));
+            ZombieModeUIHelper.CreateText("Title", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_Title"), 28, new Vector2(0f, 80f), new Vector2(500f, 60f), TextAlignmentOptions.Center, Color.white);
             CreateButton("Extract", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_ExtractNow"), new Vector2(-130f, -30f), true);
             CreateButton("Continue", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_Continue"), new Vector2(130f, -30f), false);
         }
 
-        private GameObject CreateRect(string name, Transform parent, Vector2 anchor, Vector2 size)
-        {
-            GameObject obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            RectTransform rect = obj.AddComponent<RectTransform>();
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = size;
-            rect.anchoredPosition = Vector2.zero;
-            return obj;
-        }
-
-        private TextMeshProUGUI CreateText(string name, Transform parent, string text, int fontSize, Vector2 position, Vector2 size)
-        {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), size);
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchoredPosition = position;
-            return ZombieModeUIHelper.CreateTMPText(
-                obj,
-                text,
-                fontSize,
-                TextAlignmentOptions.Center,
-                Color.white);
-        }
-
         private void CreateButton(string name, Transform parent, string text, Vector2 position, bool extract)
         {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(210f, 78f));
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchoredPosition = position;
-            Image image = obj.AddComponent<Image>();
-            image.color = extract ? new Color(0.18f, 0.36f, 0.22f, 0.95f) : new Color(0.36f, 0.24f, 0.18f, 0.95f);
-            Button button = obj.AddComponent<Button>();
-            CreateText("Text", obj.transform, text, 22, Vector2.zero, new Vector2(200f, 68f));
-            button.onClick.AddListener(delegate
-            {
-                if (owner == null)
+            ZombieModeUIHelper.CreateButton(
+                name,
+                parent,
+                text,
+                new Vector2(0.5f, 0.5f),
+                position,
+                new Vector2(210f, 78f),
+                extract ? new Color(0.18f, 0.36f, 0.22f, 0.95f) : new Color(0.36f, 0.24f, 0.18f, 0.95f),
+                22,
+                new Vector2(200f, 68f),
+                delegate
                 {
-                    return;
-                }
+                    if (owner == null)
+                    {
+                        return;
+                    }
 
-                if (extract)
-                {
-                    owner.StartZombieModeExtractionFromUi(runId);
-                }
-                else
-                {
-                    owner.ContinueZombieModeAfterExtractionOpportunity(runId);
-                }
-            });
+                    if (extract)
+                    {
+                        RestoreInputState();
+                        owner.StartZombieModeExtractionFromUi(runId);
+                    }
+                    else
+                    {
+                        RestoreInputState();
+                        owner.ContinueZombieModeAfterExtractionOpportunity(runId);
+                    }
+                },
+                true);
+        }
+
+        private void ClaimInputAndPause()
+        {
+            inputLease = ZombieModeUIHelper.ClaimModalInput(gameObject, "ExtractionOpportunity");
+        }
+
+        private void RestoreInputState()
+        {
+            if (inputLease != null)
+            {
+                inputLease.Release();
+                inputLease = null;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            RestoreInputState();
         }
     }
 }

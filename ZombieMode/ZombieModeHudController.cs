@@ -224,10 +224,12 @@ namespace BossRush
     public sealed class ZombieModeHudController : MonoBehaviour
     {
         public int RunId;
+        private Canvas canvas;
         private TextMeshProUGUI mainText;
         private TextMeshProUGUI safeZoneText;
         private TextMeshProUGUI stageText;
         private float nextRefreshTime;
+        private bool pauseMenuHidden;
         private const float REFRESH_INTERVAL = 0.1f;
 
         public void Initialize(int runId)
@@ -238,7 +240,7 @@ namespace BossRush
 
         private void Build()
         {
-            Canvas canvas = gameObject.AddComponent<Canvas>();
+            canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 28000;
             CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
@@ -250,7 +252,7 @@ namespace BossRush
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
-                new Vector2(24f, -24f),
+                new Vector2(24f, -294f),
                 new Vector2(420f, 200f),
                 22f,
                 TextAlignmentOptions.TopLeft,
@@ -261,7 +263,7 @@ namespace BossRush
                 new Vector2(1f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(1f, 1f),
-                new Vector2(-24f, -24f),
+                new Vector2(-408f, -24f),
                 new Vector2(320f, 120f),
                 24f,
                 TextAlignmentOptions.TopRight,
@@ -272,7 +274,7 @@ namespace BossRush
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
-                new Vector2(0f, 48f),
+                new Vector2(0f, 156f),
                 new Vector2(600f, 48f),
                 28f,
                 TextAlignmentOptions.Center,
@@ -304,17 +306,24 @@ namespace BossRush
 
         private void Update()
         {
-            if (Time.unscaledTime < nextRefreshTime)
-            {
-                return;
-            }
-            nextRefreshTime = Time.unscaledTime + REFRESH_INTERVAL;
-
             ModBehaviour inst = ModBehaviour.Instance;
             if (inst == null)
             {
                 return;
             }
+
+            bool hidden = inst.IsZombieModeGamePaused();
+            SetPauseMenuHidden(hidden);
+            if (hidden)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime < nextRefreshTime)
+            {
+                return;
+            }
+            nextRefreshTime = Time.unscaledTime + REFRESH_INTERVAL;
 
             if (mainText != null)
             {
@@ -330,6 +339,19 @@ namespace BossRush
             if (stageText != null)
             {
                 stageText.text = inst.GetZombieModeHudStageText(RunId);
+            }
+        }
+
+        private void SetPauseMenuHidden(bool hidden)
+        {
+            if (pauseMenuHidden == hidden)
+            {
+                return;
+            }
+            pauseMenuHidden = hidden;
+            if (canvas != null)
+            {
+                canvas.enabled = !hidden;
             }
         }
     }
