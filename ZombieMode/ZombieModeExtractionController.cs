@@ -179,13 +179,16 @@ namespace BossRush
             zombieModeRunState.BeaconChanneling = false;
             SettleZombieModeExtractionCashShell();
             ShowBigBanner(L10n.T("BossRush_ZombieMode_Settle_SuccessTitle"));
-            if (!TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea))
+
+            bool dispatched = TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea);
+            if (!dispatched)
             {
                 TryReleaseZombieModeExtractionCountdownUi();
                 TryNotifyZombieModeExtraction();
-                CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);
                 TryLoadBaseSceneAfterZombieModeExtraction();
             }
+
+            CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);
         }
 
         private void SettleZombieModeExtractionCashShell()
