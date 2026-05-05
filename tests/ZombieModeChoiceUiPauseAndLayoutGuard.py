@@ -69,8 +69,11 @@ def main() -> int:
     tick_method = extract_block(entry, "private void TickZombieMode(float deltaTime)")
     if not tick_method:
         return fail("TickZombieMode not found")
-    if "ZombieModeUIHelper.IsModalInputPaused" not in tick_method:
+    if "IsZombieModeRuntimePaused()" not in tick_method:
         return fail("TickZombieMode must not advance ZombieMode timers while modal UI pauses time")
+    runtime_pause = extract_block(entry, "internal bool IsZombieModeRuntimePaused()")
+    if "ZombieModeUIHelper.IsModalInputPaused" not in runtime_pause:
+        return fail("ZombieMode runtime pause helper must include modal UI pause")
 
     late_update = extract_block(Path("ModBehaviour.cs").read_text(encoding="utf-8"), "void LateUpdate()")
     if not late_update:

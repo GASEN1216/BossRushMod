@@ -111,56 +111,7 @@ namespace BossRush
 
         private bool TryCreateZombieModeLootboxLocalInventory(InteractableLootbox lootbox)
         {
-            if (lootbox == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                MethodInfo createLocalInventoryMethod = BossRush.Common.Utils.ReflectionCache.GetMethod(
-                    typeof(InteractableLootbox),
-                    "CreateLocalInventory",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-                if (createLocalInventoryMethod != null)
-                {
-                    createLocalInventoryMethod.Invoke(lootbox, null);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[ZombieMode] 创建容器本地库存失败: " + e.Message);
-            }
-
-            if (lootbox.Inventory != null)
-            {
-                return true;
-            }
-
-            try
-            {
-                Inventory inventory = lootbox.gameObject.GetComponent<Inventory>();
-                if (inventory == null)
-                {
-                    inventory = lootbox.gameObject.AddComponent<Inventory>();
-                    inventory.SetCapacity(24);
-                }
-
-                FieldInfo inventoryReferenceField = BossRush.Common.Utils.ReflectionCache.GetField(
-                    typeof(InteractableLootbox),
-                    "inventoryReference",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-                if (inventoryReferenceField != null)
-                {
-                    inventoryReferenceField.SetValue(lootbox, inventory);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[ZombieMode] 绑定容器本地库存失败: " + e.Message);
-            }
-
-            return lootbox.Inventory != null;
+            return InteractableLootboxInventoryHelper.EnsureLocalInventory(lootbox, 24);
         }
 
         private void ClearZombieModeLootboxInventory(InteractableLootbox lootbox)
@@ -483,14 +434,73 @@ namespace BossRush
                     return null;
                 }
 
-                item.Drop(position + Vector3.up * 0.35f, true, UnityEngine.Random.insideUnitSphere.normalized, bossDrop ? 30f : 18f);
-                GameObject obj = item.gameObject;
-                RegisterZombieModeDropCandidate(runId, obj, highValue, bossDrop);
-                return obj;
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.CharacterItem != null && player.CharacterItem.Inventory != null)
+                {
+                    bool added = player.CharacterItem.Inventory.AddAndMerge(item, 0);
+                    if (added)
+                    {
+                        string itemName = string.IsNullOrEmpty(item.DisplayName) ? "未知物品" : item.DisplayName;
+                        int itemQuality = 1;
+                        try { itemQuality = Mathf.Clamp(item.Quality, 1, 8); } catch { itemQuality = 1; }
+                        TryShowZombieModeInventoryPickupPopText(player, itemName, itemQuality);
+                        return item.gameObject;
+                    }
+
+                    item.Drop(player, true);
+                    GameObject obj = item.gameObject;
+                    RegisterZombieModeDropCandidate(runId, obj, highValue, bossDrop);
+                    return obj;
+                }
+
+                Vector3 dropPosition = position + Vector3.up * 0.35f;
+                Vector3 dropDirection = UnityEngine.Random.insideUnitSphere.normalized;
+                item.Drop(dropPosition, true, dropDirection, bossDrop ? 30f : 18f);
+                GameObject fallbackObject = item.gameObject;
+                RegisterZombieModeDropCandidate(runId, fallbackObject, highValue, bossDrop);
+                return fallbackObject;
             }
             catch
             {
                 return null;
+            }
+        }
+
+        private void TryShowZombieModeInventoryPickupPopText(CharacterMainControl player, string itemName, int itemQuality)
+        {
+            if (player == null || string.IsNullOrEmpty(itemName))
+            {
+                return;
+            }
+
+            string color = GetZombieModeDropQualityColorHex(itemQuality);
+            string message = L10n.T(
+                "搜到了<color=" + color + ">" + itemName + "</color>",
+                "Found <color=" + color + ">" + itemName + "</color>");
+
+            try
+            {
+                player.PopText(message, -1f);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ZombieMode] 玩家拾取气泡显示失败: " + e.Message);
+            }
+        }
+
+        private string GetZombieModeDropQualityColorHex(int quality)
+        {
+            switch (Mathf.Clamp(quality, 1, 8))
+            {
+                case 1: return "#9E9E9E";
+                case 2: return "#6B99CC";
+                case 3: return "#4D73D9";
+                case 4: return "#8C4DD9";
+                case 5: return "#D94D99";
+                case 6: return "#E64D4D";
+                case 7: return "#FFB326";
+                case 8: return "#FFD600";
+                default: return "#9E9E9E";
             }
         }
 
@@ -504,7 +514,7 @@ namespace BossRush
             ZombieModeDropCandidate candidate = new ZombieModeDropCandidate();
             candidate.GameObject = gameObject;
             candidate.WaveAtSpawn = zombieModeRunState.CurrentWave;
-            candidate.SpawnTime = Time.unscaledTime;
+            candidate.SpawnTime = GetZombieModeRuntimeNow();
             candidate.HighValue = highValue;
             candidate.BossDrop = bossDrop;
             zombieModeRunState.EntityDropCleanupCandidates.Add(candidate);
@@ -519,12 +529,13 @@ namespace BossRush
             }
 
             CleanupZombieModeExpiredDropCandidates();
-            if (Time.unscaledTime - zombieModeRunState.LastPerformanceEvalTime < ZombieModeTuning.PerformanceEvalIntervalSeconds)
+            float now = GetZombieModeRuntimeNow();
+            if (now - zombieModeRunState.LastPerformanceEvalTime < ZombieModeTuning.PerformanceEvalIntervalSeconds)
             {
                 return;
             }
 
-            zombieModeRunState.LastPerformanceEvalTime = Time.unscaledTime;
+            zombieModeRunState.LastPerformanceEvalTime = now;
             EvaluateZombieModePerformanceTier();
             if (zombieModeRunState.PerformanceTier == ZombieModePerformanceTier.ExtremeProtect)
             {
@@ -675,6 +686,7 @@ namespace BossRush
 
             CharacterMainControl player = CharacterMainControl.Main;
             Vector3 playerPosition = player != null ? player.transform.position : Vector3.zero;
+            float now = GetZombieModeRuntimeNow();
             for (int i = zombieModeRunState.EntityDropCleanupCandidates.Count - 1; i >= 0; i--)
             {
                 ZombieModeDropCandidate candidate = zombieModeRunState.EntityDropCleanupCandidates[i];
@@ -685,7 +697,7 @@ namespace BossRush
                 }
 
                 bool waveExpired = zombieModeRunState.CurrentWave - candidate.WaveAtSpawn >= ZombieModeTuning.DropCleanupWaveAge;
-                bool timeExpired = Time.unscaledTime - candidate.SpawnTime >= ZombieModeTuning.DropCleanupAgeSeconds;
+                bool timeExpired = now - candidate.SpawnTime >= ZombieModeTuning.DropCleanupAgeSeconds;
                 if ((!waveExpired && !timeExpired) || candidate.HighValue || candidate.BossDrop)
                 {
                     continue;
@@ -723,6 +735,43 @@ namespace BossRush
                 (e, npc) => DevLog("[ZombieMode] Destroy temporary NPC 失败: " + e.Message));
 
             zombieModeRunState.TemporaryNpcs.Clear();
+        }
+
+        private void RecycleZombieModeSafeZoneBoundTemporaryNpcs(int runId)
+        {
+            if (!IsZombieModeRunValid(runId) || zombieModeRunState.TemporaryNpcs.Count <= 0)
+            {
+                return;
+            }
+
+            for (int i = zombieModeRunState.TemporaryNpcs.Count - 1; i >= 0; i--)
+            {
+                ZombieModeTemporaryNpc npc = zombieModeRunState.TemporaryNpcs[i];
+                if (npc == null)
+                {
+                    zombieModeRunState.TemporaryNpcs.RemoveAt(i);
+                    continue;
+                }
+
+                if (npc.ServiceState == null || !npc.ServiceState.SafeZoneBound)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    if (npc.GameObject != null)
+                    {
+                        Destroy(npc.GameObject);
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog("[ZombieMode] Destroy safe-zone temporary NPC 失败: " + e.Message);
+                }
+
+                zombieModeRunState.TemporaryNpcs.RemoveAt(i);
+            }
         }
     }
 

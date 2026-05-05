@@ -19,8 +19,18 @@ def main() -> int:
     if not tick_match:
         return fail("ZombieModePauseMenuGuard: TickZombieMode body not found")
     tick_body = tick_match.group("body")
-    if "IsZombieModeGamePaused()" not in tick_body:
-        return fail("ZombieModePauseMenuGuard: TickZombieMode does not stop while PauseMenu is shown")
+    if "IsZombieModeRuntimePaused()" not in entry_text:
+        return fail("ZombieModePauseMenuGuard: missing shared runtime pause helper")
+    runtime_pause_match = re.search(r"internal bool IsZombieModeRuntimePaused\(\)\s*\{(?P<body>.*?)\n        \}", entry_text, re.S)
+    if not runtime_pause_match:
+        return fail("ZombieModePauseMenuGuard: runtime pause helper body not found")
+    runtime_pause_body = runtime_pause_match.group("body")
+    if "ZombieModeUIHelper.IsModalInputPaused" not in runtime_pause_body:
+        return fail("ZombieModePauseMenuGuard: runtime pause helper must include ZombieMode modal pause")
+    if "IsZombieModeGamePaused()" not in runtime_pause_body:
+        return fail("ZombieModePauseMenuGuard: runtime pause helper must include PauseMenu pause")
+    if "IsZombieModeRuntimePaused()" not in tick_body:
+        return fail("ZombieModePauseMenuGuard: TickZombieMode must use shared runtime pause helper")
 
     hud_text = Path("ZombieMode/ZombieModeHudController.cs").read_text(encoding="utf-8")
     if "SetPauseMenuHidden" not in hud_text:
@@ -47,16 +57,58 @@ def main() -> int:
         return fail("ZombieModePauseMenuGuard: extraction countdown should be remaining-time based")
     if "remaining -= Time.unscaledDeltaTime" not in extraction_text:
         return fail("ZombieModePauseMenuGuard: extraction countdown should decrement only when not paused")
-    if "IsZombieModeGamePaused()" not in extraction_text:
-        return fail("ZombieModePauseMenuGuard: extraction countdown does not pause on PauseMenu")
+    if "IsZombieModeRuntimePaused()" not in extraction_text:
+        return fail("ZombieModePauseMenuGuard: extraction countdown does not use shared runtime pause helper")
     if "float deadline = Time.unscaledTime + ZombieModeTuning.ExtractionCountdownSeconds" in extraction_text:
         return fail("ZombieModePauseMenuGuard: extraction countdown still uses unpaused wall-clock deadline")
-    if "IsZombieModeGamePaused()" not in wave_text:
-        return fail("ZombieModePauseMenuGuard: settlement wait does not pause on PauseMenu")
+    if "IsZombieModeRuntimePaused()" not in wave_text:
+        return fail("ZombieModePauseMenuGuard: settlement wait does not use shared runtime pause helper")
     if "float remaining = ZombieModeTuning.SettlementMaxWaitSeconds" not in wave_text:
         return fail("ZombieModePauseMenuGuard: settlement wait should be remaining-time based")
     if "float deadline = Time.unscaledTime + ZombieModeTuning.SettlementMaxWaitSeconds" in wave_text:
         return fail("ZombieModePauseMenuGuard: settlement wait still uses unpaused wall-clock deadline")
+
+    boss_text = Path("ZombieMode/ZombieModeBossController.cs").read_text(encoding="utf-8")
+    timed_runtime_match = re.search(r"public abstract class ZombieModeTimedRunScopedRuntime\b(?P<body>.*?)(?=\n    public sealed class ZombieModeAreaTickRuntime)", boss_text, re.S)
+    if not timed_runtime_match:
+        return fail("ZombieModePauseMenuGuard: timed run-scoped runtime base not found")
+    timed_runtime_body = timed_runtime_match.group("body")
+    for snippet in (
+        "IsZombieModeRuntimePaused()",
+        "runtimePauseStartTime",
+        "runtimeEndTime += pausedDuration",
+        "OnRuntimeResumedAfterPause(inst, pausedDuration)",
+    ):
+        if snippet not in timed_runtime_body:
+            return fail("ZombieModePauseMenuGuard: timed runtime base does not freeze unscaled timers during PauseMenu -> " + snippet)
+
+    area_runtime_match = re.search(r"public sealed class ZombieModeAreaTickRuntime\b(?P<body>.*?)(?=\n    public sealed class ZombieModeBossShieldRuntime)", boss_text, re.S)
+    if not area_runtime_match:
+        return fail("ZombieModePauseMenuGuard: area tick runtime not found")
+    area_runtime_body = area_runtime_match.group("body")
+    if "OnRuntimeResumedAfterPause" not in area_runtime_body or "nextTickTime += pausedDuration" not in area_runtime_body:
+        return fail("ZombieModePauseMenuGuard: area tick runtime must delay next damage tick after PauseMenu")
+
+    pollution_text = Path("ZombieMode/ZombieModePollution.cs").read_text(encoding="utf-8")
+    for class_name, time_field in (
+        ("ZombieModeTelegraphedAreaDamageRuntime", "triggerTime += pausedDuration"),
+        ("ZombieModeTelegraphedPlayerSlowRuntime", "triggerTime += pausedDuration"),
+    ):
+        class_match = re.search(r"public sealed class " + class_name + r"\b(?P<body>.*?)(?=\n    public sealed class )", pollution_text, re.S)
+        if not class_match:
+            return fail("ZombieModePauseMenuGuard: " + class_name + " not found")
+        class_body = class_match.group("body")
+        if "OnRuntimeResumedAfterPause" not in class_body or time_field not in class_body:
+            return fail("ZombieModePauseMenuGuard: " + class_name + " must delay telegraph trigger after PauseMenu")
+
+    threat_match = re.search(r"public sealed class ZombieModeThreatRuntime\b(?P<body>.*?)(?=\n    public sealed class ZombieModeCommanderAuraRuntime)", pollution_text, re.S)
+    if not threat_match:
+        return fail("ZombieModePauseMenuGuard: threat runtime not found")
+    threat_body = threat_match.group("body")
+    if "IsZombieModeRuntimePaused()" not in threat_body or "nextSkillTime += pausedDuration" not in threat_body:
+        return fail("ZombieModePauseMenuGuard: threat runtime must freeze skill cooldowns during PauseMenu")
+    if "IsZombieModeRuntimePaused()" not in pollution_text:
+        return fail("ZombieModePauseMenuGuard: pollution damage path must consult runtime pause")
 
     return 0
 

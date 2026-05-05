@@ -11,9 +11,13 @@ namespace BossRush
     {
         private readonly Dictionary<int, bool> zombieModeMeleeWeaponTypeCache = new Dictionary<int, bool>();
         private readonly MaterialPropertyBlock zombieModeRendererColorBlock = new MaterialPropertyBlock();
+        private const string ZombieModePlagueAuraCarrierName = "ZombieMode_PlagueFrostmourneAura";
+        private const string ZombieModeFrostmourneAuraRootName = "Frostmourne_IceAura";
         private static readonly int ZombieModeRendererColorProperty = Shader.PropertyToID("_Color");
         private static readonly int ZombieModeRendererTintColorProperty = Shader.PropertyToID("_TintColor");
         private static readonly int ZombieModeRendererBaseColorProperty = Shader.PropertyToID("_BaseColor");
+        private static readonly Color ZombieModePlagueAuraCoreColor = new Color(0.35f, 1.00f, 0.55f, 0.88f);
+        private static readonly Color ZombieModePlagueAuraFadeColor = new Color(0.72f, 1.00f, 0.75f, 0.45f);
 
         private void SetZombieModeRendererColor(Renderer renderer, Color color)
         {
@@ -114,6 +118,245 @@ namespace BossRush
             return go;
         }
 
+        private void ApplyZombieModePlagueFrostmourneAura(CharacterMainControl enemy)
+        {
+            if (enemy == null || enemy.gameObject == null)
+            {
+                return;
+            }
+
+            Transform carrierTransform = enemy.transform.Find(ZombieModePlagueAuraCarrierName);
+            GameObject carrier;
+            if (carrierTransform != null)
+            {
+                carrier = carrierTransform.gameObject;
+            }
+            else
+            {
+                carrier = new GameObject(ZombieModePlagueAuraCarrierName);
+                carrier.transform.SetParent(enemy.transform, false);
+                carrier.transform.localPosition = Vector3.up * 0.85f;
+                carrier.transform.localRotation = Quaternion.identity;
+                carrier.transform.localScale = Vector3.one;
+            }
+
+            try
+            {
+                FrostmourneWeaponConfig.TryAddIceEffectsToGraphic(carrier);
+                ConfigureZombieModePlagueFrostmourneAura(carrier);
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] 瘟疫丧尸霜之哀伤特效初始化失败: " + e.Message);
+            }
+        }
+
+        private void ConfigureZombieModePlagueFrostmourneAura(GameObject carrier)
+        {
+            if (carrier == null)
+            {
+                return;
+            }
+
+            Transform auraRoot = FindZombieModeChildRecursive(carrier.transform, ZombieModeFrostmourneAuraRootName);
+            if (auraRoot == null)
+            {
+                CreateZombieModePlagueFallbackMist(carrier.transform);
+            }
+
+            ParticleSystem[] particles = carrier.GetComponentsInChildren<ParticleSystem>(true);
+            if (particles.Length <= 0)
+            {
+                CreateZombieModePlagueFallbackMist(carrier.transform);
+                particles = carrier.GetComponentsInChildren<ParticleSystem>(true);
+            }
+
+            for (int i = 0; i < particles.Length; i++)
+            {
+                ParticleSystem ps = particles[i];
+                if (ps == null)
+                {
+                    continue;
+                }
+
+                var main = ps.main;
+                main.simulationSpace = ParticleSystemSimulationSpace.Local;
+                main.startColor = new ParticleSystem.MinMaxGradient(ZombieModePlagueAuraCoreColor, ZombieModePlagueAuraFadeColor);
+                main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.4f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.75f, 1.35f);
+                main.maxParticles = 45;
+                main.loop = true;
+
+                var emission = ps.emission;
+                emission.enabled = true;
+                emission.rateOverTime = 3f;
+
+                var shape = ps.shape;
+                shape.enabled = true;
+                shape.shapeType = ParticleSystemShapeType.Sphere;
+                shape.radius = 1.25f;
+                shape.scale = new Vector3(2.1f, 2.4f, 2.1f);
+
+                var velocity = ps.velocityOverLifetime;
+                velocity.enabled = true;
+                velocity.space = ParticleSystemSimulationSpace.Local;
+                velocity.y = new ParticleSystem.MinMaxCurve(0.12f, 0.28f);
+                velocity.x = new ParticleSystem.MinMaxCurve(-0.04f, 0.04f);
+                velocity.z = new ParticleSystem.MinMaxCurve(-0.04f, 0.04f);
+
+                Gradient gradient = new Gradient();
+                gradient.SetKeys(
+                    new GradientColorKey[]
+                    {
+                        new GradientColorKey(ZombieModePlagueAuraCoreColor, 0f),
+                        new GradientColorKey(ZombieModePlagueAuraFadeColor, 1f)
+                    },
+                    new GradientAlphaKey[]
+                    {
+                        new GradientAlphaKey(0.65f, 0f),
+                        new GradientAlphaKey(0.28f, 0.65f),
+                        new GradientAlphaKey(0f, 1f)
+                    });
+
+                var colorOverLifetime = ps.colorOverLifetime;
+                colorOverLifetime.enabled = true;
+                colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+
+                if (!ps.isPlaying)
+                {
+                    ps.Play(true);
+                }
+            }
+
+            FrostmourneRuntimeMaterialTracker tracker = FrostmourneRuntimeMaterialTracker.GetOrAdd(carrier);
+            Renderer[] renderers = carrier.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null || renderer.sharedMaterials == null)
+                {
+                    continue;
+                }
+
+                Material[] materials = renderer.sharedMaterials;
+                Material[] tintedMaterials = new Material[materials.Length];
+                for (int j = 0; j < materials.Length; j++)
+                {
+                    Material source = materials[j];
+                    if (source == null)
+                    {
+                        continue;
+                    }
+
+                    Material tinted = new Material(source);
+                    if (tinted.HasProperty(ZombieModeRendererColorProperty)) tinted.color = ZombieModePlagueAuraCoreColor;
+                    if (tinted.HasProperty(ZombieModeRendererTintColorProperty)) tinted.SetColor(ZombieModeRendererTintColorProperty, ZombieModePlagueAuraCoreColor);
+                    if (tinted.HasProperty(ZombieModeRendererBaseColorProperty)) tinted.SetColor(ZombieModeRendererBaseColorProperty, ZombieModePlagueAuraCoreColor);
+                    if (tinted.HasProperty("_EmissionColor")) tinted.SetColor("_EmissionColor", ZombieModePlagueAuraCoreColor * 0.55f);
+                    tintedMaterials[j] = tinted;
+                    if (tracker != null)
+                    {
+                        tracker.Track(tinted);
+                    }
+                }
+
+                renderer.sharedMaterials = tintedMaterials;
+            }
+
+            Light[] lights = carrier.GetComponentsInChildren<Light>(true);
+            for (int i = 0; i < lights.Length; i++)
+            {
+                Light light = lights[i];
+                if (light == null)
+                {
+                    continue;
+                }
+                light.color = ZombieModePlagueAuraCoreColor;
+                light.range = 2.8f;
+                light.intensity = 1.25f;
+            }
+        }
+
+        private void CreateZombieModePlagueFallbackMist(Transform parent)
+        {
+            if (parent == null || parent.Find("ZombieMode_PlagueFallbackMist") != null)
+            {
+                return;
+            }
+
+            GameObject mist = new GameObject("ZombieMode_PlagueFallbackMist");
+            mist.transform.SetParent(parent, false);
+            mist.transform.localPosition = Vector3.zero;
+            mist.transform.localRotation = Quaternion.identity;
+            mist.transform.localScale = Vector3.one;
+
+            ParticleSystem ps = mist.AddComponent<ParticleSystem>();
+            ParticleSystemRenderer renderer = mist.GetComponent<ParticleSystemRenderer>();
+            if (renderer != null)
+            {
+                Shader shader = Shader.Find("Particles/Standard Unlit");
+                if (shader == null)
+                {
+                    shader = Shader.Find("Sprites/Default");
+                }
+                if (shader != null)
+                {
+                    Material material = new Material(shader);
+                    if (material.HasProperty(ZombieModeRendererColorProperty)) material.color = ZombieModePlagueAuraCoreColor;
+                    if (material.HasProperty(ZombieModeRendererTintColorProperty)) material.SetColor(ZombieModeRendererTintColorProperty, ZombieModePlagueAuraCoreColor);
+                    if (material.HasProperty(ZombieModeRendererBaseColorProperty)) material.SetColor(ZombieModeRendererBaseColorProperty, ZombieModePlagueAuraCoreColor);
+                    renderer.sharedMaterial = material;
+                    FrostmourneRuntimeMaterialTracker tracker = FrostmourneRuntimeMaterialTracker.GetOrAdd(parent.gameObject);
+                    if (tracker != null)
+                    {
+                        tracker.Track(material);
+                    }
+                }
+            }
+            var main = ps.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.startColor = new ParticleSystem.MinMaxGradient(ZombieModePlagueAuraCoreColor, ZombieModePlagueAuraFadeColor);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.4f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.75f, 1.35f);
+            main.maxParticles = 45;
+            main.loop = true;
+
+            var emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 3f;
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 1.25f;
+            shape.scale = new Vector3(2.1f, 2.4f, 2.1f);
+            ps.Play(true);
+        }
+
+        private Transform FindZombieModeChildRecursive(Transform root, string targetName)
+        {
+            if (root == null || string.IsNullOrEmpty(targetName))
+            {
+                return null;
+            }
+
+            if (root.name == targetName)
+            {
+                return root;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform found = FindZombieModeChildRecursive(root.GetChild(i), targetName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
         private ZombieModeEnemyKind RollZombieModeEnemyKind()
         {
             int pollution = zombieModeRunState.TotalPollution;
@@ -163,6 +406,14 @@ namespace BossRush
             ZombieModeSpecialKind.Harasser
         };
 
+        private static readonly ZombieModeSpecialKind[] s_zombieModeEarlySpecialKindOrder = new ZombieModeSpecialKind[]
+        {
+            ZombieModeSpecialKind.Sprinter,
+            ZombieModeSpecialKind.Plague,
+            ZombieModeSpecialKind.Summoner,
+            ZombieModeSpecialKind.Harasser
+        };
+
         // System.Enum.GetValues 返回 Array 会装箱；缓存为强类型数组，避免每次 Roll 触发 GC。
         private static readonly ZombieModeEliteAffix[] s_zombieModeEliteAffixAll = (ZombieModeEliteAffix[])
             System.Enum.GetValues(typeof(ZombieModeEliteAffix));
@@ -173,7 +424,10 @@ namespace BossRush
 
         private ZombieModeSpecialKind RollZombieModeSpecialKind()
         {
-            return s_zombieModeSpecialKindOrder[Random.Range(0, s_zombieModeSpecialKindOrder.Length)];
+            ZombieModeSpecialKind[] order = zombieModeRunState.CurrentWave <= 5
+                ? s_zombieModeEarlySpecialKindOrder
+                : s_zombieModeSpecialKindOrder;
+            return order[Random.Range(0, order.Length)];
         }
 
         private List<ZombieModeEliteAffix> RollZombieModeEliteAffixes()
@@ -331,6 +585,10 @@ namespace BossRush
                 damageMultiplier = ZombieModeTuning.SpecialDamageMultiplier;
                 speedMultiplier = ZombieModeTuning.SpecialMoveSpeedMultiplier;
                 ApplyZombieModeSpecialKindTuning(marker.SpecialKind, ref healthMultiplier, ref damageMultiplier, ref speedMultiplier);
+                if (marker.SpecialKind == ZombieModeSpecialKind.Plague)
+                {
+                    ApplyZombieModePlagueFrostmourneAura(enemy);
+                }
             }
             else if (marker.EnemyKind == ZombieModeEnemyKind.Elite)
             {
@@ -347,7 +605,7 @@ namespace BossRush
             marker.DamageMultiplier = damageMultiplier * pollutionDamageScale;
             marker.MoveSpeedMultiplier = speedMultiplier;
             ApplyZombieModeHealthMultiplier(enemy, marker.HealthMultiplier, marker);
-            ApplyZombieModeEnemyCombatStatMultipliers(enemy, marker.DamageMultiplier, marker.MoveSpeedMultiplier);
+            ApplyZombieModeEnemyCombatStatMultipliers(enemy, marker.DamageMultiplier, marker.MoveSpeedMultiplier, marker);
             ApplyZombieModeEnemyName(enemy, marker);
             EnsureZombieModeThreatRuntime(enemy, marker);
         }
@@ -469,8 +727,9 @@ namespace BossRush
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Adaptive) &&
                 damageInfo.fromCharacter.IsMainCharacter)
             {
+                float now = GetZombieModeRuntimeNow();
                 bool isMelee = IsZombieModeDamageFromMeleeWeapon(damageInfo);
-                if (Time.unscaledTime > marker.AdaptiveReductionEndTime)
+                if (now > marker.AdaptiveReductionEndTime)
                 {
                     marker.AdaptiveRangedActive = false;
                     marker.AdaptiveMeleeActive = false;
@@ -484,7 +743,7 @@ namespace BossRush
                     {
                         marker.AdaptiveMeleeActive = true;
                         marker.AdaptiveRangedActive = false;
-                        marker.AdaptiveReductionEndTime = Time.unscaledTime + ZombieModeTuning.AdaptiveAffixDurationSeconds;
+                        marker.AdaptiveReductionEndTime = GetZombieModeRuntimeNow() + ZombieModeTuning.AdaptiveAffixDurationSeconds;
                         marker.AdaptiveMeleeHitCount = 0;
                         CharacterMainControl ch = marker.Owner;
                         if (ch != null) ch.PopText(L10n.T("BossRush_ZombieMode_Affix_Adaptive"));
@@ -506,7 +765,7 @@ namespace BossRush
                     {
                         marker.AdaptiveRangedActive = true;
                         marker.AdaptiveMeleeActive = false;
-                        marker.AdaptiveReductionEndTime = Time.unscaledTime + ZombieModeTuning.AdaptiveAffixDurationSeconds;
+                        marker.AdaptiveReductionEndTime = GetZombieModeRuntimeNow() + ZombieModeTuning.AdaptiveAffixDurationSeconds;
                         marker.AdaptiveRangedHitCount = 0;
                         CharacterMainControl ch = marker.Owner;
                         if (ch != null) ch.PopText(L10n.T("BossRush_ZombieMode_Affix_Adaptive"));
@@ -643,24 +902,18 @@ namespace BossRush
                     marker.BaseMaxHealth = character.Health.MaxHealth;
                 }
 
-                Stat maxHealthStat = character.CharacterItem.GetStat("MaxHealth");
-                if (maxHealthStat == null)
-                {
-                    maxHealthStat = character.CharacterItem.GetStat("MaxHealth".GetHashCode());
-                }
-
-                if (maxHealthStat == null)
+                if (marker == null)
                 {
                     return;
                 }
 
-                float baseValue = maxHealthStat.BaseValue > 0f ? maxHealthStat.BaseValue : maxHealthStat.Value;
-                float delta = baseValue * (healthMultiplier - 1f);
-                if (Mathf.Abs(delta) > 0.01f)
-                {
-                    Modifier modifier = new Modifier(ModifierType.Add, delta, this);
-                    maxHealthStat.AddModifier(modifier);
-                }
+                RuntimeStatModifierTracker.TryAdd(
+                    character,
+                    ZombieModeStatNames.MaxHealth,
+                    healthMultiplier - 1f,
+                    marker,
+                    marker.RuntimeModifierRecords,
+                    "ZombieMode Enemy MaxHealth");
 
                 if (character.Health != null && character.Health.MaxHealth > 0f)
                 {
@@ -673,36 +926,43 @@ namespace BossRush
             }
         }
 
-        private void ApplyZombieModeEnemyCombatStatMultipliers(CharacterMainControl enemy, float damageMultiplier, float speedMultiplier)
+        private void ApplyZombieModeEnemyCombatStatMultipliers(
+            CharacterMainControl enemy,
+            float damageMultiplier,
+            float speedMultiplier,
+            ZombieModeEnemyRuntimeMarker marker)
         {
-            if (enemy == null || enemy.CharacterItem == null)
+            if (enemy == null || enemy.CharacterItem == null || marker == null)
             {
                 return;
             }
 
-            TryApplyZombieModeEnemyStatMultiplier(enemy.CharacterItem, "WalkSpeed", speedMultiplier);
-            TryApplyZombieModeEnemyStatMultiplier(enemy.CharacterItem, "RunSpeed", speedMultiplier);
-            TryApplyZombieModeEnemyStatMultiplier(enemy.CharacterItem, "MeleeDamageMultiplier", damageMultiplier);
-            TryApplyZombieModeEnemyStatMultiplier(enemy.CharacterItem, "GunDamageMultiplier", damageMultiplier);
+            TryApplyZombieModeEnemyStatMultiplier(enemy, ZombieModeStatNames.WalkSpeed, speedMultiplier, marker);
+            TryApplyZombieModeEnemyStatMultiplier(enemy, ZombieModeStatNames.RunSpeed, speedMultiplier, marker);
+            TryApplyZombieModeEnemyStatMultiplier(enemy, ZombieModeStatNames.MeleeDamageMultiplier, damageMultiplier, marker);
+            TryApplyZombieModeEnemyStatMultiplier(enemy, ZombieModeStatNames.GunDamageMultiplier, damageMultiplier, marker);
         }
 
-        private void TryApplyZombieModeEnemyStatMultiplier(ItemStatsSystem.Item characterItem, string statName, float multiplier)
+        private void TryApplyZombieModeEnemyStatMultiplier(
+            CharacterMainControl character,
+            string statName,
+            float multiplier,
+            ZombieModeEnemyRuntimeMarker marker)
         {
-            if (characterItem == null || string.IsNullOrEmpty(statName) || Mathf.Approximately(multiplier, 1f))
+            if (character == null || marker == null || string.IsNullOrEmpty(statName) || Mathf.Approximately(multiplier, 1f))
             {
                 return;
             }
 
             try
             {
-                Stat stat = characterItem.GetStat(statName);
-                if (stat == null)
-                {
-                    return;
-                }
-
-                Modifier modifier = new Modifier(ModifierType.Add, stat.BaseValue * (multiplier - 1f), this);
-                stat.AddModifier(modifier);
+                RuntimeStatModifierTracker.TryAdd(
+                    character,
+                    statName,
+                    multiplier - 1f,
+                    marker,
+                    marker.RuntimeModifierRecords,
+                    "ZombieMode Enemy Stat");
             }
             catch (System.Exception e)
             {
@@ -998,12 +1258,13 @@ namespace BossRush
                     }
                     break;
                 case ZombieModeSpecialKind.Harasser:
-                    StartZombieModeTelegraphedAreaDamage(
+                    StartZombieModeTelegraphedPlayerSlow(
                         runId,
                         character,
                         player.transform.position,
-                        3.5f,
-                        ZombieModeTuning.HarasserProjectileDamage,
+                        ZombieModeTuning.HarasserSlowRadius,
+                        ZombieModeTuning.HarasserSlowPercent,
+                        ZombieModeTuning.HarasserSlowDurationSeconds,
                         ZombieModeTuning.ThreatTelegraphDelaySeconds,
                         L10n.T("BossRush_ZombieMode_Special_Harasser"));
                     break;
@@ -1209,6 +1470,38 @@ namespace BossRush
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, runtime, null);
         }
 
+        private void StartZombieModeTelegraphedPlayerSlow(
+            int runId,
+            CharacterMainControl source,
+            Vector3 origin,
+            float radius,
+            float slowPercent,
+            float slowDuration,
+            float delay,
+            string label)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            if (source != null && !string.IsNullOrEmpty(label))
+            {
+                source.PopText(label);
+            }
+
+            GameObject telegraph = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_SlowTelegraph",
+                origin + Vector3.up * 0.03f,
+                radius,
+                0.02f,
+                new Color(0.12f, 0.75f, 1f, 0.35f));
+
+            ZombieModeTelegraphedPlayerSlowRuntime runtime = telegraph.AddComponent<ZombieModeTelegraphedPlayerSlowRuntime>();
+            runtime.Initialize(runId, origin, radius, slowPercent, slowDuration, delay);
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, runtime, null);
+        }
+
         public void TryExecuteZombieModeTelegraphedAreaDamage(
             int runId,
             CharacterMainControl source,
@@ -1226,6 +1519,28 @@ namespace BossRush
             }
         }
 
+        public void TryApplyZombieModePlayerSlowInArea(int runId, Vector3 origin, float radius, float percent, float duration)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
+            {
+                return;
+            }
+
+            Vector3 delta = player.transform.position - origin;
+            if (delta.sqrMagnitude > radius * radius)
+            {
+                return;
+            }
+
+            TryApplyZombieModePlayerSlow(runId, percent, duration);
+        }
+
         private void DealZombieModeAreaDamageToPlayer(int runId, Vector3 origin, float radius, float damage)
         {
             DealZombieModeAreaDamageToPlayer(runId, null, origin, radius, damage);
@@ -1233,7 +1548,7 @@ namespace BossRush
 
         private void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage)
         {
-            if (!IsZombieModeRunValid(runId))
+            if (!IsZombieModeRunValid(runId) || IsZombieModeRuntimePaused())
             {
                 return;
             }
@@ -1281,7 +1596,7 @@ namespace BossRush
             float damage,
             bool canHurtSelf = false)
         {
-            if (!IsZombieModeRunValid(runId))
+            if (!IsZombieModeRunValid(runId) || IsZombieModeRuntimePaused())
             {
                 return;
             }
@@ -1354,6 +1669,55 @@ namespace BossRush
             inst.TryExecuteZombieModeTelegraphedAreaDamage(RuntimeRunId, source, origin, radius, damage);
             Destroy(gameObject);
         }
+
+        protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
+        {
+            triggerTime += pausedDuration;
+        }
+    }
+
+    public sealed class ZombieModeTelegraphedPlayerSlowRuntime : ZombieModeTimedRunScopedRuntime
+    {
+        private Vector3 origin;
+        private float radius;
+        private float slowPercent;
+        private float slowDuration;
+        private float triggerTime;
+        private bool triggered;
+
+        public void Initialize(
+            int newRunId,
+            Vector3 newOrigin,
+            float newRadius,
+            float newSlowPercent,
+            float newSlowDuration,
+            float delay)
+        {
+            origin = newOrigin;
+            radius = Mathf.Max(0.5f, newRadius);
+            slowPercent = Mathf.Clamp01(newSlowPercent);
+            slowDuration = Mathf.Max(0.05f, newSlowDuration);
+            triggerTime = Time.unscaledTime + Mathf.Max(0.05f, delay);
+            triggered = false;
+            InitializeTimedRuntime(newRunId, Mathf.Max(0.05f, delay) + 0.1f);
+        }
+
+        protected override void TickRuntime(ModBehaviour inst)
+        {
+            if (triggered || Time.unscaledTime < triggerTime)
+            {
+                return;
+            }
+
+            triggered = true;
+            inst.TryApplyZombieModePlayerSlowInArea(RuntimeRunId, origin, radius, slowPercent, slowDuration);
+            Destroy(gameObject);
+        }
+
+        protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
+        {
+            triggerTime += pausedDuration;
+        }
     }
 
     public sealed class ZombieModeThreatRuntime : MonoBehaviour
@@ -1361,6 +1725,7 @@ namespace BossRush
         private int runId;
         private float cooldown;
         private float nextSkillTime;
+        private float pauseStartTime = -1f;
         private ZombieModeEnemyRuntimeMarker marker;
         private ModBehaviour owner;
 
@@ -1375,12 +1740,6 @@ namespace BossRush
 
         private void Update()
         {
-            if (Time.unscaledTime < nextSkillTime)
-            {
-                return;
-            }
-
-            nextSkillTime = Time.unscaledTime + cooldown + UnityEngine.Random.Range(0f, 2f);
             ModBehaviour inst = owner;
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
@@ -1392,6 +1751,28 @@ namespace BossRush
                 return;
             }
 
+            if (inst.IsZombieModeRuntimePaused())
+            {
+                if (pauseStartTime < 0f)
+                {
+                    pauseStartTime = Time.unscaledTime;
+                }
+                return;
+            }
+
+            if (pauseStartTime >= 0f)
+            {
+                float pausedDuration = Mathf.Max(0f, Time.unscaledTime - pauseStartTime);
+                pauseStartTime = -1f;
+                nextSkillTime += pausedDuration;
+            }
+
+            if (Time.unscaledTime < nextSkillTime)
+            {
+                return;
+            }
+
+            nextSkillTime = Time.unscaledTime + cooldown + UnityEngine.Random.Range(0f, 2f);
             if (marker == null)
             {
                 marker = GetComponent<ZombieModeEnemyRuntimeMarker>();
@@ -1432,6 +1813,11 @@ namespace BossRush
                 return;
             }
 
+            if (inst.IsZombieModeRuntimePaused())
+            {
+                return;
+            }
+
             if (owner == null)
             {
                 owner = GetComponent<CharacterMainControl>();
@@ -1456,12 +1842,13 @@ namespace BossRush
                 return;
             }
 
-            if (Time.unscaledTime < nextTickTime)
+            float now = inst.GetZombieModeRuntimeNow();
+            if (now < nextTickTime)
             {
                 return;
             }
 
-            nextTickTime = Time.unscaledTime + tickInterval;
+            nextTickTime = now + tickInterval;
             inst.RefreshZombieModeCommanderAuraTargets(runId, owner, radius, trackedTargets);
         }
 
@@ -1498,15 +1885,9 @@ namespace BossRush
     public sealed class ZombieModeCommanderAuraTargetRuntime : MonoBehaviour
     {
         private int runId;
-        private Stat walkSpeedStat;
-        private Stat runSpeedStat;
-        private Stat meleeDamageStat;
-        private Stat gunDamageStat;
-        private Modifier walkSpeedModifier;
-        private Modifier runSpeedModifier;
-        private Modifier meleeDamageModifier;
-        private Modifier gunDamageModifier;
         private readonly HashSet<int> sourceIds = new HashSet<int>();
+        private readonly List<ZombieModeAttributeModifierRecord> auraModifierRecords =
+            new List<ZombieModeAttributeModifierRecord>();
 
         public void ApplySource(int newRunId, int sourceId)
         {
@@ -1566,47 +1947,21 @@ namespace BossRush
                 return;
             }
 
-            EnsureModifier(character.CharacterItem, "WalkSpeed", ref walkSpeedStat, ref walkSpeedModifier, ZombieModeTuning.CommanderAffixMoveSpeedBonus);
-            EnsureModifier(character.CharacterItem, "RunSpeed", ref runSpeedStat, ref runSpeedModifier, ZombieModeTuning.CommanderAffixMoveSpeedBonus);
-            EnsureModifier(character.CharacterItem, "MeleeDamageMultiplier", ref meleeDamageStat, ref meleeDamageModifier, ZombieModeTuning.CommanderAffixDamageBonus);
-            EnsureModifier(character.CharacterItem, "GunDamageMultiplier", ref gunDamageStat, ref gunDamageModifier, ZombieModeTuning.CommanderAffixDamageBonus);
-        }
-
-        private void EnsureModifier(ItemStatsSystem.Item characterItem, string statName, ref Stat stat, ref Modifier modifier, float value)
-        {
-            if (modifier != null)
+            if (auraModifierRecords.Count > 0)
             {
                 return;
             }
 
-            stat = characterItem.GetStat(statName);
-            if (stat == null)
-            {
-                return;
-            }
-
-            modifier = new Modifier(ModifierType.PercentageAdd, value, this);
-            stat.AddModifier(modifier);
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.WalkSpeed, ZombieModeTuning.CommanderAffixMoveSpeedBonus, this, auraModifierRecords, "Commander Aura WalkSpeed");
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.RunSpeed, ZombieModeTuning.CommanderAffixMoveSpeedBonus, this, auraModifierRecords, "Commander Aura RunSpeed");
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.MeleeDamageMultiplier, ZombieModeTuning.CommanderAffixDamageBonus, this, auraModifierRecords, "Commander Aura MeleeDamage");
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.GunDamageMultiplier, ZombieModeTuning.CommanderAffixDamageBonus, this, auraModifierRecords, "Commander Aura GunDamage");
         }
 
         private void ReleaseModifiers()
         {
-            RemoveModifier(ref walkSpeedStat, ref walkSpeedModifier);
-            RemoveModifier(ref runSpeedStat, ref runSpeedModifier);
-            RemoveModifier(ref meleeDamageStat, ref meleeDamageModifier);
-            RemoveModifier(ref gunDamageStat, ref gunDamageModifier);
+            RuntimeStatModifierTracker.RemoveAll(auraModifierRecords, "Commander Aura");
             sourceIds.Clear();
-        }
-
-        private void RemoveModifier(ref Stat stat, ref Modifier modifier)
-        {
-            if (stat != null && modifier != null)
-            {
-                stat.RemoveModifier(modifier);
-            }
-
-            stat = null;
-            modifier = null;
         }
     }
 
@@ -1618,22 +1973,30 @@ namespace BossRush
         public void Initialize(int newRunId)
         {
             runId = newRunId;
-            nextTick = Time.unscaledTime + 1f;
+            ModBehaviour inst = ModBehaviour.Instance;
+            nextTick = (inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime) + 1f;
         }
 
         private void Update()
         {
-            if (Time.unscaledTime < nextTick)
-            {
-                return;
-            }
-
-            nextTick = Time.unscaledTime + 1f;
             ModBehaviour inst = ModBehaviour.Instance;
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
                 return;
             }
+
+            if (inst.IsZombieModeRuntimePaused())
+            {
+                return;
+            }
+
+            float now = inst.GetZombieModeRuntimeNow();
+            if (now < nextTick)
+            {
+                return;
+            }
+
+            nextTick = now + 1f;
 
             CharacterMainControl character = GetComponent<CharacterMainControl>();
             if (character == null || character.Health == null || character.Health.CurrentHealth <= 0)
@@ -1657,7 +2020,8 @@ namespace BossRush
         {
             runId = newRunId;
             shieldRemaining = amount;
-            shieldEndTime = Time.unscaledTime + duration;
+            ModBehaviour inst = ModBehaviour.Instance;
+            shieldEndTime = (inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime) + duration;
             shieldActive = true;
         }
 
@@ -1668,17 +2032,22 @@ namespace BossRush
                 return;
             }
 
-            if (Time.unscaledTime >= shieldEndTime)
-            {
-                shieldActive = false;
-                shieldRemaining = 0f;
-                return;
-            }
-
             ModBehaviour inst = ModBehaviour.Instance;
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
                 shieldActive = false;
+                return;
+            }
+
+            if (inst.IsZombieModeRuntimePaused())
+            {
+                return;
+            }
+
+            if (inst.GetZombieModeRuntimeNow() >= shieldEndTime)
+            {
+                shieldActive = false;
+                shieldRemaining = 0f;
                 return;
             }
         }
@@ -1687,6 +2056,13 @@ namespace BossRush
         {
             if (!shieldActive || shieldRemaining <= 0f)
             {
+                return false;
+            }
+
+            if (GetRuntimeNow() >= shieldEndTime)
+            {
+                shieldActive = false;
+                shieldRemaining = 0f;
                 return false;
             }
 
@@ -1702,6 +2078,12 @@ namespace BossRush
                 shieldActive = false;
             }
             return true;
+        }
+
+        private float GetRuntimeNow()
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            return inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime;
         }
     }
 }

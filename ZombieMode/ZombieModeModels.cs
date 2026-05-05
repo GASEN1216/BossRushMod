@@ -281,7 +281,6 @@ namespace BossRush
             public const float DuplicateDistance = 4f;
             public const float MinPlayerDistance = 12f;
             public const float NavMeshLiftOffset = 0.05f;
-            public const int MaxInitialWaveSpawnCount = 0;
             public const int MaxNormalZombieCount = 50;
             public const float NormalZombieForceTraceDistance = 500f;
         }
@@ -364,6 +363,9 @@ namespace BossRush
             public const float HarasserProjectileSpeed = 12f;
             public const float HarasserProjectileDamage = 25f;
             public const float HarasserProjectileLifetimeSeconds = 2f;
+            public const float HarasserSlowRadius = 3.5f;
+            public const float HarasserSlowPercent = 0.50f;
+            public const float HarasserSlowDurationSeconds = 2f;
         }
 
         private static class Boss
@@ -553,7 +555,6 @@ namespace BossRush
         public const float SpawnPointDuplicateDistance = Spawn.DuplicateDistance;
         public const float SpawnPointMinPlayerDistance = Spawn.MinPlayerDistance;
         public const float NavMeshLiftOffset = Spawn.NavMeshLiftOffset;
-        public const int MaxInitialWaveSpawnCount = Spawn.MaxInitialWaveSpawnCount;
         public const int MaxNormalZombieCount = Spawn.MaxNormalZombieCount;
         public const float NormalZombieForceTraceDistance = Spawn.NormalZombieForceTraceDistance;
 
@@ -631,6 +632,9 @@ namespace BossRush
         public const float HarasserProjectileSpeed = Combat.HarasserProjectileSpeed;
         public const float HarasserProjectileDamage = Combat.HarasserProjectileDamage;
         public const float HarasserProjectileLifetimeSeconds = Combat.HarasserProjectileLifetimeSeconds;
+        public const float HarasserSlowRadius = Combat.HarasserSlowRadius;
+        public const float HarasserSlowPercent = Combat.HarasserSlowPercent;
+        public const float HarasserSlowDurationSeconds = Combat.HarasserSlowDurationSeconds;
 
         // Boss - Titan
         public const float TitanShockwaveRadius = Boss.TitanShockwaveRadius;
@@ -976,6 +980,7 @@ namespace BossRush
         public bool BossNodeStock;
         public readonly List<int> MerchantStockRemaining = new List<int>();
         public readonly List<int> NurseUsesRemaining = new List<int>();
+        public bool SafeZoneBound;
     }
 
     public sealed class ZombieModeDropCandidate
@@ -1033,6 +1038,7 @@ namespace BossRush
         public bool EntryResourcesFinalized;
         public long CashWithheldAmount;
         public readonly List<ItemStatsSystem.Item> InventoryTransferredItems = new List<ItemStatsSystem.Item>();
+        public readonly List<ItemStatsSystem.Data.ItemTreeData> InventoryTransferredInboxItems = new List<ItemStatsSystem.Data.ItemTreeData>();
         public readonly List<string> BlockingMessages = new List<string>();
 
         public void Reset()
@@ -1043,6 +1049,7 @@ namespace BossRush
             EntryResourcesFinalized = false;
             CashWithheldAmount = 0L;
             InventoryTransferredItems.Clear();
+            InventoryTransferredInboxItems.Clear();
             BlockingMessages.Clear();
         }
     }
@@ -1126,6 +1133,8 @@ namespace BossRush
         public readonly Dictionary<string, float> AttributeBonuses = new Dictionary<string, float>();
         public readonly List<ZombieModeAttributeModifierRecord> AttributeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
         public bool AttributeModifierCleanupRegistered;
+        public int GuaranteedMerchantPurchaseMinQuality;
+        public bool GuaranteedMerchantPurchasePending;
         public readonly ZombieModeInsuranceState InsuranceState = new ZombieModeInsuranceState();
         public ZombieModePendingMapEventType PendingMapEvent = ZombieModePendingMapEventType.None;
         public int PendingEliteSquadCount;
@@ -1195,6 +1204,8 @@ namespace BossRush
             AttributeBonuses.Clear();
             AttributeModifierRecords.Clear();
             AttributeModifierCleanupRegistered = false;
+            GuaranteedMerchantPurchaseMinQuality = 0;
+            GuaranteedMerchantPurchasePending = false;
             InsuranceState.Reset();
             PendingMapEvent = ZombieModePendingMapEventType.None;
             PendingEliteSquadCount = 0;
@@ -1222,6 +1233,8 @@ namespace BossRush
             AttributeBonuses.Clear();
             AttributeModifierRecords.Clear();
             AttributeModifierCleanupRegistered = false;
+            GuaranteedMerchantPurchaseMinQuality = 0;
+            GuaranteedMerchantPurchasePending = false;
             TemporaryNpcs.Clear();
             LastTemporaryNpcProtectionTickTime = 0f;
             EntityDropCleanupCandidates.Clear();

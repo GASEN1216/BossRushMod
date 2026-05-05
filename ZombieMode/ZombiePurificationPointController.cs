@@ -29,6 +29,12 @@ namespace BossRush
                 return;
             }
 
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst != null && inst.IsZombieModeRuntimePaused())
+            {
+                return;
+            }
+
             lifeTime += Time.deltaTime;
             float pulse = 1f + Mathf.Sin(Time.time * 7f) * 0.12f;
             transform.localScale = baseScale * pulse;
@@ -102,7 +108,7 @@ namespace BossRush
                 star.RunId = runId;
                 star.PointsValue = Mathf.Max(1, value);
                 star.SpawnPosition = point.transform.position;
-                star.SpawnTime = Time.unscaledTime;
+                star.SpawnTime = GetZombieModeRuntimeNow();
                 star.Visual = point;
                 zombieModeRunState.PendingPurificationStars.Add(star);
 

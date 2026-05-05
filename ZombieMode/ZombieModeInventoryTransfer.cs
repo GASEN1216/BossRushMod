@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ItemStatsSystem;
+using ItemStatsSystem.Data;
 using ItemStatsSystem.Items;
 
 namespace BossRush
@@ -65,6 +66,7 @@ namespace BossRush
             }
 
             item.Detach();
+            ReforgeDataPersistence.SyncCurrentReforgeState(item);
             Inventory storage = PlayerStorage.Inventory;
             if (storage != null)
             {
@@ -80,7 +82,16 @@ namespace BossRush
                 }
             }
 
-            PlayerStorage.Push(item, true);
+            ItemTreeData itemData = ItemTreeData.FromItem(item);
+            if (itemData == null)
+            {
+                throw new System.InvalidOperationException("ItemTreeData.FromItem returned null");
+            }
+
+            PlayerStorageBuffer.Buffer.Add(itemData);
+            zombieModeEntryTransaction.InventoryTransferredInboxItems.Add(itemData);
+            PlayerStorageBuffer.SaveBuffer();
+            item.DestroyTree();
             return true;
         }
 
@@ -98,7 +109,20 @@ namespace BossRush
                 },
                 (e, item) => DevLog("[ZombieMode] 裸装转移回滚失败: " + e.Message));
 
+            RunScopedRegistry.ForEachReverse(
+                zombieModeEntryTransaction.InventoryTransferredInboxItems,
+                itemData =>
+                {
+                    if (itemData != null)
+                    {
+                        PlayerStorageBuffer.Buffer.Remove(itemData);
+                    }
+                },
+                (e, itemData) => DevLog("[ZombieMode] 裸装 inbox 回滚失败: " + e.Message));
+
+            try { PlayerStorageBuffer.SaveBuffer(); } catch (System.Exception e) { DevLog("[ZombieMode] 裸装 inbox SaveBuffer 回滚失败: " + e.Message); }
             zombieModeEntryTransaction.InventoryTransferredItems.Clear();
+            zombieModeEntryTransaction.InventoryTransferredInboxItems.Clear();
             zombieModeEntryTransaction.InventoryTransferStarted = false;
         }
 

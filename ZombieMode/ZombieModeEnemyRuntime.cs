@@ -25,6 +25,8 @@ namespace BossRush
         public bool AdaptiveRangedActive;
         public bool AdaptiveMeleeActive;
         public CharacterMainControl Owner;
+        public readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> RuntimeModifierRecords =
+            new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
 
         // Hot path 缓存：HandleZombieModeHealthHurt 每次玩家命中都会查 ally shield；
         // 改读字段而非 GetComponent。激活护盾时由 ApplyZombieModeShielderGroupShield /
@@ -32,6 +34,8 @@ namespace BossRush
         // 字段保留指向已失活的组件即可（IsShieldActive() 会返回 false）。
         public ZombieModeBossShieldRuntime AllyShield;
         public ZombieModeShieldedAffixRuntime ShieldedAffix;
+        public float SuppressedForceTraceDistance;
+        public bool HasSuppressedForceTraceDistance;
     }
 
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
@@ -107,9 +111,12 @@ namespace BossRush
             marker.EnemyKind = isBoss ? ZombieModeEnemyKind.Elite : enemyKind;
             marker.SpecialKind = specialKind;
             marker.Owner = enemy;
+            marker.RuntimeModifierRecords.Clear();
             marker.EliteAffixes.Clear();
             marker.AllyShield = null;
             marker.ShieldedAffix = null;
+            marker.SuppressedForceTraceDistance = 0f;
+            marker.HasSuppressedForceTraceDistance = false;
             if (eliteAffixes != null)
             {
                 marker.EliteAffixes.AddRange(eliteAffixes);

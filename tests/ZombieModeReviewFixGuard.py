@@ -145,17 +145,38 @@ def main() -> int:
         return fail("ZombieModeReviewFixGuard: TryMoveZombieModeEntryItemToStorageOrInbox not found")
     transfer_helper_body = transfer_helper_match.group(1)
     detach_index = transfer_helper_body.find("item.Detach();")
-    inbox_index = transfer_helper_body.find("PlayerStorage.Push(item, true)")
+    inbox_index = transfer_helper_body.find("PlayerStorageBuffer.Buffer.Add(itemData);")
     if detach_index < 0 or inbox_index < 0 or detach_index > inbox_index:
-        return fail("ZombieModeReviewFixGuard: entry transfer must detach then push to storage inbox fallback")
+        return fail("ZombieModeReviewFixGuard: entry transfer must detach then write to storage inbox buffer fallback")
     for token in [
         "storage.GetFirstEmptyPosition(0)",
         "storage.AddAt(item, firstEmptyPosition)",
         "zombieModeEntryTransaction.InventoryTransferredItems.Add(item);",
-        "PlayerStorage.Push(item, true)",
+        "ReforgeDataPersistence.SyncCurrentReforgeState(item);",
+        "PlayerStorageBuffer.Buffer.Add(itemData);",
+        "zombieModeEntryTransaction.InventoryTransferredInboxItems.Add(itemData);",
+        "item.DestroyTree();",
     ]:
         if token not in transfer_helper_body:
             return fail("ZombieModeReviewFixGuard: transfer helper must store live items or inbox fallback -> " + token)
+    if "PlayerStorage.Push(item, true)" in transfer_helper_body:
+        return fail("ZombieModeReviewFixGuard: entry transfer inbox fallback must use direct PlayerStorageBuffer write, not PlayerStorage.Push")
+
+    rollback_match = re.search(
+        r"private\s+void\s+RollbackZombieModeInventoryTransferShell\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",
+        inventory,
+        re.S,
+    )
+    if rollback_match is None:
+        return fail("ZombieModeReviewFixGuard: RollbackZombieModeInventoryTransferShell not found")
+    rollback_body = rollback_match.group(1)
+    for token in [
+        "zombieModeEntryTransaction.InventoryTransferredInboxItems",
+        "PlayerStorageBuffer.Buffer.Remove(itemData)",
+        "zombieModeEntryTransaction.InventoryTransferredInboxItems.Clear();",
+    ]:
+        if token not in rollback_body:
+            return fail("ZombieModeReviewFixGuard: rollback must remove direct inbox-buffer entries -> " + token)
 
     precheck_match = re.search(
         r"private\s+bool\s+TryRunZombieModePrechecks\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",

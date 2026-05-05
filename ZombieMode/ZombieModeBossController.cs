@@ -27,11 +27,12 @@ namespace BossRush
                 {
                     instance.Marker = boss.GetComponent<ZombieModeEnemyRuntimeMarker>();
                 }
+                float now = GetZombieModeRuntimeNow();
                 instance.Lifecycle.LastKnownPosition = boss.transform.position;
-                instance.Lifecycle.LastReachableTime = Time.unscaledTime;
-                instance.Lifecycle.LastHurtTime = Time.unscaledTime;
+                instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
+                instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
                 instance.SkillState = CreateZombieModeBossSkillState(kind);
-                instance.SkillState.Reset(Time.unscaledTime, boss.transform.localScale.x);
+                instance.SkillState.Reset(now, boss.transform.localScale.x);
                 break;
             }
         }
@@ -57,7 +58,7 @@ namespace BossRush
                 return;
             }
 
-            float now = Time.unscaledTime;
+            float now = GetZombieModeRuntimeNow();
             for (int i = 0; i < zombieModeRunState.CurrentWaveBossInstances.Count; i++)
             {
                 ZombieModeBossInstance instance = zombieModeRunState.CurrentWaveBossInstances[i];
@@ -409,20 +410,58 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            Vector3 center = player != null ? player.transform.position : instance.Character.transform.position;
-            Vector3 offset = Random.insideUnitSphere;
-            offset.y = 0f;
-            if (offset.sqrMagnitude < 0.01f)
+            CharacterMainControl boss = instance.Character;
+            Vector3 target;
+            if (!TryResolveZombieModeBossFallbackPosition(instance, out target))
             {
-                offset = Vector3.forward;
+                return;
             }
 
-            Vector3 target = center + offset.normalized * 16f + Vector3.up * ZombieModeTuning.NavMeshLiftOffset;
-            instance.Character.transform.position = target;
+            boss.transform.position = target;
             instance.Lifecycle.LastKnownPosition = target;
-            instance.Lifecycle.LastReachableTime = Time.unscaledTime;
+            instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
+            AICharacterController ai = boss.GetComponentInChildren<AICharacterController>();
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (ai != null && main != null)
+            {
+                SetZombieModeEnemyTargetToMainPlayer(ai);
+                ai.noticed = true;
+            }
             DevLog("[ZombieMode] Boss stuck fallback teleport: " + instance.Kind.ToString());
+        }
+
+        private bool TryResolveZombieModeBossFallbackPosition(ZombieModeBossInstance instance, out Vector3 target)
+        {
+            target = Vector3.zero;
+            if (instance == null || instance.Character == null)
+            {
+                return false;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            Vector3 center = player != null ? player.transform.position : instance.Character.transform.position;
+            if (SpawnPositionHelper.TryFindAroundPlayer(
+                    center,
+                    ringCount: 12,
+                    radius: 16f,
+                    resolved: out target,
+                    liftOffset: ZombieModeTuning.NavMeshLiftOffset,
+                    minPlayerDistance: 10f,
+                    navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius))
+            {
+                return true;
+            }
+
+            if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out target))
+            {
+                return true;
+            }
+
+            return SpawnPositionHelper.TrySampleNavMesh(
+                center + Vector3.forward * 16f,
+                out target,
+                ZombieModeTuning.NavMeshLiftOffset,
+                ZombieModeTuning.NavMeshVirtualSpawnRadius);
         }
 
         private void HandleZombieModeBossHurt(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl victim)
@@ -441,8 +480,8 @@ namespace BossRush
                 }
 
                 instance.Marker = marker;
-                instance.Lifecycle.LastHurtTime = Time.unscaledTime;
-                instance.Lifecycle.LastReachableTime = Time.unscaledTime;
+                instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
+                instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
                 instance.Lifecycle.LastKnownPosition = victim.transform.position;
 
                 // Hunter low-HP frenzy trigger
@@ -483,7 +522,7 @@ namespace BossRush
             ZombieModeHunterState hunter = instance.SkillState as ZombieModeHunterState;
             if (hunter == null) return;
             hunter.FrenzyActive = true;
-            hunter.FrenzyEndTime = Time.unscaledTime + ZombieModeTuning.HunterFrenzyDurationSeconds;
+            hunter.FrenzyEndTime = GetZombieModeRuntimeNow() + ZombieModeTuning.HunterFrenzyDurationSeconds;
             instance.Character.PopText(L10n.T("BossRush_ZombieMode_Boss_Hunter"));
             ApplyZombieModeHunterFrenzyModifiers(instance.Character, hunter);
             instance.Character.transform.localScale = instance.Character.transform.localScale * 1.08f;
@@ -742,6 +781,7 @@ namespace BossRush
     {
         private int runtimeRunId;
         private float runtimeEndTime;
+        private float runtimePauseStartTime = -1f;
 
         protected int RuntimeRunId
         {
@@ -760,6 +800,10 @@ namespace BossRush
         {
         }
 
+        protected virtual void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
+        {
+        }
+
         private void Update()
         {
             ModBehaviour inst = ModBehaviour.Instance;
@@ -768,6 +812,23 @@ namespace BossRush
                 OnRuntimeStopping(inst, false);
                 Destroy(gameObject);
                 return;
+            }
+
+            if (inst.IsZombieModeRuntimePaused())
+            {
+                if (runtimePauseStartTime < 0f)
+                {
+                    runtimePauseStartTime = Time.unscaledTime;
+                }
+                return;
+            }
+
+            if (runtimePauseStartTime >= 0f)
+            {
+                float pausedDuration = Mathf.Max(0f, Time.unscaledTime - runtimePauseStartTime);
+                runtimePauseStartTime = -1f;
+                runtimeEndTime += pausedDuration;
+                OnRuntimeResumedAfterPause(inst, pausedDuration);
             }
 
             if (Time.unscaledTime >= runtimeEndTime)
@@ -807,6 +868,11 @@ namespace BossRush
             InitializeTimedRuntime(newRunId, duration);
         }
 
+        protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
+        {
+            nextTickTime += pausedDuration;
+        }
+
         protected override void TickRuntime(ModBehaviour inst)
         {
             if (Time.unscaledTime < nextTickTime)
@@ -835,7 +901,7 @@ namespace BossRush
         {
             runId = newRunId;
             shieldRemaining = Mathf.Max(shieldRemaining, amount);
-            shieldEndTime = Time.unscaledTime + duration;
+            shieldEndTime = GetRuntimeNow() + duration;
             shieldActive = true;
         }
 
@@ -846,7 +912,7 @@ namespace BossRush
                 return false;
             }
 
-            if (Time.unscaledTime >= shieldEndTime)
+            if (GetRuntimeNow() >= shieldEndTime)
             {
                 shieldActive = false;
                 shieldRemaining = 0f;
@@ -874,7 +940,7 @@ namespace BossRush
                 return 0f;
             }
 
-            if (Time.unscaledTime >= shieldEndTime)
+            if (GetRuntimeNow() >= shieldEndTime)
             {
                 shieldActive = false;
                 shieldRemaining = 0f;
@@ -894,7 +960,7 @@ namespace BossRush
 
         public bool IsShieldActive()
         {
-            return shieldActive && Time.unscaledTime < shieldEndTime && shieldRemaining > 0f;
+            return shieldActive && GetRuntimeNow() < shieldEndTime && shieldRemaining > 0f;
         }
 
         private void Update()
@@ -906,11 +972,22 @@ namespace BossRush
                 return;
             }
 
-            if (shieldActive && Time.unscaledTime >= shieldEndTime)
+            if (inst.IsZombieModeRuntimePaused())
+            {
+                return;
+            }
+
+            if (shieldActive && inst.GetZombieModeRuntimeNow() >= shieldEndTime)
             {
                 shieldActive = false;
                 shieldRemaining = 0f;
             }
+        }
+
+        private float GetRuntimeNow()
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            return inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime;
         }
     }
 
@@ -924,13 +1001,14 @@ namespace BossRush
 
         public void ApplySlow(int newRunId, float percent, float duration)
         {
-            if (slowActive && Time.unscaledTime >= slowEndTime)
+            float now = GetRuntimeNow();
+            if (slowActive && now >= slowEndTime)
             {
                 ClearSlowState();
             }
 
             runId = newRunId;
-            float endCandidate = Time.unscaledTime + duration;
+            float endCandidate = now + duration;
             if (percent > currentSlowPercent || endCandidate > slowEndTime)
             {
                 float newPercent = Mathf.Max(currentSlowPercent, percent);
@@ -954,7 +1032,7 @@ namespace BossRush
 
         public float GetCurrentSlowPercent()
         {
-            if (!slowActive || Time.unscaledTime >= slowEndTime)
+            if (!slowActive || GetRuntimeNow() >= slowEndTime)
             {
                 return 0f;
             }
@@ -971,7 +1049,12 @@ namespace BossRush
                 return;
             }
 
-            if (Time.unscaledTime >= slowEndTime)
+            if (inst.IsZombieModeRuntimePaused())
+            {
+                return;
+            }
+
+            if (inst.GetZombieModeRuntimeNow() >= slowEndTime)
             {
                 ClearSlowState();
             }
@@ -1032,6 +1115,12 @@ namespace BossRush
         private void RemoveSlowModifiers()
         {
             RuntimeStatModifierTracker.RemoveAll(slowModifierRecords, "Player Slow");
+        }
+
+        private float GetRuntimeNow()
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            return inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime;
         }
     }
 }
