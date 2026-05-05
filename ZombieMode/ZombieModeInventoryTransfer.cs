@@ -19,13 +19,6 @@ namespace BossRush
             }
 
             List<Item> items = CollectZombieModeTopLevelPlayerItems();
-            Inventory storage = PlayerStorage.Inventory;
-            if (items.Count > 0 && storage == null)
-            {
-                DevLog("[ZombieMode] 裸装转移失败: 玩家仓库不可用");
-                return false;
-            }
-
             for (int i = 0; i < items.Count; i++)
             {
                 Item item = items[i];
@@ -36,13 +29,10 @@ namespace BossRush
 
                 try
                 {
-                    item.Detach();
-                    if (!storage.AddItem(item))
+                    if (!TryMoveZombieModeEntryItemToStorageOrInbox(item))
                     {
-                        throw new System.InvalidOperationException("PlayerStorage is full");
+                        throw new System.InvalidOperationException("Storage transfer returned false");
                     }
-
-                    zombieModeEntryTransaction.InventoryTransferredItems.Add(item);
                 }
                 catch (System.Exception e)
                 {
@@ -64,6 +54,33 @@ namespace BossRush
             }
 
             zombieModeEntryTransaction.InventoryTransferStarted = true;
+            return true;
+        }
+
+        private bool TryMoveZombieModeEntryItemToStorageOrInbox(Item item)
+        {
+            if (item == null || item.IsBeingDestroyed)
+            {
+                return true;
+            }
+
+            item.Detach();
+            Inventory storage = PlayerStorage.Inventory;
+            if (storage != null)
+            {
+                int firstEmptyPosition = storage.GetFirstEmptyPosition(0);
+                if (firstEmptyPosition >= 0)
+                {
+                    bool added = storage.AddAt(item, firstEmptyPosition);
+                    if (added)
+                    {
+                        zombieModeEntryTransaction.InventoryTransferredItems.Add(item);
+                        return true;
+                    }
+                }
+            }
+
+            PlayerStorage.Push(item, true);
             return true;
         }
 
@@ -126,106 +143,10 @@ namespace BossRush
                 return;
             }
 
-            if (item.TypeID == BossRushItemIds.ZombieTideInvitation || item.TypeID == BossRushItemIds.ZombieTideBeacon)
-            {
-                return;
-            }
-
             if (!result.Contains(item))
             {
                 result.Add(item);
             }
-        }
-
-        private bool HasZombieModeBlockedTransferItem(out string itemName)
-        {
-            itemName = string.Empty;
-            List<Item> items = CollectZombieModeTopLevelPlayerItems();
-            for (int i = 0; i < items.Count; i++)
-            {
-                Item item = items[i];
-                if (!IsZombieModeBlockedTransferItem(item))
-                {
-                    continue;
-                }
-
-                itemName = GetZombieModeTransferItemDisplayName(item);
-                return true;
-            }
-
-            return false;
-        }
-
-        private bool IsZombieModeBlockedTransferItem(Item item)
-        {
-            if (item == null || item.IsBeingDestroyed)
-            {
-                return false;
-            }
-
-            Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
-            if (tagsData == null)
-            {
-                return false;
-            }
-
-            if (ItemHasZombieModeTransferBlockTag(item, tagsData.DontDropOnDeadInSlot))
-            {
-                return true;
-            }
-
-            return ItemHasZombieModeTransferBlockTag(item, TryFindQuestTag(tagsData));
-        }
-
-        private bool ItemHasZombieModeTransferBlockTag(Item item, Duckov.Utilities.Tag targetTag)
-        {
-            if (item == null || targetTag == null || item.Tags == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                if (item.Tags.Contains(targetTag))
-                {
-                    return true;
-                }
-
-                foreach (Duckov.Utilities.Tag tag in item.Tags)
-                {
-                    if (tag != null && string.Equals(tag.name, targetTag.name, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 转移物品 Tag 检查失败: " + e.Message);
-            }
-
-            return false;
-        }
-
-        private string GetZombieModeTransferItemDisplayName(Item item)
-        {
-            if (item == null)
-            {
-                return string.Empty;
-            }
-
-            try
-            {
-                if (!string.IsNullOrEmpty(item.DisplayName))
-                {
-                    return item.DisplayName;
-                }
-            }
-            catch
-            {
-            }
-
-            return item.name;
         }
     }
 }

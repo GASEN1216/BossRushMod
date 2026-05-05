@@ -551,8 +551,9 @@ namespace BossRush
         
         /// <summary>
         /// 更新条目缩略图（使用指定的图片文件名）
+        /// 内部可见，便于 ZombieMode 复用同一份预览图加载逻辑。
         /// </summary>
-        private static void UpdateEntryThumbnailWithImage(MapSelectionEntry entry, string imageName)
+        internal static void UpdateEntryThumbnailWithImage(MapSelectionEntry entry, string imageName)
         {
             try
             {

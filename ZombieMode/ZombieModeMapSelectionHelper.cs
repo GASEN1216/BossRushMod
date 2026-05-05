@@ -16,6 +16,7 @@ namespace BossRush
         private static bool pendingZombieEntryFromMapSelection = false;
         private static bool pendingZombieMapConfirmed = false;
         private static bool pendingZombieCashPromptOpen = false;
+        private static bool pendingZombieMapLoadStarted = false;
         private static int confirmationWatchToken = 0;
         private static readonly List<GameObject> zombieEntryObjects = new List<GameObject>();
         private static readonly List<GameObject> hiddenEntries = new List<GameObject>();
@@ -74,7 +75,10 @@ namespace BossRush
         {
             Cost cost = new Cost();
             cost.money = 0L;
-            cost.items = null;
+            // 使用空数组而不是 null，避免下游代码在访问 cost.items 时引发 NRE。
+            // Cost.IsFree 兼容 null，但注入到原版 MapSelectionEntry 后，CostDisplay.Setup
+            // 等其他路径不一定全部对 null 友好，保守起见使用空数组。
+            cost.items = new Cost.ItemEntry[0];
             return cost;
         }
 
@@ -118,39 +122,90 @@ namespace BossRush
                 return false;
             }
 
+            MapSelectionView mapView = null;
             try
             {
-                MapSelectionView mapView = MapSelectionView.Instance;
-                if (mapView == null)
-                {
-                    inst.CancelZombieModeMapSelectionPhase1();
-                    failureReason = L10n.T("BossRush_ZombieMode_OpenMapFailed");
-                    return false;
-                }
+                mapView = MapSelectionView.Instance;
+            }
+            catch (Exception e)
+            {
+                inst.CancelZombieModeMapSelectionPhase1();
+                failureReason = L10n.T("BossRush_ZombieMode_OpenMapFailed");
+                ModBehaviour.DevLog("[ZombieMode] 获取 MapSelectionView.Instance 失败: " + e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
+                return false;
+            }
 
+            if (mapView == null)
+            {
+                inst.CancelZombieModeMapSelectionPhase1();
+                failureReason = L10n.T("BossRush_ZombieMode_OpenMapFailed");
+                ModBehaviour.DevLog("[ZombieMode] MapSelectionView.Instance 为 null，无法打开地图选择 UI");
+                return false;
+            }
+
+            try
+            {
                 if (!InjectZombieModeEntries(mapView))
                 {
                     inst.CancelZombieModeMapSelectionPhase1();
                     failureReason = L10n.T("BossRush_ZombieMode_NoMaps");
                     return false;
                 }
-
-                pendingZombieEntryFromMapSelection = true;
-                pendingZombieMapEntryIndex = -1;
-                pendingZombieMapConfirmed = false;
-                mapView.Open(null);
-                inst.StartCoroutine(WatchMapSelectionViewClose(mapView));
-                inst.StartCoroutine(DelayedRefreshDisplayNames());
-                ModBehaviour.DevLog("[ZombieMode] 已打开独立地图选择界面");
-                return true;
             }
             catch (Exception e)
             {
                 inst.CancelZombieModeMapSelectionPhase1();
+                // 注入失败时尽量恢复原版条目，避免地图选择 UI 残留隐藏条目。
+                try
+                {
+                    MapSelectionEntryInjectionHelper.RestoreHiddenEntries(hiddenEntries);
+                    MapSelectionEntryInjectionHelper.DestroyCreatedEntries(zombieEntryObjects);
+                }
+                catch (Exception cleanupEx)
+                {
+                    ModBehaviour.DevLog("[ZombieMode] 注入失败后清理也失败: " + cleanupEx.Message);
+                }
                 failureReason = L10n.T("BossRush_ZombieMode_OpenMapFailed");
-                ModBehaviour.DevLog("[ZombieMode] ShowZombieModeMapSelection failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] InjectZombieModeEntries 抛出异常: " + e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
                 return false;
             }
+
+            pendingZombieEntryFromMapSelection = true;
+            pendingZombieMapEntryIndex = -1;
+            pendingZombieMapConfirmed = false;
+
+            try
+            {
+                mapView.Open(null);
+            }
+            catch (Exception e)
+            {
+                inst.CancelZombieModeMapSelectionPhase1();
+                try
+                {
+                    MapSelectionEntryInjectionHelper.RestoreHiddenEntries(hiddenEntries);
+                    MapSelectionEntryInjectionHelper.DestroyCreatedEntries(zombieEntryObjects);
+                }
+                catch { }
+                ClearPendingZombieEntry();
+                failureReason = L10n.T("BossRush_ZombieMode_OpenMapFailed");
+                ModBehaviour.DevLog("[ZombieMode] mapView.Open 抛出异常: " + e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
+                return false;
+            }
+
+            try
+            {
+                inst.StartCoroutine(WatchMapSelectionViewClose(mapView));
+                inst.StartCoroutine(DelayedRefreshDisplayNames());
+            }
+            catch (Exception e)
+            {
+                // 协程启动失败不影响 UI 已打开，仅记录。
+                ModBehaviour.DevLog("[ZombieMode] 启动监控协程失败: " + e.GetType().Name + ": " + e.Message);
+            }
+
+            ModBehaviour.DevLog("[ZombieMode] 已打开独立地图选择界面");
+            return true;
         }
 
         public static void SetPendingZombieMapEntryIndex(int index)
@@ -163,7 +218,11 @@ namespace BossRush
 
         public static void ConfirmZombieModeMapEntry(int index)
         {
-            if (!pendingZombieEntryFromMapSelection || index < 0 || pendingZombieCashPromptOpen)
+            if (!pendingZombieEntryFromMapSelection ||
+                index < 0 ||
+                pendingZombieCashPromptOpen ||
+                pendingZombieMapConfirmed ||
+                pendingZombieMapLoadStarted)
             {
                 return;
             }
@@ -176,26 +235,38 @@ namespace BossRush
             }
 
             pendingZombieCashPromptOpen = true;
-            inst.ShowZombieModeCashInvestmentPrompt(delegate
-            {
-                pendingZombieCashPromptOpen = false;
-                if (!pendingZombieEntryFromMapSelection ||
-                    pendingZombieMapEntryIndex != index ||
-                    pendingZombieMapConfirmed)
+            inst.ShowZombieModeCashInvestmentPrompt(
+                delegate
                 {
-                    return;
-                }
+                    pendingZombieCashPromptOpen = false;
+                    if (!pendingZombieEntryFromMapSelection ||
+                        pendingZombieMapEntryIndex != index ||
+                        pendingZombieMapConfirmed ||
+                        pendingZombieMapLoadStarted)
+                    {
+                        return;
+                    }
 
-                pendingZombieMapConfirmed = true;
-                inst.MarkZombieModeMapConfirmedPhase1();
-                if (!inst.IsZombieModeMapLoadReadyPhase1())
+                    pendingZombieMapConfirmed = true;
+                    inst.MarkZombieModeMapConfirmedPhase1();
+                    if (!inst.IsZombieModeMapLoadReadyPhase1())
+                    {
+                        pendingZombieMapConfirmed = false;
+                        ClearPendingZombieEntry();
+                        return;
+                    }
+                    StartZombieModeConfirmedMapLoad(index);
+                },
+                delegate
                 {
+                    // 玩家在现金弹窗按"返回"：仅释放弹窗占用标记 + 清掉这一次的待选索引，
+                    // 让玩家可以继续在 MapSelectionView 里挑选其他地图，而不是关闭整个地图选择 UI。
+                    pendingZombieCashPromptOpen = false;
+                    pendingZombieMapEntryIndex = -1;
                     pendingZombieMapConfirmed = false;
-                    ClearPendingZombieEntry();
-                    return;
-                }
-                StartZombieModeConfirmedMapLoad(index);
-            });
+                    confirmationWatchToken++;
+                    ModBehaviour.DevLog("[ZombieMode] 玩家在现金弹窗按返回，已撤销本次条目选择并保留地图选择 UI");
+                });
 
             ModBehaviour.DevLog("[ZombieMode] 玩家选择末日丧尸模式地图条目，等待现金投入: " + index);
         }
@@ -211,6 +282,7 @@ namespace BossRush
             pendingZombieMapEntryIndex = -1;
             pendingZombieMapConfirmed = false;
             pendingZombieCashPromptOpen = false;
+            pendingZombieMapLoadStarted = false;
             confirmationWatchToken++;
         }
 
@@ -229,9 +301,37 @@ namespace BossRush
                 ConfigureZombieModeEntry,
                 GetDisplayName,
                 SetupZombieModeCostDisplay,
-                null,
+                OnZombieModeEntryCreated,
                 out _);
             return createdCount > 0;
+        }
+
+        // 与 BossRushMapSelectionHelper.OnBossRushEntryCreated 等价：在 SetActive+Setup 之后挂上自定义预览图，
+        // 让条目背景图与 F9 BossRush 入场 UI 视觉一致。
+        private static void OnZombieModeEntryCreated(
+            MapSelectionEntry uiEntry,
+            GameObject entryObject,
+            ModBehaviour.BossRushMapConfig mapConfig,
+            int entryIndex,
+            MapSelectionEntry template,
+            Transform targetParent)
+        {
+            if (uiEntry == null || mapConfig == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(mapConfig.previewImageName))
+                {
+                    BossRushMapSelectionHelper.UpdateEntryThumbnailWithImage(uiEntry, mapConfig.previewImageName);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] OnZombieModeEntryCreated 预览图加载失败 (sceneID=" + mapConfig.sceneID + "): " + e.Message);
+            }
         }
 
         private static void ConfigureZombieModeEntry(MapSelectionEntry entry, ModBehaviour.BossRushMapConfig mapConfig, int entryIndex)
@@ -242,11 +342,10 @@ namespace BossRush
             MapSelectionEntryInjectionHelper.SetMapSelectionEntryField(entry, "conditions", null);
             entry.enabled = false;
 
-            CostDisplay costDisplay = entry.GetComponentInChildren<CostDisplay>(true);
-            if (costDisplay != null)
-            {
-                SetupZombieModeCostDisplay(costDisplay);
-            }
+            // 注意：不要在这里调用 SetupZombieModeCostDisplay。本回调在 cloned.SetActive(true) 之前
+            // 执行，CostDisplay.Awake 尚未跑过，其内部 ItemPool / moneyContainer 等运行时状态还没就绪，
+            // 调用 costDisplay.Setup(...) 会抛 NullReferenceException。
+            // CostDisplay 的统一设置交给 InjectEntries 的 setupCostDisplay 回调（在 SetActive + Setup 之后执行）。
 
             ZombieModeMapEntryClickHandler clickHandler = entry.gameObject.GetComponent<ZombieModeMapEntryClickHandler>();
             if (clickHandler == null)
@@ -342,6 +441,7 @@ namespace BossRush
             ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
             if (mapConfigs == null || entryIndex < 0 || entryIndex >= mapConfigs.Length)
             {
+                ModBehaviour.DevLog("[ZombieMode] StartZombieModeConfirmedMapLoad 终止: entryIndex=" + entryIndex + " 超出 mapConfigs 范围 (Length=" + (mapConfigs != null ? mapConfigs.Length : -1) + ")");
                 ModBehaviour inst = ModBehaviour.Instance;
                 if (inst != null)
                 {
@@ -351,11 +451,47 @@ namespace BossRush
                 return;
             }
 
+            ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[entryIndex];
+            if (mapConfig == null || string.IsNullOrEmpty(mapConfig.sceneID))
+            {
+                ModBehaviour.DevLog("[ZombieMode] StartZombieModeConfirmedMapLoad 终止: mapConfig 或 sceneID 为空 (entryIndex=" + entryIndex + ")");
+                ModBehaviour inst = ModBehaviour.Instance;
+                if (inst != null)
+                {
+                    inst.AbortZombieModeMapLoadPhase1(ZombieModeFailureReason.MapLoadFailed);
+                }
+                ClearPendingZombieEntry();
+                return;
+            }
+
+            // 在协程外提取必要字段，方便日志/异步函数捕获。
+            string sceneID = mapConfig.sceneID;
+            int beaconIndex = mapConfig.beaconIndex;
+            pendingZombieMapLoadStarted = true;
+            ModBehaviour.DevLog("[ZombieMode] 开始加载目标场景: sceneID=" + sceneID + ", beaconIndex=" + beaconIndex + ", entryIndex=" + entryIndex);
+
+            // 完整复用 Duckov.UI.MapSelectionView.LoadTask 的进图模板：
+            //   1) 设置 LevelManager.loadLevelBeaconIndex
+            //   2) 等 0.5s 视觉确认
+            //   3) SceneLoader.LoadScene(sceneID, null, clickToConinue: true)
+            // 不手动 Close MapSelectionView，让 SceneLoader 的黑幕/加载流程接管 UI 关闭，
+            // 否则提前 Close 会让 View.ActiveView 变 null，破坏后续场景切换流程。
+            RunZombieModeSceneLoad(sceneID, beaconIndex).Forget();
+        }
+
+        private static async UniTask RunZombieModeSceneLoad(string sceneID, int beaconIndex)
+        {
             try
             {
-                ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[entryIndex];
-                if (mapConfig == null || string.IsNullOrEmpty(mapConfig.sceneID))
+                LevelManager.loadLevelBeaconIndex = beaconIndex;
+                ModBehaviour.DevLog("[ZombieMode] LevelManager.loadLevelBeaconIndex = " + beaconIndex);
+
+                // 与 vanilla LoadTask 相同的 0.5s 视觉确认延迟，保证淡入/特效播放完毕。
+                await UniTask.WaitForSeconds(0.5f, true);
+
+                if (SceneLoader.Instance == null)
                 {
+                    ModBehaviour.DevLog("[ZombieMode] SceneLoader.Instance 为 null，加载失败");
                     ModBehaviour inst = ModBehaviour.Instance;
                     if (inst != null)
                     {
@@ -365,30 +501,15 @@ namespace BossRush
                     return;
                 }
 
-                LevelManager.loadLevelBeaconIndex = mapConfig.beaconIndex;
-                MapSelectionView mapView = MapSelectionView.Instance;
-                if (mapView != null)
-                {
-                    mapView.Close();
-                }
-
-                if (SceneLoader.Instance != null)
-                {
-                    SceneLoader.Instance.LoadScene(mapConfig.sceneID, null, true).Forget();
-                }
-                else
-                {
-                    ModBehaviour inst = ModBehaviour.Instance;
-                    if (inst != null)
-                    {
-                        inst.AbortZombieModeMapLoadPhase1(ZombieModeFailureReason.MapLoadFailed);
-                    }
-                    ClearPendingZombieEntry();
-                }
+                // 与 vanilla 完全一致：overrideCurtainScene=null（fallback 到 SceneLoader.defaultCurtainScene），
+                // clickToConinue=true（玩家在加载完成画面里点击继续，与 boat NPC 入图体验一致）。
+                ModBehaviour.DevLog("[ZombieMode] 调用 SceneLoader.LoadScene(\"" + sceneID + "\", null, clickToConinue:true)");
+                await SceneLoader.Instance.LoadScene(sceneID, null, true);
+                ModBehaviour.DevLog("[ZombieMode] SceneLoader.LoadScene 已返回 (sceneID=" + sceneID + ")");
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[ZombieMode] StartZombieModeConfirmedMapLoad failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] RunZombieModeSceneLoad 异常: " + e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
                 ModBehaviour inst = ModBehaviour.Instance;
                 if (inst != null)
                 {

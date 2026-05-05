@@ -62,40 +62,62 @@ namespace BossRush
                     templateToUse = context.TemplateBySceneId[mapConfig.sceneID];
                 }
 
-                GameObject cloned = UnityEngine.Object.Instantiate(templateToUse.gameObject, targetParent);
-                cloned.name = entryNamePrefix + i;
-                cloned.SetActive(false);
-
-                MapSelectionEntry uiEntry = cloned.GetComponent<MapSelectionEntry>();
-                if (uiEntry == null)
+                GameObject cloned = null;
+                try
                 {
-                    UnityEngine.Object.Destroy(cloned);
-                    continue;
+                    cloned = UnityEngine.Object.Instantiate(templateToUse.gameObject, targetParent);
+                    cloned.name = entryNamePrefix + i;
+                    cloned.SetActive(false);
+
+                    MapSelectionEntry uiEntry = cloned.GetComponent<MapSelectionEntry>();
+                    if (uiEntry == null)
+                    {
+                        UnityEngine.Object.Destroy(cloned);
+                        continue;
+                    }
+
+                    if (configureEntry != null)
+                    {
+                        configureEntry(uiEntry, mapConfig, i);
+                    }
+
+                    cloned.SetActive(true);
+
+                    // Setup 内部会调用 Refresh()，访问 SceneInfoCollection.GetSceneInfo(sceneID).DisplayName
+                    // 等会引发 NRE 的字段。把它独立包成 try，避免单个坏条目让整个注入抛出空消息异常。
+                    try
+                    {
+                        uiEntry.Setup(mapView);
+                    }
+                    catch (Exception setupEx)
+                    {
+                        ModBehaviour.DevLog("[MapSelection] uiEntry.Setup 失败 (sceneID=" + mapConfig.sceneID + "): " + setupEx.GetType().Name + ": " + setupEx.Message + "\n" + setupEx.StackTrace);
+                    }
+
+                    if (setupCostDisplay != null)
+                    {
+                        setupCostDisplay(cloned);
+                    }
+
+                    if (getDisplayName != null)
+                    {
+                        SetEntryDisplayNameDirect(cloned, getDisplayName(mapConfig));
+                    }
+
+                    createdEntries.Add(cloned);
+
+                    if (onEntryCreated != null)
+                    {
+                        onEntryCreated(uiEntry, cloned, mapConfig, i, templateToUse, targetParent);
+                    }
                 }
-
-                if (configureEntry != null)
+                catch (Exception e)
                 {
-                    configureEntry(uiEntry, mapConfig, i);
-                }
-
-                cloned.SetActive(true);
-                uiEntry.Setup(mapView);
-
-                if (setupCostDisplay != null)
-                {
-                    setupCostDisplay(cloned);
-                }
-
-                if (getDisplayName != null)
-                {
-                    SetEntryDisplayNameDirect(cloned, getDisplayName(mapConfig));
-                }
-
-                createdEntries.Add(cloned);
-
-                if (onEntryCreated != null)
-                {
-                    onEntryCreated(uiEntry, cloned, mapConfig, i, templateToUse, targetParent);
+                    ModBehaviour.DevLog("[MapSelection] InjectEntries 单条目失败 (sceneID=" + mapConfig.sceneID + "): " + e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
+                    if (cloned != null)
+                    {
+                        try { UnityEngine.Object.Destroy(cloned); } catch { }
+                    }
                 }
             }
 

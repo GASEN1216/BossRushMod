@@ -126,7 +126,7 @@ namespace BossRush
             FailZombieModeBeforeActive(reason);
         }
 
-        // 入场预检查（邀请函/仓储/任务物品/其他模式互斥）
+        // 入场预检查（邀请函/其他模式互斥）。随身物品不阻止入场，入图后统一转入仓库。
         private bool TryRunZombieModePrechecks(out ZombieModeFailureReason reason)
         {
             reason = ZombieModeFailureReason.None;
@@ -312,32 +312,7 @@ namespace BossRush
             if (!string.IsNullOrEmpty(targetSubScene) && scene.name == targetSubScene)
             {
                 ZombieModeMapSelectionHelper.MarkTargetSceneLoadStarted();
-                int runId = BeginZombieModeRunShell(scene.buildIndex, scene.name);
-                // 状态机推进：LoadingMap → InitializingRun（WaitingStarterChoice 由 InitializeZombieModeRunAfterMapLoaded 末尾设置）
-                zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
-                zombieModeRunState.CombatPhase = ZombieModeCombatPhase.None;
-                zombieModeRunState.PurificationPoints = ZOMBIE_MODE_INITIAL_PURIFICATION_POINTS;
-                if (zombieModeRunState.ConfirmedCashInvested > 0L)
-                {
-                    // 100 现金 = 1 净化点数（向下取整）
-                    zombieModeRunState.PurificationPoints = (int)System.Math.Min(
-                        int.MaxValue,
-                        zombieModeRunState.ConfirmedCashInvested / ZombieModeTuning.CashToPurificationRatio);
-                }
-
-                if (customPos.HasValue)
-                {
-                    StartCoroutine(TeleportPlayerToCustomPosition(customPos.Value));
-                }
-
-                ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
-                if (!InitializeZombieModeRunAfterMapLoaded(runId))
-                {
-                    FailZombieModeBeforeActive(ZombieModeFailureReason.InitializationFailed);
-                    return true;
-                }
-
-                DevLog("[ZombieMode] 已进入目标地图: " + scene.name + "，等待初始流派选择");
+                StartCoroutine(WaitForZombieModeTargetSceneActiveThenInitialize(scene, customPos));
                 return true;
             }
 
@@ -361,6 +336,73 @@ namespace BossRush
             CancelZombieModeMapSelectionPhase1();
             ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
             return false;
+        }
+
+        private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize(Scene scene, Vector3? customPos)
+        {
+            const float maxWait = 30f;
+            const float interval = 0.1f;
+            float elapsed = 0f;
+            int attempt = 0;
+
+            while (elapsed < maxWait)
+            {
+                attempt++;
+                Scene activeScene = SceneManager.GetActiveScene();
+                bool sceneLoaded = scene.isLoaded;
+                bool activeMatches = activeScene.name == scene.name;
+                bool sceneLoaderDone = ReadSceneLoaderDoneWithWarning("ZombieModeTargetSceneInitialize");
+                bool levelInited = ReadLevelInitedWithWarning("ZombieModeTargetSceneInitialize");
+
+                if (sceneLoaded && activeMatches && sceneLoaderDone && levelInited)
+                {
+                    break;
+                }
+
+                if (attempt % 10 == 0)
+                {
+                    DevLog("[ZombieMode] 等待目标地图激活: target=" + scene.name
+                        + ", active=" + activeScene.name
+                        + ", sceneLoaded=" + sceneLoaded
+                        + ", sceneLoaderDone=" + sceneLoaderDone
+                        + ", levelInited=" + levelInited
+                        + ", elapsed=" + elapsed + "s");
+                }
+
+                yield return new WaitForSeconds(interval);
+                elapsed += interval;
+            }
+
+            Scene finalActiveScene = SceneManager.GetActiveScene();
+            if (!scene.isLoaded || finalActiveScene.name != scene.name)
+            {
+                DevLog("[ZombieMode] 初始化失败：目标地图未成为 ActiveScene, target=" + scene.name + ", active=" + finalActiveScene.name);
+                ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
+                FailZombieModeBeforeActive(ZombieModeFailureReason.InitializationFailed);
+                yield break;
+            }
+
+            int runId = BeginZombieModeRunShell(scene.buildIndex, scene.name);
+            // 状态机推进：LoadingMap → InitializingRun（WaitingStarterChoice 由 InitializeZombieModeRunAfterMapLoaded 末尾设置）
+            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
+            zombieModeRunState.CombatPhase = ZombieModeCombatPhase.None;
+            zombieModeRunState.PurificationPoints = ZOMBIE_MODE_INITIAL_PURIFICATION_POINTS;
+            if (zombieModeRunState.ConfirmedCashInvested > 0L)
+            {
+                // 100 现金 = 1 净化点数（向下取整）
+                zombieModeRunState.PurificationPoints = (int)System.Math.Min(
+                    int.MaxValue,
+                    zombieModeRunState.ConfirmedCashInvested / ZombieModeTuning.CashToPurificationRatio);
+            }
+
+            ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
+            if (!InitializeZombieModeRunAfterMapLoaded(runId))
+            {
+                FailZombieModeBeforeActive(ZombieModeFailureReason.InitializationFailed);
+                yield break;
+            }
+
+            DevLog("[ZombieMode] 已进入目标地图: " + scene.name + "，等待初始流派选择");
         }
 
         private int BeginZombieModeRunShell(int sceneBuildIndex, string sceneName)
@@ -438,10 +480,27 @@ namespace BossRush
                 return;
             }
 
+            if (ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused())
+            {
+                return;
+            }
+
             TickZombieModeWaveController(deltaTime);
             TickZombieModeDropsAndPerformance(deltaTime);
             TickZombieModeBossController(deltaTime);
             TickZombieModeTemporaryNpcProtection();
+        }
+
+        internal bool IsZombieModeGamePaused()
+        {
+            try
+            {
+                return PauseMenu.Instance != null && PauseMenu.Instance.Shown;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private bool InitializeZombieModeRunAfterMapLoaded(int runId)
@@ -457,17 +516,18 @@ namespace BossRush
                 return false;
             }
 
-            if (!ApplyZombieModeMapIsolationShell(runId))
-            {
-                return false;
-            }
-
             if (!CollectZombieModeSpawnPoints(runId))
             {
                 return false;
             }
 
-            if (FindZombieModeNormalZombiePreset() == null)
+            if (!ApplyZombieModeMapIsolationShell(runId))
+            {
+                return false;
+            }
+
+            EnsureCharacterPresetsCacheReady();
+            if (cachedCharacterPresets == null || !cachedCharacterPresets.ContainsKey("Cname_Zombie"))
             {
                 DevLog("[ZombieMode] 初始化失败：缺少 Cname_Zombie 预设");
                 return false;
@@ -507,56 +567,12 @@ namespace BossRush
                 }
 
                 ItemUtilities.SendToPlayer(beacon, true, false);
-                RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Beacon, null, beacon, delegate
-                {
-                    CleanupZombieModeBeaconItem(beacon);
-                });
                 return true;
             }
             catch (System.Exception e)
             {
                 DevLog("[ZombieMode] 发放尸潮信标失败: " + e.Message);
                 return false;
-            }
-        }
-
-        private void CleanupZombieModeBeaconItem(Item issuedBeacon)
-        {
-            DestroyZombieModeRunOnlyBeaconItem(issuedBeacon);
-            try
-            {
-                List<Item> beacons = ItemUtilities.FindAllBelongsToPlayer(delegate(Item item)
-                {
-                    return item != null &&
-                           !item.IsBeingDestroyed &&
-                           item.TypeID == BossRushItemIds.ZombieTideBeacon;
-                });
-                for (int i = 0; i < beacons.Count; i++)
-                {
-                    DestroyZombieModeRunOnlyBeaconItem(beacons[i]);
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 清理尸潮信标失败: " + e.Message);
-            }
-        }
-
-        private void DestroyZombieModeRunOnlyBeaconItem(Item item)
-        {
-            if (item == null || item.IsBeingDestroyed)
-            {
-                return;
-            }
-
-            try
-            {
-                item.Detach();
-                item.DestroyTree();
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 销毁尸潮信标失败: " + e.Message);
             }
         }
 
@@ -598,9 +614,15 @@ namespace BossRush
         private void FailZombieModeBeforeActive(ZombieModeFailureReason reason)
         {
             DevLog("[ZombieMode] Fail before Active: " + reason.ToString());
+            bool shouldReturnToBase = ShouldReturnToBaseAfterZombieModePreActiveFailure(reason);
             RefundZombieModeInvitationIfNeeded();
             RefundZombieModeCashIfNeeded();
             CleanupZombieModeForSceneChange(reason);
+            if (!shouldReturnToBase)
+            {
+                return;
+            }
+
             try
             {
                 if (SceneLoader.Instance != null)
@@ -614,6 +636,25 @@ namespace BossRush
             }
         }
 
+        private bool ShouldReturnToBaseAfterZombieModePreActiveFailure(ZombieModeFailureReason reason)
+        {
+            ZombieModeLifecyclePhase phase = zombieModeRunState.LifecyclePhase;
+            if (phase == ZombieModeLifecyclePhase.Prechecking ||
+                phase == ZombieModeLifecyclePhase.CommittingResources ||
+                phase == ZombieModeLifecyclePhase.LoadingMap)
+            {
+                return false;
+            }
+
+            if (phase == ZombieModeLifecyclePhase.InitializingRun ||
+                phase == ZombieModeLifecyclePhase.WaitingStarterChoice)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private void ShowZombieModeStarterChoice(int runId)
         {
             if (!IsZombieModeRunValid(runId))
@@ -625,6 +666,7 @@ namespace BossRush
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.RewardUi, root, root, null);
             ZombieModeStarterChoiceView view = root.AddComponent<ZombieModeStarterChoiceView>();
             view.Initialize(runId, this);
+            DevLog("[ZombieMode] 初始流派选择 UI 已创建: runId=" + runId);
         }
 
         public void SelectZombieModeStarterLoadout(int runId, ZombieModeStarterLoadout loadout)
@@ -655,10 +697,22 @@ namespace BossRush
         {
             try
             {
+                if (loadout != ZombieModeStarterLoadout.Melee && loadout != ZombieModeStarterLoadout.Gunner)
+                {
+                    return false;
+                }
+
                 bool grantedAny = false;
                 if (loadout == ZombieModeStarterLoadout.Melee)
                 {
-                    grantedAny |= TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 1, ZombieModeTuning.StarterMaxQuality);
+                    bool coreGranted = TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 1, ZombieModeTuning.StarterMaxQuality);
+                    if (!coreGranted)
+                    {
+                        DevLog("[ZombieMode] 近战开局失败：缺少可发放近战武器");
+                        return false;
+                    }
+
+                    grantedAny = true;
                     int medical = TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 5);
                     grantedAny |= medical > 0;
                     grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Food" }, 1, 3, 3) > 0;
@@ -668,6 +722,7 @@ namespace BossRush
                 else if (loadout == ZombieModeStarterLoadout.Gunner)
                 {
                     int gunTypeId = FindRandomItemTypeByTags(new string[] { "Gun" }, 1, ZombieModeTuning.StarterMaxQuality);
+                    bool gunGranted = false;
                     if (gunTypeId > 0)
                     {
                         Item gun = ItemAssetsCollection.InstantiateSync(gunTypeId);
@@ -679,14 +734,29 @@ namespace BossRush
                                 zombieModeRunState.StarterAmmoCaliber = caliber;
                             }
                             ItemUtilities.SendToPlayer(gun, false, false);
+                            gunGranted = true;
                             grantedAny = true;
                         }
                     }
 
+                    if (!gunGranted)
+                    {
+                        DevLog("[ZombieMode] 枪械开局失败：缺少可发放枪械");
+                        return false;
+                    }
+
                     int ammoCount = ZombieModeTuning.StarterGunnerExtraAmmoCount;
+                    bool ammoGranted = false;
                     if (ammoCount > 0)
                     {
-                        grantedAny |= TryGiveZombieModeStarterAmmo(zombieModeRunState.StarterAmmoCaliber, ammoCount);
+                        ammoGranted = TryGiveZombieModeStarterAmmo(zombieModeRunState.StarterAmmoCaliber, ammoCount);
+                        grantedAny |= ammoGranted;
+                    }
+
+                    if (!ammoGranted)
+                    {
+                        DevLog("[ZombieMode] 枪械开局失败：缺少匹配或通用弹药");
+                        return false;
                     }
 
                     grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 3) > 0;
@@ -694,13 +764,41 @@ namespace BossRush
                     grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Drink" }, 1, 3, 1) > 0;
                 }
 
-                return grantedAny || loadout == ZombieModeStarterLoadout.Melee || loadout == ZombieModeStarterLoadout.Gunner;
+                if (!GrantZombieModeStarterProtectionSet())
+                {
+                    DevLog("[ZombieMode] 开局防具发放失败：缺少护甲/头盔/耳机候选物品");
+                    return false;
+                }
+
+                return true;
             }
             catch (System.Exception e)
             {
                 DevLog("[ZombieMode] 发放初始流派失败: " + e.Message);
                 return false;
             }
+        }
+
+        private bool GrantZombieModeStarterProtectionSet()
+        {
+            bool armorGranted = TryGiveRandomItemByTags(new string[] { "BodyArmor" }, 1, ZombieModeTuning.StarterMaxQuality);
+            bool helmetGranted = TryGiveRandomItemByTags(new string[] { "Helmet" }, 1, ZombieModeTuning.StarterMaxQuality);
+            bool headsetGranted = TryGiveRandomItemByTags(new string[] { "Headset" }, 1, ZombieModeTuning.StarterMaxQuality);
+
+            if (!armorGranted)
+            {
+                DevLog("[ZombieMode] 开局护甲发放失败");
+            }
+            if (!helmetGranted)
+            {
+                DevLog("[ZombieMode] 开局头盔发放失败");
+            }
+            if (!headsetGranted)
+            {
+                DevLog("[ZombieMode] 开局耳机发放失败");
+            }
+
+            return armorGranted && helmetGranted && headsetGranted;
         }
 
         private int TryGiveRandomItemByTagsTimes(string[] requiredTags, int minQuality, int maxQuality, int times)
@@ -828,31 +926,53 @@ namespace BossRush
                 return cached;
             }
 
-            Tag[] tags = ResolveZombieModeTags(requiredTags);
-            if (requiredTags != null && requiredTags.Length > 0 && (tags == null || tags.Length <= 0))
-            {
-                return new int[0];
-            }
-
-            ItemFilter filter = new ItemFilter();
-            filter.requireTags = tags;
-            filter.minQuality = minQuality;
-            filter.maxQuality = maxQuality;
-            filter.caliber = string.Empty;
-            int[] candidates = ItemAssetsCollection.Search(filter);
-            if (candidates == null || candidates.Length <= 0)
-            {
-                cached = new int[0];
-                zombieModeRewardCandidateCache[cacheKey] = cached;
-                return cached;
-            }
-
             zombieModeRewardSafeCandidateScratch.Clear();
-            for (int i = 0; i < candidates.Length; i++)
+
+            if (requiredTags == null || requiredTags.Length <= 0)
             {
-                if (IsZombieModeRewardCandidateAllowed(candidates[i]))
+                ItemFilter filter = new ItemFilter();
+                filter.requireTags = null;
+                filter.minQuality = minQuality;
+                filter.maxQuality = maxQuality;
+                filter.caliber = string.Empty;
+                int[] candidates = ItemAssetsCollection.Search(filter);
+                AddZombieModeRewardCandidates(candidates);
+            }
+            else
+            {
+                bool searchedAnyTag = false;
+                for (int i = 0; i < requiredTags.Length; i++)
                 {
-                    zombieModeRewardSafeCandidateScratch.Add(candidates[i]);
+                    Tag[] tags = ResolveZombieModeTags(new string[] { requiredTags[i] });
+                    if (tags == null || tags.Length <= 0)
+                    {
+                        continue;
+                    }
+
+                    for (int tagIndex = 0; tagIndex < tags.Length; tagIndex++)
+                    {
+                        Tag tag = tags[tagIndex];
+                        if (tag == null)
+                        {
+                            continue;
+                        }
+
+                        searchedAnyTag = true;
+                        ItemFilter filter = new ItemFilter();
+                        filter.requireTags = new Tag[] { tag };
+                        filter.minQuality = minQuality;
+                        filter.maxQuality = maxQuality;
+                        filter.caliber = string.Empty;
+                        int[] candidates = ItemAssetsCollection.Search(filter);
+                        AddZombieModeRewardCandidates(candidates);
+                    }
+                }
+
+                if (!searchedAnyTag)
+                {
+                    cached = new int[0];
+                    zombieModeRewardCandidateCache[cacheKey] = cached;
+                    return cached;
                 }
             }
 
@@ -860,6 +980,23 @@ namespace BossRush
             zombieModeRewardSafeCandidateScratch.Clear();
             zombieModeRewardCandidateCache[cacheKey] = cached;
             return cached;
+        }
+
+        private void AddZombieModeRewardCandidates(int[] candidates)
+        {
+            if (candidates == null || candidates.Length <= 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (IsZombieModeRewardCandidateAllowed(candidates[i]) &&
+                    !zombieModeRewardSafeCandidateScratch.Contains(candidates[i]))
+                {
+                    zombieModeRewardSafeCandidateScratch.Add(candidates[i]);
+                }
+            }
         }
 
         private string BuildZombieModeRewardCandidateCacheKey(string[] requiredTags, int minQuality, int maxQuality)
@@ -883,14 +1020,48 @@ namespace BossRush
             List<Tag> tags = new List<Tag>();
             for (int i = 0; i < tagNames.Length; i++)
             {
-                Tag tag = FindZombieModeTagByName(tagNames[i]);
-                if (tag != null)
-                {
-                    tags.Add(tag);
-                }
+                AddZombieModeTagsByName(tags, tagNames[i]);
             }
 
             return tags.ToArray();
+        }
+
+        private void AddZombieModeTagsByName(List<Tag> tags, string tagName)
+        {
+            try
+            {
+                if (tags == null)
+                {
+                    return;
+                }
+
+                if (GameplayDataSettings.Tags == null || GameplayDataSettings.Tags.AllTags == null)
+                {
+                    return;
+                }
+
+                string[] aliases = GetZombieModeTagAliases(tagName);
+                for (int i = 0; i < aliases.Length; i++)
+                {
+                    string alias = aliases[i];
+                    foreach (Tag tag in GameplayDataSettings.Tags.AllTags)
+                    {
+                        if (tag != null && tag.name == alias)
+                        {
+                            if (!tags.Contains(tag))
+                            {
+                                tags.Add(tag);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] Tag.AllTags 扫描失败: " + e.Message);
+            }
+
         }
 
         private Tag FindZombieModeTagByName(string tagName)
@@ -902,11 +1073,16 @@ namespace BossRush
                     return null;
                 }
 
-                foreach (Tag tag in GameplayDataSettings.Tags.AllTags)
+                string[] aliases = GetZombieModeTagAliases(tagName);
+                for (int i = 0; i < aliases.Length; i++)
                 {
-                    if (tag != null && tag.name == tagName)
+                    string alias = aliases[i];
+                    foreach (Tag tag in GameplayDataSettings.Tags.AllTags)
                     {
-                        return tag;
+                        if (tag != null && tag.name == alias)
+                        {
+                            return tag;
+                        }
                     }
                 }
             }
@@ -916,6 +1092,26 @@ namespace BossRush
             }
 
             return null;
+        }
+
+        private static string[] GetZombieModeTagAliases(string tagName)
+        {
+            if (string.Equals(tagName, "BodyArmor", System.StringComparison.Ordinal))
+            {
+                return new string[] { "Armor" };
+            }
+
+            if (string.Equals(tagName, "Armor", System.StringComparison.Ordinal))
+            {
+                return new string[] { "Armor", "Helmat", "Helmet" };
+            }
+
+            if (string.Equals(tagName, "Helmet", System.StringComparison.Ordinal))
+            {
+                return new string[] { "Helmat", "Helmet" };
+            }
+
+            return new string[] { tagName };
         }
 
         private bool IsZombieModeRewardCandidateAllowed(int typeId)
@@ -930,12 +1126,14 @@ namespace BossRush
     {
         private int runId;
         private ModBehaviour owner;
+        private ZombieModeUIHelper.ModalInputLease inputLease;
 
         public void Initialize(int newRunId, ModBehaviour newOwner)
         {
             runId = newRunId;
             owner = newOwner;
             Build();
+            ClaimInputAndPause();
         }
 
         private void Build()
@@ -947,58 +1145,68 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
-            GameObject panel = CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(520f, 260f));
-            Image panelImage = panel.AddComponent<Image>();
-            panelImage.color = new Color(0f, 0f, 0f, 0.85f);
+            GameObject backdrop = ZombieModeUIHelper.CreateRect(
+                "Backdrop",
+                transform,
+                new Vector2(0f, 0f),
+                new Vector2(1f, 1f),
+                Vector2.zero,
+                Vector2.zero,
+                Vector2.zero);
+            Image backdropImage = backdrop.AddComponent<Image>();
+            backdropImage.color = new Color(0f, 0f, 0f, 0.68f);
+            backdropImage.raycastTarget = true;
 
-            CreateText("Title", panel.transform, L10n.T("BossRush_ZombieMode_Starter_Title"), 28, new Vector2(0f, 80f), new Vector2(480f, 60f));
+            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(520f, 260f));
+            Image panelImage = panel.AddComponent<Image>();
+            panelImage.color = new Color(0.10f, 0.12f, 0.16f, 0.96f);
+
+            ZombieModeUIHelper.CreateText("Title", panel.transform, L10n.T("BossRush_ZombieMode_Starter_Title"), 28, new Vector2(0f, 80f), new Vector2(480f, 60f), TextAlignmentOptions.Center, Color.white);
             CreateButton("Melee", panel.transform, L10n.T("BossRush_ZombieMode_Starter_Melee"), new Vector2(-130f, -30f), ZombieModeStarterLoadout.Melee);
             CreateButton("Gunner", panel.transform, L10n.T("BossRush_ZombieMode_Starter_Gunner"), new Vector2(130f, -30f), ZombieModeStarterLoadout.Gunner);
         }
 
-        private GameObject CreateRect(string name, Transform parent, Vector2 anchor, Vector2 size)
+        private void ClaimInputAndPause()
         {
-            GameObject obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            RectTransform rect = obj.AddComponent<RectTransform>();
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = size;
-            rect.anchoredPosition = Vector2.zero;
-            return obj;
+            inputLease = ZombieModeUIHelper.ClaimModalInput(gameObject, "StarterChoice");
         }
 
-        private TextMeshProUGUI CreateText(string name, Transform parent, string text, int fontSize, Vector2 position, Vector2 size)
+        private void RestoreInputState()
         {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), size);
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchoredPosition = position;
-            return ZombieModeUIHelper.CreateTMPText(
-                obj,
-                text,
-                fontSize,
-                TextAlignmentOptions.Center,
-                Color.white);
+            if (inputLease != null)
+            {
+                inputLease.Release();
+                inputLease = null;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            RestoreInputState();
         }
 
         private void CreateButton(string name, Transform parent, string text, Vector2 position, ZombieModeStarterLoadout loadout)
         {
-            GameObject obj = CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(210f, 78f));
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchoredPosition = position;
-            Image image = obj.AddComponent<Image>();
-            image.color = new Color(0.18f, 0.32f, 0.22f, 0.95f);
-            Button button = obj.AddComponent<Button>();
-            CreateText("Text", obj.transform, text, 22, Vector2.zero, new Vector2(200f, 68f));
-            button.onClick.AddListener(delegate
-            {
-                if (owner != null)
+            ZombieModeUIHelper.CreateButton(
+                name,
+                parent,
+                text,
+                new Vector2(0.5f, 0.5f),
+                position,
+                new Vector2(210f, 78f),
+                new Color(0.18f, 0.32f, 0.22f, 0.95f),
+                22,
+                new Vector2(200f, 68f),
+                delegate
                 {
-                    owner.SelectZombieModeStarterLoadout(runId, loadout);
-                }
-                Destroy(gameObject);
-            });
+                    RestoreInputState();
+                    if (owner != null)
+                    {
+                        owner.SelectZombieModeStarterLoadout(runId, loadout);
+                    }
+                    Destroy(gameObject);
+                },
+                true);
         }
     }
 }

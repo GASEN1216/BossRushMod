@@ -3310,6 +3310,7 @@ namespace BossRush
             // NPC传送UI的暂停和鼠标状态控制
             NPCTeleportUILateUpdate();
             F3DebugCheatMenuLateUpdate();
+            ZombieModeUIHelper.EnforceModalInputPause();
         }
         
         private static void InjectBossRushTicketLocalization()

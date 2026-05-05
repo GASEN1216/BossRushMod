@@ -1133,8 +1133,7 @@ namespace BossRush
             AwenLootSweepTokenConfig.InjectLocalization();  // 阿稳扫箱令物品本地化
             FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
             RespawnItemConfig.InjectLocalization();  // 刷怪消耗品本地化（Mode E）
-            ZombieTideInvitationConfig.InjectLocalization();
-            ZombieTideBeaconConfig.InjectLocalization();
+            LocalizationInjector.InjectZombieModeLocalization();  // 末日丧尸模式全部本地化（含物品名 + OpenMapFailed/NoInvitation/InvitationUseDesc 等消息键）
             InjectModeFItemLocalization();  // Mode F 物品本地化
             AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
             FactionFlagConfig.InjectIntoShops();  // 将营旗注入到售货机
@@ -2081,6 +2080,15 @@ namespace BossRush
                     DevLog("[BossRush] TeleportPlayerToCustomPosition: 传送完成");
                     } // end if (!isModeEEntry)
                     
+                    bool zombieModeOwnsCurrentEntry = IsZombieModeStartupInProgress() ||
+                        ZombieModeMapSelectionHelper.HasPendingZombieEntry ||
+                        IsZombieModeActive;
+                    if (zombieModeOwnsCurrentEntry)
+                    {
+                        DevLog("[ZombieMode] TeleportPlayerToCustomPosition: 丧尸模式正在接管当前入图，跳过 BossRush GroundZero 初始化");
+                        yield break;
+                    }
+
                     // 在有效的 BossRush 竞技场场景执行初始化
                     string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                     BossRushMapConfig mapConfig = GetMapConfigBySceneName(currentScene);
@@ -2230,6 +2238,14 @@ namespace BossRush
         /// </summary>
         private System.Collections.IEnumerator SetupBossRushInGroundZero(Vector3 playerPosition, BossRushEntryMode? resolvedEntryMode = null)
         {
+            if (IsZombieModeStartupInProgress() ||
+                ZombieModeMapSelectionHelper.HasPendingZombieEntry ||
+                IsZombieModeActive)
+            {
+                DevLog("[ZombieMode] SetupBossRushInGroundZero: 丧尸模式正在接管当前入图，跳过普通 BossRush 初始化");
+                yield break;
+            }
+
             DevLog("[BossRush] SetupBossRushInGroundZero: 开始初始化零号区 BossRush 模式");
             
             // 0. 重置 spawner 禁用标志（确保能重新禁用新场景的 spawner）
