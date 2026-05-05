@@ -72,7 +72,6 @@ def main() -> int:
         "ApplyZombieModePlayerAttributeModifiers",
         "RemoveZombieModeAttributeModifiers",
         "AddZombieModeAttributeModifier",
-        "new Modifier(ModifierType.Add",
         "RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.Buff",
         "ApplyZombieModeMapEventReward",
         "SpawnPendingZombieModeEliteSquad",
@@ -85,6 +84,14 @@ def main() -> int:
         result = require(rewards, snippet, "weighted reward implementation")
         if result:
             return result
+
+    # 2026-05-03 §3.2 修复：Attribute Reward 改通过 RuntimeStatModifierTracker.TryAdd 用 PercentageAdd。
+    # 守护接受新旧两种实现：
+    #   - 旧：rewards 内直接 new Modifier(ModifierType.Add, ...)
+    #   - 新：rewards 调用 RuntimeStatModifierTracker.TryAdd
+    if not ("new Modifier(ModifierType.Add" in rewards
+            or "RuntimeStatModifierTracker.TryAdd" in rewards):
+        return fail("ZombieModeRewardCatalogGuard: AddZombieModeAttributeModifier missing modifier registration")
 
     if "List<ZombieModeRewardType> pool = new List<ZombieModeRewardType>" in rewards:
         return fail("ZombieModeRewardCatalogGuard: reward generation still uses flat enum pool")

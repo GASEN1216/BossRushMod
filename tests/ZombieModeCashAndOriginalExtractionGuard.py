@@ -71,7 +71,7 @@ def main() -> int:
     for snippet in [
         "CreateZombieModeFreeMapEntryCost",
         "entry.enabled = false;",
-        "ShowZombieModeCashInvestmentPrompt(delegate",
+        "ShowZombieModeCashInvestmentPrompt(",
         "inst.MarkZombieModeMapConfirmedPhase1();",
         "pendingZombieMapConfirmed = true;",
         "StartZombieModeConfirmedMapLoad",
@@ -82,7 +82,7 @@ def main() -> int:
             return result
 
     direct_index = map_selection.find("inst.MarkZombieModeMapConfirmedPhase1();")
-    prompt_index = map_selection.find("ShowZombieModeCashInvestmentPrompt(delegate")
+    prompt_index = map_selection.find("ShowZombieModeCashInvestmentPrompt(")
     if direct_index < prompt_index:
         return fail("ZombieModeCashAndOriginalExtractionGuard: map confirmation must go through cash prompt before commit")
 

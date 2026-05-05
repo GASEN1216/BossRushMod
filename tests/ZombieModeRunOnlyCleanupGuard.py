@@ -44,17 +44,19 @@ def main() -> int:
             return fail("ZombieModeRunOnlyCleanupGuard: cleanup missing snippet -> " + snippet)
 
     for snippet in [
-        "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Beacon, null, beacon, delegate",
-        "CleanupZombieModeBeaconItem(beacon);",
-        "private void CleanupZombieModeBeaconItem(Item issuedBeacon)",
-        "ItemUtilities.FindAllBelongsToPlayer",
-        "item.TypeID == BossRushItemIds.ZombieTideBeacon",
-        "private void DestroyZombieModeRunOnlyBeaconItem(Item item)",
-        "item.Detach();",
-        "item.DestroyTree();",
+        "GrantZombieModeBeacon(int runId)",
+        "ItemUtilities.SendToPlayer(beacon, true, false);",
     ]:
         if snippet not in entry_text:
-            return fail("ZombieModeRunOnlyCleanupGuard: beacon cleanup missing snippet -> " + snippet)
+            return fail("ZombieModeRunOnlyCleanupGuard: beacon grant missing snippet -> " + snippet)
+
+    for forbidden in [
+        "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Beacon",
+        "CleanupZombieModeBeaconItem",
+        "DestroyZombieModeRunOnlyBeaconItem",
+    ]:
+        if forbidden in entry_text:
+            return fail("ZombieModeRunOnlyCleanupGuard: reusable beacon must not be run-only cleanup -> " + forbidden)
 
     extraction_text = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
     for snippet in [
@@ -62,6 +64,8 @@ def main() -> int:
         "BreakZombieModeSafeZoneStealth",
         "zombieModeRunState.ActiveSafeZoneActive = false;",
         "zombieModeRunState.ActiveSafeZoneVisual = null;",
+        "DestroyZombieModeSafeZoneMapPoi();",
+        "zombieModeRunState.ActiveSafeZoneMapPoi = null;",
         "zombieModeRunState.ActiveExtractionArea = null;",
         "EvacuationCountdownUI.Release",
     ]:

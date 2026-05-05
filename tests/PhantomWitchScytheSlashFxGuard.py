@@ -1,10 +1,16 @@
 """
-Guard: 噬魂挽歌左键挥砍不应再绑定任意近战 fallback slashFx。
+Guard: 噬魂挽歌 EnsureMeleeAttackFx 必须为 slashFx 与 hitFx 同时补 fallback。
 
-原因：
-- 当前左键已经有 `PhantomWitchScytheSwingFx` 作为专用挥击 overlay
-- 若再自动绑定一个来源未知的 `slashFx`，就会把别的近战黑烟/黑斩击一起带进来
-- `hitFx` 仍可保留用于命中反馈；本 guard 只约束挥砍起手的 `slashFx`
+背景修订：
+- 早期方案曾考虑只让 `PhantomWitchScytheSwingFx` 单独作为挥砍 overlay、不再绑定
+  任何近战 fallback slashFx；但实测发现：在 slashFx == null 时原版
+  ItemAgent_MeleeWeapon 的挥砍流程会提前 return，导致专用 overlay 触发时机错位、
+  首挥朝向解算异常。
+- 因此当前确定的契约为：
+    * slashFx 为 null 时必须回退到 GetFallbackSlashFx()，保住原版动画事件链路；
+    * hitFx 为 null 时必须回退到 GetFallbackHitFx()，命中反馈不能丢；
+    * 专用挥砍特效 (`PhantomWitchScytheSwingFx`) 在 fallback 之上叠加，互不干扰。
+- 本 guard 锁定该契约，防止后续任何"瘦身"重构悄悄把 fallback 抽掉而引发回归。
 """
 
 from pathlib import Path
@@ -48,9 +54,10 @@ def main() -> int:
     if not block:
         return fail("PhantomWitchScytheSlashFxGuard: missing EnsureMeleeAttackFx block")
 
-    if re.search(r"meleeAgent\.slashFx\s*=\s*GetFallbackSlashFx\s*\(", block):
+    if re.search(r"meleeAgent\.slashFx\s*=\s*GetFallbackSlashFx\s*\(", block) is None:
         return fail(
-            "PhantomWitchScytheSlashFxGuard: scythe still assigns fallback slashFx in EnsureMeleeAttackFx"
+            "PhantomWitchScytheSlashFxGuard: slashFx fallback unexpectedly missing "
+            "(原版动画事件链路依赖 slashFx 非空)"
         )
 
     if re.search(r"meleeAgent\.hitFx\s*=\s*GetFallbackHitFx\s*\(", block) is None:

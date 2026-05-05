@@ -18,15 +18,25 @@
 | `ZombieModeLocalizationGuard.py` | 丧尸模式 L10n key 必须被 `LocalizationInjector.cs` 注入。 |
 | `ZombieModeItemIdentityGuard.py` | `ZombieTideInvitation` / `ZombieTideBeacon` TypeID 不被复用。 |
 | `ZombieModeSpawnEnemyCoreReuseGuard.py` | `TrySpawnZombieModeNormalZombieAsync` / `TrySpawnZombieModeBossAsync` 必须走 `SpawnEnemyCore(...)`。 |
+| `ZombieModeBossRushSpawnPointsOnlyGuard.py` | 丧尸刷怪点只能来自 BossRush 地图配置画像，不得混入原版 `CharacterSpawnerRoot`。 |
+| `ZombieModeNormalZombieCapAndAggroGuard.py` | 普通丧尸压力必须受 50 只上限、最近 BossRush 刷怪点、玩家仇恨锁定约束。 |
 | `ZombieModeBossMultiplierGuard.py` | 不允许 `Health.defaultMaxHealth` 反射写。 |
 | `ZombieModeRunScopedRegistryGuard.py` | `RunOnlyObjects` 是协程/事件唯一可信源（无 `RegisteredCoroutines` / `EventListenerHandles` 双登记）。 |
 | `ZombieModeStateModelGuard.py` | 核心状态机字段、相位枚举、清理流程结构稳定。 |
 | `ZombieModeRunOnlyCleanupGuard.py` | Run-only cleanup 通道完整。 |
 | `ZombieModeTransactionBoundaryGuard.py` | 入场资源提交/回退事务边界（SPEC 14/15）。 |
+| `ZombieModeMapSelectionEntryFailureGuard.py` | 地图加载前的入场失败不得强制回基地，且随身/任务/绑定物品不得在打开或确认地图 UI 前阻止入场。 |
+| `ZombieModeTargetSceneActivationGuard.py` | 目标子场景必须成为 ActiveScene 后才初始化丧尸模式，避免扫错场景。 |
+| `ZombieModeGroundZeroBossRushIsolationGuard.py` | 丧尸模式入图/传送期间不得触发普通 GroundZero BossRush 初始化。 |
+| `ZombieModeSpawnCoreModeDIsolationGuard.py` | 丧尸模式复用 `SpawnEnemyCore(...)` 时不得执行 ModeD 伤害倍率归一化。 |
+| `ZombieModeChoiceUiPauseAndLayoutGuard.py` | 丧尸模式选择 UI 必须暂停时间/释放鼠标并保持 HUD 指定偏移。 |
+| `ZombieModeStarterEquipmentAndNpcUiGuard.py` | 开局保护三件套、补给终端头盔可见、服务 UI 重建不得重复加 Canvas。 |
 | `ZombieModeInsuranceExitGuard.py` | 失败保险结算条件。 |
 | `ZombieModeSafeZoneGuard.py` | 安全区破隐 5 种触发。 |
+| `ZombieModeAreaDamagePlayerGuard.py` | 丧尸区域伤害必须保留真实伤害源并从 `mainDamageReceiver` 进入原版伤害链，避免空 source 触发 `Health.Hurt` 补丁异常。 |
 | `ZombieModeTemporaryNpcProtectionGuard.py` | 临时 NPC 保护（避免被原版 cleanup 误清理）。 |
 | `ZombieModeCashAndOriginalExtractionGuard.py` | 现金与原版撤离点的场景隔离 invariant。 |
+| `ZombieModeCashPromptButtonLayoutGuard.py` | 现金投入弹窗底部确认/跳过/返回按钮必须固定在独立按钮栏。 |
 | `ZombieModeNpcHelperGuard.py` | NPC 服务 helper 注入流程。 |
 | `ZombieModeRewardCatalogGuard.py` | 奖励 catalog 与 L10n key 一致性（**不再核对具体数值**，避免阻挡平衡迭代）。 |
 | `ZombieModeExtractionFactoryGuard.py` | 撤离 NPC/Area 通过 `ModeExtractionPointFactory` 创建。 |
@@ -36,6 +46,11 @@
 | `ZombieModeRewardCandidateCacheGuard.py` | 奖励/掉落随机物品候选必须缓存 `ItemAssetsCollection.Search` 结果。 |
 | `ZombieModeSpawnPositionHelperGuard.py` | 刷怪位置 helper 迁移后，旧引用和编译列表必须一致。 |
 | `ZombieModeTemporaryNpcBoundaryGuard.py` | 临时 NPC 是 run-only service terminal 的边界。 |
+| `ZombieModeGoalExperienceGuard.py` | `docs/2026-05-03_末日丧尸模式_goal执行文档.md` 的玩家体验 P0/P1/P2 代码 invariant。 |
+| `ZombieModeUIHelperGraphicCompositionGuard.py` | 运行时 UI helper 不得在同一对象叠加 `Image` 与 `TextMeshProUGUI`。 |
+| `ZombieModeProductionReadinessGuard.py` | 共享刷怪、掉落、Boss 状态 modifier、属性清理等生产化 invariant。 |
+| `ZombieModeReview20260503Guard.py` / `ZombieModeReviewFixGuard.py` | 2026-05-03 审查修复项，包含“物品不阻止入场、入图后转仓库/收件箱”契约，防止已确认代码债回归。 |
+| `ZombieModeWindowsVerificationScriptGuard.py` | Windows 端 `test_zombiemode_goal_windows.bat` 编译/部署/手工冒烟入口必须存在并保持串联。 |
 
 ### 已删除（2026-05-01 修复）
 

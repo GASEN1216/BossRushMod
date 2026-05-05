@@ -76,6 +76,7 @@ REQUIRED_KEYS = [
     "BossRush_ZombieMode_Notify_NpcServiceNoPoints",
     "BossRush_ZombieMode_Notify_RewardGranted",
     "BossRush_ZombieMode_Notify_AttributeMaxHealth",
+    "BossRush_ZombieMode_Notify_AttributeBonus",
     "BossRush_ZombieMode_Notify_ContractPollutionDeal",
     "BossRush_ZombieMode_Notify_InsuranceKeepOne",
     "BossRush_ZombieMode_Notify_RefundedInvitation",
@@ -85,6 +86,13 @@ REQUIRED_KEYS = [
     "BossRush_ZombieMode_Reason_SuccessfulExtraction",
     "BossRush_ZombieMode_Settle_SuccessTitle",
     "BossRush_ZombieMode_Settle_PointsToCash",
+    "BossRush_ZombieMode_BossSkill_TitanShockwave",
+    "BossRush_ZombieMode_BossSkill_TitanFortify",
+    "BossRush_ZombieMode_BossSkill_HunterDash",
+    "BossRush_ZombieMode_BossSkill_SplitterSummon",
+    "BossRush_ZombieMode_BossSkill_ShielderSelfShield",
+    "BossRush_ZombieMode_BossSkill_ShielderGroupShield",
+    "BossRush_ZombieMode_BossSkill_CorruptorZone",
 ]
 
 REQUIRED_USAGE_KEYS = [
@@ -131,7 +139,7 @@ REQUIRED_USAGE_KEYS = [
     "BossRush_ZombieMode_Notify_RefreshNoPoints",
     "BossRush_ZombieMode_Notify_NpcServiceNoPoints",
     "BossRush_ZombieMode_Notify_RewardGranted",
-    "BossRush_ZombieMode_Notify_AttributeMaxHealth",
+    "BossRush_ZombieMode_Notify_AttributeBonus",
     "BossRush_ZombieMode_Notify_ContractPollutionDeal",
     "BossRush_ZombieMode_Notify_InsuranceKeepOne",
     "BossRush_ZombieMode_Notify_RefundedInvitation",
