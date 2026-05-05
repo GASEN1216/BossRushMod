@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections;
 using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using ItemStatsSystem.Items;
@@ -11,6 +10,109 @@ namespace BossRush
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         private readonly Dictionary<int, bool> zombieModeMeleeWeaponTypeCache = new Dictionary<int, bool>();
+        private readonly MaterialPropertyBlock zombieModeRendererColorBlock = new MaterialPropertyBlock();
+        private static readonly int ZombieModeRendererColorProperty = Shader.PropertyToID("_Color");
+        private static readonly int ZombieModeRendererTintColorProperty = Shader.PropertyToID("_TintColor");
+        private static readonly int ZombieModeRendererBaseColorProperty = Shader.PropertyToID("_BaseColor");
+
+        private void SetZombieModeRendererColor(Renderer renderer, Color color)
+        {
+            if (renderer == null)
+            {
+                return;
+            }
+
+            renderer.GetPropertyBlock(zombieModeRendererColorBlock);
+            Material sharedMaterial = renderer.sharedMaterial;
+            if (sharedMaterial != null && sharedMaterial.HasProperty(ZombieModeRendererColorProperty))
+            {
+                zombieModeRendererColorBlock.SetColor(ZombieModeRendererColorProperty, color);
+            }
+            else if (sharedMaterial != null && sharedMaterial.HasProperty(ZombieModeRendererTintColorProperty))
+            {
+                zombieModeRendererColorBlock.SetColor(ZombieModeRendererTintColorProperty, color);
+            }
+            else
+            {
+                zombieModeRendererColorBlock.SetColor(ZombieModeRendererBaseColorProperty, color);
+            }
+
+            renderer.SetPropertyBlock(zombieModeRendererColorBlock);
+        }
+
+        // ====================================================================
+        // 共享 disk visual mesh / material（审查 §3.3）
+        // ====================================================================
+        // 之前 8 处 telegraph / 区域 visual 都用 GameObject.CreatePrimitive(Cylinder)，
+        // 自带 MeshFilter+MeshRenderer+CapsuleCollider，然后又 Destroy(collider)；
+        // 高峰每秒 5–15 个新 GameObject 触发 GC + 物理初始化 ≈ 0.5–1 ms/帧。
+        //
+        // 改造：第一次仍然用 CreatePrimitive 提取一个 mesh 副本作为 shared mesh，
+        // material 重新构造一次 standard shader 实例并共享；之后所有调用直接 new
+        // GameObject + AddComponent<MeshFilter+MeshRenderer> 用 sharedMesh / sharedMaterial。
+        // 省去 collider 构造 + destroy、省去 default-material 实例化。
+        // ====================================================================
+        private static Mesh s_zoneDiskMesh;
+        private static Material s_zoneDiskMaterial;
+
+        private static void EnsureZoneDiskAssets()
+        {
+            if (s_zoneDiskMesh == null)
+            {
+                GameObject scratch = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                MeshFilter mf = scratch.GetComponent<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null)
+                {
+                    s_zoneDiskMesh = mf.sharedMesh;
+                }
+                UnityEngine.Object.Destroy(scratch);
+            }
+
+            if (s_zoneDiskMaterial == null)
+            {
+                Shader shader = Shader.Find("Standard");
+                if (shader == null)
+                {
+                    shader = Shader.Find("Sprites/Default");
+                }
+                s_zoneDiskMaterial = shader != null ? new Material(shader) : null;
+            }
+        }
+
+        /// <summary>
+        /// 创建丧尸模式平面区域 visual（telegraph / 区域伤害指示）。
+        /// 替换 GameObject.CreatePrimitive(Cylinder) + Destroy(collider) 模式。
+        /// 调用方仍负责 RegisterZombieModeRunOnlyObject + AddComponent<TickRuntime>。
+        /// </summary>
+        private GameObject CreateZombieModeFlatZoneVisual(string name, Vector3 origin, float radius, float height, Color color)
+        {
+            EnsureZoneDiskAssets();
+
+            GameObject go = new GameObject(string.IsNullOrEmpty(name) ? "ZombieMode_Zone" : name);
+            go.transform.position = origin + Vector3.up * 0.03f;
+            go.transform.localScale = new Vector3(radius * 2f, Mathf.Max(0.01f, height), radius * 2f);
+
+            if (s_zoneDiskMesh != null)
+            {
+                MeshFilter mf = go.AddComponent<MeshFilter>();
+                mf.sharedMesh = s_zoneDiskMesh;
+            }
+
+            MeshRenderer mr = go.AddComponent<MeshRenderer>();
+            if (s_zoneDiskMaterial != null)
+            {
+                mr.sharedMaterial = s_zoneDiskMaterial;
+            }
+            try
+            {
+                SetZombieModeRendererColor(mr, color);
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] FlatZone visual 调色失败: " + e.Message);
+            }
+            return go;
+        }
 
         private ZombieModeEnemyKind RollZombieModeEnemyKind()
         {
@@ -51,17 +153,27 @@ namespace BossRush
             return 1;
         }
 
+        // 静态读取以避免每次刷怪 new[] 装箱（审查 §3.7）。
+        private static readonly ZombieModeSpecialKind[] s_zombieModeSpecialKindOrder = new ZombieModeSpecialKind[]
+        {
+            ZombieModeSpecialKind.Sprinter,
+            ZombieModeSpecialKind.Exploder,
+            ZombieModeSpecialKind.Plague,
+            ZombieModeSpecialKind.Summoner,
+            ZombieModeSpecialKind.Harasser
+        };
+
+        // System.Enum.GetValues 返回 Array 会装箱；缓存为强类型数组，避免每次 Roll 触发 GC。
+        private static readonly ZombieModeEliteAffix[] s_zombieModeEliteAffixAll = (ZombieModeEliteAffix[])
+            System.Enum.GetValues(typeof(ZombieModeEliteAffix));
+
+        // RollZombieModeEliteAffixes 内的两个临时容器；Clear() + 复用避免每次 new。
+        private readonly List<ZombieModeEliteAffix> rollEliteAffixesScratchSelected = new List<ZombieModeEliteAffix>();
+        private readonly List<ZombieModeEliteAffix> rollEliteAffixesScratchPool = new List<ZombieModeEliteAffix>();
+
         private ZombieModeSpecialKind RollZombieModeSpecialKind()
         {
-            ZombieModeSpecialKind[] kinds = new ZombieModeSpecialKind[]
-            {
-                ZombieModeSpecialKind.Sprinter,
-                ZombieModeSpecialKind.Exploder,
-                ZombieModeSpecialKind.Plague,
-                ZombieModeSpecialKind.Summoner,
-                ZombieModeSpecialKind.Harasser
-            };
-            return kinds[Random.Range(0, kinds.Length)];
+            return s_zombieModeSpecialKindOrder[Random.Range(0, s_zombieModeSpecialKindOrder.Length)];
         }
 
         private List<ZombieModeEliteAffix> RollZombieModeEliteAffixes()
@@ -81,21 +193,24 @@ namespace BossRush
                 desiredCount = 2;
             }
 
-            List<ZombieModeEliteAffix> selected = new List<ZombieModeEliteAffix>();
-            List<ZombieModeEliteAffix> pool = new List<ZombieModeEliteAffix>();
-            foreach (ZombieModeEliteAffix affix in System.Enum.GetValues(typeof(ZombieModeEliteAffix)))
+            // 注：调用方拿到 list 后会持久持有（marker.EliteAffixes），所以 selected 必须 new 出独立副本；
+            // 但 pool 是临时枚举池，可以复用 scratch 容器。
+            rollEliteAffixesScratchPool.Clear();
+            for (int i = 0; i < s_zombieModeEliteAffixAll.Length; i++)
             {
+                ZombieModeEliteAffix affix = s_zombieModeEliteAffixAll[i];
                 if (GetZombieModeAffixUnlockTier(affix) <= zombieModeRunState.PollutionTier)
                 {
-                    pool.Add(affix);
+                    rollEliteAffixesScratchPool.Add(affix);
                 }
             }
 
-            while (selected.Count < desiredCount && pool.Count > 0)
+            List<ZombieModeEliteAffix> selected = new List<ZombieModeEliteAffix>();
+            while (selected.Count < desiredCount && rollEliteAffixesScratchPool.Count > 0)
             {
-                int index = Random.Range(0, pool.Count);
-                ZombieModeEliteAffix candidate = pool[index];
-                pool.RemoveAt(index);
+                int index = Random.Range(0, rollEliteAffixesScratchPool.Count);
+                ZombieModeEliteAffix candidate = rollEliteAffixesScratchPool[index];
+                rollEliteAffixesScratchPool.RemoveAt(index);
                 selected.Add(candidate);
                 if (!IsZombieModeAffixCombinationAllowed(selected))
                 {
@@ -108,6 +223,7 @@ namespace BossRush
                 selected.Add(ZombieModeEliteAffix.Tough);
             }
 
+            rollEliteAffixesScratchPool.Clear();
             return selected;
         }
 
@@ -324,7 +440,7 @@ namespace BossRush
 
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Shielded))
             {
-                ZombieModeShieldedAffixRuntime shield = health.gameObject.GetComponent<ZombieModeShieldedAffixRuntime>();
+                ZombieModeShieldedAffixRuntime shield = marker.ShieldedAffix;
                 if (shield != null)
                 {
                     float dmg = damageInfo.damageValue;
@@ -370,7 +486,7 @@ namespace BossRush
                         marker.AdaptiveRangedActive = false;
                         marker.AdaptiveReductionEndTime = Time.unscaledTime + ZombieModeTuning.AdaptiveAffixDurationSeconds;
                         marker.AdaptiveMeleeHitCount = 0;
-                        CharacterMainControl ch = marker.GetComponent<CharacterMainControl>();
+                        CharacterMainControl ch = marker.Owner;
                         if (ch != null) ch.PopText(L10n.T("BossRush_ZombieMode_Affix_Adaptive"));
                     }
                     if (marker.AdaptiveMeleeActive)
@@ -392,7 +508,7 @@ namespace BossRush
                         marker.AdaptiveMeleeActive = false;
                         marker.AdaptiveReductionEndTime = Time.unscaledTime + ZombieModeTuning.AdaptiveAffixDurationSeconds;
                         marker.AdaptiveRangedHitCount = 0;
-                        CharacterMainControl ch = marker.GetComponent<CharacterMainControl>();
+                        CharacterMainControl ch = marker.Owner;
                         if (ch != null) ch.PopText(L10n.T("BossRush_ZombieMode_Affix_Adaptive"));
                     }
                     if (marker.AdaptiveRangedActive)
@@ -474,9 +590,8 @@ namespace BossRush
                     return true;
                 }
                 // 名称回退：避免 Tag 实例不一致（hot reload / 不同程序集）导致 Contains 漏判
-                for (int i = 0; i < item.Tags.Count; i++)
+                foreach (Duckov.Utilities.Tag tag in item.Tags)
                 {
-                    Duckov.Utilities.Tag tag = item.Tags[i];
                     if (tag != null && string.Equals(tag.name, target.name, System.StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
@@ -502,13 +617,59 @@ namespace BossRush
 
             marker.BaseMaxHealth = enemy.Health.MaxHealth;
 
-            // 通过 ApplyBossStatMultiplier 调整 MaxHealth Stat（避免反射写 Health 私有字段）。
-            ApplyBossStatMultiplier(enemy, healthMultiplier);
+            ApplyZombieModeHealthOnlyMultiplier(enemy, healthMultiplier, marker);
 
             enemy.Health.showHealthBar = marker.EnemyKind == ZombieModeEnemyKind.Elite;
             if (enemy.Health.MaxHealth > 0f)
             {
                 enemy.Health.CurrentHealth = enemy.Health.MaxHealth;
+            }
+        }
+
+        private void ApplyZombieModeHealthOnlyMultiplier(
+            CharacterMainControl character,
+            float healthMultiplier,
+            ZombieModeEnemyRuntimeMarker marker = null)
+        {
+            if (character == null || character.CharacterItem == null || Mathf.Approximately(healthMultiplier, 1f))
+            {
+                return;
+            }
+
+            try
+            {
+                if (marker != null && character.Health != null)
+                {
+                    marker.BaseMaxHealth = character.Health.MaxHealth;
+                }
+
+                Stat maxHealthStat = character.CharacterItem.GetStat("MaxHealth");
+                if (maxHealthStat == null)
+                {
+                    maxHealthStat = character.CharacterItem.GetStat("MaxHealth".GetHashCode());
+                }
+
+                if (maxHealthStat == null)
+                {
+                    return;
+                }
+
+                float baseValue = maxHealthStat.BaseValue > 0f ? maxHealthStat.BaseValue : maxHealthStat.Value;
+                float delta = baseValue * (healthMultiplier - 1f);
+                if (Mathf.Abs(delta) > 0.01f)
+                {
+                    Modifier modifier = new Modifier(ModifierType.Add, delta, this);
+                    maxHealthStat.AddModifier(modifier);
+                }
+
+                if (character.Health != null && character.Health.MaxHealth > 0f)
+                {
+                    character.Health.SetHealth(character.Health.MaxHealth);
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] Health-only MaxHealth 倍率应用失败: " + e.Message);
             }
         }
 
@@ -661,6 +822,7 @@ namespace BossRush
 
             DealZombieModeAreaDamageToPlayer(
                 runId,
+                character,
                 character.transform.position,
                 ZombieModeTuning.ExploderDeathRadius,
                 ZombieModeTuning.ExploderDeathDamage);
@@ -677,6 +839,7 @@ namespace BossRush
             {
                 DealZombieModeAreaDamageToPlayer(
                     runId,
+                    character,
                     character.transform.position,
                     ZombieModeTuning.BurstAffixDeathRadius,
                     ZombieModeTuning.BurstAffixDeathDamage);
@@ -877,12 +1040,13 @@ namespace BossRush
                 if (character.Health != null && character.Health.CurrentHealth > 0f)
                 {
                     float shieldAmount = Mathf.Max(1f, character.Health.MaxHealth * ZombieModeTuning.ShieldedAffixShieldPercent);
-                    ZombieModeShieldedAffixRuntime shield = character.gameObject.GetComponent<ZombieModeShieldedAffixRuntime>();
+                    ZombieModeShieldedAffixRuntime shield = marker.ShieldedAffix;
                     if (shield == null)
                     {
                         shield = character.gameObject.AddComponent<ZombieModeShieldedAffixRuntime>();
                     }
                     shield.ActivateShield(marker.RunId, shieldAmount, ZombieModeTuning.ShieldedAffixDurationSeconds);
+                    marker.ShieldedAffix = shield;
                 }
             }
 
@@ -897,6 +1061,10 @@ namespace BossRush
             RefreshZombieModeCommanderAuraTargets(runId, commander, ZombieModeTuning.CommanderAffixAuraRadius, null);
         }
 
+        // Commander Aura tick scratch HashSet：复用避免每次 0.5 秒 tick 都 new。
+        // 仅在 trackedTargets != null 时使用；调用方负责调用前 Clear()。审查 §3.6。
+        private readonly HashSet<int> commanderAuraTargetsScratch = new HashSet<int>();
+
         internal void RefreshZombieModeCommanderAuraTargets(
             int runId,
             CharacterMainControl commander,
@@ -910,7 +1078,12 @@ namespace BossRush
 
             float radiusSqr = radius * radius;
             int sourceId = commander.gameObject.GetInstanceID();
-            HashSet<int> currentTargets = trackedTargets != null ? new HashSet<int>() : null;
+            HashSet<int> currentTargets = null;
+            if (trackedTargets != null)
+            {
+                commanderAuraTargetsScratch.Clear();
+                currentTargets = commanderAuraTargetsScratch;
+            }
             for (int i = 0; i < zombieModeRunState.RunOnlyObjects.Count; i++)
             {
                 ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
@@ -1023,54 +1196,33 @@ namespace BossRush
                 source.PopText(label);
             }
 
-            GameObject telegraph = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            telegraph.name = "ZombieMode_Telegraph";
-            telegraph.transform.position = origin + Vector3.up * 0.03f;
-            telegraph.transform.localScale = new Vector3(radius * 2f, 0.02f, radius * 2f);
-            Collider collider = telegraph.GetComponent<Collider>();
-            if (collider != null)
-            {
-                Destroy(collider);
-            }
+            // 共享 disk mesh 替代 CreatePrimitive(Cylinder)（审查 §3.3）。
+            GameObject telegraph = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_Telegraph",
+                origin + Vector3.up * 0.03f,
+                radius,
+                0.02f,
+                new Color(1f, 0.16f, 0.08f, 0.35f));
 
-            try
-            {
-                Renderer renderer = telegraph.GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.material.color = new Color(1f, 0.16f, 0.08f, 0.35f);
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] telegraph renderer 调色失败: " + e.Message);
-            }
-
-            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, telegraph, null);
-            StartZombieModeCoroutine(
-                ZombieModeTelegraphedAreaDamageCoroutine(runId, source, origin, radius, damage, delay, telegraph),
-                runId);
+            ZombieModeTelegraphedAreaDamageRuntime runtime = telegraph.AddComponent<ZombieModeTelegraphedAreaDamageRuntime>();
+            runtime.Initialize(runId, source, origin, radius, damage, delay);
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, runtime, null);
         }
 
-        private IEnumerator ZombieModeTelegraphedAreaDamageCoroutine(
+        public void TryExecuteZombieModeTelegraphedAreaDamage(
             int runId,
             CharacterMainControl source,
             Vector3 origin,
             float radius,
-            float damage,
-            float delay,
-            GameObject telegraph)
+            float damage)
         {
-            yield return new WaitForSecondsRealtime(Mathf.Max(0.05f, delay));
-
-            if (IsZombieModeRunValid(runId) && !ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            if (IsZombieModeRunValid(runId) &&
+                !ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
             {
-                DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage);
-            }
-
-            if (telegraph != null)
-            {
-                try { Destroy(telegraph); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy telegraph 失败: " + e.Message); }
+                // 起手 telegraph 完成时走 ExplosionManager 路径（审查 §4.2）：
+                // 玩家与丧尸都按 team 命中，自动尊重墙体阻挡 / VFX / 屏幕震动；
+                // source 为空时 helper 内部回退为 player-only 实现保持原行为。
+                DealZombieModeExplosionAreaDamage(runId, source, origin, radius, damage);
             }
         }
 
@@ -1087,22 +1239,120 @@ namespace BossRush
             }
 
             CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null || player.Health == null)
+            if (player == null || player.Health == null || player.mainDamageReceiver == null)
             {
                 return;
             }
 
-            if ((player.transform.position - origin).sqrMagnitude > radius * radius)
+            Vector3 delta = player.transform.position - origin;
+            if (delta.sqrMagnitude > radius * radius)
             {
                 return;
             }
 
-            DamageInfo damageInfo = source != null ? new DamageInfo(source) : new DamageInfo();
+            CharacterMainControl damageSource = source != null ? source : player;
+            DamageInfo damageInfo = new DamageInfo(damageSource);
             damageInfo.damageType = DamageTypes.normal;
             damageInfo.damageValue = damage;
             damageInfo.damagePoint = player.transform.position;
-            damageInfo.damageNormal = (player.transform.position - origin).normalized;
-            player.Health.Hurt(damageInfo);
+            damageInfo.damageNormal = delta.sqrMagnitude > 0.0001f ? delta.normalized : Vector3.up;
+            damageInfo.isFromBuffOrEffect = source == null;
+
+            DamageReceiver receiver = player.mainDamageReceiver;
+            receiver.Hurt(damageInfo);
+        }
+
+        // ====================================================================
+        // ExplosionManager.CreateExplosion 接入（审查 §4.2）
+        // ====================================================================
+        // DealZombieModeAreaDamageToPlayer 是 mod 自实现的"只对主角伤害"路径，
+        // 跳过墙体 raycast，无 VFX，无屏幕震动。当 telegraph 起手或 Boss 死亡爆炸
+        // 想要原生效果（屏幕震动 / 标准爆炸 VFX / 障碍物挡墙）时，调用此方法走源码。
+        //
+        // CreateExplosion 按 team 命中所有敌对单位 — Boss source.Team 为 wolf/scav，
+        // wolf 不与 scav 互伤、不与自己互伤；玩家是 player，会被命中。
+        // 兜底：源码 API 不可用时退回 player-only 实现。
+        // ====================================================================
+        public void DealZombieModeExplosionAreaDamage(
+            int runId,
+            CharacterMainControl source,
+            Vector3 origin,
+            float radius,
+            float damage,
+            bool canHurtSelf = false)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return;
+            }
+
+            try
+            {
+                if (source != null &&
+                    LevelManager.Instance != null &&
+                    LevelManager.Instance.ExplosionManager != null)
+                {
+                    DamageInfo dmgInfo = new DamageInfo(source);
+                    dmgInfo.damageValue = damage;
+                    dmgInfo.isExplosion = true;
+
+                    LevelManager.Instance.ExplosionManager.CreateExplosion(
+                        origin,
+                        radius,
+                        dmgInfo,
+                        ExplosionFxTypes.normal,
+                        0.5f,
+                        canHurtSelf);
+                    return;
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] ExplosionManager 调用失败，回退 player-only 路径: " + e.Message);
+            }
+
+            // 兜底：源码 API 不可用 / source 为空时仍走 player-only 实现，
+            // 与原行为一致避免技能完全失效。
+            DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage);
+        }
+    }
+
+    public sealed class ZombieModeTelegraphedAreaDamageRuntime : ZombieModeTimedRunScopedRuntime
+    {
+        private CharacterMainControl source;
+        private Vector3 origin;
+        private float radius;
+        private float damage;
+        private float triggerTime;
+        private bool triggered;
+
+        public void Initialize(
+            int newRunId,
+            CharacterMainControl newSource,
+            Vector3 newOrigin,
+            float newRadius,
+            float newDamage,
+            float delay)
+        {
+            source = newSource;
+            origin = newOrigin;
+            radius = newRadius;
+            damage = newDamage;
+            triggerTime = Time.unscaledTime + Mathf.Max(0.05f, delay);
+            triggered = false;
+            InitializeTimedRuntime(newRunId, Mathf.Max(0.05f, delay) + 0.1f);
+        }
+
+        protected override void TickRuntime(ModBehaviour inst)
+        {
+            if (triggered || Time.unscaledTime < triggerTime)
+            {
+                return;
+            }
+
+            triggered = true;
+            inst.TryExecuteZombieModeTelegraphedAreaDamage(RuntimeRunId, source, origin, radius, damage);
+            Destroy(gameObject);
         }
     }
 

@@ -12,6 +12,11 @@ namespace BossRush
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         private readonly List<ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkerScratch = new List<ZombieModeEnemyRuntimeMarker>();
+        private static readonly string[] ZombieModeDropTagWeapon = { "Weapon" };
+        private static readonly string[] ZombieModeDropTagArmor = { "Armor" };
+        private static readonly string[] ZombieModeDropTagAmmo = { "Ammo" };
+        private static readonly string[] ZombieModeDropTagMedical = { "Medical" };
+        private static readonly string[] ZombieModeDropTagFood = { "Food" };
 
         private int CollectZombieModeRuntimeEnemyMarkers(
             int runId,
@@ -373,18 +378,18 @@ namespace BossRush
         {
             if (marker != null && marker.EnemyKind == ZombieModeEnemyKind.Elite)
             {
-                return UnityEngine.Random.value < 0.5f ? new string[] { "Weapon" } : new string[] { "Armor" };
+                return UnityEngine.Random.value < 0.5f ? ZombieModeDropTagWeapon : ZombieModeDropTagArmor;
             }
 
             if (marker != null && marker.EnemyKind == ZombieModeEnemyKind.Special)
             {
-                return UnityEngine.Random.value < 0.5f ? new string[] { "Ammo" } : new string[] { "Medical" };
+                return UnityEngine.Random.value < 0.5f ? ZombieModeDropTagAmmo : ZombieModeDropTagMedical;
             }
 
             float roll = UnityEngine.Random.value;
-            if (roll < 0.40f) return new string[] { "Ammo" };
-            if (roll < 0.75f) return new string[] { "Medical" };
-            return new string[] { "Food" };
+            if (roll < 0.40f) return ZombieModeDropTagAmmo;
+            if (roll < 0.75f) return ZombieModeDropTagMedical;
+            return ZombieModeDropTagFood;
         }
 
         private void TrySpawnZombieModeBossDrop(int runId, ZombieModeEnemyRuntimeMarker marker, Vector3 position)
@@ -394,29 +399,15 @@ namespace BossRush
                 return;
             }
 
-            int count = ZombieModeTuning.BossLootCrateBaseAtWave5 +
-                        Mathf.Max(0, zombieModeRunState.CurrentWave / 5 - 1) * ZombieModeTuning.BossLootCrateGrowthEvery5Waves;
             int maxQuality = Mathf.Clamp(4 + zombieModeRunState.PollutionTier + 1, 5, 8);
-            for (int i = 0; i < count; i++)
+            GameObject drop = TrySpawnZombieModeBossLootbox(runId, marker.BossKind, position, maxQuality);
+            if (drop != null)
             {
-                Vector3 offset = Quaternion.Euler(0f, 360f * i / Mathf.Max(1, count), 0f) * Vector3.forward * 1.8f;
-                GameObject drop = TrySpawnZombieModeBossLootbox(runId, marker.BossKind, position + offset, maxQuality);
-                if (drop != null)
-                {
-                    ZombieModeBossDrop bossDrop = new ZombieModeBossDrop();
-                    bossDrop.GameObject = drop;
-                    bossDrop.WaveAtSpawn = zombieModeRunState.CurrentWave;
-                    bossDrop.BossKind = marker.BossKind;
-                    zombieModeRunState.BossDropEntries.Add(bossDrop);
-                }
-            }
-
-            for (int i = 0; i < 2; i++)
-            {
-                int typeId = FindRandomItemTypeByTags(null, 3, maxQuality);
-                Vector3 offset = UnityEngine.Random.insideUnitSphere;
-                offset.y = 0f;
-                TryDropZombieModeItemNearPosition(runId, typeId, position + offset.normalized * 2.2f, true, true);
+                ZombieModeBossDrop bossDrop = new ZombieModeBossDrop();
+                bossDrop.GameObject = drop;
+                bossDrop.WaveAtSpawn = zombieModeRunState.CurrentWave;
+                bossDrop.BossKind = marker.BossKind;
+                zombieModeRunState.BossDropEntries.Add(bossDrop);
             }
         }
 
@@ -444,10 +435,11 @@ namespace BossRush
                 lootbox.gameObject.name = "ZombieMode_BossLootbox_" + bossKind.ToString();
                 TryCreateZombieModeLootboxLocalInventory(lootbox);
                 ClearZombieModeLootboxInventory(lootbox);
-                RefillZombieModeLootboxInventory(runId, lootbox, 1, 2, 3, maxQuality, true);
+                RefillZombieModeLootboxInventory(runId, lootbox, 6, 9, 3, maxQuality, true);
                 try { MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex); } catch (Exception e) { DevLog("[ZombieMode] MoveToActiveWithScene 失败: " + e.Message); }
                 try { ApplyLootBoxCoverSetting(lootbox, true); } catch (Exception e) { DevLog("[ZombieMode] ApplyLootBoxCoverSetting 失败: " + e.Message); }
-                try { BossRushLootboxUtility.DecorateLootbox(lootbox, this, false); } catch (Exception e) { DevLog("[ZombieMode] DecorateLootbox 失败: " + e.Message); }
+                try { BossRushLootboxUtility.DecorateLootbox(lootbox, this, false, true); } catch (Exception e) { DevLog("[ZombieMode] DecorateLootbox 失败: " + e.Message); }
+                TryAdjustZombieModeBossLootboxCapacity(lootbox);
                 RegisterZombieModeDropCandidate(runId, lootbox.gameObject, true, true);
                 return lootbox.gameObject;
             }
@@ -455,6 +447,24 @@ namespace BossRush
             {
                 DevLog("[ZombieMode] 生成 Boss 奖励箱失败: " + e.Message);
                 return null;
+            }
+        }
+
+        private void TryAdjustZombieModeBossLootboxCapacity(InteractableLootbox lootbox)
+        {
+            if (lootbox == null || lootbox.Inventory == null)
+            {
+                return;
+            }
+
+            try
+            {
+                int lastPos = lootbox.Inventory.GetLastItemPosition();
+                lootbox.Inventory.SetCapacity(Mathf.Max(16, lastPos + 1));
+            }
+            catch (Exception e)
+            {
+                DevLog("[ZombieMode] 调整 Boss 奖励箱容量失败: " + e.Message);
             }
         }
 
@@ -473,10 +483,8 @@ namespace BossRush
                     return null;
                 }
 
-                item.Detach();
+                item.Drop(position + Vector3.up * 0.35f, true, UnityEngine.Random.insideUnitSphere.normalized, bossDrop ? 30f : 18f);
                 GameObject obj = item.gameObject;
-                obj.transform.position = position + Vector3.up * 0.35f;
-                obj.SetActive(true);
                 RegisterZombieModeDropCandidate(runId, obj, highValue, bossDrop);
                 return obj;
             }
@@ -527,10 +535,10 @@ namespace BossRush
         private void EvaluateZombieModePerformanceTier()
         {
             PerformanceTierAdjuster.Thresholds thresholds;
-            thresholds.Watch = ZombieModeTuning.Performance.TierWatch;
-            thresholds.Soft = ZombieModeTuning.Performance.TierSoft;
-            thresholds.Extreme = ZombieModeTuning.Performance.TierExtreme;
-            thresholds.Hysteresis = ZombieModeTuning.Performance.TierHysteresis;
+            thresholds.Watch = ZombieModeTuning.PerfTierWatch;
+            thresholds.Soft = ZombieModeTuning.PerfTierSoft;
+            thresholds.Extreme = ZombieModeTuning.PerfTierExtreme;
+            thresholds.Hysteresis = ZombieModeTuning.PerfTierHysteresis;
 
             PerformanceTierAdjuster.Tier current = (PerformanceTierAdjuster.Tier)(int)zombieModeRunState.PerformanceTier;
             PerformanceTierAdjuster.Tier resolved = PerformanceTierAdjuster.Evaluate(
@@ -644,8 +652,12 @@ namespace BossRush
             try
             {
                 marker.RecycledForPerformance = true;
+                // 同步 hot path 集合（审查 §3.1）：被回收的敌人不再走 marker 路径。
+                UnregisterZombieModeEnemyInstanceId(marker.Owner);
                 zombieModeRunState.LivingZombieCount = Mathf.Max(0, zombieModeRunState.LivingZombieCount - 1);
+                zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);
                 Destroy(marker.gameObject);
+                PruneZombieModeRunOnlyEnemyRecords(marker.RunId);
                 return true;
             }
             catch
@@ -698,14 +710,17 @@ namespace BossRush
                 return;
             }
 
-            for (int i = zombieModeRunState.TemporaryNpcs.Count - 1; i >= 0; i--)
-            {
-                ZombieModeTemporaryNpc npc = zombieModeRunState.TemporaryNpcs[i];
-                if (npc != null && npc.GameObject != null)
+            // 反向迭代清理走 RunScopedRegistry.ForEachReverse（审查 §1.3）。
+            RunScopedRegistry.ForEachReverse(
+                zombieModeRunState.TemporaryNpcs,
+                npc =>
                 {
-                    try { Destroy(npc.GameObject); } catch (Exception e) { DevLog("[ZombieMode] Destroy temporary NPC 失败: " + e.Message); }
-                }
-            }
+                    if (npc != null && npc.GameObject != null)
+                    {
+                        Destroy(npc.GameObject);
+                    }
+                },
+                (e, npc) => DevLog("[ZombieMode] Destroy temporary NPC 失败: " + e.Message));
 
             zombieModeRunState.TemporaryNpcs.Clear();
         }
@@ -747,7 +762,7 @@ namespace BossRush
         public void UnlockZombieModeContainer()
         {
             RestoreZombieModeContainerLock();
-            try { Destroy(this); } catch (Exception e) { DevLog("[ZombieMode] Destroy ContainerLock self 失败: " + e.Message); }
+            try { Destroy(this); } catch (Exception e) { ModBehaviour.DevLog("[ZombieMode] Destroy ContainerLock self 失败: " + e.Message); }
         }
 
         public void RestoreZombieModeContainerLock()

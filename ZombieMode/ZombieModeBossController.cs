@@ -1,4 +1,6 @@
 using Cysharp.Threading.Tasks;
+using ItemStatsSystem;
+using ItemStatsSystem.Stats;
 using UnityEngine;
 
 namespace BossRush
@@ -21,6 +23,10 @@ namespace BossRush
                 }
 
                 instance.Kind = kind;
+                if (instance.Marker == null)
+                {
+                    instance.Marker = boss.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                }
                 instance.Lifecycle.LastKnownPosition = boss.transform.position;
                 instance.Lifecycle.LastReachableTime = Time.unscaledTime;
                 instance.Lifecycle.LastHurtTime = Time.unscaledTime;
@@ -84,6 +90,7 @@ namespace BossRush
                 if (hunterState != null && hunterState.FrenzyActive && now >= hunterState.FrenzyEndTime)
                 {
                     hunterState.FrenzyActive = false;
+                    RemoveZombieModeHunterFrenzyModifiers(hunterState);
                     if (instance.Character != null && hunterState.FrenzyOriginalScale > 0f)
                     {
                         Vector3 s = instance.Character.transform.localScale;
@@ -92,223 +99,207 @@ namespace BossRush
                     }
                 }
 
-                TryExecuteZombieModeBossSkill(instance);
+                TryExecuteZombieModeBossSkill(instance, now);
             }
         }
 
-        private float GetZombieModeBossSkillCooldown(ZombieModeBossKind kind)
-        {
-            switch (kind)
-            {
-                case ZombieModeBossKind.Titan:
-                    return ZombieModeTuning.TitanShockwaveCooldownSeconds;
-                case ZombieModeBossKind.Hunter:
-                    return ZombieModeTuning.HunterDashCooldownSeconds;
-                case ZombieModeBossKind.Splitter:
-                    return ZombieModeTuning.SplitterBossSummonCooldownSeconds;
-                case ZombieModeBossKind.Shielder:
-                    return ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
-                default:
-                    return ZombieModeTuning.CorruptorZoneCooldownSeconds;
-            }
-        }
+        // 注：原 GetZombieModeBossSkillCooldown switch 已废弃。冷却信息现在直接从
+        // ZombieModeBossSkillState.CooldownSeconds（per-kind override）读取，调用方为零。
 
-        private void TryExecuteZombieModeBossSkill(ZombieModeBossInstance instance)
+        private void TryExecuteZombieModeBossSkill(ZombieModeBossInstance instance, float now)
         {
-            if (instance == null)
+            if (instance == null || instance.SkillState == null || instance.Character == null)
             {
                 return;
             }
 
-            TickZombieModeBossSkillRotation(instance, Time.unscaledTime);
-        }
-
-        private void TickZombieModeBossSkillRotation(ZombieModeBossInstance instance, float now)
-        {
-            CharacterMainControl boss = instance.Character;
             CharacterMainControl player = CharacterMainControl.Main;
-            if (boss == null || player == null)
+            if (player == null)
             {
                 return;
             }
 
+            instance.SkillState.Tick(this, instance, now);
+        }
+
+        // ====================================================================
+        // 5 个 per-kind Tick 方法（被对应 SkillState 子类的 Tick override 调用）
+        // ====================================================================
+        // 多态化前：BossController 主循环用 switch + 强制下行转换分发 5 种 Boss
+        // 技能逻辑；每加一个 Boss 要改 Create/Cooldown/Tick 三处。
+        // 多态化后：SkillState.Tick(mod, instance, now) → mod.TickZombieMode<Kind>State(...)。
+        // BossController 内仍然集中"如何"实现（telegraph / 召唤 / 护盾），SkillState
+        // 只负责"何时"和"哪个 Boss"。审查 §2.1。
+        //
+        // Boss 技能使用独立 L10n key。玩家看到的是技能起手，而不是只有 Boss 名。
+        // ====================================================================
+
+        internal void TickZombieModeTitanState(ZombieModeTitanState titan, ZombieModeBossInstance instance, float now)
+        {
+            CharacterMainControl boss = instance != null ? instance.Character : null;
+            if (boss == null) return;
             int runId = zombieModeRunState.RunId;
-            switch (instance.Kind)
+
+            if (now >= titan.NextShockwaveTime)
             {
-                case ZombieModeBossKind.Titan:
-                {
-                    ZombieModeTitanState titan = (ZombieModeTitanState)instance.SkillState;
-                    if (now >= titan.NextShockwaveTime)
-                    {
-                        titan.NextShockwaveTime = now + ZombieModeTuning.TitanShockwaveCooldownSeconds;
-                        StartZombieModeTelegraphedAreaDamage(
-                            runId,
-                            boss,
-                            boss.transform.position,
-                            ZombieModeTuning.TitanShockwaveRadius,
-                            ZombieModeTuning.TitanShockwaveDamage,
-                            ZombieModeTuning.TitanShockwaveStartupSeconds,
-                            L10n.T("BossRush_ZombieMode_Boss_Titan"));
-                    }
-                    if (now >= titan.NextDamageReductionTime && !titan.DamageReductionActive)
-                    {
-                        titan.NextDamageReductionTime = now + ZombieModeTuning.TitanDamageReductionCooldownSeconds;
-                        titan.DamageReductionActive = true;
-                        titan.DamageReductionEndTime = now
-                            + ZombieModeTuning.TitanDamageReductionStartupSeconds
-                            + ZombieModeTuning.TitanDamageReductionDurationSeconds;
-                        boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Titan"));
-                    }
-                    break;
-                }
+                titan.NextShockwaveTime = now + ZombieModeTuning.TitanShockwaveCooldownSeconds;
+                StartZombieModeTelegraphedAreaDamage(
+                    runId,
+                    boss,
+                    boss.transform.position,
+                    ZombieModeTuning.TitanShockwaveRadius,
+                    ZombieModeTuning.TitanShockwaveDamage,
+                    ZombieModeTuning.TitanShockwaveStartupSeconds,
+                    L10n.T("BossRush_ZombieMode_BossSkill_TitanShockwave"));
+            }
+            if (now >= titan.NextDamageReductionTime && !titan.DamageReductionActive)
+            {
+                titan.NextDamageReductionTime = now + ZombieModeTuning.TitanDamageReductionCooldownSeconds;
+                titan.DamageReductionActive = true;
+                titan.DamageReductionEndTime = now
+                    + ZombieModeTuning.TitanDamageReductionStartupSeconds
+                    + ZombieModeTuning.TitanDamageReductionDurationSeconds;
+                boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_TitanFortify"));
+            }
+        }
 
-                case ZombieModeBossKind.Hunter:
-                {
-                    ZombieModeHunterState hunter = (ZombieModeHunterState)instance.SkillState;
-                    if (now >= hunter.NextDashTime)
-                    {
-                        hunter.NextDashTime = now + ZombieModeTuning.HunterDashCooldownSeconds;
-                        boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Hunter"));
-                        Vector3 target = Vector3.MoveTowards(boss.transform.position, player.transform.position, ZombieModeTuning.HunterDashDistance);
-                        target.y = boss.transform.position.y;
-                        boss.transform.position = target;
-                        StartZombieModeTelegraphedAreaDamage(
-                            runId,
-                            boss,
-                            player.transform.position,
-                            ZombieModeTuning.HunterDashRadius,
-                            ZombieModeTuning.HunterDashDamage,
-                            ZombieModeTuning.HunterDashStartupSeconds,
-                            L10n.T("BossRush_ZombieMode_Boss_Hunter"));
-                    }
-                    break;
-                }
+        internal void TickZombieModeHunterState(ZombieModeHunterState hunter, ZombieModeBossInstance instance, float now)
+        {
+            CharacterMainControl boss = instance != null ? instance.Character : null;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (boss == null || player == null) return;
+            int runId = zombieModeRunState.RunId;
 
-                case ZombieModeBossKind.Splitter:
-                {
-                    ZombieModeSplitterState splitter = (ZombieModeSplitterState)instance.SkillState;
-                    if (now >= splitter.NextSummonTime &&
-                        zombieModeRunState.PerformanceTier < ZombieModePerformanceTier.SoftProtect)
-                    {
-                        splitter.NextSummonTime = now + ZombieModeTuning.SplitterBossSummonCooldownSeconds;
-                        boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Splitter"));
-                        for (int i = 0; i < ZombieModeTuning.SplitterBossSummonCount; i++)
-                        {
-                            Vector3 offset = Quaternion.Euler(0f, 360f * i / ZombieModeTuning.SplitterBossSummonCount, 0f) * Vector3.forward * 2f;
-                            SpawnZombieModeSplitterChildAsync(runId, boss.transform.position + offset, ZombieModeTuning.SplitterBossSummonScale).Forget();
-                        }
-                    }
-                    break;
-                }
+            if (now >= hunter.NextDashTime)
+            {
+                hunter.NextDashTime = now + ZombieModeTuning.HunterDashCooldownSeconds;
+                boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_HunterDash"));
+                Vector3 target = Vector3.MoveTowards(boss.transform.position, player.transform.position, ZombieModeTuning.HunterDashDistance);
+                target.y = boss.transform.position.y;
+                boss.transform.position = target;
+                StartZombieModeTelegraphedAreaDamage(
+                    runId,
+                    boss,
+                    player.transform.position,
+                    ZombieModeTuning.HunterDashRadius,
+                    ZombieModeTuning.HunterDashDamage,
+                    ZombieModeTuning.HunterDashStartupSeconds,
+                    L10n.T("BossRush_ZombieMode_BossSkill_HunterDash"));
+            }
+        }
 
-                case ZombieModeBossKind.Shielder:
-                {
-                    ZombieModeShielderState shielder = (ZombieModeShielderState)instance.SkillState;
-                    if (now >= shielder.NextSelfShieldTime)
-                    {
-                        shielder.NextSelfShieldTime = now + ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
-                        boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Shielder"));
-                        if (boss.Health != null)
-                        {
-                            float amount = boss.Health.MaxHealth * ZombieModeTuning.ShielderSelfShieldPercent;
-                            ZombieModeBossShieldRuntime shield = boss.gameObject.GetComponent<ZombieModeBossShieldRuntime>();
-                            if (shield == null)
-                            {
-                                shield = boss.gameObject.AddComponent<ZombieModeBossShieldRuntime>();
-                            }
-                            shield.ActivateShield(runId, amount, ZombieModeTuning.ShielderSelfShieldDurationSeconds);
-                            ZombieModeEnemyRuntimeMarker bossMarker = boss.gameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
-                            if (bossMarker != null)
-                            {
-                                bossMarker.AllyShield = shield;
-                            }
-                        }
-                    }
-                    if (now >= shielder.NextGroupShieldTime)
-                    {
-                        shielder.NextGroupShieldTime = now + ZombieModeTuning.ShielderGroupShieldCooldownSeconds;
-                        ApplyZombieModeBossShieldPulse(runId, boss.transform.position);
-                    }
-                    break;
-                }
+        internal void TickZombieModeSplitterState(ZombieModeSplitterState splitter, ZombieModeBossInstance instance, float now)
+        {
+            CharacterMainControl boss = instance != null ? instance.Character : null;
+            if (boss == null) return;
+            int runId = zombieModeRunState.RunId;
 
-                case ZombieModeBossKind.Corruptor:
+            if (now >= splitter.NextSummonTime &&
+                zombieModeRunState.PerformanceTier < ZombieModePerformanceTier.SoftProtect)
+            {
+                splitter.NextSummonTime = now + ZombieModeTuning.SplitterBossSummonCooldownSeconds;
+                boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_SplitterSummon"));
+                for (int i = 0; i < ZombieModeTuning.SplitterBossSummonCount; i++)
                 {
-                    ZombieModeCorruptorState corruptor = (ZombieModeCorruptorState)instance.SkillState;
-                    if (now >= corruptor.NextZoneTime)
-                    {
-                        corruptor.NextZoneTime = now + ZombieModeTuning.CorruptorZoneCooldownSeconds;
-                        SpawnZombieModeCorruptionZone(runId, player.transform.position);
-                        boss.PopText(L10n.T("BossRush_ZombieMode_Boss_Corruptor"));
-                    }
-                    if (now >= corruptor.NextPoisonPathTime)
-                    {
-                        corruptor.NextPoisonPathTime = now + ZombieModeTuning.CorruptorPoisonPathTickIntervalSeconds;
-                        SpawnZombieModePoisonPathSegment(runId, boss.transform.position);
-                    }
-                    break;
+                    Vector3 offset = Quaternion.Euler(0f, 360f * i / ZombieModeTuning.SplitterBossSummonCount, 0f) * Vector3.forward * 2f;
+                    SpawnZombieModeSplitterChildAsync(runId, boss.transform.position + offset, ZombieModeTuning.SplitterBossSummonScale).Forget();
                 }
             }
         }
 
-        private void SpawnZombieModeCorruptionZone(int runId, Vector3 origin)
+        internal void TickZombieModeShielderState(ZombieModeShielderState shielder, ZombieModeBossInstance instance, float now)
+        {
+            CharacterMainControl boss = instance != null ? instance.Character : null;
+            if (boss == null) return;
+            int runId = zombieModeRunState.RunId;
+
+            if (now >= shielder.NextSelfShieldTime)
+            {
+                shielder.NextSelfShieldTime = now + ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
+                boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_ShielderSelfShield"));
+                if (boss.Health != null)
+                {
+                    float amount = boss.Health.MaxHealth * ZombieModeTuning.ShielderSelfShieldPercent;
+                    ZombieModeEnemyRuntimeMarker bossMarker = EnsureZombieModeBossMarker(instance);
+                    if (bossMarker != null)
+                    {
+                        ZombieModeBossShieldRuntime shield = EnsureZombieModeBossShieldRuntime(bossMarker);
+                        if (shield != null)
+                        {
+                            shield.ActivateShield(runId, amount, ZombieModeTuning.ShielderSelfShieldDurationSeconds);
+                        }
+                    }
+                }
+            }
+            if (now >= shielder.NextGroupShieldTime)
+            {
+                shielder.NextGroupShieldTime = now + ZombieModeTuning.ShielderGroupShieldCooldownSeconds;
+                boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_ShielderGroupShield"));
+                ApplyZombieModeBossShieldPulse(runId, boss.transform.position);
+            }
+        }
+
+        internal void TickZombieModeCorruptorState(ZombieModeCorruptorState corruptor, ZombieModeBossInstance instance, float now)
+        {
+            CharacterMainControl boss = instance != null ? instance.Character : null;
+            if (boss == null) return;
+            CharacterMainControl player = CharacterMainControl.Main;
+            int runId = zombieModeRunState.RunId;
+
+            if (now >= corruptor.NextZoneTime && player != null)
+            {
+                corruptor.NextZoneTime = now + ZombieModeTuning.CorruptorZoneCooldownSeconds;
+                SpawnZombieModeCorruptionZone(runId, boss, player.transform.position);
+                boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_CorruptorZone"));
+            }
+            if (now >= corruptor.NextPoisonPathTime)
+            {
+                corruptor.NextPoisonPathTime = now + ZombieModeTuning.CorruptorPoisonPathTickIntervalSeconds;
+                SpawnZombieModePoisonPathSegment(runId, boss, boss.transform.position);
+            }
+        }
+
+        private void SpawnZombieModeCorruptionZone(int runId, CharacterMainControl source, Vector3 origin)
         {
             if (!IsZombieModeRunValid(runId)) return;
 
-            GameObject zone = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            zone.name = "ZombieMode_CorruptionZone";
-            zone.transform.position = origin + Vector3.up * 0.04f;
-            zone.transform.localScale = new Vector3(
-                ZombieModeTuning.CorruptorZoneRadius * 2f,
+            // 共享 disk mesh 替代 CreatePrimitive(Cylinder)（审查 §3.3）。
+            GameObject zone = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_CorruptionZone",
+                origin + Vector3.up * 0.04f,
+                ZombieModeTuning.CorruptorZoneRadius,
                 0.04f,
-                ZombieModeTuning.CorruptorZoneRadius * 2f);
-            Collider c = zone.GetComponent<Collider>();
-            if (c != null) Destroy(c);
-            try
-            {
-                Renderer r = zone.GetComponent<Renderer>();
-                if (r != null) r.material.color = new Color(0.45f, 0.10f, 0.65f, 0.50f);
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] CorruptorZone renderer 调色失败: " + e.Message);
-            }
+                new Color(0.45f, 0.10f, 0.65f, 0.50f));
 
-            ZombieModeCorruptionZoneRuntime runtime = zone.AddComponent<ZombieModeCorruptionZoneRuntime>();
+            ZombieModeAreaTickRuntime runtime = zone.AddComponent<ZombieModeAreaTickRuntime>();
             runtime.Initialize(
                 runId,
+                source,
                 ZombieModeTuning.CorruptorZoneRadius,
                 ZombieModeTuning.CorruptorZoneStartupSeconds + ZombieModeTuning.CorruptorZoneDurationSeconds,
                 ZombieModeTuning.CorruptorZoneDamagePerSecond,
-                ZombieModeTuning.CorruptorZoneSlowPercent,
-                0.5f);
+                0.5f,
+                ZombieModeTuning.CorruptorZoneSlowPercent);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, zone, runtime, null);
         }
 
-        private void SpawnZombieModePoisonPathSegment(int runId, Vector3 origin)
+        private void SpawnZombieModePoisonPathSegment(int runId, CharacterMainControl source, Vector3 origin)
         {
             if (!IsZombieModeRunValid(runId)) return;
 
-            GameObject seg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            seg.name = "ZombieMode_PoisonPath";
-            seg.transform.position = origin + Vector3.up * 0.03f;
             float radius = ZombieModeTuning.CorruptorPoisonPathWidth * 0.5f;
-            seg.transform.localScale = new Vector3(radius * 2f, 0.03f, radius * 2f);
-            Collider c = seg.GetComponent<Collider>();
-            if (c != null) Destroy(c);
-            try
-            {
-                Renderer r = seg.GetComponent<Renderer>();
-                if (r != null) r.material.color = new Color(0.30f, 0.65f, 0.20f, 0.45f);
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] PoisonPath segment renderer 调色失败: " + e.Message);
-            }
+            // 共享 disk mesh 替代 CreatePrimitive(Cylinder)（审查 §3.3）。
+            GameObject seg = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_PoisonPath",
+                origin + Vector3.up * 0.03f,
+                radius,
+                0.03f,
+                new Color(0.30f, 0.65f, 0.20f, 0.45f));
 
-            ZombieModePoisonPathRuntime runtime = seg.AddComponent<ZombieModePoisonPathRuntime>();
+            ZombieModeAreaTickRuntime runtime = seg.AddComponent<ZombieModeAreaTickRuntime>();
             runtime.Initialize(
                 runId,
+                source,
                 radius,
                 ZombieModeTuning.CorruptorPoisonPathDurationSeconds,
                 ZombieModeTuning.CorruptorPoisonPathDamagePerSecond,
@@ -330,6 +321,50 @@ namespace BossRush
             ApplyZombieModeShielderGroupShield(runId, origin);
         }
 
+        private static ZombieModeEnemyRuntimeMarker EnsureZombieModeBossMarker(ZombieModeBossInstance instance)
+        {
+            if (instance == null)
+            {
+                return null;
+            }
+
+            ZombieModeEnemyRuntimeMarker marker = instance.Marker;
+            if (marker == null && instance.Character != null)
+            {
+                marker = instance.Character.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                instance.Marker = marker;
+            }
+
+            if (marker != null && marker.Owner == null)
+            {
+                marker.Owner = instance.Character;
+            }
+
+            return marker;
+        }
+
+        private static ZombieModeBossShieldRuntime EnsureZombieModeBossShieldRuntime(ZombieModeEnemyRuntimeMarker marker)
+        {
+            if (marker == null || marker.gameObject == null)
+            {
+                return null;
+            }
+
+            ZombieModeBossShieldRuntime shield = marker.AllyShield;
+            if (shield == null)
+            {
+                shield = marker.gameObject.GetComponent<ZombieModeBossShieldRuntime>();
+                if (shield == null)
+                {
+                    shield = marker.gameObject.AddComponent<ZombieModeBossShieldRuntime>();
+                }
+
+                marker.AllyShield = shield;
+            }
+
+            return shield;
+        }
+
         private void ApplyZombieModeShielderGroupShield(int runId, Vector3 origin)
         {
             if (!IsZombieModeRunValid(runId)) return;
@@ -345,14 +380,19 @@ namespace BossRush
                 delta.y = 0f;
                 if (delta.sqrMagnitude > radiusSqr) continue;
 
-                CharacterMainControl ch = marker.GetComponent<CharacterMainControl>();
+                CharacterMainControl ch = marker.Owner;
+                if (ch == null)
+                {
+                    ch = marker.GetComponent<CharacterMainControl>();
+                    marker.Owner = ch;
+                }
                 if (ch == null || ch.Health == null || ch.Health.CurrentHealth <= 0f) continue;
 
                 float amount = ch.Health.MaxHealth * ZombieModeTuning.ShielderGroupShieldPercent;
-                ZombieModeBossShieldRuntime shield = ch.gameObject.GetComponent<ZombieModeBossShieldRuntime>();
+                ZombieModeBossShieldRuntime shield = EnsureZombieModeBossShieldRuntime(marker);
                 if (shield == null)
                 {
-                    shield = ch.gameObject.AddComponent<ZombieModeBossShieldRuntime>();
+                    continue;
                 }
                 shield.ActivateShield(runId, amount, ZombieModeTuning.ShielderGroupShieldDurationSeconds);
                 marker.AllyShield = shield;
@@ -400,6 +440,7 @@ namespace BossRush
                     continue;
                 }
 
+                instance.Marker = marker;
                 instance.Lifecycle.LastHurtTime = Time.unscaledTime;
                 instance.Lifecycle.LastReachableTime = Time.unscaledTime;
                 instance.Lifecycle.LastKnownPosition = victim.transform.position;
@@ -443,9 +484,52 @@ namespace BossRush
             if (hunter == null) return;
             hunter.FrenzyActive = true;
             hunter.FrenzyEndTime = Time.unscaledTime + ZombieModeTuning.HunterFrenzyDurationSeconds;
-            // Visual feedback: scale up slightly via the existing speed-multiplier helper
             instance.Character.PopText(L10n.T("BossRush_ZombieMode_Boss_Hunter"));
-            ApplyZombieModeAiSpeedMultiplier(instance.Character, 1f + ZombieModeTuning.HunterFrenzyMoveSpeedBonus);
+            ApplyZombieModeHunterFrenzyModifiers(instance.Character, hunter);
+            instance.Character.transform.localScale = instance.Character.transform.localScale * 1.08f;
+        }
+
+        private void ApplyZombieModeHunterFrenzyModifiers(CharacterMainControl character, ZombieModeHunterState hunter)
+        {
+            if (character == null || hunter == null)
+            {
+                return;
+            }
+
+            RemoveZombieModeHunterFrenzyModifiers(hunter);
+            // 用 PercentageAdd 而非 Add（审查 §3.2）：避免被装备 / Buff 倍率稀释。
+            // ZombieModeStatNames 收口（§2.3）。
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.MoveSpeed, ZombieModeTuning.HunterFrenzyMoveSpeedBonus, this, hunter.FrenzyModifierRecords, "Hunter Frenzy MoveSpeed");
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.WalkSpeed, ZombieModeTuning.HunterFrenzyMoveSpeedBonus, this, hunter.FrenzyModifierRecords, "Hunter Frenzy WalkSpeed");
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.RunSpeed, ZombieModeTuning.HunterFrenzyMoveSpeedBonus, this, hunter.FrenzyModifierRecords, "Hunter Frenzy RunSpeed");
+            RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.AttackSpeed, ZombieModeTuning.HunterFrenzyAttackSpeedBonus, this, hunter.FrenzyModifierRecords, "Hunter Frenzy AttackSpeed");
+        }
+
+        private void RemoveZombieModeHunterFrenzyModifiers(ZombieModeHunterState hunter)
+        {
+            if (hunter == null || hunter.FrenzyModifierRecords.Count <= 0)
+            {
+                return;
+            }
+
+            RuntimeStatModifierTracker.RemoveAll(hunter.FrenzyModifierRecords, "Hunter Frenzy");
+        }
+
+        private void AddZombieModeTimedStatModifier(
+            CharacterMainControl character,
+            string statName,
+            float percent,
+            System.Collections.Generic.List<ZombieModeAttributeModifierRecord> records)
+        {
+            // 旧 helper 保留为薄壳以兼容个别仍在调用的位置；统一行为走 RuntimeStatModifierTracker。
+            RuntimeStatModifierTracker.TryAdd(character, statName, percent, this, records, "AddZombieModeTimedStatModifier");
+        }
+
+        private void RemoveZombieModeStatModifierRecords(
+            System.Collections.Generic.List<ZombieModeAttributeModifierRecord> records,
+            string context)
+        {
+            RuntimeStatModifierTracker.RemoveAll(records, context);
         }
 
         private void TriggerZombieModeSplitterHpSplit(int runId, CharacterMainControl victim)
@@ -458,40 +542,7 @@ namespace BossRush
             }
         }
 
-        public bool TryAbsorbZombieModeBossDamage(CharacterMainControl boss, ref float damageValue)
-        {
-            if (boss == null) return false;
-
-            // Boss self-shield (Shielder/Shielder group/Titan-shielded-via-runtime)
-            ZombieModeBossShieldRuntime shield = boss.gameObject.GetComponent<ZombieModeBossShieldRuntime>();
-            if (shield != null && shield.IsShieldActive())
-            {
-                shield.AbsorbDamage(ref damageValue);
-                if (damageValue <= 0f) return true;
-            }
-
-            // Titan damage reduction self-buff
-            ZombieModeBossInstance titan = FindZombieModeBossInstanceFor(boss);
-            ZombieModeTitanState titanReductionState = titan != null ? titan.SkillState as ZombieModeTitanState : null;
-            if (titan != null &&
-                titan.Kind == ZombieModeBossKind.Titan &&
-                titanReductionState != null &&
-                titanReductionState.DamageReductionActive)
-            {
-                damageValue *= (1f - ZombieModeTuning.TitanDamageReductionPercent);
-                return true;
-            }
-
-            // Shielder aura damage reduction (15% within 6m of any alive Shielder boss)
-            if (TryApplyZombieModeShielderAuraReduction(boss, ref damageValue))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        public float AbsorbZombieModeBossFinalDamage(CharacterMainControl boss, float finalDamage)
+        public float AbsorbZombieModeBossFinalDamage(CharacterMainControl boss, ZombieModeEnemyRuntimeMarker bossMarker, float finalDamage)
         {
             if (boss == null || finalDamage <= 0f)
             {
@@ -501,7 +552,7 @@ namespace BossRush
             float damageAfterAbsorb = finalDamage;
             bool changed = false;
 
-            ZombieModeBossShieldRuntime shield = boss.gameObject.GetComponent<ZombieModeBossShieldRuntime>();
+            ZombieModeBossShieldRuntime shield = bossMarker != null ? bossMarker.AllyShield : null;
             if (shield != null && shield.IsShieldActive())
             {
                 float absorbed = shield.AbsorbDamage(finalDamage);
@@ -512,7 +563,7 @@ namespace BossRush
                 }
             }
 
-            ZombieModeBossInstance titan = FindZombieModeBossInstanceFor(boss);
+            ZombieModeBossInstance titan = FindZombieModeBossInstanceFor(boss, bossMarker);
             ZombieModeTitanState titanReductionState = titan != null ? titan.SkillState as ZombieModeTitanState : null;
             if (titan != null &&
                 titan.Kind == ZombieModeBossKind.Titan &&
@@ -575,13 +626,19 @@ namespace BossRush
             return TryApplyZombieModeShielderAuraReduction(target, ref damageValue);
         }
 
-        private ZombieModeBossInstance FindZombieModeBossInstanceFor(CharacterMainControl boss)
+        private ZombieModeBossInstance FindZombieModeBossInstanceFor(CharacterMainControl boss, ZombieModeEnemyRuntimeMarker bossMarker = null)
         {
-            if (boss == null) return null;
+            if (boss == null && bossMarker == null) return null;
             for (int i = 0; i < zombieModeRunState.CurrentWaveBossInstances.Count; i++)
             {
                 ZombieModeBossInstance instance = zombieModeRunState.CurrentWaveBossInstances[i];
-                if (instance != null && instance.Character == boss)
+                if (instance == null)
+                {
+                    continue;
+                }
+
+                if ((boss != null && instance.Character == boss) ||
+                    (bossMarker != null && instance.Marker == bossMarker))
                 {
                     return instance;
                 }
@@ -600,6 +657,7 @@ namespace BossRush
             {
                 DealZombieModeAreaDamageToPlayer(
                     runId,
+                    character,
                     character.transform.position,
                     ZombieModeTuning.SplitterBossDeathRadius,
                     ZombieModeTuning.SplitterBossDeathDamage);
@@ -614,46 +672,33 @@ namespace BossRush
             }
             else if (marker.BossKind == ZombieModeBossKind.Corruptor)
             {
-                SpawnZombieModeDeathCloud(runId, character.transform.position);
+                SpawnZombieModeDeathCloud(runId, character, character.transform.position);
             }
             else if (marker.BossKind == ZombieModeBossKind.Titan)
             {
-                DealZombieModeAreaDamageToPlayer(runId, character.transform.position, 6f, 60f);
+                DealZombieModeAreaDamageToPlayer(runId, character, character.transform.position, 6f, 60f);
             }
         }
 
-        private void SpawnZombieModeDeathCloud(int runId, Vector3 origin)
+        private void SpawnZombieModeDeathCloud(int runId, CharacterMainControl source, Vector3 origin)
         {
             if (!IsZombieModeRunValid(runId))
             {
                 return;
             }
 
-            GameObject cloud = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            cloud.name = "ZombieMode_DeathCloud";
-            cloud.transform.position = origin + Vector3.up * 0.05f;
-            cloud.transform.localScale = new Vector3(
-                ZombieModeTuning.CorruptorDeathCloudRadius * 2f,
+            // 共享 disk mesh 替代 CreatePrimitive(Cylinder)（审查 §3.3）。
+            GameObject cloud = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_DeathCloud",
+                origin + Vector3.up * 0.05f,
+                ZombieModeTuning.CorruptorDeathCloudRadius,
                 0.04f,
-                ZombieModeTuning.CorruptorDeathCloudRadius * 2f);
-            Collider c = cloud.GetComponent<Collider>();
-            if (c != null) Destroy(c);
-            try
-            {
-                Renderer r = cloud.GetComponent<Renderer>();
-                if (r != null)
-                {
-                    r.material.color = new Color(0.55f, 0.20f, 0.85f, 0.40f);
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] DeathCloud renderer 调色失败: " + e.Message);
-            }
+                new Color(0.55f, 0.20f, 0.85f, 0.40f));
 
-            ZombieModeDeathCloudRuntime runtime = cloud.AddComponent<ZombieModeDeathCloudRuntime>();
+            ZombieModeAreaTickRuntime runtime = cloud.AddComponent<ZombieModeAreaTickRuntime>();
             runtime.Initialize(
                 runId,
+                source,
                 ZombieModeTuning.CorruptorDeathCloudRadius,
                 ZombieModeTuning.CorruptorDeathCloudDurationSeconds,
                 ZombieModeTuning.CorruptorDeathCloudDamagePerSecond,
@@ -664,6 +709,11 @@ namespace BossRush
         public void DealZombieModeRuntimeAreaDamageToPlayer(int runId, Vector3 origin, float radius, float damage)
         {
             DealZombieModeAreaDamageToPlayer(runId, origin, radius, damage);
+        }
+
+        public void DealZombieModeRuntimeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage)
+        {
+            DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage);
         }
 
         public void TryApplyZombieModePlayerSlow(int runId, float percent, float duration)
@@ -688,91 +738,77 @@ namespace BossRush
         }
     }
 
-    public sealed class ZombieModeCorruptionZoneRuntime : MonoBehaviour
+    public abstract class ZombieModeTimedRunScopedRuntime : MonoBehaviour
     {
-        private int runId;
+        private int runtimeRunId;
+        private float runtimeEndTime;
+
+        protected int RuntimeRunId
+        {
+            get { return runtimeRunId; }
+        }
+
+        protected void InitializeTimedRuntime(int newRunId, float duration)
+        {
+            runtimeRunId = newRunId;
+            runtimeEndTime = Time.unscaledTime + Mathf.Max(0.05f, duration);
+        }
+
+        protected abstract void TickRuntime(ModBehaviour inst);
+
+        protected virtual void OnRuntimeStopping(ModBehaviour inst, bool expired)
+        {
+        }
+
+        private void Update()
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null || inst.ZombieModeCurrentRunId != runtimeRunId)
+            {
+                OnRuntimeStopping(inst, false);
+                Destroy(gameObject);
+                return;
+            }
+
+            if (Time.unscaledTime >= runtimeEndTime)
+            {
+                OnRuntimeStopping(inst, true);
+                Destroy(gameObject);
+                return;
+            }
+
+            TickRuntime(inst);
+        }
+    }
+
+    /// <summary>
+    /// 单一区域 tick + 区域伤害 runtime（审查 §2.2）。
+    /// 之前 CorruptionZone / PoisonPath / DeathCloud 三类字段、TickRuntime 主体几乎逐字一致；
+    /// 合并后 Initialize 接 slowPercent（默认 0），仅 Corruption 区域用减速。
+    /// 任何对"区域 tick + 区域伤害"的微调（远端衰减、玩家进入预警）只需改一处。
+    /// </summary>
+    public sealed class ZombieModeAreaTickRuntime : ZombieModeTimedRunScopedRuntime
+    {
+        private CharacterMainControl source;
         private float radius;
-        private float endTime;
         private float damagePerSecond;
         private float slowPercent;
         private float tickInterval;
         private float nextTickTime;
 
-        public void Initialize(int newRunId, float newRadius, float duration, float dps, float slow, float tick)
+        public void Initialize(int newRunId, CharacterMainControl newSource, float newRadius, float duration, float dps, float tick, float slow = 0f)
         {
-            runId = newRunId;
-            radius = newRadius;
-            damagePerSecond = dps;
-            slowPercent = slow;
-            tickInterval = Mathf.Max(0.1f, tick);
-            endTime = Time.unscaledTime + duration;
-            nextTickTime = Time.unscaledTime + tickInterval;
-        }
-
-        private void Update()
-        {
-            ModBehaviour inst = ModBehaviour.Instance;
-            if (inst == null || inst.ZombieModeCurrentRunId != runId)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            if (Time.unscaledTime >= endTime)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            if (Time.unscaledTime < nextTickTime)
-            {
-                return;
-            }
-
-            nextTickTime = Time.unscaledTime + tickInterval;
-            float tickDamage = damagePerSecond * tickInterval;
-            inst.DealZombieModeRuntimeAreaDamageToPlayer(runId, transform.position, radius, tickDamage);
-            if (slowPercent > 0f)
-            {
-                inst.TryApplyZombieModePlayerSlow(runId, slowPercent, tickInterval * 2f);
-            }
-        }
-    }
-
-    public sealed class ZombieModePoisonPathRuntime : MonoBehaviour
-    {
-        private int runId;
-        private float radius;
-        private float endTime;
-        private float damagePerSecond;
-        private float tickInterval;
-        private float nextTickTime;
-
-        public void Initialize(int newRunId, float newRadius, float duration, float dps, float tick)
-        {
-            runId = newRunId;
+            source = newSource;
             radius = Mathf.Max(0.5f, newRadius);
             damagePerSecond = dps;
+            slowPercent = Mathf.Max(0f, slow);
             tickInterval = Mathf.Max(0.1f, tick);
-            endTime = Time.unscaledTime + duration;
             nextTickTime = Time.unscaledTime + tickInterval;
+            InitializeTimedRuntime(newRunId, duration);
         }
 
-        private void Update()
+        protected override void TickRuntime(ModBehaviour inst)
         {
-            ModBehaviour inst = ModBehaviour.Instance;
-            if (inst == null || inst.ZombieModeCurrentRunId != runId)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            if (Time.unscaledTime >= endTime)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
             if (Time.unscaledTime < nextTickTime)
             {
                 return;
@@ -780,52 +816,11 @@ namespace BossRush
 
             nextTickTime = Time.unscaledTime + tickInterval;
             float tickDamage = damagePerSecond * tickInterval;
-            inst.DealZombieModeRuntimeAreaDamageToPlayer(runId, transform.position, radius, tickDamage);
-        }
-    }
-
-    public sealed class ZombieModeDeathCloudRuntime : MonoBehaviour
-    {
-        private int runId;
-        private float radius;
-        private float endTime;
-        private float damagePerSecond;
-        private float tickInterval;
-        private float nextTickTime;
-
-        public void Initialize(int newRunId, float newRadius, float duration, float dps, float tick)
-        {
-            runId = newRunId;
-            radius = newRadius;
-            damagePerSecond = dps;
-            tickInterval = Mathf.Max(0.1f, tick);
-            endTime = Time.unscaledTime + duration;
-            nextTickTime = Time.unscaledTime + tickInterval;
-        }
-
-        private void Update()
-        {
-            ModBehaviour inst = ModBehaviour.Instance;
-            if (inst == null || inst.ZombieModeCurrentRunId != runId)
+            inst.DealZombieModeRuntimeAreaDamageToPlayer(RuntimeRunId, source, transform.position, radius, tickDamage);
+            if (slowPercent > 0f)
             {
-                Destroy(gameObject);
-                return;
+                inst.TryApplyZombieModePlayerSlow(RuntimeRunId, slowPercent, tickInterval * 2f);
             }
-
-            if (Time.unscaledTime >= endTime)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            if (Time.unscaledTime < nextTickTime)
-            {
-                return;
-            }
-
-            nextTickTime = Time.unscaledTime + tickInterval;
-            float tickDamage = damagePerSecond * tickInterval;
-            inst.DealZombieModeRuntimeAreaDamageToPlayer(runId, transform.position, radius, tickDamage);
         }
     }
 
@@ -925,16 +920,35 @@ namespace BossRush
         private float slowEndTime;
         private float currentSlowPercent;
         private bool slowActive;
+        private readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> slowModifierRecords = new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
 
         public void ApplySlow(int newRunId, float percent, float duration)
         {
+            if (slowActive && Time.unscaledTime >= slowEndTime)
+            {
+                ClearSlowState();
+            }
+
             runId = newRunId;
             float endCandidate = Time.unscaledTime + duration;
             if (percent > currentSlowPercent || endCandidate > slowEndTime)
             {
-                currentSlowPercent = Mathf.Max(currentSlowPercent, percent);
+                float newPercent = Mathf.Max(currentSlowPercent, percent);
                 slowEndTime = Mathf.Max(slowEndTime, endCandidate);
                 slowActive = true;
+                if (!Mathf.Approximately(newPercent, currentSlowPercent))
+                {
+                    currentSlowPercent = newPercent;
+                    ReapplySlowModifiers();
+                }
+                else
+                {
+                    currentSlowPercent = newPercent;
+                    if (slowModifierRecords.Count <= 0)
+                    {
+                        ReapplySlowModifiers();
+                    }
+                }
             }
         }
 
@@ -953,16 +967,71 @@ namespace BossRush
             ModBehaviour inst = ModBehaviour.Instance;
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
-                slowActive = false;
-                currentSlowPercent = 0f;
+                ClearSlowState();
                 return;
             }
 
             if (Time.unscaledTime >= slowEndTime)
             {
-                slowActive = false;
-                currentSlowPercent = 0f;
+                ClearSlowState();
             }
+        }
+
+        private void OnDisable()
+        {
+            RemoveSlowModifiers();
+        }
+
+        private void OnDestroy()
+        {
+            RemoveSlowModifiers();
+        }
+
+        private void ClearSlowState()
+        {
+            slowActive = false;
+            currentSlowPercent = 0f;
+            slowEndTime = 0f;
+            RemoveSlowModifiers();
+        }
+
+        private void ReapplySlowModifiers()
+        {
+            RemoveSlowModifiers();
+            CharacterMainControl character = GetComponent<CharacterMainControl>();
+            if (character == null)
+            {
+                return;
+            }
+
+            // 收口到 ZombieModeStatNames（审查 §2.3）。
+            AddSlowModifier(character, ZombieModeStatNames.MoveSpeed);
+            AddSlowModifier(character, ZombieModeStatNames.WalkSpeed);
+            AddSlowModifier(character, ZombieModeStatNames.RunSpeed);
+        }
+
+        private void AddSlowModifier(CharacterMainControl character, string statName)
+        {
+            if (character == null || currentSlowPercent <= 0f)
+            {
+                return;
+            }
+
+            // 用 PercentageAdd 而非 Add（审查 §3.2）：传 -percent 等价于减速 percent。
+            // 之前 Add(stat.BaseValue * -percent) 在玩家叠了 +50% MoveSpeed 装备时，
+            // 50% 减速实际只削掉基础速度的 50%，叠加值不动 → 减速被装备稀释。
+            RuntimeStatModifierTracker.TryAdd(
+                character,
+                statName,
+                -currentSlowPercent,
+                this,
+                slowModifierRecords,
+                "Player Slow " + statName);
+        }
+
+        private void RemoveSlowModifiers()
+        {
+            RuntimeStatModifierTracker.RemoveAll(slowModifierRecords, "Player Slow");
         }
     }
 }

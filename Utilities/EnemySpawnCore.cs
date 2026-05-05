@@ -40,6 +40,48 @@ namespace BossRush
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         /// <summary>
+        /// 确保 cachedCharacterPresets 字典已经构建（审查 §1.1）。
+        /// ZombieMode 入口路径调用此方法以避免依赖 Mode D 先初始化；
+        /// 调用一次为 O(N) 扫描，缓存后再次调用直接返回。
+        /// </summary>
+        internal void EnsureCharacterPresetsCacheReady()
+        {
+            if (cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
+            {
+                return;
+            }
+
+            try
+            {
+                CharacterRandomPreset[] allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                if (allPresets == null || allPresets.Length == 0)
+                {
+                    return;
+                }
+
+                if (cachedCharacterPresets == null)
+                {
+                    cachedCharacterPresets = new System.Collections.Generic.Dictionary<string, CharacterRandomPreset>();
+                }
+
+                for (int i = 0; i < allPresets.Length; i++)
+                {
+                    CharacterRandomPreset preset = allPresets[i];
+                    if (preset == null || string.IsNullOrEmpty(preset.nameKey)) continue;
+                    if (IsRuntimeCharacterPresetClone(preset)) continue;
+                    if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
+                    {
+                        cachedCharacterPresets[preset.nameKey] = preset;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[SpawnCore] EnsureCharacterPresetsCacheReady 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
         /// 通用敌人生成核心方法
         /// <para>处理预设查找、重试、龙裔遗族/龙王特殊生成、大兴兴标记、属性标准化等通用流程。</para>
         /// <para>生成成功后调用 onSpawned 回调，由调用方注入差异化逻辑（阵营设置、死亡注册等）。</para>
@@ -54,6 +96,8 @@ namespace BossRush
         /// <param name="waveIndex">波次索引（Mode D 用于配装品质计算，Mode E 传 1）</param>
         /// <param name="skipDragonDescendant">Mode E 用：重试时跳过龙裔遗族预设</param>
         /// <param name="skipDragonKing">Mode E 用：重试时跳过龙王预设</param>
+        /// <param name="skipBossRushLootTracking">跳过 BossRush 随机掉落追踪；独立模式复用 Boss 刷怪但自管掉落时必须开启。</param>
+        /// <param name="normalizeDamageMultiplier">是否执行 Mode D 的伤害倍率归一化。</param>
         private async void SpawnEnemyCore(
             EnemyPresetInfo preset,
             Vector3 position,
@@ -66,7 +110,9 @@ namespace BossRush
             bool skipDragonKing = false,
             bool applyEquipment = true,
             bool applyBossMultiplier = true,
-            CharacterRandomPreset directPreset = null)
+            CharacterRandomPreset directPreset = null,
+            bool skipBossRushLootTracking = false,
+            bool normalizeDamageMultiplier = true)
         {
             try
             {
@@ -242,8 +288,11 @@ namespace BossRush
                             // 标记大兴兴（防止被误清理）
                             TryTrackSpawnCoreDaXingXing(character, currentPreset);
 
-                            // 统一伤害倍率（龙裔/龙王也需要）
-                            NormalizeDamageMultiplier(character);
+                            if (normalizeDamageMultiplier)
+                            {
+                                // 统一伤害倍率（龙裔/龙王也需要）
+                                NormalizeDamageMultiplier(character);
+                            }
 
                             // 跳过 EquipEnemyForModeD（龙裔/龙王已在内部完成配装）
                             // 跳过 ApplyBossStatMultiplier（龙裔/龙王已在内部调用过）
@@ -267,8 +316,11 @@ namespace BossRush
                             // 标记大兴兴（防止被误清理）
                             TryTrackSpawnCoreDaXingXing(character, currentPreset);
 
-                            // 统一伤害倍率
-                            NormalizeDamageMultiplier(character);
+                            if (normalizeDamageMultiplier)
+                            {
+                                // 统一伤害倍率
+                                NormalizeDamageMultiplier(character);
+                            }
 
                             // 应用配装（Boss 保留原有头盔和护甲）
                             if (applyEquipment)
@@ -285,7 +337,7 @@ namespace BossRush
                             // 激活敌人
                             character.gameObject.SetActive(true);
 
-                            if (isBoss && character != null)
+                            if (isBoss && !skipBossRushLootTracking && character != null)
                             {
                                 try
                                 {

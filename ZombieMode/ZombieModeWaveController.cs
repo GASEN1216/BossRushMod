@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System;
 using Cysharp.Threading.Tasks;
 using Duckov.UI;
@@ -61,7 +62,15 @@ namespace BossRush
             }
 
             CharacterMainControl victim = health.TryGetCharacter();
-            ZombieModeEnemyRuntimeMarker marker = victim != null ? victim.GetComponent<ZombieModeEnemyRuntimeMarker>() : null;
+            // O(1) HashSet 早返替代 GetComponent<ZombieModeEnemyRuntimeMarker>（审查 §3.1）。
+            // 非丧尸模式敌人不走 marker 路径；但仍要走安全区破隐检测（玩家是伤害源时）。
+            if (victim == null || !IsZombieModeKnownEnemy(victim))
+            {
+                TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo);
+                return;
+            }
+
+            ZombieModeEnemyRuntimeMarker marker = victim.GetComponent<ZombieModeEnemyRuntimeMarker>();
             if (marker != null && marker.RunId == runId)
             {
                 ApplyZombieModeEnemyHurtAffixes(runId, health, damageInfo, marker);
@@ -70,7 +79,7 @@ namespace BossRush
                     HandleZombieModeBossHurt(runId, marker, victim);
                     if (damageInfo.fromCharacter.IsMainCharacter)
                     {
-                        float absorbedFinalDamage = AbsorbZombieModeBossFinalDamage(victim, damageInfo.finalDamage);
+                        float absorbedFinalDamage = AbsorbZombieModeBossFinalDamage(victim, marker, damageInfo.finalDamage);
                         RestoreZombieModeFinalDamageReduction(health, damageInfo, absorbedFinalDamage);
                     }
                 }
@@ -90,10 +99,17 @@ namespace BossRush
                 }
             }
 
-            // 安全区破隐：只要玩家是伤害源（damageInfo.fromCharacter 是主角），就视为破隐；
-            // 这一统一口径覆盖开火、近战命中、投掷、仇恨道具、被命中后反击 5 种情形。
-            // 出区外射击：SafeZoneStealthBroken 在 EnterPreparation 才重置；本准备期内任意时刻破隐都会持续到下一波。
-            if (!damageInfo.fromCharacter.IsMainCharacter ||
+            TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo);
+        }
+
+        // 安全区破隐：只要玩家是伤害源（damageInfo.fromCharacter 是主角），就视为破隐；
+        // 这一统一口径覆盖开火、近战命中、投掷、仇恨道具、被命中后反击 5 种情形。
+        // 出区外射击：SafeZoneStealthBroken 在 EnterPreparation 才重置；本准备期内任意时刻破隐都会持续到下一波。
+        private void TryProcessZombieModeSafeZoneStealthBreak(int runId, DamageInfo damageInfo)
+        {
+            if (damageInfo.fromCharacter == null ||
+                !damageInfo.fromCharacter.IsMainCharacter ||
+                damageInfo.isFromBuffOrEffect ||
                 !zombieModeRunState.ActiveSafeZoneActive ||
                 zombieModeRunState.SafeZoneStealthBroken)
             {
@@ -110,6 +126,10 @@ namespace BossRush
                 return;
             }
 
+            // 注：Health.OnHurt 在伤害已扣后触发（鸭科夫源码 Health.cs:418），
+            // mod 层无法挡掉伤害，只能用 SetHealth 把吸收的部分加回去（heal-back 模式）。
+            // 唯一原生替代是 Health.SetInvincible(true)，但是 0/1 全免无法做"吸收 N 点"。
+            // 见 docs/项目可能的待修复问题/2026-05-03_丧尸模式代码审查.md §4.1
             TryRestoreZombieModeFinalDamage(health, damageInfo, absorbedFinalDamage);
         }
 
@@ -154,7 +174,13 @@ namespace BossRush
                 return;
             }
 
-            ZombieModeEnemyRuntimeMarker marker = character != null ? character.GetComponent<ZombieModeEnemyRuntimeMarker>() : null;
+            // O(1) HashSet 早返；非丧尸模式敌人死亡直接 ignore（审查 §3.1）。
+            if (character == null || !IsZombieModeKnownEnemy(character))
+            {
+                return;
+            }
+
+            ZombieModeEnemyRuntimeMarker marker = character.GetComponent<ZombieModeEnemyRuntimeMarker>();
             if (marker == null || marker.RunId != runId)
             {
                 return;
@@ -166,8 +192,15 @@ namespace BossRush
             }
 
             marker.DeathSettled = true;
+            // 一旦 DeathSettled 就从 hot path 集合移除——后续技能命中尸体不会重新进入 marker 路径。
+            UnregisterZombieModeEnemyInstanceId(character);
 
             zombieModeRunState.LivingZombieCount = Mathf.Max(0, zombieModeRunState.LivingZombieCount - 1);
+            if (!marker.IsBoss)
+            {
+                zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);
+            }
+
             int pointValue = Mathf.Max(1, marker.PurificationPointValue);
             int starCount = GetZombieModeDeathStarCount(marker);
             SpawnZombieModeDeathStars(runId, character.transform.position, pointValue, starCount);
@@ -182,6 +215,7 @@ namespace BossRush
                 {
                     CompleteZombieModeWave(runId);
                 }
+                PruneZombieModeRunOnlyEnemyRecords(runId);
                 return;
             }
 
@@ -202,6 +236,7 @@ namespace BossRush
             {
                 CompleteZombieModeWave(runId);
             }
+            PruneZombieModeRunOnlyEnemyRecords(runId);
         }
 
         private void BeginZombieModePreparation(int runId, bool initial, bool extractionOpportunity)
@@ -222,6 +257,8 @@ namespace BossRush
             zombieModeRunState.ExtractionChanneling = false;
             zombieModeRunState.SafeZoneStealthBroken = false;
             CreateZombieModeSafeZone(runId);
+            CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "BeginPreparation");
+            EnsureZombieModeAmbientZombiePopulation(runId);
             if (extractionOpportunity)
             {
                 EnsureZombieModeExtractionArea(runId);
@@ -243,7 +280,7 @@ namespace BossRush
 
             if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat)
             {
-                TickZombieModeCombatPressure(zombieModeRunState.RunId, deltaTime);
+                TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);
                 return;
             }
 
@@ -252,12 +289,13 @@ namespace BossRush
                 zombieModeRunState.CombatPhase == ZombieModeCombatPhase.ExtractionOpportunity)
             {
                 TickZombieModeSafeZone();
+                TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);
                 if (zombieModeRunState.BeaconChanneling || zombieModeRunState.ExtractionChanneling)
                 {
                     return;
                 }
 
-                zombieModeRunState.PreparationTimer -= Time.unscaledDeltaTime;
+                zombieModeRunState.PreparationTimer -= deltaTime;
                 if (zombieModeRunState.PreparationTimer <= 0f)
                 {
                     StartZombieModeWave(zombieModeRunState.RunId);
@@ -278,15 +316,14 @@ namespace BossRush
             zombieModeRunState.CurrentWaveBossInstances.Clear();
             zombieModeRunState.CurrentWaveBossesRemaining = 0;
             zombieModeRunState.PeriodicSpawnTimer = 0f;
+            zombieModeRunState.NextSpawnPointIndex = 0;
             zombieModeRunState.PreparationTimer = 0f;
             zombieModeRunState.BeaconChanneling = false;
             zombieModeRunState.BeaconChannelStartTime = 0f;
             zombieModeRunState.ExtractionChanneling = false;
             zombieModeRunState.SafeZoneStealthBroken = false;
-            int effectiveSpawnPointCount = zombieModeRunState.EffectiveSpawnPoints.Count > 0
-                ? zombieModeRunState.EffectiveSpawnPoints.Count
-                : zombieModeRunState.SpawnPoints.Count;
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.Combat;
+            ReleaseZombieModeSafeZoneThreatSuppression();
             SpawnPendingZombieModeEliteSquad(runId);
 
             if (IsZombieModeBossWave(zombieModeRunState.CurrentWave))
@@ -295,13 +332,22 @@ namespace BossRush
                 zombieModeRunState.CurrentWaveBossesRemaining = GetZombieModeBossCount();
                 ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveIncoming"), zombieModeRunState.CurrentWave));
                 SpawnZombieModeBossWaveAsync(runId, zombieModeRunState.CurrentWaveBossesRemaining).Forget();
-                SpawnZombieModeWaveAsync(runId, effectiveSpawnPointCount, false).Forget();
                 return;
             }
 
-            zombieModeRunState.CurrentWaveKillTarget = Mathf.Max(1, effectiveSpawnPointCount + (zombieModeRunState.CurrentWave - 1) * 5);
+            zombieModeRunState.CurrentWaveKillTarget = Mathf.Max(1, GetZombieModeBaseWaveKillTarget());
             ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveIncoming"), zombieModeRunState.CurrentWave));
-            SpawnZombieModeWaveAsync(runId, effectiveSpawnPointCount, false).Forget();
+        }
+
+        private int GetZombieModeInitialWaveSpawnCount(int effectiveSpawnPointCount)
+        {
+            int baseCount = Mathf.Max(1, effectiveSpawnPointCount);
+            return Mathf.Clamp(baseCount, 1, ZombieModeTuning.MaxInitialWaveSpawnCount);
+        }
+
+        private int GetZombieModeBaseWaveKillTarget()
+        {
+            return 32 + Mathf.Max(0, zombieModeRunState.CurrentWave - 1) * 5;
         }
 
         private async UniTask SpawnZombieModeWaveAsync(int runId, int count, bool adjustKillTargetOnFailure = true)
@@ -356,18 +402,26 @@ namespace BossRush
             }
         }
 
-        private void TickZombieModeCombatPressure(int runId, float deltaTime)
+        private void TickZombieModeAmbientZombiePressure(int runId, float deltaTime)
         {
             if (!IsZombieModeRunValid(runId))
             {
                 return;
             }
 
-            bool bossWave = IsZombieModeBossWave(zombieModeRunState.CurrentWave);
-            int remainingToKill = zombieModeRunState.CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills;
-            if (!bossWave && remainingToKill <= 0)
+            if (!IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase))
             {
                 return;
+            }
+
+            if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat)
+            {
+                bool bossWave = IsZombieModeBossWave(zombieModeRunState.CurrentWave);
+                int remainingToKill = zombieModeRunState.CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills;
+                if (!bossWave && remainingToKill <= 0)
+                {
+                    return;
+                }
             }
 
             zombieModeRunState.PeriodicSpawnTimer += deltaTime;
@@ -377,20 +431,101 @@ namespace BossRush
             }
 
             zombieModeRunState.PeriodicSpawnTimer = 0f;
-            int effectiveSpawnPointCount = zombieModeRunState.EffectiveSpawnPoints.Count > 0
-                ? zombieModeRunState.EffectiveSpawnPoints.Count
-                : zombieModeRunState.SpawnPoints.Count;
-            int spawnCount = Mathf.Max(1, effectiveSpawnPointCount);
-            if (zombieModeRunState.PerformanceTier == ZombieModePerformanceTier.SoftProtect)
+            int spawnCount = GetZombieModePeriodicSpawnCount();
+            if (spawnCount <= 0)
             {
-                spawnCount = Mathf.Max(1, Mathf.FloorToInt(spawnCount * ZombieModeTuning.PerfSoftSpawnMultiplier));
-            }
-            else if (zombieModeRunState.PerformanceTier == ZombieModePerformanceTier.ExtremeProtect)
-            {
-                spawnCount = Mathf.Max(1, Mathf.FloorToInt(spawnCount * ZombieModeTuning.PerfExtremeSpawnMultiplier));
+                return;
             }
 
-            SpawnZombieModeWaveAsync(runId, spawnCount, false).Forget();
+            SpawnZombieModeWaveAcrossMapAsync(runId, spawnCount, false).Forget();
+        }
+
+        private void EnsureZombieModeAmbientZombiePopulation(int runId)
+        {
+            if (!IsZombieModeRunValid(runId) ||
+                !IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            int spawnCount = GetZombieModePeriodicSpawnCount();
+            if (spawnCount <= 0)
+            {
+                return;
+            }
+
+            zombieModeRunState.PeriodicSpawnTimer = 0f;
+            SpawnZombieModeWaveAcrossMapAsync(runId, spawnCount, false).Forget();
+        }
+
+        private bool IsZombieModeAmbientZombieSpawnPhase(ZombieModeCombatPhase phase)
+        {
+            return phase == ZombieModeCombatPhase.InitialPreparation ||
+                   phase == ZombieModeCombatPhase.Preparation ||
+                   phase == ZombieModeCombatPhase.ExtractionOpportunity ||
+                   phase == ZombieModeCombatPhase.Combat;
+        }
+
+        private int GetZombieModeNormalZombieSpawnSlots()
+        {
+            int activeOrPending = zombieModeRunState.LivingNormalZombieCount + zombieModeRunState.PendingNormalZombieSpawns;
+            return Mathf.Max(0, ZombieModeTuning.MaxNormalZombieCount - activeOrPending);
+        }
+
+        private int GetZombieModePeriodicSpawnCount()
+        {
+            int slots = GetZombieModeNormalZombieSpawnSlots();
+            if (slots <= 0)
+            {
+                return 0;
+            }
+
+            return Mathf.Clamp(slots, 1, ZombieModeTuning.MaxNormalZombieCount);
+        }
+
+        private async UniTask SpawnZombieModeWaveAcrossMapAsync(int runId, int count, bool adjustKillTargetOnFailure = true)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (!IsZombieModeRunValid(runId) ||
+                    !IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase))
+                {
+                    return;
+                }
+
+                if (GetZombieModeNormalZombieSpawnSlots() <= 0)
+                {
+                    return;
+                }
+
+                Vector3 spawnPosition = GetNextZombieModeMapSpawnPosition();
+                CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(runId, spawnPosition);
+                if (zombie == null &&
+                    adjustKillTargetOnFailure &&
+                    IsZombieModeRunValid(runId) &&
+                    zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat)
+                {
+                    zombieModeRunState.CurrentWaveKillTarget = Mathf.Max(zombieModeRunState.CurrentWaveKills, zombieModeRunState.CurrentWaveKillTarget - 1);
+                    if (zombieModeRunState.CurrentWaveKills >= zombieModeRunState.CurrentWaveKillTarget)
+                    {
+                        CompleteZombieModeWave(runId);
+                        return;
+                    }
+                }
+
+                await UniTask.Yield();
+            }
+        }
+
+        private Vector3 GetNextZombieModeMapSpawnPosition()
+        {
+            Vector3 position;
+            if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out position))
+            {
+                return position;
+            }
+
+            return GetZombieModeSpawnPosition();
         }
 
         private void HandleZombieModeBossDefeated(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl character)
@@ -402,6 +537,12 @@ namespace BossRush
                 if (instance == null || instance.Character != character)
                 {
                     continue;
+                }
+
+                ZombieModeHunterState hunterState = instance.SkillState as ZombieModeHunterState;
+                if (hunterState != null)
+                {
+                    RemoveZombieModeHunterFrenzyModifiers(hunterState);
                 }
 
                 instance.Lifecycle.Alive = false;
@@ -428,6 +569,7 @@ namespace BossRush
             }
 
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.Settling;
+            CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "CompleteWave");
             RecycleZombieModeTemporaryNpcs(runId);
             bool bossNode = IsZombieModeBossWave(zombieModeRunState.CurrentWave);
             if (bossNode)
@@ -441,7 +583,7 @@ namespace BossRush
 
         private IEnumerator ZombieModeSettlementCoroutine(int runId, bool bossNode)
         {
-            float deadline = Time.unscaledTime + ZombieModeTuning.SettlementMaxWaitSeconds;
+            float remaining = ZombieModeTuning.SettlementMaxWaitSeconds;
             while (IsZombieModeRunValid(runId) && zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Settling)
             {
                 if (!HasZombieModePendingPurificationStars())
@@ -449,7 +591,12 @@ namespace BossRush
                     break;
                 }
 
-                if (Time.unscaledTime >= deadline)
+                if (!IsZombieModeGamePaused())
+                {
+                    remaining -= Time.unscaledDeltaTime;
+                }
+
+                if (remaining <= 0f)
                 {
                     ForceCollectZombieModePendingPurificationStars(runId);
                     break;

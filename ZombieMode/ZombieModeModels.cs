@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Duckov.MiniMaps;
 using UnityEngine;
 
 namespace BossRush
@@ -191,23 +192,58 @@ namespace BossRush
         Corruptor
     }
 
+    /// <summary>
+    /// ZombieMode / Reward / Pollution 子系统使用的鸭科夫 stat 名常量集合。
+    /// 这些字符串原本散落在 4 个文件，且 AttackSpeed 等被裸字符串硬编码——见 §2.3。
+    /// 收口到此处后，新增 stat 时只需改一个地方。
+    /// </summary>
+    internal static class ZombieModeStatNames
+    {
+        // 基础属性（给 Hunter Frenzy / Player Slow / Reward Attribute 用）
+        public const string MaxHealth = "MaxHealth";
+        public const string MoveSpeed = "MoveSpeed";
+        public const string WalkSpeed = "WalkSpeed";
+        public const string RunSpeed = "RunSpeed";
+        public const string AttackSpeed = "AttackSpeed";
+
+        // 倍率类（给 Reward.Attribute 用，对应鸭科夫源码 stat 名）
+        public const string MeleeDamageMultiplier = "MeleeDamageMultiplier";
+        public const string GunDamageMultiplier = "GunDamageMultiplier";
+        public const string ReloadSpeedMultiplier = "ReloadSpeedMultiplier";
+        public const string ElementFactorPhysics = "ElementFactor_Physics";
+    }
+
+    /// <summary>
+    /// Boss 入门数值表（生命/伤害/缩放/速度倍率 + 净化点值范围）。
+    /// 见审查 §1.2：原本在 ApplyZombieModeBossTuning 内 5-case switch 硬编码，
+    /// 调参时藏在控制器深处难找；新增 Boss 轴（如冷却减少）时也容易漏 case。
+    /// </summary>
+    internal struct BossKindTuning
+    {
+        public float HealthMultiplier;
+        public float DamageMultiplier;
+        public float ScaleMultiplier;
+        public float SpeedMultiplier;
+        public int PointMin;
+        public int PointMax;
+    }
+
     public static class ZombieModeTuning
     {
-        // ZombieModeTuning 按主题分组为嵌套静态类。新代码请直接用 Tuning.Group.X
-        // （例如 ZombieModeTuning.Pacing.PreparationCountdownSeconds）。外层
-        // 公开的同名 const 是为存量 198 处引用保留的向后兼容别名，未来可统一删除。
+        // ZombieModeTuning 对外统一暴露顶层常量；按主题分组的嵌套静态类
+        // 仅用于类内组织，避免调用侧长期维护两层公开入口。
 
-        public static class Pacing
+        private static class Pacing
         {
             public const float PreparationCountdownSeconds = 30f;
             public const float BeaconChannelDurationSeconds = 3f;
             public const float ExtractionCountdownSeconds = 15f;
-            public const float PeriodicSpawnIntervalSeconds = 30f;
+            public const float PeriodicSpawnIntervalSeconds = 1f;
             public const float SettlementMaxWaitSeconds = 3.5f;
             public const float BannerDurationSeconds = 2.5f;
         }
 
-        public static class SafeZone
+        private static class SafeZone
         {
             public const float TickIntervalSeconds = 0.2f;
             public const float FlashStartSeconds = 5f;
@@ -217,9 +253,10 @@ namespace BossRush
             public const float NavMeshRadius = 5f;
         }
 
-        public static class Performance
+        private static class Performance
         {
             public const float EvalIntervalSeconds = 0.5f;
+            public const float TemporaryNpcProtectionTickIntervalSeconds = 0.25f;
             public const float BossStuckTimeoutSeconds = 45f;
             public const int DropCleanupWaveAge = 3;
             public const float DropCleanupAgeSeconds = 300f;
@@ -236,7 +273,7 @@ namespace BossRush
             public const float ExtremeSpawnFarSkipDistance = 50f;
         }
 
-        public static class Spawn
+        private static class Spawn
         {
             public const float BossSpreadMinDistance = 8f;
             public const float NavMeshVirtualSpawnRadius = 10f;
@@ -244,9 +281,12 @@ namespace BossRush
             public const float DuplicateDistance = 4f;
             public const float MinPlayerDistance = 12f;
             public const float NavMeshLiftOffset = 0.05f;
+            public const int MaxInitialWaveSpawnCount = 0;
+            public const int MaxNormalZombieCount = 50;
+            public const float NormalZombieForceTraceDistance = 500f;
         }
 
-        public static class Reward
+        private static class Reward
         {
             public const int CashToPurificationRatio = 100;
             public const int FreeRefreshCapPerNode = 3;
@@ -256,13 +296,11 @@ namespace BossRush
             public const float PurificationPollutionScalePerStep = 0.10f;
             public const int PurificationPollutionStep = 10;
             public const float PurificationPollutionScaleMax = 1.5f;
-            public const int BossLootCrateBaseAtWave5 = 4;
-            public const int BossLootCrateGrowthEvery5Waves = 1;
             public const int StarterMaxQuality = 5;
             public const int StarterGunnerExtraAmmoCount = 1000;
         }
 
-        public static class Combat
+        private static class Combat
         {
             // 普通敌人 / 精英 / 特殊倍率
             public const float SpecialHealthMultiplier = 1.4f;
@@ -328,7 +366,7 @@ namespace BossRush
             public const float HarasserProjectileLifetimeSeconds = 2f;
         }
 
-        public static class Boss
+        private static class Boss
         {
             // Titan
             public const float TitanShockwaveRadius = 6f;
@@ -391,14 +429,87 @@ namespace BossRush
             public const float CorruptorDeathCloudTickIntervalSeconds = 0.5f;
         }
 
-        public static class Extraction
+        // Boss 入门数值表 — 见 BossKindTuning 注释。
+        // 调用方走 ZombieModeTuning.GetBossKind(kind) 拿 struct 副本。
+        private static readonly Dictionary<ZombieModeBossKind, BossKindTuning> BossKindTable
+            = new Dictionary<ZombieModeBossKind, BossKindTuning>
+            {
+                {
+                    ZombieModeBossKind.Titan,
+                    new BossKindTuning
+                    {
+                        HealthMultiplier = 35f, DamageMultiplier = 1.8f,
+                        ScaleMultiplier = 1.8f, SpeedMultiplier = 0.7f,
+                        PointMin = 400, PointMax = 600
+                    }
+                },
+                {
+                    ZombieModeBossKind.Hunter,
+                    new BossKindTuning
+                    {
+                        HealthMultiplier = 18f, DamageMultiplier = 1.4f,
+                        ScaleMultiplier = 1.2f, SpeedMultiplier = 1.6f,
+                        PointMin = 300, PointMax = 500
+                    }
+                },
+                {
+                    ZombieModeBossKind.Splitter,
+                    new BossKindTuning
+                    {
+                        HealthMultiplier = 25f, DamageMultiplier = 1.1f,
+                        ScaleMultiplier = 1.5f, SpeedMultiplier = 0.95f,
+                        PointMin = 400, PointMax = 700
+                    }
+                },
+                {
+                    ZombieModeBossKind.Shielder,
+                    new BossKindTuning
+                    {
+                        HealthMultiplier = 28f, DamageMultiplier = 1.3f,
+                        ScaleMultiplier = 1.3f, SpeedMultiplier = 0.9f,
+                        PointMin = 400, PointMax = 600
+                    }
+                },
+                {
+                    ZombieModeBossKind.Corruptor,
+                    new BossKindTuning
+                    {
+                        HealthMultiplier = 26f, DamageMultiplier = 1.2f,
+                        ScaleMultiplier = 1.4f, SpeedMultiplier = 1.0f,
+                        PointMin = 400, PointMax = 650
+                    }
+                },
+            };
+
+        /// <summary>
+        /// 取某 Boss kind 的入门数值。未知 kind 时返回稳健的默认（与原有 fallback 一致）。
+        /// </summary>
+        internal static BossKindTuning GetBossKind(ZombieModeBossKind kind)
+        {
+            BossKindTuning tuning;
+            if (BossKindTable.TryGetValue(kind, out tuning))
+            {
+                return tuning;
+            }
+            return new BossKindTuning
+            {
+                HealthMultiplier = 2.2f,
+                DamageMultiplier = 1.2f,
+                ScaleMultiplier = 1.18f,
+                SpeedMultiplier = 1f,
+                PointMin = 300,
+                PointMax = 800,
+            };
+        }
+
+        private static class Extraction
         {
             public const float AreaTriggerRadius = 2.0f;
             public const float AreaLeaveRadius = 2.5f;
         }
 
         // ============================================================
-        // 向后兼容别名（指向上述嵌套静态类）
+        // 统一公开入口（映射到上述按主题分组常量）
         // ============================================================
 
         // Pacing
@@ -419,6 +530,7 @@ namespace BossRush
 
         // Performance
         public const float PerformanceEvalIntervalSeconds = Performance.EvalIntervalSeconds;
+        public const float TemporaryNpcProtectionTickIntervalSeconds = Performance.TemporaryNpcProtectionTickIntervalSeconds;
         public const float BossStuckTimeoutSeconds = Performance.BossStuckTimeoutSeconds;
         public const int DropCleanupWaveAge = Performance.DropCleanupWaveAge;
         public const float DropCleanupAgeSeconds = Performance.DropCleanupAgeSeconds;
@@ -441,6 +553,9 @@ namespace BossRush
         public const float SpawnPointDuplicateDistance = Spawn.DuplicateDistance;
         public const float SpawnPointMinPlayerDistance = Spawn.MinPlayerDistance;
         public const float NavMeshLiftOffset = Spawn.NavMeshLiftOffset;
+        public const int MaxInitialWaveSpawnCount = Spawn.MaxInitialWaveSpawnCount;
+        public const int MaxNormalZombieCount = Spawn.MaxNormalZombieCount;
+        public const float NormalZombieForceTraceDistance = Spawn.NormalZombieForceTraceDistance;
 
         // Reward
         public const int CashToPurificationRatio = Reward.CashToPurificationRatio;
@@ -451,8 +566,6 @@ namespace BossRush
         public const float PurificationPollutionScalePerStep = Reward.PurificationPollutionScalePerStep;
         public const int PurificationPollutionStep = Reward.PurificationPollutionStep;
         public const float PurificationPollutionScaleMax = Reward.PurificationPollutionScaleMax;
-        public const int BossLootCrateBaseAtWave5 = Reward.BossLootCrateBaseAtWave5;
-        public const int BossLootCrateGrowthEvery5Waves = Reward.BossLootCrateGrowthEvery5Waves;
         public const int StarterMaxQuality = Reward.StarterMaxQuality;
         public const int StarterGunnerExtraAmmoCount = Reward.StarterGunnerExtraAmmoCount;
 
@@ -665,6 +778,20 @@ namespace BossRush
         /// 在 Boss 出生时初始化所有 Next*Time 与 scale 缓存。
         /// </summary>
         public abstract void Reset(float now, float bossScale);
+
+        /// <summary>
+        /// 每帧由 TickZombieModeBossController 派发。子类内决定何时触发技能
+        /// （比较 Next*Time），并调用 mod 上的 internal 实现方法（telegraph / 召唤 / 护盾）。
+        /// 多态化后，BossController 主循环退化为 instance.SkillState.Tick(this, instance, now)。
+        /// 默认 no-op；ZombieModeBossController 通过 partial 在自身定义 internal Tick 方法
+        /// （TickZombieModeTitanState / HunterState / ...），子类 override 转发到对应方法。
+        /// </summary>
+        public virtual void Tick(ModBehaviour mod, ZombieModeBossInstance instance, float now) { }
+
+        /// <summary>
+        /// 主技能冷却（用于 UI / 守门用），未使用时可保留默认值。
+        /// </summary>
+        public virtual float CooldownSeconds => 0f;
     }
 
     public sealed class ZombieModeTitanState : ZombieModeBossSkillState
@@ -674,10 +801,17 @@ namespace BossRush
         public bool DamageReductionActive;
         public float DamageReductionEndTime;
 
+        public override float CooldownSeconds => ZombieModeTuning.TitanShockwaveCooldownSeconds;
+
         public override void Reset(float now, float bossScale)
         {
             NextShockwaveTime = now + UnityEngine.Random.Range(2f, 5f);
             NextDamageReductionTime = now + UnityEngine.Random.Range(8f, 12f);
+        }
+
+        public override void Tick(ModBehaviour mod, ZombieModeBossInstance instance, float now)
+        {
+            if (mod != null) mod.TickZombieModeTitanState(this, instance, now);
         }
     }
 
@@ -687,11 +821,20 @@ namespace BossRush
         public bool FrenzyActive;
         public float FrenzyEndTime;
         public float FrenzyOriginalScale = 1f;
+        public readonly List<ZombieModeAttributeModifierRecord> FrenzyModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+
+        public override float CooldownSeconds => ZombieModeTuning.HunterDashCooldownSeconds;
 
         public override void Reset(float now, float bossScale)
         {
             NextDashTime = now + UnityEngine.Random.Range(2f, 4f);
             FrenzyOriginalScale = bossScale;
+            FrenzyModifierRecords.Clear();
+        }
+
+        public override void Tick(ModBehaviour mod, ZombieModeBossInstance instance, float now)
+        {
+            if (mod != null) mod.TickZombieModeHunterState(this, instance, now);
         }
     }
 
@@ -701,9 +844,16 @@ namespace BossRush
         public bool FirstSplitTriggered;
         public bool SecondSplitTriggered;
 
+        public override float CooldownSeconds => ZombieModeTuning.SplitterBossSummonCooldownSeconds;
+
         public override void Reset(float now, float bossScale)
         {
             NextSummonTime = now + UnityEngine.Random.Range(3f, 6f);
+        }
+
+        public override void Tick(ModBehaviour mod, ZombieModeBossInstance instance, float now)
+        {
+            if (mod != null) mod.TickZombieModeSplitterState(this, instance, now);
         }
     }
 
@@ -712,10 +862,17 @@ namespace BossRush
         public float NextSelfShieldTime;
         public float NextGroupShieldTime;
 
+        public override float CooldownSeconds => ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
+
         public override void Reset(float now, float bossScale)
         {
             NextSelfShieldTime = now + UnityEngine.Random.Range(4f, 8f);
             NextGroupShieldTime = now + UnityEngine.Random.Range(10f, 14f);
+        }
+
+        public override void Tick(ModBehaviour mod, ZombieModeBossInstance instance, float now)
+        {
+            if (mod != null) mod.TickZombieModeShielderState(this, instance, now);
         }
     }
 
@@ -724,10 +881,17 @@ namespace BossRush
         public float NextZoneTime;
         public float NextPoisonPathTime;
 
+        public override float CooldownSeconds => ZombieModeTuning.CorruptorZoneCooldownSeconds;
+
         public override void Reset(float now, float bossScale)
         {
             NextZoneTime = now + UnityEngine.Random.Range(2f, 5f);
             NextPoisonPathTime = now + UnityEngine.Random.Range(1f, 3f);
+        }
+
+        public override void Tick(ModBehaviour mod, ZombieModeBossInstance instance, float now)
+        {
+            if (mod != null) mod.TickZombieModeCorruptorState(this, instance, now);
         }
     }
 
@@ -750,6 +914,7 @@ namespace BossRush
         // 身份
         public CharacterMainControl Character;
         public ZombieModeBossKind Kind;
+        public ZombieModeEnemyRuntimeMarker Marker;
 
         // 生命周期 + 卡死检测追踪（独立子对象，便于扩展新 Boss kind 时不必改 BossInstance）
         public readonly ZombieModeBossLifecycleTrack Lifecycle = new ZombieModeBossLifecycleTrack();
@@ -920,8 +1085,11 @@ namespace BossRush
         public int PurificationPoints;
         public readonly List<ZombieModeSpawnPoint> EffectiveSpawnPoints = new List<ZombieModeSpawnPoint>();
         public float PeriodicSpawnTimer;
+        public int NextSpawnPointIndex;
         public float PreparationTimer;
         public int LivingZombieCount;
+        public int LivingNormalZombieCount;
+        public int PendingNormalZombieSpawns;
         public ZombieModePerformanceTier PerformanceTier = ZombieModePerformanceTier.Normal;
         public readonly Queue<CharacterMainControl> PendingRecycleQueue = new Queue<CharacterMainControl>();
         public bool BeaconChanneling;
@@ -938,6 +1106,7 @@ namespace BossRush
         public bool SafeZoneThreatSuppressed;
         public float LastSafeZoneTickTime;
         public GameObject ActiveSafeZoneVisual;
+        public SimplePointOfInterest ActiveSafeZoneMapPoi;
         public int PollutionFromNatural;
         public int PollutionFromContracts;
         public int TotalPollution
@@ -956,10 +1125,12 @@ namespace BossRush
         public bool HalfPriceNextPaidRefresh;
         public readonly Dictionary<string, float> AttributeBonuses = new Dictionary<string, float>();
         public readonly List<ZombieModeAttributeModifierRecord> AttributeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public bool AttributeModifierCleanupRegistered;
         public readonly ZombieModeInsuranceState InsuranceState = new ZombieModeInsuranceState();
         public ZombieModePendingMapEventType PendingMapEvent = ZombieModePendingMapEventType.None;
         public int PendingEliteSquadCount;
         public readonly List<ZombieModeTemporaryNpc> TemporaryNpcs = new List<ZombieModeTemporaryNpc>();
+        public float LastTemporaryNpcProtectionTickTime;
         public readonly List<ZombieModeDropCandidate> EntityDropCleanupCandidates = new List<ZombieModeDropCandidate>();
         public readonly List<ZombieModeBossDrop> BossDropEntries = new List<ZombieModeBossDrop>();
         public float LastPerformanceEvalTime;
@@ -991,8 +1162,11 @@ namespace BossRush
             PurificationPoints = 0;
             EffectiveSpawnPoints.Clear();
             PeriodicSpawnTimer = 0f;
+            NextSpawnPointIndex = 0;
             PreparationTimer = 0f;
             LivingZombieCount = 0;
+            LivingNormalZombieCount = 0;
+            PendingNormalZombieSpawns = 0;
             PerformanceTier = ZombieModePerformanceTier.Normal;
             PendingRecycleQueue.Clear();
             BeaconChanneling = false;
@@ -1009,6 +1183,7 @@ namespace BossRush
             SafeZoneThreatSuppressed = false;
             LastSafeZoneTickTime = 0f;
             ActiveSafeZoneVisual = null;
+            ActiveSafeZoneMapPoi = null;
             PollutionFromNatural = 0;
             PollutionFromContracts = 0;
             ContractAffixWeights.Clear();
@@ -1019,10 +1194,12 @@ namespace BossRush
             HalfPriceNextPaidRefresh = false;
             AttributeBonuses.Clear();
             AttributeModifierRecords.Clear();
+            AttributeModifierCleanupRegistered = false;
             InsuranceState.Reset();
             PendingMapEvent = ZombieModePendingMapEventType.None;
             PendingEliteSquadCount = 0;
             TemporaryNpcs.Clear();
+            LastTemporaryNpcProtectionTickTime = 0f;
             EntityDropCleanupCandidates.Clear();
             BossDropEntries.Clear();
             LastPerformanceEvalTime = 0f;
@@ -1044,7 +1221,9 @@ namespace BossRush
             ContractAffixWeights.Clear();
             AttributeBonuses.Clear();
             AttributeModifierRecords.Clear();
+            AttributeModifierCleanupRegistered = false;
             TemporaryNpcs.Clear();
+            LastTemporaryNpcProtectionTickTime = 0f;
             EntityDropCleanupCandidates.Clear();
             BossDropEntries.Clear();
             InsuranceState.Reset();
@@ -1063,8 +1242,11 @@ namespace BossRush
             CurrentWaveBossesRemaining = 0;
             PurificationPoints = 0;
             PeriodicSpawnTimer = 0f;
+            NextSpawnPointIndex = 0;
             PreparationTimer = 0f;
             LivingZombieCount = 0;
+            LivingNormalZombieCount = 0;
+            PendingNormalZombieSpawns = 0;
             PerformanceTier = ZombieModePerformanceTier.Normal;
             BeaconChanneling = false;
             BeaconChannelStartTime = 0f;
@@ -1080,6 +1262,7 @@ namespace BossRush
             SafeZoneThreatSuppressed = false;
             LastSafeZoneTickTime = 0f;
             ActiveSafeZoneVisual = null;
+            ActiveSafeZoneMapPoi = null;
             PollutionFromNatural = 0;
             PollutionFromContracts = 0;
             CurrentRewardNode = null;
