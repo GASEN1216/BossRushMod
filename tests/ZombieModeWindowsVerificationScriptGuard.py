@@ -5,7 +5,7 @@ import sys
 
 
 SCRIPT = Path("test_zombiemode_goal_windows.bat")
-DOC = Path("docs/2026-05-03_末日丧尸模式_goal执行文档.md")
+DOC = Path("docs/末日丧尸模式/末日丧尸模式_goal执行文档.md")
 
 
 def fail(message: str) -> int:

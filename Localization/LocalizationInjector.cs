@@ -713,7 +713,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_AttributeName_RangedDamage", "远程伤害", "Ranged Damage");
             InjectZombieModeString("BossRush_ZombieMode_Reward_AttributeName_ReloadSpeed", "换弹速度", "Reload Speed");
             InjectZombieModeString("BossRush_ZombieMode_Reward_AttributeName_DamageReduction", "受伤减免", "Damage Reduction");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_TempMerchant", "部署补给终端", "Deploy Supply Terminal");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_TempMerchant", "下次补给终端购买必出高品质", "Next Supply Terminal Purchase Guaranteed High Quality");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempNurse", "部署医疗终端", "Deploy Medical Terminal");
             InjectZombieModeString("BossRush_ZombieMode_Reward_FortificationPack", "领取工事补给包", "Claim Fortification Pack");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ContractPollutionDeal", "污染契约：净化点换污染", "Pollution Pact: Points for Pollution");
@@ -730,6 +730,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_NextPaidPrice", "付费下次价 {0}", "Next paid price {0}");
             InjectZombieModeString("BossRush_ZombieMode_Npc_TempMerchant", "补给终端已部署", "Supply Terminal deployed");
             InjectZombieModeString("BossRush_ZombieMode_Npc_TempNurse", "医疗终端已部署", "Medical Terminal deployed");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_TempMerchantGuarantee", "补给终端高品质保底已就绪", "Supply Terminal high-quality guarantee is ready");
             InjectZombieModeString("BossRush_ZombieMode_Npc_InteractMerchant", "按 {0} 使用补给终端", "Press {0} to use Supply Terminal");
             InjectZombieModeString("BossRush_ZombieMode_Npc_InteractNurse", "按 {0} 使用医疗终端", "Press {0} to use Medical Terminal");
             InjectZombieModeString("BossRush_ZombieMode_Npc_ServicePrice", "价格 {0}", "Price {0}");
@@ -743,6 +744,18 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_RandomGun", "随机枪械", "Random Gun");
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_RandomArmor", "随机护甲", "Random Armor");
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_RandomHelmet", "随机头盔", "Random Helmet");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Gun", "丧尸模式枪械", "Zombie Mode Guns");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Melee", "丧尸模式近战", "Zombie Mode Melee");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Accessory", "丧尸模式配件", "Zombie Mode Accessories");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Bullet", "丧尸模式子弹", "Zombie Mode Ammo");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Helmat", "丧尸模式头盔", "Zombie Mode Helmets");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Armor", "丧尸模式护甲", "Zombie Mode Armor");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Backpack", "丧尸模式背包", "Zombie Mode Backpacks");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Totem", "丧尸模式图腾", "Zombie Mode Totems");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Mask", "丧尸模式面具/耳机", "Zombie Mode Masks and Headsets");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Medical", "丧尸模式医疗品", "Zombie Mode Medical");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Food", "丧尸模式食物", "Zombie Mode Food");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Bait", "丧尸模式诱饵", "Zombie Mode Bait");
             InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_HealHalf", "治疗：恢复缺失生命 50%", "Heal: Restore 50% Missing HP");
             InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_HealFull", "完全治疗", "Full Heal");
             InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_Detox", "解毒", "Detox");

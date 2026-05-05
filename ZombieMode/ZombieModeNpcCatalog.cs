@@ -27,39 +27,34 @@ namespace BossRush
 
         public static readonly MerchantStockEntry[] NormalWaveStock =
         {
-            // 弹药按标签抽取，避免硬编码具体口径 TypeID。
-            new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 1,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Ammo",    GrantMinQuality = 1, GrantMaxQuality = 3 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 1,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Bullet",  GrantMinQuality = 1, GrantMaxQuality = 3 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 1,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Ammo",    GrantMinQuality = 1, GrantMaxQuality = 3 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 60,  BasePrice = 2,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Bullet",  GrantMinQuality = 1, GrantMaxQuality = 3 },
-            // 医疗
-            new MerchantStockEntry { TypeId = -1, StockCount = 5,   BasePrice = 30,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMedical", GrantTag = "Medic",   GrantMinQuality = 1, GrantMaxQuality = 3 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 3,   BasePrice = 60,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMedical", GrantTag = "Medical", GrantMinQuality = 1, GrantMaxQuality = 4 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 2,   BasePrice = 120, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMedical", GrantTag = "Healing", GrantMinQuality = 2, GrantMaxQuality = 4 },
-            // 食物饮料
-            new MerchantStockEntry { TypeId = -1, StockCount = 4,   BasePrice = 30,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomFood",    GrantTag = "Food",    GrantMinQuality = 1, GrantMaxQuality = 3 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 4,   BasePrice = 25,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomDrink",   GrantTag = "Drink",   GrantMinQuality = 1, GrantMaxQuality = 3 },
-            // 装备（按当前阶层随机抽取，TypeId = -1 表示运行时 ItemFilter 抽取）
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 300, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMelee",   GrantTag = "MeleeWeapon", GrantMinQuality = 1, GrantMaxQuality = 4 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 500, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomGun",     GrantTag = "Gun",     GrantMinQuality = 1, GrantMaxQuality = 4 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 400, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomArmor",   GrantTag = "Armor",   GrantMinQuality = 1, GrantMaxQuality = 4 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 350, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomHelmet",  GrantTag = "Helmet",  GrantMinQuality = 1, GrantMaxQuality = 4 }
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 500, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Gun",       GrantTag = "Gun",       GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 300, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Melee",     GrantTag = "MeleeWeapon", GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 260, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Accessory",  GrantTag = "Accessory", GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 2, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bullet",     GrantTag = "Bullet",    GrantMinQuality = 1, GrantMaxQuality = 3 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 350, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Helmat",     GrantTag = "Helmet",    GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 400, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Armor",      GrantTag = "Armor",     GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 260, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Backpack",   GrantTag = "Backpack",  GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 500, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Totem",      GrantTag = "Totem",     GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 180, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Mask",       GrantTag = "Mask",      GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 3, BasePrice = 80,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Medical",    GrantTag = "Medical",   GrantMinQuality = 1, GrantMaxQuality = 4 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 4, BasePrice = 30,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Food",       GrantTag = "Food",      GrantMinQuality = 1, GrantMaxQuality = 3 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 3, BasePrice = 45,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bait",       GrantTag = "Bait",      GrantMinQuality = 1, GrantMaxQuality = 3 }
         };
 
         public static readonly MerchantStockEntry[] BossNodeStock =
         {
-            new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 2,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Ammo",    GrantMinQuality = 2, GrantMaxQuality = 5 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 2,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Bullet",  GrantMinQuality = 2, GrantMaxQuality = 5 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 60,  BasePrice = 4,   DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomAmmo",    GrantTag = "Ammo",    GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 2,   BasePrice = 220, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMedical", GrantTag = "Medical", GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 2,   BasePrice = 100, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMedical", GrantTag = "Medic",   GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 2,   BasePrice = 180, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMedical", GrantTag = "Healing", GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 500, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomMelee",   GrantTag = "MeleeWeapon", GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 800, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomGun",     GrantTag = "Gun",     GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 650, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomArmor",   GrantTag = "Armor",   GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = -1, StockCount = 1,   BasePrice = 550, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomHelmet",  GrantTag = "Helmet",  GrantMinQuality = 3, GrantMaxQuality = 6 },
-            new MerchantStockEntry { TypeId = FoldableCoverPackConfig.TYPE_ID,       StockCount = 2,   BasePrice = 400, DisplayKey = "BossRush_ZombieMode_Reward_FortificationPack", GrantTag = "", GrantMinQuality = 1, GrantMaxQuality = 1 },
-            new MerchantStockEntry { TypeId = ReinforcedRoadblockPackConfig.TYPE_ID, StockCount = 2,   BasePrice = 350, DisplayKey = "BossRush_ZombieMode_Reward_FortificationPack", GrantTag = "", GrantMinQuality = 1, GrantMaxQuality = 1 }
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 800, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Gun",       GrantTag = "Gun",       GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 500, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Melee",     GrantTag = "MeleeWeapon", GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 420, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Accessory",  GrantTag = "Accessory", GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 120, BasePrice = 2, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bullet",     GrantTag = "Bullet",    GrantMinQuality = 2, GrantMaxQuality = 5 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 550, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Helmat",     GrantTag = "Helmet",    GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 650, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Armor",      GrantTag = "Armor",     GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 380, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Backpack",   GrantTag = "Backpack",  GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 900, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Totem",      GrantTag = "Totem",     GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 280, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Mask",       GrantTag = "Mask",      GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 2, BasePrice = 180, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Medical",    GrantTag = "Medical",   GrantMinQuality = 3, GrantMaxQuality = 6 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 3, BasePrice = 50,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Food",       GrantTag = "Food",      GrantMinQuality = 2, GrantMaxQuality = 5 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 2, BasePrice = 70,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bait",       GrantTag = "Bait",      GrantMinQuality = 2, GrantMaxQuality = 5 }
         };
 
         public static readonly NurseServiceEntry[] NurseServices =

@@ -20,7 +20,7 @@ def main() -> int:
         "private ZombieModeTemporaryNpc CreateZombieModeTemporaryNpcRecord(",
         "SpawnZombieModeTemporaryNpc(runId, pendingTemporaryNpcServiceType, extractionOpportunity)",
         "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.TemporaryNpc",
-        "record.ServiceState = CreateZombieModeNpcServiceState(serviceType, bossNodeStock)",
+        "record.ServiceState = CreateZombieModeNpcServiceState(serviceType, bossNodeStock, zombieModeRunState.ActiveSafeZoneActive)",
         "ZombieModeNpcCatalog.NormalWaveStock",
         "ZombieModeNpcCatalog.BossNodeStock",
         "ZombieModeNpcCatalog.NurseServices",

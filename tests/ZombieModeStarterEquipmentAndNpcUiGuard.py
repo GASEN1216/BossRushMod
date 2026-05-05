@@ -91,7 +91,7 @@ def main() -> int:
         return fail("temporary NPC service rebuild still adds a second Canvas directly")
     if "i < stock.Length && i < ZombieModeNpcCatalog.MaxMerchantStockButtons" not in service_view:
         return fail("merchant UI must cap against catalog constant, not a hidden literal")
-    if "int col = index % 4;" not in service_view:
+    if "grid.constraintCount = 4;" not in service_view:
         return fail("merchant grid must have four columns so helmet is visible without overlapping close")
 
     match = re.search(r"public const int MaxMerchantStockButtons = (\d+);", catalog)

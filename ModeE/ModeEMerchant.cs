@@ -816,6 +816,53 @@ namespace BossRush
             return result;
         }
 
+        internal int[] GetModeEMerchantCategoryPoolIds(string suffix)
+        {
+            if (string.IsNullOrEmpty(suffix))
+            {
+                return new int[0];
+            }
+
+            try
+            {
+                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
+                if (tagsData == null)
+                {
+                    return new int[0];
+                }
+
+                List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> categories = GetModeEMerchantCategories(tagsData);
+                Duckov.Utilities.Tag[] emptyExclude = new Duckov.Utilities.Tag[0];
+                for (int i = 0; i < categories.Count; i++)
+                {
+                    System.Tuple<List<Duckov.Utilities.Tag>, string, string> category = categories[i];
+                    if (!string.Equals(category.Item3, suffix, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    List<int> allIds = ModeESearchItemsMultiTag(category.Item1, emptyExclude);
+                    if (allIds == null)
+                    {
+                        return new int[0];
+                    }
+
+                    if (suffix == "Medical")
+                    {
+                        allIds.RemoveAll(id => modeEMedicalShopExcludedIds.Contains(id));
+                    }
+
+                    return allIds.ToArray();
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] GetModeEMerchantCategoryPoolIds 失败: " + e.Message);
+            }
+
+            return new int[0];
+        }
+
         // ====================================================================
         // 预缓存商店物品实例
         // ====================================================================

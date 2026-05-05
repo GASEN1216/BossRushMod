@@ -67,7 +67,7 @@ namespace BossRush
                     yield break;
                 }
 
-                if (!IsZombieModeGamePaused())
+                if (!IsZombieModeRuntimePaused())
                 {
                     remaining -= Time.unscaledDeltaTime;
                 }
@@ -177,21 +177,14 @@ namespace BossRush
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.SuccessExit;
             zombieModeRunState.ExtractionChanneling = false;
             zombieModeRunState.BeaconChanneling = false;
-            TryReleaseZombieModeExtractionCountdownUi();
-            TryNotifyZombieModeExtraction();
             SettleZombieModeExtractionCashShell();
             ShowBigBanner(L10n.T("BossRush_ZombieMode_Settle_SuccessTitle"));
-            CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);
-            try
+            if (!TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea))
             {
-                if (SceneLoader.Instance != null)
-                {
-                    UniTaskExtensions.Forget(SceneLoader.Instance.LoadBaseScene(null, true));
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] [WARNING] 撤离后回主场景失败: " + e.Message);
+                TryReleaseZombieModeExtractionCountdownUi();
+                TryNotifyZombieModeExtraction();
+                CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);
+                TryLoadBaseSceneAfterZombieModeExtraction();
             }
         }
 
@@ -235,7 +228,7 @@ namespace BossRush
                     yield break;
                 }
 
-                if (!IsZombieModeGamePaused())
+                if (!IsZombieModeRuntimePaused())
                 {
                     remaining -= Time.unscaledDeltaTime;
                 }
@@ -282,6 +275,8 @@ namespace BossRush
                     CompleteZombieModeExtractionSuccess(runId);
                 }
             };
+            request.OnFallbackNotify = TryNotifyZombieModeExtractionFromFactory;
+            request.OnFallbackLoadBase = TryLoadBaseSceneAfterZombieModeExtraction;
 
             ModeExtractionPointResult result = ModeExtractionPointFactory.CreateExtractionPoint(request);
             if (result == null || result.GameObject == null || result.CountDownArea == null)
@@ -331,6 +326,19 @@ namespace BossRush
 
         private void TryNotifyZombieModeExtraction()
         {
+            Vector3 position = zombieModeRunState.ActiveExtractionArea != null
+                ? zombieModeRunState.ActiveExtractionArea.transform.position
+                : (CharacterMainControl.Main != null ? CharacterMainControl.Main.transform.position : Vector3.zero);
+            TryNotifyZombieModeExtraction(position);
+        }
+
+        private void TryNotifyZombieModeExtractionFromFactory(Vector3 position)
+        {
+            TryNotifyZombieModeExtraction(position);
+        }
+
+        private void TryNotifyZombieModeExtraction(Vector3 position)
+        {
             try
             {
                 if (LevelManager.Instance == null)
@@ -338,9 +346,6 @@ namespace BossRush
                     return;
                 }
 
-                Vector3 position = zombieModeRunState.ActiveExtractionArea != null
-                    ? zombieModeRunState.ActiveExtractionArea.transform.position
-                    : (CharacterMainControl.Main != null ? CharacterMainControl.Main.transform.position : Vector3.zero);
                 EvacuationInfo info = new EvacuationInfo(MultiSceneCore.ActiveSubSceneID, position);
                 LevelManager.Instance.NotifyEvacuated(info);
             }
@@ -348,6 +353,52 @@ namespace BossRush
             {
                 DevLog("[ZombieMode] [WARNING] NotifyEvacuated 失败: " + e.Message);
             }
+        }
+
+        private void TryLoadBaseSceneAfterZombieModeExtraction()
+        {
+            try
+            {
+                if (SceneLoader.Instance == null)
+                {
+                    DevLog("[ZombieMode] [WARNING] TryLoadBaseSceneAfterZombieModeExtraction: SceneLoader.Instance 为 null");
+                    return;
+                }
+
+                UniTaskExtensions.Forget(SceneLoader.Instance.LoadBaseScene(null, true));
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] 撤离后回主场景失败: " + e.Message);
+            }
+        }
+
+        private bool TryDispatchZombieModeExtractionSuccess(CountDownArea area)
+        {
+            if (area == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (area.onCountDownStopped != null)
+                {
+                    area.onCountDownStopped.Invoke(area);
+                }
+
+                if (area.onCountDownSucceed != null)
+                {
+                    area.onCountDownSucceed.Invoke();
+                    return true;
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] TryDispatchZombieModeExtractionSuccess 失败: " + e.Message);
+            }
+
+            return false;
         }
 
         private void ClearZombieModeExtractionOpportunityUi()
@@ -369,6 +420,7 @@ namespace BossRush
             ClearZombieModeExtractionOpportunityUi();
             TryReleaseZombieModeExtractionCountdownUi();
             ReleaseZombieModeSafeZoneThreatSuppression();
+            RecycleZombieModeSafeZoneBoundTemporaryNpcs(runId);
 
             DestroyZombieModeActiveExtractionArea();
 
@@ -442,8 +494,22 @@ namespace BossRush
             zombieModeRunState.ActiveSafeZoneVisual = safeZone;
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.SafeZone, safeZone, controller, null);
             CreateZombieModeSafeZoneMapPoi(runId, position);
+            EnsureZombieModeSafeZoneMerchantTerminal(runId);
             TryRegisterZombieModeShootStealthBreaker(runId);
             TickZombieModeSafeZone();
+        }
+
+        private void EnsureZombieModeSafeZoneMerchantTerminal(int runId)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return;
+            }
+
+            if (FindZombieModeTemporaryNpc("Merchant") == null)
+            {
+                SpawnZombieModeTemporaryNpc(runId, "Merchant", false);
+            }
         }
 
         private void CreateZombieModeSafeZoneMapPoi(int runId, Vector3 position)

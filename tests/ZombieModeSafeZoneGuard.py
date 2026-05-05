@@ -46,16 +46,21 @@ def main() -> int:
         "SuppressZombieModeSafeZoneThreats",
         "ReleaseZombieModeSafeZoneThreatSuppression",
         "SetZombieModeEnemyThreatSuppressed",
-        "zombieModeRunState.PlayerInsideSafeZone = inside",
+        "zombieModeRunState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();",
         "zombieModeRunState.SafeZoneThreatSuppressed = shouldSuppress",
         "AICharacterController",
+        "marker.SuppressedForceTraceDistance = ai.forceTracePlayerDistance;",
+        "marker.HasSuppressedForceTraceDistance = true;",
+        "ai.forceTracePlayerDistance = 0f;",
+        "ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, marker.SuppressedForceTraceDistance);",
+        "marker.HasSuppressedForceTraceDistance = false;",
         "ai.searchedEnemy = null",
         "ai.noticed = false",
         "TryRegisterZombieModeShootStealthBreaker",
         "ItemAgent_Gun.OnMainCharacterShootEvent += OnZombieModeMainCharacterShoot",
         "ItemAgent_Gun.OnMainCharacterShootEvent -= OnZombieModeMainCharacterShoot",
         "OnZombieModeMainCharacterShoot",
-        "BreakZombieModeSafeZoneStealth(zombieModeRunState.RunId)",
+        "UpdateZombieModeSafeZonePlayerPresence();",
     ]:
         result = require(safe_zone, snippet, "safe zone tick and stealth breaker")
         if result:
@@ -78,9 +83,17 @@ def main() -> int:
             return result
 
     for snippet in [
+        "TryProcessZombieModeSafeZoneStealthBreak",
+        "!IsZombieModePlayerInsideActiveSafeZone()",
+        "BreakZombieModeSafeZoneStealth(runId);",
+    ]:
+        result = require(waves, snippet, "damage-driven safe zone stealth break")
+        if result:
+            return result
+
+    for snippet in [
         "if (ShouldSuppressZombieModeEnemyAggroForSafeZone())",
-        "ai.searchedEnemy = null;",
-        "ai.noticed = false;",
+        "SetZombieModeEnemyThreatSuppressed(enemy.gameObject, true);",
     ]:
         result = require(spawner, snippet, "spawn aggro suppression")
         if result:

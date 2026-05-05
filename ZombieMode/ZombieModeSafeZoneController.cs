@@ -26,6 +26,7 @@ namespace BossRush
             zombieModeRunState.LastSafeZoneTickTime = Time.unscaledTime;
             UpdateZombieModeSafeZonePlayerPresence();
             UpdateZombieModeSafeZoneVisual();
+            KeepZombieModeEnemiesOutsideSafeZone();
             bool shouldSuppress = ShouldSuppressZombieModeEnemyAggroForSafeZone();
             if (shouldSuppress)
             {
@@ -41,26 +42,114 @@ namespace BossRush
 
         private void UpdateZombieModeSafeZonePlayerPresence()
         {
+            zombieModeRunState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();
+        }
+
+        private bool IsZombieModePlayerInsideActiveSafeZone()
+        {
             CharacterMainControl player = CharacterMainControl.Main;
-            bool inside = false;
-            if (player != null && zombieModeRunState.ActiveSafeZoneActive)
+            if (player == null || !zombieModeRunState.ActiveSafeZoneActive)
             {
-                Vector3 delta = player.transform.position - zombieModeRunState.ActiveSafeZoneCenter;
-                delta.y = 0f;
-                inside = delta.sqrMagnitude <= zombieModeRunState.ActiveSafeZoneRadius * zombieModeRunState.ActiveSafeZoneRadius;
+                return false;
             }
 
-            zombieModeRunState.PlayerInsideSafeZone = inside;
+            return IsZombieModePositionInsideActiveSafeZone(player.transform.position);
+        }
+
+        private bool IsZombieModePositionInsideActiveSafeZone(Vector3 position)
+        {
+            if (!zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.ActiveSafeZoneRadius <= 0f)
+            {
+                return false;
+            }
+
+            Vector3 delta = position - zombieModeRunState.ActiveSafeZoneCenter;
+            delta.y = 0f;
+            return delta.sqrMagnitude <= zombieModeRunState.ActiveSafeZoneRadius * zombieModeRunState.ActiveSafeZoneRadius;
         }
 
         private bool ShouldSuppressZombieModeEnemyAggroForSafeZone()
         {
             return zombieModeRunState.ActiveSafeZoneActive &&
-                   zombieModeRunState.PlayerInsideSafeZone &&
+                   IsZombieModePlayerInsideActiveSafeZone() &&
                    !zombieModeRunState.SafeZoneStealthBroken &&
                    (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.InitialPreparation ||
                     zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Preparation ||
                     zombieModeRunState.CombatPhase == ZombieModeCombatPhase.ExtractionOpportunity);
+        }
+
+        private void KeepZombieModeEnemiesOutsideSafeZone()
+        {
+            if (!zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.SafeZoneStealthBroken)
+            {
+                return;
+            }
+
+            Vector3 center = zombieModeRunState.ActiveSafeZoneCenter;
+            float radius = zombieModeRunState.ActiveSafeZoneRadius;
+            if (radius <= 0f)
+            {
+                return;
+            }
+
+            float radiusSqr = radius * radius;
+            float repelRadius = radius + 1.5f;
+            for (int i = 0; i < zombieModeRunState.RunOnlyObjects.Count; i++)
+            {
+                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                if (record == null ||
+                    (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss) ||
+                    record.GameObject == null)
+                {
+                    continue;
+                }
+
+                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
+                if (marker == null)
+                {
+                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                }
+
+                CharacterMainControl owner = marker != null ? marker.Owner : null;
+                if (owner == null)
+                {
+                    owner = record.GameObject.GetComponent<CharacterMainControl>();
+                }
+
+                Transform enemyTransform = owner != null ? owner.transform : record.GameObject.transform;
+                Vector3 delta = enemyTransform.position - center;
+                delta.y = 0f;
+                if (delta.sqrMagnitude > radiusSqr)
+                {
+                    continue;
+                }
+
+                if (delta.sqrMagnitude < 0.01f)
+                {
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    delta = player != null ? enemyTransform.position - player.transform.position : Random.insideUnitSphere;
+                    delta.y = 0f;
+                    if (delta.sqrMagnitude < 0.01f)
+                    {
+                        delta = Vector3.forward;
+                    }
+                }
+
+                Vector3 destination = center + delta.normalized * repelRadius;
+                destination.y = enemyTransform.position.y;
+                Vector3 resolved;
+                if (SpawnPositionHelper.TrySampleNavMesh(
+                        destination,
+                        out resolved,
+                        ZombieModeTuning.NavMeshLiftOffset,
+                        ZombieModeTuning.NavMeshSafeZoneRadius))
+                {
+                    destination = resolved;
+                }
+
+                enemyTransform.position = destination;
+                SetZombieModeEnemyThreatSuppressed(record.GameObject, true);
+            }
         }
 
         private void SuppressZombieModeSafeZoneThreats()
@@ -115,11 +204,27 @@ namespace BossRush
                 return;
             }
 
+            ZombieModeEnemyRuntimeMarker marker = enemyObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+
             if (suppressed)
             {
+                if (marker != null && !marker.HasSuppressedForceTraceDistance)
+                {
+                    marker.SuppressedForceTraceDistance = ai.forceTracePlayerDistance;
+                    marker.HasSuppressedForceTraceDistance = true;
+                }
+
+                ai.forceTracePlayerDistance = 0f;
                 ai.searchedEnemy = null;
                 ai.noticed = false;
                 return;
+            }
+
+            if (marker != null && marker.HasSuppressedForceTraceDistance)
+            {
+                ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, marker.SuppressedForceTraceDistance);
+                marker.SuppressedForceTraceDistance = 0f;
+                marker.HasSuppressedForceTraceDistance = false;
             }
 
             CharacterMainControl main = CharacterMainControl.Main;
@@ -133,7 +238,7 @@ namespace BossRush
         {
             return zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat ||
                    (zombieModeRunState.ActiveSafeZoneActive &&
-                    (!zombieModeRunState.PlayerInsideSafeZone || zombieModeRunState.SafeZoneStealthBroken));
+                    (!IsZombieModePlayerInsideActiveSafeZone() || zombieModeRunState.SafeZoneStealthBroken));
         }
 
         private void TryRegisterZombieModeShootStealthBreaker(int runId)
@@ -159,7 +264,7 @@ namespace BossRush
                 return;
             }
 
-            BreakZombieModeSafeZoneStealth(zombieModeRunState.RunId);
+            UpdateZombieModeSafeZonePlayerPresence();
         }
     }
 
