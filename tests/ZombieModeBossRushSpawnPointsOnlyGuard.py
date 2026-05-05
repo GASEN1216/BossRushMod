@@ -41,6 +41,8 @@ def main() -> int:
 
     if "zombieModeRunState.MapProfile.StaticSpawnPoints" not in collect_method:
         return fail("spawn collection must read ZombieModeMapProfile.StaticSpawnPoints")
+    if "TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions" not in collect_method:
+        return fail("spawn collection must reuse cached original spawner positions before giving up")
 
     if "GetCurrentMapConfig()" in collect_method:
         return fail("spawn collection must not rebuild its own map-config point source")
@@ -52,6 +54,8 @@ def main() -> int:
         "mapConfig.modeESpawnPoints",
         "mapConfig.spawnPoints",
         "mapConfig.customSpawnPos",
+        "for (int i = 0; i < 16; i++)",
+        "Quaternion.Euler(0f, angle, 0f) * Vector3.forward * 24f",
     ]
     for token in forbidden_tokens:
         if token in spawner:

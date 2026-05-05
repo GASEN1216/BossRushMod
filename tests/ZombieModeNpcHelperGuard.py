@@ -51,16 +51,28 @@ def main() -> int:
         "IsZombieModeRetainedNeutralWhitelisted",
         "RetainedNeutralWhitelistTypes",
         "Team.IsEnemy(Teams.player, character.Team)",
+        "character.GetComponentInChildren<INPCController>(true)",
+        "character.GetComponentInChildren<NPCInteractableBase>(true)",
         "character.GetComponentInChildren<DuckovDialogueActor>(true)",
         "character.GetComponentInChildren<Duckov.Economy.StockShop>(true)",
+        "character.GetComponentInChildren<IMerchant>(true)",
+        "NPCModuleRegistry.ShouldSpawnAnyInScene(this, SceneManager.GetActiveScene().name)",
+        "character.GetComponentInChildren<WeddingNpcResidentMarker>(true)",
+    ]:
+        if snippet not in map_isolation_text:
+            return fail("ZombieModeNpcHelperGuard: map isolation NPC preservation missing snippet -> " + snippet)
+
+    for forbidden in [
         "behaviour is IMerchant",
         "typeName.IndexOf(\"Quest\"",
         "typeName.IndexOf(\"Dialogue\"",
         "typeName.IndexOf(\"Merchant\"",
         "typeName.IndexOf(\"Npc\"",
+        "typeName.IndexOf(\"NPC\"",
+        "GetComponentsInChildren<MonoBehaviour>(true)",
     ]:
-        if snippet not in map_isolation_text:
-            return fail("ZombieModeNpcHelperGuard: map isolation NPC preservation missing snippet -> " + snippet)
+        if forbidden in map_isolation_text:
+            return fail("ZombieModeNpcHelperGuard: stale heuristic NPC preservation remains -> " + forbidden)
 
     print("ZombieModeNpcHelperGuard: PASS")
     return 0

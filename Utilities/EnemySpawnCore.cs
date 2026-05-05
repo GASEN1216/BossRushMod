@@ -271,6 +271,7 @@ namespace BossRush
                                 }
 
                                 DevLog("[SpawnCore] 模式已结束，销毁特殊生成的敌人");
+                                InvokeSpawnCoreFailureCallback(onFailed, "模式结束");
                                 return;
                             }
 
@@ -310,6 +311,7 @@ namespace BossRush
                             {
                                 UnityEngine.Object.Destroy(character.gameObject);
                                 DevLog("[SpawnCore] 模式已结束，销毁生成的敌人");
+                                InvokeSpawnCoreFailureCallback(onFailed, "模式结束");
                                 return;
                             }
 

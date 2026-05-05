@@ -126,7 +126,10 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\RunScopedRegistry.cs ^
     Utilities\SteamHelper.cs ^
     Utilities\BossCleanupHelpers.cs ^
+    Utilities\InteractableLootboxInventoryHelper.cs ^
+    Utilities\OriginalCharacterIsolationHelper.cs ^
     Utilities\OriginalExtractionPointIsolationHelper.cs ^
+    Utilities\OriginalSpawnerIsolationHelper.cs ^
     Utilities\ModeExtractionPointFactory.cs ^
     Utilities\MapSelectionEntryInjectionHelper.cs ^
     Config\Config.cs ^

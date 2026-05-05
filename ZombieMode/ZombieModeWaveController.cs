@@ -66,7 +66,6 @@ namespace BossRush
             // 非丧尸模式敌人不走 marker 路径；但仍要走安全区破隐检测（玩家是伤害源时）。
             if (victim == null || !IsZombieModeKnownEnemy(victim))
             {
-                TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo);
                 return;
             }
 
@@ -99,24 +98,55 @@ namespace BossRush
                 }
             }
 
-            TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo);
+            TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, victim);
         }
 
-        // 安全区破隐：只要玩家是伤害源（damageInfo.fromCharacter 是主角），就视为破隐；
-        // 这一统一口径覆盖开火、近战命中、投掷、仇恨道具、被命中后反击 5 种情形。
+        // 安全区破隐：玩家在安全区内用枪械或近战武器伤害丧尸模式敌人时破隐；
+        // 单纯开枪、装填、投掷、误伤非丧尸目标、出圈攻击不破坏安全区。
         // 出区外射击：SafeZoneStealthBroken 在 EnterPreparation 才重置；本准备期内任意时刻破隐都会持续到下一波。
-        private void TryProcessZombieModeSafeZoneStealthBreak(int runId, DamageInfo damageInfo)
+        private void TryProcessZombieModeSafeZoneStealthBreak(int runId, DamageInfo damageInfo, CharacterMainControl victim)
         {
             if (damageInfo.fromCharacter == null ||
                 !damageInfo.fromCharacter.IsMainCharacter ||
                 damageInfo.isFromBuffOrEffect ||
+                !IsZombieModeDamageFromStealthBreakingWeapon(damageInfo) ||
+                victim == null ||
                 !zombieModeRunState.ActiveSafeZoneActive ||
+                !IsZombieModePlayerInsideActiveSafeZone() ||
                 zombieModeRunState.SafeZoneStealthBroken)
             {
                 return;
             }
 
             BreakZombieModeSafeZoneStealth(runId);
+        }
+
+        private bool IsZombieModeDamageFromStealthBreakingWeapon(DamageInfo damageInfo)
+        {
+            if (damageInfo.fromWeaponItemID <= 0)
+            {
+                return false;
+            }
+
+            ItemStatsSystem.ItemMetaData metaData = ItemStatsSystem.ItemAssetsCollection.GetMetaData(damageInfo.fromWeaponItemID);
+            if (metaData.id <= 0 || metaData.tags == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < metaData.tags.Length; i++)
+            {
+                Duckov.Utilities.Tag tag = metaData.tags[i];
+                if (tag != null &&
+                    (tag.name == "Gun" ||
+                     tag.name == "MeleeWeapon" ||
+                     tag.name == "Melee"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void RestoreZombieModeFinalDamageReduction(Health health, DamageInfo damageInfo, float absorbedFinalDamage)
@@ -129,7 +159,7 @@ namespace BossRush
             // 注：Health.OnHurt 在伤害已扣后触发（鸭科夫源码 Health.cs:418），
             // mod 层无法挡掉伤害，只能用 SetHealth 把吸收的部分加回去（heal-back 模式）。
             // 唯一原生替代是 Health.SetInvincible(true)，但是 0/1 全免无法做"吸收 N 点"。
-            // 见 docs/项目可能的待修复问题/2026-05-03_丧尸模式代码审查.md §4.1
+            // 见 docs/代码审查/2026-05-03_丧尸模式代码审查.md §4.1
             TryRestoreZombieModeFinalDamage(health, damageInfo, absorbedFinalDamage);
         }
 
@@ -337,12 +367,6 @@ namespace BossRush
 
             zombieModeRunState.CurrentWaveKillTarget = Mathf.Max(1, GetZombieModeBaseWaveKillTarget());
             ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveIncoming"), zombieModeRunState.CurrentWave));
-        }
-
-        private int GetZombieModeInitialWaveSpawnCount(int effectiveSpawnPointCount)
-        {
-            int baseCount = Mathf.Max(1, effectiveSpawnPointCount);
-            return Mathf.Clamp(baseCount, 1, ZombieModeTuning.MaxInitialWaveSpawnCount);
         }
 
         private int GetZombieModeBaseWaveKillTarget()
@@ -577,6 +601,11 @@ namespace BossRush
                 zombieModeRunState.PollutionFromNatural++;
             }
 
+            if (!TryGiveZombieModeWaveClearHealingItem())
+            {
+                DevLog("[ZombieMode] 波次结束治疗补给发放失败");
+            }
+
             ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveCleared"), zombieModeRunState.CurrentWave));
             StartZombieModeCoroutine(ZombieModeSettlementCoroutine(runId, bossNode), runId);
         }
@@ -591,7 +620,7 @@ namespace BossRush
                     break;
                 }
 
-                if (!IsZombieModeGamePaused())
+                if (!IsZombieModeRuntimePaused())
                 {
                     remaining -= Time.unscaledDeltaTime;
                 }

@@ -477,10 +477,12 @@ namespace BossRush
         {
             if (!IsZombieModeActive)
             {
+                ResetZombieModeRuntimePauseClock();
                 return;
             }
 
-            if (ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused())
+            RefreshZombieModeRuntimePauseClock();
+            if (IsZombieModeRuntimePaused())
             {
                 return;
             }
@@ -503,6 +505,66 @@ namespace BossRush
             }
         }
 
+        internal bool IsZombieModeRuntimePaused()
+        {
+            return ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused();
+        }
+
+        private float zombieModeRuntimePausedDuration;
+        private float zombieModeRuntimePauseStartTime = -1f;
+        private int zombieModeRuntimePauseRunId;
+
+        private void RefreshZombieModeRuntimePauseClock()
+        {
+            int runId = zombieModeRunState.RunId;
+            if (runId <= 0)
+            {
+                ResetZombieModeRuntimePauseClock();
+                return;
+            }
+
+            if (zombieModeRuntimePauseRunId != runId)
+            {
+                zombieModeRuntimePauseRunId = runId;
+                zombieModeRuntimePausedDuration = 0f;
+                zombieModeRuntimePauseStartTime = -1f;
+            }
+
+            if (IsZombieModeRuntimePaused())
+            {
+                if (zombieModeRuntimePauseStartTime < 0f)
+                {
+                    zombieModeRuntimePauseStartTime = Time.unscaledTime;
+                }
+                return;
+            }
+
+            if (zombieModeRuntimePauseStartTime >= 0f)
+            {
+                zombieModeRuntimePausedDuration += Mathf.Max(0f, Time.unscaledTime - zombieModeRuntimePauseStartTime);
+                zombieModeRuntimePauseStartTime = -1f;
+            }
+        }
+
+        private void ResetZombieModeRuntimePauseClock()
+        {
+            zombieModeRuntimePauseRunId = 0;
+            zombieModeRuntimePausedDuration = 0f;
+            zombieModeRuntimePauseStartTime = -1f;
+        }
+
+        internal float GetZombieModeRuntimeNow()
+        {
+            float pausedDuration = zombieModeRuntimePausedDuration;
+            if (zombieModeRuntimePauseRunId == zombieModeRunState.RunId &&
+                zombieModeRuntimePauseStartTime >= 0f)
+            {
+                pausedDuration += Mathf.Max(0f, Time.unscaledTime - zombieModeRuntimePauseStartTime);
+            }
+
+            return Time.unscaledTime - pausedDuration;
+        }
+
         private bool InitializeZombieModeRunAfterMapLoaded(int runId)
         {
             if (!IsZombieModeRunValid(runId))
@@ -518,6 +580,7 @@ namespace BossRush
 
             if (!CollectZombieModeSpawnPoints(runId))
             {
+                DevLog("[ZombieMode] 初始化失败：未收集到有效刷怪点");
                 return false;
             }
 
@@ -713,7 +776,14 @@ namespace BossRush
                     }
 
                     grantedAny = true;
-                    int medical = TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 5);
+                    int guaranteedHealing = TryGiveZombieModeStarterGuaranteedHealingItems();
+                    if (guaranteedHealing < 2)
+                    {
+                        DevLog("[ZombieMode] 近战开局失败：保底回血道具不足");
+                        return false;
+                    }
+
+                    int medical = guaranteedHealing + TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 3);
                     grantedAny |= medical > 0;
                     grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Food" }, 1, 3, 3) > 0;
                     grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Drink" }, 1, 3, 2) > 0;
@@ -759,7 +829,14 @@ namespace BossRush
                         return false;
                     }
 
-                    grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 3) > 0;
+                    int guaranteedHealing = TryGiveZombieModeStarterGuaranteedHealingItems();
+                    if (guaranteedHealing < 2)
+                    {
+                        DevLog("[ZombieMode] 枪械开局失败：保底回血道具不足");
+                        return false;
+                    }
+
+                    grantedAny |= (guaranteedHealing + TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 1)) > 0;
                     grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Food" }, 1, 3, 2) > 0;
                     grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Drink" }, 1, 3, 1) > 0;
                 }
@@ -801,6 +878,29 @@ namespace BossRush
             return armorGranted && helmetGranted && headsetGranted;
         }
 
+        private int TryGiveZombieModeStarterGuaranteedHealingItems()
+        {
+            int success = 0;
+            for (int i = 0; i < 2; i++)
+            {
+                if (TryGiveZombieModeStarterGuaranteedHealingItem())
+                {
+                    success++;
+                }
+            }
+            return success;
+        }
+
+        private bool TryGiveZombieModeStarterGuaranteedHealingItem()
+        {
+            return TryGiveRandomItemByTags(new string[] { "Healing" }, 1, ZombieModeTuning.StarterMaxQuality);
+        }
+
+        private bool TryGiveZombieModeWaveClearHealingItem()
+        {
+            return TryGiveRandomItemByTags(new string[] { "Healing" }, 1, ZombieModeTuning.StarterMaxQuality);
+        }
+
         private int TryGiveRandomItemByTagsTimes(string[] requiredTags, int minQuality, int maxQuality, int times)
         {
             int success = 0;
@@ -839,6 +939,11 @@ namespace BossRush
 
         private bool TryGiveZombieModeStarterAmmo(string caliber, int totalCount)
         {
+            return TryGiveZombieModeAmmo(caliber, totalCount, 1, 2);
+        }
+
+        private bool TryGiveZombieModeAmmo(string caliber, int totalCount, int minQuality, int maxQuality)
+        {
             try
             {
                 ItemFilter filter = new ItemFilter();
@@ -848,8 +953,8 @@ namespace BossRush
                     ammoTags = ResolveZombieModeTags(new string[] { "Bullet" });
                 }
                 filter.requireTags = ammoTags;
-                filter.minQuality = 1;
-                filter.maxQuality = 2;
+                filter.minQuality = minQuality;
+                filter.maxQuality = maxQuality;
                 filter.caliber = caliber ?? string.Empty;
 
                 int[] candidates = ItemAssetsCollection.Search(filter);
@@ -858,7 +963,12 @@ namespace BossRush
                     return false;
                 }
 
-                int chosenTypeId = candidates[UnityEngine.Random.Range(0, candidates.Length)];
+                int chosenTypeId = PickZombieModeStrictQualityCandidate(candidates, minQuality, maxQuality);
+                if (chosenTypeId <= 0)
+                {
+                    return false;
+                }
+
                 Item ammoItem = ItemAssetsCollection.InstantiateSync(chosenTypeId);
                 if (ammoItem == null)
                 {
@@ -909,6 +1019,61 @@ namespace BossRush
             catch
             {
                 return -1;
+            }
+        }
+
+        private int PickZombieModeStrictQualityCandidate(int[] candidates, int minQuality, int maxQuality)
+        {
+            if (candidates == null || candidates.Length <= 0)
+            {
+                return -1;
+            }
+
+            minQuality = Mathf.Max(0, minQuality);
+            maxQuality = Mathf.Max(minQuality, maxQuality);
+            int eligibleCount = 0;
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (IsZombieModeItemQualityInRange(candidates[i], minQuality, maxQuality))
+                {
+                    eligibleCount++;
+                }
+            }
+
+            if (eligibleCount <= 0)
+            {
+                return -1;
+            }
+
+            int target = UnityEngine.Random.Range(0, eligibleCount);
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (!IsZombieModeItemQualityInRange(candidates[i], minQuality, maxQuality))
+                {
+                    continue;
+                }
+
+                if (target <= 0)
+                {
+                    return candidates[i];
+                }
+
+                target--;
+            }
+
+            return -1;
+        }
+
+        private bool IsZombieModeItemQualityInRange(int typeId, int minQuality, int maxQuality)
+        {
+            try
+            {
+                ItemMetaData metaData = ItemAssetsCollection.GetMetaData(typeId);
+                return metaData.id > 0 && metaData.quality >= minQuality && metaData.quality <= maxQuality;
+            }
+            catch
+            {
+                return false;
             }
         }
 

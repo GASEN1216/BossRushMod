@@ -26,8 +26,12 @@ def main() -> int:
     if "normalizeDamageMultiplier: false" not in zombie:
         return fail("ZombieMode SpawnEnemyCore calls must disable ModeD damage normalization")
 
-    normal_call = zombie.find("private UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")
-    boss_call = zombie.find("private UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync")
+    normal_call = zombie.find("private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")
+    if normal_call < 0:
+        normal_call = zombie.find("private UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")
+    boss_call = zombie.find("private async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync")
+    if boss_call < 0:
+        boss_call = zombie.find("private UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync")
     if normal_call < 0 or boss_call < 0:
         return fail("ZombieMode spawn methods not found")
 

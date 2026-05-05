@@ -16,6 +16,7 @@ namespace BossRush
 
         private readonly List<GameObject> zombieModeDisabledOriginalExtractionObjects = new List<GameObject>();
         private readonly Dictionary<int, bool> zombieModeOriginalExtractionActiveStateByObjectId = new Dictionary<int, bool>();
+        private readonly List<OriginalCharacterIsolationRecord> zombieModeDisabledOriginalCharacterRecords = new List<OriginalCharacterIsolationRecord>();
 
         private bool ApplyZombieModeMapIsolationShell(int runId)
         {
@@ -24,14 +25,17 @@ namespace BossRush
                 return false;
             }
 
+            PreCacheMapSpawnerPositions();
             DisableZombieModeOriginalSpawners(runId);
             DisableZombieModeOriginalExtractionPoints(runId);
-            ClearZombieModeOriginalEnemies();
+            DisableZombieModeOriginalCharacters();
             return true;
         }
 
         private void RestoreZombieModeMapIsolationShell()
         {
+            RestoreZombieModeOriginalCharacters();
+            RestoreZombieModeOriginalSpawners();
             RestoreZombieModeOriginalExtractionPoints();
         }
 
@@ -96,148 +100,57 @@ namespace BossRush
 
         private void DisableZombieModeOriginalSpawners(int runId)
         {
-            int disabledCount = 0;
-            int destroyedCount = 0;
-            int preservedLightsCount = 0;
-            int skippedCount = 0;
-            CharacterSpawnerRoot[] spawners = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>(true);
-            if (spawners == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < spawners.Length; i++)
-            {
-                CharacterSpawnerRoot spawner = spawners[i];
-                if (spawner == null || spawner.gameObject == null)
-                {
-                    continue;
-                }
-
-                if (ShouldSkipZombieModeOriginalSpawner(spawner))
-                {
-                    skippedCount++;
-                    continue;
-                }
-
-                if (!_createdFieldCached)
-                {
-                    _cachedCreatedField = typeof(CharacterSpawnerRoot).GetField("created",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    _createdFieldCached = true;
-                }
-
-                if (_cachedCreatedField != null)
-                {
-                    try
-                    {
-                        _cachedCreatedField.SetValue(spawner, true);
-                        disabledCount++;
-                    }
-                    catch (Exception e)
-                    {
-                        DevLog("[ZombieMode] [WARNING] 设置原版 spawner created=true 失败: " + e.Message);
-                    }
-                }
-
-                try
-                {
-                    Light[] lights = spawner.gameObject.GetComponentsInChildren<Light>(true);
-                    if (lights != null)
-                    {
-                        for (int j = 0; j < lights.Length; j++)
-                        {
-                            Light light = lights[j];
-                            if (light == null || light.gameObject == null)
-                            {
-                                continue;
-                            }
-
-                            light.transform.SetParent(null);
-                            preservedLightsCount++;
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ZombieMode] [WARNING] 保留原版 spawner 灯光失败: " + e.Message);
-                }
-
-                try
-                {
-                    RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.MapIsolation, spawner.gameObject, spawner, null);
-                    Destroy(spawner.gameObject);
-                    destroyedCount++;
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ZombieMode] [WARNING] 销毁原版 spawner 失败: " + e.Message);
-                }
-            }
-
-            DevLog("[ZombieMode] 已禁用并销毁原版刷怪器: disabled=" + disabledCount
-                + ", destroyed=" + destroyedCount
-                + ", preservedLights=" + preservedLightsCount
-                + ", scanned=" + spawners.Length
-                + ", skipped=" + skippedCount);
+            // 这里直接复用 BossRush 进图时的原版刷怪器清理逻辑，避免 ZombieMode 再维护一套不一致的软隔离分支。
+            spawnersDisabled = false;
+            DisableAllSpawners();
+            DevLog("[ZombieMode] 已复用 BossRush 进图逻辑清理原版刷怪器");
         }
 
-        private bool ShouldSkipZombieModeOriginalSpawner(CharacterSpawnerRoot spawner)
+        private void RestoreZombieModeOriginalSpawners()
         {
-            GameObject go = spawner != null ? spawner.gameObject : null;
-            if (go == null)
+            // BossRush 同源逻辑会直接销毁原版 CharacterSpawnerRoot；这里只重置标志，允许下次新场景重新扫描。
+            spawnersDisabled = false;
+        }
+
+        private void DisableZombieModeOriginalCharacters()
+        {
+            int disabledCount = OriginalCharacterIsolationHelper.Disable(
+                zombieModeDisabledOriginalCharacterRecords,
+                ShouldSkipZombieModeOriginalCharacter);
+            DevLog("[ZombieMode] 已隔离原版角色: disabled=" + disabledCount
+                + ", tracked=" + zombieModeDisabledOriginalCharacterRecords.Count);
+        }
+
+        private void RestoreZombieModeOriginalCharacters()
+        {
+            try
+            {
+                OriginalCharacterIsolationHelper.Restore(zombieModeDisabledOriginalCharacterRecords);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] 恢复原版角色失败: " + e.Message);
+            }
+        }
+
+        private bool ShouldSkipZombieModeOriginalCharacter(CharacterMainControl character)
+        {
+            if (character == null || character.gameObject == null)
             {
                 return true;
             }
 
-            string name = go.name ?? string.Empty;
-            return name.StartsWith("ZombieMode_", StringComparison.Ordinal) ||
-                   name.StartsWith("ModeE_", StringComparison.Ordinal) ||
-                   name.StartsWith("ModeF_", StringComparison.Ordinal) ||
-                   go.GetComponent<ZombieModeEnemyRuntimeMarker>() != null;
-        }
-
-        private void ClearZombieModeOriginalEnemies()
-        {
-            CharacterMainControl[] characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>(true);
-            if (characters == null)
+            if (character.IsMainCharacter || character.Team == Teams.player)
             {
-                return;
+                return true;
             }
 
-            Scene scene = SceneManager.GetActiveScene();
-            for (int i = 0; i < characters.Length; i++)
+            if (character.GetComponent<ZombieModeEnemyRuntimeMarker>() != null)
             {
-                CharacterMainControl character = characters[i];
-                if (character == null || character.gameObject == null || character.gameObject.scene != scene)
-                {
-                    continue;
-                }
-
-                if (character.IsMainCharacter || character.Team == Teams.player)
-                {
-                    continue;
-                }
-
-                if (ShouldPreserveZombieModeOriginalCharacter(character))
-                {
-                    continue;
-                }
-
-                if (character.GetComponent<ZombieModeEnemyRuntimeMarker>() != null)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    Destroy(character.gameObject);
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ZombieMode] [WARNING] 清理原版敌人 Destroy 失败: " + e.Message);
-                }
+                return true;
             }
+
+            return ShouldPreserveZombieModeOriginalCharacter(character);
         }
 
         private bool ShouldPreserveZombieModeOriginalCharacter(CharacterMainControl character)
@@ -266,6 +179,30 @@ namespace BossRush
 
             try
             {
+                if (character.GetComponentInChildren<INPCController>(true) != null)
+                {
+                    return true;
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] INPCController 检查失败: " + e.Message);
+            }
+
+            try
+            {
+                if (character.GetComponentInChildren<NPCInteractableBase>(true) != null)
+                {
+                    return true;
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] NPCInteractableBase 检查失败: " + e.Message);
+            }
+
+            try
+            {
                 if (character.GetComponentInChildren<DuckovDialogueActor>(true) != null)
                 {
                     return true;
@@ -290,27 +227,22 @@ namespace BossRush
 
             try
             {
-                MonoBehaviour[] behaviours = character.GetComponentsInChildren<MonoBehaviour>(true);
-                for (int i = 0; i < behaviours.Length; i++)
+                if (character.GetComponentInChildren<IMerchant>(true) != null)
                 {
-                    MonoBehaviour behaviour = behaviours[i];
-                    if (behaviour == null)
-                    {
-                        continue;
-                    }
+                    return true;
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] [WARNING] IMerchant 检查失败: " + e.Message);
+            }
 
-                    if (behaviour is IMerchant)
-                    {
-                        return true;
-                    }
-
-                    string typeName = behaviour.GetType().Name;
-                    if (!string.IsNullOrEmpty(typeName) &&
-                        (typeName.IndexOf("Quest", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                         typeName.IndexOf("Dialogue", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                         typeName.IndexOf("Merchant", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                         typeName.IndexOf("Npc", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                         typeName.IndexOf("NPC", StringComparison.OrdinalIgnoreCase) >= 0))
+            try
+            {
+                if (NPCModuleRegistry.ShouldSpawnAnyInScene(this, SceneManager.GetActiveScene().name))
+                {
+                    WeddingNpcResidentMarker weddingMarker = character.GetComponentInChildren<WeddingNpcResidentMarker>(true);
+                    if (weddingMarker != null && !string.IsNullOrEmpty(weddingMarker.NpcId) && weddingMarker.NpcId != "__detached__")
                     {
                         return true;
                     }
@@ -318,7 +250,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] 中立 NPC 类型扫描失败: " + e.Message);
+                DevLog("[ZombieMode] [WARNING] WeddingNpcResidentMarker 检查失败: " + e.Message);
             }
 
             return false;
