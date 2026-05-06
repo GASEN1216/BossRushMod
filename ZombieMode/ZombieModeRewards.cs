@@ -1634,7 +1634,12 @@ namespace BossRush
                     return;
                 }
 
-                await TrySpawnZombieModeNormalZombieAsync(runId, GetZombieModeSpawnPosition(), ZombieModeEnemyKind.Elite, true);
+                await TrySpawnZombieModeNormalZombieAsync(
+                    runId,
+                    GetZombieModeSpawnPosition(),
+                    ZombieModeEnemyKind.Elite,
+                    true,
+                    () => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat);
                 await UniTask.Yield();
             }
         }

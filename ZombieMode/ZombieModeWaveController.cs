@@ -383,7 +383,10 @@ namespace BossRush
                     return;
                 }
 
-                CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(runId, GetZombieModeSpawnPosition());
+                CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
+                    runId,
+                    GetZombieModeSpawnPosition(),
+                    isSpawnPhaseStillAllowed: () => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat);
                 if (zombie == null &&
                     adjustKillTargetOnFailure &&
                     IsZombieModeRunValid(runId) &&
@@ -523,7 +526,10 @@ namespace BossRush
                 }
 
                 Vector3 spawnPosition = GetNextZombieModeMapSpawnPosition();
-                CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(runId, spawnPosition);
+                CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
+                    runId,
+                    spawnPosition,
+                    isSpawnPhaseStillAllowed: () => IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase));
                 if (zombie == null &&
                     adjustKillTargetOnFailure &&
                     IsZombieModeRunValid(runId) &&

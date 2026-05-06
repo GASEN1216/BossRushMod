@@ -20,6 +20,7 @@
 | `ZombieModeSpawnEnemyCoreReuseGuard.py` | `TrySpawnZombieModeNormalZombieAsync` / `TrySpawnZombieModeBossAsync` 必须走 `SpawnEnemyCore(...)`。 |
 | `ZombieModeBossRushSpawnPointsOnlyGuard.py` | 丧尸刷怪点只能来自 BossRush 地图配置画像，不得混入原版 `CharacterSpawnerRoot`。 |
 | `ZombieModeNormalZombieCapAndAggroGuard.py` | 普通丧尸压力必须受 50 只上限、最近 BossRush 刷怪点、玩家仇恨锁定约束。 |
+| `ZombieModeNormalSpawnPhaseGuard.py` | 普通丧尸异步生成必须在等待/落地注册阶段继续检查调用方允许的战斗阶段。 |
 | `ZombieModeBossMultiplierGuard.py` | 不允许 `Health.defaultMaxHealth` 反射写。 |
 | `ZombieModeRunScopedRegistryGuard.py` | `RunOnlyObjects` 是协程/事件唯一可信源（无 `RegisteredCoroutines` / `EventListenerHandles` 双登记）。 |
 | `ZombieModeStateModelGuard.py` | 核心状态机字段、相位枚举、清理流程结构稳定。 |

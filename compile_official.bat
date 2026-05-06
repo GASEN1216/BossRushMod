@@ -368,7 +368,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\WishFountain\WishFountainRewardAnimationView.cs ^
     Integration\WishFountain\WishFountainBuilder.cs
 
-if %ERRORLEVEL% EQU 0 (
+set "BUILD_EXIT_CODE=%ERRORLEVEL%"
+
+if %BUILD_EXIT_CODE% EQU 0 (
     echo.
     echo ===================================
     echo Build succeeded!
@@ -392,3 +394,4 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 pause
+exit /b %BUILD_EXIT_CODE%

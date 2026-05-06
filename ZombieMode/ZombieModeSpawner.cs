@@ -251,11 +251,12 @@ namespace BossRush
             int runId,
             Vector3 position,
             ZombieModeEnemyKind forcedEnemyKind = ZombieModeEnemyKind.Normal,
-            bool forceEnemyKind = false)
+            bool forceEnemyKind = false,
+            System.Func<bool> isSpawnPhaseStillAllowed = null)
         {
             while (true)
             {
-                if (!IsZombieModeRunValid(runId))
+                if (!IsZombieModeNormalSpawnStillAllowed(runId, isSpawnPhaseStillAllowed))
                 {
                     return null;
                 }
@@ -265,8 +266,19 @@ namespace BossRush
                     return null;
                 }
 
+                if (!IsZombieModeNormalSpawnStillAllowed(runId, isSpawnPhaseStillAllowed))
+                {
+                    return null;
+                }
+
                 if (!TryReserveZombieModeNormalSpawnSlot(runId))
                 {
+                    return null;
+                }
+
+                if (!IsZombieModeNormalSpawnStillAllowed(runId, isSpawnPhaseStillAllowed))
+                {
+                    ReleaseZombieModeNormalSpawnSlot();
                     return null;
                 }
 
@@ -286,13 +298,15 @@ namespace BossRush
                     info,
                     position,
                     isBoss: false,
-                    isActiveCheck: () => IsZombieModeRunValid(runId),
+                    isActiveCheck: () => IsZombieModeNormalSpawnStillAllowed(runId, isSpawnPhaseStillAllowed),
                     onSpawned: ctx =>
                     {
                         CharacterMainControl zombie = ctx.character;
-                        if (IsZombieModeRuntimePaused())
+                        bool phaseStillAllowed = IsZombieModeNormalSpawnStillAllowed(runId, isSpawnPhaseStillAllowed);
+                        bool runtimePaused = IsZombieModeRuntimePaused();
+                        if (!phaseStillAllowed || runtimePaused)
                         {
-                            abortedByPause = true;
+                            abortedByPause = phaseStillAllowed && runtimePaused;
                             ReleaseZombieModeNormalSpawnSlot();
                             DestroyZombieModePausedSpawnCandidate(zombie);
                             tcs.TrySetResult(null);
@@ -332,6 +346,16 @@ namespace BossRush
                     return result;
                 }
             }
+        }
+
+        private bool IsZombieModeNormalSpawnStillAllowed(int runId, System.Func<bool> isSpawnPhaseStillAllowed)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return false;
+            }
+
+            return isSpawnPhaseStillAllowed == null || isSpawnPhaseStillAllowed();
         }
 
         private bool TryReserveZombieModeNormalSpawnSlot(int runId)

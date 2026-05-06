@@ -310,7 +310,12 @@ namespace BossRush
 
         private async UniTask SpawnZombieModeSplitterChildAsync(int runId, Vector3 position, float scale)
         {
-            CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(runId, position, ZombieModeEnemyKind.Normal, true);
+            CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
+                runId,
+                position,
+                ZombieModeEnemyKind.Normal,
+                true,
+                () => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat);
             if (zombie != null)
             {
                 zombie.transform.localScale = zombie.transform.localScale * scale;

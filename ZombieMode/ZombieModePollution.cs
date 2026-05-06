@@ -1119,7 +1119,12 @@ namespace BossRush
 
         private async Cysharp.Threading.Tasks.UniTask SpawnZombieModeSmallSplitAsync(int runId, Vector3 position)
         {
-            CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(runId, position, ZombieModeEnemyKind.Normal, true);
+            CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
+                runId,
+                position,
+                ZombieModeEnemyKind.Normal,
+                true,
+                () => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat);
             if (zombie != null)
             {
                 zombie.transform.localScale = zombie.transform.localScale * 0.6f;

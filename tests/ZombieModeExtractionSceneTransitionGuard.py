@@ -37,6 +37,16 @@ def extract_method(text: str, marker: str) -> str:
     return ""
 
 
+def has_success_dispatch_guard(method: str) -> bool:
+    direct_guard = "if (!TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea))"
+    assigned_guard = (
+        "bool dispatched = TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea);",
+        "if (!dispatched)",
+    )
+
+    return direct_guard in method or all(snippet in method for snippet in assigned_guard)
+
+
 def main() -> int:
     extraction = EXTRACTION.read_text(encoding="utf-8")
 
@@ -60,11 +70,10 @@ def main() -> int:
         if not complete_success:
             return fail("cannot extract CompleteZombieModeExtractionSuccess")
 
-        require(
-            complete_success,
-            "if (!TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea))",
-            "ZombieMode success flow must dispatch the CountDownArea success chain before manual scene-transition fallback",
-        )
+        if not has_success_dispatch_guard(complete_success):
+            raise AssertionError(
+                "ZombieMode success flow must dispatch the CountDownArea success chain before manual scene-transition fallback"
+            )
         require(
             complete_success,
             "TryNotifyZombieModeExtraction();",
