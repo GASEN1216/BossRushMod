@@ -5,6 +5,7 @@ namespace BossRush
         private void RegisterRuntimeModules()
         {
             runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
+            runtimeModuleHost.Register(new ModeDRuntimeModule());
         }
     }
 }

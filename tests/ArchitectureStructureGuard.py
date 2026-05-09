@@ -15,6 +15,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/BossRushRuntimeModuleBase.cs",
     "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
     "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
+    "ModeD/ModeDRuntimeModule.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
@@ -67,6 +68,8 @@ def main() -> int:
     registration_text = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs").read_text(encoding="utf-8", errors="ignore")
     if "runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
+    if "runtimeModuleHost.Register(new ModeDRuntimeModule());" not in registration_text:
+        return fail("ArchitectureStructureGuard: runtime module registration missing ModeDRuntimeModule")
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")
     for required in [

@@ -149,6 +149,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Interactables\BossRushInteractables.cs ^
     TeleportDebugMonitor.cs ^
     ModeD\ModeD.cs ^
+    ModeD\ModeDRuntimeModule.cs ^
     ModeD\ModeDEquipment.cs ^
     ModeD\ModeDWaves.cs ^
     ModeD\ModeDInteractables.cs ^
