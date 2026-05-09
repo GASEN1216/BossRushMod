@@ -13,6 +13,13 @@ namespace BossRush
             RegisterShootDebugListener();
         }
 
+        internal void DrawDebugToolsRuntimeGui()
+        {
+            DrawItemSpawnerUI();
+            DrawMarriageTestUI();
+            DrawFpsCounter();
+        }
+
         internal void TickDebugTools(float deltaTime, float unscaledDeltaTime)
         {
             UpdateFpsCounter();

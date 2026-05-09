@@ -484,6 +484,17 @@ def main() -> int:
         if required not in debug_scene_body:
             return fail("ArchitectureStructureGuard: OnSceneLoadedDebugToolsRuntime missing token: " + required)
 
+    debug_gui_body = extract_method_body(debug_hooks, "internal void DrawDebugToolsRuntimeGui()")
+    if not debug_gui_body:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeHooks missing DrawDebugToolsRuntimeGui wrapper")
+    for required in [
+        "DrawItemSpawnerUI();",
+        "DrawMarriageTestUI();",
+        "DrawFpsCounter();",
+    ]:
+        if required not in debug_gui_body:
+            return fail("ArchitectureStructureGuard: DrawDebugToolsRuntimeGui missing token: " + required)
+
     for forbidden in [
         "UpdateFpsCounter();",
         "UpdateMapClickDebug();",
@@ -538,6 +549,19 @@ def main() -> int:
     ]:
         if forbidden in late_update_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate still directly calls debug tool token: " + forbidden)
+
+    on_gui_body = extract_method_body(mod_text, "void OnGUI()")
+    if not on_gui_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnGUI body could not be parsed")
+    if "DrawDebugToolsRuntimeGui();" not in on_gui_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnGUI must route debug gui through wrapper")
+    for forbidden in [
+        "DrawItemSpawnerUI();",
+        "DrawMarriageTestUI();",
+        "DrawFpsCounter();",
+    ]:
+        if forbidden in on_gui_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.OnGUI still directly calls debug gui token: " + forbidden)
 
     achievement_runtime_module = ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in achievement_runtime_module:

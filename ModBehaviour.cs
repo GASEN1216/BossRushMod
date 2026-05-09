@@ -2386,14 +2386,7 @@ namespace BossRush
 
             // Boss 池配置窗口现在使用 Unity UI Canvas 实现，不再需要 OnGUI
             
-            // 绘制物品生成器 UI（F1 呼出）
-            DrawItemSpawnerUI();
-
-            // 绘制婚姻系统测试面板（DevMode）
-            DrawMarriageTestUI();
-            
-            // 绘制帧率显示（DevMode）
-            DrawFpsCounter();
+            DrawDebugToolsRuntimeGui();
         }
 
         private void DrawMarriageTestUI()
