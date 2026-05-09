@@ -145,6 +145,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Config\NPCSpawnConfig.cs ^
     Config\LootBlacklistRegistry.cs ^
     WavesArena\WavesArena.cs ^
+    WavesArena\WavesArenaRuntimeModule.cs ^
     LootAndRewards\LegacyBossLootProbabilityModel.cs ^
     LootAndRewards\LootAndRewards.cs ^
     LootAndRewards\VictoryRewardShadowCrateController.cs ^
@@ -158,6 +159,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeD\ModeDInteractables.cs ^
     ModeD\ModeDGlobalLoot.cs ^
     ModeE\ModeE.cs ^
+    ModeE\ModeERuntimeModule.cs ^
     ModeE\ModeEMerchant.cs ^
     ModeE\ModeESpawnAllocation.cs ^
     ModeE\ModeEBattle.cs ^
@@ -167,6 +169,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeE\ModeERespawnItems.cs ^
     ModeE\RespawnItemUsage.cs ^
     ModeF\ModeFModels.cs ^
+    ModeF\ModeFRuntimeModule.cs ^
     ModeF\ModeFEntry.cs ^
     ModeF\ModeFPhases.cs ^
     ModeF\ModeFBounty.cs ^
@@ -176,6 +179,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFUI.cs ^
     ModeF\ModeFMerchant.cs ^
     ZombieMode\ZombieModeModels.cs ^
+    ZombieMode\ZombieModeRuntimeModule.cs ^
     ZombieMode\ZombieModeEntry.cs ^
     ZombieMode\ZombieModeMapSelection.cs ^
     ZombieMode\ZombieModeMapSelectionHelper.cs ^

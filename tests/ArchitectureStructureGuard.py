@@ -31,6 +31,10 @@ REQUIRED_COMPILE_SOURCES = [
     "Achievement/AchievementRuntimeHooks.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
+    "WavesArena/WavesArenaRuntimeModule.cs",
+    "ModeE/ModeERuntimeModule.cs",
+    "ModeF/ModeFRuntimeModule.cs",
+    "ZombieMode/ZombieModeRuntimeModule.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
@@ -113,6 +117,14 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: runtime module registration missing AchievementRuntimeModule")
     if "runtimeModuleHost.Register(new CommonNpcRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing CommonNpcRuntimeModule")
+    for module_name in [
+        "WavesArenaRuntimeModule",
+        "ModeERuntimeModule",
+        "ModeFRuntimeModule",
+        "ZombieModeRuntimeModule",
+    ]:
+        if "runtimeModuleHost.Register(new " + module_name + "());" not in registration_text:
+            return fail("ArchitectureStructureGuard: runtime module registration missing " + module_name)
 
     mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
@@ -306,6 +318,20 @@ def main() -> int:
     ]:
         if forbidden in integration_text:
             return fail("ArchitectureStructureGuard: BossRushIntegration must route common NPC registry token through wrapper: " + forbidden)
+
+    for module_path, module_name in {
+        "WavesArena/WavesArenaRuntimeModule.cs": "WavesArena",
+        "ModeE/ModeERuntimeModule.cs": "ModeE",
+        "ModeF/ModeFRuntimeModule.cs": "ModeF",
+        "ZombieMode/ZombieModeRuntimeModule.cs": "ZombieMode",
+    }.items():
+        module_text = Path(module_path).read_text(encoding="utf-8", errors="ignore")
+        if 'get { return "' + module_name + '"; }' not in module_text:
+            return fail("ArchitectureStructureGuard: runtime module shell missing module name: " + module_name)
+        if "private ModBehaviour owner;" not in module_text:
+            return fail("ArchitectureStructureGuard: runtime module shell must keep owner reference: " + module_name)
+        if "owner = null;" not in module_text:
+            return fail("ArchitectureStructureGuard: runtime module shell must clear owner on destroy: " + module_name)
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")
     for required in [
