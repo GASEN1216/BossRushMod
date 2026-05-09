@@ -2444,18 +2444,15 @@ namespace BossRush
 
 
         /// <summary>
-        /// 强制杀死所有敌人（用于F10调试，忽略范围限制）
-        /// 直接调用Health.Kill()而不是Destroy，确保触发死亡事件
+        /// 尝试将 BossRush 相关文本注入到本地化管理器
         /// </summary>
         private void InjectLocalization()
         {
             InjectLocalization_Extra_Integration();
         }
-        
+
         /// <summary>
-        /// 查找并注入交互目标
-        /// scanTimes: 扫描次数，<=0 表示无限(不建议)
-        /// Bug #2 修复：成功注入后立即停止扫描
+        /// 从交互系统启动 BossRush
         /// </summary>
         public void StartBossRushFromInteraction(BossRushInteractable interactionSource)
         {
