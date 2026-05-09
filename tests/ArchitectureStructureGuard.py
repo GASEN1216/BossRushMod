@@ -23,6 +23,7 @@ INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
 AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
+WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
@@ -51,6 +52,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Utilities/GameplayRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
+    "WavesArena/BossRushEntryFlow.cs",
     "ModeE/ModeERuntimeModule.cs",
     "ModeE/ModeERuntimeHooks.cs",
     "ModeF/ModeFRuntimeModule.cs",
@@ -302,6 +304,33 @@ def main() -> int:
             return fail("ArchitectureStructureGuard: CleanupCashMagnetForSceneChange missing token: " + required)
 
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    waves_entry_flow = WAVES_ENTRY_FLOW.read_text(encoding="utf-8", errors="ignore")
+    for signature, required_tokens in {
+        "private BossRushEntryMode DetermineBossRushEntryMode(string context)": [
+            "DetectFactionFlag();",
+            "IsPlayerNakedForModeF()",
+            "DetectBossRushTicketItem();",
+        ],
+        "private IEnumerator SetupBossRushInDemoChallenge(Scene scene)": [
+            "DetermineBossRushEntryMode(\"SetupBossRushInDemoChallenge\")",
+            "TryStartModeE();",
+            "TryStartModeF();",
+            "TryStartModeD();",
+            "BossRushMapSelectionHelper.ClearPendingEntryFlowState();",
+        ],
+    }.items():
+        body = extract_method_body(waves_entry_flow, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: BossRushEntryFlow missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: BossRushEntryFlow missing token: " + required)
+    for forbidden in [
+        "private BossRushEntryMode DetermineBossRushEntryMode(string context)",
+        "private System.Collections.IEnumerator SetupBossRushInDemoChallenge(Scene scene)",
+    ]:
+        if forbidden in mod_text:
+            return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush entry flow method anymore: " + forbidden)
     waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")
     if not waves_tick_body:
         return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaRuntime wrapper")
