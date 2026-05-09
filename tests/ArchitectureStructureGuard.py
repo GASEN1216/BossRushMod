@@ -349,6 +349,17 @@ def main() -> int:
     if "TickModeF(Time.deltaTime);" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call TickModeF")
 
+    mode_f_scene_cleanup_body = extract_method_body(mode_f_hooks, "internal void CleanupModeFForSceneChange()")
+    if not mode_f_scene_cleanup_body:
+        return fail("ArchitectureStructureGuard: ModeFRuntimeHooks missing CleanupModeFForSceneChange wrapper")
+    for required in [
+        "if (modeFActive)",
+        "ExitModeF();",
+        'DevLog("[ModeF] 场景切换清理异常: " + ex.Message);',
+    ]:
+        if required not in mode_f_scene_cleanup_body:
+            return fail("ArchitectureStructureGuard: CleanupModeFForSceneChange missing token: " + required)
+
     zombie_hooks = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     zombie_tick_body = extract_method_body(zombie_hooks, "internal void TickZombieModeRuntime(float unscaledDeltaTime)")
     if not zombie_tick_body:
@@ -545,6 +556,7 @@ def main() -> int:
         "PrepareSceneRuntimeForLoad();",
         "OnSceneUnloadAlwaysOnRuntime();",
         "CleanupEnemyRecoveryForSceneChange();",
+        "CleanupModeFForSceneChange();",
         "CleanupCashMagnetForSceneChange();",
     ]:
         if required not in scene_loaded_body:
@@ -557,6 +569,7 @@ def main() -> int:
         "AffinityUIManager.OnSceneUnload();",
         "AffinityManager.OnSceneUnload();",
         "ClearEnemyRecoveryMonitorState();",
+        "try { ExitModeF();",
         "try { ClearCashMagnetState();",
     ]:
         if forbidden in scene_loaded_body:

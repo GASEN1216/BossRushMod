@@ -2953,11 +2953,7 @@ namespace BossRush
                 CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);
             }
 
-            // Mode F 场景切换清理
-            if (modeFActive)
-            {
-                try { ExitModeF(); } catch (System.Exception ex) { DevLog("[ModeF] 场景切换清理异常: " + ex.Message); }
-            }
+            CleanupModeFForSceneChange();
             
             // 场景切换时清理现金磁铁飞行状态
             CleanupCashMagnetForSceneChange();
