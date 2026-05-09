@@ -2936,14 +2936,7 @@ namespace BossRush
             CleanupAchievementRuntime();
             
             // 取消订阅好感度系统事件并保存数据
-            try
-            {
-                AffinityManager.OnAffinityChanged -= OnAffinityChanged;
-                AffinityManager.OnLevelUp -= OnAffinityLevelUp;
-                AffinityManager.Shutdown();  // 关闭好感度管理器（取消事件订阅并保存数据）
-                AffinityUIManager.Cleanup();
-            }
-            catch { }
+            CleanupAlwaysOnRuntimeOnDestroy();
 
             // 卸载实体模型工厂资源
             try

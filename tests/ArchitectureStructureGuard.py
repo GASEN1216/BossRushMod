@@ -188,6 +188,18 @@ def main() -> int:
     if always_on_scene_unload_body.find("AffinityUIManager.OnSceneUnload();") > always_on_scene_unload_body.find("AffinityManager.OnSceneUnload();"):
         return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime must preserve UI unload before affinity unload")
 
+    always_on_destroy_body = extract_method_body(always_on_hooks, "internal void CleanupAlwaysOnRuntimeOnDestroy()")
+    if not always_on_destroy_body:
+        return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing CleanupAlwaysOnRuntimeOnDestroy wrapper")
+    for required in [
+        "AffinityManager.OnAffinityChanged -= OnAffinityChanged;",
+        "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
+        "AffinityManager.Shutdown();",
+        "AffinityUIManager.Cleanup();",
+    ]:
+        if required not in always_on_destroy_body:
+            return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy missing token: " + required)
+
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
 
@@ -482,6 +494,16 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route achievement cleanup through wrapper")
     if "UnsubscribeAchievementEvents();" in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must not directly unsubscribe achievement events")
+    if "CleanupAlwaysOnRuntimeOnDestroy();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route always-on cleanup through wrapper")
+    for forbidden in [
+        "AffinityManager.OnAffinityChanged -= OnAffinityChanged;",
+        "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
+        "AffinityManager.Shutdown();",
+        "AffinityUIManager.Cleanup();",
+    ]:
+        if forbidden in destroy_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy still directly calls always-on cleanup token: " + forbidden)
 
     scene_loaded_body = extract_method_body(mod_text, "private void OnSceneLoaded(Scene scene, LoadSceneMode mode)")
     if not scene_loaded_body:

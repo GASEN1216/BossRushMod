@@ -13,5 +13,19 @@ namespace BossRush
             AffinityUIManager.OnSceneUnload();
             AffinityManager.OnSceneUnload();
         }
+
+        internal void CleanupAlwaysOnRuntimeOnDestroy()
+        {
+            try
+            {
+                AffinityManager.OnAffinityChanged -= OnAffinityChanged;
+                AffinityManager.OnLevelUp -= OnAffinityLevelUp;
+                AffinityManager.Shutdown();
+                AffinityUIManager.Cleanup();
+            }
+            catch
+            {
+            }
+        }
     }
 }
