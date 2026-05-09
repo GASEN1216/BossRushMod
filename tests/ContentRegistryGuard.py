@@ -112,6 +112,13 @@ def require_ordered_tokens(text: str, tokens: list[str], label: str) -> str | No
     return None
 
 
+def require_exactly_once(text: str, token: str, label: str) -> str | None:
+    count = text.count(token)
+    if count != 1:
+        return label + " token occurrence count for '" + token + "' must be 1, got " + str(count)
+    return None
+
+
 def main() -> int:
     compile_text = normalize_slashes(COMPILE.read_text(encoding="utf-8", errors="ignore"))
     integration_text = INTEGRATION.read_text(encoding="utf-8", errors="ignore")
@@ -135,8 +142,29 @@ def main() -> int:
     if item_order_error:
         return fail(item_order_error)
 
-    if "RegisterItemContentConfigurators();" not in integration_text:
-        return fail("ContentRegistryGuard: integration missing RegisterItemContentConfigurators call")
+    for token in ITEM_REGISTRATION_CALLS:
+        occurrence_error = require_exactly_once(item_text, token, "ContentRegistryGuard: item registry")
+        if occurrence_error:
+            return fail(occurrence_error)
+
+    integration_item_order_error = require_ordered_tokens(
+        integration_text,
+        [
+            "RegisterItemContentConfigurators();",
+            "int itemCount = ItemFactory.LoadAllItems();",
+            "PeaceCharmRuntime.InitializeRuntime();",
+        ],
+        "ContentRegistryGuard: integration item bootstrap")
+    if integration_item_order_error:
+        return fail(integration_item_order_error)
+
+    for token in [
+        "RegisterItemContentConfigurators();",
+        "int itemCount = ItemFactory.LoadAllItems();",
+    ]:
+        occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration item bootstrap")
+        if occurrence_error:
+            return fail(occurrence_error)
 
     inline_item_tokens = [token for token in INLINE_ITEM_TOKENS if token in integration_text]
     if inline_item_tokens:
@@ -153,17 +181,46 @@ def main() -> int:
     if equipment_order_error:
         return fail(equipment_order_error)
 
-    missing_equipment_calls = [
-        call for call in [
+    for token in EQUIPMENT_TOKENS:
+        occurrence_error = require_exactly_once(equipment_text, token, "ContentRegistryGuard: equipment registry")
+        if occurrence_error:
+            return fail(occurrence_error)
+
+    integration_equipment_start_order_error = require_ordered_tokens(
+        integration_text,
+        [
+            "ZombieTideInvitationConfig.InjectIntoShops();",
             "LoadEquipmentContent();",
             "InitializeEarlyEquipmentAbilitySystems();",
+            "SceneManager.sceneLoaded += OnSceneLoaded;",
+            "RegisterDragonSetEvents();",
             "InitializeLateEquipmentAbilitySystems();",
+            "StartCoroutine(FindInteractionTargets(5));",
+        ],
+        "ContentRegistryGuard: integration equipment start bootstrap")
+    if integration_equipment_start_order_error:
+        return fail(integration_equipment_start_order_error)
+
+    integration_equipment_cleanup_order_error = require_ordered_tokens(
+        integration_text,
+        [
+            "UnregisterDragonSetEvents();",
             "CleanupEquipmentAbilitySystems();",
-        ]
-        if call not in integration_text
-    ]
-    if missing_equipment_calls:
-        return fail("ContentRegistryGuard: integration missing equipment wrapper call(s): " + ", ".join(missing_equipment_calls))
+            "PeaceCharmRuntime.ShutdownRuntime();",
+        ],
+        "ContentRegistryGuard: integration equipment cleanup")
+    if integration_equipment_cleanup_order_error:
+        return fail(integration_equipment_cleanup_order_error)
+
+    for token in [
+        "LoadEquipmentContent();",
+        "InitializeEarlyEquipmentAbilitySystems();",
+        "InitializeLateEquipmentAbilitySystems();",
+        "CleanupEquipmentAbilitySystems();",
+    ]:
+        occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration equipment wrapper")
+        if occurrence_error:
+            return fail(occurrence_error)
 
     inline_equipment_tokens = [token for token in INLINE_EQUIPMENT_TOKENS if token in integration_text]
     if inline_equipment_tokens:
