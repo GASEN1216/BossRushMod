@@ -269,6 +269,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Utils\NPCInteractionGroupHelper.cs ^
     Integration\Utils\NPCCommonUtils.cs ^
     Integration\NPCs\Common\NPCModuleRegistry.cs ^
+    Integration\NPCs\Common\CommonNpcRuntimeModule.cs ^
+    Integration\NPCs\Common\CommonNpcRuntimeHooks.cs ^
     Integration\NPCs\Courier\CourierNPC.cs ^
     Integration\NPCs\Courier\CourierLootSweepRunner.cs ^
     Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs ^

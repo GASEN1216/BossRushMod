@@ -3348,15 +3348,6 @@ namespace BossRush
             BossRushMapSelectionHelper.ClearPendingEntryFlowState();
         }
 
-        /// <summary>
-        /// 统一生成公共NPC（快递员、哥布林、护士）
-        /// </summary>
-        private void SpawnCommonNPCs(string context)
-        {
-            int count = NPCModuleRegistry.SpawnForCurrentScene(this, context);
-            DevLog("[NPCSpawn] " + context + "，已触发模块数量: " + count);
-        }
-
         private void CreateRescueTeleportBubble()
         {
             CreateRescueTeleportBubble_UIAndSigns();

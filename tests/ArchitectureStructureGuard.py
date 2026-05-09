@@ -13,6 +13,9 @@ DEBUG_RUNTIME_MODULE = Path("DebugAndTools/DebugToolsRuntimeModule.cs")
 DEBUG_RUNTIME_HOOKS = Path("DebugAndTools/DebugToolsRuntimeHooks.cs")
 ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
 ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
+COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
+COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
+INTEGRATION = Path("Integration/BossRushIntegration.cs")
 
 REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
@@ -26,6 +29,8 @@ REQUIRED_COMPILE_SOURCES = [
     "DebugAndTools/DebugToolsRuntimeHooks.cs",
     "Achievement/AchievementRuntimeModule.cs",
     "Achievement/AchievementRuntimeHooks.cs",
+    "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
+    "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
@@ -106,6 +111,8 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: runtime module registration missing DebugToolsRuntimeModule")
     if "runtimeModuleHost.Register(new AchievementRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing AchievementRuntimeModule")
+    if "runtimeModuleHost.Register(new CommonNpcRuntimeModule());" not in registration_text:
+        return fail("ArchitectureStructureGuard: runtime module registration missing CommonNpcRuntimeModule")
 
     mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
@@ -265,6 +272,40 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route achievement cleanup through wrapper")
     if "UnsubscribeAchievementEvents();" in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must not directly unsubscribe achievement events")
+
+    common_npc_runtime_module = COMMON_NPC_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
+    if 'get { return "CommonNPC"; }' not in common_npc_runtime_module:
+        return fail("ArchitectureStructureGuard: CommonNpcRuntimeModule missing CommonNPC module name")
+
+    common_npc_hooks = COMMON_NPC_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    for signature, required_tokens in {
+        "private void SpawnCommonNPCs(string context)": [
+            "NPCModuleRegistry.SpawnForCurrentScene(this, context);",
+        ],
+        "private bool ShouldSpawnCommonNPCsInScene(string sceneName)": [
+            "NPCModuleRegistry.ShouldSpawnAnyInScene(this, sceneName);",
+        ],
+        "private void DestroyCommonNPCs(string context)": [
+            "NPCModuleRegistry.DestroyAll(this, context);",
+        ],
+    }.items():
+        body = extract_method_body(common_npc_hooks, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: CommonNpcRuntimeHooks missing wrapper: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: CommonNpcRuntimeHooks wrapper missing token: " + required)
+
+    if "NPCModuleRegistry.SpawnForCurrentScene(this, context);" in mod_text:
+        return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own common NPC spawn registry call")
+
+    integration_text = INTEGRATION.read_text(encoding="utf-8", errors="ignore")
+    for forbidden in [
+        "NPCModuleRegistry.DestroyAll(this,",
+        "NPCModuleRegistry.ShouldSpawnAnyInScene(this,",
+    ]:
+        if forbidden in integration_text:
+            return fail("ArchitectureStructureGuard: BossRushIntegration must route common NPC registry token through wrapper: " + forbidden)
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")
     for required in [

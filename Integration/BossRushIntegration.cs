@@ -1234,7 +1234,7 @@ namespace BossRush
             ClearDeathWraithState_DeathWraith();
 
             // 统一销毁公共 NPC，避免卸载时残留引用
-            NPCModuleRegistry.DestroyAll(this, "Mod 卸载");
+            DestroyCommonNPCs("Mod 卸载");
             
             // 取消注册龙套装事件
             UnregisterDragonSetEvents();
@@ -1562,7 +1562,7 @@ namespace BossRush
                         currentBoss = null;
                         
                         // 统一销毁公共 NPC（快递员/哥布林/护士）
-                        NPCModuleRegistry.DestroyAll(this, "离开竞技场场景");
+                        DestroyCommonNPCs("离开竞技场场景");
                         
                         // 重置 spawner 禁用标志，以便下次进入竞技场时能重新禁用
                         spawnersDisabled = false;
@@ -1606,7 +1606,7 @@ namespace BossRush
                     }
                     
                     // 普通模式下：若当前场景有任意公共 NPC 模块可生成，则延迟统一生成
-                    if (NPCModuleRegistry.ShouldSpawnAnyInScene(this, scene.name))
+                    if (ShouldSpawnCommonNPCsInScene(scene.name))
                     {
                         DevLog("[NPCSpawn] 普通模式检测到可生成公共NPC场景: " + scene.name + ", 延迟统一生成");
                         StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(scene.name));
