@@ -7,6 +7,8 @@ import sys
 
 COMPILE = Path("compile_official.bat")
 MOD = Path("ModBehaviour.cs")
+MODED_WAVES = Path("ModeD/ModeDWaves.cs")
+MODED_RUNTIME_MODULE = Path("ModeD/ModeDRuntimeModule.cs")
 
 REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
@@ -44,6 +46,28 @@ def normalize_slashes(text: str) -> str:
     return re.sub(r"/+", "/", text.replace("\\", "/"))
 
 
+def extract_method_body(text: str, signature: str) -> str:
+    signature_index = text.find(signature)
+    if signature_index < 0:
+        return ""
+
+    brace_index = text.find("{", signature_index)
+    if brace_index < 0:
+        return ""
+
+    depth = 0
+    for index in range(brace_index, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[brace_index:index + 1]
+
+    return ""
+
+
 def main() -> int:
     compile_text = normalize_slashes(COMPILE.read_text(encoding="utf-8", errors="ignore"))
     mod_text = MOD.read_text(encoding="utf-8", errors="ignore")
@@ -70,6 +94,23 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
     if "runtimeModuleHost.Register(new ModeDRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing ModeDRuntimeModule")
+
+    mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
+    if "owner.TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
+        return fail("ArchitectureStructureGuard: ModeDRuntimeModule must route Mode D integrity ticking through owner wrapper")
+
+    mode_d_waves = MODED_WAVES.read_text(encoding="utf-8", errors="ignore")
+    mode_d_tick_body = extract_method_body(mode_d_waves, "internal void TickModeDIntegrity(float deltaTime)")
+    if not mode_d_tick_body:
+        return fail("ArchitectureStructureGuard: ModeD missing TickModeDIntegrity wrapper")
+    if "TryFixStuckWaveIfNoModeDEnemyAlive();" not in mode_d_tick_body:
+        return fail("ArchitectureStructureGuard: TickModeDIntegrity must preserve Mode D stuck-wave self-check")
+
+    update_body = extract_method_body(mod_text, "void Update()")
+    if not update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update body could not be parsed")
+    if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")
     for required in [

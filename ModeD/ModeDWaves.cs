@@ -877,6 +877,27 @@ namespace BossRush
         /// <summary>
         /// Mode D 波次完整性自检：定期检查是否有敌人存活，如果没有则自动推进波次
         /// </summary>
+        internal void TickModeDIntegrity(float deltaTime)
+        {
+            if (!modeDActive)
+            {
+                return;
+            }
+
+            if (!IsActive)
+            {
+                waveIntegrityCheckTimer = 0f;
+                return;
+            }
+
+            waveIntegrityCheckTimer += deltaTime;
+            if (waveIntegrityCheckTimer >= WaveIntegrityCheckInterval)
+            {
+                waveIntegrityCheckTimer = 0f;
+                TryFixStuckWaveIfNoModeDEnemyAlive();
+            }
+        }
+
         /// <remarks>
         /// 解决问题：敌人死亡事件可能丢失（瞬杀、事件触发时机等），导致波次卡住无法推进。
         /// 此方法作为兜底机制，每隔一段时间检查一次敌人存活状态。

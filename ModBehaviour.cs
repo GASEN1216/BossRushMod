@@ -2931,17 +2931,12 @@ namespace BossRush
             // 波次完整性自检：每隔一段时间检查当前波是否出现“没有任何存活Boss但计数未清零”的异常
             if (IsActive)
             {
-                waveIntegrityCheckTimer += Time.deltaTime;
-                if (waveIntegrityCheckTimer >= WaveIntegrityCheckInterval)
+                if (!modeDActive)
                 {
-                    waveIntegrityCheckTimer = 0f;
-                    // Mode D 使用独立的自检逻辑
-                    if (modeDActive)
+                    waveIntegrityCheckTimer += Time.deltaTime;
+                    if (waveIntegrityCheckTimer >= WaveIntegrityCheckInterval)
                     {
-                        TryFixStuckWaveIfNoModeDEnemyAlive();
-                    }
-                    else
-                    {
+                        waveIntegrityCheckTimer = 0f;
                         TryFixStuckWaveIfNoBossAlive();
                     }
                 }
