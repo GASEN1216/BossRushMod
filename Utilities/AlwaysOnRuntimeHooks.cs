@@ -7,5 +7,11 @@ namespace BossRush
             UpdateMessage();
             AffinityManager.UpdateDeferredSave();
         }
+
+        internal void OnSceneUnloadAlwaysOnRuntime()
+        {
+            AffinityUIManager.OnSceneUnload();
+            AffinityManager.OnSceneUnload();
+        }
     }
 }

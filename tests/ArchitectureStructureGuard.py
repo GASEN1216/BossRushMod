@@ -176,6 +176,18 @@ def main() -> int:
         if forbidden in update_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls always-on token: " + forbidden)
 
+    always_on_scene_unload_body = extract_method_body(always_on_hooks, "internal void OnSceneUnloadAlwaysOnRuntime()")
+    if not always_on_scene_unload_body:
+        return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing OnSceneUnloadAlwaysOnRuntime wrapper")
+    for required in [
+        "AffinityUIManager.OnSceneUnload();",
+        "AffinityManager.OnSceneUnload();",
+    ]:
+        if required not in always_on_scene_unload_body:
+            return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime missing token: " + required)
+    if always_on_scene_unload_body.find("AffinityUIManager.OnSceneUnload();") > always_on_scene_unload_body.find("AffinityManager.OnSceneUnload();"):
+        return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime must preserve UI unload before affinity unload")
+
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
 
@@ -210,6 +222,22 @@ def main() -> int:
     ]:
         if forbidden in update_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls gameplay support token: " + forbidden)
+
+    gameplay_enemy_recovery_cleanup_body = extract_method_body(gameplay_hooks, "internal void CleanupEnemyRecoveryForSceneChange()")
+    if not gameplay_enemy_recovery_cleanup_body:
+        return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing CleanupEnemyRecoveryForSceneChange wrapper")
+    if "ClearEnemyRecoveryMonitorState();" not in gameplay_enemy_recovery_cleanup_body:
+        return fail("ArchitectureStructureGuard: CleanupEnemyRecoveryForSceneChange missing ClearEnemyRecoveryMonitorState")
+
+    gameplay_cash_cleanup_body = extract_method_body(gameplay_hooks, "internal void CleanupCashMagnetForSceneChange()")
+    if not gameplay_cash_cleanup_body:
+        return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing CleanupCashMagnetForSceneChange wrapper")
+    for required in [
+        "ClearCashMagnetState();",
+        'DevLog($"[CashMagnet] 场景切换清理异常: {ex.Message}");',
+    ]:
+        if required not in gameplay_cash_cleanup_body:
+            return fail("ArchitectureStructureGuard: CleanupCashMagnetForSceneChange missing token: " + required)
 
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")
@@ -454,6 +482,25 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route achievement cleanup through wrapper")
     if "UnsubscribeAchievementEvents();" in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must not directly unsubscribe achievement events")
+
+    scene_loaded_body = extract_method_body(mod_text, "private void OnSceneLoaded(Scene scene, LoadSceneMode mode)")
+    if not scene_loaded_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded body could not be parsed")
+    for required in [
+        "OnSceneUnloadAlwaysOnRuntime();",
+        "CleanupEnemyRecoveryForSceneChange();",
+        "CleanupCashMagnetForSceneChange();",
+    ]:
+        if required not in scene_loaded_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded missing wrapper call: " + required)
+    for forbidden in [
+        "AffinityUIManager.OnSceneUnload();",
+        "AffinityManager.OnSceneUnload();",
+        "ClearEnemyRecoveryMonitorState();",
+        "try { ClearCashMagnetState();",
+    ]:
+        if forbidden in scene_loaded_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded still directly calls scene-change token: " + forbidden)
 
     common_npc_runtime_module = COMMON_NPC_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if 'get { return "CommonNPC"; }' not in common_npc_runtime_module:

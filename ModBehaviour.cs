@@ -2977,9 +2977,8 @@ namespace BossRush
             ObjectCache.RefreshIfNeeded();
             
             // 场景切换时清理好感度系统UI缓存
-            AffinityUIManager.OnSceneUnload();
-            AffinityManager.OnSceneUnload();
-            ClearEnemyRecoveryMonitorState();
+            OnSceneUnloadAlwaysOnRuntime();
+            CleanupEnemyRecoveryForSceneChange();
             if (!ShouldPreserveZombieModeStartupForSceneLoad(scene))
             {
                 CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);
@@ -2992,7 +2991,7 @@ namespace BossRush
             }
             
             // 场景切换时清理现金磁铁飞行状态
-            try { ClearCashMagnetState(); } catch (System.Exception ex) { DevLog($"[CashMagnet] 场景切换清理异常: {ex.Message}"); }
+            CleanupCashMagnetForSceneChange();
             
             OnSceneLoaded_F3DebugCheatMenu(scene, mode);
             OnSceneLoaded_Integration(scene, mode);
