@@ -1,6 +1,7 @@
 using ItemStatsSystem;
 using Duckov.UI;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
@@ -344,6 +345,11 @@ namespace BossRush
             OnDestroy_F3DebugCheatMenu();
             UnregisterInteractDebugListener();
             UnregisterShootDebugListener();
+        }
+
+        internal void OnSceneLoadedDebugToolsRuntime(Scene scene, LoadSceneMode mode)
+        {
+            OnSceneLoaded_F3DebugCheatMenu(scene, mode);
         }
     }
 }

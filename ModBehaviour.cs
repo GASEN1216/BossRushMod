@@ -2938,7 +2938,7 @@ namespace BossRush
             // 场景切换时清理现金磁铁飞行状态
             CleanupCashMagnetForSceneChange();
             
-            OnSceneLoaded_F3DebugCheatMenu(scene, mode);
+            OnSceneLoadedDebugToolsRuntime(scene, mode);
             OnSceneLoaded_Integration(scene, mode);
             runtimeModuleHost.OnSceneLoaded(new SceneRuntimeContext(scene, mode));
         }

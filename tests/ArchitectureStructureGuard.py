@@ -447,6 +447,15 @@ def main() -> int:
         if required not in debug_init_body:
             return fail("ArchitectureStructureGuard: InitializeDebugToolsRuntime missing token: " + required)
 
+    debug_scene_body = extract_method_body(debug_hooks, "internal void OnSceneLoadedDebugToolsRuntime(Scene scene, LoadSceneMode mode)")
+    if not debug_scene_body:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeHooks missing OnSceneLoadedDebugToolsRuntime wrapper")
+    for required in [
+        "OnSceneLoaded_F3DebugCheatMenu(scene, mode);",
+    ]:
+        if required not in debug_scene_body:
+            return fail("ArchitectureStructureGuard: OnSceneLoadedDebugToolsRuntime missing token: " + required)
+
     for forbidden in [
         "UpdateFpsCounter();",
         "UpdateMapClickDebug();",
@@ -631,6 +640,7 @@ def main() -> int:
         "CleanupZombieModeForSceneLoad(scene);",
         "CleanupModeFForSceneChange();",
         "CleanupCashMagnetForSceneChange();",
+        "OnSceneLoadedDebugToolsRuntime(scene, mode);",
     ]:
         if required not in scene_loaded_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded missing wrapper call: " + required)
@@ -645,6 +655,7 @@ def main() -> int:
         "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);",
         "try { ExitModeF();",
         "try { ClearCashMagnetState();",
+        "OnSceneLoaded_F3DebugCheatMenu(scene, mode);",
     ]:
         if forbidden in scene_loaded_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded still directly calls scene-change token: " + forbidden)
