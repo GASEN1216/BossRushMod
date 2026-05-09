@@ -13,6 +13,7 @@ ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 PLAYER_LIFECYCLE_RUNTIME_HOOKS = Path("Utilities/PlayerLifecycleRuntimeHooks.cs")
 DEBUG_RUNTIME_MODULE = Path("DebugAndTools/DebugToolsRuntimeModule.cs")
 DEBUG_RUNTIME_HOOKS = Path("DebugAndTools/DebugToolsRuntimeHooks.cs")
+MARRIAGE_DEBUG_UI = Path("DebugAndTools/MarriageTestDebugUI.cs")
 ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
 ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
@@ -39,6 +40,7 @@ REQUIRED_COMPILE_SOURCES = [
     "ModeD/ModeDRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeHooks.cs",
+    "DebugAndTools/MarriageTestDebugUI.cs",
     "Achievement/AchievementRuntimeModule.cs",
     "Achievement/AchievementRuntimeHooks.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
@@ -497,6 +499,22 @@ def main() -> int:
         if required not in debug_gui_body:
             return fail("ArchitectureStructureGuard: DrawDebugToolsRuntimeGui missing token: " + required)
 
+    marriage_debug_ui = MARRIAGE_DEBUG_UI.read_text(encoding="utf-8", errors="ignore")
+    for signature in [
+        "private void DrawMarriageTestUI()",
+        "private void DrawMarriageTestWindow(int windowId)",
+        "private void AppendMarriageTestLog(string message)",
+        "private void SpawnDebugItemForMarriageTest(int typeId, int count)",
+        "private int CountItemInPlayerInventory(int typeId)",
+        "private void TriggerMarriageSequenceForNpc(string npcId)",
+        "private void TriggerDivorceForCurrentSpouse()",
+        "private Transform GetNpcTransformForMarriageTest(string npcId)",
+        "private INPCController GetNpcControllerForMarriageTest(string npcId, Transform fallbackTransform)",
+        "private void LogInventoryDetailsForF3Debug()",
+    ]:
+        if signature not in marriage_debug_ui:
+            return fail("ArchitectureStructureGuard: MarriageTestDebugUI missing method: " + signature)
+
     for forbidden in [
         "UpdateFpsCounter();",
         "UpdateMapClickDebug();",
@@ -564,6 +582,20 @@ def main() -> int:
     ]:
         if forbidden in on_gui_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnGUI still directly calls debug gui token: " + forbidden)
+    for forbidden in [
+        "private void DrawMarriageTestUI()",
+        "private void DrawMarriageTestWindow(int windowId)",
+        "private void AppendMarriageTestLog(string message)",
+        "private void SpawnDebugItemForMarriageTest(int typeId, int count)",
+        "private int CountItemInPlayerInventory(int typeId)",
+        "private void TriggerMarriageSequenceForNpc(string npcId)",
+        "private void TriggerDivorceForCurrentSpouse()",
+        "private Transform GetNpcTransformForMarriageTest(string npcId)",
+        "private INPCController GetNpcControllerForMarriageTest(string npcId, Transform fallbackTransform)",
+        "private void LogInventoryDetailsForF3Debug()",
+    ]:
+        if forbidden in mod_text:
+            return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own marriage test debug method anymore: " + forbidden)
 
     achievement_runtime_module = ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in achievement_runtime_module:

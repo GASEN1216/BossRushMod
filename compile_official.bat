@@ -107,6 +107,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     DebugAndTools\DebugAndTools.cs ^
     DebugAndTools\DebugToolsRuntimeModule.cs ^
     DebugAndTools\DebugToolsRuntimeHooks.cs ^
+    DebugAndTools\MarriageTestDebugUI.cs ^
     DebugAndTools\ItemSpawner.cs ^
     DebugAndTools\F3DebugCheatMenu.cs ^
     DebugAndTools\NPCTeleportUI.cs ^
