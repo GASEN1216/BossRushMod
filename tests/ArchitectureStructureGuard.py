@@ -15,6 +15,7 @@ ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
 ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
+WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
@@ -35,6 +36,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
+    "WavesArena/WavesArenaRuntimeHooks.cs",
     "ModeE/ModeERuntimeModule.cs",
     "ModeE/ModeERuntimeHooks.cs",
     "ModeF/ModeFRuntimeModule.cs",
@@ -148,6 +150,47 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update body could not be parsed")
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
+
+    waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")
+    if not waves_tick_body:
+        return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaRuntime wrapper")
+    for required in [
+        "waitingForNextWave && waveCountdown > 0f",
+        "waveCountdown -= deltaTime;",
+        "GetWaveIntervalSeconds();",
+        "ShowNextWaveCountdownBanner(seconds);",
+        "SpawnNextEnemy();",
+        "TryFixStuckWaveIfNoBossAlive();",
+        "return true;",
+        "return false;",
+    ]:
+        if required not in waves_tick_body:
+            return fail("ArchitectureStructureGuard: TickWavesArenaRuntime missing token: " + required)
+
+    waves_cleanup_body = extract_method_body(waves_hooks, "internal void TickWavesArenaBossCleanupRuntime(float deltaTime)")
+    if not waves_cleanup_body:
+        return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaBossCleanupRuntime wrapper")
+    for required in [
+        "daXingXingCleanTimer += deltaTime;",
+        "daXingXingCleanTimer >= DaXingXingCleanInterval",
+        "TryCleanNonBossRushDaXingXing();",
+        "daXingXingCleanTimer = 0f;",
+    ]:
+        if required not in waves_cleanup_body:
+            return fail("ArchitectureStructureGuard: TickWavesArenaBossCleanupRuntime missing token: " + required)
+
+    if "if (TickWavesArenaRuntime(Time.deltaTime))" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route WavesArena tick through wrapper")
+    if "TickWavesArenaBossCleanupRuntime(Time.deltaTime);" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route WavesArena cleanup through wrapper")
+    for forbidden in [
+        "TryFixStuckWaveIfNoBossAlive();",
+        "TryCleanNonBossRushDaXingXing();",
+        "SpawnNextEnemy();",
+    ]:
+        if forbidden in update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls WavesArena token: " + forbidden)
 
     mode_e_hooks = MODEE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     mode_e_tick_body = extract_method_body(mode_e_hooks, "internal void TickModeERuntime(float deltaTime)")
