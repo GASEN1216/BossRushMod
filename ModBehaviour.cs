@@ -2949,15 +2949,7 @@ namespace BossRush
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            // [性能优化] 场景加载时标记角色缓存需要刷新，并重置计时器
-            _characterCacheNeedsRefresh = true;
-            _characterCacheRefreshTimer = 0f;
-            
-            // [性能优化] 场景加载时重置竞技场中心标记（新场景需要重新设置）
-            _arenaCenterSet = false;
-            
-            // [性能优化] 场景加载时刷新对象缓存（BoxCollider、NotificationText 等）
-            ObjectCache.RefreshIfNeeded();
+            PrepareSceneRuntimeForLoad();
             
             // 场景切换时清理好感度系统UI缓存
             OnSceneUnloadAlwaysOnRuntime();

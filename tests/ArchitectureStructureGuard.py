@@ -245,6 +245,18 @@ def main() -> int:
     if "ClearEnemyRecoveryMonitorState();" not in gameplay_enemy_recovery_cleanup_body:
         return fail("ArchitectureStructureGuard: CleanupEnemyRecoveryForSceneChange missing ClearEnemyRecoveryMonitorState")
 
+    gameplay_scene_prepare_body = extract_method_body(gameplay_hooks, "internal void PrepareSceneRuntimeForLoad()")
+    if not gameplay_scene_prepare_body:
+        return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing PrepareSceneRuntimeForLoad wrapper")
+    for required in [
+        "_characterCacheNeedsRefresh = true;",
+        "_characterCacheRefreshTimer = 0f;",
+        "_arenaCenterSet = false;",
+        "ObjectCache.RefreshIfNeeded();",
+    ]:
+        if required not in gameplay_scene_prepare_body:
+            return fail("ArchitectureStructureGuard: PrepareSceneRuntimeForLoad missing token: " + required)
+
     gameplay_cash_cleanup_body = extract_method_body(gameplay_hooks, "internal void CleanupCashMagnetForSceneChange()")
     if not gameplay_cash_cleanup_body:
         return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing CleanupCashMagnetForSceneChange wrapper")
@@ -514,6 +526,7 @@ def main() -> int:
     if not scene_loaded_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded body could not be parsed")
     for required in [
+        "PrepareSceneRuntimeForLoad();",
         "OnSceneUnloadAlwaysOnRuntime();",
         "CleanupEnemyRecoveryForSceneChange();",
         "CleanupCashMagnetForSceneChange();",
@@ -521,6 +534,10 @@ def main() -> int:
         if required not in scene_loaded_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded missing wrapper call: " + required)
     for forbidden in [
+        "_characterCacheNeedsRefresh = true;",
+        "_characterCacheRefreshTimer = 0f;",
+        "_arenaCenterSet = false;",
+        "ObjectCache.RefreshIfNeeded();",
         "AffinityUIManager.OnSceneUnload();",
         "AffinityManager.OnSceneUnload();",
         "ClearEnemyRecoveryMonitorState();",
