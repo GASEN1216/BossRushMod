@@ -169,6 +169,20 @@ def main() -> int:
             return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime missing token: " + required)
     if always_on_tick_body.find("UpdateMessage();") > always_on_tick_body.find("AffinityManager.UpdateDeferredSave();"):
         return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime must preserve message update before deferred save")
+
+    always_on_init_body = extract_method_body(always_on_hooks, "internal void InitializeAlwaysOnRuntime()")
+    if not always_on_init_body:
+        return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing InitializeAlwaysOnRuntime wrapper")
+    for required in [
+        "string modPath = GetModPath();",
+        "EntityModelFactory.Initialize(modPath);",
+        'DevLog("[BossRush] [WARNING] 无法获取 Mod 路径，EntityModelFactory 未初始化");',
+        'DevLog("[BossRush] [WARNING] EntityModelFactory 初始化异常: " + e.Message);',
+        "WikiContentManager.Instance.ResetCache();",
+        "InitializeAffinitySystem();",
+    ]:
+        if required not in always_on_init_body:
+            return fail("ArchitectureStructureGuard: InitializeAlwaysOnRuntime missing token: " + required)
     if "TickAlwaysOnRuntime();" not in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must route always-on runtime through wrapper")
     for forbidden in [
@@ -551,6 +565,8 @@ def main() -> int:
     awake_body = extract_method_body(mod_text, "void Awake()")
     if not awake_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake body could not be parsed")
+    if "InitializeAlwaysOnRuntime();" not in awake_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route always-on initialization through wrapper")
     player_lifecycle_hooks = PLAYER_LIFECYCLE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     player_register_body = extract_method_body(player_lifecycle_hooks, "internal void RegisterPlayerLifecycleRuntimeEvents()")
     if not player_register_body:
@@ -565,6 +581,9 @@ def main() -> int:
     if "RegisterPlayerLifecycleRuntimeEvents();" not in awake_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route player lifecycle event registration through wrapper")
     for forbidden in [
+        "EntityModelFactory.Initialize(modPath);",
+        "WikiContentManager.Instance.ResetCache();",
+        "InitializeAffinitySystem();",
         "Health.OnDead += OnPlayerDeathInBossRush;",
         "Health.OnHurt += PrimeDeathWraithData_DeathWraith;",
         "Health.OnDead += RecordDeathWraithData_DeathWraith;",

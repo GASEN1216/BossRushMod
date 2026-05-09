@@ -2325,36 +2325,14 @@ namespace BossRush
                 DevLog("[BossRush] [WARNING] Harmony Patch 应用失败: " + e.Message);
             }
 
-            // 初始化实体模型工厂（加载 Assets/entity/ 目录下的 AssetBundle）
-            try
-            {
-                string modPath = GetModPath();
-                if (!string.IsNullOrEmpty(modPath))
-                {
-                    EntityModelFactory.Initialize(modPath);
-                }
-                else
-                {
-                    DevLog("[BossRush] [WARNING] 无法获取 Mod 路径，EntityModelFactory 未初始化");
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [WARNING] EntityModelFactory 初始化异常: " + e.Message);
-            }
-            
-            // 重置Wiki缓存，确保每次进游戏都重新加载
-            WikiContentManager.Instance.ResetCache();
-            
+            InitializeAlwaysOnRuntime();
+
             RegisterPlayerLifecycleRuntimeEvents();
             
             InitializeDebugToolsRuntime();
             
             // 初始化成就系统和成就页面UI
             InitializeAchievementRuntime();
-            
-            // 初始化好感度系统
-            InitializeAffinitySystem();
         }
         
         /// <summary>
