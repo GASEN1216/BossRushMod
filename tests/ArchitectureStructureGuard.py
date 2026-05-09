@@ -150,6 +150,26 @@ def main() -> int:
         if required not in debug_late_body:
             return fail("ArchitectureStructureGuard: LateUpdateDebugTools missing token: " + required)
 
+    debug_after_modal_body = extract_method_body(debug_hooks, "internal void TickDebugToolsAfterModalGate()")
+    if not debug_after_modal_body:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeHooks missing TickDebugToolsAfterModalGate wrapper")
+    for required in [
+        "BossRushAchievementManager.DebugResetAll();",
+        "LogNearbyBuildingInfo(playerPos, 15f);",
+        "TogglePlacementMode();",
+        "BossRushMapSelectionHelper.ShowBossRushMapSelection();",
+        "LogNearbyGameObjects(playerPos, 10f, 30);",
+        "UnityEngine.Object.FindObjectsOfType<InteractableBase>(true);",
+        "ForceKillAllEnemies();",
+        "ToggleNPCTeleportUI();",
+        "HideNPCTeleportUI();",
+    ]:
+        if required not in debug_after_modal_body:
+            return fail("ArchitectureStructureGuard: TickDebugToolsAfterModalGate missing token: " + required)
+
+    if "TickDebugToolsAfterModalGate();" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route post-modal debug hotkeys through wrapper")
+
     for forbidden in [
         "UpdateFpsCounter();",
         "UpdateMapClickDebug();",
@@ -157,6 +177,15 @@ def main() -> int:
         "CheckItemSpawnerHotkey();",
         "CheckF3DebugCheatMenuHotkey();",
         "TickF3DebugCheatMenu();",
+        "BossRushAchievementManager.DebugResetAll();",
+        "LogNearbyBuildingInfo(playerPos, 15f);",
+        "TogglePlacementMode();",
+        "BossRushMapSelectionHelper.ShowBossRushMapSelection();",
+        "LogNearbyGameObjects(playerPos, 10f, 30);",
+        "UnityEngine.Object.FindObjectsOfType<InteractableBase>(true);",
+        "ForceKillAllEnemies();",
+        "ToggleNPCTeleportUI();",
+        "HideNPCTeleportUI();",
     ]:
         if forbidden in update_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls debug tool token: " + forbidden)
