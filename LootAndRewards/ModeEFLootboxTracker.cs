@@ -253,11 +253,11 @@ namespace BossRush
                         "Awen is already sweeping. Let him finish first."));
             }
 
-            int freshTargetCount = CopyFreshAwenLootSweepTargets(awenLootSweepTargetScratch);
+            int cachedTargetCount = GetCurrentAwenLootSweepTargetCount();
 
             // 与垃圾桶“清空所有箱子”保持一致：不按 active scene buildIndex 过滤，
             // 只要当前已加载场景里带 BossRushLootboxMarker 就算可扫目标。
-            if (freshTargetCount <= 0)
+            if (cachedTargetCount <= 0)
             {
                 return ReportAwenLootSweepFailure(
                     player,

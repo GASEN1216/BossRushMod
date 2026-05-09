@@ -1315,7 +1315,19 @@ namespace BossRush
     {
         private static readonly List<BossRushLootboxMarker> MarkedLootboxMarkers = new List<BossRushLootboxMarker>();
         private static readonly Collider[] NearbyLootboxHits = new Collider[128];
+        private static readonly Queue<LootboxDecorationRequest> PendingLootboxDecorationRequests = new Queue<LootboxDecorationRequest>();
         private const int DecorateLootboxesRetryFrames = 15;
+        private const int LootboxDecorationQueriesPerFrame = 3;
+        private static bool lootboxDecorationWorkerRunning = false;
+
+        private struct LootboxDecorationRequest
+        {
+            public ModBehaviour Owner;
+            public Vector3 DeathPosition;
+            public bool RegisterSweepTracking;
+            public float Radius;
+            public int RemainingAttempts;
+        }
 
         internal static void RegisterMarkedLootboxMarker(BossRushLootboxMarker marker)
         {
@@ -1711,22 +1723,83 @@ namespace BossRush
             catch {}
         }
 
-        internal static IEnumerator DecorateLootboxesNearPosition(ModBehaviour owner, Vector3 deathPosition, bool registerSweepTracking, float radius = 3f)
+        private static void EnqueueLootboxDecorationRequest(ModBehaviour owner, Vector3 deathPosition, bool registerSweepTracking, float radius)
         {
-            for (int attempt = 0; attempt < DecorateLootboxesRetryFrames; attempt++)
-            {
-                yield return null;
+            LootboxDecorationRequest request = new LootboxDecorationRequest();
+            request.Owner = owner;
+            request.DeathPosition = deathPosition;
+            request.RegisterSweepTracking = registerSweepTracking;
+            request.Radius = radius > 0f ? radius : 3f;
+            request.RemainingAttempts = DecorateLootboxesRetryFrames;
+            PendingLootboxDecorationRequests.Enqueue(request);
 
+            if (lootboxDecorationWorkerRunning)
+            {
+                return;
+            }
+
+            ModBehaviour runner = owner != null ? owner : ModBehaviour.Instance;
+            if (runner == null)
+            {
+                return;
+            }
+
+            try
+            {
+                lootboxDecorationWorkerRunning = true;
+                runner.StartCoroutine(ProcessQueuedLootboxDecorations());
+            }
+            catch
+            {
+                lootboxDecorationWorkerRunning = false;
+            }
+        }
+
+        private static IEnumerator ProcessQueuedLootboxDecorations()
+        {
+            try
+            {
+                while (PendingLootboxDecorationRequests.Count > 0)
+                {
+                    yield return null;
+
+                    int processedThisFrame = 0;
+                    while (processedThisFrame < LootboxDecorationQueriesPerFrame &&
+                           PendingLootboxDecorationRequests.Count > 0)
+                    {
+                        LootboxDecorationRequest request = PendingLootboxDecorationRequests.Dequeue();
+                        bool completed = TryProcessLootboxDecorationRequest(request);
+                        request.RemainingAttempts--;
+
+                        if (!completed && request.RemainingAttempts > 0)
+                        {
+                            PendingLootboxDecorationRequests.Enqueue(request);
+                        }
+
+                        processedThisFrame++;
+                    }
+                }
+            }
+            finally
+            {
+                lootboxDecorationWorkerRunning = false;
+            }
+        }
+
+        private static bool TryProcessLootboxDecorationRequest(LootboxDecorationRequest request)
+        {
+            try
+            {
                 int hitCount = 0;
                 try
                 {
-                    hitCount = Physics.OverlapSphereNonAlloc(deathPosition, radius, NearbyLootboxHits, -1);
+                    hitCount = Physics.OverlapSphereNonAlloc(request.DeathPosition, request.Radius, NearbyLootboxHits, -1);
                 }
                 catch {}
 
                 if (hitCount <= 0)
                 {
-                    continue;
+                    return false;
                 }
 
                 for (int i = 0; i < hitCount; i++)
@@ -1749,11 +1822,21 @@ namespace BossRush
                         continue;
                     }
 
-                    DecorateLootbox(lootbox, owner, registerSweepTracking);
+                    DecorateLootbox(lootbox, request.Owner, request.RegisterSweepTracking);
                 }
 
-                yield break;
+                return true;
             }
+            catch
+            {
+                return true;
+            }
+        }
+
+        internal static IEnumerator DecorateLootboxesNearPosition(ModBehaviour owner, Vector3 deathPosition, bool registerSweepTracking, float radius = 3f)
+        {
+            EnqueueLootboxDecorationRequest(owner, deathPosition, registerSweepTracking, radius);
+            yield break;
         }
     }
     

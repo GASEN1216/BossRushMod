@@ -100,6 +100,11 @@ namespace BossRush
 
         void Update()
         {
+            if (activePopups.Count == 0)
+            {
+                return;
+            }
+
             UpdateAllPopups();
         }
 
