@@ -9,6 +9,7 @@ COMPILE = Path("compile_official.bat")
 MOD = Path("ModBehaviour.cs")
 MODED_WAVES = Path("ModeD/ModeDWaves.cs")
 MODED_RUNTIME_MODULE = Path("ModeD/ModeDRuntimeModule.cs")
+ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 DEBUG_RUNTIME_MODULE = Path("DebugAndTools/DebugToolsRuntimeModule.cs")
 DEBUG_RUNTIME_HOOKS = Path("DebugAndTools/DebugToolsRuntimeHooks.cs")
 ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
@@ -30,6 +31,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/BossRushRuntimeModuleBase.cs",
     "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
     "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
+    "Utilities/AlwaysOnRuntimeHooks.cs",
     "ModeD/ModeDRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeHooks.cs",
@@ -152,6 +154,28 @@ def main() -> int:
     update_body = extract_method_body(mod_text, "void Update()")
     if not update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update body could not be parsed")
+
+    always_on_hooks = ALWAYS_ON_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    always_on_tick_body = extract_method_body(always_on_hooks, "internal void TickAlwaysOnRuntime()")
+    if not always_on_tick_body:
+        return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing TickAlwaysOnRuntime wrapper")
+    for required in [
+        "UpdateMessage();",
+        "AffinityManager.UpdateDeferredSave();",
+    ]:
+        if required not in always_on_tick_body:
+            return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime missing token: " + required)
+    if always_on_tick_body.find("UpdateMessage();") > always_on_tick_body.find("AffinityManager.UpdateDeferredSave();"):
+        return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime must preserve message update before deferred save")
+    if "TickAlwaysOnRuntime();" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route always-on runtime through wrapper")
+    for forbidden in [
+        "UpdateMessage();",
+        "AffinityManager.UpdateDeferredSave();",
+    ]:
+        if forbidden in update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls always-on token: " + forbidden)
+
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
 

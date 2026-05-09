@@ -2846,11 +2846,7 @@ namespace BossRush
         {
             bool runGameplaySceneHooks = CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name);
 
-            // 更新UI消息计时器，保留原先在菜单/Loading 场景也会递减的轻量行为
-            UpdateMessage();
-
-            // 更新好感度系统延迟保存
-            AffinityManager.UpdateDeferredSave();
+            TickAlwaysOnRuntime();
 
             if (!runGameplaySceneHooks)
             {
