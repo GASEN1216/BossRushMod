@@ -2938,16 +2938,6 @@ namespace BossRush
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();
 
-            // 卸载实体模型工厂资源
-            try
-            {
-                EntityModelFactory.Shutdown();
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);
-            }
-
             OnDestroy_Integration();
             CleanupZombieModeOnDestroy();
             runtimeModuleHost.OnDestroy();

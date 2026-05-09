@@ -196,9 +196,13 @@ def main() -> int:
         "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
         "AffinityManager.Shutdown();",
         "AffinityUIManager.Cleanup();",
+        "EntityModelFactory.Shutdown();",
+        'DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);',
     ]:
         if required not in always_on_destroy_body:
             return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy missing token: " + required)
+    if always_on_destroy_body.find("AffinityUIManager.Cleanup();") > always_on_destroy_body.find("EntityModelFactory.Shutdown();"):
+        return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy must preserve affinity cleanup before entity model shutdown")
 
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
@@ -501,6 +505,7 @@ def main() -> int:
         "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
         "AffinityManager.Shutdown();",
         "AffinityUIManager.Cleanup();",
+        "EntityModelFactory.Shutdown();",
     ]:
         if forbidden in destroy_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy still directly calls always-on cleanup token: " + forbidden)

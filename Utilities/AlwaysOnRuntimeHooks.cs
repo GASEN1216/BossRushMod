@@ -26,6 +26,15 @@ namespace BossRush
             catch
             {
             }
+
+            try
+            {
+                EntityModelFactory.Shutdown();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);
+            }
         }
     }
 }
