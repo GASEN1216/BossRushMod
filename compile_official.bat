@@ -182,6 +182,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFMerchant.cs ^
     ZombieMode\ZombieModeModels.cs ^
     ZombieMode\ZombieModeRuntimeModule.cs ^
+    ZombieMode\ZombieModeRuntimeHooks.cs ^
     ZombieMode\ZombieModeEntry.cs ^
     ZombieMode\ZombieModeMapSelection.cs ^
     ZombieMode\ZombieModeMapSelectionHelper.cs ^

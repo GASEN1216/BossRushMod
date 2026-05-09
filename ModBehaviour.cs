@@ -2931,7 +2931,7 @@ namespace BossRush
             // Mode F 独立 Tick（Mode F 不激活 IsActive，需要单独的 Tick 循环）
             TickModeFRuntime(Time.deltaTime);
 
-            TickZombieMode(Time.unscaledDeltaTime);
+            TickZombieModeRuntime(Time.unscaledDeltaTime);
 
             // BossRush 期间，定期清理任何非 BossRush 召唤的“大兴兴”Boss
             if (IsActive || bossRushArenaActive)

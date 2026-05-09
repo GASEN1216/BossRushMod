@@ -17,6 +17,7 @@ COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
 INTEGRATION = Path("Integration/BossRushIntegration.cs")
 
 REQUIRED_COMPILE_SOURCES = [
@@ -39,6 +40,7 @@ REQUIRED_COMPILE_SOURCES = [
     "ModeF/ModeFRuntimeModule.cs",
     "ModeF/ModeFRuntimeHooks.cs",
     "ZombieMode/ZombieModeRuntimeModule.cs",
+    "ZombieMode/ZombieModeRuntimeHooks.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
@@ -187,6 +189,18 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must route Mode F tick through wrapper")
     if "TickModeF(Time.deltaTime);" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call TickModeF")
+
+    zombie_hooks = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    zombie_tick_body = extract_method_body(zombie_hooks, "internal void TickZombieModeRuntime(float unscaledDeltaTime)")
+    if not zombie_tick_body:
+        return fail("ArchitectureStructureGuard: ZombieModeRuntimeHooks missing TickZombieModeRuntime wrapper")
+    if "TickZombieMode(unscaledDeltaTime);" not in zombie_tick_body:
+        return fail("ArchitectureStructureGuard: TickZombieModeRuntime missing TickZombieMode call")
+
+    if "TickZombieModeRuntime(Time.unscaledDeltaTime);" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route ZombieMode tick through wrapper")
+    if "TickZombieMode(Time.unscaledDeltaTime);" in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call TickZombieMode")
 
     debug_runtime_module = DEBUG_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickDebugTools(deltaTime, unscaledDeltaTime);" not in debug_runtime_module:
