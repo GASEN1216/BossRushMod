@@ -380,10 +380,18 @@ def main() -> int:
     late_update_body = extract_method_body(mod_text, "void LateUpdate()")
     if not late_update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate body could not be parsed")
+    zombie_late_body = extract_method_body(zombie_hooks, "internal void LateUpdateZombieModeRuntime()")
+    if not zombie_late_body:
+        return fail("ArchitectureStructureGuard: ZombieModeRuntimeHooks missing LateUpdateZombieModeRuntime wrapper")
+    if "ZombieModeUIHelper.EnforceModalInputPause();" not in zombie_late_body:
+        return fail("ArchitectureStructureGuard: LateUpdateZombieModeRuntime missing EnforceModalInputPause")
+    if "LateUpdateZombieModeRuntime();" not in late_update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate must route ZombieMode late update through wrapper")
     for forbidden in [
         "BossPoolLateUpdate();",
         "NPCTeleportUILateUpdate();",
         "F3DebugCheatMenuLateUpdate();",
+        "ZombieModeUIHelper.EnforceModalInputPause();",
     ]:
         if forbidden in late_update_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate still directly calls debug tool token: " + forbidden)

@@ -2894,7 +2894,7 @@ namespace BossRush
             }
 
             runtimeModuleHost.OnLateUpdate();
-            ZombieModeUIHelper.EnforceModalInputPause();
+            LateUpdateZombieModeRuntime();
         }
         
         private static void InjectBossRushTicketLocalization()

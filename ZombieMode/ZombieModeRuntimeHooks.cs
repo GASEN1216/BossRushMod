@@ -6,5 +6,10 @@ namespace BossRush
         {
             TickZombieMode(unscaledDeltaTime);
         }
+
+        internal void LateUpdateZombieModeRuntime()
+        {
+            ZombieModeUIHelper.EnforceModalInputPause();
+        }
     }
 }
