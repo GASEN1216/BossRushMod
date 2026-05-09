@@ -114,6 +114,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\BossRushHarmonyPatch.cs ^
     Integration\BirthdayCakeItem.cs ^
     Integration\EquipmentFactory.cs ^
+    Integration\EquipmentContentRegistry.cs ^
     Integration\EquipmentHelper.cs ^
     Integration\Bonus\DragonSetBonus.cs ^
     Integration\Config\DragonSetConfig.cs ^
@@ -294,6 +295,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\ItemFactory.cs ^
     Integration\Items\AwenDepositTokenConfig.cs ^
     Integration\Items\AwenDepositTokenUsage.cs ^
+    Integration\Items\ItemContentRegistry.cs ^
     Integration\Items\AwenLootSweepTokenConfig.cs ^
     Integration\Items\AwenLootSweepTokenUsage.cs ^
     Integration\Items\BrickStoneConfig.cs ^

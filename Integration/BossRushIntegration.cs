@@ -454,33 +454,7 @@ namespace BossRush
             try
             {
                 // 注册物品配置器（必须在 LoadAllItems 之前）
-                AwenCourierTokenConfig.RegisterConfigurator();
-                ColdQuenchFluidConfig.RegisterConfigurator();
-                BrickStoneConfig.RegisterConfigurator();
-                DiamondConfig.RegisterConfigurator();
-                DiamondRingConfig.RegisterConfigurator();  // 钻石戒指配置器
-                CalmingDropsConfig.RegisterConfigurator();  // 安神滴剂配置器
-                PeaceCharmConfig.RegisterConfigurator();  // 平安护身符配置器
-                DingdangDrawingConfig.RegisterConfigurator();
-                AchievementMedalConfig.RegisterConfigurator();  // 成就勋章配置器
-                ItemFactory.RegisterConfigurator(ReverseScaleConfig.TotemTypeId, ReverseScaleConfig.ConfigureItem);
-                WildHornConfig.RegisterConfigurator();  // 荒野号角配置器
-                AwenLootSweepTokenConfig.RegisterConfigurator();  // 阿稳扫箱令配置器
-                FactionFlagConfig.RegisterConfigurators();  // 营旗配置器（Mode E）
-                RespawnItemConfig.RegisterConfigurators();  // 刷怪消耗品配置器（Mode E）
-                BloodhuntTransponderConfig.RegisterConfigurator();  // 血猎收发器配置器（Mode F）
-                FoldableCoverPackConfig.RegisterConfigurator();  // 折叠掩体包配置器（Mode F）
-                ReinforcedRoadblockPackConfig.RegisterConfigurator();  // 加固路障包配置器（Mode F）
-                BarbedWirePackConfig.RegisterConfigurator();  // 阻滞铁丝网包配置器（Mode F）
-                EmergencyRepairSprayConfig.RegisterConfigurator();  // 应急维修喷剂配置器（Mode F）
-                ZombieTideInvitationConfig.RegisterConfigurator();
-                ZombieTideBeaconConfig.RegisterConfigurator();
-                ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
-                ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
-                ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
-                // 与霜之哀伤一致：500044 的 configurator 无条件注册。
-                // 资源是否最终可实例化由后续加载链自己决定，不在这里提前短路。
-                ItemFactory.RegisterConfigurator(PhantomWitchConfig.ReservedScytheTypeId, OnPhantomWitchScytheLoaded);
+                RegisterItemContentConfigurators();
 
                 int itemCount = ItemFactory.LoadAllItems();
                 if (itemCount > 0)
@@ -1182,40 +1156,10 @@ namespace BossRush
             ZombieTideInvitationConfig.InjectIntoShops();
             
             // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
-            int equipCount = EquipmentFactory.LoadAllEquipment();
-            DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
-
-            DragonKingBossGunRuntime.InitializeRuntime();
-            DragonKingBossGunRuntime.WarmupProjectileCache();
-
-            try
-            {
-                Item fenHuangHalberd = ItemFactory.GetLoadedItem(FenHuangHalberdIds.WeaponTypeId);
-                if (fenHuangHalberd != null)
-                {
-                    FenHuangHalberdWeaponConfig.TryConfigure(fenHuangHalberd, "FenHuangHalberd");
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 绑定焚皇断界戟模型失败: " + e.Message);
-            }
-
-            try
-            {
-                Item frostmourne = ItemFactory.GetLoadedItem(FrostmourneIds.WeaponTypeId);
-                if (frostmourne != null)
-                {
-                    FrostmourneWeaponConfig.TryConfigure(frostmourne, "Frostmourne");
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 绑定霜之哀伤模型失败: " + e.Message);
-            }
+            LoadEquipmentContent();
             
-            // 初始化飞行图腾系统
-            InitializeFlightTotemSystem();
+            // 初始化早期装备能力系统
+            InitializeEarlyEquipmentAbilitySystems();
             
             // 注意：龙息武器Buff处理器现在是按需订阅
             // 只在玩家装备龙息武器时才订阅Health.OnHurt事件，卸下时取消订阅
@@ -1255,17 +1199,8 @@ namespace BossRush
             // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
 
-            // 初始化逆鳞图腾系统（新架构）
-            InitializeReverseScaleSystem();
-            
-            // 初始化焚皇断界戟系统（三段连招 + 右键龙皇裂地）
-            InitializeFenHuangHalberdSystem();
-
-            // 初始化霜之哀伤系统（右键亡灵召唤）
-            InitializeFrostmourneSystem();
-
-            // 初始化幽灵女巫大镰系统（右键诅咒领域）
-            InitializePhantomWitchScytheSystem();
+            // 初始化后置装备能力系统
+            InitializeLateEquipmentAbilitySystems();
             
             // 如果当前已经在场景中，立即执行一次
             if (CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
@@ -1304,26 +1239,8 @@ namespace BossRush
             // 取消注册龙套装事件
             UnregisterDragonSetEvents();
 
-            // 清理逆鳞图腾系统（新架构）
-            CleanupReverseScaleSystem();
-            
-            // 清理焚皇断界戟系统
-            CleanupFenHuangHalberdSystem();
-
-            // 清理霜之哀伤系统
-            CleanupFrostmourneSystem();
-
-            // 清理幽灵女巫大镰系统
-            CleanupPhantomWitchScytheSystem();
-            
-            // 取消订阅龙息武器火焰特效事件
-            UnsubscribeDragonBreathEffectEvent();
-            
-            // 清理龙息武器Buff处理器
-            DragonBreathBuffHandler.Cleanup();
-            
-            // 清理飞行图腾系统
-            CleanupFlightTotemSystem();
+            // 清理装备能力系统
+            CleanupEquipmentAbilitySystems();
 
             // 清理平安护身符运行时事件
             PeaceCharmRuntime.ShutdownRuntime();
