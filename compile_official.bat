@@ -391,6 +391,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Achievement\AchievementView.cs ^
     Achievement\AchievementMedalConfig.cs ^
     Achievement\AchievementMedalItem.cs ^
+    Audio\BossRushAudioHooks.cs ^
     Audio\BossRushAudioManager.cs ^
     DebugAndTools\InventoryInspector.cs ^
     WavesArena\InfiniteHellCashMagnet.cs ^

@@ -22,6 +22,7 @@ COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.c
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
 AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
+AUDI0_RUNTIME_HOOKS = Path("Audio/BossRushAudioHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
@@ -52,6 +53,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/EquipmentRuntimeHooks.cs",
     "Integration/IntegrationRuntimeHooks.cs",
     "Integration/Affinity/AffinityRuntimeHooks.cs",
+    "Audio/BossRushAudioHooks.cs",
     "Utilities/GameplayRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
@@ -655,6 +657,48 @@ def main() -> int:
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own marriage test debug method anymore: " + forbidden)
+
+    audio_runtime_hooks = AUDI0_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    for signature, required_tokens in {
+        "public void TrySpawnEggForPlayer()": [
+            "TryPlayNgmSound();",
+            "SpawnEgg behavior = null;",
+            "egg.Init(",
+        ],
+        "private void TryPlayNgmSound()": [
+            'Path.Combine(baseDir, "Assets")',
+            'Path.Combine(baseDir, "ngm.mp3")',
+        ],
+        "private static bool SoundFileExistsCached(string filePath)": [
+            "_cachedSoundFileExists",
+            "File.Exists(filePath);",
+        ],
+        "private static bool TryGetPostCustomSfxDelegate(out PostCustomSfxDelegate postCustomSfx)": [
+            'Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core")',
+            "Delegate.CreateDelegate",
+        ],
+        "public void PlaySoundEffect(string filePath)": [
+            "SoundFileExistsCached(filePath)",
+            "TryGetPostCustomSfxDelegate(out postCustomSfx)",
+            'DevLog("[BossRush] PlaySoundEffect: AudioManager类型未找到");',
+        ],
+    }.items():
+        body = extract_method_body(audio_runtime_hooks, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: BossRushAudioHooks missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: BossRushAudioHooks missing token: " + required)
+    for forbidden in [
+        "public void TrySpawnEggForPlayer()",
+        "private void TryPlayNgmSound()",
+        "private delegate void PostCustomSfxDelegate(string filePath, GameObject target, bool loop)",
+        "private static bool SoundFileExistsCached(string filePath)",
+        "private static bool TryGetPostCustomSfxDelegate(out PostCustomSfxDelegate postCustomSfx)",
+        "public void PlaySoundEffect(string filePath)",
+    ]:
+        if forbidden in mod_text:
+            return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush audio method anymore: " + forbidden)
 
     interaction_scan = UI_SIGNS_INTERACTION_SCAN.read_text(encoding="utf-8", errors="ignore")
     for signature, required_tokens in {
