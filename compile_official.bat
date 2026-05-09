@@ -171,6 +171,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeE\RespawnItemUsage.cs ^
     ModeF\ModeFModels.cs ^
     ModeF\ModeFRuntimeModule.cs ^
+    ModeF\ModeFRuntimeHooks.cs ^
     ModeF\ModeFEntry.cs ^
     ModeF\ModeFPhases.cs ^
     ModeF\ModeFBounty.cs ^

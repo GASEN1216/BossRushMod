@@ -16,6 +16,7 @@ ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
+MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
 INTEGRATION = Path("Integration/BossRushIntegration.cs")
 
 REQUIRED_COMPILE_SOURCES = [
@@ -36,6 +37,7 @@ REQUIRED_COMPILE_SOURCES = [
     "ModeE/ModeERuntimeModule.cs",
     "ModeE/ModeERuntimeHooks.cs",
     "ModeF/ModeFRuntimeModule.cs",
+    "ModeF/ModeFRuntimeHooks.cs",
     "ZombieMode/ZombieModeRuntimeModule.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
@@ -169,6 +171,22 @@ def main() -> int:
     ]:
         if forbidden in update_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls Mode E token: " + forbidden)
+
+    mode_f_hooks = MODEF_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    mode_f_tick_body = extract_method_body(mode_f_hooks, "internal void TickModeFRuntime(float deltaTime)")
+    if not mode_f_tick_body:
+        return fail("ArchitectureStructureGuard: ModeFRuntimeHooks missing TickModeFRuntime wrapper")
+    for required in [
+        "if (modeFActive)",
+        "TickModeF(deltaTime);",
+    ]:
+        if required not in mode_f_tick_body:
+            return fail("ArchitectureStructureGuard: TickModeFRuntime missing token: " + required)
+
+    if "TickModeFRuntime(Time.deltaTime);" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route Mode F tick through wrapper")
+    if "TickModeF(Time.deltaTime);" in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call TickModeF")
 
     debug_runtime_module = DEBUG_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickDebugTools(deltaTime, unscaledDeltaTime);" not in debug_runtime_module:

@@ -2929,10 +2929,7 @@ namespace BossRush
             TickModeERuntime(Time.deltaTime);
 
             // Mode F 独立 Tick（Mode F 不激活 IsActive，需要单独的 Tick 循环）
-            if (modeFActive)
-            {
-                TickModeF(Time.deltaTime);
-            }
+            TickModeFRuntime(Time.deltaTime);
 
             TickZombieMode(Time.unscaledDeltaTime);
 
