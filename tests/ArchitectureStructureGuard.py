@@ -15,6 +15,7 @@ ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
 ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
+EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
@@ -35,6 +36,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Achievement/AchievementRuntimeHooks.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
+    "Integration/EquipmentRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
     "ModeE/ModeERuntimeModule.cs",
@@ -150,6 +152,17 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update body could not be parsed")
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
+
+    equipment_hooks = EQUIPMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    equipment_tick_body = extract_method_body(equipment_hooks, "internal void TickEquipmentAbilityRuntime()")
+    if not equipment_tick_body:
+        return fail("ArchitectureStructureGuard: EquipmentRuntimeHooks missing TickEquipmentAbilityRuntime wrapper")
+    if "UpdateDragonDash();" not in equipment_tick_body:
+        return fail("ArchitectureStructureGuard: TickEquipmentAbilityRuntime missing UpdateDragonDash")
+    if "TickEquipmentAbilityRuntime();" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route equipment ability tick through wrapper")
+    if "UpdateDragonDash();" in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call UpdateDragonDash")
 
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")

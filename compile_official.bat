@@ -117,6 +117,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\BirthdayCakeItem.cs ^
     Integration\EquipmentFactory.cs ^
     Integration\EquipmentContentRegistry.cs ^
+    Integration\EquipmentRuntimeHooks.cs ^
     Integration\EquipmentHelper.cs ^
     Integration\Bonus\DragonSetBonus.cs ^
     Integration\Config\DragonSetConfig.cs ^

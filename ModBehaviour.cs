@@ -2860,7 +2860,7 @@ namespace BossRush
             runtimeModuleHost.OnUpdate(Time.deltaTime, Time.unscaledDeltaTime);
             
             // 龙套装冲刺检测
-            UpdateDragonDash();
+            TickEquipmentAbilityRuntime();
             
             // 无间炼狱现金磁铁吸附更新
             UpdateCashMagnet();
