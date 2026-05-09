@@ -41,18 +41,34 @@ namespace BossRush
         /// </summary>
         private void SetupFlightTotemForScene(Scene scene)
         {
-            AbilitySystemHelper.HandleSceneChange(
-                config: FlightConfig.Instance,
-                onSceneChanged: () =>
-                {
-                    if (FlightAbilityManager.Instance != null)
+            if (IsGameplaySceneName(scene.name))
+            {
+                AbilitySystemHelper.HandleSceneChange(
+                    config: FlightConfig.Instance,
+                    onSceneChanged: () =>
                     {
-                        FlightAbilityManager.Instance.OnSceneChanged();
-                    }
-                },
-                delayedCheckEquipment: DelayedCheckFlightTotemEquipment,
-                monoBehaviour: this
-            );
+                        if (FlightAbilityManager.Instance != null)
+                        {
+                            FlightAbilityManager.Instance.OnSceneChanged();
+                        }
+                    },
+                    delayedCheckEquipment: DelayedCheckFlightTotemEquipment,
+                    monoBehaviour: this
+                );
+                return;
+            }
+
+            try
+            {
+                if (FlightAbilityManager.Instance != null)
+                {
+                    FlightAbilityManager.Instance.OnSceneChanged();
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog($"{FlightConfig.Instance.LogPrefix} 场景设置失败: {e.Message}");
+            }
         }
 
         /// <summary>

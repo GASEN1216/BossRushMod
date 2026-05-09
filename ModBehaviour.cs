@@ -9,6 +9,7 @@ using ItemStatsSystem;
 using Duckov.ItemUsage;
 using Duckov.Scenes;
 using Duckov.Economy;
+using Duckov.Utilities;
 using System.Reflection;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -2125,6 +2126,88 @@ namespace BossRush
                    sceneName == BaseSewerSceneName;
         }
 
+        internal static bool IsGameplaySceneName(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName))
+            {
+                return false;
+            }
+
+            try
+            {
+                if (SceneNameEquals(sceneName, GameplayDataSettings.SceneManagement.MainMenuScene.Name) ||
+                    SceneNameEquals(sceneName, GameplayDataSettings.SceneManagement.FailLoadingScreenScene.Name) ||
+                    SceneNameEquals(sceneName, GameplayDataSettings.SceneManagement.EvacuateScreenScene.Name))
+                {
+                    return false;
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (SceneLoader.Instance != null &&
+                    SceneLoader.Instance.defaultCurtainScene != null &&
+                    SceneNameEquals(sceneName, SceneLoader.Instance.defaultCurtainScene.Name))
+                {
+                    return false;
+                }
+            }
+            catch { }
+
+            if (SceneNameEquals(sceneName, "MainMenu") ||
+                SceneNameEquals(sceneName, "LoadingScreen") ||
+                SceneNameEquals(sceneName, "LoadingScreen_Black") ||
+                SceneNameEquals(sceneName, "FailLoadingScreen") ||
+                SceneNameEquals(sceneName, "EvacuateScreen"))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        internal static bool CanRunGameplayRuntimeNow(string sceneName)
+        {
+            if (!IsGameplaySceneName(sceneName))
+            {
+                return false;
+            }
+
+            try
+            {
+                if (SceneLoader.IsSceneLoading)
+                {
+                    return false;
+                }
+            }
+            catch { }
+
+            try
+            {
+                MultiSceneCore multiSceneCore = MultiSceneCore.Instance;
+                if (multiSceneCore != null && multiSceneCore.IsLoading)
+                {
+                    return false;
+                }
+            }
+            catch { }
+
+            return true;
+        }
+
+        internal static bool ShouldRunGameplaySceneRuntimeHooks(string sceneName)
+        {
+            return CanRunGameplayRuntimeNow(sceneName);
+        }
+
+        private static bool SceneNameEquals(string sceneName, string expectedSceneName)
+        {
+            return !string.IsNullOrEmpty(sceneName) &&
+                   !string.IsNullOrEmpty(expectedSceneName) &&
+                   string.Equals(sceneName, expectedSceneName, StringComparison.OrdinalIgnoreCase);
+        }
+
         internal bool IsBaseHubBoatInteractable(InteractableBase interactable)
         {
             if (interactable == null || interactable.gameObject == null)
@@ -2418,6 +2501,11 @@ namespace BossRush
 
         void OnGUI()
         {
+            if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             // Boss 池配置窗口现在使用 Unity UI Canvas 实现，不再需要 OnGUI
             
             // 绘制物品生成器 UI（F1 呼出）
@@ -2831,17 +2919,27 @@ namespace BossRush
         
         void Update()
         {
-            // 更新帧率计数器（DevMode）
-            UpdateFpsCounter();
-            
-            // 地图点击输出世界坐标（DevMode 专用）
-            UpdateMapClickDebug();
-            
-            // 更新UI消息
+            bool runGameplaySceneHooks = CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name);
+
+            if (runGameplaySceneHooks)
+            {
+                // 更新帧率计数器（DevMode）
+                UpdateFpsCounter();
+
+                // 地图点击输出世界坐标（DevMode 专用）
+                UpdateMapClickDebug();
+            }
+
+            // 更新UI消息计时器，保留原先在菜单/Loading 场景也会递减的轻量行为
             UpdateMessage();
-            
+
             // 更新好感度系统延迟保存
             AffinityManager.UpdateDeferredSave();
+
+            if (!runGameplaySceneHooks)
+            {
+                return;
+            }
             
             // 龙套装冲刺检测
             UpdateDragonDash();
@@ -3304,6 +3402,11 @@ namespace BossRush
 
         void LateUpdate()
         {
+            if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             // Boss 池窗口的暂停和鼠标状态控制（在所有 Update 之后执行，确保覆盖游戏的设置）
             BossPoolLateUpdate();
             

@@ -96,6 +96,11 @@ namespace BossRush
         /// </summary>
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            if (!ModBehaviour.IsGameplaySceneName(scene.name))
+            {
+                return;
+            }
+
             if (!isRegistered || !hurtEventRegistered)
             {
                 return;

@@ -80,7 +80,10 @@ namespace BossRush
                 }
 
                 // 延迟注册/重新绑定能力到玩家角色
-                StartCoroutine(DelayedSetupHalberdAbility());
+                if (IsGameplaySceneName(scene.name))
+                {
+                    StartCoroutine(DelayedSetupHalberdAbility());
+                }
             }
             catch (Exception e)
             {

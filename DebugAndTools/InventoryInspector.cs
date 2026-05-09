@@ -48,6 +48,12 @@ namespace BossRush
 
         private void Update()
         {
+            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            {
+                HideWindow();
+                return;
+            }
+
             if (!ModBehaviour.DevModeEnabled)
             {
                 HideWindow();
@@ -69,6 +75,11 @@ namespace BossRush
 
         private void OnGUI()
         {
+            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             if (!ModBehaviour.DevModeEnabled || !windowVisible)
             {
                 return;

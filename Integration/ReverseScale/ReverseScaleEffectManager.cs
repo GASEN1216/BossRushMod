@@ -97,6 +97,11 @@ namespace BossRush
         protected override void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
         {
             base.OnSceneLoaded(scene, mode);
+
+            if (!ModBehaviour.IsGameplaySceneName(scene.name))
+            {
+                return;
+            }
             
             // 延迟检查装备状态，确保角色已完全加载
             StartCoroutine(DelayedCheckEquipment());

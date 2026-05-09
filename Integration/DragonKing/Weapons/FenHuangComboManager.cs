@@ -88,6 +88,11 @@ namespace BossRush
 
         void Update()
         {
+            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             // 连招超时重置
             if (ComboStep > 0 && Time.time - lastAttackTime > FenHuangHalberdConfig.ComboWindowTime)
             {

@@ -41,18 +41,34 @@ namespace BossRush
         /// </summary>
         private void SetupReverseScaleForScene(Scene scene)
         {
-            AbilitySystemHelper.HandleSceneChange(
-                config: ReverseScaleConfig.Instance,
-                onSceneChanged: () =>
-                {
-                    if (ReverseScaleAbilityManager.Instance != null)
+            if (IsGameplaySceneName(scene.name))
+            {
+                AbilitySystemHelper.HandleSceneChange(
+                    config: ReverseScaleConfig.Instance,
+                    onSceneChanged: () =>
                     {
-                        ReverseScaleAbilityManager.Instance.OnSceneChanged();
-                    }
-                },
-                delayedCheckEquipment: DelayedCheckReverseScaleEquipment,
-                monoBehaviour: this
-            );
+                        if (ReverseScaleAbilityManager.Instance != null)
+                        {
+                            ReverseScaleAbilityManager.Instance.OnSceneChanged();
+                        }
+                    },
+                    delayedCheckEquipment: DelayedCheckReverseScaleEquipment,
+                    monoBehaviour: this
+                );
+                return;
+            }
+
+            try
+            {
+                if (ReverseScaleAbilityManager.Instance != null)
+                {
+                    ReverseScaleAbilityManager.Instance.OnSceneChanged();
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog($"{ReverseScaleConfig.Instance.LogPrefix} 场景设置失败: {e.Message}");
+            }
         }
 
         /// <summary>

@@ -28,6 +28,11 @@ namespace BossRush
 
         protected override void Update()
         {
+            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             SuppressVanillaAdsIfNeeded();
 
             if (!abilityEnabled)
@@ -40,6 +45,11 @@ namespace BossRush
 
         private void LateUpdate()
         {
+            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
             SuppressVanillaAdsIfNeeded();
         }
 

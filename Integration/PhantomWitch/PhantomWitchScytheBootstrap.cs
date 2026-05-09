@@ -77,7 +77,10 @@ namespace BossRush
                     abilityMgr.OnSceneChanged();
                 }
 
-                StartCoroutine(DelayedSetupPhantomWitchScytheAbility());
+                if (IsGameplaySceneName(scene.name))
+                {
+                    StartCoroutine(DelayedSetupPhantomWitchScytheAbility());
+                }
             }
             catch (Exception e)
             {

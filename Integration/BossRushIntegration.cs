@@ -1281,7 +1281,7 @@ namespace BossRush
             InitializePhantomWitchScytheSystem();
             
             // 如果当前已经在场景中，立即执行一次
-            if (SceneManager.GetActiveScene().name != "MainMenu" && SceneManager.GetActiveScene().name != "LoadingScreen_Black")
+            if (CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
             {
                 StartCoroutine(FindInteractionTargets(5)); // 立即扫描5次
             }
@@ -1419,6 +1419,7 @@ namespace BossRush
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
         {
             DevLog("[BossRush] 场景加载: " + scene.name);
+            bool isGameplayScene = IsGameplaySceneName(scene.name);
             
             // 亡魂系统：场景切换时清理状态
             ClearDeathWraithState_DeathWraith();
@@ -1440,33 +1441,24 @@ namespace BossRush
             // 如果不清除，ReapplyModifiers 的 Harmony Prefix 会跳过恢复
             ReforgeDataPersistence.ClearRestoredTracking();
 
-            // [修复] 主动恢复背包物品的重铸数据
-            // Harmony Patch 只挂在 ReapplyModifiers 上，只有 Modifiers 的物品才会触发
-            // 纯 Stats 物品（如焚皇断界戟）不会触发 ReapplyModifiers，需要主动恢复
-            StartCoroutine(DelayedRestoreReforgeDataForInventory());
-
             // 平安护身符在每个场景仅可触发一次，切图时重置
             PeaceCharmRuntime.ResetSceneTrigger();
 
-            // 在任何场景加载后都尝试订阅龙息武器事件
-            // 使用延迟调用确保玩家角色已初始化
-            StartCoroutine(DelayedSubscribeDragonBreathEvents());
-            
-            // 设置飞行图腾系统（注入商店、Hook Dash等）
+            if (isGameplayScene)
+            {
+                StartCoroutine(DelayedRestoreReforgeDataForInventory());
+                StartCoroutine(DelayedSubscribeDragonBreathEvents());
+            }
+
             SetupFlightTotemForScene(scene);
-            
-            // 设置焚皇断界戟系统（场景切换重绑定）
             SetupFenHuangHalberdForScene(scene);
-
-            // 设置霜之哀伤系统（场景切换重绑定）
             SetupFrostmourneForScene(scene);
-
-            // 设置幽灵女巫大镰系统（场景切换重绑定）
             SetupPhantomWitchScytheForScene(scene);
 
-            // 场景加载后重新应用龙枪弹种属性覆盖（射速/伤害/弹匣等）
-            // 延迟调用确保玩家角色和武器已初始化
-            StartCoroutine(DelayedApplyDragonGunAmmoOverride());
+            if (isGameplayScene)
+            {
+                StartCoroutine(DelayedApplyDragonGunAmmoOverride());
+            }
 
             // 亡魂系统改为直接绑定原版遗失物创建链，这里不再做场景重试生成。
             if (!IsDeathWraithSystemEnabled())
@@ -1725,7 +1717,10 @@ namespace BossRush
                     ScheduleRestoreFollowingSpouse(scene.name, "普通场景加载");
                     
                     // 其他场景：注入传送到竞技场的交互选项
+                if (isGameplayScene)
+                {
                     StartCoroutine(FindInteractionTargets(10));
+                }
                 }
             }
             catch (Exception e)
@@ -1798,6 +1793,12 @@ namespace BossRush
 
             while (true)
             {
+                if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
+                {
+                    yield return wait;
+                    continue;
+                }
+
                 int restored = 0;
 
                 try
