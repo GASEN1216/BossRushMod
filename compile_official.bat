@@ -104,6 +104,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModBehaviour.cs ^
     ModConfigApi.cs ^
     UIAndSigns\UIAndSigns.cs ^
+    UIAndSigns\BossRushInteractionScan.cs ^
     DebugAndTools\DebugAndTools.cs ^
     DebugAndTools\DebugToolsRuntimeModule.cs ^
     DebugAndTools\DebugToolsRuntimeHooks.cs ^

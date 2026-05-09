@@ -16,6 +16,7 @@ DEBUG_RUNTIME_HOOKS = Path("DebugAndTools/DebugToolsRuntimeHooks.cs")
 MARRIAGE_DEBUG_UI = Path("DebugAndTools/MarriageTestDebugUI.cs")
 ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
 ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
+UI_SIGNS_INTERACTION_SCAN = Path("UIAndSigns/BossRushInteractionScan.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
@@ -45,6 +46,7 @@ REQUIRED_COMPILE_SOURCES = [
     "DebugAndTools/MarriageTestDebugUI.cs",
     "Achievement/AchievementRuntimeModule.cs",
     "Achievement/AchievementRuntimeHooks.cs",
+    "UIAndSigns/BossRushInteractionScan.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "Integration/EquipmentRuntimeHooks.cs",
@@ -653,6 +655,43 @@ def main() -> int:
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own marriage test debug method anymore: " + forbidden)
+
+    interaction_scan = UI_SIGNS_INTERACTION_SCAN.read_text(encoding="utf-8", errors="ignore")
+    for signature, required_tokens in {
+        "private IEnumerator FindInteractionTargets(int scanTimes)": [
+            "ScanAndInject();",
+            'DevLog("[BossRush] 场景扫描成功，已注入 BossRush 交互点，停止扫描。");',
+        ],
+        "private bool ScanAndInject()": [
+            "GetGameObjectPath(interact.gameObject);",
+            "TryInjectBaseHubBoatInteractable(boatInteract)",
+        ],
+        "private string GetGameObjectPath(GameObject obj)": [
+            'return "<null>";',
+            'path = parent.name + "/" + path;',
+        ],
+        "private List<InteractableBase> GetGroupList(InteractableBase target)": [
+            "ReflectionCache.InteractableBase_OtherInterablesInGroup",
+        ],
+        "private bool InjectIntoInteractableBaseGroup(InteractableBase target)": [
+            "InjectIntoInteractableBaseGroup_UIAndSigns(target);",
+        ],
+    }.items():
+        body = extract_method_body(interaction_scan, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: BossRushInteractionScan missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: BossRushInteractionScan missing token: " + required)
+    for forbidden in [
+        "private IEnumerator FindInteractionTargets(int scanTimes)",
+        "private bool ScanAndInject()",
+        "private string GetGameObjectPath(GameObject obj)",
+        "private List<InteractableBase> GetGroupList(InteractableBase target)",
+        "private bool InjectIntoInteractableBaseGroup(InteractableBase target)",
+    ]:
+        if forbidden in mod_text:
+            return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own interaction scan method anymore: " + forbidden)
 
     achievement_runtime_module = ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in achievement_runtime_module:
