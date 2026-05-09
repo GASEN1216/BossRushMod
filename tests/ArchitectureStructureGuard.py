@@ -10,6 +10,7 @@ MOD = Path("ModBehaviour.cs")
 MODED_WAVES = Path("ModeD/ModeDWaves.cs")
 MODED_RUNTIME_MODULE = Path("ModeD/ModeDRuntimeModule.cs")
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
+PLAYER_LIFECYCLE_RUNTIME_HOOKS = Path("Utilities/PlayerLifecycleRuntimeHooks.cs")
 DEBUG_RUNTIME_MODULE = Path("DebugAndTools/DebugToolsRuntimeModule.cs")
 DEBUG_RUNTIME_HOOKS = Path("DebugAndTools/DebugToolsRuntimeHooks.cs")
 ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
@@ -32,6 +33,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
     "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
     "Utilities/AlwaysOnRuntimeHooks.cs",
+    "Utilities/PlayerLifecycleRuntimeHooks.cs",
     "ModeD/ModeDRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeHooks.cs",
@@ -501,6 +503,7 @@ def main() -> int:
     for required in [
         "InitializeAchievementSystem();",
         "AchievementView.EnsureInstance();",
+        "Health.OnHurt += OnPlayerHurtForAchievement;",
     ]:
         if required not in achievement_init_body:
             return fail("ArchitectureStructureGuard: InitializeAchievementRuntime missing token: " + required)
@@ -529,11 +532,32 @@ def main() -> int:
     awake_body = extract_method_body(mod_text, "void Awake()")
     if not awake_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake body could not be parsed")
+    player_lifecycle_hooks = PLAYER_LIFECYCLE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    player_register_body = extract_method_body(player_lifecycle_hooks, "internal void RegisterPlayerLifecycleRuntimeEvents()")
+    if not player_register_body:
+        return fail("ArchitectureStructureGuard: PlayerLifecycleRuntimeHooks missing RegisterPlayerLifecycleRuntimeEvents wrapper")
+    for required in [
+        "Health.OnDead += OnPlayerDeathInBossRush;",
+        "Health.OnHurt += PrimeDeathWraithData_DeathWraith;",
+        "Health.OnDead += RecordDeathWraithData_DeathWraith;",
+    ]:
+        if required not in player_register_body:
+            return fail("ArchitectureStructureGuard: RegisterPlayerLifecycleRuntimeEvents missing token: " + required)
+    if "RegisterPlayerLifecycleRuntimeEvents();" not in awake_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route player lifecycle event registration through wrapper")
+    for forbidden in [
+        "Health.OnDead += OnPlayerDeathInBossRush;",
+        "Health.OnHurt += PrimeDeathWraithData_DeathWraith;",
+        "Health.OnDead += RecordDeathWraithData_DeathWraith;",
+    ]:
+        if forbidden in awake_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Awake still directly calls player lifecycle token: " + forbidden)
     if "InitializeAchievementRuntime();" not in awake_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route achievement initialization through wrapper")
     for forbidden in [
         "InitializeAchievementSystem();",
         "AchievementView.EnsureInstance();",
+        "Health.OnHurt += OnPlayerHurtForAchievement;",
     ]:
         if forbidden in awake_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.Awake still directly calls achievement token: " + forbidden)
@@ -544,6 +568,18 @@ def main() -> int:
     destroy_body = extract_method_body(mod_text, "void OnDestroy()")
     if not destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy body could not be parsed")
+    player_cleanup_body = extract_method_body(player_lifecycle_hooks, "internal void CleanupPlayerLifecycleRuntimeEvents()")
+    if not player_cleanup_body:
+        return fail("ArchitectureStructureGuard: PlayerLifecycleRuntimeHooks missing CleanupPlayerLifecycleRuntimeEvents wrapper")
+    for required in [
+        "Health.OnDead -= OnPlayerDeathInBossRush;",
+        "Health.OnHurt -= PrimeDeathWraithData_DeathWraith;",
+        "Health.OnDead -= RecordDeathWraithData_DeathWraith;",
+    ]:
+        if required not in player_cleanup_body:
+            return fail("ArchitectureStructureGuard: CleanupPlayerLifecycleRuntimeEvents missing token: " + required)
+    if "CleanupPlayerLifecycleRuntimeEvents();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route player lifecycle cleanup through wrapper")
     if "CleanupAchievementRuntime();" not in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route achievement cleanup through wrapper")
     if "UnsubscribeAchievementEvents();" in destroy_body:
@@ -558,6 +594,9 @@ def main() -> int:
         "OnDestroy_F3DebugCheatMenu();",
         "UnregisterInteractDebugListener();",
         "UnregisterShootDebugListener();",
+        "Health.OnDead -= OnPlayerDeathInBossRush;",
+        "Health.OnHurt -= PrimeDeathWraithData_DeathWraith;",
+        "Health.OnDead -= RecordDeathWraithData_DeathWraith;",
         "AffinityManager.OnAffinityChanged -= OnAffinityChanged;",
         "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
         "AffinityManager.Shutdown();",

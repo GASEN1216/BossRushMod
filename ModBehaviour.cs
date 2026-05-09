@@ -2346,18 +2346,8 @@ namespace BossRush
             // 重置Wiki缓存，确保每次进游戏都重新加载
             WikiContentManager.Instance.ResetCache();
             
-            // 监听玩家死亡事件
-            Health.OnDead += OnPlayerDeathInBossRush;
-
-            // 监听玩家受伤事件（亡魂系统致死前预缓存）
-            Health.OnHurt += PrimeDeathWraithData_DeathWraith;
-
-            // 监听玩家死亡事件（亡魂系统）
-            Health.OnDead += RecordDeathWraithData_DeathWraith;
+            RegisterPlayerLifecycleRuntimeEvents();
             
-            // 监听玩家受伤事件（用于无伤成就追踪）
-            Health.OnHurt += OnPlayerHurtForAchievement;
-
             // 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
             RegisterInteractDebugListener();
             
@@ -2921,10 +2911,7 @@ namespace BossRush
         {
             CleanupDebugToolsOnDestroy();
             
-            // 对称注销 Awake 中挂上的玩家死亡/受伤事件
-            Health.OnDead -= OnPlayerDeathInBossRush;
-            Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
-            Health.OnDead -= RecordDeathWraithData_DeathWraith;
+            CleanupPlayerLifecycleRuntimeEvents();
 
             // 清理成就追踪事件
             CleanupAchievementRuntime();

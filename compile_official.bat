@@ -125,6 +125,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Config\DragonKingSetConfig.cs ^
     Utilities\Utilities.cs ^
     Utilities\AlwaysOnRuntimeHooks.cs ^
+    Utilities\PlayerLifecycleRuntimeHooks.cs ^
     Utilities\EntityModelFactory.cs ^
     Utilities\SimpleJsonHelper.cs ^
     Utilities\AwenLootSweepMath.cs ^

@@ -9,6 +9,7 @@ namespace BossRush
         {
             InitializeAchievementSystem();
             AchievementView.EnsureInstance();
+            Health.OnHurt += OnPlayerHurtForAchievement;
         }
 
         internal void TickAchievementRuntime(float deltaTime, float unscaledDeltaTime)
