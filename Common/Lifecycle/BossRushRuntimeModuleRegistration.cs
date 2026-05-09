@@ -7,6 +7,7 @@ namespace BossRush
             runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
             runtimeModuleHost.Register(new ModeDRuntimeModule());
             runtimeModuleHost.Register(new DebugToolsRuntimeModule());
+            runtimeModuleHost.Register(new AchievementRuntimeModule());
         }
     }
 }

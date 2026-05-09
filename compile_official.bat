@@ -358,6 +358,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\ReverseScale\ReverseScaleBootstrap.cs ^
     Integration\ReverseScale\ReverseScaleFactory.cs ^
     Injection\Injection.cs ^
+    Achievement\AchievementRuntimeModule.cs ^
+    Achievement\AchievementRuntimeHooks.cs ^
     Achievement\BossRushAchievementDef.cs ^
     Achievement\AchievementTracker.cs ^
     Achievement\BossRushAchievementManager.cs ^

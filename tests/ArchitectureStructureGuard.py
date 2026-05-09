@@ -11,6 +11,8 @@ MODED_WAVES = Path("ModeD/ModeDWaves.cs")
 MODED_RUNTIME_MODULE = Path("ModeD/ModeDRuntimeModule.cs")
 DEBUG_RUNTIME_MODULE = Path("DebugAndTools/DebugToolsRuntimeModule.cs")
 DEBUG_RUNTIME_HOOKS = Path("DebugAndTools/DebugToolsRuntimeHooks.cs")
+ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
+ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 
 REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
@@ -22,6 +24,8 @@ REQUIRED_COMPILE_SOURCES = [
     "ModeD/ModeDRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeModule.cs",
     "DebugAndTools/DebugToolsRuntimeHooks.cs",
+    "Achievement/AchievementRuntimeModule.cs",
+    "Achievement/AchievementRuntimeHooks.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
@@ -100,6 +104,8 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: runtime module registration missing ModeDRuntimeModule")
     if "runtimeModuleHost.Register(new DebugToolsRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing DebugToolsRuntimeModule")
+    if "runtimeModuleHost.Register(new AchievementRuntimeModule());" not in registration_text:
+        return fail("ArchitectureStructureGuard: runtime module registration missing AchievementRuntimeModule")
 
     mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
@@ -200,6 +206,65 @@ def main() -> int:
     ]:
         if forbidden in late_update_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate still directly calls debug tool token: " + forbidden)
+
+    achievement_runtime_module = ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
+    if "owner.TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in achievement_runtime_module:
+        return fail("ArchitectureStructureGuard: AchievementRuntimeModule must route update through owner wrapper")
+
+    achievement_hooks = ACHIEVEMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    achievement_init_body = extract_method_body(achievement_hooks, "internal void InitializeAchievementRuntime()")
+    if not achievement_init_body:
+        return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing InitializeAchievementRuntime wrapper")
+    for required in [
+        "InitializeAchievementSystem();",
+        "AchievementView.EnsureInstance();",
+    ]:
+        if required not in achievement_init_body:
+            return fail("ArchitectureStructureGuard: InitializeAchievementRuntime missing token: " + required)
+
+    achievement_tick_body = extract_method_body(achievement_hooks, "internal void TickAchievementRuntime(float deltaTime, float unscaledDeltaTime)")
+    if not achievement_tick_body:
+        return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing TickAchievementRuntime wrapper")
+    for required in [
+        "config.achievementHotkey",
+        "Duckov.UI.View.ActiveView == null",
+        "AchievementView.Instance.Toggle();",
+    ]:
+        if required not in achievement_tick_body:
+            return fail("ArchitectureStructureGuard: TickAchievementRuntime missing token: " + required)
+
+    achievement_cleanup_body = extract_method_body(achievement_hooks, "internal void CleanupAchievementRuntime()")
+    if not achievement_cleanup_body:
+        return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing CleanupAchievementRuntime wrapper")
+    for required in [
+        "Health.OnHurt -= OnPlayerHurtForAchievement;",
+        "UnsubscribeAchievementEvents();",
+    ]:
+        if required not in achievement_cleanup_body:
+            return fail("ArchitectureStructureGuard: CleanupAchievementRuntime missing token: " + required)
+
+    awake_body = extract_method_body(mod_text, "void Awake()")
+    if not awake_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Awake body could not be parsed")
+    if "InitializeAchievementRuntime();" not in awake_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route achievement initialization through wrapper")
+    for forbidden in [
+        "InitializeAchievementSystem();",
+        "AchievementView.EnsureInstance();",
+    ]:
+        if forbidden in awake_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Awake still directly calls achievement token: " + forbidden)
+
+    if "AchievementView.Instance.Toggle();" in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly toggle AchievementView")
+
+    destroy_body = extract_method_body(mod_text, "void OnDestroy()")
+    if not destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy body could not be parsed")
+    if "CleanupAchievementRuntime();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route achievement cleanup through wrapper")
+    if "UnsubscribeAchievementEvents();" in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must not directly unsubscribe achievement events")
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")
     for required in [

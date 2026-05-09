@@ -2364,11 +2364,8 @@ namespace BossRush
             // 注册开枪调试监听（仅在 DevModeEnabled = true 时生效）
             RegisterShootDebugListener();
             
-            // 初始化成就系统
-            InitializeAchievementSystem();
-            
-            // 初始化成就页面UI（确保实例存在，DontDestroyOnLoad 已在 AchievementView 内部处理）
-            AchievementView.EnsureInstance();
+            // 初始化成就系统和成就页面UI
+            InitializeAchievementRuntime();
             
             // 初始化好感度系统
             InitializeAffinitySystem();
@@ -2971,29 +2968,6 @@ namespace BossRush
                 daXingXingCleanTimer = 0f;
             }
             
-            // 成就界面快捷键（可配置，默认L键）
-            try
-            {
-                UnityEngine.KeyCode achievementKey = UnityEngine.KeyCode.L;
-                if (config != null && config.achievementHotkey > 0)
-                {
-                    achievementKey = (UnityEngine.KeyCode)config.achievementHotkey;
-                }
-                
-                if (UnityEngine.Input.GetKeyDown(achievementKey))
-                {
-                    // 检查是否有其他UI打开（如暂停菜单、商店等）
-                    if (Duckov.UI.View.ActiveView == null)
-                    {
-                        AchievementView.Instance.Toggle();
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
-            }
-            
             if (f3DebugCheatMenuVisible)
             {
                 return;
@@ -3048,11 +3022,8 @@ namespace BossRush
             Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
             Health.OnDead -= RecordDeathWraithData_DeathWraith;
 
-            // 取消订阅玩家受伤事件（成就追踪）
-            Health.OnHurt -= OnPlayerHurtForAchievement;
-            
-            // 取消订阅成就追踪事件（物品拾取、血量变化）
-            UnsubscribeAchievementEvents();
+            // 清理成就追踪事件
+            CleanupAchievementRuntime();
             
             // 取消订阅好感度系统事件并保存数据
             try
