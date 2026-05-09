@@ -95,6 +95,12 @@ namespace BossRush
         private HealthBar modeECachedPlayerHealthBar = null;
         private float modeENextHealthBarLookupTime = 0f;
         private float modeENextUiWarningLogTime = 0f;
+        private readonly Dictionary<int, string> modeEHealthBarBaseTextByBarId = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> modeEHealthBarDesiredTextByBarId = new Dictionary<int, string>();
+        private readonly Dictionary<int, int> modeEHealthBarTargetIdsByBarId = new Dictionary<int, int>();
+        private readonly Dictionary<int, int> modeEHealthBarAppliedVersionByBarId = new Dictionary<int, int>();
+        private int modeEHealthBarNameVersion = 1;
+        private bool? modeELastHealthBarLanguageIsChinese = null;
 
         #endregion
 
@@ -150,6 +156,36 @@ namespace BossRush
             modeECachedPlayerHealthBar = null;
             modeENextHealthBarLookupTime = 0f;
             modeENextUiWarningLogTime = 0f;
+            modeEHealthBarBaseTextByBarId.Clear();
+            modeEHealthBarDesiredTextByBarId.Clear();
+            modeEHealthBarTargetIdsByBarId.Clear();
+            modeEHealthBarAppliedVersionByBarId.Clear();
+            modeEHealthBarNameVersion = 1;
+            modeELastHealthBarLanguageIsChinese = null;
+        }
+
+        private void MarkModeEHealthBarNamesDirty()
+        {
+            if (modeEHealthBarNameVersion < int.MaxValue)
+            {
+                modeEHealthBarNameVersion++;
+            }
+            else
+            {
+                modeEHealthBarNameVersion = 1;
+                modeEHealthBarAppliedVersionByBarId.Clear();
+            }
+        }
+
+        private void SyncModeEHealthBarNameLanguageState()
+        {
+            bool isChinese = L10n.IsChinese;
+            if (!modeELastHealthBarLanguageIsChinese.HasValue ||
+                modeELastHealthBarLanguageIsChinese.Value != isChinese)
+            {
+                modeELastHealthBarLanguageIsChinese = isChinese;
+                MarkModeEHealthBarNamesDirty();
+            }
         }
 
         private void LogModeEUiWarningLimited(string message, Exception e = null)
@@ -551,6 +587,7 @@ namespace BossRush
 
             CleanupModeEVirtualSpawnerRoot();
             ClearPendingBossAggroQueue();
+            ResetModeERespawnRuntimeState();
             ResetModeEFLootboxTrackerState();
         }
 
@@ -1190,7 +1227,7 @@ namespace BossRush
                 float deadline = Time.unscaledTime + MODEE_STARTUP_VERIFICATION_TIMEOUT_SECONDS;
                 while (Time.unscaledTime < deadline)
                 {
-                    if (modeEStartupFirstBossSpawned || modeESpawnResolved > 0 || modeEAliveEnemies.Count > 0)
+                    if (modeEStartupFirstBossSpawned || modeEAliveEnemies.Count > 0)
                     {
                         DisarmModeEStartupRecovery("已检测到首个成功生成的Boss");
                         verified = true;
@@ -1208,7 +1245,7 @@ namespace BossRush
 
                 if (!verified && modeEStartupRecoveryArmed)
                 {
-                    if (modeEStartupFirstBossSpawned || modeESpawnResolved > 0 || modeEAliveEnemies.Count > 0)
+                    if (modeEStartupFirstBossSpawned || modeEAliveEnemies.Count > 0)
                     {
                         DisarmModeEStartupRecovery("超时前已检测到成功生成的Boss");
                         verified = true;
@@ -1841,33 +1878,133 @@ namespace BossRush
             return " - " + name;
         }
 
+        private void ClearModeEHealthBarOverrideCache(HealthBar healthBar)
+        {
+            if (healthBar == null)
+            {
+                return;
+            }
+
+            int barId = healthBar.GetInstanceID();
+            modeEHealthBarBaseTextByBarId.Remove(barId);
+            modeEHealthBarDesiredTextByBarId.Remove(barId);
+            modeEHealthBarTargetIdsByBarId.Remove(barId);
+            modeEHealthBarAppliedVersionByBarId.Remove(barId);
+        }
+
+        private string BuildModeEDesiredHealthBarText(
+            CharacterMainControl character,
+            TextMeshProUGUI nameText,
+            int barId,
+            int targetId,
+            bool forceShowName)
+        {
+            if (character == null)
+            {
+                return null;
+            }
+
+            string baseText = null;
+            if (forceShowName)
+            {
+                baseText = GetModeEPlayerName();
+            }
+            else
+            {
+                int cachedTargetId;
+                bool needsBaseRefresh =
+                    !modeEHealthBarBaseTextByBarId.TryGetValue(barId, out baseText) ||
+                    string.IsNullOrEmpty(baseText) ||
+                    !modeEHealthBarTargetIdsByBarId.TryGetValue(barId, out cachedTargetId) ||
+                    cachedTargetId != targetId;
+
+                if (needsBaseRefresh)
+                {
+                    baseText = nameText != null ? StripModeEFactionSuffix(nameText.text) : null;
+                    if (string.IsNullOrEmpty(baseText))
+                    {
+                        baseText = GetModeEActorDisplayName(character);
+                    }
+
+                    if (!string.IsNullOrEmpty(baseText))
+                    {
+                        modeEHealthBarBaseTextByBarId[barId] = baseText;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(baseText))
+            {
+                return null;
+            }
+
+            Teams displayFaction = forceShowName ? ModeEPlayerFaction : character.Team;
+            string factionSuffix = GetModeEFactionSuffix(displayFaction);
+            return string.IsNullOrEmpty(factionSuffix) ? baseText : baseText + factionSuffix;
+        }
+
         /// <summary>
         /// 在 HealthBar 名字后追加阵营后缀，供统一的 HealthBar patch 调用。
         /// </summary>
         internal void ApplyModeEHealthBarNameOverride(HealthBar healthBar, TextMeshProUGUI nameText)
         {
-            if (nameText == null) return;
+            if (healthBar == null || nameText == null) return;
 
             Health target = healthBar.target;
-            if (target == null) return;
+            if (target == null)
+            {
+                ClearModeEHealthBarOverrideCache(healthBar);
+                return;
+            }
 
             CharacterMainControl character = target.TryGetCharacter();
-            if (character == null) return;
+            if (character == null)
+            {
+                ClearModeEHealthBarOverrideCache(healthBar);
+                return;
+            }
 
             bool forceShowName = character.IsMainCharacter;
             if (!forceShowName && !nameText.gameObject.activeSelf) return;
 
-            string baseText = forceShowName
-                ? GetModeEPlayerName()
-                : StripModeEFactionSuffix(nameText.text);
-            if (string.IsNullOrEmpty(baseText))
+            SyncModeEHealthBarNameLanguageState();
+
+            int barId = healthBar.GetInstanceID();
+            int targetId = target.GetInstanceID();
+            string desiredText = null;
+            int appliedVersion = 0;
+            int cachedTargetId = 0;
+            bool targetChanged =
+                !modeEHealthBarTargetIdsByBarId.TryGetValue(barId, out cachedTargetId) ||
+                cachedTargetId != targetId;
+            if (targetChanged)
             {
-                baseText = GetModeEActorDisplayName(character);
+                modeEHealthBarBaseTextByBarId.Remove(barId);
+                modeEHealthBarDesiredTextByBarId.Remove(barId);
+                modeEHealthBarAppliedVersionByBarId.Remove(barId);
             }
 
-            Teams displayFaction = forceShowName ? ModeEPlayerFaction : character.Team;
-            string factionSuffix = GetModeEFactionSuffix(displayFaction);
-            string desiredText = string.IsNullOrEmpty(factionSuffix) ? baseText : baseText + factionSuffix;
+            bool needsRebuild =
+                forceShowName ||
+                targetChanged ||
+                !modeEHealthBarDesiredTextByBarId.TryGetValue(barId, out desiredText) ||
+                string.IsNullOrEmpty(desiredText) ||
+                !modeEHealthBarAppliedVersionByBarId.TryGetValue(barId, out appliedVersion) ||
+                appliedVersion != modeEHealthBarNameVersion;
+
+            if (needsRebuild)
+            {
+                desiredText = BuildModeEDesiredHealthBarText(character, nameText, barId, targetId, forceShowName);
+                if (string.IsNullOrEmpty(desiredText))
+                {
+                    ClearModeEHealthBarOverrideCache(healthBar);
+                    return;
+                }
+
+                modeEHealthBarDesiredTextByBarId[barId] = desiredText;
+                modeEHealthBarAppliedVersionByBarId[barId] = modeEHealthBarNameVersion;
+                modeEHealthBarTargetIdsByBarId[barId] = targetId;
+            }
 
             if (forceShowName && !nameText.gameObject.activeSelf)
             {

@@ -279,6 +279,9 @@ namespace BossRush
                     return distA.CompareTo(distB);
                 });
 
+                // 开局延迟刷怪期间，未来待生成 Boss 也要计入重刷道具的压力上限。
+                modeETotalSpawnExpected = spawnTasks.Count;
+
                 // 预计算狼阵营可用的不重复 Boss 数量（用于"先刷完所有 Boss 再出小怪"逻辑）
                 modeEWolfBossCount = 0;
                 modeEWolfBossAssigned = 0;
@@ -312,7 +315,8 @@ namespace BossRush
                         modeFSessionToken,
                         modeFRelatedScene,
                         modeESessionToken,
-                        modeESessionRelatedScene);
+                        modeESessionRelatedScene,
+                        countSpawnAttemptImmediately: false);
 
                     // 每个boss之间等待，给角色创建和配装充足时间完成，减少帧率尖刺
                     if (i + 1 < spawnTasks.Count)
@@ -385,6 +389,26 @@ namespace BossRush
             return candidates[candidates.Count - 1];
         }
 
+        private void ResolveModeESpawnAttempt()
+        {
+            if (modeESpawnResolved < modeETotalSpawnExpected)
+            {
+                modeESpawnResolved++;
+            }
+            else
+            {
+                modeESpawnResolved = modeETotalSpawnExpected;
+            }
+        }
+
+        private void ResolveModeESpawnAttemptIfCounted(bool spawnAttemptCounted)
+        {
+            if (spawnAttemptCounted)
+            {
+                ResolveModeESpawnAttempt();
+            }
+        }
+
         /// <summary>
         /// 生成单个 Mode E Boss（从 ModeESpawnAllBosses 分批调用）
         /// 
@@ -402,8 +426,12 @@ namespace BossRush
             int modeFSessionToken = 0,
             int modeFRelatedScene = -1,
             int modeESessionToken = 0,
-            int modeESessionRelatedScene = -1)
+            int modeESessionRelatedScene = -1,
+            bool countSpawnAttemptImmediately = true)
         {
+            bool spawnAttemptCounted = !countSpawnAttemptImmediately;
+            bool reservedDragonDescendantSlot = false;
+
             try
             {
                 EnemyPresetInfo bossPreset = null;
@@ -471,12 +499,17 @@ namespace BossRush
                 if (bossPreset == null)
                 {
                     DevLog("[ModeE] [WARNING] 阵营 " + faction + " 无任何匹配预设（Boss池+小怪池均为空），跳过该刷怪点");
+                    ResolveModeESpawnAttemptIfCounted(spawnAttemptCounted);
                     return;
                 }
 
                 // 记录龙裔标记（龙皇在 Mode E 中已被完全排除，无需追踪）
                 isThisDragonDescendant = IsDragonDescendantPreset(bossPreset);
-                if (isThisDragonDescendant) modeEDragonDescendantSpawned = true;
+                if (isThisDragonDescendant)
+                {
+                    modeEDragonDescendantSpawned = true;
+                    reservedDragonDescendantSlot = true;
+                }
 
                 // 安全距离检查：如果分配的刷怪点距玩家太近，优先从本阵营刷怪点中选安全点
                 CharacterMainControl modeEPlayer = CharacterMainControl.Main;
@@ -502,7 +535,12 @@ namespace BossRush
                 {
                     spawnPos = GetSafeBossSpawnPosition(spawnPoint);
                 }
-                modeETotalSpawnExpected++;
+
+                if (countSpawnAttemptImmediately)
+                {
+                    modeETotalSpawnExpected++;
+                    spawnAttemptCounted = true;
+                }
 
                 Teams capturedFaction = faction;
 
@@ -541,6 +579,9 @@ namespace BossRush
                             modeEDragonDescendantSpawned = false;
                             DevLog("[ModeE] 龙裔遗族生成失败，回退全局标记");
                         }
+
+                        ResolveModeESpawnAttempt();
+                        DevLog("[ModeE] 生成失败结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
                     },
                     waveIndex: 1,
                     skipDragonDescendant: skipDragon,
@@ -549,6 +590,13 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                if (reservedDragonDescendantSlot)
+                {
+                    modeEDragonDescendantSpawned = false;
+                    DevLog("[ModeE] 龙裔遗族同步生成异常，回退全局标记");
+                }
+
+                ResolveModeESpawnAttemptIfCounted(spawnAttemptCounted);
                 DevLog("[ModeE] [ERROR] SpawnSingleModeEBoss 失败: " + e.Message);
             }
         }
@@ -669,7 +717,7 @@ namespace BossRush
                 }
 
                 // 更新生成计数
-                modeESpawnResolved++;
+                ResolveModeESpawnAttempt();
                 MarkModeEStartupBossSpawned();
                 DevLog("[ModeE] 生成结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
             }

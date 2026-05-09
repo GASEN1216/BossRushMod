@@ -18,6 +18,9 @@ namespace BossRush
     /// </summary>
     public class RespawnItemUsage : UsageBehavior
     {
+        private const float RespawnItemRejectMessageCooldownSeconds = 1.0f;
+        private static float lastRespawnItemRejectMessageTime = -999f;
+
         /// <summary>
         /// 显示设置（物品描述中显示的使用说明）
         /// </summary>
@@ -40,18 +43,52 @@ namespace BossRush
         public override bool CanBeUsed(Item item, object user)
         {
             var inst = ModBehaviour.Instance;
-            if (inst == null) return false;
+            if (inst == null || item == null) return false;
 
-            // 非 Mode E 激活状态：显示警告，返回 false 阻止使用（物品不消耗）
+            int typeId = item.TypeID;
+            bool isRespawnSpawnerItem =
+                typeId == RespawnItemConfig.TAUNT_SMOKE_TYPE_ID ||
+                typeId == RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID;
+            bool isModeEUtilityItem =
+                isRespawnSpawnerItem ||
+                typeId == RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID ||
+                typeId == RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID;
+
+            if (!isModeEUtilityItem)
+            {
+                return true;
+            }
+
             if (!inst.IsModeEActive)
             {
-                NotificationText.Push(L10n.T(
-                    "该物品只能在划地为营模式中使用！",
-                    "This item can only be used in Faction Battle mode!"
-                ));
+                if (CanShowModeERespawnItemRejectMessage())
+                {
+                    inst.CanUseModeERespawnItem(true);
+                }
                 return false;
             }
 
+            if (isRespawnSpawnerItem && !inst.CanQueryUseModeERespawnItem())
+            {
+                if (CanShowModeERespawnItemRejectMessage())
+                {
+                    inst.CanUseModeERespawnItem(true);
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool CanShowModeERespawnItemRejectMessage()
+        {
+            float now = UnityEngine.Time.unscaledTime;
+            if (now - lastRespawnItemRejectMessageTime < RespawnItemRejectMessageCooldownSeconds)
+            {
+                return false;
+            }
+
+            lastRespawnItemRejectMessageTime = now;
             return true;
         }
 
@@ -65,16 +102,36 @@ namespace BossRush
             try
             {
                 var inst = ModBehaviour.Instance;
-                if (inst == null) return;
+                if (inst == null)
+                {
+                    NotificationText.Push(L10n.T(
+                        "当前无法使用该物品！",
+                        "This item cannot be used right now!"
+                    ));
+                    return;
+                }
+
+                if (item == null) return;
+
+                if (!inst.IsModeEActive)
+                {
+                    NotificationText.Push(L10n.T(
+                        "该物品只能在划地为营模式中使用！",
+                        "This item can only be used in Faction Battle mode!"
+                    ));
+                    return;
+                }
 
                 int typeId = item.TypeID;
 
                 if (typeId == RespawnItemConfig.TAUNT_SMOKE_TYPE_ID)
                 {
+                    if (!inst.CanUseModeERespawnItem(true)) return;
                     inst.UseTauntSmoke();
                 }
                 else if (typeId == RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID)
                 {
+                    if (!inst.CanUseModeERespawnItem(true)) return;
                     inst.UseChaosDetonator();
                 }
                 else if (typeId == RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID)

@@ -47,6 +47,15 @@ namespace BossRush
         private static readonly List<Vector3> enemyRecoverySpawnCandidates
             = new List<Vector3>();
 
+        private static readonly List<Vector3> enemyRecoveryModeEValidatedSpawnCandidates
+            = new List<Vector3>();
+
+        private static readonly List<Vector3> enemyRecoveryModeEValidatedRawCandidates
+            = new List<Vector3>();
+
+        private Vector3[] enemyRecoveryModeEValidatedSourcePoints = null;
+        private bool enemyRecoverySpawnCandidatesArePrevalidated = false;
+
         private float enemyRecoveryCheckTimer = 0f;
 
         private void ClearEnemyRecoveryMonitorState()
@@ -56,6 +65,10 @@ namespace BossRush
             enemyRecoverySeenEnemies.Clear();
             enemyRecoveryRemovalBuffer.Clear();
             enemyRecoverySpawnCandidates.Clear();
+            enemyRecoveryModeEValidatedSpawnCandidates.Clear();
+            enemyRecoveryModeEValidatedRawCandidates.Clear();
+            enemyRecoveryModeEValidatedSourcePoints = null;
+            enemyRecoverySpawnCandidatesArePrevalidated = false;
         }
 
         private void RegisterEnemyRecoveryAnchor(CharacterMainControl enemy, Vector3 anchorPosition)
@@ -549,6 +562,8 @@ namespace BossRush
 
         private void CollectPrimaryRecoverySpawnCandidates(CharacterMainControl player)
         {
+            enemyRecoverySpawnCandidatesArePrevalidated = false;
+
             if (IsZombieModeActive)
             {
                 AppendZombieModeRecoverySpawnCandidates();
@@ -556,10 +571,7 @@ namespace BossRush
 
             if ((modeEActive || modeFActive) && modeESpawnAllocation != null && modeESpawnAllocation.Count > 0)
             {
-                foreach (KeyValuePair<Teams, List<Vector3>> pair in modeESpawnAllocation)
-                {
-                    AppendRecoverySpawnCandidates(pair.Value);
-                }
+                AppendModeERecoverySpawnCandidates();
             }
 
             if (enemyRecoverySpawnCandidates.Count > 0)
@@ -583,6 +595,50 @@ namespace BossRush
             }
         }
 
+        private void AppendModeERecoverySpawnCandidates()
+        {
+            Vector3[] sourcePoints = GetModeEFlattenedSpawnPoints();
+            if (sourcePoints == null || sourcePoints.Length == 0)
+            {
+                return;
+            }
+
+            if (!object.ReferenceEquals(enemyRecoveryModeEValidatedSourcePoints, sourcePoints))
+            {
+                enemyRecoveryModeEValidatedSpawnCandidates.Clear();
+                enemyRecoveryModeEValidatedRawCandidates.Clear();
+                enemyRecoveryModeEValidatedSourcePoints = sourcePoints;
+
+                for (int i = 0; i < sourcePoints.Length; i++)
+                {
+                    Vector3 validatedPos;
+                    if (!TryResolveGroundAlignedPosition(sourcePoints[i], 12f, EnemyNavMeshProbeDistance, out validatedPos))
+                    {
+                        continue;
+                    }
+
+                    enemyRecoveryModeEValidatedRawCandidates.Add(sourcePoints[i]);
+                    enemyRecoveryModeEValidatedSpawnCandidates.Add(validatedPos);
+                }
+            }
+
+            if (enemyRecoveryModeEValidatedSpawnCandidates.Count <= 0)
+            {
+                AppendRecoverySpawnCandidates(sourcePoints);
+                return;
+            }
+
+            bool canUsePrevalidatedSelection = enemyRecoverySpawnCandidates.Count == 0;
+            for (int i = 0; i < enemyRecoveryModeEValidatedRawCandidates.Count; i++)
+            {
+                enemyRecoverySpawnCandidates.Add(enemyRecoveryModeEValidatedRawCandidates[i]);
+            }
+
+            enemyRecoverySpawnCandidatesArePrevalidated =
+                canUsePrevalidatedSelection &&
+                enemyRecoverySpawnCandidates.Count == enemyRecoveryModeEValidatedSpawnCandidates.Count;
+        }
+
         private void AppendZombieModeRecoverySpawnCandidates()
         {
             if (zombieModeRunState == null)
@@ -597,6 +653,7 @@ namespace BossRush
                 {
                     enemyRecoverySpawnCandidates.Add(effectivePoints[i].Position);
                 }
+                enemyRecoverySpawnCandidatesArePrevalidated = false;
                 return;
             }
 
@@ -610,6 +667,8 @@ namespace BossRush
             {
                 enemyRecoverySpawnCandidates.Add(spawnPoints[i].Position);
             }
+
+            enemyRecoverySpawnCandidatesArePrevalidated = false;
         }
 
         private void AppendRecoverySpawnCandidates(IEnumerable<Vector3> candidates)
@@ -623,6 +682,8 @@ namespace BossRush
             {
                 enemyRecoverySpawnCandidates.Add(candidate);
             }
+
+            enemyRecoverySpawnCandidatesArePrevalidated = false;
         }
 
         private bool TrySelectNearestRecoverySpawnPoint(
@@ -651,7 +712,16 @@ namespace BossRush
                 }
 
                 Vector3 validatedPos;
-                if (!TryResolveGroundAlignedPosition(candidate, 12f, EnemyNavMeshProbeDistance, out validatedPos))
+                if (enemyRecoverySpawnCandidatesArePrevalidated)
+                {
+                    if (i >= enemyRecoveryModeEValidatedSpawnCandidates.Count)
+                    {
+                        continue;
+                    }
+
+                    validatedPos = enemyRecoveryModeEValidatedSpawnCandidates[i];
+                }
+                else if (!TryResolveGroundAlignedPosition(candidate, 12f, EnemyNavMeshProbeDistance, out validatedPos))
                 {
                     continue;
                 }

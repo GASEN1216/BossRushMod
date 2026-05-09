@@ -52,6 +52,10 @@ namespace BossRush
 
         private const bool MODE_E_LOG_PER_ENEMY_WAKE = false;
 
+        private const int MODE_E_RESPAWN_ALIVE_BOSS_LIMIT = 64;
+
+        private bool modeERespawnTaskRunning = false;
+
         private readonly Queue<CharacterMainControl> modeEPendingAggroQueue = new Queue<CharacterMainControl>();
 
         private readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
@@ -207,12 +211,154 @@ namespace BossRush
 
         #region Boss 重生逻辑
 
+        private void ResetModeERespawnRuntimeState()
+        {
+            modeERespawnTaskRunning = false;
+        }
+
+        private int CountValidModeEAliveBosses()
+        {
+            int count = 0;
+            for (int i = 0; i < modeEAliveEnemies.Count; i++)
+            {
+                if (IsValidModeEEnemyTarget(modeEAliveEnemies[i]))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private int GetModeERespawnPendingBossCount()
+        {
+            int pendingCount = modeETotalSpawnExpected - modeESpawnResolved;
+            return pendingCount > 0 ? pendingCount : 0;
+        }
+
+        private int GetModeERespawnAvailableSpawnSlots()
+        {
+            int pressureCount = CountValidModeEAliveBosses() + GetModeERespawnPendingBossCount();
+            int availableSlots = MODE_E_RESPAWN_ALIVE_BOSS_LIMIT - pressureCount;
+            return availableSlots > 0 ? availableSlots : 0;
+        }
+
+        private int GetModeERespawnApproximateAliveBossPressureCount()
+        {
+            int aliveCount = modeEAliveEnemies != null ? modeEAliveEnemies.Count : 0;
+            return aliveCount + GetModeERespawnPendingBossCount();
+        }
+
+        private int GetModeERespawnApproximateAvailableSpawnSlots()
+        {
+            int availableSlots = MODE_E_RESPAWN_ALIVE_BOSS_LIMIT - GetModeERespawnApproximateAliveBossPressureCount();
+            return availableSlots > 0 ? availableSlots : 0;
+        }
+
+        internal bool CanQueryUseModeERespawnItem()
+        {
+            if (!modeEActive) return false;
+            if (modeERespawnTaskRunning) return false;
+            return GetModeERespawnApproximateAvailableSpawnSlots() > 0;
+        }
+
+        internal bool CanUseModeERespawnItem(bool showFailureFeedback)
+        {
+            if (!modeEActive)
+            {
+                if (showFailureFeedback)
+                {
+                    ShowMessage(L10n.T(
+                        "该物品只能在划地为营模式中使用！",
+                        "This item can only be used in Faction Battle mode!"
+                    ));
+                }
+                return false;
+            }
+
+            if (modeERespawnTaskRunning)
+            {
+                if (showFailureFeedback)
+                {
+                    ShowMessage(L10n.T(
+                        "Boss 仍在赶来，稍后再使用！",
+                        "Bosses are still spawning. Try again shortly!"
+                    ));
+                }
+                return false;
+            }
+
+            if (GetModeERespawnAvailableSpawnSlots() <= 0)
+            {
+                if (showFailureFeedback)
+                {
+                    ShowMessage(L10n.T(
+                        "场上 Boss 数量已达上限，先清理一些敌人！",
+                        "The active Boss limit has been reached. Clear some enemies first!"
+                    ));
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryStartModeERespawn(
+            List<Vector3> points,
+            string itemNameZh,
+            string itemNameEn,
+            out int respawnCount)
+        {
+            respawnCount = 0;
+            if (points == null || points.Count == 0)
+            {
+                return false;
+            }
+
+            if (!CanUseModeERespawnItem(true))
+            {
+                return false;
+            }
+
+            int availableSlots = GetModeERespawnAvailableSpawnSlots();
+            if (availableSlots <= 0)
+            {
+                return false;
+            }
+
+            List<Vector3> acceptedPoints = points;
+            if (points.Count > availableSlots)
+            {
+                acceptedPoints = points.GetRange(0, availableSlots);
+                ShowMessage(L10n.T(
+                    itemNameZh + " 已受 Boss 上限保护，本次只呼叫 " + availableSlots + " 个 Boss。",
+                    itemNameEn + " was capped by the active Boss limit. Spawning " + availableSlots + " Bosses."
+                ));
+            }
+            else
+            {
+                acceptedPoints = new List<Vector3>(points);
+            }
+
+            respawnCount = acceptedPoints.Count;
+            if (respawnCount <= 0)
+            {
+                return false;
+            }
+
+            int modeESessionToken = CurrentModeESessionToken;
+            int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+            modeERespawnTaskRunning = true;
+            RespawnBossesAtPoints(acceptedPoints, modeESessionToken, relatedScene).Forget();
+            return true;
+        }
+
         /// <summary>
         /// 在指定刷怪点列表生成随机阵营Boss（异步，每次生成间加延迟避免帧率卡顿）
         /// 遍历刷怪点，随机选择阵营，调用 SpawnSingleModeEBoss
         /// 新 Boss 自动注册到 modeEAliveEnemies 和 modeEFactionAliveMap（由 OnModeEEnemySpawned 处理）
         /// </summary>
-        private async UniTaskVoid RespawnBossesAtPoints(List<Vector3> points)
+        private async UniTaskVoid RespawnBossesAtPoints(List<Vector3> points, int modeESessionToken, int relatedScene)
         {
             try
             {
@@ -223,8 +369,6 @@ namespace BossRush
                 }
 
                 DevLog("[ModeE] 开始重生Boss，刷怪点数量: " + points.Count);
-                int modeESessionToken = CurrentModeESessionToken;
-                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
 
                 for (int i = 0; i < points.Count; i++)
                 {
@@ -257,6 +401,10 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] RespawnBossesAtPoints 失败: " + e.Message);
+            }
+            finally
+            {
+                modeERespawnTaskRunning = false;
             }
         }
 
@@ -295,17 +443,20 @@ namespace BossRush
                     return;
                 }
 
-                DevLog("[ModeE] 使用挑衅烟雾弹，将在 " + nearestPoints.Count + " 个最近刷怪点重生Boss");
+                int respawnCount;
+                if (!TryStartModeERespawn(nearestPoints, "挑衅烟雾弹", "Taunt Smoke", out respawnCount))
+                {
+                    return;
+                }
+
+                DevLog("[ModeE] 使用挑衅烟雾弹，将在 " + respawnCount + " 个最近刷怪点重生Boss");
 
                 // 播放烟雾VFX
                 PlaySmokeVFX();
 
-                // 在刷怪点重生Boss（fire-and-forget）
-                RespawnBossesAtPoints(nearestPoints).Forget();
-
                 ShowBigBanner(L10n.T(
-                    "<color=yellow>挑衅烟雾弹</color> 已激活！<color=red>" + nearestPoints.Count + "</color> 个Boss正在赶来...",
-                    "<color=yellow>Taunt Smoke</color> activated! <color=red>" + nearestPoints.Count + "</color> Bosses incoming..."
+                    "<color=yellow>挑衅烟雾弹</color> 已激活！<color=red>" + respawnCount + "</color> 个Boss正在赶来...",
+                    "<color=yellow>Taunt Smoke</color> activated! <color=red>" + respawnCount + "</color> Bosses incoming..."
                 ));
             }
             catch (Exception e)
@@ -345,17 +496,20 @@ namespace BossRush
                     return;
                 }
 
-                DevLog("[ModeE] 使用混沌引爆器，将在全图 " + allPoints.Count + " 个刷怪点重生Boss");
+                int respawnCount;
+                if (!TryStartModeERespawn(allPoints, "混沌引爆器", "Chaos Detonator", out respawnCount))
+                {
+                    return;
+                }
+
+                DevLog("[ModeE] 使用混沌引爆器，将在全图 " + respawnCount + " 个刷怪点重生Boss");
 
                 // 播放烟雾VFX
                 PlaySmokeVFX();
 
-                // 在全图刷怪点重生Boss（fire-and-forget）
-                RespawnBossesAtPoints(allPoints).Forget();
-
                 ShowBigBanner(L10n.T(
-                    "<color=red>混沌引爆器</color> 已引爆！全图 <color=red>" + allPoints.Count + "</color> 个Boss正在涌来...",
-                    "<color=red>Chaos Detonator</color> activated! <color=red>" + allPoints.Count + "</color> Bosses spawning across the map..."
+                    "<color=red>混沌引爆器</color> 已引爆！全图 <color=red>" + respawnCount + "</color> 个Boss正在涌来...",
+                    "<color=red>Chaos Detonator</color> activated! <color=red>" + respawnCount + "</color> Bosses spawning across the map..."
                 ));
             }
             catch (Exception e)
