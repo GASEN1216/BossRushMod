@@ -2313,18 +2313,7 @@ namespace BossRush
             RegisterRuntimeModules();
             runtimeModuleHost.OnAwake(this);
 
-            // 初始化 Harmony Patch（物品激活时自动恢复重铸属性）
-            try
-            {
-                var harmony = new Harmony("com.bossrush.mod");
-                harmony.PatchAll();
-                DevLog("[BossRush] Harmony Patch 已应用（Item.OnEnable）");
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [WARNING] Harmony Patch 应用失败: " + e.Message);
-            }
-
+            InitializeBootstrapRuntime();
             InitializeAlwaysOnRuntime();
 
             RegisterPlayerLifecycleRuntimeEvents();

@@ -185,6 +185,18 @@ def main() -> int:
     ]:
         if required not in always_on_init_body:
             return fail("ArchitectureStructureGuard: InitializeAlwaysOnRuntime missing token: " + required)
+
+    bootstrap_body = extract_method_body(always_on_hooks, "internal void InitializeBootstrapRuntime()")
+    if not bootstrap_body:
+        return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing InitializeBootstrapRuntime wrapper")
+    for required in [
+        'var harmony = new Harmony("com.bossrush.mod");',
+        "harmony.PatchAll();",
+        'DevLog("[BossRush] Harmony Patch 已应用（Item.OnEnable）");',
+        'DevLog("[BossRush] [WARNING] Harmony Patch 应用失败: " + e.Message);',
+    ]:
+        if required not in bootstrap_body:
+            return fail("ArchitectureStructureGuard: InitializeBootstrapRuntime missing token: " + required)
     if "TickAlwaysOnRuntime();" not in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must route always-on runtime through wrapper")
     for forbidden in [
@@ -569,6 +581,8 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake body could not be parsed")
     if "InitializeAlwaysOnRuntime();" not in awake_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route always-on initialization through wrapper")
+    if "InitializeBootstrapRuntime();" not in awake_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route bootstrap initialization through wrapper")
     player_lifecycle_hooks = PLAYER_LIFECYCLE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     player_register_body = extract_method_body(player_lifecycle_hooks, "internal void RegisterPlayerLifecycleRuntimeEvents()")
     if not player_register_body:
@@ -583,6 +597,8 @@ def main() -> int:
     if "RegisterPlayerLifecycleRuntimeEvents();" not in awake_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route player lifecycle event registration through wrapper")
     for forbidden in [
+        'var harmony = new Harmony("com.bossrush.mod");',
+        "harmony.PatchAll();",
         "EntityModelFactory.Initialize(modPath);",
         "WikiContentManager.Instance.ResetCache();",
         "InitializeAffinitySystem();",

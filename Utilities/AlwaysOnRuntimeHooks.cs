@@ -1,7 +1,23 @@
+using HarmonyLib;
+
 namespace BossRush
 {
     public partial class ModBehaviour
     {
+        internal void InitializeBootstrapRuntime()
+        {
+            try
+            {
+                var harmony = new Harmony("com.bossrush.mod");
+                harmony.PatchAll();
+                DevLog("[BossRush] Harmony Patch 已应用（Item.OnEnable）");
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] Harmony Patch 应用失败: " + e.Message);
+            }
+        }
+
         internal void InitializeAlwaysOnRuntime()
         {
             try
