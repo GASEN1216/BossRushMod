@@ -2355,22 +2355,10 @@ namespace BossRush
             // 无间炼狱现金磁铁吸附更新
             TickGameplaySupportRuntime();
             
-            // 持续清理功能已移除，改为禁用spawner
-            
-            if (TickWavesArenaRuntime(Time.deltaTime))
+            if (TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime))
             {
                 return;
             }
-
-            // Mode E 独立自检（Mode E 不激活 IsActive，需要单独的自检循环）
-            TickModeERuntime(Time.deltaTime);
-
-            // Mode F 独立 Tick（Mode F 不激活 IsActive，需要单独的 Tick 循环）
-            TickModeFRuntime(Time.deltaTime);
-
-            TickZombieModeRuntime(Time.unscaledDeltaTime);
-
-            TickWavesArenaBossCleanupRuntime(Time.deltaTime);
             
             if (f3DebugCheatMenuVisible)
             {
@@ -2388,7 +2376,7 @@ namespace BossRush
             }
 
             runtimeModuleHost.OnLateUpdate();
-            LateUpdateZombieModeRuntime();
+            LateUpdateModeRuntimeGroup();
         }
         
         private static void InjectBossRushTicketLocalization()
@@ -2424,7 +2412,7 @@ namespace BossRush
             CleanupAlwaysOnRuntimeOnDestroy();
 
             CleanupIntegrationRuntimeOnDestroy();
-            CleanupZombieModeOnDestroyRuntime();
+            CleanupModeRuntimeOnDestroy();
             runtimeModuleHost.OnDestroy();
             if (ReferenceEquals(Instance, this))
             {
@@ -2439,9 +2427,7 @@ namespace BossRush
             // 场景切换时清理好感度系统UI缓存
             OnSceneUnloadAlwaysOnRuntime();
             CleanupEnemyRecoveryForSceneChange();
-            CleanupZombieModeForSceneLoad(scene);
-
-            CleanupModeFForSceneChange();
+            CleanupModeRuntimeForSceneLoad(scene);
             
             // 场景切换时清理现金磁铁飞行状态
             CleanupCashMagnetForSceneChange();

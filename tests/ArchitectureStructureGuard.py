@@ -26,6 +26,7 @@ AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 AUDI0_RUNTIME_HOOKS = Path("Audio/BossRushAudioHooks.cs")
 LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewardsRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
+MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
 WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
@@ -60,6 +61,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Audio/BossRushAudioHooks.cs",
     "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
     "Utilities/GameplayRuntimeHooks.cs",
+    "Utilities/ModeRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
     "WavesArena/BossRushEntryFlow.cs",
@@ -448,11 +450,9 @@ def main() -> int:
         if required not in waves_cleanup_body:
             return fail("ArchitectureStructureGuard: TickWavesArenaBossCleanupRuntime missing token: " + required)
 
-    if "if (TickWavesArenaRuntime(Time.deltaTime))" not in update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route WavesArena tick through wrapper")
-    if "TickWavesArenaBossCleanupRuntime(Time.deltaTime);" not in update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route WavesArena cleanup through wrapper")
     for forbidden in [
+        "TickWavesArenaRuntime(Time.deltaTime)",
+        "TickWavesArenaBossCleanupRuntime(Time.deltaTime);",
         "TryFixStuckWaveIfNoBossAlive();",
         "TryCleanNonBossRushDaXingXing();",
         "SpawnNextEnemy();",
@@ -475,9 +475,8 @@ def main() -> int:
         if required not in mode_e_tick_body:
             return fail("ArchitectureStructureGuard: TickModeERuntime missing token: " + required)
 
-    if "TickModeERuntime(Time.deltaTime);" not in update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route Mode E tick through wrapper")
     for forbidden in [
+        "TickModeERuntime(Time.deltaTime);",
         "UpdateModeEPlayerNameTag();",
         "ModeEIntegrityCheck();",
         "ModeEScalingBatchUpdate();",
@@ -496,10 +495,12 @@ def main() -> int:
         if required not in mode_f_tick_body:
             return fail("ArchitectureStructureGuard: TickModeFRuntime missing token: " + required)
 
-    if "TickModeFRuntime(Time.deltaTime);" not in update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route Mode F tick through wrapper")
-    if "TickModeF(Time.deltaTime);" in update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call TickModeF")
+    for forbidden in [
+        "TickModeFRuntime(Time.deltaTime);",
+        "TickModeF(Time.deltaTime);",
+    ]:
+        if forbidden in update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call Mode F tick token: " + forbidden)
 
     mode_f_scene_cleanup_body = extract_method_body(mode_f_hooks, "internal void CleanupModeFForSceneChange()")
     if not mode_f_scene_cleanup_body:
@@ -519,10 +520,86 @@ def main() -> int:
     if "TickZombieMode(unscaledDeltaTime);" not in zombie_tick_body:
         return fail("ArchitectureStructureGuard: TickZombieModeRuntime missing TickZombieMode call")
 
-    if "TickZombieModeRuntime(Time.unscaledDeltaTime);" not in update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route ZombieMode tick through wrapper")
-    if "TickZombieMode(Time.unscaledDeltaTime);" in update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call TickZombieMode")
+    for forbidden in [
+        "TickZombieModeRuntime(Time.unscaledDeltaTime);",
+        "TickZombieMode(Time.unscaledDeltaTime);",
+    ]:
+        if forbidden in update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call ZombieMode tick token: " + forbidden)
+
+    mode_runtime_hooks = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    mode_group_body = extract_method_body(mode_runtime_hooks, "internal bool TickModeRuntimeGroup(float deltaTime, float unscaledDeltaTime)")
+    if not mode_group_body:
+        return fail("ArchitectureStructureGuard: ModeRuntimeHooks missing TickModeRuntimeGroup wrapper")
+    mode_group_order = [
+        "if (TickWavesArenaRuntime(deltaTime))",
+        "return true;",
+        "TickModeERuntime(deltaTime);",
+        "TickModeFRuntime(deltaTime);",
+        "TickZombieModeRuntime(unscaledDeltaTime);",
+        "TickWavesArenaBossCleanupRuntime(deltaTime);",
+        "return false;",
+    ]
+    position = -1
+    for required in mode_group_order:
+        next_position = mode_group_body.find(required, position + 1)
+        if next_position < 0:
+            return fail("ArchitectureStructureGuard: TickModeRuntimeGroup missing token: " + required)
+        position = next_position
+    if "if (TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime))" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route mode ticks through TickModeRuntimeGroup")
+
+    late_update_body = extract_method_body(mod_text, "void LateUpdate()")
+    if not late_update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate body could not be parsed")
+
+    scene_loaded_body = extract_method_body(mod_text, "private void OnSceneLoaded(Scene scene, LoadSceneMode mode)")
+    if not scene_loaded_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded body could not be parsed")
+
+    destroy_body = extract_method_body(mod_text, "void OnDestroy()")
+    if not destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy body could not be parsed")
+
+    mode_late_body = extract_method_body(mode_runtime_hooks, "internal void LateUpdateModeRuntimeGroup()")
+    if not mode_late_body:
+        return fail("ArchitectureStructureGuard: ModeRuntimeHooks missing LateUpdateModeRuntimeGroup wrapper")
+    if "LateUpdateZombieModeRuntime();" not in mode_late_body:
+        return fail("ArchitectureStructureGuard: LateUpdateModeRuntimeGroup missing ZombieMode late update")
+    if "LateUpdateModeRuntimeGroup();" not in late_update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate must route mode late updates through ModeRuntimeHooks")
+    if "LateUpdateZombieModeRuntime();" in late_update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate must not directly call ZombieMode late update")
+
+    mode_scene_cleanup_body = extract_method_body(mode_runtime_hooks, "internal void CleanupModeRuntimeForSceneLoad(Scene scene)")
+    if not mode_scene_cleanup_body:
+        return fail("ArchitectureStructureGuard: ModeRuntimeHooks missing CleanupModeRuntimeForSceneLoad wrapper")
+    for required in [
+        "CleanupZombieModeForSceneLoad(scene);",
+        "CleanupModeFForSceneChange();",
+    ]:
+        if required not in mode_scene_cleanup_body:
+            return fail("ArchitectureStructureGuard: CleanupModeRuntimeForSceneLoad missing token: " + required)
+    if mode_scene_cleanup_body.find("CleanupZombieModeForSceneLoad(scene);") > mode_scene_cleanup_body.find("CleanupModeFForSceneChange();"):
+        return fail("ArchitectureStructureGuard: CleanupModeRuntimeForSceneLoad must preserve ZombieMode cleanup before ModeF cleanup")
+    if "CleanupModeRuntimeForSceneLoad(scene);" not in scene_loaded_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded must route mode cleanup through ModeRuntimeHooks")
+    for forbidden in [
+        "CleanupZombieModeForSceneLoad(scene);",
+        "CleanupModeFForSceneChange();",
+    ]:
+        if forbidden in scene_loaded_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded must not directly call mode scene cleanup token: " + forbidden)
+
+    mode_destroy_body = extract_method_body(mode_runtime_hooks, "internal void CleanupModeRuntimeOnDestroy()")
+    if not mode_destroy_body:
+        return fail("ArchitectureStructureGuard: ModeRuntimeHooks missing CleanupModeRuntimeOnDestroy wrapper")
+    if "CleanupZombieModeOnDestroyRuntime();" not in mode_destroy_body:
+        return fail("ArchitectureStructureGuard: CleanupModeRuntimeOnDestroy missing ZombieMode destroy cleanup")
+    if "CleanupModeRuntimeOnDestroy();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route mode cleanup through ModeRuntimeHooks")
+    if "CleanupZombieModeOnDestroyRuntime();" in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must not directly call ZombieMode destroy cleanup")
 
     debug_runtime_module = DEBUG_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickDebugTools(deltaTime, unscaledDeltaTime);" not in debug_runtime_module:
@@ -677,12 +754,13 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ZombieModeRuntimeHooks missing CleanupZombieModeOnDestroyRuntime wrapper")
     if "CleanupZombieModeOnDestroy();" not in zombie_destroy_body:
         return fail("ArchitectureStructureGuard: CleanupZombieModeOnDestroyRuntime missing CleanupZombieModeOnDestroy")
-    if "LateUpdateZombieModeRuntime();" not in late_update_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate must route ZombieMode late update through wrapper")
+    if "LateUpdateModeRuntimeGroup();" not in late_update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate must route mode late update through ModeRuntimeHooks")
     for forbidden in [
         "BossPoolLateUpdate();",
         "NPCTeleportUILateUpdate();",
         "F3DebugCheatMenuLateUpdate();",
+        "LateUpdateZombieModeRuntime();",
         "ZombieModeUIHelper.EnforceModalInputPause();",
     ]:
         if forbidden in late_update_body:
@@ -933,8 +1011,8 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route debug cleanup through wrapper")
     if "CleanupAlwaysOnRuntimeOnDestroy();" not in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route always-on cleanup through wrapper")
-    if "CleanupZombieModeOnDestroyRuntime();" not in destroy_body:
-        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route zombie cleanup through wrapper")
+    if "CleanupModeRuntimeOnDestroy();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route mode cleanup through ModeRuntimeHooks")
     for forbidden in [
         "OnDestroy_F3DebugCheatMenu();",
         "UnregisterInteractDebugListener();",
@@ -947,6 +1025,7 @@ def main() -> int:
         "AffinityManager.Shutdown();",
         "AffinityUIManager.Cleanup();",
         "EntityModelFactory.Shutdown();",
+        "CleanupZombieModeOnDestroyRuntime();",
         "CleanupZombieModeOnDestroy();",
     ]:
         if forbidden in destroy_body:
@@ -1008,8 +1087,7 @@ def main() -> int:
         "PrepareSceneRuntimeForLoad();",
         "OnSceneUnloadAlwaysOnRuntime();",
         "CleanupEnemyRecoveryForSceneChange();",
-        "CleanupZombieModeForSceneLoad(scene);",
-        "CleanupModeFForSceneChange();",
+        "CleanupModeRuntimeForSceneLoad(scene);",
         "CleanupCashMagnetForSceneChange();",
         "OnSceneLoadedDebugToolsRuntime(scene, mode);",
         "OnSceneLoadedIntegrationRuntime(scene, mode);",

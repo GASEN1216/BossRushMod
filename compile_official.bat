@@ -138,6 +138,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
     Utilities\GameplayRuntimeHooks.cs ^
+    Utilities\ModeRuntimeHooks.cs ^
     Utilities\SpawnPositionHelper.cs ^
     Utilities\RunScopedRegistry.cs ^
     Utilities\RuntimeScope.cs ^
