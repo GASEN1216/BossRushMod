@@ -463,6 +463,22 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ZombieModeRuntimeHooks missing LateUpdateZombieModeRuntime wrapper")
     if "ZombieModeUIHelper.EnforceModalInputPause();" not in zombie_late_body:
         return fail("ArchitectureStructureGuard: LateUpdateZombieModeRuntime missing EnforceModalInputPause")
+
+    zombie_scene_cleanup_body = extract_method_body(zombie_hooks, "internal void CleanupZombieModeForSceneLoad(Scene scene)")
+    if not zombie_scene_cleanup_body:
+        return fail("ArchitectureStructureGuard: ZombieModeRuntimeHooks missing CleanupZombieModeForSceneLoad wrapper")
+    for required in [
+        "ShouldPreserveZombieModeStartupForSceneLoad(scene)",
+        "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);",
+    ]:
+        if required not in zombie_scene_cleanup_body:
+            return fail("ArchitectureStructureGuard: CleanupZombieModeForSceneLoad missing token: " + required)
+
+    zombie_destroy_body = extract_method_body(zombie_hooks, "internal void CleanupZombieModeOnDestroyRuntime()")
+    if not zombie_destroy_body:
+        return fail("ArchitectureStructureGuard: ZombieModeRuntimeHooks missing CleanupZombieModeOnDestroyRuntime wrapper")
+    if "CleanupZombieModeOnDestroy();" not in zombie_destroy_body:
+        return fail("ArchitectureStructureGuard: CleanupZombieModeOnDestroyRuntime missing CleanupZombieModeOnDestroy")
     if "LateUpdateZombieModeRuntime();" not in late_update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate must route ZombieMode late update through wrapper")
     for forbidden in [
@@ -536,6 +552,8 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route debug cleanup through wrapper")
     if "CleanupAlwaysOnRuntimeOnDestroy();" not in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route always-on cleanup through wrapper")
+    if "CleanupZombieModeOnDestroyRuntime();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route zombie cleanup through wrapper")
     for forbidden in [
         "OnDestroy_F3DebugCheatMenu();",
         "UnregisterInteractDebugListener();",
@@ -545,6 +563,7 @@ def main() -> int:
         "AffinityManager.Shutdown();",
         "AffinityUIManager.Cleanup();",
         "EntityModelFactory.Shutdown();",
+        "CleanupZombieModeOnDestroy();",
     ]:
         if forbidden in destroy_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy still directly calls always-on cleanup token: " + forbidden)
@@ -556,6 +575,7 @@ def main() -> int:
         "PrepareSceneRuntimeForLoad();",
         "OnSceneUnloadAlwaysOnRuntime();",
         "CleanupEnemyRecoveryForSceneChange();",
+        "CleanupZombieModeForSceneLoad(scene);",
         "CleanupModeFForSceneChange();",
         "CleanupCashMagnetForSceneChange();",
     ]:
@@ -569,6 +589,7 @@ def main() -> int:
         "AffinityUIManager.OnSceneUnload();",
         "AffinityManager.OnSceneUnload();",
         "ClearEnemyRecoveryMonitorState();",
+        "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);",
         "try { ExitModeF();",
         "try { ClearCashMagnetState();",
     ]:

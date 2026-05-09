@@ -2933,7 +2933,7 @@ namespace BossRush
             CleanupAlwaysOnRuntimeOnDestroy();
 
             OnDestroy_Integration();
-            CleanupZombieModeOnDestroy();
+            CleanupZombieModeOnDestroyRuntime();
             runtimeModuleHost.OnDestroy();
             if (ReferenceEquals(Instance, this))
             {
@@ -2948,10 +2948,7 @@ namespace BossRush
             // 场景切换时清理好感度系统UI缓存
             OnSceneUnloadAlwaysOnRuntime();
             CleanupEnemyRecoveryForSceneChange();
-            if (!ShouldPreserveZombieModeStartupForSceneLoad(scene))
-            {
-                CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);
-            }
+            CleanupZombieModeForSceneLoad(scene);
 
             CleanupModeFForSceneChange();
             
