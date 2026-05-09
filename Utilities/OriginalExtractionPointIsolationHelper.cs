@@ -288,7 +288,8 @@ namespace BossRush
             Func<CountDownArea, bool> shouldSkipArea,
             string[] excludedNamePrefixes)
         {
-            Scene activeScene = SceneManager.GetActiveScene();
+            // 原版撤离点可能被 ExitCreator 移动到子场景（MultiSceneCore.MoveToActiveWithScene），
+            // 不能仅扫描 activeScene，需要扫描所有已加载场景中的 CountDownArea。
             CountDownArea[] areas = UnityEngine.Object.FindObjectsOfType<CountDownArea>(true);
             for (int i = 0; i < areas.Length; i++)
             {
@@ -299,7 +300,7 @@ namespace BossRush
                 }
 
                 Scene areaScene = area.gameObject.scene;
-                if (!areaScene.IsValid() || areaScene != activeScene)
+                if (!areaScene.IsValid() || !areaScene.isLoaded)
                 {
                     continue;
                 }

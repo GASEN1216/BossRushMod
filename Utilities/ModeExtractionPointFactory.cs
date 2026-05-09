@@ -68,6 +68,8 @@ namespace BossRush
             bool shouldNotifyGameEvacuation;
             bool shouldLoadBaseScene;
             ResolveFallbackActions(countDown.onCountDownSucceed, out shouldNotifyGameEvacuation, out shouldLoadBaseScene);
+            // 清除预制体自带的持久化事件，防止 CountDownArea 内置倒计时独立触发 LoadBaseScene 导致黑屏
+            ClearPersistentEvents(countDown);
             ConfigureEvents(countDown, request, shouldNotifyGameEvacuation, shouldLoadBaseScene);
 
             ModeExtractionPointResult result = new ModeExtractionPointResult();
@@ -327,6 +329,25 @@ namespace BossRush
                     shouldLoadBaseScene = false;
                 }
             }
+        }
+
+        /// <summary>
+        /// 清除预制体 CountDownArea 上的持久化事件和运行时监听器。
+        /// 预制体自带的 onCountDownSucceed 持久化事件会直接调用 LoadBaseScene/NotifyEvacuated，
+        /// 导致 CountDownArea 内置倒计时独立触发场景切换（黑屏），绕过 Mod 自身的撤离流程。
+        /// 清除后由 ConfigureEvents 重新注册受控的监听器。
+        /// </summary>
+        private static void ClearPersistentEvents(CountDownArea countDown)
+        {
+            if (countDown == null)
+            {
+                return;
+            }
+
+            // 替换为全新的空事件，彻底移除预制体序列化的持久化回调
+            countDown.onCountDownSucceed = new UnityEvent();
+            countDown.onCountDownStarted = new UnityEvent<CountDownArea>();
+            countDown.onCountDownStopped = new UnityEvent<CountDownArea>();
         }
     }
 }
