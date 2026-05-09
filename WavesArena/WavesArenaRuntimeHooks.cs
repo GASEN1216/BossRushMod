@@ -9,7 +9,7 @@ namespace BossRush
             // 单波模式倒计时
             if (waitingForNextWave && waveCountdown > 0f)
             {
-                // 如果 BossRush 已经结束（例如通关、玩家死亡等），则立即停止倒计时，防止继续刷“下一波将在 X 秒后开始”
+                // 如果 BossRush 已经结束（例如通关、玩家死亡等），则立即停止倒计时，防止继续刷"下一波将在 X 秒后开始"
                 if (!IsActive && !bossRushArenaActive)
                 {
                     waitingForNextWave = false;
@@ -45,7 +45,7 @@ namespace BossRush
                 }
             }
 
-            // 波次完整性自检：每隔一段时间检查当前波是否出现“没有任何存活Boss但计数未清零”的异常
+            // 波次完整性自检：每隔一段时间检查当前波是否出现"没有任何存活Boss但计数未清零"的异常
             if (IsActive)
             {
                 if (!modeDActive)
@@ -68,8 +68,9 @@ namespace BossRush
 
         internal void TickWavesArenaBossCleanupRuntime(float deltaTime)
         {
-            // BossRush 期间，定期清理任何非 BossRush 召唤的“大兴兴”Boss
-            if (IsActive || bossRushArenaActive)
+            // BossRush / 丧尸模式期间，定期清理任何非模式召唤的"大兴兴"Boss
+            // （DEMO 地图原生刷怪器可能在 DisableAllSpawners 之后仍有残留实例）
+            if (IsActive || bossRushArenaActive || IsZombieModeActive)
             {
                 daXingXingCleanTimer += deltaTime;
                 if (daXingXingCleanTimer >= DaXingXingCleanInterval)
