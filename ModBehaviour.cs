@@ -2877,7 +2877,7 @@ namespace BossRush
         }
         void Start()
         {
-            Start_Integration();
+            StartIntegrationRuntime();
             runtimeModuleHost.OnStart();
         }
 
@@ -2893,7 +2893,7 @@ namespace BossRush
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();
 
-            OnDestroy_Integration();
+            CleanupIntegrationRuntimeOnDestroy();
             CleanupZombieModeOnDestroyRuntime();
             runtimeModuleHost.OnDestroy();
             if (ReferenceEquals(Instance, this))
@@ -2917,7 +2917,7 @@ namespace BossRush
             CleanupCashMagnetForSceneChange();
             
             OnSceneLoadedDebugToolsRuntime(scene, mode);
-            OnSceneLoaded_Integration(scene, mode);
+            OnSceneLoadedIntegrationRuntime(scene, mode);
             runtimeModuleHost.OnSceneLoaded(new SceneRuntimeContext(scene, mode));
         }
 

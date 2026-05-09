@@ -18,6 +18,7 @@ ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
+INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
@@ -42,6 +43,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "Integration/EquipmentRuntimeHooks.cs",
+    "Integration/IntegrationRuntimeHooks.cs",
     "Utilities/GameplayRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
@@ -652,6 +654,24 @@ def main() -> int:
     scene_loaded_body = extract_method_body(mod_text, "private void OnSceneLoaded(Scene scene, LoadSceneMode mode)")
     if not scene_loaded_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded body could not be parsed")
+    integration_runtime_hooks = INTEGRATION_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    for signature, required_tokens in {
+        "internal void StartIntegrationRuntime()": [
+            "Start_Integration();",
+        ],
+        "internal void OnSceneLoadedIntegrationRuntime(Scene scene, LoadSceneMode mode)": [
+            "OnSceneLoaded_Integration(scene, mode);",
+        ],
+        "internal void CleanupIntegrationRuntimeOnDestroy()": [
+            "OnDestroy_Integration();",
+        ],
+    }.items():
+        body = extract_method_body(integration_runtime_hooks, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: IntegrationRuntimeHooks missing wrapper: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: IntegrationRuntimeHooks wrapper missing token: " + required)
     for required in [
         "PrepareSceneRuntimeForLoad();",
         "OnSceneUnloadAlwaysOnRuntime();",
@@ -660,6 +680,7 @@ def main() -> int:
         "CleanupModeFForSceneChange();",
         "CleanupCashMagnetForSceneChange();",
         "OnSceneLoadedDebugToolsRuntime(scene, mode);",
+        "OnSceneLoadedIntegrationRuntime(scene, mode);",
     ]:
         if required not in scene_loaded_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded missing wrapper call: " + required)
@@ -675,9 +696,23 @@ def main() -> int:
         "try { ExitModeF();",
         "try { ClearCashMagnetState();",
         "OnSceneLoaded_F3DebugCheatMenu(scene, mode);",
+        "OnSceneLoaded_Integration(scene, mode);",
     ]:
         if forbidden in scene_loaded_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.OnSceneLoaded still directly calls scene-change token: " + forbidden)
+
+    start_body = extract_method_body(mod_text, "void Start()")
+    if not start_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Start body could not be parsed")
+    if "StartIntegrationRuntime();" not in start_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Start must route integration start through wrapper")
+    if "Start_Integration();" in start_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Start must not directly call Start_Integration")
+
+    if "CleanupIntegrationRuntimeOnDestroy();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route integration destroy through wrapper")
+    if "OnDestroy_Integration();" in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must not directly call OnDestroy_Integration")
 
     common_npc_runtime_module = COMMON_NPC_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if 'get { return "CommonNPC"; }' not in common_npc_runtime_module:
