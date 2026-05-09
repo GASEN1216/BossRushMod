@@ -332,5 +332,12 @@ namespace BossRush
                 HideNPCTeleportUI();
             }
         }
+
+        internal void CleanupDebugToolsOnDestroy()
+        {
+            OnDestroy_F3DebugCheatMenu();
+            UnregisterInteractDebugListener();
+            UnregisterShootDebugListener();
+        }
     }
 }

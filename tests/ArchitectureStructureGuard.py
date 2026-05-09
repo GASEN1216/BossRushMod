@@ -413,6 +413,17 @@ def main() -> int:
     if "TickDebugToolsAfterModalGate();" not in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must route post-modal debug hotkeys through wrapper")
 
+    debug_destroy_body = extract_method_body(debug_hooks, "internal void CleanupDebugToolsOnDestroy()")
+    if not debug_destroy_body:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeHooks missing CleanupDebugToolsOnDestroy wrapper")
+    for required in [
+        "OnDestroy_F3DebugCheatMenu();",
+        "UnregisterInteractDebugListener();",
+        "UnregisterShootDebugListener();",
+    ]:
+        if required not in debug_destroy_body:
+            return fail("ArchitectureStructureGuard: CleanupDebugToolsOnDestroy missing token: " + required)
+
     for forbidden in [
         "UpdateFpsCounter();",
         "UpdateMapClickDebug();",
@@ -510,9 +521,14 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route achievement cleanup through wrapper")
     if "UnsubscribeAchievementEvents();" in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must not directly unsubscribe achievement events")
+    if "CleanupDebugToolsOnDestroy();" not in destroy_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route debug cleanup through wrapper")
     if "CleanupAlwaysOnRuntimeOnDestroy();" not in destroy_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.OnDestroy must route always-on cleanup through wrapper")
     for forbidden in [
+        "OnDestroy_F3DebugCheatMenu();",
+        "UnregisterInteractDebugListener();",
+        "UnregisterShootDebugListener();",
         "AffinityManager.OnAffinityChanged -= OnAffinityChanged;",
         "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
         "AffinityManager.Shutdown();",

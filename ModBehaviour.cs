@@ -2919,13 +2919,7 @@ namespace BossRush
 
         void OnDestroy()
         {
-            OnDestroy_F3DebugCheatMenu();
-
-            // 注销交互调试监听
-            UnregisterInteractDebugListener();
-            
-            // 注销开枪调试监听
-            UnregisterShootDebugListener();
+            CleanupDebugToolsOnDestroy();
             
             // 对称注销 Awake 中挂上的玩家死亡/受伤事件
             Health.OnDead -= OnPlayerDeathInBossRush;
