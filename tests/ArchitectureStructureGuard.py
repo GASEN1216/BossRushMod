@@ -9,6 +9,8 @@ COMPILE = Path("compile_official.bat")
 MOD = Path("ModBehaviour.cs")
 MODED_WAVES = Path("ModeD/ModeDWaves.cs")
 MODED_RUNTIME_MODULE = Path("ModeD/ModeDRuntimeModule.cs")
+DEBUG_RUNTIME_MODULE = Path("DebugAndTools/DebugToolsRuntimeModule.cs")
+DEBUG_RUNTIME_HOOKS = Path("DebugAndTools/DebugToolsRuntimeHooks.cs")
 
 REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
@@ -18,6 +20,8 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
     "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
     "ModeD/ModeDRuntimeModule.cs",
+    "DebugAndTools/DebugToolsRuntimeModule.cs",
+    "DebugAndTools/DebugToolsRuntimeHooks.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
@@ -94,6 +98,8 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
     if "runtimeModuleHost.Register(new ModeDRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing ModeDRuntimeModule")
+    if "runtimeModuleHost.Register(new DebugToolsRuntimeModule());" not in registration_text:
+        return fail("ArchitectureStructureGuard: runtime module registration missing DebugToolsRuntimeModule")
 
     mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
@@ -111,6 +117,60 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update body could not be parsed")
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
+
+    debug_runtime_module = DEBUG_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
+    if "owner.TickDebugTools(deltaTime, unscaledDeltaTime);" not in debug_runtime_module:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeModule must route update through owner wrapper")
+    if "owner.LateUpdateDebugTools();" not in debug_runtime_module:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeModule must route late update through owner wrapper")
+
+    debug_hooks = DEBUG_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    debug_tick_body = extract_method_body(debug_hooks, "internal void TickDebugTools(float deltaTime, float unscaledDeltaTime)")
+    if not debug_tick_body:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeHooks missing TickDebugTools wrapper")
+    for required in [
+        "UpdateFpsCounter();",
+        "UpdateMapClickDebug();",
+        "CheckBossPoolWindowHotkey();",
+        "CheckItemSpawnerHotkey();",
+        "CheckF3DebugCheatMenuHotkey();",
+        "TickF3DebugCheatMenu();",
+    ]:
+        if required not in debug_tick_body:
+            return fail("ArchitectureStructureGuard: TickDebugTools missing token: " + required)
+
+    debug_late_body = extract_method_body(debug_hooks, "internal void LateUpdateDebugTools()")
+    if not debug_late_body:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeHooks missing LateUpdateDebugTools wrapper")
+    for required in [
+        "BossPoolLateUpdate();",
+        "NPCTeleportUILateUpdate();",
+        "F3DebugCheatMenuLateUpdate();",
+    ]:
+        if required not in debug_late_body:
+            return fail("ArchitectureStructureGuard: LateUpdateDebugTools missing token: " + required)
+
+    for forbidden in [
+        "UpdateFpsCounter();",
+        "UpdateMapClickDebug();",
+        "CheckBossPoolWindowHotkey();",
+        "CheckItemSpawnerHotkey();",
+        "CheckF3DebugCheatMenuHotkey();",
+        "TickF3DebugCheatMenu();",
+    ]:
+        if forbidden in update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls debug tool token: " + forbidden)
+
+    late_update_body = extract_method_body(mod_text, "void LateUpdate()")
+    if not late_update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate body could not be parsed")
+    for forbidden in [
+        "BossPoolLateUpdate();",
+        "NPCTeleportUILateUpdate();",
+        "F3DebugCheatMenuLateUpdate();",
+    ]:
+        if forbidden in late_update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.LateUpdate still directly calls debug tool token: " + forbidden)
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")
     for required in [

@@ -2849,15 +2849,6 @@ namespace BossRush
         {
             bool runGameplaySceneHooks = CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name);
 
-            if (runGameplaySceneHooks)
-            {
-                // 更新帧率计数器（DevMode）
-                UpdateFpsCounter();
-
-                // 地图点击输出世界坐标（DevMode 专用）
-                UpdateMapClickDebug();
-            }
-
             // 更新UI消息计时器，保留原先在菜单/Loading 场景也会递减的轻量行为
             UpdateMessage();
 
@@ -2877,15 +2868,6 @@ namespace BossRush
             // 无间炼狱现金磁铁吸附更新
             UpdateCashMagnet();
             UpdateEnemyRecoveryMonitor();
-            
-            // 检测 Boss 池窗口快捷键（Ctrl+F10）
-            // 注：热键检测使用 GetKeyDown，必须每帧检测，否则会丢失按键
-            CheckBossPoolWindowHotkey();
-            
-            // 检测物品生成器快捷键（F2）
-            CheckItemSpawnerHotkey();
-            CheckF3DebugCheatMenuHotkey();
-            TickF3DebugCheatMenu();
             
             // 持续清理功能已移除，改为禁用spawner
             
@@ -3333,13 +3315,6 @@ namespace BossRush
             }
 
             runtimeModuleHost.OnLateUpdate();
-
-            // Boss 池窗口的暂停和鼠标状态控制（在所有 Update 之后执行，确保覆盖游戏的设置）
-            BossPoolLateUpdate();
-            
-            // NPC传送UI的暂停和鼠标状态控制
-            NPCTeleportUILateUpdate();
-            F3DebugCheatMenuLateUpdate();
             ZombieModeUIHelper.EnforceModalInputPause();
         }
         
