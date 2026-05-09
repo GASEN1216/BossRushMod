@@ -9,6 +9,7 @@ mode	mode__mode_c	无间炼狱	Infinite Hell	3
 mode	mode__mode_d	白手起家	From Scratch	4
 mode	mode__mode_e	划地为营	Faction War	5
 mode	mode__mode_f	血猎追击	Blood Hunt	6
+mode	mode__zombie_mode	末日丧尸模式	Zombie Mode	7
 map	map__overview	地图总览	Map Overview	1
 boss	boss__overview	Boss 总览	Boss Overview	1
 boss	boss__dragon_descendant	龙裔遗族	Dragon Descendant	2
