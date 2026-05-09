@@ -64,6 +64,9 @@ echo      and exit cleanup behave as before.
 echo   7. Equip or spawn Frostmourne or FenHuangHalberd and confirm ability init/trigger.
 echo   8. Optional: verify DebugTools hotkeys only in DevMode and achievement hotkey opens UI.
 echo.
+echo After completing the in-game checklist, scan the latest log from WSL:
+echo   python3 tests/SmokeLogScan.py
+echo.
 
 if not exist "%GAME_EXE%" (
     echo [ERROR] Game executable not found:
