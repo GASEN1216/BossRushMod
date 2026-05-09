@@ -24,6 +24,7 @@ EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
 AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 AUDI0_RUNTIME_HOOKS = Path("Audio/BossRushAudioHooks.cs")
+LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewardsRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
@@ -57,6 +58,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/IntegrationRuntimeHooks.cs",
     "Integration/Affinity/AffinityRuntimeHooks.cs",
     "Audio/BossRushAudioHooks.cs",
+    "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
     "Utilities/GameplayRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
@@ -388,6 +390,36 @@ def main() -> int:
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush entry flow method anymore: " + forbidden)
+
+    loot_runtime_hooks = LOOT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    for signature, required_tokens in {
+        "private void OnInfiniteHellWaveCompleted()": [
+            "OnInfiniteHellWaveCompleted_LootAndRewards();",
+        ],
+        "private void OnAllEnemiesDefeated()": [
+            "OnAllEnemiesDefeated_LootAndRewards();",
+        ],
+        "private void OnPlayerDeathInBossRush(Health deadHealth, DamageInfo damageInfo)": [
+            "OnPlayerDeathInBossRush_LootAndRewards(deadHealth, damageInfo);",
+        ],
+        "private void OnBossBeforeSpawnLoot(CharacterMainControl bossMain, DamageInfo dmgInfo)": [
+            "OnBossBeforeSpawnLoot_LootAndRewards(bossMain, dmgInfo);",
+        ],
+    }.items():
+        body = extract_method_body(loot_runtime_hooks, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: LootAndRewardsRuntimeHooks missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: LootAndRewardsRuntimeHooks missing token: " + required)
+    for forbidden in [
+        "private void OnInfiniteHellWaveCompleted()",
+        "private void OnAllEnemiesDefeated()",
+        "private void OnPlayerDeathInBossRush(Health deadHealth, DamageInfo damageInfo)",
+        "private void OnBossBeforeSpawnLoot(CharacterMainControl bossMain, DamageInfo dmgInfo)",
+    ]:
+        if forbidden in mod_text:
+            return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own loot runtime method anymore: " + forbidden)
     waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")
     if not waves_tick_body:
         return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaRuntime wrapper")

@@ -160,6 +160,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     WavesArena\WavesArenaSpawnerControl.cs ^
     LootAndRewards\LegacyBossLootProbabilityModel.cs ^
     LootAndRewards\LootAndRewards.cs ^
+    LootAndRewards\LootAndRewardsRuntimeHooks.cs ^
     LootAndRewards\VictoryRewardShadowCrateController.cs ^
     LootAndRewards\ModeEFLootboxTracker.cs ^
     Interactables\BossRushInteractables.cs ^
