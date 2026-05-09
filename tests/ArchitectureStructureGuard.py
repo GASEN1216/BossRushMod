@@ -24,6 +24,7 @@ AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
+WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
@@ -53,6 +54,7 @@ REQUIRED_COMPILE_SOURCES = [
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
     "WavesArena/BossRushEntryFlow.cs",
+    "WavesArena/WavesArenaEnemyMaintenance.cs",
     "ModeE/ModeERuntimeModule.cs",
     "ModeE/ModeERuntimeHooks.cs",
     "ModeF/ModeFRuntimeModule.cs",
@@ -305,6 +307,7 @@ def main() -> int:
 
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     waves_entry_flow = WAVES_ENTRY_FLOW.read_text(encoding="utf-8", errors="ignore")
+    waves_enemy_maintenance = WAVES_ENEMY_MAINTENANCE.read_text(encoding="utf-8", errors="ignore")
     for signature, required_tokens in {
         "private BossRushEntryMode DetermineBossRushEntryMode(string context)": [
             "DetectFactionFlag();",
@@ -325,9 +328,34 @@ def main() -> int:
         for required in required_tokens:
             if required not in body:
                 return fail("ArchitectureStructureGuard: BossRushEntryFlow missing token: " + required)
+    for signature, required_tokens in {
+        "private void ForceKillAllEnemies()": [
+            "ForceKillAllEnemies: 已杀死 ",
+            "DamageInfo dmgInfo = new DamageInfo(main);",
+        ],
+        "private void ClearEnemiesForBossRush()": [
+            "ClearEnemiesForBossRush: 开始清理",
+            "_reusableDestroyList.Clear();",
+            "_arenaCenterSet",
+        ],
+        "private IEnumerator ContinuousClearEnemiesUntilWaveStart()": [
+            "ContinuousClearEnemiesUntilWaveStart: 协程已启动",
+            "DisableAllSpawners();",
+            "ClearEnemiesForBossRush();",
+        ],
+    }.items():
+        body = extract_method_body(waves_enemy_maintenance, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: WavesArenaEnemyMaintenance missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: WavesArenaEnemyMaintenance missing token: " + required)
     for forbidden in [
         "private BossRushEntryMode DetermineBossRushEntryMode(string context)",
         "private System.Collections.IEnumerator SetupBossRushInDemoChallenge(Scene scene)",
+        "private void ForceKillAllEnemies()",
+        "private void ClearEnemiesForBossRush()",
+        "private System.Collections.IEnumerator ContinuousClearEnemiesUntilWaveStart()",
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush entry flow method anymore: " + forbidden)

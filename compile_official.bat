@@ -154,6 +154,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     WavesArena\WavesArenaRuntimeModule.cs ^
     WavesArena\WavesArenaRuntimeHooks.cs ^
     WavesArena\BossRushEntryFlow.cs ^
+    WavesArena\WavesArenaEnemyMaintenance.cs ^
     LootAndRewards\LegacyBossLootProbabilityModel.cs ^
     LootAndRewards\LootAndRewards.cs ^
     LootAndRewards\VictoryRewardShadowCrateController.cs ^
