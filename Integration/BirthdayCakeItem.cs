@@ -75,11 +75,6 @@ namespace BossRush
         private const string BIRTHDAY_CAKE_BUNDLE_NAME = "birthday_cake";
         
         /// <summary>
-        /// 高兴 Buff 持续时间（秒）
-        /// </summary>
-        private const float HAPPY_BUFF_DURATION = 90f;
-        
-        /// <summary>
         /// 饱食度恢复值（100% = 100）
         /// </summary>
         private const float ENERGY_RESTORE_VALUE = 100f;
@@ -419,82 +414,6 @@ namespace BossRush
             DevLog("[BirthdayCake] 本地化注入完成");
         }
         
-        /// <summary>
-        /// 将生日蛋糕注入商店
-        /// </summary>
-        private void InjectBirthdayCakeIntoShops()
-        {
-            if (birthdayCakeTypeId <= 0)
-            {
-                DevLog("[BirthdayCake] TypeID 未初始化，跳过商店注入");
-                return;
-            }
-            
-            try
-            {
-                StockShop[] shops = UnityEngine.Object.FindObjectsOfType<StockShop>();
-                if (shops == null || shops.Length == 0)
-                {
-                    DevLog("[BirthdayCake] 未找到任何商店");
-                    return;
-                }
-                
-                int addedCount = 0;
-                foreach (StockShop shop in shops)
-                {
-                    if (shop == null) continue;
-                    
-                    // 只注入到基地的普通商店
-                    string sceneName = "";
-                    string merchantId = "";
-                    try { sceneName = shop.gameObject.scene.name; } catch { }
-                    try { merchantId = shop.MerchantID; } catch { }
-                    
-                    bool isNpcShop = false;
-                    try { isNpcShop = shop.GetComponentInParent<CharacterMainControl>() != null; } catch { }
-                    
-                    if (!isNpcShop && merchantId == "Merchant_Normal" && sceneName == "Base_SceneV2")
-                    {
-                        if (shop.entries != null)
-                        {
-                            bool alreadyExists = false;
-                            foreach (StockShop.Entry entry in shop.entries)
-                            {
-                                if (entry != null && entry.ItemTypeID == birthdayCakeTypeId)
-                                {
-                                    alreadyExists = true;
-                                    break;
-                                }
-                            }
-                            
-                            if (!alreadyExists)
-                            {
-                                StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-                                itemEntry.typeID = birthdayCakeTypeId;
-                                itemEntry.maxStock = 5;
-                                itemEntry.forceUnlock = true;
-                                itemEntry.priceFactor = 1f;
-                                itemEntry.possibility = 1f;
-                                itemEntry.lockInDemo = false;
-                                
-                                StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
-                                wrapped.CurrentStock = 5;
-                                wrapped.Show = true;
-                                
-                                shop.entries.Add(wrapped);
-                                addedCount++;
-                            }
-                        }
-                    }
-                }
-                
-                DevLog("[BirthdayCake] 商店注入完成，添加到 " + addedCount + " 个商店");
-            }
-            catch (Exception e)
-            {
-                DevLog("[BirthdayCake] 商店注入失败: " + e.Message);
-            }
-        }
         
         // ============================================================================
         // 12月份自动赠送生日蛋糕

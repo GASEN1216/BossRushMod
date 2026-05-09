@@ -73,11 +73,6 @@ namespace BossRush
         private bool phase2Triggered = false;
 
         /// <summary>
-        /// 是否正在执行攻击
-        /// </summary>
-        private bool isAttacking = false;
-
-        /// <summary>
         /// Boss角色引用
         /// </summary>
         private CharacterMainControl bossCharacter;
@@ -621,12 +616,6 @@ namespace BossRush
             }
         }
 
-        // ========== 字符串常量缓存（减少GC） ==========
-
-        private static readonly string LOG_PREFIX = "[DragonKing] ";
-        private static readonly string LOG_WARNING = "[WARNING] ";
-        private static readonly string LOG_ERROR = "[ERROR] ";
-
         // ========== LayerMask缓存（避免重复计算） ==========
 
         /// <summary>
@@ -911,8 +900,6 @@ namespace BossRush
                 ModBehaviour.DevLog($"[DragonKing] [WARNING] 初始化碰撞检测器失败: {e.Message}");
             }
         }
-
-        // [已移除] 悬浮跟随机制 - 该功能未被使用且可能导致位置异常
 
         /// <summary>
         /// 上次更新玩家引用的时间
@@ -1612,38 +1599,7 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 安全地启动并追踪协程（防止协程泄漏）
-        /// </summary>
-        private Coroutine StartTrackedCoroutine(IEnumerator routine)
-        {
-            if (routine == null) return null;
-            Coroutine coroutine = null;
-            coroutine = StartCoroutine(TrackProjectileCoroutine(routine, () =>
-            {
-                if (coroutine != null)
-                {
-                    activeProjectileCoroutines.Remove(coroutine);
-                }
-            }));
-            activeProjectileCoroutines.Add(coroutine);
-            return coroutine;
-        }
 
-        private static IEnumerator TrackProjectileCoroutine(IEnumerator routine, Action onCompleted)
-        {
-            try
-            {
-                while (routine.MoveNext())
-                {
-                    yield return routine.Current;
-                }
-            }
-            finally
-            {
-                onCompleted?.Invoke();
-            }
-        }
 
         /// <summary>
         /// 清理GameObject中的所有动态Material
@@ -2165,11 +2121,9 @@ namespace BossRush
                 }
 
                 // 执行攻击
-                isAttacking = true;
                 currentAttackCoroutine = StartCoroutine(ExecuteAttack(attackType));
                 yield return currentAttackCoroutine;
                 currentAttackCoroutine = null;
-                isAttacking = false;
 
                 // 调试模式下不推进序列
                 if (!DragonKingConfig.DebugMode)
@@ -2247,8 +2201,6 @@ namespace BossRush
                 StopCoroutine(currentAttackCoroutine);
                 currentAttackCoroutine = null;
             }
-            isAttacking = false;
-
             // 停止 AI 和射击
             StopBossMovementAndShooting();
 
@@ -2420,44 +2372,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 计算玩家预判位置（用于传送）
-        /// </summary>
-        private Vector3 CalculatePredictedPosition()
-        {
-            if (playerCharacter == null)
-            {
-                return bossCharacter != null ? bossCharacter.transform.position : Vector3.zero;
-            }
-
-            Vector3 playerPos = playerCharacter.transform.position;
-
-            // 预判玩家移动方向
-            Vector3 playerVelocity = GetPlayerVelocity();
-            try
-            {
-                Rigidbody rb = null;
-                if (rb != null)
-                {
-                    playerVelocity = rb.velocity;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog($"[DragonKing] [WARNING] 获取玩家速度异常: {e.Message}");
-            }
-
-            // 预判1秒后的位置
-            Vector3 predictedPos = playerPos + playerVelocity * 1f;
-
-            // 在预判位置上方
-            float height = UnityEngine.Random.Range(
-                DragonKingConfig.RepositionHeightMin,
-                DragonKingConfig.RepositionHeightMax
-            );
-
-            return predictedPos + Vector3.up * height;
-        }
 
         /// <summary>
         /// 计算阶段转换传送目标位置（玩家附近的有效地面位置）
@@ -2504,46 +2418,6 @@ namespace BossRush
 
         // ========== 换位机制 ==========
 
-        /// <summary>
-        /// 换位压制机制
-        /// </summary>
-        private IEnumerator Reposition()
-        {
-            if (bossCharacter == null || playerCharacter == null) yield break;
-
-            // 计算目标位置（玩家上方3-5米）
-            Vector3 playerPos = playerCharacter.transform.position;
-            float height = UnityEngine.Random.Range(
-                DragonKingConfig.RepositionHeightMin,
-                DragonKingConfig.RepositionHeightMax
-            );
-            Vector3 targetPos = playerPos + Vector3.up * height;
-
-            // 快速移动到目标位置
-            float moveSpeed = DragonKingConfig.RepositionSpeed;
-            float startTime = Time.time;
-            float maxDuration = 2f; // 最大移动时间
-
-            while (bossCharacter != null && Time.time - startTime < maxDuration)
-            {
-                Vector3 currentPos = bossCharacter.transform.position;
-                float distance = Vector3.Distance(currentPos, targetPos);
-
-                if (distance < 0.5f) break;
-
-                // 平滑移动
-                Vector3 newPos = Vector3.MoveTowards(currentPos, targetPos, moveSpeed * Time.deltaTime);
-                bossCharacter.transform.position = newPos;
-
-                // 面向玩家
-                FacePlayer();
-
-                yield return null;
-            }
-
-            // 最终面向玩家
-            FacePlayer();
-        }
 
         /// <summary>
         /// 面向玩家
@@ -2664,16 +2538,6 @@ namespace BossRush
             // 停止自定义射击
             StopCustomShooting();
             ModBehaviour.DevLog("[DragonKing] 释放技能，已停止射击");
-        }
-
-        /// <summary>
-        /// 拿枪（技能结束后调用）- 现在改为开始自定义射击
-        /// </summary>
-        private void TakeOutWeapon()
-        {
-            // 开始自定义射击
-            StartCustomShooting();
-            ModBehaviour.DevLog("[DragonKing] 技能结束，已恢复射击");
         }
 
         // ========== 自定义射击系统 ==========
@@ -2965,120 +2829,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 统一的追踪弹幕协程（合并了4个重复协程）
-        /// 前N秒追踪玩家，之后直线飞行
-        /// 自动检测是否有刚体，选择合适的移动方式
-        /// </summary>
-        /// <param name="projectile">弹幕对象</param>
-        /// <param name="lifetime">生命周期（秒）</param>
-        /// <param name="trackingDuration">追踪持续时间（秒），默认使用配置值</param>
-        private IEnumerator TrackingProjectileCore(GameObject projectile, float lifetime, float trackingDuration = -1f)
-        {
-            // 使用默认追踪时间（如果未指定）
-            if (trackingDuration < 0f)
-            {
-                trackingDuration = DragonKingConfig.PrismaticBoltTrackingDuration;
-            }
-
-            float startTime = Time.time;
-            float speed = DragonKingConfig.PrismaticBoltSpeed;
-            float trackingStrength = DragonKingConfig.PrismaticBoltTrackingStrength;
-
-            // 获取刚体组件（决定移动方式）
-            Rigidbody rb = projectile.GetComponent<Rigidbody>();
-            bool useRigidbody = (rb != null);
-
-            Vector3 currentVelocity = projectile.transform.forward * speed;
-            bool trackingEnded = false;
-
-            // 如果有刚体，设置初始速度
-            if (useRigidbody)
-            {
-                rb.velocity = currentVelocity;
-            }
-
-            while (projectile != null && Time.time - startTime < lifetime)
-            {
-                float elapsed = Time.time - startTime;
-                Vector3 currentPos = projectile.transform.position;
-
-                // 判断是否还在追踪阶段
-                if (elapsed < trackingDuration && !trackingEnded)
-                {
-                    // 追踪阶段：追踪玩家
-                    Vector3 targetPos;
-                    if (TryGetPlayerAimPosition(out targetPos))
-                    {
-                        Vector3 dirToTarget = (targetPos - currentPos).normalized;
-
-                        // 不完美追踪：混合当前方向和目标方向
-                        if (!useRigidbody && currentVelocity.sqrMagnitude < 0.01f)
-                        {
-                            // 非刚体模式下，如果速度为0则直接设置
-                            currentVelocity = dirToTarget * speed;
-                        }
-                        else
-                        {
-                            Vector3 desiredVelocity = dirToTarget * speed;
-                            currentVelocity = Vector3.Lerp(currentVelocity, desiredVelocity, trackingStrength * Time.deltaTime * 5f);
-                        }
-                    }
-                }
-                else if (!trackingEnded)
-                {
-                    // 追踪结束，锁定当前方向
-                    trackingEnded = true;
-                    if (currentVelocity.sqrMagnitude > 0.01f)
-                    {
-                        currentVelocity = currentVelocity.normalized * speed;
-                    }
-                }
-                // 直线飞行阶段：保持当前速度方向不变
-
-                // 根据是否有刚体选择移动方式
-                if (useRigidbody)
-                {
-                    rb.velocity = currentVelocity;
-                }
-                else
-                {
-                    projectile.transform.position += currentVelocity * Time.deltaTime;
-                }
-
-                // 设置朝向
-                if (currentVelocity.sqrMagnitude > 0.01f)
-                {
-                    projectile.transform.rotation = Quaternion.LookRotation(currentVelocity);
-                }
-
-                // 检测碰撞
-                if (CheckProjectileHit(currentPos, DragonKingConfig.PrismaticBoltDamage))
-                {
-                    activeProjectiles.Remove(projectile);
-                    DragonKingAssetManager.ReleaseEffect(projectile);
-                    yield break;
-                }
-
-                yield return null;
-            }
-
-            // 销毁弹幕
-            if (projectile != null)
-            {
-                activeProjectiles.Remove(projectile);
-                DragonKingAssetManager.ReleaseEffect(projectile);
-            }
-        }
-
-        /// <summary>
-        /// 追踪弹幕协程（兼容旧接口）
-        /// </summary>
-        private IEnumerator TrackingProjectile(GameObject projectile, float lifetime)
-        {
-            return TrackingProjectileCore(projectile, lifetime);
-        }
-
-        /// <summary>
         /// 检测弹幕是否命中玩家
         /// 性能优化：使用sqrMagnitude避免开方运算
         /// </summary>
@@ -3280,13 +3030,6 @@ namespace BossRush
             ModBehaviour.DevLog("[DragonKing] 棱彩弹2结束，AI已恢复");
         }
 
-        /// <summary>
-        /// 带自定义追踪时间的追踪弹幕协程（兼容旧接口）
-        /// </summary>
-        private IEnumerator TrackingProjectileWithDuration(GameObject projectile, float lifetime, float customTrackingDuration)
-        {
-            return TrackingProjectileCore(projectile, lifetime, customTrackingDuration);
-        }
 
         // ========== 冲刺攻击 ==========
 
@@ -4531,38 +4274,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 移动长矛并检测命中
-        /// </summary>
-        private IEnumerator MoveLance(GameObject lance, Vector3 direction, float speed, float maxDistance)
-        {
-            float traveled = 0f;
-
-            while (lance != null && traveled < maxDistance)
-            {
-                float moveDelta = speed * Time.deltaTime;
-                lance.transform.position += direction * moveDelta;
-                traveled += moveDelta;
-
-                // 检测命中（使用长矛专用的更大检测范围）
-                if (CheckLanceHit(lance))
-                {
-                    activeProjectiles.Remove(lance);
-                    DragonKingAssetManager.ReleaseEffect(lance);
-                    yield break;
-                }
-
-                yield return null;
-            }
-
-            // 清理
-            if (lance != null)
-            {
-                activeProjectiles.Remove(lance);
-                DragonKingAssetManager.ReleaseEffect(lance);
-            }
-        }
-
-        /// <summary>
         /// 检测长矛是否命中玩家（使用射线检测）
         /// </summary>
         private bool CheckLanceHit(GameObject lance)
@@ -4634,27 +4345,6 @@ namespace BossRush
             return false;
         }
 
-        /// <summary>
-        /// 获取玩家速度
-        /// </summary>
-        private Vector3 GetPlayerVelocity()
-        {
-            try
-            {
-                UpdatePlayerReference();
-
-                if (TryRefreshSharedTargetSnapshot(playerCharacter))
-                {
-                    return sharedTrackedTargetVelocity;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog($"[DragonKing] [WARNING] 获取玩家刚体速度异常: {e.Message}");
-            }
-
-            return Vector3.zero;
-        }
 
         // ========== 以太长矛2攻击（切屏） ==========
 
@@ -4899,8 +4589,6 @@ namespace BossRush
             }
 
             // 3. 停止所有攻击和射击
-            isAttacking = false;
-
             // 停止自定义射击循环
             StopCustomShooting();
 
@@ -5623,71 +5311,6 @@ namespace BossRush
         {
             cachedPlayer = null;
             controller = null;
-        }
-    }
-
-    // ========== Billboard效果组件 ==========
-
-    /// <summary>
-    /// Billboard效果组件 - 让物体始终面向摄像机
-    /// 用于让四角星形状的棱彩弹始终正面朝向玩家
-    /// </summary>
-    public class BillboardEffect : MonoBehaviour
-    {
-        /// <summary>
-        /// 缓存的摄像机Transform
-        /// </summary>
-        private Transform cachedCameraTransform;
-
-        /// <summary>
-        /// 上次更新摄像机引用的时间
-        /// </summary>
-        private float lastCameraUpdateTime = 0f;
-
-        /// <summary>
-        /// 摄像机引用更新间隔（秒）
-        /// </summary>
-        private const float CAMERA_UPDATE_INTERVAL = 1f;
-
-        void Start()
-        {
-            UpdateCameraReference();
-        }
-
-        void LateUpdate()
-        {
-            // 定期更新摄像机引用（防止摄像机切换）
-            if (Time.time - lastCameraUpdateTime > CAMERA_UPDATE_INTERVAL)
-            {
-                UpdateCameraReference();
-            }
-
-            // 让物体面向摄像机
-            if (cachedCameraTransform != null)
-            {
-                // 只旋转Y轴，保持物体水平
-                Vector3 lookDir = cachedCameraTransform.position - transform.position;
-                lookDir.y = 0f;
-
-                if (lookDir.sqrMagnitude > 0.001f)
-                {
-                    transform.rotation = Quaternion.LookRotation(-lookDir);
-                }
-            }
-        }
-
-        /// <summary>
-        /// 更新摄像机引用
-        /// </summary>
-        private void UpdateCameraReference()
-        {
-            lastCameraUpdateTime = Time.time;
-
-            Camera mainCam = Camera.main;
-            if (mainCam != null)
-            {
-                cachedCameraTransform = mainCam.transform;
-            }
         }
     }
 

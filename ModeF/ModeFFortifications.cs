@@ -148,7 +148,6 @@ namespace BossRush
         // 下次 Highlight 时按需重建。阈值设置较大以避免维修选择抖动时反复创建销毁。
         private const float FORT_HIGHLIGHT_OUTLINE_DESTROY_DELAY = 10f;
         private const float FORT_DAMAGE_LOG_INTERVAL     = 0.25f;
-        private const float FORT_PLACEMENT_PADDING       = 0.35f;
         private const float FORT_WORLD_COLLISION_PADDING = 0.05f;
         private const int   FORT_PLACEMENT_OVERLAP_BUFFER_SIZE = 24;
         private const int   MODEF_UTILITY_REWARD_UNTHROTTLED_THRESHOLD = 6;
@@ -389,8 +388,8 @@ namespace BossRush
 
                     // 颜色反馈：仅在可放置状态变化时更新材质
                     CharacterMainControl player = CharacterMainControl.Main;
-                    string unused;
-                    bool canPlace = player != null && CanPlaceModeFFortificationAtPreview(player, out unused);
+                    string unavailableReason;
+                    bool canPlace = player != null && CanPlaceModeFFortificationAtPreview(player, out unavailableReason);
                     if (modeFPlacementLastCanPlace == null || modeFPlacementLastCanPlace.Value != canPlace)
                     {
                         ApplyFortPlacementPreviewMaterial(modeFPlacementPreview, canPlace);
@@ -942,7 +941,7 @@ namespace BossRush
                 ConfigureModeFFortificationPhysics(fortObj);
                 EnsureModeFFortificationDamageTarget(fortObj, type, health, fortTeam);
                 EnsureModeFFortificationWallCollider(fortObj, type, health);
-                EnsureModeFFortificationCharacterBlocker(fortObj, type);
+                EnsureModeFFortificationCharacterBlocker(fortObj);
                 EnsureModeFFortificationHalfObstacleRegistration(fortObj, type);
                 try { health.CurrentHealth = maxHealth; } catch { }
 
@@ -1641,11 +1640,9 @@ namespace BossRush
         /// <summary>
         /// ★低端机优化：原本为每个工事创建独立 ModeF_CharacterBlocker 子对象的逻辑已合并到 WallCollider。
         /// 此函数现在只做清理：销毁已存在的 ModeF_CharacterBlocker 子对象（兼容池化复用和存档升级）。
-        /// 保留原签名以避免上游 PlaceModeFortification 调用点和任何外部调用处做连锁改动。
         /// </summary>
-        private void EnsureModeFFortificationCharacterBlocker(GameObject fortObj, FortificationType type)
+        private void EnsureModeFFortificationCharacterBlocker(GameObject fortObj)
         {
-            _ = type;
             if (fortObj == null)
             {
                 return;
@@ -2549,13 +2546,6 @@ namespace BossRush
             }
         }
 
-        private void QueueModeFAutoUtilityReward(int typeId, string displayName)
-        {
-            int current;
-            modeFPendingUtilityRewardCounts.TryGetValue(typeId, out current);
-            modeFPendingUtilityRewardCounts[typeId] = current + 1;
-            DevLog("[ModeF] [REWARD] queued typeId=" + typeId + " name=" + displayName + " pending=" + (current + 1));
-        }
 
         private int GetModeFPendingUtilityRewardCount(int typeId)
         {

@@ -1279,14 +1279,6 @@ namespace BossRush
             return UNIFIED_MAX_POINTS;
         }
         
-        /// <summary>
-        /// 获取指定NPC的最大等级（使用统一配置）
-        /// </summary>
-        private static int GetMaxLevel(string npcId)
-        {
-            // 使用统一最大等级
-            return UNIFIED_MAX_LEVEL;
-        }
         
         // ============================================================================
         // 存档

@@ -252,11 +252,18 @@ namespace BossRush
                 zombieModeRunState.PollutionFromContracts += pollutionGain;
             }
 
-            if (moveSpeedPenalty > 0f ||
+            bool hasPercentTradeoff =
+                moveSpeedPenalty > 0f ||
                 gunDamagePenalty > 0f ||
                 reloadSpeedPenalty > 0f ||
                 damageTakenPenalty > 0f ||
-                maxHealthPenalty > 0f)
+                maxHealthPenalty > 0f;
+            if (hasPercentTradeoff && GetZombieModeOptionTradeoffDisplayPercent(rewardType) <= 0)
+            {
+                DevLog("[ZombieMode] option reward tradeoff display percent missing: " + rewardType);
+            }
+
+            if (hasPercentTradeoff)
             {
                 RebuildZombieModeOptionPersistentModifiers();
             }
@@ -421,6 +428,7 @@ namespace BossRush
                 GetZombieModeOptionTradeoffMaxHealthPenalty(rewardType));
             return Mathf.RoundToInt(percent * 100f);
         }
+
 
         private void RemoveZombieModeOptionRuntimeEffects()
         {

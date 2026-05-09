@@ -405,21 +405,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 获取指定阵营的刷怪点列表
-        /// </summary>
-        private List<Vector3> GetFactionSpawnPoints(Teams faction)
-        {
-            if (modeESpawnAllocation != null)
-            {
-                List<Vector3> points;
-                if (modeESpawnAllocation.TryGetValue(faction, out points))
-                {
-                    return points;
-                }
-            }
-            return new List<Vector3>();
-        }
 
 
 

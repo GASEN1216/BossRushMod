@@ -27,20 +27,6 @@ namespace BossRush
         // 成就勋章库存缓存
         private static int cachedMedalStock = -1;
         
-        // ============================================================================
-        // 初始化方法（已废弃，配置器在 BossRushIntegration 中统一注册）
-        // ============================================================================
-        
-        /// <summary>
-        /// 初始化成就勋章物品（已废弃，保留空方法以兼容旧调用）
-        /// 配置器现在在 BossRushIntegration.cs 的 ItemFactory.LoadAllItems() 之前注册
-        /// </summary>
-        private void InitializeAchievementMedalItem()
-        {
-            // 配置器已移至 BossRushIntegration.cs 中统一注册
-            // 此方法保留为空以兼容可能的旧调用
-        }
-        
         /// <summary>
         /// 注入成就勋章本地化
         /// </summary>

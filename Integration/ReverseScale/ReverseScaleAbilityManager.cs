@@ -659,13 +659,6 @@ namespace BossRush
             return nearest;
         }
         
-        /// <summary>
-        /// 查找最近的敌人（保留原方法以兼容其他调用）
-        /// </summary>
-        private Transform FindNearestEnemy(Vector3 position)
-        {
-            return FindNearestEnemyOptimized(position);
-        }
 
         /// <summary>
         /// 显示逆鳞气泡提示

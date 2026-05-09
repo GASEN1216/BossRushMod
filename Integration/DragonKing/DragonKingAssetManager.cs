@@ -783,15 +783,6 @@ namespace BossRush
             return maxPoolSizes.TryGetValue(prefabName, out maxPoolSize) ? maxPoolSize : 0;
         }
 
-        private static GameObject CreateOneShotEffect(string prefabName, GameObject prefab, Vector3 position, Quaternion rotation, Transform parent)
-        {
-            GameObject instance = parent != null
-                ? UnityEngine.Object.Instantiate(prefab, position, rotation, parent)
-                : UnityEngine.Object.Instantiate(prefab, position, rotation);
-
-            PrepareEffectInstance(instance, prefabName);
-            return instance;
-        }
 
         private static GameObject AcquirePooledEffect(string prefabName, GameObject prefab, Vector3 position, Quaternion rotation)
         {

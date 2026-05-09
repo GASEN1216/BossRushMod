@@ -1226,9 +1226,6 @@ namespace BossRush
             }
         }
         
-        // [性能优化] 缓存残影材质，避免重复创建
-        private static Material cachedAfterimageSpriteMaterial = null;
-        
         /// <summary>
         /// 在指定位置创建残影 - 轻量级粒子效果版本
         /// [性能优化] 不再复制完整角色模型，改用简单的精灵残影

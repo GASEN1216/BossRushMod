@@ -32,8 +32,6 @@ namespace BossRush
         private const string FROSTMOURNE_BASE_NAME = "Frostmourne";
         private static readonly Vector3 DefaultSlashFxScale = new Vector3(1.34f, 1.34f, 0.96f); // 比断界戟更薄
         private const string IceAuraRootName = "Frostmourne_IceAura";
-        private const string IceMistName = "Frostmourne_IceMist";
-        private const string IceSparkName = "Frostmourne_IceSpark";
         private static GameObject cachedFallbackSlashFx;
         private static GameObject cachedFallbackHitFx;
 

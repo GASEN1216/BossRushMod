@@ -23,8 +23,6 @@ namespace BossRush
         private readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
         private readonly List<EnemyPresetInfo> modeFRespawnBossPresetScratch = new List<EnemyPresetInfo>();
 
-        private const int MODEF_RESPAWN_NEAREST_POINT_POOL = 10;
-
         private Teams ResolveModeFBossCombatTeam(Teams requestedFaction, EnemyPresetInfo preset, Vector3 spawnPos)
         {
             if (IsValidModeFCombatFaction(requestedFaction))
@@ -143,21 +141,6 @@ namespace BossRush
             ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: true);
         }
 
-        private void RemoveModeFCharacterReference(List<CharacterMainControl> list, CharacterMainControl target)
-        {
-            if (list == null || object.ReferenceEquals(target, null))
-            {
-                return;
-            }
-
-            for (int i = list.Count - 1; i >= 0; i--)
-            {
-                if (object.ReferenceEquals(list[i], target))
-                {
-                    list.RemoveAt(i);
-                }
-            }
-        }
 
         private bool IsTrackedModeFBoss(CharacterMainControl boss)
         {

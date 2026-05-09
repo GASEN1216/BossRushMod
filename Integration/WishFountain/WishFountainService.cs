@@ -2903,14 +2903,6 @@ namespace BossRush
             return selectedTypeId;
         }
 
-        private static int RollWishRewardTypeId(string wishText, out string rewardDisplayName)
-        {
-            rewardDisplayName = null;
-
-            WishRewardMatchResult match = MatchWishRewardKeywords(wishText);
-            WishRewardPoolSelection discardedSelection;
-            return RollWishRewardTypeIdCore(wishText, match, out rewardDisplayName, out discardedSelection);
-        }
 
         private static bool TryPickWishRewardAnimationCandidate(
             List<int> primaryPool,

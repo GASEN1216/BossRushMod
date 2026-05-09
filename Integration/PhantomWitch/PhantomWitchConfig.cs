@@ -312,6 +312,6 @@ namespace BossRush
         public const string SpawnMessageEN = "The Phantom Witch has appeared!";
         public const string DefeatedMessageCN = "幽灵女巫被击败了！";
         public const string DefeatedMessageEN = "The Phantom Witch has been defeated!";
-        public const bool TelemetryEnabled = true;
+        public static readonly bool TelemetryEnabled = true;
     }
 }

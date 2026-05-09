@@ -21,7 +21,6 @@ namespace BossRush
 
         private const float BubbleYOffset = 1.5f;
         private const float BubbleDuration = 3f;
-        private const float StartNextSweepButtonYOffset = -38f;
         private const string StartNextSweepButtonTextCn = "开启下次扫箱";
         private const string StartNextSweepButtonTextEn = "Start Next Sweep";
 
@@ -863,18 +862,6 @@ namespace BossRush
             return plans;
         }
 
-        private static int GetCurrentPayableSweepCount()
-        {
-            ModBehaviour mod = ModBehaviour.Instance;
-            if (mod == null)
-            {
-                return 0;
-            }
-
-            List<AwenLootSweepTarget> targets = new List<AwenLootSweepTarget>();
-            mod.CopyFreshAwenLootSweepTargets(targets);
-            return BuildBoxPlans(targets).Count;
-        }
 
         private static void ExitServiceState()
         {

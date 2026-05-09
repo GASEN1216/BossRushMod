@@ -316,28 +316,5 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 给玩家赠送叮当涂鸦（已废弃，请使用 SpawnAtPosition）
-        /// </summary>
-        [Obsolete("请使用 SpawnAtPosition 在NPC位置掉落物品")]
-        public static bool GiveToPlayer()
-        {
-            try
-            {
-                // 直接使用 SpawnAtPosition 在玩家位置掉落
-                var main = CharacterMainControl.Main;
-                if (main != null)
-                {
-                    return SpawnAtPosition(main.transform.position);
-                }
-                ModBehaviour.DevLog("[DingdangDrawing] 赠送失败: 找不到玩家");
-                return false;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[DingdangDrawing] 赠送失败: " + e.Message);
-                return false;
-            }
-        }
     }
 }

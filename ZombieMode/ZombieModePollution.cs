@@ -963,15 +963,6 @@ namespace BossRush
             }
         }
 
-        private void ApplyZombieModeAiSpeedMultiplier(CharacterMainControl enemy, float speedMultiplier)
-        {
-            if (enemy == null || Mathf.Approximately(speedMultiplier, 1f))
-            {
-                return;
-            }
-
-            enemy.transform.localScale = enemy.transform.localScale * Mathf.Clamp(speedMultiplier, 0.85f, 1.35f);
-        }
 
         private void ApplyZombieModeEnemyName(CharacterMainControl enemy, ZombieModeEnemyRuntimeMarker marker)
         {
@@ -1311,10 +1302,6 @@ namespace BossRush
             }
         }
 
-        private void ApplyZombieModeCommanderPulse(int runId, CharacterMainControl commander)
-        {
-            RefreshZombieModeCommanderAuraTargets(runId, commander, ZombieModeTuning.CommanderAffixAuraRadius, null);
-        }
 
         // Commander Aura tick scratch HashSet：复用避免每次 0.5 秒 tick 都 new。
         // 仅在 trackedTargets != null 时使用；调用方负责调用前 Clear()。审查 §3.6。

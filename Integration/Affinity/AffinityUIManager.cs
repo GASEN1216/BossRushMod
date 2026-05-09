@@ -23,19 +23,12 @@ namespace BossRush
     public static class AffinityUIManager
     {
         // UI状态
-        private static bool isUIOpen = false;
         private static GameObject affinityPanel = null;
-        private static string currentNpcId = null;
         
         // UI组件引用
         private static TextMeshProUGUI levelText = null;
         private static Image progressBar = null;
         private static TextMeshProUGUI npcNameText = null;
-        private static Image heartIcon = null;
-        
-        // 变化动画
-        private static GameObject changePopup = null;
-        private static Coroutine changeAnimCoroutine = null;
         
         // 红心图标资源
         private static Sprite heartSprite = null;
@@ -54,21 +47,17 @@ namespace BossRush
         {
             if (string.IsNullOrEmpty(npcId)) return;
             
-            currentNpcId = npcId;
-            
             // 如果面板已存在，只更新内容
             if (affinityPanel != null)
             {
                 UpdateAffinityDisplay(npcId);
                 affinityPanel.SetActive(true);
-                isUIOpen = true;
                 return;
             }
             
             // 创建新面板
             CreateAffinityPanel(parent);
             UpdateAffinityDisplay(npcId);
-            isUIOpen = true;
         }
         
         /// <summary>
@@ -80,8 +69,6 @@ namespace BossRush
             {
                 affinityPanel.SetActive(false);
             }
-            isUIOpen = false;
-            currentNpcId = null;
         }
         
         /// <summary>
@@ -318,7 +305,7 @@ namespace BossRush
                 {
                     GameObject heartObj = new GameObject("HeartIcon");
                     heartObj.transform.SetParent(affinityPanel.transform, false);
-                    heartIcon = heartObj.AddComponent<Image>();
+                    Image heartIcon = heartObj.AddComponent<Image>();
                     heartIcon.sprite = heartSprite;
                     heartIcon.preserveAspect = true;
                     
@@ -463,19 +450,9 @@ namespace BossRush
                 UnityEngine.Object.Destroy(affinityPanel);
                 affinityPanel = null;
             }
-            
-            if (changePopup != null)
-            {
-                UnityEngine.Object.Destroy(changePopup);
-                changePopup = null;
-            }
-            
             levelText = null;
             progressBar = null;
             npcNameText = null;
-            heartIcon = null;
-            isUIOpen = false;
-            currentNpcId = null;
             _cachedCanvas = null;
         }
         

@@ -2875,8 +2875,7 @@ namespace BossRush
             ModBehaviour.DevLog("[PhantomWitch] 组件销毁，资源清理完成");
         }
 
-        // 当前静态字段（damageHitBuffer、WaitForSeconds 实例）为 AppDomain 级常驻缓存，
-        // 不随场景切换清理。保留此方法作为未来扩展入口，与 Boss 模块 ClearXxxStaticCache 调用约定一致。
+        // 清理跨场景缓存；部分 AppDomain 级缓存由运行时复用，不在场景切换时释放。
         public static void ClearStaticCache()
         {
             cachedSharedMinionPreset = null;

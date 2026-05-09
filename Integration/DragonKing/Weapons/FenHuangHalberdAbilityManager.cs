@@ -500,52 +500,7 @@ namespace BossRush
             return false;
         }
 
-        private Vector3 GetClampedAimPoint(CharacterMainControl player)
-        {
-            Vector3 aimPoint = player.GetCurrentAimPoint();
-            Vector3 origin = player.transform.position;
-            Vector3 flatOffset = aimPoint - origin;
-            flatOffset.y = 0f;
 
-            if (flatOffset.sqrMagnitude < 0.001f)
-            {
-                flatOffset = player.CurrentAimDirection;
-                flatOffset.y = 0f;
-            }
-
-            if (flatOffset.sqrMagnitude < 0.001f)
-            {
-                flatOffset = player.transform.forward;
-                flatOffset.y = 0f;
-            }
-
-            flatOffset.Normalize();
-
-            float distance = Vector3.Distance(
-                new Vector3(origin.x, 0f, origin.z),
-                new Vector3(aimPoint.x, 0f, aimPoint.z)
-            );
-            // 不限制距离，允许玩家跳到屏幕上任意位置
-
-            Vector3 result = origin + flatOffset * distance;
-            result.y = aimPoint.y;
-            return result;
-        }
-
-        private Vector3 ResolveGroundPoint(Vector3 point, float fallbackY)
-        {
-            RaycastHit hit;
-            Vector3 samplePoint = point + Vector3.up * 8f;
-            int groundMask = GameplayDataSettings.Layers.groundLayerMask;
-
-            if (Physics.Raycast(samplePoint, Vector3.down, out hit, 30f, groundMask))
-            {
-                return hit.point;
-            }
-
-            point.y = fallbackY;
-            return point;
-        }
 
         private bool IsLandingPointValid(Vector3 position)
         {

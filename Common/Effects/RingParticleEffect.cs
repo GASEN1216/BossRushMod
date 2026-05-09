@@ -408,15 +408,6 @@ namespace BossRush.Common.Effects
             return tex;
         }
         
-        /// <summary>
-        /// 创建粒子纹理（已废弃，使用 GetOrCreateSharedTexture 代替）
-        /// 保留此方法以兼容可能的子类覆盖
-        /// </summary>
-        protected virtual Texture2D CreateTexture()
-        {
-            return GetOrCreateSharedTexture();
-        }
-
         // ========== 粒子发射 ==========
         
         private void EmitParticles()

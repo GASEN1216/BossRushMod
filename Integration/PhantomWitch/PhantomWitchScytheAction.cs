@@ -908,10 +908,6 @@ namespace BossRush
             return PhantomWitchAssetManager.GetQuadMaterial();
         }
 
-        private static Material GetSharedParticleMaterial(Shader shader)
-        {
-            return PhantomWitchAssetManager.GetParticleMaterial();
-        }
 
         private static Mesh GetSharedQuadMesh()
         {

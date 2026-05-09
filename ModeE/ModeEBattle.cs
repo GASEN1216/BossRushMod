@@ -54,56 +54,6 @@ namespace BossRush
         /// <summary>Mode E 中是否已生成龙王（全局限制最多1个）</summary>
         private bool modeEDragonKingSpawned = false;
 
-        #if false
-        private void ApplyModeDStyleLootToModeESpecialEnemy_Temp(CharacterMainControl character, EnemySpawnContext ctx, Teams faction, bool promotedToBoss)
-        {
-            try
-            {
-                if (character == null || ctx == null || ctx.preset == null)
-                {
-                    return;
-                }
-
-                bool isDragonDescendant = IsDragonDescendantPreset(ctx.preset);
-                bool isBearPromotedMinion = faction == Teams.bear && promotedToBoss;
-                if (!isDragonDescendant && !isBearPromotedMinion)
-                {
-                    return;
-                }
-
-                InitializeModeDItemPools();
-                EnsureModeDGlobalItemPool();
-
-                float lootHealth = 100f;
-                try
-                {
-                    if (character.Health != null)
-                    {
-                        lootHealth = character.Health.MaxHealth;
-                    }
-                    else if (ctx.preset.baseHealth > 0f)
-                    {
-                        lootHealth = ctx.preset.baseHealth;
-                    }
-                }
-                catch {}
-
-                int virtualWave = promotedToBoss ? 5 : 10;
-                bool preserveBossArmor = !promotedToBoss;
-                EquipEnemyForModeD(character, virtualWave, lootHealth, preserveBossArmor);
-
-                DevLog("[ModeE] 已应用白手起家式随机掉落: " + character.gameObject.name
-                    + " (dragonDescendant=" + isDragonDescendant
-                    + ", bearPromotedMinion=" + isBearPromotedMinion
-                    + ", virtualWave=" + virtualWave + ")");
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeE] [ERROR] 应用白手起家式随机掉落失败: " + e.Message);
-            }
-        }
-
-        #endif
         #endregion
 
         #region Mode E Boss 生成方法

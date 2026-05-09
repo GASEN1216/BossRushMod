@@ -50,7 +50,7 @@ namespace BossRush
         /// <summary>
         /// 是否启用每日衰减
         /// </summary>
-        public const bool ENABLE_DAILY_DECAY = true;
+        public static readonly bool ENABLE_DAILY_DECAY = true;
         
         // ============================================================================
         // 存档配置

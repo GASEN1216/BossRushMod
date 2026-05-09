@@ -867,14 +867,6 @@ namespace BossRush
             }
         }
         
-        /// <summary>
-        /// 获取当前血量百分比
-        /// </summary>
-        private float GetHealthPercent()
-        {
-            if (bossHealth == null) return 1f;
-            return bossHealth.CurrentHealth / bossHealth.MaxHealth;
-        }
         
         /// <summary>
         /// 复活序列
@@ -1079,13 +1071,6 @@ namespace BossRush
         private BossAIController aiController;
         
         /// <summary>
-        /// 追逐更新间隔（与原版TraceTarget一致：0.15秒）
-        /// </summary>
-        #pragma warning disable CS0414
-        private float chaseUpdateInterval = 0.15f;
-        #pragma warning restore CS0414
-
-        /// <summary>
         /// 进入狂暴状态
         /// </summary>
         private void EnterEnragedState()
@@ -1109,9 +1094,6 @@ namespace BossRush
             
             // 扩大套装发光范围
             ExpandGlowRadius();
-            
-            // 不再在这里应用速度加成，由ChasePlayerCoroutine动态控制
-            // ApplyChaseSpeedBoost(); // 已移除
             
             // 设置碰撞检测
             SetupCollisionDetection();
@@ -1185,36 +1167,6 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonDescendant] [WARNING] 禁用射击失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 应用追逐速度加成
-        /// </summary>
-        private void ApplyChaseSpeedBoost()
-        {
-            try
-            {
-                if (bossCharacter == null || bossCharacter.CharacterItem == null) return;
-                
-                var speedStat = bossCharacter.CharacterItem.GetStat("MoveSpeed");
-                if (speedStat != null)
-                {
-                    speedStat.BaseValue *= DragonDescendantConfig.ChaseSpeedMultiplier;
-                    ModBehaviour.DevLog("[DragonDescendant] 移动速度提升到: " + speedStat.Value);
-                }
-                
-                // 设置高Moveability值，免疫子弹减速效果
-                var moveabilityStat = bossCharacter.CharacterItem.GetStat("Moveability".GetHashCode());
-                if (moveabilityStat != null)
-                {
-                    moveabilityStat.BaseValue = 10f; // 设置很高的基础值，即使被减速也不会低于1
-                    ModBehaviour.DevLog("[DragonDescendant] 设置Moveability免疫减速");
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 应用速度加成失败: " + e.Message);
             }
         }
         
@@ -1447,45 +1399,6 @@ namespace BossRush
             ModBehaviour.DevLog("[DragonDescendant] FireLinearBullets完成");
         }
         
-        /// <summary>
-        /// 发射扇形子弹
-        /// 直接使用BulletPool生成子弹，实时追踪玩家方向
-        /// </summary>
-        /// <param name="baseDirection">基础方向（初始朝向玩家，会实时更新）</param>
-        /// <param name="bulletCount">子弹总数</param>
-        /// <param name="duration">持续时间（秒）</param>
-        /// <param name="totalAngle">扇形总角度</param>
-        private IEnumerator FireFanBullets(Vector3 baseDirection, int bulletCount, float duration, float totalAngle)
-        {
-            if (bulletCount <= 0) yield break;
-            
-            // 扇形子弹间隔更小，射击更快（1秒内射完30发）
-            float interval = 1f / bulletCount;
-            float angleStep = totalAngle / (bulletCount - 1);
-            
-            // [性能优化] 预计算WaitForSeconds
-            WaitForSeconds waitInterval = GetCachedWaitForSeconds(interval);
-            
-            for (int i = 0; i < bulletCount; i++)
-            {
-                if (!isEnraged || bossCharacter == null) yield break;
-                
-                // 实时更新基础方向（追踪玩家）
-                baseDirection = GetDirectionToPlayer();
-                
-                // 计算当前子弹的偏转角度
-                // 从 -totalAngle/2 到 +totalAngle/2
-                float angle = -totalAngle * 0.5f + angleStep * i;
-                
-                // 使用Quaternion旋转基础方向
-                Vector3 bulletDir = Quaternion.Euler(0f, angle, 0f) * baseDirection;
-                
-                // 直接生成子弹（不通过Boss的枪）
-                SpawnBulletDirect(bulletDir);
-                
-                yield return waitInterval;
-            }
-        }
         
         /// <summary>
         /// 发射扇形子弹（来回扫射版本）
@@ -1735,51 +1648,7 @@ namespace BossRush
             }
         }
         
-        /// <summary>
-        /// 设置Boss的瞄准方向
-        /// 参考原版RotateAim.cs
-        /// </summary>
-        private void SetAimDirection(Vector3 direction)
-        {
-            try
-            {
-                if (bossCharacter == null) return;
-                
-                // 设置瞄准点为Boss位置 + 方向 * 远距离
-                Vector3 aimPoint = bossCharacter.transform.position + direction * 100f;
-                bossCharacter.SetAimPoint(aimPoint);
-            }
-            catch { }
-        }
         
-        /// <summary>
-        /// 发射一发子弹
-        /// 使用原版的Trigger方法触发射击
-        /// </summary>
-        private void FireBullet(Vector3 direction)
-        {
-            try
-            {
-                if (bossCharacter == null) return;
-
-                // 确保武器已拿出
-                var ai = aiController?.GetAI();
-                if (ai != null)
-                {
-                    ai.defaultWeaponOut = true;
-                }
-
-                // 设置瞄准方向
-                SetAimDirection(direction);
-
-                // 触发射击（triggerInput=true, triggerThisFrame=true）
-                bossCharacter.Trigger(true, true, false);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 发射子弹失败: " + e.Message);
-            }
-        }
 
         
         // ========== 碰撞击退 ==========

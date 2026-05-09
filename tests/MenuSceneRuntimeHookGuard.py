@@ -5,6 +5,7 @@ import sys
 
 
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
+SCENE_RUNTIME_GATE = Path("Utilities/SceneRuntimeGate.cs")
 INTEGRATION = Path("Integration/BossRushIntegration.cs")
 STEAM_ACHIEVEMENT_POPUP = Path("Achievement/SteamAchievementPopup.cs")
 BOOTSTRAP_FILES = [
@@ -12,11 +13,6 @@ BOOTSTRAP_FILES = [
         Path("Integration/FlightTotem/FlightTotemBootstrap.cs"),
         "private void SetupFlightTotemForScene",
         "delayedCheckEquipment: DelayedCheckFlightTotemEquipment,",
-    ),
-    (
-        Path("Integration/ReverseScale/ReverseScaleBootstrap.cs"),
-        "private void SetupReverseScaleForScene",
-        "delayedCheckEquipment: DelayedCheckReverseScaleEquipment,",
     ),
     (
         Path("Integration/DragonKing/Weapons/FenHuangHalberdBootstrap.cs"),
@@ -129,14 +125,15 @@ def has_recent_guard(block: str, call: str, guard: str, window: int = 500) -> bo
 
 def main() -> int:
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8", errors="ignore")
+    scene_gate_text = SCENE_RUNTIME_GATE.read_text(encoding="utf-8", errors="ignore")
     integration_text = INTEGRATION.read_text(encoding="utf-8", errors="ignore")
 
     if "IsGameplaySceneName" not in mod_text:
         return fail("missing stable gameplay scene-name helper")
-    scene_guard = extract_method(mod_text, "internal static bool IsGameplaySceneName")
+    scene_guard = extract_method(scene_gate_text, "internal static bool IsGameplaySceneName")
     if not scene_guard:
         return fail("could not find stable gameplay scene-name helper body")
-    runtime_guard = extract_method(mod_text, "internal static bool CanRunGameplayRuntimeNow")
+    runtime_guard = extract_method(scene_gate_text, "internal static bool CanRunGameplayRuntimeNow")
     if not runtime_guard:
         return fail("could not find gameplay runtime loading-state helper body")
     compatibility_guard = extract_method(mod_text, "internal static bool ShouldRunGameplaySceneRuntimeHooks")
@@ -161,6 +158,13 @@ def main() -> int:
         return fail("runtime guard must delegate stable scene-name filtering to IsGameplaySceneName")
     if "CanRunGameplayRuntimeNow(sceneName)" not in compatibility_guard:
         return fail("legacy runtime hook helper must delegate to CanRunGameplayRuntimeNow")
+    for signature, delegate_call in [
+        ("internal static bool IsGameplaySceneName", "return SceneRuntimeGate.IsGameplaySceneName(sceneName);"),
+        ("internal static bool CanRunGameplayRuntimeNow", "return SceneRuntimeGate.CanRunGameplayRuntimeNow(sceneName);"),
+    ]:
+        wrapper = extract_method(mod_text, signature)
+        if delegate_call not in wrapper:
+            return fail("ModBehaviour scene helper must remain a compatibility wrapper -> " + signature)
     for token in [
         "IndexOf(\"Menu\", StringComparison.OrdinalIgnoreCase)",
         "IndexOf(\"Loading\", StringComparison.OrdinalIgnoreCase)",

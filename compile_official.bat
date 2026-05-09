@@ -86,6 +86,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Localization\LocalizationHelper.cs ^
     Localization\LocalizationInjector.cs ^
     Localization\EquipmentLocalization.cs ^
+    Common\Lifecycle\IBossRushRuntimeModule.cs ^
+    Common\Lifecycle\SceneRuntimeContext.cs ^
+    Common\Lifecycle\BossRushRuntimeModuleHost.cs ^
     Common\Utils\ReflectionCache.cs ^
     Common\Utils\NPCBubbleAnimator.cs ^
     Common\Effects\RingParticleEffect.cs ^
@@ -123,6 +126,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\EnemyRecoveryMonitor.cs ^
     Utilities\SpawnPositionHelper.cs ^
     Utilities\RunScopedRegistry.cs ^
+    Utilities\RuntimeScope.cs ^
+    Utilities\SceneRuntimeGate.cs ^
     Utilities\SteamHelper.cs ^
     Utilities\BossCleanupHelpers.cs ^
     Utilities\InteractableLootboxInventoryHelper.cs ^
@@ -357,7 +362,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Achievement\AchievementMedalConfig.cs ^
     Achievement\AchievementMedalItem.cs ^
     Audio\BossRushAudioManager.cs ^
-    DebugAndTools\\InventoryInspector.cs ^
+    DebugAndTools\InventoryInspector.cs ^
     WavesArena\InfiniteHellCashMagnet.cs ^
     Integration\Wedding\NPCMarriageSystem.cs ^
     Integration\Wedding\WeddingChapelInteractable.cs ^

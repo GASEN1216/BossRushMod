@@ -549,32 +549,8 @@ namespace BossRush
                 PhantomWitchConfig.FxMinimalRingSegments);
         }
 
-        private static int ResolveArcSegments(PhantomWitchFxDetailLevel detailLevel)
-        {
-            return ResolveAdaptiveCount(
-                detailLevel,
-                PhantomWitchConfig.FxArcSegments,
-                PhantomWitchConfig.FxReducedArcSegments,
-                PhantomWitchConfig.FxMinimalArcSegments);
-        }
 
-        private static int ResolveSmallRingSegments(PhantomWitchFxDetailLevel detailLevel)
-        {
-            return ResolveAdaptiveCount(
-                detailLevel,
-                PhantomWitchConfig.FxSmallRingSegments,
-                PhantomWitchConfig.FxReducedSmallRingSegments,
-                PhantomWitchConfig.FxMinimalSmallRingSegments);
-        }
 
-        private static int ResolveHitRingSegments(PhantomWitchFxDetailLevel detailLevel)
-        {
-            return ResolveAdaptiveCount(
-                detailLevel,
-                PhantomWitchConfig.FxHitRingSegments,
-                PhantomWitchConfig.FxReducedHitRingSegments,
-                PhantomWitchConfig.FxMinimalHitRingSegments);
-        }
 
         private static GameObject CreateFlatQuad(Transform parent, float scale, Color color, float yOffset)
         {
@@ -596,113 +572,7 @@ namespace BossRush
             return go;
         }
 
-        private static ParticleSystem CreateBurstParticles(Transform parent, int count, float lifetime, Color color, float speedMin, float speedMax, float sizeMin, float sizeMax)
-        {
-            GameObject go = new GameObject("BurstParticles");
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = Vector3.zero;
 
-            ParticleSystem ps = go.AddComponent<ParticleSystem>();
-            ConfigureSharedParticleRenderer(ps);
-
-            var main = ps.main;
-            main.duration = lifetime + 0.1f;
-            main.loop = false;
-            main.startLifetime = lifetime;
-            main.startSpeed = new ParticleSystem.MinMaxCurve(speedMin, speedMax);
-            main.startSize = new ParticleSystem.MinMaxCurve(Mathf.Max(0.04f, sizeMin * 0.7f), Mathf.Max(0.06f, sizeMax * 0.7f));
-            main.startColor = color;
-            main.maxParticles = count + 4;
-            main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            main.gravityModifier = -0.1f;
-
-            var emission = ps.emission;
-            emission.rateOverTime = 0f;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, (short)count) });
-
-            var vel = ps.velocityOverLifetime;
-            vel.enabled = true;
-            vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
-            vel.y = new ParticleSystem.MinMaxCurve(speedMin * 0.5f, speedMax);
-            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
-
-            var col = ps.colorOverLifetime;
-            col.enabled = true;
-            Gradient g = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(color, 0f), new GradientColorKey(new Color(color.r * 0.6f, color.g * 0.4f, color.b, 1f), 1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0.6f, 0.6f), new GradientAlphaKey(0f, 1f) }
-            );
-            col.color = new ParticleSystem.MinMaxGradient(g);
-
-            var sol = ps.sizeOverLifetime;
-            sol.enabled = true;
-            AnimationCurve burstSizeCurve = new AnimationCurve(
-                new Keyframe(0f, 0.3f),
-                new Keyframe(0.2f, 1f),
-                new Keyframe(0.7f, 0.8f),
-                new Keyframe(1f, 0f));
-            sol.size = new ParticleSystem.MinMaxCurve(1f, burstSizeCurve);
-
-            ps.Play();
-            return ps;
-        }
-
-        private static ParticleSystem CreateCircleEmitter(Transform parent, float radius, float rate, float lifetime, Color color, int maxParticles)
-        {
-            GameObject go = new GameObject("CircleEmitter");
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = Vector3.zero;
-
-            ParticleSystem ps = go.AddComponent<ParticleSystem>();
-            ConfigureSharedParticleRenderer(ps);
-
-            var main = ps.main;
-            main.duration = 30f;
-            main.loop = true;
-            main.startLifetime = lifetime;
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 1.2f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.09f);
-            main.startColor = color;
-            main.maxParticles = maxParticles;
-            main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            main.gravityModifier = -0.12f;
-
-            var emission = ps.emission;
-            emission.rateOverTime = rate;
-
-            var shape = ps.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Circle;
-            shape.radius = radius * 0.9f;
-            shape.radiusThickness = 1f;
-
-            var vel = ps.velocityOverLifetime;
-            vel.enabled = true;
-            vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
-            vel.y = new ParticleSystem.MinMaxCurve(0.8f, 1.4f);
-            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
-
-            var col = ps.colorOverLifetime;
-            col.enabled = true;
-            Gradient g = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(color, 0f), new GradientColorKey(new Color(1f, 0.85f, 1f), 0.5f), new GradientColorKey(new Color(0.5f, 0.2f, 0.8f), 1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.25f), new GradientAlphaKey(0.5f, 0.65f), new GradientAlphaKey(0f, 1f) }
-            );
-            col.color = new ParticleSystem.MinMaxGradient(g);
-
-            var noise = ps.noise;
-            noise.enabled = PhantomWitchFxRuntime.CurrentDetailLevel == PhantomWitchFxDetailLevel.Full;
-            if (noise.enabled)
-            {
-                noise.strength = 0.18f;
-                noise.frequency = 0.5f;
-            }
-
-            ps.Play();
-            return ps;
-        }
 
         /// <summary>
         /// 为粒子系统配置共享材质和渲染参数。公开供 SweatVfx 等外部粒子使用。
@@ -1761,36 +1631,6 @@ namespace BossRush
             if (t >= 1f)
             {
                 Destroy(gameObject);
-            }
-        }
-    }
-
-    internal sealed class PhantomWitchScaleIn : MonoBehaviour
-    {
-        private Vector3 targetScale = Vector3.one;
-        private float duration = 0.3f;
-        private float elapsed;
-
-        public void Configure(Vector3 targetScale, float duration)
-        {
-            this.targetScale = targetScale;
-            this.duration = Mathf.Max(0.01f, duration);
-            this.elapsed = 0f;
-            transform.localScale = Vector3.zero;
-        }
-
-        private void Update()
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            float s = t - 1f;
-            float eased = 1f + 2.70158f * s * s * s + 1.70158f * s * s;
-            transform.localScale = targetScale * eased;
-
-            if (t >= 1f)
-            {
-                transform.localScale = targetScale;
-                Destroy(this);
             }
         }
     }

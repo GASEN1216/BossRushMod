@@ -136,8 +136,6 @@ namespace BossRush
         // 常量定义（避免魔法数字）
         // ============================================================================
         private const float UI_INIT_DELAY = 0.1f;
-        private const int DEFAULT_FRAME_DELAY = 1;
-        private const int REFORGE_REFRESH_FRAME_DELAY = 2;
         private const float DIFF_THRESHOLD = 0.01f;
         private const string MAX_BOUND_LABEL_COLOR = "#FF4D4D";
         private const string MIN_BOUND_LABEL_COLOR = "#9AD8FF";
@@ -331,7 +329,6 @@ namespace BossRush
         
         // 当前哥布林控制器
         private static GoblinNPCController currentController;
-        private const bool EnableDetailedUIDump = false;
         private static Coroutine delayedUiBuildCoroutine;
         
         // 原始属性快照
@@ -502,214 +499,6 @@ namespace BossRush
             yield return null;
             ReapplyModifications();
             ScheduleDelayedUIBuild();
-
-            // DevMode: 输出UI详细信息
-            if (EnableDetailedUIDump)
-            {
-                DumpUIInfo();
-            }
-        }
-        
-        /// <summary>
-        /// [DevMode] 输出UI详细信息，用于调试和查找需要修改的文本
-        /// </summary>
-        private static void DumpUIInfo()
-        {
-            if (decomposeView == null)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] decomposeView 为空，无法输出UI信息");
-                return;
-            }
-
-            ModBehaviour.DevLog("================================================================================");
-            ModBehaviour.DevLog("[ReforgeUI] [DUMP] 开始输出重铸UI详细信息");
-            ModBehaviour.DevLog("================================================================================");
-
-            try
-            {
-                // 1. 输出UI根节点信息
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] UI根节点: " + decomposeView.gameObject.name);
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] UI路径: " + GetGameObjectPath(decomposeView.transform));
-
-                // 2. 输出所有反射获取的字段
-                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === 反射字段信息 ===");
-                DumpReflectionFields();
-
-                // 3. 输出所有文本组件（重点）
-                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === 所有文本组件 (TextMeshProUGUI) ===");
-                DumpAllTexts(decomposeView.transform, 0);
-
-                // 4. 输出所有按钮
-                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === 所有按钮 (Button) ===");
-                DumpAllButtons(decomposeView.transform);
-
-                // 5. 输出UI层级结构
-                ModBehaviour.DevLog("--------------------------------------------------------------------------------");
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] === UI层级结构 ===");
-                DumpUIHierarchy(decomposeView.transform, 0);
-
-                ModBehaviour.DevLog("================================================================================");
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] UI信息输出完成");
-                ModBehaviour.DevLog("================================================================================");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] [DUMP] [ERROR] 输出UI信息失败: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 获取GameObject的完整路径
-        /// </summary>
-        private static string GetGameObjectPath(Transform transform)
-        {
-            string path = transform.name;
-            while (transform.parent != null)
-            {
-                transform = transform.parent;
-                path = transform.name + "/" + path;
-            }
-            return path;
-        }
-
-        /// <summary>
-        /// [DevMode] 输出反射获取的字段信息
-        /// </summary>
-        private static void DumpReflectionFields()
-        {
-            Type viewType = typeof(ItemDecomposeView);
-            BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
-
-            FieldInfo[] fields = viewType.GetFields(flags);
-            foreach (var field in fields)
-            {
-                try
-                {
-                    object value = field.GetValue(decomposeView);
-                    string valueStr = value == null ? "null" : value.ToString();
-
-                    // 如果是Unity组件，尝试获取更多信息
-                    if (value is Component comp)
-                    {
-                        valueStr = string.Format("{0} (GameObject: {1})", value.GetType().Name, comp.gameObject.name);
-                    }
-                    else if (value is GameObject go)
-                    {
-                        valueStr = string.Format("GameObject: {0}", go.name);
-                    }
-
-                    ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]   {0} ({1}): {2}", field.Name, field.FieldType.Name, valueStr));
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]   {0}: [读取失败: {1}]", field.Name, e.Message));
-                }
-            }
-        }
-
-        /// <summary>
-        /// [DevMode] 递归输出所有文本组件
-        /// </summary>
-        private static void DumpAllTexts(Transform parent, int depth)
-        {
-            string indent = new string(' ', depth * 2);
-
-            // 检查TMP文本
-            var tmp = parent.GetComponent<TextMeshProUGUI>();
-            if (tmp != null)
-            {
-                string text = string.IsNullOrEmpty(tmp.text) ? "[空]" : tmp.text;
-                bool isActive = tmp.gameObject.activeInHierarchy;
-                string activeStr = isActive ? "" : " [隐藏]";
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}[TMP] {1}{2}: \"{3}\"",
-                    indent, parent.name, activeStr, text));
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}       路径: {1}",
-                    indent, GetGameObjectPath(parent)));
-            }
-
-            // 检查普通Text
-            var uiText = parent.GetComponent<Text>();
-            if (uiText != null)
-            {
-                string text = string.IsNullOrEmpty(uiText.text) ? "[空]" : uiText.text;
-                bool isActive = uiText.gameObject.activeInHierarchy;
-                string activeStr = isActive ? "" : " [隐藏]";
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}[Text] {1}{2}: \"{3}\"",
-                    indent, parent.name, activeStr, text));
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}       路径: {1}",
-                    indent, GetGameObjectPath(parent)));
-            }
-
-            // 递归子物体
-            for (int i = 0; i < parent.childCount; i++)
-            {
-                DumpAllTexts(parent.GetChild(i), depth + 1);
-            }
-        }
-
-        /// <summary>
-        /// [DevMode] 输出所有按钮
-        /// </summary>
-        private static void DumpAllButtons(Transform parent)
-        {
-            Button[] buttons = parent.GetComponentsInChildren<Button>(true);
-            foreach (var btn in buttons)
-            {
-                string btnName = btn.gameObject.name;
-                bool isActive = btn.gameObject.activeInHierarchy;
-                bool isInteractable = btn.interactable;
-                string activeStr = isActive ? "激活" : "隐藏";
-                string interactStr = isInteractable ? "可交互" : "不可交互";
-
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]   按钮: {0} [{1}, {2}]",
-                    btnName, activeStr, interactStr));
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]         路径: {0}",
-                    GetGameObjectPath(btn.transform)));
-
-                // 输出按钮下的文本
-                var btnTexts = btn.GetComponentsInChildren<TextMeshProUGUI>(true);
-                foreach (var t in btnTexts)
-                {
-                    if (!string.IsNullOrEmpty(t.text))
-                    {
-                        ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP]         文本: \"{0}\" (组件: {1})",
-                            t.text, t.gameObject.name));
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// [DevMode] 输出UI层级结构（简化版，只输出前3层）
-        /// </summary>
-        private static void DumpUIHierarchy(Transform parent, int depth)
-        {
-            if (depth > 3) return; // 限制深度避免输出过多
-
-            string indent = new string(' ', depth * 2);
-            bool isActive = parent.gameObject.activeSelf;
-            string activeStr = isActive ? "" : " [inactive]";
-
-            // 收集组件信息
-            List<string> components = new List<string>();
-            if (parent.GetComponent<Button>() != null) components.Add("Button");
-            if (parent.GetComponent<TextMeshProUGUI>() != null) components.Add("TMP");
-            if (parent.GetComponent<Text>() != null) components.Add("Text");
-            if (parent.GetComponent<Image>() != null) components.Add("Image");
-            if (parent.GetComponent<Slider>() != null) components.Add("Slider");
-
-            string compStr = components.Count > 0 ? " [" + string.Join(", ", components.ToArray()) + "]" : "";
-
-            ModBehaviour.DevLog(string.Format("[ReforgeUI] [DUMP] {0}{1}{2}{3}",
-                indent, parent.name, activeStr, compStr));
-
-            for (int i = 0; i < parent.childCount; i++)
-            {
-                DumpUIHierarchy(parent.GetChild(i), depth + 1);
-            }
         }
 
         /// <summary>
@@ -933,8 +722,6 @@ namespace BossRush
                     if (charInv != null && CharacterMainControl.Main != null)
                     {
                         var inventory = CharacterMainControl.Main.CharacterItem.Inventory;
-                        
-                        // 诊断日志已移除以提升性能
                         
                         // 重新设置，使用ReforgeSystem.CanReforge作为过滤条件
                         charInv.Setup(
@@ -1304,8 +1091,6 @@ namespace BossRush
         {
             try
             {
-                // 诊断日志已移除以提升性能
-                
                 // 查找所有文本组件，替换"分解"为"重铸"
                 TextMeshProUGUI[] texts = decomposeView.GetComponentsInChildren<TextMeshProUGUI>(true);
                 foreach (var text in texts)
@@ -2907,18 +2692,6 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 延迟刷新物品详情显示（等待属性值同步后再刷新）
-        /// </summary>
-        private static System.Collections.IEnumerator RefreshItemDetailsDisplayDelayed(int frameDelay = 1)
-        {
-            for (int i = 0; i < frameDelay; i++)
-            {
-                yield return null;
-            }
-            RefreshItemDetailsDisplay();
-        }
-        
-        /// <summary>
         /// 合并协程：重铸后延迟刷新UI（性能优化：减少协程调度开销）
         /// 合并了 RefreshItemDetailsDisplayDelayed 和 RefreshLockIconsDelayed 的功能
         /// </summary>
@@ -3409,16 +3182,6 @@ namespace BossRush
             return false;
         }
         
-        /// <summary>
-        /// 刷新所有锁定高亮效果（重新添加）
-        /// </summary>
-        private static void RefreshPropertyLockIcons()
-        {
-            if (ModBehaviour.Instance != null)
-            {
-                ModBehaviour.Instance.StartCoroutine(RefreshLockIconsDelayed());
-            }
-        }
         
         /// <summary>
         /// 通知属性已被锁定，刷新UI

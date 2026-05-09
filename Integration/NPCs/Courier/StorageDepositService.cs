@@ -158,9 +158,6 @@ namespace BossRush
         // 待寄存物品（用于拦截售出逻辑）
         #pragma warning disable CS0414
         private static Item pendingDepositItem = null;
-        
-        // 右键删除相关
-        private static bool rightClickDeleteEnabled = true;
         #pragma warning restore CS0414
 
         private sealed class RetrieveAllDepositItem
@@ -1361,89 +1358,6 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 强制激活所有寄存商品条目（解决原版 Refresh() 隐藏未解锁物品的问题）
-        /// 同时更新价格显示，确保显示正确的寄存费用
-        /// 关键改进：不依赖 entryIndexMapping 判断，直接激活所有非模板条目
-        /// </summary>
-        private static void ForceActivateAllEntries()
-        {
-            try
-            {
-                var shopView = StockShopView.Instance;
-                if (shopView == null || depositShop == null) return;
-                
-                // 获取商店条目的父容器
-                var entryTemplateField = typeof(StockShopView).GetField("entryTemplate",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (entryTemplateField == null) return;
-                
-                var entryTemplate = entryTemplateField.GetValue(shopView) as StockShopItemEntry;
-                if (entryTemplate == null) return;
-                Transform entriesParent = entryTemplate.transform.parent;
-                if (entriesParent == null) return;
-                
-                // 获取 priceText 字段（用于更新价格显示）
-                var priceTextFieldEntry = typeof(StockShopItemEntry).GetField("priceText",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                
-                int activatedCount = 0;
-                int priceUpdatedCount = 0;
-                int totalEntries = 0;
-                
-                foreach (Transform child in entriesParent)
-                {
-                    // 跳过模板对象
-                    if (child == entryTemplate.transform) continue;
-                    
-                    var uiEntry = child.GetComponent<StockShopItemEntry>();
-                    if (uiEntry == null) continue;
-                    
-                    totalEntries++;
-                    
-                    // 获取 Entry
-                    var stockEntry = uiEntry.Target;
-                    if (stockEntry == null) continue;
-                    
-                    // 强制激活（无论原版 Refresh() 是否隐藏了它）
-                    // 关键：不检查 entryIndexMapping，直接激活所有条目
-                    if (!child.gameObject.activeSelf)
-                    {
-                        child.gameObject.SetActive(true);
-                        activatedCount++;
-                        ModBehaviour.DevLog("[StorageDepositService] 强制激活条目: TypeID=" + stockEntry.ItemTypeID);
-                    }
-                    
-                    // 更新价格显示（使用正确的寄存费用）
-                    if (priceTextFieldEntry != null && entryIndexMapping.ContainsKey(stockEntry))
-                    {
-                        int depositIndex;
-                        if (entryIndexMapping.TryGetValue(stockEntry, out depositIndex))
-                        {
-                            var priceTextComp = priceTextFieldEntry.GetValue(uiEntry) as TMPro.TextMeshProUGUI;
-                            if (priceTextComp != null)
-                            {
-                                var depositedItems = DepositDataManager.GetAllItems();
-                                if (depositIndex < depositedItems.Count)
-                                {
-                                    int fee = depositedItems[depositIndex].GetCurrentFee();
-                                    priceTextComp.text = FormatRetrieveFeeText(fee);
-                                    priceUpdatedCount++;
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                ModBehaviour.DevLog("[StorageDepositService] ForceActivateAllEntries: 总条目=" + totalEntries + 
-                    ", 激活=" + activatedCount + ", 价格更新=" + priceUpdatedCount);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[StorageDepositService] [WARNING] ForceActivateAllEntries 失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
         /// 刷新商店 UI 并更新所有条目（修复：同类型物品价格显示问题）
         /// 原版 Setup() 使用 GetItemInstanceDirect(TypeID) 获取物品实例，
         /// 同一 TypeID 的所有物品会获取到同一个实例，导致价格显示相同。
@@ -1478,95 +1392,6 @@ namespace BossRush
             }
         }
         
-        /// <summary>
-        /// 只更新指定索引的商品条目的 ItemDisplay 和价格显示
-        /// </summary>
-        private static void UpdateSingleItemDisplay(int targetIndex)
-        {
-            try
-            {
-                var shopView = StockShopView.Instance;
-                if (shopView == null || depositShop == null) return;
-                
-                // 获取商店条目的父容器
-                var entryTemplateField = typeof(StockShopView).GetField("entryTemplate",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (entryTemplateField == null) return;
-                
-                var entryTemplate = entryTemplateField.GetValue(shopView) as StockShopItemEntry;
-                if (entryTemplate == null) return;
-                
-                Transform entriesParent = entryTemplate.transform.parent;
-                if (entriesParent == null) return;
-                
-                // 获取 StockShopItemEntry 的 itemDisplay 字段
-                var itemDisplayField = typeof(StockShopItemEntry).GetField("itemDisplay",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (itemDisplayField == null) return;
-                
-                // 获取 priceText 字段（用于更新价格显示）
-                var priceTextFieldEntry = typeof(StockShopItemEntry).GetField("priceText",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                
-                // 查找对应的条目并更新（通过 entryIndexMapping 匹配）
-                foreach (Transform child in entriesParent)
-                {
-                    // 跳过模板对象
-                    if (child == entryTemplate.transform) continue;
-                    
-                    var uiEntry = child.GetComponent<StockShopItemEntry>();
-                    if (uiEntry == null) continue;
-                    
-                    var stockEntry = uiEntry.Target;
-                    if (stockEntry == null) continue;
-                    
-                    // 通过 entryIndexMapping 检查是否是目标索引
-                    int depositIndex;
-                    if (entryIndexMapping.TryGetValue(stockEntry, out depositIndex) && depositIndex == targetIndex)
-                    {
-                        // 强制激活（如果被隐藏）
-                        if (!child.gameObject.activeSelf)
-                        {
-                            child.gameObject.SetActive(true);
-                            ModBehaviour.DevLog("[StorageDepositService] 强制激活新增条目: index=" + depositIndex);
-                        }
-                        
-                        // 从缓存获取正确的物品实例
-                        Item correctItem;
-                        if (depositItemInstances.TryGetValue(depositIndex, out correctItem) && correctItem != null)
-                        {
-                            var itemDisplay = itemDisplayField.GetValue(uiEntry) as ItemDisplay;
-                            if (itemDisplay != null)
-                            {
-                                itemDisplay.Setup(correctItem);
-                                ModBehaviour.DevLog("[StorageDepositService] 更新新增条目 ItemDisplay: index=" + depositIndex + ", Name=" + correctItem.DisplayName);
-                            }
-                            
-                            // 更新价格显示（使用正确的寄存费用）
-                            if (priceTextFieldEntry != null)
-                            {
-                                var priceTextComp = priceTextFieldEntry.GetValue(uiEntry) as TMPro.TextMeshProUGUI;
-                                if (priceTextComp != null)
-                                {
-                                    var depositedItems = DepositDataManager.GetAllItems();
-                                    if (depositIndex < depositedItems.Count)
-                                    {
-                                        int fee = depositedItems[depositIndex].GetCurrentFee();
-                                        priceTextComp.text = FormatRetrieveFeeText(fee);
-                                        ModBehaviour.DevLog("[StorageDepositService] 更新新增条目价格: index=" + depositIndex + ", fee=" + fee);
-                                    }
-                                }
-                            }
-                        }
-                        break; // 找到目标后退出
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 更新单个 ItemDisplay 失败: " + e.Message);
-            }
-        }
         
         /// <summary>
         /// 商品购买事件处理（物品取回）
@@ -2956,15 +2781,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[StorageDepositService] [WARNING] 隐藏无效 UI 条目失败: " + e.Message);
             }
-        }
-        
-        /// <summary>
-        /// 丢弃单个寄存物品（已废弃，功能已移除）
-        /// </summary>
-        public static void DiscardSingleItem(int depositIndex)
-        {
-            // 功能已移除，保留方法签名以兼容
-            ModBehaviour.DevLog("[StorageDepositService] DiscardSingleItem 功能已移除");
         }
         
         /// <summary>

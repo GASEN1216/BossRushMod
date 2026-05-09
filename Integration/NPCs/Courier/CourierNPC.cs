@@ -1204,7 +1204,6 @@ namespace BossRush
 
         // Mode E 固定模式（站在原地不移动）
         private bool isStationary = false;
-        private float stationaryFaceTimer = 0f;
         private bool scriptedOverrideActive = false;
         private bool scriptedRunMode = false;
 
@@ -2087,8 +2086,6 @@ namespace BossRush
             }
         }
     }
-
-    // CourierDeliveryInteractable 已移除，快递服务现在由 CourierInteractable 主选项处理
 
     /// <summary>
     /// 快递员交互组件 - 寄存服务选项

@@ -413,20 +413,7 @@ namespace BossRush
             return awenLootSweepRunner;
         }
 
-        private int CollectCurrentAwenLootSweepTargets(List<AwenLootSweepTarget> output)
-        {
-            return CopyCurrentAwenLootSweepTargets(output);
-        }
 
-        private bool HasTrackedModeEFLootboxes(int requiredSceneBuildIndex)
-        {
-            if (requiredSceneBuildIndex == int.MinValue)
-            {
-                return GetCurrentAwenLootSweepTargetCount() > 0;
-            }
-
-            return CollectTrackedModeEFLootboxes(modeEFLootboxScratch, requiredSceneBuildIndex) > 0;
-        }
 
         private int EnsureAwenLootSweepTargetCache()
         {

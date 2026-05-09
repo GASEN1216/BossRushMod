@@ -56,9 +56,6 @@ namespace BossRush
         // 砖石库存持久化相关
         private static int cachedBrickStoneStock = -1;  // -1 表示未初始化，需要从存档读取
         private static StockShop.Entry injectedBrickStoneEntry = null;  // 缓存注入的砖石条目引用
-        
-        // [性能优化] 商店注入完成标记，避免每次场景加载都重复扫描
-        private static bool _shopInjectionCompleted = false;
         private Coroutine runtimeStateMonitorCoroutine;
         private const float INTEGRATION_WARNING_LOG_INTERVAL = 5f;
         private readonly Dictionary<string, float> integrationNextWarningLogTimes = new Dictionary<string, float>();
@@ -1096,18 +1093,9 @@ namespace BossRush
         {
             cachedTicketStock = -1;  // 重置缓存，下次注入时会从存档读取
             injectedTicketEntry = null;  // 清除旧引用
-            _shopInjectionCompleted = false;  // [性能优化] 重置商店注入标记，读档后需要重新注入
             DevLog("[BossRush] 检测到读档，重置船票库存缓存");
         }
 
-        /// <summary>
-        /// 注入基础本地化（委托给 LocalizationInjector）
-        /// </summary>
-        private void InjectLocalization_Integration()
-        {
-            // 已迁移到 LocalizationInjector.InjectUILocalization()
-            // 此方法保留以兼容调用，实际注入在 InjectLocalization_Extra_Integration 中统一执行
-        }
 
         /// <summary>
         /// 注入扩展本地化（委托给 LocalizationInjector）
@@ -1187,7 +1175,6 @@ namespace BossRush
             InjectAdventureJournalIntoShops_Integration();  // 将冒险家日志注入到售货机
             
             // 初始化成就勋章物品（配置器已在 ItemFactory.LoadAllItems 之前注册）
-            // InitializeAchievementMedalItem();  // 配置器已移至 LoadAllItems 之前
             InjectAchievementMedalLocalization();
             InjectAchievementMedalIntoShops();  // 将成就勋章注入到售货机（排在最前面）
             AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
@@ -1346,10 +1333,6 @@ namespace BossRush
 
             // 清理布满了灰尘的星愿许愿台建筑系统
             CleanupWishFountainBuilding();
-            
-            // [性能优化] 重置商店注入标记
-            _shopInjectionCompleted = false;
-            
             try
             {
                 Type modBehaviourType = FindModConfigType("ModConfig.ModBehaviour");
@@ -1368,8 +1351,6 @@ namespace BossRush
             {
                 DevLog("[BossRush] [WARNING] 移除配置变更事件监听失败: " + e.Message);
             }
-            
-            if (arenaStartPoint != null) UnityEngine.Object.Destroy(arenaStartPoint);
             
             // 清理 Boss 池 UI
             DestroyBossPoolUI();
@@ -3142,84 +3123,6 @@ namespace BossRush
             {
                 ActivateAllChildren(child.gameObject);
             }
-        }
-        
-        /// <summary>
-        /// 根据配置复制单个地图物品
-        /// </summary>
-        private void CloneMapObject(GameObject[] allObjects, MapObjectCloneConfig config)
-        {
-            try
-            {
-                GameObject template = null;
-                Transform parentTransform = null;
-                
-                // 查找模板对象
-                foreach (GameObject go in allObjects)
-                {
-                    if (go.name == config.templateName)
-                    {
-                        // 检查父对象名称前缀
-                        if (go.transform.parent != null && 
-                            go.transform.parent.name.StartsWith(config.parentNamePrefix))
-                        {
-                            template = go;
-                            parentTransform = go.transform.parent;
-                            break;
-                        }
-                        // 如果没有指定父对象前缀，直接使用找到的第一个
-                        else if (string.IsNullOrEmpty(config.parentNamePrefix))
-                        {
-                            template = go;
-                            parentTransform = go.transform.parent;
-                            break;
-                        }
-                    }
-                }
-                
-                if (template == null)
-                {
-                    DevLog("[BossRush] CloneMapObject: 未找到模板 " + config.templateName + " (父对象前缀: " + config.parentNamePrefix + ")");
-                    return;
-                }
-                
-                // 复制对象
-                GameObject clone = UnityEngine.Object.Instantiate(template);
-                clone.name = config.cloneName;
-                clone.transform.position = config.targetPosition;
-                
-                // 设置旋转：如果配置了自定义Y轴旋转，则使用；否则使用模板旋转
-                if (config.rotationY.HasValue)
-                {
-                    Vector3 templateEuler = template.transform.rotation.eulerAngles;
-                    clone.transform.rotation = Quaternion.Euler(templateEuler.x, config.rotationY.Value, templateEuler.z);
-                }
-                else
-                {
-                    clone.transform.rotation = template.transform.rotation;
-                }
-                clone.transform.localScale = template.transform.localScale;
-                
-                // 设置父对象
-                if (parentTransform != null)
-                {
-                    clone.transform.SetParent(parentTransform);
-                }
-                
-                DevLog("[BossRush] CloneMapObject: 已复制 " + config.templateName + " 到 " + config.targetPosition + " (名称: " + config.cloneName + ")");
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[BossRush] CloneMapObject 失败 (" + config.templateName + "): " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 在零号区生成路障（BossRush 模式专用）- 保留旧函数名以兼容
-        /// </summary>
-        private void SpawnRoadblockInGroundZero()
-        {
-            SpawnBossRushMapObjects();
         }
         
         private System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)

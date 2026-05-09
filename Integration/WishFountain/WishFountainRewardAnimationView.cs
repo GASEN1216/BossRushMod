@@ -24,7 +24,6 @@ namespace BossRush
         private const float SlotSpacing = 18f;
         private const float ViewportWidth = 1728f;
         private const float ViewportHeight = 184f;
-        private const float MarkerWidth = 10f;
         private const float MarkerHeight = 184f;
         private const float SlotHighlightScale = 1.1f;
         private const float HighlightAnimDuration = 0.35f;

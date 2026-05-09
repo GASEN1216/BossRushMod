@@ -69,10 +69,6 @@ namespace BossRush
         private static GameObject placementPreviewObject = null;
         // 原始材质缓存（用于恢复）
         private static Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
-        // 预览材质（半透明）- 保留用于未来放置模式功能
-        #pragma warning disable CS0414
-        private static Material previewMaterial = null;
-        #pragma warning restore CS0414
         // 当前旋转角度（Y轴）
         private static float placementRotationY = 0f;
         // 每次滚轮旋转的角度
@@ -283,7 +279,6 @@ namespace BossRush
                 DevLog("[交互调试] 场景: " + sceneName);
                 DevLog("[交互调试] 对象名称: " + goName);
                 DevLog("[交互调试] 类型: " + typeName);
-                // DevLog("[交互调试] 位置: " + pos);
                 DevLog("[交互调试] 层级路径: " + path);
 
                 // InteractName
@@ -840,42 +835,6 @@ namespace BossRush
             catch (System.Exception e)
             {
                 DevLog("[BossRush] F5 调试：LogNearbyGameObjects 出错: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// F6 调试：复制 F5 记住的 GameObject 到玩家脚下
-        /// </summary>
-        /// <param name="playerPos">玩家位置（目标位置）</param>
-        private void CloneRememberedGameObject(Vector3 playerPos)
-        {
-            try
-            {
-                if (lastNearestGameObject == null)
-                {
-                    DevLog("[BossRush] F6 调试：没有记住的对象，请先按 F5 选择一个对象");
-                    return;
-                }
-                
-                // 复制 GameObject
-                GameObject original = lastNearestGameObject;
-                GameObject clone = UnityEngine.Object.Instantiate(original);
-                clone.name = original.name + "_Clone";
-                clone.transform.position = playerPos;
-                
-                // 保持原始旋转和缩放
-                clone.transform.rotation = original.transform.rotation;
-                clone.transform.localScale = original.transform.localScale;
-                
-                string originalPath = GetTransformPath(original.transform);
-                
-                DevLog("[BossRush] F6 调试：已复制 GameObject 到玩家脚下");
-                DevLog("[BossRush]   原对象: " + original.name + ", 路径=" + originalPath);
-                DevLog("[BossRush]   克隆到: " + playerPos + ", 新名称=" + clone.name);
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[BossRush] F6 调试：CloneRememberedGameObject 出错: " + e.Message);
             }
         }
         
@@ -1481,19 +1440,6 @@ namespace BossRush
             DevLog("[BossRush] 放置模式：预览对象已创建（完整渲染模式）");
         }
         
-        /// <summary>
-        /// 占位方法（保持兼容性）
-        /// </summary>
-        private void DisableAllNonRenderComponents(GameObject previewObj)
-        {
-            // 简化方案不再需要此方法，保留空实现以防其他地方调用
-            if (previewObj == null) return;
-            int disabledCount = 0;
-            if (disabledCount > 0)
-            {
-                DevLog("[BossRush] 放置模式：已禁用 " + disabledCount + " 个组件");
-            }
-        }
         
         /// <summary>
         /// 更新放置模式（在 Update 中调用）

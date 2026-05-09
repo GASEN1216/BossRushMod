@@ -837,18 +837,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// [已废弃] 在路牌上添加清空箱子选项
-        /// <para>清空箱子功能已移至垃圾桶交互物 (TrashCanInteractable)</para>
-        /// </summary>
-        [System.Obsolete("清空箱子选项已移至垃圾桶交互物，此方法不再使用")]
-        public void AddClearLootboxOptions()
-        {
-            // 此方法已废弃，清空箱子功能已移至垃圾桶交互物
-            // 保留方法签名以保持向后兼容性
-            ModBehaviour.DevLog("[BossRush] AddClearLootboxOptions 已废弃，清空箱子功能已移至垃圾桶");
-        }
-
         public void RemoveDifficultyOptions()
         {
             try
@@ -1012,39 +1000,6 @@ namespace BossRush
         }
     }
 
-    /// <summary>
-    /// 挂载到路牌上，监听原有 InteractableBase 的交互完成事件，触发生小鸡
-    /// </summary>
-    public class BossRushSignEggSpawner : MonoBehaviour
-    {
-        public InteractableBase targetInteract;
-        private bool wasInteracting = false;
-
-        void Update()
-        {
-            if (targetInteract == null) return;
-
-            try
-            {
-                // 检测交互状态变化（从交互中变为非交互中，且没有选择子选项）
-                bool isInteracting = targetInteract.Interacting;
-                
-                if (wasInteracting && !isInteracting)
-                {
-                    // 交互结束，检查是否选择了子选项
-                    // 如果没有选择子选项（即直接完成主交互），则生小鸡
-                    if (BossRush.ModBehaviour.Instance != null)
-                    {
-                        BossRush.ModBehaviour.Instance.TrySpawnEggForPlayer();
-                    }
-                }
-                
-                wasInteracting = isInteracting;
-            }
-            catch {}
-        }
-    }
-
     public class BossRushNextWaveInteractable : InteractableBase
     {
         protected override void Awake()
@@ -1122,81 +1077,6 @@ namespace BossRush
         }
     }
     
-    public class BossRushClearAllLootboxesInteractable : InteractableBase
-    {
-        protected override void Awake()
-        {
-            try
-            {
-                this.overrideInteractName = true;
-                // 使用本地化键，避免两边出现 *
-                this.InteractName = "BossRush_ClearAllLootboxes";
-                this._overrideInteractNameKey = "BossRush_ClearAllLootboxes";
-            }
-            catch {}
-            try
-            {
-                this.interactCollider = GetComponent<Collider>();
-            }
-            catch {}
-            try
-            {
-                base.Awake();
-            }
-            catch {}
-            try
-            {
-                if (this.interactCollider != null)
-                {
-                    this.interactCollider.enabled = false;
-                }
-            }
-            catch {}
-            try
-            {
-                this.MarkerActive = false;
-            }
-            catch {}
-        }
-
-        protected override void Start()
-        {
-            try
-            {
-                base.Start();
-            }
-            catch {}
-        }
-
-        protected override bool IsInteractable()
-        {
-            return true;
-        }
-
-        protected override void OnTimeOut()
-        {
-            try
-            {
-                int removed = BossRushLootboxUtility.DestroyMarkedLootboxes();
-
-                try
-                {
-                    var main = CharacterMainControl.Main;
-                    if (main != null)
-                    {
-                        string msg = L10n.T("已清空 " + removed + " 个箱子", "Cleared " + removed + " lootboxes");
-                        main.PopText(msg, -1f);
-                    }
-                }
-                catch {}
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] 清空所有箱子失败: " + e.Message);
-            }
-        }
-    }
-
     public class BossRushClearEmptyLootboxesInteractable : InteractableBase
     {
         protected override void Awake()

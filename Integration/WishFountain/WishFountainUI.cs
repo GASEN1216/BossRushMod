@@ -977,53 +977,6 @@ namespace BossRush
                 || (inputField.textViewport != null && current == inputField.textViewport.gameObject);
         }
 
-        private void ShowOriginalSuccessBanner()
-        {
-            try
-            {
-                string message = L10n.T(
-                    "愿这点<color=#9FE6FF>星光</color>，照亮你心中的<color=#F3C65F>乌托邦</color>~",
-                    "May this <color=#9FE6FF>starlight</color> illuminate the <color=#F3C65F>utopia</color> in your heart~");
-
-                MethodInfo[] methods = typeof(NotificationText).GetMethods(BindingFlags.Public | BindingFlags.Static);
-                for (int i = 0; i < methods.Length; i++)
-                {
-                    MethodInfo method = methods[i];
-                    if (method == null || method.Name != "Push")
-                    {
-                        continue;
-                    }
-
-                    ParameterInfo[] parameters = method.GetParameters();
-                    if (parameters == null || parameters.Length != 2)
-                    {
-                        continue;
-                    }
-
-                    if (parameters[0].ParameterType != typeof(string))
-                    {
-                        continue;
-                    }
-
-                    if (parameters[1].ParameterType == typeof(float))
-                    {
-                        method.Invoke(null, new object[] { message, 3f });
-                        return;
-                    }
-
-                    if (parameters[1].ParameterType == typeof(int))
-                    {
-                        method.Invoke(null, new object[] { message, 3 });
-                        return;
-                    }
-                }
-
-                NotificationText.Push(message);
-            }
-            catch
-            {
-            }
-        }
 
         private void SetStatus(string text, Color color, bool explicitStatus)
         {

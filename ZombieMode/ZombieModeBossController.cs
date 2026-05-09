@@ -126,9 +126,6 @@ namespace BossRush
             }
         }
 
-        // 注：原 GetZombieModeBossSkillCooldown switch 已废弃。冷却信息现在直接从
-        // ZombieModeBossSkillState.CooldownSeconds（per-kind override）读取，调用方为零。
-
         private void TryExecuteZombieModeBossSkill(ZombieModeBossInstance instance, float now)
         {
             if (instance == null || instance.SkillState == null || instance.Character == null)
@@ -655,23 +652,6 @@ namespace BossRush
             }
 
             RuntimeStatModifierTracker.RemoveAll(hunter.FrenzyModifierRecords, "Hunter Frenzy");
-        }
-
-        private void AddZombieModeTimedStatModifier(
-            CharacterMainControl character,
-            string statName,
-            float percent,
-            System.Collections.Generic.List<ZombieModeAttributeModifierRecord> records)
-        {
-            // 旧 helper 保留为薄壳以兼容个别仍在调用的位置；统一行为走 RuntimeStatModifierTracker。
-            RuntimeStatModifierTracker.TryAdd(character, statName, percent, this, records, "AddZombieModeTimedStatModifier");
-        }
-
-        private void RemoveZombieModeStatModifierRecords(
-            System.Collections.Generic.List<ZombieModeAttributeModifierRecord> records,
-            string context)
-        {
-            RuntimeStatModifierTracker.RemoveAll(records, context);
         }
 
         private void TriggerZombieModeSplitterHpSplit(int runId, CharacterMainControl victim)

@@ -127,15 +127,6 @@ namespace BossRush
             }
         }
 
-        private static int CountCandidateRootItems(CharacterMainControl player, Item usedItem)
-        {
-            if (player == null || player.CharacterItem == null)
-            {
-                return 0;
-            }
-
-            return CollectCandidateRootItems(player, usedItem, false).Count;
-        }
 
         private static List<Item> CollectCandidateRootItems(CharacterMainControl player, Item usedItem, bool excludeRootsContainingUsedItem)
         {

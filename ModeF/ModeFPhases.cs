@@ -23,7 +23,6 @@ namespace BossRush
         private const float MODEF_HEAL_NORMAL_KILL = 0.50f;
         private const float MODEF_HEAL_BOUNTY_KILL_BONUS = 0.25f;
         private const float MODEF_MAX_HP_GROWTH_NORMAL = 1f;
-        private const float MODEF_MAX_HP_GROWTH_BOUNTY = 2f;
         private const float MODEF_HUNTSTORM_UNMARKED_SPEED_BONUS = 0.5f;
         private const float MODEF_EXTRACTION_ALL_SPEED_BONUS = 0.5f;
         private const float MODEF_FORCED_TRACE_DISTANCE = 500f;

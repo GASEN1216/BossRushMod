@@ -798,7 +798,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 无间炼狱单波完成：掉落现金、更新显示并准备下一波（LootAndRewards 备份实现）
+        /// 无间炼狱单波完成：掉落现金、更新显示并准备下一波（LootAndRewards 分部实现）
         /// </summary>
         private async void OnInfiniteHellWaveCompleted_LootAndRewards()
         {
@@ -1259,7 +1259,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 所有敌人击败完成（LootAndRewards 备份实现）
+        /// 所有敌人击败完成（LootAndRewards 分部实现）
         /// </summary>
         private async void OnAllEnemiesDefeated_LootAndRewards()
         {
@@ -2046,7 +2046,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 玩家死亡保护（BossRush期间）- 参考keep_items_on_death实现（LootAndRewards 备份实现）
+        /// 玩家死亡保护（BossRush期间）- 参考keep_items_on_death实现（LootAndRewards 分部实现）
         /// 不干预游戏死亡流程，只阻止物品掉落
         /// </summary>
         private void OnPlayerDeathInBossRush_LootAndRewards(Health deadHealth, DamageInfo damageInfo)
@@ -2125,62 +2125,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 在角色真正生成掉落物之前拦截玩家掉落逻辑（LootAndRewards 备份实现）
-        /// （事件来源：CharacterMainControl.BeforeCharacterSpawnLootOnDead）
-        /// </summary>
-        private void OnMainCharacterBeforeSpawnLoot_LootAndRewards(DamageInfo dmgInfo)
-        {
-            try
-            {
-                // 仅在BossRush激活期间生效
-                if (!IsActive)
-                {
-                    return;
-                }
-
-                CharacterMainControl main = null;
-                try
-                {
-                    main = CharacterMainControl.Main;
-                }
-                catch (Exception e)
-                {
-                    LogLootWarningLimited("OnMainCharacterBeforeSpawnLoot_main", "读取玩家主角色失败", e);
-                }
-
-                if (main == null)
-                {
-                    return;
-                }
-
-                // 确保这是玩家角色
-                bool isPlayer = false;
-                try
-                {
-                    isPlayer = CharacterMainControlExtensions.IsMainCharacter(main);
-                }
-                catch
-                {
-                    isPlayer = true; // Main一般就是玩家
-                }
-
-                if (!isPlayer)
-                {
-                    return;
-                }
-
-                // 关键点：在真正SpawnLoot前把掉落开关关掉
-                main.dropBoxOnDead = false;
-                DevLog("[BossRush] OnMainCharacterBeforeSpawnLoot: 已关闭玩家掉落");
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] OnMainCharacterBeforeSpawnLoot 错误: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 在Boss真正生成掉落物之前拦截并随机化掉落（LootAndRewards 备份实现）
+        /// 在Boss真正生成掉落物之前拦截并随机化掉落（LootAndRewards 分部实现）
         /// （事件来源：CharacterMainControl.BeforeCharacterSpawnLootOnDead）
         /// </summary>
         private void OnBossBeforeSpawnLoot_LootAndRewards(CharacterMainControl bossMain, DamageInfo dmgInfo)
@@ -3072,7 +3017,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 调试：记录 Boss 掉落实际物品列表（LootAndRewards 备份实现）
+        /// 调试：记录 Boss 掉落实际物品列表（LootAndRewards 分部实现）
         /// </summary>
         private IEnumerator LogBossLootInventory_LootAndRewards(InteractableLootbox lootbox)
         {
@@ -3323,7 +3268,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 清理通关奖励 Lootbox 中的低品质/低价值物品，仅保留高品质奖励（LootAndRewards 备份实现）
+        /// 清理通关奖励 Lootbox 中的低品质/低价值物品，仅保留高品质奖励（LootAndRewards 分部实现）
         /// </summary>
         private IEnumerator CleanupDifficultyRewardLootboxInventory_LootAndRewards(InteractableLootbox lootbox, int highQualityCount)
         {
@@ -3576,31 +3521,6 @@ namespace BossRush
             return false;
         }
 
-        /// <summary>
-        /// 获取物品的耐久度（用于日志）
-        /// </summary>
-        private string GetItemDurability(Item item)
-        {
-            try
-            {
-                if (item == null) return "N/A";
-                var durabilityStat = item.GetStat("Durability");
-                var maxDurabilityStat = item.GetStat("MaxDurability");
-                if (durabilityStat != null && maxDurabilityStat != null)
-                {
-                    return durabilityStat.Value.ToString("F1") + "/" + maxDurabilityStat.Value.ToString("F1");
-                }
-                else if (durabilityStat != null)
-                {
-                    return durabilityStat.Value.ToString("F1");
-                }
-            }
-            catch (Exception)
-            {
-                return "N/A";
-            }
-            return "N/A";
-        }
         
         /// <summary>
         /// Boss特殊掉落：统一处理所有Boss的专属掉落物（协程版本）

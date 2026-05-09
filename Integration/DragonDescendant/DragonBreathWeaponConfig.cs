@@ -143,17 +143,6 @@ namespace BossRush
         };
         
         /// <summary>
-        /// [已弃用] 运行时配置方法 - 预制体配置已在EquipmentFactory加载时完成
-        /// 保留此方法以备将来需要
-        /// </summary>
-        [System.Obsolete("预制体配置已在EquipmentFactory加载时完成，不再需要运行时配置")]
-        public static void TryConfigureRuntime(Item item)
-        {
-            // 预制体配置已在EquipmentFactory.LoadBundleInternal中通过TryConfigure完成
-            // 所有从预制体实例化的Item都会继承配置，不需要运行时再次配置
-        }
-        
-        /// <summary>
         /// 尝试配置龙息武器（在EquipmentFactory加载后调用，配置预制体）
         /// </summary>
         public static bool TryConfigure(Item item, string baseName)
@@ -1492,24 +1481,6 @@ namespace BossRush
             }
         }
         
-        /// <summary>
-        /// 按路径查找子对象
-        /// </summary>
-        private static Transform FindChildByPath(Transform parent, string path)
-        {
-            if (parent == null || string.IsNullOrEmpty(path)) return null;
-            
-            string[] parts = path.Split('/');
-            Transform current = parent;
-            
-            foreach (string part in parts)
-            {
-                current = current.Find(part);
-                if (current == null) return null;
-            }
-            
-            return current;
-        }
         
         /// <summary>
         /// 递归查找子对象

@@ -9,7 +9,6 @@
 using System;
 using UnityEngine;
 using ItemStatsSystem;
-using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
@@ -21,8 +20,6 @@ namespace BossRush
         // ========== 状态 ==========
 
         private bool reverseScaleInitialized = false;
-        private int reverseScaleTypeId = ReverseScaleConfig.TotemTypeId;
-        private Item reverseScalePrefab = null;
 
         // ========== 初始化 ==========
 

@@ -1527,8 +1527,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 在指定位置生成婚礼NPC
-        /// TODO: 后续替换为正式的婚礼NPC逻辑
+        /// 在指定位置生成婚礼 NPC 占位体
         /// </summary>
         private void SpawnWeddingNPCAtPosition(Vector3 position)
         {
@@ -1539,8 +1538,7 @@ namespace BossRush
                 weddingNPCInstance = null;
             }
             
-            // TODO: 这里替换为你的婚礼NPC生成逻辑
-            // 目前用一个临时占位胶囊体标记NPC位置
+            // 目前用一个临时占位胶囊体标记 NPC 位置
             weddingNPCInstance = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             weddingNPCInstance.name = "WeddingNPC_Placeholder";
             weddingNPCInstance.transform.position = position;

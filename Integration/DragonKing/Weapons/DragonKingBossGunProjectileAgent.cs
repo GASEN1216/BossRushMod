@@ -120,19 +120,6 @@ namespace BossRush
             charge.Initialize(projectile.context, profile, shotId, target != null ? target.transform : null, point);
         }
 
-        private void CreateGroundZone(Vector3 position)
-        {
-            GameObject zoneObj = new GameObject("DragonGun_GroundZone");
-            zoneObj.transform.position = FenHuangHalberdRuntime.SnapToGround(position, position.y);
-            
-            if (profile.Element == ElementTypes.fire)
-            {
-                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(zoneObj);
-            }
-
-            DragonKingBossGunGroundZone zone = zoneObj.AddComponent<DragonKingBossGunGroundZone>();
-            zone.Initialize(projectile.context, profile);
-        }
 
         private void SpawnFireHitEffect(Vector3 hitPoint, Vector3 hitNormal)
         {
