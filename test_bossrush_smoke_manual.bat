@@ -4,6 +4,7 @@ setlocal
 set "GAME_PATH=D:\sofrware\steam\steamapps\common\Escape from Duckov"
 set "GAME_EXE=%GAME_PATH%\Duckov.exe"
 set "MOD_DLL=%GAME_PATH%\Duckov_Data\Mods\BossRush\BossRush.dll"
+set "SMOKE_DIR=docs\testing"
 set "SMOKE_NOTE=docs\testing\2026-05-09-code-structure-smoke.md"
 
 echo ==========================================
@@ -14,6 +15,30 @@ echo This script does not automate gameplay. It prints the smoke checklist and c
 echo Record the result in:
 echo   %SMOKE_NOTE%
 echo.
+
+if not exist "%SMOKE_DIR%" (
+    mkdir "%SMOKE_DIR%" >nul 2>nul
+)
+
+if not exist "%SMOKE_NOTE%" (
+    >"%SMOKE_NOTE%" echo # Code Structure Refactor In-Game Smoke Record
+    >>"%SMOKE_NOTE%" echo.
+    >>"%SMOKE_NOTE%" echo Conclusion: Not run
+    >>"%SMOKE_NOTE%" echo.
+    >>"%SMOKE_NOTE%" echo - Tester:
+    >>"%SMOKE_NOTE%" echo - Game version:
+    >>"%SMOKE_NOTE%" echo - Start time:
+    >>"%SMOKE_NOTE%" echo - End time:
+    >>"%SMOKE_NOTE%" echo - Issues found:
+    >>"%SMOKE_NOTE%" echo - Related log file:
+    >>"%SMOKE_NOTE%" echo.
+    >>"%SMOKE_NOTE%" echo Checklist:
+    >>"%SMOKE_NOTE%" echo - [ ] Base_SceneV2 loads.
+    >>"%SMOKE_NOTE%" echo - [ ] Merchant inventory is unchanged.
+    >>"%SMOKE_NOTE%" echo - [ ] Standard BossRush flow works.
+    >>"%SMOKE_NOTE%" echo - [ ] Mode D flow works.
+    >>"%SMOKE_NOTE%" echo - [ ] Frostmourne or FenHuangHalberd ability works.
+)
 
 if not exist "%MOD_DLL%" (
     echo [WARNING] Deployed DLL not found:
@@ -44,6 +69,17 @@ if not exist "%GAME_EXE%" (
     echo [ERROR] Game executable not found:
     echo   %GAME_EXE%
     exit /b 1
+)
+
+set "LATEST_LOG="
+for /f "delims=" %%F in ('dir /b /a:-d /o:-d "%GAME_PATH%\*.log" 2^>nul') do (
+    if not defined LATEST_LOG set "LATEST_LOG=%GAME_PATH%\%%F"
+)
+
+if defined LATEST_LOG (
+    echo Latest game log before launch:
+    echo   %LATEST_LOG%
+    echo.
 )
 
 choice /M "Launch Duckov now"
