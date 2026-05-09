@@ -6,6 +6,12 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        internal void InitializeDebugToolsRuntime()
+        {
+            RegisterInteractDebugListener();
+            RegisterShootDebugListener();
+        }
+
         internal void TickDebugTools(float deltaTime, float unscaledDeltaTime)
         {
             UpdateFpsCounter();

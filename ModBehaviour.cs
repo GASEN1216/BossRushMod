@@ -2348,11 +2348,7 @@ namespace BossRush
             
             RegisterPlayerLifecycleRuntimeEvents();
             
-            // 注册交互调试监听（仅在 DevModeEnabled = true 时生效）
-            RegisterInteractDebugListener();
-            
-            // 注册开枪调试监听（仅在 DevModeEnabled = true 时生效）
-            RegisterShootDebugListener();
+            InitializeDebugToolsRuntime();
             
             // 初始化成就系统和成就页面UI
             InitializeAchievementRuntime();

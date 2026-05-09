@@ -437,6 +437,16 @@ def main() -> int:
         if required not in debug_destroy_body:
             return fail("ArchitectureStructureGuard: CleanupDebugToolsOnDestroy missing token: " + required)
 
+    debug_init_body = extract_method_body(debug_hooks, "internal void InitializeDebugToolsRuntime()")
+    if not debug_init_body:
+        return fail("ArchitectureStructureGuard: DebugToolsRuntimeHooks missing InitializeDebugToolsRuntime wrapper")
+    for required in [
+        "RegisterInteractDebugListener();",
+        "RegisterShootDebugListener();",
+    ]:
+        if required not in debug_init_body:
+            return fail("ArchitectureStructureGuard: InitializeDebugToolsRuntime missing token: " + required)
+
     for forbidden in [
         "UpdateFpsCounter();",
         "UpdateMapClickDebug();",
@@ -552,12 +562,16 @@ def main() -> int:
     ]:
         if forbidden in awake_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.Awake still directly calls player lifecycle token: " + forbidden)
+    if "InitializeDebugToolsRuntime();" not in awake_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route debug initialization through wrapper")
     if "InitializeAchievementRuntime();" not in awake_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Awake must route achievement initialization through wrapper")
     for forbidden in [
         "InitializeAchievementSystem();",
         "AchievementView.EnsureInstance();",
         "Health.OnHurt += OnPlayerHurtForAchievement;",
+        "RegisterInteractDebugListener();",
+        "RegisterShootDebugListener();",
     ]:
         if forbidden in awake_body:
             return fail("ArchitectureStructureGuard: ModBehaviour.Awake still directly calls achievement token: " + forbidden)
