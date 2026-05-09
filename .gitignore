@@ -52,3 +52,4 @@ prepare_wish_config_local.bat
 /tests/obj
 __pycache__/
 *.pyc
+/.kiro
