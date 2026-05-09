@@ -160,6 +160,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeD\ModeDGlobalLoot.cs ^
     ModeE\ModeE.cs ^
     ModeE\ModeERuntimeModule.cs ^
+    ModeE\ModeERuntimeHooks.cs ^
     ModeE\ModeEMerchant.cs ^
     ModeE\ModeESpawnAllocation.cs ^
     ModeE\ModeEBattle.cs ^

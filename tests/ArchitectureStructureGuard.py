@@ -15,6 +15,7 @@ ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
 ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
+MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 INTEGRATION = Path("Integration/BossRushIntegration.cs")
 
 REQUIRED_COMPILE_SOURCES = [
@@ -33,6 +34,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "ModeE/ModeERuntimeModule.cs",
+    "ModeE/ModeERuntimeHooks.cs",
     "ModeF/ModeFRuntimeModule.cs",
     "ZombieMode/ZombieModeRuntimeModule.cs",
     "Utilities/RuntimeScope.cs",
@@ -142,6 +144,31 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update body could not be parsed")
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not call Mode D stuck-wave self-check directly")
+
+    mode_e_hooks = MODEE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    mode_e_tick_body = extract_method_body(mode_e_hooks, "internal void TickModeERuntime(float deltaTime)")
+    if not mode_e_tick_body:
+        return fail("ArchitectureStructureGuard: ModeERuntimeHooks missing TickModeERuntime wrapper")
+    for required in [
+        "UpdateModeEPlayerNameTag();",
+        "modeEIntegrityTimer += deltaTime;",
+        "modeEIntegrityTimer >= WaveIntegrityCheckInterval",
+        "ModeEIntegrityCheck();",
+        "ModeEScalingBatchUpdate();",
+        "modeEIntegrityTimer = 0f;",
+    ]:
+        if required not in mode_e_tick_body:
+            return fail("ArchitectureStructureGuard: TickModeERuntime missing token: " + required)
+
+    if "TickModeERuntime(Time.deltaTime);" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route Mode E tick through wrapper")
+    for forbidden in [
+        "UpdateModeEPlayerNameTag();",
+        "ModeEIntegrityCheck();",
+        "ModeEScalingBatchUpdate();",
+    ]:
+        if forbidden in update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls Mode E token: " + forbidden)
 
     debug_runtime_module = DEBUG_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickDebugTools(deltaTime, unscaledDeltaTime);" not in debug_runtime_module:

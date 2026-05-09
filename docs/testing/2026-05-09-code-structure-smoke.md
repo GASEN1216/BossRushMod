@@ -17,31 +17,31 @@ Run order:
 ## Checklist
 
 - [x] Start the game and load into `Base_SceneV2`. Log-verified in `2026-05-09_15-31-18.log`.
-- [ ] Normal merchant still contains BossRush ticket, adventure journal, achievement medal, Awen token, brick stone, and zombie invitation.
-- [ ] Enter a standard BossRush arena through the existing map selection flow.
-- [ ] Standard BossRush arena setup is normal.
-- [ ] Sign options are normal.
-- [ ] First wave starts normally.
-- [ ] Enemy spawn is normal.
-- [ ] Kill resolution is normal.
-- [ ] Arena exit is normal.
-- [ ] Enter Mode D through the naked + ticket flow.
-- [ ] Mode D starter kit is normal.
-- [ ] Mode D sign option is normal.
-- [ ] Mode D first wave starts normally.
-- [ ] Mode D stuck-wave self-check behavior is normal.
-- [ ] Mode D exit cleanup is normal.
-- [ ] Frostmourne or FenHuangHalberd ability still initializes and triggers.
+- [x] Normal merchant still contains BossRush ticket, adventure journal, achievement medal, Awen token, brick stone, and zombie invitation. User manual smoke reported OK.
+- [x] Enter a standard BossRush arena through the existing map selection flow. User manual smoke reported OK.
+- [x] Standard BossRush arena setup is normal. User manual smoke reported OK.
+- [x] Sign options are normal. User manual smoke reported OK.
+- [x] First wave starts normally. User manual smoke reported OK.
+- [x] Enemy spawn is normal. User manual smoke reported OK.
+- [x] Kill resolution is normal. User manual smoke reported OK.
+- [x] Arena exit is normal. User manual smoke reported OK.
+- [x] Enter Mode D through the naked + ticket flow. User manual smoke reported OK.
+- [x] Mode D starter kit is normal. User manual smoke reported OK.
+- [x] Mode D sign option is normal. User manual smoke reported OK.
+- [x] Mode D first wave starts normally. User manual smoke reported OK.
+- [x] Mode D stuck-wave self-check behavior is normal. User manual smoke reported OK.
+- [x] Mode D exit cleanup is normal. User manual smoke reported OK.
+- [x] Frostmourne or FenHuangHalberd ability still initializes and triggers. User manual smoke reported OK.
 - [ ] Optional: DebugTools hotkeys behave normally in DevMode.
 - [ ] Optional: achievement hotkey still opens the achievement UI.
 
 ## Result
 
-Conclusion: In progress - game launched, checklist not completed
+Conclusion: Passed by user manual smoke
 
 Notes:
 
-- Tester:
+- Tester: user
 - Game version:
 - Start time:
 - End time:
@@ -56,6 +56,7 @@ Notes:
 - Later process check: no `Duckov.exe` process found.
 - Latest launch log: `D:\sofrware\steam\steamapps\common\Escape from Duckov\2026-05-09_15-31-18.log`.
 - Latest launch log scan helper result after base load: `SmokeLogScan: PASS`; 3 total error blocks and 0 BossRush-related error blocks.
+- User manual smoke report: "都没问题了" after checking the requested in-game flows.
 
 ## Current Log Scan
 
@@ -82,7 +83,4 @@ Observed errors not attributed to BossRush by stack:
 
 Still missing:
 
-- Merchant inventory check for the current launch.
-- Standard BossRush arena entry, first wave, kill resolution, and exit.
-- Mode D naked + ticket entry, starter kit, first wave, stuck-wave self-check, and cleanup.
-- Frostmourne or FenHuangHalberd ability initialization and trigger.
+- No remaining item from the original smoke checklist. New structural changes after this record still require their own targeted verification.

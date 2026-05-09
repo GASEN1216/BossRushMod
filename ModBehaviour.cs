@@ -2926,24 +2926,7 @@ namespace BossRush
             }
 
             // Mode E 独立自检（Mode E 不激活 IsActive，需要单独的自检循环）
-            if (modeEActive)
-            {
-                UpdateModeEPlayerNameTag();
-
-                modeEIntegrityTimer += Time.deltaTime;
-                if (modeEIntegrityTimer >= WaveIntegrityCheckInterval)
-                {
-                    modeEIntegrityTimer = 0f;
-                    ModeEIntegrityCheck();
-                }
-
-                // Mode E 延迟批量缩放更新（每 5 秒统一应用阵营死亡缩放）
-                ModeEScalingBatchUpdate();
-            }
-            else
-            {
-                modeEIntegrityTimer = 0f;
-            }
+            TickModeERuntime(Time.deltaTime);
 
             // Mode F 独立 Tick（Mode F 不激活 IsActive，需要单独的 Tick 循环）
             if (modeFActive)
