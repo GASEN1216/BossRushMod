@@ -2310,6 +2310,7 @@ namespace BossRush
             DevLog("[BossRush] 正在加载 Boss Rush Mod...");
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            RegisterRuntimeModules();
             runtimeModuleHost.OnAwake(this);
 
             // 初始化 Harmony Patch（物品激活时自动恢复重铸属性）

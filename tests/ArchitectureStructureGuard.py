@@ -12,12 +12,16 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
     "Common/Lifecycle/SceneRuntimeContext.cs",
     "Common/Lifecycle/BossRushRuntimeModuleHost.cs",
+    "Common/Lifecycle/BossRushRuntimeModuleBase.cs",
+    "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
+    "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
 
 REQUIRED_MOD_NEEDLES = [
     "private readonly BossRushRuntimeModuleHost runtimeModuleHost = new BossRushRuntimeModuleHost();",
+    "RegisterRuntimeModules();",
     "runtimeModuleHost.OnAwake(this);",
     "runtimeModuleHost.OnUpdate(Time.deltaTime, Time.unscaledDeltaTime);",
     "runtimeModuleHost.OnLateUpdate();",
@@ -54,6 +58,15 @@ def main() -> int:
     missing_mod_hooks = [needle for needle in REQUIRED_MOD_NEEDLES if needle not in mod_text]
     if missing_mod_hooks:
         return fail("ArchitectureStructureGuard: ModBehaviour missing architecture hook(s): " + " | ".join(missing_mod_hooks))
+
+    register_index = mod_text.find("RegisterRuntimeModules();")
+    awake_index = mod_text.find("runtimeModuleHost.OnAwake(this);")
+    if register_index < 0 or awake_index < 0 or register_index > awake_index:
+        return fail("ArchitectureStructureGuard: RegisterRuntimeModules must run before runtimeModuleHost.OnAwake")
+
+    registration_text = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs").read_text(encoding="utf-8", errors="ignore")
+    if "runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());" not in registration_text:
+        return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")
     for required in [

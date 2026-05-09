@@ -89,6 +89,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Common\Lifecycle\IBossRushRuntimeModule.cs ^
     Common\Lifecycle\SceneRuntimeContext.cs ^
     Common\Lifecycle\BossRushRuntimeModuleHost.cs ^
+    Common\Lifecycle\BossRushRuntimeModuleBase.cs ^
+    Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs ^
+    Common\Lifecycle\BossRushRuntimeModuleRegistration.cs ^
     Common\Utils\ReflectionCache.cs ^
     Common\Utils\NPCBubbleAnimator.cs ^
     Common\Effects\RingParticleEffect.cs ^
