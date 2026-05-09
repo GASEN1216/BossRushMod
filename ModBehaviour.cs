@@ -2863,8 +2863,7 @@ namespace BossRush
             TickEquipmentAbilityRuntime();
             
             // 无间炼狱现金磁铁吸附更新
-            UpdateCashMagnet();
-            UpdateEnemyRecoveryMonitor();
+            TickGameplaySupportRuntime();
             
             // 持续清理功能已移除，改为禁用spawner
             

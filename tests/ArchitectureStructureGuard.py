@@ -16,6 +16,7 @@ ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
+GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
@@ -37,6 +38,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "Integration/EquipmentRuntimeHooks.cs",
+    "Utilities/GameplayRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
     "ModeE/ModeERuntimeModule.cs",
@@ -163,6 +165,27 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must route equipment ability tick through wrapper")
     if "UpdateDragonDash();" in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must not directly call UpdateDragonDash")
+
+    gameplay_hooks = GAMEPLAY_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    gameplay_tick_body = extract_method_body(gameplay_hooks, "internal void TickGameplaySupportRuntime()")
+    if not gameplay_tick_body:
+        return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing TickGameplaySupportRuntime wrapper")
+    for required in [
+        "UpdateCashMagnet();",
+        "UpdateEnemyRecoveryMonitor();",
+    ]:
+        if required not in gameplay_tick_body:
+            return fail("ArchitectureStructureGuard: TickGameplaySupportRuntime missing token: " + required)
+    if gameplay_tick_body.find("UpdateCashMagnet();") > gameplay_tick_body.find("UpdateEnemyRecoveryMonitor();"):
+        return fail("ArchitectureStructureGuard: TickGameplaySupportRuntime must preserve cash magnet before enemy recovery")
+    if "TickGameplaySupportRuntime();" not in update_body:
+        return fail("ArchitectureStructureGuard: ModBehaviour.Update must route gameplay support tick through wrapper")
+    for forbidden in [
+        "UpdateCashMagnet();",
+        "UpdateEnemyRecoveryMonitor();",
+    ]:
+        if forbidden in update_body:
+            return fail("ArchitectureStructureGuard: ModBehaviour.Update still directly calls gameplay support token: " + forbidden)
 
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")
