@@ -32,8 +32,16 @@ def main() -> int:
         if token not in drops:
             return fail("ZombieModePerformanceRegistryGuard: missing registry collection token -> " + token)
 
-    if "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false)" not in drops:
-        return fail("ZombieModePerformanceRegistryGuard: performance recycle does not use run-only registry")
+    for token in [
+        "RecycleZombieModeFarEnemiesForPerformance",
+        "CanRecycleZombieModeEnemyForPerformance",
+        "RecycleZombieModeEnemyForPerformance",
+    ]:
+        if token in combined:
+            return fail("ZombieModePerformanceRegistryGuard: performance recycle should be removed -> " + token)
+
+    if "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false)" not in combined:
+        return fail("ZombieModePerformanceRegistryGuard: runtime systems do not use shared marker collection")
 
     if "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true)" not in boss:
         return fail("ZombieModePerformanceRegistryGuard: boss shield does not use shared runtime marker collection")

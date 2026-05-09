@@ -263,7 +263,9 @@ namespace BossRush
         /// </summary>
         private static readonly HashSet<string> UNSUPPORTED_REFORGE_STAT_KEYS = new HashSet<string>
         {
-            "DealDamageTime"
+            "DealDamageTime",
+            "ShotCount",
+            "ShotAngle"
         };
 
         /// <summary>

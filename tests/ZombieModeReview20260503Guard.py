@@ -159,7 +159,7 @@ def main() -> int:
     err = must_contain(cleanup, "ClearZombieModeEnemyInstanceIds()")
     if err:
         return fail(err)
-    err = must_contain(drops, "UnregisterZombieModeEnemyInstanceId(marker.Owner)")
+    err = must_contain(cleanup, "UnregisterZombieModeEnemyInstanceId(owner)")
     if err:
         return fail(err)
 

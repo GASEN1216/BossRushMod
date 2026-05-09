@@ -65,7 +65,7 @@ def main() -> int:
     if "CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);" not in reset_method:
         return fail("AwenPaidLootSweepFallbackGuard: Mode E/F tracker reset does not release pending sweep result")
 
-    pending_method = extract_method(service_text, "private static async UniTaskVoid RunPendingSweepResultPromptAsync()")
+    pending_method = extract_method(service_text, "private static async UniTaskVoid RunPendingSweepResultPromptAsync")
     if not pending_method:
         return fail("AwenPaidLootSweepFallbackGuard: missing pending prompt method")
 

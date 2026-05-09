@@ -1,3 +1,4 @@
+using System.Collections;
 using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
@@ -7,6 +8,27 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        private const int ZombieModeSupportSpawnRequestsPerFrame = 3;
+
+        private enum ZombieModeSupportSpawnKind
+        {
+            SmallSplit,
+            SplitterChild
+        }
+
+        private struct ZombieModeSupportSpawnRequest
+        {
+            public int RunId;
+            public ZombieModeSupportSpawnKind Kind;
+            public Vector3 Position;
+            public float Scale;
+        }
+
+        private readonly System.Collections.Generic.Queue<ZombieModeSupportSpawnRequest> zombieModeSupportSpawnRequests =
+            new System.Collections.Generic.Queue<ZombieModeSupportSpawnRequest>();
+
+        private bool zombieModeSupportSpawnProcessorStarted;
+
         private void RegisterZombieModeBossRuntime(int runId, CharacterMainControl boss, ZombieModeBossKind kind)
         {
             if (!IsZombieModeRunValid(runId) || boss == null)
@@ -195,15 +217,14 @@ namespace BossRush
             if (boss == null) return;
             int runId = zombieModeRunState.RunId;
 
-            if (now >= splitter.NextSummonTime &&
-                zombieModeRunState.PerformanceTier < ZombieModePerformanceTier.SoftProtect)
+            if (now >= splitter.NextSummonTime)
             {
                 splitter.NextSummonTime = now + ZombieModeTuning.SplitterBossSummonCooldownSeconds;
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_SplitterSummon"));
                 for (int i = 0; i < ZombieModeTuning.SplitterBossSummonCount; i++)
                 {
                     Vector3 offset = Quaternion.Euler(0f, 360f * i / ZombieModeTuning.SplitterBossSummonCount, 0f) * Vector3.forward * 2f;
-                    SpawnZombieModeSplitterChildAsync(runId, boss.transform.position + offset, ZombieModeTuning.SplitterBossSummonScale).Forget();
+                    QueueZombieModeSplitterChildSpawn(runId, boss.transform.position + offset, ZombieModeTuning.SplitterBossSummonScale);
                 }
             }
         }
@@ -320,6 +341,83 @@ namespace BossRush
             {
                 zombie.transform.localScale = zombie.transform.localScale * scale;
             }
+        }
+
+        private void QueueZombieModeSmallSplitSpawn(int runId, Vector3 position)
+        {
+            ZombieModeSupportSpawnRequest request = new ZombieModeSupportSpawnRequest();
+            request.RunId = runId;
+            request.Kind = ZombieModeSupportSpawnKind.SmallSplit;
+            request.Position = position;
+            request.Scale = 1f;
+            QueueZombieModeSupportSpawn(request);
+        }
+
+        private void QueueZombieModeSplitterChildSpawn(int runId, Vector3 position, float scale)
+        {
+            ZombieModeSupportSpawnRequest request = new ZombieModeSupportSpawnRequest();
+            request.RunId = runId;
+            request.Kind = ZombieModeSupportSpawnKind.SplitterChild;
+            request.Position = position;
+            request.Scale = scale;
+            QueueZombieModeSupportSpawn(request);
+        }
+
+        private void QueueZombieModeSupportSpawn(ZombieModeSupportSpawnRequest request)
+        {
+            if (!IsZombieModeRunValid(request.RunId))
+            {
+                return;
+            }
+
+            zombieModeSupportSpawnRequests.Enqueue(request);
+            if (zombieModeSupportSpawnProcessorStarted)
+            {
+                return;
+            }
+
+            zombieModeSupportSpawnProcessorStarted = true;
+            StartZombieModeCoroutine(ProcessZombieModeSupportSpawnQueue(request.RunId), request.RunId);
+        }
+
+        private IEnumerator ProcessZombieModeSupportSpawnQueue(int runId)
+        {
+            while (IsZombieModeRunValid(runId) && zombieModeSupportSpawnRequests.Count > 0)
+            {
+                int processed = 0;
+                while (processed < ZombieModeSupportSpawnRequestsPerFrame && zombieModeSupportSpawnRequests.Count > 0)
+                {
+                    ZombieModeSupportSpawnRequest request = zombieModeSupportSpawnRequests.Dequeue();
+                    processed++;
+
+                    if (!IsZombieModeRunValid(request.RunId))
+                    {
+                        continue;
+                    }
+
+                    if (request.Kind == ZombieModeSupportSpawnKind.SmallSplit)
+                    {
+                        SpawnZombieModeSmallSplitAsync(request.RunId, request.Position).Forget();
+                    }
+                    else
+                    {
+                        SpawnZombieModeSplitterChildAsync(request.RunId, request.Position, request.Scale).Forget();
+                    }
+                }
+
+                if (zombieModeSupportSpawnRequests.Count > 0)
+                {
+                    yield return null;
+                }
+            }
+
+            zombieModeSupportSpawnProcessorStarted = false;
+        }
+
+        private void ClearZombieModeSupportSpawnQueue()
+        {
+            zombieModeSupportSpawnRequests.Clear();
+            zombieModeSupportSpawnProcessorStarted = false;
         }
 
         private void ApplyZombieModeBossShieldPulse(int runId, Vector3 origin)
@@ -582,7 +680,7 @@ namespace BossRush
             for (int i = 0; i < ZombieModeTuning.SplitterBossSplitCount; i++)
             {
                 Vector3 offset = Quaternion.Euler(0f, 360f * i / ZombieModeTuning.SplitterBossSplitCount, 0f) * Vector3.forward * 2f;
-                SpawnZombieModeSplitterChildAsync(runId, victim.transform.position + offset, ZombieModeTuning.SplitterBossSplitChildScale).Forget();
+                QueueZombieModeSplitterChildSpawn(runId, victim.transform.position + offset, ZombieModeTuning.SplitterBossSplitChildScale);
             }
         }
 
@@ -705,13 +803,11 @@ namespace BossRush
                     character.transform.position,
                     ZombieModeTuning.SplitterBossDeathRadius,
                     ZombieModeTuning.SplitterBossDeathDamage);
-                int count = zombieModeRunState.PerformanceTier >= ZombieModePerformanceTier.SoftProtect
-                    ? ZombieModeTuning.SplitterBossDeathSpawnCountSoftProtect
-                    : ZombieModeTuning.SplitterBossDeathSpawnCount;
+                int count = ZombieModeTuning.SplitterBossDeathSpawnCount;
                 for (int i = 0; i < count; i++)
                 {
                     Vector3 offset = Quaternion.Euler(0f, 360f * i / Mathf.Max(1, count), 0f) * Vector3.forward * 2f;
-                    SpawnZombieModeSmallSplitAsync(runId, character.transform.position + offset).Forget();
+                    QueueZombieModeSmallSplitSpawn(runId, character.transform.position + offset);
                 }
             }
             else if (marker.BossKind == ZombieModeBossKind.Corruptor)

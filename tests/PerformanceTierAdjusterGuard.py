@@ -1,38 +1,34 @@
-"""PerformanceTierAdjusterGuard: 通用性能层级判定的纯函数 invariant。"""
+"""PerformanceTierAdjusterGuard: ZombieMode must not scale gameplay by performance tier."""
 
 from pathlib import Path
 import sys
 
 
 HELPER = Path("Utilities/PerformanceTierAdjuster.cs")
-ZOMBIE_DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
+COMPILE_SCRIPT = Path("compile_official.bat")
+PRODUCTION_ROOTS = [Path("ZombieMode"), Path("Utilities")]
 
 
 def fail(message: str) -> int:
-    print(message)
+    print("PerformanceTierAdjusterGuard: FAIL - " + message)
     return 1
 
 
 def main() -> int:
-    helper = HELPER.read_text(encoding="utf-8")
-    drops = ZOMBIE_DROPS.read_text(encoding="utf-8")
+    if HELPER.exists():
+        return fail("PerformanceTierAdjuster helper should be removed")
 
-    for snippet in [
-        "internal static class PerformanceTierAdjuster",
-        "internal enum Tier",
-        "Normal = 0",
-        "ExtremeProtect = 3",
-        "internal struct Thresholds",
-        "internal static Tier Evaluate(",
-    ]:
-        if snippet not in helper:
-            return fail("PerformanceTierAdjusterGuard: helper missing -> " + snippet)
+    compile_text = COMPILE_SCRIPT.read_text(encoding="utf-8", errors="ignore")
+    if "PerformanceTierAdjuster.cs" in compile_text:
+        return fail("compile list still references PerformanceTierAdjuster.cs")
 
-    if "PerformanceTierAdjuster.Evaluate(" not in drops:
-        return fail("PerformanceTierAdjusterGuard: ZombieMode 必须复用 PerformanceTierAdjuster.Evaluate")
-
-    if "count >= ZombieModeTuning.PerfTierExtreme" in drops:
-        return fail("PerformanceTierAdjusterGuard: ZombieMode 仍保留旧的阶梯式 if/else，未走 helper")
+    for root in PRODUCTION_ROOTS:
+        if not root.exists():
+            continue
+        for path in root.rglob("*.cs"):
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            if "PerformanceTierAdjuster" in text:
+                return fail("production code still references PerformanceTierAdjuster -> " + str(path))
 
     print("PerformanceTierAdjusterGuard: PASS")
     return 0

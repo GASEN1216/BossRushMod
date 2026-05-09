@@ -69,10 +69,18 @@ def main() -> int:
     for token, text, label in [
         ("PruneZombieModeRunOnlyEnemyRecords", cleanup, "run-only enemy pruning helper"),
         ("PruneZombieModeRunOnlyEnemyRecords(runId);", wave, "death pruning call"),
-        ("PruneZombieModeRunOnlyEnemyRecords(marker.RunId);", drops, "performance recycle pruning call"),
+        ("PruneZombieModeRunOnlyEnemyRecords(runId);", cleanup, "runtime cleanup pruning call"),
     ]:
         if token not in text:
             return fail("ZombieModeReviewFixGuard: missing " + label + " -> " + token)
+
+    for token in [
+        "RecycleZombieModeFarEnemiesForPerformance",
+        "CanRecycleZombieModeEnemyForPerformance",
+        "RecycleZombieModeEnemyForPerformance",
+    ]:
+        if token in combined:
+            return fail("ZombieModeReviewFixGuard: performance recycle path should be removed -> " + token)
 
     for token in [
         "public float LastTemporaryNpcProtectionTickTime;",

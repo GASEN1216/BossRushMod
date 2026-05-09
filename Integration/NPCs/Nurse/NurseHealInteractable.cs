@@ -156,7 +156,9 @@ namespace BossRush
                 int cost = NurseHealingService.CalculateHealCost();
                 string healText = cost <= 0
                     ? L10n.T("治疗（不需要）", "Heal (Not needed)")
-                    : L10n.T("治疗（￥" + cost + "）", "Heal ($" + cost + ")");
+                    : (ModBehaviour.Instance != null && ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(this)
+                        ? ModBehaviour.Instance.GetZombieModeNpcHealCurrencyLabel(this, cost)
+                        : L10n.T("治疗（￥" + cost + "）", "Heal ($" + cost + ")"));
 
                 if (!string.Equals(lastInjectedHealText, healText, StringComparison.Ordinal))
                 {
@@ -221,7 +223,7 @@ namespace BossRush
             try
             {
                 int cost;
-                NurseHealingService.HealingStatus healingStatus = NurseHealingService.GetHealingStatus(out cost);
+                NurseHealingService.HealingStatus healingStatus = NurseHealingService.GetHealingStatus(this, out cost);
 
                 switch (healingStatus)
                 {
@@ -266,7 +268,7 @@ namespace BossRush
                 return;
             }
 
-            NurseHealingService.HealingExecutionResult result = NurseHealingService.PerformHealing(cost);
+            NurseHealingService.HealingExecutionResult result = NurseHealingService.PerformHealing(cost, this);
             switch (result)
             {
                 case NurseHealingService.HealingExecutionResult.Success:

@@ -57,7 +57,7 @@ namespace BossRush
                 if (marker == null ||
                     marker.RunId != runId ||
                     marker.DeathSettled ||
-                    marker.RecycledForPerformance)
+                    marker.RemovedFromRuntime)
                 {
                     continue;
                 }
@@ -529,152 +529,6 @@ namespace BossRush
             }
 
             CleanupZombieModeExpiredDropCandidates();
-            float now = GetZombieModeRuntimeNow();
-            if (now - zombieModeRunState.LastPerformanceEvalTime < ZombieModeTuning.PerformanceEvalIntervalSeconds)
-            {
-                return;
-            }
-
-            zombieModeRunState.LastPerformanceEvalTime = now;
-            EvaluateZombieModePerformanceTier();
-            if (zombieModeRunState.PerformanceTier == ZombieModePerformanceTier.ExtremeProtect)
-            {
-                RecycleZombieModeFarEnemiesForPerformance(zombieModeRunState.RunId);
-            }
-        }
-
-        private void EvaluateZombieModePerformanceTier()
-        {
-            PerformanceTierAdjuster.Thresholds thresholds;
-            thresholds.Watch = ZombieModeTuning.PerfTierWatch;
-            thresholds.Soft = ZombieModeTuning.PerfTierSoft;
-            thresholds.Extreme = ZombieModeTuning.PerfTierExtreme;
-            thresholds.Hysteresis = ZombieModeTuning.PerfTierHysteresis;
-
-            PerformanceTierAdjuster.Tier current = (PerformanceTierAdjuster.Tier)(int)zombieModeRunState.PerformanceTier;
-            PerformanceTierAdjuster.Tier resolved = PerformanceTierAdjuster.Evaluate(
-                current, zombieModeRunState.LivingZombieCount, thresholds);
-            ZombieModePerformanceTier next = (ZombieModePerformanceTier)(int)resolved;
-
-            if (next != zombieModeRunState.PerformanceTier)
-            {
-                zombieModeRunState.PerformanceTier = next;
-                if (DevModeEnabled && next >= ZombieModePerformanceTier.SoftProtect)
-                {
-                    ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_PerformanceProtect"));
-                }
-            }
-        }
-
-        private void RecycleZombieModeFarEnemiesForPerformance(int runId)
-        {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return;
-            }
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null)
-            {
-                return;
-            }
-
-            CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false);
-            int recycled = 0;
-            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count && recycled < ZombieModeTuning.MaxRecyclePerEval; i++)
-            {
-                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
-                if (!CanRecycleZombieModeEnemyForPerformance(marker, player))
-                {
-                    continue;
-                }
-
-                if (RecycleZombieModeEnemyForPerformance(marker))
-                {
-                    recycled++;
-                }
-            }
-
-            zombieModeEnemyMarkerScratch.Clear();
-        }
-
-        private bool CanRecycleZombieModeEnemyForPerformance(ZombieModeEnemyRuntimeMarker marker, CharacterMainControl player)
-        {
-            if (marker == null || player == null || marker.RunId != zombieModeRunState.RunId || marker.IsBoss || marker.DeathSettled || marker.RecycledForPerformance)
-            {
-                return false;
-            }
-
-            if (marker.EnemyKind == ZombieModeEnemyKind.Elite &&
-                zombieModeRunState.LivingZombieCount < 420)
-            {
-                return false;
-            }
-
-            if (marker.EnemyKind == ZombieModeEnemyKind.Special &&
-                zombieModeRunState.LivingZombieCount < 400)
-            {
-                return false;
-            }
-
-            Vector3 delta = marker.transform.position - player.transform.position;
-            delta.y = 0f;
-            if (delta.sqrMagnitude < ZombieModeTuning.PerformanceFarDistance * ZombieModeTuning.PerformanceFarDistance)
-            {
-                return false;
-            }
-
-            Vector3 direction = delta.normalized;
-            Vector3 forward = player.transform.forward;
-            forward.y = 0f;
-            if (forward.sqrMagnitude > 0.01f && Vector3.Dot(forward.normalized, direction) > 0f)
-            {
-                return false;
-            }
-
-            AICharacterController ai = marker.GetComponentInChildren<AICharacterController>();
-            if (ai != null)
-            {
-                try
-                {
-                    if (player.mainDamageReceiver != null &&
-                        ai.searchedEnemy == player.mainDamageReceiver &&
-                        (ai.isNoticing(0.5f) || Time.time - ai.hurtTimeMarker < 1.5f)) // scaled-ok: ai.hurtTimeMarker 在 scaled 时间域
-                    {
-                        return false;
-                    }
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ZombieMode] AI hurt 状态读取失败: " + e.Message);
-                }
-            }
-
-            return true;
-        }
-
-        private bool RecycleZombieModeEnemyForPerformance(ZombieModeEnemyRuntimeMarker marker)
-        {
-            if (marker == null || marker.IsBoss)
-            {
-                return false;
-            }
-
-            try
-            {
-                marker.RecycledForPerformance = true;
-                // 同步 hot path 集合（审查 §3.1）：被回收的敌人不再走 marker 路径。
-                UnregisterZombieModeEnemyInstanceId(marker.Owner);
-                zombieModeRunState.LivingZombieCount = Mathf.Max(0, zombieModeRunState.LivingZombieCount - 1);
-                zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);
-                Destroy(marker.gameObject);
-                PruneZombieModeRunOnlyEnemyRecords(marker.RunId);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
         }
 
         private void CleanupZombieModeExpiredDropCandidates()
@@ -737,6 +591,53 @@ namespace BossRush
             zombieModeRunState.TemporaryNpcs.Clear();
         }
 
+        private void RecycleZombieModeTemporaryRealNpcs(int runId)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return;
+            }
+
+            RunScopedRegistry.ForEachReverse(
+                zombieModeRunState.TemporaryRealNpcs,
+                npc =>
+                {
+                    if (npc != null && npc.GameObject != null)
+                    {
+                        CloseZombieModeTemporaryRealNpcServices(npc);
+                        Destroy(npc.GameObject);
+                    }
+                },
+                (e, npc) => DevLog("[ZombieMode] Destroy temporary real NPC 失败: " + e.Message));
+
+            zombieModeRunState.TemporaryRealNpcs.Clear();
+        }
+
+        private void CloseZombieModeTemporaryRealNpcServices(ZombieModeTemporaryRealNpcRecord npc)
+        {
+            if (npc == null)
+            {
+                return;
+            }
+
+            CloseZombieModeTemporaryRealNpcServices(npc.GameObject);
+        }
+
+        private void CloseZombieModeTemporaryRealNpcServices(GameObject npcObject)
+        {
+            if (npcObject == null)
+            {
+                return;
+            }
+
+            Transform npcTransform = npcObject.transform;
+            try { NPCShopSystem.CloseShopIfOwnedBy(npcTransform); } catch (Exception e) { DevLog("[ZombieMode] Close temporary real NPC shop failed: " + e.Message); }
+            try { ReforgeUIManager.CloseUIIfOwnedBy(npcTransform); } catch (Exception e) { DevLog("[ZombieMode] Close temporary real NPC reforge failed: " + e.Message); }
+            try { CourierService.CloseServiceIfOwnedBy(npcTransform); } catch (Exception e) { DevLog("[ZombieMode] Close temporary real NPC courier failed: " + e.Message); }
+            try { StorageDepositService.CloseServiceIfOwnedBy(npcTransform); } catch (Exception e) { DevLog("[ZombieMode] Close temporary real NPC storage failed: " + e.Message); }
+            try { CourierPaidLootSweepService.CloseServiceIfOwnedBy(npcTransform); } catch (Exception e) { DevLog("[ZombieMode] Close temporary real NPC paid sweep failed: " + e.Message); }
+        }
+
         private void RecycleZombieModeSafeZoneBoundTemporaryNpcs(int runId)
         {
             if (!IsZombieModeRunValid(runId) || zombieModeRunState.TemporaryNpcs.Count <= 0)
@@ -771,6 +672,44 @@ namespace BossRush
                 }
 
                 zombieModeRunState.TemporaryNpcs.RemoveAt(i);
+            }
+        }
+
+        private void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)
+        {
+            if (!IsZombieModeRunValid(runId) || zombieModeRunState.TemporaryRealNpcs.Count <= 0)
+            {
+                return;
+            }
+
+            for (int i = zombieModeRunState.TemporaryRealNpcs.Count - 1; i >= 0; i--)
+            {
+                ZombieModeTemporaryRealNpcRecord npc = zombieModeRunState.TemporaryRealNpcs[i];
+                if (npc == null)
+                {
+                    zombieModeRunState.TemporaryRealNpcs.RemoveAt(i);
+                    continue;
+                }
+
+                if (!npc.SafeZoneBound)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    if (npc.GameObject != null)
+                    {
+                        CloseZombieModeTemporaryRealNpcServices(npc);
+                        Destroy(npc.GameObject);
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog("[ZombieMode] Destroy safe-zone temporary real NPC 失败: " + e.Message);
+                }
+
+                zombieModeRunState.TemporaryRealNpcs.RemoveAt(i);
             }
         }
     }

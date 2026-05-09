@@ -93,7 +93,17 @@ def main() -> int:
         return fail("AwenPaidLootSweepFlowGuard: transient lootbox helper does not prepare grouped interaction internals")
 
     interactables_text = Path("Interactables/BossRushInteractables.cs").read_text(encoding="utf-8")
-    if "for (int attempt = 0;" not in interactables_text or "yield return null;" not in interactables_text:
+    queued_retry_tokens = [
+        "PendingLootboxDecorationRequests",
+        "RemainingAttempts = DecorateLootboxesRetryFrames",
+        "ProcessQueuedLootboxDecorations",
+        "yield return null;",
+        "request.RemainingAttempts--;",
+        "PendingLootboxDecorationRequests.Enqueue(request);",
+    ]
+    old_retry_present = "for (int attempt = 0;" in interactables_text and "yield return null;" in interactables_text
+    queued_retry_present = all(token in interactables_text for token in queued_retry_tokens)
+    if not old_retry_present and not queued_retry_present:
         return fail("AwenPaidLootSweepFlowGuard: lootbox decoration still does not retry across multiple frames")
 
     if "黑掉 1 件" in service_text or "consume 1 item" in service_text:

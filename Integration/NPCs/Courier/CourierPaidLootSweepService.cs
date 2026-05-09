@@ -41,6 +41,7 @@ namespace BossRush
         private static bool reflectionInitialized = false;
         private static bool lootStopHookRegistered = false;
         private static bool sweepPromptInProgress = false;
+        private static int serviceGeneration = 0;
 
         private sealed class PaidSweepBoxPlan
         {
@@ -93,6 +94,27 @@ namespace BossRush
                         "Old sweep crate contents were returned to the player."));
                 }
             }
+        }
+
+        public static void CloseServiceIfOwnedBy(Transform npcTransform)
+        {
+            bool ownsPendingResult = IsTransformOwnedBy(pendingResultNpcTransform, npcTransform);
+            bool ownsActiveService = IsActiveServiceOwnedBy(npcTransform);
+            if (!ownsPendingResult && !ownsActiveService)
+            {
+                return;
+            }
+
+            serviceGeneration++;
+            sweepPromptInProgress = false;
+            if (ownsPendingResult)
+            {
+                ReleasePendingSweepResultToPlayer(true, false);
+                return;
+            }
+
+            DestroyStartNextSweepButton();
+            ExitServiceState();
         }
 
         public static bool TryRunPaidSweep(Transform npcTransform, CharacterMainControl player)
@@ -171,14 +193,26 @@ namespace BossRush
 
             if (!CanAfford(cost))
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，钱呢？！", "Kid, where's the money?!"));
+                ShowBubbleOrMessage(
+                    npcTransform,
+                    activeServiceController != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController)
+                        ? L10n.T("小子，净化点呢？！", "Kid, where's the purification?!")
+                        : L10n.T("小子，钱呢？！", "Kid, where's the money?!"));
                 ExitServiceState();
                 return false;
             }
 
             if (!TryPay(cost))
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，钱呢？！", "Kid, where's the money?!"));
+                ShowBubbleOrMessage(
+                    npcTransform,
+                    activeServiceController != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController)
+                        ? L10n.T("小子，净化点呢？！", "Kid, where's the purification?!")
+                        : L10n.T("小子，钱呢？！", "Kid, where's the money?!"));
                 ExitServiceState();
                 return false;
             }
@@ -286,12 +320,15 @@ namespace BossRush
             }
 
             sweepPromptInProgress = true;
-            RunPendingSweepResultPromptAsync().Forget();
+            Transform promptNpcTransform = pendingResultNpcTransform;
+            int promptGeneration = serviceGeneration;
+            RunPendingSweepResultPromptAsync(promptNpcTransform, promptGeneration).Forget();
             return true;
         }
 
-        private static async UniTaskVoid RunPendingSweepResultPromptAsync()
+        private static async UniTaskVoid RunPendingSweepResultPromptAsync(Transform npcTransform, int promptGeneration)
         {
+            bool promptOwnsState = false;
             try
             {
                 OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.Execute(
@@ -301,9 +338,14 @@ namespace BossRush
                     L10n.T("打开箱子", "Open Crate"),
                     L10n.T("取消", "Cancel"));
 
+                if (!TryClaimPromptState(npcTransform, promptGeneration, ref promptOwnsState))
+                {
+                    return;
+                }
+
                 if (!result.Completed)
                 {
-                    HandleOriginalConfirmFailure(pendingResultNpcTransform, result);
+                    HandleOriginalConfirmFailure(npcTransform, result);
                     return;
                 }
 
@@ -320,12 +362,15 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[CourierPaidLootSweep] [ERROR] Pending sweep confirm failed: " + e.Message);
-                ExitServiceState();
+                if (TryClaimPromptState(npcTransform, promptGeneration, ref promptOwnsState))
+                {
+                    ModBehaviour.DevLog("[CourierPaidLootSweep] [ERROR] Pending sweep confirm failed: " + e.Message);
+                    ExitServiceState();
+                }
             }
             finally
             {
-                sweepPromptInProgress = false;
+                ClearPromptInProgressIfOwned(npcTransform, promptGeneration, promptOwnsState);
             }
         }
 
@@ -341,23 +386,37 @@ namespace BossRush
                 return true;
             }
 
-            string message = L10n.T(
-                "当前可扫箱子：<color=#FFD700>" + plans.Count + "</color> 个\n本次费用：<color=#FFD700>￥" + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
-                "Sweepable lootboxes: <color=#FFD700>" + plans.Count + "</color>\nCost: <color=#FFD700>$" + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?");
+            bool usePurification = activeServiceController != null &&
+                ModBehaviour.Instance != null &&
+                ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController);
+            string message = usePurification
+                ? L10n.T(
+                    "当前可扫箱子：<color=#FFD700>" + plans.Count + "</color> 个\n本次费用：<color=#FFD700>净化点 " + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
+                    "Sweepable lootboxes: <color=#FFD700>" + plans.Count + "</color>\nCost: <color=#FFD700>Purification " + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?")
+                : L10n.T(
+                    "当前可扫箱子：<color=#FFD700>" + plans.Count + "</color> 个\n本次费用：<color=#FFD700>￥" + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
+                    "Sweepable lootboxes: <color=#FFD700>" + plans.Count + "</color>\nCost: <color=#FFD700>$" + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?");
 
             sweepPromptInProgress = true;
-            RunFreshSweepPromptAsync(npcTransform, message).Forget();
+            int promptGeneration = serviceGeneration;
+            RunFreshSweepPromptAsync(npcTransform, message, promptGeneration).Forget();
             return true;
         }
 
-        private static async UniTaskVoid RunFreshSweepPromptAsync(Transform npcTransform, string message)
+        private static async UniTaskVoid RunFreshSweepPromptAsync(Transform npcTransform, string message, int promptGeneration)
         {
+            bool promptOwnsState = false;
             try
             {
                 OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.Execute(
                     message,
                     L10n.T("确认扫箱", "Start Sweep"),
                     L10n.T("取消", "Cancel"));
+
+                if (!TryClaimPromptState(npcTransform, promptGeneration, ref promptOwnsState))
+                {
+                    return;
+                }
 
                 if (!result.Completed)
                 {
@@ -378,12 +437,15 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[CourierPaidLootSweep] [ERROR] Fresh sweep confirm failed: " + e.Message);
-                ExitServiceState();
+                if (TryClaimPromptState(npcTransform, promptGeneration, ref promptOwnsState))
+                {
+                    ModBehaviour.DevLog("[CourierPaidLootSweep] [ERROR] Fresh sweep confirm failed: " + e.Message);
+                    ExitServiceState();
+                }
             }
             finally
             {
-                sweepPromptInProgress = false;
+                ClearPromptInProgressIfOwned(npcTransform, promptGeneration, promptOwnsState);
             }
         }
 
@@ -453,6 +515,57 @@ namespace BossRush
             }
 
             return object.ReferenceEquals(activeServiceController, controller);
+        }
+
+        private static bool IsPromptStillValid(Transform npcTransform, int promptGeneration)
+        {
+            return promptGeneration == serviceGeneration && IsCurrentServiceNpc(npcTransform);
+        }
+
+        private static bool TryClaimPromptState(Transform npcTransform, int promptGeneration, ref bool promptOwnsState)
+        {
+            if (!IsPromptStillValid(npcTransform, promptGeneration))
+            {
+                return false;
+            }
+
+            promptOwnsState = true;
+            return true;
+        }
+
+        private static void ClearPromptInProgressIfOwned(Transform npcTransform, int promptGeneration, bool promptOwnsState)
+        {
+            if (promptOwnsState || IsPromptStillValid(npcTransform, promptGeneration))
+            {
+                sweepPromptInProgress = false;
+            }
+        }
+
+        private static bool IsActiveServiceOwnedBy(Transform npcTransform)
+        {
+            if (npcTransform == null)
+            {
+                return false;
+            }
+
+            if (activeServiceController != null && IsTransformOwnedBy(activeServiceController.transform, npcTransform))
+            {
+                return true;
+            }
+
+            return activeServiceMovement != null && IsTransformOwnedBy(activeServiceMovement.transform, npcTransform);
+        }
+
+        private static bool IsTransformOwnedBy(Transform candidate, Transform owner)
+        {
+            if (candidate == null || owner == null)
+            {
+                return false;
+            }
+
+            return ReferenceEquals(candidate, owner) ||
+                   candidate.IsChildOf(owner) ||
+                   owner.IsChildOf(candidate);
         }
 
         private static void RegisterLootStopHook()
@@ -788,6 +901,8 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[CourierPaidLootSweep] [WARNING] 退出扫箱服务时恢复移动失败: " + e.Message);
             }
+
+            BindServiceNpc(null);
         }
 
         private static void CollectRootItems(Inventory inventory, List<Item> output)
@@ -1129,6 +1244,13 @@ namespace BossRush
 
             try
             {
+                if (activeServiceController != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController))
+                {
+                    return ModBehaviour.Instance.CanAffordZombieModePurificationPointsForRealNpc(activeServiceController, cost);
+                }
+
                 return EconomyManager.IsEnough(new Cost((long)cost), true, true);
             }
             catch (Exception e)
@@ -1147,6 +1269,16 @@ namespace BossRush
 
             try
             {
+                if (activeServiceController != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController))
+                {
+                    return ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
+                        activeServiceController,
+                        cost,
+                        "ZombieModeTempCourierSweep");
+                }
+
                 Cost payment = new Cost((long)cost);
                 return EconomyManager.IsEnough(payment, true, true) && EconomyManager.Pay(payment, true, true);
             }
@@ -1166,6 +1298,14 @@ namespace BossRush
 
             try
             {
+                if (activeServiceController != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController))
+                {
+                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(activeServiceController, cost, shouldRefund);
+                    return;
+                }
+
                 EconomyManager.Add(cost);
             }
             catch (Exception e)

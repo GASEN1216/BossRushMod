@@ -10,9 +10,7 @@ namespace BossRush
         {
             if (!IsZombieModeActive ||
                 !zombieModeRunState.ActiveSafeZoneActive ||
-                (zombieModeRunState.CombatPhase != ZombieModeCombatPhase.InitialPreparation &&
-                 zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Preparation &&
-                 zombieModeRunState.CombatPhase != ZombieModeCombatPhase.ExtractionOpportunity))
+                !ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase))
             {
                 ReleaseZombieModeSafeZoneThreatSuppression();
                 return;
@@ -73,9 +71,7 @@ namespace BossRush
             return zombieModeRunState.ActiveSafeZoneActive &&
                    IsZombieModePlayerInsideActiveSafeZone() &&
                    !zombieModeRunState.SafeZoneStealthBroken &&
-                   (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.InitialPreparation ||
-                    zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Preparation ||
-                    zombieModeRunState.CombatPhase == ZombieModeCombatPhase.ExtractionOpportunity);
+                   ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase);
         }
 
         private void KeepZombieModeEnemiesOutsideSafeZone()

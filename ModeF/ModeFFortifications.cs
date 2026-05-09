@@ -193,11 +193,18 @@ namespace BossRush
         private Material modeFFortificationOutlineMaterial;
         private bool modeFHasActiveFortificationHighlight = false;
 
+        private bool CanUseModeFortificationUtilities()
+        {
+            return modeFActive || IsZombieModeActive;
+        }
+
         public bool UseModeFFortificationItem(FortificationType type)
         {
-            if (!modeFActive)
+            if (!CanUseModeFortificationUtilities())
             {
-                ShowMessage(L10n.T("该物品只能在 Mode F 中使用", "This item can only be used in Mode F"));
+                ShowMessage(L10n.T(
+                    "该物品只能在 Mode F 或丧尸模式中使用",
+                    "This item can only be used in Mode F or Zombie Mode"));
                 return false;
             }
 
@@ -229,9 +236,11 @@ namespace BossRush
 
         public bool UseModeFRepairSpray()
         {
-            if (!modeFActive)
+            if (!CanUseModeFortificationUtilities())
             {
-                ShowMessage(L10n.T("该物品只能在 Mode F 中使用", "This item can only be used in Mode F"));
+                ShowMessage(L10n.T(
+                    "该物品只能在 Mode F 或丧尸模式中使用",
+                    "This item can only be used in Mode F or Zombie Mode"));
                 return false;
             }
 
@@ -706,6 +715,67 @@ namespace BossRush
             }
         }
 
+        internal void CleanupZombieModeFortificationInteractionState()
+        {
+            try
+            {
+                CancelFortPlacement();
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] 清理丧尸模式工事放置状态失败: " + e.Message);
+            }
+
+            try
+            {
+                CancelModeFRepairSelection(L10n.T("模式结束", "Mode ended"), true);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] 清理丧尸模式工事维修状态失败: " + e.Message);
+            }
+
+            ClearModeFFortificationHighlights();
+        }
+
+        private void ClearModeFFortificationHighlights()
+        {
+            try
+            {
+                modeFActiveFortificationSnapshot.Clear();
+                if (modeFState != null && modeFState.ActiveFortifications != null)
+                {
+                    foreach (var kvp in modeFState.ActiveFortifications)
+                    {
+                        modeFActiveFortificationSnapshot.Add(kvp.Value);
+                    }
+                }
+
+                for (int fi = 0; fi < modeFActiveFortificationSnapshot.Count; fi++)
+                {
+                    ModeFFortificationMarker marker = modeFActiveFortificationSnapshot[fi];
+                    if (marker == null)
+                    {
+                        continue;
+                    }
+
+                    marker.HighlightUntilTime = 0f;
+                    if (marker.HighlightRoot != null)
+                    {
+                        try { UnityEngine.Object.Destroy(marker.HighlightRoot); } catch { }
+                        marker.HighlightRoot = null;
+                    }
+                }
+
+                modeFActiveFortificationSnapshot.Clear();
+                modeFHasActiveFortificationHighlight = false;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] 清理工事高亮失败: " + e.Message);
+            }
+        }
+
         private void ApplyFortPlacementPreviewMaterial(GameObject preview, bool canPlace)
         {
             if (preview == null) return;
@@ -936,6 +1006,23 @@ namespace BossRush
                 Physics.SyncTransforms();
 
                 modeFState.ActiveFortifications[marker.FortificationId] = marker;
+                if (IsZombieModeActive && zombieModeRunState.RunId > 0)
+                {
+                    RegisterZombieModeRunOnlyObject(
+                        zombieModeRunState.RunId,
+                        ZombieModeRunOnlyObjectKind.Fortification,
+                        fortObj,
+                        marker,
+                        delegate
+                        {
+                            if (marker != null &&
+                                modeFState != null &&
+                                modeFState.ActiveFortifications != null)
+                            {
+                                modeFState.ActiveFortifications.Remove(marker.FortificationId);
+                            }
+                        });
+                }
 
                 string typeName = GetFortificationTypeName(type);
                 DevLog("[ModeF] [PLACE] " + typeName
@@ -2112,7 +2199,7 @@ namespace BossRush
 
         private void UpdateModeFFortificationHighlights()
         {
-            if (!modeFActive)
+            if (!CanUseModeFortificationUtilities())
             {
                 return;
             }
@@ -2653,7 +2740,7 @@ namespace BossRush
                 return false;
             }
 
-            if (!inst.IsModeFActive)
+            if (!(inst.IsModeFActive || inst.IsZombieModeActive))
             {
                 return false;
             }

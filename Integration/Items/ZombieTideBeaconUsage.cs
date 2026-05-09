@@ -30,7 +30,7 @@ namespace BossRush
 
             if (!inst.CanUseZombieModeBeacon())
             {
-                NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_BeaconNotPreparation"));
+                NotificationText.Push(L10n.T(inst.GetZombieModeBeaconUnavailableReasonKey()));
                 return false;
             }
 

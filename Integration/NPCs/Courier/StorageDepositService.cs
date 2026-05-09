@@ -99,6 +99,7 @@ namespace BossRush
         // 服务状态
         private static bool isServiceActive = false;
         private static bool isQuickDepositInProgress = false;
+        private static bool isRetrieveAllInProgress = false;
         
         // 商品索引映射（Entry -> DepositedItemData 索引）
         private static Dictionary<StockShop.Entry, int> entryIndexMapping = new Dictionary<StockShop.Entry, int>();
@@ -119,6 +120,8 @@ namespace BossRush
         private static FieldInfo playerInventoryDisplayField = null;
         private static FieldInfo characterInventoryDisplayField = null;
         private static FieldInfo sortButtonField = null;
+        private static FieldInfo interactionButtonField = null;
+        private static FieldInfo interactionTextField = null;
         private static bool reflectionInitialized = false;
         
         // "全部取出"按钮相关
@@ -159,6 +162,14 @@ namespace BossRush
         // 右键删除相关
         private static bool rightClickDeleteEnabled = true;
         #pragma warning restore CS0414
+
+        private sealed class RetrieveAllDepositItem
+        {
+            public int DepositIndex;
+            public DepositedItemData DepositData;
+            public Item RestoredItem;
+            public int Fee;
+        }
         
         // ============================================================================
         // 公共属性
@@ -338,6 +349,28 @@ namespace BossRush
             
             ModBehaviour.DevLog("[StorageDepositService] 寄存服务已关闭");
         }
+
+        public static void CloseServiceIfOwnedBy(Transform npcTransform)
+        {
+            if (!isServiceActive || !IsServiceOwnedBy(npcTransform))
+            {
+                return;
+            }
+
+            CloseService();
+        }
+
+        private static bool IsServiceOwnedBy(Transform npcTransform)
+        {
+            if (npcTransform == null || courierNPCTransform == null)
+            {
+                return false;
+            }
+
+            return ReferenceEquals(courierNPCTransform, npcTransform) ||
+                   courierNPCTransform.IsChildOf(npcTransform) ||
+                   npcTransform.IsChildOf(courierNPCTransform);
+        }
         
         /// <summary>
         /// 计算寄存费（外部调用）
@@ -501,6 +534,10 @@ namespace BossRush
                 characterInventoryDisplayField = typeof(StockShopView).GetField("characterInventoryDisplay",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 sortButtonField = typeof(Duckov.UI.InventoryDisplay).GetField("sortButton",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                interactionButtonField = typeof(StockShopView).GetField("interactionButton",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                interactionTextField = typeof(StockShopView).GetField("interactionText",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 
                 // StockShop.Entry 内部的 entry 字段（StockShopDatabase.ItemEntry 类型）
@@ -713,11 +750,11 @@ namespace BossRush
                     
                     if (valueForFactor > 0)
                     {
-                        itemEntry.priceFactor = (float)fee / valueForFactor;
+                        itemEntry.priceFactor = IsZombieModeTemporaryCourierPurificationService() ? 0f : (float)fee / valueForFactor;
                     }
                     else
                     {
-                        itemEntry.priceFactor = 0.01f;  // 最小价格因子
+                        itemEntry.priceFactor = IsZombieModeTemporaryCourierPurificationService() ? 0f : 0.01f;  // 最小价格因子
                     }
                     
                     itemEntry.possibility = 1f;
@@ -809,6 +846,7 @@ namespace BossRush
             
             // 【修复】同类型物品详情面板显示不正确的问题
             SyncSelectedItemInstance();
+            UpdateSingleRetrieveUiDeferred();
         }
         
         /// <summary>
@@ -922,7 +960,7 @@ namespace BossRush
                         if (depositIndex >= 0 && depositIndex < depositedItems.Count)
                         {
                             int correctFee = depositedItems[depositIndex].GetCurrentFee();
-                            float newPriceFactor = (float)correctFee / actualValue;
+                            float newPriceFactor = IsZombieModeTemporaryCourierPurificationService() ? 0f : (float)correctFee / actualValue;
                             
                             // 通过缓存的反射字段修改 Entry 的 priceFactor
                             if (stockEntryInnerField != null)
@@ -1032,10 +1070,28 @@ namespace BossRush
             // 与单件寄存保持同一扣费口径。
             if (price > 0)
             {
-                var cost = new Cost(price);
-                if (cost.Enough)
+                bool paid = false;
+                if (courierNPCTransform != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform))
                 {
-                    cost.Pay();
+                    paid = ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
+                        courierNPCTransform,
+                        price,
+                        "ZombieModeTempCourierDepositStore");
+                }
+                else
+                {
+                    var cost = new Cost(price);
+                    if (cost.Enough)
+                    {
+                        cost.Pay();
+                        paid = true;
+                    }
+                }
+
+                if (paid)
+                {
                     ModBehaviour.DevLog("[StorageDepositService] 已扣除售出所得: " + price);
                 }
                 else
@@ -1286,7 +1342,7 @@ namespace BossRush
                                 if (depositIndex < depositedItems.Count)
                                 {
                                     int fee = depositedItems[depositIndex].GetCurrentFee();
-                                    priceTextComp.text = fee.ToString("n0");
+                                    priceTextComp.text = FormatRetrieveFeeText(fee);
                                     ModBehaviour.DevLog("[StorageDepositService] 更新价格显示: index=" + depositIndex + ", fee=" + fee);
                                 }
                             }
@@ -1370,7 +1426,7 @@ namespace BossRush
                                 if (depositIndex < depositedItems.Count)
                                 {
                                     int fee = depositedItems[depositIndex].GetCurrentFee();
-                                    priceTextComp.text = fee.ToString("n0");
+                                    priceTextComp.text = FormatRetrieveFeeText(fee);
                                     priceUpdatedCount++;
                                 }
                             }
@@ -1496,7 +1552,7 @@ namespace BossRush
                                     if (depositIndex < depositedItems.Count)
                                     {
                                         int fee = depositedItems[depositIndex].GetCurrentFee();
-                                        priceTextComp.text = fee.ToString("n0");
+                                        priceTextComp.text = FormatRetrieveFeeText(fee);
                                         ModBehaviour.DevLog("[StorageDepositService] 更新新增条目价格: index=" + depositIndex + ", fee=" + fee);
                                     }
                                 }
@@ -1562,8 +1618,24 @@ namespace BossRush
                     
                     if (depositedItemData != null && depositedItemData.itemData != null)
                     {
+                        int fee = depositedItemData.GetCurrentFee();
+                        bool usePurification = IsZombieModeTemporaryCourierPurificationService();
+                        if (usePurification &&
+                            fee > 0 &&
+                            (ModBehaviour.Instance == null ||
+                             !ModBehaviour.Instance.CanAffordZombieModePurificationPointsForRealNpc(courierNPCTransform, fee)))
+                        {
+                            RollbackTemporarySingleRetrievePlaceholder(purchasedItem);
+                            NotificationText.Push(L10n.T("净化点不足。", "Not enough purification."));
+                            return;
+                        }
+
                         // 异步恢复完整物品（包含配件和容器内容）
-                        RestoreAndReplaceItemAsync(purchasedItem, depositedItemData.itemData, depositIndex).Forget();
+                        RestoreAndReplaceItemAsync(
+                            purchasedItem,
+                            depositedItemData.itemData,
+                            depositIndex,
+                            usePurification ? fee : 0).Forget();
                     }
                     else
                     {
@@ -1589,17 +1661,31 @@ namespace BossRush
         /// <summary>
         /// 异步恢复完整物品并替换商店给的空白物品
         /// </summary>
-        private static async UniTaskVoid RestoreAndReplaceItemAsync(Item emptyItem, ItemTreeData savedData, int depositIndex)
+        private static async UniTaskVoid RestoreAndReplaceItemAsync(Item emptyItem, ItemTreeData savedData, int depositIndex, int purificationFee = 0)
         {
+            Item restoredItem = null;
+            bool useTemporaryPurificationRetrieve = IsZombieModeTemporaryCourierPurificationService();
+            bool usePurificationPayment = purificationFee > 0 && useTemporaryPurificationRetrieve;
+            bool purificationPaymentDeducted = false;
+            bool deliveryCompleted = false;
+
             try
             {
                 ModBehaviour.DevLog("[StorageDepositService] 开始恢复完整物品数据...");
                 
                 // 使用 ItemTreeData.InstantiateAsync 恢复完整物品（包含配件、容器内容等）
-                Item restoredItem = await ItemTreeData.InstantiateAsync(savedData);
+                restoredItem = await ItemTreeData.InstantiateAsync(savedData);
                 
                 if (restoredItem == null)
                 {
+                    if (useTemporaryPurificationRetrieve)
+                    {
+                        ModBehaviour.DevLog("[StorageDepositService] 临时阿稳单件取回恢复失败，已保留寄存数据");
+                        RollbackTemporarySingleRetrievePlaceholder(emptyItem);
+                        NotificationText.Push(L10n.T("取回失败，寄存物品已保留。", "Retrieve failed. Deposited item was kept."));
+                        return;
+                    }
+
                     ModBehaviour.DevLog("[StorageDepositService] [ERROR] 恢复物品失败，保留空白物品");
                     DepositDataManager.RemoveItem(depositIndex);
                     RebuildItemInstancesIndex(depositIndex);
@@ -1611,10 +1697,26 @@ namespace BossRush
                 }
                 
                 CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, "StorageDeposit.RestoreAndReplace");
-                ModBehaviour.DevLog("[StorageDepositService] 物品恢复成功: " + restoredItem.DisplayName);
-                
-                // 记录空白物品的位置（用于掉落）
-                Vector3 emptyItemPosition = emptyItem != null ? emptyItem.transform.position : Vector3.zero;
+                string restoredItemName = restoredItem.DisplayName;
+                ModBehaviour.DevLog("[StorageDepositService] 物品恢复成功: " + restoredItemName);
+
+                if (usePurificationPayment)
+                {
+                    if (ModBehaviour.Instance == null ||
+                        !ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
+                            courierNPCTransform,
+                            purificationFee,
+                            "ZombieModeTempCourierDepositRetrieveSingle"))
+                    {
+                        CleanupSingleRetrievedItem(restoredItem);
+                        restoredItem = null;
+                        RollbackTemporarySingleRetrievePlaceholder(emptyItem);
+                        NotificationText.Push(L10n.T("净化点不足。", "Not enough purification."));
+                        return;
+                    }
+
+                    purificationPaymentDeducted = true;
+                }
                 
                 // 销毁空白物品
                 if (emptyItem != null)
@@ -1628,7 +1730,9 @@ namespace BossRush
                 // 将恢复的物品发送给玩家（优先背包，满了放仓库或掉落）
                 // 使用 dontMerge=true 避免物品被合并
                 ItemUtilities.SendToPlayer(restoredItem, true, true);
+                deliveryCompleted = true;
                 ModBehaviour.DevLog("[StorageDepositService] 已将恢复的物品发送给玩家");
+                restoredItem = null;
                 
                 // 从寄存数据移除
                 DepositDataManager.RemoveItem(depositIndex);
@@ -1653,11 +1757,25 @@ namespace BossRush
                 string msg = LocalizationHelper.GetLocalizedText("BossRush_StorageDeposit_Retrieved");
                 NotificationText.Push(msg);
                 
-                ModBehaviour.DevLog("[StorageDepositService] 物品取回完成: " + restoredItem.DisplayName);
+                ModBehaviour.DevLog("[StorageDepositService] 物品取回完成: " + restoredItemName);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[StorageDepositService] [ERROR] 恢复物品失败: " + e.Message + "\n" + e.StackTrace);
+
+                if (useTemporaryPurificationRetrieve)
+                {
+                    bool shouldRefund = purificationPaymentDeducted && !deliveryCompleted;
+                    if (ModBehaviour.Instance != null)
+                    {
+                        ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(courierNPCTransform, purificationFee, shouldRefund);
+                    }
+
+                    CleanupSingleRetrievedItem(restoredItem);
+                    RollbackTemporarySingleRetrievePlaceholder(emptyItem);
+                    NotificationText.Push(L10n.T("取回失败，寄存物品已保留。", "Retrieve failed. Deposited item was kept."));
+                    return;
+                }
                 
                 // 出错时也要移除记录，避免数据不一致
                 DepositDataManager.RemoveItem(depositIndex);
@@ -1666,6 +1784,59 @@ namespace BossRush
                 // 【关键修复】出错时也需要刷新 UI
                 RefreshShopUI();
                 UpdateRetrieveAllButton();
+            }
+        }
+
+        private static void RollbackTemporarySingleRetrievePlaceholder(Item placeholderItem)
+        {
+            try
+            {
+                if (placeholderItem != null)
+                {
+                    placeholderItem.Detach();
+                    if (placeholderItem.gameObject != null)
+                    {
+                        UnityEngine.Object.Destroy(placeholderItem.gameObject);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 回滚单件取回占位物失败: " + e.Message);
+            }
+
+            RefreshShopEntries();
+            RefreshShopUI();
+            UpdateRetrieveAllButton();
+            UpdatePriceDisplay();
+            UpdateSingleRetrieveUiDeferred();
+        }
+
+        private static void CleanupSingleRetrievedItem(Item restoredItem)
+        {
+            if (restoredItem == null)
+            {
+                return;
+            }
+
+            try
+            {
+                restoredItem.DestroyTree();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 清理单件取回恢复物失败: " + e.Message);
+                try
+                {
+                    if (restoredItem.gameObject != null)
+                    {
+                        UnityEngine.Object.Destroy(restoredItem.gameObject);
+                    }
+                }
+                catch (Exception destroyEx)
+                {
+                    ModBehaviour.DevLog("[StorageDepositService] [WARNING] 销毁单件取回恢复物失败: " + destroyEx.Message);
+                }
             }
         }
         
@@ -2558,12 +2729,13 @@ namespace BossRush
                     string discardColor = "#AA5555";  // 暗红色
                     
                     string displayText = string.Format(
-                        "<link=retrieve><color={0}><u>{1} ￥{2}</u></color></link> | <link=discard><color={3}><u>{4}</u></color></link>",
+                        "<link=retrieve><color={0}><u>{1} {5}{2}</u></color></link> | <link=discard><color={3}><u>{4}</u></color></link>",
                         retrieveColor,
                         retrieveAllLabel,
                         totalFee.ToString("N0"),
                         discardColor,
-                        discardAllLabel
+                        discardAllLabel,
+                        GetRetrieveFeePrefix()
                     );
                     
                     retrieveAllText.text = displayText;
@@ -2827,6 +2999,13 @@ namespace BossRush
 
             try
             {
+                if (courierNPCTransform != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform))
+                {
+                    return ModBehaviour.Instance.CanAffordZombieModePurificationPointsForRealNpc(courierNPCTransform, totalFee);
+                }
+
                 return new Cost(totalFee).Enough;
             }
             catch (Exception e)
@@ -2842,6 +3021,11 @@ namespace BossRush
         private static void OnRetrieveAllClicked()
         {
             if (!isServiceActive) return;
+            if (isRetrieveAllInProgress)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] 全部取出正在进行中，忽略重复点击");
+                return;
+            }
             
             int itemCount = DepositDataManager.GetItemCount();
             if (itemCount == 0)
@@ -2851,17 +3035,18 @@ namespace BossRush
             }
             
             int totalFee = CalculateTotalRetrieveFee();
-
             if (!CanAffordRetrieveFee(totalFee))
             {
-                // 金钱不足，显示提示
-                string msg = LocalizationHelper.GetLocalizedText("BossRush_StorageService_InsufficientFunds");
+                string msg = IsZombieModeTemporaryCourierPurificationService()
+                    ? GetTemporaryCourierPurificationInsufficientText()
+                    : LocalizationHelper.GetLocalizedText("BossRush_StorageService_InsufficientFunds");
                 NotificationText.Push(msg);
-                ModBehaviour.DevLog("[StorageDepositService] 金钱不足，无法全部取出");
+                ModBehaviour.DevLog("[StorageDepositService] 全部取出余额不足，已跳过物品恢复");
                 return;
             }
-            
+
             // 执行全部取出
+            isRetrieveAllInProgress = true;
             RetrieveAllItemsAsync(totalFee).Forget();
         }
         
@@ -2881,54 +3066,63 @@ namespace BossRush
             try
             {
                 ModBehaviour.DevLog("[StorageDepositService] 开始全部取出，总费用: " + totalFee);
-                
-                // 扣除费用
-                if (totalFee > 0)
-                {
-                    var cost = new Cost(totalFee);
-                    if (!cost.Enough)
-                    {
-                        string msg = LocalizationHelper.GetLocalizedText("BossRush_StorageService_InsufficientFunds");
-                        NotificationText.Push(msg);
-                        return;
-                    }
-                    cost.Pay();
-                    ModBehaviour.DevLog("[StorageDepositService] 已扣除费用: " + totalFee);
-                }
-                
-                // 获取所有寄存物品（从后往前取，避免索引问题）
+
                 var depositedItems = DepositDataManager.GetAllItems();
-                int successCount = 0;
-                
-                for (int i = depositedItems.Count - 1; i >= 0; i--)
+                List<int> failedRestoreIndices = new List<int>();
+                List<RetrieveAllDepositItem> restoredItems =
+                    await TryRestoreAllDepositItemsForRetrieveAll(depositedItems, failedRestoreIndices);
+                if (restoredItems.Count <= 0)
                 {
-                    var depositedItem = depositedItems[i];
-                    if (depositedItem == null || depositedItem.itemData == null) continue;
-                    
+                    CleanupRestoredRetrieveAllItems(restoredItems);
+                    NotificationText.Push(L10n.T("取出失败，寄存物品已保留。", "Retrieve failed. Deposited items were kept."));
+                    ModBehaviour.DevLog("[StorageDepositService] 全部取出失败：没有物品恢复成功，失败数=" + failedRestoreIndices.Count);
+                    RefreshShopEntries();
+                    RefreshShopUI();
+                    UpdateRetrieveAllButton();
+                    return;
+                }
+
+                int payableFee = CalculateRetrieveAllRestoredFee(restoredItems);
+                if (!TryPayRetrieveFee(payableFee, "ZombieModeTempCourierDepositRetrieveAll"))
+                {
+                    CleanupRestoredRetrieveAllItems(restoredItems);
+                    string msg = IsZombieModeTemporaryCourierPurificationService()
+                        ? GetTemporaryCourierPurificationInsufficientText()
+                        : LocalizationHelper.GetLocalizedText("BossRush_StorageService_InsufficientFunds");
+                    NotificationText.Push(msg);
+                    ModBehaviour.DevLog("[StorageDepositService] 全部取出扣费失败，已保留寄存数据");
+                    return;
+                }
+
+                List<int> deliveredIndices = new List<int>();
+                int failedDeliveryFee = 0;
+                int successCount = 0;
+                for (int i = 0; i < restoredItems.Count; i++)
+                {
+                    RetrieveAllDepositItem restored = restoredItems[i];
+                    if (restored == null || restored.RestoredItem == null)
+                    {
+                        continue;
+                    }
+
                     try
                     {
-                        // 恢复物品实例
-                        Item restoredItem = await ItemTreeData.InstantiateAsync(depositedItem.itemData);
-                        
-                        if (restoredItem != null)
-                        {
-                            CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, "StorageDeposit.RetrieveAll");
-                            // 发送给玩家
-                            ItemUtilities.SendToPlayer(restoredItem, true, true);
-                            successCount++;
-                            ModBehaviour.DevLog("[StorageDepositService] 取出物品: " + restoredItem.DisplayName);
-                        }
+                        ItemUtilities.SendToPlayer(restored.RestoredItem, true, true);
+                        deliveredIndices.Add(restored.DepositIndex);
+                        successCount++;
+                        ModBehaviour.DevLog("[StorageDepositService] 取出物品: " + restored.RestoredItem.DisplayName);
+                        restored.RestoredItem = null;
                     }
                     catch (Exception e)
                     {
-                        ModBehaviour.DevLog("[StorageDepositService] [WARNING] 取出物品失败: index=" + i + ", error=" + e.Message);
+                        failedDeliveryFee += Mathf.Max(0, restored.Fee);
+                        ModBehaviour.DevLog("[StorageDepositService] [WARNING] 发送取出物品失败: index=" + restored.DepositIndex + ", error=" + e.Message);
                     }
                 }
-                
-                // 清空寄存数据
-                DepositDataManager.ClearAll();
-                
-                // 清空物品实例缓存
+
+                RefundRetrieveFee(failedDeliveryFee, failedDeliveryFee > 0);
+                CleanupRestoredRetrieveAllItems(restoredItems);
+                RemoveRetrievedDepositItems(deliveredIndices);
                 depositItemInstances.Clear();
                 
                 // 刷新商店
@@ -2939,14 +3133,192 @@ namespace BossRush
                 UpdateRetrieveAllButton();
                 
                 // 显示通知
-                string notification = LocalizationHelper.GetLocalizedText("BossRush_StorageService_Retrieved");
+                string notification = failedRestoreIndices.Count > 0 || failedDeliveryFee > 0
+                    ? L10n.T("部分物品取出失败，失败物品已保留。", "Some items could not be retrieved and were kept in storage.")
+                    : LocalizationHelper.GetLocalizedText("BossRush_StorageService_Retrieved");
                 NotificationText.Push(notification);
                 
-                ModBehaviour.DevLog("[StorageDepositService] 全部取出完成，共 " + successCount + " 件物品");
+                ModBehaviour.DevLog("[StorageDepositService] 全部取出完成，共 " + successCount + " 件物品，恢复失败=" + failedRestoreIndices.Count + "，发送失败退款=" + failedDeliveryFee);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[StorageDepositService] [ERROR] 全部取出失败: " + e.Message + "\n" + e.StackTrace);
+            }
+            finally
+            {
+                isRetrieveAllInProgress = false;
+            }
+        }
+
+        private static async UniTask<List<RetrieveAllDepositItem>> TryRestoreAllDepositItemsForRetrieveAll(
+            List<DepositedItemData> depositedItems,
+            List<int> failedRestoreIndices)
+        {
+            List<RetrieveAllDepositItem> restoredItems = new List<RetrieveAllDepositItem>();
+            if (depositedItems == null)
+            {
+                return restoredItems;
+            }
+
+            for (int i = depositedItems.Count - 1; i >= 0; i--)
+            {
+                DepositedItemData depositedItem = depositedItems[i];
+                if (depositedItem == null || depositedItem.itemData == null)
+                {
+                    failedRestoreIndices.Add(i);
+                    continue;
+                }
+
+                try
+                {
+                    Item restoredItem = await ItemTreeData.InstantiateAsync(depositedItem.itemData);
+                    if (restoredItem == null)
+                    {
+                        failedRestoreIndices.Add(i);
+                        ModBehaviour.DevLog("[StorageDepositService] [WARNING] 取出物品恢复为空: index=" + i);
+                        continue;
+                    }
+
+                    CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, "StorageDeposit.RetrieveAll");
+                    RetrieveAllDepositItem restored = new RetrieveAllDepositItem();
+                    restored.DepositIndex = i;
+                    restored.DepositData = depositedItem;
+                    restored.RestoredItem = restoredItem;
+                    restored.Fee = depositedItem.GetCurrentFee();
+                    restoredItems.Add(restored);
+                }
+                catch (Exception e)
+                {
+                    failedRestoreIndices.Add(i);
+                    ModBehaviour.DevLog("[StorageDepositService] [WARNING] 取出物品失败: index=" + i + ", error=" + e.Message);
+                }
+            }
+
+            return restoredItems;
+        }
+
+        private static int CalculateRetrieveAllRestoredFee(List<RetrieveAllDepositItem> restoredItems)
+        {
+            int total = 0;
+            if (restoredItems == null)
+            {
+                return total;
+            }
+
+            for (int i = 0; i < restoredItems.Count; i++)
+            {
+                RetrieveAllDepositItem restored = restoredItems[i];
+                if (restored != null)
+                {
+                    total += Mathf.Max(0, restored.Fee);
+                }
+            }
+
+            return total;
+        }
+
+        private static bool TryPayRetrieveFee(int totalFee, string reason)
+        {
+            if (totalFee <= 0)
+            {
+                return true;
+            }
+
+            if (courierNPCTransform != null &&
+                ModBehaviour.Instance != null &&
+                ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform))
+            {
+                return ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
+                    courierNPCTransform,
+                    totalFee,
+                    reason);
+            }
+
+            Cost cost = new Cost(totalFee);
+            if (!cost.Enough)
+            {
+                return false;
+            }
+
+            cost.Pay();
+            return true;
+        }
+
+        private static void RefundRetrieveFee(int totalFee, bool shouldRefund)
+        {
+            if (!shouldRefund || totalFee <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                if (courierNPCTransform != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform))
+                {
+                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(courierNPCTransform, totalFee, true);
+                    return;
+                }
+
+                EconomyManager.Add(totalFee);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 全部取出退款失败: " + e.Message);
+            }
+        }
+
+        private static void RemoveRetrievedDepositItems(List<int> depositIndices)
+        {
+            if (depositIndices == null || depositIndices.Count <= 0)
+            {
+                return;
+            }
+
+            depositIndices.Sort();
+            for (int i = depositIndices.Count - 1; i >= 0; i--)
+            {
+                DepositDataManager.RemoveItem(depositIndices[i]);
+            }
+        }
+
+        private static void CleanupRestoredRetrieveAllItems(List<RetrieveAllDepositItem> restoredItems)
+        {
+            if (restoredItems == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < restoredItems.Count; i++)
+            {
+                RetrieveAllDepositItem restored = restoredItems[i];
+                if (restored == null || restored.RestoredItem == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    restored.RestoredItem.DestroyTree();
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[StorageDepositService] [WARNING] 清理未发放取出物品失败: " + e.Message);
+                    try
+                    {
+                        if (restored.RestoredItem.gameObject != null)
+                        {
+                            UnityEngine.Object.Destroy(restored.RestoredItem.gameObject);
+                        }
+                    }
+                    catch (Exception destroyEx)
+                    {
+                        ModBehaviour.DevLog("[StorageDepositService] [WARNING] 销毁未发放取出物品失败: " + destroyEx.Message);
+                    }
+                }
+
+                restored.RestoredItem = null;
             }
         }
         
@@ -3030,11 +3402,111 @@ namespace BossRush
                     }
                 }
                 
-                priceText.text = fee.ToString("n0");
+                priceText.text = FormatRetrieveFeeText(fee);
             }
             catch (Exception e)
             {
                 NPCExceptionHandler.LogAndIgnore(e, "StorageDepositService.UpdatePriceDisplay");
+            }
+        }
+
+        private static string FormatRetrieveFeeText(int fee)
+        {
+            return IsZombieModeTemporaryCourierPurificationService()
+                ? GetRetrieveFeePrefix() + fee.ToString("N0")
+                : fee.ToString("N0");
+        }
+
+        private static string GetRetrieveFeePrefix()
+        {
+            return IsZombieModeTemporaryCourierPurificationService()
+                ? L10n.T("净化点 ", "Purification ")
+                : "￥";
+        }
+
+        private static bool IsZombieModeTemporaryCourierPurificationService()
+        {
+            return courierNPCTransform != null &&
+                   ModBehaviour.Instance != null &&
+                   ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform);
+        }
+
+        private static string GetTemporaryCourierPurificationInsufficientText()
+        {
+            return L10n.T("净化点不足。", "Not enough Purification.");
+        }
+
+        private static IEnumerator UpdateSingleRetrieveUiNextFrame()
+        {
+            yield return null;
+            UpdateSingleRetrieveUi();
+        }
+
+        private static void UpdateSingleRetrieveUiDeferred()
+        {
+            if (!IsZombieModeTemporaryCourierPurificationService() || ModBehaviour.Instance == null)
+            {
+                return;
+            }
+
+            ModBehaviour.Instance.StartCoroutine(UpdateSingleRetrieveUiNextFrame());
+        }
+
+        private static void UpdateSingleRetrieveUi()
+        {
+            if (!IsZombieModeTemporaryCourierPurificationService())
+            {
+                return;
+            }
+
+            try
+            {
+                var shopView = StockShopView.Instance;
+                if (shopView == null)
+                {
+                    return;
+                }
+
+                int fee = 0;
+                var selectedEntry = shopView.GetSelection();
+                if (selectedEntry != null && selectedEntry.Target != null)
+                {
+                    int depositIndex;
+                    if (entryIndexMapping.TryGetValue(selectedEntry.Target, out depositIndex))
+                    {
+                        var depositedItems = DepositDataManager.GetAllItems();
+                        if (depositIndex >= 0 && depositIndex < depositedItems.Count)
+                        {
+                            fee = depositedItems[depositIndex].GetCurrentFee();
+                        }
+                    }
+                }
+
+                bool canAfford = fee <= 0 || ModBehaviour.Instance.CanAffordZombieModePurificationPointsForRealNpc(courierNPCTransform, fee);
+
+                if (interactionButtonField != null)
+                {
+                    var interactionButton = interactionButtonField.GetValue(shopView) as Button;
+                    if (interactionButton != null)
+                    {
+                        interactionButton.interactable = canAfford;
+                    }
+                }
+
+                if (interactionTextField != null)
+                {
+                    var interactionText = interactionTextField.GetValue(shopView) as TextMeshProUGUI;
+                    if (interactionText != null)
+                    {
+                        interactionText.text = canAfford
+                            ? L10n.T("取回（净化点）", "Retrieve (Purification)")
+                            : L10n.T("净化点不足", "Not enough Purification");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 更新单件取回净化点 UI 失败: " + e.Message);
             }
         }
         
@@ -3126,6 +3598,7 @@ namespace BossRush
             entryIndexMapping.Clear();
             pendingDepositItem = null;
             isQuickDepositInProgress = false;
+            isRetrieveAllInProgress = false;
             
             ModBehaviour.DevLog("[StorageDepositService] 资源清理完成");
         }

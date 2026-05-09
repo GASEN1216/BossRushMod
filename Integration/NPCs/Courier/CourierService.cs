@@ -359,6 +359,16 @@ namespace BossRush
 
             try
             {
+                if (courierNPCTransform != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform))
+                {
+                    return ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
+                        courierNPCTransform,
+                        fee,
+                        "ZombieModeTempCourierDelivery");
+                }
+
                 var cost = new Duckov.Economy.Cost((long)fee);
                 if (!cost.Pay(true, true))
                 {
@@ -383,6 +393,11 @@ namespace BossRush
         {
             try
             {
+                if (IsZombieModeTemporaryCourierPurificationService(courierNPCTransform))
+                {
+                    return ModBehaviour.Instance.CanAffordZombieModePurificationPointsForRealNpc(courierNPCTransform, fee);
+                }
+
                 // 与实际扣费保持同一口径：同时检查账户余额与身上现金。
                 return Duckov.Economy.EconomyManager.IsEnough(
                     new Duckov.Economy.Cost((long)fee),
@@ -394,6 +409,13 @@ namespace BossRush
                 ModBehaviour.DevLog("[CourierService] [WARNING] 获取玩家资金失败: " + e.Message);
                 return false;
             }
+        }
+
+        private static bool IsZombieModeTemporaryCourierPurificationService(Transform npcTransform)
+        {
+            return npcTransform != null &&
+                   ModBehaviour.Instance != null &&
+                   ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(npcTransform);
         }
         
         /// <summary>
@@ -621,6 +643,28 @@ namespace BossRush
             Cleanup();
             
             ModBehaviour.DevLog("[CourierService] 快递服务已关闭");
+        }
+
+        public static void CloseServiceIfOwnedBy(Transform npcTransform)
+        {
+            if (!isServiceActive || !IsServiceOwnedBy(npcTransform))
+            {
+                return;
+            }
+
+            CloseService();
+        }
+
+        private static bool IsServiceOwnedBy(Transform npcTransform)
+        {
+            if (npcTransform == null || courierNPCTransform == null)
+            {
+                return false;
+            }
+
+            return ReferenceEquals(courierNPCTransform, npcTransform) ||
+                   courierNPCTransform.IsChildOf(npcTransform) ||
+                   npcTransform.IsChildOf(courierNPCTransform);
         }
         
         // ============================================================================
@@ -1041,13 +1085,15 @@ namespace BossRush
                 }
                 else if (!canAfford)
                 {
-                    displayText = sendText + " (<color=#FF0000>￥" + fee + "</color>)";
+                    bool usePurification = IsZombieModeTemporaryCourierPurificationService(courierNPCTransform);
+                    displayText = sendText + " (<color=#FF0000>" + (usePurification ? "净化点 " : "￥") + fee + "</color>)";
                     interactable = false;
                     buttonColor = Color.gray;
                 }
                 else
                 {
-                    displayText = sendText + " (￥" + fee + ")";
+                    bool usePurification = IsZombieModeTemporaryCourierPurificationService(courierNPCTransform);
+                    displayText = sendText + " (" + (usePurification ? "净化点 " : "￥") + fee + ")";
                     interactable = true;
                     buttonColor = new Color(0.2f, 0.8f, 0.2f);
                 }
@@ -1515,11 +1561,16 @@ namespace BossRush
             
             try
             {
-                // 显示新的告别气泡："货我已经送出去了，钱我就收下了"
-                string bubbleText = L10n.T(
-                    "货我已经送出去了，钱我就收下了",
-                    "I've sent the goods, I'll take the money"
-                );
+                bool usePurification = IsZombieModeTemporaryCourierPurificationService(npcTransform);
+                string bubbleText = usePurification
+                    ? L10n.T(
+                        "货我已经送出去了，净化点我就收下了",
+                        "I've sent the goods, I'll take the Purification Points"
+                    )
+                    : L10n.T(
+                        "货我已经送出去了，钱我就收下了",
+                        "I've sent the goods, I'll take the money"
+                    );
                 
                 // 使用原版气泡系统显示对话
                 Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
@@ -1937,11 +1988,15 @@ namespace BossRush
                 // 如果有发送记录，显示气泡
                 if (lastSentItemCount > 0)
                 {
-                    // 格式：已送达x件物品，共花费x元，欢迎下次光临~
+                    bool usePurification = IsZombieModeTemporaryCourierPurificationService(npcTransform);
+                    string currencyTextCn = usePurification ? "净化点 " : "￥";
+                    string currencyTextEn = usePurification ? "Purification " : "￥";
+
+                    // 格式：已送达x件物品，共花费x，欢迎下次光临~
                     // x 用红色显示
                     string goodbyeText = L10n.T(
-                        "已送达<color=#FF0000>" + lastSentItemCount + "</color>件物品，共花费<color=#FF0000>￥" + lastDeliveryFee + "</color>，欢迎下次光临~",
-                        "Delivered <color=#FF0000>" + lastSentItemCount + "</color> items, cost <color=#FF0000>￥" + lastDeliveryFee + "</color>, come again~"
+                        "已送达<color=#FF0000>" + lastSentItemCount + "</color>件物品，共花费<color=#FF0000>" + currencyTextCn + lastDeliveryFee + "</color>，欢迎下次光临~",
+                        "Delivered <color=#FF0000>" + lastSentItemCount + "</color> items, cost <color=#FF0000>" + currencyTextEn + lastDeliveryFee + "</color>, come again~"
                     );
                     
                     // 使用原版气泡系统显示对话
@@ -1965,11 +2020,14 @@ namespace BossRush
                 }
                 else
                 {
-                    // 没有发送物品时，使用气泡显示"穷小子，没钱还来浪费爷的时间"
-                    string bubbleText = L10n.T(
-                        "穷小子，没钱还来浪费爷的时间",
-                        "Poor kid, wasting my time without money"
-                    );
+                    bool usePurification = IsZombieModeTemporaryCourierPurificationService(npcTransform);
+                    string bubbleText = usePurification
+                        ? L10n.T(
+                            "净化点不够还来浪费爷的时间",
+                            "Wasting my time without enough Purification")
+                        : L10n.T(
+                            "穷小子，没钱还来浪费爷的时间",
+                            "Poor kid, wasting my time without money");
                     
                     // 使用原版气泡系统显示对话
                     Cysharp.Threading.Tasks.UniTaskExtensions.Forget(

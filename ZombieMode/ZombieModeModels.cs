@@ -110,6 +110,9 @@ namespace BossRush
         AttributeDamageReduction,
         TempMerchant,
         TempNurse,
+        TempGoblinNpc,
+        TempNurseNpc,
+        TempCourierNpc,
         FortificationPack,
         ContractPollutionDeal,
         ContractGearDeal,
@@ -120,7 +123,41 @@ namespace BossRush
         InsuranceRandom20,
         InsuranceNearFull,
         MapEventHighValueAirdrop,
-        MapEventEliteSquad
+        MapEventEliteSquad,
+        ProjectilePenetration,
+        ProjectileBurn,
+        ProjectileCold,
+        ProjectilePoison,
+        ProjectileArmorBreak,
+        TriggerLifesteal,
+        TriggerLifestealMedium,
+        TriggerLifestealLarge,
+        TriggerCritBurst,
+        TriggerPurificationSiphon,
+        TriggerSecondWind,
+        TriggerDoomPulse,
+        MutatorCritFocus,
+        MutatorBulletTime,
+        MutatorGuardianShield,
+        MutatorQuickReload,
+        MutatorDashBoost,
+        BattlefieldAmmoRain,
+        ContractDevilBargain,
+        ContractCursedReload,
+        ContractBloodPrice,
+        ContractCursePool,
+        ProjectileTrident,
+        ProjectileShotgunSpray,
+        ProjectileStasis,
+        ProjectileRicochet,
+        ProjectileFork,
+        ProjectileReturn,
+        ProjectileHelix,
+        ProjectileTrail,
+        BattlefieldPurgeAura,
+        BattlefieldCurseTrap,
+        BattlefieldBlackHole,
+        BattlefieldGravityDrag
     }
 
     public enum ZombieModeRewardCategory
@@ -132,7 +169,11 @@ namespace BossRush
         Fortification,
         Contract,
         Insurance,
-        MapEvent
+        MapEvent,
+        ProjectileMod,
+        Trigger,
+        Mutator,
+        Battlefield
     }
 
     public enum ZombieModePendingMapEventType
@@ -175,14 +216,6 @@ namespace BossRush
         Adaptive
     }
 
-    public enum ZombieModePerformanceTier
-    {
-        Normal,
-        Watch,
-        SoftProtect,
-        ExtremeProtect
-    }
-
     public enum ZombieModeBossKind
     {
         Titan,
@@ -210,6 +243,9 @@ namespace BossRush
         public const string MeleeDamageMultiplier = "MeleeDamageMultiplier";
         public const string GunDamageMultiplier = "GunDamageMultiplier";
         public const string ReloadSpeedMultiplier = "ReloadSpeedMultiplier";
+        public const string GunCritRateGain = "GunCritRateGain";
+        public const string ReloadSpeedGain = "ReloadSpeedGain";
+        public const string DashSpeed = "DashSpeed";
         public const string ElementFactorPhysics = "ElementFactor_Physics";
     }
 
@@ -255,7 +291,6 @@ namespace BossRush
 
         private static class Performance
         {
-            public const float EvalIntervalSeconds = 0.5f;
             public const float TemporaryNpcProtectionTickIntervalSeconds = 0.25f;
             public const float BossStuckTimeoutSeconds = 45f;
             public const int DropCleanupWaveAge = 3;
@@ -263,14 +298,6 @@ namespace BossRush
             public const float FarDistance = 60f;
             public const float StarMagnetRadius = 30f;
             public const float StarPickupDistance = 0.3f;
-            public const int TierWatch = 150;
-            public const int TierSoft = 250;
-            public const int TierExtreme = 350;
-            public const int TierHysteresis = 10;
-            public const int MaxRecyclePerEval = 8;
-            public const float SoftSpawnMultiplier = 0.7f;
-            public const float ExtremeSpawnMultiplier = 0.4f;
-            public const float ExtremeSpawnFarSkipDistance = 50f;
         }
 
         private static class Spawn
@@ -328,7 +355,6 @@ namespace BossRush
             public const float BurstAffixDeathDamage = 40f;
             public const int SplittingAffixSpawnCount = 2;
             public const int SplitterBossDeathSpawnCount = 2;
-            public const int SplitterBossDeathSpawnCountSoftProtect = 1;
             public const float SplitterBossDeathRadius = 4f;
             public const float SplitterBossDeathDamage = 45f;
             public const int AdaptiveAffixHitThreshold = 5;
@@ -531,22 +557,12 @@ namespace BossRush
         public const float NavMeshSafeZoneRadius = SafeZone.NavMeshRadius;
 
         // Performance
-        public const float PerformanceEvalIntervalSeconds = Performance.EvalIntervalSeconds;
         public const float TemporaryNpcProtectionTickIntervalSeconds = Performance.TemporaryNpcProtectionTickIntervalSeconds;
         public const float BossStuckTimeoutSeconds = Performance.BossStuckTimeoutSeconds;
         public const int DropCleanupWaveAge = Performance.DropCleanupWaveAge;
         public const float DropCleanupAgeSeconds = Performance.DropCleanupAgeSeconds;
-        public const float PerformanceFarDistance = Performance.FarDistance;
         public const float StarMagnetRadius = Performance.StarMagnetRadius;
         public const float StarPickupDistance = Performance.StarPickupDistance;
-        public const int PerfTierWatch = Performance.TierWatch;
-        public const int PerfTierSoft = Performance.TierSoft;
-        public const int PerfTierExtreme = Performance.TierExtreme;
-        public const int PerfTierHysteresis = Performance.TierHysteresis;
-        public const int MaxRecyclePerEval = Performance.MaxRecyclePerEval;
-        public const float PerfSoftSpawnMultiplier = Performance.SoftSpawnMultiplier;
-        public const float PerfExtremeSpawnMultiplier = Performance.ExtremeSpawnMultiplier;
-        public const float PerfExtremeSpawnFarSkipDistance = Performance.ExtremeSpawnFarSkipDistance;
 
         // Spawn
         public const float BossSpreadMinDistance = Spawn.BossSpreadMinDistance;
@@ -597,7 +613,6 @@ namespace BossRush
         public const float BurstAffixDeathDamage = Combat.BurstAffixDeathDamage;
         public const int SplittingAffixSpawnCount = Combat.SplittingAffixSpawnCount;
         public const int SplitterBossDeathSpawnCount = Combat.SplitterBossDeathSpawnCount;
-        public const int SplitterBossDeathSpawnCountSoftProtect = Combat.SplitterBossDeathSpawnCountSoftProtect;
         public const float SplitterBossDeathRadius = Combat.SplitterBossDeathRadius;
         public const float SplitterBossDeathDamage = Combat.SplitterBossDeathDamage;
         public const int AdaptiveAffixHitThreshold = Combat.AdaptiveAffixHitThreshold;
@@ -747,6 +762,25 @@ namespace BossRush
         {
             return phase == ZombieModeCombatPhase.Preparation ||
                    phase == ZombieModeCombatPhase.ExtractionOpportunity;
+        }
+
+        /// <summary>
+        /// 判断当前是否处于"丧尸模式运行中"状态（入场流程完成后、清理完成前）
+        /// </summary>
+        public static bool IsRunActive(ZombieModeLifecyclePhase lifecycle)
+        {
+            return lifecycle == ZombieModeLifecyclePhase.WaitingStarterChoice ||
+                   lifecycle == ZombieModeLifecyclePhase.Active ||
+                   lifecycle == ZombieModeLifecyclePhase.Exiting;
+        }
+
+        /// <summary>
+        /// 判断当前是否处于结算流程（结算/奖励选择）
+        /// </summary>
+        public static bool IsSettling(ZombieModeCombatPhase combat)
+        {
+            return combat == ZombieModeCombatPhase.Settling ||
+                   combat == ZombieModeCombatPhase.RewardSelection;
         }
     }
 
@@ -949,6 +983,112 @@ namespace BossRush
         public string StatName = string.Empty;
     }
 
+    public sealed class ZombieModeOptionRuntimeState
+    {
+        public int ProjectilePenetrationStacks;
+        public int ProjectileBurnStacks;
+        public int ProjectileColdStacks;
+        public int ProjectilePoisonStacks;
+        public int ProjectileArmorBreakStacks;
+        public int TriggerLifestealStacks;
+        public int TriggerLifestealChancePercent;
+        public int TriggerLifestealHealAmount;
+        public int TriggerCritBurstStacks;
+        public int TriggerPurificationSiphonStacks;
+        public int TriggerSecondWindStacks;
+        public int TriggerDoomPulseStacks;
+        public int MutatorCritFocusStacks;
+        public bool MutatorBulletTimeEnabled;
+        public bool MutatorGuardianShieldEnabled;
+        public int MutatorQuickReloadStacks;
+        public int MutatorDashBoostStacks;
+        public int BattlefieldAmmoRainStacks;
+        public int ProjectileTridentStacks;
+        public int ProjectileShotgunSprayStacks;
+        public int ProjectileStasisStacks;
+        public int ProjectileRicochetStacks;
+        public int ProjectileForkStacks;
+        public int ProjectileReturnStacks;
+        public int ProjectileHelixStacks;
+        public int ProjectileTrailStacks;
+        public int BattlefieldPurgeAuraStacks;
+        public int BattlefieldCurseTrapStacks;
+        public int BattlefieldBlackHoleStacks;
+        public int BattlefieldGravityDragStacks;
+        public bool BattlefieldAreaRuntimeStarted;
+        public bool BattlefieldGravityRuntimeStarted;
+        public bool PlayerHealthListenerRegistered;
+        public float LastBulletTimeTriggerTime = -999f;
+        public float LastCritBurstTriggerTime = -999f;
+        public float LastTrajectorySupportTriggerTime = -999f;
+        public float LastProjectileTrailDamageTime = -999f;
+        public bool GuardianShieldActive;
+        public int DoomPulseKillCounter;
+        public int ElementalShotCursor;
+        public bool AmmoRainCoroutineStarted;
+        public float OptionTradeoffMoveSpeedPenalty;
+        public float OptionTradeoffGunDamagePenalty;
+        public float OptionTradeoffReloadSpeedPenalty;
+        public float OptionTradeoffDamageTakenPenalty;
+        public float OptionTradeoffMaxHealthPenalty;
+        public readonly List<ZombieModeAttributeModifierRecord> ModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<ZombieModeAttributeModifierRecord> GuardianShieldRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<ZombieModeAttributeModifierRecord> ContractRuntimeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+
+        public void Reset()
+        {
+            ProjectilePenetrationStacks = 0;
+            ProjectileBurnStacks = 0;
+            ProjectileColdStacks = 0;
+            ProjectilePoisonStacks = 0;
+            ProjectileArmorBreakStacks = 0;
+            TriggerLifestealStacks = 0;
+            TriggerLifestealChancePercent = 0;
+            TriggerLifestealHealAmount = 0;
+            TriggerCritBurstStacks = 0;
+            TriggerPurificationSiphonStacks = 0;
+            TriggerSecondWindStacks = 0;
+            TriggerDoomPulseStacks = 0;
+            MutatorCritFocusStacks = 0;
+            MutatorBulletTimeEnabled = false;
+            MutatorGuardianShieldEnabled = false;
+            MutatorQuickReloadStacks = 0;
+            MutatorDashBoostStacks = 0;
+            BattlefieldAmmoRainStacks = 0;
+            ProjectileTridentStacks = 0;
+            ProjectileShotgunSprayStacks = 0;
+            ProjectileStasisStacks = 0;
+            ProjectileRicochetStacks = 0;
+            ProjectileForkStacks = 0;
+            ProjectileReturnStacks = 0;
+            ProjectileHelixStacks = 0;
+            ProjectileTrailStacks = 0;
+            BattlefieldPurgeAuraStacks = 0;
+            BattlefieldCurseTrapStacks = 0;
+            BattlefieldBlackHoleStacks = 0;
+            BattlefieldGravityDragStacks = 0;
+            BattlefieldAreaRuntimeStarted = false;
+            BattlefieldGravityRuntimeStarted = false;
+            PlayerHealthListenerRegistered = false;
+            LastBulletTimeTriggerTime = -999f;
+            LastCritBurstTriggerTime = -999f;
+            LastTrajectorySupportTriggerTime = -999f;
+            LastProjectileTrailDamageTime = -999f;
+            GuardianShieldActive = false;
+            DoomPulseKillCounter = 0;
+            ElementalShotCursor = 0;
+            AmmoRainCoroutineStarted = false;
+            OptionTradeoffMoveSpeedPenalty = 0f;
+            OptionTradeoffGunDamagePenalty = 0f;
+            OptionTradeoffReloadSpeedPenalty = 0f;
+            OptionTradeoffDamageTakenPenalty = 0f;
+            OptionTradeoffMaxHealthPenalty = 0f;
+            ModifierRecords.Clear();
+            GuardianShieldRecords.Clear();
+            ContractRuntimeModifierRecords.Clear();
+        }
+    }
+
     public sealed class ZombieModeInsuranceState
     {
         public float RandomKeepRatio;
@@ -969,10 +1109,25 @@ namespace BossRush
         public ZombieModeNpcServiceState ServiceState;
     }
 
+    public sealed class ZombieModeTemporaryRealNpcRecord
+    {
+        public GameObject GameObject;
+        public string NpcType = string.Empty;
+        public int SpawnWave;
+        public bool SafeZoneBound;
+    }
+
     public sealed class ZombieModeTemporaryNpcProtectionMarker : MonoBehaviour
     {
         public int RunId;
         public string ServiceType = string.Empty;
+    }
+
+    public sealed class ZombieModeTemporaryRealNpcMarker : MonoBehaviour
+    {
+        public int RunId;
+        public string NpcType = string.Empty;
+        public bool UsesPurificationPayment = true;
     }
 
     public sealed class ZombieModeNpcServiceState
@@ -1097,8 +1252,6 @@ namespace BossRush
         public int LivingZombieCount;
         public int LivingNormalZombieCount;
         public int PendingNormalZombieSpawns;
-        public ZombieModePerformanceTier PerformanceTier = ZombieModePerformanceTier.Normal;
-        public readonly Queue<CharacterMainControl> PendingRecycleQueue = new Queue<CharacterMainControl>();
         public bool BeaconChanneling;
         public float BeaconChannelStartTime;
         public float BeaconChannelDuration = ZombieModeTuning.BeaconChannelDurationSeconds;
@@ -1124,7 +1277,6 @@ namespace BossRush
         {
             get { return Math.Min(TotalPollution / 5, 5); }
         }
-        public readonly Dictionary<string, float> ContractAffixWeights = new Dictionary<string, float>();
         public ZombieModeRewardNode CurrentRewardNode;
         public int FreeRefreshesRemainingCurrentNode;
         public int PaidRefreshIndexCurrentNode;
@@ -1139,15 +1291,16 @@ namespace BossRush
         public ZombieModePendingMapEventType PendingMapEvent = ZombieModePendingMapEventType.None;
         public int PendingEliteSquadCount;
         public readonly List<ZombieModeTemporaryNpc> TemporaryNpcs = new List<ZombieModeTemporaryNpc>();
+        public readonly List<ZombieModeTemporaryRealNpcRecord> TemporaryRealNpcs = new List<ZombieModeTemporaryRealNpcRecord>();
         public float LastTemporaryNpcProtectionTickTime;
         public readonly List<ZombieModeDropCandidate> EntityDropCleanupCandidates = new List<ZombieModeDropCandidate>();
         public readonly List<ZombieModeBossDrop> BossDropEntries = new List<ZombieModeBossDrop>();
-        public float LastPerformanceEvalTime;
         public bool ContainersRefilled;
         public ZombieModeStarterLoadout StarterLoadout = ZombieModeStarterLoadout.None;
         public string StarterAmmoCaliber = string.Empty;
         public readonly List<ZombieModeSpawnPoint> SpawnPoints = new List<ZombieModeSpawnPoint>();
         public readonly List<ZombieModeRunOnlyRecord> RunOnlyObjects = new List<ZombieModeRunOnlyRecord>();
+        public readonly ZombieModeOptionRuntimeState OptionRuntime = new ZombieModeOptionRuntimeState();
 
         public void ResetForNewRun(int runId, int sceneBuildIndex, string sceneName)
         {
@@ -1176,8 +1329,6 @@ namespace BossRush
             LivingZombieCount = 0;
             LivingNormalZombieCount = 0;
             PendingNormalZombieSpawns = 0;
-            PerformanceTier = ZombieModePerformanceTier.Normal;
-            PendingRecycleQueue.Clear();
             BeaconChanneling = false;
             BeaconChannelStartTime = 0f;
             BeaconChannelDuration = ZombieModeTuning.BeaconChannelDurationSeconds;
@@ -1195,7 +1346,6 @@ namespace BossRush
             ActiveSafeZoneMapPoi = null;
             PollutionFromNatural = 0;
             PollutionFromContracts = 0;
-            ContractAffixWeights.Clear();
             CurrentRewardNode = null;
             FreeRefreshesRemainingCurrentNode = 0;
             PaidRefreshIndexCurrentNode = 0;
@@ -1210,15 +1360,16 @@ namespace BossRush
             PendingMapEvent = ZombieModePendingMapEventType.None;
             PendingEliteSquadCount = 0;
             TemporaryNpcs.Clear();
+            TemporaryRealNpcs.Clear();
             LastTemporaryNpcProtectionTickTime = 0f;
             EntityDropCleanupCandidates.Clear();
             BossDropEntries.Clear();
-            LastPerformanceEvalTime = 0f;
             ContainersRefilled = false;
             StarterLoadout = ZombieModeStarterLoadout.None;
             StarterAmmoCaliber = string.Empty;
             SpawnPoints.Clear();
             RunOnlyObjects.Clear();
+            OptionRuntime.Reset();
         }
 
         public void ClearRuntime()
@@ -1228,14 +1379,13 @@ namespace BossRush
             EffectiveSpawnPoints.Clear();
             PendingPurificationStars.Clear();
             CurrentWaveBossInstances.Clear();
-            PendingRecycleQueue.Clear();
-            ContractAffixWeights.Clear();
             AttributeBonuses.Clear();
             AttributeModifierRecords.Clear();
             AttributeModifierCleanupRegistered = false;
             GuaranteedMerchantPurchaseMinQuality = 0;
             GuaranteedMerchantPurchasePending = false;
             TemporaryNpcs.Clear();
+            TemporaryRealNpcs.Clear();
             LastTemporaryNpcProtectionTickTime = 0f;
             EntityDropCleanupCandidates.Clear();
             BossDropEntries.Clear();
@@ -1260,7 +1410,6 @@ namespace BossRush
             LivingZombieCount = 0;
             LivingNormalZombieCount = 0;
             PendingNormalZombieSpawns = 0;
-            PerformanceTier = ZombieModePerformanceTier.Normal;
             BeaconChanneling = false;
             BeaconChannelStartTime = 0f;
             BeaconChannelDuration = ZombieModeTuning.BeaconChannelDurationSeconds;
@@ -1285,10 +1434,26 @@ namespace BossRush
             HalfPriceNextPaidRefresh = false;
             PendingMapEvent = ZombieModePendingMapEventType.None;
             PendingEliteSquadCount = 0;
-            LastPerformanceEvalTime = 0f;
             ContainersRefilled = false;
             StarterLoadout = ZombieModeStarterLoadout.None;
             StarterAmmoCaliber = string.Empty;
+            OptionRuntime.Reset();
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        internal void ValidatePhaseConsistency()
+        {
+            if (LifecyclePhase != ZombieModeLifecyclePhase.Active &&
+                LifecyclePhase != ZombieModeLifecyclePhase.Exiting)
+            {
+                if (CombatPhase != ZombieModeCombatPhase.None &&
+                    CombatPhase != ZombieModeCombatPhase.SuccessExit &&
+                    CombatPhase != ZombieModeCombatPhase.FailedExit)
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"[ZombieMode] 状态不一致: LifecyclePhase={LifecyclePhase}, CombatPhase={CombatPhase}");
+                }
+            }
         }
     }
 }

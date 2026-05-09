@@ -122,7 +122,6 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
     Utilities\SpawnPositionHelper.cs ^
-    Utilities\PerformanceTierAdjuster.cs ^
     Utilities\RunScopedRegistry.cs ^
     Utilities\SteamHelper.cs ^
     Utilities\BossCleanupHelpers.cs ^
@@ -176,6 +175,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ZombieMode\ZombieModeWaveController.cs ^
     ZombieMode\ZombieModeEnemyRuntime.cs ^
     ZombieMode\ZombieModeRewards.cs ^
+    ZombieMode\ZombieModeRewardEffects.cs ^
+    ZombieMode\ZombieModeRewardProjectilePatch.cs ^
     ZombieMode\ZombieModeDropsAndPerformance.cs ^
     ZombieMode\ZombiePurificationPointController.cs ^
     ZombieMode\ZombieModeSafeZoneController.cs ^

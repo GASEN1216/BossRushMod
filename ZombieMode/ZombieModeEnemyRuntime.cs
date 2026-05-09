@@ -9,7 +9,7 @@ namespace BossRush
         public bool SuppressDrops;
         public bool IsBoss;
         public bool DeathSettled;
-        public bool RecycledForPerformance;
+        public bool RemovedFromRuntime;
         public ZombieModeBossKind BossKind;
         public ZombieModeEnemyKind EnemyKind;
         public ZombieModeSpecialKind SpecialKind;
@@ -47,7 +47,7 @@ namespace BossRush
         // 同步路径：
         //   - spawn:   RegisterZombieModeEnemyRuntimeShell 内 Add
         //   - death:   HandleZombieModeHealthDead 在 marker.DeathSettled = true 之后 Remove
-        //   - recycle: RecycleZombieModeEnemyForPerformance 内 Remove
+        //   - cleanup: 安全区/运行期清理移除敌人时 Remove
         //   - cleanup: ClearRuntime / CleanupZombieModeRunOnlyState 调用 Clear
         private readonly System.Collections.Generic.HashSet<int> zombieModeEnemyInstanceIds
             = new System.Collections.Generic.HashSet<int>();
@@ -106,7 +106,7 @@ namespace BossRush
             marker.SuppressDrops = true;
             marker.IsBoss = isBoss;
             marker.DeathSettled = false;
-            marker.RecycledForPerformance = false;
+            marker.RemovedFromRuntime = false;
             marker.BossKind = bossKind;
             marker.EnemyKind = isBoss ? ZombieModeEnemyKind.Elite : enemyKind;
             marker.SpecialKind = specialKind;

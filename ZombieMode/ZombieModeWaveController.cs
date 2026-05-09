@@ -73,6 +73,7 @@ namespace BossRush
             if (marker != null && marker.RunId == runId)
             {
                 ApplyZombieModeEnemyHurtAffixes(runId, health, damageInfo, marker);
+                HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);
                 if (marker.IsBoss)
                 {
                     HandleZombieModeBossHurt(runId, marker, victim);
@@ -216,11 +217,12 @@ namespace BossRush
                 return;
             }
 
-            if (marker.DeathSettled || marker.RecycledForPerformance)
+            if (marker.DeathSettled || marker.RemovedFromRuntime)
             {
                 return;
             }
 
+            HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);
             marker.DeathSettled = true;
             // 一旦 DeathSettled 就从 hot path 集合移除——后续技能命中尸体不会重新进入 marker 路径。
             UnregisterZombieModeEnemyInstanceId(character);
@@ -308,15 +310,13 @@ namespace BossRush
                 return;
             }
 
-            if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat)
+            if (ZombieModePhaseGuards.IsCombatRunning(zombieModeRunState.CombatPhase))
             {
                 TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);
                 return;
             }
 
-            if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.InitialPreparation ||
-                zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Preparation ||
-                zombieModeRunState.CombatPhase == ZombieModeCombatPhase.ExtractionOpportunity)
+            if (ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase))
             {
                 TickZombieModeSafeZone();
                 TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);
@@ -601,6 +601,7 @@ namespace BossRush
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.Settling;
             CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "CompleteWave");
             RecycleZombieModeTemporaryNpcs(runId);
+            RecycleZombieModeTemporaryRealNpcs(runId);
             bool bossNode = IsZombieModeBossWave(zombieModeRunState.CurrentWave);
             if (bossNode)
             {

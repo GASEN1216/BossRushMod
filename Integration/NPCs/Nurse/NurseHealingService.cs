@@ -429,9 +429,20 @@ namespace BossRush
         /// </summary>
         public static bool CanAffordHealing(int cost)
         {
+            return CanAffordHealing(cost, null);
+        }
+
+        public static bool CanAffordHealing(int cost, Component paymentContext)
+        {
             try
             {
                 if (cost <= 0) return true;
+                if (paymentContext != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(paymentContext))
+                {
+                    return ModBehaviour.Instance.CanAffordZombieModePurificationPointsForRealNpc(paymentContext, cost);
+                }
                 return EconomyManager.IsEnough(new Cost((long)cost), true, true);
             }
             catch (Exception e)
@@ -446,8 +457,20 @@ namespace BossRush
         /// </summary>
         public static long GetPlayerMoney()
         {
+            return GetPlayerMoney(null);
+        }
+
+        public static long GetPlayerMoney(Component paymentContext)
+        {
             try
             {
+                if (paymentContext != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(paymentContext))
+                {
+                    return ModBehaviour.Instance.GetZombieModePurificationPointsForRealNpcUi(paymentContext);
+                }
+
                 long accountMoney = EconomyManager.Money;
                 long cashMoney = EconomyManager.Cash;
                 return accountMoney + cashMoney;
@@ -478,7 +501,7 @@ namespace BossRush
         }
 
         /// <returns>治疗执行结果</returns>
-        public static HealingExecutionResult PerformHealing(int cost)
+        public static HealingExecutionResult PerformHealing(int cost, Component paymentContext = null)
         {
             int finalCost = 0;
             bool paymentDeducted = false;
@@ -486,7 +509,7 @@ namespace BossRush
             try
             {
                 HealingQuote quote;
-                if (!TryBuildHealingQuote(out quote, true))
+                if (!TryBuildHealingQuote(out quote, true, paymentContext))
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 无法获取玩家状态");
                     return HealingExecutionResult.Failure;
@@ -523,7 +546,7 @@ namespace BossRush
                     return HealingExecutionResult.Failure;
                 }
 
-                if (!DeductMoney(finalCost))
+                if (!DeductMoney(finalCost, paymentContext))
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 扣费失败");
                     return HealingExecutionResult.Failure;
@@ -534,7 +557,7 @@ namespace BossRush
                 if (player == null || player.Health == null || player != targetPlayer)
                 {
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 扣费后玩家上下文发生变化，尝试退款");
-                    TryRefundMoney(finalCost, "玩家上下文变化");
+                    TryRefundMoney(finalCost, "玩家上下文变化", paymentContext);
                     return HealingExecutionResult.Failure;
                 }
 
@@ -548,7 +571,7 @@ namespace BossRush
                     ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: 血量未成功恢复到上限，尝试退款");
                     if (paymentDeducted && finalCost > 0)
                     {
-                        TryRefundMoney(finalCost, "治疗回血未生效");
+                        TryRefundMoney(finalCost, "治疗回血未生效", paymentContext);
                     }
                     return HealingExecutionResult.Failure;
                 }
@@ -570,7 +593,7 @@ namespace BossRush
                         ModBehaviour.DevLog(LOG_PREFIX + "治疗失败: Debuff 未清除干净且未产生有效治疗，尝试退款");
                         if (paymentDeducted && finalCost > 0)
                         {
-                            TryRefundMoney(finalCost, "Debuff清除失败");
+                            TryRefundMoney(finalCost, "Debuff清除失败", paymentContext);
                         }
                         return HealingExecutionResult.Failure;
                     }
@@ -597,20 +620,28 @@ namespace BossRush
             {
                 if (paymentDeducted && !treatmentApplied && finalCost > 0)
                 {
-                    TryRefundMoney(finalCost, "治疗执行异常");
+                    TryRefundMoney(finalCost, "治疗执行异常", paymentContext);
                 }
                 NPCExceptionHandler.LogAndIgnore(e, "NurseHealingService.PerformHealing");
                 return HealingExecutionResult.Failure;
             }
         }
 
-        private static bool TryRefundMoney(int amount, string reason)
+        private static bool TryRefundMoney(int amount, string reason, Component paymentContext = null)
         {
             try
             {
                 if (amount <= 0)
                 {
                     return false;
+                }
+
+                if (paymentContext != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(paymentContext))
+                {
+                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(paymentContext, amount, true);
+                    return true;
                 }
 
                 if (!EconomyManager.Add(amount))
@@ -632,13 +663,23 @@ namespace BossRush
         /// <summary>
         /// 通过官方经济系统扣费
         /// </summary>
-        private static bool DeductMoney(int amount)
+        private static bool DeductMoney(int amount, Component paymentContext = null)
         {
             try
             {
                 if (amount <= 0)
                 {
                     return false;
+                }
+
+                if (paymentContext != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(paymentContext))
+                {
+                    return ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
+                        paymentContext,
+                        amount,
+                        "ZombieModeTempNurseHeal");
                 }
 
                 Cost payment = new Cost((long)amount);
@@ -762,7 +803,7 @@ namespace BossRush
             InsufficientFunds
         }
 
-        private static bool TryBuildHealingQuote(out HealingQuote quote, bool includeAffordability)
+        private static bool TryBuildHealingQuote(out HealingQuote quote, bool includeAffordability, Component paymentContext = null)
         {
             quote = default(HealingQuote);
 
@@ -793,7 +834,7 @@ namespace BossRush
                 return true;
             }
 
-            if (includeAffordability && !CanAffordHealing(quote.Cost))
+            if (includeAffordability && !CanAffordHealing(quote.Cost, paymentContext))
             {
                 quote.Status = HealingStatus.InsufficientFunds;
                 return true;
@@ -811,7 +852,7 @@ namespace BossRush
         public static HealingStatus GetHealingStatus()
         {
             int ignoredCost;
-            return GetHealingStatus(out ignoredCost);
+            return GetHealingStatus(null, out ignoredCost);
         }
 
         /// <summary>
@@ -819,11 +860,16 @@ namespace BossRush
         /// </summary>
         public static HealingStatus GetHealingStatus(out int cost)
         {
+            return GetHealingStatus(null, out cost);
+        }
+
+        public static HealingStatus GetHealingStatus(Component paymentContext, out int cost)
+        {
             cost = 0;
             try
             {
                 HealingQuote quote;
-                if (!TryBuildHealingQuote(out quote, true))
+                if (!TryBuildHealingQuote(out quote, true, paymentContext))
                 {
                     return HealingStatus.FullHealthNoDebuff;
                 }

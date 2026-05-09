@@ -18,7 +18,7 @@ namespace BossRush
 
         public bool CanUseZombieModeBeacon()
         {
-            if (!IsZombieModeActive || zombieModeRunState.LifecyclePhase != ZombieModeLifecyclePhase.Active)
+            if (!IsZombieModeActive)
             {
                 return false;
             }
@@ -28,18 +28,26 @@ namespace BossRush
                    ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase);
         }
 
+        public string GetZombieModeBeaconUnavailableReasonKey()
+        {
+            if (!IsZombieModeActive)
+            {
+                return "BossRush_ZombieMode_Notify_BeaconNotZombieMode";
+            }
+
+            if (zombieModeRunState.ExtractionChanneling)
+            {
+                return "BossRush_ZombieMode_Notify_BeaconExtractionLocked";
+            }
+
+            return "BossRush_ZombieMode_Notify_BeaconNotPreparation";
+        }
+
         public bool TryUseZombieModeBeacon()
         {
             if (!CanUseZombieModeBeacon())
             {
-                if (zombieModeRunState.ExtractionChanneling)
-                {
-                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_BeaconExtractionLocked"));
-                }
-                else
-                {
-                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_BeaconNotPreparation"));
-                }
+                NotificationText.Push(L10n.T(GetZombieModeBeaconUnavailableReasonKey()));
                 return false;
             }
 
@@ -424,6 +432,7 @@ namespace BossRush
             TryReleaseZombieModeExtractionCountdownUi();
             ReleaseZombieModeSafeZoneThreatSuppression();
             RecycleZombieModeSafeZoneBoundTemporaryNpcs(runId);
+            RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(runId);
 
             DestroyZombieModeActiveExtractionArea();
 

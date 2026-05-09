@@ -449,6 +449,30 @@ namespace BossRush
             
             ModBehaviour.DevLog("[ReforgeUI] UI已关闭");
         }
+
+        public static void CloseUIIfOwnedBy(Transform npcTransform)
+        {
+            if (!IsReforgeUIOwnedBy(npcTransform))
+            {
+                return;
+            }
+
+            CloseUI();
+        }
+
+        private static bool IsReforgeUIOwnedBy(Transform npcTransform)
+        {
+            if (npcTransform == null || currentController == null)
+            {
+                return false;
+            }
+
+            Transform currentTransform = currentController.transform;
+            return currentTransform != null &&
+                   (ReferenceEquals(currentTransform, npcTransform) ||
+                    currentTransform.IsChildOf(npcTransform) ||
+                    npcTransform.IsChildOf(currentTransform));
+        }
         
         // UI监控器
         private static ReforgeUIMonitor uiMonitor;
@@ -1629,9 +1653,13 @@ namespace BossRush
             // 如果金钱不足，更新概率显示提示
             if (!canAfford && probabilityText != null)
             {
+                bool usePurification = currentController != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
+                string currencyName = usePurification ? "净化点" : "金钱";
                 string discountInfo = discount > 0 ? string.Format(" ({0:P0}折扣)", discount) : "";
-                probabilityText.text = string.Format("<color=#FF4D4D>金钱不足！\n基础费用: {0}{1}\n金钱滑块投入: {2}\n极性滑块花费: {3}\n所需总额: {4}\n你的当前总金钱: {5}</color>", 
-                    baseCost, discountInfo, currentMoney, tendencyCost, totalCost, playerMoney);
+                probabilityText.text = string.Format("<color=#FF4D4D>{6}不足！\n基础费用: {0}{1}\n投入: {2}\n极性滑块花费: {3}\n所需总额: {4}\n你的当前总{6}: {5}</color>",
+                    baseCost, discountInfo, currentMoney, tendencyCost, totalCost, playerMoney, currencyName);
                 probabilityText.color = Color.white;
             }
         }
@@ -1800,18 +1828,23 @@ namespace BossRush
             
             int tendencyCost = GetTendencyCost();
             string tendencyLine = string.Format("极性费用: {0}\n", tendencyCost);
+            bool usePurification = currentController != null &&
+                ModBehaviour.Instance != null &&
+                ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
+            string investLabel = usePurification ? "净化点投入" : "投入";
+            string totalCostLabel = usePurification ? "总计花费(净化点)" : "总计花费";
             
             float posProb = currentTendencyChance;
             float negProb = 1.0f - currentTendencyChance;
             string polarityProbLine = string.Format("<color=#00FFFF>负向概率: {0:P0}   正向概率: {1:P0}</color>\n", negProb, posProb);
             
             int totalCost = currentMoney + tendencyCost;
-            string totalCostLine = string.Format("<color=#FFFF00>总计花费: {0}</color>", totalCost);
+            string totalCostLine = string.Format("<color=#FFFF00>{0}: {1}</color>", totalCostLabel, totalCost);
             
             probabilityText.text = string.Format(
                 "品质: {0} (系数: {1:F2})\n" +
                 "价值: {2:F0} (系数: {3:F2})\n" +
-                "投入: {4} (加成: {5:F2})\n" +
+                "{11}: {4} (加成: {5:F2})\n" +
                 "{8}" + 
                 "{9}" + 
                 "<color={6}>幅度乘数参数: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n" +
@@ -1821,7 +1854,8 @@ namespace BossRush
                 currentMoney, moneyBonus,       // {4}, {5}
                 probColorHex, p,                // {6}, {7}
                 tendencyLine, polarityProbLine, // {8}, {9}
-                totalCostLine                   // {10}
+                totalCostLine,                  // {10}
+                investLabel                     // {11}
             );
 
             // 整体文本使用白色
@@ -1855,23 +1889,45 @@ namespace BossRush
 
             isReforging = true;
             
+            bool paidWithPurification = false;
+            bool reforgeCompleted = false;
+
             try
             {
                 // 扣除金钱
                 if (totalCost > 0)
                 {
-                    Cost cost = new Cost((long)totalCost);
-                    if (!EconomyManager.Pay(cost, true, true))
+                    bool paid;
+                    bool usePurificationPayment = currentController != null &&
+                        ModBehaviour.Instance != null &&
+                        ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
+
+                    if (usePurificationPayment)
+                    {
+                        paid = ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
+                            currentController,
+                            totalCost,
+                            "ZombieModeTempGoblinReforge");
+                        paidWithPurification = paid;
+                    }
+                    else
+                    {
+                        Cost cost = new Cost((long)totalCost);
+                        paid = EconomyManager.Pay(cost, true, true);
+                    }
+
+                    if (!paid)
                     {
                         ModBehaviour.DevLog("[ReforgeUI] 金钱不足");
                         isReforging = false;
                         return;
                     }
                 }
-                
+
                 // 执行重铸，传入当前的倾向几率
                 var result = ReforgeSystem.Reforge(selectedItem, currentMoney, "player", currentTendencyChance);
-                
+                reforgeCompleted = true;
+
                 // 显示属性变化（现在重铸必定成功）
                 ShowPropertyChanges();
                 
@@ -1889,6 +1945,25 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                if (ModBehaviour.Instance != null)
+                {
+                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(currentController, totalCost, paidWithPurification && !reforgeCompleted);
+                }
+
+                if (paidWithPurification && !reforgeCompleted)
+                {
+                    try
+                    {
+                        UpdateUIStateKeepSlider(GetPlayerMoney());
+                    }
+                    catch (Exception refreshError)
+                    {
+                        ModBehaviour.DevLog("[ReforgeUI] [WARNING] 重铸失败后刷新净化点 UI 失败: " + refreshError.Message);
+                    }
+
+                    ModBehaviour.DevLog("[ReforgeUI] 重铸异常失败，已回退净化点: " + totalCost);
+                }
+
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 重铸失败: " + e.Message);
             }
             finally
@@ -2459,6 +2534,13 @@ namespace BossRush
         {
             try
             {
+                if (currentController != null &&
+                    ModBehaviour.Instance != null &&
+                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController))
+                {
+                    return ModBehaviour.Instance.GetZombieModePurificationPointsForRealNpcUi(currentController);
+                }
+
                 return (int)EconomyManager.Money;
             }
             catch { }

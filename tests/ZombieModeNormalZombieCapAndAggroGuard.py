@@ -74,9 +74,7 @@ def main() -> int:
         return fail("TickZombieModeWaveController not found")
     for token in [
         "TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);",
-        "ZombieModeCombatPhase.InitialPreparation",
-        "ZombieModeCombatPhase.Preparation",
-        "ZombieModeCombatPhase.ExtractionOpportunity",
+        "ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase)",
     ]:
         result = require(tick, token, "preparation phases must continue maintaining ambient zombies")
         if result:

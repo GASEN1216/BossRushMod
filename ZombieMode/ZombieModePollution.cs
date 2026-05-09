@@ -517,8 +517,6 @@ namespace BossRush
             bool swift = affixes.Contains(ZombieModeEliteAffix.Swift);
             bool toxicAura = affixes.Contains(ZombieModeEliteAffix.ToxicAura);
             bool plague = affixes.Contains(ZombieModeEliteAffix.Plague);
-            bool splitting = affixes.Contains(ZombieModeEliteAffix.Splitting);
-            bool burst = affixes.Contains(ZombieModeEliteAffix.Burst);
 
             if (stalwart && shielded && regenerating)
             {
@@ -531,11 +529,6 @@ namespace BossRush
             }
 
             if (toxicAura && plague && swift && zombieModeRunState.TotalPollution < 15)
-            {
-                return false;
-            }
-
-            if (splitting && burst && zombieModeRunState.PerformanceTier >= ZombieModePerformanceTier.SoftProtect)
             {
                 return false;
             }
@@ -1105,14 +1098,13 @@ namespace BossRush
                     ZombieModeTuning.BurstAffixDeathDamage);
             }
 
-            if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Splitting) &&
-                zombieModeRunState.PerformanceTier < ZombieModePerformanceTier.SoftProtect)
+            if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Splitting))
             {
                 int count = ZombieModeTuning.SplittingAffixSpawnCount;
                 for (int i = 0; i < count; i++)
                 {
                     Vector3 offset = Quaternion.Euler(0f, 360f * i / count, 0f) * Vector3.forward * 1.5f;
-                    SpawnZombieModeSmallSplitAsync(runId, character.transform.position + offset).Forget();
+                    QueueZombieModeSmallSplitSpawn(runId, character.transform.position + offset);
                 }
             }
         }
@@ -1191,7 +1183,7 @@ namespace BossRush
                 !IsZombieModeRunValid(marker.RunId) ||
                 zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Combat ||
                 ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase) ||
-                marker.RecycledForPerformance ||
+                marker.RemovedFromRuntime ||
                 marker.DeathSettled)
             {
                 return;
@@ -1253,13 +1245,10 @@ namespace BossRush
                     break;
                 case ZombieModeSpecialKind.Summoner:
                     character.PopText(L10n.T("BossRush_ZombieMode_Special_Summoner"));
-                    if (zombieModeRunState.PerformanceTier < ZombieModePerformanceTier.SoftProtect)
+                    for (int i = 0; i < ZombieModeTuning.SummonerSpawnCount; i++)
                     {
-                        for (int i = 0; i < ZombieModeTuning.SummonerSpawnCount; i++)
-                        {
-                            Vector3 offset = Quaternion.Euler(0f, 360f * i / ZombieModeTuning.SummonerSpawnCount, 0f) * Vector3.forward * 1.5f;
-                            SpawnZombieModeSmallSplitAsync(runId, character.transform.position + offset).Forget();
-                        }
+                        Vector3 offset = Quaternion.Euler(0f, 360f * i / ZombieModeTuning.SummonerSpawnCount, 0f) * Vector3.forward * 1.5f;
+                        QueueZombieModeSmallSplitSpawn(runId, character.transform.position + offset);
                     }
                     break;
                 case ZombieModeSpecialKind.Harasser:
@@ -1366,7 +1355,7 @@ namespace BossRush
                     target.RunId != runId ||
                     target.IsBoss ||
                     target.EnemyKind != ZombieModeEnemyKind.Normal ||
-                    target.RecycledForPerformance ||
+                    target.RemovedFromRuntime ||
                     target.DeathSettled)
                 {
                     continue;
@@ -1837,7 +1826,7 @@ namespace BossRush
                 marker == null ||
                 marker.RunId != runId ||
                 marker.DeathSettled ||
-                marker.RecycledForPerformance ||
+                marker.RemovedFromRuntime ||
                 !marker.EliteAffixes.Contains(ZombieModeEliteAffix.Commander) ||
                 owner.Health == null ||
                 owner.Health.CurrentHealth <= 0f)

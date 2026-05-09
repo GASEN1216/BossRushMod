@@ -55,7 +55,7 @@ def main() -> int:
         "inst.CanUseZombieModeBeacon()",
         "inst.TryUseZombieModeBeacon()",
         "BossRush_ZombieMode_Notify_BeaconNotZombieMode",
-        "BossRush_ZombieMode_Notify_BeaconNotPreparation",
+        "inst.GetZombieModeBeaconUnavailableReasonKey()",
     ]:
         if snippet not in usage_text:
             return fail("ZombieModeItemIdentityGuard: beacon usage missing runtime hook -> " + snippet)

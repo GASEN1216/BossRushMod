@@ -55,7 +55,7 @@ namespace BossRush
                                    marker == null ||
                                    marker.RunId != runId ||
                                    marker.DeathSettled ||
-                                   marker.RecycledForPerformance;
+                                   marker.RemovedFromRuntime;
                 if (!shouldPrune)
                 {
                     continue;
@@ -99,7 +99,7 @@ namespace BossRush
             for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
             {
                 ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
-                if (marker == null || marker.RunId != runId || marker.IsBoss || marker.DeathSettled || marker.RecycledForPerformance)
+                if (marker == null || marker.RunId != runId || marker.IsBoss || marker.DeathSettled || marker.RemovedFromRuntime)
                 {
                     continue;
                 }
@@ -113,7 +113,7 @@ namespace BossRush
 
                 try
                 {
-                    marker.RecycledForPerformance = true;
+                    marker.RemovedFromRuntime = true;
                     CharacterMainControl owner = marker.Owner;
                     if (owner == null)
                     {
@@ -191,7 +191,10 @@ namespace BossRush
             }
 
             RemoveZombieModeAttributeModifiers();
+            RemoveZombieModeOptionRuntimeEffects();
+            CleanupZombieModeFortificationInteractionState();
             InvalidateZombieModeRun();
+            ClearZombieModeSupportSpawnQueue();
 
             RunScopedRegistry.ForEachReverse(
                 zombieModeRunState.RunOnlyObjects,
