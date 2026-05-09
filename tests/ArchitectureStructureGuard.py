@@ -19,6 +19,7 @@ COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
+AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
@@ -44,6 +45,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "Integration/EquipmentRuntimeHooks.cs",
     "Integration/IntegrationRuntimeHooks.cs",
+    "Integration/Affinity/AffinityRuntimeHooks.cs",
     "Utilities/GameplayRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
@@ -712,6 +714,37 @@ def main() -> int:
         for required in required_tokens:
             if required not in body:
                 return fail("ArchitectureStructureGuard: IntegrationRuntimeHooks wrapper missing token: " + required)
+
+    affinity_runtime_hooks = AFFINITY_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    for signature, required_tokens in {
+        "private void InitializeAffinitySystem()": [
+            "AffinityManager.Initialize();",
+            "NPCModuleRegistry.RegisterAffinityConfigs();",
+            "AffinityManager.OnAffinityChanged += OnAffinityChanged;",
+            "AffinityManager.OnLevelUp += OnAffinityLevelUp;",
+        ],
+        "private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)": [
+            "AffinityUIManager.ShowAffinityChange(npcId, delta);",
+            "HandleSpouseFollowAffinityLoss(npcId);",
+            "RefreshSpouseInteractionOptionsForNpc(npcId);",
+        ],
+        "private void OnAffinityLevelUp(string npcId, int newLevel)": [
+            "AffinityUIManager.ShowLevelUpNotification(npcId, newLevel);",
+        ],
+    }.items():
+        body = extract_method_body(affinity_runtime_hooks, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: AffinityRuntimeHooks missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: AffinityRuntimeHooks method missing token: " + required)
+    for forbidden in [
+        "private void InitializeAffinitySystem()",
+        "private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)",
+        "private void OnAffinityLevelUp(string npcId, int newLevel)",
+    ]:
+        if forbidden in mod_text:
+            return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own affinity runtime method anymore: " + forbidden)
     for required in [
         "PrepareSceneRuntimeForLoad();",
         "OnSceneUnloadAlwaysOnRuntime();",

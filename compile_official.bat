@@ -356,6 +356,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Affinity\Systems\NPCDialogueSystem.cs ^
     Integration\Affinity\Systems\NPCShopSystem.cs ^
     Integration\Affinity\Systems\NPCAffinityInteractionHelper.cs ^
+    Integration\Affinity\AffinityRuntimeHooks.cs ^
     Integration\Affinity\Interactables\NPCInteractableBase.cs ^
     Integration\Affinity\Interactables\NPCGiftInteractable.cs ^
     Integration\Affinity\Interactables\NPCShopInteractable.cs ^
