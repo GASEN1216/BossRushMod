@@ -8,6 +8,14 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        private enum BossRushEntryMode
+        {
+            Normal,
+            ModeD,
+            ModeE,
+            ModeF
+        }
+
         /// <summary>
         /// 统一判定 BossRush 入场模式，优先级：Mode E > Mode F > Mode D > Normal
         /// </summary>

@@ -17,6 +17,7 @@ MARRIAGE_DEBUG_UI = Path("DebugAndTools/MarriageTestDebugUI.cs")
 ACHIEVEMENT_RUNTIME_MODULE = Path("Achievement/AchievementRuntimeModule.cs")
 ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 UI_SIGNS_INTERACTION_SCAN = Path("UIAndSigns/BossRushInteractionScan.cs")
+UI_SIGNS_RUNTIME_BRIDGES = Path("UIAndSigns/UIAndSignsRuntimeBridges.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
 COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
@@ -27,6 +28,7 @@ GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
 WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
+WAVES_SPAWNER_CONTROL = Path("WavesArena/WavesArenaSpawnerControl.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
@@ -48,6 +50,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Achievement/AchievementRuntimeModule.cs",
     "Achievement/AchievementRuntimeHooks.cs",
     "UIAndSigns/BossRushInteractionScan.cs",
+    "UIAndSigns/UIAndSignsRuntimeBridges.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
     "Integration/EquipmentRuntimeHooks.cs",
@@ -59,6 +62,7 @@ REQUIRED_COMPILE_SOURCES = [
     "WavesArena/WavesArenaRuntimeHooks.cs",
     "WavesArena/BossRushEntryFlow.cs",
     "WavesArena/WavesArenaEnemyMaintenance.cs",
+    "WavesArena/WavesArenaSpawnerControl.cs",
     "ModeE/ModeERuntimeModule.cs",
     "ModeE/ModeERuntimeHooks.cs",
     "ModeF/ModeFRuntimeModule.cs",
@@ -312,6 +316,7 @@ def main() -> int:
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     waves_entry_flow = WAVES_ENTRY_FLOW.read_text(encoding="utf-8", errors="ignore")
     waves_enemy_maintenance = WAVES_ENEMY_MAINTENANCE.read_text(encoding="utf-8", errors="ignore")
+    waves_spawner_control = WAVES_SPAWNER_CONTROL.read_text(encoding="utf-8", errors="ignore")
     for signature, required_tokens in {
         "private BossRushEntryMode DetermineBossRushEntryMode(string context)": [
             "DetectFactionFlag();",
@@ -354,12 +359,32 @@ def main() -> int:
         for required in required_tokens:
             if required not in body:
                 return fail("ArchitectureStructureGuard: WavesArenaEnemyMaintenance missing token: " + required)
+    for signature, required_tokens in {
+        "private void DisableAllSpawners()": [
+            "_cachedCreatedField = typeof(CharacterSpawnerRoot).GetField(\"created\"",
+            "Light[] lights = root.gameObject.GetComponentsInChildren<Light>(true);",
+            "spawnersDisabled = true;",
+        ],
+        "private void TryFixStuckWaveIfNoBossAlive()": [
+            "bossesPerWave > 1",
+            "bossesInCurrentWaveRemaining = 0;",
+            "ProceedAfterWaveFinished();",
+        ],
+    }.items():
+        body = extract_method_body(waves_spawner_control, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: WavesArenaSpawnerControl missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: WavesArenaSpawnerControl missing token: " + required)
     for forbidden in [
         "private BossRushEntryMode DetermineBossRushEntryMode(string context)",
         "private System.Collections.IEnumerator SetupBossRushInDemoChallenge(Scene scene)",
         "private void ForceKillAllEnemies()",
         "private void ClearEnemiesForBossRush()",
         "private System.Collections.IEnumerator ContinuousClearEnemiesUntilWaveStart()",
+        "private void DisableAllSpawners()",
+        "private void TryFixStuckWaveIfNoBossAlive()",
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush entry flow method anymore: " + forbidden)
@@ -701,6 +726,7 @@ def main() -> int:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush audio method anymore: " + forbidden)
 
     interaction_scan = UI_SIGNS_INTERACTION_SCAN.read_text(encoding="utf-8", errors="ignore")
+    ui_signs_runtime_bridges = UI_SIGNS_RUNTIME_BRIDGES.read_text(encoding="utf-8", errors="ignore")
     for signature, required_tokens in {
         "private IEnumerator FindInteractionTargets(int scanTimes)": [
             "ScanAndInject();",
@@ -736,6 +762,35 @@ def main() -> int:
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own interaction scan method anymore: " + forbidden)
+
+    for signature, required_tokens in {
+        "private void CreateRescueTeleportBubble()": [
+            "CreateRescueTeleportBubble_UIAndSigns();",
+        ],
+        "private void TryCreateArenaDifficultyEntryPoint()": [
+            "TryCreateArenaDifficultyEntryPoint_UIAndSigns();",
+        ],
+        "private void TryCreateArenaDifficultyEntryPoint(Vector3 position)": [
+            "TryCreateArenaDifficultyEntryPoint_UIAndSigns(position);",
+        ],
+        "private IEnumerator EnsureArenaEntryPointCreated()": [
+            "EnsureArenaEntryPointCreated_UIAndSigns();",
+        ],
+    }.items():
+        body = extract_method_body(ui_signs_runtime_bridges, signature)
+        if not body:
+            return fail("ArchitectureStructureGuard: UIAndSignsRuntimeBridges missing method: " + signature)
+        for required in required_tokens:
+            if required not in body:
+                return fail("ArchitectureStructureGuard: UIAndSignsRuntimeBridges missing token: " + required)
+    for forbidden in [
+        "private void CreateRescueTeleportBubble()",
+        "private void TryCreateArenaDifficultyEntryPoint()",
+        "private void TryCreateArenaDifficultyEntryPoint(Vector3 position)",
+        "private IEnumerator EnsureArenaEntryPointCreated()",
+    ]:
+        if forbidden in mod_text:
+            return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own UIAndSigns bridge method anymore: " + forbidden)
 
     achievement_runtime_module = ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     if "owner.TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in achievement_runtime_module:

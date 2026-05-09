@@ -105,6 +105,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModConfigApi.cs ^
     UIAndSigns\UIAndSigns.cs ^
     UIAndSigns\BossRushInteractionScan.cs ^
+    UIAndSigns\UIAndSignsRuntimeBridges.cs ^
     DebugAndTools\DebugAndTools.cs ^
     DebugAndTools\DebugToolsRuntimeModule.cs ^
     DebugAndTools\DebugToolsRuntimeHooks.cs ^
@@ -156,6 +157,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     WavesArena\WavesArenaRuntimeHooks.cs ^
     WavesArena\BossRushEntryFlow.cs ^
     WavesArena\WavesArenaEnemyMaintenance.cs ^
+    WavesArena\WavesArenaSpawnerControl.cs ^
     LootAndRewards\LegacyBossLootProbabilityModel.cs ^
     LootAndRewards\LootAndRewards.cs ^
     LootAndRewards\VictoryRewardShadowCrateController.cs ^
