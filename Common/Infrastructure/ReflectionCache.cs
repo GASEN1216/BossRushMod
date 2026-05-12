@@ -16,49 +16,49 @@ namespace BossRush
     {
         // InteractableBase.otherInterablesInGroup (私有字段)
         public static readonly FieldInfo InteractableBase_OtherInterablesInGroup;
-        
+
         // MultiInteraction.interactables (私有字段)
         public static readonly FieldInfo MultiInteraction_Interactables;
-        
+
         // NotificationText.duration / durationIfPending (私有字段)
         public static readonly FieldInfo NotificationText_Duration;
         public static readonly FieldInfo NotificationText_DurationIfPending;
-        
+
         // StockShop 私有字段
         public static readonly FieldInfo StockShop_MerchantID;
         public static readonly FieldInfo StockShop_ItemInstances;
         public static readonly FieldInfo StockShop_AccountAvaliable;
-        
+
         // CharacterRandomPreset.characterIconType (私有字段)
         public static readonly FieldInfo CharacterRandomPreset_CharacterIconType;
-        
+
         // NotificationText.ShowNext (静态方法)
         public static readonly MethodInfo NotificationText_ShowNext;
-        
+
         // 缓存初始化标志
         public static readonly bool IsInitialized;
-        
+
         static ReflectionCache()
         {
             try
             {
                 const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
                 const BindingFlags publicStatic = BindingFlags.Public | BindingFlags.Static;
-                
+
                 // InteractableBase.otherInterablesInGroup
                 InteractableBase_OtherInterablesInGroup = typeof(InteractableBase).GetField(
                     "otherInterablesInGroup", privateInstance);
-                
+
                 // MultiInteraction.interactables
                 MultiInteraction_Interactables = typeof(MultiInteraction).GetField(
                     "interactables", privateInstance);
-                
+
                 // NotificationText 字段
                 NotificationText_Duration = typeof(NotificationText).GetField(
                     "duration", privateInstance | BindingFlags.Public);
                 NotificationText_DurationIfPending = typeof(NotificationText).GetField(
                     "durationIfPending", privateInstance | BindingFlags.Public);
-                
+
                 // StockShop 字段
                 StockShop_MerchantID = typeof(StockShop).GetField(
                     "merchantID", privateInstance);
@@ -66,14 +66,14 @@ namespace BossRush
                     "itemInstances", privateInstance);
                 StockShop_AccountAvaliable = typeof(StockShop).GetField(
                     "accountAvaliable", privateInstance);
-                
+
                 // CharacterRandomPreset.characterIconType
                 CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(
                     "characterIconType", privateInstance);
-                
+
                 // NotificationText.ShowNext 方法
                 NotificationText_ShowNext = typeof(NotificationText).GetMethod("ShowNext", publicStatic);
-                
+
                 IsInitialized = true;
             }
             catch (Exception e)

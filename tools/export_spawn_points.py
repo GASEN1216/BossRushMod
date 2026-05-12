@@ -33,14 +33,14 @@ def parse_vector3_arrays(source: str) -> dict:
     返回 { 数组名: [Vector3元组列表] }
     """
     arrays = {}
-    
+
     # 匹配数组声明：private static readonly Vector3[] Name = new Vector3[]
     pattern = r'private\s+static\s+readonly\s+Vector3\[\]\s+(\w+)\s*=\s*new\s+Vector3\[\]\s*\{'
-    
+
     for match in re.finditer(pattern, source):
         array_name = match.group(1)
         start_pos = match.end()
-        
+
         # 找到匹配的闭合大括号
         brace_depth = 1
         pos = start_pos
@@ -50,9 +50,9 @@ def parse_vector3_arrays(source: str) -> dict:
             elif source[pos] == '}':
                 brace_depth -= 1
             pos += 1
-        
+
         array_body = source[start_pos:pos - 1]
-        
+
         # 解析所有 new Vector3(x, y, z) 调用
         vectors = []
         vec_pattern = r'new\s+Vector3\(\s*(-?[\d.]+)f\s*,\s*(-?[\d.]+)f\s*,\s*(-?[\d.]+)f\s*\)'
@@ -61,9 +61,9 @@ def parse_vector3_arrays(source: str) -> dict:
             y = float(vec_match.group(2))
             z = float(vec_match.group(3))
             vectors.append((x, y, z))
-        
+
         arrays[array_name] = vectors
-    
+
     return arrays
 
 
@@ -78,9 +78,9 @@ def parse_map_configs(source: str, arrays: dict) -> list:
     if not configs_match:
         print("[ERROR] 未找到 BossRushMapConfigs 数组定义")
         sys.exit(1)
-    
+
     start_pos = configs_match.end()
-    
+
     # 找到数组闭合
     brace_depth = 1
     pos = start_pos
@@ -90,16 +90,16 @@ def parse_map_configs(source: str, arrays: dict) -> list:
         elif source[pos] == '}':
             brace_depth -= 1
         pos += 1
-    
+
     configs_body = source[start_pos:pos - 1]
-    
+
     # 解析每个 new BossRushMapConfig(...) 调用
     maps = []
     config_pattern = r'new\s+BossRushMapConfig\s*\('
-    
+
     for config_match in re.finditer(config_pattern, configs_body):
         call_start = config_match.end()
-        
+
         # 找到匹配的闭合括号
         paren_depth = 1
         cpos = call_start
@@ -109,21 +109,21 @@ def parse_map_configs(source: str, arrays: dict) -> list:
             elif configs_body[cpos] == ')':
                 paren_depth -= 1
             cpos += 1
-        
+
         call_body = configs_body[call_start:cpos - 1]
-        
+
         # 解析构造函数参数
         map_config = parse_config_call(call_body, arrays)
         if map_config:
             maps.append(map_config)
-    
+
     return maps
 
 
 def parse_config_call(call_body: str, arrays: dict) -> dict:
     """
     解析单个 BossRushMapConfig 构造函数调用的参数
-    
+
     构造函数签名：
     BossRushMapConfig(string name, string id, string displayCN, string displayEN,
         Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null,
@@ -132,10 +132,10 @@ def parse_config_call(call_body: str, arrays: dict) -> dict:
     """
     # 分割参数（需要处理嵌套括号和字符串中的逗号）
     args = split_args(call_body)
-    
+
     if len(args) < 5:
         return None
-    
+
     # 参数1: sceneName (string)
     scene_name = extract_string(args[0])
     # 参数2: sceneID (string)
@@ -147,7 +147,7 @@ def parse_config_call(call_body: str, arrays: dict) -> dict:
     # 参数5: spawnPoints (Vector3[] 引用名)
     spawn_points_ref = extract_identifier(args[4])
     spawn_points = arrays.get(spawn_points_ref, [])
-    
+
     # 参数6: customSpawnPos (Vector3? 或 null)
     custom_spawn_pos = extract_nullable_vector3(args[5]) if len(args) > 5 else None
     # 参数7: defaultSignPos (Vector3? 或 null)
@@ -163,11 +163,11 @@ def parse_config_call(call_body: str, arrays: dict) -> dict:
     mode_e_spawn_points = arrays.get(mode_e_spawns_ref, None) if mode_e_spawns_ref else None
     # 参数12: modeEPlayerSpawnPos (Vector3? 或 null)
     mode_e_player_pos = extract_nullable_vector3(args[11]) if len(args) > 11 else None
-    
+
     # 默认 mapNorth（与 BossRushMapConfig 构造函数一致）
     if map_north is None:
         map_north = (-0.959, 0.0, 0.284)
-    
+
     return {
         "sceneName": scene_name,
         "sceneID": scene_id,
@@ -193,27 +193,27 @@ def split_args(text: str) -> list:
     current = []
     in_string = False
     escape_next = False
-    
+
     for ch in text:
         if escape_next:
             current.append(ch)
             escape_next = False
             continue
-        
+
         if ch == '\\' and in_string:
             current.append(ch)
             escape_next = True
             continue
-        
+
         if ch == '"':
             in_string = not in_string
             current.append(ch)
             continue
-        
+
         if in_string:
             current.append(ch)
             continue
-        
+
         if ch == '(' or ch == '[' or ch == '{':
             depth += 1
             current.append(ch)
@@ -225,10 +225,10 @@ def split_args(text: str) -> list:
             current = []
         else:
             current.append(ch)
-    
+
     if current:
         args.append(''.join(current).strip())
-    
+
     return args
 
 
@@ -290,12 +290,12 @@ def float_repr(value: float) -> str:
 
 class FloatEncoder(json.JSONEncoder):
     """自定义 JSON 编码器，确保浮点数使用足够精度"""
-    
+
     def encode(self, o):
         if isinstance(o, float):
             return float_repr(o)
         return super().encode(o)
-    
+
     def iterencode(self, o, _one_shot=False):
         """重写以处理嵌套浮点数"""
         if isinstance(o, float):
@@ -314,7 +314,7 @@ class FloatEncoder(json.JSONEncoder):
             yield from self._encode_list(o, indent=0)
         else:
             yield json.dumps(o, ensure_ascii=False)
-    
+
     def _encode_value(self, value, indent=0):
         """编码单个值"""
         if value is None:
@@ -333,13 +333,13 @@ class FloatEncoder(json.JSONEncoder):
             yield json.dumps(value, ensure_ascii=False)
         else:
             yield json.dumps(value, ensure_ascii=False)
-    
+
     def _encode_list(self, lst, indent=0):
         """编码列表（支持 Vector3 数组的紧凑格式）"""
         if not lst:
             yield '[]'
             return
-        
+
         # 检查是否是 Vector3 数组（列表的列表，内层长度为3）
         if isinstance(lst[0], list) and len(lst[0]) == 3:
             # Vector3 数组：每个元素一行
@@ -363,7 +363,7 @@ def serialize_map_config(config: dict) -> str:
     """
     lines = []
     lines.append('{')
-    
+
     # sceneName
     lines.append(f'  "sceneName": {json.dumps(config["sceneName"], ensure_ascii=False)},')
     # sceneID
@@ -372,34 +372,34 @@ def serialize_map_config(config: dict) -> str:
     lines.append(f'  "displayNameCN": {json.dumps(config["displayNameCN"], ensure_ascii=False)},')
     # displayNameEN
     lines.append(f'  "displayNameEN": {json.dumps(config["displayNameEN"], ensure_ascii=False)},')
-    
+
     # spawnPoints
     lines.append(f'  "spawnPoints": {format_vector3_array(config["spawnPoints"])},')
-    
+
     # customSpawnPos
     lines.append(f'  "customSpawnPos": {format_nullable_vector3(config["customSpawnPos"])},')
-    
+
     # defaultSignPos
     lines.append(f'  "defaultSignPos": {format_nullable_vector3(config["defaultSignPos"])},')
-    
+
     # beaconIndex
     lines.append(f'  "beaconIndex": {config["beaconIndex"]},')
-    
+
     # previewImageName
     if config["previewImageName"] is None:
         lines.append(f'  "previewImageName": null,')
     else:
         lines.append(f'  "previewImageName": {json.dumps(config["previewImageName"], ensure_ascii=False)},')
-    
+
     # mapNorth
     lines.append(f'  "mapNorth": {format_vector3(config["mapNorth"])},')
-    
+
     # modeESpawnPoints
     lines.append(f'  "modeESpawnPoints": {format_vector3_array(config["modeESpawnPoints"])},')
-    
+
     # modeEPlayerSpawnPos (最后一个字段，无逗号)
     lines.append(f'  "modeEPlayerSpawnPos": {format_nullable_vector3(config["modeEPlayerSpawnPos"])}')
-    
+
     lines.append('}')
     return '\n'.join(lines)
 
@@ -437,7 +437,7 @@ def format_vector3_array(arr) -> str:
         return 'null'
     if not arr:
         return '[]'
-    
+
     lines = ['[']
     for i, vec in enumerate(arr):
         suffix = ',' if i < len(arr) - 1 else ''
@@ -448,42 +448,42 @@ def format_vector3_array(arr) -> str:
 
 def main():
     print(f"[INFO] 读取源文件: {MOD_BEHAVIOUR_PATH}")
-    
+
     if not os.path.exists(MOD_BEHAVIOUR_PATH):
         print(f"[ERROR] 文件不存在: {MOD_BEHAVIOUR_PATH}")
         sys.exit(1)
-    
+
     with open(MOD_BEHAVIOUR_PATH, 'r', encoding='utf-8') as f:
         source = f.read()
-    
+
     print("[INFO] 解析 Vector3 数组定义...")
     arrays = parse_vector3_arrays(source)
     print(f"[INFO] 找到 {len(arrays)} 个 Vector3 数组:")
     for name, vecs in arrays.items():
         print(f"       - {name}: {len(vecs)} 个点")
-    
+
     print("\n[INFO] 解析 BossRushMapConfigs...")
     maps = parse_map_configs(source, arrays)
     print(f"[INFO] 找到 {len(maps)} 张地图配置")
-    
+
     # 创建输出目录
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     print(f"\n[INFO] 输出目录: {OUTPUT_DIR}")
-    
+
     # 导出每张地图的 JSON
     for config in maps:
         scene_name = config["sceneName"]
         output_path = os.path.join(OUTPUT_DIR, f"{scene_name}.json")
-        
+
         json_content = serialize_map_config(config)
-        
+
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(json_content)
-        
+
         spawn_count = len(config["spawnPoints"]) if config["spawnPoints"] else 0
         mode_e_count = len(config["modeESpawnPoints"]) if config["modeESpawnPoints"] else 0
         print(f"  [OK] {scene_name}.json (刷新点: {spawn_count}, ModeE: {mode_e_count})")
-    
+
     print(f"\n[DONE] 成功导出 {len(maps)} 张地图配置到 {OUTPUT_DIR}")
 
 

@@ -15,7 +15,7 @@ namespace BossRush
         private static BoxCollider[] _cachedBoxColliders;
         private static NotificationText[] _cachedNotificationTexts;
         private static string _lastSceneName;
-        
+
         /// <summary>
         /// 检查并刷新缓存（场景变化时自动失效）
         /// </summary>
@@ -33,7 +33,7 @@ namespace BossRush
             }
             catch { }
         }
-        
+
         /// <summary>
         /// 强制刷新所有缓存
         /// </summary>
@@ -43,7 +43,7 @@ namespace BossRush
             _cachedNotificationTexts = null;
             _lastSceneName = null;
         }
-        
+
         /// <summary>
         /// 获取缓存的 BoxCollider 数组
         /// </summary>
@@ -56,7 +56,7 @@ namespace BossRush
             }
             return _cachedBoxColliders;
         }
-        
+
         /// <summary>
         /// 获取缓存的 NotificationText 数组
         /// </summary>
