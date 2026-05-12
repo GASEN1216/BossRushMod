@@ -16,6 +16,8 @@ namespace BossRush
 
         public override void OnDestroy()
         {
+            // 静态缓存兜底清理：快递员付费扫箱服务
+            CourierPaidLootSweepService.ResetStaticCaches();
             owner = null;
         }
     }

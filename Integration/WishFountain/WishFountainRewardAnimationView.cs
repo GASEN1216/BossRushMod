@@ -890,6 +890,33 @@ namespace BossRush
             qualityCache.Clear();
         }
 
+        /// <summary>
+        /// 静态缓存兜底清理 — 由 IBossRushRuntimeModule.OnDestroy 统一调用。
+        /// 作为 ClearItemCaches 的上位兜底，确保模组/场景销毁时所有静态缓存被完整释放。
+        /// </summary>
+        public static void ResetStaticCaches()
+        {
+            if (iconCache != null)
+            {
+                iconCache.Clear();
+            }
+
+            if (displayNameCache != null)
+            {
+                displayNameCache.Clear();
+            }
+
+            if (qualityCache != null)
+            {
+                qualityCache.Clear();
+            }
+
+            if (spriteMemberCache != null)
+            {
+                spriteMemberCache.Clear();
+            }
+        }
+
         private void Complete()
         {
             if (finished)

@@ -16,6 +16,8 @@ namespace BossRush
 
         public override void OnDestroy()
         {
+            // 静态缓存兜底清理：Mode E 商人相关缓存
+            ModBehaviour.ResetModeEMerchantStaticCaches();
             owner = null;
         }
     }

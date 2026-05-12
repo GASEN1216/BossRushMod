@@ -977,6 +977,23 @@ namespace BossRush
                 DevLog("[ModeE] [WARNING] CleanupModeEMerchant 失败: " + e.Message);
             }
         }
+
+        /// <summary>
+        /// Mode E 商人静态缓存兜底清理 — 由 IBossRushRuntimeModule.OnDestroy 统一调用。
+        /// 作为 CleanupModeEMerchant 的上位兜底，确保模组/场景销毁时所有静态缓存被完整释放。
+        /// </summary>
+        internal static void ResetModeEMerchantStaticCaches()
+        {
+            cachedModeEMerchantPreset = null;
+
+            if (modeEMerchantCategoryItemCache != null)
+            {
+                modeEMerchantCategoryItemCache.Clear();
+            }
+
+            ModeEPetSpawner.ClearCache();
+            ModeEMerchantSellAllUI.ResetStaticCaches();
+        }
     }
 
     // ========================================================================
@@ -1488,6 +1505,20 @@ namespace BossRush
             sellAllButtonText = null;
             currentShop = null;
             isSelling = false;
+        }
+
+        /// <summary>
+        /// 静态缓存兜底清理 — 由 ResetModeEMerchantStaticCaches 统一调用。
+        /// 作为 Cleanup 的上位兜底，确保反射缓存等静态字段被完整释放。
+        /// </summary>
+        internal static void ResetStaticCaches()
+        {
+            Cleanup();
+            playerInventoryDisplayField = null;
+            characterInventoryDisplayField = null;
+            sortButtonField = null;
+            sellMethod = null;
+            reflectionInitialized = false;
         }
 
         private static bool IsInventoryIndexLocked(Inventory inventory, int index)

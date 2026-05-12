@@ -1250,6 +1250,8 @@ namespace BossRush
 
             // 清理布满了灰尘的星愿许愿台建筑系统
             CleanupWishFountainBuilding();
+            // 静态缓存兜底清理：星愿许愿台抽奖动画
+            WishFountainRewardAnimationView.ResetStaticCaches();
             try
             {
                 Type modBehaviourType = FindModConfigType("ModConfig.ModBehaviour");

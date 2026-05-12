@@ -863,6 +863,52 @@ namespace BossRush
         }
 
 
+        /// <summary>
+        /// 静态缓存兜底清理 — 由 IBossRushRuntimeModule.OnDestroy 统一调用。
+        /// 作为 ExitServiceState / CloseServiceIfOwnedBy 的上位兜底，
+        /// 确保模组/场景销毁时所有静态字段被完整释放。
+        /// </summary>
+        public static void ResetStaticCaches()
+        {
+            serviceGeneration++;
+            InteractableLootbox.OnStopLoot -= OnLootboxStopLoot;
+
+            try
+            {
+                if (HasPendingSweepResult())
+                {
+                    ReleasePendingSweepResultToPlayer(true, false);
+                }
+                else
+                {
+                    DestroyStartNextSweepButton();
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierPaidLootSweep] [WARNING] ResetStaticCaches 释放扫箱结果失败: " + e.Message);
+            }
+
+            try
+            {
+                ExitServiceState();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierPaidLootSweep] [WARNING] ResetStaticCaches 退出服务状态失败: " + e.Message);
+            }
+
+            ClearPendingSweepResultReferences();
+
+            activeServiceMovement = null;
+            activeServiceController = null;
+            lootTargetInventoryDisplayField = null;
+            sortButtonField = null;
+            reflectionInitialized = false;
+            lootStopHookRegistered = false;
+            sweepPromptInProgress = false;
+        }
+
         private static void ExitServiceState()
         {
             try
