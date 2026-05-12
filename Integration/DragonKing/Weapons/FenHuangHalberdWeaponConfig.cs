@@ -31,6 +31,11 @@ namespace BossRush
         private static GameObject cachedFallbackSlashFx;
         private static GameObject cachedFallbackHitFx;
 
+        // 焚煌戟 FX 策略：允许 slashFx 和 hitFx 回退
+        private static readonly MeleeWeaponFxPolicy FxPolicy =
+            new MeleeWeaponFxPolicy(allowSlashFxFallback: true, allowHitFxFallback: true,
+                overrideSlashFxScale: new Vector3(1.92f, 1.92f, 1.92f));
+
         // ========== 近战 Stats 数值 ==========
         private const float STAT_DAMAGE = 55f;
         private const float STAT_BLOCK_BULLET = 1f;
@@ -288,29 +293,7 @@ namespace BossRush
 
         internal static void EnsureMeleeAttackFx(ItemAgent_MeleeWeapon meleeAgent)
         {
-            if (meleeAgent == null)
-            {
-                return;
-            }
-
-            if (meleeAgent.slashFx == null)
-            {
-                meleeAgent.slashFx = GetFallbackSlashFx();
-            }
-
-            if (meleeAgent.hitFx == null)
-            {
-                meleeAgent.hitFx = GetFallbackHitFx();
-            }
-
-            if (meleeAgent.slashFx != null && meleeAgent.slashFx.transform != null)
-            {
-                Vector3 scale = meleeAgent.slashFx.transform.localScale;
-                if (scale.sqrMagnitude <= 0.0001f)
-                {
-                    meleeAgent.slashFx.transform.localScale = DefaultSlashFxScale;
-                }
-            }
+            FxPolicy.ApplyTo(meleeAgent, GetFallbackSlashFx, GetFallbackHitFx);
         }
 
         private static GameObject GetFallbackSlashFx()

@@ -37,6 +37,11 @@ namespace BossRush
         private static GameObject cachedFallbackHitFx;
         private static PhantomWitchScytheConfig cachedConfig;
 
+        // 噬魂挽歌 FX 策略：保持原实现，slashFx 和 hitFx 均允许回退
+        private static readonly MeleeWeaponFxPolicy FxPolicy =
+            new MeleeWeaponFxPolicy(allowSlashFxFallback: true, allowHitFxFallback: true,
+                overrideSlashFxScale: DefaultSlashFxScale);
+
         // ========== 近战 Stats 数值（偏手感与机动，白板略低于霜之哀伤）==========
         // AttackSpeed 在游戏内解释为"每秒攻击次数"，攻击间隔 cd = 1 / AttackSpeed。
         // 1.56 对应 ~0.64s/次，接近霜之哀伤但配合更高移速与略长攻击范围，强调镰刀轻快手感。
@@ -330,29 +335,7 @@ namespace BossRush
 
         internal static void EnsureMeleeAttackFx(ItemAgent_MeleeWeapon meleeAgent)
         {
-            if (meleeAgent == null)
-            {
-                return;
-            }
-
-            if (meleeAgent.slashFx == null)
-            {
-                meleeAgent.slashFx = GetFallbackSlashFx();
-            }
-
-            if (meleeAgent.hitFx == null)
-            {
-                meleeAgent.hitFx = GetFallbackHitFx();
-            }
-
-            if (meleeAgent.slashFx != null && meleeAgent.slashFx.transform != null)
-            {
-                Vector3 scale = meleeAgent.slashFx.transform.localScale;
-                if (scale.sqrMagnitude <= 0.0001f)
-                {
-                    meleeAgent.slashFx.transform.localScale = DefaultSlashFxScale;
-                }
-            }
+            FxPolicy.ApplyTo(meleeAgent, GetFallbackSlashFx, GetFallbackHitFx);
         }
 
         internal static void EnsureRuntimeMeleeAgent(Item item, ItemAgent_MeleeWeapon meleeAgent)
