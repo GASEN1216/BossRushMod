@@ -8,23 +8,26 @@ echo.
 
 set OUTPUT_DIR=Build
 set MOD_NAME=BossRush
-if not defined GAME_PATH (
-    if exist "D:\sofrware\steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed" (
-        set "GAME_PATH=D:\sofrware\steam\steamapps\common\Escape from Duckov"
-    ) else (
-        set "GAME_PATH=E:\SteamLibrary\steamapps\common\Escape from Duckov"
-    )
-)
-if not defined WORKSHOP_PATH (
-    if exist "D:\sofrware\steam\steamapps\workshop\content\3167020\3588386576\0Harmony.dll" (
-        set "WORKSHOP_PATH=D:\sofrware\steam\steamapps\workshop\content\3167020"
-    ) else (
-        set "WORKSHOP_PATH=E:\SteamLibrary\steamapps\workshop\content\3167020"
-    )
-)
 :: HarmonyLoadMod (Workshop ID: 3588386576)
 set HARMONY_MOD_ID=3588386576
+call :ensure_game_path
+if not defined GAME_PATH (
+    echo [FAIL] GAME_PATH was not found.
+    echo        Set GAME_PATH to your Escape from Duckov install root, e.g.
+    echo        set "GAME_PATH=E:\SteamLibrary\steamapps\common\Escape from Duckov"
+    if not defined BOSSRUSH_NO_PAUSE pause
+    exit /b 1
+)
+call :ensure_workshop_path
+if not defined WORKSHOP_PATH (
+    echo [FAIL] WORKSHOP_PATH was not found.
+    echo        Set WORKSHOP_PATH to the Steam workshop content root containing %HARMONY_MOD_ID%\0Harmony.dll, e.g.
+    echo        set "WORKSHOP_PATH=E:\SteamLibrary\steamapps\workshop\content\3167020"
+    if not defined BOSSRUSH_NO_PAUSE pause
+    exit /b 1
+)
 echo GAME_PATH=%GAME_PATH%
+echo WORKSHOP_PATH=%WORKSHOP_PATH%
 
 :: Create output directory
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
@@ -92,9 +95,16 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Common\Lifecycle\BossRushRuntimeModuleBase.cs ^
     Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs ^
     Common\Lifecycle\BossRushRuntimeModuleRegistration.cs ^
+    Common\Infrastructure\ReflectionCache.cs ^
+    Common\Infrastructure\ObjectCache.cs ^
+    Common\Infrastructure\IHarmonyPatchGroup.cs ^
+    Common\Infrastructure\HarmonyPatchGroupRegistrar.cs ^
+    Common\MapConfig\BossRushMapConfig.cs ^
+    Common\MapConfig\MapSpawnPointRegistry.cs ^
     Common\Utils\ReflectionCache.cs ^
     Common\Utils\NPCBubbleAnimator.cs ^
     Common\Effects\RingParticleEffect.cs ^
+    Common\Effects\MeleeWeaponFxPolicy.cs ^
     Common\Equipment\EquipmentAbilityConfig.cs ^
     Common\Equipment\EquipmentAbilityAction.cs ^
     Common\Equipment\EquipmentAbilityManager.cs ^
@@ -116,7 +126,16 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\BossRushIntegration.cs ^
     Integration\ZombieModeIntegration.cs ^
     Integration\DeathWraith\DeathWraithSystem.cs ^
-    Integration\BossRushHarmonyPatch.cs ^
+    Patches\BaseHub\BaseHubShopAwakePatch.cs ^
+    Patches\BaseHub\BaseHubBoatPatch.cs ^
+    Patches\BaseHub\BaseHubPatchGroup.cs ^
+    Patches\Combat\CharacterOnDeadPatch.cs ^
+    Patches\Combat\ProjectileHalfObstaclePatch.cs ^
+    Patches\Combat\CombatPatchGroup.cs ^
+    Patches\Death\DeadBodySpawnPatch.cs ^
+    Patches\Death\TombLootboxPatch.cs ^
+    Patches\Death\DeadBodyTouchedPatch.cs ^
+    Patches\Death\DeathPatchGroup.cs ^
     Integration\BirthdayCakeItem.cs ^
     Integration\EquipmentFactory.cs ^
     Integration\EquipmentContentRegistry.cs ^
@@ -425,6 +444,15 @@ if %BUILD_EXIT_CODE% EQU 0 (
         echo WARNING: Auto deploy failed. Please copy DLL manually.
     ) else (
         echo Deployed to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\%MOD_NAME%.dll
+        if exist "Assets\SpawnPoints\*.json" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints"
+            xcopy /Y /I "Assets\SpawnPoints\*.json" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints\" >nul
+            if errorlevel 1 (
+                echo WARNING: SpawnPoints JSON deploy failed.
+            ) else (
+                echo Deployed SpawnPoints JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints
+            )
+        )
     )
 ) else (
     echo.
@@ -434,5 +462,47 @@ if %BUILD_EXIT_CODE% EQU 0 (
     echo Check errors above.
 )
 
-pause
+if not defined BOSSRUSH_NO_PAUSE pause
 exit /b %BUILD_EXIT_CODE%
+
+:ensure_game_path
+if defined GAME_PATH (
+    if exist "%GAME_PATH%\Duckov_Data\Managed\Assembly-CSharp.dll" goto :eof
+    echo [WARN] Ignoring invalid GAME_PATH: %GAME_PATH%
+    set "GAME_PATH="
+)
+call :try_game_path "%~dp0..\..\..\.."
+if defined GAME_PATH goto :eof
+call :try_game_path "E:\SteamLibrary\steamapps\common\Escape from Duckov"
+if defined GAME_PATH goto :eof
+call :try_game_path "D:\sofrware\steam\steamapps\common\Escape from Duckov"
+if defined GAME_PATH goto :eof
+call :try_game_path "C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov"
+goto :eof
+
+:try_game_path
+if exist "%~1\Duckov_Data\Managed\Assembly-CSharp.dll" (
+    for %%P in ("%~1") do set "GAME_PATH=%%~fP"
+)
+goto :eof
+
+:ensure_workshop_path
+if defined WORKSHOP_PATH (
+    if exist "%WORKSHOP_PATH%\%HARMONY_MOD_ID%\0Harmony.dll" goto :eof
+    echo [WARN] Ignoring invalid WORKSHOP_PATH: %WORKSHOP_PATH%
+    set "WORKSHOP_PATH="
+)
+if defined GAME_PATH call :try_workshop_path "%GAME_PATH%\..\..\workshop\content\3167020"
+if defined WORKSHOP_PATH goto :eof
+call :try_workshop_path "E:\SteamLibrary\steamapps\workshop\content\3167020"
+if defined WORKSHOP_PATH goto :eof
+call :try_workshop_path "D:\sofrware\steam\steamapps\workshop\content\3167020"
+if defined WORKSHOP_PATH goto :eof
+call :try_workshop_path "C:\Program Files (x86)\Steam\steamapps\workshop\content\3167020"
+goto :eof
+
+:try_workshop_path
+if exist "%~1\%HARMONY_MOD_ID%\0Harmony.dll" (
+    for %%P in ("%~1") do set "WORKSHOP_PATH=%%~fP"
+)
+goto :eof

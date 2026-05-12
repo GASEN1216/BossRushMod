@@ -1,11 +1,20 @@
 @echo off
 setlocal
+cd /d "%~dp0"
 
-set "GAME_PATH=D:\sofrware\steam\steamapps\common\Escape from Duckov"
+call :ensure_game_path
+if not defined GAME_PATH (
+    echo [ERROR] GAME_PATH was not found.
+    echo         Set GAME_PATH to your Escape from Duckov install root, e.g.
+    echo         set "GAME_PATH=E:\SteamLibrary\steamapps\common\Escape from Duckov"
+    exit /b 1
+)
 set "GAME_EXE=%GAME_PATH%\Duckov.exe"
+set "STEAM_APP_ID=3167020"
+set "STEAM_LAUNCH_URL=steam://rungameid/%STEAM_APP_ID%"
 set "MOD_DLL=%GAME_PATH%\Duckov_Data\Mods\BossRush\BossRush.dll"
 set "SMOKE_DIR=docs\testing"
-set "SMOKE_NOTE=docs\testing\2026-05-09-code-structure-smoke.md"
+set "SMOKE_NOTE=docs\testing\2026-05-10-architecture-refactor-smoke.md"
 
 echo ==========================================
 echo Boss Rush Mod - Manual In-Game Smoke Test
@@ -35,9 +44,10 @@ if not exist "%SMOKE_NOTE%" (
     >>"%SMOKE_NOTE%" echo Checklist:
     >>"%SMOKE_NOTE%" echo - [ ] Base_SceneV2 loads.
     >>"%SMOKE_NOTE%" echo - [ ] Merchant inventory is unchanged.
-    >>"%SMOKE_NOTE%" echo - [ ] Standard BossRush flow works.
-    >>"%SMOKE_NOTE%" echo - [ ] Mode D flow works.
-    >>"%SMOKE_NOTE%" echo - [ ] Frostmourne or FenHuangHalberd ability works.
+    >>"%SMOKE_NOTE%" echo - [ ] Standard BossRush full run works.
+    >>"%SMOKE_NOTE%" echo - [ ] Mode E full run works.
+    >>"%SMOKE_NOTE%" echo - [ ] Zombie Mode full run works.
+    >>"%SMOKE_NOTE%" echo - [ ] Refactored melee FX hit/slash visuals are unchanged.
 )
 
 if not exist "%MOD_DLL%" (
@@ -58,10 +68,12 @@ echo      achievement medal, Awen token, brick stone, and zombie invitation.
 echo   3. Enter a standard BossRush arena through the existing map selection flow.
 echo   4. Confirm arena setup, sign options, first wave, enemy spawn, kill resolution,
 echo      and arena exit behave as before.
-echo   5. Enter Mode D through the naked + ticket flow.
-echo   6. Confirm starter kit, Mode D sign option, first wave, stuck-wave self-check,
-echo      and exit cleanup behave as before.
-echo   7. Equip or spawn Frostmourne or FenHuangHalberd and confirm ability init/trigger.
+echo   5. Run one Mode E session and confirm solo flow, spawn points, scaling,
+echo      merchant/service UI, and cleanup behave as before.
+echo   6. Run one Zombie Mode session and confirm entry, first waves, reward UI,
+echo      safe-zone/extraction prompts, and cleanup behave as before.
+echo   7. Trigger a melee hit with FenHuangHalberd, Frostmourne, or PhantomWitch scythe
+echo      and confirm slashFx / hitFx visuals are unchanged.
 echo   8. Optional: verify DebugTools hotkeys only in DevMode and achievement hotkey opens UI.
 echo.
 echo After completing the in-game checklist, scan the latest log from WSL:
@@ -91,6 +103,27 @@ if errorlevel 2 (
     exit /b 0
 )
 
-start "" "%GAME_EXE%"
-echo Duckov launch requested. Complete the checklist in-game and record the result.
+start "" "%STEAM_LAUNCH_URL%"
+echo Duckov Steam launch requested. Complete the checklist in-game and record the result.
 exit /b 0
+
+:ensure_game_path
+if defined GAME_PATH (
+    if exist "%GAME_PATH%\Duckov_Data\Managed\Assembly-CSharp.dll" goto :eof
+    echo [WARN] Ignoring invalid GAME_PATH: %GAME_PATH%
+    set "GAME_PATH="
+)
+call :try_game_path "%~dp0..\..\..\.."
+if defined GAME_PATH goto :eof
+call :try_game_path "E:\SteamLibrary\steamapps\common\Escape from Duckov"
+if defined GAME_PATH goto :eof
+call :try_game_path "D:\sofrware\steam\steamapps\common\Escape from Duckov"
+if defined GAME_PATH goto :eof
+call :try_game_path "C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov"
+goto :eof
+
+:try_game_path
+if exist "%~1\Duckov_Data\Managed\Assembly-CSharp.dll" (
+    for %%P in ("%~1") do set "GAME_PATH=%%~fP"
+)
+goto :eof
