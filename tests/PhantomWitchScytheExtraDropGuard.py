@@ -15,7 +15,7 @@ import sys
 
 
 BLACKLIST = Path("Config/LootBlacklistRegistry.cs")
-HARMONY = Path("Integration/BossRushHarmonyPatch.cs")
+HARMONY = Path("Patches/Combat/CharacterOnDeadPatch.cs")
 BOOTSTRAP = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
 LOOT = Path("LootAndRewards/LootAndRewards.cs")
 

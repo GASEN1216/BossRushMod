@@ -7,6 +7,8 @@ import sys
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 SCENE_RUNTIME_GATE = Path("Utilities/SceneRuntimeGate.cs")
 INTEGRATION = Path("Integration/BossRushIntegration.cs")
+ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
+EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 STEAM_ACHIEVEMENT_POPUP = Path("Achievement/SteamAchievementPopup.cs")
 BOOTSTRAP_FILES = [
     (
@@ -127,6 +129,8 @@ def main() -> int:
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8", errors="ignore")
     scene_gate_text = SCENE_RUNTIME_GATE.read_text(encoding="utf-8", errors="ignore")
     integration_text = INTEGRATION.read_text(encoding="utf-8", errors="ignore")
+    always_on_runtime_text = ALWAYS_ON_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    equipment_runtime_text = EQUIPMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
 
     if "IsGameplaySceneName" not in mod_text:
         return fail("missing stable gameplay scene-name helper")
@@ -233,14 +237,26 @@ def main() -> int:
     if not update:
         return fail("could not find ModBehaviour.Update")
     update_guard = update.find("if (!runGameplaySceneHooks)")
-    dragon_dash = update.find("UpdateDragonDash();")
-    deferred_save = update.find("AffinityManager.UpdateDeferredSave();")
+    equipment_runtime_tick = update.find("TickEquipmentAbilityRuntime();")
+    always_on_runtime_tick = update.find("TickAlwaysOnRuntime();")
     if "bool runGameplaySceneHooks = CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name);" not in update:
         return fail("ModBehaviour.Update must cache the gameplay-scene guard")
-    if update_guard < 0 or dragon_dash < 0 or update_guard > dragon_dash:
+    if update_guard < 0 or equipment_runtime_tick < 0 or update_guard > equipment_runtime_tick:
         return fail("ModBehaviour.Update must return before gameplay per-frame work in menu/loading scenes")
-    if deferred_save < 0 or deferred_save > update_guard:
-        return fail("Affinity deferred save must remain before the menu/loading early return")
+    if always_on_runtime_tick < 0 or always_on_runtime_tick > update_guard:
+        return fail("always-on runtime tick must remain before the menu/loading early return")
+
+    always_on_runtime_tick_block = extract_method(always_on_runtime_text, "internal void TickAlwaysOnRuntime()")
+    if not always_on_runtime_tick_block:
+        return fail("could not find TickAlwaysOnRuntime")
+    if "AffinityManager.UpdateDeferredSave();" not in always_on_runtime_tick_block:
+        return fail("Affinity deferred save must remain in the always-on runtime tick")
+
+    equipment_runtime_tick_block = extract_method(equipment_runtime_text, "internal void TickEquipmentAbilityRuntime()")
+    if not equipment_runtime_tick_block:
+        return fail("could not find TickEquipmentAbilityRuntime")
+    if "UpdateDragonDash();" not in equipment_runtime_tick_block:
+        return fail("dragon dash must remain in the gameplay equipment runtime tick")
 
     for signature in ["void OnGUI()", "void LateUpdate()"]:
         block = extract_method(mod_text, signature)

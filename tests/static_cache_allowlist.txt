@@ -1,0 +1,85 @@
+# 静态缓存生命周期 Guard 白名单
+# 以下类已登记待办，暂不合规但输出警告。
+# 每行一个类名（不含命名空间），# 开头为注释行。
+# 后续批次应逐步将这些类拉入合规。
+
+# --- 数据表/常量类（只读表，不需要运行时清理） ---
+ZombieModeModels
+ZombieModeTuning
+ModeFFortifications
+FortDef
+L10n
+NPCTeleportUI
+
+# --- 尚未接入 OnDestroy 路径的缓存类 ---
+EntityModelFactory
+WishFountainService
+NPCUIAssetCache
+NPCNameTagHelper
+ReforgeDataPersistence
+ReforgeUIManager
+DragonDescendantBoss
+DragonKingAssetManager
+DragonBreathWeaponConfig
+FactionFlagConfig
+LootAndRewards
+ModeFUI
+BossRushHealthBarNamePatch
+
+# --- Achievement 模块 ---
+AchievementIconLoader
+BossRushAchievementManager
+
+# --- Audio 模块 ---
+BossRushAudioHooks
+
+# --- Debug 工具 ---
+DebugAndTools
+
+# --- 工厂类 ---
+EquipmentFactory
+ItemFactory
+
+# --- Mode D ---
+ModeD
+ModeDGlobalLoot
+
+# --- 鸭科夫源码（第三方，不可修改） ---
+ItemAssetsCollection
+SavedInventory
+AudioManager
+StatInfoDatabase
+SetActiveByPlayerDistance
+
+# --- Integration 子模块 ---
+AffinityManager
+DialogueActorFactory
+DragonKingAbilityController
+FrostmourneWeaponConfig
+PhantomWitchScytheWeaponConfig
+PhantomWitchVfxRedesign
+CustomItemRuntimeStateHelper
+StorageDepositService
+DragonFlameMarkTracker
+DragonKingBossGunConfig
+DragonKingBossGunProfiles
+DragonKingBossGunGroundZone
+DragonKingBossGunRuntime
+FenHuangHalberdWeaponConfig
+GoblinAffinityConfig
+NurseAffinityConfig
+NPCShopSystem
+
+# --- Common 基础设施 ---
+ReflectionCache
+
+# --- 嵌套类/结构体（父类已覆盖或为数据结构） ---
+FlagInfo
+BundleInfo
+Boss
+OriginalWeaponData
+RuntimeConfigEntry
+OriginalHealthBarEntry
+FeishuAppConfig
+PaidSweepBoxPlan
+ProcessedGroundZoneState

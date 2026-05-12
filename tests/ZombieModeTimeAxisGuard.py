@@ -10,12 +10,20 @@ def fail(msg: str) -> int:
 
 
 def main() -> int:
-    # TickZombieMode 调用必须传 unscaledDeltaTime
     mod_text = Path("ModBehaviour.cs").read_text(encoding="utf-8")
-    if not re.search(r"TickZombieMode\(Time\.unscaledDeltaTime\)", mod_text):
-        return fail("ZombieModeTimeAxisGuard: TickZombieMode 调用未使用 Time.unscaledDeltaTime")
-    if re.search(r"TickZombieMode\(Time\.deltaTime\)", mod_text):
-        return fail("ZombieModeTimeAxisGuard: TickZombieMode 仍在使用 Time.deltaTime")
+    mode_runtime_text = Path("Utilities/ModeRuntimeHooks.cs").read_text(encoding="utf-8")
+    zombie_runtime_text = Path("ZombieMode/ZombieModeRuntimeHooks.cs").read_text(encoding="utf-8")
+    if "TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime)" not in mod_text:
+        return fail("ZombieModeTimeAxisGuard: ModBehaviour.Update 未传递 Time.unscaledDeltaTime 到 mode runtime group")
+    if "TickZombieModeRuntime(unscaledDeltaTime);" not in mode_runtime_text:
+        return fail("ZombieModeTimeAxisGuard: mode runtime group 未使用 unscaledDeltaTime tick ZombieMode")
+    if "TickZombieMode(unscaledDeltaTime);" not in zombie_runtime_text:
+        return fail("ZombieModeTimeAxisGuard: TickZombieMode 调用未使用 unscaledDeltaTime")
+    for text in [mod_text, mode_runtime_text, zombie_runtime_text]:
+        if re.search(r"TickZombieMode(Runtime)?\(Time\.deltaTime\)", text):
+            return fail("ZombieModeTimeAxisGuard: TickZombieMode 仍在使用 Time.deltaTime")
+        if re.search(r"TickZombieModeRuntime\(deltaTime\)", text):
+            return fail("ZombieModeTimeAxisGuard: TickZombieModeRuntime 仍在使用 scaled deltaTime")
 
     # ZombieMode/*.cs 内的 Time.time / Time.deltaTime 必须带 // scaled-ok 注释（仅允许 ZombiePurificationPointController.cs 的视觉旋转/寿命）
     for path in Path("ZombieMode").glob("*.cs"):

@@ -6,6 +6,8 @@ MODELS = Path("ZombieMode/ZombieModeModels.cs")
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
+MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
 
 
 def fail(message: str) -> int:
@@ -18,6 +20,8 @@ def main() -> int:
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
+    mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
+    zombie_runtime_hooks_text = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
 
     for snippet in [
         "public sealed class ZombieModeRunOnlyRecord",
@@ -72,12 +76,18 @@ def main() -> int:
         if snippet not in extraction_text:
             return fail("ZombieModeRunOnlyCleanupGuard: preparation cleanup missing snippet -> " + snippet)
 
-    for snippet in [
-        "CleanupZombieModeOnDestroy();",
-        "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);",
-    ]:
-        if snippet not in mod_text:
-            return fail("ZombieModeRunOnlyCleanupGuard: ModBehaviour missing cleanup hook -> " + snippet)
+    if "CleanupModeRuntimeOnDestroy();" not in mod_text:
+        return fail("ZombieModeRunOnlyCleanupGuard: ModBehaviour missing cleanup hook -> CleanupModeRuntimeOnDestroy();")
+    if "CleanupModeRuntimeForSceneLoad(scene);" not in mod_text:
+        return fail("ZombieModeRunOnlyCleanupGuard: ModBehaviour missing cleanup hook -> CleanupModeRuntimeForSceneLoad(scene);")
+    if "CleanupZombieModeOnDestroyRuntime();" not in mode_runtime_hooks_text:
+        return fail("ZombieModeRunOnlyCleanupGuard: mode cleanup group missing hook -> CleanupZombieModeOnDestroyRuntime();")
+    if "CleanupZombieModeForSceneLoad(scene);" not in mode_runtime_hooks_text:
+        return fail("ZombieModeRunOnlyCleanupGuard: mode cleanup group missing hook -> CleanupZombieModeForSceneLoad(scene);")
+    if "CleanupZombieModeOnDestroy();" not in zombie_runtime_hooks_text:
+        return fail("ZombieModeRunOnlyCleanupGuard: ZombieMode runtime cleanup missing hook -> CleanupZombieModeOnDestroy();")
+    if "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);" not in zombie_runtime_hooks_text:
+        return fail("ZombieModeRunOnlyCleanupGuard: ZombieMode runtime cleanup missing hook -> CleanupZombieModeForSceneChange(ZombieModeFailureReason.SceneSwitched);")
 
     print("ZombieModeRunOnlyCleanupGuard: PASS")
     return 0

@@ -10,6 +10,8 @@ cash = Path("ZombieMode/ZombieModeCashInvestmentView.cs")
 extraction = Path("ZombieMode/ZombieModeExtractionController.cs")
 HUD = Path("ZombieMode/ZombieModeHudController.cs")
 UI_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
+MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
 
 
 def fail(message: str) -> int:
@@ -45,6 +47,8 @@ def main() -> int:
     extraction_text = extraction.read_text(encoding="utf-8")
     hud = HUD.read_text(encoding="utf-8")
     helper = UI_HELPER.read_text(encoding="utf-8")
+    mode_runtime_hooks = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
+    zombie_runtime_hooks = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
 
     for snippet in [
         "internal sealed class ModalInputLease",
@@ -78,7 +82,13 @@ def main() -> int:
     late_update = extract_block(Path("ModBehaviour.cs").read_text(encoding="utf-8"), "void LateUpdate()")
     if not late_update:
         return fail("ModBehaviour LateUpdate not found")
-    if "ZombieModeUIHelper.EnforceModalInputPause();" not in late_update:
+    if "LateUpdateModeRuntimeGroup();" not in late_update:
+        return fail("ModBehaviour LateUpdate must execute mode late-update hooks")
+    late_update_mode_group = extract_block(mode_runtime_hooks, "internal void LateUpdateModeRuntimeGroup()")
+    if "LateUpdateZombieModeRuntime();" not in late_update_mode_group:
+        return fail("Mode late-update hooks must include ZombieMode modal pause enforcement")
+    late_update_zombie_mode = extract_block(zombie_runtime_hooks, "internal void LateUpdateZombieModeRuntime()")
+    if "ZombieModeUIHelper.EnforceModalInputPause();" not in late_update_zombie_mode:
         return fail("ZombieMode modal UI pause must be enforced in LateUpdate while the UI is open")
 
     for text, class_name in [

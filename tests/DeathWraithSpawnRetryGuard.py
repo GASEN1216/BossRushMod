@@ -8,7 +8,11 @@ import sys
 
 
 DEATH_WRAITH_SOURCE = Path("Integration/DeathWraith/DeathWraithSystem.cs")
-PATCH_SOURCE = Path("Integration/BossRushHarmonyPatch.cs")
+PATCH_SOURCES = [
+    Path("Patches/Death/DeadBodySpawnPatch.cs"),
+    Path("Patches/Death/TombLootboxPatch.cs"),
+    Path("Patches/Death/DeadBodyTouchedPatch.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -40,7 +44,10 @@ def extract_block(text: str, signature: str) -> str:
 
 def main() -> int:
     death_text = DEATH_WRAITH_SOURCE.read_text(encoding="utf-8")
-    patch_text = PATCH_SOURCE.read_text(encoding="utf-8")
+    # 合并所有 Death 分组 Patch 文件内容（原 BossRushHarmonyPatch.cs 已拆分）
+    patch_text = ""
+    for p in PATCH_SOURCES:
+        patch_text += p.read_text(encoding="utf-8")
 
     required_death_snippets = [
         'private const string DEATH_WRAITH_LIST_SAVE_KEY = "BossRush_DeathWraith_List";',

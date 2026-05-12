@@ -5,6 +5,8 @@ import sys
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
+MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
 
 REQUIRED_MODEL_SNIPPETS = [
     "public enum ZombieModeLifecyclePhase",
@@ -82,6 +84,8 @@ def main() -> int:
     model_text = MODELS.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
+    mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
+    zombie_runtime_hooks_text = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
 
     for snippet in REQUIRED_MODEL_SNIPPETS:
         if snippet not in model_text:
@@ -91,8 +95,12 @@ def main() -> int:
         if snippet not in entry_text:
             return fail("ZombieModeStateModelGuard: entry missing snippet -> " + snippet)
 
-    if "TickZombieMode(Time.unscaledDeltaTime);" not in mod_text:
-        return fail("ZombieModeStateModelGuard: ModBehaviour.Update does not tick ZombieMode")
+    if "TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime)" not in mod_text:
+        return fail("ZombieModeStateModelGuard: ModBehaviour.Update does not tick mode runtime group")
+    if "TickZombieModeRuntime(unscaledDeltaTime);" not in mode_runtime_hooks_text:
+        return fail("ZombieModeStateModelGuard: mode runtime group does not tick ZombieMode")
+    if "TickZombieMode(unscaledDeltaTime);" not in zombie_runtime_hooks_text:
+        return fail("ZombieModeStateModelGuard: ZombieMode runtime hook does not tick ZombieMode")
 
     print("ZombieModeStateModelGuard: PASS")
     return 0

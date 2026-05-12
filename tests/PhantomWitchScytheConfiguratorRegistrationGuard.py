@@ -11,7 +11,7 @@ import re
 import sys
 
 
-SOURCE = Path("Integration/BossRushIntegration.cs")
+SOURCE = Path("Integration/Items/ItemContentRegistry.cs")
 
 
 def fail(message: str) -> int:

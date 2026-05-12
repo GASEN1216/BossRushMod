@@ -8,6 +8,7 @@ BEACON = Path("Integration/Items/ZombieTideBeaconConfig.cs")
 BEACON_USAGE = Path("Integration/Items/ZombieTideBeaconUsage.cs")
 BLACKLIST = Path("Config/LootBlacklistRegistry.cs")
 INTEGRATION = Path("Integration/BossRushIntegration.cs")
+ITEM_CONTENT_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
 
@@ -23,6 +24,7 @@ def main() -> int:
     usage_text = BEACON_USAGE.read_text(encoding="utf-8")
     blacklist_text = BLACKLIST.read_text(encoding="utf-8")
     integration_text = INTEGRATION.read_text(encoding="utf-8")
+    item_content_registry_text = ITEM_CONTENT_REGISTRY.read_text(encoding="utf-8")
     localization_text = LOCALIZATION.read_text(encoding="utf-8")
 
     required_config = [
@@ -42,6 +44,11 @@ def main() -> int:
     for snippet in [
         "ZombieTideInvitationConfig.RegisterConfigurator();",
         "ZombieTideBeaconConfig.RegisterConfigurator();",
+    ]:
+        if snippet not in item_content_registry_text:
+            return fail("ZombieModeItemIdentityGuard: missing registration snippet -> " + snippet)
+
+    for snippet in [
         "ZombieTideInvitationConfig.InjectLocalization();",
         "ZombieTideBeaconConfig.InjectLocalization();",
     ]:

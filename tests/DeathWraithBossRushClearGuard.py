@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 
-MOD_BEHAVIOUR_SOURCE = Path("ModBehaviour.cs")
+ENEMY_MAINTENANCE_SOURCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
 DEATH_WRAITH_SOURCE = Path("Integration/DeathWraith/DeathWraithSystem.cs")
 
 
@@ -54,7 +54,7 @@ def require_before(block: str, required: str, later: str, message: str) -> int:
 
 
 def main() -> int:
-    mod_text = MOD_BEHAVIOUR_SOURCE.read_text(encoding="utf-8")
+    enemy_maintenance_text = ENEMY_MAINTENANCE_SOURCE.read_text(encoding="utf-8")
     death_text = DEATH_WRAITH_SOURCE.read_text(encoding="utf-8")
 
     helper_block = extract_block(
@@ -73,7 +73,7 @@ def main() -> int:
         if snippet not in helper_block:
             return fail("DeathWraithBossRushClearGuard: helper missing snippet -> " + snippet)
 
-    force_block = extract_block(mod_text, "private void ForceKillAllEnemies()")
+    force_block = extract_block(enemy_maintenance_text, "private void ForceKillAllEnemies()")
     if not force_block:
         return fail("DeathWraithBossRushClearGuard: missing ForceKillAllEnemies block")
 
@@ -86,7 +86,7 @@ def main() -> int:
     if result != 0:
         return result
 
-    clear_block = extract_block(mod_text, "private void ClearEnemiesForBossRush()")
+    clear_block = extract_block(enemy_maintenance_text, "private void ClearEnemiesForBossRush()")
     if not clear_block:
         return fail("DeathWraithBossRushClearGuard: missing ClearEnemiesForBossRush block")
 
