@@ -11,6 +11,13 @@ namespace BossRush
                 var harmony = new Harmony("com.bossrush.mod");
                 harmony.PatchAll();
                 DevLog("[BossRush] Harmony Patch 已应用（Item.OnEnable）");
+
+                // 注册 Harmony Patch 分组（仅日志与元数据，不改变 Patch apply 方式）
+                HarmonyPatchGroupRegistrar.Clear();
+                HarmonyPatchGroupRegistrar.Register(new BaseHubPatchGroup());
+                HarmonyPatchGroupRegistrar.Register(new CombatPatchGroup());
+                HarmonyPatchGroupRegistrar.Register(new DeathPatchGroup());
+                HarmonyPatchGroupRegistrar.LogRegisteredGroups();
             }
             catch (System.Exception e)
             {
@@ -26,6 +33,8 @@ namespace BossRush
                 if (!string.IsNullOrEmpty(modPath))
                 {
                     EntityModelFactory.Initialize(modPath);
+                    // 初始化地图刷新点注册表（同步扫描 Assets/SpawnPoints/*.json）
+                    _mapSpawnRegistry.Initialize(modPath);
                 }
                 else
                 {

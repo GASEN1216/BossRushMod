@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
@@ -33,7 +33,7 @@ namespace BossRush
 
         public static string GetPendingTargetSubSceneName()
         {
-            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
             if (pendingZombieMapEntryIndex >= 0 && configs != null && pendingZombieMapEntryIndex < configs.Length)
             {
                 return configs[pendingZombieMapEntryIndex].sceneName;
@@ -43,7 +43,7 @@ namespace BossRush
 
         public static string GetPendingMainSceneName()
         {
-            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
             if (pendingZombieMapEntryIndex >= 0 && configs != null && pendingZombieMapEntryIndex < configs.Length)
             {
                 return configs[pendingZombieMapEntryIndex].sceneID;
@@ -53,7 +53,7 @@ namespace BossRush
 
         public static Vector3? GetPendingCustomPosition()
         {
-            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
             if (pendingZombieMapEntryIndex >= 0 && configs != null && pendingZombieMapEntryIndex < configs.Length)
             {
                 return configs[pendingZombieMapEntryIndex].customSpawnPos;
@@ -288,7 +288,7 @@ namespace BossRush
 
         private static bool InjectZombieModeEntries(MapSelectionView mapView)
         {
-            ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
             MapSelectionEntryInjectionHelper.RestoreHiddenEntries(hiddenEntries);
             MapSelectionEntryInjectionHelper.DestroyCreatedEntries(zombieEntryObjects);
 
@@ -311,7 +311,7 @@ namespace BossRush
         private static void OnZombieModeEntryCreated(
             MapSelectionEntry uiEntry,
             GameObject entryObject,
-            ModBehaviour.BossRushMapConfig mapConfig,
+            BossRushMapConfig mapConfig,
             int entryIndex,
             MapSelectionEntry template,
             Transform targetParent)
@@ -334,7 +334,7 @@ namespace BossRush
             }
         }
 
-        private static void ConfigureZombieModeEntry(MapSelectionEntry entry, ModBehaviour.BossRushMapConfig mapConfig, int entryIndex)
+        private static void ConfigureZombieModeEntry(MapSelectionEntry entry, BossRushMapConfig mapConfig, int entryIndex)
         {
             MapSelectionEntryInjectionHelper.SetMapSelectionEntryField(entry, "sceneID", mapConfig.sceneID);
             MapSelectionEntryInjectionHelper.SetMapSelectionEntryField(entry, "beaconIndex", mapConfig.beaconIndex);
@@ -404,7 +404,7 @@ namespace BossRush
 
         private static void RefreshAllEntryDisplayNames()
         {
-            ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
             if (mapConfigs == null)
             {
                 return;
@@ -419,7 +419,7 @@ namespace BossRush
             }
         }
 
-        private static string GetDisplayName(ModBehaviour.BossRushMapConfig mapConfig)
+        private static string GetDisplayName(BossRushMapConfig mapConfig)
         {
             if (mapConfig == null)
             {
@@ -438,7 +438,7 @@ namespace BossRush
 
         private static void StartZombieModeConfirmedMapLoad(int entryIndex)
         {
-            ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
             if (mapConfigs == null || entryIndex < 0 || entryIndex >= mapConfigs.Length)
             {
                 ModBehaviour.DevLog("[ZombieMode] StartZombieModeConfirmedMapLoad 终止: entryIndex=" + entryIndex + " 超出 mapConfigs 范围 (Length=" + (mapConfigs != null ? mapConfigs.Length : -1) + ")");
@@ -451,7 +451,7 @@ namespace BossRush
                 return;
             }
 
-            ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[entryIndex];
+            BossRushMapConfig mapConfig = mapConfigs[entryIndex];
             if (mapConfig == null || string.IsNullOrEmpty(mapConfig.sceneID))
             {
                 ModBehaviour.DevLog("[ZombieMode] StartZombieModeConfirmedMapLoad 终止: mapConfig 或 sceneID 为空 (entryIndex=" + entryIndex + ")");

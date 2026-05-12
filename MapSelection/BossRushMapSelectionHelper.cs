@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // BossRushMapSelectionHelper.cs - 地图选择 UI 集成
 // ============================================================================
 // 模块说明：
@@ -29,7 +29,7 @@ namespace BossRush
 {
     /// <summary>
     /// BossRush 地图选择 UI 辅助类
-    /// 注：地图配置已统一到 ModBehaviour.BossRushMapConfig，此类仅负责 UI 交互
+    /// 注：地图配置已统一到 BossRushMapConfig，此类仅负责 UI 交互
     /// </summary>
     public static class BossRushMapSelectionHelper
     {
@@ -45,7 +45,7 @@ namespace BossRush
         {
             get
             {
-                ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+                BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
                 if (configs != null && configs.Length > 0)
                 {
                     return configs[0].sceneID;
@@ -62,7 +62,7 @@ namespace BossRush
         /// </summary>
         public static string GetPendingTargetSubSceneName()
         {
-            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
             if (pendingMapEntryIndex >= 0 && configs != null && pendingMapEntryIndex < configs.Length)
             {
                 // 返回运行时场景名（子场景名）
@@ -76,7 +76,7 @@ namespace BossRush
         /// </summary>
         public static string GetPendingMainSceneName()
         {
-            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
             if (pendingMapEntryIndex >= 0 && configs != null && pendingMapEntryIndex < configs.Length)
             {
                 return configs[pendingMapEntryIndex].sceneID;
@@ -294,7 +294,7 @@ namespace BossRush
         private static void RefreshAllEntryDisplayNames(string debugTag)
         {
             // 获取地图配置
-            ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
             if (mapConfigs == null || bossRushEntryObjects == null)
             {
                 return;
@@ -306,7 +306,7 @@ namespace BossRush
                 GameObject entryObj = bossRushEntryObjects[i];
                 if (entryObj == null) continue;
                 
-                ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[i];
+                BossRushMapConfig mapConfig = mapConfigs[i];
                 string displayName = GetBossRushEntryDisplayName(mapConfig);
                 MapSelectionEntryInjectionHelper.SetEntryDisplayNameDirect(entryObj, displayName);
                 ModBehaviour.DevLog("[BossRush] 延迟刷新显示名称(" + debugTag + "): " + displayName + " (index=" + i + ")");
@@ -322,7 +322,7 @@ namespace BossRush
         /// </summary>
         public static Vector3? GetPendingCustomPosition()
         {
-            ModBehaviour.BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
             if (pendingMapEntryIndex >= 0 && configs != null && pendingMapEntryIndex < configs.Length)
             {
                 return configs[pendingMapEntryIndex].customSpawnPos;
@@ -346,7 +346,7 @@ namespace BossRush
         {
             try
             {
-                ModBehaviour.BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+                BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
                 if (mapConfigs == null || mapConfigs.Length == 0)
                 {
                     ModBehaviour.DevLog("[BossRush] 没有可用的地图配置");
@@ -398,7 +398,7 @@ namespace BossRush
         /// <summary>
         /// 配置 BossRush 条目的字段（使用统一的 BossRushMapConfig 配置）
         /// </summary>
-        private static void ConfigureBossRushEntryWithMapConfig(MapSelectionEntry entry, ModBehaviour.BossRushMapConfig mapConfig, int entryIndex)
+        private static void ConfigureBossRushEntryWithMapConfig(MapSelectionEntry entry, BossRushMapConfig mapConfig, int entryIndex)
         {
             try
             {
@@ -424,7 +424,7 @@ namespace BossRush
             }
         }
 
-        private static string GetBossRushEntryDisplayName(ModBehaviour.BossRushMapConfig mapConfig)
+        private static string GetBossRushEntryDisplayName(BossRushMapConfig mapConfig)
         {
             if (mapConfig == null)
             {
@@ -463,7 +463,7 @@ namespace BossRush
         private static void OnBossRushEntryCreated(
             MapSelectionEntry uiEntry,
             GameObject entryObject,
-            ModBehaviour.BossRushMapConfig mapConfig,
+            BossRushMapConfig mapConfig,
             int entryIndex,
             MapSelectionEntry template,
             Transform targetParent)

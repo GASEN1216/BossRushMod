@@ -21,151 +21,6 @@ using HarmonyLib;
 
 namespace BossRush
 {
-    // ============================================================================
-    // ReflectionCache - 反射结果缓存（性能优化）
-    // ============================================================================
-    /// <summary>
-    /// 反射缓存 - 存储常用的 FieldInfo 和 MethodInfo，避免重复反射调用
-    /// </summary>
-    internal static class ReflectionCache
-    {
-        // InteractableBase.otherInterablesInGroup (私有字段)
-        public static readonly FieldInfo InteractableBase_OtherInterablesInGroup;
-        
-        // MultiInteraction.interactables (私有字段)
-        public static readonly FieldInfo MultiInteraction_Interactables;
-        
-        // NotificationText.duration / durationIfPending (私有字段)
-        public static readonly FieldInfo NotificationText_Duration;
-        public static readonly FieldInfo NotificationText_DurationIfPending;
-        
-        // StockShop 私有字段
-        public static readonly FieldInfo StockShop_MerchantID;
-        public static readonly FieldInfo StockShop_ItemInstances;
-        public static readonly FieldInfo StockShop_AccountAvaliable;
-        
-        // CharacterRandomPreset.characterIconType (私有字段)
-        public static readonly FieldInfo CharacterRandomPreset_CharacterIconType;
-        
-        // NotificationText.ShowNext (静态方法)
-        public static readonly MethodInfo NotificationText_ShowNext;
-        
-        // 缓存初始化标志
-        public static readonly bool IsInitialized;
-        
-        static ReflectionCache()
-        {
-            try
-            {
-                const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
-                const BindingFlags publicStatic = BindingFlags.Public | BindingFlags.Static;
-                
-                // InteractableBase.otherInterablesInGroup
-                InteractableBase_OtherInterablesInGroup = typeof(InteractableBase).GetField(
-                    "otherInterablesInGroup", privateInstance);
-                
-                // MultiInteraction.interactables
-                MultiInteraction_Interactables = typeof(MultiInteraction).GetField(
-                    "interactables", privateInstance);
-                
-                // NotificationText 字段
-                NotificationText_Duration = typeof(NotificationText).GetField(
-                    "duration", privateInstance | BindingFlags.Public);
-                NotificationText_DurationIfPending = typeof(NotificationText).GetField(
-                    "durationIfPending", privateInstance | BindingFlags.Public);
-                
-                // StockShop 字段
-                StockShop_MerchantID = typeof(StockShop).GetField(
-                    "merchantID", privateInstance);
-                StockShop_ItemInstances = typeof(StockShop).GetField(
-                    "itemInstances", privateInstance);
-                StockShop_AccountAvaliable = typeof(StockShop).GetField(
-                    "accountAvaliable", privateInstance);
-                
-                // CharacterRandomPreset.characterIconType
-                CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(
-                    "characterIconType", privateInstance);
-                
-                // NotificationText.ShowNext 方法
-                NotificationText_ShowNext = typeof(NotificationText).GetMethod("ShowNext", publicStatic);
-                
-                IsInitialized = true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] ReflectionCache 初始化异常: " + e.Message);
-                IsInitialized = false;
-            }
-        }
-    }
-    
-    // ============================================================================
-    // ObjectCache - 场景对象缓存（性能优化）
-    // ============================================================================
-    /// <summary>
-    /// 场景对象缓存 - 存储 FindObjectsOfType 结果，按场景自动失效
-    /// </summary>
-    internal static class ObjectCache
-    {
-        private static BoxCollider[] _cachedBoxColliders;
-        private static NotificationText[] _cachedNotificationTexts;
-        private static string _lastSceneName;
-        
-        /// <summary>
-        /// 检查并刷新缓存（场景变化时自动失效）
-        /// </summary>
-        public static void RefreshIfNeeded()
-        {
-            try
-            {
-                string currentScene = SceneManager.GetActiveScene().name;
-                if (_lastSceneName != currentScene)
-                {
-                    _cachedBoxColliders = null;
-                    _cachedNotificationTexts = null;
-                    _lastSceneName = currentScene;
-                }
-            }
-            catch { }
-        }
-        
-        /// <summary>
-        /// 强制刷新所有缓存
-        /// </summary>
-        public static void ForceRefresh()
-        {
-            _cachedBoxColliders = null;
-            _cachedNotificationTexts = null;
-            _lastSceneName = null;
-        }
-        
-        /// <summary>
-        /// 获取缓存的 BoxCollider 数组
-        /// </summary>
-        public static BoxCollider[] GetBoxColliders()
-        {
-            RefreshIfNeeded();
-            if (_cachedBoxColliders == null)
-            {
-                _cachedBoxColliders = UnityEngine.Object.FindObjectsOfType<BoxCollider>();
-            }
-            return _cachedBoxColliders;
-        }
-        
-        /// <summary>
-        /// 获取缓存的 NotificationText 数组
-        /// </summary>
-        public static NotificationText[] GetNotificationTexts()
-        {
-            RefreshIfNeeded();
-            if (_cachedNotificationTexts == null)
-            {
-                _cachedNotificationTexts = Resources.FindObjectsOfTypeAll<NotificationText>();
-            }
-            return _cachedNotificationTexts;
-        }
-    }
-    
     /// <summary>
     /// Boss Rush Mod
     /// 继承自游戏的ModBehaviour基类
@@ -175,52 +30,15 @@ namespace BossRush
         // 单例
         public static ModBehaviour Instance { get; private set; }
         private readonly BossRushRuntimeModuleHost runtimeModuleHost = new BossRushRuntimeModuleHost();
-        
+
+        // 地图刷新点注册表（JSON 优先，硬编码兜底）
+        private static readonly MapSpawnPointRegistry _mapSpawnRegistry = new MapSpawnPointRegistry();
+
         // ============================================================================
         // BossRush 地图配置系统（集中管理，方便后续添加新地图）
+        // BossRushMapConfig 已提升为顶层类，见 Common/MapConfig/BossRushMapConfig.cs
         // ============================================================================
-        
-        /// <summary>
-        /// BossRush 地图配置类（统一管理所有地图相关配置）
-        /// </summary>
-        public class BossRushMapConfig
-        {
-            public string sceneName;           // 运行时场景名称（如 Level_DemoChallenge_1）
-            public string sceneID;             // 加载用场景ID（如 Level_DemoChallenge_Main）
-            public string displayNameCN;       // 显示名称（中文）
-            public string displayNameEN;       // 显示名称（英文）
-            public Vector3[] spawnPoints;      // Boss 刷新点
-            public Vector3? customSpawnPos;    // 玩家自定义传送位置（null 表示使用默认）
-            public Vector3? defaultSignPos;    // 默认路牌位置（null 表示使用玩家位置偏移）
-            public int beaconIndex;            // 信标索引（用于地图选择UI）
-            public string previewImageName;    // 预览图文件名（可选，用于地图选择UI）
-            public Vector3 mapNorth;           // 地图北方向量（用于方位播报，与小地图朝向一致）
-            public Vector3[] modeESpawnPoints;  // Mode E 专用刷怪点（null 表示使用原地图 spawner 位置兜底）
-            public Vector3? modeEPlayerSpawnPos; // Mode E 独狼玩家落点（null 表示使用远离Boss的安全位置兜底）
-            
-            /// <summary>
-            /// 获取本地化的显示名称
-            /// </summary>
-            public string displayName { get { return L10n.T(displayNameCN, displayNameEN); } }
-            
-            public BossRushMapConfig(string name, string id, string displayCN, string displayEN, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null, Vector3[] modeESpawns = null, Vector3? modeEPlayerPos = null)
-            {
-                sceneName = name;
-                sceneID = id;
-                displayNameCN = displayCN;
-                displayNameEN = displayEN;
-                spawnPoints = spawns;
-                customSpawnPos = customPos;
-                defaultSignPos = signPos;
-                beaconIndex = beacon;
-                previewImageName = preview;
-                // 默认使用 DEMO 竞技场的北方向量
-                mapNorth = north.HasValue ? north.Value : new Vector3(-0.959f, 0f, 0.284f);
-                modeESpawnPoints = modeESpawns;
-                modeEPlayerSpawnPos = modeEPlayerPos;
-            }
-        }
-        
+
         // DEMO 竞技场刷新点
         private static readonly Vector3[] DemoChallengeSpawnPoints = new Vector3[]
         {
@@ -248,7 +66,7 @@ namespace BossRush
             new Vector3(234.41f, -7.99f, 222.38f),
             new Vector3(233.38f, -7.61f, 218.86f),
         };
-        
+
         // 零号区刷新点
         private static readonly Vector3[] GroundZeroSpawnPoints = new Vector3[]
         {
@@ -277,7 +95,7 @@ namespace BossRush
             new Vector3(415.34f, 0.01f, 279.90f),
             new Vector3(418.43f, 0.01f, 265.79f),
         };
-        
+
         // 零度挑战刷新点（Level_ChallengeSnow）
         private static readonly Vector3[] ChallengeSnowSpawnPoints = new Vector3[]
         {
@@ -311,7 +129,7 @@ namespace BossRush
             new Vector3(219.81f, 0.01f, 298.57f),
             new Vector3(220.25f, 0.01f, 294.99f),
         };
-        
+
         // 仓库区刷新点（Level_HiddenWarehouse）
         private static readonly Vector3[] HiddenWarehouseSpawnPoints = new Vector3[]
         {
@@ -329,7 +147,7 @@ namespace BossRush
             new Vector3(129.81f, 0.02f, 212.69f),
             new Vector3(146.06f, 0.02f, 196.94f),
         };
-        
+
         // 农场镇刷新点（Level_Farm_01）- 基于实际测量坐标
         private static readonly Vector3[] FarmTownSpawnPoints = new Vector3[]
         {
@@ -345,7 +163,7 @@ namespace BossRush
             new Vector3(384.58f, 0.04f, 598.45f),   // 北
             new Vector3(376.39f, 0.04f, 598.13f),   // 北偏西
         };
-        
+
         // J-Lab 实验室刷新点（Level_JLab_1）- 基于 Player.log 提取的坐标
         private static readonly Vector3[] JLabSpawnPoints = new Vector3[]
         {
@@ -367,7 +185,7 @@ namespace BossRush
             new Vector3(-23.80f, 0.02f, -66.11f),
             new Vector3(-66.06f, 0.02f, -65.31f),
         };
-        
+
         // 风暴区地下刷新点（Level_StormZone_B0）- 基于 Player.log 提取的坐标
         private static readonly Vector3[] StormZoneUndergroundSpawnPoints = new Vector3[]
         {
@@ -393,7 +211,7 @@ namespace BossRush
             new Vector3(118.94f, 0.02f, 508.00f),
             new Vector3(99.41f, 0.02f, 508.61f),
         };
-        
+
         // 37号实验区刷新点（Level_SnowMilitaryBase）- 基于竞技场范围分布
         private static readonly Vector3[] Zone37SpawnPoints = new Vector3[]
         {
@@ -406,7 +224,7 @@ namespace BossRush
             new Vector3(475.98f, 0.04f, 569.06f),
             new Vector3(462.51f, 0.04f, 564.18f),
         };
-        
+
         // 迷宫刷新点（Level_SnowMilitaryBase_ColdStorage）- 基于竞技场范围分布
         private static readonly Vector3[] MazeColdStorageSpawnPoints = new Vector3[]
         {
@@ -425,7 +243,7 @@ namespace BossRush
             new Vector3(3.40f, 0.02f, -54.87f),
             new Vector3(-0.22f, 0.02f, -39.43f),
         };
-        
+
         // 零度挑战 Mode E 专用刷怪点（基于 F7 实地采集坐标）
         private static readonly Vector3[] ChallengeSnowModeESpawnPoints = new Vector3[]
         {
@@ -485,7 +303,7 @@ namespace BossRush
             new Vector3(231.40f, 0.01f, 289.48f),
             new Vector3(247.43f, 0.01f, 295.33f),
         };
-        
+
         // 零号区 Mode E 专用刷怪点（基于 F7 实地采集坐标，共106个）
         private static readonly Vector3[] GroundZeroModeESpawnPoints = new Vector3[]
         {
@@ -596,7 +414,7 @@ namespace BossRush
             new Vector3(464.87f, 0.02f, 245.37f),
             new Vector3(478.54f, 0.02f, 235.18f),
         };
-        
+
         // DEMO 竞技场 Mode E 专用刷怪点（基于 F7 实地采集坐标）
         private static readonly Vector3[] DemoModeESpawnPoints = new Vector3[]
         {
@@ -631,7 +449,7 @@ namespace BossRush
             new Vector3(235.89f, -7.99f, 232.51f),
             new Vector3(236.20f, -7.99f, 251.34f),
         };
-        
+
         // 仓库区 Mode E 专用刷怪点（基于 F7 实地采集坐标，共157个）
         // 注意：独狼玩家落点 (438.18, 0.02, 127.38) 已从刷怪点中移除，避免 boss 刷在玩家脚下
         private static readonly Vector3[] HiddenWarehouseModeESpawnPoints = new Vector3[]
@@ -793,7 +611,7 @@ namespace BossRush
             new Vector3(386.27f, 0.02f, 244.12f),
             new Vector3(402.91f, 0.02f, 224.93f),
         };
-        
+
         // 农场镇 Mode E 专用刷怪点（基于 F7 实地采集坐标，共478个）
         // 注意：独狼玩家落点 (512.35, 0.02, 401.79) 已从刷怪点中移除，避免 boss 刷在玩家脚下
         private static readonly Vector3[] FarmTownModeESpawnPoints = new Vector3[]
@@ -1275,7 +1093,7 @@ namespace BossRush
             new Vector3(631.01f, 0.00f, 723.90f),
             new Vector3(371.93f, 0.00f, 480.80f),
         };
-        
+
         // J-Lab 实验室 Mode E 专用刷怪点（基于 F7 实地采集坐标，共74个）
         // 注意：独狼玩家落点 (53.97, 0.02, -106.43) 已从刷怪点中移除，避免 boss 刷在玩家脚下
         private static readonly Vector3[] JLabModeESpawnPoints = new Vector3[]
@@ -1355,7 +1173,7 @@ namespace BossRush
             new Vector3(-14.40f, 0.00f, -87.70f),
             new Vector3(-43.81f, 0.00f, -22.32f),
         };
-        
+
         // 口口场地（风暴区地下）Mode E 专用刷怪点（基于 F7 实地采集坐标，共78个）
         // 注意：独狼玩家落点 (280.88, 0.02, 333.48) 已从刷怪点中移除，避免 boss 刷在玩家脚下
         // 已移除靠近J-Lab入口的5个点：(282.70,376.31) (272.27,405.70) (209.53,451.04) (271.71,395.34) (241.43,367.05)
@@ -1446,7 +1264,7 @@ namespace BossRush
             new Vector3(109.50f, 0.00f, 503.70f),
             new Vector3(110.23f, 0.00f, 485.20f),
         };
-        
+
         // 37号实验区 Mode E 专用刷怪点（基于 F7 实地采集坐标，共117个）
         // 注意：独狼玩家落点 (463.88, 0.04, 549.68) 已从刷怪点中移除，避免 boss 刷在玩家脚下
         private static readonly Vector3[] Zone37ModeESpawnPoints = new Vector3[]
@@ -1569,7 +1387,7 @@ namespace BossRush
             new Vector3(597.68f, 0.00f, 566.50f),
             new Vector3(593.81f, 0.00f, 523.48f),
         };
-        
+
         // 迷宫 Mode E 专用刷怪点（基于 F7 实地采集坐标，共52个）
         // 注意：独狼玩家落点 (-94.55, 0.02, -149.60) 已从刷怪点中移除，避免 boss 刷在玩家脚下
         private static readonly Vector3[] MazeModeESpawnPoints = new Vector3[]
@@ -1627,7 +1445,7 @@ namespace BossRush
             new Vector3(17.93f, 0.00f, -35.23f),
             new Vector3(9.07f, 0.00f, -45.81f),
         };
-        
+
         /// <summary>
         /// 所有支持的 BossRush 地图配置（添加新地图只需在此处添加配置）
         /// </summary>
@@ -1770,21 +1588,30 @@ namespace BossRush
             ),
             // 后续添加新地图只需在此处添加 BossRushMapConfig
         };
-        
+
         // 当前地图使用的刷新点（根据场景动态选择）
         private Vector3[] currentMapSpawnPoints = null;
-        
+
         // ============================================================================
         // BossRush 地图配置查询方法
         // ============================================================================
-        
+
         /// <summary>
         /// 根据运行时场景名获取地图配置
+        /// 优先从 JSON 注册表查询，未命中时回退硬编码表
         /// </summary>
         public static BossRushMapConfig GetMapConfigBySceneName(string sceneName)
         {
             if (string.IsNullOrEmpty(sceneName)) return null;
-            
+
+            // 优先从注册表获取（JSON 数据源）
+            BossRushMapConfig registryConfig = _mapSpawnRegistry.TryGet(sceneName);
+            if (registryConfig != null)
+            {
+                return registryConfig;
+            }
+
+            // 回退硬编码表
             for (int i = 0; i < BossRushMapConfigs.Length; i++)
             {
                 if (BossRushMapConfigs[i].sceneName == sceneName)
@@ -1794,14 +1621,25 @@ namespace BossRush
             }
             return null;
         }
-        
+
         /// <summary>
         /// 根据加载用场景ID获取地图配置
+        /// 优先从 JSON 注册表查询，未命中时回退硬编码表
         /// </summary>
         public static BossRushMapConfig GetMapConfigBySceneID(string sceneID)
         {
             if (string.IsNullOrEmpty(sceneID)) return null;
-            
+
+            // 优先从注册表遍历查找（按 sceneID 匹配）
+            foreach (var config in _mapSpawnRegistry.All())
+            {
+                if (config.sceneID == sceneID)
+                {
+                    return config;
+                }
+            }
+
+            // 回退硬编码表
             for (int i = 0; i < BossRushMapConfigs.Length; i++)
             {
                 if (BossRushMapConfigs[i].sceneID == sceneID)
@@ -1811,7 +1649,7 @@ namespace BossRush
             }
             return null;
         }
-        
+
         /// <summary>
         /// 获取当前场景的地图配置
         /// </summary>
@@ -1820,15 +1658,45 @@ namespace BossRush
             string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             return GetMapConfigBySceneName(currentScene);
         }
-        
+
         /// <summary>
         /// 获取所有地图配置
+        /// 优先返回注册表中的配置，硬编码表中未被注册表覆盖的条目作为补充
         /// </summary>
         public static BossRushMapConfig[] GetAllMapConfigs()
         {
-            return BossRushMapConfigs;
+            var result = new System.Collections.Generic.List<BossRushMapConfig>();
+            var registrySceneNames = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+
+            // 保持硬编码表顺序不变；JSON 只覆盖同 sceneName 的数据
+            for (int i = 0; i < BossRushMapConfigs.Length; i++)
+            {
+                BossRushMapConfig hardcodedConfig = BossRushMapConfigs[i];
+                BossRushMapConfig registryConfig = _mapSpawnRegistry.TryGet(hardcodedConfig.sceneName);
+                BossRushMapConfig selectedConfig = registryConfig ?? hardcodedConfig;
+
+                result.Add(selectedConfig);
+                if (!string.IsNullOrEmpty(hardcodedConfig.sceneName))
+                {
+                    registrySceneNames.Add(hardcodedConfig.sceneName);
+                }
+            }
+
+            // 注册表中新增、硬编码表未覆盖的地图追加到末尾
+            foreach (var config in _mapSpawnRegistry.All())
+            {
+                if (config != null
+                    && !string.IsNullOrEmpty(config.sceneName)
+                    && !registrySceneNames.Contains(config.sceneName))
+                {
+                    result.Add(config);
+                    registrySceneNames.Add(config.sceneName);
+                }
+            }
+
+            return result.ToArray();
         }
-        
+
         /// <summary>
         /// 检查指定场景是否是有效的 BossRush 竞技场场景
         /// </summary>
@@ -1836,7 +1704,7 @@ namespace BossRush
         {
             return GetMapConfigBySceneName(sceneName) != null;
         }
-        
+
         /// <summary>
         /// 检查当前场景是否是有效的 BossRush 竞技场场景
         /// </summary>
@@ -1844,7 +1712,7 @@ namespace BossRush
         {
             return GetCurrentMapConfig() != null;
         }
-        
+
         /// <summary>
         /// 获取指定场景的刷新点
         /// </summary>
@@ -1905,7 +1773,7 @@ namespace BossRush
         {
             return ShouldUseBossRushCommonNPCSpawnPoints(sceneName);
         }
-        
+
         /// <summary>
         /// 获取当前场景的刷新点
         /// </summary>
@@ -1916,11 +1784,11 @@ namespace BossRush
             {
                 return currentMapSpawnPoints;
             }
-            
+
             BossRushMapConfig mapConfig = GetCurrentMapConfig();
             return mapConfig != null ? mapConfig.spawnPoints : DemoChallengeSpawnPoints;
         }
-        
+
         /// <summary>
         /// 获取当前场景的默认传送位置（用于玩家传送、路牌位置等）
         /// 优先使用 customSpawnPos，其次使用 defaultSignPos，最后使用 DEMO 竞技场默认位置
@@ -1944,7 +1812,7 @@ namespace BossRush
             // 兜底：DEMO 竞技场默认位置
             return new Vector3(235.48f, -7.99f, 202.41f);
         }
-        
+
         /// <summary>
         /// 获取指定场景的默认传送位置
         /// </summary>
@@ -1965,7 +1833,7 @@ namespace BossRush
             // 兜底：DEMO 竞技场默认位置
             return new Vector3(235.48f, -7.99f, 202.41f);
         }
-        
+
         // 公共方法：获取竞技场场景名称（DEMO竞技场，保留兼容）
         public string GetArenaSceneName()
         {
@@ -1999,7 +1867,7 @@ namespace BossRush
         {
             // [DEBUG] 记录传入参数
             DevLog("[BossRush] ConfigureBossRushMode 调用: 传入 bossesPerWave=" + bossesPerWave + ", useInfiniteHell=" + useInfiniteHell + ", 当前 this.bossesPerWave=" + this.bossesPerWave);
-            
+
             if (bossesPerWave < 1)
             {
                 bossesPerWave = 1;
@@ -2054,7 +1922,7 @@ namespace BossRush
             {
                 // 每次打开加油站时重置 ID 105 购买计数
                 item105PurchaseCount = 0;
-                
+
                 EnsureAmmoShop();
                 if (ammoShop != null)
                 {
@@ -2063,7 +1931,7 @@ namespace BossRush
             }
             catch {}
         }
-        
+
         // Boss管理
         private MonoBehaviour currentBoss;  // CharacterMainControl
         private MonoBehaviour playerCharacter;  // CharacterMainControl
@@ -2075,7 +1943,7 @@ namespace BossRush
         // 注：刷新点数组已移至 BossRushMapConfig 配置系统中统一管理（见文件顶部）
         // 以下为兼容旧代码的别名引用
         private static Vector3[] ArenaSpawnPoints { get { return DemoChallengeSpawnPoints; } }
-        
+
         // 状态
         public bool IsActive { get; private set; }
         // Mode F 状态
@@ -2087,23 +1955,23 @@ namespace BossRush
         {
             IsActive = active;
             ClearEnemyRecoveryMonitorState();
-            
+
             // [Bug修复] BossRush开始时确保订阅龙息Buff处理器
             // 无论玩家手上拿什么武器，龙裔遗族Boss的龙息都应该能触发龙焰灼烧
             if (active)
             {
                 DragonBreathBuffHandler.Subscribe();
             }
-            
+
             // 模式结束时清理现金磁铁飞行状态
             if (!active)
             {
                 ClearCashMagnetState();
             }
         }
-        
+
         // UI提示（字段定义已移动到 UIAndSigns 部分类中）
-        
+
         // 交互相关
         private const string BossRushArenaSceneID = "Level_DemoChallenge_Main"; // 用于SceneLoader加载的场景ID
         private const string BossRushArenaSceneName = "Level_DemoChallenge_1";  // 实际运行时的场景名称
@@ -2207,7 +2075,7 @@ namespace BossRush
         // BossRush 进入 DEMO 挑战场景的来源标记
         private static bool bossRushArenaPlanned = false;  // 通过 BossRush 启动的 DEMO 挑战加载已发起但尚未完成
         private static bool bossRushArenaActive = false;   // 当前 DEMO 挑战场景是否处于 BossRush 控制之下
-        
+
         /// <summary>
         /// 竞技场是否激活（通关后仍为true，直到离开场景）
         /// 用于子弹商店等功能在通关后仍可使用
@@ -2215,7 +2083,7 @@ namespace BossRush
         public bool IsBossRushArenaActive => bossRushArenaActive;
 
         private Vector3 demoChallengeStartPosition = Vector3.zero;
-        
+
         // 单波生成模式
         private bool waitingForNextWave = false;
         private float waveCountdown = 0f;
@@ -2236,31 +2104,31 @@ namespace BossRush
         // 大兴兴清理定时器（只在 BossRush 进行期间启用）
         private float daXingXingCleanTimer = 0f;
         private const float DaXingXingCleanInterval = 0.5f;
-        
+
         // [性能优化] 角色缓存列表，避免每次清理时都调用 FindObjectsOfType
         private static List<CharacterMainControl> _cachedCharacters = new List<CharacterMainControl>();
         private static bool _characterCacheNeedsRefresh = true;
         // [性能优化] 缓存定时刷新计时器，用于捕获动态生成的敌人
         private static float _characterCacheRefreshTimer = 0f;
         private const float CharacterCacheRefreshInterval = 10f; // 每 10 秒强制刷新一次缓存（从 5f 优化为 10f）
-        
+
         // [性能优化] 复用的销毁列表，避免每次清理时分配新的 List
         private static readonly List<GameObject> _reusableDestroyList = new List<GameObject>(32);
-        
+
         // [性能优化] 缓存 CharacterSpawnerRoot.created 字段的反射引用
         private static System.Reflection.FieldInfo _cachedCreatedField = null;
         private static bool _createdFieldCached = false;
-        
+
         // Boss 掉落随机化相关
-        
+
         // 是否已禁用spawner
         private bool spawnersDisabled = false;
-        
+
         // [性能优化] 竞技场范围限制 - 以路牌为圆心的清理/禁用范围
         private const float ARENA_RADIUS = 500f; // 竞技场半径（米）
         private static Vector3 _arenaCenter = Vector3.zero; // 竞技场中心位置（路牌位置）
         private static bool _arenaCenterSet = false; // 是否已设置竞技场中心
-        
+
         /// <summary>
         /// 根据地图配置设置竞技场中心位置
         /// 在禁用 spawner 和清理敌人之前调用，确保范围限制生效
@@ -2317,13 +2185,13 @@ namespace BossRush
             InitializeAlwaysOnRuntime();
 
             RegisterPlayerLifecycleRuntimeEvents();
-            
+
             InitializeDebugToolsRuntime();
-            
+
             // 初始化成就系统和成就页面UI
             InitializeAchievementRuntime();
         }
-        
+
         void OnGUI()
         {
             if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
@@ -2332,7 +2200,7 @@ namespace BossRush
             }
 
             // Boss 池配置窗口现在使用 Unity UI Canvas 实现，不再需要 OnGUI
-            
+
             DrawDebugToolsRuntimeGui();
         }
 
@@ -2348,18 +2216,18 @@ namespace BossRush
             }
 
             runtimeModuleHost.OnUpdate(Time.deltaTime, Time.unscaledDeltaTime);
-            
+
             // 龙套装冲刺检测
             TickEquipmentAbilityRuntime();
-            
+
             // 无间炼狱现金磁铁吸附更新
             TickGameplaySupportRuntime();
-            
+
             if (TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime))
             {
                 return;
             }
-            
+
             if (f3DebugCheatMenuVisible)
             {
                 return;
@@ -2378,7 +2246,7 @@ namespace BossRush
             runtimeModuleHost.OnLateUpdate();
             LateUpdateModeRuntimeGroup();
         }
-        
+
         private static void InjectBossRushTicketLocalization()
         {
             InjectBossRushTicketLocalization_Integration();
@@ -2402,18 +2270,19 @@ namespace BossRush
         void OnDestroy()
         {
             CleanupDebugToolsOnDestroy();
-            
+
             CleanupPlayerLifecycleRuntimeEvents();
 
             // 清理成就追踪事件
             CleanupAchievementRuntime();
-            
+
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();
 
             CleanupIntegrationRuntimeOnDestroy();
             CleanupModeRuntimeOnDestroy();
             runtimeModuleHost.OnDestroy();
+            HarmonyPatchGroupRegistrar.Clear();
             if (ReferenceEquals(Instance, this))
             {
                 Instance = null;
@@ -2423,15 +2292,15 @@ namespace BossRush
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             PrepareSceneRuntimeForLoad();
-            
+
             // 场景切换时清理好感度系统UI缓存
             OnSceneUnloadAlwaysOnRuntime();
             CleanupEnemyRecoveryForSceneChange();
             CleanupModeRuntimeForSceneLoad(scene);
-            
+
             // 场景切换时清理现金磁铁飞行状态
             CleanupCashMagnetForSceneChange();
-            
+
             OnSceneLoadedDebugToolsRuntime(scene, mode);
             OnSceneLoadedIntegrationRuntime(scene, mode);
             runtimeModuleHost.OnSceneLoaded(new SceneRuntimeContext(scene, mode));
@@ -2463,7 +2332,7 @@ namespace BossRush
             }
             StartBossRush(interactionSource);
         }
-        
+
         private static InteractableLootbox GetLootBoxTemplateWithLoader()
         {
             if (_cachedLootBoxTemplateWithLoader != null)
@@ -2620,7 +2489,7 @@ namespace BossRush
                 DevLog("[BossRush] ApplyLootBoxCoverSetting 失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 开始Boss Rush模式
         /// </summary>
@@ -2654,7 +2523,7 @@ namespace BossRush
                         notifyBossRushOnFailure: false);
                     return dragonBoss;
                 }
-                
+
                 // 检查是否是龙王Boss，使用专门的生成方法
                 if (IsDragonKingPreset(preset))
                 {
@@ -2712,25 +2581,25 @@ namespace BossRush
                         }
                     }
                 }
-                
+
                 if (targetPreset == null)
                 {
                     DevLog("[BossRush] 未找到合适的CharacterRandomPreset");
                     return null;
                 }
-                
+
                 // 使用CharacterRandomPreset的CreateCharacterAsync方法生成敌人
                 Vector3 dir = Vector3.forward;
                 // 先生成非激活状态，以便修改属性
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 var character = await targetPreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
-                
+
                 if (character == null)
                 {
                     DevLog("[BossRush] 生成敌人失败");
                     return null;
                 }
-                
+
                 currentBoss = character;
                 character.gameObject.name = "BossRush_" + preset.displayName;
 
@@ -2764,10 +2633,10 @@ namespace BossRush
                         currentWaveBosses.Add(character);
                     }
                 }
-                
+
                 // 激活敌人
                 character.gameObject.SetActive(true);
-                
+
                 // 记录 Boss 生成时间和原始掉落数量（用于掉落随机化）
                 try
                 {
@@ -2780,7 +2649,7 @@ namespace BossRush
                             originalLootCount = 3; // 默认基础掉落数量
                         }
                         RegisterBossRandomLootTracking(character, originalLootCount);
-                        
+
                         DevLog("[BossRush] 记录 Boss 生成信息并订阅掉落事件 - 时间: " + Time.time + ", 原始掉落数量: " + originalLootCount);
                     }
                 }
@@ -2788,7 +2657,7 @@ namespace BossRush
                 {
                     DevLog("[BossRush] 记录 Boss 生成信息失败: " + recordEx.Message);
                 }
-                
+
                 // 强制设置 AI 仇恨到玩家
                 // 设置 forceTracePlayerDistance 为较大值，确保远距离生成的敌人也会追踪玩家
                 var main = CharacterMainControl.Main;
@@ -2805,14 +2674,14 @@ namespace BossRush
                         ai.noticed = true;
                     }
                 }
-                
+
                 // 延迟校验Boss位置，防止低配玩家地形加载慢导致Boss卡在地下
                 StartCoroutine(DelayedBossPositionValidation(character, 0.5f));
                 RegisterEnemyRecoveryAnchor(character, position);
-                
+
                 ShowMessage(L10n.T("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName, "Wave " + (currentEnemyIndex + 1) + ": " + preset.displayName));
                 DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
-                
+
                 return character;
             }
             catch (Exception e)
@@ -2939,21 +2808,21 @@ namespace BossRush
                 // 其他地图只在场景加载时刷新一次即可
                 string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                 bool isDemoMap = (currentScene == "Level_DemoChallenge_1");
-                
+
                 // [性能优化] 范围限制参数
                 bool useRangeLimit = _arenaCenterSet;
                 float radiusSq = ARENA_RADIUS * ARENA_RADIUS;
-                
+
                 _characterCacheRefreshTimer += DaXingXingCleanInterval;
                 if (_characterCacheNeedsRefresh || (isDemoMap && _characterCacheRefreshTimer >= CharacterCacheRefreshInterval))
                 {
                     RefreshCharacterCache();
                     _characterCacheRefreshTimer = 0f;
                 }
-                
+
                 // 清理缓存中已销毁的引用
                 _cachedCharacters.RemoveAll(c => c == null);
-                
+
                 if (_cachedCharacters.Count == 0)
                 {
                     return;
@@ -3063,7 +2932,7 @@ namespace BossRush
                     {
                         continue;
                     }
-                    
+
                     // [性能优化] 范围检查：只清理竞技场范围内的大兴兴
                     if (useRangeLimit && c.transform != null)
                     {
@@ -3096,7 +2965,7 @@ namespace BossRush
                 DevLog("[BossRush] TryCleanNonBossRushDaXingXing 出错: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// [性能优化] 刷新角色缓存列表
         /// 场景加载时立即刷新，之后每隔一段时间定时刷新以捕获动态生成的敌人
@@ -3119,7 +2988,7 @@ namespace BossRush
                 DevLog("[BossRush] RefreshCharacterCache 出错: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 获取CharacterRandomPreset的Team（直接访问public字段）
         /// </summary>
@@ -3140,12 +3009,12 @@ namespace BossRush
         {
             UpdateMessage_UIAndSigns();
         }
-        
+
         public void ShowMessage(string msg)
         {
             ShowMessage_UIAndSigns(msg);
         }
-        
+
         /// <summary>
         /// 显示敌人生成横幅
         /// 单Boss模式：显示名字 + 方位
@@ -3155,7 +3024,7 @@ namespace BossRush
         {
             ShowEnemyBanner_UIAndSigns(enemyName, enemyPos, playerPos, currentEnemyIndex, totalEnemies, infiniteHellMode, infiniteHellWaveIndex, bossesPerWave);
         }
-        
+
         /// <summary>
         /// 显示大横幅（使用游戏通知系统）
         /// </summary>
@@ -3163,8 +3032,8 @@ namespace BossRush
         {
             ShowBigBanner_UIAndSigns(text);
         }
-        
-        
+
+
         /// <summary>
         /// 计算敌人相对于玩家的方位（8个方向）
         /// </summary>
@@ -3193,10 +3062,10 @@ namespace BossRush
             mapNorth.Normalize();
 
             float angle = Vector3.SignedAngle(mapNorth, direction, Vector3.up);
-            
+
             // 将角度转换为0-360度
             if (angle < 0) angle += 360f;
-            
+
             // 8个方位划分（每个方位45度）
             if (angle >= 337.5f || angle < 22.5f)
                 return "正北";
@@ -3264,7 +3133,7 @@ namespace BossRush
             catch {}
         }
     }
-    
+
     public class EnemyPresetInfo
     {
         public string name;

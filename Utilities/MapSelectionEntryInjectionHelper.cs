@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Duckov.UI;
@@ -9,9 +9,9 @@ namespace BossRush
 {
     internal static class MapSelectionEntryInjectionHelper
     {
-        internal delegate void ConfigureEntryDelegate(MapSelectionEntry entry, ModBehaviour.BossRushMapConfig mapConfig, int entryIndex);
-        internal delegate string GetDisplayNameDelegate(ModBehaviour.BossRushMapConfig mapConfig);
-        internal delegate void EntryCreatedDelegate(MapSelectionEntry entry, GameObject entryObject, ModBehaviour.BossRushMapConfig mapConfig, int entryIndex, MapSelectionEntry template, Transform targetParent);
+        internal delegate void ConfigureEntryDelegate(MapSelectionEntry entry, BossRushMapConfig mapConfig, int entryIndex);
+        internal delegate string GetDisplayNameDelegate(BossRushMapConfig mapConfig);
+        internal delegate void EntryCreatedDelegate(MapSelectionEntry entry, GameObject entryObject, BossRushMapConfig mapConfig, int entryIndex, MapSelectionEntry template, Transform targetParent);
 
         internal sealed class TemplateContext
         {
@@ -27,7 +27,7 @@ namespace BossRush
             string entryNamePrefix,
             List<GameObject> createdEntries,
             List<GameObject> hiddenEntries,
-            ModBehaviour.BossRushMapConfig[] mapConfigs,
+            BossRushMapConfig[] mapConfigs,
             ConfigureEntryDelegate configureEntry,
             GetDisplayNameDelegate getDisplayName,
             Action<GameObject> setupCostDisplay,
@@ -50,7 +50,7 @@ namespace BossRush
 
             for (int i = 0; i < mapConfigs.Length; i++)
             {
-                ModBehaviour.BossRushMapConfig mapConfig = mapConfigs[i];
+                BossRushMapConfig mapConfig = mapConfigs[i];
                 if (mapConfig == null || string.IsNullOrEmpty(mapConfig.sceneID))
                 {
                     continue;
