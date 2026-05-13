@@ -136,8 +136,15 @@ namespace BossRush
 
         public static void ClearAll()
         {
+            ResetStaticCaches();
+        }
+
+        public static void ResetStaticCaches()
+        {
             marks.Clear();
             receiverCache.Clear();
+            keysToRemoveCache.Clear();
+            lastCleanupTime = 0f;
         }
     }
 }

@@ -277,6 +277,13 @@ namespace BossRush
             FxPolicy.ApplyTo(meleeAgent, GetFallbackSlashFx, GetFallbackHitFx);
         }
 
+        internal static void ResetStaticCaches()
+        {
+            cachedFallbackSlashFx = null;
+            cachedFallbackHitFx = null;
+            _cachedConfig = null;
+        }
+
         private static GameObject GetFallbackSlashFx()
         {
             if (cachedFallbackSlashFx == null)

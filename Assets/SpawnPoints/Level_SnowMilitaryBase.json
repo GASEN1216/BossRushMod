@@ -3,6 +3,7 @@
   "sceneID": "Level_SnowMilitaryBase_Main",
   "displayNameCN": "37号实验区",
   "displayNameEN": "Zone 37 Experimental Area",
+  "sortOrder": 7,
   "spawnPoints": [
     [453.19, 0.04, 565.47],
     [454.82, 0.04, 531.44],

@@ -18,6 +18,8 @@ namespace BossRush
         {
             // 静态缓存兜底清理：快递员付费扫箱服务
             CourierPaidLootSweepService.ResetStaticCaches();
+            // 静态缓存兜底清理：阿稳寄存服务
+            StorageDepositService.ResetStaticCaches();
             owner = null;
         }
     }

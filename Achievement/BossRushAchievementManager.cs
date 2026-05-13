@@ -253,7 +253,7 @@ namespace BossRush
             ModBehaviour.DevLog("[Achievement] 成就解锁: " + achievement.nameCN + " (" + achievementId + ")");
 
             OnAchievementUnlocked?.Invoke(achievement);
-            SteamAchievementPopup.Show(achievement);
+            BossRushEventBus.Publish(new BossRushAchievementUnlockedEvent(achievement));
 
             return true;
         }
@@ -373,6 +373,17 @@ namespace BossRush
                 unlockedAchievements = new HashSet<string>();
                 claimedRewards = new HashSet<string>();
             }
+        }
+
+        public static void ResetStaticCaches()
+        {
+            SaveData();
+            allAchievements.Clear();
+            unlockedAchievements.Clear();
+            claimedRewards.Clear();
+            OnAchievementUnlocked = null;
+            OnRewardClaimed = null;
+            isInitialized = false;
         }
 
         #endregion

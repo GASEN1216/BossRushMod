@@ -56,6 +56,18 @@ namespace BossRush.Utils
         private static readonly Dictionary<int, OriginalHealthBarEntry> OriginalHealthBarEntriesByTransformId
             = new Dictionary<int, OriginalHealthBarEntry>();
 
+        public static void ResetStaticCaches()
+        {
+            foreach (OriginalHealthBarEntry entry in OriginalHealthBarEntriesByTransformId.Values)
+            {
+                DestroyOriginalHealthBarInstance(entry);
+            }
+
+            OriginalHealthBarEntriesByTransformId.Clear();
+            _cachedCamera = null;
+            _nextCameraRefreshTime = 0f;
+        }
+
         /// <summary>
         /// 使用原版 HealthBar 的名字组件显示 NPC 名字。
         /// 内部只复制原版 UI 样式，不再补 Health 代理。

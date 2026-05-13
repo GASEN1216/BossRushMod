@@ -207,11 +207,7 @@ namespace BossRush
             // 最后回退：从已加载的资源中查找
             try
             {
-                TMP_FontAsset[] fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
-                if (fonts != null && fonts.Length > 0)
-                {
-                    _cachedFont = fonts[0];
-                }
+                _cachedFont = ObjectCache.GetFirstTmpFont();
             }
             catch (Exception e)
             {

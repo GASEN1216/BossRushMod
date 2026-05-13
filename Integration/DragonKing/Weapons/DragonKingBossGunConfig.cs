@@ -97,6 +97,11 @@ namespace BossRush
 
         private static readonly Dictionary<string, FieldInfo> fieldInfoCache = new Dictionary<string, FieldInfo>();
 
+        internal static void ResetStaticCaches()
+        {
+            fieldInfoCache.Clear();
+        }
+
         public static bool TryConfigure(Item item, string baseName)
         {
             if (item == null)

@@ -23,7 +23,25 @@ namespace BossRush
         // UI相关变量
         private static GameObject npcTeleportUIRoot = null;
         private static bool npcTeleportUIVisible = false;
-        
+
+        private static void ResetNPCTeleportUIStaticCaches()
+        {
+            if (npcTeleportUIRoot != null)
+            {
+                try
+                {
+                    UnityEngine.Object.Destroy(npcTeleportUIRoot);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[NPCTeleportUI] [WARNING] 销毁 UI 根对象失败: " + e.Message);
+                }
+            }
+
+            npcTeleportUIRoot = null;
+            npcTeleportUIVisible = false;
+        }
+
         /// <summary>
         /// 切换NPC传送UI显示状态
         /// </summary>
@@ -38,7 +56,7 @@ namespace BossRush
                 ShowNPCTeleportUI();
             }
         }
-        
+
         /// <summary>
         /// 显示NPC传送UI
         /// </summary>
@@ -51,23 +69,23 @@ namespace BossRush
                 {
                     CreateNPCTeleportUI();
                 }
-                
+
                 if (npcTeleportUIRoot != null)
                 {
                     npcTeleportUIRoot.SetActive(true);
                     npcTeleportUIVisible = true;
-                    
+
                     // 暂停游戏
                     Time.timeScale = 0f;
                     Cursor.visible = true;
                     Cursor.lockState = CursorLockMode.None;
-                    
+
                     // 禁用游戏输入，阻止 InputManager 更新鼠标状态和玩家射击
                     InputManager.DisableInput(npcTeleportUIRoot);
-                    
+
                     // 刷新NPC列表
                     RefreshNPCList();
-                    
+
                     DevLog("[NPCTeleportUI] UI已显示，游戏已暂停，输入已禁用");
                 }
             }
@@ -76,7 +94,7 @@ namespace BossRush
                 DevLog("[NPCTeleportUI] 显示UI失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 隐藏NPC传送UI
         /// </summary>
@@ -88,15 +106,15 @@ namespace BossRush
                 {
                     // 恢复游戏输入（必须在隐藏UI之前调用）
                     InputManager.ActiveInput(npcTeleportUIRoot);
-                    
+
                     npcTeleportUIRoot.SetActive(false);
                     npcTeleportUIVisible = false;
-                    
+
                     // 恢复游戏
                     Time.timeScale = 1f;
                     Cursor.visible = false;
                     Cursor.lockState = CursorLockMode.Locked;
-                    
+
                     DevLog("[NPCTeleportUI] UI已隐藏，游戏已恢复，输入已启用");
                 }
             }
@@ -105,7 +123,7 @@ namespace BossRush
                 DevLog("[NPCTeleportUI] 隐藏UI失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 创建NPC传送UI
         /// </summary>
@@ -118,85 +136,85 @@ namespace BossRush
                 Canvas canvas = npcTeleportUIRoot.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 canvas.sortingOrder = 1000; // 确保在最上层
-                
+
                 CanvasScaler scaler = npcTeleportUIRoot.AddComponent<CanvasScaler>();
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
                 scaler.referenceResolution = new Vector2(1920, 1080);
-                
+
                 npcTeleportUIRoot.AddComponent<GraphicRaycaster>();
-                
+
                 // 创建背景遮罩
                 GameObject bgMask = new GameObject("BackgroundMask");
                 bgMask.transform.SetParent(npcTeleportUIRoot.transform, false);
-                
+
                 RectTransform bgRect = bgMask.AddComponent<RectTransform>();
                 bgRect.anchorMin = Vector2.zero;
                 bgRect.anchorMax = Vector2.one;
                 bgRect.sizeDelta = Vector2.zero;
-                
+
                 Image bgImage = bgMask.AddComponent<Image>();
                 bgImage.color = new Color(0, 0, 0, 0.7f); // 半透明黑色
-                
+
                 // 点击背景关闭UI
                 Button bgButton = bgMask.AddComponent<Button>();
                 bgButton.onClick.AddListener(() => HideNPCTeleportUI());
-                
+
                 // 创建面板
                 GameObject panel = new GameObject("Panel");
                 panel.transform.SetParent(npcTeleportUIRoot.transform, false);
-                
+
                 RectTransform panelRect = panel.AddComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 panelRect.anchorMax = new Vector2(0.5f, 0.5f);
                 panelRect.pivot = new Vector2(0.5f, 0.5f);
                 panelRect.sizeDelta = new Vector2(400, 500);
-                
+
                 Image panelImage = panel.AddComponent<Image>();
                 panelImage.color = new Color(0.1f, 0.1f, 0.1f, 0.95f);
-                
+
                 // 创建标题
                 GameObject title = new GameObject("Title");
                 title.transform.SetParent(panel.transform, false);
-                
+
                 RectTransform titleRect = title.AddComponent<RectTransform>();
                 titleRect.anchorMin = new Vector2(0, 1);
                 titleRect.anchorMax = new Vector2(1, 1);
                 titleRect.pivot = new Vector2(0.5f, 1);
                 titleRect.anchoredPosition = new Vector2(0, -10);
                 titleRect.sizeDelta = new Vector2(-20, 40);
-                
+
                 Text titleText = title.AddComponent<Text>();
                 titleText.text = "传送到NPC";
                 titleText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
                 titleText.fontSize = 24;
                 titleText.alignment = TextAnchor.MiddleCenter;
                 titleText.color = Color.white;
-                
+
                 // 创建滚动视图
                 GameObject scrollView = new GameObject("ScrollView");
                 scrollView.transform.SetParent(panel.transform, false);
-                
+
                 RectTransform scrollRect = scrollView.AddComponent<RectTransform>();
                 scrollRect.anchorMin = new Vector2(0, 0);
                 scrollRect.anchorMax = new Vector2(1, 1);
                 scrollRect.pivot = new Vector2(0.5f, 0.5f);
                 scrollRect.anchoredPosition = new Vector2(0, -30);
                 scrollRect.sizeDelta = new Vector2(-20, -80);
-                
+
                 ScrollRect scrollComponent = scrollView.AddComponent<ScrollRect>();
                 scrollComponent.horizontal = false;
                 scrollComponent.vertical = true;
-                
+
                 // 创建内容容器
                 GameObject content = new GameObject("Content");
                 content.transform.SetParent(scrollView.transform, false);
-                
+
                 RectTransform contentRect = content.AddComponent<RectTransform>();
                 contentRect.anchorMin = new Vector2(0, 1);
                 contentRect.anchorMax = new Vector2(1, 1);
                 contentRect.pivot = new Vector2(0.5f, 1);
                 contentRect.sizeDelta = new Vector2(0, 0);
-                
+
                 VerticalLayoutGroup layout = content.AddComponent<VerticalLayoutGroup>();
                 layout.spacing = 10;
                 layout.padding = new RectOffset(10, 10, 10, 10);
@@ -204,47 +222,47 @@ namespace BossRush
                 layout.childControlWidth = true;
                 layout.childForceExpandHeight = false;
                 layout.childForceExpandWidth = true;
-                
+
                 ContentSizeFitter fitter = content.AddComponent<ContentSizeFitter>();
                 fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                
+
                 scrollComponent.content = contentRect;
-                
+
                 // 创建关闭按钮
                 GameObject closeBtn = new GameObject("CloseButton");
                 closeBtn.transform.SetParent(panel.transform, false);
-                
+
                 RectTransform closeBtnRect = closeBtn.AddComponent<RectTransform>();
                 closeBtnRect.anchorMin = new Vector2(0.5f, 0);
                 closeBtnRect.anchorMax = new Vector2(0.5f, 0);
                 closeBtnRect.pivot = new Vector2(0.5f, 0);
                 closeBtnRect.anchoredPosition = new Vector2(0, 10);
                 closeBtnRect.sizeDelta = new Vector2(150, 40);
-                
+
                 Image closeBtnImage = closeBtn.AddComponent<Image>();
                 closeBtnImage.color = new Color(0.3f, 0.3f, 0.3f, 1f);
-                
+
                 Button closeBtnButton = closeBtn.AddComponent<Button>();
                 closeBtnButton.onClick.AddListener(() => HideNPCTeleportUI());
-                
+
                 GameObject closeBtnText = new GameObject("Text");
                 closeBtnText.transform.SetParent(closeBtn.transform, false);
-                
+
                 RectTransform closeBtnTextRect = closeBtnText.AddComponent<RectTransform>();
                 closeBtnTextRect.anchorMin = Vector2.zero;
                 closeBtnTextRect.anchorMax = Vector2.one;
                 closeBtnTextRect.sizeDelta = Vector2.zero;
-                
+
                 Text closeBtnTextComponent = closeBtnText.AddComponent<Text>();
                 closeBtnTextComponent.text = "关闭 (ESC)";
                 closeBtnTextComponent.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
                 closeBtnTextComponent.fontSize = 18;
                 closeBtnTextComponent.alignment = TextAnchor.MiddleCenter;
                 closeBtnTextComponent.color = Color.white;
-                
+
                 DontDestroyOnLoad(npcTeleportUIRoot);
                 npcTeleportUIRoot.SetActive(false);
-                
+
                 DevLog("[NPCTeleportUI] UI创建成功");
             }
             catch (Exception e)
@@ -252,7 +270,7 @@ namespace BossRush
                 DevLog("[NPCTeleportUI] 创建UI失败: " + e.Message);
             }
         }
-        
+
         // NPC字段名 → 显示名称的映射（已知NPC的友好名称）
         private static readonly Dictionary<string, string> npcDisplayNames = new Dictionary<string, string>
         {
@@ -345,7 +363,7 @@ namespace BossRush
                 DevLog("[NPCTeleportUI] 刷新NPC列表失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 创建NPC按钮
         /// </summary>
@@ -353,16 +371,16 @@ namespace BossRush
         {
             GameObject btnObj = new GameObject("NPCButton_" + npcName);
             btnObj.transform.SetParent(parent, false);
-            
+
             RectTransform btnRect = btnObj.AddComponent<RectTransform>();
             btnRect.sizeDelta = new Vector2(0, 50);
-            
+
             Image btnImage = btnObj.AddComponent<Image>();
             btnImage.color = isActive ? new Color(0.2f, 0.5f, 0.2f, 1f) : new Color(0.3f, 0.3f, 0.3f, 1f);
-            
+
             Button btn = btnObj.AddComponent<Button>();
             btn.interactable = isActive;
-            
+
             if (isActive)
             {
                 btn.onClick.AddListener(() =>
@@ -371,15 +389,15 @@ namespace BossRush
                     HideNPCTeleportUI();
                 });
             }
-            
+
             GameObject textObj = new GameObject("Text");
             textObj.transform.SetParent(btnObj.transform, false);
-            
+
             RectTransform textRect = textObj.AddComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;
             textRect.anchorMax = Vector2.one;
             textRect.sizeDelta = Vector2.zero;
-            
+
             Text text = textObj.AddComponent<Text>();
             text.text = npcName + (isActive ? "" : " (未刷新)");
             text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
@@ -387,7 +405,7 @@ namespace BossRush
             text.alignment = TextAnchor.MiddleCenter;
             text.color = isActive ? Color.white : new Color(0.5f, 0.5f, 0.5f, 1f);
         }
-        
+
         /// <summary>
         /// 通用传送方法 - 传送玩家到指定NPC身边
         /// </summary>
@@ -430,7 +448,7 @@ namespace BossRush
                 DevLog("[NPCTeleportUI] 传送到" + npcName + "失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// LateUpdate 中强制暂停和鼠标状态（在所有 Update 之后执行，确保覆盖游戏的设置）
         /// </summary>

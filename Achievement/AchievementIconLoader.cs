@@ -118,6 +118,11 @@ namespace BossRush
             loadAttempted = false;
         }
 
+        public static void ResetStaticCaches()
+        {
+            Unload();
+        }
+
         #endregion
 
         #region 私有方法

@@ -3,6 +3,7 @@
   "sceneID": "Level_JLab_Main",
   "displayNameCN": "J-Lab实验室",
   "displayNameEN": "J-Lab Laboratory",
+  "sortOrder": 5,
   "spawnPoints": [
     [-90.76, 0.02, -56.25],
     [-78.04, 0.02, -56.94],

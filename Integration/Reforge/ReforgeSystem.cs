@@ -30,32 +30,32 @@ namespace BossRush
     /// 重铸系统核心逻辑
     /// 性能优化版本：使用委托缓存替代反射调用
     /// </summary>
-    public static class ReforgeSystem
+    public static partial class ReforgeSystem
     {
         // ============================================================================
         // 缓存的反射 FieldInfo（性能优化）
         // ============================================================================
         private static FieldInfo _modifierValueField;
         private static FieldInfo _statBaseValueField;
-        
+
         // ============================================================================
         // 委托缓存（性能优化：比反射快约10倍）
         // ============================================================================
         private static Action<ModifierDescription, float> _setModifierValue;
         private static Action<Stat, float> _setStatValue;
         private static bool _delegatesInitialized = false;
-        
+
         /// <summary>
         /// 初始化委托缓存（只执行一次）
         /// </summary>
         private static void InitializeSetterDelegates()
         {
             if (_delegatesInitialized) return;
-            
+
             try
             {
                 // 初始化 ModifierDescription.value 的 setter 委托
-                var modField = typeof(ModifierDescription).GetField("value", 
+                var modField = typeof(ModifierDescription).GetField("value",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 if (modField != null)
                 {
@@ -67,9 +67,9 @@ namespace BossRush
                         assign, param1, param2).Compile();
                     _modifierValueField = modField;
                 }
-                
+
                 // 初始化 Stat.baseValue 的 setter 委托
-                var statField = typeof(Stat).GetField("baseValue", 
+                var statField = typeof(Stat).GetField("baseValue",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 if (statField != null)
                 {
@@ -81,7 +81,7 @@ namespace BossRush
                         assign, param1, param2).Compile();
                     _statBaseValueField = statField;
                 }
-                
+
                 _delegatesInitialized = true;
                 ModBehaviour.DevLog("[ReforgeSystem] 委托缓存初始化完成");
             }
@@ -89,14 +89,14 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ReforgeSystem] 委托缓存初始化失败，回退到反射: " + e.Message);
                 // 回退到反射方式
-                _modifierValueField = typeof(ModifierDescription).GetField("value", 
+                _modifierValueField = typeof(ModifierDescription).GetField("value",
                     BindingFlags.NonPublic | BindingFlags.Instance);
-                _statBaseValueField = typeof(Stat).GetField("baseValue", 
+                _statBaseValueField = typeof(Stat).GetField("baseValue",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 _delegatesInitialized = true;
             }
         }
-        
+
         private static FieldInfo ModifierValueField
         {
             get
@@ -105,7 +105,7 @@ namespace BossRush
                 return _modifierValueField;
             }
         }
-        
+
         private static FieldInfo StatBaseValueField
         {
             get
@@ -114,7 +114,7 @@ namespace BossRush
                 return _statBaseValueField;
             }
         }
-        
+
         // ============================================================================
         // 兼容性
         // ============================================================================
@@ -196,12 +196,12 @@ namespace BossRush
         /// 最小重铸费用
         /// </summary>
         public const int MIN_REFORGE_COST = 100;
-        
+
         /// <summary>
         /// 基础概率：初始50%
         /// </summary>
         public const float BASE_PROBABILITY = 0.50f;
-        
+
         /// <summary>
         /// 基准物品价值
         /// </summary>
@@ -216,33 +216,33 @@ namespace BossRush
         public const float MONEY_BONUS_TIER1_MULTIPLIER = 10f;
         public const float MONEY_BONUS_TIER2_MULTIPLIER = 100f;
         public const float MONEY_BONUS_TIER3_MULTIPLIER = 1000f;
-        
+
         /// <summary>
         /// 每次重铸的最大改变量（绝对值0~1，用于小数值属性）
         /// </summary>
         private const float MAX_DELTA_ABSOLUTE = 1.0f;
-        
+
         /// <summary>
         /// 属性值相对于原值的最大偏移比例（±100%，即最终值在0~200%原值范围内）
         /// </summary>
         private const float MAX_VALUE_OFFSET_PERCENT = 1.0f;
-        
+
         /// <summary>
         /// 当原值为0时，使用的固定绝对范围（防止0值永远不变）
         /// </summary>
         private const float ZERO_VALUE_RANGE = 0.5f;
-        
+
         /// <summary>
         /// 幅度指数范围：p=0时expo=3.5，p=1时expo=0.6
         /// </summary>
         private const float EXPO_MAX = 3.5f;
         private const float EXPO_MIN = 0.6f;
-        
+
         /// <summary>
         /// 小数值属性阈值：预制体值≤此值时使用0~1范围，>此值时使用百分比范围
         /// </summary>
         private const float SMALL_VALUE_THRESHOLD = 1.0f;
-        
+
         /// <summary>
         /// UI判定属性是否已贴近上下限时使用的容差
         /// </summary>
@@ -273,9 +273,9 @@ namespace BossRush
         /// 先保留扩展点，后续如有新的运行时字段可直接加入。
         /// </summary>
         private static readonly HashSet<string> UNSUPPORTED_REFORGE_VARIABLE_KEYS = new HashSet<string>();
-        
+
         // ============================================================================
-        
+
         /// <summary>
         /// 可重铸的物品Tag（装备、武器、图腾）
         /// </summary>
@@ -293,11 +293,11 @@ namespace BossRush
             "Melee",        // 近战（兼容）
             "Totem"         // 图腾
         };
-        
+
         // ============================================================================
         // 概率计算函数
         // ============================================================================
-        
+
         /// <summary>
         /// 计算稀有度因子：r=1→0.5，r=8→1.0
         /// </summary>
@@ -306,7 +306,7 @@ namespace BossRush
             int r = Mathf.Clamp(rarity, 1, 8);
             return 0.5f + 0.5f * (r - 1) / 7f;
         }
-        
+
         /// <summary>
         /// 计算物品价值因子：v=10000→1.0，带上下限clamp(0.6, 1.4)
         /// </summary>
@@ -316,7 +316,7 @@ namespace BossRush
             float raw = Mathf.Pow(value / BASE_ITEM_VALUE, 0.25f);
             return Mathf.Clamp(raw, 0.6f, 1.4f);
         }
-        
+
         /// <summary>
         /// 计算金钱增益：基于物品价值的倍数
         /// 10倍物品价值 → +10%
@@ -329,20 +329,20 @@ namespace BossRush
         {
             if (money <= 0) return 0f;
             if (itemValue <= 0) itemValue = BASE_ITEM_VALUE;
-            
+
             float m = (float)money;
             float B;
-            
+
             // 动态阈值：基于物品价值的倍数
             float tier1 = itemValue * MONEY_BONUS_TIER1_MULTIPLIER;  // 10倍物品价值
             float tier2 = itemValue * MONEY_BONUS_TIER2_MULTIPLIER;  // 100倍物品价值
             float tier3 = itemValue * MONEY_BONUS_TIER3_MULTIPLIER;  // 1000倍物品价值
-            
+
             // 计算log阈值（用于分段计算）
             float logTier1 = Mathf.Log10(tier1);
             float logTier2 = Mathf.Log10(tier2);
             float logTier3 = Mathf.Log10(tier3);
-            
+
             if (m <= tier1)
             {
                 // 0 ~ 10倍物品价值：线性 0 → 0.10
@@ -365,10 +365,10 @@ namespace BossRush
                 // 超过1000倍物品价值：上限1.00
                 B = 1.00f;
             }
-            
+
             return Mathf.Clamp01(B);
         }
-        
+
         /// <summary>
         /// 计算基础重铸费用（物品价值的1/100，最低100）
         /// </summary>
@@ -407,7 +407,7 @@ namespace BossRush
         {
             return AffinityManager.GetDiscount(GoblinAffinityConfig.NPC_ID);
         }
-        
+
         /// <summary>
         /// 计算最终概率p（用于判定是否修改 + 幅度抽取）
         /// p = clamp(0, 1, p_item + B(m, itemValue))
@@ -418,7 +418,7 @@ namespace BossRush
             float p = pItem + MoneyBonus(moneyInvested, itemValue);
             return Mathf.Clamp01(p);
         }
-        
+
         /// <summary>
         /// 判断属性是否为整数类型（基于预制体值）
         /// </summary>
@@ -427,7 +427,7 @@ namespace BossRush
             // 如果预制体值与其四舍五入值相等，则认为是整数属性
             return Mathf.Approximately(prefabValue, Mathf.Round(prefabValue));
         }
-        
+
         /// <summary>
         /// 计算指定属性在重铸系统中的允许范围。
         /// UI与实际重铸逻辑共用这套边界，避免 Max/Min 显示和真实结果不一致。
@@ -436,14 +436,14 @@ namespace BossRush
         {
             bool isForceAbsolute = !string.IsNullOrEmpty(key) && FORCE_ABSOLUTE_RANGE_KEYS.Contains(key);
             bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD || isForceAbsolute;
-            
+
             if (Mathf.Approximately(prefabValue, 0f))
             {
                 minValue = -ZERO_VALUE_RANGE;
                 maxValue = ZERO_VALUE_RANGE;
                 return;
             }
-            
+
             if (isSmallValue)
             {
                 if (isForceAbsolute)
@@ -461,10 +461,10 @@ namespace BossRush
                     minValue = prefabValue * 2f;
                     maxValue = 0f;
                 }
-                
+
                 return;
             }
-            
+
             if (prefabValue > 0)
             {
                 minValue = prefabValue * 0.3f;
@@ -476,7 +476,7 @@ namespace BossRush
                 maxValue = prefabValue * 0.3f;
             }
         }
-        
+
         /// <summary>
         /// 当前值是否已经达到重铸允许的最大值。
         /// </summary>
@@ -486,7 +486,7 @@ namespace BossRush
             GetPropertyValueBounds(key, prefabValue, out minValue, out maxValue);
             return currentValue >= maxValue - BOUNDARY_EPSILON;
         }
-        
+
         /// <summary>
         /// 当前值是否已经达到重铸允许的最小值。
         /// </summary>
@@ -496,7 +496,7 @@ namespace BossRush
             GetPropertyValueBounds(key, prefabValue, out minValue, out maxValue);
             return currentValue <= minValue + BOUNDARY_EPSILON;
         }
-        
+
         /// <summary>
         /// 抽取幅度值（0~1），p越大越容易抽到大数
         /// mag01 = u^expo，其中expo = 3.5 - 2.9*p
@@ -507,7 +507,7 @@ namespace BossRush
             float expo = EXPO_MAX - (EXPO_MAX - EXPO_MIN) * p;  // p=0→3.5, p=1→0.6
             return Mathf.Pow(u, expo);
         }
-        
+
         /// <summary>
         /// 决定绝对正负号（基于tendencyChance: 0为必定负，1为必定正，0.5为各50%）
         /// tendencyChance通过滑动条进行设置，范围为0.0f - 1.0f。
@@ -524,7 +524,7 @@ namespace BossRush
                 return -1; // 生成负值
             }
         }
-        
+
         // ============================================================================
         // 公共接口
         // ============================================================================
@@ -607,7 +607,7 @@ namespace BossRush
                    variable.DataType == CustomDataType.Float &&
                    IsPropertySupportedForReforge(variable.Key, PropertyType.Variable);
         }
-        
+
         /// <summary>
         /// 检查物品是否可以重铸
         /// 可重铸条件：只要有可修改的属性（Display=true的Modifiers/Stats/Variables）就可以重铸
@@ -615,15 +615,15 @@ namespace BossRush
         public static bool CanReforge(Item item)
         {
             if (item == null) return false;
-            
+
             // 只检查Display=true的属性，与UI显示保持一致
             bool hasDisplayModifiers = HasDisplayableModifiers(item);
             bool hasDisplayStats = HasDisplayableStats(item);
             bool hasDisplayVariables = HasDisplayableVariables(item);
-            
+
             return hasDisplayModifiers || hasDisplayStats || hasDisplayVariables;
         }
-        
+
         /// <summary>
         /// 检查物品是否有可显示的Modifiers（Display=true，排除非预制体原生的）
         /// </summary>
@@ -638,28 +638,28 @@ namespace BossRush
             }
             return false;
         }
-        
+
         /// <summary>
         /// 检查物品是否有可显示的Stats（Display=true）
         /// </summary>
         private static bool HasDisplayableStats(Item item)
         {
             if (item == null || item.Stats == null) return false;
-            
+
             foreach (var stat in item.Stats)
             {
                 if (IsStatEligibleForReforge(stat)) return true;
             }
             return false;
         }
-        
+
         /// <summary>
         /// 检查物品是否有可显示的Variables（Display=true，排除系统变量）
         /// </summary>
         private static bool HasDisplayableVariables(Item item)
         {
             if (item == null || item.Variables == null) return false;
-            
+
             foreach (var variable in item.Variables)
             {
                 if (IsVariableEligibleForReforge(variable))
@@ -669,16 +669,16 @@ namespace BossRush
             }
             return false;
         }
-        
+
         /// <summary>
         /// 获取物品的可重铸属性数量（只计算Display=true的属性）
         /// </summary>
         public static int GetReforgeablePropertyCount(Item item)
         {
             if (item == null) return 0;
-            
+
             int count = 0;
-            
+
             // 只计算Display=true的Modifiers（排除非预制体原生的）
             if (item.Modifiers != null)
             {
@@ -688,7 +688,7 @@ namespace BossRush
                     if (IsModifierEligibleForReforge(item, prefab, mod)) count++;
                 }
             }
-            
+
             // 只计算Display=true的Stats
             if (item.Stats != null)
             {
@@ -697,7 +697,7 @@ namespace BossRush
                     if (IsStatEligibleForReforge(stat)) count++;
                 }
             }
-            
+
             // 只计算Display=true的Variables（排除系统变量）
             if (item.Variables != null)
             {
@@ -706,10 +706,10 @@ namespace BossRush
                     if (IsVariableEligibleForReforge(variable)) count++;
                 }
             }
-            
+
             return count;
         }
-        
+
         /// <summary>
         /// 获取概率公式描述（用于UI显示）
         /// </summary>
@@ -720,12 +720,12 @@ namespace BossRush
             float pItem = BASE_PROBABILITY * fr * fv;
             float bonus = MoneyBonus(moneyInvested, itemValue);
             float p = FinalProbability(rarity, itemValue, moneyInvested);
-            
+
             // 格式：基础(稀有度×价值) + 金钱增益 = 最终概率
-            return string.Format("基础{0:P0}(r={1},v={2:F0}) + 金钱{3:P0} = {4:P0}", 
+            return string.Format("基础{0:P0}(r={1},v={2:F0}) + 金钱{3:P0} = {4:P0}",
                 pItem, rarity, itemValue, bonus, p);
         }
-        
+
         /// <summary>
         /// 获取物品价值。
         /// 优先读取物品自身 Value；对运行时补配的自定义武器，若 Value 缺失则回退到
@@ -784,7 +784,7 @@ namespace BossRush
 
             return BASE_ITEM_VALUE;
         }
-        
+
         /// <summary>
         /// 执行重铸 - 新概率系统
         /// 1. 检查基础费用（物品价值的1/1000）
@@ -801,42 +801,42 @@ namespace BossRush
             ReforgeResult result = new ReforgeResult();
             result.Success = false;
             result.ModifiedStats = new List<ModifiedStatInfo>();
-            
+
             if (!CanReforge(item))
             {
                 result.ErrorMessage = "该物品无法重铸";
                 return result;
             }
-            
+
             // 计算基础费用（物品价值的1/1000，应用哥布林好感度折扣）
             float itemValue = GetItemValue(item);
             int baseCost = GetDiscountedCost(item);
-            
+
             if (moneyInvested < baseCost)
             {
                 result.ErrorMessage = string.Format("投入金额不足（最低 {0}）", baseCost);
                 return result;
             }
-            
+
             try
             {
                 // 获取物品属性
                 int rarity = item.Quality;
                 int itemId = item.GetInstanceID();
-                
+
                 // 计算原始概率（不含保底，用于幅度计算）
                 float baseP = FinalProbability(rarity, itemValue, moneyInvested);
-                
+
                 // 创建随机种子
                 int seed = GenerateRandomSeed(userId, itemId);
                 System.Random random = new System.Random(seed);
-                
+
                 // 获取预制体（用于范围限制）
                 Item prefab = GetItemPrefab(item);
-                
+
                 // 收集所有可调整的属性（只收集 Display=true 的属性，与UI显示保持一致）
                 List<ReforgeableProperty> allProperties = new List<ReforgeableProperty>();
-                
+
                 // 1. 收集Modifiers（只收集Display=true的，跳过非预制体原生属性和已固定的属性）
                 if (item.Modifiers != null)
                 {
@@ -867,21 +867,21 @@ namespace BossRush
                         });
                     }
                 }
-                
+
                 // 2. 收集Stats（只收集Display=true的，跳过已固定的属性）
                 if (item.Stats != null)
                 {
                     foreach (var stat in item.Stats)
                     {
                         if (!IsStatEligibleForReforge(stat)) continue;
-                        
+
                         // 跳过已固定的属性（冷淬液功能）
                         if (PropertyLockSystem.IsPropertyLocked(item, stat.Key, PropertyType.Stat))
                         {
                             ModBehaviour.DevLog("[ReforgeSystem] 跳过已固定属性: " + stat.Key + " (Stat)");
                             continue;
                         }
-                        
+
                         allProperties.Add(new ReforgeableProperty
                         {
                             Key = stat.Key,
@@ -891,21 +891,21 @@ namespace BossRush
                         });
                     }
                 }
-                
+
                 // 3. 收集Variables（只收集Display=true的，跳过系统变量和已固定的属性）
                 if (item.Variables != null)
                 {
                     foreach (var variable in item.Variables)
                     {
                         if (!IsVariableEligibleForReforge(variable)) continue;
-                        
+
                         // 跳过已固定的属性（冷淬液功能）
                         if (PropertyLockSystem.IsPropertyLocked(item, variable.Key, PropertyType.Variable))
                         {
                             ModBehaviour.DevLog("[ReforgeSystem] 跳过已固定属性: " + variable.Key + " (Variable)");
                             continue;
                         }
-                        
+
                         float varValue = 0f;
                         try { varValue = variable.GetFloat(); } catch { continue; }
                         allProperties.Add(new ReforgeableProperty
@@ -917,16 +917,16 @@ namespace BossRush
                         });
                     }
                 }
-                
+
                 if (allProperties.Count == 0)
                 {
                     result.ErrorMessage = "该物品没有可调整的属性";
                     return result;
                 }
-                
+
                 // 记录哪些属性被选中修改
                 List<int> selectedIndices = new List<int>();
-                
+
                 // 保证全部词条必定都会被重铸
                 for (int i = 0; i < allProperties.Count; i++)
                 {
@@ -937,26 +937,26 @@ namespace BossRush
                 foreach (int i in selectedIndices)
                 {
                     ReforgeableProperty prop = allProperties[i];
-                    
+
                     // 获取预制体原始值（用于范围限制和整数判定）
                     float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, prop.Value);
                     bool isInteger = IsIntegerProperty(prefabValue);
                     // 判断是否为小数值属性，或者是强制使用0~1范围的属性（如护甲值）
                     bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD ||
                                         FORCE_ABSOLUTE_RANGE_KEYS.Contains(prop.Key);
-                    
+
                     // Step 2: 抽幅度（使用原始概率baseP，保底不影响幅度）
                     float mag01 = RollMagnitude(baseP, random);
-                    
+
                     // Step 3: 决定正负号（由滑动条控制绝对正负倾向）
                     float originalValue = prop.Value;
                     int sign = RollSign(tendencyChance);
-                    
+
                     // Step 4: 计算delta和新值
                     float delta, newValue;
                     float minValue, maxValue;
                     GetPropertyValueBounds(prop.Key, prefabValue, out minValue, out maxValue);
-                    
+
                     if (Mathf.Approximately(prefabValue, 0f))
                     {
                         delta = sign * mag01 * ZERO_VALUE_RANGE;
@@ -975,7 +975,7 @@ namespace BossRush
                         delta = sign * mag01 * MAX_VALUE_OFFSET_PERCENT * Mathf.Abs(prefabValue);
                         newValue = originalValue + delta;
                     }
-                    
+
                     // Step 5: 整数属性保持整数，且保证数值必定有变化
                     if (isInteger)
                     {
@@ -999,7 +999,7 @@ namespace BossRush
 
                     // Step 6: 优先级要小于控制变化数值最大值的逻辑，即在最后进行Clamp截断
                     newValue = Mathf.Clamp(newValue, minValue, maxValue);
-                    
+
                     // 记录修改信息
                     ModifiedStatInfo statInfo = new ModifiedStatInfo();
                     statInfo.StatKey = prop.Key;
@@ -1007,11 +1007,11 @@ namespace BossRush
                     statInfo.NewValue = newValue;
                     statInfo.AdjustmentFactor = newValue - originalValue;
                     result.ModifiedStats.Add(statInfo);
-                    
+
                     // 应用修改并保存重铸数据
                     ApplyPropertyChange(prop, newValue, item, prefab);
                 }
-                
+
                 // 标记物品已恢复，防止下面 ReapplyModifiers 触发 Harmony Prefix 时重复恢复
                 ReforgeDataPersistence.MarkAsRestored(item);
                 IncrementReforgeCount(item);
@@ -1028,12 +1028,12 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog("[ReforgeSystem] 重新应用修改器时出错: " + e.Message);
                 }
-                
+
                 result.Success = true;
                 result.TotalCost = moneyInvested;
                 result.FinalProbability = baseP;
-                
-                ModBehaviour.DevLog(string.Format("[ReforgeSystem] 重铸完成！幅度系数={0:P0}，调整了{1}/{2}个属性", 
+
+                ModBehaviour.DevLog(string.Format("[ReforgeSystem] 重铸完成！幅度系数={0:P0}，调整了{1}/{2}个属性",
                     baseP, result.ModifiedStats.Count, allProperties.Count));
             }
             catch (Exception e)
@@ -1041,313 +1041,8 @@ namespace BossRush
                 result.ErrorMessage = "重铸过程出错: " + e.Message;
                 ModBehaviour.DevLog("[ReforgeSystem] 错误: " + e.Message + "\n" + e.StackTrace);
             }
-            
+
             return result;
-        }
-        
-        /// <summary>
-        /// 获取物品的重铸计数
-        /// </summary>
-        private static int GetReforgeCount(Item item)
-        {
-            if (item == null || item.Variables == null) return 0;
-            try
-            {
-                foreach (var v in item.Variables)
-                {
-                    if (v.Key == "ReforgeCount")
-                    {
-                        return (int)v.GetFloat();
-                    }
-                }
-            }
-            catch { }
-            return 0;
-        }
-        
-        /// <summary>
-        /// 增加物品的重铸计数
-        /// </summary>
-        private static void IncrementReforgeCount(Item item)
-        {
-            if (item == null) return;
-            try
-            {
-                int count = GetReforgeCount(item) + 1;
-                // 尝试设置或添加ReforgeCount变量
-                if (item.Variables != null)
-                {
-                    foreach (var v in item.Variables)
-                    {
-                        if (v.Key == "ReforgeCount")
-                        {
-                            v.SetFloat(count);
-                            return;
-                        }
-                    }
-                }
-                // 首次重铸时需要允许创建变量，否则原版会直接打 Error 并丢失计数。
-                item.SetFloat("ReforgeCount", count, true);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeSystem] 更新重铸计数失败: " + e.Message);
-            }
-        }
-        
-        // 注意：PropertyType 枚举已移至 PropertyLockSystem.cs 中定义为公开枚举
-        
-        // 可重铸属性结构
-        private class ReforgeableProperty
-        {
-            public string Key;
-            public float Value;
-            public PropertyType Type;
-            public object Source;
-        }
-        
-        /// <summary>
-        /// 获取物品的预制体
-        /// </summary>
-        private static Item GetItemPrefab(Item item)
-        {
-            if (item == null) return null;
-            try
-            {
-                int typeId = item.TypeID;
-                if (typeId <= 0) return null;
-                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
-                if (prefab != null)
-                {
-                    CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(prefab);
-                }
-                return prefab;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeSystem] 获取预制体失败: " + e.Message);
-                return null;
-            }
-        }
-        
-        /// <summary>
-        /// 获取预制体对应属性的原始值
-        /// </summary>
-        private static float GetPrefabPropertyValue(Item prefab, string key, PropertyType type, float fallback)
-        {
-            if (prefab == null) return fallback;
-            
-            try
-            {
-                switch (type)
-                {
-                    case PropertyType.Modifier:
-                        if (prefab.Modifiers != null)
-                        {
-                            foreach (var mod in prefab.Modifiers)
-                            {
-                                if (mod.Key == key) return mod.Value;
-                            }
-                        }
-                        break;
-                    case PropertyType.Stat:
-                        if (prefab.Stats != null)
-                        {
-                            foreach (var stat in prefab.Stats)
-                            {
-                                if (stat.Key == key) return stat.BaseValue;
-                            }
-                        }
-                        break;
-                    case PropertyType.Variable:
-                        if (prefab.Variables != null)
-                        {
-                            foreach (var variable in prefab.Variables)
-                            {
-                                if (variable.Key == key)
-                                {
-                                    try { return variable.GetFloat(); } catch { }
-                                }
-                            }
-                        }
-                        break;
-                }
-            }
-            catch { }
-            
-            return fallback;
-        }
-        
-        /// <summary>
-        /// 应用属性修改并保存重铸数据
-        /// </summary>
-        private static void ApplyPropertyChange(ReforgeableProperty prop, float newValue, Item item, Item prefab)
-        {
-            try
-            {
-                float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, prop.Value);
-                
-                switch (prop.Type)
-                {
-                    case PropertyType.Modifier:
-                        ApplyModifierValueChange(prop.Source as ModifierDescription, newValue);
-                        // 保存重铸数据到 Variables（用于场景切换后恢复）
-                        ReforgeDataPersistence.SaveReforgeData(item, prop.Key, prefabValue, newValue);
-                        break;
-                    case PropertyType.Stat:
-                        ApplyStatValueChange(prop.Source as Stat, newValue);
-                        // 保存 Stat 重铸数据到 Variables（修复：枪械/近战武器场景切换后属性丢失）
-                        ReforgeDataPersistence.SaveReforgeDataStat(item, prop.Key, prefabValue, newValue);
-                        break;
-                    case PropertyType.Variable:
-                        ApplyVariableValueChange(prop.Source as CustomData, newValue);
-                        // 保存 Variable 重铸数据到 Variables
-                        ReforgeDataPersistence.SaveReforgeDataVariable(item, prop.Key, prefabValue, newValue);
-                        break;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeSystem] 应用属性修改失败: " + prop.Key + " - " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 修改Stat的基础值（使用委托缓存优化性能）
-        /// </summary>
-        private static void ApplyStatValueChange(Stat stat, float newValue)
-        {
-            if (stat == null) return;
-            try
-            {
-                // 优先使用委托（性能更好）
-                if (_setStatValue != null)
-                {
-                    _setStatValue(stat, newValue);
-                }
-                else
-                {
-                    // 回退到反射
-                    var field = StatBaseValueField;
-                    if (field != null)
-                    {
-                        field.SetValue(stat, newValue);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeSystem] 修改Stat失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 修改Variable的值
-        /// </summary>
-        private static void ApplyVariableValueChange(CustomData variable, float newValue)
-        {
-            if (variable == null) return;
-            try
-            {
-                // CustomData使用SetFloat()设置值
-                variable.SetFloat(newValue);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeSystem] 修改Variable失败: " + e.Message);
-            }
-        }
-        
-        // ============================================================================
-        // 私有方法
-        // ============================================================================
-        
-        /// <summary>
-        /// 生成随机种子（基于时间 + 用户ID + 物品ID）
-        /// </summary>
-        private static int GenerateRandomSeed(string userId, int itemId)
-        {
-            // 使用更细粒度的时间与运行时种子，避免同一秒内连续重铸复现相同随机序列。
-            int timeSeed = unchecked((int)DateTime.UtcNow.Ticks);
-            int runtimeSeed = Environment.TickCount;
-            int userSeed = string.IsNullOrEmpty(userId) ? 0 : userId.GetHashCode();
-            
-            return timeSeed ^ runtimeSeed ^ userSeed ^ itemId;
-        }
-        
-        /// <summary>
-        /// 通过委托或反射修改ModifierDescription的value字段（性能优化版本）
-        /// </summary>
-        private static void ApplyModifierValueChange(ModifierDescription mod, float newValue)
-        {
-            try
-            {
-                // 优先使用委托（性能更好，约10倍提升）
-                if (_setModifierValue != null)
-                {
-                    _setModifierValue(mod, newValue);
-                }
-                else
-                {
-                    // 回退到反射
-                    var field = ModifierValueField;
-                    if (field != null)
-                    {
-                        field.SetValue(mod, newValue);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeSystem] 修改属性值失败: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 公开的修改 Modifier 值方法（供持久化系统 ReforgeDataPersistence 使用）
-        /// </summary>
-        public static void ApplyModifierValueChangePublic(ModifierDescription mod, float newValue)
-        {
-            ApplyModifierValueChange(mod, newValue);
-        }
-
-        /// <summary>
-        /// 公开的修改 Stat 值方法（供持久化系统 ReforgeDataPersistence 使用）
-        /// </summary>
-        public static void ApplyStatValueChangePublic(Stat stat, float newValue)
-        {
-            ApplyStatValueChange(stat, newValue);
-        }
-        
-    }
-    
-    /// <summary>
-    /// 重铸结果
-    /// </summary>
-    public class ReforgeResult
-    {
-        public bool Success;
-        public string ErrorMessage;
-        public int TotalCost;
-        public float FinalProbability;
-        public List<ModifiedStatInfo> ModifiedStats;
-    }
-    
-    /// <summary>
-    /// 修改的属性信息
-    /// </summary>
-    public class ModifiedStatInfo
-    {
-        public string StatKey;
-        public float OldValue;
-        public float NewValue;
-        public float AdjustmentFactor;
-        
-        public string GetChangeDescription()
-        {
-            float change = NewValue - OldValue;
-            string changeStr = change >= 0 ? "+" + change.ToString("F2") : change.ToString("F2");
-            return StatKey + ": " + OldValue.ToString("F2") + " -> " + NewValue.ToString("F2") + " (" + changeStr + ")";
         }
     }
 }

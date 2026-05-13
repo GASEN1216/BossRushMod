@@ -580,13 +580,6 @@ namespace BossRush
             }
 
             Vector3[] sceneSpawnPoints = GetCurrentSceneSpawnPoints();
-            if ((sceneSpawnPoints == null || sceneSpawnPoints.Length == 0) &&
-                DemoChallengeSpawnPoints != null &&
-                DemoChallengeSpawnPoints.Length > 0)
-            {
-                sceneSpawnPoints = DemoChallengeSpawnPoints;
-            }
-
             AppendRecoverySpawnCandidates(sceneSpawnPoints);
 
             if (enemyRecoverySpawnCandidates.Count == 0 && player != null)

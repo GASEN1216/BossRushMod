@@ -234,6 +234,11 @@ namespace BossRush
         /// <summary>缓存已注入的商店条目引用</summary>
         private static readonly Dictionary<int, StockShop.Entry> injectedFlagEntries = new Dictionary<int, StockShop.Entry>();
 
+        public static void ResetStaticCaches()
+        {
+            injectedFlagEntries.Clear();
+        }
+
         internal static int TryInjectIntoShop(StockShop shop)
         {
             ModBehaviour inst = ModBehaviour.Instance;
@@ -302,7 +307,7 @@ namespace BossRush
                 }
                 if (currentScene != "Base_SceneV2") return;
 
-                StockShop[] shops = UnityEngine.Object.FindObjectsOfType<StockShop>();
+                StockShop[] shops = ObjectCache.GetStockShops();
                 if (shops == null || shops.Length == 0) return;
 
                 int addedCount = 0;

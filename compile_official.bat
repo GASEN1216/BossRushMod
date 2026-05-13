@@ -88,6 +88,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Localization\L10n.cs ^
     Localization\LocalizationHelper.cs ^
     Localization\LocalizationInjector.cs ^
+    Localization\LocalizationInjector_NpcUiAndItems.cs ^
     Localization\EquipmentLocalization.cs ^
     Common\Lifecycle\IBossRushRuntimeModule.cs ^
     Common\Lifecycle\SceneRuntimeContext.cs ^
@@ -95,10 +96,12 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Common\Lifecycle\BossRushRuntimeModuleBase.cs ^
     Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs ^
     Common\Lifecycle\BossRushRuntimeModuleRegistration.cs ^
+    Common\Events\BossRushEventBus.cs ^
     Common\Infrastructure\ReflectionCache.cs ^
     Common\Infrastructure\ObjectCache.cs ^
     Common\Infrastructure\IHarmonyPatchGroup.cs ^
     Common\Infrastructure\HarmonyPatchGroupRegistrar.cs ^
+    Common\Data\JsonDataRegistry.cs ^
     Common\MapConfig\BossRushMapConfig.cs ^
     Common\MapConfig\MapSpawnPointRegistry.cs ^
     Common\Utils\ReflectionCache.cs ^
@@ -117,15 +120,27 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     UIAndSigns\BossRushInteractionScan.cs ^
     UIAndSigns\UIAndSignsRuntimeBridges.cs ^
     DebugAndTools\DebugAndTools.cs ^
+    DebugAndTools\DebugAndToolsPlacementAndInspection.cs ^
+    DebugAndTools\DebugAndToolsStaticCacheReset.cs ^
     DebugAndTools\DebugToolsRuntimeModule.cs ^
     DebugAndTools\DebugToolsRuntimeHooks.cs ^
     DebugAndTools\MarriageTestDebugUI.cs ^
     DebugAndTools\ItemSpawner.cs ^
     DebugAndTools\F3DebugCheatMenu.cs ^
+    DebugAndTools\F3DebugCheatMenuUi.cs ^
+    DebugAndTools\F3DebugCheatMenuPlayerStats.cs ^
+    DebugAndTools\F3DebugCheatMenuActions.cs ^
     DebugAndTools\NPCTeleportUI.cs ^
     Integration\BossRushIntegration.cs ^
+    Integration\BossRushIntegration_StartAndScene.cs ^
+    Integration\BossRushIntegration_TravelAndSetup.cs ^
+    Integration\BossRushIntegration_MapObjectsAndDragonBreath.cs ^
     Integration\ZombieModeIntegration.cs ^
     Integration\DeathWraith\DeathWraithSystem.cs ^
+    Integration\DeathWraith\DeathWraithRecording.cs ^
+    Integration\DeathWraith\DeathWraithSpawnFlow.cs ^
+    Integration\DeathWraith\DeathWraithCombatLoadout.cs ^
+    Integration\DeathWraith\DeathWraithLifecycleAndPersistence.cs ^
     Patches\BaseHub\BaseHubShopAwakePatch.cs ^
     Patches\BaseHub\BaseHubBoatPatch.cs ^
     Patches\BaseHub\BaseHubPatchGroup.cs ^
@@ -138,11 +153,14 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Patches\Death\DeathPatchGroup.cs ^
     Integration\BirthdayCakeItem.cs ^
     Integration\EquipmentFactory.cs ^
+    Integration\EquipmentFactory_ItemProcessing.cs ^
+    Integration\EquipmentFactoryStaticCacheReset.cs ^
     Integration\EquipmentContentRegistry.cs ^
     Integration\EquipmentRuntimeHooks.cs ^
     Integration\IntegrationRuntimeHooks.cs ^
     Integration\EquipmentHelper.cs ^
     Integration\Bonus\DragonSetBonus.cs ^
+    Integration\Bonus\DragonSetBonus_Dash.cs ^
     Integration\Config\DragonSetConfig.cs ^
     Integration\Config\FlightTotemConfig.cs ^
     Integration\Config\DragonKingSetConfig.cs ^
@@ -162,6 +180,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\RunScopedRegistry.cs ^
     Utilities\RuntimeScope.cs ^
     Utilities\SceneRuntimeGate.cs ^
+    Utilities\SafeRuntime.cs ^
     Utilities\SteamHelper.cs ^
     Utilities\BossCleanupHelpers.cs ^
     Utilities\InteractableLootboxInventoryHelper.cs ^
@@ -173,6 +192,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Config\NPCSpawnConfig.cs ^
     Config\LootBlacklistRegistry.cs ^
     WavesArena\WavesArena.cs ^
+    WavesArena\WavesArenaEntryAndTeleport.cs ^
+    WavesArena\WavesArenaBossSpawning.cs ^
     WavesArena\WavesArenaRuntimeModule.cs ^
     WavesArena\WavesArenaRuntimeHooks.cs ^
     WavesArena\BossRushEntryFlow.cs ^
@@ -180,23 +201,38 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     WavesArena\WavesArenaSpawnerControl.cs ^
     LootAndRewards\LegacyBossLootProbabilityModel.cs ^
     LootAndRewards\LootAndRewards.cs ^
+    LootAndRewards\LootAndRewardsStaticCacheReset.cs ^
+    LootAndRewards\LootAndRewardsInfiniteHell.cs ^
+    LootAndRewards\LootAndRewardsVictoryRewards.cs ^
+    LootAndRewards\LootAndRewardsRandomBossLoot.cs ^
+    LootAndRewards\LootAndRewardsSpecialLoot.cs ^
     LootAndRewards\LootAndRewardsRuntimeHooks.cs ^
     LootAndRewards\VictoryRewardShadowCrateController.cs ^
     LootAndRewards\ModeEFLootboxTracker.cs ^
     Interactables\BossRushInteractables.cs ^
+    Interactables\BossRushLootboxInteractables.cs ^
     TeleportDebugMonitor.cs ^
     ModeD\ModeD.cs ^
+    ModeD\ModeDStaticCacheReset.cs ^
     ModeD\ModeDRuntimeModule.cs ^
     ModeD\ModeDEquipment.cs ^
+    ModeD\ModeDEquipment_StarterKit.cs ^
     ModeD\ModeDWaves.cs ^
     ModeD\ModeDInteractables.cs ^
     ModeD\ModeDGlobalLoot.cs ^
+    ModeD\ModeDGlobalLootStaticCacheReset.cs ^
     ModeE\ModeE.cs ^
+    ModeE\ModeEUiAndHealthBars.cs ^
+    ModeE\ModeEStartup.cs ^
+    ModeE\ModeELifecycle.cs ^
+    ModeE\ModeEIntegrityAndHelpers.cs ^
     ModeE\ModeERuntimeModule.cs ^
     ModeE\ModeERuntimeHooks.cs ^
     ModeE\ModeEMerchant.cs ^
+    ModeE\ModeEMerchantSupportClasses.cs ^
     ModeE\ModeESpawnAllocation.cs ^
     ModeE\ModeEBattle.cs ^
+    ModeE\ModeEBattle_ScalingAndRuntime.cs ^
     ModeE\FactionFlagConfig.cs ^
     ModeE\ModeEHarmonyPatch.cs ^
     ModeE\RespawnItemConfig.cs ^
@@ -208,26 +244,45 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFEntry.cs ^
     ModeF\ModeFPhases.cs ^
     ModeF\ModeFBounty.cs ^
+    ModeF\ModeFBounty_EquipmentAndLoot.cs ^
     ModeF\ModeFRespawn.cs ^
     ModeF\ModeFExtraction.cs ^
     ModeF\ModeFFortifications.cs ^
+    ModeF\ModeFFortifications_RuntimePlacement.cs ^
+    ModeF\ModeFFortifications_RepairRewardsCleanup.cs ^
+    ModeF\ModeFItemUsageAndTriggers.cs ^
+    ModeF\ModeFUIStaticCacheReset.cs ^
     ModeF\ModeFUI.cs ^
+    ModeF\ModeFUI_BountyRadarAndHealthBars.cs ^
     ModeF\ModeFMerchant.cs ^
     ZombieMode\ZombieModeModels.cs ^
+    ZombieMode\ZombieModeTuning.cs ^
     ZombieMode\ZombieModeRuntimeModule.cs ^
     ZombieMode\ZombieModeRuntimeHooks.cs ^
     ZombieMode\ZombieModeEntry.cs ^
+    ZombieMode\ZombieModeEntry_StarterLoadout.cs ^
     ZombieMode\ZombieModeMapSelection.cs ^
     ZombieMode\ZombieModeMapSelectionHelper.cs ^
     ZombieMode\ZombieModeInventoryTransfer.cs ^
     ZombieMode\ZombieModeMapIsolation.cs ^
     ZombieMode\ZombieModePollution.cs ^
+    ZombieMode\ZombieModePollution_RuntimeSkills.cs ^
+    ZombieMode\ZombieModePollution_RuntimeComponents.cs ^
     ZombieMode\ZombieModeBossController.cs ^
+    ZombieMode\ZombieModePlayerSlowRuntime.cs ^
     ZombieMode\ZombieModeSpawner.cs ^
     ZombieMode\ZombieModeWaveController.cs ^
     ZombieMode\ZombieModeEnemyRuntime.cs ^
     ZombieMode\ZombieModeRewards.cs ^
+    ZombieMode\ZombieModeRewardCatalogAndSelection.cs ^
+    ZombieMode\ZombieModeRewardEffectsAndNpc.cs ^
+    ZombieMode\ZombieModeRewardItemGrants.cs ^
+    ZombieMode\ZombieModeRewardNpcServices.cs ^
     ZombieMode\ZombieModeRewardEffects.cs ^
+    ZombieMode\ZombieModeRewardOptionCore.cs ^
+    ZombieMode\ZombieModeRewardProjectileSpread.cs ^
+    ZombieMode\ZombieModeRewardRuntimeModifiers.cs ^
+    ZombieMode\ZombieModeRewardTriggerEffects.cs ^
     ZombieMode\ZombieModeRewardProjectilePatch.cs ^
     ZombieMode\ZombieModeDropsAndPerformance.cs ^
     ZombieMode\ZombiePurificationPointController.cs ^
@@ -240,16 +295,29 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ZombieMode\ZombieModeNpcCatalog.cs ^
     ZombieMode\ZombieModeCashInvestmentView.cs ^
     BossFilter\BossFilter.cs ^
+    BossFilter\BossFilterUi.cs ^
     MapSelection\BossRushMapSelectionHelper.cs ^
     Integration\DragonDescendant\DragonDescendantConfig.cs ^
     Integration\DragonDescendant\DragonDescendantAbilities.cs ^
+    Integration\DragonDescendant\DragonDescendantAbilities_ProjectilesAndGrenades.cs ^
+    Integration\DragonDescendant\DragonDescendantAbilities_ResurrectionAndPhase.cs ^
+    Integration\DragonDescendant\DragonDescendantAbilities_Phase2Combat.cs ^
+    Integration\DragonDescendant\DragonDescendantAbilities_CollisionAndIce.cs ^
     Integration\DragonDescendant\DragonDescendantBoss.cs ^
+    Integration\DragonDescendant\DragonDescendantBoss_RuntimeAndCleanup.cs ^
+    Integration\DragonDescendant\DragonDescendantBossStaticCacheReset.cs ^
     Integration\DragonDescendant\DragonBreathConfig.cs ^
     Integration\DragonDescendant\DragonBreathBuffHandler.cs ^
     Integration\DragonDescendant\DragonBreathWeaponConfig.cs ^
+    Integration\DragonDescendant\DragonBreathWeaponConfig_FireEffects.cs ^
     Integration\DragonKing\DragonKingConfig.cs ^
     Integration\DragonKing\DragonKingAssetManager.cs ^
     Integration\DragonKing\DragonKingAbilityController.cs ^
+    Integration\DragonKing\DragonKingAbilityController_AttackFlow.cs ^
+    Integration\DragonKing\DragonKingAbilityController_ProjectileAndMovement.cs ^
+    Integration\DragonKing\DragonKingAbilityController_SpecialAttacks.cs ^
+    Integration\DragonKing\DragonKingAbilityController_ChildProtection.cs ^
+    Integration\DragonKing\DragonKingAbilityHelpers.cs ^
     Integration\DragonKing\DragonKingShockwaveEffect.cs ^
     Integration\DragonKing\DragonKingBoss.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdIds.cs ^
@@ -259,18 +327,33 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\DragonKing\Weapons\DragonKingBossGunConfig.cs ^
     Integration\DragonKing\Weapons\DragonKingBossGunProfiles.cs ^
     Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent.cs ^
+    Integration\DragonKing\Weapons\DragonKingBossGunProjectileZones.cs ^
     Integration\DragonKing\Weapons\DragonKingBossGunRuntime.cs ^
+    Integration\DragonKing\Weapons\DragonKingBossGunRuntime_ProjectilesAndPatches.cs ^
+    Integration\DragonKing\Weapons\DragonKingBossGunRuntimeStaticCacheReset.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdAction.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdAbilityManager.cs ^
     Integration\DragonKing\Weapons\FenHuangComboManager.cs ^
+    Integration\DragonKing\Weapons\FenHuangComboPatchesAndFx.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdBootstrap.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdWeaponConfig.cs ^
     Integration\PhantomWitch\PhantomWitchConfig.cs ^
     Integration\PhantomWitch\PhantomWitchPerformancePolicy.cs ^
     Integration\PhantomWitch\PhantomWitchAmbientPresence.cs ^
     Integration\PhantomWitch\PhantomWitchVfxRedesign.cs ^
+    Integration\PhantomWitch\PhantomWitchVfxRedesign_EmittersAndTextures.cs ^
+    Integration\PhantomWitch\PhantomWitchVfxRedesign_RuntimeComponents.cs ^
+    Integration\PhantomWitch\PhantomWitchVfxRedesignStaticCacheReset.cs ^
     Integration\PhantomWitch\PhantomWitchAssetManager.cs ^
+    Integration\PhantomWitch\PhantomWitchAssetManager_RuntimeComponents.cs ^
     Integration\PhantomWitch\PhantomWitchAbilityController.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController_PackageScheduler.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController_StealthAndAttacks.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController_Minions.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController_RuntimeTicks.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController_PhaseAndLifecycle.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController_MovementAndDamage.cs ^
+    Integration\PhantomWitch\PhantomWitchAbilityController_CleanupAndTelemetry.cs ^
     Integration\PhantomWitch\PhantomWitchBossCurseRealmRuntime.cs ^
     Integration\PhantomWitch\PhantomWitchBoss.cs ^
     Integration\PhantomWitch\PhantomWitchScytheIds.cs ^
@@ -278,6 +361,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\PhantomWitch\PhantomWitchScytheSwingFx.cs ^
     Integration\PhantomWitch\PhantomWitchScytheWeaponConfig.cs ^
     Integration\PhantomWitch\PhantomWitchScytheAction.cs ^
+    Integration\PhantomWitch\PhantomWitchScytheAction_RuntimeComponents.cs ^
     Integration\PhantomWitch\PhantomWitchScytheAbilityManager.cs ^
     Integration\PhantomWitch\PhantomWitchCurseSweatVfx.cs ^
     Integration\PhantomWitch\PhantomWitchScytheBootstrap.cs ^
@@ -312,6 +396,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\NPCs\Common\CommonNpcRuntimeModule.cs ^
     Integration\NPCs\Common\CommonNpcRuntimeHooks.cs ^
     Integration\NPCs\Courier\CourierNPC.cs ^
+    Integration\NPCs\Courier\CourierNPCController.cs ^
+    Integration\NPCs\Courier\CourierMovement.cs ^
+    Integration\NPCs\Courier\CourierInteractables.cs ^
     Integration\NPCs\Courier\CourierLootSweepRunner.cs ^
     Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs ^
     Integration\NPCs\Courier\CourierPaidLootSweepService.cs ^
@@ -322,8 +409,16 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\NPCs\Goblin\GoblinNPCReward.cs ^
     Integration\NPCs\Goblin\GoblinMovement.cs ^
     Integration\NPCs\Courier\CourierService.cs ^
+    Integration\NPCs\Courier\CourierService_Buttons.cs ^
+    Integration\NPCs\Courier\CourierService_CloseAndCleanup.cs ^
     Integration\NPCs\Courier\DepositDataManager.cs ^
     Integration\NPCs\Courier\StorageDepositService.cs ^
+    Integration\NPCs\Courier\CourierPaidLootSweepAccountingAndSort.cs ^
+    Integration\NPCs\Courier\StorageDepositLifecycle.cs ^
+    Integration\NPCs\Courier\StorageDepositTransactions.cs ^
+    Integration\NPCs\Courier\StorageDepositSingleRetrieve.cs ^
+    Integration\NPCs\Courier\StorageDepositInventoryQuickDeposit.cs ^
+    Integration\NPCs\Courier\StorageDepositBulkActions.cs ^
     Integration\NPCs\Nurse\NurseNPC.cs ^
     Integration\NPCs\Nurse\NurseNPCController.cs ^
     Integration\NPCs\Nurse\NurseMovement.cs ^
@@ -334,8 +429,13 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Reforge\PropertyLockSystem.cs ^
     Integration\Reforge\ColdQuenchFluidConfig.cs ^
     Integration\Reforge\ReforgeSystem.cs ^
+    Integration\Reforge\ReforgeSystem_ApplyAndResults.cs ^
     Integration\Reforge\ReforgeUIManager.cs ^
+    Integration\Reforge\ReforgeUIManager_ComparisonAndState.cs ^
+    Integration\Reforge\ReforgeUIManager_RuntimeAndCleanup.cs ^
     Integration\Reforge\ReforgeDataPersistence.cs ^
+    Integration\Reforge\ReforgeDataPersistenceCleanup.cs ^
+    Integration\Reforge\CustomItemRuntimeStateHelperStaticCacheReset.cs ^
     Integration\ItemFactory.cs ^
     Integration\Items\AwenDepositTokenConfig.cs ^
     Integration\Items\AwenDepositTokenUsage.cs ^
@@ -371,6 +471,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Affinity\AffinityData.cs ^
     Integration\Affinity\AffinityJsonSerializer.cs ^
     Integration\Affinity\AffinityManager.cs ^
+    Integration\Affinity\AffinityManagerPersistenceAndDecay.cs ^
+    Integration\Affinity\AffinityManagerStaticCacheReset.cs ^
     Integration\Affinity\Core\INPCGiftConfig.cs ^
     Integration\Affinity\Core\INPCDialogueConfig.cs ^
     Integration\Affinity\Core\INPCRelationshipDialogueConfig.cs ^
@@ -421,12 +523,19 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Wedding\NPCMarriageSystem.cs ^
     Integration\Wedding\WeddingChapelInteractable.cs ^
     Integration\Wedding\WeddingBuildingInjector.cs ^
+    Integration\Wedding\WeddingBuildingInjector_DataEventsAndRuntime.cs ^
     Integration\Wedding\WeddingModBehaviourBridge.cs ^
     Integration\WishFountain\WishFountainService.cs ^
+    Integration\WishFountain\WishFountainConfigAndValidation.cs ^
+    Integration\WishFountain\WishFountainRewardPoolBuild.cs ^
+    Integration\WishFountain\WishFountainRewardSelection.cs ^
+    Integration\WishFountain\WishFountainSendPipeline.cs ^
     Integration\WishFountain\WishFountainInteractable.cs ^
     Integration\WishFountain\WishFountainUI.cs ^
+    Integration\WishFountain\WishFountainUIBridge.cs ^
     Integration\WishFountain\WishFountainRewardAnimationView.cs ^
-    Integration\WishFountain\WishFountainBuilder.cs
+    Integration\WishFountain\WishFountainBuilder.cs ^
+    Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 
 set "BUILD_EXIT_CODE=%ERRORLEVEL%"
 
@@ -451,6 +560,15 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo WARNING: SpawnPoints JSON deploy failed.
             ) else (
                 echo Deployed SpawnPoints JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints
+            )
+        )
+        if exist "Assets\Data\*.json" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data"
+            xcopy /Y /I "Assets\Data\*.json" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\" >nul
+            if errorlevel 1 (
+                echo WARNING: Data JSON deploy failed.
+            ) else (
+                echo Deployed Data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data
             )
         )
     )

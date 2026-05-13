@@ -495,7 +495,8 @@ namespace BossRush
                 position + Vector3.up * 0.03f,
                 ZombieModeTuning.SafeZoneRadius,
                 0.05f,
-                new Color(0.18f, 0.78f, 0.32f, 0.45f));
+                new Color(0.12f, 0.88f, 0.36f, 0.62f));
+            AttachZombieModeSafeZoneBoundaryVisual(safeZone, position, ZombieModeTuning.SafeZoneRadius);
 
             ZombieModeSafeZoneController controller = safeZone.AddComponent<ZombieModeSafeZoneController>();
             controller.Initialize(runId);
@@ -509,6 +510,66 @@ namespace BossRush
             EnsureZombieModeSafeZoneMerchantTerminal(runId);
             TryRegisterZombieModeShootStealthBreaker(runId);
             TickZombieModeSafeZone();
+        }
+
+        private void AttachZombieModeSafeZoneBoundaryVisual(GameObject safeZone, Vector3 center, float radius)
+        {
+            if (safeZone == null || radius <= 0f)
+            {
+                return;
+            }
+
+            GameObject ring = new GameObject("ZombieMode_SafeZone_BoundaryRing");
+            ring.transform.position = center + Vector3.up * 0.14f;
+
+            LineRenderer line = ring.AddComponent<LineRenderer>();
+            line.useWorldSpace = false;
+            line.positionCount = 97;
+            line.widthMultiplier = 0.10f;
+            line.numCornerVertices = 4;
+            line.numCapVertices = 4;
+            Material lineMaterial = CreateZombieModeSafeZoneLineMaterial();
+            if (lineMaterial != null)
+            {
+                line.material = lineMaterial;
+                ZombieModeSafeZoneMaterialOwner materialOwner = ring.AddComponent<ZombieModeSafeZoneMaterialOwner>();
+                materialOwner.Initialize(lineMaterial);
+            }
+
+            const int segments = 96;
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = (Mathf.PI * 2f * i) / segments;
+                line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
+            }
+
+            Color ringColor = new Color(0.35f, 1f, 0.45f, 0.82f);
+            line.startColor = ringColor;
+            line.endColor = ringColor;
+
+            ring.transform.SetParent(safeZone.transform, true);
+        }
+
+        private static Material CreateZombieModeSafeZoneLineMaterial()
+        {
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null)
+            {
+                shader = Shader.Find("Unlit/Color");
+            }
+            if (shader == null)
+            {
+                shader = Shader.Find("Standard");
+            }
+
+            if (shader == null)
+            {
+                return null;
+            }
+
+            Material material = new Material(shader);
+            material.color = new Color(0.35f, 1f, 0.45f, 0.95f);
+            return material;
         }
 
         private void EnsureZombieModeSafeZoneMerchantTerminal(int runId)
@@ -665,8 +726,8 @@ namespace BossRush
                 return;
             }
 
-            SetZombieModeRendererColor(renderer, new Color(0.18f, 0.78f, 0.32f, 0.45f));
-            UpdateZombieModeSafeZoneMapPoiColor(new Color(0.18f, 0.78f, 0.32f, 0.75f));
+            SetZombieModeRendererColor(renderer, new Color(0.12f, 0.88f, 0.36f, 0.62f));
+            UpdateZombieModeSafeZoneMapPoiColor(new Color(0.12f, 0.88f, 0.36f, 0.85f));
         }
 
         private void UpdateZombieModeSafeZoneMapPoiColor(Color color)
@@ -689,6 +750,25 @@ namespace BossRush
         {
             RunId = runId;
             IsChanneling = false;
+        }
+    }
+
+    public sealed class ZombieModeSafeZoneMaterialOwner : MonoBehaviour
+    {
+        private Material material;
+
+        public void Initialize(Material createdMaterial)
+        {
+            material = createdMaterial;
+        }
+
+        private void OnDestroy()
+        {
+            if (material != null)
+            {
+                Destroy(material);
+                material = null;
+            }
         }
     }
 

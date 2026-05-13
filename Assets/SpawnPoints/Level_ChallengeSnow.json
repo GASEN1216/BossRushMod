@@ -3,6 +3,7 @@
   "sceneID": "Level_ChallengeSnow_Main",
   "displayNameCN": "零度挑战",
   "displayNameEN": "Zero Challenge",
+  "sortOrder": 1,
   "spawnPoints": [
     [234.35, 0.01, 254.65],
     [235.37, 0.01, 258.41],

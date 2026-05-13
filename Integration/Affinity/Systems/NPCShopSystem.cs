@@ -30,7 +30,7 @@ namespace BossRush
         // ============================================================================
         // 私有字段
         // ============================================================================
-        
+
         // 当前活动的商店
         private static string currentNpcId = null;
         private static GameObject shopObject = null;
@@ -38,7 +38,7 @@ namespace BossRush
         private static Transform currentNpcTransform = null;
         private static INPCController currentController = null;
         private static bool isServiceActive = false;
-        
+
         // 反射缓存
         private static FieldInfo textSellField = null;
         private static FieldInfo priceTextField = null;
@@ -48,30 +48,30 @@ namespace BossRush
         private static string originalTextSell = null;
         private static readonly Dictionary<int, float> temporaryPurificationFactors = new Dictionary<int, float>();
         private static readonly Dictionary<int, int> temporaryPurificationPrices = new Dictionary<int, int>();
-        
+
         // 常量
         private const float BUBBLE_Y_OFFSET = 1.2f;
         private const float BUBBLE_DURATION = 3f;
         private const string TemporaryPurificationPriceUnavailable = "TemporaryPurificationPriceUnavailable";
-        
+
         // ============================================================================
         // 公共属性
         // ============================================================================
-        
+
         /// <summary>
         /// 检查服务是否激活
         /// </summary>
         public static bool IsServiceActive => isServiceActive;
-        
+
         /// <summary>
         /// 当前活动的NPC ID
         /// </summary>
         public static string CurrentNpcId => currentNpcId;
-        
+
         // ============================================================================
         // 公共方法
         // ============================================================================
-        
+
         /// <summary>
         /// 检查指定NPC的商店是否已解锁
         /// </summary>
@@ -79,16 +79,16 @@ namespace BossRush
         {
             var config = AffinityManager.GetNPCConfig(npcId);
             var shopConfig = config as INPCShopConfig;
-            
+
             if (shopConfig == null || !shopConfig.ShopEnabled)
             {
                 return false;
             }
-            
+
             int level = AffinityManager.GetLevel(npcId);
             return level >= shopConfig.ShopUnlockLevel;
         }
-        
+
         /// <summary>
         /// 打开指定NPC的商店
         /// </summary>
@@ -99,20 +99,20 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] 商店已在运行中，忽略重复调用");
                 return;
             }
-            
+
             if (!IsShopUnlocked(npcId))
             {
                 ModBehaviour.DevLog("[NPCShop] 商店未解锁: " + npcId);
                 return;
             }
-            
+
             // 检查 StockShopView 是否存在于当前场景
             // StockShopView 是场景中预配置的 UI 预制体，某些场景可能没有
             var shopView = StockShopView.Instance;
             if (shopView == null)
             {
                 ModBehaviour.DevLog("[NPCShop] [WARNING] 当前场景没有 StockShopView，无法打开商店UI");
-                
+
                 // 显示提示气泡
                 if (npcTransform != null)
                 {
@@ -138,29 +138,29 @@ namespace BossRush
                 }
                 return;
             }
-            
+
             ModBehaviour.DevLog("[NPCShop] 开始打开商店: " + npcId);
-            
+
             // 初始化反射缓存
             InitializeReflection();
-            
+
             // 保存状态
             currentNpcId = npcId;
             currentNpcTransform = npcTransform;
             currentController = controller;
-            
+
             // 让NPC进入对话状态
             if (currentController != null)
             {
                 currentController.StartDialogue();
             }
-            
+
             // 创建商店
             CreateShop(npcId);
-            
+
             // 注册事件
             RegisterEvents();
-            
+
             // 打开商店UI
             if (currentShop != null)
             {
@@ -168,15 +168,15 @@ namespace BossRush
                 {
                     currentShop.ShowUI();
                     isServiceActive = true;
-                    
+
                     // 修改UI文字
                     ModifyShopUIText();
                     RegisterShopSelectionEvent();
                     UpdateTemporaryShopCurrencyUiDeferred();
-                    
+
                     // 显示购物对话
                     ShowShoppingDialogue(npcId);
-                    
+
                     ModBehaviour.DevLog("[NPCShop] 商店已打开: " + npcId);
                 }
                 catch (Exception e)
@@ -187,36 +187,36 @@ namespace BossRush
                 }
             }
         }
-        
+
         /// <summary>
         /// 关闭当前商店
         /// </summary>
         public static void CloseShop()
         {
             if (!isServiceActive) return;
-            
+
             ModBehaviour.DevLog("[NPCShop] 关闭商店: " + currentNpcId);
-            
+
             isServiceActive = false;
-            
+
             // 取消注册事件
             UnregisterEvents();
-            
+
             // 恢复UI文字
             RestoreShopUIText();
-            
+
             // 保存引用
             var savedController = currentController;
-            
+
             // 停止对话状态，显示告别对话
             if (savedController != null)
             {
                 savedController.EndDialogueWithStay(10f, true);  // 商店关闭时显示告别对话
             }
-            
+
             // 清理资源
             Cleanup();
-            
+
             ModBehaviour.DevLog("[NPCShop] 商店已关闭");
         }
 
@@ -230,6 +230,21 @@ namespace BossRush
             CloseShop();
         }
 
+        public static void ResetStaticCaches()
+        {
+            isServiceActive = false;
+            UnregisterEvents();
+            RestoreShopUIText();
+            Cleanup();
+
+            textSellField = null;
+            priceTextField = null;
+            interactionButtonField = null;
+            interactionTextField = null;
+            reflectionInitialized = false;
+            originalTextSell = null;
+        }
+
         private static bool IsCurrentShopOwnedBy(Transform npcTransform)
         {
             if (npcTransform == null || currentNpcTransform == null)
@@ -241,7 +256,7 @@ namespace BossRush
                    currentNpcTransform.IsChildOf(npcTransform) ||
                    npcTransform.IsChildOf(currentNpcTransform);
         }
-        
+
         /// <summary>
         /// 获取指定NPC的当前折扣率
         /// </summary>
@@ -249,16 +264,16 @@ namespace BossRush
         {
             var config = AffinityManager.GetNPCConfig(npcId);
             var shopConfig = config as INPCShopConfig;
-            
+
             if (shopConfig == null)
             {
                 return AffinityManager.GetDiscount(npcId);
             }
-            
+
             int level = AffinityManager.GetLevel(npcId);
             return shopConfig.GetDiscountForLevel(level);
         }
-        
+
         /// <summary>
         /// 获取指定NPC的卖出加成率
         /// 返回实际的 sellFactor（原版0.5，有折扣时更高）
@@ -269,15 +284,15 @@ namespace BossRush
             // 卖出加成 = 基础0.5 + 折扣的一半
             return 0.5f + (discount / 2f);
         }
-        
+
         // ============================================================================
         // 私有方法 - 初始化
         // ============================================================================
-        
+
         private static void InitializeReflection()
         {
             if (reflectionInitialized) return;
-            
+
             try
             {
                 BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
@@ -292,7 +307,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] [WARNING] 反射初始化失败: " + e.Message);
             }
         }
-        
+
         private static void CreateShop(string npcId)
         {
             // 清理旧商店
@@ -300,14 +315,14 @@ namespace BossRush
             {
                 UnityEngine.Object.Destroy(shopObject);
             }
-            
+
             temporaryPurificationFactors.Clear();
             temporaryPurificationPrices.Clear();
 
             // 创建商店对象
             shopObject = new GameObject("NPCShop_" + npcId);
             currentShop = shopObject.AddComponent<StockShop>();
-            
+
             // 设置 accountAvaliable = true，允许使用银行账户付款（而不仅仅是现金物品）
             try
             {
@@ -322,21 +337,21 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[NPCShop] [ERROR] 设置 accountAvaliable 失败: " + ex.Message);
             }
-            
+
             // 配置商品
             ConfigureShopEntries(npcId);
-            
+
             // 配置卖出加成（好感度折扣也影响卖出价格）
             ConfigureSellBonus(npcId);
-            
+
             // 关键：手动缓存物品实例到 itemInstances 字典
             // 游戏原生商店在 Start() 中异步调用 CacheItemInstances()
             // 但我们是动态创建的商店，需要在 ShowUI() 之前手动填充
             CacheItemInstancesManually(npcId);
-            
+
             ModBehaviour.DevLog("[NPCShop] 商店创建成功: " + npcId);
         }
-        
+
         /// <summary>
         /// 配置卖出加成 - 好感度折扣也影响卖出价格
         /// 原版 sellFactor = 0.5（卖出获得50%价值）
@@ -346,10 +361,10 @@ namespace BossRush
         private static void ConfigureSellBonus(string npcId)
         {
             if (currentShop == null) return;
-            
+
             var config = AffinityManager.GetNPCConfig(npcId);
             var shopConfig = config as INPCShopConfig;
-            
+
             if (shopConfig == null) return;
 
             if (IsZombieModeTemporaryPurificationShop())
@@ -361,21 +376,21 @@ namespace BossRush
 
             int level = AffinityManager.GetLevel(npcId);
             float discount = shopConfig.GetDiscountForLevel(level);
-            
+
             // 计算卖出加成：基础0.5 + 折扣的一半
             // 这样20%折扣 = 卖出获得60%价值（比原版50%多10%）
             float sellBonus = discount / 2f;
             float newSellFactor = 0.5f + sellBonus;
-            
+
             // 通过反射设置 sellFactor（公共字段）
             currentShop.sellFactor = newSellFactor;
-            
+
             if (discount > 0)
             {
                 ModBehaviour.DevLog("[NPCShop] 卖出加成已配置: 折扣=" + (discount * 100) + "%, sellFactor=" + newSellFactor);
             }
         }
-        
+
         /// <summary>
         /// 手动缓存物品实例（解决动态创建商店的空引用问题）
         /// </summary>
@@ -386,7 +401,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] CacheItemInstances: 商店或条目为空");
                 return;
             }
-            
+
             try
             {
                 var fItems = ReflectionCache.StockShop_ItemInstances;
@@ -395,21 +410,21 @@ namespace BossRush
                     ModBehaviour.DevLog("[NPCShop] [ERROR] ReflectionCache.StockShop_ItemInstances 为空");
                     return;
                 }
-                
+
                 var dict = fItems.GetValue(currentShop) as Dictionary<int, Item>;
                 if (dict == null)
                 {
                     dict = new Dictionary<int, Item>();
                     fItems.SetValue(currentShop, dict);
                 }
-                
+
                 foreach (var entry in currentShop.entries)
                 {
                     if (entry == null) continue;
-                    
+
                     int typeId = entry.ItemTypeID;
                     if (dict.ContainsKey(typeId)) continue;
-                    
+
                     try
                     {
                         Item item = ItemAssetsCollection.InstantiateSync(typeId);
@@ -437,7 +452,7 @@ namespace BossRush
                         ModBehaviour.DevLog("[NPCShop] [ERROR] 创建物品实例失败: TypeID=" + typeId + ", " + e.Message);
                     }
                 }
-                
+
                 ModBehaviour.DevLog("[NPCShop] 物品实例缓存完成，共 " + dict.Count + " 个");
             }
             catch (Exception e)
@@ -445,41 +460,41 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] [ERROR] CacheItemInstances 失败: " + e.Message);
             }
         }
-        
+
         private static void ConfigureShopEntries(string npcId)
         {
             if (currentShop == null) return;
-            
+
             currentShop.entries.Clear();
-            
+
             var config = AffinityManager.GetNPCConfig(npcId);
             var shopConfig = config as INPCShopConfig;
-            
+
             if (shopConfig == null)
             {
                 ModBehaviour.DevLog("[NPCShop] NPC未实现商店配置接口: " + npcId);
                 return;
             }
-            
+
             int level = AffinityManager.GetLevel(npcId);
             float discount = shopConfig.GetDiscountForLevel(level);
-            
+
             ModBehaviour.DevLog("[NPCShop] 配置商品，等级: " + level + ", 折扣: " + (discount * 100) + "%");
-            
+
             List<ShopItemEntry> items = shopConfig.GetShopItems();
             if (items == null || items.Count == 0)
             {
                 ModBehaviour.DevLog("[NPCShop] 商店暂无商品");
                 return;
             }
-            
+
             foreach (var item in items)
             {
                 if (level < item.RequiredLevel)
                 {
                     continue;
                 }
-                
+
                 try
                 {
                     StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
@@ -496,13 +511,13 @@ namespace BossRush
                         temporaryPurificationFactors[item.TypeID] = adjustedPriceFactor;
                         itemEntry.priceFactor = 0f;
                     }
-                    
+
                     StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
                     wrapped.CurrentStock = item.MaxStock;
                     wrapped.Show = true;
-                    
+
                     currentShop.entries.Add(wrapped);
-                    
+
                     ModBehaviour.DevLog("[NPCShop] 添加商品 TypeID: " + item.TypeID);
                 }
                 catch (Exception e)
@@ -511,18 +526,18 @@ namespace BossRush
                 }
             }
         }
-        
+
         // ============================================================================
         // 私有方法 - 事件处理
         // ============================================================================
-        
+
         private static void RegisterEvents()
         {
             StockShop.OnItemPurchased += OnItemPurchased;
             StockShop.OnItemSoldByPlayer += OnItemSoldByPlayer;
             ManagedUIElement.onClose += OnManagedUIElementClose;
         }
-        
+
         private static void UnregisterEvents()
         {
             StockShop.OnItemPurchased -= OnItemPurchased;
@@ -530,11 +545,11 @@ namespace BossRush
             ManagedUIElement.onClose -= OnManagedUIElementClose;
             UnregisterShopSelectionEvent();
         }
-        
+
         private static void OnManagedUIElementClose(ManagedUIElement element)
         {
             if (!isServiceActive) return;
-            
+
             if (element is StockShopView)
             {
                 ModBehaviour.DevLog("[NPCShop] 检测到商店UI关闭");
@@ -587,18 +602,18 @@ namespace BossRush
 
             UpdateTemporaryShopCurrencyUiDeferred();
         }
-        
+
         // ============================================================================
         // 私有方法 - UI修改
         // ============================================================================
-        
+
         private static void ModifyShopUIText()
         {
             try
             {
                 var shopView = StockShopView.Instance;
                 if (shopView == null) return;
-                
+
                 if (textSellField != null)
                 {
                     string currentText = textSellField.GetValue(shopView) as string;
@@ -619,19 +634,19 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] [WARNING] 修改UI文字失败: " + e.Message);
             }
         }
-        
+
         private static void RestoreShopUIText()
         {
             try
             {
                 var shopView = StockShopView.Instance;
                 if (shopView == null) return;
-                
+
                 if (textSellField != null && originalTextSell != null)
                 {
                     textSellField.SetValue(shopView, originalTextSell);
                 }
-                
+
                 originalTextSell = null;
             }
             catch (Exception e)
@@ -639,19 +654,19 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] [WARNING] 恢复UI文字失败: " + e.Message);
             }
         }
-        
+
         // ============================================================================
         // 私有方法 - 对话
         // ============================================================================
-        
+
         private static void ShowShoppingDialogue(string npcId)
         {
             if (currentNpcTransform == null) return;
-            
+
             try
             {
                 string dialogue = NPCDialogueSystem.GetDialogue(npcId, DialogueCategory.Shopping);
-                
+
                 Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
                     Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
                         dialogue,
@@ -669,11 +684,11 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] [WARNING] 显示对话失败: " + e.Message);
             }
         }
-        
+
         // ============================================================================
         // 私有方法 - 清理
         // ============================================================================
-        
+
         private static void Cleanup()
         {
             if (shopObject != null)
@@ -682,7 +697,7 @@ namespace BossRush
                 shopObject = null;
                 currentShop = null;
             }
-            
+
             currentNpcId = null;
             currentNpcTransform = null;
             currentController = null;

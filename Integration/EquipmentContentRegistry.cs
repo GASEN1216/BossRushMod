@@ -59,6 +59,7 @@ namespace BossRush
             CleanupFenHuangHalberdSystem();
             CleanupFrostmourneSystem();
             CleanupPhantomWitchScytheSystem();
+            DragonKingBossGunRuntime.ResetStaticCaches();
             UnsubscribeDragonBreathEffectEvent();
             DragonBreathBuffHandler.Cleanup();
             CleanupFlightTotemSystem();

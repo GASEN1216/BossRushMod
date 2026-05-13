@@ -3,6 +3,7 @@
   "sceneID": "Level_HiddenWarehouse_Main",
   "displayNameCN": "仓库区",
   "displayNameEN": "Hidden Warehouse",
+  "sortOrder": 3,
   "spawnPoints": [
     [141.35, 0.02, 170.59],
     [126.82, 0.02, 169.88],

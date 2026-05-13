@@ -236,14 +236,18 @@ namespace BossRush
                                 }
                             }
                         }
-                        catch
+                        catch (Exception rewardEx)
                         {
-                            try { if (reward != null) reward.DestroyTree(); } catch { }
+                            DevLog("[ModeF] [WARNING] 撤离奖励处理异常: " + rewardEx.Message);
+                            if (reward != null)
+                            {
+                                SafeRuntime.Run("ModeF extraction reward destroy after failure", reward.DestroyTree);
+                            }
                         }
                     }
 
                     ClearModeFStorageNotificationQueue(prePushCount);
-                    try { PlayerStorageBuffer.SaveBuffer(); } catch { }
+                    SafeRuntime.Run("ModeF extraction storage buffer save", PlayerStorageBuffer.SaveBuffer);
 
                     ShowBigBanner(L10n.T(
                         "<color=green>血猎追击胜利！</color> 已向寄存点发送 " + storageRewards + " 件悬赏奖励",

@@ -603,12 +603,24 @@ namespace BossRush
             DevLog("[ModeF] [RESPAWN] queue pending=" + modeFPendingRespawnCount
                 + " | inflight=" + modeFRespawnInFlightCount
                 + " | added=" + count);
+
+            if (modeFState.CurrentPhase == ModeFPhase.Preparation)
+            {
+                DevLog("[ModeF] [RESPAWN] defer during preparation | pending=" + modeFPendingRespawnCount);
+                return;
+            }
+
             TryFulfillModeFPendingRespawns();
         }
 
         private void TryFulfillModeFPendingRespawns()
         {
             if (!modeFActive || modeFPendingRespawnCount <= 0 || modeFRespawnInFlightCount > 0)
+            {
+                return;
+            }
+
+            if (modeFState.CurrentPhase == ModeFPhase.Preparation)
             {
                 return;
             }

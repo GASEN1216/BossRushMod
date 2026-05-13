@@ -4,7 +4,7 @@
 // 模块说明：
 //   提供简单的 API 从 AssetBundle 加载消耗品等非装备类物品
 //   支持自动扫描目录加载所有资源包
-// 
+//
 // ============================================================================
 // 资源文件要求（放在 Assets/Items/ 目录下）：
 // ============================================================================
@@ -52,22 +52,22 @@ namespace BossRush
     public static class ItemFactory
     {
         // ========== 缓存字典 ==========
-        
+
         // 已加载的物品缓存（TypeID -> Item预制体）
         private static Dictionary<int, Item> loadedItems = new Dictionary<int, Item>();
-        
+
         // 已加载的 bundle 列表（避免重复加载）
         private static HashSet<string> loadedBundles = new HashSet<string>();
-        
+
         // 已加载的 AssetBundle 缓存（用于加载图标等资源）
         private static Dictionary<string, AssetBundle> loadedAssetBundles = new Dictionary<string, AssetBundle>();
-        
+
         // 已加载的图标缓存
         private static Dictionary<string, Sprite> loadedSprites = new Dictionary<string, Sprite>();
-        
+
         // 物品配置回调（TypeID -> 配置方法）
         private static Dictionary<int, Action<Item>> itemConfigurators = new Dictionary<int, Action<Item>>();
-        
+
         // Mod 目录路径
         private static string modDirectory = null;
 
@@ -128,7 +128,7 @@ namespace BossRush
             }
 
             string itemsDir = Path.Combine(modDirectory, ITEMS_PATH);
-            
+
             if (!Directory.Exists(itemsDir))
             {
                 ModBehaviour.DevLog("[ItemFactory] 物品目录不存在，跳过自动加载: " + itemsDir);
@@ -137,22 +137,22 @@ namespace BossRush
 
             int totalCount = 0;
             string[] files = Directory.GetFiles(itemsDir);
-            
+
             foreach (string filePath in files)
             {
                 string fileName = Path.GetFileName(filePath);
-                
+
                 // 跳过 .manifest 文件和其他非 bundle 文件
                 if (fileName.Contains(".")) continue;
-                
+
                 // 跳过已加载的 bundle
                 if (loadedBundles.Contains(fileName)) continue;
-                
+
                 ModBehaviour.DevLog("[ItemFactory] 自动加载 bundle: " + fileName);
                 int count = LoadBundle(fileName);
                 totalCount += count;
             }
-            
+
             ModBehaviour.DevLog("[ItemFactory] 自动加载完成，共 " + totalCount + " 个物品");
             return totalCount;
         }
@@ -174,7 +174,7 @@ namespace BossRush
             }
 
             string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
-            
+
             if (!File.Exists(bundlePath))
             {
                 ModBehaviour.DevLog("[ItemFactory] 未找到 AssetBundle: " + bundlePath);
@@ -182,12 +182,12 @@ namespace BossRush
             }
 
             int count = LoadBundleInternal(bundlePath, bundleName);
-            
+
             if (count > 0)
             {
                 loadedBundles.Add(bundleName);
             }
-            
+
             return count;
         }
 
@@ -218,7 +218,7 @@ namespace BossRush
             {
                 return cachedSprite;
             }
-            
+
             try
             {
                 // 确保 bundle 已加载
@@ -229,15 +229,15 @@ namespace BossRush
                     {
                         modDirectory = Path.GetDirectoryName(typeof(ItemFactory).Assembly.Location);
                     }
-                    
+
                     string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
-                    
+
                     if (!File.Exists(bundlePath))
                     {
                         ModBehaviour.DevLog("[ItemFactory] 未找到 AssetBundle: " + bundlePath);
                         return null;
                     }
-                    
+
                     AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
                     if (bundle == null)
                     {
@@ -250,37 +250,37 @@ namespace BossRush
 
                         bundle = existingBundle;
                     }
-                    
+
                     loadedAssetBundles[bundleName] = bundle;
                 }
-                
+
                 // 从 bundle 加载 Sprite
                 AssetBundle assetBundle = loadedAssetBundles[bundleName];
-                
+
                 // 尝试多种加载方式
                 Sprite sprite = assetBundle.LoadAsset<Sprite>(spriteName);
-                
+
                 if (sprite == null)
                 {
                     sprite = assetBundle.LoadAsset<Sprite>(spriteName + ".png");
                 }
-                
+
                 if (sprite == null)
                 {
                     // 尝试从 Texture2D 创建 Sprite
                     Texture2D texture = assetBundle.LoadAsset<Texture2D>(spriteName);
-                    
+
                     if (texture == null)
                     {
                         texture = assetBundle.LoadAsset<Texture2D>(spriteName + ".png");
                     }
-                    
+
                     if (texture != null)
                     {
                         sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                     }
                 }
-                
+
                 if (sprite != null)
                 {
                     loadedSprites[cacheKey] = sprite;
@@ -299,7 +299,7 @@ namespace BossRush
                         return fileSprite;
                     }
                 }
-                
+
                 return sprite;
             }
             catch (Exception e)
@@ -348,7 +348,7 @@ namespace BossRush
                 return null;
             }
         }
-        
+
         /// <summary>
         /// 调试方法：列出 AssetBundle 中的所有资源（仅在 DevMode 下输出）
         /// </summary>
@@ -356,22 +356,22 @@ namespace BossRush
         {
             // 仅在 DevMode 下执行
             if (!ModBehaviour.DevModeEnabled) return;
-            
+
             try
             {
                 if (modDirectory == null)
                 {
                     modDirectory = Path.GetDirectoryName(typeof(ItemFactory).Assembly.Location);
                 }
-                
+
                 string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
-                
+
                 if (!File.Exists(bundlePath))
                 {
                     ModBehaviour.DevLog("[ItemFactory] Bundle 文件不存在: " + bundlePath);
                     return;
                 }
-                
+
                 // 检查是否已加载
                 AssetBundle bundle;
                 if (loadedAssetBundles.ContainsKey(bundleName))
@@ -392,11 +392,11 @@ namespace BossRush
                     }
                     loadedAssetBundles[bundleName] = bundle;
                 }
-                
+
                 // 列出所有资源名称
                 string[] allAssetNames = bundle.GetAllAssetNames();
                 ModBehaviour.DevLog("[ItemFactory] Bundle '" + bundleName + "' 包含 " + allAssetNames.Length + " 个资源");
-                
+
                 foreach (string assetName in allAssetNames)
                 {
                     ModBehaviour.DevLog("[ItemFactory]   - " + assetName);
@@ -427,10 +427,10 @@ namespace BossRush
             {
                 var player = CharacterMainControl.Main;
                 if (player == null || player.CharacterItem == null) return 0;
-                
+
                 var inventory = player.CharacterItem.Inventory;
                 if (inventory == null || inventory.Content == null) return 0;
-                
+
                 int totalCount = 0;
                 foreach (var item in inventory.Content)
                 {
@@ -448,7 +448,7 @@ namespace BossRush
                         }
                     }
                 }
-                
+
                 return totalCount;
             }
             catch (Exception e)
@@ -470,10 +470,10 @@ namespace BossRush
             {
                 var player = CharacterMainControl.Main;
                 if (player == null || player.CharacterItem == null) return false;
-                
+
                 var inventory = player.CharacterItem.Inventory;
                 if (inventory == null || inventory.Content == null) return false;
-                
+
                 // 先检查数量是否足够
                 int available = GetItemCountInInventory(typeId);
                 if (available < count)
@@ -481,15 +481,15 @@ namespace BossRush
                     ModBehaviour.DevLog("[ItemFactory] 物品数量不足: 需要 " + count + ", 拥有 " + available);
                     return false;
                 }
-                
+
                 int remaining = count;
-                
+
                 // 遍历背包，消耗物品
                 for (int i = inventory.Content.Count - 1; i >= 0 && remaining > 0; i--)
                 {
                     var item = inventory.Content[i];
                     if (item == null || item.TypeID != typeId) continue;
-                    
+
                     if (item.Stackable)
                     {
                         int stackCount = item.StackCount;
@@ -516,7 +516,7 @@ namespace BossRush
                         ModBehaviour.DevLog("[ItemFactory] 消耗非堆叠物品");
                     }
                 }
-                
+
                 return remaining == 0;
             }
             catch (Exception e)
@@ -534,7 +534,7 @@ namespace BossRush
         private static int LoadBundleInternal(string bundlePath, string bundleName)
         {
             AssetBundle bundle = null;
-            
+
             try
             {
                 bundle = AssetBundle.LoadFromFile(bundlePath);
@@ -547,7 +547,7 @@ namespace BossRush
                         return 0;
                     }
                 }
-                
+
                 // 缓存 AssetBundle（重要：用于后续加载图标等资源）
                 loadedAssetBundles[bundleName] = bundle;
                 ModBehaviour.DevLog("[ItemFactory] AssetBundle 已缓存: " + bundleName);
@@ -566,14 +566,14 @@ namespace BossRush
                     // 检查是否是 Item 预制体
                     Item item = go.GetComponent<Item>();
                     if (item == null) continue;
-                    
+
                     string goName = go.name;
-                    
+
                     try
                     {
                         // 缓存物品
                         loadedItems[item.TypeID] = item;
-                        
+
                         // 调用配置器（如果有）
                         Action<Item> configurator;
                         if (itemConfigurators.TryGetValue(item.TypeID, out configurator))
@@ -581,12 +581,12 @@ namespace BossRush
                             configurator(item);
                             ModBehaviour.DevLog("[ItemFactory] 已应用配置器: TypeID=" + item.TypeID);
                         }
-                        
+
                         // 注册到游戏物品系统
                         ItemAssetsCollection.AddDynamicEntry(item);
                         loadedCount++;
 
-                        ModBehaviour.DevLog("[ItemFactory] 成功加载物品: " + goName + 
+                        ModBehaviour.DevLog("[ItemFactory] 成功加载物品: " + goName +
                             " (TypeID=" + item.TypeID + ")");
                     }
                     catch (Exception e)
@@ -614,7 +614,9 @@ namespace BossRush
             loadedItems.Clear();
             loadedBundles.Clear();
             loadedSprites.Clear();
-            
+            itemConfigurators.Clear();
+            modDirectory = null;
+
             // 卸载 AssetBundle（但不卸载已加载的资源）
             foreach (var bundle in loadedAssetBundles.Values)
             {
@@ -624,8 +626,13 @@ namespace BossRush
                 }
             }
             loadedAssetBundles.Clear();
-            
+
             ModBehaviour.DevLog("[ItemFactory] 已清理所有缓存");
+        }
+
+        public static void ResetStaticCaches()
+        {
+            Shutdown();
         }
     }
 }

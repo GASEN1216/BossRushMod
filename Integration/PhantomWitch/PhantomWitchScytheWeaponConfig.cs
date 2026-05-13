@@ -399,6 +399,13 @@ namespace BossRush
             return cachedFallbackSlashFx;
         }
 
+        internal static void ResetStaticCaches()
+        {
+            cachedFallbackSlashFx = null;
+            cachedFallbackHitFx = null;
+            cachedConfig = null;
+        }
+
         private static GameObject GetFallbackHitFx()
         {
             if (cachedFallbackHitFx == null)

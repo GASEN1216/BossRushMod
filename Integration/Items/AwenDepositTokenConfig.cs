@@ -201,7 +201,7 @@ namespace BossRush
                     return;
                 }
 
-                Duckov.Economy.StockShop[] shops = UnityEngine.Object.FindObjectsOfType<Duckov.Economy.StockShop>();
+                Duckov.Economy.StockShop[] shops = ObjectCache.GetStockShops();
                 if (shops == null || shops.Length == 0)
                 {
                     return;

@@ -3,6 +3,7 @@
   "sceneID": "Level_DemoChallenge_Main",
   "displayNameCN": "DEMO终极挑战",
   "displayNameEN": "DEMO Ultimate Challenge",
+  "sortOrder": 0,
   "spawnPoints": [
     [232.01, -7.98, 182.38],
     [234.05, -7.98, 182.23],

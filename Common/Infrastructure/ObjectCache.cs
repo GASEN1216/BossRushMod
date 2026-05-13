@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Duckov.UI;
+using Duckov.Economy;
+using TMPro;
 
 namespace BossRush
 {
@@ -14,6 +16,9 @@ namespace BossRush
     {
         private static BoxCollider[] _cachedBoxColliders;
         private static NotificationText[] _cachedNotificationTexts;
+        private static CharacterSpawnerRoot[] _cachedCharacterSpawnerRoots;
+        private static StockShop[] _cachedStockShops;
+        private static TMP_FontAsset[] _cachedTmpFonts;
         private static string _lastSceneName;
 
         /// <summary>
@@ -28,6 +33,9 @@ namespace BossRush
                 {
                     _cachedBoxColliders = null;
                     _cachedNotificationTexts = null;
+                    _cachedCharacterSpawnerRoots = null;
+                    _cachedStockShops = null;
+                    _cachedTmpFonts = null;
                     _lastSceneName = currentScene;
                 }
             }
@@ -41,7 +49,28 @@ namespace BossRush
         {
             _cachedBoxColliders = null;
             _cachedNotificationTexts = null;
+            _cachedCharacterSpawnerRoots = null;
+            _cachedStockShops = null;
+            _cachedTmpFonts = null;
             _lastSceneName = null;
+        }
+
+        private static bool IsUnityObjectArrayAlive<T>(T[] objects) where T : UnityEngine.Object
+        {
+            if (objects == null || objects.Length == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < objects.Length; i++)
+            {
+                if (objects[i] == null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -55,6 +84,51 @@ namespace BossRush
                 _cachedBoxColliders = UnityEngine.Object.FindObjectsOfType<BoxCollider>();
             }
             return _cachedBoxColliders;
+        }
+
+        /// <summary>
+        /// 获取缓存的 CharacterSpawnerRoot 数组
+        /// </summary>
+        public static CharacterSpawnerRoot[] GetCharacterSpawnerRoots()
+        {
+            RefreshIfNeeded();
+            if (!IsUnityObjectArrayAlive(_cachedCharacterSpawnerRoots))
+            {
+                _cachedCharacterSpawnerRoots = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>();
+            }
+            return _cachedCharacterSpawnerRoots;
+        }
+
+        /// <summary>
+        /// 获取缓存的基地商店数组
+        /// </summary>
+        public static StockShop[] GetStockShops()
+        {
+            RefreshIfNeeded();
+            if (!IsUnityObjectArrayAlive(_cachedStockShops))
+            {
+                _cachedStockShops = UnityEngine.Object.FindObjectsOfType<StockShop>();
+            }
+            return _cachedStockShops;
+        }
+
+        /// <summary>
+        /// 获取缓存的 TMP 字体资源数组
+        /// </summary>
+        public static TMP_FontAsset[] GetTmpFonts()
+        {
+            RefreshIfNeeded();
+            if (!IsUnityObjectArrayAlive(_cachedTmpFonts))
+            {
+                _cachedTmpFonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+            }
+            return _cachedTmpFonts;
+        }
+
+        public static TMP_FontAsset GetFirstTmpFont()
+        {
+            TMP_FontAsset[] fonts = GetTmpFonts();
+            return fonts != null && fonts.Length > 0 ? fonts[0] : null;
         }
 
         /// <summary>

@@ -3,6 +3,7 @@
   "sceneID": "Level_Farm_Main",
   "displayNameCN": "农场镇",
   "displayNameEN": "Farm Town",
+  "sortOrder": 4,
   "spawnPoints": [
     [367.54, 0.04, 598.68],
     [368.47, 0.04, 588.55],

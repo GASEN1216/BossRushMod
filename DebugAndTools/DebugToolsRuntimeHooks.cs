@@ -161,74 +161,7 @@ namespace BossRush
                     else
                     {
                         Vector3 playerPos = main.transform.position;
-                        CharacterMainControl[] characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>();
-                        if (characters == null || characters.Length == 0)
-                        {
-                            DevLog("[BossRush] F8 调试：场景中未找到任何 CharacterMainControl");
-                        }
-                        else
-                        {
-                            DevLog("[BossRush] F8 调试：玩家位置=" + playerPos + "，开始列出除玩家外的所有角色");
-
-                            foreach (var c in characters)
-                            {
-                                if (c == null)
-                                {
-                                    continue;
-                                }
-
-                                bool isMain = false;
-                                try
-                                {
-                                    if (c == main)
-                                    {
-                                        isMain = true;
-                                    }
-                                    else
-                                    {
-                                        isMain = CharacterMainControlExtensions.IsMainCharacter(c);
-                                    }
-                                }
-                                catch {}
-
-                                if (isMain)
-                                {
-                                    continue;
-                                }
-
-                                Vector3 pos = c.transform.position;
-                                float dist = (pos - playerPos).magnitude;
-
-                                string presetKey = "";
-                                Teams team = Teams.scav;
-                                try
-                                {
-                                    if (c.characterPreset != null)
-                                    {
-                                        presetKey = c.characterPreset.nameKey;
-                                        team = c.characterPreset.team;
-                                    }
-                                }
-                                catch {}
-
-                                float maxHealth = -1f;
-                                try
-                                {
-                                    if (c.Health != null)
-                                    {
-                                        maxHealth = c.Health.MaxHealth;
-                                    }
-                                }
-                                catch {}
-
-                                DevLog("[BossRush] F8 角色：goName=" + c.gameObject.name +
-                                       ", presetKey=" + presetKey +
-                                       ", team=" + team +
-                                       ", MaxHP=" + maxHealth +
-                                       ", pos=" + pos +
-                                       ", dist=" + dist.ToString("F1"));
-                            }
-                        }
+                        LogDebugSceneCharacters(main, playerPos);
                     }
                 }
                 catch (System.Exception e)
@@ -250,54 +183,7 @@ namespace BossRush
                     else
                     {
                         Vector3 playerPos = main.transform.position;
-                        var allInteractables = UnityEngine.Object.FindObjectsOfType<InteractableBase>(true);
-                        InteractableBase nearest = null;
-                        float bestDistSq = float.MaxValue;
-
-                        if (allInteractables != null)
-                        {
-                            foreach (var it in allInteractables)
-                            {
-                                if (it == null || it.gameObject == null) continue;
-
-                                float distSq = (it.transform.position - playerPos).sqrMagnitude;
-                                if (distSq < bestDistSq)
-                                {
-                                    bestDistSq = distSq;
-                                    nearest = it;
-                                }
-                            }
-                        }
-
-                        if (nearest != null)
-                        {
-                            float dist = UnityEngine.Mathf.Sqrt(bestDistSq);
-                            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                            string name = nearest.gameObject.name;
-                            string interactName = "";
-                            try { interactName = nearest.InteractName; } catch { }
-
-                            // 组成员数量
-                            int groupCount = 0;
-                            try
-                            {
-                                var list = nearest.GetInteractableList();
-                                groupCount = (list != null) ? list.Count : 0;
-                            }
-                            catch { }
-
-                            DevLog("[BossRush] F7 调试：当前场景=" + sceneName +
-                                      ", 玩家位置=" + playerPos +
-                                      ", 最近交互点 name=" + name +
-                                      ", InteractName=" + interactName +
-                                      ", 位置=" + nearest.transform.position +
-                                      ", 距离=" + dist +
-                                      ", 组内成员数量=" + groupCount);
-                        }
-                        else
-                        {
-                            DevLog("[BossRush] F7 调试：场景中未找到任何 InteractableBase");
-                        }
+                        LogNearestDebugInteractable(playerPos);
                     }
                 }
                 catch (System.Exception e)
@@ -347,11 +233,137 @@ namespace BossRush
             }
         }
 
+        private void LogDebugSceneCharacters(CharacterMainControl main, Vector3 playerPos)
+        {
+            CharacterMainControl[] characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>();
+            if (characters == null || characters.Length == 0)
+            {
+                DevLog("[BossRush] F8 调试：场景中未找到任何 CharacterMainControl");
+                return;
+            }
+
+            DevLog("[BossRush] F8 调试：玩家位置=" + playerPos + "，开始列出除玩家外的所有角色");
+            foreach (var c in characters)
+            {
+                if (c == null)
+                {
+                    continue;
+                }
+
+                bool isMain = false;
+                try
+                {
+                    if (c == main)
+                    {
+                        isMain = true;
+                    }
+                    else
+                    {
+                        isMain = CharacterMainControlExtensions.IsMainCharacter(c);
+                    }
+                }
+                catch {}
+
+                if (isMain)
+                {
+                    continue;
+                }
+
+                Vector3 pos = c.transform.position;
+                float dist = (pos - playerPos).magnitude;
+
+                string presetKey = "";
+                Teams team = Teams.scav;
+                try
+                {
+                    if (c.characterPreset != null)
+                    {
+                        presetKey = c.characterPreset.nameKey;
+                        team = c.characterPreset.team;
+                    }
+                }
+                catch {}
+
+                float maxHealth = -1f;
+                try
+                {
+                    if (c.Health != null)
+                    {
+                        maxHealth = c.Health.MaxHealth;
+                    }
+                }
+                catch {}
+
+                DevLog("[BossRush] F8 角色：goName=" + c.gameObject.name +
+                       ", presetKey=" + presetKey +
+                       ", team=" + team +
+                       ", MaxHP=" + maxHealth +
+                       ", pos=" + pos +
+                       ", dist=" + dist.ToString("F1"));
+            }
+        }
+
+        private void LogNearestDebugInteractable(Vector3 playerPos)
+        {
+            var allInteractables = UnityEngine.Object.FindObjectsOfType<InteractableBase>(true);
+            InteractableBase nearest = null;
+            float bestDistSq = float.MaxValue;
+
+            if (allInteractables != null)
+            {
+                foreach (var it in allInteractables)
+                {
+                    if (it == null || it.gameObject == null) continue;
+
+                    float distSq = (it.transform.position - playerPos).sqrMagnitude;
+                    if (distSq < bestDistSq)
+                    {
+                        bestDistSq = distSq;
+                        nearest = it;
+                    }
+                }
+            }
+
+            if (nearest != null)
+            {
+                float dist = UnityEngine.Mathf.Sqrt(bestDistSq);
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                string name = nearest.gameObject.name;
+                string interactName = "";
+                try { interactName = nearest.InteractName; } catch { }
+
+                // 组成员数量
+                int groupCount = 0;
+                try
+                {
+                    var list = nearest.GetInteractableList();
+                    groupCount = (list != null) ? list.Count : 0;
+                }
+                catch { }
+
+                DevLog("[BossRush] F7 调试：当前场景=" + sceneName +
+                       ", 玩家位置=" + playerPos +
+                       ", 最近交互点 name=" + name +
+                       ", InteractName=" + interactName +
+                       ", 位置=" + nearest.transform.position +
+                       ", 距离=" + dist +
+                       ", 组内成员数量=" + groupCount);
+            }
+            else
+            {
+                DevLog("[BossRush] F7 调试：场景中未找到任何 InteractableBase");
+            }
+        }
+
         internal void CleanupDebugToolsOnDestroy()
         {
             OnDestroy_F3DebugCheatMenu();
+            HideNPCTeleportUI();
+            ExitPlacementMode();
             UnregisterInteractDebugListener();
             UnregisterShootDebugListener();
+            ModBehaviour.ResetDebugAndToolsStaticCaches();
+            ModBehaviour.ResetNPCTeleportUIStaticCaches();
         }
 
         internal void OnSceneLoadedDebugToolsRuntime(Scene scene, LoadSceneMode mode)

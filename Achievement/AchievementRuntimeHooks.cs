@@ -9,6 +9,8 @@ namespace BossRush
         {
             InitializeAchievementSystem();
             AchievementView.EnsureInstance();
+            SteamAchievementPopup.EnsureInstance();
+            BossRushEventBus.Subscribe<BossRushAchievementUnlockedEvent>(OnBossRushAchievementUnlockedEvent);
             Health.OnHurt += OnPlayerHurtForAchievement;
         }
 
@@ -39,7 +41,13 @@ namespace BossRush
         internal void CleanupAchievementRuntime()
         {
             Health.OnHurt -= OnPlayerHurtForAchievement;
+            BossRushEventBus.Unsubscribe<BossRushAchievementUnlockedEvent>(OnBossRushAchievementUnlockedEvent);
             UnsubscribeAchievementEvents();
+        }
+
+        private void OnBossRushAchievementUnlockedEvent(BossRushAchievementUnlockedEvent eventData)
+        {
+            SteamAchievementPopup.Show(eventData.Achievement);
         }
     }
 }

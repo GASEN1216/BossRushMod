@@ -25,65 +25,65 @@ namespace BossRush
         public TextMeshProUGUI[] TextComponents { get; set; }  // 属性条目的所有文本组件
         public bool IsLocked { get; set; }
         public bool CanLock { get; set; }  // 是否可以固定（有冷淬液）
-        
+
         // 颜色定义
         private static readonly Color normalColor = Color.white;  // 白色 - 普通状态
         private static readonly Color hoverColor = new Color(0.4f, 0.7f, 1f, 1f);  // 蓝色 - 悬停可固定
         private static readonly Color lockedColor = new Color(1f, 0.84f, 0f, 1f);  // 金色 - 已固定
-        
+
         public void OnPointerClick(PointerEventData eventData)
         {
             if (IsLocked || !CanLock) return;
-            
+
             ModBehaviour.DevLog("[PropertyEntry] 点击固定属性: " + PropertyKey);
-            
+
             if (TargetItem == null) return;
-            
+
             // 检查冷淬液数量
             int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
             if (fluidCount <= 0) return;
-            
+
             // 消耗冷淬液
             if (!ItemFactory.ConsumeItem(ColdQuenchFluidConfig.TYPE_ID, 1))
             {
                 ModBehaviour.DevLog("[PropertyEntry] 消耗冷淬液失败");
                 return;
             }
-            
+
             // 固定属性
             if (PropertyLockSystem.LockProperty(TargetItem, PropertyKey, PropType))
             {
                 ModBehaviour.DevLog("[PropertyEntry] 属性已固定: " + PropertyKey);
                 IsLocked = true;
                 CanLock = false;
-                
+
                 // 更新为金色
                 SetTextColor(lockedColor);
-                
+
                 // 通知UI刷新
                 ReforgeUIManager.NotifyPropertyLocked();
             }
         }
-        
+
         public void OnPointerEnter(PointerEventData eventData)
         {
             if (IsLocked) return;  // 已固定不变色
-            
+
             if (CanLock)
             {
                 // 有冷淬液，显示蓝色表示可固定
                 SetTextColor(hoverColor);
             }
         }
-        
+
         public void OnPointerExit(PointerEventData eventData)
         {
             if (IsLocked) return;  // 已固定保持金色
-            
+
             // 恢复白色
             SetTextColor(normalColor);
         }
-        
+
         /// <summary>
         /// 设置所有文本组件的颜色
         /// </summary>
@@ -98,7 +98,7 @@ namespace BossRush
                 }
             }
         }
-        
+
         /// <summary>
         /// 初始化颜色状态
         /// </summary>
@@ -130,7 +130,7 @@ namespace BossRush
     /// 重铸UI管理器 - 通过修改原版分解UI实现
     /// 性能优化版本：添加预制体缓存、协程合并、UI组件缓存
     /// </summary>
-    public static class ReforgeUIManager
+    public static partial class ReforgeUIManager
     {
         // ============================================================================
         // 常量定义（避免魔法数字）
@@ -139,7 +139,7 @@ namespace BossRush
         private const float DIFF_THRESHOLD = 0.01f;
         private const string MAX_BOUND_LABEL_COLOR = "#FF4D4D";
         private const string MIN_BOUND_LABEL_COLOR = "#9AD8FF";
-        
+
         // 冷淬液UI常量
         private const float COLD_QUENCH_UI_OFFSET_Y = -10f;
         private const int COLD_QUENCH_ICON_SIZE = 56;
@@ -148,15 +148,15 @@ namespace BossRush
         private const int COLD_QUENCH_SPACING = 10;
         private const int COLD_QUENCH_FONT_SIZE = 32;
         private const int COLD_QUENCH_ICON_FONT_SIZE = 40;
-        
+
         // 预制体缓存常量
         private const int MAX_PREFAB_CACHE_SIZE = 10;
-        
+
         // ============================================================================
         // 预制体缓存（性能优化：避免重复实例化）
         // ============================================================================
         private static Dictionary<int, Item> _prefabCache = new Dictionary<int, Item>();
-        
+
         /// <summary>
         /// 获取缓存的预制体（避免重复实例化）
         /// </summary>
@@ -172,13 +172,13 @@ namespace BossRush
                 // 缓存失效，移除
                 _prefabCache.Remove(typeId);
             }
-            
+
             // 缓存满时清理
             if (_prefabCache.Count >= MAX_PREFAB_CACHE_SIZE)
             {
                 ClearPrefabCache();
             }
-            
+
             // 实例化新预制体
             Item prefab = ItemAssetsCollection.InstantiateSync(typeId);
             if (prefab != null)
@@ -189,7 +189,7 @@ namespace BossRush
             }
             return prefab;
         }
-        
+
         /// <summary>
         /// 清理预制体缓存
         /// </summary>
@@ -204,38 +204,38 @@ namespace BossRush
             }
             _prefabCache.Clear();
         }
-        
+
         // ============================================================================
         // 缓存的反射 FieldInfo（性能优化）
         // ============================================================================
         private static FieldInfo _detailsDisplayField;
         private static FieldInfo _propertiesParentField;
         private static FieldInfo _cannotDecomposeField;
-        
+
         // ItemModifierEntry 反射缓存
         private static FieldInfo _modEntryTargetField;
         private static FieldInfo _modEntryValueField;
         private static PropertyInfo _modDescKeyProp;
         private static PropertyInfo _modDescValueProp;
-        
+
         // ItemVariableEntry 反射缓存
         private static FieldInfo _varEntryTargetField;
         private static FieldInfo _varEntryValueField;
         private static PropertyInfo _customDataKeyProp;
-        
+
         // ItemStatEntry 反射缓存
         private static FieldInfo _statEntryTargetField;
         private static FieldInfo _statEntryValueField;
         private static PropertyInfo _statKeyProp;
-        
+
         // 反射缓存初始化标志
         private static bool _reflectionCacheInitialized = false;
-        
+
         // 复用的字典对象（避免频繁分配）
         private static readonly Dictionary<string, float> _reusablePlayerModifiers = new Dictionary<string, float>();
         private static readonly Dictionary<string, float> _reusablePlayerStats = new Dictionary<string, float>();
         private static readonly Dictionary<string, float> _reusablePlayerVariables = new Dictionary<string, float>();
-        
+
         private static FieldInfo DetailsDisplayField
         {
             get
@@ -245,7 +245,7 @@ namespace BossRush
                 return _detailsDisplayField;
             }
         }
-        
+
         private static FieldInfo PropertiesParentField
         {
             get
@@ -255,7 +255,7 @@ namespace BossRush
                 return _propertiesParentField;
             }
         }
-        
+
         private static FieldInfo CannotDecomposeField
         {
             get
@@ -265,30 +265,30 @@ namespace BossRush
                 return _cannotDecomposeField;
             }
         }
-        
+
         /// <summary>
         /// 初始化反射缓存（只执行一次）
         /// </summary>
         private static void InitializeReflectionCache()
         {
             if (_reflectionCacheInitialized) return;
-            
+
             try
             {
                 // 获取 ItemModifierEntry 类型
-                Type modEntryType = Type.GetType("ItemStatsSystem.ItemModifierEntry, ItemStatsSystem") 
+                Type modEntryType = Type.GetType("ItemStatsSystem.ItemModifierEntry, ItemStatsSystem")
                     ?? Type.GetType("ItemModifierEntry, Assembly-CSharp");
                 if (modEntryType != null)
                 {
                     _modEntryTargetField = modEntryType.GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
                     _modEntryValueField = modEntryType.GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
                 }
-                
+
                 // 获取 ModifierDescription 类型的属性
                 Type modDescType = typeof(ModifierDescription);
                 _modDescKeyProp = modDescType.GetProperty("Key");
                 _modDescValueProp = modDescType.GetProperty("Value");
-                
+
                 // 获取 ItemVariableEntry 类型
                 Type varEntryType = Type.GetType("ItemStatsSystem.ItemVariableEntry, ItemStatsSystem")
                     ?? Type.GetType("ItemVariableEntry, Assembly-CSharp");
@@ -297,11 +297,11 @@ namespace BossRush
                     _varEntryTargetField = varEntryType.GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
                     _varEntryValueField = varEntryType.GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
                 }
-                
+
                 // 获取 CustomData 类型的属性
                 Type customDataType = typeof(Duckov.Utilities.CustomData);
                 _customDataKeyProp = customDataType.GetProperty("Key");
-                
+
                 // 获取 ItemStatEntry 类型
                 Type statEntryType = Type.GetType("ItemStatsSystem.ItemStatEntry, ItemStatsSystem")
                     ?? Type.GetType("ItemStatEntry, Assembly-CSharp");
@@ -310,11 +310,11 @@ namespace BossRush
                     _statEntryTargetField = statEntryType.GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
                     _statEntryValueField = statEntryType.GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
                 }
-                
+
                 // 获取 Stat 类型的属性
                 Type statType = typeof(Stat);
                 _statKeyProp = statType.GetProperty("Key");
-                
+
                 _reflectionCacheInitialized = true;
                 ModBehaviour.DevLog("[ReforgeUI] 反射缓存初始化完成");
             }
@@ -323,23 +323,23 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [WARNING] 反射缓存初始化失败: " + e.Message);
             }
         }
-        
+
         // 是否处于重铸模式
         private static bool isReforgeMode = false;
-        
+
         // 当前哥布林控制器
         private static GoblinNPCController currentController;
         private static Coroutine delayedUiBuildCoroutine;
-        
+
         // 原始属性快照
         private static List<PropertySnapshot> originalProperties = new List<PropertySnapshot>();
-        
+
         // 当前选中的物品
         private static Item selectedItem;
-        
+
         // 当前投入金钱
         private static int currentMoney = 0;
-        
+
         // UI组件引用（通过反射获取）
         private static ItemDecomposeView decomposeView;
         private static object countSliderObj;  // DecomposeSlider对象
@@ -353,32 +353,32 @@ namespace BossRush
         private static TextMeshProUGUI targetNameDisplay;
         private static object detailsDisplayObj;  // ItemDetailsDisplay对象
         private static GameObject noItemSelectedIndicator;
-        
+
         // 倾向滑块控件
         private static GameObject tendencySliderRoot;
         private static Slider tendencySlider;
         private static TextMeshProUGUI tendencyText;
         private static float currentTendencyChance = 0.5f;
-        
+
         // 是否正在重铸
         private static bool isReforging = false;
-        
+
         // 缓存的预制体属性（选择物品时获取，避免重铸时重复获取）
         private static Dictionary<string, float> cachedPrefabModifiers = new Dictionary<string, float>();
         private static Dictionary<string, float> cachedPrefabStats = new Dictionary<string, float>();
         private static Dictionary<string, float> cachedPrefabVariables = new Dictionary<string, float>();
-        
+
         // ============================================================================
         // 冷淬液UI相关变量
         // ============================================================================
-        
+
         // 冷淬液数量显示容器
         private static GameObject coldQuenchFluidContainer;
         // 冷淬液数量文本
         private static TextMeshProUGUI coldQuenchFluidCountText;
         // 属性锁定图标列表（key: 属性条目Transform的InstanceID）
         private static Dictionary<int, PropertyLockIcon> propertyLockIcons = new Dictionary<int, PropertyLockIcon>();
-        
+
         /// <summary>
         /// 属性交互信息（用于跟踪已设置交互的属性条目）
         /// </summary>
@@ -390,60 +390,60 @@ namespace BossRush
             public PropertyType PropertyType;  // 属性类型
             public bool IsLocked;              // 是否已固定
         }
-        
+
         /// <summary>
         /// 打开重铸UI（复用原版分解UI）
         /// </summary>
         public static void OpenUI(GoblinNPCController controller)
         {
             ModBehaviour.DevLog("[ReforgeUI] OpenUI 调用");
-            
+
             currentController = controller;
             isReforgeMode = true;
             originalProperties.Clear();
             selectedItem = null;
             currentMoney = 0;
-            
+
             // 打开原版分解UI
             var instance = ItemDecomposeView.Instance;
             if (instance != null)
             {
                 instance.Open(null);
             }
-            
+
             // 延迟修改UI（等待UI初始化完成）
             if (ModBehaviour.Instance != null)
             {
                 ModBehaviour.Instance.StartCoroutine(ModifyUIDelayed());
             }
-            
+
             ModBehaviour.DevLog("[ReforgeUI] UI已打开（重铸模式）");
         }
-        
+
         /// <summary>
         /// 关闭UI
         /// </summary>
         public static void CloseUI()
         {
             ModBehaviour.DevLog("[ReforgeUI] CloseUI 调用");
-            
+
             isReforgeMode = false;
             originalProperties.Clear();
             selectedItem = null;
-            
+
             // 关闭原版UI
             if (decomposeView != null && decomposeView.open)
             {
                 decomposeView.Close();
             }
-            
+
             // 通知哥布林对话结束，显示告别对话
             if (currentController != null)
             {
                 currentController.EndDialogueWithStay(10f, true);  // 重铸UI关闭时显示告别对话
                 currentController = null;
             }
-            
+
             ModBehaviour.DevLog("[ReforgeUI] UI已关闭");
         }
 
@@ -470,10 +470,10 @@ namespace BossRush
                     currentTransform.IsChildOf(npcTransform) ||
                     npcTransform.IsChildOf(currentTransform));
         }
-        
+
         // UI监控器
         private static ReforgeUIMonitor uiMonitor;
-        
+
         /// <summary>
         /// 延迟修改UI
         /// </summary>
@@ -510,10 +510,10 @@ namespace BossRush
             {
                 // 重新设置过滤条件
                 ModifyInventoryFilter();
-                
+
                 // 重新设置滑块
                 ModifySlider();
-                
+
                 // 重新设置按钮文本
                 if (reforgeButton != null)
                 {
@@ -523,10 +523,10 @@ namespace BossRush
                         buttonText.text = "重铸";
                     }
                 }
-                
+
                 // 更新概率显示
                 UpdateProbabilityDisplay();
-                
+
                 ModBehaviour.DevLog("[ReforgeUI] 已重新应用所有修改");
             }
             catch (Exception e)
@@ -567,7 +567,7 @@ namespace BossRush
             UpdateProbabilityDisplay();
             UpdateColdQuenchFluidCount();
         }
-        
+
         /// <summary>
         /// 修改分解UI为重铸UI
         /// </summary>
@@ -581,40 +581,40 @@ namespace BossRush
                     ModBehaviour.DevLog("[ReforgeUI] [ERROR] 无法获取ItemDecomposeView实例");
                     return;
                 }
-                
+
                 ModBehaviour.DevLog("[ReforgeUI] 开始修改UI");
-                
+
                 // 初始化反射缓存（只执行一次）
                 InitializeReflectionCache();
-                
+
                 // 0. 修改物品过滤条件 - 只有可重铸物品才能点击
                 ModifyInventoryFilter();
-                
+
                 // 1. 获取并修改滑块 - 改为金钱滑块
                 ModifySlider();
-                
+
                 // 2. 隐藏原版结果显示，添加概率显示
                 ModifyResultDisplay();
-                
+
                 // 3. 创建倾向滑块
 
                 // 4. 修改分解按钮为重铸按钮
                 ModifyDecomposeButton();
-                
+
                 // 5. 修改标题文本
                 ModifyTitleText();
-                
+
                 // 6. 移除原版事件监听器，防止原版方法被调用
                 RemoveOriginalEventListeners();
-                
+
                 // 7. 获取其他UI组件引用
                 GetAdditionalUIReferences();
-                
+
                 // 8. 订阅我们自己的物品选择事件
                 ItemUIUtilities.OnSelectionChanged += OnItemSelectionChanged;
-                
+
                 // 9. 创建冷淬液数量显示UI
-                
+
                 ModBehaviour.DevLog("[ReforgeUI] UI修改完成");
             }
             catch (Exception e)
@@ -622,13 +622,13 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 修改UI失败: " + e.Message + "\n" + e.StackTrace);
             }
         }
-        
+
         // 保存原版事件处理器引用，用于恢复
         private static Action<UIInputEventData> originalOnFastPick;
-        
+
         // 当前正在运行的差异显示协程（用于避免重复）
         private static Coroutine currentDiffCoroutine;
-        
+
         /// <summary>
         /// 移除原版事件监听器（只移除FastPick，保留OnSelectionChanged让UI正常显示）
         /// </summary>
@@ -644,7 +644,7 @@ namespace BossRush
                     UIInputManager.OnFastPick -= originalOnFastPick;
                     ModBehaviour.DevLog("[ReforgeUI] 已移除原版OnFastPick监听器");
                 }
-                
+
                 // 注意：不移除OnSelectionChanged，让原版的Refresh/Setup正常工作来显示UI
                 // 我们在延迟协程中覆盖需要修改的部分
                 ModBehaviour.DevLog("[ReforgeUI] 保留原版OnSelectionChanged以显示UI");
@@ -654,7 +654,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 移除原版事件监听器失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 恢复原版事件监听器（关闭UI时调用）
         /// </summary>
@@ -670,7 +670,7 @@ namespace BossRush
             }
             catch { }
         }
-        
+
         /// <summary>
         /// 获取其他UI组件引用
         /// </summary>
@@ -684,21 +684,21 @@ namespace BossRush
                 {
                     targetNameDisplay = nameField.GetValue(decomposeView) as TextMeshProUGUI;
                 }
-                
+
                 // 获取detailsDisplay
                 FieldInfo detailsField = typeof(ItemDecomposeView).GetField("detailsDisplay", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (detailsField != null)
                 {
                     detailsDisplayObj = detailsField.GetValue(decomposeView);
                 }
-                
+
                 // 获取noItemSelectedIndicator
                 FieldInfo noItemField = typeof(ItemDecomposeView).GetField("noItemSelectedIndicator", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (noItemField != null)
                 {
                     noItemSelectedIndicator = noItemField.GetValue(decomposeView) as GameObject;
                 }
-                
+
                 ModBehaviour.DevLog("[ReforgeUI] 额外UI引用获取完成");
             }
             catch (Exception e)
@@ -706,7 +706,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 获取额外UI引用失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 修改物品过滤条件 - 只有可重铸物品才能点击
         /// </summary>
@@ -722,19 +722,19 @@ namespace BossRush
                     if (charInv != null && CharacterMainControl.Main != null)
                     {
                         var inventory = CharacterMainControl.Main.CharacterItem.Inventory;
-                        
+
                         // 重新设置，使用ReforgeSystem.CanReforge作为过滤条件
                         charInv.Setup(
-                            inventory, 
-                            null, 
+                            inventory,
+                            null,
                             (Item e) => e == null || ReforgeSystem.CanReforge(e),  // 只有可重铸物品才能操作
-                            false, 
+                            false,
                             null
                         );
                         ModBehaviour.DevLog("[ReforgeUI] 角色背包过滤条件已修改");
                     }
                 }
-                
+
                 // 获取storageDisplay
                 FieldInfo storageField = typeof(ItemDecomposeView).GetField("storageDisplay", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (storageField != null)
@@ -743,10 +743,10 @@ namespace BossRush
                     if (storageInv != null && PlayerStorage.Inventory != null)
                     {
                         storageInv.Setup(
-                            PlayerStorage.Inventory, 
-                            null, 
+                            PlayerStorage.Inventory,
+                            null,
                             (Item e) => e == null || ReforgeSystem.CanReforge(e),
-                            false, 
+                            false,
                             null
                         );
                         ModBehaviour.DevLog("[ReforgeUI] 仓库过滤条件已修改");
@@ -758,7 +758,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 修改物品过滤失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 修改滑块为金钱滑块
         /// </summary>
@@ -773,40 +773,40 @@ namespace BossRush
                     ModBehaviour.DevLog("[ReforgeUI] [WARNING] 无法找到countSlider字段");
                     return;
                 }
-                
+
                 countSliderObj = sliderField.GetValue(decomposeView);
                 if (countSliderObj == null)
                 {
                     ModBehaviour.DevLog("[ReforgeUI] [WARNING] countSlider为空");
                     return;
                 }
-                
+
                 // DecomposeSlider继承自MonoBehaviour
                 Component sliderComponent = countSliderObj as Component;
                 if (sliderComponent == null) return;
-                
+
                 // 获取DecomposeSlider的内部字段
                 Type decomposeSliderType = countSliderObj.GetType();
-                
+
                 // 获取slider字段
                 FieldInfo internalSliderField = decomposeSliderType.GetField("slider", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (internalSliderField != null)
                 {
                     moneySlider = internalSliderField.GetValue(countSliderObj) as Slider;
                 }
-                
+
                 // 获取文本字段 (public字段)
                 FieldInfo valueTextField = decomposeSliderType.GetField("valueText", BindingFlags.Public | BindingFlags.Instance);
                 FieldInfo minTextField = decomposeSliderType.GetField("minText", BindingFlags.Public | BindingFlags.Instance);
                 FieldInfo maxTextField = decomposeSliderType.GetField("maxText", BindingFlags.Public | BindingFlags.Instance);
-                
+
                 if (valueTextField != null)
                     sliderValueText = valueTextField.GetValue(countSliderObj) as TextMeshProUGUI;
                 if (minTextField != null)
                     sliderMinText = minTextField.GetValue(countSliderObj) as TextMeshProUGUI;
                 if (maxTextField != null)
                     sliderMaxText = maxTextField.GetValue(countSliderObj) as TextMeshProUGUI;
-                
+
                 if (moneySlider != null)
                 {
                     // 设置滑块范围为玩家金钱，最小值为基础费用
@@ -816,11 +816,11 @@ namespace BossRush
                     moneySlider.maxValue = Mathf.Max(baseCost, playerMoney);
                     moneySlider.value = baseCost;
                     moneySlider.wholeNumbers = true;
-                    
+
                     // 移除原有监听器，添加新的
                     moneySlider.onValueChanged.RemoveAllListeners();
                     moneySlider.onValueChanged.AddListener(OnMoneySliderChanged);
-                    
+
                     // 设置文本显示
                     if (sliderValueText != null)
                         sliderValueText.text = baseCost.ToString();
@@ -828,7 +828,7 @@ namespace BossRush
                         sliderMinText.text = baseCost.ToString();
                     if (sliderMaxText != null)
                         sliderMaxText.text = playerMoney.ToString();
-                    
+
                     ModBehaviour.DevLog("[ReforgeUI] 滑块已修改为金钱滑块，最大值: " + playerMoney + "，基础费用: " + baseCost);
                 }
             }
@@ -837,7 +837,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 修改滑块失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 修改结果显示为概率显示（复用resultDisplay的位置）
         /// </summary>
@@ -853,10 +853,10 @@ namespace BossRush
                     if (resultDisplay != null)
                     {
                         resultDisplayObj = resultDisplay.gameObject;
-                        
+
                         // 在resultDisplay的位置创建概率显示（复用其位置）
                         Transform resultParent = resultDisplay.transform.parent;
-                        
+
                         // 查找或创建概率显示
                         Transform existingProb = resultParent.Find("ReforgeProbability");
                         if (existingProb != null)
@@ -868,7 +868,7 @@ namespace BossRush
                         {
                             GameObject probObj = new GameObject("ReforgeProbability");
                             probObj.transform.SetParent(resultParent, false);
-                            
+
                             // 复制resultDisplay的RectTransform设置
                             RectTransform resultRect = resultDisplay.GetComponent<RectTransform>();
                             RectTransform rect = probObj.AddComponent<RectTransform>();
@@ -885,10 +885,10 @@ namespace BossRush
                                 rect.anchoredPosition = Vector2.zero;
                                 rect.sizeDelta = new Vector2(300, 50);
                             }
-                            
+
                             // 设置在resultDisplay的同一位置
                             probObj.transform.SetSiblingIndex(resultDisplay.transform.GetSiblingIndex());
-                            
+
                             probabilityText = probObj.AddComponent<TextMeshProUGUI>();
                             probabilityText.fontSize = 24; // 大字体
                             probabilityText.alignment = TextAlignmentOptions.Center;
@@ -896,10 +896,10 @@ namespace BossRush
                             probabilityText.enableWordWrapping = false;
                             probabilityText.overflowMode = TextOverflowModes.Overflow;
                         }
-                        
+
                         // 隐藏原版结果显示
                         resultDisplayObj.SetActive(false);
-                        
+
                         UpdateProbabilityDisplay();
                         ModBehaviour.DevLog("[ReforgeUI] 概率显示已创建（复用resultDisplay位置）");
                     }
@@ -910,7 +910,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 修改结果显示失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 计算当前倾向滑块所需的费用
         /// 0% 或 100% 需要 10000金币，50% 为0金币
@@ -1032,7 +1032,7 @@ namespace BossRush
         private static void OnTendencySliderChanged(float value)
         {
             currentTendencyChance = 0.5f + (value / 40f) * 0.4f; // 转换为 0.1 ~ 0.9 的几率
-            
+
             if (tendencyText != null)
             {
                 if (value < -10f)
@@ -1042,7 +1042,7 @@ namespace BossRush
                 else
                     tendencyText.text = string.Format("平衡 (0)");
             }
-            
+
             UpdateReforgeButtonInteractable();
             UpdateProbabilityDisplay();
         }
@@ -1063,17 +1063,17 @@ namespace BossRush
                     {
                         // 移除原有点击事件
                         reforgeButton.onClick.RemoveAllListeners();
-                        
+
                         // 添加重铸点击事件
                         reforgeButton.onClick.AddListener(OnReforgeButtonClick);
-                        
+
                         // 修改按钮文字
                         TextMeshProUGUI buttonText = reforgeButton.GetComponentInChildren<TextMeshProUGUI>();
                         if (buttonText != null)
                         {
                             buttonText.text = "重铸";
                         }
-                        
+
                         ModBehaviour.DevLog("[ReforgeUI] 分解按钮已修改为重铸按钮");
                     }
                 }
@@ -1083,7 +1083,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 修改按钮失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 修改标题文本
         /// </summary>
@@ -1102,7 +1102,7 @@ namespace BossRush
                         text.text = originalText == "分解" ? "重铸" : "Reforge";
                         ModBehaviour.DevLog("[ReforgeUI] 按钮文本已修改: " + originalText + " -> " + text.text);
                     }
-                    else if (originalText.Contains("分解") || originalText.Contains("Decompose") || 
+                    else if (originalText.Contains("分解") || originalText.Contains("Decompose") ||
                         originalText.Contains("选择") || originalText.Contains("Select"))
                     {
                         string newText = originalText
@@ -1115,7 +1115,7 @@ namespace BossRush
                         ModBehaviour.DevLog("[ReforgeUI] 文本已修改: " + originalText + " -> " + newText);
                     }
                 }
-                
+
                 // 修改cannotDecomposeIndicator的文本
                 FieldInfo cannotField = typeof(ItemDecomposeView).GetField("cannotDecomposeIndicator", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (cannotField != null)
@@ -1135,7 +1135,7 @@ namespace BossRush
                         }
                     }
                 }
-                
+
                 // 修改noItemSelectedIndicator的文本
                 if (noItemSelectedIndicator != null)
                 {
@@ -1156,21 +1156,21 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 修改标题失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 物品选择改变
         /// </summary>
         private static void OnItemSelectionChanged()
         {
             if (!isReforgeMode) return;
-            
+
             Item newItem = ItemUIUtilities.SelectedItem;
-            
+
             // 切换了物品，清除原属性快照和锁定图标
             originalProperties.Clear();
             ClearPropertyLockIcons();
             selectedItem = newItem;
-            
+
             if (selectedItem != null)
             {
                 CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(selectedItem);
@@ -1178,20 +1178,20 @@ namespace BossRush
 
                 // 保存新物品的属性快照
                 SavePropertySnapshot(selectedItem);
-                
+
                 // 检查是否可重铸
                 bool canReforge = ReforgeSystem.CanReforge(selectedItem);
                 if (reforgeButton != null)
                 {
                     reforgeButton.gameObject.SetActive(canReforge);
                 }
-                
+
                 // 设置物品名称显示
                 if (targetNameDisplay != null)
                 {
                     targetNameDisplay.text = selectedItem.DisplayName;
                 }
-                
+
                 // 延迟设置物品详情显示 - 原版会先调用Setup(playerItem)，我们需要在之后覆盖为预制体显示
                 // 停止之前的协程以避免重复显示差异
                 StopCurrentDiffCoroutine();
@@ -1201,7 +1201,7 @@ namespace BossRush
                     // 延迟添加锁定图标（等待属性条目创建完成）
                     ModBehaviour.Instance.StartCoroutine(AddPropertyLockIconsDelayed());
                 }
-                
+
                 // 隐藏"请选择物品"提示
                 if (noItemSelectedIndicator != null)
                 {
@@ -1224,21 +1224,21 @@ namespace BossRush
                     reforgeButton.gameObject.SetActive(false);
                 }
             }
-            
+
             // 延迟重置UI状态（原版会在选择后重置滑块，我们需要在之后再次设置）
             // 滑块最小值设为基础费用
             if (ModBehaviour.Instance != null)
             {
                 ModBehaviour.Instance.StartCoroutine(ResetUIStateDelayed(GetPlayerMoney()));
             }
-            
+
             // 更新冷淬液数量显示
             UpdateColdQuenchFluidCount();
-            
+
             UpdateProbabilityDisplay();
             UpdateReforgeButtonInteractable();
         }
-        
+
         /// <summary>
         /// 延迟添加锁定图标（等待属性条目创建完成）
         /// </summary>
@@ -1249,2073 +1249,9 @@ namespace BossRush
             yield return null;
             AddPropertyLockIcons();
         }
-        
+
         /// <summary>
         /// 计算达到指定金钱加成所需的金钱量（MoneyBonus的逆向计算）
         /// </summary>
-        private static int CalculateMoneyForBonus(float targetBonus, float itemValue)
-        {
-            if (targetBonus <= 0) return 0;
-            if (targetBonus >= 1.0f) return Mathf.RoundToInt(itemValue * ReforgeSystem.MONEY_BONUS_TIER3_MULTIPLIER);
-            
-            float tier1 = itemValue * ReforgeSystem.MONEY_BONUS_TIER1_MULTIPLIER;
-            float tier2 = itemValue * ReforgeSystem.MONEY_BONUS_TIER2_MULTIPLIER;
-            float tier3 = itemValue * ReforgeSystem.MONEY_BONUS_TIER3_MULTIPLIER;
-            
-            if (targetBonus <= 0.10f)
-            {
-                // B = 0.10 * (m / tier1) => m = B * tier1 / 0.10
-                return Mathf.RoundToInt(targetBonus * tier1 / 0.10f);
-            }
-            else if (targetBonus <= 0.30f)
-            {
-                // B = 0.10 + 0.20 * (logM - logT1) / (logT2 - logT1)
-                // (B - 0.10) / 0.20 = (logM - logT1) / (logT2 - logT1)
-                float t = (targetBonus - 0.10f) / 0.20f;
-                float logT1 = Mathf.Log10(tier1);
-                float logT2 = Mathf.Log10(tier2);
-                float logM = logT1 + t * (logT2 - logT1);
-                return Mathf.RoundToInt(Mathf.Pow(10f, logM));
-            }
-            else
-            {
-                // B = 0.30 + 0.70 * (logM - logT2) / (logT3 - logT2)
-                float t = (targetBonus - 0.30f) / 0.70f;
-                float logT2 = Mathf.Log10(tier2);
-                float logT3 = Mathf.Log10(tier3);
-                float logM = logT2 + t * (logT3 - logT2);
-                return Mathf.RoundToInt(Mathf.Pow(10f, logM));
-            }
-        }
-
-        /// <summary>
-        /// 重置UI状态（滑块、按钮、概率显示）
-        /// </summary>
-        private static void ResetUIState(int maxMoney)
-        {
-            // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
-            int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
-            
-            int optimalMagMaxSliderValue = maxMoney;
-            if (selectedItem != null)
-            {
-                float itemValue = ReforgeSystem.GetItemValue(selectedItem);
-                int rarity = selectedItem.Quality;
-                // 计算当前物品不用投钱时的原始概率
-                float pItem = ReforgeSystem.BASE_PROBABILITY * ReforgeSystem.RarityFactor(rarity) * ReforgeSystem.ValueFactor(itemValue);
-                // 需要的金钱加成才能达到100% (即1.0)
-                float requiredBonusToMax = 1.0f - pItem;
-                
-                if (requiredBonusToMax <= 0)
-                {
-                    optimalMagMaxSliderValue = baseCost;
-                }
-                else
-                {
-                    int requiredMoney = CalculateMoneyForBonus(requiredBonusToMax, itemValue);
-                    optimalMagMaxSliderValue = Mathf.Max(baseCost, requiredMoney);
-                }
-            }
-            
-            // 重置滑块
-            if (moneySlider != null)
-            {
-                moneySlider.minValue = baseCost;
-                moneySlider.maxValue = optimalMagMaxSliderValue;
-                moneySlider.value = baseCost;
-                moneySlider.wholeNumbers = true;
-                currentMoney = baseCost;
-                
-                if (sliderValueText != null)
-                    sliderValueText.text = baseCost.ToString();
-                if (sliderMinText != null)
-                    sliderMinText.text = baseCost.ToString();
-                if (sliderMaxText != null)
-                    sliderMaxText.text = optimalMagMaxSliderValue.ToString();
-            }
-            
-            UpdateUIStateCommon();
-        }
-        
-        /// <summary>
-        /// 更新UI状态但保留滑块值（用于重铸完成后，方便玩家多次快速重铸）
-        /// </summary>
-        private static void UpdateUIStateKeepSlider(int maxMoney)
-        {
-            // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
-            int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
-            
-            int optimalMagMaxSliderValue = maxMoney;
-            if (selectedItem != null)
-            {
-                float itemValue = ReforgeSystem.GetItemValue(selectedItem);
-                int rarity = selectedItem.Quality;
-                // 计算当前物品不用投钱时的原始概率
-                float pItem = ReforgeSystem.BASE_PROBABILITY * ReforgeSystem.RarityFactor(rarity) * ReforgeSystem.ValueFactor(itemValue);
-                // 需要的金钱加成才能达到100% (即1.0)
-                float requiredBonusToMax = 1.0f - pItem;
-                
-                if (requiredBonusToMax <= 0)
-                {
-                    optimalMagMaxSliderValue = baseCost;
-                }
-                else
-                {
-                    int requiredMoney = CalculateMoneyForBonus(requiredBonusToMax, itemValue);
-                    optimalMagMaxSliderValue = Mathf.Max(baseCost, requiredMoney);
-                }
-            }
-            
-            if (moneySlider != null)
-            {
-                // 保留当前滑块值，只更新最大值
-                float currentValue = moneySlider.value;
-                moneySlider.minValue = baseCost;
-                moneySlider.maxValue = optimalMagMaxSliderValue;
-                
-                // 如果当前值超过新的最大值，则调整为最大值
-                if (currentValue > optimalMagMaxSliderValue)
-                {
-                    moneySlider.value = optimalMagMaxSliderValue;
-                    currentMoney = optimalMagMaxSliderValue;
-                }
-                else if (currentValue < baseCost)
-                {
-                    // 如果当前值低于基础费用，调整为基础费用
-                    moneySlider.value = baseCost;
-                    currentMoney = baseCost;
-                }
-                else
-                {
-                    moneySlider.value = currentValue;
-                    currentMoney = Mathf.RoundToInt(currentValue);
-                }
-                
-                if (sliderValueText != null)
-                    sliderValueText.text = currentMoney.ToString();
-                if (sliderMinText != null)
-                    sliderMinText.text = baseCost.ToString();
-                if (sliderMaxText != null)
-                    sliderMaxText.text = optimalMagMaxSliderValue.ToString();
-            }
-            
-            UpdateUIStateCommon();
-        }
-        
-        /// <summary>
-        /// UI状态更新的公共部分（按钮、概率显示等）
-        /// </summary>
-        private static void UpdateUIStateCommon()
-        {
-            ResetButtonState();
-            UpdateReforgeButtonInteractable();
-        }
-        
-        /// <summary>
-        /// 更新重铸按钮的可交互状态（金钱不足时禁用）
-        /// </summary>
-        private static void UpdateReforgeButtonInteractable()
-        {
-            if (reforgeButton == null) return;
-
-            if (selectedItem == null)
-            {
-                reforgeButton.interactable = false;
-                return;
-            }
-
-            // 计算基础费用（应用哥布林好感度折扣）
-            int baseCost = ReforgeSystem.GetDiscountedCost(selectedItem);
-            int playerMoney = GetPlayerMoney();
-            float discount = ReforgeSystem.GetCurrentDiscount();
-            int tendencyCost = GetTendencyCost();
-            int totalCost = currentMoney + tendencyCost;
-
-            // 检查玩家金钱是否足够支付基础费用
-            bool canAfford = playerMoney >= totalCost && playerMoney >= baseCost;
-            reforgeButton.interactable = canAfford;
-
-            // 如果金钱不足，更新概率显示提示
-            if (!canAfford && probabilityText != null)
-            {
-                bool usePurification = currentController != null &&
-                    ModBehaviour.Instance != null &&
-                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
-                string currencyName = usePurification ? "净化点" : "金钱";
-                string discountInfo = discount > 0 ? string.Format(" ({0:P0}折扣)", discount) : "";
-                probabilityText.text = string.Format("<color=#FF4D4D>{6}不足！\n基础费用: {0}{1}\n投入: {2}\n极性滑块花费: {3}\n所需总额: {4}\n你的当前总{6}: {5}</color>",
-                    baseCost, discountInfo, currentMoney, tendencyCost, totalCost, playerMoney, currencyName);
-                probabilityText.color = Color.white;
-            }
-        }
-        
-        /// <summary>
-        /// 重置按钮状态
-        /// </summary>
-        private static void ResetButtonState()
-        {
-            if (reforgeButton != null)
-            {
-                if (selectedItem != null)
-                {
-                    bool canReforge = ReforgeSystem.CanReforge(selectedItem);
-                    reforgeButton.gameObject.SetActive(canReforge);
-
-                    // 修复按钮下所有文本组件（按钮有两个文本：主文本和InputIndicator中的文本）
-                    TextMeshProUGUI[] buttonTexts = reforgeButton.GetComponentsInChildren<TextMeshProUGUI>(true);
-                    foreach (var buttonText in buttonTexts)
-                    {
-                        if (buttonText != null && (buttonText.text == "分解" || buttonText.text == "Decompose"))
-                        {
-                            buttonText.text = "重铸";
-                        }
-                    }
-
-                    // 隐藏原版"无法分解"提示，并修复其文本
-                    try
-                    {
-                        var cannotField = CannotDecomposeField;
-                        if (cannotField != null && decomposeView != null)
-                        {
-                            var indicator = cannotField.GetValue(decomposeView) as GameObject;
-                            if (indicator != null)
-                            {
-                                indicator.SetActive(!canReforge);
-
-                                // 修复"无法分解"文本
-                                TextMeshProUGUI[] indicatorTexts = indicator.GetComponentsInChildren<TextMeshProUGUI>(true);
-                                foreach (var t in indicatorTexts)
-                                {
-                                    if (t.text.Contains("分解"))
-                                    {
-                                        t.text = t.text.Replace("分解", "重铸");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch { }
-                }
-                else
-                {
-                    reforgeButton.gameObject.SetActive(false);
-                }
-            }
-
-            // 修复"请选择要分解的物品"文本
-            if (noItemSelectedIndicator != null)
-            {
-                TextMeshProUGUI[] noItemTexts = noItemSelectedIndicator.GetComponentsInChildren<TextMeshProUGUI>(true);
-                foreach (var t in noItemTexts)
-                {
-                    if (t.text.Contains("分解"))
-                    {
-                        t.text = t.text.Replace("分解", "重铸");
-                    }
-                }
-            }
-
-            // 确保结果显示被隐藏，概率显示可见
-            if (resultDisplayObj != null)
-            {
-                resultDisplayObj.SetActive(false);
-            }
-            if (probabilityText != null)
-            {
-                probabilityText.gameObject.SetActive(true);
-            }
-
-            UpdateProbabilityDisplay();
-        }
-        
-        /// <summary>
-        /// 延迟重置UI状态（防止原版覆盖）
-        /// </summary>
-        private static System.Collections.IEnumerator ResetUIStateDelayed(int maxMoney, int frameDelay = 1)
-        {
-            for (int i = 0; i < frameDelay; i++)
-            {
-                yield return null;
-            }
-            ResetUIState(maxMoney);
-        }
-        
-        /// <summary>
-        /// 金钱滑块值改变
-        /// </summary>
-        private static void OnMoneySliderChanged(float value)
-        {
-            currentMoney = Mathf.RoundToInt(value);
-            
-            // 更新滑块文本（只显示金额）
-            if (sliderValueText != null)
-            {
-                sliderValueText.text = currentMoney.ToString();
-            }
-            
-            UpdateProbabilityDisplay();
-            UpdateReforgeButtonInteractable();
-        }
-        
-        /// <summary>
-        /// 更新概率显示
-        /// </summary>
-        private static void UpdateProbabilityDisplay()
-        {
-            if (probabilityText == null) return;
-
-            if (selectedItem == null)
-            {
-                probabilityText.text = "请选择物品";
-                probabilityText.color = Color.gray;
-                return;
-            }
-
-            if (!ReforgeSystem.CanReforge(selectedItem))
-            {
-                probabilityText.text = "该物品无法重铸";
-                probabilityText.color = new Color(1f, 0.5f, 0.5f);
-                return;
-            }
-
-            // 使用新概率公式计算
-            int rarity = GetItemQuality(selectedItem);
-            float itemValue = ReforgeSystem.GetItemValue(selectedItem);
-            int itemId = selectedItem.GetInstanceID();
-
-            // 计算各个系数
-            float rarityFactor = ReforgeSystem.RarityFactor(rarity);      // 品质系数
-            float valueFactor = ReforgeSystem.ValueFactor(itemValue);     // 价值系数
-            float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney, itemValue);    // 金钱加成（基于物品价值）
-
-            // 计算最终概率
-            float p = ReforgeSystem.FinalProbability(rarity, itemValue, currentMoney);
-
-            // 根据概率获取颜色
-            string probColorHex;
-            if (p >= 0.8f)
-                probColorHex = "#4DFF4D";  // 绿色
-            else if (p >= 0.5f)
-                probColorHex = "#FFFF4D";  // 黄色
-            else if (p >= 0.3f)
-                probColorHex = "#FF994D";  // 橙色
-            else
-                probColorHex = "#FF4D4D";  // 红色
-
-            // 显示详细公式（每行一个参数，白字显示参数，最后概率公式带颜色）
-            // 品质: X (系数: X.XX)
-            // 价值: XXXX (系数: X.XX)
-            // 投入: XXXX (加成: X.XX)
-            // 极性费用: XX
-            // 负向概率: XX%  正向概率: XX%
-            // 概率: 0.20×X.XX×X.XX+X.XX = XX%
-            // 总计花费: XX
-            
-            int tendencyCost = GetTendencyCost();
-            string tendencyLine = string.Format("极性费用: {0}\n", tendencyCost);
-            bool usePurification = currentController != null &&
-                ModBehaviour.Instance != null &&
-                ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
-            string investLabel = usePurification ? "净化点投入" : "投入";
-            string totalCostLabel = usePurification ? "总计花费(净化点)" : "总计花费";
-            
-            float posProb = currentTendencyChance;
-            float negProb = 1.0f - currentTendencyChance;
-            string polarityProbLine = string.Format("<color=#00FFFF>负向概率: {0:P0}   正向概率: {1:P0}</color>\n", negProb, posProb);
-            
-            int totalCost = currentMoney + tendencyCost;
-            string totalCostLine = string.Format("<color=#FFFF00>{0}: {1}</color>", totalCostLabel, totalCost);
-            
-            probabilityText.text = string.Format(
-                "品质: {0} (系数: {1:F2})\n" +
-                "价值: {2:F0} (系数: {3:F2})\n" +
-                "{11}: {4} (加成: {5:F2})\n" +
-                "{8}" + 
-                "{9}" + 
-                "<color={6}>幅度乘数参数: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n" +
-                "{10}",
-                rarity, rarityFactor,           // {0}, {1}
-                itemValue, valueFactor,         // {2}, {3}
-                currentMoney, moneyBonus,       // {4}, {5}
-                probColorHex, p,                // {6}, {7}
-                tendencyLine, polarityProbLine, // {8}, {9}
-                totalCostLine,                  // {10}
-                investLabel                     // {11}
-            );
-
-            // 整体文本使用白色
-            probabilityText.color = Color.white;
-        }
-        
-        /// <summary>
-        /// 重铸按钮点击
-        /// </summary>
-        private static void OnReforgeButtonClick()
-        {
-            if (!isReforgeMode) return;
-            if (selectedItem == null) return;
-            if (isReforging) return;
-            
-            int totalCost = currentMoney + GetTendencyCost();
-            if (totalCost <= 0 && currentTendencyChance == 0.5f)
-            {
-                // Can be 0 if both sliders are 0 and 50%
-                ModBehaviour.DevLog("[ReforgeUI] 投入金钱为0，正常重铸");
-            }
-            else if (totalCost < 0)
-            {
-                return;
-            }
-            
-            ModBehaviour.DevLog("[ReforgeUI] 点击重铸按钮: " + selectedItem.DisplayName + ", 总费用: " + totalCost);
-
-            // 播放重铸音效
-            BossRushAudioManager.Instance.PlayReforgeSFX();
-
-            isReforging = true;
-            
-            bool paidWithPurification = false;
-            bool reforgeCompleted = false;
-
-            try
-            {
-                // 扣除金钱
-                if (totalCost > 0)
-                {
-                    bool paid;
-                    bool usePurificationPayment = currentController != null &&
-                        ModBehaviour.Instance != null &&
-                        ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
-
-                    if (usePurificationPayment)
-                    {
-                        paid = ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
-                            currentController,
-                            totalCost,
-                            "ZombieModeTempGoblinReforge");
-                        paidWithPurification = paid;
-                    }
-                    else
-                    {
-                        Cost cost = new Cost((long)totalCost);
-                        paid = EconomyManager.Pay(cost, true, true);
-                    }
-
-                    if (!paid)
-                    {
-                        ModBehaviour.DevLog("[ReforgeUI] 金钱不足");
-                        isReforging = false;
-                        return;
-                    }
-                }
-
-                // 执行重铸，传入当前的倾向几率
-                var result = ReforgeSystem.Reforge(selectedItem, currentMoney, "player", currentTendencyChance);
-                reforgeCompleted = true;
-
-                // 显示属性变化（现在重铸必定成功）
-                ShowPropertyChanges();
-                
-                // 立即更新UI状态（金钱已扣除，保留滑块值方便多次快速重铸）
-                int newMax = GetPlayerMoney();
-                UpdateUIStateKeepSlider(newMax);
-                
-                // 合并协程：延迟刷新物品详情和锁定图标（性能优化：减少协程调度开销）
-                if (ModBehaviour.Instance != null)
-                {
-                    ModBehaviour.Instance.StartCoroutine(RefreshUIAfterReforgeDelayed());
-                }
-                
-                ModBehaviour.DevLog("[ReforgeUI] 重铸完成，已更新UI");
-            }
-            catch (Exception e)
-            {
-                if (ModBehaviour.Instance != null)
-                {
-                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(currentController, totalCost, paidWithPurification && !reforgeCompleted);
-                }
-
-                if (paidWithPurification && !reforgeCompleted)
-                {
-                    try
-                    {
-                        UpdateUIStateKeepSlider(GetPlayerMoney());
-                    }
-                    catch (Exception refreshError)
-                    {
-                        ModBehaviour.DevLog("[ReforgeUI] [WARNING] 重铸失败后刷新净化点 UI 失败: " + refreshError.Message);
-                    }
-
-                    ModBehaviour.DevLog("[ReforgeUI] 重铸异常失败，已回退净化点: " + totalCost);
-                }
-
-                ModBehaviour.DevLog("[ReforgeUI] [ERROR] 重铸失败: " + e.Message);
-            }
-            finally
-            {
-                isReforging = false;
-            }
-        }
-        
-        /// <summary>
-        /// 保存属性快照
-        /// </summary>
-        private static void SavePropertySnapshot(Item item)
-        {
-            originalProperties.Clear();
-            
-            try
-            {
-                if (item == null) return;
-                Item prefab = GetCachedPrefab(item.TypeID);
-                Dictionary<string, int> modifierOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                Dictionary<string, int> statOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                Dictionary<string, int> variableOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-
-                if (item.Modifiers != null)
-                {
-                    foreach (var mod in item.Modifiers)
-                    {
-                        if (mod == null || string.IsNullOrEmpty(mod.Key)) continue;
-
-                        int entryOrdinal = GetNextEntryOrdinal(modifierOrdinals, mod.Key);
-                        if (!ReforgeSystem.IsModifierEligibleForReforge(item, prefab, mod)) continue;
-
-                        PropertySnapshot snapshot = new PropertySnapshot
-                        {
-                            Key = mod.Key,
-                            Value = mod.Value,
-                            PropType = PropertyType.Modifier,
-                            EntryOrdinal = entryOrdinal
-                        };
-                        originalProperties.Add(snapshot);
-                    }
-                }
-
-                if (item.Stats != null)
-                {
-                    foreach (var stat in item.Stats)
-                    {
-                        if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
-
-                        int entryOrdinal = GetNextEntryOrdinal(statOrdinals, stat.Key);
-                        if (!ReforgeSystem.IsStatEligibleForReforge(stat)) continue;
-
-                        PropertySnapshot snapshot = new PropertySnapshot
-                        {
-                            Key = stat.Key,
-                            Value = stat.BaseValue,
-                            PropType = PropertyType.Stat,
-                            EntryOrdinal = entryOrdinal
-                        };
-                        originalProperties.Add(snapshot);
-                    }
-                }
-
-                if (item.Variables != null)
-                {
-                    foreach (var variable in item.Variables)
-                    {
-                        if (variable == null || string.IsNullOrEmpty(variable.Key)) continue;
-
-                        int entryOrdinal = GetNextEntryOrdinal(variableOrdinals, variable.Key);
-                        if (!ReforgeSystem.IsVariableEligibleForReforge(variable)) continue;
-
-                        float value;
-                        try
-                        {
-                            value = variable.GetFloat();
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-
-                        PropertySnapshot snapshot = new PropertySnapshot
-                        {
-                            Key = variable.Key,
-                            Value = value,
-                            PropType = PropertyType.Variable,
-                            EntryOrdinal = entryOrdinal
-                        };
-                        originalProperties.Add(snapshot);
-                    }
-                }
-                
-                ModBehaviour.DevLog("[ReforgeUI] 保存了 " + originalProperties.Count + " 个属性快照");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] [ERROR] 保存属性快照失败: " + e.Message);
-            }
-        }
-
-        private static int GetNextEntryOrdinal(Dictionary<string, int> ordinalMap, string key)
-        {
-            if (ordinalMap == null || string.IsNullOrEmpty(key))
-            {
-                return 0;
-            }
-
-            int nextOrdinal;
-            if (!ordinalMap.TryGetValue(key, out nextOrdinal))
-            {
-                ordinalMap[key] = 1;
-                return 0;
-            }
-
-            ordinalMap[key] = nextOrdinal + 1;
-            return nextOrdinal;
-        }
-
-        private static string BuildSnapshotKey(string key, PropertyType propType, int entryOrdinal)
-        {
-            return ((int)propType).ToString() + ":" + key + ":" + entryOrdinal.ToString();
-        }
-
-        private static bool TryGetDisplayedEntryIdentity(Transform child, out string key, out PropertyType propType, out TextMeshProUGUI valueText)
-        {
-            key = null;
-            propType = PropertyType.Modifier;
-            valueText = null;
-
-            if (child == null)
-            {
-                return false;
-            }
-
-            Component modEntry = child.GetComponent("ItemModifierEntry");
-            if (modEntry != null)
-            {
-                if (_modEntryTargetField == null)
-                {
-                    _modEntryTargetField = modEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                }
-                if (_modEntryValueField == null)
-                {
-                    _modEntryValueField = modEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                }
-
-                if (_modEntryTargetField != null)
-                {
-                    var modDesc = _modEntryTargetField.GetValue(modEntry);
-                    if (modDesc != null)
-                    {
-                        if (_modDescKeyProp == null)
-                        {
-                            _modDescKeyProp = modDesc.GetType().GetProperty("Key");
-                        }
-                        if (_modDescKeyProp != null)
-                        {
-                            key = _modDescKeyProp.GetValue(modDesc, null) as string;
-                        }
-                    }
-                }
-
-                if (_modEntryValueField != null)
-                {
-                    valueText = _modEntryValueField.GetValue(modEntry) as TextMeshProUGUI;
-                }
-
-                propType = PropertyType.Modifier;
-                return !string.IsNullOrEmpty(key) && valueText != null;
-            }
-
-            Component varEntry = child.GetComponent("ItemVariableEntry");
-            if (varEntry != null)
-            {
-                if (_varEntryTargetField == null)
-                {
-                    _varEntryTargetField = varEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                }
-                if (_varEntryValueField == null)
-                {
-                    _varEntryValueField = varEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                }
-
-                if (_varEntryTargetField != null)
-                {
-                    var customData = _varEntryTargetField.GetValue(varEntry);
-                    if (customData != null)
-                    {
-                        if (_customDataKeyProp == null)
-                        {
-                            _customDataKeyProp = customData.GetType().GetProperty("Key");
-                        }
-                        if (_customDataKeyProp != null)
-                        {
-                            key = _customDataKeyProp.GetValue(customData, null) as string;
-                        }
-                    }
-                }
-
-                if (_varEntryValueField != null)
-                {
-                    valueText = _varEntryValueField.GetValue(varEntry) as TextMeshProUGUI;
-                }
-
-                propType = PropertyType.Variable;
-                return !string.IsNullOrEmpty(key) && valueText != null;
-            }
-
-            Component statEntry = child.GetComponent("ItemStatEntry");
-            if (statEntry != null)
-            {
-                if (_statEntryTargetField == null)
-                {
-                    _statEntryTargetField = statEntry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                }
-                if (_statEntryValueField == null)
-                {
-                    _statEntryValueField = statEntry.GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
-                }
-
-                if (_statEntryTargetField != null)
-                {
-                    var stat = _statEntryTargetField.GetValue(statEntry);
-                    if (stat != null)
-                    {
-                        if (_statKeyProp == null)
-                        {
-                            _statKeyProp = stat.GetType().GetProperty("Key");
-                        }
-                        if (_statKeyProp != null)
-                        {
-                            key = _statKeyProp.GetValue(stat, null) as string;
-                        }
-                    }
-                }
-
-                if (_statEntryValueField != null)
-                {
-                    valueText = _statEntryValueField.GetValue(statEntry) as TextMeshProUGUI;
-                }
-
-                propType = PropertyType.Stat;
-                return !string.IsNullOrEmpty(key) && valueText != null;
-            }
-
-            return false;
-        }
-
-        private static bool TryGetDisplayedEntryInfo(Transform child, out string key, out PropertyType propType, out int entryOrdinal, out TextMeshProUGUI valueText)
-        {
-            entryOrdinal = 0;
-            if (!TryGetDisplayedEntryIdentity(child, out key, out propType, out valueText))
-            {
-                return false;
-            }
-
-            Transform parent = child.parent;
-            if (parent == null)
-            {
-                return true;
-            }
-
-            foreach (Transform sibling in parent)
-            {
-                if (sibling == child)
-                {
-                    break;
-                }
-
-                if (sibling == null || !sibling.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                string siblingKey;
-                PropertyType siblingType;
-                TextMeshProUGUI siblingValueText;
-                if (!TryGetDisplayedEntryIdentity(sibling, out siblingKey, out siblingType, out siblingValueText))
-                {
-                    continue;
-                }
-
-                if (siblingType == propType && siblingKey == key)
-                {
-                    entryOrdinal++;
-                }
-            }
-
-            return true;
-        }
-
-        private static bool TryGetCurrentItemPropertyValue(Item item, string key, PropertyType propType, int entryOrdinal, out float value)
-        {
-            value = 0f;
-            if (item == null || string.IsNullOrEmpty(key))
-            {
-                return false;
-            }
-
-            switch (propType)
-            {
-                case PropertyType.Modifier:
-                    if (item.Modifiers == null) return false;
-                    int modifierIndex = 0;
-                    foreach (var mod in item.Modifiers)
-                    {
-                        if (mod.Key == key)
-                        {
-                            if (modifierIndex != entryOrdinal)
-                            {
-                                modifierIndex++;
-                                continue;
-                            }
-
-                            value = mod.Value;
-                            return true;
-                        }
-                    }
-                    break;
-
-                case PropertyType.Stat:
-                    if (item.Stats == null) return false;
-                    int statIndex = 0;
-                    foreach (var stat in item.Stats)
-                    {
-                        if (stat.Key == key)
-                        {
-                            if (statIndex != entryOrdinal)
-                            {
-                                statIndex++;
-                                continue;
-                            }
-
-                            value = stat.BaseValue;
-                            return true;
-                        }
-                    }
-                    break;
-
-                case PropertyType.Variable:
-                    if (item.Variables == null) return false;
-                    int variableIndex = 0;
-                    foreach (var variable in item.Variables)
-                    {
-                        if (variable.Key != key) continue;
-
-                        if (variableIndex != entryOrdinal)
-                        {
-                            variableIndex++;
-                            continue;
-                        }
-
-                        try
-                        {
-                            value = variable.GetFloat();
-                            return true;
-                        }
-                        catch
-                        {
-                            return false;
-                        }
-                    }
-                    break;
-            }
-
-            return false;
-        }
-
-        private static bool TryGetCachedPrefabValue(string key, PropertyType propType, int entryOrdinal, out float value)
-        {
-            string snapshotKey = BuildSnapshotKey(key, propType, entryOrdinal);
-            switch (propType)
-            {
-                case PropertyType.Modifier:
-                    return cachedPrefabModifiers.TryGetValue(snapshotKey, out value);
-
-                case PropertyType.Stat:
-                    return cachedPrefabStats.TryGetValue(snapshotKey, out value);
-
-                case PropertyType.Variable:
-                    return cachedPrefabVariables.TryGetValue(snapshotKey, out value);
-
-                default:
-                    value = 0f;
-                    return false;
-            }
-        }
-
-        private static bool TryGetComparisonValue(
-            string key,
-            PropertyType propType,
-            int entryOrdinal,
-            Dictionary<string, float> modifiers,
-            Dictionary<string, float> stats,
-            Dictionary<string, float> variables,
-            out float value)
-        {
-            string snapshotKey = BuildSnapshotKey(key, propType, entryOrdinal);
-            switch (propType)
-            {
-                case PropertyType.Modifier:
-                    return modifiers.TryGetValue(snapshotKey, out value);
-
-                case PropertyType.Stat:
-                    return stats.TryGetValue(snapshotKey, out value);
-
-                case PropertyType.Variable:
-                    return variables.TryGetValue(snapshotKey, out value);
-
-                default:
-                    value = 0f;
-                    return false;
-            }
-        }
-        
-        /// <summary>
-        /// 显示属性变化（修改详情显示）
-        /// </summary>
-        private static void ShowPropertyChanges()
-        {
-            if (selectedItem == null) return;
-            
-            try
-            {
-                // 获取详情显示组件
-                var detailsField = DetailsDisplayField;
-                if (detailsField == null) return;
-                
-                var detailsDisplay = detailsField.GetValue(decomposeView) as ItemDetailsDisplay;
-                if (detailsDisplay == null) return;
-                
-                // 先刷新详情显示（Setup是internal方法，需要反射调用）
-                MethodInfo setupMethod = typeof(ItemDetailsDisplay).GetMethod("Setup", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-                if (setupMethod != null)
-                {
-                    setupMethod.Invoke(detailsDisplay, new object[] { selectedItem });
-                }
-                
-                // 查找属性文本并添加变化标记
-                Dictionary<string, PropertySnapshot> oldProps = new Dictionary<string, PropertySnapshot>();
-                foreach (var snap in originalProperties)
-                {
-                    oldProps[BuildSnapshotKey(snap.Key, snap.PropType, snap.EntryOrdinal)] = snap;
-                }
-                
-                // 获取propertiesParent来查找属性条目
-                var propsParentField = PropertiesParentField;
-                if (propsParentField != null)
-                {
-                    Transform propsParent = propsParentField.GetValue(detailsDisplay) as Transform;
-                    if (propsParent != null)
-                    {
-                        foreach (Transform child in propsParent)
-                        {
-                            string key;
-                            PropertyType propType;
-                            int entryOrdinal;
-                            TextMeshProUGUI valueText;
-                            if (!TryGetDisplayedEntryInfo(child, out key, out propType, out entryOrdinal, out valueText))
-                            {
-                                continue;
-                            }
-
-                            PropertySnapshot oldSnapshot;
-                            if (!oldProps.TryGetValue(BuildSnapshotKey(key, propType, entryOrdinal), out oldSnapshot))
-                            {
-                                continue;
-                            }
-
-                            float newValue;
-                            if (!TryGetCurrentItemPropertyValue(selectedItem, key, propType, entryOrdinal, out newValue))
-                            {
-                                continue;
-                            }
-
-                            float diff = newValue - oldSnapshot.Value;
-                            if (Mathf.Abs(diff) > 0.001f)
-                            {
-                                string baseText = valueText.text;
-                                int colorTagIndex = baseText.IndexOf(" <color=");
-                                if (colorTagIndex > 0)
-                                {
-                                    baseText = baseText.Substring(0, colorTagIndex);
-                                }
-
-                                string colorHex = diff > 0 ? "#66FF66" : "#FF6666";
-                                float prefabValue;
-                                string diffMarkup = TryGetCachedPrefabValue(key, propType, entryOrdinal, out prefabValue)
-                                    ? BuildPropertyDiffMarkup(key, prefabValue, newValue, diff, colorHex, false)
-                                    : string.Format(" <color={0}>({1}{2})</color>",
-                                        colorHex,
-                                        diff > 0 ? "↑" : "↓",
-                                        Mathf.Abs(diff).ToString("F2"));
-
-                                valueText.text = baseText + diffMarkup;
-
-                                string logArrow = diff > 0 ? "↑" : "↓";
-                                string logColor = diff > 0 ? "绿" : "红";
-                                ModBehaviour.DevLog("[ReforgeUI] 属性变化: " + key + " " + logArrow + " " + Mathf.Abs(diff).ToString("F2") + " (" + logColor + ")");
-                            }
-                        }
-                    }
-                }
-                
-                // 保存新的属性快照
-                SavePropertySnapshot(selectedItem);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] [ERROR] 显示属性变化失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 生成属性差值的富文本标记，并在触达上下限时追加 Max/Min 标签。
-        /// </summary>
-        private static string BuildPropertyDiffMarkup(string key, float prefabValue, float currentValue, float diff, string diffColorHex, bool insertSpaceBetweenArrowAndValue)
-        {
-            string arrow = diff > 0 ? "↑" : "↓";
-            string diffStr = Mathf.Abs(diff).ToString("F2");
-            string separator = insertSpaceBetweenArrowAndValue ? " " : string.Empty;
-            
-            return string.Format(" <color={0}>({1}{2}{3})</color>{4}",
-                diffColorHex,
-                arrow,
-                separator,
-                diffStr,
-                GetReforgeBoundLabelMarkup(key, prefabValue, currentValue, diff));
-        }
-        
-        /// <summary>
-        /// 如果当前数值已经达到重铸边界，则返回对应的 Max/Min 标签。
-        /// </summary>
-        private static string GetReforgeBoundLabelMarkup(string key, float prefabValue, float currentValue, float diff)
-        {
-            if (diff > 0 && ReforgeSystem.IsValueAtUpperBound(key, prefabValue, currentValue))
-            {
-                return string.Format(" <color={0}>Max</color>", MAX_BOUND_LABEL_COLOR);
-            }
-            
-            if (diff < 0 && ReforgeSystem.IsValueAtLowerBound(key, prefabValue, currentValue))
-            {
-                return string.Format(" <color={0}>Min</color>", MIN_BOUND_LABEL_COLOR);
-            }
-            
-            return string.Empty;
-        }
-        
-        /// <summary>
-        /// 获取物品品质
-        /// </summary>
-        private static int GetItemQuality(Item item)
-        {
-            if (item == null) return 1;
-            try
-            {
-                return Mathf.Clamp(item.Quality, 1, 8);
-            }
-            catch { }
-            return 1;
-        }
-        
-        /// <summary>
-        /// 获取玩家金钱
-        /// </summary>
-        private static int GetPlayerMoney()
-        {
-            try
-            {
-                if (currentController != null &&
-                    ModBehaviour.Instance != null &&
-                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController))
-                {
-                    return ModBehaviour.Instance.GetZombieModePurificationPointsForRealNpcUi(currentController);
-                }
-
-                return (int)EconomyManager.Money;
-            }
-            catch { }
-            return 0;
-        }
-        
-        /// <summary>
-        /// 延迟设置物品详情显示 - 等待原版设置完成后覆盖为预制体显示
-        /// </summary>
-        private static System.Collections.IEnumerator SetupDetailsWithPrefabComparisonDelayed(Item playerItem)
-        {
-            // 等待一帧，让原版的 ItemDecomposeView.Setup(selectedItem) 先执行
-            yield return null;
-            
-            SetupDetailsWithPrefabComparison(playerItem);
-        }
-        
-        /// <summary>
-        /// 设置物品详情显示 - 显示预制体属性并标记与玩家物品的差异
-        /// 性能优化：减少预制体实例化次数
-        /// </summary>
-        /// <param name="playerItem">玩家物品</param>
-        /// <param name="cachePrefab">是否缓存预制体属性（首次选择物品时为true，重铸后刷新时为false使用缓存）</param>
-        private static void SetupDetailsWithPrefabComparison(Item playerItem, bool cachePrefab = true)
-        {
-            if (playerItem == null || detailsDisplayObj == null) return;
-            
-            try
-            {
-                Item prefabItem = null;
-                
-                // 根据是否需要缓存决定是否获取预制体
-                if (cachePrefab || cachedPrefabModifiers.Count == 0)
-                {
-                    // 1. 获取预制体物品（使用缓存）
-                    prefabItem = GetCachedPrefab(playerItem.TypeID);
-                    if (prefabItem == null)
-                    {
-                        ModBehaviour.DevLog("[ReforgeUI] 无法获取预制体，使用玩家物品显示");
-                        MethodInfo setupMethod = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.Instance);
-                        if (setupMethod != null) setupMethod.Invoke(detailsDisplayObj, new object[] { playerItem });
-                        return;
-                    }
-                    
-                    // 注意：GetCachedPrefab 已经调用了 ConfigureCustomEquipmentPrefab
-                    
-                    // 2. 缓存预制体属性
-                    cachedPrefabModifiers.Clear();
-                    cachedPrefabStats.Clear();
-                    cachedPrefabVariables.Clear();
-                    Dictionary<string, int> prefabModifierOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                    Dictionary<string, int> prefabStatOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                    Dictionary<string, int> prefabVariableOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                    
-                    if (prefabItem.Modifiers != null)
-                    {
-                        foreach (var mod in prefabItem.Modifiers)
-                        {
-                            if (mod == null || string.IsNullOrEmpty(mod.Key)) continue;
-                            cachedPrefabModifiers[BuildSnapshotKey(mod.Key, PropertyType.Modifier, GetNextEntryOrdinal(prefabModifierOrdinals, mod.Key))] = mod.Value;
-                        }
-                    }
-                    if (prefabItem.Stats != null)
-                    {
-                        foreach (var stat in prefabItem.Stats)
-                        {
-                            if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
-                            cachedPrefabStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(prefabStatOrdinals, stat.Key))] = stat.Value;
-                        }
-                    }
-                    if (prefabItem.Variables != null)
-                    {
-                        foreach (var variable in prefabItem.Variables)
-                        {
-                            if (variable == null || string.IsNullOrEmpty(variable.Key)) continue;
-                            if (variable.DataType == Duckov.Utilities.CustomDataType.Float)
-                            {
-                                try { cachedPrefabVariables[BuildSnapshotKey(variable.Key, PropertyType.Variable, GetNextEntryOrdinal(prefabVariableOrdinals, variable.Key))] = variable.GetFloat(); } catch { }
-                            }
-                        }
-                    }
-                    
-                    ModBehaviour.DevLog(string.Format("[ReforgeUI] 已缓存预制体属性: Modifiers={0}, Stats={1}, Variables={2}", 
-                        cachedPrefabModifiers.Count, cachedPrefabStats.Count, cachedPrefabVariables.Count));
-                }
-                
-                // 3. 收集玩家物品的最新属性值（复用字典对象，避免频繁分配）
-                _reusablePlayerModifiers.Clear();
-                _reusablePlayerStats.Clear();
-                _reusablePlayerVariables.Clear();
-                Dictionary<string, int> playerModifierOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                Dictionary<string, int> playerStatOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                Dictionary<string, int> playerVariableOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
-                
-                if (playerItem.Modifiers != null)
-                {
-                    foreach (var mod in playerItem.Modifiers)
-                    {
-                        if (mod == null || string.IsNullOrEmpty(mod.Key)) continue;
-                        _reusablePlayerModifiers[BuildSnapshotKey(mod.Key, PropertyType.Modifier, GetNextEntryOrdinal(playerModifierOrdinals, mod.Key))] = mod.Value;
-                    }
-                }
-                if (playerItem.Stats != null)
-                {
-                    foreach (var stat in playerItem.Stats)
-                    {
-                        if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
-                        _reusablePlayerStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(playerStatOrdinals, stat.Key))] = stat.Value;
-                    }
-                }
-                if (playerItem.Variables != null)
-                {
-                    foreach (var variable in playerItem.Variables)
-                    {
-                        if (variable == null || string.IsNullOrEmpty(variable.Key)) continue;
-                        if (variable.DataType == Duckov.Utilities.CustomDataType.Float)
-                        {
-                            try { _reusablePlayerVariables[BuildSnapshotKey(variable.Key, PropertyType.Variable, GetNextEntryOrdinal(playerVariableOrdinals, variable.Key))] = variable.GetFloat(); } catch { }
-                        }
-                    }
-                }
-                
-                // 4. 使用预制体设置详情显示
-                // 如果之前没有获取预制体（cachePrefab=false且有缓存），需要获取一个用于UI显示
-                if (prefabItem == null)
-                {
-                    prefabItem = GetCachedPrefab(playerItem.TypeID);
-                }
-                
-                if (prefabItem != null)
-                {
-                    MethodInfo setup = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.Instance);
-                    if (setup != null)
-                    {
-                        setup.Invoke(detailsDisplayObj, new object[] { prefabItem });
-                    }
-                    
-                    // 注意：不再销毁预制体，因为它被缓存了
-                    // 缓存会在 Cleanup() 时统一清理
-                }
-                
-                // 5. 延迟修改属性文本以显示差异（使用缓存的预制体属性和复用的玩家属性字典）
-                if (ModBehaviour.Instance != null)
-                {
-                    currentDiffCoroutine = ModBehaviour.Instance.StartCoroutine(ModifyPropertyTextsDelayed(
-                        _reusablePlayerModifiers, _reusablePlayerStats, _reusablePlayerVariables,
-                        cachedPrefabModifiers, cachedPrefabStats, cachedPrefabVariables));
-                }
-                
-                ModBehaviour.DevLog("[ReforgeUI] 已设置预制体属性对比显示");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 设置预制体对比失败: " + e.Message);
-                try
-                {
-                    MethodInfo setupMethod = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.Instance);
-                    if (setupMethod != null) setupMethod.Invoke(detailsDisplayObj, new object[] { playerItem });
-                }
-                catch { }
-            }
-        }
-        
-        /// <summary>
-        /// 延迟修改属性文本以显示差异（使用缓存的反射字段，避免重复反射）
-        /// </summary>
-        private static System.Collections.IEnumerator ModifyPropertyTextsDelayed(
-            Dictionary<string, float> playerModifiers,
-            Dictionary<string, float> playerStats,
-            Dictionary<string, float> playerVariables,
-            Dictionary<string, float> prefabModifiers,
-            Dictionary<string, float> prefabStats,
-            Dictionary<string, float> prefabVariables)
-        {
-            yield return null; // 等待一帧让UI更新
-            
-            ModBehaviour.DevLog("[ReforgeUI] ModifyPropertyTextsDelayed 开始执行");
-            ModBehaviour.DevLog(string.Format("[ReforgeUI] 玩家属性: Modifiers={0}, Stats={1}, Variables={2}", 
-                playerModifiers.Count, playerStats.Count, playerVariables.Count));
-            ModBehaviour.DevLog(string.Format("[ReforgeUI] 预制体属性: Modifiers={0}, Stats={1}, Variables={2}", 
-                prefabModifiers.Count, prefabStats.Count, prefabVariables.Count));
-            
-            try
-            {
-                var detailsDisplay = detailsDisplayObj as ItemDetailsDisplay;
-                if (detailsDisplay == null)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] detailsDisplay 为 null");
-                    yield break;
-                }
-                
-                // 获取propertiesParent（使用缓存的字段）
-                var propsParentField = PropertiesParentField;
-                if (propsParentField == null)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] propertiesParent 字段未找到");
-                    yield break;
-                }
-                
-                Transform propsParent = propsParentField.GetValue(detailsDisplay) as Transform;
-                if (propsParent == null)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] propertiesParent 为 null");
-                    yield break;
-                }
-                
-                ModBehaviour.DevLog(string.Format("[ReforgeUI] propertiesParent 子对象数: {0}", propsParent.childCount));
-                
-                // 遍历所有属性条目，使用缓存的反射字段
-                foreach (Transform child in propsParent)
-                {
-                    if (!child.gameObject.activeInHierarchy) continue;
-
-                    string key;
-                    PropertyType propType;
-                    int entryOrdinal;
-                    TextMeshProUGUI valueText;
-                    if (!TryGetDisplayedEntryInfo(child, out key, out propType, out entryOrdinal, out valueText))
-                    {
-                        continue;
-                    }
-
-                    float prefabValue;
-                    if (!TryGetComparisonValue(key, propType, entryOrdinal, prefabModifiers, prefabStats, prefabVariables, out prefabValue))
-                    {
-                        continue;
-                    }
-
-                    float playerValue;
-                    if (!TryGetComparisonValue(key, propType, entryOrdinal, playerModifiers, playerStats, playerVariables, out playerValue))
-                    {
-                        continue;
-                    }
-                    
-                    float diff = playerValue - prefabValue;
-                    ModBehaviour.DevLog(string.Format("[ReforgeUI] 属性 {0}: player={1}, prefab={2}, diff={3}", 
-                        key, playerValue, prefabValue, diff));
-                    
-                    if (Mathf.Abs(diff) < DIFF_THRESHOLD) continue;
-                    
-                    // 获取基础文本（移除旧的差异标记）
-                    string baseText = valueText.text;
-                    int colorTagIndex = baseText.IndexOf(" <color=");
-                    if (colorTagIndex > 0)
-                    {
-                        baseText = baseText.Substring(0, colorTagIndex);
-                    }
-                    
-                    // 显示差异: 预制体值 (↑/↓ xx)，保留两位小数
-                    string colorHex = diff > 0 ? "#66FF66" : "#FF6666";
-                    
-                    string newText = baseText + BuildPropertyDiffMarkup(key, prefabValue, playerValue, diff, colorHex, true);
-                    valueText.text = newText;
-                    ModBehaviour.DevLog(string.Format("[ReforgeUI] 已修改: {0}", newText));
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 修改属性文本失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 配置自定义装备预制体（逆鳞、腾云驾雾等）
-        /// 因为 InstantiateSync 获取的预制体没有经过 Mod 配置，需要手动设置默认属性
-        /// </summary>
-        private static void ConfigureCustomEquipmentPrefab(Item prefabItem)
-        {
-            if (prefabItem == null) return;
-            
-            try
-            {
-                CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(prefabItem);
-
-                int typeId = prefabItem.TypeID;
-                
-                // 逆鳞图腾
-                if (typeId == ReverseScaleConfig.TotemTypeId)
-                {
-                    var config = ReverseScaleConfig.Instance;
-                    // 恢复生命值：存储为百分比整数（50 = 50%）
-                    float healPercentDisplay = config.HealPercent * 100f;
-                    prefabItem.Variables.Set(ReverseScaleConfig.VAR_HEAL_PERCENT, healPercentDisplay);
-                    prefabItem.Variables.SetDisplay(ReverseScaleConfig.VAR_HEAL_PERCENT, true);
-                    
-                    // 棱彩弹数量
-                    prefabItem.Variables.Set(ReverseScaleConfig.VAR_BOLT_COUNT, (float)config.PrismaticBoltCount);
-                    prefabItem.Variables.SetDisplay(ReverseScaleConfig.VAR_BOLT_COUNT, true);
-                    
-                    ModBehaviour.DevLog("[ReforgeUI] 已配置逆鳞预制体: HealPercent=" + healPercentDisplay + ", BoltCount=" + config.PrismaticBoltCount);
-                }
-                // 腾云驾雾图腾 - 使用Float存储，支持重铸
-                else if (typeId == FlightConfig.Instance.ItemTypeId)
-                {
-                    var config = FlightConfig.Instance;
-                    
-                    // 最大向上速度
-                    prefabItem.Variables.Set(FlightConfig.VAR_MAX_UPWARD_SPEED, config.MaxUpwardSpeed);
-                    prefabItem.Variables.SetDisplay(FlightConfig.VAR_MAX_UPWARD_SPEED, true);
-                    
-                    // 加速时间
-                    prefabItem.Variables.Set(FlightConfig.VAR_ACCELERATION_TIME, config.AccelerationTime);
-                    prefabItem.Variables.SetDisplay(FlightConfig.VAR_ACCELERATION_TIME, true);
-                    
-                    // 滑翔水平系数
-                    prefabItem.Variables.Set(FlightConfig.VAR_GLIDING_MULTIPLIER, config.GlidingHorizontalSpeedMultiplier);
-                    prefabItem.Variables.SetDisplay(FlightConfig.VAR_GLIDING_MULTIPLIER, true);
-                    
-                    // 缓慢下落速度（取绝对值）
-                    prefabItem.Variables.Set(FlightConfig.VAR_DESCENT_SPEED, UnityEngine.Mathf.Abs(config.SlowDescentSpeed));
-                    prefabItem.Variables.SetDisplay(FlightConfig.VAR_DESCENT_SPEED, true);
-                    
-                    // 启动体力消耗
-                    prefabItem.Variables.Set(FlightConfig.VAR_STARTUP_STAMINA, config.StartupStaminaCost);
-                    prefabItem.Variables.SetDisplay(FlightConfig.VAR_STARTUP_STAMINA, true);
-                    
-                    // 飞行体力消耗
-                    prefabItem.Variables.Set(FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, config.StaminaDrainPerSecond);
-                    prefabItem.Variables.SetDisplay(FlightConfig.VAR_FLIGHT_STAMINA_DRAIN, true);
-                    
-                    // 滑翔体力消耗
-                    prefabItem.Variables.Set(FlightConfig.VAR_GLIDING_STAMINA_DRAIN, config.SlowDescentStaminaDrainPerSecond);
-                    prefabItem.Variables.SetDisplay(FlightConfig.VAR_GLIDING_STAMINA_DRAIN, true);
-                    
-                    ModBehaviour.DevLog("[ReforgeUI] 已配置腾云驾雾预制体: MaxSpeed=" + config.MaxUpwardSpeed);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 配置自定义装备预制体失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 停止当前正在运行的差异显示协程
-        /// </summary>
-        private static void StopCurrentDiffCoroutine()
-        {
-            if (currentDiffCoroutine != null && ModBehaviour.Instance != null)
-            {
-                ModBehaviour.Instance.StopCoroutine(currentDiffCoroutine);
-                currentDiffCoroutine = null;
-            }
-        }
-        
-        /// <summary>
-        /// 刷新物品详情显示（属性栏）- 使用缓存的预制体属性
-        /// </summary>
-        private static void RefreshItemDetailsDisplay()
-        {
-            if (selectedItem == null) return;
-            
-            try
-            {
-                // 停止之前的协程以避免重复显示差异
-                StopCurrentDiffCoroutine();
-                // 使用缓存的预制体属性进行对比显示（cachePrefab=false）
-                SetupDetailsWithPrefabComparison(selectedItem, false);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 刷新物品详情失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 合并协程：重铸后延迟刷新UI（性能优化：减少协程调度开销）
-        /// 合并了 RefreshItemDetailsDisplayDelayed 和 RefreshLockIconsDelayed 的功能
-        /// </summary>
-        private static System.Collections.IEnumerator RefreshUIAfterReforgeDelayed()
-        {
-            // 等待2帧让属性值同步
-            yield return null;
-            yield return null;
-            
-            // 刷新物品详情显示
-            RefreshItemDetailsDisplay();
-            
-            // 再等1帧确保UI更新完成
-            yield return null;
-            
-            // 刷新锁定图标
-            ClearPropertyLockIcons();
-            AddPropertyLockIcons();
-        }
-        
-        /// <summary>
-        /// 是否处于重铸模式
-        /// </summary>
-        public static bool IsReforgeMode
-        {
-            get { return isReforgeMode; }
-        }
-        
-        /// <summary>
-        /// UI关闭通知
-        /// </summary>
-        public static void NotifyUIClosed()
-        {
-            // 通知哥布林对话结束，显示告别对话
-            if (currentController != null)
-            {
-                currentController.EndDialogueWithStay(10f, true);  // 重铸UI关闭时显示告别对话
-                currentController = null;
-            }
-        }
-        
-        /// <summary>
-        /// 清理（当UI关闭时调用）
-        /// 性能优化：添加预制体缓存清理
-        /// </summary>
-        public static void Cleanup()
-        {
-            if (isReforgeMode)
-            {
-                ItemUIUtilities.OnSelectionChanged -= OnItemSelectionChanged;
-                isReforgeMode = false;
-            }
-            
-            // 停止正在运行的协程
-            StopCurrentDiffCoroutine();
-            StopCurrentDiffCoroutine();
-            if (delayedUiBuildCoroutine != null && ModBehaviour.Instance != null)
-            {
-                ModBehaviour.Instance.StopCoroutine(delayedUiBuildCoroutine);
-                delayedUiBuildCoroutine = null;
-            }
-            
-            // 恢复原版事件监听器
-            RestoreOriginalEventListeners();
-            
-            // 恢复原版结果显示
-            RestoreOriginalEventListeners();
-            if (resultDisplayObj != null)
-            {
-                resultDisplayObj.SetActive(true);
-            }
-            
-            // 清理概率显示
-            if (probabilityText != null && probabilityText.gameObject != null)
-            {
-                probabilityText.gameObject.SetActive(false);
-            }
-            if (tendencySliderRoot != null)
-            {
-                tendencySliderRoot.SetActive(false);
-            }
-            
-            
-            originalProperties.Clear();
-            selectedItem = null;
-            decomposeView = null;
-            countSliderObj = null;
-            moneySlider = null;
-            probabilityText = null;
-            reforgeButton = null;
-            tendencySliderRoot = null;
-            tendencySlider = null;
-            tendencyText = null;
-            currentTendencyChance = 0.5f;
-            sliderValueText = null;
-            sliderMinText = null;
-            sliderMaxText = null;
-            targetNameDisplay = null;
-            detailsDisplayObj = null;
-            noItemSelectedIndicator = null;
-            
-            // 清理缓存的预制体属性
-            cachedPrefabModifiers.Clear();
-            cachedPrefabStats.Clear();
-            cachedPrefabVariables.Clear();
-            
-            // 清理复用的玩家属性字典
-            _reusablePlayerModifiers.Clear();
-            _reusablePlayerStats.Clear();
-            _reusablePlayerVariables.Clear();
-            
-            // 清理预制体缓存（性能优化：释放内存）
-            ClearPrefabCache();
-            
-            // 清理冷淬液UI
-            CleanupColdQuenchFluidUI();
-        }
-        
-        // ============================================================================
-        // 冷淬液UI相关方法
-        // ============================================================================
-        
-        /// <summary>
-        /// 创建冷淬液数量显示UI（在属性栏上方）
-        /// 代码规范优化：使用常量替代魔法数字
-        /// </summary>
-        private static void CreateColdQuenchFluidUI()
-        {
-            try
-            {
-                if (decomposeView == null)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] 无法创建冷淬液UI: decomposeView 为空");
-                    return;
-                }
-                
-                // 在 ItemDecomposeView 的顶部创建冷淬液显示
-                Transform contentTransform = decomposeView.transform.Find("Content");
-                if (contentTransform == null)
-                {
-                    contentTransform = decomposeView.transform;
-                }
-                
-                ModBehaviour.DevLog("[ReforgeUI] 创建冷淬液UI - parent: " + contentTransform.name);
-                
-                // 检查是否已存在
-                Transform existing = decomposeView.transform.Find("ColdQuenchFluidDisplay");
-                if (existing != null)
-                {
-                    coldQuenchFluidContainer = existing.gameObject;
-                    coldQuenchFluidContainer.SetActive(true);
-                    coldQuenchFluidCountText = coldQuenchFluidContainer.GetComponentInChildren<TextMeshProUGUI>();
-                    UpdateColdQuenchFluidCount();
-                    ModBehaviour.DevLog("[ReforgeUI] 冷淬液UI已存在，复用");
-                    return;
-                }
-                
-                // 创建容器
-                coldQuenchFluidContainer = new GameObject("ColdQuenchFluidDisplay");
-                coldQuenchFluidContainer.transform.SetParent(decomposeView.transform, false);
-                
-                // 设置RectTransform - 使用常量
-                RectTransform containerRect = coldQuenchFluidContainer.AddComponent<RectTransform>();
-                containerRect.anchorMin = new Vector2(0.5f, 1);
-                containerRect.anchorMax = new Vector2(0.5f, 1);
-                containerRect.pivot = new Vector2(0.5f, 1);
-                containerRect.anchoredPosition = new Vector2(0, COLD_QUENCH_UI_OFFSET_Y);
-                containerRect.sizeDelta = new Vector2(COLD_QUENCH_CONTAINER_WIDTH, COLD_QUENCH_CONTAINER_HEIGHT);
-                
-                // 添加水平布局
-                HorizontalLayoutGroup layout = coldQuenchFluidContainer.AddComponent<HorizontalLayoutGroup>();
-                layout.childAlignment = TextAnchor.MiddleCenter;
-                layout.spacing = COLD_QUENCH_SPACING;
-                layout.childForceExpandWidth = false;
-                layout.childForceExpandHeight = false;
-                layout.padding = new RectOffset(5, 5, 5, 5);
-                
-                // 创建图标 - 使用常量
-                GameObject iconObj = new GameObject("FluidIcon");
-                iconObj.transform.SetParent(coldQuenchFluidContainer.transform, false);
-                RectTransform iconRect = iconObj.AddComponent<RectTransform>();
-                iconRect.sizeDelta = new Vector2(COLD_QUENCH_ICON_SIZE, COLD_QUENCH_ICON_SIZE);
-                
-                // 添加 LayoutElement 确保尺寸
-                LayoutElement iconLayout = iconObj.AddComponent<LayoutElement>();
-                iconLayout.minWidth = COLD_QUENCH_ICON_SIZE;
-                iconLayout.minHeight = COLD_QUENCH_ICON_SIZE;
-                iconLayout.preferredWidth = COLD_QUENCH_ICON_SIZE;
-                iconLayout.preferredHeight = COLD_QUENCH_ICON_SIZE;
-                
-                // 尝试加载图标
-                Sprite iconSprite = ItemFactory.GetSprite(ColdQuenchFluidConfig.BUNDLE_NAME, ColdQuenchFluidConfig.ICON_NAME);
-                
-                if (iconSprite != null)
-                {
-                    Image iconImage = iconObj.AddComponent<Image>();
-                    iconImage.sprite = iconSprite;
-                    iconImage.preserveAspect = true;
-                }
-                else
-                {
-                    // 使用文本作为后备
-                    TextMeshProUGUI iconText = iconObj.AddComponent<TextMeshProUGUI>();
-                    iconText.text = "❄";
-                    iconText.fontSize = COLD_QUENCH_ICON_FONT_SIZE;
-                    iconText.color = new Color(0.5f, 0.8f, 1f);
-                    iconText.alignment = TextAlignmentOptions.Center;
-                    ModBehaviour.DevLog("[ReforgeUI] 冷淬液图标加载失败，使用文本图标");
-                }
-                
-                // 创建数量文本
-                GameObject countObj = new GameObject("FluidCount");
-                countObj.transform.SetParent(coldQuenchFluidContainer.transform, false);
-                coldQuenchFluidCountText = countObj.AddComponent<TextMeshProUGUI>();
-                coldQuenchFluidCountText.text = "x0";
-                coldQuenchFluidCountText.fontSize = COLD_QUENCH_FONT_SIZE;
-                coldQuenchFluidCountText.color = Color.white;
-                coldQuenchFluidCountText.alignment = TextAlignmentOptions.Left;
-                RectTransform countRect = countObj.GetComponent<RectTransform>();
-                countRect.sizeDelta = new Vector2(80, COLD_QUENCH_ICON_SIZE);
-                
-                // 更新数量显示
-                UpdateColdQuenchFluidCount();
-                
-                ModBehaviour.DevLog("[ReforgeUI] 冷淬液UI已创建");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 创建冷淬液UI失败: " + e.Message + "\n" + e.StackTrace);
-            }
-        }
-        
-        /// <summary>
-        /// 更新冷淬液数量显示
-        /// </summary>
-        private static void UpdateColdQuenchFluidCount()
-        {
-            if (coldQuenchFluidCountText == null) return;
-            
-            int count = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
-            coldQuenchFluidCountText.text = "x" + count;
-            
-            // 根据数量改变颜色
-            if (count > 0)
-            {
-                coldQuenchFluidCountText.color = new Color(0.5f, 1f, 0.5f);  // 绿色
-            }
-            else
-            {
-                coldQuenchFluidCountText.color = new Color(0.7f, 0.7f, 0.7f);  // 灰色
-            }
-        }
-        
-        /// <summary>
-        /// 为属性条目添加交互功能（通过文字颜色变化实现固定）
-        /// </summary>
-        private static void AddPropertyLockIcons()
-        {
-            ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons 开始执行");
-            
-            if (selectedItem == null)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: selectedItem 为空");
-                return;
-            }
-            
-            if (detailsDisplayObj == null)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: detailsDisplayObj 为空");
-                return;
-            }
-            
-            try
-            {
-                // 清理旧的交互组件
-                ClearPropertyLockIcons();
-                
-                var detailsDisplay = detailsDisplayObj as ItemDetailsDisplay;
-                if (detailsDisplay == null)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: detailsDisplay 转换失败");
-                    return;
-                }
-                
-                var propsParentField = PropertiesParentField;
-                if (propsParentField == null)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: PropertiesParentField 为空");
-                    return;
-                }
-                
-                Transform propsParent = propsParentField.GetValue(detailsDisplay) as Transform;
-                if (propsParent == null)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] AddPropertyLockIcons: propsParent 为空");
-                    return;
-                }
-                
-                // 获取冷淬液数量（决定是否可以固定）
-                int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
-                bool canLock = fluidCount > 0;
-                
-                ModBehaviour.DevLog("[ReforgeUI] 冷淬液数量: " + fluidCount + ", 可固定: " + canLock);
-                
-                int addedCount = 0;
-                
-                // 遍历所有属性条目
-                foreach (Transform child in propsParent)
-                {
-                    if (!child.gameObject.activeInHierarchy) continue;
-                    
-                    string key = null;
-                    PropertyType propType = PropertyType.Modifier;
-                    bool hasNumericValue = false;
-                    
-                    // 尝试获取属性键名和类型
-                    Component modEntry = child.GetComponent("ItemModifierEntry");
-                    if (modEntry != null)
-                    {
-                        key = GetPropertyKeyFromEntry(modEntry, "ItemModifierEntry");
-                        propType = PropertyType.Modifier;
-                        hasNumericValue = true;
-                    }
-                    
-                    if (key == null)
-                    {
-                        Component statEntry = child.GetComponent("ItemStatEntry");
-                        if (statEntry != null)
-                        {
-                            key = GetPropertyKeyFromEntry(statEntry, "ItemStatEntry");
-                            propType = PropertyType.Stat;
-                            hasNumericValue = true;
-                        }
-                    }
-
-                    // 检查 ItemVariableEntry（用于逆鳞等自定义装备的 Variables 属性）
-                    // 只有数字类型（Float）的 Variable 才能被固定
-                    if (key == null)
-                    {
-                        Component varEntry = child.GetComponent("ItemVariableEntry");
-                        if (varEntry != null)
-                        {
-                            key = GetPropertyKeyFromEntry(varEntry, "ItemVariableEntry");
-                            propType = PropertyType.Variable;
-                            // 检查 Variable 是否为数字类型（Float）
-                            hasNumericValue = IsVariableNumeric(selectedItem, key);
-                        }
-                    }
-
-                    // 跳过无效条目
-                    if (string.IsNullOrEmpty(key) || !hasNumericValue) continue;
-                    
-                    // 跳过系统变量
-                    if (key == "Count" || key == "ReforgeCount" || key.StartsWith("RF_")) continue;
-                    if (!ReforgeSystem.IsPropertySupportedForReforge(key, propType)) continue;
-                    
-                    // 为属性条目添加交互功能
-                    SetupPropertyEntryInteraction(child, key, propType, canLock);
-                    addedCount++;
-                }
-                
-                ModBehaviour.DevLog("[ReforgeUI] 已设置 " + addedCount + " 个属性条目的交互功能");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 添加属性交互失败: " + e.Message + "\n" + e.StackTrace);
-            }
-        }
-        
-        /// <summary>
-        /// 为属性条目设置交互功能（文字颜色变化方案）
-        /// 白色=普通，蓝色=悬停可固定，金色=已固定
-        /// </summary>
-        private static void SetupPropertyEntryInteraction(Transform propertyEntry, string propertyKey, PropertyType propType, bool canLock)
-        {
-            try
-            {
-                int entryId = propertyEntry.GetInstanceID();
-                
-                // 检查是否已存在
-                if (propertyLockIcons.ContainsKey(entryId)) return;
-                
-                // 检查属性是否已固定
-                bool isLocked = PropertyLockSystem.IsPropertyLocked(selectedItem, propertyKey, propType);
-                
-                // 获取属性条目上的所有文本组件
-                TextMeshProUGUI[] textComponents = propertyEntry.GetComponentsInChildren<TextMeshProUGUI>(true);
-                if (textComponents == null || textComponents.Length == 0)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] 属性条目没有文本组件: " + propertyKey);
-                    return;
-                }
-                
-                // 确保属性条目有Image组件用于接收点击（如果没有则添加）
-                Image entryImage = propertyEntry.GetComponent<Image>();
-                if (entryImage == null)
-                {
-                    entryImage = propertyEntry.gameObject.AddComponent<Image>();
-                    entryImage.color = new Color(0, 0, 0, 0);  // 完全透明
-                }
-                entryImage.raycastTarget = true;  // 确保可以接收点击
-                
-                // 添加交互组件
-                PropertyEntryInteractable interactable = propertyEntry.gameObject.AddComponent<PropertyEntryInteractable>();
-                interactable.PropertyKey = propertyKey;
-                interactable.PropType = propType;
-                interactable.TargetItem = selectedItem;
-                interactable.TextComponents = textComponents;
-                interactable.IsLocked = isLocked;
-                interactable.CanLock = canLock && !isLocked;  // 有冷淬液且未固定才能固定
-                
-                // 初始化颜色
-                interactable.InitializeColor();
-                
-                // 保存引用
-                PropertyLockIcon lockIcon = new PropertyLockIcon
-                {
-                    IconObject = propertyEntry.gameObject,
-                    IconImage = entryImage,
-                    PropertyKey = propertyKey,
-                    PropertyType = propType,
-                    IsLocked = isLocked
-                };
-                propertyLockIcons[entryId] = lockIcon;
-                
-                ModBehaviour.DevLog("[ReforgeUI] 属性交互已设置: " + propertyKey + ", isLocked=" + isLocked + ", canLock=" + interactable.CanLock);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 设置属性交互失败: " + propertyKey + " - " + e.Message);
-            }
-        }
-        
-        /// <summary>
-        /// 从属性条目获取属性键名
-        /// </summary>
-        private static string GetPropertyKeyFromEntry(Component entry, string entryType)
-        {
-            try
-            {
-                FieldInfo targetField = entry.GetType().GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (targetField == null) return null;
-                
-                object target = targetField.GetValue(entry);
-                if (target == null) return null;
-                
-                PropertyInfo keyProp = target.GetType().GetProperty("Key");
-                if (keyProp == null) return null;
-                
-                return keyProp.GetValue(target, null) as string;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-        
-        /// <summary>
-        /// 检查 Variable 是否为数字类型（Float）
-        /// 只有数字类型的属性才能被固定
-        /// </summary>
-        /// <param name="item">物品</param>
-        /// <param name="variableKey">Variable 键名</param>
-        /// <returns>是否为数字类型</returns>
-        private static bool IsVariableNumeric(Item item, string variableKey)
-        {
-            if (item == null || item.Variables == null || string.IsNullOrEmpty(variableKey))
-            {
-                return false;
-            }
-            
-            try
-            {
-                foreach (var variable in item.Variables)
-                {
-                    if (variable.Key == variableKey)
-                    {
-                        // 只有 Float 类型才是数字类型
-                        return variable.DataType == Duckov.Utilities.CustomDataType.Float;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReforgeUI] 检查 Variable 类型失败: " + e.Message);
-            }
-            
-            return false;
-        }
-        
-        
-        /// <summary>
-        /// 通知属性已被锁定，刷新UI
-        /// </summary>
-        public static void NotifyPropertyLocked()
-        {
-            // 更新冷淬液数量显示
-            UpdateColdQuenchFluidCount();
-            
-            // 延迟刷新交互组件
-            if (ModBehaviour.Instance != null)
-            {
-                ModBehaviour.Instance.StartCoroutine(RefreshLockIconsDelayed());
-            }
-        }
-        
-        /// <summary>
-        /// 延迟刷新属性交互（等待属性条目更新完成）
-        /// </summary>
-        private static System.Collections.IEnumerator RefreshLockIconsDelayed()
-        {
-            ModBehaviour.DevLog("[ReforgeUI] RefreshLockIconsDelayed 开始执行...");
-            
-            // 等待3帧，确保属性条目已更新
-            yield return null;
-            yield return null;
-            yield return null;
-            
-            ModBehaviour.DevLog("[ReforgeUI] 等待完成，开始刷新属性交互...");
-            
-            // 重新添加交互组件
-            ClearPropertyLockIcons();
-            AddPropertyLockIcons();
-            
-            ModBehaviour.DevLog("[ReforgeUI] 属性交互刷新完成，共 " + propertyLockIcons.Count + " 个属性");
-        }
-        
-        /// <summary>
-        /// 清理属性条目的交互组件
-        /// </summary>
-        private static void ClearPropertyLockIcons()
-        {
-            foreach (var kvp in propertyLockIcons)
-            {
-                if (kvp.Value != null && kvp.Value.IconObject != null)
-                {
-                    // 移除交互组件（不销毁属性条目本身）
-                    PropertyEntryInteractable interactable = kvp.Value.IconObject.GetComponent<PropertyEntryInteractable>();
-                    if (interactable != null)
-                    {
-                        // 恢复文字颜色为白色
-                        if (interactable.TextComponents != null)
-                        {
-                            foreach (var text in interactable.TextComponents)
-                            {
-                                if (text != null)
-                                {
-                                    text.color = Color.white;
-                                }
-                            }
-                        }
-                        GameObject.Destroy(interactable);
-                    }
-                    
-                    // 移除我们添加的透明Image（如果有）
-                    // 注意：只移除我们添加的，不要移除原有的
-                    Image img = kvp.Value.IconObject.GetComponent<Image>();
-                    if (img != null && img.color.a == 0)  // 只移除完全透明的（我们添加的）
-                    {
-                        GameObject.Destroy(img);
-                    }
-                }
-            }
-            propertyLockIcons.Clear();
-        }
-        
-        /// <summary>
-        /// 清理冷淬液UI
-        /// </summary>
-        private static void CleanupColdQuenchFluidUI()
-        {
-            // 清理属性交互组件
-            ClearPropertyLockIcons();
-            
-            // 清理冷淬液数量显示
-            if (coldQuenchFluidContainer != null)
-            {
-                coldQuenchFluidContainer.SetActive(false);
-            }
-            coldQuenchFluidCountText = null;
-        }
     }
-    
-    /// <summary>
-    /// UI状态监控器 - 检测UI关闭（优化：减少Update调用频率）
-    /// </summary>
-    public class ReforgeUIMonitor : MonoBehaviour
-    {
-        private ItemDecomposeView watchedView;
-        private bool wasOpen = false;
-        private float checkInterval = 0.1f;  // 检查间隔（秒）
-        private float nextCheckTime = 0f;
-        
-        public void SetWatchedView(ItemDecomposeView view)
-        {
-            watchedView = view;
-            wasOpen = view != null && view.open;
-            nextCheckTime = Time.time + checkInterval;
-        }
-        
-        void Update()
-        {
-            // 不在重铸模式时跳过
-            if (!ReforgeUIManager.IsReforgeMode) return;
-            
-            // 降低检查频率（每0.1秒检查一次，而非每帧）
-            if (Time.time < nextCheckTime) return;
-            nextCheckTime = Time.time + checkInterval;
-            
-            if (watchedView != null)
-            {
-                bool isOpen = watchedView.open;
-                
-                // 检测UI关闭
-                if (wasOpen && !isOpen)
-                {
-                    ModBehaviour.DevLog("[ReforgeUI] 检测到UI关闭");
-                    ReforgeUIManager.Cleanup();
-                    ReforgeUIManager.NotifyUIClosed();
-                }
-                
-                wasOpen = isOpen;
-            }
-        }
-    }
-    
 }

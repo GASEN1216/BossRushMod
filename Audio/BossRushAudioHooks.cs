@@ -212,6 +212,15 @@ namespace BossRush
         private static PostCustomSfxDelegate _cachedPostCustomSfx;
         private static bool _postCustomSfxResolved = false;
 
+        private static void ResetBossRushAudioHooksStaticCaches()
+        {
+            cachedSpawnEggBehavior = null;
+            eggSpawnPreset = null;
+            _cachedSoundFileExists.Clear();
+            _cachedPostCustomSfx = null;
+            _postCustomSfxResolved = false;
+        }
+
         private static bool SoundFileExistsCached(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))

@@ -19,6 +19,11 @@ namespace BossRush
     /// </summary>
     public static class EntityModelFactory
     {
+        public static void ResetStaticCaches()
+        {
+            Shutdown();
+        }
+
         #region 内部数据结构
 
         /// <summary>
@@ -37,19 +42,19 @@ namespace BossRush
 
         // 预制体缓存（预分配容量避免扩容）
         private static Dictionary<string, GameObject> _prefabCache;
-        
+
         // Bundle 信息列表
         private static List<BundleInfo> _bundleInfos;
-        
+
         // 初始化状态
         private static bool _isInitialized = false;
-        
+
         // Mod 根目录路径
         private static string _modPath;
 
         // 预定义的路牌预制体名称
         private const string SIGNPOST_PREFAB_NAME = "BossRush_Signpost_Model";
-        
+
         // 预定义的垃圾桶预制体名称
         private const string TRASHCAN_PREFAB_NAME = "BossRush_TrashCan_Model";
 
@@ -76,7 +81,7 @@ namespace BossRush
             {
                 // 构建 entity 目录路径
                 string entityPath = Path.Combine(modPath, "Assets", "entity");
-                
+
                 if (!Directory.Exists(entityPath))
                 {
                     ModBehaviour.DevLog("[EntityModelFactory] [WARNING] entity 目录不存在: " + entityPath);
@@ -86,11 +91,11 @@ namespace BossRush
 
                 // 扫描目录下的所有文件（AssetBundle 通常没有扩展名）
                 string[] files = Directory.GetFiles(entityPath);
-                
+
                 for (int i = 0; i < files.Length; i++)
                 {
                     string filePath = files[i];
-                    
+
                     // 跳过 .manifest 和 .meta 文件
                     if (filePath.EndsWith(".manifest") || filePath.EndsWith(".meta"))
                     {
@@ -105,7 +110,7 @@ namespace BossRush
                         loadAttempted = false
                     };
                     _bundleInfos.Add(info);
-                    
+
                     ModBehaviour.DevLog("[EntityModelFactory] 发现 Bundle: " + Path.GetFileName(filePath));
                 }
 
@@ -139,16 +144,16 @@ namespace BossRush
             for (int i = 0; i < _bundleInfos.Count; i++)
             {
                 BundleInfo info = _bundleInfos[i];
-                
+
                 // 如果 bundle 未加载，先加载它
                 if (!info.loadAttempted)
                 {
                     info.loadAttempted = true;
-                    
+
                     try
                     {
                         info.bundle = AssetBundle.LoadFromFile(info.path);
-                        
+
                         if (info.bundle == null)
                         {
                             ModBehaviour.DevLog("[EntityModelFactory] [WARNING] Bundle 加载失败: " + info.path);
@@ -156,7 +161,7 @@ namespace BossRush
                         else
                         {
                             ModBehaviour.DevLog("[EntityModelFactory] 已加载 Bundle: " + Path.GetFileName(info.path));
-                            
+
                             // 缓存 bundle 中的所有预制体名称（用于查询）
                             CacheBundlePrefabs(info.bundle);
                         }
@@ -166,7 +171,7 @@ namespace BossRush
                         ModBehaviour.DevLog("[EntityModelFactory] [WARNING] Bundle 加载异常: " + e.Message);
                         info.bundle = null;
                     }
-                    
+
                     // 更新列表中的 struct
                     _bundleInfos[i] = info;
                 }
@@ -196,11 +201,11 @@ namespace BossRush
             {
                 // 获取所有资源名称
                 string[] assetNames = bundle.GetAllAssetNames();
-                
+
                 for (int i = 0; i < assetNames.Length; i++)
                 {
                     string assetPath = assetNames[i];
-                    
+
                     // 只加载预制体
                     if (!assetPath.EndsWith(".prefab"))
                     {
@@ -210,12 +215,12 @@ namespace BossRush
                     try
                     {
                         GameObject prefab = bundle.LoadAsset<GameObject>(assetPath);
-                        
+
                         if (prefab != null)
                         {
                             // 使用预制体名称作为 key（不含路径和扩展名）
                             string prefabName = prefab.name;
-                            
+
                             if (!_prefabCache.ContainsKey(prefabName))
                             {
                                 _prefabCache[prefabName] = prefab;
@@ -285,7 +290,7 @@ namespace BossRush
             // 路牌高度约 2 米，偏移 0.8 米使底部贴地
             Vector3 adjustedPosition = position;
             Quaternion adjustedRotation = rotation;
-            
+
             if (prefabName == SIGNPOST_PREFAB_NAME)
             {
                 adjustedPosition.y += 0.8f;
@@ -302,19 +307,19 @@ namespace BossRush
                 Quaternion baseRotation = Quaternion.Euler(-90f, 90f, 0f);
                 adjustedRotation = Quaternion.Euler(0f, rotation.eulerAngles.y, 0f) * baseRotation;
             }
-            
+
             GameObject instance = UnityEngine.Object.Instantiate(prefab, adjustedPosition, adjustedRotation);
             instance.name = "BossRush_" + prefabName;
-            
+
             // 修复 Shader（从 Standard 替换为游戏使用的 Shader）
             FixShaders(instance);
-            
+
             // 设置 Layer（确保渲染正确）
             SetLayerRecursively(instance, LayerMask.NameToLayer("Default"));
-            
+
             return instance;
         }
-        
+
         /// <summary>
         /// 修复模型的 Shader（从 Standard 替换为游戏 Shader）
         /// AssetBundle 中的模型通常使用 Standard Shader，但游戏使用自定义 Shader
@@ -338,16 +343,16 @@ namespace BossRush
                 {
                     gameShader = Shader.Find("Standard");
                 }
-                
+
                 if (gameShader == null)
                 {
                     ModBehaviour.DevLog("[EntityModelFactory] [WARNING] 未找到可用的 Shader");
                     return;
                 }
-                
+
                 Renderer[] renderers = obj.GetComponentsInChildren<Renderer>(true);
                 int fixedCount = 0;
-                
+
                 for (int i = 0; i < renderers.Length; i++)
                 {
                     Renderer renderer = renderers[i];
@@ -355,7 +360,7 @@ namespace BossRush
                     {
                         continue;
                     }
-                    
+
                     Material[] materials = renderer.materials;
                     for (int j = 0; j < materials.Length; j++)
                     {
@@ -364,10 +369,10 @@ namespace BossRush
                         {
                             continue;
                         }
-                        
+
                         string shaderName = mat.shader.name;
                         // 如果是 Standard shader 或其变体，替换为游戏 shader
-                        if (shaderName == "Standard" || 
+                        if (shaderName == "Standard" ||
                             shaderName.Contains("Standard") ||
                             shaderName == "Hidden/InternalErrorShader")
                         {
@@ -376,7 +381,7 @@ namespace BossRush
                         }
                     }
                 }
-                
+
                 if (fixedCount > 0)
                 {
                     ModBehaviour.DevLog("[EntityModelFactory] 已修复 " + fixedCount + " 个材质的 Shader -> " + gameShader.name);
@@ -387,7 +392,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[EntityModelFactory] [WARNING] 修复 Shader 异常: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 递归设置 Layer
         /// </summary>
@@ -399,9 +404,9 @@ namespace BossRush
             {
                 return;
             }
-            
+
             obj.layer = layer;
-            
+
             Transform transform = obj.transform;
             int childCount = transform.childCount;
             for (int i = 0; i < childCount; i++)
@@ -491,7 +496,7 @@ namespace BossRush
 
             // 尝试从未加载的 bundle 中查找
             TryLoadPrefabFromBundles(prefabName);
-            
+
             return _prefabCache.ContainsKey(prefabName);
         }
 
@@ -531,15 +536,15 @@ namespace BossRush
             for (int i = 0; i < _bundleInfos.Count; i++)
             {
                 BundleInfo info = _bundleInfos[i];
-                
+
                 if (!info.loadAttempted)
                 {
                     info.loadAttempted = true;
-                    
+
                     try
                     {
                         info.bundle = AssetBundle.LoadFromFile(info.path);
-                        
+
                         if (info.bundle != null)
                         {
                             CacheBundlePrefabs(info.bundle);
@@ -549,7 +554,7 @@ namespace BossRush
                     {
                         info.bundle = null;
                     }
-                    
+
                     _bundleInfos[i] = info;
                 }
             }
@@ -580,7 +585,7 @@ namespace BossRush
                     for (int i = 0; i < _bundleInfos.Count; i++)
                     {
                         BundleInfo info = _bundleInfos[i];
-                        
+
                         if (info.bundle != null)
                         {
                             try
@@ -593,7 +598,7 @@ namespace BossRush
                             }
                         }
                     }
-                    
+
                     _bundleInfos.Clear();
                     _bundleInfos = null;
                 }

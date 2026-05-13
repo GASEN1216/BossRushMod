@@ -23,10 +23,10 @@ namespace BossRush
     {
         // 缓存注入的成就勋章条目引用
         private static StockShop.Entry injectedMedalEntry = null;
-        
+
         // 成就勋章库存缓存
         private static int cachedMedalStock = -1;
-        
+
         /// <summary>
         /// 注入成就勋章本地化
         /// </summary>
@@ -34,7 +34,7 @@ namespace BossRush
         {
             AchievementMedalConfig.InjectLocalization();
         }
-        
+
         /// <summary>
         /// 将成就勋章注入到商店（排在最前面，与冒险家日志相同位置）
         /// </summary>
@@ -107,10 +107,10 @@ namespace BossRush
             {
                 return;
             }
-            
+
             try
             {
-                StockShop[] shops = UnityEngine.Object.FindObjectsOfType<StockShop>();
+                StockShop[] shops = ObjectCache.GetStockShops();
                 if (shops == null || shops.Length == 0)
                 {
                     return;
@@ -137,7 +137,7 @@ namespace BossRush
                 DevLog("[AchievementMedal] InjectAchievementMedalIntoShops 出错: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 从存档读取成就勋章库存
         /// </summary>
@@ -149,14 +149,14 @@ namespace BossRush
                 {
                     return cachedMedalStock;
                 }
-                
+
                 if (SavesSystem.KeyExisits(AchievementMedalConfig.STOCK_SAVE_KEY))
                 {
                     cachedMedalStock = SavesSystem.Load<int>(AchievementMedalConfig.STOCK_SAVE_KEY);
                     DevLog("[AchievementMedal] 从存档读取成就勋章库存: " + cachedMedalStock);
                     return cachedMedalStock;
                 }
-                
+
                 cachedMedalStock = AchievementMedalConfig.DEFAULT_MAX_STOCK;
                 return cachedMedalStock;
             }
@@ -167,7 +167,7 @@ namespace BossRush
                 return cachedMedalStock;
             }
         }
-        
+
         /// <summary>
         /// 存档时保存成就勋章库存
         /// </summary>
@@ -176,12 +176,12 @@ namespace BossRush
             try
             {
                 int stockToSave = AchievementMedalConfig.DEFAULT_MAX_STOCK;
-                
+
                 if (injectedMedalEntry != null)
                 {
                     stockToSave = injectedMedalEntry.CurrentStock;
                 }
-                
+
                 SavesSystem.Save<int>(AchievementMedalConfig.STOCK_SAVE_KEY, stockToSave);
                 cachedMedalStock = stockToSave;
                 DevLog("[AchievementMedal] 保存成就勋章库存: " + stockToSave);
@@ -191,7 +191,7 @@ namespace BossRush
                 DevLog("[AchievementMedal] 保存成就勋章库存失败: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 读档时重置成就勋章缓存
         /// </summary>

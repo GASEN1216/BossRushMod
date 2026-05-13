@@ -7,6 +7,10 @@ namespace BossRush
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         private const string ZOMBIE_MODE_NORMAL_PRESET_NAME = "Cname_Zombie";
+        private readonly Dictionary<long, List<ZombieModeSpawnPoint>> zombieModeSpawnPointDedupGrid =
+            new Dictionary<long, List<ZombieModeSpawnPoint>>();
+        private float zombieModeSpawnPointDedupCellSize = 1f;
+
         // 注：本模式之前自维护的"丧尸预设缓存字段 + Resources.FindObjectsOfTypeAll 查找方法"
         // 已删除（审查 §1.1）。SpawnEnemyCore 通过共享的 cachedCharacterPresets 自动 fallback；
         // 入口处调用 EnsureCharacterPresetsCacheReady() 确保字典就绪。
@@ -19,6 +23,7 @@ namespace BossRush
             }
 
             zombieModeRunState.SpawnPoints.Clear();
+            ResetZombieModeSpawnPointDedupGrid();
             if (zombieModeRunState.MapProfile != null)
             {
                 AddZombieModeSpawnPointArray(zombieModeRunState.MapProfile.StaticSpawnPoints, false);
@@ -36,6 +41,12 @@ namespace BossRush
                 zombieModeRunState.EffectiveSpawnPoints.Add(zombieModeRunState.SpawnPoints[i]);
             }
             return zombieModeRunState.SpawnPoints.Count > 0;
+        }
+
+        private void ResetZombieModeSpawnPointDedupGrid()
+        {
+            zombieModeSpawnPointDedupGrid.Clear();
+            zombieModeSpawnPointDedupCellSize = Mathf.Max(0.01f, ZombieModeTuning.SpawnPointDuplicateDistance);
         }
 
         private void TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions()
@@ -75,18 +86,65 @@ namespace BossRush
                 return;
             }
 
-            float duplicateDistanceSqr = ZombieModeTuning.SpawnPointDuplicateDistance * ZombieModeTuning.SpawnPointDuplicateDistance;
-            for (int i = 0; i < zombieModeRunState.SpawnPoints.Count; i++)
+            if (HasZombieModeDuplicateSpawnPoint(snapped))
             {
-                Vector3 delta = zombieModeRunState.SpawnPoints[i].Position - snapped;
-                delta.y = 0f;
-                if (delta.sqrMagnitude < duplicateDistanceSqr)
+                return;
+            }
+
+            ZombieModeSpawnPoint spawnPoint = new ZombieModeSpawnPoint(snapped, virtualPoint);
+            zombieModeRunState.SpawnPoints.Add(spawnPoint);
+            RegisterZombieModeSpawnPointDedupCell(spawnPoint);
+        }
+
+        private bool HasZombieModeDuplicateSpawnPoint(Vector3 snapped)
+        {
+            float duplicateDistanceSqr = ZombieModeTuning.SpawnPointDuplicateDistance * ZombieModeTuning.SpawnPointDuplicateDistance;
+            int cellX = Mathf.FloorToInt(snapped.x / zombieModeSpawnPointDedupCellSize);
+            int cellZ = Mathf.FloorToInt(snapped.z / zombieModeSpawnPointDedupCellSize);
+
+            for (int xOffset = -1; xOffset <= 1; xOffset++)
+            {
+                for (int zOffset = -1; zOffset <= 1; zOffset++)
                 {
-                    return;
+                    List<ZombieModeSpawnPoint> candidates;
+                    if (!zombieModeSpawnPointDedupGrid.TryGetValue(GetZombieModeSpawnPointDedupCellKey(cellX + xOffset, cellZ + zOffset), out candidates))
+                    {
+                        continue;
+                    }
+
+                    for (int i = 0; i < candidates.Count; i++)
+                    {
+                        Vector3 delta = candidates[i].Position - snapped;
+                        delta.y = 0f;
+                        if (delta.sqrMagnitude < duplicateDistanceSqr)
+                        {
+                            return true;
+                        }
+                    }
                 }
             }
 
-            zombieModeRunState.SpawnPoints.Add(new ZombieModeSpawnPoint(snapped, virtualPoint));
+            return false;
+        }
+
+        private void RegisterZombieModeSpawnPointDedupCell(ZombieModeSpawnPoint spawnPoint)
+        {
+            int cellX = Mathf.FloorToInt(spawnPoint.Position.x / zombieModeSpawnPointDedupCellSize);
+            int cellZ = Mathf.FloorToInt(spawnPoint.Position.z / zombieModeSpawnPointDedupCellSize);
+            long key = GetZombieModeSpawnPointDedupCellKey(cellX, cellZ);
+            List<ZombieModeSpawnPoint> cellPoints;
+            if (!zombieModeSpawnPointDedupGrid.TryGetValue(key, out cellPoints))
+            {
+                cellPoints = new List<ZombieModeSpawnPoint>();
+                zombieModeSpawnPointDedupGrid[key] = cellPoints;
+            }
+
+            cellPoints.Add(spawnPoint);
+        }
+
+        private static long GetZombieModeSpawnPointDedupCellKey(int cellX, int cellZ)
+        {
+            return ((long)cellX << 32) ^ (uint)cellZ;
         }
 
         private Vector3 GetZombieModeSpawnPosition()

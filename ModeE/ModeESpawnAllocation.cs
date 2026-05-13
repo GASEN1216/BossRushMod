@@ -411,7 +411,7 @@ namespace BossRush
         /// <summary>
         /// 预扫描并缓存原地图实际敌人出生点位置（必须在 DisableAllSpawners 之前调用）
         /// 由 OnSceneLoaded_Integration 在场景加载时立即调用
-        /// 
+        ///
         /// 关键修复：从 RandomCharacterSpawner 的 Points 组件提取实际出生点坐标，
         /// 而非 CharacterSpawnerRoot.transform.position（那只是 spawner 根对象位置，不是敌人出生点）
         /// </summary>
@@ -432,7 +432,7 @@ namespace BossRush
                     return;
                 }
 
-                CharacterSpawnerRoot[] spawners = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>();
+                CharacterSpawnerRoot[] spawners = ObjectCache.GetCharacterSpawnerRoots();
                 if (spawners == null || spawners.Length == 0)
                 {
                     modeECachedSpawnerPositions = null;
@@ -519,7 +519,7 @@ namespace BossRush
             // 兜底：实时扫描（如果 spawner 尚未被销毁）
             try
             {
-                CharacterSpawnerRoot[] spawners = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>();
+                CharacterSpawnerRoot[] spawners = ObjectCache.GetCharacterSpawnerRoots();
                 if (spawners == null || spawners.Length == 0)
                 {
                     if (logEnabled)

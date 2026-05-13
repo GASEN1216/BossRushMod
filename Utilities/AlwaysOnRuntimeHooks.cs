@@ -35,6 +35,7 @@ namespace BossRush
                     EntityModelFactory.Initialize(modPath);
                     // 初始化地图刷新点注册表（同步扫描 Assets/SpawnPoints/*.json）
                     _mapSpawnRegistry.Initialize(modPath);
+                    WishFountainService.EnsureRuntime();
                 }
                 else
                 {
@@ -69,20 +70,55 @@ namespace BossRush
                 AffinityManager.OnAffinityChanged -= OnAffinityChanged;
                 AffinityManager.OnLevelUp -= OnAffinityLevelUp;
                 AffinityManager.Shutdown();
+                AffinityManager.ResetStaticCaches();
                 AffinityUIManager.Cleanup();
             }
-            catch
+            catch (System.Exception e)
             {
+                DevLog("[BossRush] [WARNING] Affinity runtime cleanup failed: " + e.Message);
             }
 
             try
             {
-                EntityModelFactory.Shutdown();
+                EntityModelFactory.ResetStaticCaches();
             }
             catch (System.Exception e)
             {
                 DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);
             }
+
+            try
+            {
+                ModBehaviour.ResetBossRushAudioHooksStaticCaches();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] BossRushAudioHooks 卸载异常: " + e.Message);
+            }
+
+            try
+            {
+                BossRush.Utils.NPCUIAssetCache.ResetStaticCaches();
+                DialogueActorFactory.ResetStaticCaches();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] NPC UI/Dialogue 缓存卸载异常: " + e.Message);
+            }
+
+            try
+            {
+                WishFountainService.ShutdownRuntime();
+                WishFountainService.ResetStaticCaches();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] WishFountainService 卸载异常: " + e.Message);
+            }
+
+            BossRushEventBus.ResetStaticCaches();
+            SafeRuntime.ResetStaticCaches();
+            BossRush.Common.Utils.ReflectionCache.ResetStaticCaches();
         }
     }
 }

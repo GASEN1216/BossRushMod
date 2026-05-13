@@ -3,7 +3,7 @@
 // ============================================================================
 // 模块说明：
 //   OnAwake 时扫描 Assets/SpawnPoints/*.json，缓存为字典。
-//   TryGet 返回 null 表示该地图无 JSON 或解析失败（调用方应回退硬编码）。
+//   TryGet 返回 null 表示该地图无 JSON 或解析失败。
 //   ExportFromHardcoded 用于初次迁移时从硬编码表反向导出 JSON 文件。
 //
 // 设计约束：
@@ -25,13 +25,14 @@ namespace BossRush
     /// <summary>
     /// 地图刷新点注册表
     /// OnAwake 时扫描 Assets/SpawnPoints/*.json，缓存为字典
-    /// TryGet 返回 null 表示该地图无 JSON 或解析失败（调用方应回退硬编码）
+    /// TryGet 返回 null 表示该地图无 JSON 或解析失败
     /// </summary>
     internal sealed class MapSpawnPointRegistry
     {
         // 地图配置缓存（大小写不敏感）
         private readonly Dictionary<string, BossRushMapConfig> _configs
             = new Dictionary<string, BossRushMapConfig>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<BossRushMapConfig> _orderedConfigs = new List<BossRushMapConfig>();
 
         // JSON 文件目录路径
         private string _jsonDirectory;
@@ -44,6 +45,7 @@ namespace BossRush
         {
             _jsonDirectory = Path.Combine(modPath, "Assets", "SpawnPoints");
             _configs.Clear();
+            _orderedConfigs.Clear();
 
             if (!Directory.Exists(_jsonDirectory))
             {
@@ -52,10 +54,12 @@ namespace BossRush
             }
 
             string[] files = Directory.GetFiles(_jsonDirectory, "*.json");
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
             foreach (string file in files)
             {
                 TryLoadJson(file);
             }
+            SortOrderedConfigs();
 
             ModBehaviour.DevLog("[MapSpawnPointRegistry] 已加载 " + _configs.Count + " 张地图配置");
         }
@@ -80,7 +84,7 @@ namespace BossRush
         /// </summary>
         public IEnumerable<BossRushMapConfig> All()
         {
-            return _configs.Values;
+            return _orderedConfigs;
         }
 
         /// <summary>
@@ -137,7 +141,15 @@ namespace BossRush
                 BossRushMapConfig config = DeserializeFromJson(json);
                 if (config != null && !string.IsNullOrEmpty(config.sceneName))
                 {
+                    if (_configs.ContainsKey(config.sceneName))
+                    {
+                        _orderedConfigs.RemoveAll(existing =>
+                            existing != null &&
+                            string.Equals(existing.sceneName, config.sceneName, StringComparison.OrdinalIgnoreCase));
+                    }
+
                     _configs[config.sceneName] = config;
+                    _orderedConfigs.Add(config);
                 }
                 else
                 {
@@ -149,6 +161,20 @@ namespace BossRush
                 ModBehaviour.DevLog("[MapSpawnPointRegistry] [WARNING] JSON 解析失败: "
                     + filePath + " - " + e.Message);
             }
+        }
+
+        private void SortOrderedConfigs()
+        {
+            _orderedConfigs.Sort((left, right) =>
+            {
+                int orderCompare = left.sortOrder.CompareTo(right.sortOrder);
+                if (orderCompare != 0)
+                {
+                    return orderCompare;
+                }
+
+                return string.Compare(left.sceneName, right.sceneName, StringComparison.OrdinalIgnoreCase);
+            });
         }
 
         #region JSON 序列化
@@ -180,6 +206,11 @@ namespace BossRush
             // displayNameEN
             sb.Append("  \"displayNameEN\": ");
             AppendJsonString(sb, config.displayNameEN);
+            sb.Append(",\n");
+
+            // sortOrder
+            sb.Append("  \"sortOrder\": ");
+            sb.Append(config.sortOrder);
             sb.Append(",\n");
 
             // spawnPoints
@@ -249,6 +280,7 @@ namespace BossRush
             string displayNameCN = ExtractStringValue(json, "displayNameCN");
             string displayNameEN = ExtractStringValue(json, "displayNameEN");
             string previewImageName = ExtractNullableStringValue(json, "previewImageName");
+            int sortOrder = ExtractIntValueOrDefault(json, "sortOrder", int.MaxValue);
 
             // 提取整数字段
             int beaconIndex = ExtractIntValue(json, "beaconIndex");
@@ -293,7 +325,8 @@ namespace BossRush
                 previewImageName,
                 mapNorth,
                 modeESpawnPoints,
-                modeEPlayerSpawnPos
+                modeEPlayerSpawnPos,
+                sortOrder
             );
         }
 
@@ -504,12 +537,20 @@ namespace BossRush
         /// </summary>
         private static int ExtractIntValue(string json, string key)
         {
+            return ExtractIntValueOrDefault(json, key, 0);
+        }
+
+        /// <summary>
+        /// 从 JSON 中提取整数值，字段缺失或解析失败时返回默认值
+        /// </summary>
+        private static int ExtractIntValueOrDefault(string json, string key, int defaultValue)
+        {
             string pattern = "\"" + key + "\"";
             int keyPos = json.IndexOf(pattern, StringComparison.Ordinal);
-            if (keyPos < 0) return 0;
+            if (keyPos < 0) return defaultValue;
 
             int colonPos = json.IndexOf(':', keyPos + pattern.Length);
-            if (colonPos < 0) return 0;
+            if (colonPos < 0) return defaultValue;
 
             int pos = colonPos + 1;
             while (pos < json.Length && char.IsWhiteSpace(json[pos])) pos++;
@@ -519,14 +560,14 @@ namespace BossRush
             if (pos < json.Length && json[pos] == '-') pos++;
             while (pos < json.Length && char.IsDigit(json[pos])) pos++;
 
-            if (pos == start) return 0;
+            if (pos == start) return defaultValue;
 
             int result;
             if (int.TryParse(json.Substring(start, pos - start), NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
             {
                 return result;
             }
-            return 0;
+            return defaultValue;
         }
 
         /// <summary>

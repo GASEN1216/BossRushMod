@@ -186,6 +186,7 @@ namespace BossRush
                     case ModeFPhase.Bounty:
                         modeFState.PhaseDuration = MODEF_BOUNTY_DURATION;
                         GenerateBountyList();
+                        TryFulfillModeFPendingRespawns();
                         ShowBigBanner(L10n.T(
                             "<color=red>血猎追击</color> | <color=orange>悬赏阶段</color> 开始！悬赏名单已生成",
                             "<color=red>Bloodhunt</color> | <color=orange>Bounty Phase</color> started! Bounty list generated"

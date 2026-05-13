@@ -27,6 +27,8 @@ Assets/BirthdayCake.png
 /Assets/*
 !/Assets/SpawnPoints/
 !/Assets/SpawnPoints/*.json
+!/Assets/Data/
+!/Assets/Data/*.json
 战利品掉落机制
 战利品掉落机制.md
 BossRush选项修改方案.md

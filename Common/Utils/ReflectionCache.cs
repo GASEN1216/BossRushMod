@@ -308,6 +308,11 @@ namespace BossRush.Common.Utils
             MethodCache.Clear();
         }
 
+        public static void ResetStaticCaches()
+        {
+            ClearCache();
+        }
+
         /// <summary>
         /// 获取缓存统计信息
         /// </summary>

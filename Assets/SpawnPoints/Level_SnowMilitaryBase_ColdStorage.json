@@ -3,6 +3,7 @@
   "sceneID": "Level_SnowMilitaryBase_ColdStorage_Main",
   "displayNameCN": "迷宫",
   "displayNameEN": "Maze",
+  "sortOrder": 8,
   "spawnPoints": [
     [-3.09, 0.02, -30.26],
     [-7.73, 0.02, -39.74],

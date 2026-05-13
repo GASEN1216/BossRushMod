@@ -17,6 +17,7 @@ namespace BossRush
         public Vector3? defaultSignPos;    // 默认路牌位置（null 表示使用玩家位置偏移）
         public int beaconIndex;            // 信标索引（用于地图选择UI）
         public string previewImageName;    // 预览图文件名（可选，用于地图选择UI）
+        public int sortOrder;              // 地图选择 UI 顺序；新地图未配置时追加到末尾
         public Vector3 mapNorth;           // 地图北方向量（用于方位播报，与小地图朝向一致）
         public Vector3[] modeESpawnPoints;  // Mode E 专用刷怪点（null 表示使用原地图 spawner 位置兜底）
         public Vector3? modeEPlayerSpawnPos; // Mode E 独狼玩家落点（null 表示使用远离Boss的安全位置兜底）
@@ -26,7 +27,7 @@ namespace BossRush
         /// </summary>
         public string displayName { get { return L10n.T(displayNameCN, displayNameEN); } }
 
-        public BossRushMapConfig(string name, string id, string displayCN, string displayEN, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null, Vector3[] modeESpawns = null, Vector3? modeEPlayerPos = null)
+        public BossRushMapConfig(string name, string id, string displayCN, string displayEN, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null, Vector3[] modeESpawns = null, Vector3? modeEPlayerPos = null, int order = 0)
         {
             sceneName = name;
             sceneID = id;
@@ -37,6 +38,7 @@ namespace BossRush
             defaultSignPos = signPos;
             beaconIndex = beacon;
             previewImageName = preview;
+            sortOrder = order;
             // 默认使用 DEMO 竞技场的北方向量
             mapNorth = north.HasValue ? north.Value : new Vector3(-0.959f, 0f, 0.284f);
             modeESpawnPoints = modeESpawns;

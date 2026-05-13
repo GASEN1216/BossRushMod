@@ -3,13 +3,13 @@
 // ============================================================================
 // 模块说明：
 //   管理 Mode D 模式的波次系统，包括敌人生成、波次进度、难度递增等。
-//   
+//
 // 波次规则：
 //   - 第 1-5 波：全小怪
 //   - 第 6-10 波：1 个 Boss + 小怪
 //   - 第 11-15 波：2 个 Boss + 小怪
 //   - 第 16+ 波：全 Boss
-//   
+//
 // 主要功能：
 //   - 开始下一波敌人
 //   - 计算每波的 Boss/小怪配比
@@ -90,7 +90,7 @@ namespace BossRush
                         modeDCurrentWaveEnemies.Count + " enemies still alive in current wave!"));
                     return false;
                 }
-                
+
                 modeDWaveIndex++;
                 // 重置波次完成标志，允许下一波完成时触发
                 modeDWaveCompletePending = false;
@@ -104,21 +104,21 @@ namespace BossRush
                 {
                     modeDEnemiesPerWave = Mathf.Clamp(config.modeDEnemiesPerWave, 1, 10);
                 }
-                
+
                 // 计算本波的 Boss 数量和小怪数量
                 int totalEnemies = modeDEnemiesPerWave;
                 int bossCount = GetModeDWaveBossCount(modeDWaveIndex, totalEnemies);
                 int minionCount = totalEnemies - bossCount;
-                
-                DevLog("[ModeD] 波次 " + modeDWaveIndex + ": 总敌人=" + totalEnemies + 
+
+                DevLog("[ModeD] 波次 " + modeDWaveIndex + ": 总敌人=" + totalEnemies +
                        ", Boss=" + bossCount + ", 小怪=" + minionCount);
-                
+
                 // 显示波次横幅
                 ShowBigBanner(L10n.T(
                     "第 <color=yellow>" + modeDWaveIndex + "</color> 波开始！",
                     "Wave <color=yellow>" + modeDWaveIndex + "</color> started!"
                 ));
-                
+
                 // 波次开始时切换路牌到加油状态（支持连点10次结束波次的兜底机制）
                 if (bossRushSignInteract != null)
                 {
@@ -136,7 +136,7 @@ namespace BossRush
                 return false;
             }
         }
-        
+
         /// <summary>
         /// 根据波次计算 Boss 数量
         /// </summary>
@@ -175,7 +175,7 @@ namespace BossRush
                 return totalEnemies;
             }
         }
-        
+
         /// <summary>
         /// 生成 Mode D 波次敌人
         /// </summary>
@@ -196,12 +196,7 @@ namespace BossRush
 
             // 获取刷怪点并洗牌，确保随机但不重复
             Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
-            if (spawnPoints == null || spawnPoints.Length == 0)
-            {
-                spawnPoints = DemoChallengeSpawnPoints;
-            }
-
-            // 兜底：如果刷怪点仍为空，基于玩家位置生成圆环随机点
+            // 兜底：如果 JSON 刷怪点为空，基于玩家位置生成圆环随机点
             if (spawnPoints == null || spawnPoints.Length == 0)
             {
                 Vector3 playerPos = playerMain.transform.position;
@@ -961,7 +956,7 @@ namespace BossRush
                     "第 <color=yellow>" + modeDWaveIndex + "</color> 波完成！",
                     "Wave <color=yellow>" + modeDWaveIndex + "</color> completed!"
                 ));
-                
+
                 // 波次结束时切换路牌回生小鸡状态
                 if (bossRushSignInteract != null)
                 {

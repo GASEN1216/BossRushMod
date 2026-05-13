@@ -33,7 +33,7 @@ namespace BossRush
                     _createdFieldCached = true;
                 }
 
-                CharacterSpawnerRoot[] spawnerRoots = UnityEngine.Object.FindObjectsOfType<CharacterSpawnerRoot>();
+                CharacterSpawnerRoot[] spawnerRoots = ObjectCache.GetCharacterSpawnerRoots();
 
                 if (spawnerRoots != null)
                 {

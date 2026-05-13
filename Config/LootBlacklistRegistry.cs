@@ -8,6 +8,7 @@ namespace BossRush
 {
     public static class LootBlacklistRegistry
     {
+        private const string DataFileName = "LootBlacklist.json";
         private static readonly HashSet<int> _blacklist = new HashSet<int>();
         private static bool _initialized = false;
 
@@ -30,7 +31,89 @@ namespace BossRush
 
         private static void RegisterBlacklist()
         {
-            int[] blacklistIds = new int[]
+            int[] blacklistIds = LoadJsonBlacklistIds();
+            if (blacklistIds == null || blacklistIds.Length == 0)
+            {
+                blacklistIds = CreateFallbackBlacklistIds();
+            }
+
+            foreach (int id in blacklistIds)
+            {
+                _blacklist.Add(id);
+            }
+        }
+
+        private static int[] LoadJsonBlacklistIds()
+        {
+            string json;
+            if (!JsonDataRegistry.TryReadDataFile(DataFileName, out json))
+            {
+                return null;
+            }
+
+            int[] ids = ParseItemIds(json);
+            if (ids == null || ids.Length == 0)
+            {
+                ModBehaviour.DevLog("[LootBlacklistRegistry] [WARNING] LootBlacklist.json 无有效 itemIds，使用硬编码兜底");
+                return null;
+            }
+
+            ModBehaviour.DevLog("[LootBlacklistRegistry] 已从 JSON 加载黑名单 " + ids.Length + " 项");
+            return ids;
+        }
+
+        internal static int[] ParseItemIds(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+
+            int keyIndex = json.IndexOf("\"itemIds\"", System.StringComparison.OrdinalIgnoreCase);
+            if (keyIndex < 0)
+            {
+                return null;
+            }
+
+            int openIndex = json.IndexOf('[', keyIndex);
+            if (openIndex < 0)
+            {
+                return null;
+            }
+
+            int closeIndex = json.IndexOf(']', openIndex + 1);
+            if (closeIndex < 0 || closeIndex <= openIndex)
+            {
+                return null;
+            }
+
+            string arrayText = json.Substring(openIndex + 1, closeIndex - openIndex - 1);
+            List<int> ids = new List<int>();
+            string[] tokens = arrayText.Split(',');
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                string token = tokens[i].Trim();
+                if (string.IsNullOrEmpty(token))
+                {
+                    continue;
+                }
+
+                int id;
+                if (!int.TryParse(token, out id))
+                {
+                    ModBehaviour.DevLog("[LootBlacklistRegistry] [WARNING] LootBlacklist.json itemIds 含非法值: " + token);
+                    return null;
+                }
+
+                ids.Add(id);
+            }
+
+            return ids.ToArray();
+        }
+
+        private static int[] CreateFallbackBlacklistIds()
+        {
+            return new int[]
             {
                 153, 284, 292, 293, 294, 295, 297, 299, 300,
                 313, 314, 315, 316, 317, 366, 373, 375, 376,
@@ -79,11 +162,6 @@ namespace BossRush
                 ZombieTideInvitationConfig.TYPE_ID,
                 ZombieTideBeaconConfig.TYPE_ID,
             };
-
-            foreach (int id in blacklistIds)
-            {
-                _blacklist.Add(id);
-            }
         }
     }
 }

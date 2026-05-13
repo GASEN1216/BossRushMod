@@ -143,6 +143,11 @@ namespace BossRush.Utils
             }
         }
 
+        public static void ResetStaticCaches()
+        {
+            Clear();
+        }
+
         private static string BuildBundlePath(string bundleName)
         {
             string assemblyLocation = typeof(ModBehaviour).Assembly.Location;

@@ -296,6 +296,19 @@ namespace BossRush
             FxPolicy.ApplyTo(meleeAgent, GetFallbackSlashFx, GetFallbackHitFx);
         }
 
+        internal static void ResetStaticCaches()
+        {
+            if (cachedFallbackSlashFx != null &&
+                string.Equals(cachedFallbackSlashFx.name, "FenHuangHalberd_SlashFxTemplate", StringComparison.Ordinal))
+            {
+                UnityEngine.Object.Destroy(cachedFallbackSlashFx);
+            }
+
+            cachedFallbackSlashFx = null;
+            cachedFallbackHitFx = null;
+            _cachedConfig = null;
+        }
+
         private static GameObject GetFallbackSlashFx()
         {
             if (cachedFallbackSlashFx == null)
@@ -529,7 +542,7 @@ namespace BossRush
             {
                 // 设置 Layer 为 0 (Default)，因为它是跟随身体的近战武器，使用人物主摄像机渲染，而不是第一人称 FPS 摄像机(Layer 9)
                 SetLayerRecursively(go, 0);
-                
+
                 // 强制使用游戏原版 Shader
                 Shader gameShader = Shader.Find("SodaCraft/SodaCharacter");
                 if (gameShader != null)
@@ -545,7 +558,7 @@ namespace BossRush
                                 {
                                     string oldShaderName = mat.shader.name;
                                     // 替换常见的标准或者 lit shader
-                                    if (oldShaderName.Contains("Standard") || 
+                                    if (oldShaderName.Contains("Standard") ||
                                         oldShaderName.Contains("Lit") ||
                                         oldShaderName.Contains("Universal"))
                                     {

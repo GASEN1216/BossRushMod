@@ -3,6 +3,7 @@
   "sceneID": "Level_GroundZero_Main",
   "displayNameCN": "零号区",
   "displayNameEN": "Ground Zero",
+  "sortOrder": 2,
   "spawnPoints": [
     [415.19, 0.01, 260.08],
     [420.59, 0.01, 255.98],

@@ -3,6 +3,7 @@
   "sceneID": "Level_StormZone_Main",
   "displayNameCN": "口口场地",
   "displayNameEN": "Underground Arena",
+  "sortOrder": 6,
   "spawnPoints": [
     [109.92, 0.02, 503.95],
     [95.41, 0.02, 512.83],

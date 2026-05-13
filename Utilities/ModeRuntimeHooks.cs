@@ -32,6 +32,9 @@ namespace BossRush
 
         internal void CleanupModeRuntimeOnDestroy()
         {
+            ModBehaviour.ResetModeDStaticCaches();
+            ModBehaviour.ResetModeDGlobalLootStaticCaches();
+            BossRushHealthBarNamePatch.ResetStaticCaches();
             CleanupZombieModeOnDestroyRuntime();
         }
     }
