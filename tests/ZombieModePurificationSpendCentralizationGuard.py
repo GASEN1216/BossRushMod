@@ -6,6 +6,13 @@ import sys
 
 ROOTS = [Path("ZombieMode"), Path("Integration")]
 SPEND_HELPER = "public bool SpendZombieModePurificationPoints(int cost, string reason)"
+REWARD_PARTS = [
+    Path("ZombieMode/ZombieModeRewards.cs"),
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -60,13 +67,23 @@ def extract_method_line_range(text: str, signature: str) -> tuple[int, int] | No
 
 
 def main() -> int:
-    rewards = Path("ZombieMode/ZombieModeRewards.cs").read_text(encoding="utf-8", errors="ignore")
-    spend_body = extract_method(rewards, SPEND_HELPER)
+    spend_path = None
+    spend_text = ""
+    spend_body = ""
+    for path in REWARD_PARTS:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        body = extract_method(text, SPEND_HELPER)
+        if body:
+            spend_path = path
+            spend_text = text
+            spend_body = body
+            break
+
     if not spend_body:
         return fail("missing shared spend helper")
     if "zombieModeRunState.PurificationPoints -= cost;" not in spend_body:
         return fail("shared spend helper must be the only direct subtraction site")
-    spend_range = extract_method_line_range(rewards, SPEND_HELPER)
+    spend_range = extract_method_line_range(spend_text, SPEND_HELPER)
     if spend_range is None:
         return fail("could not resolve shared spend helper line range")
 
@@ -79,10 +96,7 @@ def main() -> int:
             for line_number, line in enumerate(text.splitlines(), start=1):
                 if "PurificationPoints -=" not in line:
                     continue
-                if (
-                    path == Path("ZombieMode/ZombieModeRewards.cs")
-                    and spend_range[0] <= line_number <= spend_range[1]
-                ):
+                if path == spend_path and spend_range[0] <= line_number <= spend_range[1]:
                     continue
                 offenders.append(f"{path}:{line_number}: {line.strip()}")
 

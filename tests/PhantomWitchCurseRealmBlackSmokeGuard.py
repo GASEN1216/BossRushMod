@@ -16,6 +16,10 @@ import sys
 
 
 SOURCE = Path("Integration/PhantomWitch/PhantomWitchScytheAction.cs")
+SOURCE_PARTS = [
+    SOURCE,
+    Path("Integration/PhantomWitch/PhantomWitchScytheAction_RuntimeComponents.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -46,7 +50,7 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = "\n".join(path.read_text(encoding="utf-8") for path in SOURCE_PARTS)
 
     create_block = extract_block(text, "internal static GameObject Create(Vector3 origin, float radius, float duration)")
     if not create_block:

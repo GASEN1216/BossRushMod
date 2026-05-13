@@ -1,7 +1,7 @@
 """
 Guard: 长期架构目标 Non-Goal 守门
-静态检查本轮不得引入 BossRushEventBus、IBossRushEventSubscriber、EventBus、IGameWorldProbe
-等类型声明（class/interface/struct）。
+Phase 8 允许受控的 BossRushEventBus 试点；本 guard 继续禁止引入
+泛化 EventBus、IBossRushEventSubscriber、IGameWorldProbe 等未落地 spec 的类型声明。
 
 扫描排除目录：Build/、.codex_tmp/、tests/、docs/、.git/、.kiro/
 
@@ -20,7 +20,6 @@ EXCLUDE_DIRS = {"Build", ".codex_tmp", "tests", "docs", ".git", ".kiro"}
 
 # 禁止在本轮引入的类型名称
 FORBIDDEN_TYPE_NAMES = [
-    "BossRushEventBus",
     "IBossRushEventSubscriber",
     "EventBus",
     "IGameWorldProbe",

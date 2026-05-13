@@ -6,6 +6,7 @@ COMPILE = Path("compile_official.bat")
 
 REQUIRED_FILES = [
     "ZombieMode\\ZombieModeModels.cs",
+    "ZombieMode\\ZombieModeTuning.cs",
     "ZombieMode\\ZombieModeEntry.cs",
     "ZombieMode\\ZombieModeMapSelection.cs",
     "ZombieMode\\ZombieModeMapSelectionHelper.cs",
@@ -15,6 +16,14 @@ REQUIRED_FILES = [
     "ZombieMode\\ZombieModeWaveController.cs",
     "ZombieMode\\ZombieModeEnemyRuntime.cs",
     "ZombieMode\\ZombieModeRewards.cs",
+    "ZombieMode\\ZombieModeRewardCatalogAndSelection.cs",
+    "ZombieMode\\ZombieModeRewardEffectsAndNpc.cs",
+    "ZombieMode\\ZombieModeRewardItemGrants.cs",
+    "ZombieMode\\ZombieModeRewardNpcServices.cs",
+    "ZombieMode\\ZombieModeRewardOptionCore.cs",
+    "ZombieMode\\ZombieModeRewardProjectileSpread.cs",
+    "ZombieMode\\ZombieModeRewardRuntimeModifiers.cs",
+    "ZombieMode\\ZombieModeRewardTriggerEffects.cs",
     "ZombieMode\\ZombiePurificationPointController.cs",
     "ZombieMode\\ZombieModeSafeZoneController.cs",
     "ZombieMode\\ZombieModeExtractionController.cs",
@@ -41,9 +50,10 @@ def main() -> int:
         return fail("ZombieModeCompileListGuard: missing compile entries: " + ", ".join(missing))
 
     model_index = text.find("ZombieMode\\ZombieModeModels.cs")
+    tuning_index = text.find("ZombieMode\\ZombieModeTuning.cs")
     entry_index = text.find("ZombieMode\\ZombieModeEntry.cs")
     cleanup_index = text.find("ZombieMode\\ZombieModeCleanup.cs")
-    if not (0 <= model_index < entry_index < cleanup_index):
+    if not (0 <= model_index < tuning_index < entry_index < cleanup_index):
         return fail("ZombieModeCompileListGuard: ZombieMode compile order is unsafe")
 
     print("ZombieModeCompileListGuard: PASS")

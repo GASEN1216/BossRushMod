@@ -6,9 +6,22 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 
 
 def fail(message: str) -> int:
@@ -40,10 +53,10 @@ def require(text: str, needle: str, message: str) -> int:
 
 
 def main() -> int:
-    models = MODELS.read_text(encoding="utf-8")
+    models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     spawner = SPAWNER.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
 
     for token in [
         "public const int MaxNormalZombieCount = Spawn.MaxNormalZombieCount;",

@@ -4,6 +4,18 @@ import sys
 
 CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 
 
 def fail(message: str) -> int:
@@ -16,7 +28,7 @@ def main() -> int:
         return fail("missing ZombieMode NPC catalog or reward file")
 
     catalog = CATALOG.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
 
     if catalog.count('BasePrice = 100, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bullet"') < 2:
         return fail("normal and boss bullet stock must both cost 100 base purification points")

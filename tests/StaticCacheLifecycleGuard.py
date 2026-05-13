@@ -34,9 +34,9 @@ PATTERN_STATIC_CACHE_FIELD = re.compile(
     re.IGNORECASE
 )
 
-# ResetStaticCaches 方法声明
+# Reset/Clear static cache 方法声明
 PATTERN_RESET_DECL = re.compile(
-    r"\bstatic\s+void\s+(Reset\w*StaticCaches)\s*\("
+    r"\bstatic\s+void\s+((?:Reset\w*StaticCaches)|(?:Clear\w*StaticCaches?)|ForceCleanup)\s*\("
 )
 
 # 类声明（简化版：只提取类名）
@@ -48,9 +48,9 @@ PATTERN_CLASS_DECL = re.compile(
     r"(?:class|struct)\s+(\w+)"
 )
 
-# Xxx.ResetYyyStaticCaches() 调用
+# Xxx.ResetYyyStaticCaches()/ClearStaticCache()/ForceCleanup() 调用
 PATTERN_RESET_CALL = re.compile(
-    r"(\w+)\s*\.\s*(Reset\w*StaticCaches)\s*\("
+    r"(\w+)\s*\.\s*((?:Reset\w*StaticCaches)|(?:Clear\w*StaticCaches?)|ForceCleanup)\s*\("
 )
 
 
@@ -110,7 +110,7 @@ def find_reset_calls_on_ondestroy_path(all_files: dict) -> set:
     # OnDestroy 路径方法名模式
     ONDESTROY_METHOD_PATTERN = re.compile(
         r"^(?:OnDestroy|OnDestroy_\w+|Cleanup\w*OnDestroy\w*|"
-        r"Reset\w*StaticCaches|CleanupIntegrationRuntime\w*|"
+        r"Reset\w*StaticCaches|CleanupAchievementRuntime|CleanupIntegrationRuntime\w*|"
         r"CleanupAlwaysOnRuntime\w*|CleanupModeRuntime\w*|"
         r"CleanupGameplayRuntime\w*)$"
     )
@@ -146,13 +146,121 @@ def find_reset_calls_on_ondestroy_path(all_files: dict) -> set:
     return result
 
 
+def structural_braces(line: str, state: dict) -> list:
+    """Return structural braces on a C# line, ignoring comments and strings."""
+    braces = []
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        nxt = line[i + 1] if i + 1 < len(line) else ""
+
+        if state.get("block_comment"):
+            if ch == "*" and nxt == "/":
+                state["block_comment"] = False
+                i += 2
+            else:
+                i += 1
+            continue
+
+        if state.get("string"):
+            if state.get("verbatim_string"):
+                if ch == '"' and nxt == '"':
+                    i += 2
+                elif ch == '"':
+                    state["string"] = False
+                    state["verbatim_string"] = False
+                    i += 1
+                else:
+                    i += 1
+            else:
+                if ch == "\\":
+                    i += 2
+                elif ch == '"':
+                    state["string"] = False
+                    i += 1
+                else:
+                    i += 1
+            continue
+
+        if state.get("char"):
+            if ch == "\\":
+                i += 2
+            elif ch == "'":
+                state["char"] = False
+                i += 1
+            else:
+                i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            break
+        if ch == "/" and nxt == "*":
+            state["block_comment"] = True
+            i += 2
+            continue
+        if ch == "'" :
+            state["char"] = True
+            i += 1
+            continue
+        if ch == '"':
+            state["string"] = True
+            state["verbatim_string"] = False
+            i += 1
+            continue
+        if ch == "@" and nxt == '"':
+            state["string"] = True
+            state["verbatim_string"] = True
+            i += 2
+            continue
+        if ch == "$" and nxt == '"':
+            state["string"] = True
+            state["verbatim_string"] = False
+            i += 2
+            continue
+        if ch == "$" and nxt == "@" and i + 2 < len(line) and line[i + 2] == '"':
+            state["string"] = True
+            state["verbatim_string"] = True
+            i += 3
+            continue
+        if ch == "@" and nxt == "$" and i + 2 < len(line) and line[i + 2] == '"':
+            state["string"] = True
+            state["verbatim_string"] = True
+            i += 3
+            continue
+
+        if ch == "{" or ch == "}":
+            braces.append(ch)
+
+        i += 1
+
+    return braces
+
+
+def find_class_body_end(lines: list, start_line: int) -> int:
+    """Find the exclusive end line for a class body using structural braces."""
+    state = {}
+    depth = 0
+    opened = False
+    for i in range(start_line, len(lines)):
+        for brace in structural_braces(lines[i], state):
+            if brace == "{":
+                depth += 1
+                opened = True
+            elif opened:
+                depth -= 1
+                if depth <= 0:
+                    return i + 1
+
+    return len(lines)
+
+
 def analyze_file(filepath: Path, text: str) -> list:
     """
     分析单个文件，返回检测到的类信息列表。
     每项: (logical_name, actual_name, has_cache, has_reset)
 
-    使用简化策略：按类声明分段，不做完整的大括号追踪。
-    对于每个类声明，检查从该声明到下一个类声明（或文件末尾）之间的内容。
+    使用类声明后的大括号范围来分段，避免嵌套 struct/class 被误判为
+    持有外层类的静态缓存字段。
     """
     results = []
     lines = text.split("\n")
@@ -166,15 +274,16 @@ def analyze_file(filepath: Path, text: str) -> list:
             is_partial_mb = ("partial" in line and actual_name == "ModBehaviour")
             class_positions.append((i, actual_name, is_partial_mb))
 
-    # 对每个类，检查其范围内的内容
+    # 对每个类，检查其真实大括号范围内的内容
     for idx, (start_line, actual_name, is_partial_mb) in enumerate(class_positions):
-        # 确定范围：到下一个同级类声明或文件末尾
-        if idx + 1 < len(class_positions):
-            end_line = class_positions[idx + 1][0]
-        else:
-            end_line = len(lines)
+        end_line = find_class_body_end(lines, start_line)
 
-        logical_name = filepath.stem if is_partial_mb else actual_name
+        if is_partial_mb:
+            logical_name = filepath.stem
+            if logical_name.endswith("StaticCacheReset"):
+                logical_name = logical_name[:-len("StaticCacheReset")]
+        else:
+            logical_name = actual_name
 
         # 检查范围内是否有缓存字段
         has_cache = False
@@ -216,39 +325,53 @@ def main() -> int:
     # 构建 OnDestroy 调用链中被调用 ResetStaticCaches 的类名集合
     ondestroy_called = find_reset_calls_on_ondestroy_path(all_files)
 
-    # 检查每个文件中的类
+    # 检查每个文件中的类；partial class 需要按 logical_name 聚合，否则拆分后
+    # 含缓存字段的分部文件会被误判为缺少 ResetStaticCaches。
     results = []
-    seen = set()
+    class_records = {}
 
     for filepath, text in all_files.items():
         file_classes = analyze_file(filepath, text)
 
         for logical_name, actual_name, has_cache, has_reset in file_classes:
-            if logical_name in seen:
-                continue
-            seen.add(logical_name)
+            record = class_records.setdefault(logical_name, {
+                "actual_names": set(),
+                "has_cache": False,
+                "has_reset": False,
+                "files": [],
+            })
+            record["actual_names"].add(actual_name)
+            record["has_cache"] = record["has_cache"] or has_cache
+            record["has_reset"] = record["has_reset"] or has_reset
+            record["files"].append(filepath)
 
-            # 判断是否在 OnDestroy 路径上被调用
-            in_ondestroy = False
-            if has_reset:
-                if actual_name in ondestroy_called:
-                    in_ondestroy = True
-                elif logical_name in ondestroy_called:
-                    in_ondestroy = True
-                elif actual_name == "ModBehaviour" and "ModBehaviour" in ondestroy_called:
-                    in_ondestroy = True
+    for logical_name, record in class_records.items():
+        actual_names = record["actual_names"]
+        has_cache = record["has_cache"]
+        has_reset = record["has_reset"]
+        filepath = record["files"][0]
 
-            # 判定
-            if has_reset and in_ondestroy:
-                results.append(("PASS", logical_name, filepath,
-                                "已有 ResetStaticCaches 且在 OnDestroy 路径上被调用"))
-            elif logical_name in allowlist or actual_name in allowlist:
-                results.append(("WARN", logical_name, filepath, "已登记白名单待办"))
-            elif has_cache and not has_reset:
-                results.append(("FAIL", logical_name, filepath, "缺少 ResetStaticCaches 方法"))
-            elif has_reset and not in_ondestroy:
-                results.append(("FAIL", logical_name, filepath,
-                                "有 ResetStaticCaches 但未在 OnDestroy 路径上被调用"))
+        # 判断是否在 OnDestroy 路径上被调用
+        in_ondestroy = False
+        if has_reset:
+            if logical_name in ondestroy_called:
+                in_ondestroy = True
+            elif any(actual_name in ondestroy_called for actual_name in actual_names):
+                in_ondestroy = True
+            elif "ModBehaviour" in actual_names and "ModBehaviour" in ondestroy_called:
+                in_ondestroy = True
+
+        # 判定
+        if has_reset and in_ondestroy:
+            results.append(("PASS", logical_name, filepath,
+                            "已有 ResetStaticCaches 且在 OnDestroy 路径上被调用"))
+        elif logical_name in allowlist or any(actual_name in allowlist for actual_name in actual_names):
+            results.append(("WARN", logical_name, filepath, "已登记白名单待办"))
+        elif has_cache and not has_reset:
+            results.append(("FAIL", logical_name, filepath, "缺少 ResetStaticCaches 方法"))
+        elif has_reset and not in_ondestroy:
+            results.append(("FAIL", logical_name, filepath,
+                            "有 ResetStaticCaches 但未在 OnDestroy 路径上被调用"))
 
     # 输出结果
     pass_count = 0
@@ -284,7 +407,25 @@ def main() -> int:
     print(f"\n  汇总: PASS={pass_count}, WARN={warn_count}, FAIL={fail_count}")
 
     # 验证三个目标类必须 PASS
-    target_classes = {"WishFountainRewardAnimationView", "ModeEMerchant", "CourierPaidLootSweepService"}
+    target_classes = {
+        "BossRushAudioHooks",
+        "DebugAndTools",
+        "DialogueActorFactory",
+        "EquipmentFactory",
+        "NPCTeleportUI",
+        "NPCUIAssetCache",
+        "ItemFactory",
+        "ReforgeUIManager",
+        "ReflectionCache",
+        "AchievementIconLoader",
+        "BossRushAchievementManager",
+        "CourierPaidLootSweepService",
+        "EntityModelFactory",
+        "ModeEMerchant",
+        "StorageDepositService",
+        "WishFountainRewardAnimationView",
+        "WishFountainService",
+    }
     target_results = {}
     for status, name, filepath, msg in results:
         if name in target_classes:

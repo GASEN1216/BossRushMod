@@ -5,7 +5,27 @@ import sys
 
 
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY_PARTS = [
+    ENTRY,
+    Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
+]
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
+
+def read_entry() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in ENTRY_PARTS)
+
 cash = Path("ZombieMode/ZombieModeCashInvestmentView.cs")
 extraction = Path("ZombieMode/ZombieModeExtractionController.cs")
 HUD = Path("ZombieMode/ZombieModeHudController.cs")
@@ -41,8 +61,8 @@ def extract_block(text: str, marker: str) -> str:
 
 
 def main() -> int:
-    entry = ENTRY.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    entry = read_entry()
+    rewards = read_rewards()
     cash_text = cash.read_text(encoding="utf-8")
     extraction_text = extraction.read_text(encoding="utf-8")
     hud = HUD.read_text(encoding="utf-8")

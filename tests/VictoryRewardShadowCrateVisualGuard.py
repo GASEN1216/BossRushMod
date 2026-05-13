@@ -8,7 +8,10 @@ import sys
 
 
 SOURCE = Path("LootAndRewards/VictoryRewardShadowCrateController.cs")
-REWARD_SOURCE = Path("LootAndRewards/LootAndRewards.cs")
+REWARD_SOURCES = [
+    Path("LootAndRewards/LootAndRewards.cs"),
+    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -18,7 +21,7 @@ def fail(message: str) -> int:
 
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8")
-    reward_text = REWARD_SOURCE.read_text(encoding="utf-8")
+    reward_text = "\n".join(source.read_text(encoding="utf-8") for source in REWARD_SOURCES)
 
     required_snippets = [
         "private const float RotationSpeedDegreesPerSecond = 30f;",

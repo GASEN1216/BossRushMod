@@ -8,7 +8,10 @@ from pathlib import Path
 import sys
 
 
-REWARD_SOURCE = Path("LootAndRewards/LootAndRewards.cs")
+REWARD_SOURCES = [
+    Path("LootAndRewards/LootAndRewards.cs"),
+    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
+]
 VISUAL_SOURCE = Path("LootAndRewards/VictoryRewardShadowCrateController.cs")
 
 
@@ -18,7 +21,7 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    reward_text = REWARD_SOURCE.read_text(encoding="utf-8")
+    reward_text = "\n".join(source.read_text(encoding="utf-8") for source in REWARD_SOURCES)
     visual_text = VISUAL_SOURCE.read_text(encoding="utf-8")
 
     required_reward_snippets = [

@@ -1,0 +1,3 @@
+# Maximum non-comment entries currently allowed in static_cache_allowlist.txt.
+# Batch B should shrink this number as classes gain ResetStaticCaches/Shutdown paths.
+11

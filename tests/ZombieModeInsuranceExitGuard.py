@@ -5,6 +5,18 @@ import sys
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 DEBUG = Path("ZombieMode/ZombieModeDebug.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
 
@@ -46,7 +58,7 @@ def extract_cleanup_method(text: str) -> str:
 def main() -> int:
     cleanup = CLEANUP.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
     debug = DEBUG.read_text(encoding="utf-8")
     extraction = EXTRACTION.read_text(encoding="utf-8")
 

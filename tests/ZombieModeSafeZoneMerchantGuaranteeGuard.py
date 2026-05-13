@@ -5,6 +5,18 @@ import sys
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
 
@@ -22,7 +34,7 @@ def require(text: str, snippet: str, label: str) -> int:
 def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
     extraction = EXTRACTION.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
     localization = LOCALIZATION.read_text(encoding="utf-8")
 
     for snippet in [

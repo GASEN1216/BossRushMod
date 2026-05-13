@@ -3,6 +3,18 @@ import sys
 
 
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 
 
 def fail(message: str) -> int:
@@ -30,7 +42,7 @@ def extract_block(text: str, marker: str) -> str:
 
 
 def main() -> int:
-    text = REWARDS.read_text(encoding="utf-8")
+    text = read_rewards()
 
     open_ui = extract_block(text, "public void OpenZombieModeTemporaryNpcServiceUi")
     if "FindObjectsOfType<ZombieModeTemporaryNpcServiceView>" not in open_ui:

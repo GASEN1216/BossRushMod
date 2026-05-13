@@ -7,6 +7,16 @@ import sys
 
 
 SOURCE = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER_NPC_SOURCES = [
+    SOURCE,
+    Path("Integration/NPCs/Courier/CourierNPCController.cs"),
+    Path("Integration/NPCs/Courier/CourierMovement.cs"),
+    Path("Integration/NPCs/Courier/CourierInteractables.cs"),
+]
+
+
+def read_courier_npc_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_NPC_SOURCES)
 
 
 def fail(message: str) -> int:
@@ -54,7 +64,7 @@ def require_silent_talking(block: str, block_name: str) -> int:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = read_courier_npc_sources()
 
     legacy_paid_sweep_block = extract_block(
         text,

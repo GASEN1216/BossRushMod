@@ -1,7 +1,8 @@
 """SmokeLogScan: scan the latest Duckov log for BossRush-related errors.
 
 This helper supports manual in-game smoke tests. It does not prove gameplay
-behavior by itself; it only catches obvious BossRush stack traces after a run.
+behavior by itself; it rejects logs older than the deployed BossRush.dll and
+catches obvious BossRush stack traces after a run.
 """
 
 from dataclasses import dataclass
@@ -51,6 +52,19 @@ def find_latest_log(game_path: Path) -> Optional[Path]:
     return max(logs, key=lambda path: path.stat().st_mtime)
 
 
+def find_deployed_bossrush_dll(game_path: Path) -> Optional[Path]:
+    dll = game_path / "Duckov_Data" / "Mods" / "BossRush" / "BossRush.dll"
+    if dll.is_file():
+        return dll
+    return None
+
+
+def is_log_older_than_deployment(log_path: Path, deployed_dll: Optional[Path]) -> bool:
+    if deployed_dll is None:
+        return False
+    return log_path.stat().st_mtime < deployed_dll.stat().st_mtime
+
+
 def resolve_game_path(argv: Iterable[str]) -> Path:
     args = list(argv)
     if args:
@@ -97,6 +111,14 @@ def main(argv: List[str]) -> int:
         print("SmokeLogScan: NO_LOG")
         print("No .log file found under: {0}".format(game_path))
         return 2
+
+    deployed_dll = find_deployed_bossrush_dll(game_path)
+    if is_log_older_than_deployment(latest_log, deployed_dll):
+        print("SmokeLogScan: latest log: {0}".format(latest_log))
+        print("SmokeLogScan: deployed DLL: {0}".format(deployed_dll))
+        print("SmokeLogScan: STALE_LOG")
+        print("Latest log is older than the deployed BossRush.dll; run the in-game smoke test again.")
+        return 3
 
     text = latest_log.read_text(encoding="utf-8", errors="ignore")
     result = scan_log_text(text)

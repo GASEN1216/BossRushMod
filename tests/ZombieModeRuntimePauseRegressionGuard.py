@@ -4,6 +4,13 @@ import re
 import sys
 
 
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
+
+
 def fail(message: str) -> int:
     print("ZombieModeRuntimePauseRegressionGuard: FAIL - " + message)
     return 1
@@ -12,6 +19,10 @@ def fail(message: str) -> int:
 def require(text: str, needle: str, message: str):
     if needle not in text:
         raise AssertionError(message + " -> " + needle)
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
 
 
 def main() -> int:
@@ -36,7 +47,7 @@ def main() -> int:
     except AssertionError as exc:
         return fail(str(exc))
 
-    pollution_text = Path("ZombieMode/ZombieModePollution.cs").read_text(encoding="utf-8")
+    pollution_text = read_pollution()
     try:
         require(pollution_text, "if (inst.IsZombieModeRuntimePaused())", "standalone pollution runtimes must gate on pause")
         require(pollution_text, "float now = inst.GetZombieModeRuntimeNow();", "pollution runtimes must use pause-adjusted runtime clock")

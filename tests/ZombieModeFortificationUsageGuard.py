@@ -2,13 +2,22 @@ from pathlib import Path
 import sys
 
 
-MODEF_FORT = Path("ModeF/ModeFFortifications.cs")
+MODEF_FORT_PARTS = [
+    Path("ModeF/ModeFFortifications.cs"),
+    Path("ModeF/ModeFFortifications_RuntimePlacement.cs"),
+    Path("ModeF/ModeFFortifications_RepairRewardsCleanup.cs"),
+    Path("ModeF/ModeFItemUsageAndTriggers.cs"),
+]
 ZOMBIE_ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 
 
 def fail(message: str) -> int:
     print("ZombieModeFortificationUsageGuard: FAIL - " + message)
     return 1
+
+
+def read_modef_fortifications() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in MODEF_FORT_PARTS)
 
 
 def extract_method(text: str, marker: str) -> str:
@@ -34,7 +43,7 @@ def extract_method(text: str, marker: str) -> str:
 
 
 def main() -> int:
-    fort = MODEF_FORT.read_text(encoding="utf-8")
+    fort = read_modef_fortifications()
     zombie = ZOMBIE_ENTRY.read_text(encoding="utf-8")
 
     for token in [

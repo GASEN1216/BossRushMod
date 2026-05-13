@@ -14,6 +14,20 @@ import sys
 
 
 SOURCE = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
+PHANTOM_WITCH_ABILITY_SOURCES = [
+    SOURCE,
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_StealthAndAttacks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_Minions.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_RuntimeTicks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PhaseAndLifecycle.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_MovementAndDamage.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_CleanupAndTelemetry.cs"),
+]
+
+
+def read_phantom_witch_ability_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in PHANTOM_WITCH_ABILITY_SOURCES)
 
 
 def fail(message: str) -> int:
@@ -44,7 +58,7 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = read_phantom_witch_ability_sources()
 
     legacy_signatures = [
         "private IEnumerator ExecuteBlink()",

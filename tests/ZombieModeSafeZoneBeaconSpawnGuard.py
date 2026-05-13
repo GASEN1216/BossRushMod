@@ -3,6 +3,7 @@
 from pathlib import Path
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
@@ -24,7 +25,7 @@ def forbid(text, needle, message):
 
 
 def main():
-    models = MODELS.read_text(encoding="utf-8")
+    models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     extraction = EXTRACTION.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")

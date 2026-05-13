@@ -3,13 +3,22 @@ import sys
 
 
 PAID_SWEEP = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
-MODEF_FORT = Path("ModeF/ModeFFortifications.cs")
+MODEF_FORT_PARTS = [
+    Path("ModeF/ModeFFortifications.cs"),
+    Path("ModeF/ModeFFortifications_RuntimePlacement.cs"),
+    Path("ModeF/ModeFFortifications_RepairRewardsCleanup.cs"),
+    Path("ModeF/ModeFItemUsageAndTriggers.cs"),
+]
 ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 
 
 def fail(message: str) -> int:
     print("ZombieModePromptAndFortificationCleanupGuard: FAIL - " + message)
     return 1
+
+
+def read_modef_fortifications() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in MODEF_FORT_PARTS)
 
 
 def extract_method(text: str, marker: str) -> str:
@@ -76,7 +85,7 @@ def check_prompt_method(body: str, label: str) -> int:
 
 def main() -> int:
     paid_sweep = PAID_SWEEP.read_text(encoding="utf-8")
-    modef_fort = MODEF_FORT.read_text(encoding="utf-8")
+    modef_fort = read_modef_fortifications()
     zombie_cleanup = ZOMBIE_CLEANUP.read_text(encoding="utf-8")
 
     for snippet in [

@@ -14,7 +14,16 @@ import sys
 
 
 ASSET = Path("Integration/PhantomWitch/PhantomWitchAssetManager.cs")
+ASSET_PARTS = [
+    ASSET,
+    Path("Integration/PhantomWitch/PhantomWitchAssetManager_RuntimeComponents.cs"),
+]
 REDESIGN = Path("Integration/PhantomWitch/PhantomWitchVfxRedesign.cs")
+REDESIGN_PARTS = [
+    REDESIGN,
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_EmittersAndTextures.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_RuntimeComponents.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -50,9 +59,13 @@ def require(text: str, pattern: str, description: str) -> str | None:
     return None
 
 
+def read_redesign() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in REDESIGN_PARTS)
+
+
 def main() -> int:
-    asset_text = ASSET.read_text(encoding="utf-8")
-    redesign_text = REDESIGN.read_text(encoding="utf-8")
+    asset_text = "\n".join(path.read_text(encoding="utf-8") for path in ASSET_PARTS)
+    redesign_text = read_redesign()
 
     boss_realm_block = extract_block(asset_text, "public static GameObject CreateBossCurseRealmVisual")
     sweep_block = extract_block(redesign_text, "internal static GameObject CreateScytheSweepEffect")

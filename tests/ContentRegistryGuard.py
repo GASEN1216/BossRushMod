@@ -6,7 +6,12 @@ import sys
 
 
 COMPILE = Path("compile_official.bat")
-INTEGRATION = Path("Integration/BossRushIntegration.cs")
+INTEGRATION_PARTS = [
+    Path("Integration/BossRushIntegration.cs"),
+    Path("Integration/BossRushIntegration_StartAndScene.cs"),
+    Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
+    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
+]
 ITEM_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
 
@@ -100,6 +105,10 @@ def normalize_slashes(text: str) -> str:
     return re.sub(r"/+", "/", text.replace("\\", "/"))
 
 
+def read_boss_rush_integration() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+
+
 def require_ordered_tokens(text: str, tokens: list[str], label: str) -> str | None:
     position = -1
     for token in tokens:
@@ -121,7 +130,7 @@ def require_exactly_once(text: str, token: str, label: str) -> str | None:
 
 def main() -> int:
     compile_text = normalize_slashes(COMPILE.read_text(encoding="utf-8", errors="ignore"))
-    integration_text = INTEGRATION.read_text(encoding="utf-8", errors="ignore")
+    integration_text = read_boss_rush_integration()
 
     missing_compile = [path for path in ITEM_COMPILE_SOURCES if path not in compile_text]
     if missing_compile:

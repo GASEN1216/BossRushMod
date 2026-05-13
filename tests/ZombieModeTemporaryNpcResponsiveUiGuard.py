@@ -3,6 +3,18 @@ import sys
 
 
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
 
 
@@ -18,7 +30,7 @@ def require(text: str, snippet: str, label: str) -> int:
 
 
 def main() -> int:
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
     helper = HELPER.read_text(encoding="utf-8")
 
     for snippet in [

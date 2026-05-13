@@ -4,6 +4,18 @@ import sys
 
 PATCH = Path("ZombieMode/ZombieModeRewardProjectilePatch.cs")
 EFFECTS = Path("ZombieMode/ZombieModeRewardEffects.cs")
+EFFECT_PARTS = [
+    EFFECTS,
+    Path("ZombieMode/ZombieModeRewardOptionCore.cs"),
+    Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
+    Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
+    Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+]
+
+
+def read_effects() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
+
 COMPILE = Path("compile_official.bat")
 
 
@@ -19,7 +31,7 @@ def main() -> int:
         return fail("ZombieModeProjectileRewardPatchGuard: missing reward effects file")
 
     patch = PATCH.read_text(encoding="utf-8")
-    effects = EFFECTS.read_text(encoding="utf-8")
+    effects = read_effects()
     compile_text = COMPILE.read_text(encoding="utf-8")
 
     for token in [

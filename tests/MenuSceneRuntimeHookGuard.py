@@ -6,7 +6,12 @@ import sys
 
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 SCENE_RUNTIME_GATE = Path("Utilities/SceneRuntimeGate.cs")
-INTEGRATION = Path("Integration/BossRushIntegration.cs")
+INTEGRATION_PARTS = [
+    Path("Integration/BossRushIntegration.cs"),
+    Path("Integration/BossRushIntegration_StartAndScene.cs"),
+    Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
+    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
+]
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 STEAM_ACHIEVEMENT_POPUP = Path("Achievement/SteamAchievementPopup.cs")
@@ -95,6 +100,10 @@ def fail(message: str) -> int:
     return 1
 
 
+def read_boss_rush_integration() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+
+
 def extract_method(text: str, signature: str) -> str:
     start = text.find(signature)
     if start < 0:
@@ -128,7 +137,7 @@ def has_recent_guard(block: str, call: str, guard: str, window: int = 500) -> bo
 def main() -> int:
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8", errors="ignore")
     scene_gate_text = SCENE_RUNTIME_GATE.read_text(encoding="utf-8", errors="ignore")
-    integration_text = INTEGRATION.read_text(encoding="utf-8", errors="ignore")
+    integration_text = read_boss_rush_integration()
     always_on_runtime_text = ALWAYS_ON_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     equipment_runtime_text = EQUIPMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
 

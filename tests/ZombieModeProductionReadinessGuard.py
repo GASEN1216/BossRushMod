@@ -16,9 +16,29 @@ import sys
 SPAWN_CORE = Path("Utilities/EnemySpawnCore.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS_PARTS = [
+    BOSS,
+    Path("ZombieMode/ZombieModePlayerSlowRuntime.cs"),
+]
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
+
+def read_boss() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in BOSS_PARTS if path.exists())
+
 
 
 def fail(message: str) -> int:
@@ -46,10 +66,10 @@ def extract_method(text: str, method_name: str) -> str:
 def main() -> int:
     spawn_core = SPAWN_CORE.read_text(encoding="utf-8")
     spawner = SPAWNER.read_text(encoding="utf-8")
-    boss = BOSS.read_text(encoding="utf-8")
+    boss = read_boss()
     drops = DROPS.read_text(encoding="utf-8")
     models = MODELS.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
 
     if "bool skipBossRushLootTracking = false" not in spawn_core:
         return fail("ZombieModeProductionReadinessGuard: SpawnEnemyCore lacks skipBossRushLootTracking parameter")

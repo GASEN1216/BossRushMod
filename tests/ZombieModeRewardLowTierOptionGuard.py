@@ -3,7 +3,31 @@ import sys
 
 
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 EFFECTS = Path("ZombieMode/ZombieModeRewardEffects.cs")
+EFFECT_PARTS = [
+    EFFECTS,
+    Path("ZombieMode/ZombieModeRewardOptionCore.cs"),
+    Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
+    Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
+    Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+]
+
+
+def read_effects() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
+
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 
 
@@ -13,8 +37,8 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    rewards = REWARDS.read_text(encoding="utf-8")
-    effects = EFFECTS.read_text(encoding="utf-8") if EFFECTS.exists() else ""
+    rewards = read_rewards()
+    effects = read_effects() if EFFECTS.exists() else ""
     drops = DROPS.read_text(encoding="utf-8")
 
     banned = [

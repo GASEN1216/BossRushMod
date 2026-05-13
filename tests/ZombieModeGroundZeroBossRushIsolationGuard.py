@@ -4,12 +4,21 @@ from pathlib import Path
 import sys
 
 
-INTEGRATION = Path("Integration/BossRushIntegration.cs")
+INTEGRATION_PARTS = [
+    Path("Integration/BossRushIntegration.cs"),
+    Path("Integration/BossRushIntegration_StartAndScene.cs"),
+    Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
+    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
+]
 
 
 def fail(message: str) -> int:
     print("ZombieModeGroundZeroBossRushIsolationGuard: FAIL - " + message)
     return 1
+
+
+def read_boss_rush_integration() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
 
 
 def extract_method(text: str, marker: str) -> str:
@@ -34,7 +43,7 @@ def extract_method(text: str, marker: str) -> str:
 
 
 def main() -> int:
-    text = INTEGRATION.read_text(encoding="utf-8")
+    text = read_boss_rush_integration()
 
     scene_loaded = extract_method(text, "private void OnSceneLoaded_Integration")
     if not scene_loaded:

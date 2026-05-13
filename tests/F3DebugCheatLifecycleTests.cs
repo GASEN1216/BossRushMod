@@ -104,7 +104,20 @@ internal static class F3DebugCheatLifecycleTests
 
     public static int Main()
     {
-        string source = File.ReadAllText(Path.Combine("DebugAndTools", "F3DebugCheatMenu.cs"));
+        string[] sourceFiles =
+        {
+            Path.Combine("DebugAndTools", "F3DebugCheatMenu.cs"),
+            Path.Combine("DebugAndTools", "F3DebugCheatMenuUi.cs"),
+            Path.Combine("DebugAndTools", "F3DebugCheatMenuPlayerStats.cs"),
+            Path.Combine("DebugAndTools", "F3DebugCheatMenuActions.cs"),
+        };
+
+        string source = string.Empty;
+        for (int i = 0; i < sourceFiles.Length; i++)
+        {
+            source += File.ReadAllText(sourceFiles[i]) + "\n";
+        }
+
         TestHideRestoresCapturedPresentationState(source);
         TestTryGetMainCharacterAvoidsArbitraryFallback(source);
         TestOnDestroyDestroysPersistentUi(source);

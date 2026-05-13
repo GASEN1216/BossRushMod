@@ -3,7 +3,20 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 EFFECTS = Path("ZombieMode/ZombieModeRewardEffects.cs")
+EFFECT_PARTS = [
+    EFFECTS,
+    Path("ZombieMode/ZombieModeRewardOptionCore.cs"),
+    Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
+    Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
+    Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+]
+
+
+def read_effects() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
+
 
 
 def fail(message: str) -> int:
@@ -12,8 +25,8 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    models = MODELS.read_text(encoding="utf-8")
-    effects = EFFECTS.read_text(encoding="utf-8") if EFFECTS.exists() else ""
+    models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
+    effects = read_effects() if EFFECTS.exists() else ""
 
     for snippet in [
         'public const string GunCritRateGain = "GunCritRateGain";',

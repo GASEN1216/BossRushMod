@@ -15,6 +15,10 @@ import sys
 
 POLICY = Path("Integration/PhantomWitch/PhantomWitchPerformancePolicy.cs")
 ASSET = Path("Integration/PhantomWitch/PhantomWitchAssetManager.cs")
+ASSET_PARTS = [
+    ASSET,
+    Path("Integration/PhantomWitch/PhantomWitchAssetManager_RuntimeComponents.cs"),
+]
 TEST = Path("tests/PhantomWitchPerformancePolicyTests.cs")
 
 
@@ -25,7 +29,7 @@ def fail(message: str) -> int:
 
 def main() -> int:
     policy_text = POLICY.read_text(encoding="utf-8")
-    asset_text = ASSET.read_text(encoding="utf-8")
+    asset_text = "\n".join(path.read_text(encoding="utf-8") for path in ASSET_PARTS)
     test_text = TEST.read_text(encoding="utf-8")
 
     if re.search(r"ResolveFxDetailLevel\s*\(\s*int\s+activeRootCount\s*,\s*bool\s+isLowSpecHardware", policy_text):

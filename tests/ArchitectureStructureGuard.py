@@ -34,7 +34,16 @@ WAVES_SPAWNER_CONTROL = Path("WavesArena/WavesArenaSpawnerControl.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
-INTEGRATION = Path("Integration/BossRushIntegration.cs")
+INTEGRATION_PARTS = [
+    Path("Integration/BossRushIntegration.cs"),
+    Path("Integration/BossRushIntegration_StartAndScene.cs"),
+    Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
+    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
+]
+
+
+def read_boss_rush_integration() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
 
 REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
@@ -246,12 +255,12 @@ def main() -> int:
         "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
         "AffinityManager.Shutdown();",
         "AffinityUIManager.Cleanup();",
-        "EntityModelFactory.Shutdown();",
+        "EntityModelFactory.ResetStaticCaches();",
         'DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);',
     ]:
         if required not in always_on_destroy_body:
             return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy missing token: " + required)
-    if always_on_destroy_body.find("AffinityUIManager.Cleanup();") > always_on_destroy_body.find("EntityModelFactory.Shutdown();"):
+    if always_on_destroy_body.find("AffinityUIManager.Cleanup();") > always_on_destroy_body.find("EntityModelFactory.ResetStaticCaches();"):
         return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy must preserve affinity cleanup before entity model shutdown")
 
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
@@ -642,7 +651,8 @@ def main() -> int:
         "TogglePlacementMode();",
         "BossRushMapSelectionHelper.ShowBossRushMapSelection();",
         "LogNearbyGameObjects(playerPos, 10f, 30);",
-        "UnityEngine.Object.FindObjectsOfType<InteractableBase>(true);",
+        "LogDebugSceneCharacters(main, playerPos);",
+        "LogNearestDebugInteractable(playerPos);",
         "ForceKillAllEnemies();",
         "ToggleNPCTeleportUI();",
         "HideNPCTeleportUI();",
@@ -722,7 +732,8 @@ def main() -> int:
         "TogglePlacementMode();",
         "BossRushMapSelectionHelper.ShowBossRushMapSelection();",
         "LogNearbyGameObjects(playerPos, 10f, 30);",
-        "UnityEngine.Object.FindObjectsOfType<InteractableBase>(true);",
+        "LogDebugSceneCharacters(main, playerPos);",
+        "LogNearestDebugInteractable(playerPos);",
         "ForceKillAllEnemies();",
         "ToggleNPCTeleportUI();",
         "HideNPCTeleportUI();",
@@ -1025,6 +1036,7 @@ def main() -> int:
         "AffinityManager.Shutdown();",
         "AffinityUIManager.Cleanup();",
         "EntityModelFactory.Shutdown();",
+        "EntityModelFactory.ResetStaticCaches();",
         "CleanupZombieModeOnDestroyRuntime();",
         "CleanupZombieModeOnDestroy();",
     ]:
@@ -1150,7 +1162,7 @@ def main() -> int:
     if "NPCModuleRegistry.SpawnForCurrentScene(this, context);" in mod_text:
         return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own common NPC spawn registry call")
 
-    integration_text = INTEGRATION.read_text(encoding="utf-8", errors="ignore")
+    integration_text = read_boss_rush_integration()
     for forbidden in [
         "NPCModuleRegistry.DestroyAll(this,",
         "NPCModuleRegistry.ShouldSpawnAnyInScene(this,",

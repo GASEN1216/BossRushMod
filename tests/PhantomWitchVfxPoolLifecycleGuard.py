@@ -14,7 +14,16 @@ import sys
 
 
 SOURCE = Path("Integration/PhantomWitch/PhantomWitchVfxRedesign.cs")
+SOURCE_PARTS = [
+    SOURCE,
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_EmittersAndTextures.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_RuntimeComponents.cs"),
+]
 ASSET = Path("Integration/PhantomWitch/PhantomWitchAssetManager.cs")
+ASSET_PARTS = [
+    ASSET,
+    Path("Integration/PhantomWitch/PhantomWitchAssetManager_RuntimeComponents.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -44,9 +53,13 @@ def extract_block(text: str, signature: str) -> str:
     return ""
 
 
+def read_source() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in SOURCE_PARTS)
+
+
 def main() -> int:
-    redesign_text = SOURCE.read_text(encoding="utf-8")
-    asset_text = ASSET.read_text(encoding="utf-8")
+    redesign_text = read_source()
+    asset_text = "\n".join(path.read_text(encoding="utf-8") for path in ASSET_PARTS)
 
     get_or_build = extract_block(redesign_text, "private static GameObject GetOrBuildVfx(string key, Vector3 position, float duration, System.Action<GameObject> builder)")
     if not get_or_build:

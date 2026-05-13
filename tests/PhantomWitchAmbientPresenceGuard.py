@@ -17,6 +17,20 @@ import sys
 AMBIENT = Path("Integration/PhantomWitch/PhantomWitchAmbientPresence.cs")
 CONFIG = Path("Integration/PhantomWitch/PhantomWitchConfig.cs")
 ABILITY = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
+PHANTOM_WITCH_ABILITY_SOURCES = [
+    ABILITY,
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_StealthAndAttacks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_Minions.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_RuntimeTicks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PhaseAndLifecycle.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_MovementAndDamage.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_CleanupAndTelemetry.cs"),
+]
+
+
+def read_phantom_witch_ability_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in PHANTOM_WITCH_ABILITY_SOURCES)
 COMPILE = Path("compile_official.bat")
 
 
@@ -37,7 +51,7 @@ def main() -> int:
 
     ambient_text = AMBIENT.read_text(encoding="utf-8")
     config_text = CONFIG.read_text(encoding="utf-8")
-    ability_text = ABILITY.read_text(encoding="utf-8")
+    ability_text = read_phantom_witch_ability_sources()
     compile_text = COMPILE.read_text(encoding="utf-8")
 
     ambient_requirements = [

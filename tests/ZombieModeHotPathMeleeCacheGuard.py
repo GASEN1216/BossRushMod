@@ -5,7 +5,15 @@ import re
 import sys
 
 
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
 
 
 def fail(message: str) -> int:
@@ -36,7 +44,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    text = POLLUTION.read_text(encoding="utf-8")
+    text = read_pollution()
     body = extract_method_body(text, "private bool IsZombieModeDamageFromMeleeWeapon(")
     if body is None:
         return fail("ZombieModeHotPathMeleeCacheGuard: missing IsZombieModeDamageFromMeleeWeapon")

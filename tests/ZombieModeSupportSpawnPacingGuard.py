@@ -4,7 +4,11 @@ from pathlib import Path
 
 
 BOSS = Path("ZombieMode/ZombieModeBossController.cs")
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 
 
@@ -13,9 +17,13 @@ def fail(message: str) -> int:
     return 1
 
 
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
+
+
 def main() -> int:
     boss_text = BOSS.read_text(encoding="utf-8")
-    pollution_text = POLLUTION.read_text(encoding="utf-8")
+    pollution_text = read_pollution()
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
 
     required = [

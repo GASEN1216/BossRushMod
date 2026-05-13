@@ -22,6 +22,19 @@
 from pathlib import Path
 import sys
 
+REWARD_PARTS = [
+    Path("ZombieMode/ZombieModeRewards.cs"),
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
+
 
 def fail(msg: str) -> int:
     print("ZombieModeReview20260503Guard: FAIL — " + msg)
@@ -48,14 +61,23 @@ def must_not_contain(path: Path, *needles: str) -> str:
     return ""
 
 
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in REWARD_PARTS if path.is_file())
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS if path.is_file())
+
+
 def main() -> int:
     spawner = Path("ZombieMode/ZombieModeSpawner.cs")
     boss = Path("ZombieMode/ZombieModeBossController.cs")
     models = Path("ZombieMode/ZombieModeModels.cs")
-    pollution = Path("ZombieMode/ZombieModePollution.cs")
+    tuning = Path("ZombieMode/ZombieModeTuning.cs")
+    pollution_text = read_pollution()
     wave = Path("ZombieMode/ZombieModeWaveController.cs")
     drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
-    rewards = Path("ZombieMode/ZombieModeRewards.cs")
+    rewards_text = read_rewards()
     cleanup = Path("ZombieMode/ZombieModeCleanup.cs")
     inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
     map_iso = Path("ZombieMode/ZombieModeMapIsolation.cs")
@@ -84,7 +106,7 @@ def main() -> int:
         return fail(err)
 
     # §1.2 — BossKindTable / GetBossKind / BossKindTuning
-    err = must_contain(models, "BossKindTuning", "BossKindTable", "GetBossKind")
+    err = must_contain(tuning, "BossKindTuning", "BossKindTable", "GetBossKind")
     if err:
         return fail(err)
     err = must_contain(spawner, "ZombieModeTuning.GetBossKind(kind)")
@@ -93,10 +115,11 @@ def main() -> int:
 
     # §1.3 — RunScopedRegistry.ForEachReverse 至少 5 处
     fer_count = 0
-    for path in [cleanup, map_iso, drops, inventory, rewards]:
+    for path in [cleanup, map_iso, drops, inventory]:
         if path.is_file():
             txt = path.read_text(encoding="utf-8")
             fer_count += txt.count("RunScopedRegistry.ForEachReverse")
+    fer_count += rewards_text.count("RunScopedRegistry.ForEachReverse")
     if fer_count < 5:
         return fail("RunScopedRegistry.ForEachReverse 使用 < 5 处（实测 " + str(fer_count) + "）")
 
@@ -109,9 +132,8 @@ def main() -> int:
     err = must_contain(boss, "RuntimeStatModifierTracker.TryAdd")
     if err:
         return fail(err)
-    err = must_contain(rewards, "RuntimeStatModifierTracker.TryAdd")
-    if err:
-        return fail(err)
+    if "RuntimeStatModifierTracker.TryAdd" not in rewards_text:
+        return fail("missing in ZombieMode reward partials: RuntimeStatModifierTracker.TryAdd")
 
     # §2.1 — BossSkillState.Tick 抽象化（virtual + 5 子类 override）
     err = must_contain(models, "public virtual void Tick(ModBehaviour")
@@ -130,7 +152,7 @@ def main() -> int:
         return fail(err)
 
     # §2.3 — ZombieModeStatNames 常量集中
-    err = must_contain(models, "internal static class ZombieModeStatNames",
+    err = must_contain(tuning, "internal static class ZombieModeStatNames",
                        "MaxHealth", "MoveSpeed", "AttackSpeed", "MeleeDamageMultiplier")
     if err:
         return fail(err)
@@ -174,10 +196,9 @@ def main() -> int:
         return fail(err)
 
     # §3.3 — 共享 disk mesh visual
-    err = must_contain(pollution, "s_zoneDiskMesh", "CreateZombieModeFlatZoneVisual",
-                       "EnsureZoneDiskAssets")
-    if err:
-        return fail(err)
+    for needle in ("s_zoneDiskMesh", "CreateZombieModeFlatZoneVisual", "EnsureZoneDiskAssets"):
+        if needle not in pollution_text:
+            return fail("missing in ZombieMode pollution partials: " + needle)
     # BossController / ExtractionController 走 helper（不再直接 CreatePrimitive(Cylinder)）
     err = must_not_contain(boss, "GameObject.CreatePrimitive(PrimitiveType.Cylinder)")
     if err:
@@ -190,9 +211,9 @@ def main() -> int:
     err = must_contain(spawner, "s_zombieModeBossKindOrder")
     if err:
         return fail(err)
-    err = must_contain(pollution, "s_zombieModeSpecialKindOrder", "s_zombieModeEliteAffixAll")
-    if err:
-        return fail(err)
+    for needle in ("s_zombieModeSpecialKindOrder", "s_zombieModeEliteAffixAll"):
+        if needle not in pollution_text:
+            return fail("missing in ZombieMode pollution partials: " + needle)
 
     # §4.1 — 架构债注释
     err = must_contain(wave, "Health.cs:418", "heal-back 模式")
@@ -200,10 +221,9 @@ def main() -> int:
         return fail(err)
 
     # §4.2 — ExplosionManager 接入
-    err = must_contain(pollution, "DealZombieModeExplosionAreaDamage",
-                       "ExplosionManager.CreateExplosion")
-    if err:
-        return fail(err)
+    for needle in ("DealZombieModeExplosionAreaDamage", "ExplosionManager.CreateExplosion"):
+        if needle not in pollution_text:
+            return fail("missing in ZombieMode pollution partials: " + needle)
 
     print("ZombieModeReview20260503Guard: PASS")
     return 0

@@ -15,6 +15,11 @@ import sys
 
 MOD = Path("ModBehaviour.cs")
 REDESIGN = Path("Integration/PhantomWitch/PhantomWitchVfxRedesign.cs")
+REDESIGN_PARTS = [
+    REDESIGN,
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_EmittersAndTextures.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_RuntimeComponents.cs"),
+]
 CURSE = Path("Integration/PhantomWitch/PhantomWitchCurseSweatVfx.cs")
 
 
@@ -45,9 +50,13 @@ def extract_block(text: str, signature: str) -> str:
     return ""
 
 
+def read_redesign() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in REDESIGN_PARTS)
+
+
 def main() -> int:
     mod_text = MOD.read_text(encoding="utf-8")
-    redesign_text = REDESIGN.read_text(encoding="utf-8")
+    redesign_text = read_redesign()
     curse_text = CURSE.read_text(encoding="utf-8")
 
     teleport_block = extract_block(redesign_text, "internal static GameObject CreateTeleportEffect")

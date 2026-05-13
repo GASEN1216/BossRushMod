@@ -13,6 +13,20 @@ import sys
 
 
 ABILITY = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
+PHANTOM_WITCH_ABILITY_SOURCES = [
+    ABILITY,
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_StealthAndAttacks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_Minions.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_RuntimeTicks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PhaseAndLifecycle.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_MovementAndDamage.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_CleanupAndTelemetry.cs"),
+]
+
+
+def read_phantom_witch_ability_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in PHANTOM_WITCH_ABILITY_SOURCES)
 REALM = Path("Integration/PhantomWitch/PhantomWitchBossCurseRealmRuntime.cs")
 
 
@@ -28,7 +42,7 @@ def require(text: str, pattern: str, description: str, flags: int = 0) -> str | 
 
 
 def main() -> int:
-    ability_text = ABILITY.read_text(encoding="utf-8")
+    ability_text = read_phantom_witch_ability_sources()
     realm_text = REALM.read_text(encoding="utf-8")
 
     missing = [

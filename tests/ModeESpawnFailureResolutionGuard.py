@@ -8,12 +8,22 @@ import sys
 
 
 SOURCE = Path("ModeE/ModeEBattle.cs")
-MODE_E = Path("ModeE/ModeE.cs")
+MODE_E_SOURCES = [
+    Path("ModeE/ModeE.cs"),
+    Path("ModeE/ModeEUiAndHealthBars.cs"),
+    Path("ModeE/ModeEStartup.cs"),
+    Path("ModeE/ModeELifecycle.cs"),
+    Path("ModeE/ModeEIntegrityAndHelpers.cs"),
+]
 
 
 def fail(message: str) -> int:
     print(message)
     return 1
+
+
+def read_mode_e_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in MODE_E_SOURCES)
 
 
 def extract_method_body(text: str, signature: str) -> str | None:
@@ -40,7 +50,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     battle_text = SOURCE.read_text(encoding="utf-8")
-    mode_e_text = MODE_E.read_text(encoding="utf-8")
+    mode_e_text = read_mode_e_sources()
 
     if "private void ResolveModeESpawnAttempt" not in battle_text:
         return fail("ModeESpawnFailureResolutionGuard: missing ResolveModeESpawnAttempt helper")

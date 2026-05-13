@@ -3,6 +3,18 @@ import sys
 
 
 EFFECTS = Path("ZombieMode/ZombieModeRewardEffects.cs")
+EFFECT_PARTS = [
+    EFFECTS,
+    Path("ZombieMode/ZombieModeRewardOptionCore.cs"),
+    Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
+    Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
+    Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+]
+
+
+def read_effects() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
+
 
 
 def fail(message: str) -> int:
@@ -11,7 +23,7 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    effects = EFFECTS.read_text(encoding="utf-8")
+    effects = read_effects()
 
     for token in [
         "RefreshZombieModeProjectileRewardPerformanceState",

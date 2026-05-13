@@ -5,8 +5,28 @@ import sys
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
 BOSS = Path("ZombieMode/ZombieModeBossController.cs")
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
+
 
 
 def fail(message: str) -> int:
@@ -45,8 +65,8 @@ def main() -> int:
     spawner = SPAWNER.read_text(encoding="utf-8")
     wave = WAVE.read_text(encoding="utf-8")
     boss = BOSS.read_text(encoding="utf-8")
-    pollution = POLLUTION.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    pollution = read_pollution()
+    rewards = read_rewards()
 
     try:
         spawn_normal = extract_method(spawner, "private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")

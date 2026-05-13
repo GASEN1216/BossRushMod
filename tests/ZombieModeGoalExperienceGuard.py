@@ -19,6 +19,13 @@ ROOT = Path(".")
 WAVE = ROOT / "ZombieMode/ZombieModeWaveController.cs"
 CLEANUP = ROOT / "ZombieMode/ZombieModeCleanup.cs"
 REWARDS = ROOT / "ZombieMode/ZombieModeRewards.cs"
+REWARD_PARTS = [
+    REWARDS,
+    ROOT / "ZombieMode/ZombieModeRewardCatalogAndSelection.cs",
+    ROOT / "ZombieMode/ZombieModeRewardEffectsAndNpc.cs",
+    ROOT / "ZombieMode/ZombieModeRewardItemGrants.cs",
+    ROOT / "ZombieMode/ZombieModeRewardNpcServices.cs",
+]
 ENTRY = ROOT / "ZombieMode/ZombieModeEntry.cs"
 CASH = ROOT / "ZombieMode/ZombieModeCashInvestmentView.cs"
 EXTRACTION = ROOT / "ZombieMode/ZombieModeExtractionController.cs"
@@ -32,6 +39,10 @@ def read(path: Path) -> str:
     if not path.is_file():
         raise FileNotFoundError(str(path))
     return path.read_text(encoding="utf-8")
+
+
+def read_rewards() -> str:
+    return "\n".join(read(path) for path in REWARD_PARTS)
 
 
 def fail(message: str) -> int:
@@ -66,7 +77,7 @@ def main() -> int:
     try:
         wave = read(WAVE)
         cleanup = read(CLEANUP)
-        rewards = read(REWARDS)
+        rewards = read_rewards()
         entry = read(ENTRY)
         cash = read(CASH)
         extraction = read(EXTRACTION)

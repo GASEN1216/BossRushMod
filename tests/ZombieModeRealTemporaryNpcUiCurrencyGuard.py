@@ -2,9 +2,30 @@ from pathlib import Path
 import sys
 
 
-COURIER_SERVICE = Path("Integration/NPCs/Courier/CourierService.cs")
+COURIER_SERVICE_PARTS = [
+    Path("Integration/NPCs/Courier/CourierService.cs"),
+    Path("Integration/NPCs/Courier/CourierService_Buttons.cs"),
+    Path("Integration/NPCs/Courier/CourierService_CloseAndCleanup.cs"),
+]
 COURIER_SWEEP = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
 COURIER_STORAGE = Path("Integration/NPCs/Courier/StorageDepositService.cs")
+STORAGE_DEPOSIT_PARTS = [
+    Path("Integration/NPCs/Courier/StorageDepositService.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositLifecycle.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositTransactions.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositSingleRetrieve.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositInventoryQuickDeposit.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositBulkActions.cs"),
+]
+
+
+def read_storage_deposit_service() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in STORAGE_DEPOSIT_PARTS)
+
+
+def read_courier_service() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in COURIER_SERVICE_PARTS)
+
 NPC_SHOP = Path("Integration/Affinity/Systems/NPCShopSystem.cs")
 
 
@@ -48,9 +69,9 @@ def require_not(text: str, snippet: str, label: str) -> int:
 
 
 def main() -> int:
-    courier_service = COURIER_SERVICE.read_text(encoding="utf-8")
+    courier_service = read_courier_service()
     courier_sweep = COURIER_SWEEP.read_text(encoding="utf-8")
-    courier_storage = COURIER_STORAGE.read_text(encoding="utf-8")
+    courier_storage = read_storage_deposit_service()
     npc_shop = NPC_SHOP.read_text(encoding="utf-8")
 
     for snippet in [

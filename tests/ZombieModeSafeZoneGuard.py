@@ -3,6 +3,7 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
@@ -22,7 +23,7 @@ def require(text: str, snippet: str, label: str) -> int:
 
 
 def main() -> int:
-    models = MODELS.read_text(encoding="utf-8")
+    models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     safe_zone = SAFE_ZONE.read_text(encoding="utf-8")
     extraction = EXTRACTION.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")

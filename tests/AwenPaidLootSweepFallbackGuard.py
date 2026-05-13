@@ -8,6 +8,16 @@ import sys
 
 SERVICE = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
 COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER_NPC_SOURCES = [
+    COURIER,
+    Path("Integration/NPCs/Courier/CourierNPCController.cs"),
+    Path("Integration/NPCs/Courier/CourierMovement.cs"),
+    Path("Integration/NPCs/Courier/CourierInteractables.cs"),
+]
+
+
+def read_courier_npc_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_NPC_SOURCES)
 TRACKER = Path("LootAndRewards/ModeEFLootboxTracker.cs")
 
 
@@ -40,7 +50,7 @@ def extract_method(text: str, signature: str) -> str:
 
 def main() -> int:
     service_text = SERVICE.read_text(encoding="utf-8")
-    courier_text = COURIER.read_text(encoding="utf-8")
+    courier_text = read_courier_npc_sources()
     tracker_text = TRACKER.read_text(encoding="utf-8")
 
     if "ReleasePendingSweepResultToPlayer" not in service_text:

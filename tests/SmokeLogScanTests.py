@@ -64,6 +64,37 @@ NullReferenceException: Object reference not set to an instance of an object
 
             self.assertEqual(new_log, SmokeLogScan.find_latest_log(root))
 
+    def test_detects_latest_log_older_than_deployed_dll(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log = root / "2026-05-13_10-00-00.log"
+            dll = root / "Duckov_Data" / "Mods" / "BossRush" / "BossRush.dll"
+            dll.parent.mkdir(parents=True)
+            log.write_text("ok", encoding="utf-8")
+            dll.write_text("dll", encoding="utf-8")
+
+            import os
+            os.utime(str(log), (1000, 1000))
+            os.utime(str(dll), (2000, 2000))
+
+            self.assertEqual(dll, SmokeLogScan.find_deployed_bossrush_dll(root))
+            self.assertTrue(SmokeLogScan.is_log_older_than_deployment(log, dll))
+
+    def test_accepts_latest_log_newer_than_deployed_dll(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log = root / "2026-05-13_10-00-00.log"
+            dll = root / "Duckov_Data" / "Mods" / "BossRush" / "BossRush.dll"
+            dll.parent.mkdir(parents=True)
+            log.write_text("ok", encoding="utf-8")
+            dll.write_text("dll", encoding="utf-8")
+
+            import os
+            os.utime(str(log), (3000, 3000))
+            os.utime(str(dll), (2000, 2000))
+
+            self.assertFalse(SmokeLogScan.is_log_older_than_deployment(log, dll))
+
 
 if __name__ == "__main__":
     unittest.main()

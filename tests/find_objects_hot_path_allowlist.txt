@@ -1,0 +1,2 @@
+# path|method|call snippet|reason
+# Keep empty unless an existing hot-path scene scan must be grandfathered.

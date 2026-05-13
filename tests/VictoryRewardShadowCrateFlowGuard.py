@@ -7,7 +7,10 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("LootAndRewards/LootAndRewards.cs")
+SOURCE_CANDIDATES = [
+    Path("LootAndRewards/LootAndRewards.cs"),
+    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -38,8 +41,13 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
-    block = extract_block(text, "private async void OnAllEnemiesDefeated_LootAndRewards()")
+    block = ""
+    for candidate in SOURCE_CANDIDATES:
+        text = candidate.read_text(encoding="utf-8")
+        block = extract_block(text, "private async void OnAllEnemiesDefeated_LootAndRewards()")
+        if block:
+            break
+
     if not block:
         return fail("VictoryRewardShadowCrateFlowGuard: missing OnAllEnemiesDefeated_LootAndRewards block")
 

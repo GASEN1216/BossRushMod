@@ -14,9 +14,40 @@ import sys
 
 CONFIG = Path("Integration/PhantomWitch/PhantomWitchConfig.cs")
 REDESIGN = Path("Integration/PhantomWitch/PhantomWitchVfxRedesign.cs")
+REDESIGN_PARTS = [
+    REDESIGN,
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_EmittersAndTextures.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_RuntimeComponents.cs"),
+]
 SCYTHE = Path("Integration/PhantomWitch/PhantomWitchScytheAction.cs")
+SCYTHE_PARTS = [
+    SCYTHE,
+    Path("Integration/PhantomWitch/PhantomWitchScytheAction_RuntimeComponents.cs"),
+]
 SWING = Path("Integration/PhantomWitch/PhantomWitchScytheSwingFx.cs")
 ABILITY = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
+PHANTOM_WITCH_ABILITY_SOURCES = [
+    ABILITY,
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_StealthAndAttacks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_Minions.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_RuntimeTicks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PhaseAndLifecycle.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_MovementAndDamage.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_CleanupAndTelemetry.cs"),
+]
+
+
+def read_phantom_witch_ability_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in PHANTOM_WITCH_ABILITY_SOURCES)
+
+
+def read_redesign() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in REDESIGN_PARTS)
+
+
+def read_scythe() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in SCYTHE_PARTS)
 
 
 def fail(message: str) -> int:
@@ -48,10 +79,10 @@ def extract_block(text: str, signature: str) -> str:
 
 def main() -> int:
     config_text = CONFIG.read_text(encoding="utf-8")
-    redesign_text = REDESIGN.read_text(encoding="utf-8")
-    scythe_text = SCYTHE.read_text(encoding="utf-8")
+    redesign_text = read_redesign()
+    scythe_text = read_scythe()
     swing_text = SWING.read_text(encoding="utf-8")
-    ability_text = ABILITY.read_text(encoding="utf-8")
+    ability_text = read_phantom_witch_ability_sources()
 
     teleport_block = extract_block(redesign_text, "internal static GameObject CreateTeleportEffect")
     black_smoke_block = extract_block(scythe_text, "private static void CreateAreaBlackSmoke")

@@ -2,6 +2,27 @@
 from pathlib import Path
 import sys
 
+REWARD_PARTS = [
+    Path("ZombieMode/ZombieModeRewards.cs"),
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
+
 
 def fail(message: str) -> int:
     print("ZombieModeReuseCompatibilityGuard: FAIL - " + message)
@@ -24,8 +45,8 @@ def main() -> int:
     extraction = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
     isolation = Path("ZombieMode/ZombieModeMapIsolation.cs").read_text(encoding="utf-8")
     inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs").read_text(encoding="utf-8")
-    rewards = Path("ZombieMode/ZombieModeRewards.cs").read_text(encoding="utf-8")
-    pollution = Path("ZombieMode/ZombieModePollution.cs").read_text(encoding="utf-8")
+    rewards = read_rewards()
+    pollution = read_pollution()
     marker = Path("ZombieMode/ZombieModeEnemyRuntime.cs").read_text(encoding="utf-8")
 
     try:

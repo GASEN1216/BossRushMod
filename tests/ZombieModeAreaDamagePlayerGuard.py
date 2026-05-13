@@ -5,7 +5,11 @@ import re
 import sys
 
 
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
 BOSS = Path("ZombieMode/ZombieModeBossController.cs")
 WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
 
@@ -13,6 +17,10 @@ WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
 def fail(message: str) -> int:
     print("ZombieModeAreaDamagePlayerGuard: FAIL - " + message)
     return 1
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
 
 
 def extract_method(text: str, method_name: str, signature_hint: str = "") -> str:
@@ -36,7 +44,7 @@ def extract_method(text: str, method_name: str, signature_hint: str = "") -> str
 
 
 def main() -> int:
-    pollution = POLLUTION.read_text(encoding="utf-8")
+    pollution = read_pollution()
     boss = BOSS.read_text(encoding="utf-8")
     wave = WAVE.read_text(encoding="utf-8")
 

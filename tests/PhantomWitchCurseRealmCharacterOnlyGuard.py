@@ -18,6 +18,10 @@ import sys
 
 
 SOURCE = Path("Integration/PhantomWitch/PhantomWitchScytheAction.cs")
+SOURCE_PARTS = [
+    SOURCE,
+    Path("Integration/PhantomWitch/PhantomWitchScytheAction_RuntimeComponents.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -48,7 +52,7 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = "\n".join(path.read_text(encoding="utf-8") for path in SOURCE_PARTS)
     block = extract_block(text, "private void DealRealmDamage()")
     if not block:
         return fail("PhantomWitchCurseRealmCharacterOnlyGuard: missing DealRealmDamage block")

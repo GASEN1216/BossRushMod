@@ -15,6 +15,7 @@ SCRIPTS = [
     Path("test_bossrush_official.bat"),
     Path("test_bossrush_smoke_manual.bat"),
 ]
+GITATTRIBUTES = Path(".gitattributes")
 
 
 def fail(message: str) -> int:
@@ -23,6 +24,13 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
+    if not GITATTRIBUTES.exists():
+        return fail(".gitattributes is missing")
+
+    attributes_text = GITATTRIBUTES.read_text(encoding="utf-8", errors="ignore")
+    if "*.bat text eol=crlf" not in attributes_text:
+        return fail(".gitattributes must keep Windows .bat helpers on CRLF")
+
     for path in SCRIPTS:
         if not path.exists():
             return fail(f"missing {path}")

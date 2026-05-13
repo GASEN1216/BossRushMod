@@ -1,9 +1,9 @@
 """
-MapSpawnRegistryConsistencyGuard: 校验每张地图的 JSON 与硬编码表在所有字段上完全一致
+MapSpawnRegistryConsistencyGuard: 校验每张地图的 JSON 与 Legacy 快照在所有字段上完全一致
 
 功能：
   1. 读取 Assets/SpawnPoints/*.json 中所有地图 JSON 文件
-  2. 解析 ModBehaviour.cs 中硬编码的 BossRushMapConfigs 数组
+  2. 解析 tests/fixtures/LegacyMapSpawnPointFallbackSnapshot.cs.txt 中硬编码的 BossRushMapConfigs 数组
   3. 对每张同时存在于 JSON 和硬编码表中的地图，比较所有字段：
      - sceneName, sceneID, displayNameCN, displayNameEN（精确字符串匹配）
      - spawnPoints, modeESpawnPoints（Vector3 数组比较，浮点精度 2 位小数）
@@ -28,7 +28,7 @@ import sys
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MOD_BEHAVIOUR_PATH = PROJECT_ROOT / "ModBehaviour.cs"
+LEGACY_FALLBACK_PATH = PROJECT_ROOT / "tests" / "fixtures" / "LegacyMapSpawnPointFallbackSnapshot.cs.txt"
 SPAWN_POINTS_DIR = PROJECT_ROOT / "Assets" / "SpawnPoints"
 
 # 浮点比较精度（小数点后位数）
@@ -424,12 +424,12 @@ def main() -> int:
     print("MapSpawnRegistryConsistencyGuard: 开始校验 JSON 与硬编码表一致性")
     print()
 
-    # ---- 读取 ModBehaviour.cs 源码 ----
-    if not MOD_BEHAVIOUR_PATH.exists():
-        print(f"  [错误] 源文件不存在: {MOD_BEHAVIOUR_PATH}")
+    # ---- 读取 Legacy fallback 源码 ----
+    if not LEGACY_FALLBACK_PATH.exists():
+        print(f"  [错误] 源文件不存在: {LEGACY_FALLBACK_PATH}")
         return 1
 
-    source = MOD_BEHAVIOUR_PATH.read_text(encoding="utf-8")
+    source = LEGACY_FALLBACK_PATH.read_text(encoding="utf-8")
 
     # ---- 解析硬编码表 ----
     print("  [步骤1] 解析硬编码 Vector3 数组...")

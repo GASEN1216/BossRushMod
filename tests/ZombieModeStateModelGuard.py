@@ -3,6 +3,7 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
@@ -81,7 +82,7 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    model_text = MODELS.read_text(encoding="utf-8")
+    model_text = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
     mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")

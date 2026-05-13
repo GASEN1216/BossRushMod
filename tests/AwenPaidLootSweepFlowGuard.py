@@ -3,8 +3,27 @@ import sys
 
 
 COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER_NPC_SOURCES = [
+    COURIER,
+    Path("Integration/NPCs/Courier/CourierNPCController.cs"),
+    Path("Integration/NPCs/Courier/CourierMovement.cs"),
+    Path("Integration/NPCs/Courier/CourierInteractables.cs"),
+]
+
+
+def read_courier_npc_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_NPC_SOURCES)
 TRACKER = Path("LootAndRewards/ModeEFLootboxTracker.cs")
 TOKEN = Path("Integration/Items/AwenLootSweepTokenConfig.cs")
+COURIER_SERVICE_SOURCES = [
+    Path("Integration/NPCs/Courier/CourierService.cs"),
+    Path("Integration/NPCs/Courier/CourierService_Buttons.cs"),
+    Path("Integration/NPCs/Courier/CourierService_CloseAndCleanup.cs"),
+]
+
+
+def read_courier_service_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_SERVICE_SOURCES)
 
 
 def fail(message: str) -> int:
@@ -13,7 +32,7 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    courier_text = COURIER.read_text(encoding="utf-8")
+    courier_text = read_courier_npc_sources()
     tracker_text = TRACKER.read_text(encoding="utf-8")
     token_text = TOKEN.read_text(encoding="utf-8")
 
@@ -48,6 +67,7 @@ def main() -> int:
         return fail("AwenPaidLootSweepFlowGuard: token description still says Mode E/F only")
 
     service_text = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs").read_text(encoding="utf-8")
+    service_text += "\n" + Path("Integration/NPCs/Courier/CourierPaidLootSweepAccountingAndSort.cs").read_text(encoding="utf-8")
 
     if "HasPendingSweepResult" not in service_text:
         return fail("AwenPaidLootSweepFlowGuard: missing pending result container state")
@@ -89,10 +109,16 @@ def main() -> int:
     if "CompareSweepResultItems(" not in service_text:
         return fail("AwenPaidLootSweepFlowGuard: missing sweep result item comparer")
 
-    if "NPCInteractionGroupHelper.GetOrCreateGroupList(transientLootbox" not in Path("Integration/NPCs/Courier/CourierService.cs").read_text(encoding="utf-8"):
+    if "NPCInteractionGroupHelper.GetOrCreateGroupList(transientLootbox" not in read_courier_service_sources():
         return fail("AwenPaidLootSweepFlowGuard: transient lootbox helper does not prepare grouped interaction internals")
 
-    interactables_text = Path("Interactables/BossRushInteractables.cs").read_text(encoding="utf-8")
+    interactables_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (
+            Path("Interactables/BossRushInteractables.cs"),
+            Path("Interactables/BossRushLootboxInteractables.cs"),
+        )
+    )
     queued_retry_tokens = [
         "PendingLootboxDecorationRequests",
         "RemainingAttempts = DecorateLootboxesRetryFrames",

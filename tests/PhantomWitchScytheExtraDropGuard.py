@@ -17,7 +17,13 @@ import sys
 BLACKLIST = Path("Config/LootBlacklistRegistry.cs")
 HARMONY = Path("Patches/Combat/CharacterOnDeadPatch.cs")
 BOOTSTRAP = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
-LOOT = Path("LootAndRewards/LootAndRewards.cs")
+LOOT_PARTS = [
+    Path("LootAndRewards/LootAndRewards.cs"),
+    Path("LootAndRewards/LootAndRewardsInfiniteHell.cs"),
+    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
+    Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs"),
+    Path("LootAndRewards/LootAndRewardsSpecialLoot.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -33,7 +39,7 @@ def main() -> int:
     blacklist_text = BLACKLIST.read_text(encoding="utf-8")
     harmony_text = HARMONY.read_text(encoding="utf-8")
     bootstrap_text = BOOTSTRAP.read_text(encoding="utf-8")
-    loot_text = LOOT.read_text(encoding="utf-8")
+    loot_text = "\n".join(path.read_text(encoding="utf-8") for path in LOOT_PARTS if path.exists())
 
     missing = []
 

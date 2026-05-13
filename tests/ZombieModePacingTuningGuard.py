@@ -3,6 +3,7 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 
 
 def fail(message: str) -> int:
@@ -11,7 +12,7 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    text = MODELS.read_text(encoding="utf-8")
+    text = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
 
     required = "public const float PeriodicSpawnIntervalSeconds = 1f;"
     if required not in text:

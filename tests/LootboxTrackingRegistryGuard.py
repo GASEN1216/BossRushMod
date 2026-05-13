@@ -8,7 +8,10 @@ import re
 import sys
 
 
-SOURCE = Path("Interactables/BossRushInteractables.cs")
+SOURCES = [
+    Path("Interactables/BossRushInteractables.cs"),
+    Path("Interactables/BossRushLootboxInteractables.cs"),
+]
 ENTRYPOINT_COLLECTION_METHODS = [
     "CollectMarkedLootboxes",
     "CollectMarkedLootboxesForSession",
@@ -43,6 +46,10 @@ MARKER_LOOTBOX_FIELD_PATTERN = re.compile(
 def fail(message: str) -> int:
     print(message)
     return 1
+
+
+def read_interactable_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in SOURCES)
 
 
 def neutralize_csharp_comments_and_strings(text: str) -> str:
@@ -250,7 +257,7 @@ def lifecycle_contains_call(class_text: str, lifecycle_name: str, call_name: str
 
 
 def main() -> int:
-    text = neutralize_csharp_comments_and_strings(SOURCE.read_text(encoding="utf-8"))
+    text = neutralize_csharp_comments_and_strings(read_interactable_sources())
 
     marker_section = slice_class(text, "BossRushLootboxMarker")
     if not marker_section:

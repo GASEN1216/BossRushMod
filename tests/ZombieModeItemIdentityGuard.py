@@ -7,7 +7,12 @@ INVITATION = Path("Integration/Items/ZombieTideInvitationConfig.cs")
 BEACON = Path("Integration/Items/ZombieTideBeaconConfig.cs")
 BEACON_USAGE = Path("Integration/Items/ZombieTideBeaconUsage.cs")
 BLACKLIST = Path("Config/LootBlacklistRegistry.cs")
-INTEGRATION = Path("Integration/BossRushIntegration.cs")
+INTEGRATION_PARTS = [
+    Path("Integration/BossRushIntegration.cs"),
+    Path("Integration/BossRushIntegration_StartAndScene.cs"),
+    Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
+    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
+]
 ITEM_CONTENT_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
@@ -17,13 +22,17 @@ def fail(message: str) -> int:
     return 1
 
 
+def read_boss_rush_integration() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+
+
 def main() -> int:
     config_text = CONFIG.read_text(encoding="utf-8")
     invitation_text = INVITATION.read_text(encoding="utf-8")
     beacon_text = BEACON.read_text(encoding="utf-8")
     usage_text = BEACON_USAGE.read_text(encoding="utf-8")
     blacklist_text = BLACKLIST.read_text(encoding="utf-8")
-    integration_text = INTEGRATION.read_text(encoding="utf-8")
+    integration_text = read_boss_rush_integration()
     item_content_registry_text = ITEM_CONTENT_REGISTRY.read_text(encoding="utf-8")
     localization_text = LOCALIZATION.read_text(encoding="utf-8")
 

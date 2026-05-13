@@ -16,13 +16,35 @@ import sys
 
 ZOMBIE_FILES = list(Path("ZombieMode").glob("*.cs"))
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 INVENTORY = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
 POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION_PARTS = [
+    POLLUTION,
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
+
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 
 
@@ -43,14 +65,14 @@ def uncommented_contains_call(text: str, call: str) -> bool:
 
 def main() -> int:
     combined = "\n".join(path.read_text(encoding="utf-8") for path in ZOMBIE_FILES)
-    models = MODELS.read_text(encoding="utf-8")
+    models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
     inventory = INVENTORY.read_text(encoding="utf-8")
-    pollution = POLLUTION.read_text(encoding="utf-8")
+    pollution = read_pollution()
     spawner = SPAWNER.read_text(encoding="utf-8")
     wave = WAVE.read_text(encoding="utf-8")
     drops = DROPS.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
     cleanup = CLEANUP.read_text(encoding="utf-8")
 
     for path in ZOMBIE_FILES:

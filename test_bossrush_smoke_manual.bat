@@ -14,7 +14,7 @@ set "STEAM_APP_ID=3167020"
 set "STEAM_LAUNCH_URL=steam://rungameid/%STEAM_APP_ID%"
 set "MOD_DLL=%GAME_PATH%\Duckov_Data\Mods\BossRush\BossRush.dll"
 set "SMOKE_DIR=docs\testing"
-set "SMOKE_NOTE=docs\testing\2026-05-10-architecture-refactor-smoke.md"
+set "SMOKE_NOTE=docs\testing\2026-05-13-roadmap-validation-smoke.md"
 
 echo ==========================================
 echo Boss Rush Mod - Manual In-Game Smoke Test
@@ -30,7 +30,7 @@ if not exist "%SMOKE_DIR%" (
 )
 
 if not exist "%SMOKE_NOTE%" (
-    >"%SMOKE_NOTE%" echo # Code Structure Refactor In-Game Smoke Record
+    >"%SMOKE_NOTE%" echo # Roadmap Validation In-Game Smoke Record
     >>"%SMOKE_NOTE%" echo.
     >>"%SMOKE_NOTE%" echo Conclusion: Not run
     >>"%SMOKE_NOTE%" echo.
@@ -44,9 +44,13 @@ if not exist "%SMOKE_NOTE%" (
     >>"%SMOKE_NOTE%" echo Checklist:
     >>"%SMOKE_NOTE%" echo - [ ] Base_SceneV2 loads.
     >>"%SMOKE_NOTE%" echo - [ ] Merchant inventory is unchanged.
+    >>"%SMOKE_NOTE%" echo - [ ] Map selection opens and a JSON-backed map enters/exits.
     >>"%SMOKE_NOTE%" echo - [ ] Standard BossRush full run works.
+    >>"%SMOKE_NOTE%" echo - [ ] Reward and lootbox drops are unchanged after boss kill.
+    >>"%SMOKE_NOTE%" echo - [ ] Mode D and Mode F entry, combat, reward, and cleanup paths work.
     >>"%SMOKE_NOTE%" echo - [ ] Mode E full run works.
     >>"%SMOKE_NOTE%" echo - [ ] Zombie Mode full run works.
+    >>"%SMOKE_NOTE%" echo - [ ] Courier storage/sweep and Wish Fountain open/close paths work.
     >>"%SMOKE_NOTE%" echo - [ ] Refactored melee FX hit/slash visuals are unchanged.
 )
 
@@ -65,19 +69,25 @@ echo Smoke checklist:
 echo   1. Start game and load into Base_SceneV2.
 echo   2. Confirm normal merchant still contains BossRush ticket, adventure journal,
 echo      achievement medal, Awen token, brick stone, and zombie invitation.
-echo   3. Enter a standard BossRush arena through the existing map selection flow.
-echo   4. Confirm arena setup, sign options, first wave, enemy spawn, kill resolution,
-echo      and arena exit behave as before.
-echo   5. Run one Mode E session and confirm solo flow, spawn points, scaling,
+echo   3. Open map selection, choose at least one JSON-backed map, enter, and exit.
+echo   4. Enter a standard BossRush arena through the existing map selection flow.
+echo   5. Confirm arena setup, sign options, first wave, enemy spawn, kill resolution,
+echo      reward/lootbox drops, and arena exit behave as before.
+echo   6. Run one Mode D and one Mode F smoke path if entry conditions are available,
+echo      covering combat start, reward flow, and cleanup.
+echo   7. Run one Mode E session and confirm solo flow, spawn points, scaling,
 echo      merchant/service UI, and cleanup behave as before.
-echo   6. Run one Zombie Mode session and confirm entry, first waves, reward UI,
+echo   8. Run one Zombie Mode session and confirm entry, first waves, reward UI,
 echo      safe-zone/extraction prompts, and cleanup behave as before.
-echo   7. Trigger a melee hit with FenHuangHalberd, Frostmourne, or PhantomWitch scythe
+echo   9. Open and close Courier storage/sweep and Wish Fountain UI once, confirming
+echo      no item loss, stuck UI, or save callback error.
+echo  10. Trigger a melee hit with FenHuangHalberd, Frostmourne, or PhantomWitch scythe
 echo      and confirm slashFx / hitFx visuals are unchanged.
-echo   8. Optional: verify DebugTools hotkeys only in DevMode and achievement hotkey opens UI.
+echo  11. Optional: verify DebugTools hotkeys only in DevMode and achievement hotkey opens UI.
 echo.
 echo After completing the in-game checklist, scan the latest log from WSL:
 echo   python3 tests/SmokeLogScan.py
+echo SmokeLogScan returns STALE_LOG until the game produces a new log after the deployed DLL.
 echo.
 
 if not exist "%GAME_EXE%" (

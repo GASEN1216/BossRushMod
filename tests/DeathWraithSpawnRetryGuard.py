@@ -7,7 +7,13 @@ from pathlib import Path
 import sys
 
 
-DEATH_WRAITH_SOURCE = Path("Integration/DeathWraith/DeathWraithSystem.cs")
+DEATH_WRAITH_SOURCES = [
+    Path("Integration/DeathWraith/DeathWraithSystem.cs"),
+    Path("Integration/DeathWraith/DeathWraithRecording.cs"),
+    Path("Integration/DeathWraith/DeathWraithSpawnFlow.cs"),
+    Path("Integration/DeathWraith/DeathWraithCombatLoadout.cs"),
+    Path("Integration/DeathWraith/DeathWraithLifecycleAndPersistence.cs"),
+]
 PATCH_SOURCES = [
     Path("Patches/Death/DeadBodySpawnPatch.cs"),
     Path("Patches/Death/TombLootboxPatch.cs"),
@@ -18,6 +24,10 @@ PATCH_SOURCES = [
 def fail(message: str) -> int:
     print(message)
     return 1
+
+
+def read_death_wraith_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in DEATH_WRAITH_SOURCES)
 
 
 def extract_block(text: str, signature: str) -> str:
@@ -43,7 +53,7 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    death_text = DEATH_WRAITH_SOURCE.read_text(encoding="utf-8")
+    death_text = read_death_wraith_sources()
     # 合并所有 Death 分组 Patch 文件内容（原 BossRushHarmonyPatch.cs 已拆分）
     patch_text = ""
     for p in PATCH_SOURCES:

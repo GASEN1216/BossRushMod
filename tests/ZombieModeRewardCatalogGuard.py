@@ -4,6 +4,18 @@ import sys
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 NPC_CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
 COMPILE = Path("compile_official.bat")
 
@@ -21,7 +33,7 @@ def require(text: str, snippet: str, label: str) -> int:
 
 def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
     npc_catalog = NPC_CATALOG.read_text(encoding="utf-8")
     compile_text = COMPILE.read_text(encoding="utf-8")
 

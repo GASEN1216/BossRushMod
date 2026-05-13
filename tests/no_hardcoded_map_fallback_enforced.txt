@@ -1,0 +1,1 @@
+NoHardcodedMapFallbackGuard enforces that runtime map lookup is JSON-only.

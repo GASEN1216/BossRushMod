@@ -11,6 +11,10 @@ import sys
 
 
 SOURCE = Path("Integration/PhantomWitch/PhantomWitchAssetManager.cs")
+SOURCE_PARTS = [
+    SOURCE,
+    Path("Integration/PhantomWitch/PhantomWitchAssetManager_RuntimeComponents.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -41,7 +45,7 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = "\n".join(path.read_text(encoding="utf-8") for path in SOURCE_PARTS)
 
     if "pendingCacheCleanup" not in text:
         return fail("PhantomWitchDeferredCacheCleanupGuard: missing pendingCacheCleanup state")

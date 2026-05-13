@@ -5,6 +5,18 @@ import sys
 MODEE = Path("ModeE/ModeEMerchant.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
 
 
@@ -22,7 +34,7 @@ def require(text: str, snippet: str, label: str) -> int:
 def main() -> int:
     modee = MODEE.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = read_rewards()
     catalog = CATALOG.read_text(encoding="utf-8")
 
     for snippet in [

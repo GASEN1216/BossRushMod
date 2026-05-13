@@ -16,6 +16,11 @@ import sys
 
 
 REDESIGN = Path("Integration/PhantomWitch/PhantomWitchVfxRedesign.cs")
+REDESIGN_PARTS = [
+    REDESIGN,
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_EmittersAndTextures.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_RuntimeComponents.cs"),
+]
 AMBIENT = Path("Integration/PhantomWitch/PhantomWitchAmbientPresence.cs")
 
 
@@ -59,8 +64,12 @@ def require_axis_assignments(block: str, prefix: str, guard_name: str) -> int:
     return 0
 
 
+def read_redesign() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in REDESIGN_PARTS)
+
+
 def main() -> int:
-    redesign_text = REDESIGN.read_text(encoding="utf-8")
+    redesign_text = read_redesign()
     ambient_text = AMBIENT.read_text(encoding="utf-8")
 
     soul_mist_block = extract_block(

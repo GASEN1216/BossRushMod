@@ -5,8 +5,17 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_MANAGER = ROOT / "Integration" / "PhantomWitch" / "PhantomWitchAssetManager.cs"
+ASSET_MANAGER_PARTS = [
+    ASSET_MANAGER,
+    ROOT / "Integration" / "PhantomWitch" / "PhantomWitchAssetManager_RuntimeComponents.cs",
+]
 AMBIENT = ROOT / "Integration" / "PhantomWitch" / "PhantomWitchAmbientPresence.cs"
 VFX = ROOT / "Integration" / "PhantomWitch" / "PhantomWitchVfxRedesign.cs"
+VFX_PARTS = [
+    VFX,
+    ROOT / "Integration" / "PhantomWitch" / "PhantomWitchVfxRedesign_EmittersAndTextures.cs",
+    ROOT / "Integration" / "PhantomWitch" / "PhantomWitchVfxRedesign_RuntimeComponents.cs",
+]
 
 
 def fail(message: str) -> None:
@@ -14,9 +23,9 @@ def fail(message: str) -> None:
     sys.exit(1)
 
 
-asset_manager_text = ASSET_MANAGER.read_text(encoding="utf-8")
+asset_manager_text = "\n".join(path.read_text(encoding="utf-8") for path in ASSET_MANAGER_PARTS)
 ambient_text = AMBIENT.read_text(encoding="utf-8")
-vfx_text = VFX.read_text(encoding="utf-8")
+vfx_text = "\n".join(path.read_text(encoding="utf-8") for path in VFX_PARTS)
 
 if "internal static Camera CurrentCamera" not in asset_manager_text:
     fail("PhantomWitchFxRuntime 缺少 CurrentCamera 缓存入口")

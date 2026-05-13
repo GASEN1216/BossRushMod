@@ -7,12 +7,22 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("ModeE/ModeE.cs")
+SOURCES = [
+    Path("ModeE/ModeE.cs"),
+    Path("ModeE/ModeEUiAndHealthBars.cs"),
+    Path("ModeE/ModeEStartup.cs"),
+    Path("ModeE/ModeELifecycle.cs"),
+    Path("ModeE/ModeEIntegrityAndHelpers.cs"),
+]
 
 
 def fail(message: str) -> int:
     print(message)
     return 1
+
+
+def read_mode_e_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in SOURCES)
 
 
 def extract_method_body(text: str, signature: str) -> str | None:
@@ -38,7 +48,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = read_mode_e_sources()
 
     for required in (
         "modeEHealthBarBaseTextByBarId",

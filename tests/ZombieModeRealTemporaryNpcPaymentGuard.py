@@ -4,12 +4,62 @@ import sys
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
-REFORGE_UI = Path("Integration/Reforge/ReforgeUIManager.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
+REFORGE_UI_PARTS = [
+    Path("Integration/Reforge/ReforgeUIManager.cs"),
+    Path("Integration/Reforge/ReforgeUIManager_ComparisonAndState.cs"),
+    Path("Integration/Reforge/ReforgeUIManager_RuntimeAndCleanup.cs"),
+]
+
+
+def read_reforge_ui_manager() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REFORGE_UI_PARTS)
+
 NURSE_HEAL = Path("Integration/NPCs/Nurse/NurseHealInteractable.cs")
 NURSE_SERVICE = Path("Integration/NPCs/Nurse/NurseHealingService.cs")
-COURIER_SERVICE = Path("Integration/NPCs/Courier/CourierService.cs")
+COURIER_SERVICE_PARTS = [
+    Path("Integration/NPCs/Courier/CourierService.cs"),
+    Path("Integration/NPCs/Courier/CourierService_Buttons.cs"),
+    Path("Integration/NPCs/Courier/CourierService_CloseAndCleanup.cs"),
+]
 COURIER_SWEEP = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
+COURIER_SWEEP_PARTS = [
+    COURIER_SWEEP,
+    Path("Integration/NPCs/Courier/CourierPaidLootSweepAccountingAndSort.cs"),
+]
 COURIER_STORAGE = Path("Integration/NPCs/Courier/StorageDepositService.cs")
+STORAGE_DEPOSIT_PARTS = [
+    Path("Integration/NPCs/Courier/StorageDepositService.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositLifecycle.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositTransactions.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositSingleRetrieve.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositInventoryQuickDeposit.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositBulkActions.cs"),
+]
+
+
+def read_storage_deposit_service() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in STORAGE_DEPOSIT_PARTS)
+
+
+def read_courier_sweep_service() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in COURIER_SWEEP_PARTS)
+
+
+def read_courier_service() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in COURIER_SERVICE_PARTS)
+
 NPC_SHOP = Path("Integration/Affinity/Systems/NPCShopSystem.cs")
 
 
@@ -48,13 +98,13 @@ def extract_method(text: str, marker: str) -> str:
 
 def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
-    reforge_ui = REFORGE_UI.read_text(encoding="utf-8")
+    rewards = read_rewards()
+    reforge_ui = read_reforge_ui_manager()
     nurse_heal = NURSE_HEAL.read_text(encoding="utf-8")
     nurse_service = NURSE_SERVICE.read_text(encoding="utf-8")
-    courier_service = COURIER_SERVICE.read_text(encoding="utf-8")
-    courier_sweep = COURIER_SWEEP.read_text(encoding="utf-8")
-    courier_storage = COURIER_STORAGE.read_text(encoding="utf-8")
+    courier_service = read_courier_service()
+    courier_sweep = read_courier_sweep_service()
+    courier_storage = read_storage_deposit_service()
     npc_shop = NPC_SHOP.read_text(encoding="utf-8")
 
     for snippet in [

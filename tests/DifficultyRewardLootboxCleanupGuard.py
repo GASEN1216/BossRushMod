@@ -14,7 +14,13 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("LootAndRewards/LootAndRewards.cs")
+SOURCES = [
+    Path("LootAndRewards/LootAndRewards.cs"),
+    Path("LootAndRewards/LootAndRewardsInfiniteHell.cs"),
+    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
+    Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs"),
+    Path("LootAndRewards/LootAndRewardsSpecialLoot.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -45,7 +51,7 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = "\n".join(path.read_text(encoding="utf-8") for path in SOURCES if path.exists())
     block = extract_block(text, "private void SpawnDifficultyRewardLootbox_LootAndRewards(int highQualityCount)")
     if not block:
         return fail("DifficultyRewardLootboxCleanupGuard: spawn method not found")

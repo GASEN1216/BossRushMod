@@ -6,11 +6,16 @@ import sys
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 USAGE_FILES = [
     Path("ZombieMode/ZombieModeEntry.cs"),
+    Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
     Path("ZombieMode/ZombieModeMapSelectionHelper.cs"),
     Path("ZombieMode/ZombieModeHudController.cs"),
     Path("ZombieMode/ZombieModeWaveController.cs"),
     Path("ZombieMode/ZombieModeExtractionController.cs"),
     Path("ZombieMode/ZombieModeRewards.cs"),
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
     Path("Integration/Items/ZombieTideBeaconUsage.cs"),
 ]
 

@@ -23,10 +23,37 @@ import sys
 
 
 ABILITY = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
+PHANTOM_WITCH_ABILITY_SOURCES = [
+    ABILITY,
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_StealthAndAttacks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_Minions.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_RuntimeTicks.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_PhaseAndLifecycle.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_MovementAndDamage.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchAbilityController_CleanupAndTelemetry.cs"),
+]
+
+
+def read_phantom_witch_ability_sources() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in PHANTOM_WITCH_ABILITY_SOURCES)
 ASSET = Path("Integration/PhantomWitch/PhantomWitchAssetManager.cs")
+ASSET_PARTS = [
+    ASSET,
+    Path("Integration/PhantomWitch/PhantomWitchAssetManager_RuntimeComponents.cs"),
+]
 VFX = Path("Integration/PhantomWitch/PhantomWitchVfxRedesign.cs")
+VFX_PARTS = [
+    VFX,
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_EmittersAndTextures.cs"),
+    Path("Integration/PhantomWitch/PhantomWitchVfxRedesign_RuntimeComponents.cs"),
+]
 CONFIG = Path("Integration/PhantomWitch/PhantomWitchConfig.cs")
 SCYTHE = Path("Integration/PhantomWitch/PhantomWitchScytheAction.cs")
+SCYTHE_PARTS = [
+    SCYTHE,
+    Path("Integration/PhantomWitch/PhantomWitchScytheAction_RuntimeComponents.cs"),
+]
 
 
 def fail(message: str) -> int:
@@ -40,12 +67,24 @@ def require(text: str, pattern: str, description: str, flags: int = 0) -> str | 
     return None
 
 
+def read_vfx() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in VFX_PARTS)
+
+
+def read_asset_manager() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in ASSET_PARTS)
+
+
+def read_scythe() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in SCYTHE_PARTS)
+
+
 def main() -> int:
-    ability_text = ABILITY.read_text(encoding="utf-8")
-    asset_text = ASSET.read_text(encoding="utf-8")
-    vfx_text = VFX.read_text(encoding="utf-8")
+    ability_text = read_phantom_witch_ability_sources()
+    asset_text = read_asset_manager()
+    vfx_text = read_vfx()
     config_text = CONFIG.read_text(encoding="utf-8")
-    scythe_text = SCYTHE.read_text(encoding="utf-8")
+    scythe_text = read_scythe()
     missing: list[str] = []
 
     missing.extend(

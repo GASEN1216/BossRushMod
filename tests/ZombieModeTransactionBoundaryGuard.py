@@ -14,6 +14,7 @@ import sys
 
 
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+STARTER_LOADOUT = Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs")
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 
@@ -25,10 +26,11 @@ def fail(msg: str) -> int:
 
 def main() -> int:
     entry_text = ENTRY.read_text(encoding="utf-8")
+    entry_flow_text = entry_text + "\n" + STARTER_LOADOUT.read_text(encoding="utf-8")
     models_text = MODELS.read_text(encoding="utf-8")
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
 
-    # 1. 七阶段路径在 Entry.cs 中显式出现
+    # 1. 七阶段路径在入口 flow 中显式出现
     required_phase_writes = [
         "ZombieModeLifecyclePhase.Prechecking",
         "ZombieModeLifecyclePhase.CommittingResources",
@@ -38,8 +40,8 @@ def main() -> int:
         "ZombieModeLifecyclePhase.Active",
     ]
     for phase in required_phase_writes:
-        if phase not in entry_text:
-            return fail("ZombieModeTransactionBoundaryGuard: Entry.cs 缺少阶段写入 -> " + phase)
+        if phase not in entry_flow_text:
+            return fail("ZombieModeTransactionBoundaryGuard: 入口 flow 缺少阶段写入 -> " + phase)
 
     # 2. MarkZombieModeMapConfirmedPhase1 必须先走 Prechecking 再走 CommittingResources，最后才到 LoadingMap
     confirm_match = re.search(

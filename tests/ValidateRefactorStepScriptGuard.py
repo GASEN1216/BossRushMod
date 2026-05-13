@@ -53,6 +53,13 @@ def main() -> int:
     for snippet in [
         "test_bossrush_smoke_manual.bat",
         "tests/smokelogscan.py",
+        "json 地图选择",
+        "lootbox",
+        "mode d",
+        "mode f",
+        "courier storage/sweep",
+        "wish fountain",
+        "stale_log",
         "slashfx",
         "hitfx",
     ]:

@@ -4,9 +4,20 @@ import re
 import sys
 
 
+POLLUTION_PARTS = [
+    Path("ZombieMode/ZombieModePollution.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
+]
+
+
 def fail(msg: str) -> int:
     print(msg)
     return 1
+
+
+def read_pollution() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
 
 
 def main() -> int:
@@ -89,7 +100,7 @@ def main() -> int:
     if "OnRuntimeResumedAfterPause" not in area_runtime_body or "nextTickTime += pausedDuration" not in area_runtime_body:
         return fail("ZombieModePauseMenuGuard: area tick runtime must delay next damage tick after PauseMenu")
 
-    pollution_text = Path("ZombieMode/ZombieModePollution.cs").read_text(encoding="utf-8")
+    pollution_text = read_pollution()
     for class_name, time_field in (
         ("ZombieModeTelegraphedAreaDamageRuntime", "triggerTime += pausedDuration"),
         ("ZombieModeTelegraphedPlayerSlowRuntime", "triggerTime += pausedDuration"),

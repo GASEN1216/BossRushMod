@@ -3,13 +3,67 @@ import sys
 
 
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+REWARD_PARTS = [
+    REWARDS,
+    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
+    Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+]
+
+
+def read_rewards() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+
 EFFECTS = Path("ZombieMode/ZombieModeRewardEffects.cs")
+EFFECT_PARTS = [
+    EFFECTS,
+    Path("ZombieMode/ZombieModeRewardOptionCore.cs"),
+    Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
+    Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
+    Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+]
+
+
+def read_effects() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
+
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 STORAGE = Path("Integration/NPCs/Courier/StorageDepositService.cs")
+STORAGE_DEPOSIT_PARTS = [
+    Path("Integration/NPCs/Courier/StorageDepositService.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositLifecycle.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositTransactions.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositSingleRetrieve.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositInventoryQuickDeposit.cs"),
+    Path("Integration/NPCs/Courier/StorageDepositBulkActions.cs"),
+]
+
+
+def read_storage_deposit_service() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in STORAGE_DEPOSIT_PARTS)
+
 NPC_SHOP = Path("Integration/Affinity/Systems/NPCShopSystem.cs")
-REFORGE = Path("Integration/Reforge/ReforgeUIManager.cs")
-COURIER = Path("Integration/NPCs/Courier/CourierService.cs")
+REFORGE_PARTS = [
+    Path("Integration/Reforge/ReforgeUIManager.cs"),
+    Path("Integration/Reforge/ReforgeUIManager_ComparisonAndState.cs"),
+    Path("Integration/Reforge/ReforgeUIManager_RuntimeAndCleanup.cs"),
+]
+
+
+def read_reforge_ui_manager() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REFORGE_PARTS)
+
+COURIER_PARTS = [
+    Path("Integration/NPCs/Courier/CourierService.cs"),
+    Path("Integration/NPCs/Courier/CourierService_Buttons.cs"),
+    Path("Integration/NPCs/Courier/CourierService_CloseAndCleanup.cs"),
+]
 PAID_SWEEP = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
+
+
+def read_courier_service() -> str:
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in COURIER_PARTS)
 
 
 def fail(message: str) -> int:
@@ -54,13 +108,13 @@ def require_before(text: str, before: str, after: str, label: str) -> int:
 
 
 def main() -> int:
-    rewards = REWARDS.read_text(encoding="utf-8")
-    effects = EFFECTS.read_text(encoding="utf-8")
+    rewards = read_rewards()
+    effects = read_effects()
     drops = DROPS.read_text(encoding="utf-8")
-    storage = STORAGE.read_text(encoding="utf-8")
+    storage = read_storage_deposit_service()
     npc_shop = NPC_SHOP.read_text(encoding="utf-8")
-    reforge = REFORGE.read_text(encoding="utf-8")
-    courier = COURIER.read_text(encoding="utf-8")
+    reforge = read_reforge_ui_manager()
+    courier = read_courier_service()
     paid_sweep = PAID_SWEEP.read_text(encoding="utf-8")
 
     select_body = extract_method_body(rewards, "public void SelectZombieModeReward(int runId, ZombieModeRewardType rewardType)")
