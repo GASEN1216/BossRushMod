@@ -95,6 +95,7 @@ namespace BossRush
         private HealthBar modeECachedPlayerHealthBar = null;
         private float modeENextHealthBarLookupTime = 0f;
         private float modeENextUiWarningLogTime = 0f;
+        private readonly Dictionary<int, HealthBar> modeEHealthBarCacheByTargetId = new Dictionary<int, HealthBar>();
         private readonly Dictionary<int, string> modeEHealthBarBaseTextByBarId = new Dictionary<int, string>();
         private readonly Dictionary<int, string> modeEHealthBarDesiredTextByBarId = new Dictionary<int, string>();
         private readonly Dictionary<int, int> modeEHealthBarTargetIdsByBarId = new Dictionary<int, int>();

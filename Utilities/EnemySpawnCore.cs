@@ -34,6 +34,34 @@ namespace BossRush
         public Vector3 position;
     }
 
+    internal sealed class EnemySpawnCoreResult
+    {
+        public bool success;
+        public EnemySpawnContext context;
+        public string failureReason;
+        public EnemyPresetInfo actualPreset;
+
+        public static EnemySpawnCoreResult Succeeded(EnemySpawnContext context, EnemyPresetInfo actualPreset)
+        {
+            return new EnemySpawnCoreResult
+            {
+                success = true,
+                context = context,
+                actualPreset = actualPreset
+            };
+        }
+
+        public static EnemySpawnCoreResult Failed(string failureReason, EnemyPresetInfo actualPreset = null)
+        {
+            return new EnemySpawnCoreResult
+            {
+                success = false,
+                failureReason = failureReason,
+                actualPreset = actualPreset
+            };
+        }
+    }
+
     /// <summary>
     /// 通用敌人生成核心方法（Mode D / Mode E 共用）
     /// </summary>
@@ -98,13 +126,95 @@ namespace BossRush
         /// <param name="skipDragonKing">Mode E 用：重试时跳过龙王预设</param>
         /// <param name="skipBossRushLootTracking">跳过 BossRush 随机掉落追踪；独立模式复用 Boss 刷怪但自管掉落时必须开启。</param>
         /// <param name="normalizeDamageMultiplier">是否执行 Mode D 的伤害倍率归一化。</param>
-        private async void SpawnEnemyCore(
+        private void SpawnEnemyCore(
             EnemyPresetInfo preset,
             Vector3 position,
             bool isBoss,
             Func<bool> isActiveCheck,
             Action<EnemySpawnContext> onSpawned,
             Action onFailed = null,
+            int waveIndex = 1,
+            bool skipDragonDescendant = false,
+            bool skipDragonKing = false,
+            bool applyEquipment = true,
+            bool applyBossMultiplier = true,
+            CharacterRandomPreset directPreset = null,
+            bool skipBossRushLootTracking = false,
+            bool normalizeDamageMultiplier = true)
+        {
+            SpawnEnemyCoreFireAndForgetAsync(
+                preset,
+                position,
+                isBoss,
+                isActiveCheck,
+                onSpawned,
+                onFailed,
+                waveIndex,
+                skipDragonDescendant,
+                skipDragonKing,
+                applyEquipment,
+                applyBossMultiplier,
+                directPreset,
+                skipBossRushLootTracking,
+                normalizeDamageMultiplier).Forget();
+        }
+
+        private async UniTaskVoid SpawnEnemyCoreFireAndForgetAsync(
+            EnemyPresetInfo preset,
+            Vector3 position,
+            bool isBoss,
+            Func<bool> isActiveCheck,
+            Action<EnemySpawnContext> onSpawned,
+            Action onFailed = null,
+            int waveIndex = 1,
+            bool skipDragonDescendant = false,
+            bool skipDragonKing = false,
+            bool applyEquipment = true,
+            bool applyBossMultiplier = true,
+            CharacterRandomPreset directPreset = null,
+            bool skipBossRushLootTracking = false,
+            bool normalizeDamageMultiplier = true)
+        {
+            EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(
+                preset,
+                position,
+                isBoss,
+                isActiveCheck,
+                waveIndex,
+                skipDragonDescendant,
+                skipDragonKing,
+                applyEquipment,
+                applyBossMultiplier,
+                directPreset,
+                skipBossRushLootTracking,
+                normalizeDamageMultiplier);
+
+            if (result != null && result.success)
+            {
+                try
+                {
+                    if (onSpawned != null)
+                    {
+                        onSpawned(result.context);
+                    }
+                }
+                catch (Exception callbackEx)
+                {
+                    DevLog("[SpawnCore] [WARNING] 生成成功回调执行异常: " + callbackEx.Message);
+                    InvokeSpawnCoreFailureCallback(onFailed, "成功回调异常");
+                }
+                return;
+            }
+
+            string reason = result != null ? result.failureReason : "结果为空";
+            InvokeSpawnCoreFailureCallback(onFailed, reason);
+        }
+
+        private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync(
+            EnemyPresetInfo preset,
+            Vector3 position,
+            bool isBoss,
+            Func<bool> isActiveCheck,
             int waveIndex = 1,
             bool skipDragonDescendant = false,
             bool skipDragonKing = false,
@@ -271,12 +381,9 @@ namespace BossRush
                                 }
 
                                 DevLog("[SpawnCore] 模式已结束，销毁特殊生成的敌人");
-                                InvokeSpawnCoreFailureCallback(onFailed, "模式结束");
-                                return;
+                                return EnemySpawnCoreResult.Failed("模式结束", currentPreset);
                             }
 
-                            // 龙裔/龙王：立即调用 onSpawned（设置阵营），不等 Yield
-                            // 这样角色激活后的第一帧就已经有正确的阵营
                             var ctx = new EnemySpawnContext
                             {
                                 character = character,
@@ -284,7 +391,6 @@ namespace BossRush
                                 isBoss = isBoss,
                                 position = position
                             };
-                            onSpawned(ctx);
 
                             // 标记大兴兴（防止被误清理）
                             TryTrackSpawnCoreDaXingXing(character, currentPreset);
@@ -298,6 +404,8 @@ namespace BossRush
                             // 跳过 EquipEnemyForModeD（龙裔/龙王已在内部完成配装）
                             // 跳过 ApplyBossStatMultiplier（龙裔/龙王已在内部调用过）
                             // 跳过 SetActive（龙裔/龙王已在内部激活）
+                            DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
+                            return EnemySpawnCoreResult.Succeeded(ctx, currentPreset);
                         }
                         else
                         {
@@ -311,8 +419,7 @@ namespace BossRush
                             {
                                 UnityEngine.Object.Destroy(character.gameObject);
                                 DevLog("[SpawnCore] 模式已结束，销毁生成的敌人");
-                                InvokeSpawnCoreFailureCallback(onFailed, "模式结束");
-                                return;
+                                return EnemySpawnCoreResult.Failed("模式结束", currentPreset);
                             }
 
                             // 标记大兴兴（防止被误清理）
@@ -360,7 +467,6 @@ namespace BossRush
                                 }
                             }
 
-                            // 调用方注入差异化逻辑（阵营设置、命名、AI配置、死亡注册、列表管理等）
                             var ctx = new EnemySpawnContext
                             {
                                 character = character,
@@ -368,11 +474,9 @@ namespace BossRush
                                 isBoss = isBoss,
                                 position = position
                             };
-                            onSpawned(ctx);
+                            DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
+                            return EnemySpawnCoreResult.Succeeded(ctx, currentPreset);
                         }
-
-                        DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
-                        return;
                     }
                     catch (Exception e)
                     {
@@ -384,14 +488,14 @@ namespace BossRush
                 DevLog("[SpawnCore] [ERROR] 多次尝试仍然失败");
 
                 // 所有重试均失败，调用失败回调（用于 Mode D 波次计数兜底等）
-                InvokeSpawnCoreFailureCallback(onFailed, "重试耗尽");
+                return EnemySpawnCoreResult.Failed("重试耗尽", currentPreset);
             }
             catch (Exception e)
             {
                 DevLog("[SpawnCore] [ERROR] SpawnEnemyCore 异常: " + e.Message);
 
                 // 异常情况也调用失败回调，确保调用方计数不会卡住
-                InvokeSpawnCoreFailureCallback(onFailed, "主流程异常");
+                return EnemySpawnCoreResult.Failed("主流程异常", preset);
             }
         }
 

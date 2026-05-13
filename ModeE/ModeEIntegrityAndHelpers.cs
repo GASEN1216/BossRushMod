@@ -283,6 +283,8 @@ namespace BossRush
         {
             if (healthBar == null || nameText == null) return;
 
+            RegisterModeEHealthBar(healthBar);
+
             Health target = healthBar.target;
             if (target == null)
             {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using Cysharp.Threading.Tasks;
 
 namespace BossRush
 {
@@ -667,24 +668,40 @@ namespace BossRush
         {
             try
             {
+                RespawnModeFBossAsync().Forget();
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [ERROR] RespawnModeFBoss dispatch failed: " + e.Message);
+                return false;
+            }
+        }
+
+        private async UniTaskVoid RespawnModeFBossAsync()
+        {
+            bool selectedDragonDescendant = false;
+            try
+            {
                 if (!modeFActive)
                 {
-                    return false;
+                    CompleteModeFBossRespawnAttempt(false, false);
+                    return;
                 }
 
-                InitializeEnemyPresets();
-                InitializeModeDEnemyPools();
+                EnsureModeEFSpawnPoolsReady("ModeF.RespawnModeFBoss");
                 Vector3 spawnPos = FindSpawnPointAwayFromPlayer(50f);
                 EnemyPresetInfo preset = GetRandomModeFRespawnBossPreset();
                 if (preset == null)
                 {
                     DevLog("[ModeF] [WARNING] RespawnModeFBoss: no boss preset is available.");
-                    return false;
+                    CompleteModeFBossRespawnAttempt(false, true);
+                    return;
                 }
 
                 int modeFSessionToken = modeFState.RuntimeSessionToken;
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
-                bool selectedDragonDescendant = IsDragonDescendantPreset(preset);
+                selectedDragonDescendant = IsDragonDescendantPreset(preset);
                 if (selectedDragonDescendant)
                 {
                     modeEDragonDescendantSpawned = true;
@@ -692,83 +709,92 @@ namespace BossRush
 
                 DevLog("[ModeF] [RESPAWN] request preset=" + preset.displayName + " | pos=" + spawnPos);
 
-                SpawnEnemyCore(
+                EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(
                     preset,
                     spawnPos,
                     true,
                     () => IsModeFSessionStillValid(modeFSessionToken, relatedScene),
-                    (ctx) =>
-                    {
-                        bool configured = false;
-                        bool requeueOnFailure = true;
-                        try
-                        {
-                            if (ctx.character == null)
-                            {
-                                if (selectedDragonDescendant) modeEDragonDescendantSpawned = false;
-                                return;
-                            }
-
-                            EnemyPresetInfo spawnedPreset = ctx.preset;
-                            if (spawnedPreset == null)
-                            {
-                                if (selectedDragonDescendant) modeEDragonDescendantSpawned = false;
-                                return;
-                            }
-
-                            SyncModeEDragonDescendantSpawnFlag(selectedDragonDescendant, spawnedPreset, "ModeF");
-
-                            if (ctx.character.characterPreset != null)
-                            {
-                                CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(ctx.character.characterPreset);
-                                customPreset.aiCombatFactor = 1f;
-                                customPreset.showName = true;
-                                customPreset.showHealthBar = true;
-                                ctx.character.characterPreset = customPreset;
-                            }
-
-                            Teams spawnedTeam = ResolveModeFBossCombatTeam(Teams.middle, spawnedPreset, spawnPos);
-                            SetModeFBossDisplayName(ctx.character, spawnedPreset.displayName, spawnedTeam);
-                            ctx.character.SetTeam(spawnedTeam);
-                            ctx.character.gameObject.name = "ModeF_" + spawnedPreset.displayName;
-                            RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);
-                            RegisterModeFBoss(ctx.character);
-                            DevLog("[ModeF] [RESPAWN] spawned=" + GetModeFActorDisplayName(ctx.character, false)
-                                + " | team=" + spawnedTeam
-                                + " | total=" + modeFState.ActiveBosses.Count);
-                            configured = true;
-                        }
-                        catch (Exception e)
-                        {
-                            DevLog("[ModeF] [WARNING] Failed to configure respawned boss: " + e.Message);
-                        }
-                        finally
-                        {
-                            CompleteModeFBossRespawnAttempt(configured, requeueOnFailure);
-                        }
-                    },
-                    () =>
-                    {
-                        if (selectedDragonDescendant)
-                        {
-                            modeEDragonDescendantSpawned = false;
-                        }
-
-                        DevLog("[ModeF] [WARNING] Failed to spawn replacement boss.");
-                        DevLog("[ModeF] [RESPAWN] spawnFailed");
-                        CompleteModeFBossRespawnAttempt(false, true);
-                    },
                     1,
                     skipDragonDescendant: !selectedDragonDescendant,
                     skipDragonKing: true
                 );
 
-                DevLog("[ModeF] Replacement boss is spawning at: " + spawnPos);
-                return true;
+                if (result == null || !result.success)
+                {
+                    if (selectedDragonDescendant)
+                    {
+                        modeEDragonDescendantSpawned = false;
+                    }
+
+                    string reason = result != null ? result.failureReason : "null result";
+                    DevLog("[ModeF] [WARNING] Failed to spawn replacement boss: " + reason);
+                    DevLog("[ModeF] [RESPAWN] spawnFailed");
+                    CompleteModeFBossRespawnAttempt(false, true);
+                    return;
+                }
+
+                bool configured = ConfigureModeFRespawnedBoss(result.context, selectedDragonDescendant, spawnPos);
+                CompleteModeFBossRespawnAttempt(configured, true);
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] RespawnModeFBoss failed: " + e.Message);
+                if (selectedDragonDescendant)
+                {
+                    modeEDragonDescendantSpawned = false;
+                }
+
+                CompleteModeFBossRespawnAttempt(false, true);
+            }
+        }
+
+        private bool ConfigureModeFRespawnedBoss(EnemySpawnContext ctx, bool selectedDragonDescendant, Vector3 spawnPos)
+        {
+            try
+            {
+                if (ctx == null || ctx.character == null)
+                {
+                    if (selectedDragonDescendant) modeEDragonDescendantSpawned = false;
+                    return false;
+                }
+
+                EnemyPresetInfo spawnedPreset = ctx.preset;
+                if (spawnedPreset == null)
+                {
+                    if (selectedDragonDescendant) modeEDragonDescendantSpawned = false;
+                    return false;
+                }
+
+                SyncModeEDragonDescendantSpawnFlag(selectedDragonDescendant, spawnedPreset, "ModeF");
+
+                if (ctx.character.characterPreset != null)
+                {
+                    CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(ctx.character.characterPreset);
+                    customPreset.aiCombatFactor = 1f;
+                    customPreset.showName = true;
+                    customPreset.showHealthBar = true;
+                    ctx.character.characterPreset = customPreset;
+                }
+
+                Teams spawnedTeam = ResolveModeFBossCombatTeam(Teams.middle, spawnedPreset, spawnPos);
+                SetModeFBossDisplayName(ctx.character, spawnedPreset.displayName, spawnedTeam);
+                ctx.character.SetTeam(spawnedTeam);
+                ctx.character.gameObject.name = "ModeF_" + spawnedPreset.displayName;
+                RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);
+                RegisterModeFBoss(ctx.character);
+                DevLog("[ModeF] [RESPAWN] spawned=" + GetModeFActorDisplayName(ctx.character, false)
+                    + " | team=" + spawnedTeam
+                    + " | total=" + modeFState.ActiveBosses.Count);
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] Failed to configure respawned boss: " + e.Message);
+                if (selectedDragonDescendant)
+                {
+                    modeEDragonDescendantSpawned = false;
+                }
+
                 return false;
             }
         }
@@ -807,9 +833,7 @@ namespace BossRush
 
         private EnemyPresetInfo GetRandomModeFRespawnBossPreset()
         {
-            InitializeEnemyPresets();
-            InitializeModeDEnemyPools();
-            BuildModeEFactionPresetCaches();
+            EnsureModeEFSpawnPoolsReady("ModeF.GetRandomModeFRespawnBossPreset");
 
             List<EnemyPresetInfo> filteredBossPool = GetFilteredEnemyPresets();
             if (filteredBossPool == null || filteredBossPool.Count == 0)

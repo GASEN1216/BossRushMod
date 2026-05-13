@@ -26,6 +26,7 @@ namespace BossRush
             modeECachedPlayerHealthBar = null;
             modeENextHealthBarLookupTime = 0f;
             modeENextUiWarningLogTime = 0f;
+            modeEHealthBarCacheByTargetId.Clear();
             modeEHealthBarBaseTextByBarId.Clear();
             modeEHealthBarDesiredTextByBarId.Clear();
             modeEHealthBarTargetIdsByBarId.Clear();
@@ -297,25 +298,95 @@ namespace BossRush
                 modeECachedPlayerHealthBar = null;
             }
 
+            HealthBar healthBar = null;
+            if (TryGetCachedModeEHealthBar(health, out healthBar))
+            {
+                modeECachedPlayerHealthBar = healthBar;
+                return healthBar;
+            }
+
             if (Time.unscaledTime < modeENextHealthBarLookupTime)
             {
                 return null;
             }
 
             modeENextHealthBarLookupTime = Time.unscaledTime + MODEE_HEALTHBAR_LOOKUP_INTERVAL;
-
-            HealthBar[] healthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
-            for (int i = 0; i < healthBars.Length; i++)
+            ScanAndCacheModeEHealthBars();
+            if (TryGetCachedModeEHealthBar(health, out healthBar))
             {
-                HealthBar healthBar = healthBars[i];
-                if (healthBar != null && healthBar.target == health)
-                {
-                    modeECachedPlayerHealthBar = healthBar;
-                    return healthBar;
-                }
+                modeECachedPlayerHealthBar = healthBar;
+                return healthBar;
             }
 
             return null;
+        }
+
+        private void ScanAndCacheModeEHealthBars()
+        {
+            HealthBar[] healthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
+            for (int i = 0; i < healthBars.Length; i++)
+            {
+                RegisterModeEHealthBar(healthBars[i]);
+            }
+        }
+
+        internal void RegisterModeEHealthBar(HealthBar healthBar)
+        {
+            if (healthBar == null)
+            {
+                return;
+            }
+
+            Health target = healthBar.target;
+            if (target == null)
+            {
+                return;
+            }
+
+            int targetId = target.GetInstanceID();
+            int barId = healthBar.GetInstanceID();
+            int previousTargetId = 0;
+            if (modeEHealthBarTargetIdsByBarId.TryGetValue(barId, out previousTargetId) &&
+                previousTargetId != targetId)
+            {
+                HealthBar previousBar = null;
+                if (modeEHealthBarCacheByTargetId.TryGetValue(previousTargetId, out previousBar) &&
+                    object.ReferenceEquals(previousBar, healthBar))
+                {
+                    modeEHealthBarCacheByTargetId.Remove(previousTargetId);
+                }
+
+                modeEHealthBarBaseTextByBarId.Remove(barId);
+                modeEHealthBarDesiredTextByBarId.Remove(barId);
+                modeEHealthBarAppliedVersionByBarId.Remove(barId);
+            }
+
+            modeEHealthBarCacheByTargetId[targetId] = healthBar;
+            modeEHealthBarTargetIdsByBarId[barId] = targetId;
+        }
+
+        private bool TryGetCachedModeEHealthBar(Health health, out HealthBar healthBar)
+        {
+            healthBar = null;
+            if (health == null)
+            {
+                return false;
+            }
+
+            int targetId = health.GetInstanceID();
+            if (!modeEHealthBarCacheByTargetId.TryGetValue(targetId, out healthBar))
+            {
+                return false;
+            }
+
+            if (healthBar != null && healthBar.target == health)
+            {
+                return true;
+            }
+
+            modeEHealthBarCacheByTargetId.Remove(targetId);
+            healthBar = null;
+            return false;
         }
 
         private void ForceRefreshModeEHealthBarName(HealthBar healthBar)

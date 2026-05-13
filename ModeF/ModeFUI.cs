@@ -197,7 +197,6 @@ namespace BossRush
             }
 
             modeFNextHealthBarLookupTime = Time.unscaledTime + MODEF_HEALTHBAR_LOOKUP_INTERVAL;
-            modeFHealthBarCacheByTargetId.Clear();
 
             HealthBar[] healthBars = UnityEngine.Object.FindObjectsOfType<HealthBar>();
             for (int i = 0; i < healthBars.Length; i++)

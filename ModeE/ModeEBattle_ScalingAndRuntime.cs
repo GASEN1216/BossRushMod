@@ -18,6 +18,7 @@ namespace BossRush
         private sealed class ModeEEnemyScalingState
         {
             public int deathBaseline;
+            public int appliedStacks = -1;
             public Modifier hp;
             public Modifier gunDmg;
             public Modifier meleeDmg;
@@ -373,6 +374,7 @@ namespace BossRush
             scalingState.hp = null;
             scalingState.gunDmg = null;
             scalingState.meleeDmg = null;
+            scalingState.appliedStacks = -1;
         }
 
         private void CleanupModeEEnemyRuntimeState(CharacterMainControl enemy, Teams? faction = null)
@@ -544,7 +546,12 @@ namespace BossRush
                             modeEEnemyScalingStates[enemy] = scalingState;
                         }
 
-                        int personalStacks = Mathf.Max(0, GetModeEFactionDeathCount(faction) - scalingState.deathBaseline);
+                        int personalStacks = Mathf.Max(0, factionDeathCount - scalingState.deathBaseline);
+                        if (scalingState.appliedStacks == personalStacks)
+                        {
+                            continue;
+                        }
+
                         float hpPercent = personalStacks * 0.05f;
                         float damagePercent = personalStacks * 0.05f;
                         float oldMaxHealth = GetModeEMaxHealthValue(enemy);
@@ -554,6 +561,7 @@ namespace BossRush
                         scalingState.hp = AddModeEScalingModifier(enemy, "MaxHealth", hpPercent);
                         scalingState.gunDmg = AddModeEScalingModifier(enemy, "GunDamageMultiplier", damagePercent);
                         scalingState.meleeDmg = AddModeEScalingModifier(enemy, "MeleeDamageMultiplier", damagePercent);
+                        scalingState.appliedStacks = personalStacks;
                         SyncModeEHealthAfterMaxHealthRefresh(enemy, oldMaxHealth);
                     }
                     catch { }

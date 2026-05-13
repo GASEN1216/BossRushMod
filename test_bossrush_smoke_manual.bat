@@ -88,6 +88,8 @@ echo.
 echo After completing the in-game checklist, scan the latest log from WSL:
 echo   python3 tests/SmokeLogScan.py
 echo SmokeLogScan returns STALE_LOG until the game produces a new log after the deployed DLL.
+echo If Steam shows a cloud sync failure prompt, choose the option to ignore/continue
+echo and launch anyway; otherwise Duckov.exe will not start and no new smoke log appears.
 echo.
 
 if not exist "%GAME_EXE%" (

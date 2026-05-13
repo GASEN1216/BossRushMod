@@ -56,6 +56,10 @@ namespace BossRush
 
         private bool modeERespawnTaskRunning = false;
 
+        private readonly List<Vector3> modeERespawnSpawnPointScratch = new List<Vector3>();
+
+        private readonly List<Vector3> modeERespawnAcceptedPointScratch = new List<Vector3>();
+
         private readonly Queue<CharacterMainControl> modeEPendingAggroQueue = new Queue<CharacterMainControl>();
 
         private readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
@@ -81,9 +85,21 @@ namespace BossRush
         private List<Vector3> GetNearestSpawnPoints(int count)
         {
             Vector3[] cachedPoints = GetModeEFlattenedSpawnPoints();
-            List<Vector3> allPoints = cachedPoints.Length > 0
-                ? new List<Vector3>(cachedPoints)
-                : new List<Vector3>();
+            List<Vector3> allPoints = modeERespawnSpawnPointScratch;
+            allPoints.Clear();
+            if (cachedPoints.Length > 0)
+            {
+                if (allPoints.Capacity < cachedPoints.Length)
+                {
+                    allPoints.Capacity = cachedPoints.Length;
+                }
+
+                for (int i = 0; i < cachedPoints.Length; i++)
+                {
+                    allPoints.Add(cachedPoints[i]);
+                }
+            }
+
             if (allPoints.Count == 0) return allPoints;
 
             // 获取玩家位置
@@ -99,11 +115,12 @@ namespace BossRush
                 return distA.CompareTo(distB);
             });
 
-            // 不足 count 个时返回全部
-            if (allPoints.Count <= count) return allPoints;
+            if (allPoints.Count > count)
+            {
+                allPoints.RemoveRange(count, allPoints.Count - count);
+            }
 
-            // 取前 count 个
-            return allPoints.GetRange(0, count);
+            return allPoints;
         }
 
         /// <summary>
@@ -113,9 +130,24 @@ namespace BossRush
         private List<Vector3> GetAllSpawnPoints()
         {
             Vector3[] cachedPoints = GetModeEFlattenedSpawnPoints();
-            return cachedPoints.Length > 0
-                ? new List<Vector3>(cachedPoints)
-                : new List<Vector3>();
+            List<Vector3> allPoints = modeERespawnSpawnPointScratch;
+            allPoints.Clear();
+            if (cachedPoints.Length <= 0)
+            {
+                return allPoints;
+            }
+
+            if (allPoints.Capacity < cachedPoints.Length)
+            {
+                allPoints.Capacity = cachedPoints.Length;
+            }
+
+            for (int i = 0; i < cachedPoints.Length; i++)
+            {
+                allPoints.Add(cachedPoints[i]);
+            }
+
+            return allPoints;
         }
 
         #endregion
@@ -214,6 +246,30 @@ namespace BossRush
         private void ResetModeERespawnRuntimeState()
         {
             modeERespawnTaskRunning = false;
+            modeERespawnSpawnPointScratch.Clear();
+            modeERespawnAcceptedPointScratch.Clear();
+        }
+
+        private List<Vector3> CopyModeERespawnAcceptedPoints(List<Vector3> points, int count)
+        {
+            modeERespawnAcceptedPointScratch.Clear();
+            if (points == null || count <= 0)
+            {
+                return modeERespawnAcceptedPointScratch;
+            }
+
+            int acceptedCount = Mathf.Min(count, points.Count);
+            if (modeERespawnAcceptedPointScratch.Capacity < acceptedCount)
+            {
+                modeERespawnAcceptedPointScratch.Capacity = acceptedCount;
+            }
+
+            for (int i = 0; i < acceptedCount; i++)
+            {
+                modeERespawnAcceptedPointScratch.Add(points[i]);
+            }
+
+            return modeERespawnAcceptedPointScratch;
         }
 
         private int CountValidModeEAliveBosses()
@@ -326,19 +382,17 @@ namespace BossRush
                 return false;
             }
 
-            List<Vector3> acceptedPoints = points;
+            int acceptedPointCount = points.Count;
             if (points.Count > availableSlots)
             {
-                acceptedPoints = points.GetRange(0, availableSlots);
+                acceptedPointCount = availableSlots;
                 ShowMessage(L10n.T(
                     itemNameZh + " 已受 Boss 上限保护，本次只呼叫 " + availableSlots + " 个 Boss。",
                     itemNameEn + " was capped by the active Boss limit. Spawning " + availableSlots + " Bosses."
                 ));
             }
-            else
-            {
-                acceptedPoints = new List<Vector3>(points);
-            }
+
+            List<Vector3> acceptedPoints = CopyModeERespawnAcceptedPoints(points, acceptedPointCount);
 
             respawnCount = acceptedPoints.Count;
             if (respawnCount <= 0)

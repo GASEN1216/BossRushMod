@@ -21,6 +21,9 @@ REQUIRED_SNIPPETS = [
     "slashFx / hitFx",
     "SmokeLogScan.py",
     "STALE_LOG",
+    "cloud sync failure prompt",
+    "ignore/continue",
+    "Duckov.exe will not start",
 ]
 
 

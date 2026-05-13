@@ -990,10 +990,8 @@ namespace BossRush
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
                 profiler.Mark("InitializeModeDItemPools");
-                InitializeModeDEnemyPools();
-                profiler.Mark("InitializeModeDEnemyPools");
-                BuildModeEFactionPresetCaches();
-                profiler.Mark("BuildModeEFactionPresetCaches");
+                EnsureModeEFSpawnPoolsReady("StartModeE");
+                profiler.Mark("EnsureModeEFSpawnPoolsReady");
 
                 // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
                 EnsureModeDGlobalItemPool();

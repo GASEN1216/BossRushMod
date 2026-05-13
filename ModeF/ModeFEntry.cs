@@ -293,8 +293,7 @@ namespace BossRush
 
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
-                InitializeModeDEnemyPools();
-                BuildModeEFactionPresetCaches();
+                EnsureModeEFSpawnPoolsReady("StartModeF");
                 EnsureModeDGlobalItemPool();
 
                 // 订阅龙息Buff处理器

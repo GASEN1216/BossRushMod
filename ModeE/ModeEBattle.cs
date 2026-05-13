@@ -153,6 +153,25 @@ namespace BossRush
             modeEFactionPresetCachesBuilt = true;
         }
 
+        private void EnsureModeEFSpawnPoolsReady(string sourceTag)
+        {
+            try
+            {
+                InitializeEnemyPresets();
+                InitializeModeDEnemyPools();
+                BuildModeEFactionPresetCaches();
+
+                if (VerboseStartupDebugLogsEnabled)
+                {
+                    DevLog("[ModeE/F] 生成池缓存已就绪: " + sourceTag);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE/F] [WARNING] 生成池缓存预热失败(" + sourceTag + "): " + e.Message);
+            }
+        }
+
         private List<EnemyPresetInfo> GetModeEBossPoolForFaction(Teams faction, bool includeDragonDescendant)
         {
             BuildModeEFactionPresetCaches();

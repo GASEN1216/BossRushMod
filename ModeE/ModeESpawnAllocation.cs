@@ -52,6 +52,77 @@ namespace BossRush
         private const float MODE_E_SPAWN_MIN_DISTANCE = 10f;
         private const float MODE_E_SPAWN_MIN_DISTANCE_SQR = MODE_E_SPAWN_MIN_DISTANCE * MODE_E_SPAWN_MIN_DISTANCE;
 
+        private static Vector2Int GetModeESpawnPointGridCell(Vector3 point)
+        {
+            return new Vector2Int(
+                Mathf.FloorToInt(point.x / MODE_E_SPAWN_MIN_DISTANCE),
+                Mathf.FloorToInt(point.z / MODE_E_SPAWN_MIN_DISTANCE));
+        }
+
+        private static List<Vector3> FilterModeESpawnPointsByDistanceGrid(Vector3[] sorted)
+        {
+            List<Vector3> filtered = sorted != null
+                ? new List<Vector3>(sorted.Length)
+                : new List<Vector3>();
+            if (sorted == null || sorted.Length == 0)
+            {
+                return filtered;
+            }
+
+            Dictionary<Vector2Int, List<Vector3>> acceptedByCell = new Dictionary<Vector2Int, List<Vector3>>();
+            for (int i = 0; i < sorted.Length; i++)
+            {
+                Vector3 candidate = sorted[i];
+                Vector2Int cell = GetModeESpawnPointGridCell(candidate);
+                bool tooClose = false;
+
+                for (int dx = -1; dx <= 1 && !tooClose; dx++)
+                {
+                    for (int dz = -1; dz <= 1; dz++)
+                    {
+                        Vector2Int neighborCell = new Vector2Int(cell.x + dx, cell.y + dz);
+                        List<Vector3> acceptedPoints;
+                        if (!acceptedByCell.TryGetValue(neighborCell, out acceptedPoints))
+                        {
+                            continue;
+                        }
+
+                        for (int j = 0; j < acceptedPoints.Count; j++)
+                        {
+                            Vector3 acceptedPoint = acceptedPoints[j];
+                            if ((candidate - acceptedPoint).sqrMagnitude < MODE_E_SPAWN_MIN_DISTANCE_SQR)
+                            {
+                                tooClose = true;
+                                break;
+                            }
+                        }
+
+                        if (tooClose)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                if (tooClose)
+                {
+                    continue;
+                }
+
+                filtered.Add(candidate);
+                List<Vector3> cellPoints;
+                if (!acceptedByCell.TryGetValue(cell, out cellPoints))
+                {
+                    cellPoints = new List<Vector3>();
+                    acceptedByCell[cell] = cellPoints;
+                }
+
+                cellPoints.Add(candidate);
+            }
+
+            return filtered;
+        }
+
         private void RebuildModeEFlattenedSpawnPointCache()
         {
             if (modeESpawnAllocation == null || modeESpawnAllocation.Count == 0)
@@ -195,23 +266,7 @@ namespace BossRush
                 });
 
                 // ========== 第3步：间隔过滤（每个点与已选点距离 >= 10m） ==========
-                List<Vector3> filtered = new List<Vector3>(sorted.Length);
-                for (int i = 0; i < sorted.Length; i++)
-                {
-                    bool tooClose = false;
-                    for (int j = 0; j < filtered.Count; j++)
-                    {
-                        if ((sorted[i] - filtered[j]).sqrMagnitude < MODE_E_SPAWN_MIN_DISTANCE_SQR)
-                        {
-                            tooClose = true;
-                            break;
-                        }
-                    }
-                    if (!tooClose)
-                    {
-                        filtered.Add(sorted[i]);
-                    }
-                }
+                List<Vector3> filtered = FilterModeESpawnPointsByDistanceGrid(sorted);
 
                 if (logEnabled)
                 {

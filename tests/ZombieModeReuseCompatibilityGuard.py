@@ -56,7 +56,8 @@ def main() -> int:
         require(spawner, "SpawnPositionHelper.TrySampleNavMesh", "ZombieMode spawn sampling must reuse shared NavMesh helper")
         require(spawner, "skipBossRushLootTracking: true", "ZombieMode bosses must stay compatible with BossRush loot ownership")
         forbid(spawner, "Resources.FindObjectsOfTypeAll<", "ZombieMode spawner must not restore its own preset scan")
-        require(spawn_core, "InvokeSpawnCoreFailureCallback(onFailed, \"模式结束\")", "shared spawn core must complete callback-backed async wrappers when mode ends")
+        require(spawn_core, "SpawnEnemyCoreInternalAsync", "shared spawn core must expose observable async completion")
+        require(spawn_core, "InvokeSpawnCoreFailureCallback(onFailed, reason)", "shared spawn core must complete callback-backed async wrappers when mode ends")
 
         require(extraction, "ModeExtractionPointFactory.CreateExtractionPoint(request)", "ZombieMode extraction must reuse shared extraction factory")
         require(extraction, "EvacuationCountdownUI.Request", "ZombieMode extraction must use Duckov evacuation countdown UI")
