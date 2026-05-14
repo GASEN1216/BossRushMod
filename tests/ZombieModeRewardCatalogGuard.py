@@ -89,8 +89,8 @@ def main() -> int:
         "SpawnPendingZombieModeEliteSquad",
         "CreateZombieModeHighValueAirdrop",
         "PendingMapEvent = ZombieModePendingMapEventType.EliteSquad",
-        "TryGiveRandomItemByTags(new string[] { \"Gun\" }",
-        "TryGiveRandomItemByTags(new string[] { \"MeleeWeapon\" }",
+        "TryGiveRandomItemByTags(ZombieModeRewardTagGun",
+        "TryGiveRandomItemByTags(ZombieModeRewardTagMeleeWeapon",
         "ZombieModeNpcCatalog.GetPollutionPriceMultiplier",
     ]:
         result = require(rewards, snippet, "weighted reward implementation")

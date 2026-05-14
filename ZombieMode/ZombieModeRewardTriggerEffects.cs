@@ -297,9 +297,9 @@ namespace BossRush
                 return;
             }
 
-            if (!TryGiveRandomItemByTags(new string[] { "Ammo" }, 1, 4))
+            if (!TryGiveRandomItemByTags(ZombieModeRewardTagAmmo, 1, 4))
             {
-                TryGiveRandomItemByTags(new string[] { "Bullet" }, 1, 4);
+                TryGiveRandomItemByTags(ZombieModeRewardTagBullet, 1, 4);
             }
         }
 

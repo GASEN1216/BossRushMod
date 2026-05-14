@@ -167,7 +167,7 @@ namespace BossRush
             for (int i = 0; i < targetCount; i++)
             {
                 string[] tags = highValue
-                    ? (UnityEngine.Random.value < 0.5f ? new string[] { "Weapon" } : new string[] { "Armor" })
+                    ? (UnityEngine.Random.value < 0.5f ? ZombieModeDropTagWeapon : ZombieModeDropTagArmor)
                     : GetZombieModeContainerRefillTags(i);
                 int typeId = FindRandomItemTypeByTags(tags, minQuality, maxQuality);
                 if (typeId <= 0)
@@ -230,11 +230,11 @@ namespace BossRush
         private string[] GetZombieModeContainerRefillTags(int index)
         {
             int roll = UnityEngine.Random.Range(0, 100);
-            if (roll < 30) return new string[] { "Ammo" };
-            if (roll < 55) return new string[] { "Medical" };
-            if (roll < 75) return new string[] { "Food" };
-            if (roll < 90) return new string[] { "Weapon" };
-            return new string[] { "Armor" };
+            if (roll < 30) return ZombieModeDropTagAmmo;
+            if (roll < 55) return ZombieModeDropTagMedical;
+            if (roll < 75) return ZombieModeDropTagFood;
+            if (roll < 90) return ZombieModeDropTagWeapon;
+            return ZombieModeDropTagArmor;
         }
 
         private void LockZombieModeContainerUntilStarterChoice(int runId, InteractableLootbox lootbox)

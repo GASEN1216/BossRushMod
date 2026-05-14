@@ -62,7 +62,7 @@ namespace BossRush
                 bool grantedAny = false;
                 if (loadout == ZombieModeStarterLoadout.Melee)
                 {
-                    bool coreGranted = TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 1, ZombieModeTuning.StarterMaxQuality);
+                    bool coreGranted = TryGiveRandomItemByTags(ZombieModeRewardTagMeleeWeapon, 1, ZombieModeTuning.StarterMaxQuality);
                     if (!coreGranted)
                     {
                         DevLog("[ZombieMode] 近战开局失败：缺少可发放近战武器");
@@ -77,15 +77,15 @@ namespace BossRush
                         return false;
                     }
 
-                    int medical = guaranteedHealing + TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 3);
+                    int medical = guaranteedHealing + TryGiveRandomItemByTagsTimes(ZombieModeRewardTagsMedicMedicalHealing, 1, 3, 3);
                     grantedAny |= medical > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Food" }, 1, 3, 3) > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Drink" }, 1, 3, 2) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagFood, 1, 3, 3) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagDrink, 1, 3, 2) > 0;
                     zombieModeRunState.StarterAmmoCaliber = string.Empty;
                 }
                 else if (loadout == ZombieModeStarterLoadout.Gunner)
                 {
-                    int gunTypeId = FindRandomItemTypeByTags(new string[] { "Gun" }, 1, ZombieModeTuning.StarterMaxQuality);
+                    int gunTypeId = FindRandomItemTypeByTags(ZombieModeRewardTagGun, 1, ZombieModeTuning.StarterMaxQuality);
                     bool gunGranted = false;
                     if (gunTypeId > 0)
                     {
@@ -130,9 +130,9 @@ namespace BossRush
                         return false;
                     }
 
-                    grantedAny |= (guaranteedHealing + TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 3, 1)) > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Food" }, 1, 3, 2) > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(new string[] { "Drink" }, 1, 3, 1) > 0;
+                    grantedAny |= (guaranteedHealing + TryGiveRandomItemByTagsTimes(ZombieModeRewardTagsMedicMedicalHealing, 1, 3, 1)) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagFood, 1, 3, 2) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagDrink, 1, 3, 1) > 0;
                 }
 
                 if (!GrantZombieModeStarterProtectionSet())
@@ -152,9 +152,9 @@ namespace BossRush
 
         private bool GrantZombieModeStarterProtectionSet()
         {
-            bool armorGranted = TryGiveRandomItemByTags(new string[] { "BodyArmor" }, 1, ZombieModeTuning.StarterMaxQuality);
-            bool helmetGranted = TryGiveRandomItemByTags(new string[] { "Helmet" }, 1, ZombieModeTuning.StarterMaxQuality);
-            bool headsetGranted = TryGiveRandomItemByTags(new string[] { "Headset" }, 1, ZombieModeTuning.StarterMaxQuality);
+            bool armorGranted = TryGiveRandomItemByTags(ZombieModeRewardTagBodyArmor, 1, ZombieModeTuning.StarterMaxQuality);
+            bool helmetGranted = TryGiveRandomItemByTags(ZombieModeRewardTagHelmet, 1, ZombieModeTuning.StarterMaxQuality);
+            bool headsetGranted = TryGiveRandomItemByTags(ZombieModeRewardTagHeadset, 1, ZombieModeTuning.StarterMaxQuality);
 
             if (!armorGranted)
             {
@@ -187,12 +187,12 @@ namespace BossRush
 
         private bool TryGiveZombieModeStarterGuaranteedHealingItem()
         {
-            return TryGiveRandomItemByTags(new string[] { "Healing" }, 1, ZombieModeTuning.StarterMaxQuality);
+            return TryGiveRandomItemByTags(ZombieModeRewardTagHealing, 1, ZombieModeTuning.StarterMaxQuality);
         }
 
         private bool TryGiveZombieModeWaveClearHealingItem()
         {
-            return TryGiveRandomItemByTags(new string[] { "Healing" }, 1, ZombieModeTuning.StarterMaxQuality);
+            return TryGiveRandomItemByTags(ZombieModeRewardTagHealing, 1, ZombieModeTuning.StarterMaxQuality);
         }
 
         private int TryGiveRandomItemByTagsTimes(string[] requiredTags, int minQuality, int maxQuality, int times)
@@ -241,10 +241,10 @@ namespace BossRush
             try
             {
                 ItemFilter filter = new ItemFilter();
-                Tag[] ammoTags = ResolveZombieModeTags(new string[] { "Ammo" });
+                Tag[] ammoTags = ResolveZombieModeTags(ZombieModeRewardTagAmmo);
                 if (ammoTags == null || ammoTags.Length <= 0)
                 {
-                    ammoTags = ResolveZombieModeTags(new string[] { "Bullet" });
+                    ammoTags = ResolveZombieModeTags(ZombieModeRewardTagBullet);
                 }
                 filter.requireTags = ammoTags;
                 filter.minQuality = minQuality;

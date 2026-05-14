@@ -68,19 +68,19 @@ def main() -> int:
     if not protection:
         return fail("GrantZombieModeStarterProtectionSet helper missing")
     for snippet in [
-        'TryGiveRandomItemByTags(new string[] { "BodyArmor" }',
-        'TryGiveRandomItemByTags(new string[] { "Helmet" }',
-        'TryGiveRandomItemByTags(new string[] { "Headset" }',
+        "TryGiveRandomItemByTags(ZombieModeRewardTagBodyArmor",
+        "TryGiveRandomItemByTags(ZombieModeRewardTagHelmet",
+        "TryGiveRandomItemByTags(ZombieModeRewardTagHeadset",
     ]:
         if snippet not in protection:
             return fail("starter protection helper missing gear grant: " + snippet)
 
     aliases = extract_block(entry, "private static string[] GetZombieModeTagAliases(")
-    if not aliases or '"Helmet"' not in aliases or '"Helmat"' not in aliases:
+    if not aliases or "ZombieModeTagAliasesHelmet" not in aliases or '"Helmat", "Helmet"' not in entry:
         return fail("Helmet tag lookup must fall back to the game's Helmat tag spelling")
-    if '"Armor"' not in aliases or 'return new string[] { "Armor", "Helmat", "Helmet" };' not in aliases:
+    if '"Armor"' not in aliases or "return ZombieModeTagAliasesArmor;" not in aliases:
         return fail("Armor tag lookup must include body armor and helmets")
-    if '"BodyArmor"' not in aliases or 'return new string[] { "Armor" };' not in aliases:
+    if '"BodyArmor"' not in aliases or "return ZombieModeTagAliasesBodyArmor;" not in aliases:
         return fail("starter body armor lookup must stay body-armor only")
 
     if "private Tag FindZombieModeTagByName(" not in entry:
@@ -92,7 +92,7 @@ def main() -> int:
     candidates = extract_block(entry, "private int[] GetZombieModeRewardCandidateIds(")
     if not candidates:
         return fail("GetZombieModeRewardCandidateIds helper missing")
-    if "ResolveZombieModeTags(new string[] { requiredTags[i] })" not in candidates:
+    if "ResolveZombieModeTags(requiredTags[i])" not in candidates:
         return fail("reward candidate lookup must resolve each logical tag separately")
     if "new Tag[] { tag }" not in candidates:
         return fail("reward candidate lookup must search one concrete tag at a time for OR semantics")

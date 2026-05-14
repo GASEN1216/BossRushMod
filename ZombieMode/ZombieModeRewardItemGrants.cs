@@ -20,7 +20,7 @@ namespace BossRush
         private bool GrantZombieModeRandomMeleeReward(bool bossNode)
         {
             int maxQuality = GetZombieModeRewardMaxQuality(bossNode);
-            if (TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 1, maxQuality))
+            if (TryGiveRandomItemByTags(ZombieModeRewardTagMeleeWeapon, 1, maxQuality))
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomMeleeWeapon"));
                 return true;
@@ -33,7 +33,7 @@ namespace BossRush
         private bool GrantZombieModeRandomGunWithAmmoReward(bool bossNode)
         {
             int maxQuality = GetZombieModeRewardMaxQuality(bossNode);
-            int gunTypeId = FindRandomItemTypeByTags(new string[] { "Gun" }, 1, maxQuality);
+            int gunTypeId = FindRandomItemTypeByTags(ZombieModeRewardTagGun, 1, maxQuality);
             if (gunTypeId <= 0)
             {
                 GrantZombieModeFallbackPurificationReward("RandomGunWithAmmoRewardFail_NoType", bossNode ? 160 : 110);
@@ -96,8 +96,8 @@ namespace BossRush
                 return true;
             }
 
-            bool granted = TryGiveRandomItemByTags(new string[] { "Ammo" }, 1, 4);
-            granted |= TryGiveRandomItemByTags(new string[] { "Bullet" }, 1, 4);
+            bool granted = TryGiveRandomItemByTags(ZombieModeRewardTagAmmo, 1, 4);
+            granted |= TryGiveRandomItemByTags(ZombieModeRewardTagBullet, 1, 4);
             if (granted)
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_AmmoSupply"));
@@ -111,7 +111,7 @@ namespace BossRush
         private bool GrantZombieModeMedicalSupplyReward()
         {
             int count = UnityEngine.Random.Range(3, 6);
-            int granted = TryGiveRandomItemByTagsTimes(new string[] { "Medic", "Medical", "Healing" }, 1, 4, count);
+            int granted = TryGiveRandomItemByTagsTimes(ZombieModeRewardTagsMedicMedicalHealing, 1, 4, count);
             if (granted > 0)
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_MedicalSupply"));
@@ -125,12 +125,12 @@ namespace BossRush
         private bool GrantZombieModeArmorOrHelmetReward(bool bossNode)
         {
             int maxQuality = GetZombieModeRewardMaxQuality(bossNode);
-            string tag = UnityEngine.Random.value < 0.5f ? "Armor" : "Helmet";
-            bool granted = TryGiveRandomItemByTags(new string[] { tag }, 1, maxQuality);
+            string[] tags = UnityEngine.Random.value < 0.5f ? ZombieModeRewardTagArmor : ZombieModeRewardTagHelmet;
+            bool granted = TryGiveRandomItemByTags(tags, 1, maxQuality);
             if (!granted)
             {
-                granted = TryGiveRandomItemByTags(new string[] { "Armor" }, 1, maxQuality) ||
-                          TryGiveRandomItemByTags(new string[] { "Helmet" }, 1, maxQuality);
+                granted = TryGiveRandomItemByTags(ZombieModeRewardTagArmor, 1, maxQuality) ||
+                          TryGiveRandomItemByTags(ZombieModeRewardTagHelmet, 1, maxQuality);
             }
 
             if (granted)
@@ -232,7 +232,7 @@ namespace BossRush
             int minQuality = ZombieModeContractGearDealMinQuality;
             int maxQuality = GetZombieModeContractGearDealMaxQuality();
             int gunTypeId = PickZombieModeStrictQualityCandidate(
-                GetZombieModeRewardCandidateIds(new string[] { "Gun" }, minQuality, maxQuality),
+                GetZombieModeRewardCandidateIds(ZombieModeRewardTagGun, minQuality, maxQuality),
                 minQuality,
                 maxQuality);
             if (gunTypeId <= 0)
@@ -261,12 +261,12 @@ namespace BossRush
         {
             int minQuality = ZombieModeContractGearDealMinQuality;
             int maxQuality = GetZombieModeContractGearDealMaxQuality();
-            string tag = UnityEngine.Random.value < 0.5f ? "Armor" : "Helmet";
-            bool granted = TryGiveZombieModeContractGearDealItemByTags(new string[] { tag }, minQuality, maxQuality);
+            string[] tags = UnityEngine.Random.value < 0.5f ? ZombieModeRewardTagArmor : ZombieModeRewardTagHelmet;
+            bool granted = TryGiveZombieModeContractGearDealItemByTags(tags, minQuality, maxQuality);
             if (!granted)
             {
-                granted = TryGiveZombieModeContractGearDealItemByTags(new string[] { "Armor" }, minQuality, maxQuality) ||
-                          TryGiveZombieModeContractGearDealItemByTags(new string[] { "Helmet" }, minQuality, maxQuality);
+                granted = TryGiveZombieModeContractGearDealItemByTags(ZombieModeRewardTagArmor, minQuality, maxQuality) ||
+                          TryGiveZombieModeContractGearDealItemByTags(ZombieModeRewardTagHelmet, minQuality, maxQuality);
             }
 
             if (granted)
@@ -397,9 +397,9 @@ namespace BossRush
             }
 
             bool granted = false;
-            granted |= TryGiveRandomItemByTags(new string[] { "Gun" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
-            granted |= TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
-            granted |= TryGiveRandomItemByTags(new string[] { "Armor" }, 4, ZombieModeTuning.StarterMaxQuality + 1);
+            granted |= TryGiveRandomItemByTags(ZombieModeRewardTagGun, 4, ZombieModeTuning.StarterMaxQuality + 1);
+            granted |= TryGiveRandomItemByTags(ZombieModeRewardTagMeleeWeapon, 4, ZombieModeTuning.StarterMaxQuality + 1);
+            granted |= TryGiveRandomItemByTags(ZombieModeRewardTagArmor, 4, ZombieModeTuning.StarterMaxQuality + 1);
             if (!granted)
             {
                 GrantZombieModeFallbackPurificationReward("HighValueSupply", 180);

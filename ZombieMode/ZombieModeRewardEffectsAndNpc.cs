@@ -193,14 +193,14 @@ namespace BossRush
                     bool granted = false;
                     if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Gunner)
                     {
-                        granted = TryGiveRandomItemByTags(new string[] { "Gun" }, 2, ZombieModeTuning.StarterMaxQuality);
+                        granted = TryGiveRandomItemByTags(ZombieModeRewardTagGun, 2, ZombieModeTuning.StarterMaxQuality);
                     }
                     else if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Melee)
                     {
-                        granted = TryGiveRandomItemByTags(new string[] { "MeleeWeapon" }, 2, ZombieModeTuning.StarterMaxQuality);
+                        granted = TryGiveRandomItemByTags(ZombieModeRewardTagMeleeWeapon, 2, ZombieModeTuning.StarterMaxQuality);
                     }
 
-                    granted |= TryGiveRandomItemByTags(new string[] { "Weapon" }, 2, ZombieModeTuning.StarterMaxQuality);
+                    granted |= TryGiveRandomItemByTags(ZombieModeRewardTagWeapon, 2, ZombieModeTuning.StarterMaxQuality);
                     if (granted)
                     {
                         NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_StarterReroll"));
@@ -213,11 +213,11 @@ namespace BossRush
                 case ZombieModeRewardType.RandomSupply:
                 default:
                     bool supplyGranted = false;
-                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Medic" }, 1, 4);
-                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Medical" }, 1, 4);
-                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Healing" }, 1, 4);
-                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Ammo" }, 1, 4);
-                    supplyGranted |= TryGiveRandomItemByTags(new string[] { "Bullet" }, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(ZombieModeRewardTagMedic, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(ZombieModeRewardTagMedical, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(ZombieModeRewardTagHealing, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(ZombieModeRewardTagAmmo, 1, 4);
+                    supplyGranted |= TryGiveRandomItemByTags(ZombieModeRewardTagBullet, 1, 4);
                     if (supplyGranted)
                     {
                         NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomSupply"));

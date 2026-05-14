@@ -18,6 +18,24 @@ namespace BossRush
         private readonly ZombieModeEntryTransaction zombieModeEntryTransaction = new ZombieModeEntryTransaction();
         private readonly Dictionary<string, int[]> zombieModeRewardCandidateCache = new Dictionary<string, int[]>();
         private readonly List<int> zombieModeRewardSafeCandidateScratch = new List<int>();
+        private static readonly string[] ZombieModeRewardTagAmmo = { "Ammo" };
+        private static readonly string[] ZombieModeRewardTagArmor = { "Armor" };
+        private static readonly string[] ZombieModeRewardTagBodyArmor = { "BodyArmor" };
+        private static readonly string[] ZombieModeRewardTagBullet = { "Bullet" };
+        private static readonly string[] ZombieModeRewardTagDrink = { "Drink" };
+        private static readonly string[] ZombieModeRewardTagFood = { "Food" };
+        private static readonly string[] ZombieModeRewardTagGun = { "Gun" };
+        private static readonly string[] ZombieModeRewardTagHeadset = { "Headset" };
+        private static readonly string[] ZombieModeRewardTagHealing = { "Healing" };
+        private static readonly string[] ZombieModeRewardTagHelmet = { "Helmet" };
+        private static readonly string[] ZombieModeRewardTagMedical = { "Medical" };
+        private static readonly string[] ZombieModeRewardTagMedic = { "Medic" };
+        private static readonly string[] ZombieModeRewardTagMeleeWeapon = { "MeleeWeapon" };
+        private static readonly string[] ZombieModeRewardTagWeapon = { "Weapon" };
+        private static readonly string[] ZombieModeRewardTagsMedicMedicalHealing = { "Medic", "Medical", "Healing" };
+        private static readonly string[] ZombieModeTagAliasesBodyArmor = { "Armor" };
+        private static readonly string[] ZombieModeTagAliasesArmor = { "Armor", "Helmat", "Helmet" };
+        private static readonly string[] ZombieModeTagAliasesHelmet = { "Helmat", "Helmet" };
         private static int nextZombieModeRunId = 0;
         private bool pendingZombieModeEntry = false;
 
@@ -823,7 +841,7 @@ namespace BossRush
                 bool searchedAnyTag = false;
                 for (int i = 0; i < requiredTags.Length; i++)
                 {
-                    Tag[] tags = ResolveZombieModeTags(new string[] { requiredTags[i] });
+                    Tag[] tags = ResolveZombieModeTags(requiredTags[i]);
                     if (tags == null || tags.Length <= 0)
                     {
                         continue;
@@ -906,6 +924,18 @@ namespace BossRush
             return tags.ToArray();
         }
 
+        private Tag[] ResolveZombieModeTags(string tagName)
+        {
+            if (string.IsNullOrEmpty(tagName))
+            {
+                return null;
+            }
+
+            List<Tag> tags = new List<Tag>();
+            AddZombieModeTagsByName(tags, tagName);
+            return tags.ToArray();
+        }
+
         private void AddZombieModeTagsByName(List<Tag> tags, string tagName)
         {
             try
@@ -978,17 +1008,17 @@ namespace BossRush
         {
             if (string.Equals(tagName, "BodyArmor", System.StringComparison.Ordinal))
             {
-                return new string[] { "Armor" };
+                return ZombieModeTagAliasesBodyArmor;
             }
 
             if (string.Equals(tagName, "Armor", System.StringComparison.Ordinal))
             {
-                return new string[] { "Armor", "Helmat", "Helmet" };
+                return ZombieModeTagAliasesArmor;
             }
 
             if (string.Equals(tagName, "Helmet", System.StringComparison.Ordinal))
             {
-                return new string[] { "Helmat", "Helmet" };
+                return ZombieModeTagAliasesHelmet;
             }
 
             return new string[] { tagName };
