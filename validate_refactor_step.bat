@@ -28,20 +28,20 @@ for %%f in (tests\*Guard.py tests\*PropertyTest.py) do (
     )
 )
 
-echo === [3/3] 人工冒烟提示 ===
-echo 请手动执行 Runtime_Smoke:
+echo === [3/3] Manual_Runtime_Smoke_Prompt ===
+echo Run Runtime_Smoke manually:
 echo   - cmd.exe /c test_bossrush_smoke_manual.bat
-echo   - 主线 Boss Rush 一局
-echo   - JSON 地图选择进入/退出一次
-echo   - Boss 奖励和 lootbox 掉落一次
-echo   - Mode D 和 Mode F 可用路径各一次
-echo   - Mode E 一局
-echo   - Zombie Mode 一局
-echo   - Courier storage/sweep 和 Wish Fountain 打开/关闭一次
-echo   - 触发一次近战命中，确认 slashFx / hitFx 视觉无变化
+echo   - Standard Boss Rush full run
+echo   - JSON-backed map selection enter/exit once
+echo   - Boss reward and lootbox drop once
+echo   - Mode D and Mode F available paths once
+echo   - Mode E full run
+echo   - Zombie Mode full run
+echo   - Courier storage/sweep and Wish Fountain open/close once
+echo   - Confirm melee slashFx / hitFx visuals unchanged
 echo After Runtime_Smoke, scan latest log:
 echo   - python3 tests/SmokeLogScan.py
-echo   - 如果输出 STALE_LOG，说明日志早于已部署 DLL，需要重新进游戏冒烟
-echo 确认无异常后，本步骤验收通过。
+echo   - STALE_LOG means the latest game log is older than deployed BossRush.dll.
+echo This automated step covers build, deploy, guard, and property tests only.
 echo.
-echo [PASS] 自动化验收全部通过 (step=%1)
+echo [PASS] Automated validation passed (step=%1)

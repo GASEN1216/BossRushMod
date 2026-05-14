@@ -53,7 +53,7 @@ def main() -> int:
     for snippet in [
         "test_bossrush_smoke_manual.bat",
         "tests/smokelogscan.py",
-        "json 地图选择",
+        "json-backed map selection",
         "lootbox",
         "mode d",
         "mode f",
