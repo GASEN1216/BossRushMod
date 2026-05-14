@@ -9,6 +9,8 @@
 //   - BossRush_Deposit_Items: List<ItemTreeData> 物品数据列表
 //   - BossRush_Deposit_Times: List<long> 存入时间列表（Ticks）
 //   - BossRush_Deposit_Values: List<int> 物品原始价值列表
+//   - BossRush_Deposit_*Generation: 三个列表的提交代号
+//   - BossRush_Deposit_Backup_*: 上一次完整提交的备份槽
 // ============================================================================
 
 using System;
@@ -73,6 +75,39 @@ namespace BossRush
         
         /// <summary>物品价值存储键</summary>
         private const string KEY_VALUES = "BossRush_Deposit_Values";
+
+        /// <summary>主数据提交代号键</summary>
+        private const string KEY_COMMIT_GENERATION = "BossRush_Deposit_CommitGeneration";
+
+        /// <summary>主数据物品列表提交代号键</summary>
+        private const string KEY_ITEMS_GENERATION = "BossRush_Deposit_ItemsGeneration";
+
+        /// <summary>主数据时间列表提交代号键</summary>
+        private const string KEY_TIMES_GENERATION = "BossRush_Deposit_TimesGeneration";
+
+        /// <summary>主数据价值列表提交代号键</summary>
+        private const string KEY_VALUES_GENERATION = "BossRush_Deposit_ValuesGeneration";
+
+        /// <summary>备份物品数据存储键</summary>
+        private const string KEY_BACKUP_ITEMS = "BossRush_Deposit_Backup_Items";
+
+        /// <summary>备份存入时间存储键</summary>
+        private const string KEY_BACKUP_TIMES = "BossRush_Deposit_Backup_Times";
+
+        /// <summary>备份物品价值存储键</summary>
+        private const string KEY_BACKUP_VALUES = "BossRush_Deposit_Backup_Values";
+
+        /// <summary>备份提交代号键</summary>
+        private const string KEY_BACKUP_COMMIT_GENERATION = "BossRush_Deposit_Backup_CommitGeneration";
+
+        /// <summary>备份物品列表提交代号键</summary>
+        private const string KEY_BACKUP_ITEMS_GENERATION = "BossRush_Deposit_Backup_ItemsGeneration";
+
+        /// <summary>备份时间列表提交代号键</summary>
+        private const string KEY_BACKUP_TIMES_GENERATION = "BossRush_Deposit_Backup_TimesGeneration";
+
+        /// <summary>备份价值列表提交代号键</summary>
+        private const string KEY_BACKUP_VALUES_GENERATION = "BossRush_Deposit_Backup_ValuesGeneration";
         
         /// <summary>基础费率（1%）</summary>
         public const float BASE_FEE_RATE = 0.01f;
@@ -102,40 +137,41 @@ namespace BossRush
             try
             {
                 cachedItems.Clear();
-                
-                // 分别加载三个列表
-                List<ItemTreeData> items = SavesSystem.LoadGlobal<List<ItemTreeData>>(KEY_ITEMS, null);
-                List<long> times = SavesSystem.LoadGlobal<List<long>>(KEY_TIMES, null);
-                List<int> values = SavesSystem.LoadGlobal<List<int>>(KEY_VALUES, null);
-                
-                // 检查数据完整性
-                if (items == null || times == null || values == null)
+
+                List<ItemTreeData> items;
+                List<long> times;
+                List<int> values;
+                bool recoveredFromBackup = false;
+                bool repairedFromLegacy = false;
+
+                if (!TryLoadCommittedDepositLists(out items, out times, out values))
                 {
-                    ModBehaviour.DevLog("[DepositDataManager] 数据为空或不完整，初始化空列表");
-                    isLoaded = true;
-                    return;
+                    if (TryLoadBackupDepositLists(out items, out times, out values))
+                    {
+                        recoveredFromBackup = true;
+                        ModBehaviour.DevLog("[DepositDataManager] [WARNING] 主寄存数据未完整提交，已从备份槽恢复");
+                    }
+                    else if (TryLoadLegacyMinimumDepositLists(out items, out times, out values))
+                    {
+                        repairedFromLegacy = true;
+                        ModBehaviour.DevLog("[DepositDataManager] [WARNING] 未找到完整提交快照，使用旧格式最小一致长度恢复");
+                    }
+                    else
+                    {
+                        ModBehaviour.DevLog("[DepositDataManager] 数据为空或不完整，初始化空列表");
+                        isLoaded = true;
+                        return;
+                    }
                 }
-                
-                // 检查列表长度一致性
-                int count = Mathf.Min(items.Count, Mathf.Min(times.Count, values.Count));
-                if (items.Count != times.Count || times.Count != values.Count)
-                {
-                    ModBehaviour.DevLog("[DepositDataManager] [WARNING] 数据长度不一致，使用最小长度: " + count);
-                }
-                
-                // 重建缓存
-                for (int i = 0; i < count; i++)
-                {
-                    if (items[i] == null) continue;
-                    
-                    DepositedItemData data = new DepositedItemData();
-                    data.itemData = items[i];
-                    data.depositTimeTicks = times[i];
-                    data.itemValue = values[i];
-                    cachedItems.Add(data);
-                }
-                
+
+                RebuildCacheFromLists(items, times, values, recoveredFromBackup || repairedFromLegacy);
                 isLoaded = true;
+
+                if (recoveredFromBackup || repairedFromLegacy)
+                {
+                    Save();
+                }
+
                 ModBehaviour.DevLog("[DepositDataManager] 数据加载成功，共 " + cachedItems.Count + " 件物品");
             }
             catch (Exception e)
@@ -153,11 +189,10 @@ namespace BossRush
         {
             try
             {
-                // 构建三个分离的列表
                 List<ItemTreeData> items = new List<ItemTreeData>();
                 List<long> times = new List<long>();
                 List<int> values = new List<int>();
-                
+
                 foreach (var data in cachedItems)
                 {
                     if (data == null || data.itemData == null) continue;
@@ -165,12 +200,23 @@ namespace BossRush
                     times.Add(data.depositTimeTicks);
                     values.Add(data.itemValue);
                 }
-                
-                // 分别保存三个列表
-                SavesSystem.SaveGlobal<List<ItemTreeData>>(KEY_ITEMS, items);
-                SavesSystem.SaveGlobal<List<long>>(KEY_TIMES, times);
-                SavesSystem.SaveGlobal<List<int>>(KEY_VALUES, values);
-                
+
+                SaveBackupFromCurrentCommittedData();
+
+                long generation = CreateNextDepositSaveGeneration(KEY_COMMIT_GENERATION);
+                SaveDepositListsWithGeneration(
+                    KEY_ITEMS,
+                    KEY_TIMES,
+                    KEY_VALUES,
+                    KEY_ITEMS_GENERATION,
+                    KEY_TIMES_GENERATION,
+                    KEY_VALUES_GENERATION,
+                    KEY_COMMIT_GENERATION,
+                    generation,
+                    items,
+                    times,
+                    values);
+
                 ModBehaviour.DevLog("[DepositDataManager] 数据保存成功，共 " + items.Count + " 件物品");
             }
             catch (Exception e)
@@ -299,6 +345,171 @@ namespace BossRush
             {
                 Load();
             }
+        }
+
+        private static bool TryLoadCommittedDepositLists(
+            out List<ItemTreeData> items,
+            out List<long> times,
+            out List<int> values)
+        {
+            items = SavesSystem.LoadGlobal<List<ItemTreeData>>(KEY_ITEMS, null);
+            times = SavesSystem.LoadGlobal<List<long>>(KEY_TIMES, null);
+            values = SavesSystem.LoadGlobal<List<int>>(KEY_VALUES, null);
+            return IsCommittedDepositSnapshot(
+                items,
+                times,
+                values,
+                KEY_COMMIT_GENERATION,
+                KEY_ITEMS_GENERATION,
+                KEY_TIMES_GENERATION,
+                KEY_VALUES_GENERATION);
+        }
+
+        private static bool TryLoadBackupDepositLists(
+            out List<ItemTreeData> items,
+            out List<long> times,
+            out List<int> values)
+        {
+            items = SavesSystem.LoadGlobal<List<ItemTreeData>>(KEY_BACKUP_ITEMS, null);
+            times = SavesSystem.LoadGlobal<List<long>>(KEY_BACKUP_TIMES, null);
+            values = SavesSystem.LoadGlobal<List<int>>(KEY_BACKUP_VALUES, null);
+            return IsCommittedDepositSnapshot(
+                items,
+                times,
+                values,
+                KEY_BACKUP_COMMIT_GENERATION,
+                KEY_BACKUP_ITEMS_GENERATION,
+                KEY_BACKUP_TIMES_GENERATION,
+                KEY_BACKUP_VALUES_GENERATION);
+        }
+
+        private static bool TryLoadLegacyMinimumDepositLists(
+            out List<ItemTreeData> items,
+            out List<long> times,
+            out List<int> values)
+        {
+            items = SavesSystem.LoadGlobal<List<ItemTreeData>>(KEY_ITEMS, null);
+            times = SavesSystem.LoadGlobal<List<long>>(KEY_TIMES, null);
+            values = SavesSystem.LoadGlobal<List<int>>(KEY_VALUES, null);
+            return items != null && times != null && values != null;
+        }
+
+        private static bool IsCommittedDepositSnapshot(
+            List<ItemTreeData> items,
+            List<long> times,
+            List<int> values,
+            string commitGenerationKey,
+            string itemsGenerationKey,
+            string timesGenerationKey,
+            string valuesGenerationKey)
+        {
+            if (items == null || times == null || values == null)
+            {
+                return false;
+            }
+            if (items.Count != times.Count || times.Count != values.Count)
+            {
+                return false;
+            }
+
+            long commitGeneration = SavesSystem.LoadGlobal<long>(commitGenerationKey, 0L);
+            long itemsGeneration = SavesSystem.LoadGlobal<long>(itemsGenerationKey, 0L);
+            long timesGeneration = SavesSystem.LoadGlobal<long>(timesGenerationKey, 0L);
+            long valuesGeneration = SavesSystem.LoadGlobal<long>(valuesGenerationKey, 0L);
+
+            return itemsGeneration == commitGeneration &&
+                   timesGeneration == commitGeneration &&
+                   valuesGeneration == commitGeneration;
+        }
+
+        private static void RebuildCacheFromLists(
+            List<ItemTreeData> items,
+            List<long> times,
+            List<int> values,
+            bool allowMinimumLengthRecovery)
+        {
+            int count = Mathf.Min(items.Count, Mathf.Min(times.Count, values.Count));
+            if (items.Count != times.Count || times.Count != values.Count)
+            {
+                if (!allowMinimumLengthRecovery)
+                {
+                    ModBehaviour.DevLog("[DepositDataManager] [WARNING] 数据长度不一致，初始化空列表");
+                    return;
+                }
+                ModBehaviour.DevLog("[DepositDataManager] [WARNING] 数据长度不一致，使用最小长度: " + count);
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                if (items[i] == null) continue;
+
+                DepositedItemData data = new DepositedItemData();
+                data.itemData = items[i];
+                data.depositTimeTicks = times[i];
+                data.itemValue = values[i];
+                cachedItems.Add(data);
+            }
+        }
+
+        private static void SaveBackupFromCurrentCommittedData()
+        {
+            try
+            {
+                List<ItemTreeData> existingItems;
+                List<long> existingTimes;
+                List<int> existingValues;
+                if (!TryLoadCommittedDepositLists(out existingItems, out existingTimes, out existingValues))
+                {
+                    return;
+                }
+
+                long generation = CreateNextDepositSaveGeneration(KEY_BACKUP_COMMIT_GENERATION);
+                SaveDepositListsWithGeneration(
+                    KEY_BACKUP_ITEMS,
+                    KEY_BACKUP_TIMES,
+                    KEY_BACKUP_VALUES,
+                    KEY_BACKUP_ITEMS_GENERATION,
+                    KEY_BACKUP_TIMES_GENERATION,
+                    KEY_BACKUP_VALUES_GENERATION,
+                    KEY_BACKUP_COMMIT_GENERATION,
+                    generation,
+                    existingItems,
+                    existingTimes,
+                    existingValues);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DepositDataManager] [WARNING] 保存备份寄存数据失败: " + e.Message);
+            }
+        }
+
+        private static void SaveDepositListsWithGeneration(
+            string itemsKey,
+            string timesKey,
+            string valuesKey,
+            string itemsGenerationKey,
+            string timesGenerationKey,
+            string valuesGenerationKey,
+            string commitGenerationKey,
+            long generation,
+            List<ItemTreeData> items,
+            List<long> times,
+            List<int> values)
+        {
+            SavesSystem.SaveGlobal<List<ItemTreeData>>(itemsKey, items);
+            SavesSystem.SaveGlobal<long>(itemsGenerationKey, generation);
+            SavesSystem.SaveGlobal<List<long>>(timesKey, times);
+            SavesSystem.SaveGlobal<long>(timesGenerationKey, generation);
+            SavesSystem.SaveGlobal<List<int>>(valuesKey, values);
+            SavesSystem.SaveGlobal<long>(valuesGenerationKey, generation);
+            SavesSystem.SaveGlobal<long>(commitGenerationKey, generation);
+        }
+
+        private static long CreateNextDepositSaveGeneration(string commitGenerationKey)
+        {
+            long currentGeneration = SavesSystem.LoadGlobal<long>(commitGenerationKey, 0L);
+            long now = DateTime.UtcNow.Ticks;
+            return now > currentGeneration ? now : currentGeneration + 1L;
         }
     }
 }

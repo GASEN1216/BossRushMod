@@ -58,7 +58,7 @@ def main() -> int:
         block = extract_block(text, signature)
         if not block:
             return fail(f"PhantomWitchSharedLootTrackingReuseGuard: missing block {signature}")
-        if "ClearBossRandomLootTracking(" not in block:
+        if "ClearBossRandomLootTracking(" not in block and "ClearBossRandomLootTracking," not in block:
             return fail(f"PhantomWitchSharedLootTrackingReuseGuard: block missing ClearBossRandomLootTracking -> {signature}")
 
     print("PhantomWitchSharedLootTrackingReuseGuard: PASS")

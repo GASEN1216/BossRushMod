@@ -63,9 +63,9 @@ def main() -> int:
         block = extract_block(text, signature)
         if not block:
             return fail(f"PhantomWitchLootboxTrackingGuard: missing cleanup block {signature}")
-        if "FinalizeBossRushLootboxPathTracking(" not in block:
+        if "FinalizeBossRushLootboxPathTracking(" not in block and "FinalizeBossRushLootboxPathTracking," not in block:
             return fail(f"PhantomWitchLootboxTrackingGuard: cleanup block missing FinalizeBossRushLootboxPathTracking -> {signature}")
-        if "ClearBossRandomLootTracking(" not in block:
+        if "ClearBossRandomLootTracking(" not in block and "ClearBossRandomLootTracking," not in block:
             return fail(f"PhantomWitchLootboxTrackingGuard: cleanup block missing ClearBossRandomLootTracking -> {signature}")
 
     print("PhantomWitchLootboxTrackingGuard: PASS")

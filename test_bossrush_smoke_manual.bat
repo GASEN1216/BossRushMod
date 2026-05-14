@@ -14,7 +14,7 @@ set "STEAM_APP_ID=3167020"
 set "STEAM_LAUNCH_URL=steam://rungameid/%STEAM_APP_ID%"
 set "MOD_DLL=%GAME_PATH%\Duckov_Data\Mods\BossRush\BossRush.dll"
 set "SMOKE_DIR=docs\testing"
-set "SMOKE_NOTE=docs\testing\2026-05-13-roadmap-validation-smoke.md"
+set "SMOKE_NOTE=docs\testing\2026-05-14-final-runtime-smoke.md"
 
 echo ==========================================
 echo Boss Rush Mod - Manual In-Game Smoke Test
@@ -30,7 +30,7 @@ if not exist "%SMOKE_DIR%" (
 )
 
 if not exist "%SMOKE_NOTE%" (
-    >"%SMOKE_NOTE%" echo # Roadmap Validation In-Game Smoke Record
+    >"%SMOKE_NOTE%" echo # 2026-05-14 Final Runtime Smoke Record
     >>"%SMOKE_NOTE%" echo.
     >>"%SMOKE_NOTE%" echo Conclusion: Not run
     >>"%SMOKE_NOTE%" echo.
@@ -40,6 +40,8 @@ if not exist "%SMOKE_NOTE%" (
     >>"%SMOKE_NOTE%" echo - End time:
     >>"%SMOKE_NOTE%" echo - Issues found:
     >>"%SMOKE_NOTE%" echo - Related log file:
+    >>"%SMOKE_NOTE%" echo - SmokeLogScan.py result after smoke:
+    >>"%SMOKE_NOTE%" echo - BossRush-related error blocks:
     >>"%SMOKE_NOTE%" echo.
     >>"%SMOKE_NOTE%" echo Checklist:
     >>"%SMOKE_NOTE%" echo - [ ] Base_SceneV2 loads.

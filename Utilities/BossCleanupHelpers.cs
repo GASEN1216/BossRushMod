@@ -3,11 +3,12 @@
 // ============================================================================
 // 模块说明：
 //   集中三个自定义 Boss（龙裔遗族 / 龙皇 / 幽灵女巫）共用的清理步骤。
-//   当前实现：runtime preset 副本销毁。
+//   当前实现：runtime preset 副本销毁，以及 tracked Boss 角色的通用销毁骨架。
 //   未来新增 Boss 时，在各自模块调用这里的静态方法即可，避免重复拼写。
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -62,6 +63,58 @@ namespace BossRush
             {
                 string prefix = string.IsNullOrEmpty(logTag) ? "[BossRush]" : logTag;
                 ModBehaviour.DevLog(prefix + " [WARNING] 销毁运行时预设副本失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 清理 tracked Boss 角色的通用骨架：去重、可选 loot tracking 清理、
+        /// runtime preset 销毁、GameObject 销毁和资源引用释放。
+        /// 具体 Boss 仍负责自己的事件解绑、能力控制器和状态字典清理。
+        /// </summary>
+        public static void CleanupTrackedBossCharacter(
+            CharacterMainControl character,
+            HashSet<CharacterMainControl> cleanedCharacters,
+            string nameKey,
+            string presetName,
+            string logTag,
+            Action<CharacterMainControl> clearRandomLootTracking,
+            Action<CharacterMainControl> finalizeLootboxTracking,
+            Action releaseAssetReference)
+        {
+            if (character == null ||
+                cleanedCharacters == null ||
+                !cleanedCharacters.Add(character))
+            {
+                return;
+            }
+
+            if (clearRandomLootTracking != null)
+            {
+                clearRandomLootTracking(character);
+            }
+            if (finalizeLootboxTracking != null)
+            {
+                finalizeLootboxTracking(character);
+            }
+
+            DestroyRuntimePreset(character, nameKey, presetName, logTag);
+
+            try
+            {
+                if (character.gameObject != null)
+                {
+                    UnityEngine.Object.Destroy(character.gameObject);
+                }
+            }
+            catch (Exception e)
+            {
+                string prefix = string.IsNullOrEmpty(logTag) ? "[BossRush]" : logTag;
+                ModBehaviour.DevLog(prefix + " [WARNING] 离开竞技场时销毁实例失败: " + e.Message);
+            }
+
+            if (releaseAssetReference != null)
+            {
+                releaseAssetReference();
             }
         }
     }

@@ -836,22 +836,7 @@ namespace BossRush
                 return modeFBountyRadarFont;
             }
 
-            try
-            {
-                if (TMP_Settings.defaultFontAsset != null)
-                {
-                    modeFBountyRadarFont = TMP_Settings.defaultFontAsset;
-                    return modeFBountyRadarFont;
-                }
-            }
-            catch { }
-
-            try
-            {
-                modeFBountyRadarFont = ObjectCache.GetFirstTmpFont();
-            }
-            catch { }
-
+            modeFBountyRadarFont = ZombieModeUIHelper.GetGameFont();
             return modeFBountyRadarFont;
         }
 

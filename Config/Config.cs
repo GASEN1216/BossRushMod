@@ -555,74 +555,96 @@ namespace BossRush
         {
             try
             {
-                string waveKey = ModName + "_waveIntervalSeconds";
-                string lootKey = ModName + "_EnableRandomBossLoot";
-                string legacyLootKey = ModName + "_UseLegacyBossLootProbabilities";
-                string interactKey = ModName + "_UseInteractBetweenWaves";
-                string coverKey = ModName + "_LootBoxBlocksBullets";
-                string hellBossKey = ModName + "_InfiniteHellBossesPerWave";
-                string bossStatKey = ModName + "_BossStatMultiplier";
-                string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
-                string dragonDashKey = ModName + "_EnableDragonDash";
-                string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
-                string deathWraithKey = ModName + "_EnableDeathWraithSystem";
-                string modeDKey = ModName + "_ModeDEnemiesPerWave";
-                string achievementHotkeyKey = ModName + "_AchievementHotkey";
-                
-                if (changedKey == waveKey || changedKey == lootKey || changedKey == legacyLootKey || changedKey == interactKey || changedKey == coverKey || changedKey == hellBossKey || changedKey == bossStatKey || changedKey == milestoneRestKey || changedKey == dragonDashKey || changedKey == wolfModelKey || changedKey == deathWraithKey || changedKey == modeDKey || changedKey == achievementHotkeyKey)
+                if (!IsHandledModConfigOptionKey(changedKey))
                 {
-                    if (changedKey == dragonDashKey)
-                    {
-                        DevLog("[BossRush] 检测到龙套装冲刺配置变更");
-                    }
-                    else if (changedKey == wolfModelKey)
-                    {
-                        DevLog("[BossRush] 检测到荒野号角狼模型配置变更");
-                    }
-                    else if (changedKey == deathWraithKey)
-                    {
-                        DevLog("[BossRush] 检测到死亡亡魂系统配置变更");
-                    }
-                    else
-                    {
-                        DevLog("[BossRush] 检测到配置变更: " + changedKey);
-                    }
+                    return;
+                }
 
-                    if (TryLoadSingleModConfigValue(changedKey))
-                    {
-                        SaveConfigToFile();
-                        if (changedKey == lootKey)
-                        {
-                            RefreshBossRushLootboxPathTrackingForTrackedBosses();
-                        }
-                        else if (changedKey == legacyLootKey)
-                        {
-                            RefreshBossRushLootboxPathTrackingForTrackedBosses();
-                        }
-                        else if (changedKey == deathWraithKey)
-                        {
-                            HandleDeathWraithConfigChanged_DeathWraith();
-                        }
-                        else if (changedKey == hellBossKey && infiniteHellMode && config != null && config.infiniteHellBossesPerWave > 0)
-                        {
-                            bossesPerWave = config.infiniteHellBossesPerWave;
-                            DevLog("[BossRush] 无间炼狱每波Boss数量已同步更新: " + bossesPerWave);
-                        }
-                        DevLog("[BossRush] 配置已更新并保存到本地文件");
-                    }
-	
-                    // 基础波次间隔允许立即更新当前倒计时；
-                    // 每5波额外休息时间只在下一次命中里程碑波次时生效，不影响本次已开始的休息阶段。
-                    if (changedKey == waveKey && waitingForNextWave)
-                    {
-                        DevLog("[BossRush] 波次间隔配置在倒计时过程中被修改，静默重算下一波倒计时");
-                        StartNextWaveCountdown(false, true);
-                    }
+                LogModConfigOptionChanged(changedKey);
+
+                if (TryLoadSingleModConfigValue(changedKey))
+                {
+                    SaveConfigToFile();
+                    ApplyPostModConfigOptionChange(changedKey);
+                    DevLog("[BossRush] 配置已更新并保存到本地文件");
+                }
+
+                // 基础波次间隔允许立即更新当前倒计时；
+                // 每5波额外休息时间只在下一次命中里程碑波次时生效，不影响本次已开始的休息阶段。
+                if (changedKey == ModName + "_waveIntervalSeconds" && waitingForNextWave)
+                {
+                    DevLog("[BossRush] 波次间隔配置在倒计时过程中被修改，静默重算下一波倒计时");
+                    StartNextWaveCountdown(false, true);
                 }
             }
             catch (Exception ex)
             {
                 DevLog("[BossRush] OnModConfigOptionsChanged 失败: " + ex.Message);
+            }
+        }
+
+        private bool IsHandledModConfigOptionKey(string changedKey)
+        {
+            return changedKey == ModName + "_waveIntervalSeconds" ||
+                   changedKey == ModName + "_EnableRandomBossLoot" ||
+                   changedKey == ModName + "_UseLegacyBossLootProbabilities" ||
+                   changedKey == ModName + "_UseInteractBetweenWaves" ||
+                   changedKey == ModName + "_LootBoxBlocksBullets" ||
+                   changedKey == ModName + "_InfiniteHellBossesPerWave" ||
+                   changedKey == ModName + "_BossStatMultiplier" ||
+                   changedKey == ModName + "_milestoneRestBonusSeconds" ||
+                   changedKey == ModName + "_EnableDragonDash" ||
+                   changedKey == ModName + "_UseWolfModelForWildHorn" ||
+                   changedKey == ModName + "_EnableDeathWraithSystem" ||
+                   changedKey == ModName + "_ModeDEnemiesPerWave" ||
+                   changedKey == ModName + "_AchievementHotkey";
+        }
+
+        private void LogModConfigOptionChanged(string changedKey)
+        {
+            if (changedKey == ModName + "_EnableDragonDash")
+            {
+                DevLog("[BossRush] 检测到龙套装冲刺配置变更");
+                return;
+            }
+
+            if (changedKey == ModName + "_UseWolfModelForWildHorn")
+            {
+                DevLog("[BossRush] 检测到荒野号角狼模型配置变更");
+                return;
+            }
+
+            if (changedKey == ModName + "_EnableDeathWraithSystem")
+            {
+                DevLog("[BossRush] 检测到死亡亡魂系统配置变更");
+                return;
+            }
+
+            DevLog("[BossRush] 检测到配置变更: " + changedKey);
+        }
+
+        private void ApplyPostModConfigOptionChange(string changedKey)
+        {
+            if (changedKey == ModName + "_EnableRandomBossLoot" ||
+                changedKey == ModName + "_UseLegacyBossLootProbabilities")
+            {
+                RefreshBossRushLootboxPathTrackingForTrackedBosses();
+                return;
+            }
+
+            if (changedKey == ModName + "_EnableDeathWraithSystem")
+            {
+                HandleDeathWraithConfigChanged_DeathWraith();
+                return;
+            }
+
+            if (changedKey == ModName + "_InfiniteHellBossesPerWave" &&
+                infiniteHellMode &&
+                config != null &&
+                config.infiniteHellBossesPerWave > 0)
+            {
+                bossesPerWave = config.infiniteHellBossesPerWave;
+                DevLog("[BossRush] 无间炼狱每波Boss数量已同步更新: " + bossesPerWave);
             }
         }
 

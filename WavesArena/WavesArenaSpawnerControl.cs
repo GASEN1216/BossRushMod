@@ -48,7 +48,10 @@ namespace BossRush
                                 _cachedCreatedField.SetValue(root, true);
                                 disabledCount++;
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                DevLog("[BossRush] [WARNING] DisableAllSpawners 标记 spawner created 失败: " + e.Message);
+                            }
                         }
 
                         try
@@ -64,14 +67,20 @@ namespace BossRush
                                 }
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] DisableAllSpawners 保留灯光失败: " + e.Message);
+                        }
 
                         try
                         {
                             UnityEngine.Object.Destroy(root.gameObject);
                             destroyedCount++;
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] DisableAllSpawners 销毁 spawner 失败: " + e.Message);
+                        }
                     }
                 }
 
@@ -126,7 +135,10 @@ namespace BossRush
                                     aliveBossCount++;
                                 }
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取多Boss Health失败: " + e.Message);
+                            }
                         }
                     }
                 }
@@ -137,7 +149,10 @@ namespace BossRush
                     {
                         bossMb = currentBoss as MonoBehaviour;
                     }
-                    catch {}
+                    catch (Exception e)
+                    {
+                        DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取当前Boss失败: " + e.Message);
+                    }
 
                     if (bossMb == null)
                     {
@@ -154,7 +169,10 @@ namespace BossRush
                             aliveBossCount = 1;
                         }
                     }
-                    catch {}
+                    catch (Exception e)
+                    {
+                        DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取当前Boss Health失败: " + e.Message);
+                    }
                 }
 
                 if (!hasWaveToCheck)
@@ -168,7 +186,10 @@ namespace BossRush
                     {
                         DevLog("[BossRush] 自检：当前波没有任何存活 Boss，自动修正并推进下一波");
                     }
-                    catch {}
+                    catch (Exception e)
+                    {
+                        UnityEngine.Debug.LogWarning("[BossRush] TryFixStuckWaveIfNoBossAlive 日志记录失败: " + e.Message);
+                    }
 
                     if (bossesPerWave > 1)
                     {
@@ -178,7 +199,10 @@ namespace BossRush
                     ProceedAfterWaveFinished();
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: " + e.Message);
+            }
         }
     }
 }

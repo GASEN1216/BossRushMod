@@ -231,7 +231,10 @@ namespace BossRush
                 {
                     deadCharacter = deadHealth.TryGetCharacter();
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] OnEnemyDied 读取死亡角色失败: " + e.Message);
+                }
 
                 // 多Boss模式：检查是否是当前波的其中一名Boss
                 if (bossesPerWave > 1 && currentWaveBosses != null && currentWaveBosses.Count > 0)
@@ -252,7 +255,10 @@ namespace BossRush
                                 isDeadBoss = (bossCharacter == deadCharacter);
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] OnEnemyDied 比对多Boss角色失败: " + e.Message);
+                        }
 
                         if (!isDeadBoss)
                         {
@@ -264,7 +270,10 @@ namespace BossRush
                                     isDeadBoss = true;
                                 }
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                DevLog("[BossRush] [WARNING] OnEnemyDied 比对多Boss Health失败: " + e.Message);
+                            }
                         }
 
                         if (isDeadBoss)
@@ -301,7 +310,10 @@ namespace BossRush
                                 isCurrentBossDead = (currentBossCharacter == deadCharacter);
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] OnEnemyDied 比对当前Boss角色失败: " + e.Message);
+                        }
 
                         if (!isCurrentBossDead)
                         {
@@ -309,7 +321,10 @@ namespace BossRush
                             {
                                 isCurrentBossDead = (deadHealth.gameObject == ((MonoBehaviour)currentBoss).gameObject);
                             }
-                            catch {}
+                            catch (Exception e)
+                            {
+                                DevLog("[BossRush] [WARNING] OnEnemyDied 比对当前Boss对象失败: " + e.Message);
+                            }
                         }
                     }
 
@@ -367,7 +382,10 @@ namespace BossRush
                         infiniteHellCashPool += reward;
                         infiniteHellWaveCashThisWave += reward;
                     }
-                    catch {}
+                    catch (Exception e)
+                    {
+                        DevLog("[BossRush] [WARNING] HandleBossDeath 计算无间炼狱现金池失败: " + e.Message);
+                    }
                 }
 
                 if (bossesPerWave > 1 && currentWaveBosses != null && currentWaveBosses.Count > 0)
@@ -385,7 +403,10 @@ namespace BossRush
                         {
                             bossCharacter = boss as CharacterMainControl;
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] HandleBossDeath 读取多Boss角色失败: " + e.Message);
+                        }
 
                         if (bossCharacter == bossMain)
                         {
@@ -414,8 +435,9 @@ namespace BossRush
                     return;
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                DevLog("[BossRush] [ERROR] HandleBossDeath 错误: " + e.Message);
             }
         }
 
@@ -456,7 +478,10 @@ namespace BossRush
                                 bossRushSignInteract.SetNextWaveMode();
                             }
                         }
-                        catch {}
+                        catch (Exception e)
+                        {
+                            DevLog("[BossRush] [WARNING] ProceedAfterWaveFinished 设置下一波交互失败: " + e.Message);
+                        }
                     }
                     else
                     {
@@ -468,7 +493,10 @@ namespace BossRush
                     OnAllEnemiesDefeated();
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [ERROR] ProceedAfterWaveFinished 错误: " + e.Message);
+            }
         }
 
         /// <summary>
@@ -484,7 +512,10 @@ namespace BossRush
                     string name = (preset != null ? preset.displayName : "<null>");
                     DevLog("[BossRush] OnBossSpawnFailed: Boss 生成失败, preset=" + name);
                 }
-                catch {}
+                catch (Exception e)
+                {
+                    UnityEngine.Debug.LogWarning("[BossRush] OnBossSpawnFailed 日志记录失败: " + e.Message);
+                }
 
                 // 递增已击败敌人数，保持总数一致
                 defeatedEnemies++;
@@ -505,7 +536,10 @@ namespace BossRush
                     ProceedAfterWaveFinished();
                 }
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [ERROR] OnBossSpawnFailed 错误: " + e.Message);
+            }
         }
 
         /// <summary>

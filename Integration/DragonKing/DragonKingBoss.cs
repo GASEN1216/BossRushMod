@@ -35,6 +35,12 @@ namespace BossRush
         /// </summary>
         private Dictionary<CharacterMainControl, Action<DamageInfo>> dragonKingLootEventHandlers
             = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
+
+        /// <summary>
+        /// 龙王死亡事件委托映射（每个实例独立的委托，用于正确 RemoveListener）
+        /// </summary>
+        private Dictionary<CharacterMainControl, UnityEngine.Events.UnityAction<DamageInfo>> dragonKingDeathEventHandlers
+            = new Dictionary<CharacterMainControl, UnityEngine.Events.UnityAction<DamageInfo>>();
         
         /// <summary>
         /// 龙王是否已注册到预设列表 - 用于防止重复注册
@@ -115,6 +121,10 @@ namespace BossRush
             {
                 if (kv.Key != null) trackedCharacters.Add(kv.Key);
             }
+            foreach (var kv in dragonKingDeathEventHandlers)
+            {
+                if (kv.Key != null) trackedCharacters.Add(kv.Key);
+            }
 
             HashSet<CharacterMainControl> destroyed = new HashSet<CharacterMainControl>();
             foreach (CharacterMainControl character in trackedCharacters)
@@ -145,6 +155,21 @@ namespace BossRush
                     }
                 }
 
+                UnityEngine.Events.UnityAction<DamageInfo> deathHandler;
+                if (dragonKingDeathEventHandlers.TryGetValue(character, out deathHandler) &&
+                    deathHandler != null &&
+                    character.Health != null)
+                {
+                    try
+                    {
+                        character.Health.OnDeadEvent.RemoveListener(deathHandler);
+                    }
+                    catch (Exception e)
+                    {
+                        DevLog("[DragonKing] [WARNING] 离开竞技场时注销死亡事件失败: " + e.Message);
+                    }
+                }
+
                 if (currentBoss == character)
                 {
                     currentBoss = null;
@@ -158,36 +183,22 @@ namespace BossRush
 
             dragonKingInstances.Clear();
             dragonKingLootEventHandlers.Clear();
+            dragonKingDeathEventHandlers.Clear();
         }
 
         private void CleanupTrackedDragonKingCharacter(
             CharacterMainControl character,
             HashSet<CharacterMainControl> cleanedCharacters)
         {
-            if (character == null || !cleanedCharacters.Add(character))
-            {
-                return;
-            }
-
-            BossCleanupHelpers.DestroyRuntimePreset(
+            BossCleanupHelpers.CleanupTrackedBossCharacter(
                 character,
+                cleanedCharacters,
                 DragonKingConfig.BossNameKey,
                 "DragonKing_Preset",
-                "[DragonKing]");
-
-            try
-            {
-                if (character.gameObject != null)
-                {
-                    UnityEngine.Object.Destroy(character.gameObject);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[DragonKing] [WARNING] 离开竞技场时销毁实例失败: " + e.Message);
-            }
-
-            ReleaseDragonKingInstance();
+                "[DragonKing]",
+                null,
+                null,
+                ReleaseDragonKingInstance);
         }
         
         // ========== 生成方法 ==========
@@ -302,7 +313,10 @@ namespace BossRush
                 {
                     // 使用局部变量捕获，确保每个龙皇的死亡回调指向正确的实例
                     CharacterMainControl capturedChar = character;
-                    character.Health.OnDeadEvent.AddListener((dmgInfo) => OnDragonKingDeath(capturedChar, dmgInfo));
+                    UnityEngine.Events.UnityAction<DamageInfo> deathHandler =
+                        (dmgInfo) => OnDragonKingDeath(capturedChar, dmgInfo);
+                    dragonKingDeathEventHandlers[character] = deathHandler;
+                    character.Health.OnDeadEvent.AddListener(deathHandler);
                 }
                 
                 // 注册龙王套装效果（火焰伤害免疫并转化为治疗）
@@ -578,6 +592,24 @@ namespace BossRush
                 }
             }
             dragonKingLootEventHandlers.Remove(deadKing);
+
+            // 清理死亡事件委托引用，避免多实例或异常退场后残留匿名监听。
+            UnityEngine.Events.UnityAction<DamageInfo> deathHandler = null;
+            if (deadKing != null &&
+                deadKing.Health != null &&
+                dragonKingDeathEventHandlers.TryGetValue(deadKing, out deathHandler) &&
+                deathHandler != null)
+            {
+                try
+                {
+                    deadKing.Health.OnDeadEvent.RemoveListener(deathHandler);
+                }
+                catch (Exception e)
+                {
+                    DevLog("[DragonKing] [WARNING] 注销死亡事件失败: " + e.Message);
+                }
+            }
+            dragonKingDeathEventHandlers.Remove(deadKing);
 
             BossCleanupHelpers.DestroyRuntimePreset(
                 deadKing,

@@ -153,34 +153,70 @@ namespace BossRush
 
             isServiceActive = false;
 
-            // 取消注册事件
-            UnregisterEvents();
-
-            // 恢复原始 UI 文字
-            RestoreShopUIText();
-
             // 保存引用（Cleanup 会清空）
             var savedController = courierController;
             var savedMovement = courierMovement;
             var savedNPCTransform = courierNPCTransform;
 
-            // 停止对话动画
-            if (savedController != null)
+            try
             {
-                savedController.StopTalking();
+                UnregisterEvents();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 关闭时解绑事件失败: " + e.Message);
             }
 
-            // 恢复移动
-            if (savedMovement != null)
+            try
             {
-                savedMovement.SetInService(false);
+                RestoreShopUIText();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 关闭时恢复 UI 文本失败: " + e.Message);
             }
 
-            // 显示告别气泡
-            ShowGoodbyeBubble(savedNPCTransform);
+            try
+            {
+                if (savedController != null)
+                {
+                    savedController.StopTalking();
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 关闭时停止对话失败: " + e.Message);
+            }
 
-            // 清理资源
-            Cleanup();
+            try
+            {
+                if (savedMovement != null)
+                {
+                    savedMovement.SetInService(false);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 关闭时恢复移动失败: " + e.Message);
+            }
+
+            try
+            {
+                ShowGoodbyeBubble(savedNPCTransform);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 关闭时显示告别气泡失败: " + e.Message);
+            }
+
+            try
+            {
+                Cleanup();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 关闭时清理资源失败: " + e.Message);
+            }
 
             ModBehaviour.DevLog("[StorageDepositService] 寄存服务已关闭");
         }

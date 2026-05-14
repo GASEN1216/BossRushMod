@@ -121,36 +121,15 @@ namespace BossRush
             HashSet<CharacterMainControl> cleanedCharacters,
             bool assetReferenceAlreadyReleased)
         {
-            if (character == null || !cleanedCharacters.Add(character))
-            {
-                return;
-            }
-
-            ClearBossRandomLootTracking(character);
-            FinalizeBossRushLootboxPathTracking(character);
-
-            BossCleanupHelpers.DestroyRuntimePreset(
+            BossCleanupHelpers.CleanupTrackedBossCharacter(
                 character,
+                cleanedCharacters,
                 PhantomWitchConfig.BossNameKey,
                 "PhantomWitch_Preset",
-                "[PhantomWitch]");
-
-            try
-            {
-                if (character.gameObject != null)
-                {
-                    UnityEngine.Object.Destroy(character.gameObject);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[PhantomWitch] [WARNING] 离开竞技场时销毁实例失败: " + e.Message);
-            }
-
-            if (!assetReferenceAlreadyReleased)
-            {
-                ReleasePhantomWitchInstance();
-            }
+                "[PhantomWitch]",
+                ClearBossRandomLootTracking,
+                FinalizeBossRushLootboxPathTracking,
+                assetReferenceAlreadyReleased ? null : (Action)ReleasePhantomWitchInstance);
         }
 
         // ========== 生成方法 ==========
