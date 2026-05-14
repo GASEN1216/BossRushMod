@@ -254,7 +254,7 @@ namespace BossRush
         public static List<DepositedItemData> GetAllItems()
         {
             EnsureLoaded();
-            return cachedItems;
+            return new List<DepositedItemData>(cachedItems);
         }
         
         /// <summary>
