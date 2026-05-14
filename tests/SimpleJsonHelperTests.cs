@@ -21,15 +21,28 @@ internal static class SimpleJsonHelperTests
         }
     }
 
-    private static void TestGetBuilderClearsPreviousContent()
+    private static void TestGetBuilderReturnsIndependentBuilders()
     {
         StringBuilder first = SimpleJsonHelper.GetBuilder();
-        first.Append("stale");
+        first.Append("keep");
 
         StringBuilder second = SimpleJsonHelper.GetBuilder();
+        second.Append("new");
 
-        AssertTrue("GetBuilder shared instance", object.ReferenceEquals(first, second));
-        AssertEqual("GetBuilder cleared length", second.Length, 0);
+        AssertTrue("GetBuilder independent instance", !object.ReferenceEquals(first, second));
+        AssertEqual("GetBuilder first content preserved", first.ToString(), "keep");
+        AssertEqual("GetBuilder second content", second.ToString(), "new");
+    }
+
+    private static void TestExtractorsDoNotMatchKeyPrefixes()
+    {
+        const string json = "{\"npcId\":\"wrong\",\"id\":\"right\",\"pointsBonus\":99,\"points\":7,\"enabledExtra\":true,\"enabled\":false,\"ratioValue\":1.5,\"ratio\":2.5,\"ticksExtra\":1000,\"ticks\":42}";
+
+        AssertEqual("ExtractString exact key", SimpleJsonHelper.ExtractString(json, "id"), "right");
+        AssertEqual("ExtractInt exact key", SimpleJsonHelper.ExtractInt(json, "points"), 7);
+        AssertEqual("ExtractBool exact key", SimpleJsonHelper.ExtractBool(json, "enabled"), false);
+        AssertEqual("ExtractFloat exact key", SimpleJsonHelper.ExtractFloat(json, "ratio"), 2.5f);
+        AssertEqual("ExtractLong exact key", SimpleJsonHelper.ExtractLong(json, "ticks"), 42L);
     }
 
     private static void TestStringEscapeRoundTrip()
@@ -84,11 +97,12 @@ internal static class SimpleJsonHelperTests
 
     public static int Main()
     {
-        TestGetBuilderClearsPreviousContent();
+        TestGetBuilderReturnsIndependentBuilders();
         TestStringEscapeRoundTrip();
         TestExtractStringHandlesEscapedQuotes();
         TestExtractFloatSupportsScientificNotation();
         TestExtractBoolIgnoresCase();
+        TestExtractorsDoNotMatchKeyPrefixes();
         TestForEachObjectSkipsBracesInsideStrings();
         Console.WriteLine("SimpleJsonHelperTests: PASS");
         return 0;

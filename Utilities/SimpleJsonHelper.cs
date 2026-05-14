@@ -11,7 +11,7 @@
 //   - 数据量较小，性能要求不高
 //   
 // 性能说明：
-//   - 序列化：使用 StringBuilder 避免字符串拼接产生的GC
+//   - 序列化：调用方使用独立 StringBuilder，避免嵌套序列化互相清空
 //   - 反序列化：基于字符串查找，适合小数据量
 //   - 不适合大量数据或高频调用场景
 // ============================================================================
@@ -26,18 +26,14 @@ namespace BossRush
     /// </summary>
     public static class SimpleJsonHelper
     {
-        // 复用 StringBuilder 减少GC（非线程安全，仅主线程使用）
-        private static readonly StringBuilder _sharedBuilder = new StringBuilder(1024);
-        
         #region StringBuilder 构建器
         
         /// <summary>
-        /// 获取共享的 StringBuilder（使用前会自动清空）
+        /// 获取独立的 StringBuilder，避免嵌套序列化时共享实例被清空
         /// </summary>
         public static StringBuilder GetBuilder()
         {
-            _sharedBuilder.Clear();
-            return _sharedBuilder;
+            return new StringBuilder(1024);
         }
         
         /// <summary>
