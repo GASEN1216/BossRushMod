@@ -255,7 +255,38 @@ namespace BossRush
             OnAchievementUnlocked?.Invoke(achievement);
             BossRushEventBus.Publish(new BossRushAchievementUnlockedEvent(achievement));
 
+            if (achievementId != "completionist")
+            {
+                TryUnlockCompletionistIfReady();
+            }
+
             return true;
+        }
+
+        /// <summary>
+        /// 检查成就收集者成就（解锁所有其他成就后自动补发）。
+        /// </summary>
+        public static void CheckCompletionistAchievement()
+        {
+            if (!isInitialized) return;
+            TryUnlockCompletionistIfReady();
+        }
+
+        private static void TryUnlockCompletionistIfReady()
+        {
+            if (unlockedAchievements.Contains("completionist")) return;
+            if (!allAchievements.ContainsKey("completionist")) return;
+
+            foreach (var achievement in allAchievements.Values)
+            {
+                if (achievement == null || achievement.id == "completionist")
+                    continue;
+
+                if (!unlockedAchievements.Contains(achievement.id))
+                    return;
+            }
+
+            TryUnlock("completionist");
         }
 
         /// <summary>
@@ -377,6 +408,7 @@ namespace BossRush
 
         public static void ResetStaticCaches()
         {
+            AchievementTracker.ForceSave();
             SaveData();
             allAchievements.Clear();
             unlockedAchievements.Clear();

@@ -560,8 +560,10 @@ namespace BossRush
             // 直接触发龙王击杀成就（作为保险措施，防止三阶段联动死亡时成就未触发）
             try
             {
-                CheckBossKillAchievements("DragonKing");
-                DevLog("[DragonKing] 已触发龙王击杀成就检测");
+                if (CheckBossKillAchievementsOnce(deadKing, "DragonKing"))
+                    DevLog("[DragonKing] 已触发龙王击杀成就检测");
+                else
+                    DevLog("[DragonKing] 龙王击杀成就已计入，跳过重复检测");
             }
             catch (System.Exception e)
             {

@@ -3,6 +3,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -15,6 +16,7 @@ namespace BossRush
         #region 私有字段
 
         private bool achievementSystemInitialized = false;
+        private readonly HashSet<CharacterMainControl> achievementCountedBossKills = new HashSet<CharacterMainControl>();
 
         #endregion
 
@@ -47,7 +49,11 @@ namespace BossRush
         private void ResetAchievementTracking()
         {
             if (!achievementSystemInitialized) return;
-            try { AchievementTracker.ResetSessionStats(); }
+            try
+            {
+                AchievementTracker.ResetSessionStats();
+                ResetAchievementBossKillTracking();
+            }
             catch { }
         }
 
@@ -305,6 +311,42 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 按角色实例去重的 Boss 击杀成就入口。
+        /// </summary>
+        private bool CheckBossKillAchievementsOnce(CharacterMainControl bossMain, string bossTypeOverride = null)
+        {
+            if (!achievementSystemInitialized) return false;
+
+            try
+            {
+                if (bossMain == null)
+                    return false;
+
+                if (achievementCountedBossKills.Contains(bossMain))
+                    return false;
+
+                achievementCountedBossKills.Add(bossMain);
+
+                string bossType = string.IsNullOrEmpty(bossTypeOverride)
+                    ? IdentifyBossType(bossMain)
+                    : bossTypeOverride;
+
+                CheckBossKillAchievements(bossType);
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] Boss击杀成就去重检查失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private void ResetAchievementBossKillTracking()
+        {
+            achievementCountedBossKills.Clear();
+        }
+
+        /// <summary>
         /// 识别 Boss 类型
         /// </summary>
         private string IdentifyBossType(CharacterMainControl bossMain)
@@ -464,26 +506,7 @@ namespace BossRush
 
             try
             {
-                var allAchievements = BossRushAchievementManager.GetAllAchievements();
-                int totalCount = 0;
-                int unlockedCount = 0;
-
-                foreach (var achievement in allAchievements)
-                {
-                    // 跳过成就收集者本身
-                    if (achievement.id == "completionist")
-                        continue;
-
-                    totalCount++;
-                    if (BossRushAchievementManager.IsUnlocked(achievement.id))
-                        unlockedCount++;
-                }
-
-                // 如果解锁了所有成就（不包括成就收集者本身）
-                if (unlockedCount >= totalCount && totalCount > 0)
-                {
-                    BossRushAchievementManager.TryUnlock("completionist");
-                }
+                BossRushAchievementManager.CheckCompletionistAchievement();
             }
             catch (Exception e)
             {

@@ -54,6 +54,11 @@ namespace BossRush
         private static float lastSaveTime = 0f;
         private static int lastSavedBossKills = 0;
         private static int lastSavedClears = 0;
+        private static int lastSavedDragonKingKills = 0;
+        private static int lastSavedMaxInfiniteHellWave = 0;
+        private static int lastSavedDragonDescendantLootCount = 0;
+        private static int lastSavedDragonKingLootCount = 0;
+        private static bool statsDirty = false;
 
         #endregion
 
@@ -131,6 +136,7 @@ namespace BossRush
                 TotalDragonKingKills++;
             }
 
+            MarkStatsDirty();
             TryAutoSave();
         }
 
@@ -142,6 +148,7 @@ namespace BossRush
             if (waveNumber > MaxInfiniteHellWave)
             {
                 MaxInfiniteHellWave = waveNumber;
+                MarkStatsDirty();
                 TryAutoSave();
             }
         }
@@ -152,6 +159,7 @@ namespace BossRush
         public static void OnClear()
         {
             TotalClears++;
+            MarkStatsDirty();
             SaveStats();
         }
 
@@ -161,14 +169,10 @@ namespace BossRush
         public static void TryAutoSave()
         {
             float currentTime = Time.realtimeSinceStartup;
-            bool hasChanges = (TotalBossKills != lastSavedBossKills) || (TotalClears != lastSavedClears);
             
-            if (hasChanges && (currentTime - lastSaveTime >= AUTO_SAVE_INTERVAL))
+            if (HasUnsavedStatsChanges() && (currentTime - lastSaveTime >= AUTO_SAVE_INTERVAL))
             {
                 SaveStats();
-                lastSaveTime = currentTime;
-                lastSavedBossKills = TotalBossKills;
-                lastSavedClears = TotalClears;
             }
         }
 
@@ -177,11 +181,9 @@ namespace BossRush
         /// </summary>
         public static void ForceSave()
         {
-            if ((TotalBossKills != lastSavedBossKills) || (TotalClears != lastSavedClears))
+            if (HasUnsavedStatsChanges())
             {
                 SaveStats();
-                lastSavedBossKills = TotalBossKills;
-                lastSavedClears = TotalClears;
             }
         }
 
@@ -198,8 +200,7 @@ namespace BossRush
             CollectedDragonKingLoot.Clear();
             HasUsedFlightTotem = false;
             HasTriggeredReverseScale = false;
-            lastSavedBossKills = 0;
-            lastSavedClears = 0;
+            MarkStatsDirty();
             SaveStats();
             ModBehaviour.DevLog("[Achievement] 统计数据已重置");
         }
@@ -212,7 +213,8 @@ namespace BossRush
             if (CollectedDragonDescendantLoot.Add(itemTypeId))
             {
                 ModBehaviour.DevLog("[Achievement] 收集龙裔掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonDescendantLoot.Count);
-                TryAutoSave();
+                MarkStatsDirty();
+                SaveStats();
             }
         }
         
@@ -224,7 +226,8 @@ namespace BossRush
             if (CollectedDragonKingLoot.Add(itemTypeId))
             {
                 ModBehaviour.DevLog("[Achievement] 收集龙王掉落物: TypeID=" + itemTypeId + ", 已收集数量=" + CollectedDragonKingLoot.Count);
-                TryAutoSave();
+                MarkStatsDirty();
+                SaveStats();
             }
         }
         
@@ -237,6 +240,7 @@ namespace BossRush
             {
                 HasUsedFlightTotem = true;
                 ModBehaviour.DevLog("[Achievement] 首次使用腾云驾雾图腾");
+                MarkStatsDirty();
                 SaveStats();
             }
         }
@@ -250,6 +254,7 @@ namespace BossRush
             {
                 HasTriggeredReverseScale = true;
                 ModBehaviour.DevLog("[Achievement] 首次触发逆鳞效果");
+                MarkStatsDirty();
                 SaveStats();
             }
         }
@@ -291,6 +296,8 @@ namespace BossRush
                 // 保存收藏类数据
                 SavesSystem.SaveGlobal(SAVE_KEY_STATS + "_DragonDescendantLoot", new List<int>(CollectedDragonDescendantLoot));
                 SavesSystem.SaveGlobal(SAVE_KEY_STATS + "_DragonKingLoot", new List<int>(CollectedDragonKingLoot));
+
+                MarkStatsClean();
             }
             catch (System.Exception e)
             {
@@ -331,6 +338,8 @@ namespace BossRush
                     CollectedDragonKingLoot = new HashSet<int>(dkLoot);
                 }
                 catch { CollectedDragonKingLoot = new HashSet<int>(); }
+
+                MarkStatsClean();
             }
             catch
             {
@@ -342,7 +351,36 @@ namespace BossRush
                 HasTriggeredReverseScale = false;
                 CollectedDragonDescendantLoot = new HashSet<int>();
                 CollectedDragonKingLoot = new HashSet<int>();
+                MarkStatsClean();
             }
+        }
+
+        private static void MarkStatsDirty()
+        {
+            statsDirty = true;
+        }
+
+        private static bool HasUnsavedStatsChanges()
+        {
+            return statsDirty ||
+                TotalBossKills != lastSavedBossKills ||
+                TotalClears != lastSavedClears ||
+                TotalDragonKingKills != lastSavedDragonKingKills ||
+                MaxInfiniteHellWave != lastSavedMaxInfiniteHellWave ||
+                CollectedDragonDescendantLoot.Count != lastSavedDragonDescendantLootCount ||
+                CollectedDragonKingLoot.Count != lastSavedDragonKingLootCount;
+        }
+
+        private static void MarkStatsClean()
+        {
+            lastSavedBossKills = TotalBossKills;
+            lastSavedClears = TotalClears;
+            lastSavedDragonKingKills = TotalDragonKingKills;
+            lastSavedMaxInfiniteHellWave = MaxInfiniteHellWave;
+            lastSavedDragonDescendantLootCount = CollectedDragonDescendantLoot.Count;
+            lastSavedDragonKingLootCount = CollectedDragonKingLoot.Count;
+            lastSaveTime = Time.realtimeSinceStartup;
+            statsDirty = false;
         }
 
         #endregion

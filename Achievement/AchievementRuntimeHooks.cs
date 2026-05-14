@@ -42,6 +42,7 @@ namespace BossRush
         {
             Health.OnHurt -= OnPlayerHurtForAchievement;
             BossRushEventBus.Unsubscribe<BossRushAchievementUnlockedEvent>(OnBossRushAchievementUnlockedEvent);
+            ResetAchievementBossKillTracking();
             UnsubscribeAchievementEvents();
         }
 

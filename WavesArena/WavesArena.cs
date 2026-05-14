@@ -362,9 +362,8 @@ namespace BossRush
                 countedDeadBosses.Add(bossMain);
                 UnregisterEnemyRecovery(bossMain);
 
-                // 识别 Boss 类型并触发成就
-                string bossType = IdentifyBossType(bossMain);
-                CheckBossKillAchievements(bossType);
+                // 识别 Boss 类型并触发成就（同一角色实例只计一次，避免专用死亡回调和通用死亡流重复计数）
+                CheckBossKillAchievementsOnce(bossMain);
 
                 // 无间炼狱：先累加现金池
                 if (infiniteHellMode)
