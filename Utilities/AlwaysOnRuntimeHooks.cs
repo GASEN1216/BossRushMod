@@ -27,24 +27,40 @@ namespace BossRush
 
         internal void InitializeAlwaysOnRuntime()
         {
-            try
+            string modPath = GetModPath();
+            if (string.IsNullOrEmpty(modPath))
             {
-                string modPath = GetModPath();
-                if (!string.IsNullOrEmpty(modPath))
+                DevLog("[BossRush] [WARNING] 无法获取 Mod 路径，EntityModelFactory 未初始化");
+            }
+            else
+            {
+                try
                 {
                     EntityModelFactory.Initialize(modPath);
+                }
+                catch (System.Exception e)
+                {
+                    DevLog("[BossRush] [WARNING] EntityModelFactory 初始化异常: " + e.Message);
+                }
+
+                try
+                {
                     // 初始化地图刷新点注册表（同步扫描 Assets/SpawnPoints/*.json）
                     _mapSpawnRegistry.Initialize(modPath);
-                    WishFountainService.EnsureRuntime();
                 }
-                else
+                catch (System.Exception e)
                 {
-                    DevLog("[BossRush] [WARNING] 无法获取 Mod 路径，EntityModelFactory 未初始化");
+                    DevLog("[BossRush] [ERROR] 地图刷新点注册表初始化异常: " + e.Message);
                 }
+            }
+
+            try
+            {
+                WishFountainService.EnsureRuntime();
             }
             catch (System.Exception e)
             {
-                DevLog("[BossRush] [WARNING] EntityModelFactory 初始化异常: " + e.Message);
+                DevLog("[BossRush] [WARNING] WishFountainService 初始化异常: " + e.Message);
             }
 
             WikiContentManager.Instance.ResetCache();
