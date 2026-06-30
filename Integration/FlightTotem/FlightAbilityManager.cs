@@ -103,7 +103,7 @@ namespace BossRush
 
         protected override void Update()
         {
-            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            if (!ModBehaviour.CanRunGameplayRuntimeCached())
             {
                 return;
             }

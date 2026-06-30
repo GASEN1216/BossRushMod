@@ -45,7 +45,7 @@ namespace BossRush
             }
 
             // 额外等待一小段时间，确保游戏自身的出生点逻辑已执行完毕
-            yield return new WaitForSeconds(0.5f);
+            yield return sharedWait05s;
 
             // [Mode E 修复] 使用统一入场判定，只在 Mode E 时跳过 customSpawnPos 传送
             // Mode E 设计为"玩家留在地图默认出生点"，不需要传送到 customSpawnPos
@@ -190,7 +190,7 @@ namespace BossRush
             }
 
             // 额外等待确保场景稳定
-            yield return new WaitForSeconds(1.0f);
+            yield return sharedWait1s;
 
             // 方案1：查找场景中通往目标子场景的传送器并触发
             try

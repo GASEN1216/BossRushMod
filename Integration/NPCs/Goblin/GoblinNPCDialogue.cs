@@ -116,18 +116,19 @@ namespace BossRush
             
             NPCExceptionHandler.TryExecute(() =>
             {
-                Vector3 direction = playerTransform.position - transform.position;
+                Transform selfTransform = CachedTransform;
+                Vector3 direction = playerTransform.position - selfTransform.position;
                 direction.y = 0;  // 只在水平面上旋转
                 if (direction.sqrMagnitude > 0.01f)
                 {
-                    transform.rotation = Quaternion.LookRotation(direction);
+                    selfTransform.rotation = Quaternion.LookRotation(direction);
                 }
             }, "GoblinNPCDialogue.FacePlayer");
         }
 
         private bool ShouldRemainStationaryAtWeddingChapel()
         {
-            return ModBehaviour.Instance != null && ModBehaviour.Instance.IsWeddingNpcInstance(transform);
+            return ModBehaviour.Instance != null && ModBehaviour.Instance.IsWeddingNpcInstance(CachedTransform);
         }
 
         private void KeepWeddingChapelIdle()

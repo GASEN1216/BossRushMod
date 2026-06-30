@@ -332,14 +332,20 @@ namespace BossRush
             if (splitActivationTimer >= profile.SplitActivationDelay)
             {
                 splitActivated = true;
-                velocityRef(projectile) = directionRef(projectile) * (velocityRef(projectile).magnitude / Mathf.Max(0.01f, profile.SplitInitialSpeedMult));
+                Vector3 direction = directionRef(projectile);
+                Vector3 velocity = velocityRef(projectile);
+                float splitInitialSpeedMult = Mathf.Max(0.01f, profile.SplitInitialSpeedMult);
+                velocityRef(projectile) = direction * (velocity.magnitude / splitInitialSpeedMult);
                 customTraceLerp = 0f;
                 return;
             }
 
             if (splitActivationTimer <= deltaTime)
             {
-                velocityRef(projectile) = directionRef(projectile) * (velocityRef(projectile).magnitude * Mathf.Max(0.01f, profile.SplitInitialSpeedMult));
+                Vector3 direction = directionRef(projectile);
+                Vector3 velocity = velocityRef(projectile);
+                float splitInitialSpeedMult = Mathf.Max(0.01f, profile.SplitInitialSpeedMult);
+                velocityRef(projectile) = direction * (velocity.magnitude * splitInitialSpeedMult);
             }
         }
 
@@ -528,7 +534,7 @@ namespace BossRush
 
             UpdateSplitActivation(deltaTime);
 
-            UpdateDirectionAndVelocity(deltaTime);
+            float currentSpeed = UpdateDirectionAndVelocity(deltaTime);
 
             if (profile.UseHelix)
             {
@@ -540,7 +546,7 @@ namespace BossRush
                 splitActivated = true;
             }
 
-            float distanceThisFrame = velocityRef(projectile).magnitude * deltaTime;
+            float distanceThisFrame = currentSpeed * deltaTime;
             if (distanceThisFrame + traveledDistanceRef(projectile) > projectile.context.distance)
             {
                 distanceThisFrame = projectile.context.distance - traveledDistanceRef(projectile);
@@ -568,7 +574,10 @@ namespace BossRush
                 distanceThisFrame + 0.3f,
                 hitLayersRef(projectile),
                 QueryTriggerInteraction.Ignore);
-            Array.Sort(raycastBuffer, 0, hitCount, RaycastHitDistanceComparer.Instance);
+            if (hitCount > 1)
+            {
+                Array.Sort(raycastBuffer, 0, hitCount, RaycastHitDistanceComparer.Instance);
+            }
 
             for (int i = 0; i < hitCount; i++)
             {
@@ -610,34 +619,47 @@ namespace BossRush
             }
         }
 
-        private void UpdateDirectionAndVelocity(float deltaTime)
+        private float UpdateDirectionAndVelocity(float deltaTime)
         {
             Vector3 direction = directionRef(projectile);
             Vector3 velocity = velocityRef(projectile);
+            float currentSpeed;
 
             if (returning)
             {
                 Vector3 returnDirection = GetReturnDirection();
                 customTraceLerp = Mathf.MoveTowards(customTraceLerp, 1f, 4f * deltaTime);
                 direction = Vector3.Slerp(direction, returnDirection, customTraceLerp).normalized;
-                velocity = direction * Mathf.Max(6f, velocity.magnitude);
+                currentSpeed = Mathf.Max(6f, velocity.magnitude);
+                if (direction.sqrMagnitude <= 0.0000000001f)
+                {
+                    currentSpeed = 0f;
+                }
+                velocity = direction * currentSpeed;
             }
             else if (splitActivated && projectile.context.traceTarget != null && projectile.context.traceAbility > 0.01f)
             {
                 Vector3 targetDirection = GetTraceDirection(projectile.context.traceTarget);
                 customTraceLerp = Mathf.MoveTowards(customTraceLerp, 1f, projectile.context.traceAbility * deltaTime);
                 direction = Vector3.Lerp(direction, targetDirection, customTraceLerp).normalized;
-                velocity = direction * Mathf.Max(6f, velocity.magnitude);
+                currentSpeed = Mathf.Max(6f, velocity.magnitude);
+                if (direction.sqrMagnitude <= 0.0000000001f)
+                {
+                    currentSpeed = 0f;
+                }
+                velocity = direction * currentSpeed;
             }
             else
             {
                 velocity.y -= deltaTime * Mathf.Abs(projectile.context.gravity);
-                direction = velocity.normalized;
+                currentSpeed = velocity.magnitude;
+                direction = currentSpeed > 0.00001f ? velocity / currentSpeed : Vector3.zero;
             }
 
             directionRef(projectile) = direction;
             velocityRef(projectile) = velocity;
             transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
+            return currentSpeed;
         }
 
         private Vector3 GetTraceDirection(CharacterMainControl target)
@@ -753,10 +775,16 @@ namespace BossRush
             DragonKingBossGunRuntime.DragonKingBossGunHitStage hitStage = ResolveHitStage();
             float marker = DragonKingBossGunRuntime.EncodeShotMarker(shotId, profile.Id, hitStage);
             DamageInfo damageInfo = DragonKingBossGunRuntime.CreateDamageInfo(projectile.context, 1f, hitPoint, hitNormal, false, false, marker);
-            if (projectile.context.halfDamageDistance > 0f && Vector3.Distance(startPointRef(projectile), hitPoint) > projectile.context.halfDamageDistance)
+            float halfDamageDistance = projectile.context.halfDamageDistance;
+            if (halfDamageDistance > 0f)
             {
-                float rangeFactor = projectile.context.dmgOverDistance > 0f ? projectile.context.dmgOverDistance : 0.5f;
-                damageInfo.damageValue *= rangeFactor;
+                float halfDamageDistanceSqr = halfDamageDistance * halfDamageDistance;
+                Vector3 damageDistanceDelta = hitPoint - startPointRef(projectile);
+                if (damageDistanceDelta.sqrMagnitude > halfDamageDistanceSqr)
+                {
+                    float rangeFactor = projectile.context.dmgOverDistance > 0f ? projectile.context.dmgOverDistance : 0.5f;
+                    damageInfo.damageValue *= rangeFactor;
+                }
             }
 
             if (profile.PierceDamageDecay != null && successfulHits > 0 && successfulHits <= profile.PierceDamageDecay.Length)
@@ -993,7 +1021,7 @@ namespace BossRush
             }
 
             lateral.Normalize();
-            Vector3 vertical = Vector3.Cross(forward, lateral).normalized;
+            Vector3 vertical = Vector3.Cross(forward, lateral);
 
             Vector3 offset = lateral * (Mathf.Sin(phase) * profile.HelixAmplitude);
             offset += vertical * (Mathf.Cos(phase) * profile.HelixAmplitude * 0.55f);
@@ -1018,12 +1046,18 @@ namespace BossRush
             for (int i = 0; i < count; i++)
             {
                 DamageReceiver receiver = DragonKingBossGunRuntime.SharedColliderBuffer[i] != null ? DragonKingBossGunRuntime.SharedColliderBuffer[i].GetComponent<DamageReceiver>() : null;
-                if (receiver == null || DragonKingBossGunRuntime.SharedReceiverIdSet.Contains(receiver.GetInstanceID()))
+                if (receiver == null)
                 {
                     continue;
                 }
 
-                DragonKingBossGunRuntime.SharedReceiverIdSet.Add(receiver.GetInstanceID());
+                int receiverId = receiver.GetInstanceID();
+                if (DragonKingBossGunRuntime.SharedReceiverIdSet.Contains(receiverId))
+                {
+                    continue;
+                }
+
+                DragonKingBossGunRuntime.SharedReceiverIdSet.Add(receiverId);
                 receiver.AddBuff(buff, projectile.context.fromCharacter);
             }
         }

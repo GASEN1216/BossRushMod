@@ -407,8 +407,17 @@ namespace BossRush
             {
                 return;
             }
+            if (radius <= 0f)
+            {
+                return;
+            }
 
             CharacterMainControl player = CharacterMainControl.Main;
+            DamageReceiver playerDamageReceiver = player != null ? player.mainDamageReceiver : null;
+            float radiusSqr = radius * radius;
+            const float minPullDistance = 0.4f;
+            const float stopDistance = 0.35f;
+            float minPullDistanceSqr = minPullDistance * minPullDistance;
             int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false);
             if (count <= 0)
             {
@@ -423,7 +432,13 @@ namespace BossRush
                     continue;
                 }
 
-                CharacterMainControl enemy = marker.Owner != null ? marker.Owner : marker.GetComponent<CharacterMainControl>();
+                CharacterMainControl enemy = marker.Owner;
+                if (enemy == null)
+                {
+                    enemy = marker.GetComponent<CharacterMainControl>();
+                    marker.Owner = enemy;
+                }
+
                 if (enemy == null || enemy.transform == null)
                 {
                     continue;
@@ -431,20 +446,22 @@ namespace BossRush
 
                 Vector3 delta = origin - enemy.transform.position;
                 delta.y = 0f;
-                float distance = delta.magnitude;
-                if (distance <= 0.4f || distance > radius)
+                float distanceSqr = delta.sqrMagnitude;
+                if (distanceSqr <= minPullDistanceSqr || distanceSqr > radiusSqr)
                 {
                     continue;
                 }
 
-                Vector3 step = delta.normalized * Mathf.Min(distance - 0.35f, pullStrength);
+                float distance = Mathf.Sqrt(distanceSqr);
+                float stepDistance = Mathf.Min(distance - stopDistance, pullStrength);
+                Vector3 step = delta * (stepDistance / distance);
                 enemy.transform.position += step;
 
-                AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>();
-                if (ai != null && player != null && player.mainDamageReceiver != null)
+                AICharacterController ai = GetZombieModeEnemyAI(enemy.gameObject, marker);
+                if (ai != null && playerDamageReceiver != null)
                 {
-                    ai.searchedEnemy = player.mainDamageReceiver;
-                    try { ai.SetTarget(player.mainDamageReceiver.transform); } catch { }
+                    ai.searchedEnemy = playerDamageReceiver;
+                    try { ai.SetTarget(playerDamageReceiver.transform); } catch { }
                 }
             }
 

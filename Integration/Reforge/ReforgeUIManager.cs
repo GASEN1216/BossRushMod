@@ -550,9 +550,11 @@ namespace BossRush
             delayedUiBuildCoroutine = ModBehaviour.Instance.StartCoroutine(BuildDelayedUIElements());
         }
 
+        private static readonly WaitForEndOfFrame cachedWaitForEndOfFrame = new WaitForEndOfFrame();
+
         private static System.Collections.IEnumerator BuildDelayedUIElements()
         {
-            yield return new WaitForEndOfFrame();
+            yield return cachedWaitForEndOfFrame;
             yield return null;
 
             delayedUiBuildCoroutine = null;
@@ -719,9 +721,10 @@ namespace BossRush
                 if (charInvField != null)
                 {
                     var charInv = charInvField.GetValue(decomposeView) as InventoryDisplay;
-                    if (charInv != null && CharacterMainControl.Main != null)
+                    CharacterMainControl mainPlayer = CharacterMainControl.Main;
+                    if (charInv != null && mainPlayer != null)
                     {
-                        var inventory = CharacterMainControl.Main.CharacterItem.Inventory;
+                        var inventory = mainPlayer.CharacterItem.Inventory;
 
                         // 重新设置，使用ReforgeSystem.CanReforge作为过滤条件
                         charInv.Setup(

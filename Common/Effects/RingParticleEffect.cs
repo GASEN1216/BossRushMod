@@ -37,6 +37,8 @@ namespace BossRush.Common.Effects
         /// </summary>
         private static readonly object materialLock = new object();
         
+        private static readonly WaitForSeconds cachedWait1s = new WaitForSeconds(1f);
+
         // ========== 可配置参数（子类通过属性覆盖） ==========
         
         /// <summary>
@@ -98,6 +100,7 @@ namespace BossRush.Common.Effects
         private bool isStopping = false;
         private Coroutine stopCoroutine;
         private Transform followTarget;
+        private Transform cachedTransform;
 
         // ========== 静态工厂方法（推荐使用） ==========
         
@@ -148,7 +151,12 @@ namespace BossRush.Common.Effects
         }
 
         // ========== Unity生命周期 ==========
-        
+
+        private void Awake()
+        {
+            cachedTransform = transform;
+        }
+
         private void Start()
         {
             CreateParticleSystems();
@@ -159,7 +167,14 @@ namespace BossRush.Common.Effects
             // 跟随目标位置
             if (followTarget != null)
             {
-                transform.position = followTarget.position + FollowOffset;
+                Transform effectTransform = cachedTransform;
+                if (effectTransform == null)
+                {
+                    effectTransform = transform;
+                    cachedTransform = effectTransform;
+                }
+
+                effectTransform.position = followTarget.position + FollowOffset;
             }
         }
         
@@ -242,7 +257,8 @@ namespace BossRush.Common.Effects
         private ParticleSystem CreateEmitter(string name, Vector3 localPosition, ParticleSystemSimulationSpace space, bool isLocal)
         {
             GameObject emitterObj = new GameObject(name);
-            emitterObj.transform.SetParent(transform);
+            Transform effectTransform = cachedTransform != null ? cachedTransform : transform;
+            emitterObj.transform.SetParent(effectTransform);
             emitterObj.transform.localPosition = localPosition;
             emitterObj.transform.localRotation = Quaternion.identity;
             
@@ -465,7 +481,7 @@ namespace BossRush.Common.Effects
             }
             
             // 等待粒子消失
-            yield return new WaitForSeconds(1f);
+            yield return cachedWait1s;
             
             Destroy(gameObject);
         }

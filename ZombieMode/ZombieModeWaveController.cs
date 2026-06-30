@@ -64,12 +64,12 @@ namespace BossRush
             CharacterMainControl victim = health.TryGetCharacter();
             // O(1) HashSet 早返替代 GetComponent<ZombieModeEnemyRuntimeMarker>（审查 §3.1）。
             // 非丧尸模式敌人不走 marker 路径；但仍要走安全区破隐检测（玩家是伤害源时）。
-            if (victim == null || !IsZombieModeKnownEnemy(victim))
+            ZombieModeEnemyRuntimeMarker marker;
+            if (victim == null || !TryGetZombieModeKnownEnemyMarker(victim, out marker))
             {
                 return;
             }
 
-            ZombieModeEnemyRuntimeMarker marker = victim.GetComponent<ZombieModeEnemyRuntimeMarker>();
             if (marker != null && marker.RunId == runId)
             {
                 ApplyZombieModeEnemyHurtAffixes(runId, health, damageInfo, marker);
@@ -206,12 +206,12 @@ namespace BossRush
             }
 
             // O(1) HashSet 早返；非丧尸模式敌人死亡直接 ignore（审查 §3.1）。
-            if (character == null || !IsZombieModeKnownEnemy(character))
+            ZombieModeEnemyRuntimeMarker marker;
+            if (character == null || !TryGetZombieModeKnownEnemyMarker(character, out marker))
             {
                 return;
             }
 
-            ZombieModeEnemyRuntimeMarker marker = character.GetComponent<ZombieModeEnemyRuntimeMarker>();
             if (marker == null || marker.RunId != runId)
             {
                 return;

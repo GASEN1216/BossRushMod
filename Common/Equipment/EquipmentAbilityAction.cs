@@ -499,7 +499,7 @@ namespace BossRush.Common.Equipment
             if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) input.x -= 1f;
             if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) input.x += 1f;
 
-            if (input.magnitude > 1f)
+            if (input.sqrMagnitude > 1f)
             {
                 input.Normalize();
             }

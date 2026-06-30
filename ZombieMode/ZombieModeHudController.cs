@@ -111,30 +111,36 @@ namespace BossRush
             return result;
         }
 
+        private static readonly Color ZombieModeHudSafeZoneInactiveColor = new Color(0.6f, 0.6f, 0.6f, 0.7f);
+        private static readonly Color ZombieModeHudSafeZoneStealthBrokenColor = new Color(0.85f, 0.42f, 0.20f, 0.95f);
+        private static readonly Color ZombieModeHudSafeZoneInsideColor = new Color(0.18f, 0.78f, 0.32f, 0.95f);
+        private static readonly Color ZombieModeHudSafeZoneFlashTargetColor = new Color(0.92f, 0.72f, 0.18f, 0.95f);
+        private static readonly Color ZombieModeHudSafeZoneOutsideColor = new Color(0.92f, 0.72f, 0.18f, 0.85f);
+
         public Color GetZombieModeHudSafeZoneColor(int runId)
         {
             if (!IsZombieModeRunValid(runId) || !zombieModeRunState.ActiveSafeZoneActive)
             {
-                return new Color(0.6f, 0.6f, 0.6f, 0.7f);
+                return ZombieModeHudSafeZoneInactiveColor;
             }
 
             if (zombieModeRunState.SafeZoneStealthBroken)
             {
-                return new Color(0.85f, 0.42f, 0.20f, 0.95f);
+                return ZombieModeHudSafeZoneStealthBrokenColor;
             }
 
             if (zombieModeRunState.PreparationTimer <= ZombieModeTuning.SafeZoneFlashStartSeconds)
             {
                 float flash = Mathf.PingPong(Time.unscaledTime / ZombieModeTuning.SafeZoneFlashCycleSeconds, 1f);
                 return Color.Lerp(
-                    new Color(0.18f, 0.78f, 0.32f, 0.95f),
-                    new Color(0.92f, 0.72f, 0.18f, 0.95f),
+                    ZombieModeHudSafeZoneInsideColor,
+                    ZombieModeHudSafeZoneFlashTargetColor,
                     flash);
             }
 
             return zombieModeRunState.PlayerInsideSafeZone
-                ? new Color(0.18f, 0.78f, 0.32f, 0.95f)
-                : new Color(0.92f, 0.72f, 0.18f, 0.85f);
+                ? ZombieModeHudSafeZoneInsideColor
+                : ZombieModeHudSafeZoneOutsideColor;
         }
 
         private string GetZombieModeBossProgressText()
@@ -228,13 +234,20 @@ namespace BossRush
         private TextMeshProUGUI mainText;
         private TextMeshProUGUI safeZoneText;
         private TextMeshProUGUI stageText;
+        private string lastMainText;
+        private string lastSafeZoneText;
+        private string lastStageText;
+        private Color lastSafeZoneColor;
+        private bool hasLastSafeZoneColor;
         private float nextRefreshTime;
         private bool pauseMenuHidden;
+        private ModBehaviour owner;
         private const float REFRESH_INTERVAL = 0.1f;
 
         public void Initialize(int runId)
         {
             RunId = runId;
+            owner = ModBehaviour.Instance;
             Build();
         }
 
@@ -306,7 +319,7 @@ namespace BossRush
 
         private void Update()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst == null)
             {
                 return;
@@ -327,19 +340,59 @@ namespace BossRush
 
             if (mainText != null)
             {
-                mainText.text = inst.GetZombieModeHudMainText(RunId);
+                SetTextIfChanged(mainText, inst.GetZombieModeHudMainText(RunId), ref lastMainText);
             }
 
             if (safeZoneText != null)
             {
-                safeZoneText.text = inst.GetZombieModeHudSafeZoneText(RunId);
-                safeZoneText.color = inst.GetZombieModeHudSafeZoneColor(RunId);
+                SetTextIfChanged(safeZoneText, inst.GetZombieModeHudSafeZoneText(RunId), ref lastSafeZoneText);
+                SetSafeZoneColorIfChanged(inst.GetZombieModeHudSafeZoneColor(RunId));
             }
 
             if (stageText != null)
             {
-                stageText.text = inst.GetZombieModeHudStageText(RunId);
+                SetTextIfChanged(stageText, inst.GetZombieModeHudStageText(RunId), ref lastStageText);
             }
+        }
+
+        private static void SetTextIfChanged(TextMeshProUGUI target, string value, ref string lastValue)
+        {
+            string nextValue = value ?? string.Empty;
+            if (string.Equals(lastValue, nextValue, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            lastValue = nextValue;
+            target.text = nextValue;
+        }
+
+        private void SetSafeZoneColorIfChanged(Color value)
+        {
+            if (safeZoneText == null)
+            {
+                return;
+            }
+
+            if (hasLastSafeZoneColor && lastSafeZoneColor == value)
+            {
+                return;
+            }
+
+            lastSafeZoneColor = value;
+            hasLastSafeZoneColor = true;
+            safeZoneText.color = value;
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
         }
 
         private void SetPauseMenuHidden(bool hidden)

@@ -404,6 +404,10 @@ namespace BossRush
                             // 跳过 EquipEnemyForModeD（龙裔/龙王已在内部完成配装）
                             // 跳过 ApplyBossStatMultiplier（龙裔/龙王已在内部调用过）
                             // 跳过 SetActive（龙裔/龙王已在内部激活）
+
+                            // 应用变异词条效果到特殊Boss
+                            MutatorManager.ApplyToEnemy(character);
+
                             DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
                             return EnemySpawnCoreResult.Succeeded(ctx, currentPreset);
                         }
@@ -445,6 +449,9 @@ namespace BossRush
 
                             // 激活敌人
                             character.gameObject.SetActive(true);
+
+                            // 应用变异词条效果到新生成的敌人
+                            MutatorManager.ApplyToEnemy(character);
 
                             if (isBoss && !skipBossRushLootTracking && character != null)
                             {

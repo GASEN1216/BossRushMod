@@ -76,7 +76,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator DelayedCheckFlightTotemEquipment()
         {
-            yield return new WaitForSeconds(0.5f);
+            yield return sharedWait05s;
 
             if (FlightTotemEffectManager.Instance != null)
             {

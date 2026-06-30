@@ -39,6 +39,7 @@ namespace BossRush
         
         private Animator animator;
         private Transform playerTransform;
+        private Transform cachedTransform;
         private NurseMovement movement;
         private bool hasAnimator = false;
         private float nextPlayerLookupTime = 0f;
@@ -102,9 +103,23 @@ namespace BossRush
         // ============================================================================
         // 生命周期方法
         // ============================================================================
+
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
         
         void Awake()
         {
+            cachedTransform = transform;
             animator = GetComponentInChildren<Animator>();
             hasAnimator = animator != null;
             
@@ -163,8 +178,9 @@ namespace BossRush
             // 玩家距离检测（只算一次）
             if (!isInDialogue && playerTransform != null)
             {
+                Transform selfTransform = CachedTransform;
                 float nearDistanceSqr = NurseNPCConstants.NEAR_DISTANCE * NurseNPCConstants.NEAR_DISTANCE;
-                float distanceSqr = (transform.position - playerTransform.position).sqrMagnitude;
+                float distanceSqr = (selfTransform.position - playerTransform.position).sqrMagnitude;
                 bool isMovingNow = movement != null && (movement.IsMoving || movement.IsWaitingForPath);
                 if (distanceSqr <= nearDistanceSqr && !isMovingNow)
                 {
@@ -279,18 +295,19 @@ namespace BossRush
 
             nextPlayerLookupTime = now + NurseNPCConstants.PLAYER_LOOKUP_INTERVAL;
 
-            if (CharacterMainControl.Main != null)
+            Transform foundPlayerTransform;
+            NPCPlayerLookupSource playerLookupSource;
+            if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform, out playerLookupSource))
             {
-                playerTransform = CharacterMainControl.Main.transform;
-                ModBehaviour.DevLog("[NurseNPC] Controller: 获取到玩家引用");
-                return;
-            }
-
-            var player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
-            {
-                playerTransform = player.transform;
-                ModBehaviour.DevLog("[NurseNPC] Controller: 通过 Tag 获取到玩家引用");
+                playerTransform = foundPlayerTransform;
+                if (playerLookupSource == NPCPlayerLookupSource.PlayerTag)
+                {
+                    ModBehaviour.DevLog("[NurseNPC] Controller: 通过 Tag 获取到玩家引用");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[NurseNPC] Controller: 获取到玩家引用");
+                }
             }
         }
         
@@ -305,12 +322,13 @@ namespace BossRush
         {
             if (playerTransform == null) return;
 
-            Vector3 direction = playerTransform.position - transform.position;
+            Transform selfTransform = CachedTransform;
+            Vector3 direction = playerTransform.position - selfTransform.position;
             direction.y = 0f;
             if (direction.sqrMagnitude > 0.01f)
             {
                 // 与哥布林一致：仅在停留/对话时朝向玩家，避免和移动旋转抢占
-                transform.rotation = Quaternion.LookRotation(direction);
+                selfTransform.rotation = Quaternion.LookRotation(direction);
             }
         }
         
@@ -324,7 +342,7 @@ namespace BossRush
         private void CreateNameTag()
         {
             if (NPCNameTagHelper.RegisterOriginalHealthBarName(
-                transform,
+                CachedTransform,
                 config.DisplayName,
                 NurseNPCConstants.NAME_TAG_HEIGHT,
                 "[NurseNPC]"))
@@ -338,7 +356,7 @@ namespace BossRush
         /// </summary>
         private void UpdateNameTagRotation()
         {
-            NPCNameTagHelper.RefreshOriginalHealthBarName(transform);
+            NPCNameTagHelper.RefreshOriginalHealthBarName(CachedTransform);
         }
         
         // ============================================================================
@@ -391,7 +409,7 @@ namespace BossRush
             if (movement != null && (movement.IsMoving || movement.IsWaitingForPath)) return;
 
             float storyTriggerDistanceSqr = NurseNPCConstants.STORY_DIALOGUE_TRIGGER_DISTANCE * NurseNPCConstants.STORY_DIALOGUE_TRIGGER_DISTANCE;
-            if ((transform.position - playerTransform.position).sqrMagnitude > storyTriggerDistanceSqr) return;
+            if ((CachedTransform.position - playerTransform.position).sqrMagnitude > storyTriggerDistanceSqr) return;
 
             if (IsAnyUIOpen()) return;
 
@@ -690,13 +708,14 @@ namespace BossRush
                 return false;
             }
 
-            Vector3 dropDirection = transform.forward;
+            Transform selfTransform = CachedTransform;
+            Vector3 dropDirection = selfTransform.forward;
             if (dropDirection.sqrMagnitude <= 0.001f)
             {
                 dropDirection = Vector3.forward;
             }
 
-            Vector3 dropPosition = transform.position + Vector3.up * 0.15f;
+            Vector3 dropPosition = selfTransform.position + Vector3.up * 0.15f;
             rewardItem.Drop(dropPosition, true, dropDirection.normalized, 0f);
 
             string fallbackMessage = L10n.T("背包已满，奖励已掉落在羽织脚边。", "Inventory full. The reward was dropped at Yu Zhi's feet.");
@@ -919,7 +938,7 @@ namespace BossRush
         public string NpcId => NurseAffinityConfig.NPC_ID;
 
         /// <summary>NPC的Transform</summary>
-        public Transform NpcTransform => transform;
+        public Transform NpcTransform => CachedTransform;
         
         /// <summary>
         /// 获取与玩家的距离
@@ -927,12 +946,12 @@ namespace BossRush
         public float GetDistanceToPlayer()
         {
             if (playerTransform == null) return float.MaxValue;
-            return Vector3.Distance(transform.position, playerTransform.position);
+            return Vector3.Distance(CachedTransform.position, playerTransform.position);
         }
         
         void OnDestroy()
         {
-            NPCNameTagHelper.UnregisterOriginalHealthBarName(transform);
+            NPCNameTagHelper.UnregisterOriginalHealthBarName(CachedTransform);
         }
     }
 }

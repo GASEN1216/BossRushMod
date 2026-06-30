@@ -95,7 +95,13 @@ namespace BossRush
 
         void OnDestroy()
         {
-            if (instance == this) instance = null;
+            if (instance == this)
+            {
+                instance = null;
+                sharedCanvas = null;
+                activePopups.Clear();
+                toRemoveBuffer.Clear();
+            }
         }
 
         void Update()

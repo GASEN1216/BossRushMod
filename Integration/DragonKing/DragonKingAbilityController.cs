@@ -76,6 +76,20 @@ namespace BossRush
         /// Boss角色引用
         /// </summary>
         private CharacterMainControl bossCharacter;
+        private Transform bossTransform;
+
+        private Transform BossTransform
+        {
+            get
+            {
+                if (bossTransform == null)
+                {
+                    bossTransform = bossCharacter != null ? bossCharacter.transform : null;
+                }
+
+                return bossTransform;
+            }
+        }
 
         /// <summary>
         /// Boss的Health组件
@@ -110,10 +124,10 @@ namespace BossRush
         private List<GameObject> activeEffects = new List<GameObject>(64);
 
         /// <summary>
-        /// 活跃的弹幕列表（用于清理）
-        /// 预分配容量以避免动态扩容
+        /// 活跃的弹幕集合（用于清理）
+        /// 使用 HashSet 提供 O(1) Contains/Add/Remove
         /// </summary>
-        private List<GameObject> activeProjectiles = new List<GameObject>(128);
+        private HashSet<GameObject> activeProjectiles = new HashSet<GameObject>();
 
         /// <summary>
         /// 活跃的警告线列表（用于清理）
@@ -689,6 +703,7 @@ namespace BossRush
         public void Initialize(CharacterMainControl character)
         {
             bossCharacter = character;
+            bossTransform = bossCharacter != null ? bossCharacter.transform : null;
 
             if (bossCharacter == null)
             {
@@ -1308,6 +1323,7 @@ namespace BossRush
 
             // 清理引用
             bossCharacter = null;
+            bossTransform = null;
             bossHealth = null;
             playerCharacter = null;
             cachedWeaponBullet = null;
@@ -1491,9 +1507,10 @@ namespace BossRush
                 else if (!state.trackingEnded)
                 {
                     state.trackingEnded = true;
-                    if (state.currentVelocity.sqrMagnitude > 0.01f)
+                    float currentVelocitySqr = state.currentVelocity.sqrMagnitude;
+                    if (currentVelocitySqr > 0.01f)
                     {
-                        state.currentVelocity = state.currentVelocity.normalized * state.speed;
+                        state.currentVelocity *= state.speed / Mathf.Sqrt(currentVelocitySqr);
                     }
                 }
 
@@ -1593,10 +1610,7 @@ namespace BossRush
         private void TrackManagedProjectile(GameObject projectile)
         {
             if (projectile == null) return;
-            if (!activeProjectiles.Contains(projectile))
-            {
-                activeProjectiles.Add(projectile);
-            }
+            activeProjectiles.Add(projectile);
         }
 
 

@@ -60,6 +60,8 @@ namespace BossRush
 
         private readonly List<Vector3> modeERespawnAcceptedPointScratch = new List<Vector3>();
 
+        private readonly List<CharacterMainControl> modeEAggroTargetScratch = new List<CharacterMainControl>(32);
+
         private readonly Queue<CharacterMainControl> modeEPendingAggroQueue = new Queue<CharacterMainControl>();
 
         private readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
@@ -585,9 +587,9 @@ namespace BossRush
 
         private List<CharacterMainControl> GetEnemyBossesInRange(float radius)
         {
-            List<CharacterMainControl> enemies = new List<CharacterMainControl>(modeEAliveEnemies.Count);
+            modeEAggroTargetScratch.Clear();
             CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null) return enemies;
+            if (player == null) return modeEAggroTargetScratch;
 
             float radiusSqr = radius * radius;
             Vector3 playerPos = player.transform.position;
@@ -601,16 +603,16 @@ namespace BossRush
                 Vector3 offset = enemy.transform.position - playerPos;
                 if (offset.sqrMagnitude <= radiusSqr)
                 {
-                    enemies.Add(enemy);
+                    modeEAggroTargetScratch.Add(enemy);
                 }
             }
 
-            return enemies;
+            return modeEAggroTargetScratch;
         }
 
         private List<CharacterMainControl> GetAllEnemyBosses()
         {
-            List<CharacterMainControl> enemies = new List<CharacterMainControl>(modeEAliveEnemies.Count);
+            modeEAggroTargetScratch.Clear();
 
             for (int i = 0; i < modeEAliveEnemies.Count; i++)
             {
@@ -618,10 +620,10 @@ namespace BossRush
                 if (!IsValidModeEEnemyTarget(enemy)) continue;
                 if (enemy.Team == modeEPlayerFaction) continue;
 
-                enemies.Add(enemy);
+                modeEAggroTargetScratch.Add(enemy);
             }
 
-            return enemies;
+            return modeEAggroTargetScratch;
         }
 
         private bool TryForceActivateModeEEnemy(CharacterMainControl enemy, out bool wokeInactiveEnemy)

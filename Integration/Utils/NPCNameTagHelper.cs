@@ -37,6 +37,7 @@ namespace BossRush.Utils
         private static readonly FieldInfo DamageBarTemplateField = typeof(HealthBar).GetField("damageBarTemplate", PrivateInstanceFlags);
 
         private static Camera _cachedCamera;
+        private static Transform _cachedCameraTransform;
         private static float _nextCameraRefreshTime;
 
         private sealed class OriginalHealthBarEntry
@@ -65,6 +66,7 @@ namespace BossRush.Utils
 
             OriginalHealthBarEntriesByTransformId.Clear();
             _cachedCamera = null;
+            _cachedCameraTransform = null;
             _nextCameraRefreshTime = 0f;
         }
 
@@ -224,8 +226,8 @@ namespace BossRush.Utils
             if (nameTagObject == null) return;
 
             RefreshCachedCamera();
-            if (_cachedCamera == null) return;
-            nameTagObject.transform.rotation = _cachedCamera.transform.rotation;
+            if (_cachedCameraTransform == null) return;
+            nameTagObject.transform.rotation = _cachedCameraTransform.rotation;
         }
 
         private static void RefreshCachedCamera()
@@ -234,6 +236,7 @@ namespace BossRush.Utils
             if (_cachedCamera == null || now >= _nextCameraRefreshTime)
             {
                 _cachedCamera = Camera.main;
+                _cachedCameraTransform = _cachedCamera != null ? _cachedCamera.transform : null;
                 _nextCameraRefreshTime = now + 1f;
             }
         }
@@ -367,7 +370,9 @@ namespace BossRush.Utils
             }
 
             RefreshCachedCamera();
-            bool shouldShow = ShouldShowOriginalHealthBarName(entry.Target);
+            Transform cameraTransform = _cachedCameraTransform;
+            Vector3 targetPosition = entry.Target.position;
+            bool shouldShow = ShouldShowOriginalHealthBarName(entry.Target, targetPosition, cameraTransform);
             if (entry.RootObject.activeSelf != shouldShow)
             {
                 entry.RootObject.SetActive(shouldShow);
@@ -379,7 +384,7 @@ namespace BossRush.Utils
             }
 
             Vector3 screenPosition = _cachedCamera.WorldToScreenPoint(
-                entry.Target.position + Vector3.up * GetAdjustedOriginalHealthBarNameHeight(entry.Height));
+                targetPosition + Vector3.up * GetAdjustedOriginalHealthBarNameHeight(entry.Height));
             screenPosition.y += DEFAULT_SCREEN_Y_OFFSET * Screen.height;
 
             if (entry.RootRectTransform != null)
@@ -392,20 +397,20 @@ namespace BossRush.Utils
             }
         }
 
-        private static bool ShouldShowOriginalHealthBarName(Transform target)
+        private static bool ShouldShowOriginalHealthBarName(Transform target, Vector3 targetPosition, Transform cameraTransform)
         {
             if (target == null || !target.gameObject.activeInHierarchy)
             {
                 return false;
             }
 
-            if (_cachedCamera == null)
+            if (cameraTransform == null)
             {
                 return false;
             }
 
-            Vector3 direction = target.position - _cachedCamera.transform.position;
-            return Vector3.Dot(direction, _cachedCamera.transform.forward) > 0f;
+            Vector3 direction = targetPosition - cameraTransform.position;
+            return Vector3.Dot(direction, cameraTransform.forward) > 0f;
         }
 
         private static void DisableFadeBehaviours(GameObject rootObject)

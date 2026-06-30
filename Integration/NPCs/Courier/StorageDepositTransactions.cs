@@ -184,9 +184,7 @@ namespace BossRush
                 var shopView = StockShopView.Instance;
                 if (shopView != null && depositShop != null)
                 {
-                    // 使用反射调用 internal 方法 SetupAndShow
-                    var setupAndShowMethod = typeof(StockShopView).GetMethod("SetupAndShow",
-                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    InitializeReflection();
 
                     if (setupAndShowMethod != null)
                     {
@@ -234,9 +232,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[StorageDepositService] entryIndexMapping.Count = " + entryIndexMapping.Count);
                 ModBehaviour.DevLog("[StorageDepositService] depositItemInstances.Count = " + depositItemInstances.Count);
 
-                // 获取商店条目的父容器（通过反射获取 entryTemplate 的 parent）
-                var entryTemplateField = typeof(StockShopView).GetField("entryTemplate",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+                InitializeReflection();
                 if (entryTemplateField == null) return;
 
                 var entryTemplate = entryTemplateField.GetValue(shopView) as StockShopItemEntry;
@@ -246,17 +242,11 @@ namespace BossRush
                 if (entriesParent == null) return;
 
                 // 获取 StockShopItemEntry 的 itemDisplay 字段
-                var itemDisplayField = typeof(StockShopItemEntry).GetField("itemDisplay",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (itemDisplayField == null)
+                if (stockShopItemDisplayField == null)
                 {
                     ModBehaviour.DevLog("[StorageDepositService] [WARNING] 未找到 itemDisplay 字段");
                     return;
                 }
-
-                // 获取 StockShopItemEntry 的 priceText 字段（用于更新价格显示）
-                var priceTextFieldEntry = typeof(StockShopItemEntry).GetField("priceText",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
 
                 // 调试：输出父容器中的子对象数量
                 int totalChildren = entriesParent.childCount;
@@ -266,16 +256,6 @@ namespace BossRush
                     if (child.gameObject.activeSelf) activeChildren++;
                 }
                 ModBehaviour.DevLog("[StorageDepositService] UI 父容器子对象: 总数=" + totalChildren + ", 激活=" + activeChildren);
-
-                // 构建当前有效的 Entry 集合（支持同类型物品独立显示）
-                HashSet<StockShop.Entry> validEntries = new HashSet<StockShop.Entry>();
-                foreach (var entry in depositShop.entries)
-                {
-                    if (entry != null)
-                    {
-                        validEntries.Add(entry);
-                    }
-                }
 
                 // 只激活在有效 Entry 集合中但被隐藏的条目
                 int activatedCount = 0;
@@ -290,7 +270,7 @@ namespace BossRush
                     if (stockEntry == null) continue;
 
                     // 只激活在有效 Entry 集合中的条目（精确匹配 Entry 对象）
-                    if (!child.gameObject.activeSelf && validEntries.Contains(stockEntry))
+                    if (!child.gameObject.activeSelf && IsCurrentDepositEntry(stockEntry))
                     {
                         child.gameObject.SetActive(true);
                         activatedCount++;
@@ -308,6 +288,7 @@ namespace BossRush
                 int skippedInactive = 0;
                 int skippedNoEntry = 0;
                 int skippedNoMapping = 0;
+                List<DepositedItemData> depositedItemsSnapshot = null;
 
                 foreach (Transform child in entriesParent)
                 {
@@ -346,7 +327,7 @@ namespace BossRush
                     if (depositItemInstances.TryGetValue(depositIndex, out correctItem) && correctItem != null)
                     {
                         // 获取 ItemDisplay 并更新
-                        var itemDisplay = itemDisplayField.GetValue(uiEntry) as ItemDisplay;
+                        var itemDisplay = stockShopItemDisplayField.GetValue(uiEntry) as ItemDisplay;
                         if (itemDisplay != null)
                         {
                             itemDisplay.Setup(correctItem);
@@ -355,15 +336,19 @@ namespace BossRush
                         }
 
                         // 更新价格显示（使用正确的寄存费用）
-                        if (priceTextFieldEntry != null)
+                        if (stockShopItemPriceTextField != null)
                         {
-                            var priceTextComp = priceTextFieldEntry.GetValue(uiEntry) as TMPro.TextMeshProUGUI;
+                            var priceTextComp = stockShopItemPriceTextField.GetValue(uiEntry) as TMPro.TextMeshProUGUI;
                             if (priceTextComp != null)
                             {
-                                var depositedItems = DepositDataManager.GetAllItems();
-                                if (depositIndex < depositedItems.Count)
+                                if (depositedItemsSnapshot == null)
                                 {
-                                    int fee = depositedItems[depositIndex].GetCurrentFee();
+                                    depositedItemsSnapshot = DepositDataManager.GetAllItems();
+                                }
+
+                                if (depositIndex < depositedItemsSnapshot.Count)
+                                {
+                                    int fee = depositedItemsSnapshot[depositIndex].GetCurrentFee();
                                     priceTextComp.text = FormatRetrieveFeeText(fee);
                                     ModBehaviour.DevLog("[StorageDepositService] 更新价格显示: index=" + depositIndex + ", fee=" + fee);
                                 }
@@ -395,9 +380,7 @@ namespace BossRush
                 var shopView = StockShopView.Instance;
                 if (shopView == null || depositShop == null) return;
 
-                // 使用反射调用 internal 方法 SetupAndShow
-                var setupAndShowMethod = typeof(StockShopView).GetMethod("SetupAndShow",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+                InitializeReflection();
 
                 if (setupAndShowMethod != null)
                 {

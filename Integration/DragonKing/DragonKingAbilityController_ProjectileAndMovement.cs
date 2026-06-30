@@ -728,14 +728,17 @@ namespace BossRush
         /// </summary>
         private Vector3 FindValidTeleportPosition(Vector3 centerPos, float minDistance, float maxDistance, int maxAttempts = 10)
         {
+            float minDistanceSqr = minDistance * minDistance;
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
                 // 生成随机偏移
                 Vector2 randomOffset = UnityEngine.Random.insideUnitCircle * maxDistance;
                 // 确保最小距离
-                if (randomOffset.magnitude < minDistance)
+                float randomOffsetDistanceSqr = randomOffset.sqrMagnitude;
+                if (randomOffsetDistanceSqr < minDistanceSqr)
                 {
-                    randomOffset = randomOffset.normalized * minDistance;
+                    float randomOffsetDistance = Mathf.Sqrt(randomOffsetDistanceSqr);
+                    randomOffset = randomOffsetDistance > 0.00001f ? randomOffset * (minDistance / randomOffsetDistance) : Vector2.zero;
                 }
 
                 Vector3 candidatePos = centerPos + new Vector3(randomOffset.x, 0f, randomOffset.y);

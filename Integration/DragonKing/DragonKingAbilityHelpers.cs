@@ -43,6 +43,21 @@ namespace BossRush
         /// 缓存的玩家引用
         /// </summary>
         private CharacterMainControl cachedPlayer = null;
+        private Transform cachedPlayerTransform;
+        private Transform cachedTransform;
+
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
 
         /// <summary>
         /// 初始化碰撞检测器
@@ -69,12 +84,21 @@ namespace BossRush
             if (cachedPlayer == null || !cachedPlayer.gameObject.activeInHierarchy)
             {
                 cachedPlayer = CharacterMainControl.Main;
+                if (cachedPlayer != null)
+                {
+                    cachedPlayerTransform = cachedPlayer.transform;
+                }
+                else
+                {
+                    cachedPlayerTransform = null;
+                }
             }
 
             if (cachedPlayer == null) return;
+            if (cachedPlayerTransform == null) return;
 
             // 计算与玩家的距离
-            Vector3 diff = transform.position - cachedPlayer.transform.position;
+            Vector3 diff = CachedTransform.position - cachedPlayerTransform.position;
 
             // 如果在碰撞范围内，尝试触发碰撞
             if (diff.sqrMagnitude <= collisionRadiusSqr)
@@ -134,7 +158,8 @@ namespace BossRush
         private void ProcessCollision(Collider other)
         {
             if (controller == null || other == null) return;
-            if (Time.time - lastDamageTime < DAMAGE_INTERVAL) return;
+            float currentTime = Time.time;
+            if (currentTime - lastDamageTime < DAMAGE_INTERVAL) return;
 
             CacheMainCharacter();
             if (cachedMainCharacter == null || cachedMainCharacter.Health == null || cachedMainCharacter.Health.IsDead)
@@ -144,7 +169,7 @@ namespace BossRush
 
             if (cachedMainRoot != null && other.transform.root == cachedMainRoot)
             {
-                lastDamageTime = Time.time;
+                lastDamageTime = currentTime;
                 controller.ApplySunBeamDamage();
                 return;
             }
@@ -152,7 +177,7 @@ namespace BossRush
             var character = other.GetComponentInParent<CharacterMainControl>();
             if (character != null && character == cachedMainCharacter && !character.Health.IsDead)
             {
-                lastDamageTime = Time.time;
+                lastDamageTime = currentTime;
                 controller.ApplySunBeamDamage();
             }
         }
@@ -539,6 +564,7 @@ namespace BossRush
     {
         private const int SegmentCount = 64;
         private static Vector3[] cachedUnitPoints = null;
+        private static readonly Vector3[] positionsBuffer = new Vector3[SegmentCount];
 
         private LineRenderer lineRenderer;
         private float duration = 1f;
@@ -596,8 +622,9 @@ namespace BossRush
             Vector3[] unitPoints = GetUnitPoints();
             for (int i = 0; i < unitPoints.Length; i++)
             {
-                lineRenderer.SetPosition(i, unitPoints[i] * radius);
+                positionsBuffer[i] = unitPoints[i] * radius;
             }
+            lineRenderer.SetPositions(positionsBuffer);
         }
 
         private static Vector3[] GetUnitPoints()
@@ -664,25 +691,18 @@ namespace BossRush
     /// </summary>
     public class RingShrinkAnimation : MonoBehaviour
     {
-        /// <summary>
-        /// 动画持续时间
-        /// </summary>
         public float duration = 1f;
-
-        /// <summary>
-        /// 起始缩放
-        /// </summary>
         public float startScale = 1f;
-
-        /// <summary>
-        /// 结束缩放
-        /// </summary>
         public float endScale = 0f;
 
         private float elapsed = 0f;
         private Vector3 initialScale;
         private LineRenderer lineRenderer;
         private Light ringLight;
+        private bool referencesCached;
+
+        private static readonly Color BaseColor = new Color(0.9f, 0.95f, 1f, 0.9f);
+        private static readonly Color BrightColor = new Color(1f, 1f, 1f, 1f);
 
         void Awake()
         {
@@ -691,7 +711,7 @@ namespace BossRush
 
         public void ResetAnimation(float durationSeconds, float fromScale, float toScale)
         {
-            CacheReferences();
+            if (!referencesCached) CacheReferences();
             duration = Mathf.Max(0.01f, durationSeconds);
             startScale = fromScale;
             endScale = toScale;
@@ -701,29 +721,23 @@ namespace BossRush
 
         void Update()
         {
-            CacheReferences();
+            if (!referencesCached) CacheReferences();
 
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
 
-            // 使用缓动函数让缩小更有紧迫感（先慢后快）
             float easedT = t * t;
 
-            // 缩放
             float currentScale = Mathf.Lerp(startScale, endScale, easedT);
             transform.localScale = initialScale * currentScale;
 
-            // 颜色变化（白色系，越接近结束越亮）
-            Color baseColor = new Color(0.9f, 0.95f, 1f, 0.9f);
-            Color brightColor = new Color(1f, 1f, 1f, 1f);
-            Color currentColor = Color.Lerp(baseColor, brightColor, t);
+            Color currentColor = Color.Lerp(BaseColor, BrightColor, t);
 
             if (lineRenderer != null)
             {
                 lineRenderer.startColor = currentColor;
                 lineRenderer.endColor = currentColor;
 
-                // 线条宽度也随之变化（越接近结束越粗）
                 float width = Mathf.Lerp(0.3f, 0.5f, t);
                 lineRenderer.startWidth = width;
                 lineRenderer.endWidth = width;
@@ -756,6 +770,8 @@ namespace BossRush
             {
                 ringLight = GetComponent<Light>();
             }
+
+            referencesCached = true;
         }
     }
 

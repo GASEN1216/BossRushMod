@@ -115,10 +115,9 @@ namespace BossRush
 
             flatDirection.Normalize();
 
-            float distance = Vector3.Distance(
-                new Vector3(origin.x, 0f, origin.z),
-                new Vector3(aimPoint.x, 0f, aimPoint.z)
-            );
+            Vector3 aimDistanceDelta = aimPoint - origin;
+            aimDistanceDelta.y = 0f;
+            float distance = Mathf.Sqrt(aimDistanceDelta.sqrMagnitude);
 
             Vector3 result = origin + flatDirection * distance;
             result.y = aimPoint.y;

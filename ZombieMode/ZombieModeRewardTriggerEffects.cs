@@ -28,8 +28,13 @@ namespace BossRush
                 marker == null ||
                 marker.RunId != zombieModeRunState.RunId ||
                 marker.DeathSettled ||
-                marker.RemovedFromRuntime ||
-                damageInfo.fromCharacter != CharacterMainControl.Main ||
+                marker.RemovedFromRuntime)
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (damageInfo.fromCharacter != player ||
                 damageInfo.isFromBuffOrEffect ||
                 !IsZombieModeKnownEnemy(victim))
             {
@@ -39,7 +44,6 @@ namespace BossRush
             ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
             if (options.TriggerLifestealChancePercent > 0)
             {
-                CharacterMainControl player = CharacterMainControl.Main;
                 int chance = Mathf.Min(ZombieModeLifestealChanceCapPercent, options.TriggerLifestealChancePercent);
                 if (player != null &&
                     player.Health != null &&
@@ -81,31 +85,32 @@ namespace BossRush
                         CharacterMainControl nearest = TryFindZombieModeNearestEnemyTarget(runId, victim, 9f);
                         if (nearest != null)
                         {
-                            Vector3 direction = (nearest.transform.position - victim.transform.position).normalized;
+                            Vector3 direction = nearest.transform.position - victim.transform.position;
                             spawnedSupportProjectile |= TrySpawnZombieModePlayerSupportProjectile(victim.transform.position + Vector3.up * 0.2f, direction, 0.40f, 0.65f);
                         }
                     }
 
                     if (options.ProjectileForkStacks > 0)
                     {
-                        Vector3 baseDirection = (victim.transform.position - CharacterMainControl.Main.transform.position);
+                        Vector3 baseDirection = (victim.transform.position - player.transform.position);
                         baseDirection.y = 0f;
                         if (baseDirection.sqrMagnitude <= 0.001f)
                         {
-                            baseDirection = CharacterMainControl.Main.transform.forward;
+                            baseDirection = player.transform.forward;
                         }
-                        baseDirection.Normalize();
-                        spawnedSupportProjectile |= TrySpawnZombieModePlayerSupportProjectile(victim.transform.position + Vector3.up * 0.2f, Quaternion.Euler(0f, -20f, 0f) * baseDirection, 0.35f, 0.55f);
-                        spawnedSupportProjectile |= TrySpawnZombieModePlayerSupportProjectile(victim.transform.position + Vector3.up * 0.2f, Quaternion.Euler(0f, 20f, 0f) * baseDirection, 0.35f, 0.55f);
+                        Vector3 leftDirection = Quaternion.Euler(0f, -20f, 0f) * baseDirection;
+                        Vector3 rightDirection = Quaternion.Euler(0f, 20f, 0f) * baseDirection;
+                        spawnedSupportProjectile |= TrySpawnZombieModePlayerSupportProjectile(victim.transform.position + Vector3.up * 0.2f, leftDirection, 0.35f, 0.55f);
+                        spawnedSupportProjectile |= TrySpawnZombieModePlayerSupportProjectile(victim.transform.position + Vector3.up * 0.2f, rightDirection, 0.35f, 0.55f);
                     }
 
                     if (options.ProjectileReturnStacks > 0)
                     {
-                        Vector3 returnDirection = (CharacterMainControl.Main.transform.position - victim.transform.position);
+                        Vector3 returnDirection = (player.transform.position - victim.transform.position);
                         returnDirection.y = 0f;
                         if (returnDirection.sqrMagnitude > 0.001f)
                         {
-                            spawnedSupportProjectile |= TrySpawnZombieModePlayerSupportProjectile(victim.transform.position + Vector3.up * 0.2f, returnDirection.normalized, 0.45f, 0.70f);
+                            spawnedSupportProjectile |= TrySpawnZombieModePlayerSupportProjectile(victim.transform.position + Vector3.up * 0.2f, returnDirection, 0.45f, 0.70f);
                         }
                     }
 
@@ -128,8 +133,13 @@ namespace BossRush
                 health == null ||
                 victim == null ||
                 marker == null ||
-                marker.RunId != zombieModeRunState.RunId ||
-                damageInfo.fromCharacter != CharacterMainControl.Main ||
+                marker.RunId != zombieModeRunState.RunId)
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (damageInfo.fromCharacter != player ||
                 damageInfo.isFromBuffOrEffect)
             {
                 return;
@@ -145,7 +155,6 @@ namespace BossRush
 
             if (options.TriggerSecondWindStacks > 0)
             {
-                CharacterMainControl player = CharacterMainControl.Main;
                 if (player != null && player.Health != null)
                 {
                     player.Health.AddHealth(Mathf.Min(10f, 2f * Mathf.Min(5, options.TriggerSecondWindStacks)));
@@ -192,7 +201,13 @@ namespace BossRush
 
         private void CreateZombieModeOptionExplosion(int runId, Vector3 position, float radius, float damage)
         {
-            if (!IsZombieModeRunValid(runId) || CharacterMainControl.Main == null)
+            if (!IsZombieModeRunValid(runId))
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
             {
                 return;
             }
@@ -210,10 +225,10 @@ namespace BossRush
 
             try
             {
-                DamageInfo info = new DamageInfo(CharacterMainControl.Main);
+                DamageInfo info = new DamageInfo(player);
                 info.damageValue = damage;
                 info.damagePoint = position;
-                Vector3 normal = CharacterMainControl.Main.transform.position - position;
+                Vector3 normal = player.transform.position - position;
                 info.damageNormal = normal.sqrMagnitude > 0.0001f ? normal.normalized : Vector3.up;
                 info.isExplosion = true;
                 info.isFromBuffOrEffect = true;
@@ -339,7 +354,13 @@ namespace BossRush
                     continue;
                 }
 
-                CharacterMainControl enemy = marker.Owner != null ? marker.Owner : marker.GetComponent<CharacterMainControl>();
+                CharacterMainControl enemy = marker.Owner;
+                if (enemy == null)
+                {
+                    enemy = marker.GetComponent<CharacterMainControl>();
+                    marker.Owner = enemy;
+                }
+
                 if (enemy == null || enemy == exclude)
                 {
                     continue;

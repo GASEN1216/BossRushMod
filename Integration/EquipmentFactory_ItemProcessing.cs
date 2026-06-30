@@ -568,13 +568,13 @@ namespace BossRush
         /// 为装备类型注入 ItemGraphic（通用版本，用于头盔、护甲等）
         /// 修复假人显示问题：假人的 CharacterEquipmentController 可能需要 ItemGraphic 作为备用显示路径
         /// </summary>
-        private static void InjectItemGraphicForEquipment(Item item, ItemAgent modelAgent)
+        private static void InjectItemGraphicForEquipment(Item item, ItemAgent modelAgent, bool forceReplace = false)
         {
             try
             {
                 // 检查已有的 ItemGraphic 是否有效
                 ItemGraphicInfo existingGraphic = item.ItemGraphic;
-                if (existingGraphic != null)
+                if (existingGraphic != null && !forceReplace)
                 {
                     bool isValid = false;
                     try

@@ -56,6 +56,8 @@ namespace BossRush
         private readonly Dictionary<int, string> modeFMarkSuffixEnCache = new Dictionary<int, string>();
         private float modeFNextBountyRadarRefreshTime = 0f;
         private TMP_FontAsset modeFBountyRadarFont = null;
+        private static Camera modeFBountyRadarCachedMainCamera = null;
+        private static int modeFBountyRadarCachedMainCameraFrame = -1;
         private static Sprite modeFBountyRadarRegularSprite = null;
         private static Sprite modeFBountyRadarLeaderSprite = null;
         private static Sprite modeFBountyRadarGuideSprite = null;
@@ -63,8 +65,10 @@ namespace BossRush
         private struct ModeFBountyRadarTarget
         {
             public CharacterMainControl boss;
+            public Vector3 position;
             public int marks;
             public float distanceSqr;
+            public float displayDistanceSqr;
         }
 
         private sealed class ModeFBountyRadarEntryUi

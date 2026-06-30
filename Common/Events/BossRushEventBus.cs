@@ -12,6 +12,9 @@ namespace BossRush
         private static readonly Dictionary<Type, List<Delegate>> runtimeSubscribers =
             new Dictionary<Type, List<Delegate>>();
 
+        private static Delegate[] publishScratch = new Delegate[8];
+        private static int publishDepth = 0;
+
         public static void Subscribe<TEvent>(Action<TEvent> handler)
         {
             if (handler == null)
@@ -63,25 +66,61 @@ namespace BossRush
                 return;
             }
 
-            Delegate[] snapshot = subscribers.ToArray();
-            for (int i = 0; i < snapshot.Length; i++)
-            {
-                Action<TEvent> handler = snapshot[i] as Action<TEvent>;
-                if (handler == null)
-                {
-                    continue;
-                }
+            int count = subscribers.Count;
+            Delegate[] snapshot = publishDepth == 0
+                ? CopySubscribersToSharedScratch(subscribers, count)
+                : subscribers.ToArray();
 
-                try
+            publishDepth++;
+            try
+            {
+                for (int i = 0; i < count; i++)
                 {
-                    handler(eventData);
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[BossRushEventBus] [WARNING] handler failed for "
-                        + eventType.Name + ": " + e.Message);
+                    Action<TEvent> handler = snapshot[i] as Action<TEvent>;
+                    if (publishDepth == 1)
+                    {
+                        snapshot[i] = null;
+                    }
+
+                    if (handler == null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        handler(eventData);
+                    }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[BossRushEventBus] [WARNING] handler failed for "
+                            + eventType.Name + ": " + e.Message);
+                    }
                 }
             }
+            finally
+            {
+                publishDepth--;
+                if (publishDepth == 0)
+                {
+                    int clearCount = Math.Min(count, snapshot.Length);
+                    for (int i = 0; i < clearCount; i++)
+                    {
+                        snapshot[i] = null;
+                    }
+                }
+            }
+        }
+
+        private static Delegate[] CopySubscribersToSharedScratch(List<Delegate> subscribers, int count)
+        {
+            if (publishScratch.Length < count)
+            {
+                publishScratch = new Delegate[count * 2];
+            }
+
+            subscribers.CopyTo(publishScratch, 0);
+            return publishScratch;
         }
 
         public static void ClearRuntimeSubscribers()
@@ -92,6 +131,8 @@ namespace BossRush
         public static void ResetStaticCaches()
         {
             ClearRuntimeSubscribers();
+            publishScratch = new Delegate[8];
+            publishDepth = 0;
         }
     }
 

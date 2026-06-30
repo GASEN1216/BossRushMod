@@ -13,6 +13,8 @@ namespace BossRush
 {
     public static partial class DragonKingBossGunRuntime
     {
+        private const float DamageNormalFallbackSqr = 0.0000000001f;
+
         private static Vector3 ApplyWeaponScatter(ItemAgent_Gun gun, Vector3 shootDirection)
         {
             bool isMainCharacterShot = gun.Holder != null && gun.Holder.IsMainCharacter;
@@ -167,7 +169,13 @@ namespace BossRush
             for (int i = 0; i < count; i++)
             {
                 DamageReceiver receiver = SharedColliderBuffer[i] != null ? SharedColliderBuffer[i].GetComponent<DamageReceiver>() : null;
-                if (receiver == null || SharedReceiverIdSet.Contains(receiver.GetInstanceID()))
+                if (receiver == null)
+                {
+                    continue;
+                }
+
+                int receiverId = receiver.GetInstanceID();
+                if (SharedReceiverIdSet.Contains(receiverId))
                 {
                     continue;
                 }
@@ -183,11 +191,11 @@ namespace BossRush
                     continue;
                 }
 
-                SharedReceiverIdSet.Add(receiver.GetInstanceID());
+                SharedReceiverIdSet.Add(receiverId);
 
                 Vector3 damagePoint = receiver.transform.position + Vector3.up * 0.35f;
-                Vector3 damageNormal = (receiver.transform.position - position).normalized;
-                if (damageNormal.sqrMagnitude < 0.001f)
+                Vector3 damageNormal = receiver.transform.position - position;
+                if (damageNormal.sqrMagnitude <= DamageNormalFallbackSqr)
                 {
                     damageNormal = Vector3.up;
                 }
@@ -408,8 +416,10 @@ namespace BossRush
                 Vector3 aimPoint = gun.Holder.GetCurrentAimPoint();
                 Vector3 toTarget = aimPoint - firstFrameCheckStartPoint;
                 toTarget.y = 0f;
-                float horizontalDist = Mathf.Max(1f, toTarget.magnitude);
-                Vector3 horizontalDir = toTarget.normalized;
+                float toTargetDistanceSqr = toTarget.sqrMagnitude;
+                float toTargetDistance = Mathf.Sqrt(toTargetDistanceSqr);
+                float horizontalDist = Mathf.Max(1f, toTargetDistance);
+                Vector3 horizontalDir = toTargetDistanceSqr > 0.0000000001f ? toTarget / toTargetDistance : Vector3.zero;
 
                 // 55° 固定仰角: cos≈0.5736, sin≈0.8192, sin(110°)≈0.9397
                 float speed = Mathf.Clamp(Mathf.Sqrt(Mathf.Abs(profile.Gravity * horizontalDist * 1.0642f)), 8f, 80f);

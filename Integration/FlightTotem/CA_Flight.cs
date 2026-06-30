@@ -63,6 +63,7 @@ namespace BossRush
         /// 本帧需要应用的垂直位移
         /// </summary>
         private float pendingVerticalDelta = 0f;
+        private Transform cachedCharacterTransform;
 
 
         /// <summary>
@@ -108,6 +109,16 @@ namespace BossRush
 
         // ========== 重写基类钩子方法 ==========
 
+        private Transform GetCharacterTransform()
+        {
+            if (cachedCharacterTransform == null && characterController != null)
+            {
+                cachedCharacterTransform = characterController.transform;
+            }
+
+            return cachedCharacterTransform;
+        }
+
         protected override bool OnAbilityStart()
         {
             // 首次启动时缓存反射信息（静态缓存，只执行一次）
@@ -116,7 +127,13 @@ namespace BossRush
             // 创建临时飞行平台（玩家脚下）
             CreateFlightPlatform();
 
-            startY = characterController.transform.position.y;
+            Transform characterTransform = GetCharacterTransform();
+            if (characterTransform == null)
+            {
+                return false;
+            }
+
+            startY = characterTransform.position.y;
             lockedMinY = startY; // 锁定最低Y为起始位置，防止下降
             isSlowDescending = false;
             spaceHeldCount = 0;
@@ -133,7 +150,8 @@ namespace BossRush
 
         protected override void OnAbilityStop()
         {
-            float currentY = characterController.transform.position.y;
+            Transform characterTransform = GetCharacterTransform();
+            float currentY = characterTransform != null ? characterTransform.position.y : startY;
             float heightGained = currentY - startY;
             LogIfVerbose($"飞行结束！结束Y={currentY}, 上升了{heightGained:F1}");
 
@@ -345,7 +363,10 @@ namespace BossRush
         {
             if (!Running || characterController == null) return;
 
-            Vector3 playerPos = characterController.transform.position;
+            Transform characterTransform = GetCharacterTransform();
+            if (characterTransform == null) return;
+
+            Vector3 playerPos = characterTransform.position;
 
             // 滑翔时更新锁定值（允许下降），向上飞行时锁定最低Y（防止抖动）
             if (isSlowDescending)
@@ -355,7 +376,7 @@ namespace BossRush
             else if (playerPos.y < lockedMinY - 0.01f)
             {
                 playerPos.y = lockedMinY;
-                characterController.transform.position = playerPos;
+                characterTransform.position = playerPos;
             }
             else if (playerPos.y > lockedMinY)
             {
@@ -407,6 +428,8 @@ namespace BossRush
         private void UpdateFlightPlatform()
         {
             if (flightPlatform == null || characterController == null) return;
+            Transform characterTransform = GetCharacterTransform();
+            if (characterTransform == null) return;
 
             // 优先尝试通过修改 Velocity 来移动
             object characterMovement = GetCharacterMovement();
@@ -426,9 +449,9 @@ namespace BossRush
             // 回退：直接修改玩家位置
             if (Mathf.Abs(pendingVerticalDelta) > 0.0001f)
             {
-                Vector3 playerPos = characterController.transform.position;
+                Vector3 playerPos = characterTransform.position;
                 playerPos.y += pendingVerticalDelta * Time.fixedDeltaTime;
-                characterController.transform.position = playerPos;
+                characterTransform.position = playerPos;
                 pendingVerticalDelta = 0f;
             }
         }

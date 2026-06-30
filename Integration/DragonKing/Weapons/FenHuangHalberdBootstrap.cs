@@ -100,7 +100,7 @@ namespace BossRush
             float waitTime = 0f;
             while (CharacterMainControl.Main == null && waitTime < 15f)
             {
-                yield return new WaitForSeconds(0.5f);
+                yield return sharedWait05s;
                 waitTime += 0.5f;
             }
 

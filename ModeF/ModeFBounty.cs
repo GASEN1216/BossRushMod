@@ -196,8 +196,9 @@ namespace BossRush
 
                 ApplyModeFPhasePressure();
 
-                QueueModeFLeaderChangeContext(CharacterMainControl.Main, victim);
-                MarkModeFBountyLeaderDirty(CharacterMainControl.Main);
+                CharacterMainControl mainPlayer = CharacterMainControl.Main;
+                QueueModeFLeaderChangeContext(mainPlayer, victim);
+                MarkModeFBountyLeaderDirty(mainPlayer);
                 RefreshModeFBountyLeaderIfDirty();
             }
             catch (Exception e)

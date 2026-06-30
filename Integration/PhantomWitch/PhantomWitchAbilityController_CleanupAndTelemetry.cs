@@ -96,7 +96,7 @@ namespace BossRush
 
             try
             {
-                CharacterRandomPreset[] presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                CharacterRandomPreset[] presets = ObjectCache.GetCharacterPresets();
 
                 for (int i = 0; i < presets.Length; i++)
                 {
@@ -254,7 +254,7 @@ namespace BossRush
                 roles.Add(PhantomWitchMinionRole.Harass.ToString());
             }
 
-            return string.Join(",", roles.ToArray());
+            return string.Join(",", roles);
         }
 
         private string DescribeCurrentLiveRoles()
@@ -276,7 +276,7 @@ namespace BossRush
                 }
             }
 
-            return string.Join(",", roles.ToArray());
+            return string.Join(",", roles);
         }
 
         private float GetPlayerHealthRatio()

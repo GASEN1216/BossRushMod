@@ -509,7 +509,7 @@ namespace BossRush
 
                 if (merchantPreset == null)
                 {
-                    CharacterRandomPreset[] allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                    CharacterRandomPreset[] allPresets = ObjectCache.GetCharacterPresets();
                     CharacterRandomPreset fallbackMerchant = null;
                     for (int i = 0; i < allPresets.Length; i++)
                     {

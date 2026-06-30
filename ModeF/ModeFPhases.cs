@@ -254,6 +254,12 @@ namespace BossRush
                 float rate = GetModeFBleedRate();
                 if (rate <= 0f) return;
 
+                // 变异词条：流血速率倍率
+                if (MutatorManager.IsActive && MutatorManager.BleedRateMultiplier != 1.0f)
+                {
+                    rate *= MutatorManager.BleedRateMultiplier;
+                }
+
                 Health health = player.Health;
                 if (health == null || health.IsDead) return;
 
@@ -459,6 +465,9 @@ namespace BossRush
                 modeFActive = false;
                 modeFState.IsActive = false;
                 InvalidateModeFSession();
+
+                // 清理变异词条（覆盖正常通关 / 玩家死亡 / 手动退出）
+                ClearMutatorsForMode("ModeF");
 
                 // 清理最大生命 Modifier
                 try

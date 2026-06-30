@@ -283,7 +283,7 @@ namespace BossRush
             {
                 // 直接使用Resources.FindObjectsOfTypeAll获取预设列表
                 // 此方法仅在Boss生成时调用一次，不影响战斗性能
-                var presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                var presets = ObjectCache.GetCharacterPresets();
 
                 // 优先查找 Cname_Boss_Red 预设（龙裔/龙皇使用的Boss预制体）
                 foreach (var preset in presets)
@@ -389,7 +389,7 @@ namespace BossRush
             {
                 // 直接使用Resources.FindObjectsOfTypeAll获取预设列表
                 // 此方法仅在Boss生成时调用一次，不影响战斗性能
-                var presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                var presets = ObjectCache.GetCharacterPresets();
 
                 foreach (var preset in presets)
                 {

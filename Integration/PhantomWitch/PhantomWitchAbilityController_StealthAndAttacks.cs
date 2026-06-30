@@ -208,8 +208,9 @@ namespace BossRush
 
             PauseAI();
 
-            if (target != null && GetFlatDistance(bossCharacter.transform.position, target.transform.position) >
-                PhantomWitchConfig.ScytheSweepRadius + 0.6f)
+            float scytheSweepTeleportDistance = PhantomWitchConfig.ScytheSweepRadius + 0.6f;
+            float scytheSweepTeleportDistanceSqr = scytheSweepTeleportDistance * scytheSweepTeleportDistance;
+            if (target != null && GetFlatDistanceSqr(bossCharacter.transform.position, target.transform.position) > scytheSweepTeleportDistanceSqr)
             {
                 Vector3 targetPos = ResolveTeleportPosition(target, 1.4f, 2.8f);
                 ModBehaviour.DevLog("[PhantomWitch] [ScytheSweep] target out of range, teleporting to " + targetPos);

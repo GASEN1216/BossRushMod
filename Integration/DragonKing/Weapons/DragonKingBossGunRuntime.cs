@@ -171,7 +171,7 @@ namespace BossRush
 
         private static CharacterRandomPreset FindBossRedBasePreset()
         {
-            CharacterRandomPreset[] presets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+            CharacterRandomPreset[] presets = ObjectCache.GetCharacterPresets();
             for (int i = 0; i < presets.Length; i++)
             {
                 CharacterRandomPreset preset = presets[i];

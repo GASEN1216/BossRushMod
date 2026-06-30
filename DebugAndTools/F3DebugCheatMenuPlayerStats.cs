@@ -78,7 +78,7 @@ namespace BossRush
             parts.Add("Melee x" + f3DebugCheatPlayerState.meleeDamageMultiplier.ToString("0.###", CultureInfo.InvariantCulture));
             parts.Add("Head=" + (f3DebugCheatPlayerState.headArmorOverride.HasValue ? f3DebugCheatPlayerState.headArmorOverride.Value.ToString("0.###", CultureInfo.InvariantCulture) : "-"));
             parts.Add("Body=" + (f3DebugCheatPlayerState.bodyArmorOverride.HasValue ? f3DebugCheatPlayerState.bodyArmorOverride.Value.ToString("0.###", CultureInfo.InvariantCulture) : "-"));
-            return string.Join(", ", parts.ToArray());
+            return string.Join(", ", parts);
         }
 
         private string BuildCurrentPlayerStatsReadout()

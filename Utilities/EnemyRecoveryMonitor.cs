@@ -194,13 +194,32 @@ namespace BossRush
                     continue;
                 }
 
-                CharacterMainControl enemy = record.GameObject.GetComponent<CharacterMainControl>();
-                if (enemy == null)
+                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
+                if (marker == null && record.GameObject != null)
                 {
-                    enemy = record.GameObject.GetComponentInChildren<CharacterMainControl>(true);
+                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (marker != null)
+                    {
+                        record.Target = marker;
+                    }
                 }
 
-                MonitorEnemyRecovery(enemy, player);
+                CharacterMainControl enemy = marker != null ? marker.Owner : null;
+                if (enemy == null)
+                {
+                    enemy = record.GameObject.GetComponent<CharacterMainControl>();
+                    if (enemy == null)
+                    {
+                        enemy = record.GameObject.GetComponentInChildren<CharacterMainControl>(true);
+                    }
+
+                    if (marker != null)
+                    {
+                        marker.Owner = enemy;
+                    }
+                }
+
+                MonitorEnemyRecovery(enemy, player, marker);
             }
         }
 
@@ -234,7 +253,7 @@ namespace BossRush
             MonitorEnemyRecovery(singleBoss, player);
         }
 
-        private void MonitorEnemyRecovery(CharacterMainControl enemy, CharacterMainControl player)
+        private void MonitorEnemyRecovery(CharacterMainControl enemy, CharacterMainControl player, ZombieModeEnemyRuntimeMarker zombieMarker = null)
         {
             if (enemy == null)
             {
@@ -289,7 +308,7 @@ namespace BossRush
                     {
                         string reason = fallingOut ? "falling" : "stuck";
                         Vector3 recoveredPos;
-                        if (TryRecoverEnemyToNearestSpawnPoint(enemy, state, player, reason, out recoveredPos))
+                        if (TryRecoverEnemyToNearestSpawnPoint(enemy, state, player, reason, zombieMarker, out recoveredPos))
                         {
                             currentPos = recoveredPos;
                             now = Time.time;
@@ -395,6 +414,7 @@ namespace BossRush
             EnemyRecoveryState state,
             CharacterMainControl player,
             string reason,
+            ZombieModeEnemyRuntimeMarker zombieMarker,
             out Vector3 recoveredPos)
         {
             recoveredPos = Vector3.zero;
@@ -453,7 +473,7 @@ namespace BossRush
                     DevLog("[EnemyRecovery] [WARNING] 重置敌人物理状态失败: " + rigidbodyEx.Message);
                 }
 
-                RestoreRecoveredEnemyAggro(enemy, player);
+                RestoreRecoveredEnemyAggro(enemy, player, zombieMarker);
                 RestoreEnemyHealthAfterRecovery(enemy, preservedCurrentHealth, hasPreservedCurrentHealth);
 
                 state.excludedAnchorPosition = targetPos;
@@ -499,7 +519,7 @@ namespace BossRush
             }
         }
 
-        private void RestoreRecoveredEnemyAggro(CharacterMainControl enemy, CharacterMainControl player)
+        private void RestoreRecoveredEnemyAggro(CharacterMainControl enemy, CharacterMainControl player, ZombieModeEnemyRuntimeMarker zombieMarker)
         {
             if (modeEActive || enemy == null || player == null || player.mainDamageReceiver == null)
             {
@@ -514,7 +534,17 @@ namespace BossRush
                     return;
                 }
 
-                AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>();
+                AICharacterController ai = null;
+                if (zombieMarker != null && zombieMarker.gameObject == enemy.gameObject)
+                {
+                    ai = GetZombieModeEnemyAI(enemy.gameObject, zombieMarker);
+                }
+
+                if (ai == null)
+                {
+                    ai = enemy.GetComponentInChildren<AICharacterController>();
+                }
+
                 if (ai == null)
                 {
                     return;

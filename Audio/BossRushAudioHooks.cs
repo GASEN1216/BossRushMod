@@ -184,6 +184,13 @@ namespace BossRush
 
                 try
                 {
+                    PostCustomSfxDelegate postCustomSfx;
+                    if (TryGetPostCustomSfxDelegate(out postCustomSfx))
+                    {
+                        postCustomSfx(filePath, target, false);
+                        return;
+                    }
+
                     System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
                     if (audioManagerType == null)
                     {

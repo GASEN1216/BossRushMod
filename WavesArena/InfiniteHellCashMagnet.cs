@@ -30,6 +30,12 @@ namespace BossRush
 
         /// <summary>拾取判定距离（米），低于此距离触发自动拾取</summary>
         private const float CashMagnetPickupDistance = 0.3f;
+        private const float CashMagnetPickupDistanceSqr = CashMagnetPickupDistance * CashMagnetPickupDistance;
+
+        /// <summary>现金磁铁每帧无分配碰撞检测缓冲。缓冲打满时会回退到更大的二级缓冲，避免行为丢失。</summary>
+        private const int CashMagnetColliderBufferSize = 64;
+        private const int CashMagnetFallbackBufferSize = 256;
+        private static readonly Collider[] cashMagnetFallbackBuffer = new Collider[CashMagnetFallbackBufferSize];
 
         /// <summary>现金物品 TypeID（= EconomyManager.CashItemID）</summary>
         private const int CashItemTypeID = 451;
@@ -49,6 +55,9 @@ namespace BossRush
 
         /// <summary>每个飞行 pickup 的已飞行时间（用于加速曲线计算）</summary>
         private Dictionary<InteractablePickup, float> cashMagnetFlyTimes = new Dictionary<InteractablePickup, float>();
+
+        private readonly Collider[] cashMagnetColliderBuffer = new Collider[CashMagnetColliderBufferSize];
+        private readonly List<InteractablePickup> cashMagnetPickupsToRemove = new List<InteractablePickup>(16);
 
         /// <summary>5秒窗口内吸附的现金总额</summary>
         private long cashMagnetAbsorbedTotal = 0L;
@@ -106,50 +115,71 @@ namespace BossRush
 
         /// <summary>
         /// 检测玩家周围 2m 范围内的现金 pickup，加入飞行列表。
-        /// 使用 Physics.OverlapSphere 检测碰撞体，过滤 InteractablePickup 且 TypeID == 451。
+        /// 使用 Physics.OverlapSphereNonAlloc 检测碰撞体，过滤 InteractablePickup 且 TypeID == 451。
+        /// 若固定缓冲被打满，则回退一次全量扫描，避免高密度掉落场景漏吸。
         /// </summary>
         /// <param name="playerPos">玩家当前位置</param>
         private void DetectNearbyCashPickups(Vector3 playerPos)
         {
             try
             {
-                // 球形检测范围内所有碰撞体
-                Collider[] colliders = Physics.OverlapSphere(playerPos, CashMagnetRadius);
-                if (colliders == null || colliders.Length == 0) return;
+                int colliderCount = Physics.OverlapSphereNonAlloc(playerPos, CashMagnetRadius, cashMagnetColliderBuffer);
+                if (colliderCount <= 0) return;
 
-                for (int i = 0; i < colliders.Length; i++)
+                ProcessCashMagnetColliders(cashMagnetColliderBuffer, colliderCount);
+
+                if (colliderCount >= cashMagnetColliderBuffer.Length)
                 {
-                    try
-                    {
-                        Collider col = colliders[i];
-                        if (col == null) continue;
-
-                        // 获取 InteractablePickup 组件
-                        InteractablePickup pickup = col.GetComponent<InteractablePickup>();
-                        if (pickup == null) continue;
-
-                        // 已在飞行列表中则跳过
-                        if (cashMagnetFlyingPickups.Contains(pickup)) continue;
-
-                        // 检查 ItemAgent 和 Item 是否有效
-                        if (pickup.ItemAgent == null || pickup.ItemAgent.Item == null) continue;
-
-                        // 仅吸附现金物品（TypeID == 451）
-                        if (pickup.ItemAgent.Item.TypeID != CashItemTypeID) continue;
-
-                        // 加入飞行列表，初始飞行时间为 0
-                        cashMagnetFlyingPickups.Add(pickup);
-                        cashMagnetFlyTimes[pickup] = 0f;
-                    }
-                    catch (Exception e)
-                    {
-                        DevLog("[CashMagnet] DetectNearbyCashPickups 处理碰撞体异常: " + e.Message);
-                    }
+                    ProcessCashMagnetFallbackColliders(playerPos);
                 }
             }
             catch (Exception e)
             {
                 DevLog("[CashMagnet] DetectNearbyCashPickups 异常: " + e.Message);
+            }
+        }
+
+        private void ProcessCashMagnetFallbackColliders(Vector3 playerPos)
+        {
+            int colliderCount = Physics.OverlapSphereNonAlloc(playerPos, CashMagnetRadius, cashMagnetFallbackBuffer);
+            if (colliderCount <= 0)
+            {
+                return;
+            }
+
+            ProcessCashMagnetColliders(cashMagnetFallbackBuffer, colliderCount);
+        }
+
+        private void ProcessCashMagnetColliders(Collider[] colliders, int colliderCount)
+        {
+            for (int i = 0; i < colliderCount; i++)
+            {
+                try
+                {
+                    Collider col = colliders[i];
+                    if (col == null) continue;
+
+                    // 获取 InteractablePickup 组件
+                    InteractablePickup pickup = col.GetComponent<InteractablePickup>();
+                    if (pickup == null) continue;
+
+                    // 已在飞行列表中则跳过
+                    if (cashMagnetFlyingPickups.Contains(pickup)) continue;
+
+                    // 检查 ItemAgent 和 Item 是否有效
+                    if (pickup.ItemAgent == null || pickup.ItemAgent.Item == null) continue;
+
+                    // 仅吸附现金物品（TypeID == 451）
+                    if (pickup.ItemAgent.Item.TypeID != CashItemTypeID) continue;
+
+                    // 加入飞行列表，初始飞行时间为 0
+                    cashMagnetFlyingPickups.Add(pickup);
+                    cashMagnetFlyTimes[pickup] = 0f;
+                }
+                catch (Exception e)
+                {
+                    DevLog("[CashMagnet] DetectNearbyCashPickups 处理碰撞体异常: " + e.Message);
+                }
             }
         }
 
@@ -164,11 +194,12 @@ namespace BossRush
             {
                 if (cashMagnetFlyingPickups.Count == 0) return;
 
-                Vector3 playerPos = player.transform.position;
+                Transform playerTransform = player.transform;
+                Vector3 playerPos = playerTransform.position;
                 float deltaTime = Time.deltaTime;
 
-                // 使用临时列表遍历，避免遍历中修改集合
-                var pickupsToRemove = new List<InteractablePickup>();
+                // 使用复用列表遍历，避免遍历中修改集合并避免每帧分配
+                cashMagnetPickupsToRemove.Clear();
 
                 foreach (var pickup in cashMagnetFlyingPickups)
                 {
@@ -177,7 +208,7 @@ namespace BossRush
                         // 检查 pickup 是否已被销毁
                         if (pickup == null || pickup.gameObject == null)
                         {
-                            pickupsToRemove.Add(pickup);
+                            cashMagnetPickupsToRemove.Add(pickup);
                             continue;
                         }
 
@@ -191,13 +222,13 @@ namespace BossRush
                         float speed = CashMagnetBaseSpeed + CashMagnetAcceleration * flyTime;
 
                         // 移动 pickup 向玩家位置
-                        Vector3 currentPos = pickup.transform.position;
+                        Transform pickupTransform = pickup.transform;
+                        Vector3 currentPos = pickupTransform.position;
                         Vector3 newPos = Vector3.MoveTowards(currentPos, playerPos, speed * deltaTime);
-                        pickup.transform.position = newPos;
+                        pickupTransform.position = newPos;
 
                         // 判断是否到达拾取距离
-                        float distance = Vector3.Distance(newPos, playerPos);
-                        if (distance < CashMagnetPickupDistance)
+                        if ((newPos - playerPos).sqrMagnitude < CashMagnetPickupDistanceSqr)
                         {
                             // 触发拾取并记录吸附金额
                             try
@@ -222,7 +253,7 @@ namespace BossRush
                                         try
                                         {
                                             string bubbleText = "吸附现金：<color=red>" + cashMagnetAbsorbedTotal.ToString("N0") + "</color>";
-                                            Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(bubbleText, player.transform, -1f, false, false, -1f, 3f);
+                                            Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(bubbleText, playerTransform, -1f, false, false, -1f, 3f);
                                         }
                                         catch {}
                                     }
@@ -243,23 +274,25 @@ namespace BossRush
                                 DevLog("[CashMagnet] Destroy pickup 异常: " + e.Message);
                             }
 
-                            pickupsToRemove.Add(pickup);
+                            cashMagnetPickupsToRemove.Add(pickup);
                         }
                     }
                     catch (Exception e)
                     {
                         // pickup 处理异常，标记移除
-                        pickupsToRemove.Add(pickup);
+                        cashMagnetPickupsToRemove.Add(pickup);
                         DevLog("[CashMagnet] UpdateFlyingCashPickups 处理单个 pickup 异常: " + e.Message);
                     }
                 }
 
                 // 清理已完成或异常的 pickup
-                for (int i = 0; i < pickupsToRemove.Count; i++)
+                for (int i = 0; i < cashMagnetPickupsToRemove.Count; i++)
                 {
-                    cashMagnetFlyingPickups.Remove(pickupsToRemove[i]);
-                    cashMagnetFlyTimes.Remove(pickupsToRemove[i]);
+                    cashMagnetFlyingPickups.Remove(cashMagnetPickupsToRemove[i]);
+                    cashMagnetFlyTimes.Remove(cashMagnetPickupsToRemove[i]);
                 }
+
+                cashMagnetPickupsToRemove.Clear();
             }
             catch (Exception e)
             {

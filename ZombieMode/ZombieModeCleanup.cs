@@ -49,6 +49,10 @@ namespace BossRush
                 if (marker == null && record.GameObject != null)
                 {
                     marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (marker != null)
+                    {
+                        record.Target = marker;
+                    }
                 }
 
                 bool shouldPrune = record.GameObject == null ||

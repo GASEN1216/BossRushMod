@@ -817,9 +817,11 @@ namespace BossRush
                 Vector3 result = SpawnPositionHelper.FindNearestSafeSpawnPoint(allSpawnPoints, playerPos, effectiveMinDist);
                 Vector3 delta = result - playerPos;
                 delta.y = 0f;
-                float resultDist = delta.magnitude;
-                if (resultDist < effectiveMinDist)
+                float resultDistSqr = delta.sqrMagnitude;
+                float effectiveMinDistSqr = effectiveMinDist * effectiveMinDist;
+                if (resultDistSqr < effectiveMinDistSqr)
                 {
+                    float resultDist = Mathf.Sqrt(resultDistSqr);
                     DevLog("[ModeF] [WARNING] No spawn point was found beyond " + effectiveMinDist + "m, using the farthest point instead (" + resultDist.ToString("F0") + "m).");
                 }
                 return result;

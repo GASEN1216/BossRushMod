@@ -170,6 +170,8 @@ namespace BossRush
             new Collider[FORT_PLACEMENT_OVERLAP_BUFFER_SIZE];
 
         private static int cachedModeFFortificationPlacementObstacleLayerMask = int.MinValue;
+        private static Camera modeFInteractionCachedMainCamera;
+        private static int modeFInteractionCachedMainCameraFrame = -1;
 
         // 预览放置系统字段
         private bool modeFPlacementActive = false;
@@ -335,17 +337,7 @@ namespace BossRush
 
             try
             {
-                // 获取相机
-                Camera cam = null;
-                try
-                {
-                    if (GameCamera.Instance != null)
-                    {
-                        cam = GameCamera.Instance.renderCamera;
-                    }
-                }
-                catch { }
-                if (cam == null) cam = Camera.main;
+                Camera cam = GetModeFInteractionCamera();
                 if (cam == null) return;
 
                 // 滚轮旋转（15°步进）
@@ -424,16 +416,7 @@ namespace BossRush
 
             try
             {
-                Camera cam = null;
-                try
-                {
-                    if (GameCamera.Instance != null)
-                    {
-                        cam = GameCamera.Instance.renderCamera;
-                    }
-                }
-                catch { }
-                if (cam == null) cam = Camera.main;
+                Camera cam = GetModeFInteractionCamera();
                 if (cam == null) return;
 
                 ModeFFortificationMarker nextTarget = FindModeFRepairSelectionTarget(cam, UnityEngine.Input.mousePosition);
@@ -466,6 +449,26 @@ namespace BossRush
             {
                 DevLog("[ModeF] [ERROR] UpdateModeFRepairSelection failed: " + e.Message);
             }
+        }
+
+        private static Camera GetModeFInteractionCamera()
+        {
+            try
+            {
+                if (GameCamera.Instance != null && GameCamera.Instance.renderCamera != null)
+                {
+                    return GameCamera.Instance.renderCamera;
+                }
+            }
+            catch { }
+
+            if (modeFInteractionCachedMainCameraFrame != Time.frameCount || modeFInteractionCachedMainCamera == null)
+            {
+                modeFInteractionCachedMainCamera = Camera.main;
+                modeFInteractionCachedMainCameraFrame = Time.frameCount;
+            }
+
+            return modeFInteractionCachedMainCamera;
         }
 
         private bool EnterModeFRepairSelection()

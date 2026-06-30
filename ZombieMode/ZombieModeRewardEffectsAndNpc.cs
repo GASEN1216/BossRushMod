@@ -950,7 +950,17 @@ namespace BossRush
                     continue;
                 }
 
-                AICharacterController ai = record.GameObject.GetComponentInChildren<AICharacterController>();
+                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
+                if (marker == null && record.GameObject != null)
+                {
+                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (marker != null)
+                    {
+                        record.Target = marker;
+                    }
+                }
+
+                AICharacterController ai = GetZombieModeEnemyAI(record.GameObject, marker);
                 if (ai == null || !IsZombieModeTemporaryNpcDamageReceiver(ai.searchedEnemy))
                 {
                     continue;

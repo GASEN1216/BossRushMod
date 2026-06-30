@@ -395,6 +395,20 @@ namespace BossRush
                 cacheItemInstancesMethod = typeof(StockShop).GetMethod("CacheItemInstances",
                     BindingFlags.NonPublic | BindingFlags.Instance);
 
+                // StockShopView.SetupAndShow 方法（刷新 UI 时调用）
+                setupAndShowMethod = typeof(StockShopView).GetMethod("SetupAndShow",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
+                // 商店条目模板字段（用于遍历条目 UI）
+                entryTemplateField = typeof(StockShopView).GetField("entryTemplate",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
+                // StockShopItemEntry 显示字段（用于修正同类型寄存物品的显示与价格）
+                stockShopItemDisplayField = typeof(StockShopItemEntry).GetField("itemDisplay",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                stockShopItemPriceTextField = typeof(StockShopItemEntry).GetField("priceText",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
                 // refreshCountDown 字段（用于替换为"全部取出"按钮）
                 refreshCountDownField = typeof(StockShopView).GetField("refreshCountDown",
                     BindingFlags.NonPublic | BindingFlags.Instance);

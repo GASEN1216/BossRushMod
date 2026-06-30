@@ -194,18 +194,17 @@ namespace BossRush
                 emission.rateOverTime = new ParticleSystem.MinMaxCurve(Mathf.Lerp(16f, 26f, Mathf.Clamp01(clampedRangeScale - 0.35f)));
             }
 
-            ParticleSystem stardust = node.GetComponentsInChildren<ParticleSystem>(true).Length > 1
-                ? node.GetComponentsInChildren<ParticleSystem>(true)[1]
+            ParticleSystem stardust = particles.Length > 1
+                ? particles[1]
                 : null;
             if (stardust != null)
             {
                 stardust.transform.localPosition = Vector3.zero;
             }
 
-            ParticleSystem[] particlesForTint = node.GetComponentsInChildren<ParticleSystem>(true);
             Light[] lights = node.GetComponentsInChildren<Light>(true);
-            TintParticles(particlesForTint, Mathf.Lerp(1.1f, clampedRangeScale, 0.45f));
-            RestartParticles(particlesForTint);
+            TintParticles(particles, Mathf.Lerp(1.1f, clampedRangeScale, 0.45f));
+            RestartParticles(particles);
             TintLights(lights, Mathf.Lerp(1.1f, clampedRangeScale, 0.40f));
 
             UnityEngine.Object.Destroy(root, Mathf.Max(0.35f, duration));

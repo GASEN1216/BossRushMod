@@ -114,6 +114,10 @@ namespace BossRush
         private static FieldInfo itemInstancesField = null;
         private static FieldInfo accountAvaliableField = null;
         private static MethodInfo cacheItemInstancesMethod = null;
+        private static MethodInfo setupAndShowMethod = null;
+        private static FieldInfo entryTemplateField = null;
+        private static FieldInfo stockShopItemDisplayField = null;
+        private static FieldInfo stockShopItemPriceTextField = null;
         private static FieldInfo refreshCountDownField = null;
         private static FieldInfo stockEntryInnerField = null;      // StockShop.Entry 内部的 entry 字段
         private static FieldInfo innerEntryPriceFactorField = null; // StockShopDatabase.ItemEntry 的 priceFactor 字段
@@ -216,6 +220,10 @@ namespace BossRush
             itemInstancesField = null;
             accountAvaliableField = null;
             cacheItemInstancesMethod = null;
+            setupAndShowMethod = null;
+            entryTemplateField = null;
+            stockShopItemDisplayField = null;
+            stockShopItemPriceTextField = null;
             refreshCountDownField = null;
             stockEntryInnerField = null;
             innerEntryPriceFactorField = null;
@@ -226,6 +234,11 @@ namespace BossRush
             interactionTextField = null;
             reflectionInitialized = false;
             originalTextSell = null;
+        }
+
+        private static bool IsCurrentDepositEntry(StockShop.Entry stockEntry)
+        {
+            return stockEntry != null && entryIndexMapping.ContainsKey(stockEntry);
         }
 
         private sealed class RetrieveAllDepositItem

@@ -25,6 +25,7 @@ public static class ModConfigAPI
     private static bool versionChecked = false;
     private static bool isVersionCompatible = false;
 
+    [System.Diagnostics.Conditional("BOSSRUSH_DEV")]
     private static void DevLog(string message)
     {
         BossRush.ModBehaviour.DevLog(message);
@@ -57,6 +58,7 @@ public static class ModConfigAPI
                 if (!isVersionCompatible)
                 {
                     LogError($"[{TAG}] 版本不匹配！API版本: {ModConfigVersion}, ModConfig版本: {modConfigVersion}");
+                    versionChecked = true;
                     return false;
                 }
 

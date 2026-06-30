@@ -786,9 +786,10 @@ namespace BossRush
         {
             try
             {
-                if (CharacterMainControl.Main != null)
+                CharacterMainControl mainPlayer = CharacterMainControl.Main;
+                if (mainPlayer != null)
                 {
-                    return CharacterMainControl.Main.transform;
+                    return mainPlayer.transform;
                 }
             }
             catch

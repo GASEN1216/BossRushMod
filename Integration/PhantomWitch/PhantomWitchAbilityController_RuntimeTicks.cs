@@ -99,6 +99,8 @@ namespace BossRush
         private void TickMinionHealBonus()
         {
             float healPerSecond = 0f;
+            float sustainProximityRadius = PhantomWitchConfig.SustainProximityRadius;
+            float sustainProximityRadiusSqr = sustainProximityRadius * sustainProximityRadius;
             for (int i = liveMinions.Count - 1; i >= 0; i--)
             {
                 MinionEntry entry = liveMinions[i];
@@ -112,7 +114,7 @@ namespace BossRush
                 if (entry.role == PhantomWitchMinionRole.Sustain)
                 {
                     healPerSecond += PhantomWitchConfig.SustainMinionHealRate;
-                    if (GetFlatDistance(minion.transform.position, bossCharacter.transform.position) <= PhantomWitchConfig.SustainProximityRadius)
+                    if (GetFlatDistanceSqr(minion.transform.position, bossCharacter.transform.position) <= sustainProximityRadiusSqr)
                     {
                         healPerSecond += PhantomWitchConfig.SustainMinionHealRate * (PhantomWitchConfig.SustainProximityBonusMultiplier - 1f);
                     }
@@ -241,6 +243,8 @@ namespace BossRush
                 return;
             }
 
+            float harassMinionPressureRadius = PhantomWitchConfig.HarassMinionPressureRadius;
+            float harassMinionPressureRadiusSqr = harassMinionPressureRadius * harassMinionPressureRadius;
             for (int i = liveMinions.Count - 1; i >= 0; i--)
             {
                 MinionEntry entry = liveMinions[i];
@@ -256,7 +260,7 @@ namespace BossRush
                     continue;
                 }
 
-                if (GetFlatDistance(minion.transform.position, target.transform.position) > PhantomWitchConfig.HarassMinionPressureRadius)
+                if (GetFlatDistanceSqr(minion.transform.position, target.transform.position) > harassMinionPressureRadiusSqr)
                 {
                     continue;
                 }

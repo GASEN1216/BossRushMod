@@ -263,9 +263,7 @@ namespace BossRush
                 var shopView = StockShopView.Instance;
                 if (shopView == null) return;
 
-                // 获取商店条目的父容器
-                var entryTemplateField = typeof(StockShopView).GetField("entryTemplate",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+                InitializeReflection();
                 if (entryTemplateField == null) return;
 
                 var entryTemplate = entryTemplateField.GetValue(shopView) as StockShopItemEntry;
@@ -309,9 +307,7 @@ namespace BossRush
                 var shopView = StockShopView.Instance;
                 if (shopView == null) return;
 
-                // 获取商店条目的父容器
-                var entryTemplateField = typeof(StockShopView).GetField("entryTemplate",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+                InitializeReflection();
                 if (entryTemplateField == null) return;
 
                 var entryTemplate = entryTemplateField.GetValue(shopView) as StockShopItemEntry;
@@ -322,19 +318,6 @@ namespace BossRush
 
                 // 当前有效的 Entry 数量（每个寄存物品对应一个 Entry）
                 int validEntryCount = depositShop != null ? depositShop.entries.Count : 0;
-
-                // 构建当前有效的 Entry 集合（用于精确匹配）
-                HashSet<StockShop.Entry> validEntries = new HashSet<StockShop.Entry>();
-                if (depositShop != null)
-                {
-                    foreach (var entry in depositShop.entries)
-                    {
-                        if (entry != null)
-                        {
-                            validEntries.Add(entry);
-                        }
-                    }
-                }
 
                 ModBehaviour.DevLog("[StorageDepositService] HideInvalidUIEntries: 有效 Entry 数量=" + validEntryCount);
 
@@ -352,7 +335,7 @@ namespace BossRush
                     var stockEntry = uiEntry.Target;
 
                     // 检查这个 UI 条目的 Entry 是否在当前有效集合中
-                    bool isValid = stockEntry != null && validEntries.Contains(stockEntry);
+                    bool isValid = IsCurrentDepositEntry(stockEntry);
 
                     if (!isValid && child.gameObject.activeSelf)
                     {

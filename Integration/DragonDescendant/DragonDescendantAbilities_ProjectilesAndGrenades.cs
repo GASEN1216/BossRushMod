@@ -233,14 +233,12 @@ namespace BossRush
 
             if (totalTime <= 0f) totalTime = 0.001f;
 
-            Vector3 horizontalStart = new Vector3(start.x, 0f, start.z);
-            Vector3 horizontalTarget = new Vector3(target.x, 0f, target.z);
-            float horizontalDistance = Vector3.Distance(horizontalStart, horizontalTarget);
+            Vector3 horizontalDelta = target - start;
+            horizontalDelta.y = 0f;
+            float horizontalDistanceSqr = horizontalDelta.sqrMagnitude;
+            Vector3 horizontalVelocity = horizontalDistanceSqr > 0.0000000001f ? horizontalDelta / totalTime : Vector3.zero;
 
-            Vector3 horizontalDir = (horizontalTarget - horizontalStart).normalized;
-            float horizontalSpeed = horizontalDistance / totalTime;
-
-            return horizontalDir * horizontalSpeed + Vector3.up * verticalSpeed;
+            return horizontalVelocity + Vector3.up * verticalSpeed;
         }
 
         /// <summary>

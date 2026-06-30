@@ -78,6 +78,7 @@ namespace BossRush
 
         // 动画参数哈希值
         private static readonly int hash_MoveSpeed = Animator.StringToHash("MoveSpeed");
+        private static readonly RaycastHit[] heightCorrectionBuffer = new RaycastHit[8];
 
         // 属性（与原版 AI_PathControl 一致）
         public bool ReachedEndOfPath { get { return reachedEndOfPath; } }
@@ -236,27 +237,18 @@ namespace BossRush
             animator = GetComponentInChildren<Animator>();
             CacheAnimatorParameters();
 
-            // 获取玩家引用
-            try
+            Transform foundPlayerTransform;
+            NPCPlayerLookupSource playerLookupSource;
+            if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform, out playerLookupSource))
             {
-                if (CharacterMainControl.Main != null)
+                playerTransform = foundPlayerTransform;
+                if (playerLookupSource == NPCPlayerLookupSource.PlayerTag)
                 {
-                    playerTransform = CharacterMainControl.Main.transform;
-                    ModBehaviour.DevLog("[CourierNPC] 获取到玩家引用");
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[CourierNPC] [WARNING] 获取玩家引用失败: " + e.Message);
-            }
-
-            if (playerTransform == null)
-            {
-                var player = GameObject.FindGameObjectWithTag("Player");
-                if (player != null)
-                {
-                    playerTransform = player.transform;
                     ModBehaviour.DevLog("[CourierNPC] 通过 Tag 获取到玩家引用");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierNPC] 获取到玩家引用");
                 }
             }
 
@@ -443,12 +435,11 @@ namespace BossRush
 
             if (playerTransform == null)
             {
-                try
+                Transform foundPlayerTransform;
+                if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform))
                 {
-                    if (CharacterMainControl.Main != null)
-                        playerTransform = CharacterMainControl.Main.transform;
+                    playerTransform = foundPlayerTransform;
                 }
-                catch { }
             }
 
             if (!scriptedOverrideActive)
@@ -560,15 +551,17 @@ namespace BossRush
             reachedEndOfPath = false;
 
             // 检查是否到达当前路点（使用水平距离，忽略Y轴差异）
-            float distanceToWaypoint;
+            float nextWaypointDistanceSqr = nextWaypointDistance * nextWaypointDistance;
+            float distanceToWaypointSqr;
+            Vector3 toWaypoint;
             while (true)
             {
                 // 使用水平距离，避免因高度差导致卡住
-                Vector3 toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
+                toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
                 toWaypoint.y = 0;
-                distanceToWaypoint = toWaypoint.magnitude;
+                distanceToWaypointSqr = toWaypoint.sqrMagnitude;
 
-                if (distanceToWaypoint < nextWaypointDistance)
+                if (distanceToWaypointSqr < nextWaypointDistanceSqr)
                 {
                     if (currentWaypoint + 1 < path.vectorPath.Count)
                     {
@@ -587,9 +580,13 @@ namespace BossRush
             }
 
             // 计算移动方向（只在水平面上移动，忽略Y轴）
-            Vector3 direction = path.vectorPath[currentWaypoint] - transform.position;
-            direction.y = 0;
-            direction = direction.normalized;
+            float distanceToWaypoint = Mathf.Sqrt(distanceToWaypointSqr);
+            Vector3 direction = Vector3.zero;
+            if (distanceToWaypoint > 0.00001f)
+            {
+                float inverseDistance = 1f / distanceToWaypoint;
+                direction = toWaypoint * inverseDistance;
+            }
 
             // 计算移动输入（与原版逻辑一致：接近终点时减速）
             float speedMultiplier;
@@ -784,27 +781,23 @@ namespace BossRush
         private Vector3 CorrectTargetHeight(Vector3 pos)
         {
             RaycastHit hit;
-            // [修复] 从更高位置发射射线（1米，防止卡到屋顶）
             Vector3 rayStart = pos + Vector3.up * 1f;
 
-            // 使用 RaycastAll 获取所有碰撞点，然后选择最低的地面点
-            RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 5f);
-            if (hits != null && hits.Length > 0)
+            int hitCount = Physics.RaycastNonAlloc(rayStart, Vector3.down, heightCorrectionBuffer, 5f);
+            if (hitCount > 0)
             {
-                // 找到最低的碰撞点（最接近配置的 Y 坐标）
                 float lowestY = float.MaxValue;
                 float configY = pos.y;
                 float bestY = pos.y;
 
-                foreach (var h in hits)
+                for (int i = 0; i < hitCount; i++)
                 {
-                    // 优先选择接近配置 Y 坐标的点（允许 1 米误差）
+                    RaycastHit h = heightCorrectionBuffer[i];
                     if (Mathf.Abs(h.point.y - configY) < 1f)
                     {
                         bestY = h.point.y + 0.1f;
                         break;
                     }
-                    // 否则选择最低的点
                     if (h.point.y < lowestY)
                     {
                         lowestY = h.point.y;
@@ -815,7 +808,6 @@ namespace BossRush
                 return new Vector3(pos.x, bestY, pos.z);
             }
 
-            // 如果没有碰撞，使用单次射线检测
             if (Physics.Raycast(rayStart, Vector3.down, out hit, 5f))
             {
                 return new Vector3(pos.x, hit.point.y + 0.1f, pos.z);

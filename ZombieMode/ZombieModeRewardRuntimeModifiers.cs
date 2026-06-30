@@ -138,6 +138,25 @@ namespace BossRush
             }
         }
 
+        private readonly System.Collections.Generic.HashSet<int> zombieModePlayerProjectileRuntimeIds =
+            new System.Collections.Generic.HashSet<int>();
+
+        private void RegisterZombieModePlayerProjectileRuntime(int projectileId)
+        {
+            if (projectileId != 0)
+            {
+                zombieModePlayerProjectileRuntimeIds.Add(projectileId);
+            }
+        }
+
+        internal void UnregisterZombieModePlayerProjectileRuntime(int projectileId)
+        {
+            if (projectileId != 0)
+            {
+                zombieModePlayerProjectileRuntimeIds.Remove(projectileId);
+            }
+        }
+
         private bool TryAddZombieModeOptionModifier(
             CharacterMainControl character,
             string statName,
@@ -386,6 +405,7 @@ namespace BossRush
             bool enableTrailRuntime = options.ProjectileTrailStacks > 0;
             if (context.fromWeaponItemID > 0 && (enableHelixRuntime || enableTrailRuntime))
             {
+                int projectileId = projectile.GetInstanceID();
                 ZombieModePlayerProjectileRuntime runtime = projectile.GetComponent<ZombieModePlayerProjectileRuntime>();
                 if (runtime == null)
                 {
@@ -400,7 +420,9 @@ namespace BossRush
                     14f,
                     enableTrailRuntime,
                     1.4f,
-                    9f);
+                    9f,
+                    projectileId);
+                RegisterZombieModePlayerProjectileRuntime(projectileId);
             }
             else
             {
@@ -417,12 +439,22 @@ namespace BossRush
                 return;
             }
 
+            int projectileId = projectile.GetInstanceID();
+            if (!zombieModePlayerProjectileRuntimeIds.Contains(projectileId))
+            {
+                return;
+            }
+
             ZombieModePlayerProjectileRuntime runtime = projectile.GetComponent<ZombieModePlayerProjectileRuntime>();
             if (runtime != null)
             {
                 runtime.ResetRuntimeState();
                 runtime.ClearRuntimeConfiguration();
                 Destroy(runtime);
+            }
+            else
+            {
+                UnregisterZombieModePlayerProjectileRuntime(projectileId);
             }
         }
 

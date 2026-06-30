@@ -48,35 +48,41 @@ namespace BossRush
 
         private string BuildModeFKillRewardBubbleText(bool isBountyBoss, float healAmount, float maxHealthGain)
         {
-            List<string> parts = new List<string>(3);
+            string result = null;
+            bool hasPart = false;
 
             if (healAmount > 0.01f)
             {
-                parts.Add(L10n.T(
+                result = L10n.T(
                     "血量 <color=red>+" + Mathf.RoundToInt(healAmount) + "</color>",
-                    "HP <color=red>+" + Mathf.RoundToInt(healAmount) + "</color>"));
+                    "HP <color=red>+" + Mathf.RoundToInt(healAmount) + "</color>");
+                hasPart = true;
             }
 
             if (maxHealthGain > 0.01f)
             {
-                parts.Add(L10n.T(
+                string maxHealthText = L10n.T(
                     "生命上限 <color=red>+" + Mathf.RoundToInt(maxHealthGain) + "</color>",
-                    "Max HP <color=red>+" + Mathf.RoundToInt(maxHealthGain) + "</color>"));
+                    "Max HP <color=red>+" + Mathf.RoundToInt(maxHealthGain) + "</color>");
+                result = hasPart ? result + " | " + maxHealthText : maxHealthText;
+                hasPart = true;
             }
 
             if (isBountyBoss)
             {
-                parts.Add(L10n.T(
+                string bountyText = L10n.T(
                     "悬赏印记 <color=red>+1</color>",
-                    "Bounty <color=red>+1</color>"));
+                    "Bounty <color=red>+1</color>");
+                result = hasPart ? result + " | " + bountyText : bountyText;
+                hasPart = true;
             }
 
-            if (parts.Count <= 0)
+            if (!hasPart)
             {
                 return L10n.T("奖励已结算", "Reward applied");
             }
 
-            return string.Join(" | ", parts.ToArray());
+            return result;
         }
 
         private void UpdateModeFPlayerNameTag()
@@ -272,7 +278,8 @@ namespace BossRush
 
             CharacterMainControl player = CharacterMainControl.Main;
             Camera radarCamera = GetModeFBountyRadarCamera();
-            if (player == null || player.transform == null || radarCamera == null)
+            Transform playerTransform = player != null ? player.transform : null;
+            if (playerTransform == null || radarCamera == null)
             {
                 HideModeFBountyRadarEntries();
                 return;
@@ -284,7 +291,10 @@ namespace BossRush
                 return;
             }
 
-            Vector3 playerPos = player.transform.position;
+            Vector3 playerPos = playerTransform.position;
+            Vector3 radarForward;
+            Vector3 radarRight;
+            GetModeFBountyRadarBasis(radarCamera.transform, out radarForward, out radarRight);
             int leaderMarks = 0;
             CharacterMainControl leader = GetModeFBountyRadarLeader(out leaderMarks);
             modeFBountyRadarTargetScratch.Clear();
@@ -292,7 +302,8 @@ namespace BossRush
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
             {
                 CharacterMainControl boss = modeFState.ActiveBosses[i];
-                if (boss == null || boss.transform == null || boss.Health == null || boss.Health.IsDead)
+                Transform bossTransform = boss != null ? boss.transform : null;
+                if (boss == null || bossTransform == null || boss.Health == null || boss.Health.IsDead)
                 {
                     continue;
                 }
@@ -303,23 +314,27 @@ namespace BossRush
                     continue;
                 }
 
-                if (IsModeFBountyRadarTargetVisible(radarCamera, boss))
-                {
-                    continue;
-                }
-
                 if (object.ReferenceEquals(boss, leader))
                 {
                     continue;
                 }
 
-                Vector3 delta = boss.transform.position - playerPos;
+                Vector3 bossPos = bossTransform.position;
+                if (IsModeFBountyRadarTargetVisible(radarCamera, bossPos))
+                {
+                    continue;
+                }
+
+                Vector3 delta = bossPos - playerPos;
+                float displayDistanceSqr = delta.sqrMagnitude;
                 delta.y = 0f;
                 modeFBountyRadarTargetScratch.Add(new ModeFBountyRadarTarget
                 {
                     boss = boss,
+                    position = bossPos,
                     marks = marks,
-                    distanceSqr = delta.sqrMagnitude
+                    distanceSqr = delta.sqrMagnitude,
+                    displayDistanceSqr = displayDistanceSqr
                 });
             }
 
@@ -338,8 +353,11 @@ namespace BossRush
                         MODEF_BOUNTY_RADAR_REGULAR_RADIUS,
                         MODEF_BOUNTY_RADAR_REGULAR_SIZE,
                         false,
+                        target.position,
+                        target.displayDistanceSqr,
                         playerPos,
-                        radarCamera);
+                        radarForward,
+                        radarRight);
                 }
                 else if (modeFBountyRadarEntries[i] != null && modeFBountyRadarEntries[i].root != null)
                 {
@@ -347,12 +365,15 @@ namespace BossRush
                 }
             }
 
+            Transform leaderTransform = leader != null ? leader.transform : null;
+            Vector3 leaderPos = leaderTransform != null ? leaderTransform.position : Vector3.zero;
             bool showLeader = leader != null &&
                               leaderMarks > 0 &&
-                              leader.transform != null &&
-                              !IsModeFBountyRadarTargetVisible(radarCamera, leader);
+                              leaderTransform != null &&
+                              !IsModeFBountyRadarTargetVisible(radarCamera, leaderPos);
             if (showLeader)
             {
+                float leaderDisplayDistanceSqr = (leaderPos - playerPos).sqrMagnitude;
                 UpdateModeFBountyRadarEntry(
                     modeFBountyLeaderRadarEntry,
                     leader,
@@ -360,8 +381,11 @@ namespace BossRush
                     MODEF_BOUNTY_RADAR_LEADER_RADIUS,
                     MODEF_BOUNTY_RADAR_LEADER_SIZE,
                     true,
+                    leaderPos,
+                    leaderDisplayDistanceSqr,
                     playerPos,
-                    radarCamera);
+                    radarForward,
+                    radarRight);
             }
             else if (modeFBountyLeaderRadarEntry != null && modeFBountyLeaderRadarEntry.root != null)
             {
@@ -571,15 +595,18 @@ namespace BossRush
             float radius,
             float size,
             bool leaderStyle,
+            Vector3 targetPos,
+            float displayDistanceSqr,
             Vector3 playerPos,
-            Camera radarCamera)
+            Vector3 radarForward,
+            Vector3 radarRight)
         {
-            if (entry == null || entry.root == null || boss == null || boss.transform == null || radarCamera == null)
+            if (entry == null || entry.root == null || boss == null)
             {
                 return;
             }
 
-            Vector2 direction = GetModeFBountyRadarDirection(playerPos, boss.transform.position, radarCamera.transform);
+            Vector2 direction = GetModeFBountyRadarDirection(playerPos, targetPos, radarForward, radarRight);
             entry.rect.sizeDelta = new Vector2(size, size);
             entry.rect.anchoredPosition = direction * radius;
 
@@ -601,8 +628,12 @@ namespace BossRush
 
             if (entry.distanceText != null)
             {
+                if (displayDistanceSqr < 0f)
+                {
+                    displayDistanceSqr = 0f;
+                }
                 entry.distanceText.fontSize = leaderStyle ? 18f : 16f;
-                entry.distanceText.text = Mathf.RoundToInt(Vector3.Distance(playerPos, boss.transform.position)) + "m";
+                entry.distanceText.text = Mathf.RoundToInt(Mathf.Sqrt(displayDistanceSqr)) + "m";
             }
 
             if (!entry.root.activeSelf)
@@ -667,7 +698,32 @@ namespace BossRush
                 return GameCamera.Instance.renderCamera;
             }
 
-            return Camera.main;
+            if (modeFBountyRadarCachedMainCameraFrame != Time.frameCount || modeFBountyRadarCachedMainCamera == null)
+            {
+                modeFBountyRadarCachedMainCamera = Camera.main;
+                modeFBountyRadarCachedMainCameraFrame = Time.frameCount;
+            }
+
+            return modeFBountyRadarCachedMainCamera;
+        }
+
+        private static void GetModeFBountyRadarBasis(Transform cameraTransform, out Vector3 radarForward, out Vector3 radarRight)
+        {
+            radarForward = cameraTransform != null ? cameraTransform.forward : Vector3.forward;
+            radarForward.y = 0f;
+            if (radarForward.sqrMagnitude <= 0.001f)
+            {
+                radarForward = Vector3.forward;
+            }
+            radarForward.Normalize();
+
+            radarRight = cameraTransform != null ? cameraTransform.right : Vector3.right;
+            radarRight.y = 0f;
+            if (radarRight.sqrMagnitude <= 0.001f)
+            {
+                radarRight = Vector3.right;
+            }
+            radarRight.Normalize();
         }
 
         private void HideModeFBountyRadarEntries()
@@ -783,14 +839,14 @@ namespace BossRush
             catch { }
         }
 
-        private static bool IsModeFBountyRadarTargetVisible(Camera camera, CharacterMainControl boss)
+        private static bool IsModeFBountyRadarTargetVisible(Camera camera, Vector3 targetPos)
         {
-            if (camera == null || boss == null || boss.transform == null)
+            if (camera == null)
             {
                 return false;
             }
 
-            Vector3 viewport = camera.WorldToViewportPoint(boss.transform.position + Vector3.up * MODEF_BOUNTY_RADAR_WORLD_HEIGHT);
+            Vector3 viewport = camera.WorldToViewportPoint(targetPos + Vector3.up * MODEF_BOUNTY_RADAR_WORLD_HEIGHT);
             return viewport.z > 0f &&
                    viewport.x >= 0f &&
                    viewport.x <= 1f &&
@@ -798,7 +854,7 @@ namespace BossRush
                    viewport.y <= 1f;
         }
 
-        private static Vector2 GetModeFBountyRadarDirection(Vector3 playerPos, Vector3 targetPos, Transform cameraTransform)
+        private static Vector2 GetModeFBountyRadarDirection(Vector3 playerPos, Vector3 targetPos, Vector3 radarForward, Vector3 radarRight)
         {
             Vector3 toTarget = targetPos - playerPos;
             toTarget.y = 0f;
@@ -807,26 +863,17 @@ namespace BossRush
                 return Vector2.up;
             }
 
-            Vector3 forward = cameraTransform != null ? cameraTransform.forward : Vector3.forward;
-            forward.y = 0f;
-            if (forward.sqrMagnitude <= 0.001f)
-            {
-                forward = Vector3.forward;
-            }
-            forward.Normalize();
-
-            Vector3 right = cameraTransform != null ? cameraTransform.right : Vector3.right;
-            right.y = 0f;
-            if (right.sqrMagnitude <= 0.001f)
-            {
-                right = Vector3.right;
-            }
-            right.Normalize();
-
             Vector2 direction = new Vector2(
-                Vector3.Dot(toTarget.normalized, right),
-                Vector3.Dot(toTarget.normalized, forward));
-            return direction.sqrMagnitude <= 0.001f ? Vector2.up : direction.normalized;
+                Vector3.Dot(toTarget, radarRight),
+                Vector3.Dot(toTarget, radarForward));
+            float directionSqr = direction.sqrMagnitude;
+            if (directionSqr <= 0.001f)
+            {
+                return Vector2.up;
+            }
+
+            float invDirectionMagnitude = 1f / Mathf.Sqrt(directionSqr);
+            return direction * invDirectionMagnitude;
         }
 
         private TMP_FontAsset GetModeFBountyRadarFont()

@@ -41,7 +41,7 @@ namespace BossRush
 
         protected override void Update()
         {
-            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            if (!ModBehaviour.CanRunGameplayRuntimeCached())
             {
                 return;
             }
@@ -59,7 +59,7 @@ namespace BossRush
 
         private void LateUpdate()
         {
-            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            if (!ModBehaviour.CanRunGameplayRuntimeCached())
             {
                 return;
             }
@@ -444,11 +444,10 @@ namespace BossRush
             lastPreviewAimPoint = aimPoint;
             lastPreviewOrigin = previewOrigin;
 
-            float horizontalDist = Vector3.Distance(
-                new Vector3(previewOrigin.x, 0f, previewOrigin.z),
-                new Vector3(resolvedLandingPoint.x, 0f, resolvedLandingPoint.z)
-            );
-            previewValid = !hitObstacle && horizontalDist > 0.3f && IsLandingPointValid(previewLandingPoint);
+            Vector3 horizontalDelta = resolvedLandingPoint - previewOrigin;
+            horizontalDelta.y = 0f;
+            bool hasEnoughHorizontalDistance = horizontalDelta.sqrMagnitude > 0.09f;
+            previewValid = !hitObstacle && hasEnoughHorizontalDistance && IsLandingPointValid(previewLandingPoint);
             cachedPreviewLandingPoint = previewLandingPoint;
             cachedPreviewValid = previewValid;
             previewCacheValid = true;
@@ -483,12 +482,13 @@ namespace BossRush
                 Vector3 from = points[i - 1];
                 Vector3 to = points[i];
                 Vector3 direction = to - from;
-                float distance = direction.magnitude;
-                if (distance <= 0.001f)
+                float distanceSqr = direction.sqrMagnitude;
+                if (distanceSqr <= 0.000001f)
                 {
                     continue;
                 }
 
+                float distance = Mathf.Sqrt(distanceSqr);
                 direction /= distance;
                 if (Physics.SphereCast(from, 0.2f, direction, out hit, distance, obstacleLayers))
                 {
@@ -709,10 +709,15 @@ namespace BossRush
     internal class FenHuangLeapPreview : MonoBehaviour
     {
         private const int MarkerSegments = 24;
+        private static readonly Vector3 MarkerHeightOffset = Vector3.up * 0.05f;
+        private static readonly Vector3[] MarkerUnitOffsets = BuildMarkerUnitOffsets();
 
         private LineRenderer trajectoryLine;
         private LineRenderer landingRing;
         private Light markerLight;
+        private Transform cachedTransform;
+        private Transform banIconTransform;
+        private Transform markerLightTransform;
         private Material trajectoryMaterial;
         private Material ringMaterial;
         private float pulseTime;
@@ -724,6 +729,22 @@ namespace BossRush
         private Texture2D banTexture;
         private static Texture2D cachedBanTexture;
         private static bool banTextureLoadAttempted;
+        private static Camera cachedMainCamera;
+        private static Transform cachedMainCameraTransform;
+        private static int cachedMainCameraFrame = -1;
+
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
 
         public void Initialize()
         {
@@ -735,6 +756,7 @@ namespace BossRush
             InitBanIcon();
 
             markerLight = gameObject.AddComponent<Light>();
+            markerLightTransform = markerLight.transform;
             markerLight.type = LightType.Point;
             markerLight.range = 2.6f;
             markerLight.intensity = 2.2f;
@@ -770,7 +792,7 @@ namespace BossRush
 
             if (markerLight != null)
             {
-                markerLight.transform.position = landingPoint + Vector3.up * 0.35f;
+                markerLightTransform.position = landingPoint + Vector3.up * 0.35f;
                 markerLight.color = color;
             }
         }
@@ -796,7 +818,8 @@ namespace BossRush
         private void Update()
         {
             pulseTime += Time.deltaTime * 4f;
-            float pulse = 1f + Mathf.Sin(pulseTime) * 0.08f;
+            float pulseSin = Mathf.Sin(pulseTime);
+            float pulse = 1f + pulseSin * 0.08f;
 
             if (landingRing != null)
             {
@@ -807,18 +830,18 @@ namespace BossRush
             if (!currentValid && banIconObject != null)
             {
                 float iconScale = 1.2f * pulse;
-                banIconObject.transform.localScale = new Vector3(iconScale, iconScale, iconScale);
+                banIconTransform.localScale = new Vector3(iconScale, iconScale, iconScale);
 
-                Camera cam = Camera.main;
-                if (cam != null)
+                Transform cameraTransform = GetCurrentCameraTransform();
+                if (cameraTransform != null)
                 {
-                    banIconObject.transform.rotation = cam.transform.rotation;
+                    banIconTransform.rotation = cameraTransform.rotation;
                 }
             }
 
             if (markerLight != null)
             {
-                markerLight.intensity = 2.2f + Mathf.Sin(pulseTime) * 0.35f;
+                markerLight.intensity = 2.2f + pulseSin * 0.35f;
             }
         }
 
@@ -830,20 +853,50 @@ namespace BossRush
             }
 
             float radius = valid ? 0.85f : 0.95f;
-            landingRing.positionCount = MarkerSegments;
+            landingRing.positionCount = MarkerUnitOffsets.Length;
 
-            for (int i = 0; i < MarkerSegments; i++)
+            for (int i = 0; i < MarkerUnitOffsets.Length; i++)
+            {
+                Vector3 offset = MarkerUnitOffsets[i] * radius;
+                landingRing.SetPosition(i, landingPoint + offset + MarkerHeightOffset);
+            }
+        }
+
+        private static Vector3[] BuildMarkerUnitOffsets()
+        {
+            Vector3[] offsets = new Vector3[MarkerSegments];
+            for (int i = 0; i < offsets.Length; i++)
             {
                 float angle = 360f * i / MarkerSegments;
-                Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * radius;
-                landingRing.SetPosition(i, landingPoint + offset + Vector3.up * 0.05f);
+                offsets[i] = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
             }
+
+            return offsets;
+        }
+
+        private static Camera GetCurrentCamera()
+        {
+            if (cachedMainCameraFrame != Time.frameCount)
+            {
+                cachedMainCamera = Camera.main;
+                cachedMainCameraTransform = cachedMainCamera != null ? cachedMainCamera.transform : null;
+                cachedMainCameraFrame = Time.frameCount;
+            }
+
+            return cachedMainCamera;
+        }
+
+        private static Transform GetCurrentCameraTransform()
+        {
+            GetCurrentCamera();
+            return cachedMainCameraTransform;
         }
 
         private void InitBanIcon()
         {
             banIconObject = new GameObject("BanIcon");
-            banIconObject.transform.SetParent(transform, false);
+            banIconTransform = banIconObject.transform;
+            banIconTransform.SetParent(CachedTransform, false);
 
             banIconRenderer = banIconObject.AddComponent<SpriteRenderer>();
             banIconRenderer.sortingOrder = 100;
@@ -929,21 +982,21 @@ namespace BossRush
             }
 
             banIconObject.SetActive(true);
-            banIconObject.transform.position = landingPoint + Vector3.up * 1.2f;
-            banIconObject.transform.localScale = Vector3.one * 1.2f;
+            banIconTransform.position = landingPoint + Vector3.up * 1.2f;
+            banIconTransform.localScale = Vector3.one * 1.2f;
 
             // 面向摄像机
-            Camera cam = Camera.main;
-            if (cam != null)
+            Transform cameraTransform = GetCurrentCameraTransform();
+            if (cameraTransform != null)
             {
-                banIconObject.transform.rotation = cam.transform.rotation;
+                banIconTransform.rotation = cameraTransform.rotation;
             }
         }
 
         private LineRenderer CreateLineRenderer(string childName, float startWidth, float endWidth)
         {
             GameObject child = new GameObject(childName);
-            child.transform.SetParent(transform, false);
+            child.transform.SetParent(CachedTransform, false);
 
             LineRenderer line = child.AddComponent<LineRenderer>();
             line.useWorldSpace = true;

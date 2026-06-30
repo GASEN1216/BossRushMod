@@ -100,6 +100,17 @@ namespace BossRush
         private static readonly Color IceFadeColor = new Color(0.88f, 0.97f, 1f, 0.55f);
         private static readonly Stack<FrostmourneSwingFx> Pool = new Stack<FrostmourneSwingFx>();
 
+        private static readonly GradientColorKey[] IceGradientColorKeys = new GradientColorKey[]
+        {
+            new GradientColorKey(IceCoreColor, 0f),
+            new GradientColorKey(IceFadeColor, 1f)
+        };
+        private static readonly GradientAlphaKey[] IceGradientAlphaKeys = new GradientAlphaKey[]
+        {
+            new GradientAlphaKey(IceCoreColor.a, 0f),
+            new GradientAlphaKey(0f, 1f)
+        };
+
         private float elapsed;
         private Transform trailRoot;
         private Transform trailNode;
@@ -221,18 +232,7 @@ namespace BossRush
             }
 
             Gradient gradient = new Gradient();
-            gradient.SetKeys(
-                new GradientColorKey[]
-                {
-                    new GradientColorKey(IceCoreColor, 0f),
-                    new GradientColorKey(IceFadeColor, 1f)
-                },
-                new GradientAlphaKey[]
-                {
-                    new GradientAlphaKey(IceCoreColor.a, 0f),
-                    new GradientAlphaKey(0f, 1f)
-                }
-            );
+            gradient.SetKeys(IceGradientColorKeys, IceGradientAlphaKeys);
 
             for (int i = 0; i < particleSystems.Length; i++)
             {

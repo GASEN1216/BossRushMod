@@ -342,8 +342,30 @@ namespace BossRush
             }
 
             loadedModels[itemPrefab.TypeID] = modelAgent;
-            InjectItemGraphicForEquipment(itemPrefab, modelAgent);
+            InjectItemGraphicForEquipment(itemPrefab, modelAgent, true);
             FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, handheldBaseName);
+            return true;
+        }
+
+        /// <summary>
+        /// 将已加载的装备模型绑定到占位 Item，覆盖克隆源继承的外观。
+        /// </summary>
+        public static bool TryBindLoadedEquipmentModel(Item itemPrefab, string modelBaseName)
+        {
+            if (itemPrefab == null)
+            {
+                return false;
+            }
+
+            ItemAgent modelAgent;
+            if (!TryGetLoadedModel(modelBaseName, out modelAgent) || modelAgent == null)
+            {
+                return false;
+            }
+
+            loadedModels[itemPrefab.TypeID] = modelAgent;
+            SetAgentUtilityPrefab(itemPrefab, "EquipmentModel", modelAgent);
+            InjectItemGraphicForEquipment(itemPrefab, modelAgent, true);
             return true;
         }
 
@@ -681,6 +703,16 @@ namespace BossRush
 
                         // 配置龙息武器（配件槽位、弹药类型、耐久度、标签）
                         DragonBreathWeaponConfig.TryConfigure(itemPrefab, baseName);
+
+                        // 配置 P0 新武器（毒蛇匕首 / 召唤法杖 / 能量盾 / 冰霜长矛 / 雷电戒指）
+                        // 当 AssetBundle 提供了这五把武器的 prefab 时，让 LoadBundleInternal 也走 WeaponConfig.TryConfigure
+                        // 写入 Stats / 标签 / Buff，避免依赖 ItemFactory.loadedItems 这条只有
+                        // ItemFactory.LoadBundle 路径才会填充的缓存。
+                        ViperDaggerWeaponConfig.TryConfigure(itemPrefab, baseName);
+                        SummonStaffWeaponConfig.TryConfigure(itemPrefab, baseName);
+                        EnergyShieldWeaponConfig.TryConfigure(itemPrefab, baseName);
+                        FrostSpearWeaponConfig.TryConfigure(itemPrefab, baseName);
+                        ThunderRingWeaponConfig.TryConfigure(itemPrefab, baseName);
 
                         // 注册到游戏物品系统
                         if (equipType == EquipmentType.MeleeWeapon)

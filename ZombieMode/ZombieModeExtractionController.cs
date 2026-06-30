@@ -263,9 +263,10 @@ namespace BossRush
                 return;
             }
 
+            CharacterMainControl mainPlayer = CharacterMainControl.Main;
             Vector3 position = zombieModeRunState.ActiveSafeZoneActive
                 ? zombieModeRunState.ActiveSafeZoneCenter
-                : (CharacterMainControl.Main != null ? CharacterMainControl.Main.transform.position : Vector3.zero);
+                : (mainPlayer != null ? mainPlayer.transform.position : Vector3.zero);
 
             ModeExtractionPointRequest request = new ModeExtractionPointRequest();
             request.ObjectName = "ZombieMode_ExtractionPoint";
@@ -337,9 +338,10 @@ namespace BossRush
 
         private void TryNotifyZombieModeExtraction()
         {
+            CharacterMainControl mainPlayer = CharacterMainControl.Main;
             Vector3 position = zombieModeRunState.ActiveExtractionArea != null
                 ? zombieModeRunState.ActiveExtractionArea.transform.position
-                : (CharacterMainControl.Main != null ? CharacterMainControl.Main.transform.position : Vector3.zero);
+                : (mainPlayer != null ? mainPlayer.transform.position : Vector3.zero);
             TryNotifyZombieModeExtraction(position);
         }
 

@@ -125,7 +125,8 @@ namespace BossRush
                 case ZombieModeRewardType.MutatorGuardianShield:
                     options.MutatorGuardianShieldEnabled = true;
                     EnsureZombieModeOptionPlayerHealthListener();
-                    HandleZombieModePlayerHealthChangedForOptions(CharacterMainControl.Main != null ? CharacterMainControl.Main.Health : null);
+                    CharacterMainControl mainPlayer = CharacterMainControl.Main;
+                    HandleZombieModePlayerHealthChangedForOptions(mainPlayer != null ? mainPlayer.Health : null);
                     break;
                 case ZombieModeRewardType.MutatorQuickReload:
                     options.MutatorQuickReloadStacks = Mathf.Min(3, options.MutatorQuickReloadStacks + 1);

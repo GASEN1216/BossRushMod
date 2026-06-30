@@ -30,6 +30,7 @@ namespace BossRush
 
         private Animator animator;
         private Transform playerTransform;
+        private Transform cachedTransform;
         private GoblinMovement movement;
         private bool hasAnimator = false;
 
@@ -83,8 +84,22 @@ namespace BossRush
         // 生命周期方法
         // ============================================================================
 
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
+
         void Awake()
         {
+            cachedTransform = transform;
             animator = GetComponentInChildren<Animator>();
             hasAnimator = animator != null;
 
@@ -113,23 +128,18 @@ namespace BossRush
 
         void Start()
         {
-            // 获取玩家引用
-            NPCExceptionHandler.TryExecute(() =>
+            Transform foundPlayerTransform;
+            NPCPlayerLookupSource playerLookupSource;
+            if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform, out playerLookupSource))
             {
-                if (CharacterMainControl.Main != null)
+                playerTransform = foundPlayerTransform;
+                if (playerLookupSource == NPCPlayerLookupSource.PlayerTag)
                 {
-                    playerTransform = CharacterMainControl.Main.transform;
-                    ModBehaviour.DevLog("[GoblinNPC] Controller.Start: 获取到玩家引用");
-                }
-            }, "GoblinNPCController.Start - 获取 CharacterMainControl.Main");
-
-            if (playerTransform == null)
-            {
-                var player = GameObject.FindGameObjectWithTag("Player");
-                if (player != null)
-                {
-                    playerTransform = player.transform;
                     ModBehaviour.DevLog("[GoblinNPC] Controller.Start: 通过 Tag 获取到玩家引用");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[GoblinNPC] Controller.Start: 获取到玩家引用");
                 }
             }
 
@@ -150,7 +160,7 @@ namespace BossRush
 
         void LateUpdate()
         {
-            NPCNameTagHelper.RefreshOriginalHealthBarName(transform);
+            NPCNameTagHelper.RefreshOriginalHealthBarName(CachedTransform);
         }
 
         void Update()
@@ -158,12 +168,11 @@ namespace BossRush
             if (playerTransform == null && Time.time >= nextPlayerLookupTime)
             {
                 nextPlayerLookupTime = Time.time + PLAYER_LOOKUP_INTERVAL;
-                try
+                Transform foundPlayerTransform;
+                if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform))
                 {
-                    if (CharacterMainControl.Main != null)
-                        playerTransform = CharacterMainControl.Main.transform;
+                    playerTransform = foundPlayerTransform;
                 }
-                catch { }
             }
 
             // 如果正在跑向玩家，检查距离
@@ -174,7 +183,7 @@ namespace BossRush
 
             if (isRunningToPlayer && playerTransform != null)
             {
-                float distanceSqr = (transform.position - playerTransform.position).sqrMagnitude;
+                float distanceSqr = (CachedTransform.position - playerTransform.position).sqrMagnitude;
                 float brakeDistanceSqr = GoblinNPCConstants.BRAKE_ANIMATION_DISTANCE * GoblinNPCConstants.BRAKE_ANIMATION_DISTANCE;
                 float stopDistanceSqr = GoblinNPCConstants.STOP_DISTANCE * GoblinNPCConstants.STOP_DISTANCE;
 
@@ -221,7 +230,7 @@ namespace BossRush
 
             // 检查玩家距离（3米内）
             float storyTriggerDistanceSqr = GoblinNPCConstants.STORY_DIALOGUE_TRIGGER_DISTANCE * GoblinNPCConstants.STORY_DIALOGUE_TRIGGER_DISTANCE;
-            if ((transform.position - playerTransform.position).sqrMagnitude > storyTriggerDistanceSqr) return;
+            if ((CachedTransform.position - playerTransform.position).sqrMagnitude > storyTriggerDistanceSqr) return;
 
             // 检查是否有UI打开（使用游戏的 View 系统）
             if (IsAnyUIOpen()) return;
@@ -359,7 +368,7 @@ namespace BossRush
         public string NpcId => GoblinAffinityConfig.NPC_ID;
 
         /// <summary>NPC的Transform</summary>
-        public Transform NpcTransform => transform;
+        public Transform NpcTransform => CachedTransform;
 
         // ============================================================================
         // 私有辅助方法
@@ -375,7 +384,7 @@ namespace BossRush
                 return false;
             }
 
-            if (ModBehaviour.Instance == null || !ModBehaviour.Instance.IsWeddingNpcInstance(transform))
+            if (ModBehaviour.Instance == null || !ModBehaviour.Instance.IsWeddingNpcInstance(CachedTransform))
             {
                 return false;
             }
@@ -608,9 +617,9 @@ namespace BossRush
                 // Visual + dialogue feedback before dropping gift item.
                 ShowLoveHeartBubble();
                 string giftMessage = L10n.T("叮当送给你一份礼物！", "Dingdang gives you a gift!");
-                NPCDialogueSystem.ShowDialogue(GoblinAffinityConfig.NPC_ID, transform, giftMessage);
+                NPCDialogueSystem.ShowDialogue(GoblinAffinityConfig.NPC_ID, CachedTransform, giftMessage);
 
-                Vector3 dropPosition = transform.position;
+                Vector3 dropPosition = CachedTransform.position;
                 if (DingdangDrawingConfig.SpawnAtPosition(dropPosition))
                 {
                     AffinityManager.MarkRewardClaimed(GoblinAffinityConfig.NPC_ID, STORY10_DRAWING_REWARD_KEY);

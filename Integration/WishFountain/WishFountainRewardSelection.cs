@@ -389,7 +389,7 @@ namespace BossRush
 
             List<string> categoryIds = new List<string>(match.matchedCategoryIds);
             categoryIds.Sort(StringComparer.OrdinalIgnoreCase);
-            return string.Join(",", categoryIds.ToArray());
+            return string.Join(",", categoryIds);
         }
 
         private static string FormatWishRewardItemMatchesForLog(WishRewardMatchResult match)
@@ -428,7 +428,7 @@ namespace BossRush
             }
 
             itemEntries.Sort(StringComparer.OrdinalIgnoreCase);
-            return string.Join(",", itemEntries.ToArray());
+            return string.Join(",", itemEntries);
         }
 
         private static string FormatWishRewardMatchedItemTagsForLog(WishRewardPoolSelection selection)
@@ -440,7 +440,7 @@ namespace BossRush
 
             List<string> tags = new List<string>(selection.matchedItemTags);
             tags.Sort(StringComparer.OrdinalIgnoreCase);
-            return string.Join(",", tags.ToArray());
+            return string.Join(",", tags);
         }
 
         private static void LogWishRewardRoll(

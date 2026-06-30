@@ -351,7 +351,8 @@ namespace BossRush
                     hitDirection = aimDirection;
                 }
 
-                if (Vector3.Angle(hitDirection, aimDirection) >= 90f &&
+                float frontDot = Vector3.Dot(hitDirection, aimDirection);
+                if (frontDot <= 0f &&
                     hitDistance >= 0.5f + damageReceiverRadius)
                 {
                     continue;
@@ -613,11 +614,13 @@ namespace BossRush
             tiltCoroutine = StartCoroutine(TiltRoutine());
         }
 
+        private static readonly WaitForEndOfFrame cachedWaitForEndOfFrame = new WaitForEndOfFrame();
+
         private System.Collections.IEnumerator TiltRoutine()
         {
             while (elapsed <= duration)
             {
-                yield return new WaitForEndOfFrame();
+                yield return cachedWaitForEndOfFrame;
 
                 if (targetBone == null)
                 {

@@ -7,10 +7,23 @@ namespace BossRush
     internal sealed class PhantomWitchRingSpin : MonoBehaviour
     {
         public float rotationSpeed = 20f;
+        private Transform cachedTransform;
+
+        private void Awake()
+        {
+            cachedTransform = transform;
+        }
 
         private void Update()
         {
-            transform.Rotate(0f, rotationSpeed * Time.deltaTime, 0f, Space.Self);
+            Transform spinTransform = cachedTransform;
+            if (spinTransform == null)
+            {
+                spinTransform = transform;
+                cachedTransform = spinTransform;
+            }
+
+            spinTransform.Rotate(0f, rotationSpeed * Time.deltaTime, 0f, Space.Self);
         }
     }
 
@@ -123,6 +136,12 @@ namespace BossRush
         private Color baseColor;
         private Vector3 initialScale;
         private float lastPulseAlpha;
+        private Transform cachedTransform;
+
+        private void Awake()
+        {
+            cachedTransform = transform;
+        }
 
         public void Configure(float baseScale, float amplitude, float frequency, Color baseColor)
         {
@@ -132,7 +151,13 @@ namespace BossRush
             this.amplitude = amplitude;
             this.frequency = frequency;
             this.baseColor = baseColor;
-            this.initialScale = transform.localScale;
+            Transform pulseTransform = cachedTransform;
+            if (pulseTransform == null)
+            {
+                pulseTransform = transform;
+                cachedTransform = pulseTransform;
+            }
+            this.initialScale = pulseTransform.localScale;
             this.lastPulseAlpha = Mathf.Max(0.0001f, baseColor.a);
         }
 
@@ -145,7 +170,13 @@ namespace BossRush
 
             float s = 0.5f + 0.5f * Mathf.Sin(Time.time * frequency * Mathf.PI * 2f);
             float factor = baseScale + amplitude * s;
-            transform.localScale = initialScale * factor;
+            Transform pulseTransform = cachedTransform;
+            if (pulseTransform == null)
+            {
+                pulseTransform = transform;
+                cachedTransform = pulseTransform;
+            }
+            pulseTransform.localScale = initialScale * factor;
 
             Color currentColor = PhantomWitchFxRenderUtil.GetRendererColor(targetRenderer, propertyBlock);
             float fadeFactor = Mathf.Clamp01(currentColor.a / Mathf.Max(0.0001f, lastPulseAlpha));
@@ -212,6 +243,12 @@ namespace BossRush
         private float baseScale;
         private float frequency;
         private Vector3 initialScale;
+        private Transform cachedTransform;
+
+        private void Awake()
+        {
+            cachedTransform = transform;
+        }
 
         public void Configure(Material material, Color color, float baseScale, float frequency)
         {
@@ -219,7 +256,13 @@ namespace BossRush
             this.baseColor = color;
             this.baseScale = baseScale;
             this.frequency = frequency;
-            this.initialScale = transform.localScale;
+            Transform pulseTransform = cachedTransform;
+            if (pulseTransform == null)
+            {
+                pulseTransform = transform;
+                cachedTransform = pulseTransform;
+            }
+            this.initialScale = pulseTransform.localScale;
         }
 
         public void Configure(Renderer renderer, Color color, float baseScale, float frequency)
@@ -230,14 +273,26 @@ namespace BossRush
             this.baseColor = color;
             this.baseScale = baseScale;
             this.frequency = frequency;
-            this.initialScale = transform.localScale;
+            Transform pulseTransform = cachedTransform;
+            if (pulseTransform == null)
+            {
+                pulseTransform = transform;
+                cachedTransform = pulseTransform;
+            }
+            this.initialScale = pulseTransform.localScale;
         }
 
         private void Update()
         {
             float s = 0.5f + 0.5f * Mathf.Sin(Time.time * frequency * Mathf.PI * 2f);
             float factor = Mathf.Lerp(0.8f, 1.15f, s);
-            transform.localScale = initialScale * factor;
+            Transform pulseTransform = cachedTransform;
+            if (pulseTransform == null)
+            {
+                pulseTransform = transform;
+                cachedTransform = pulseTransform;
+            }
+            pulseTransform.localScale = initialScale * factor;
 
             if (material != null)
             {

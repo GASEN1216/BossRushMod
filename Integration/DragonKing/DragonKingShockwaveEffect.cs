@@ -80,6 +80,8 @@ namespace BossRush
         private bool isPooled = false;
         private Vector3 centerPosition;
         private CharacterMainControl playerCharacter;
+        private Transform cachedPlayerTransform;
+        private Transform cachedTransform;
         private static Material sharedWaveMaterial;
         private static Vector2[] cachedRingUnitPoints;
         private static Transform sharedPoolRoot;
@@ -93,6 +95,19 @@ namespace BossRush
         // 回调
         public Action OnAllWavesComplete;
 
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
+
         // ========== 公开方法 ==========
 
         /// <summary>
@@ -101,7 +116,7 @@ namespace BossRush
         public static DragonKingShockwaveEffect PlayAt(Vector3 position)
         {
             DragonKingShockwaveEffect effect = AcquirePooledEffect();
-            effect.transform.position = position;
+            effect.CachedTransform.position = position;
             effect.gameObject.SetActive(true);
             effect.StartShockwave(position);
             return effect;
@@ -134,7 +149,7 @@ namespace BossRush
             DeactivateAllWaveRings();
 
             centerPosition = center;
-            transform.position = center;
+            CachedTransform.position = center;
             isActive = true;
             isPooled = false;
             OnAllWavesComplete = null;
@@ -163,7 +178,7 @@ namespace BossRush
                 DragonKingShockwaveEffect pooledEffect = sharedEffectPool.Pop();
                 if (pooledEffect != null)
                 {
-                    pooledEffect.transform.SetParent(null, false);
+                    pooledEffect.CachedTransform.SetParent(null, false);
                     pooledEffect.isPooled = false;
                     return pooledEffect;
                 }
@@ -190,6 +205,7 @@ namespace BossRush
         private void FindPlayer()
         {
             playerCharacter = CharacterMainControl.Main;
+            cachedPlayerTransform = playerCharacter != null ? playerCharacter.transform : null;
 
             if (playerCharacter == null)
             {
@@ -235,7 +251,7 @@ namespace BossRush
         private WaveRing CreateWaveRing(int index)
         {
             GameObject ringObj = new GameObject($"WaveRing_{index}");
-            ringObj.transform.SetParent(transform, false);
+            ringObj.transform.SetParent(CachedTransform, false);
             ringObj.transform.localPosition = Vector3.zero;
 
             LineRenderer lineRenderer = ringObj.AddComponent<LineRenderer>();
@@ -290,7 +306,7 @@ namespace BossRush
             wave.lineRenderer.endColor = color;
             wave.lineRenderer.startWidth = WaveBaseWidth;
             wave.lineRenderer.endWidth = WaveBaseWidth;
-            UpdateRingPositions(wave);
+            UpdateRingPositions(wave, GetCachedRingUnitPoints());
         }
 
         private void DeactivateWaveRing(WaveRing wave)
@@ -334,11 +350,19 @@ namespace BossRush
             bool playerValid = false;
             if (playerCharacter != null && playerCharacter.Health != null && !playerCharacter.Health.IsDead)
             {
-                playerPos = playerCharacter.transform.position;
+                playerPos = cachedPlayerTransform.position;
                 playerValid = true;
             }
 
             float maxVisibleRadius = maxRadius + waveSpacing;
+            Vector2[] ringUnitPoints = GetCachedRingUnitPoints();
+            float playerDistanceToCenterSqr = 0f;
+            if (playerValid)
+            {
+                Vector2 playerOffset = new Vector2(playerPos.x - centerPosition.x, playerPos.z - centerPosition.z);
+                playerDistanceToCenterSqr = playerOffset.sqrMagnitude;
+            }
+
             for (int i = 0; i < waveCount && i < waveRings.Count; i++)
             {
                 WaveRing wave = waveRings[i];
@@ -348,15 +372,13 @@ namespace BossRush
                 }
 
                 wave.currentRadius += expansionSpeed * Time.deltaTime;
-                UpdateRingPositions(wave);
+                UpdateRingPositions(wave, ringUnitPoints);
 
                 if (playerValid && !wave.hasHitPlayer)
                 {
-                    Vector2 playerOffset = new Vector2(playerPos.x - centerPosition.x, playerPos.z - centerPosition.z);
-                    float distanceToPlayerSqr = playerOffset.sqrMagnitude;
                     float waveRadiusSqr = wave.currentRadius * wave.currentRadius;
 
-                    if (waveRadiusSqr >= distanceToPlayerSqr)
+                    if (waveRadiusSqr >= playerDistanceToCenterSqr)
                     {
                         KnockbackPlayer(playerPos, centerPosition);
                         wave.hasHitPlayer = true;
@@ -382,9 +404,13 @@ namespace BossRush
             }
         }
 
-        private void UpdateRingPositions(WaveRing wave)
+        private void UpdateRingPositions(WaveRing wave, Vector2[] unitPoints)
         {
-            Vector2[] unitPoints = GetCachedRingUnitPoints();
+            if (unitPoints == null)
+            {
+                return;
+            }
+
             for (int i = 0; i < unitPoints.Length; i++)
             {
                 Vector2 point = unitPoints[i];
@@ -450,12 +476,14 @@ namespace BossRush
             isActive = false;
             isPooled = true;
             playerCharacter = null;
+            cachedPlayerTransform = null;
             OnAllWavesComplete = null;
             DeactivateAllWaveRings();
 
-            transform.SetParent(GetOrCreatePoolRoot(), false);
-            transform.localPosition = Vector3.zero;
-            transform.localRotation = Quaternion.identity;
+            Transform selfTransform = CachedTransform;
+            selfTransform.SetParent(GetOrCreatePoolRoot(), false);
+            selfTransform.localPosition = Vector3.zero;
+            selfTransform.localRotation = Quaternion.identity;
             gameObject.SetActive(false);
 
             sharedEffectPool.Push(this);

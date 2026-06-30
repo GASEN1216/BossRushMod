@@ -1042,6 +1042,10 @@ namespace BossRush
                 SpawnCourierNPC();
                 profiler.Mark("SpawnCourier");
 
+                // 应用变异词条（与标准 BossRush 共用同一套）
+                TryRollMutatorsForMode("ModeE");
+                profiler.Mark("RollMutators");
+
                 ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
                     "Faction Battle activated! Faction: " + faction.ToString()

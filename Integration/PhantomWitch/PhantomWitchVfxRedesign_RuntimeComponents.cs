@@ -6,19 +6,37 @@ using UnityEngine;
 
 namespace BossRush
 {
-    internal sealed class PhantomWitchBillboard : MonoBehaviour
+    internal abstract class PhantomWitchRuntimeComponentBase : MonoBehaviour
     {
-        private void LateUpdate()
+        private Transform cachedTransform;
+
+        protected Transform CachedTransform
         {
-            Camera camera = PhantomWitchFxRuntime.CurrentCamera;
-            if (camera != null)
+            get
             {
-                transform.rotation = camera.transform.rotation;
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
             }
         }
     }
 
-    internal sealed class PhantomWitchWarpQuad : MonoBehaviour
+    internal sealed class PhantomWitchBillboard : PhantomWitchRuntimeComponentBase
+    {
+        private void LateUpdate()
+        {
+            Transform cameraTransform = PhantomWitchFxRuntime.CurrentCameraTransform;
+            if (cameraTransform != null)
+            {
+                CachedTransform.rotation = cameraTransform.rotation;
+            }
+        }
+    }
+
+    internal sealed class PhantomWitchWarpQuad : PhantomWitchRuntimeComponentBase
     {
         private Vector3 origin;
         private float jitterAmplitude;
@@ -28,7 +46,7 @@ namespace BossRush
 
         public void Configure(float jitterAmplitude, float rotationSpeed, float duration)
         {
-            origin = transform.localPosition;
+            origin = CachedTransform.localPosition;
             this.jitterAmplitude = jitterAmplitude;
             this.rotationSpeed = rotationSpeed;
             this.duration = duration;
@@ -37,7 +55,7 @@ namespace BossRush
 
         private void Awake()
         {
-            origin = transform.localPosition;
+            origin = CachedTransform.localPosition;
         }
 
         private void Update()
@@ -45,8 +63,9 @@ namespace BossRush
             elapsed += Time.deltaTime;
             float noiseX = Mathf.Sin(Time.time * 2.1f) * jitterAmplitude;
             float noiseZ = Mathf.Cos(Time.time * 1.7f) * jitterAmplitude;
-            transform.localPosition = origin + new Vector3(noiseX, 0f, noiseZ);
-            transform.Rotate(0f, rotationSpeed * Time.deltaTime, 0f, Space.Self);
+            Transform selfTransform = CachedTransform;
+            selfTransform.localPosition = origin + new Vector3(noiseX, 0f, noiseZ);
+            selfTransform.Rotate(0f, rotationSpeed * Time.deltaTime, 0f, Space.Self);
 
             if (duration > 0f && elapsed >= duration)
             {
@@ -55,7 +74,7 @@ namespace BossRush
         }
     }
 
-    internal sealed class PhantomWitchTendrilMover : MonoBehaviour
+    internal sealed class PhantomWitchTendrilMover : PhantomWitchRuntimeComponentBase
     {
         private Vector3 start;
         private Vector3 end;
@@ -68,7 +87,7 @@ namespace BossRush
             this.end = end;
             this.duration = Mathf.Max(0.01f, duration);
             this.elapsed = 0f;
-            transform.localPosition = start;
+            CachedTransform.localPosition = start;
         }
 
         private void Update()
@@ -76,7 +95,7 @@ namespace BossRush
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
             float eased = 1f - Mathf.Pow(1f - t, 3f);
-            transform.localPosition = Vector3.Lerp(start, end, eased);
+            CachedTransform.localPosition = Vector3.Lerp(start, end, eased);
 
             if (t >= 1f)
             {
@@ -85,7 +104,7 @@ namespace BossRush
         }
     }
 
-    internal sealed class PhantomWitchVerticalLineDrift : MonoBehaviour
+    internal sealed class PhantomWitchVerticalLineDrift : PhantomWitchRuntimeComponentBase
     {
         private Vector3 offset;
         private float duration;
@@ -97,19 +116,19 @@ namespace BossRush
             this.offset = offset;
             this.duration = Mathf.Max(0.01f, duration);
             this.elapsed = 0f;
-            this.startPosition = transform.localPosition;
+            this.startPosition = CachedTransform.localPosition;
         }
 
         private void Awake()
         {
-            startPosition = transform.localPosition;
+            startPosition = CachedTransform.localPosition;
         }
 
         private void Update()
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-            transform.localPosition = Vector3.Lerp(startPosition, startPosition + offset, t);
+            CachedTransform.localPosition = Vector3.Lerp(startPosition, startPosition + offset, t);
             if (t >= 1f)
             {
                 Destroy(this);
@@ -117,7 +136,7 @@ namespace BossRush
         }
     }
 
-    internal sealed class PhantomWitchPulseScale : MonoBehaviour
+    internal sealed class PhantomWitchPulseScale : PhantomWitchRuntimeComponentBase
     {
         private Vector3 minScale;
         private Vector3 maxScale;
@@ -137,7 +156,7 @@ namespace BossRush
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
             float pulse = 0.5f + 0.5f * Mathf.Sin(t * Mathf.PI);
-            transform.localScale = Vector3.Lerp(minScale, maxScale, pulse);
+            CachedTransform.localScale = Vector3.Lerp(minScale, maxScale, pulse);
             if (t >= 1f)
             {
                 Destroy(this);
@@ -145,7 +164,7 @@ namespace BossRush
         }
     }
 
-    internal sealed class PhantomWitchRealmRuneFlashSpawner : MonoBehaviour
+    internal sealed class PhantomWitchRealmRuneFlashSpawner : PhantomWitchRuntimeComponentBase
     {
         private float radius;
         private float duration;
@@ -177,14 +196,16 @@ namespace BossRush
             float angle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
             Vector3 localPosition = new Vector3(Mathf.Cos(angle) * radius, UnityEngine.Random.Range(0.08f, 0.25f), Mathf.Sin(angle) * radius);
             GameObject rune = new GameObject("RealmRuneFlash");
-            rune.transform.SetParent(transform, false);
-            rune.transform.localPosition = localPosition;
-            rune.transform.localRotation = Quaternion.Euler(UnityEngine.Random.Range(-20f, 20f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(-20f, 20f));
+            Transform runeTransform = rune.transform;
+            runeTransform.SetParent(CachedTransform, false);
+            runeTransform.localPosition = localPosition;
+            runeTransform.localRotation = Quaternion.Euler(UnityEngine.Random.Range(-20f, 20f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(-20f, 20f));
 
             for (int i = 0; i < 3; i++)
             {
                 GameObject segment = new GameObject("Segment_" + i);
-                segment.transform.SetParent(rune.transform, false);
+                Transform segmentTransform = segment.transform;
+                segmentTransform.SetParent(runeTransform, false);
                 LineRenderer line = segment.AddComponent<LineRenderer>();
                 line.useWorldSpace = false;
                 line.loop = false;

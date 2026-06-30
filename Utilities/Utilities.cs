@@ -11,6 +11,7 @@
 // ============================================================================
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Duckov.Economy;
@@ -23,6 +24,12 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour
     {
+        // ========== 性能优化：共享 WaitForSeconds 缓存（供所有 partial class 使用） ==========
+
+        private static readonly WaitForSeconds sharedWait01s = new WaitForSeconds(0.1f);
+        private static readonly WaitForSeconds sharedWait05s = new WaitForSeconds(0.5f);
+        private static readonly WaitForSeconds sharedWait1s = new WaitForSeconds(1f);
+
         /// <summary>
         /// 确保加油站已创建
         /// <para>在无间炼狱模式下提供弹药购买功能</para>

@@ -145,15 +145,21 @@ namespace BossRush
 
             try
             {
+                CharacterMainControl character = TryGetTargetCharacter(hurtHealth);
+                CharacterBuffManager buffMgr = TryGetBuffManager(character);
+                bool hasCurse = buffMgr != null && buffMgr.HasBuff(PhantomWitchConfig.CurseBuffID);
+                if (!hasCurse && !CouldApplyFallbackCurseFromNormalAttack(damageInfo))
+                {
+                    return;
+                }
+
                 Buff curseBuff = PhantomWitchAssetManager.GetCurseBuff();
                 if (curseBuff == null)
                 {
                     return;
                 }
 
-                CharacterMainControl character = TryGetTargetCharacter(hurtHealth);
-                CharacterBuffManager buffMgr = TryGetBuffManager(character);
-                if (buffMgr != null && buffMgr.HasBuff(PhantomWitchConfig.CurseBuffID))
+                if (hasCurse)
                 {
                     if (character != null)
                     {
@@ -203,6 +209,36 @@ namespace BossRush
             catch
             {
             }
+        }
+
+        private static bool CouldApplyFallbackCurseFromNormalAttack(DamageInfo damageInfo)
+        {
+            if (damageInfo.fromWeaponItemID != PhantomWitchScytheIds.WeaponTypeId)
+            {
+                return false;
+            }
+
+            if (damageInfo.isFromBuffOrEffect)
+            {
+                return false;
+            }
+
+            if (!IsMainPlayerAttacker(damageInfo.fromCharacter))
+            {
+                return false;
+            }
+
+            if (damageInfo.buff == null)
+            {
+                return false;
+            }
+
+            if (ResolveNormalAttackCurseChance(damageInfo) <= 0f)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private static bool ShouldApplyFallbackCurseFromNormalAttack(DamageInfo damageInfo, Buff curseBuff)

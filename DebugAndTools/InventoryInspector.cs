@@ -48,7 +48,7 @@ namespace BossRush
 
         private void Update()
         {
-            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            if (!ModBehaviour.CanRunGameplayRuntimeCached())
             {
                 HideWindow();
                 return;
@@ -75,7 +75,7 @@ namespace BossRush
 
         private void OnGUI()
         {
-            if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            if (!ModBehaviour.CanRunGameplayRuntimeCached())
             {
                 return;
             }
@@ -422,7 +422,7 @@ namespace BossRush
                     }
                 }
 
-                return names.Count > 0 ? string.Join(", ", names.ToArray()) : "(empty tags)";
+                return names.Count > 0 ? string.Join(", ", names) : "(empty tags)";
             }
             catch
             {

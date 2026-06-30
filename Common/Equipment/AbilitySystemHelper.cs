@@ -19,6 +19,8 @@ namespace BossRush.Common.Equipment
     /// </summary>
     public static class AbilitySystemHelper
     {
+        private static readonly WaitForSeconds cachedWait05s = new WaitForSeconds(0.5f);
+
         /// <summary>
         /// 初始化能力系统
         /// </summary>
@@ -96,7 +98,7 @@ namespace BossRush.Common.Equipment
             Func<IEnumerator> checkAction,
             EquipmentAbilityConfig config)
         {
-            yield return new WaitForSeconds(0.5f);
+            yield return cachedWait05s;
 
             var enumerator = checkAction?.Invoke();
             if (enumerator != null)

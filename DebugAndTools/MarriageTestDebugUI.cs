@@ -389,7 +389,7 @@ namespace BossRush
                             {
                                 if (tag != null) tagNames.Add(tag.name);
                             }
-                            tagsStr = string.Join(", ", tagNames.ToArray());
+                            tagsStr = string.Join(", ", tagNames);
                         }
                     }
                     catch

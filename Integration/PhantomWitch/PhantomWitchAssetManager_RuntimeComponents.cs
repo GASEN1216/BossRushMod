@@ -7,6 +7,7 @@ namespace BossRush
     {
         private static int activeRootCount = 0;
         private static Camera cachedMainCamera = null;
+        private static Transform cachedMainCameraTransform = null;
         private static int cachedMainCameraFrame = -1;
         internal static bool HasActiveRoots => activeRootCount > 0;
 
@@ -14,14 +15,28 @@ namespace BossRush
         {
             get
             {
-                // Collapse repeated per-frame Camera.main lookups across PhantomWitch FX.
-                if (cachedMainCameraFrame != Time.frameCount || cachedMainCamera == null)
-                {
-                    cachedMainCamera = Camera.main;
-                    cachedMainCameraFrame = Time.frameCount;
-                }
-
+                RefreshCurrentCamera();
                 return cachedMainCamera;
+            }
+        }
+
+        internal static Transform CurrentCameraTransform
+        {
+            get
+            {
+                RefreshCurrentCamera();
+                return cachedMainCameraTransform;
+            }
+        }
+
+        private static void RefreshCurrentCamera()
+        {
+            // Collapse repeated per-frame Camera.main and camera.transform lookups across PhantomWitch FX.
+            if (cachedMainCameraFrame != Time.frameCount || cachedMainCamera == null)
+            {
+                cachedMainCamera = Camera.main;
+                cachedMainCameraTransform = cachedMainCamera != null ? cachedMainCamera.transform : null;
+                cachedMainCameraFrame = Time.frameCount;
             }
         }
 
@@ -71,6 +86,7 @@ namespace BossRush
         {
             activeRootCount = 0;
             cachedMainCamera = null;
+            cachedMainCameraTransform = null;
             cachedMainCameraFrame = -1;
         }
     }
@@ -355,6 +371,9 @@ namespace BossRush
         private MeshRenderer meshRenderer;
         private MaterialPropertyBlock propertyBlock;
         private Mesh mesh;
+        private Vector3[] verticesBuffer;
+        private Vector2[] uvBuffer;
+        private int[] trianglesBuffer;
 
         internal int PointCount { get; private set; }
 
@@ -396,7 +415,7 @@ namespace BossRush
         internal void SetPath(IList<Vector3> points, float width)
         {
             PointCount = points != null ? points.Count : 0;
-            BuildPathMesh(mesh, points, width);
+            BuildPathMesh(points, width);
         }
 
         internal void SetColor(Color color)
@@ -414,24 +433,37 @@ namespace BossRush
             PhantomWitchFxRenderUtil.SetRendererColor(meshRenderer, propertyBlock, color);
         }
 
-        private static void BuildPathMesh(Mesh mesh, IList<Vector3> points, float width)
+        private void BuildPathMesh(IList<Vector3> points, float width)
         {
-            if (mesh == null)
+            Mesh targetMesh = mesh;
+            if (targetMesh == null)
             {
                 return;
             }
 
             if (points == null || points.Count < 2)
             {
-                mesh.Clear();
+                targetMesh.Clear();
                 return;
             }
 
             float halfWidth = Mathf.Max(0.001f, width) * 0.5f;
             int pointCount = points.Count;
-            Vector3[] vertices = new Vector3[pointCount * 2];
-            Vector2[] uv = new Vector2[pointCount * 2];
-            int[] triangles = new int[(pointCount - 1) * 6];
+            int vertexCount = pointCount * 2;
+            int triangleCount = (pointCount - 1) * 6;
+            if (verticesBuffer == null || verticesBuffer.Length != vertexCount || uvBuffer == null || uvBuffer.Length != vertexCount)
+            {
+                verticesBuffer = new Vector3[vertexCount];
+                uvBuffer = new Vector2[vertexCount];
+            }
+            if (trianglesBuffer == null || trianglesBuffer.Length != triangleCount)
+            {
+                trianglesBuffer = new int[triangleCount];
+            }
+
+            Vector3[] vertices = verticesBuffer;
+            Vector2[] uv = uvBuffer;
+            int[] triangles = trianglesBuffer;
 
             for (int i = 0; i < pointCount; i++)
             {
@@ -477,12 +509,12 @@ namespace BossRush
                 triangles[triangleIndex + 5] = vertexIndex + 2;
             }
 
-            mesh.Clear();
-            mesh.vertices = vertices;
-            mesh.uv = uv;
-            mesh.triangles = triangles;
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
+            targetMesh.Clear();
+            targetMesh.vertices = vertices;
+            targetMesh.uv = uv;
+            targetMesh.triangles = triangles;
+            targetMesh.RecalculateNormals();
+            targetMesh.RecalculateBounds();
         }
 
         private void OnDestroy()
@@ -653,6 +685,7 @@ namespace BossRush
         private Color baseColor;
         private float elapsed;
         private bool positionsNormalized;
+        private Vector3[] pathPointsBuffer;
 
         public void Configure(float startRadius, float targetRadius, float halfAngle, Vector3 forward, float duration, Color color, float width)
         {
@@ -666,6 +699,7 @@ namespace BossRush
             this.baseColor = color;
             this.startWidth = lineRenderer != null ? lineRenderer.widthMultiplier : Mathf.Max(0.001f, width);
             this.elapsed = 0f;
+            this.pathPointsBuffer = null;
         }
 
         private void Update()
@@ -721,7 +755,13 @@ namespace BossRush
                 float baseAngle = Mathf.Atan2(localForward.x, localForward.z);
                 float startAngle = baseAngle - halfAngle * Mathf.Deg2Rad;
                 float endAngle = baseAngle + halfAngle * Mathf.Deg2Rad;
-                Vector3[] points = new Vector3[segments + 1];
+                int pointCount = segments + 1;
+                Vector3[] points = pathPointsBuffer;
+                if (points == null || points.Length != pointCount)
+                {
+                    points = new Vector3[pointCount];
+                    pathPointsBuffer = points;
+                }
                 for (int i = 0; i <= segments; i++)
                 {
                     float segmentT = (float)i / segments;

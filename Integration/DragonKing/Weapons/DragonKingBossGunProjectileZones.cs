@@ -14,11 +14,14 @@ namespace BossRush
         private const float PoisonTickLockDuration = 0.32f;
         private const float PoisonTickKeepTime = 1.2f;
         private const float PoisonTickCleanupInterval = 1f;
+        private const float DamageNormalFallbackSqr = 0.0000000001f;
         private const int RingSegments = 16;
         private const float RingUpdateInterval = 0.1f;
 
         private static readonly Dictionary<int, float> poisonTickTimes = new Dictionary<int, float>();
         private static readonly List<int> poisonTickKeysToRemove = new List<int>();
+        private static readonly Vector3 RingHeightOffset = Vector3.up * 0.04f;
+        private static readonly Vector3[] RingUnitOffsets = BuildRingUnitOffsets();
         private static float lastPoisonTickCleanup;
         private static Shader cachedZoneShader;
         private static readonly Dictionary<ElementTypes, Material> cachedZoneMaterials = new Dictionary<ElementTypes, Material>();
@@ -33,6 +36,7 @@ namespace BossRush
         private float pulseTime;
         private float ringUpdateTimer;
         private float lastPulse;
+        private float ringBaseWidth;
         private LineRenderer zoneRing;
         private Material zoneRingMaterial;
         private Light zoneLight;
@@ -172,7 +176,8 @@ namespace BossRush
 
             zoneRingMaterial = GetOrCreateZoneMaterial(profile.GroundZoneElement, zoneColor);
             zoneRing.material = zoneRingMaterial;
-            zoneRing.widthMultiplier = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f);
+            ringBaseWidth = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f);
+            zoneRing.widthMultiplier = ringBaseWidth;
             UpdateZoneRing(radius);
         }
 
@@ -193,12 +198,23 @@ namespace BossRush
                 return;
             }
 
-            for (int i = 0; i < RingSegments; i++)
+            for (int i = 0; i < RingUnitOffsets.Length; i++)
+            {
+                Vector3 offset = RingUnitOffsets[i] * ringRadius;
+                zoneRing.SetPosition(i, offset + RingHeightOffset);
+            }
+        }
+
+        private static Vector3[] BuildRingUnitOffsets()
+        {
+            Vector3[] offsets = new Vector3[RingSegments];
+            for (int i = 0; i < offsets.Length; i++)
             {
                 float angle = 360f * i / RingSegments;
-                Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * ringRadius;
-                zoneRing.SetPosition(i, offset + Vector3.up * 0.04f);
+                offsets[i] = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
             }
+
+            return offsets;
         }
 
         private void Update()
@@ -211,17 +227,18 @@ namespace BossRush
             if (ringUpdateTimer >= RingUpdateInterval)
             {
                 ringUpdateTimer = 0f;
-                float pulse = 1f + Mathf.Sin(pulseTime) * 0.08f;
+                float pulseSin = Mathf.Sin(pulseTime);
+                float pulse = 1f + pulseSin * 0.08f;
                 if (zoneRing != null && Mathf.Abs(pulse - lastPulse) > 0.005f)
                 {
                     lastPulse = pulse;
-                    zoneRing.widthMultiplier = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f) * pulse;
+                    zoneRing.widthMultiplier = ringBaseWidth * pulse;
                     UpdateZoneRing(radius * pulse);
                 }
 
                 if (zoneLight != null)
                 {
-                    zoneLight.intensity = Mathf.Lerp(1f, 2.2f, Mathf.InverseLerp(-1f, 1f, Mathf.Sin(pulseTime)));
+                    zoneLight.intensity = Mathf.Lerp(1f, 2.2f, Mathf.InverseLerp(-1f, 1f, pulseSin));
                 }
             }
 
@@ -247,7 +264,13 @@ namespace BossRush
             for (int i = 0; i < count; i++)
             {
                 DamageReceiver receiver = DragonKingBossGunRuntime.SharedColliderBuffer[i] != null ? DragonKingBossGunRuntime.SharedColliderBuffer[i].GetComponent<DamageReceiver>() : null;
-                if (receiver == null || DragonKingBossGunRuntime.SharedReceiverIdSet.Contains(receiver.GetInstanceID()))
+                if (receiver == null)
+                {
+                    continue;
+                }
+
+                int receiverId = receiver.GetInstanceID();
+                if (DragonKingBossGunRuntime.SharedReceiverIdSet.Contains(receiverId))
                 {
                     continue;
                 }
@@ -263,16 +286,15 @@ namespace BossRush
                     continue;
                 }
 
-                int receiverId = receiver.GetInstanceID();
                 if (profile.GroundZoneElement == ElementTypes.poison && !TryClaimPoisonTick(receiverId))
                 {
                     continue;
                 }
 
-                DragonKingBossGunRuntime.SharedReceiverIdSet.Add(receiver.GetInstanceID());
+                DragonKingBossGunRuntime.SharedReceiverIdSet.Add(receiverId);
                 Vector3 damagePoint = receiver.transform.position + Vector3.up * 0.35f;
-                Vector3 damageNormal = (receiver.transform.position - transform.position).normalized;
-                if (damageNormal.sqrMagnitude < 0.001f)
+                Vector3 damageNormal = receiver.transform.position - transform.position;
+                if (damageNormal.sqrMagnitude <= DamageNormalFallbackSqr)
                 {
                     damageNormal = Vector3.up;
                 }
@@ -371,8 +393,22 @@ namespace BossRush
         private DragonKingBossGunShotProfile profile;
         private int shotId;
         private Transform followTarget;
+        private Transform cachedTransform;
         private Vector3 localOffset;
         private float elapsed;
+
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
 
         public void Initialize(ProjectileContext projectileContext, DragonKingBossGunShotProfile shotProfile, int currentShotId, Transform target, Vector3 worldPoint)
         {
@@ -387,9 +423,12 @@ namespace BossRush
         private void Update()
         {
             elapsed += Time.deltaTime;
+            Transform selfTransform = CachedTransform;
+            Vector3 chargePosition = selfTransform.position;
             if (followTarget != null)
             {
-                transform.position = followTarget.TransformPoint(localOffset);
+                chargePosition = followTarget.TransformPoint(localOffset);
+                selfTransform.position = chargePosition;
             }
 
             if (profile == null || elapsed < Mathf.Max(0.05f, profile.StickyDelay))
@@ -403,13 +442,13 @@ namespace BossRush
                 return;
             }
 
-            DragonKingBossGunRuntime.TrySpawnExplosionFx(transform.position, profile);
+            DragonKingBossGunRuntime.TrySpawnExplosionFx(chargePosition, profile);
             float marker = DragonKingBossGunRuntime.EncodeShotMarker(
                 shotId,
                 profile.Id,
                 DragonKingBossGunRuntime.DragonKingBossGunHitStage.Secondary);
             DragonKingBossGunRuntime.ApplyRadiusDamage(
-                transform.position,
+                chargePosition,
                 Mathf.Max(0.4f, profile.StickyExplosionRange),
                 sourceContext,
                 Mathf.Max(0.2f, profile.StickyExplosionDamageFactor),

@@ -171,6 +171,8 @@ namespace BossRush
             }
 
             Vector3 playerPos = main != null ? main.transform.position : Vector3.zero;
+            float minPlayerDistance = ZombieModeTuning.SpawnPointMinPlayerDistance;
+            float minPlayerDistanceSqr = minPlayerDistance * minPlayerDistance;
             float bestScore = float.MinValue;
             Vector3 best = zombieModeRunState.SpawnPoints[0].Position;
             for (int i = 0; i < zombieModeRunState.SpawnPoints.Count; i++)
@@ -178,12 +180,13 @@ namespace BossRush
                 Vector3 point = zombieModeRunState.SpawnPoints[i].Position;
                 Vector3 delta = point - playerPos;
                 delta.y = 0f;
-                float distance = delta.magnitude;
-                if (distance < ZombieModeTuning.SpawnPointMinPlayerDistance)
+                float distanceSqr = delta.sqrMagnitude;
+                if (distanceSqr < minPlayerDistanceSqr)
                 {
                     continue;
                 }
 
+                float distance = Mathf.Sqrt(distanceSqr);
                 float score = distance > 80f ? 80f - (distance - 80f) : distance;
                 score += Random.Range(0f, 8f);
                 if (score > bestScore)
@@ -382,7 +385,7 @@ namespace BossRush
                         zombie.gameObject.name = "ZombieMode_NormalZombie_Run" + runId;
                         ReleaseZombieModeNormalSpawnSlot();
                         ZombieModeEnemyRuntimeMarker marker = RegisterZombieModeEnemyRuntimeShell(runId, zombie, false, ZombieModeBossKind.Titan, -1, enemyKind, specialKind, eliteAffixes);
-                        PrepareZombieModeSpawnedEnemy(zombie, ZombieModeTuning.NormalZombieForceTraceDistance);
+                        PrepareZombieModeSpawnedEnemy(zombie, marker, ZombieModeTuning.NormalZombieForceTraceDistance);
                         ApplyZombieModeEnemyTuning(zombie, marker);
                         RegisterEnemyRecoveryAnchor(zombie, ctx.position);
                         zombieModeRunState.LivingZombieCount++;
@@ -482,7 +485,7 @@ namespace BossRush
 
                         boss.gameObject.name = "ZombieMode_Boss_" + kind.ToString() + "_Run" + runId;
                         ZombieModeEnemyRuntimeMarker bossMarker = RegisterZombieModeEnemyRuntimeShell(runId, boss, true, kind, GetZombieModeBossPointValue(kind));
-                        PrepareZombieModeSpawnedEnemy(boss, 180f);
+                        PrepareZombieModeSpawnedEnemy(boss, bossMarker, 180f);
                         ApplyZombieModeBossTuning(boss, kind, bossMarker);
                         RegisterEnemyRecoveryAnchor(boss, ctx.position);
                         zombieModeRunState.LivingZombieCount++;
@@ -523,7 +526,7 @@ namespace BossRush
             try { Destroy(character.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy paused spawn candidate failed: " + e.Message); }
         }
 
-        private void PrepareZombieModeSpawnedEnemy(CharacterMainControl enemy, float forceTraceDistance)
+        private void PrepareZombieModeSpawnedEnemy(CharacterMainControl enemy, ZombieModeEnemyRuntimeMarker marker, float forceTraceDistance)
         {
             if (enemy == null)
             {
@@ -551,13 +554,13 @@ namespace BossRush
                 enemy.Health.SetHealth(enemy.Health.MaxHealth);
             }
 
-            AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>();
+            AICharacterController ai = GetZombieModeEnemyAI(enemy.gameObject, marker);
             if (ai != null)
             {
                 ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, forceTraceDistance);
                 if (ShouldSuppressZombieModeEnemyAggroForSafeZone())
                 {
-                    SetZombieModeEnemyThreatSuppressed(enemy.gameObject, true);
+                    SetZombieModeEnemyThreatSuppressed(enemy.gameObject, marker, true);
                     return;
                 }
 
@@ -656,7 +659,7 @@ namespace BossRush
             }
             boss.transform.localScale = boss.transform.localScale * scaleMultiplier;
             ApplyZombieModeEnemyCombatStatMultipliers(boss, damageMultiplier, speedMultiplier, marker);
-            AICharacterController ai = boss.GetComponentInChildren<AICharacterController>();
+            AICharacterController ai = GetZombieModeEnemyAI(boss.gameObject, marker);
             if (ai != null)
             {
                 ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, 220f * speedMultiplier);

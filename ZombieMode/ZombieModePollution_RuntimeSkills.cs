@@ -136,7 +136,12 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl character = marker.GetComponent<CharacterMainControl>();
+            CharacterMainControl character = marker.Owner;
+            if (character == null)
+            {
+                character = marker.GetComponent<CharacterMainControl>();
+            }
+
             CharacterMainControl player = CharacterMainControl.Main;
             if (character == null || player == null)
             {
@@ -262,6 +267,7 @@ namespace BossRush
         // Commander Aura tick scratch HashSet：复用避免每次 0.5 秒 tick 都 new。
         // 仅在 trackedTargets != null 时使用；调用方负责调用前 Clear()。审查 §3.6。
         private readonly HashSet<int> commanderAuraTargetsScratch = new HashSet<int>();
+        private readonly List<int> commanderAuraStaleTargetsScratch = new List<int>(8);
 
         internal void RefreshZombieModeCommanderAuraTargets(
             int runId,
@@ -269,13 +275,20 @@ namespace BossRush
             float radius,
             Dictionary<int, ZombieModeCommanderAuraTargetRuntime> trackedTargets)
         {
-            if (!IsZombieModeRunValid(runId) || commander == null || commander.gameObject == null)
+            if (!IsZombieModeRunValid(runId) || commander == null)
+            {
+                return;
+            }
+
+            GameObject commanderObject = commander.gameObject;
+            if (commanderObject == null)
             {
                 return;
             }
 
             float radiusSqr = radius * radius;
-            int sourceId = commander.gameObject.GetInstanceID();
+            Vector3 commanderPosition = commander.transform.position;
+            int sourceId = commanderObject.GetInstanceID();
             HashSet<int> currentTargets = null;
             if (trackedTargets != null)
             {
@@ -286,14 +299,28 @@ namespace BossRush
             {
                 ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
                 if (record == null ||
-                    record.Kind != ZombieModeRunOnlyObjectKind.Enemy ||
-                    record.GameObject == null ||
-                    record.GameObject == commander.gameObject)
+                    record.Kind != ZombieModeRunOnlyObjectKind.Enemy)
                 {
                     continue;
                 }
 
-                ZombieModeEnemyRuntimeMarker target = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                GameObject recordObject = record.GameObject;
+                if (recordObject == null ||
+                    recordObject == commanderObject)
+                {
+                    continue;
+                }
+
+                ZombieModeEnemyRuntimeMarker target = record.Target as ZombieModeEnemyRuntimeMarker;
+                if (target == null)
+                {
+                    target = recordObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (target != null)
+                    {
+                        record.Target = target;
+                    }
+                }
+
                 if (target == null ||
                     target.RunId != runId ||
                     target.IsBoss ||
@@ -304,14 +331,19 @@ namespace BossRush
                     continue;
                 }
 
-                Vector3 delta = target.transform.position - commander.transform.position;
+                Vector3 delta = target.transform.position - commanderPosition;
                 delta.y = 0f;
                 if (delta.sqrMagnitude > radiusSqr)
                 {
                     continue;
                 }
 
-                CharacterMainControl targetCharacter = target.GetComponent<CharacterMainControl>();
+                CharacterMainControl targetCharacter = target.Owner;
+                if (targetCharacter == null)
+                {
+                    targetCharacter = target.GetComponent<CharacterMainControl>();
+                }
+
                 if (targetCharacter == null ||
                     targetCharacter.Health == null ||
                     targetCharacter.Health.CurrentHealth <= 0f)
@@ -319,16 +351,22 @@ namespace BossRush
                     continue;
                 }
 
-                int targetId = targetCharacter.gameObject.GetInstanceID();
+                GameObject targetObject = targetCharacter.gameObject;
+                int targetId = targetObject.GetInstanceID();
                 if (currentTargets != null)
                 {
                     currentTargets.Add(targetId);
                 }
 
-                ZombieModeCommanderAuraTargetRuntime targetRuntime = targetCharacter.gameObject.GetComponent<ZombieModeCommanderAuraTargetRuntime>();
+                ZombieModeCommanderAuraTargetRuntime targetRuntime = target.CommanderAuraTargetRuntime;
                 if (targetRuntime == null)
                 {
-                    targetRuntime = targetCharacter.gameObject.AddComponent<ZombieModeCommanderAuraTargetRuntime>();
+                    targetRuntime = targetObject.GetComponent<ZombieModeCommanderAuraTargetRuntime>();
+                    if (targetRuntime == null)
+                    {
+                        targetRuntime = targetObject.AddComponent<ZombieModeCommanderAuraTargetRuntime>();
+                    }
+                    target.CommanderAuraTargetRuntime = targetRuntime;
                 }
 
                 targetRuntime.ApplySource(runId, sourceId);
@@ -343,7 +381,7 @@ namespace BossRush
                 return;
             }
 
-            List<int> staleTargetIds = null;
+            commanderAuraStaleTargetsScratch.Clear();
             foreach (KeyValuePair<int, ZombieModeCommanderAuraTargetRuntime> entry in trackedTargets)
             {
                 if (currentTargets.Contains(entry.Key))
@@ -356,23 +394,20 @@ namespace BossRush
                     entry.Value.RemoveSource(sourceId);
                 }
 
-                if (staleTargetIds == null)
-                {
-                    staleTargetIds = new List<int>();
-                }
-
-                staleTargetIds.Add(entry.Key);
+                commanderAuraStaleTargetsScratch.Add(entry.Key);
             }
 
-            if (staleTargetIds == null)
+            if (commanderAuraStaleTargetsScratch.Count == 0)
             {
                 return;
             }
 
-            for (int i = 0; i < staleTargetIds.Count; i++)
+            for (int i = 0; i < commanderAuraStaleTargetsScratch.Count; i++)
             {
-                trackedTargets.Remove(staleTargetIds[i]);
+                trackedTargets.Remove(commanderAuraStaleTargetsScratch[i]);
             }
+
+            commanderAuraStaleTargetsScratch.Clear();
         }
 
         private void StartZombieModeTelegraphedAreaDamage(

@@ -520,7 +520,8 @@ namespace BossRush
             boss.transform.position = target;
             instance.Lifecycle.LastKnownPosition = target;
             instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
-            AICharacterController ai = boss.GetComponentInChildren<AICharacterController>();
+            ZombieModeEnemyRuntimeMarker marker = EnsureZombieModeBossMarker(instance);
+            AICharacterController ai = GetZombieModeEnemyAI(boss.gameObject, marker);
             CharacterMainControl main = CharacterMainControl.Main;
             if (ai != null && main != null)
             {
@@ -863,6 +864,7 @@ namespace BossRush
         private int runtimeRunId;
         private float runtimeEndTime;
         private float runtimePauseStartTime = -1f;
+        private ModBehaviour owner;
 
         protected int RuntimeRunId
         {
@@ -872,6 +874,7 @@ namespace BossRush
         protected void InitializeTimedRuntime(int newRunId, float duration)
         {
             runtimeRunId = newRunId;
+            owner = ModBehaviour.Instance;
             runtimeEndTime = Time.unscaledTime + Mathf.Max(0.05f, duration);
         }
 
@@ -887,7 +890,9 @@ namespace BossRush
 
         private void Update()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            float currentTime = Time.unscaledTime;
+
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst == null || inst.ZombieModeCurrentRunId != runtimeRunId)
             {
                 OnRuntimeStopping(inst, false);
@@ -899,20 +904,20 @@ namespace BossRush
             {
                 if (runtimePauseStartTime < 0f)
                 {
-                    runtimePauseStartTime = Time.unscaledTime;
+                    runtimePauseStartTime = currentTime;
                 }
                 return;
             }
 
             if (runtimePauseStartTime >= 0f)
             {
-                float pausedDuration = Mathf.Max(0f, Time.unscaledTime - runtimePauseStartTime);
+                float pausedDuration = Mathf.Max(0f, currentTime - runtimePauseStartTime);
                 runtimePauseStartTime = -1f;
                 runtimeEndTime += pausedDuration;
                 OnRuntimeResumedAfterPause(inst, pausedDuration);
             }
 
-            if (Time.unscaledTime >= runtimeEndTime)
+            if (currentTime >= runtimeEndTime)
             {
                 OnRuntimeStopping(inst, true);
                 Destroy(gameObject);
@@ -920,6 +925,17 @@ namespace BossRush
             }
 
             TickRuntime(inst);
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null || inst.ZombieModeCurrentRunId != runtimeRunId)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
         }
     }
 
@@ -977,10 +993,12 @@ namespace BossRush
         private float shieldRemaining;
         private float shieldEndTime;
         private bool shieldActive;
+        private ModBehaviour owner;
 
         public void ActivateShield(int newRunId, float amount, float duration)
         {
             runId = newRunId;
+            owner = ModBehaviour.Instance;
             shieldRemaining = Mathf.Max(shieldRemaining, amount);
             shieldEndTime = GetRuntimeNow() + duration;
             shieldActive = true;
@@ -1046,7 +1064,7 @@ namespace BossRush
 
         private void Update()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
                 shieldActive = false;
@@ -1067,8 +1085,19 @@ namespace BossRush
 
         private float GetRuntimeNow()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             return inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime;
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null || inst.ZombieModeCurrentRunId != runId)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
         }
     }
 

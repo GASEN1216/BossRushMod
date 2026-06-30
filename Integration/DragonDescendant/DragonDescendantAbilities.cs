@@ -220,8 +220,10 @@ namespace BossRush
             if (bossCharacter == null || playerCharacter == null) return false;
             var inst = ModBehaviour.Instance;
             if (inst == null || !inst.IsModeEActive) return false;
-            float dist = Vector3.Distance(bossCharacter.transform.position, playerCharacter.transform.position);
-            return dist > DragonDescendantConfig.LeashDistance;
+            float leashDistance = DragonDescendantConfig.LeashDistance;
+            float leashDistanceSqr = leashDistance * leashDistance;
+            Vector3 leashDelta = bossCharacter.transform.position - playerCharacter.transform.position;
+            return leashDelta.sqrMagnitude > leashDistanceSqr;
         }
 
         // ========== 初始化 ==========

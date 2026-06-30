@@ -307,7 +307,7 @@ namespace BossRush
                 }
 
                 Vector3 recoveredPos;
-                if (TryRecoverEnemyToNearestSpawnPoint(boss, state, main, reason, out recoveredPos))
+                if (TryRecoverEnemyToNearestSpawnPoint(boss, state, main, reason, null, out recoveredPos))
                 {
                     state.lastMovedTime = Time.time;
                     state.lastRecoveryTime = Time.time;

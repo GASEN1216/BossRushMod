@@ -92,6 +92,7 @@ namespace BossRush
         // ============================================================================
 
         private static readonly int hash_MoveSpeed = Animator.StringToHash("MoveSpeed");
+        private static readonly RaycastHit[] heightCorrectionBuffer = new RaycastHit[8];
 
         // ============================================================================
         // 公共方法
@@ -189,8 +190,8 @@ namespace BossRush
 
             if (CurrentPlayerTransform == null)
             {
-                var player = GameObject.FindGameObjectWithTag("Player");
-                if (player != null)
+                Transform foundPlayerTransform;
+                if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform))
                 {
                     RefreshFollowPlayerCharacter(true);
                     ModBehaviour.DevLog("[GoblinNPC] 通过 Tag 获取到玩家引用");
@@ -369,14 +370,16 @@ namespace BossRush
             moving = true;
             reachedEndOfPath = false;
 
-            float distanceToWaypoint;
+            float nextWaypointDistanceSqr = nextWaypointDistance * nextWaypointDistance;
+            float distanceToWaypointSqr;
+            Vector3 toWaypoint;
             while (true)
             {
-                Vector3 toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
+                toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
                 toWaypoint.y = 0;
-                distanceToWaypoint = toWaypoint.magnitude;
+                distanceToWaypointSqr = toWaypoint.sqrMagnitude;
 
-                if (distanceToWaypoint < nextWaypointDistance)
+                if (distanceToWaypointSqr < nextWaypointDistanceSqr)
                 {
                     if (currentWaypoint + 1 < path.vectorPath.Count)
                     {
@@ -394,9 +397,13 @@ namespace BossRush
                 }
             }
 
-            Vector3 direction = path.vectorPath[currentWaypoint] - transform.position;
-            direction.y = 0;
-            direction = direction.normalized;
+            float distanceToWaypoint = Mathf.Sqrt(distanceToWaypointSqr);
+            Vector3 direction = Vector3.zero;
+            if (distanceToWaypoint > 0.00001f)
+            {
+                float inverseDistance = 1f / distanceToWaypoint;
+                direction = toWaypoint * inverseDistance;
+            }
 
             float speedMultiplier;
             if (reachedEndOfPath)
@@ -491,15 +498,16 @@ namespace BossRush
             RaycastHit hit;
             Vector3 rayStart = pos + Vector3.up * 1f;
 
-            RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 5f);
-            if (hits != null && hits.Length > 0)
+            int hitCount = Physics.RaycastNonAlloc(rayStart, Vector3.down, heightCorrectionBuffer, 5f);
+            if (hitCount > 0)
             {
                 float lowestY = float.MaxValue;
                 float configY = pos.y;
                 float bestY = pos.y;
 
-                foreach (var h in hits)
+                for (int i = 0; i < hitCount; i++)
                 {
+                    RaycastHit h = heightCorrectionBuffer[i];
                     if (Mathf.Abs(h.point.y - configY) < 1f)
                     {
                         bestY = h.point.y + 0.1f;

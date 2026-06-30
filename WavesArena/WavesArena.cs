@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // WavesArena.cs - 波次与竞技场管理
 // ============================================================================
 // 模块说明：
@@ -53,7 +53,7 @@ namespace BossRush
             "Cname_StormBoss4",    // 口口口口 或 四骑士
             "Cname_StormBoss5",    // 口口口口 或 四骑士
             "DragonDescendant",    // 龙裔遗族
-            "boss_dragonking"      // 焚天龙皇
+            "boss_dragonking",     // 焚天龙皇
         };
 
         /// <summary>
@@ -466,6 +466,13 @@ namespace BossRush
                 // 使用过滤后的 Boss 列表判断是否还有下一波
                 var filteredPresets = GetFilteredEnemyPresets();
                 int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
+
+                if (currentEnemyIndex >= presetCount)
+                {
+                    OnAllEnemiesDefeated();
+                    return;
+                }
+
                 if (currentEnemyIndex < presetCount)
                 {
                     if (config != null && config.useInteractBetweenWaves)
@@ -764,7 +771,7 @@ namespace BossRush
 
             try
             {
-                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                var allPresets = ObjectCache.GetCharacterPresets();
                 if (allPresets == null || allPresets.Length == 0)
                 {
                     return 0;
@@ -846,7 +853,7 @@ namespace BossRush
         {
             try
             {
-                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                var allPresets = ObjectCache.GetCharacterPresets();
                 if (allPresets != null && allPresets.Length > 0)
                 {
                     foreach (var preset in allPresets)

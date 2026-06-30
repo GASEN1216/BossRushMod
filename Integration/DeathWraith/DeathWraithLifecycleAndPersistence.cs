@@ -630,7 +630,7 @@ namespace BossRush
 
             try
             {
-                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                var allPresets = ObjectCache.GetCharacterPresets();
                 if (allPresets == null || allPresets.Length == 0)
                 {
                     DevLog("[DeathWraith] 未找到任何 CharacterRandomPreset");

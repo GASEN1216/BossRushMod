@@ -27,7 +27,7 @@ namespace BossRush
                     yield break;
                 }
 
-                yield return new WaitForSeconds(1f);
+                yield return sharedWait1s;
             }
             DevLog("[BossRush] 场景扫描结束（未找到合适的注入点）。");
         }

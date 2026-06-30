@@ -606,11 +606,12 @@ namespace BossRush
                     newLeader = null;
                 }
 
-                if (preferredLeader == CharacterMainControl.Main && modeFState.PlayerBountyMarks == maxMarks && maxMarks > 0)
+                CharacterMainControl mainPlayer = CharacterMainControl.Main;
+                if (preferredLeader == mainPlayer && modeFState.PlayerBountyMarks == maxMarks && maxMarks > 0)
                 {
                     newLeader = null;
                 }
-                else if (preferredLeader != null && preferredLeader != CharacterMainControl.Main)
+                else if (preferredLeader != null && preferredLeader != mainPlayer)
                 {
                     int preferredMarks = 0;
                     if (modeFState.BountyMarksByCharacterId.TryGetValue(preferredLeader.GetInstanceID(), out preferredMarks)

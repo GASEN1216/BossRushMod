@@ -11,6 +11,7 @@ namespace BossRush
 
         private static readonly int MainTexPropertyId = Shader.PropertyToID("_MainTex");
 
+        private Transform cachedTransform;
         private Transform bossBody;
         private PhantomWitchFxDetailLevel detailLevel = PhantomWitchFxDetailLevel.Full;
         private PhantomWitchPhase phase = PhantomWitchPhase.Phase1;
@@ -33,9 +34,22 @@ namespace BossRush
         private float heartbeatVisibleUntil = -1f;
         private readonly List<GameObject> transientEffects = new List<GameObject>(8);
 
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
+
         public void Initialize(Transform bossBody)
         {
-            this.bossBody = bossBody != null ? bossBody : transform;
+            this.bossBody = bossBody != null ? bossBody : CachedTransform;
             EnsureInitialized();
             SetDetailLevel(PhantomWitchFxRuntime.CurrentDetailLevel);
             SetPhase(phase);
@@ -76,7 +90,7 @@ namespace BossRush
         {
             if (!initialized)
             {
-                Initialize(transform);
+                Initialize(CachedTransform);
             }
         }
 
@@ -337,9 +351,10 @@ namespace BossRush
         {
             GameObject halo = GameObject.CreatePrimitive(PrimitiveType.Quad);
             halo.name = "PW_AmbientColdHalo";
-            halo.transform.SetParent(transform, false);
-            halo.transform.localPosition = new Vector3(0f, 1.1f, 0f);
-            halo.transform.localScale = new Vector3(1.2f, 2f, 1f);
+            Transform haloTransform = halo.transform;
+            haloTransform.SetParent(CachedTransform, false);
+            haloTransform.localPosition = new Vector3(0f, 1.1f, 0f);
+            haloTransform.localScale = new Vector3(1.2f, 2f, 1f);
 
             Collider collider = halo.GetComponent<Collider>();
             if (collider != null)
@@ -347,7 +362,7 @@ namespace BossRush
                 Destroy(collider);
             }
 
-            coldHaloTransform = halo.transform;
+            coldHaloTransform = haloTransform;
             coldHaloRenderer = halo.GetComponent<MeshRenderer>();
             haloMaterial = new Material(ResolveTransparentShader());
             haloMaterial.name = "PW_AmbientColdHalo";
@@ -369,9 +384,10 @@ namespace BossRush
         {
             GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Quad);
             flash.name = "PW_AmbientHeartbeat";
-            flash.transform.SetParent(transform, false);
-            flash.transform.localPosition = new Vector3(0f, 1.2f, 0.16f);
-            flash.transform.localScale = new Vector3(0.08f, 0.08f, 1f);
+            Transform flashTransform = flash.transform;
+            flashTransform.SetParent(CachedTransform, false);
+            flashTransform.localPosition = new Vector3(0f, 1.2f, 0.16f);
+            flashTransform.localScale = new Vector3(0.08f, 0.08f, 1f);
 
             Collider collider = flash.GetComponent<Collider>();
             if (collider != null)
@@ -379,7 +395,7 @@ namespace BossRush
                 Destroy(collider);
             }
 
-            heartbeatTransform = flash.transform;
+            heartbeatTransform = flashTransform;
             heartbeatRenderer = flash.GetComponent<MeshRenderer>();
             if (heartbeatRenderer != null)
             {
@@ -506,15 +522,15 @@ namespace BossRush
                 return;
             }
 
-            Camera camera = PhantomWitchFxRuntime.CurrentCamera;
-            if (camera != null)
+            Transform cameraTransform = PhantomWitchFxRuntime.CurrentCameraTransform;
+            if (cameraTransform != null)
             {
-                coldHaloTransform.rotation = camera.transform.rotation;
+                coldHaloTransform.rotation = cameraTransform.rotation;
             }
 
             float alpha = Mathf.Lerp(
                 PhantomWitchConfig.AmbientHaloAlphaMin,
-                PhantomWitchConfig.AmbientHaloAlphaMax + GetPhaseHaloBonus() + GetCloseCameraHaloBonus(camera),
+                PhantomWitchConfig.AmbientHaloAlphaMax + GetPhaseHaloBonus() + GetCloseCameraHaloBonus(cameraTransform),
                 0.5f + 0.5f * Mathf.Sin((Time.time / PhantomWitchConfig.AmbientHaloBreathPeriod) * Mathf.PI * 2f));
 
             Color haloColor = new Color(
@@ -535,19 +551,22 @@ namespace BossRush
             return phase == PhantomWitchPhase.Phase2 ? PhantomWitchConfig.AmbientHaloPhase2Bonus : 0f;
         }
 
-        private float GetCloseCameraHaloBonus(Camera camera)
+        private float GetCloseCameraHaloBonus(Transform cameraTransform)
         {
-            if (camera == null)
+            if (cameraTransform == null)
             {
                 return 0f;
             }
 
-            float distance = Vector3.Distance(camera.transform.position, transform.position);
-            if (distance >= CloseCameraDistance)
+            Vector3 delta = cameraTransform.position - CachedTransform.position;
+            float closeCameraDistanceSqr = CloseCameraDistance * CloseCameraDistance;
+            float distanceSqr = delta.sqrMagnitude;
+            if (distanceSqr >= closeCameraDistanceSqr)
             {
                 return 0f;
             }
 
+            float distance = Mathf.Sqrt(distanceSqr);
             float t = 1f - Mathf.Clamp01(distance / CloseCameraDistance);
             return PhantomWitchConfig.AmbientHaloAlphaCloseBonus * t;
         }
@@ -573,10 +592,10 @@ namespace BossRush
                 return;
             }
 
-            Camera camera = PhantomWitchFxRuntime.CurrentCamera;
-            if (camera != null)
+            Transform cameraTransform = PhantomWitchFxRuntime.CurrentCameraTransform;
+            if (cameraTransform != null)
             {
-                heartbeatTransform.rotation = camera.transform.rotation;
+                heartbeatTransform.rotation = cameraTransform.rotation;
             }
 
             if (!ShouldShowHeartbeat())
@@ -585,20 +604,21 @@ namespace BossRush
                 return;
             }
 
-            if (Time.time >= nextHeartbeatTime && heartbeatVisibleUntil < Time.time)
+            float now = Time.time;
+            if (now >= nextHeartbeatTime && heartbeatVisibleUntil < now)
             {
-                heartbeatVisibleUntil = Time.time + PhantomWitchConfig.AmbientHeartbeatPulseDuration;
+                heartbeatVisibleUntil = now + PhantomWitchConfig.AmbientHeartbeatPulseDuration;
                 heartbeatRenderer.enabled = true;
                 ScheduleHeartbeat();
             }
 
-            if (heartbeatVisibleUntil < Time.time)
+            if (heartbeatVisibleUntil < now)
             {
                 HideHeartbeatFlash();
                 return;
             }
 
-            float t = Mathf.Clamp01((heartbeatVisibleUntil - Time.time) / PhantomWitchConfig.AmbientHeartbeatPulseDuration);
+            float t = Mathf.Clamp01((heartbeatVisibleUntil - now) / PhantomWitchConfig.AmbientHeartbeatPulseDuration);
             float eased = 1f - Mathf.Abs(t * 2f - 1f);
             float alpha = 0.6f * eased;
             float scale = Mathf.Lerp(0.03f, 0.06f, eased);

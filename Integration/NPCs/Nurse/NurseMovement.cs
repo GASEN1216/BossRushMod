@@ -211,14 +211,16 @@ namespace BossRush
             moving = true;
             reachedEndOfPath = false;
 
-            float distanceToWaypoint;
+            float nextWaypointDistanceSqr = nextWaypointDistance * nextWaypointDistance;
+            float distanceToWaypointSqr;
+            Vector3 toWaypoint;
             while (true)
             {
-                Vector3 toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
+                toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
                 toWaypoint.y = 0f;
-                distanceToWaypoint = toWaypoint.magnitude;
+                distanceToWaypointSqr = toWaypoint.sqrMagnitude;
 
-                if (distanceToWaypoint < nextWaypointDistance)
+                if (distanceToWaypointSqr < nextWaypointDistanceSqr)
                 {
                     if (currentWaypoint + 1 < path.vectorPath.Count)
                     {
@@ -236,9 +238,13 @@ namespace BossRush
                 }
             }
 
-            Vector3 moveDirection = path.vectorPath[currentWaypoint] - transform.position;
-            moveDirection.y = 0f;
-            moveDirection = moveDirection.normalized;
+            float distanceToWaypoint = Mathf.Sqrt(distanceToWaypointSqr);
+            Vector3 moveDirection = Vector3.zero;
+            if (distanceToWaypoint > 0.00001f)
+            {
+                float inverseDistance = 1f / distanceToWaypoint;
+                moveDirection = toWaypoint * inverseDistance;
+            }
             if (moveDirection.sqrMagnitude > 0.001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);

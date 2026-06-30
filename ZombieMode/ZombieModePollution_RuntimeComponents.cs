@@ -119,6 +119,8 @@ namespace BossRush
 
         private void Update()
         {
+            float currentTime = Time.unscaledTime;
+
             ModBehaviour inst = owner;
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
@@ -134,30 +136,36 @@ namespace BossRush
             {
                 if (pauseStartTime < 0f)
                 {
-                    pauseStartTime = Time.unscaledTime;
+                    pauseStartTime = currentTime;
                 }
                 return;
             }
 
             if (pauseStartTime >= 0f)
             {
-                float pausedDuration = Mathf.Max(0f, Time.unscaledTime - pauseStartTime);
+                float pausedDuration = Mathf.Max(0f, currentTime - pauseStartTime);
                 pauseStartTime = -1f;
                 nextSkillTime += pausedDuration;
             }
 
-            if (Time.unscaledTime < nextSkillTime)
+            if (currentTime < nextSkillTime)
             {
                 return;
             }
 
-            nextSkillTime = Time.unscaledTime + cooldown + UnityEngine.Random.Range(0f, 2f);
+            nextSkillTime = currentTime + cooldown + UnityEngine.Random.Range(0f, 2f);
+
+            inst.TryExecuteZombieModeEnemyRuntimeSkill(GetCachedMarker());
+        }
+
+        private ZombieModeEnemyRuntimeMarker GetCachedMarker()
+        {
             if (marker == null)
             {
                 marker = GetComponent<ZombieModeEnemyRuntimeMarker>();
             }
 
-            inst.TryExecuteZombieModeEnemyRuntimeSkill(marker);
+            return marker;
         }
     }
 
@@ -167,8 +175,9 @@ namespace BossRush
         private float radius;
         private float tickInterval;
         private float nextTickTime;
-        private CharacterMainControl owner;
+        private CharacterMainControl ownerCharacter;
         private ZombieModeEnemyRuntimeMarker marker;
+        private ModBehaviour owner;
         private readonly Dictionary<int, ZombieModeCommanderAuraTargetRuntime> trackedTargets =
             new Dictionary<int, ZombieModeCommanderAuraTargetRuntime>();
 
@@ -178,13 +187,14 @@ namespace BossRush
             radius = Mathf.Max(0.5f, newRadius);
             tickInterval = Mathf.Max(0.2f, newTickInterval);
             nextTickTime = 0f;
-            owner = GetComponent<CharacterMainControl>();
+            ownerCharacter = GetComponent<CharacterMainControl>();
             marker = GetComponent<ZombieModeEnemyRuntimeMarker>();
+            owner = ModBehaviour.Instance;
         }
 
         private void Update()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
                 ClearTargets();
@@ -197,24 +207,17 @@ namespace BossRush
                 return;
             }
 
-            if (owner == null)
-            {
-                owner = GetComponent<CharacterMainControl>();
-            }
+            CharacterMainControl character = GetOwnerCharacter();
+            ZombieModeEnemyRuntimeMarker runtimeMarker = GetMarker();
 
-            if (marker == null)
-            {
-                marker = GetComponent<ZombieModeEnemyRuntimeMarker>();
-            }
-
-            if (owner == null ||
-                marker == null ||
-                marker.RunId != runId ||
-                marker.DeathSettled ||
-                marker.RemovedFromRuntime ||
-                !marker.EliteAffixes.Contains(ZombieModeEliteAffix.Commander) ||
-                owner.Health == null ||
-                owner.Health.CurrentHealth <= 0f)
+            if (character == null ||
+                runtimeMarker == null ||
+                runtimeMarker.RunId != runId ||
+                runtimeMarker.DeathSettled ||
+                runtimeMarker.RemovedFromRuntime ||
+                !runtimeMarker.EliteAffixes.Contains(ZombieModeEliteAffix.Commander) ||
+                character.Health == null ||
+                character.Health.CurrentHealth <= 0f)
             {
                 ClearTargets();
                 Destroy(this);
@@ -228,7 +231,38 @@ namespace BossRush
             }
 
             nextTickTime = now + tickInterval;
-            inst.RefreshZombieModeCommanderAuraTargets(runId, owner, radius, trackedTargets);
+            inst.RefreshZombieModeCommanderAuraTargets(runId, character, radius, trackedTargets);
+        }
+
+        private CharacterMainControl GetOwnerCharacter()
+        {
+            if (ownerCharacter == null)
+            {
+                ownerCharacter = GetComponent<CharacterMainControl>();
+            }
+
+            return ownerCharacter;
+        }
+
+        private ZombieModeEnemyRuntimeMarker GetMarker()
+        {
+            if (marker == null)
+            {
+                marker = GetComponent<ZombieModeEnemyRuntimeMarker>();
+            }
+
+            return marker;
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null || inst.ZombieModeCurrentRunId != runId)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
         }
 
         private void OnDisable()
@@ -264,6 +298,8 @@ namespace BossRush
     public sealed class ZombieModeCommanderAuraTargetRuntime : MonoBehaviour
     {
         private int runId;
+        private CharacterMainControl targetCharacter;
+        private ModBehaviour owner;
         private readonly HashSet<int> sourceIds = new HashSet<int>();
         private readonly List<ZombieModeAttributeModifierRecord> auraModifierRecords =
             new List<ZombieModeAttributeModifierRecord>();
@@ -277,6 +313,7 @@ namespace BossRush
 
             runId = newRunId;
             sourceIds.Add(sourceId);
+            owner = ModBehaviour.Instance;
             EnsureModifiers();
         }
 
@@ -298,8 +335,8 @@ namespace BossRush
 
         private void Update()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
-            CharacterMainControl character = GetComponent<CharacterMainControl>();
+            ModBehaviour inst = GetRuntimeOwner();
+            CharacterMainControl character = GetTargetCharacter();
             if (inst == null ||
                 inst.ZombieModeCurrentRunId != runId ||
                 character == null ||
@@ -313,6 +350,17 @@ namespace BossRush
             }
         }
 
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null || inst.ZombieModeCurrentRunId != runId)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
+        }
+
         private void OnDestroy()
         {
             ReleaseModifiers();
@@ -320,7 +368,7 @@ namespace BossRush
 
         private void EnsureModifiers()
         {
-            CharacterMainControl character = GetComponent<CharacterMainControl>();
+            CharacterMainControl character = GetTargetCharacter();
             if (character == null || character.CharacterItem == null)
             {
                 return;
@@ -337,6 +385,16 @@ namespace BossRush
             RuntimeStatModifierTracker.TryAdd(character, ZombieModeStatNames.GunDamageMultiplier, ZombieModeTuning.CommanderAffixDamageBonus, this, auraModifierRecords, "Commander Aura GunDamage");
         }
 
+        private CharacterMainControl GetTargetCharacter()
+        {
+            if (targetCharacter == null)
+            {
+                targetCharacter = GetComponent<CharacterMainControl>();
+            }
+
+            return targetCharacter;
+        }
+
         private void ReleaseModifiers()
         {
             RuntimeStatModifierTracker.RemoveAll(auraModifierRecords, "Commander Aura");
@@ -348,17 +406,20 @@ namespace BossRush
     {
         private int runId;
         private float nextTick;
+        private CharacterMainControl cachedCharacter;
+        private ModBehaviour owner;
 
         public void Initialize(int newRunId)
         {
             runId = newRunId;
-            ModBehaviour inst = ModBehaviour.Instance;
+            owner = ModBehaviour.Instance;
+            ModBehaviour inst = owner;
             nextTick = (inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime) + 1f;
         }
 
         private void Update()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
                 return;
@@ -377,7 +438,7 @@ namespace BossRush
 
             nextTick = now + 1f;
 
-            CharacterMainControl character = GetComponent<CharacterMainControl>();
+            CharacterMainControl character = GetCachedCharacter();
             if (character == null || character.Health == null || character.Health.CurrentHealth <= 0)
             {
                 return;
@@ -385,6 +446,27 @@ namespace BossRush
 
             float heal = Mathf.Max(1f, character.Health.MaxHealth * 0.025f);
             character.Health.SetHealth(Mathf.Min(character.Health.MaxHealth, character.Health.CurrentHealth + heal));
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null || inst.ZombieModeCurrentRunId != runId)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
+        }
+
+        private CharacterMainControl GetCachedCharacter()
+        {
+            if (cachedCharacter == null)
+            {
+                cachedCharacter = GetComponent<CharacterMainControl>();
+            }
+
+            return cachedCharacter;
         }
     }
 
@@ -394,12 +476,14 @@ namespace BossRush
         private float shieldRemaining;
         private float shieldEndTime;
         private bool shieldActive;
+        private ModBehaviour owner;
 
         public void ActivateShield(int newRunId, float amount, float duration)
         {
             runId = newRunId;
             shieldRemaining = amount;
-            ModBehaviour inst = ModBehaviour.Instance;
+            owner = ModBehaviour.Instance;
+            ModBehaviour inst = owner;
             shieldEndTime = (inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime) + duration;
             shieldActive = true;
         }
@@ -411,7 +495,7 @@ namespace BossRush
                 return;
             }
 
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
                 shieldActive = false;
@@ -461,8 +545,19 @@ namespace BossRush
 
         private float GetRuntimeNow()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             return inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime;
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null || inst.ZombieModeCurrentRunId != runId)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
         }
     }
 }

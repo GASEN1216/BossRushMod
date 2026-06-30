@@ -104,34 +104,46 @@ namespace BossRush
                 if (marker == null)
                 {
                     marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (marker != null)
+                    {
+                        record.Target = marker;
+                    }
                 }
 
                 CharacterMainControl owner = marker != null ? marker.Owner : null;
                 if (owner == null)
                 {
                     owner = record.GameObject.GetComponent<CharacterMainControl>();
+                    if (marker != null)
+                    {
+                        marker.Owner = owner;
+                    }
                 }
 
                 Transform enemyTransform = owner != null ? owner.transform : record.GameObject.transform;
                 Vector3 delta = enemyTransform.position - center;
                 delta.y = 0f;
-                if (delta.sqrMagnitude > radiusSqr)
+                float deltaDistanceSqr = delta.sqrMagnitude;
+                if (deltaDistanceSqr > radiusSqr)
                 {
                     continue;
                 }
 
-                if (delta.sqrMagnitude < 0.01f)
+                if (deltaDistanceSqr < 0.01f)
                 {
                     CharacterMainControl player = CharacterMainControl.Main;
                     delta = player != null ? enemyTransform.position - player.transform.position : Random.insideUnitSphere;
                     delta.y = 0f;
-                    if (delta.sqrMagnitude < 0.01f)
+                    deltaDistanceSqr = delta.sqrMagnitude;
+                    if (deltaDistanceSqr < 0.01f)
                     {
                         delta = Vector3.forward;
+                        deltaDistanceSqr = 1f;
                     }
                 }
 
-                Vector3 destination = center + delta.normalized * repelRadius;
+                float inverseDistance = 1f / Mathf.Sqrt(deltaDistanceSqr);
+                Vector3 destination = center + delta * (repelRadius * inverseDistance);
                 destination.y = enemyTransform.position.y;
                 Vector3 resolved;
                 if (SpawnPositionHelper.TrySampleNavMesh(
@@ -144,7 +156,7 @@ namespace BossRush
                 }
 
                 enemyTransform.position = destination;
-                SetZombieModeEnemyThreatSuppressed(record.GameObject, true);
+                SetZombieModeEnemyThreatSuppressed(record.GameObject, marker, true);
             }
         }
 
@@ -161,7 +173,17 @@ namespace BossRush
                     continue;
                 }
 
-                SetZombieModeEnemyThreatSuppressed(record.GameObject, true);
+                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
+                if (marker == null && record.GameObject != null)
+                {
+                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (marker != null)
+                    {
+                        record.Target = marker;
+                    }
+                }
+
+                SetZombieModeEnemyThreatSuppressed(record.GameObject, marker, true);
             }
         }
 
@@ -183,24 +205,37 @@ namespace BossRush
                     continue;
                 }
 
-                SetZombieModeEnemyThreatSuppressed(record.GameObject, false);
+                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
+                if (marker == null && record.GameObject != null)
+                {
+                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (marker != null)
+                    {
+                        record.Target = marker;
+                    }
+                }
+
+                SetZombieModeEnemyThreatSuppressed(record.GameObject, marker, false);
             }
         }
 
-        private void SetZombieModeEnemyThreatSuppressed(GameObject enemyObject, bool suppressed)
+        private void SetZombieModeEnemyThreatSuppressed(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker, bool suppressed)
         {
             if (enemyObject == null)
             {
                 return;
             }
 
-            AICharacterController ai = enemyObject.GetComponentInChildren<AICharacterController>();
+            if (marker == null || marker.gameObject != enemyObject)
+            {
+                marker = enemyObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+            }
+
+            AICharacterController ai = GetZombieModeEnemyAI(enemyObject, marker);
             if (ai == null)
             {
                 return;
             }
-
-            ZombieModeEnemyRuntimeMarker marker = enemyObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
 
             if (suppressed)
             {

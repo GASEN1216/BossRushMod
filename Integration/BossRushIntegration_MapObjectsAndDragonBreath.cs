@@ -366,7 +366,7 @@ namespace BossRush
         private System.Collections.IEnumerator DelayedSubscribeDragonBreathEvents()
         {
             // 等待0.5秒确保玩家角色已初始化
-            yield return new WaitForSeconds(0.5f);
+            yield return sharedWait05s;
             SubscribeDragonBreathEffectEvent();
         }
 

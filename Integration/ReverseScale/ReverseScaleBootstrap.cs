@@ -76,7 +76,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator DelayedCheckReverseScaleEquipment()
         {
-            yield return new WaitForSeconds(0.5f);
+            yield return sharedWait05s;
 
             if (ReverseScaleEffectManager.Instance != null)
             {

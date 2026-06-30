@@ -51,9 +51,14 @@ namespace BossRush
         private int currentFrame = 0;
         private float frameTimer = 0f;
         private bool isPlaying = false;
-        private Transform targetTransform;  // 跟随的目标
+        private Transform targetTransform;
         private float displayTimer = 0f;
         private bool animationCompleted = false;
+        private float cachedFrameInterval;
+        private Transform cachedTransform;
+        private static Camera cachedBillboardCamera;
+        private static Transform cachedBillboardCameraTransform;
+        private static int cachedBillboardCameraFrame = -1;
         
         // ============================================================================
         // 静态工厂方法
@@ -161,7 +166,12 @@ namespace BossRush
         // ============================================================================
         // 生命周期
         // ============================================================================
-        
+
+        private void Awake()
+        {
+            cachedTransform = transform;
+        }
+
         private void Initialize()
         {
             // 创建SpriteRenderer
@@ -175,7 +185,7 @@ namespace BossRush
             }
             
             // 设置缩放
-            transform.localScale = Vector3.one * spriteScale;
+            GetCachedTransform().localScale = Vector3.one * spriteScale;
             
             // 更新位置
             UpdatePosition();
@@ -217,29 +227,57 @@ namespace BossRush
         {
             if (targetTransform != null)
             {
-                transform.position = targetTransform.position + Vector3.up * heightOffset;
+                GetCachedTransform().position = targetTransform.position + Vector3.up * heightOffset;
             }
         }
         
         private void FaceCamera()
         {
-            if (Camera.main != null)
+            Camera mainCamera = GetBillboardCamera();
+            Transform cameraTransform = cachedBillboardCameraTransform;
+            if (mainCamera == null)
+            {
+                return;
+            }
+
+            if (cameraTransform != null)
             {
                 // Billboard效果：始终面向相机
-                transform.rotation = Camera.main.transform.rotation;
+                GetCachedTransform().rotation = cameraTransform.rotation;
             }
+        }
+
+        private static Camera GetBillboardCamera()
+        {
+            if (cachedBillboardCameraFrame != Time.frameCount)
+            {
+                cachedBillboardCamera = Camera.main;
+                cachedBillboardCameraTransform = cachedBillboardCamera != null ? cachedBillboardCamera.transform : null;
+                cachedBillboardCameraFrame = Time.frameCount;
+            }
+
+            return cachedBillboardCamera;
+        }
+
+        private Transform GetCachedTransform()
+        {
+            if (cachedTransform == null)
+            {
+                cachedTransform = transform;
+            }
+
+            return cachedTransform;
         }
         
         private void UpdateAnimation()
         {
             if (frames == null || frames.Length == 0) return;
-            
+
             frameTimer += Time.deltaTime;
-            float frameInterval = 1f / frameRate;
-            
-            if (frameTimer >= frameInterval)
+
+            if (frameTimer >= cachedFrameInterval)
             {
-                frameTimer -= frameInterval;
+                frameTimer -= cachedFrameInterval;
                 currentFrame++;
                 
                 if (currentFrame >= frames.Length)
@@ -279,6 +317,7 @@ namespace BossRush
             frameTimer = 0f;
             displayTimer = 0f;
             animationCompleted = false;
+            cachedFrameInterval = frameRate > 0f ? 1f / frameRate : 0.125f;
             
             if (frames != null && frames.Length > 0)
             {

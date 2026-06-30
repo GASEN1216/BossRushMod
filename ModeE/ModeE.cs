@@ -51,6 +51,9 @@ namespace BossRush
         /// <summary>当前所有存活的 Mode E 敌人（跨阵营）</summary>
         private readonly List<CharacterMainControl> modeEAliveEnemies = new List<CharacterMainControl>();
 
+        /// <summary>Mode E 结束清理快照复用列表，避免结束时按敌人数量分配数组。</summary>
+        private readonly List<CharacterMainControl> modeEEndCleanupEnemyScratch = new List<CharacterMainControl>(32);
+
         /// <summary>Mode E 存活敌人的去重集合，避免重复注册导致列表和扫描路径膨胀。</summary>
         private readonly HashSet<CharacterMainControl> modeEAliveEnemySet = new HashSet<CharacterMainControl>();
 

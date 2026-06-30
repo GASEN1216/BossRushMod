@@ -284,8 +284,9 @@ namespace BossRush
 
             int loopCount = 0;
             const int MAX_SPAWNER_DISABLE_ATTEMPTS = 5;
+            const int MAX_LOOP_COUNT = 600;
 
-            while (!IsActive && bossRushArenaActive && !modeEActive)
+            while (!IsActive && bossRushArenaActive && !modeEActive && loopCount < MAX_LOOP_COUNT)
             {
                 loopCount++;
 
@@ -304,7 +305,7 @@ namespace BossRush
                     DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 第 " + loopCount + " 次清理，缓存角色数=" + enemyCount);
                 }
 
-                yield return new WaitForSeconds(0.5f);
+                yield return sharedWait05s;
             }
 
             DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 协程结束，IsActive=" + IsActive + ", bossRushArenaActive=" + bossRushArenaActive + ", 总循环次数=" + loopCount);

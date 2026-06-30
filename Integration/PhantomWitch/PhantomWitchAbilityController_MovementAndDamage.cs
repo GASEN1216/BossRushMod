@@ -239,9 +239,12 @@ namespace BossRush
                 // NavMesh 整个范围都没命中 → 用目标位置 + 偏移硬跳，避免原地传送死局
                 Vector3 toTarget = target.transform.position - bossPos;
                 toTarget.y = 0f;
-                if (toTarget.sqrMagnitude > 0.01f)
+                float toTargetDistanceSqr = toTarget.sqrMagnitude;
+                if (toTargetDistanceSqr > 0.01f)
                 {
-                    Vector3 approach = bossPos + toTarget.normalized * Mathf.Min(toTarget.magnitude, maxDistance * 0.6f);
+                    float toTargetDistance = Mathf.Sqrt(toTargetDistanceSqr);
+                    float fallbackMoveDistance = Mathf.Min(toTargetDistance, maxDistance * 0.6f);
+                    Vector3 approach = bossPos + toTarget * (fallbackMoveDistance / toTargetDistance);
                     approach.y = bossPos.y;
                     return approach;
                 }
@@ -348,10 +351,13 @@ namespace BossRush
             Vector3 desiredForward = dir.normalized;
             Vector3 currentForward = bossCharacter.transform.forward;
             currentForward.y = 0f;
-            if (currentForward.sqrMagnitude > 0.01f)
+            float currentForwardSqr = currentForward.sqrMagnitude;
+            if (currentForwardSqr > 0.01f)
             {
-                float yawDelta = Vector3.Angle(currentForward.normalized, desiredForward);
-                if (yawDelta < 12f)
+                float faceTargetDotThreshold = Mathf.Cos(12f * Mathf.Deg2Rad);
+                float currentForwardLength = Mathf.Sqrt(currentForwardSqr);
+                float currentForwardDot = Vector3.Dot(currentForward, desiredForward);
+                if (currentForwardDot > currentForwardLength * faceTargetDotThreshold)
                 {
                     return;
                 }
@@ -383,6 +389,9 @@ namespace BossRush
 
             Buff curseBuff = applyCurse ? PhantomWitchAssetManager.GetCurseBuff() : null;
             processedReceiverIds.Clear();
+            float radiusSqr = radius * radius;
+            bool requiresConeAngleCheck = halfAngle < 179f;
+            float angleDotThreshold = Mathf.Cos(halfAngle * Mathf.Deg2Rad);
 
             int dealtCount = 0;
             for (int i = 0; i < hitCount; i++)
@@ -420,15 +429,16 @@ namespace BossRush
                 Vector3 toTarget = receiver.transform.position - origin;
                 toTarget.y = 0f;
                 float sqrDistance = toTarget.sqrMagnitude;
-                if (sqrDistance > radius * radius)
+                if (sqrDistance > radiusSqr)
                 {
                     continue;
                 }
 
-                if (halfAngle < 179f && sqrDistance > 0.0001f)
+                if (requiresConeAngleCheck && sqrDistance > 0.0001f)
                 {
-                    float angle = Vector3.Angle(forward, toTarget.normalized);
-                    if (angle > halfAngle)
+                    float targetDistance = Mathf.Sqrt(sqrDistance);
+                    float targetDot = Vector3.Dot(forward, toTarget);
+                    if (targetDot < targetDistance * angleDotThreshold)
                     {
                         continue;
                     }
@@ -607,11 +617,11 @@ namespace BossRush
             return GetCurrentWeaponTypeId();
         }
 
-        private float GetFlatDistance(Vector3 a, Vector3 b)
+        private float GetFlatDistanceSqr(Vector3 a, Vector3 b)
         {
             a.y = 0f;
             b.y = 0f;
-            return Vector3.Distance(a, b);
+            return (a - b).sqrMagnitude;
         }
 
     }

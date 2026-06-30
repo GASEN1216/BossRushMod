@@ -60,6 +60,9 @@ namespace BossRush
         // 已召唤的僵尸列表（用于清理）
         private static readonly List<CharacterMainControl> summonedZombies = new List<CharacterMainControl>();
 
+        private static readonly Collider[] spawnCheckBuffer = new Collider[16];
+        private static int cachedWallMask = -1;
+
         public static void SetConfig(FrostmourneConfig config)
         {
             _config = config;
@@ -391,7 +394,7 @@ namespace BossRush
 
             try
             {
-                CharacterRandomPreset[] allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                CharacterRandomPreset[] allPresets = ObjectCache.GetCharacterPresets();
                 foreach (CharacterRandomPreset preset in allPresets)
                 {
                     if (preset == null) continue;
@@ -496,17 +499,22 @@ namespace BossRush
         /// </summary>
         private static bool IsSpawnPointValid(Vector3 position)
         {
-            // 检测墙壁等不可通过的障碍物
-            int wallMask = LayerMask.GetMask("Default", "Wall");
-            Collider[] hits = Physics.OverlapCapsule(
+            if (cachedWallMask < 0)
+            {
+                cachedWallMask = LayerMask.GetMask("Default", "Wall");
+            }
+
+            int count = Physics.OverlapCapsuleNonAlloc(
                 position,
                 position + Vector3.up * 1.5f,
                 0.4f,
-                wallMask
+                spawnCheckBuffer,
+                cachedWallMask
             );
 
-            foreach (Collider col in hits)
+            for (int i = 0; i < count; i++)
             {
+                Collider col = spawnCheckBuffer[i];
                 if (col != null && !col.isTrigger)
                 {
                     return false;
@@ -951,14 +959,16 @@ namespace BossRush
             moving = true;
             reachedEndOfPath = false;
 
-            float distanceToWaypoint;
+            float nextWaypointDistanceSqr = NextWaypointDistance * NextWaypointDistance;
+            float distanceToWaypointSqr;
+            Vector3 toWaypoint;
             while (true)
             {
-                Vector3 toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
+                toWaypoint = path.vectorPath[currentWaypoint] - transform.position;
                 toWaypoint.y = 0f;
-                distanceToWaypoint = toWaypoint.magnitude;
+                distanceToWaypointSqr = toWaypoint.sqrMagnitude;
 
-                if (distanceToWaypoint < NextWaypointDistance)
+                if (distanceToWaypointSqr < nextWaypointDistanceSqr)
                 {
                     if (currentWaypoint + 1 < path.vectorPath.Count)
                     {
@@ -976,9 +986,7 @@ namespace BossRush
                 }
             }
 
-            Vector3 direction = path.vectorPath[currentWaypoint] - transform.position;
-            direction.y = 0f;
-            if (direction.sqrMagnitude <= 0.0001f)
+            if (distanceToWaypointSqr <= 0.0001f)
             {
                 NPCPathingHelper.StopMovement(
                     ref path,
@@ -989,7 +997,10 @@ namespace BossRush
                 return false;
             }
 
-            direction.Normalize();
+            float distanceToWaypoint = Mathf.Sqrt(distanceToWaypointSqr);
+            Vector3 direction = toWaypoint;
+            float inverseDistance = 1f / distanceToWaypoint;
+            direction *= inverseDistance;
 
             float speedMultiplier = 1f;
             if (reachedEndOfPath)

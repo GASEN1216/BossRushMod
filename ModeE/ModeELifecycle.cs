@@ -64,6 +64,9 @@ namespace BossRush
                 RemoveModeEPlayerScalingModifiers();
                 modeEPlayerLastHitKillCount = 0;
 
+                // 清理变异词条（覆盖正常通关 / 玩家死亡 / 手动退出）
+                ClearMutatorsForMode("ModeE");
+
                 // 恢复玩家阵营
                 try
                 {
@@ -84,12 +87,17 @@ namespace BossRush
 
                 // 清理所有存活的 Mode E 敌人（优先使用游戏API触发正常死亡流程）
                 // [L4修复] 清理前先阻止所有敌人掉落战利品箱子，防止模式结束时友军Boss掉落一堆箱子
-                CharacterMainControl[] trackedEnemies = modeEAliveEnemies.ToArray();
-                for (int i = trackedEnemies.Length - 1; i >= 0; i--)
+                modeEEndCleanupEnemyScratch.Clear();
+                for (int i = 0; i < modeEAliveEnemies.Count; i++)
+                {
+                    modeEEndCleanupEnemyScratch.Add(modeEAliveEnemies[i]);
+                }
+
+                for (int i = modeEEndCleanupEnemyScratch.Count - 1; i >= 0; i--)
                 {
                     try
                     {
-                        CharacterMainControl enemy = trackedEnemies[i];
+                        CharacterMainControl enemy = modeEEndCleanupEnemyScratch[i];
                         if (enemy != null && enemy.gameObject != null)
                         {
                             Teams? enemyFaction = null;
@@ -141,6 +149,7 @@ namespace BossRush
                         DevLog("[ModeE] [WARNING] 结束模式时清理敌人失败: index=" + i + ", " + e.Message);
                     }
                 }
+                modeEEndCleanupEnemyScratch.Clear();
 
                 // 清理神秘商人 NPC
                 CleanupModeEMerchant();

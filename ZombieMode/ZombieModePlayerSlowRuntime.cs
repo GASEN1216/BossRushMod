@@ -8,6 +8,7 @@ namespace BossRush
         private float slowEndTime;
         private float currentSlowPercent;
         private bool slowActive;
+        private ModBehaviour owner;
         private readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> slowModifierRecords = new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
 
         public void ApplySlow(int newRunId, float percent, float duration)
@@ -19,6 +20,7 @@ namespace BossRush
             }
 
             runId = newRunId;
+            owner = ModBehaviour.Instance;
             float endCandidate = now + duration;
             if (percent > currentSlowPercent || endCandidate > slowEndTime)
             {
@@ -53,7 +55,7 @@ namespace BossRush
         private void Update()
         {
             if (!slowActive) return;
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst == null || inst.ZombieModeCurrentRunId != runId)
             {
                 ClearSlowState();
@@ -130,8 +132,19 @@ namespace BossRush
 
         private float GetRuntimeNow()
         {
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             return inst != null ? inst.GetZombieModeRuntimeNow() : Time.unscaledTime;
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null || inst.ZombieModeCurrentRunId != runId)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
         }
     }
 }

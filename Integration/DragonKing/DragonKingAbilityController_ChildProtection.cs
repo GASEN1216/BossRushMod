@@ -140,7 +140,8 @@ namespace BossRush
         {
             try
             {
-                if (bossCharacter == null) return;
+                Transform bossRoot = BossTransform;
+                if (bossRoot == null) return;
 
                 string dialogue = L10n.T(
                     DragonKingConfig.ChildProtectionDialogueCN,
@@ -150,7 +151,7 @@ namespace BossRush
                 // 使用DialogueBubblesManager显示气泡
                 Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
                     dialogue,
-                    bossCharacter.transform,
+                    bossRoot,
                     DragonKingConfig.DialogueBubbleYOffset,
                     false,
                     false,
@@ -171,10 +172,11 @@ namespace BossRush
         /// </summary>
         private IEnumerator FlyToHeight(float targetHeight)
         {
-            if (bossCharacter == null) yield break;
+            Transform bossRoot = BossTransform;
+            if (bossRoot == null) yield break;
 
             // 记录起飞前的位置（用于死亡时掉落物生成）
-            preFlyPosition = bossCharacter.transform.position;
+            preFlyPosition = bossRoot.position;
             ModBehaviour.DevLog($"[DragonKing] 记录起飞前位置: {preFlyPosition}");
 
             ModBehaviour.DevLog($"[DragonKing] 开始飞升到 {targetHeight} 米高度");
@@ -185,7 +187,7 @@ namespace BossRush
             // 创建云雾特效
             CreateFlightCloudEffect();
 
-            float startY = bossCharacter.transform.position.y;
+            float startY = bossRoot.position.y;
             float targetY = startY + targetHeight;
             lockedMinY = startY;
 
@@ -195,9 +197,9 @@ namespace BossRush
             float accelerationTime = 0.3f;
             float upwardAcceleration = maxUpwardSpeed / accelerationTime;
 
-            while (bossCharacter != null)
+            while (bossCharacter != null && bossRoot != null)
             {
-                float currentY = bossCharacter.transform.position.y;
+                float currentY = bossRoot.position.y;
 
                 // 到达目标高度
                 if (currentY >= targetY)
@@ -213,9 +215,9 @@ namespace BossRush
                 );
 
                 // 直接修改位置实现上升（简化实现）
-                Vector3 pos = bossCharacter.transform.position;
+                Vector3 pos = bossRoot.position;
                 pos.y += currentUpwardSpeed * Time.deltaTime;
-                bossCharacter.transform.position = pos;
+                bossRoot.position = pos;
 
                 // 更新锁定高度
                 if (pos.y > lockedMinY)
@@ -229,7 +231,8 @@ namespace BossRush
                 yield return null;
             }
 
-            ModBehaviour.DevLog($"[DragonKing] 飞升完成，当前高度: {bossCharacter?.transform.position.y}");
+            float? currentHeight = bossCharacter != null && bossRoot != null ? bossRoot.position.y : (float?)null;
+            ModBehaviour.DevLog($"[DragonKing] 飞升完成，当前高度: {currentHeight}");
         }
 
         /// <summary>
@@ -257,9 +260,10 @@ namespace BossRush
         /// </summary>
         private void UpdateFlightPlatformPosition()
         {
-            if (flightPlatform == null || bossCharacter == null) return;
+            Transform bossRoot = BossTransform;
+            if (flightPlatform == null || bossRoot == null) return;
 
-            Vector3 bossPos = bossCharacter.transform.position;
+            Vector3 bossPos = bossRoot.position;
             flightPlatform.transform.position = new Vector3(bossPos.x, bossPos.y - 0.06f, bossPos.z);
         }
 
@@ -284,14 +288,15 @@ namespace BossRush
         {
             // 只在孩儿护我阶段且有有效锁定高度时执行
             if (!isInChildProtection || lockedMinY <= float.MinValue + 1f) return;
-            if (bossCharacter == null) return;
+            Transform bossRoot = BossTransform;
+            if (bossRoot == null) return;
 
             // 锁定龙皇Y坐标，防止下落
-            Vector3 pos = bossCharacter.transform.position;
+            Vector3 pos = bossRoot.position;
             if (pos.y < lockedMinY - 0.01f)
             {
                 pos.y = lockedMinY;
-                bossCharacter.transform.position = pos;
+                bossRoot.position = pos;
             }
         }
 
@@ -300,13 +305,14 @@ namespace BossRush
         /// </summary>
         private void CreateFlightCloudEffect()
         {
-            if (flightCloudEffect != null || bossCharacter == null) return;
+            Transform bossRoot = BossTransform;
+            if (flightCloudEffect != null || bossRoot == null) return;
 
             try
             {
                 flightCloudEffect = RingParticleEffect.Create<FlightCloudEffect>(
-                    bossCharacter.transform,
-                    bossCharacter.transform.position
+                    bossRoot,
+                    bossRoot.position
                 );
                 ModBehaviour.DevLog("[DragonKing] 创建飞升云雾特效");
             }
@@ -466,13 +472,14 @@ namespace BossRush
         {
             try
             {
-                if (bossCharacter == null) return;
+                Transform bossRoot = BossTransform;
+                if (bossRoot == null) return;
 
                 // 获取玩家位置
                 Vector3 playerPos;
                 if (!TryGetPlayerAimPosition(out playerPos, true)) return;
 
-                Vector3 bossPos = bossCharacter.transform.position + Vector3.up * DragonKingConfig.BossChestHeightOffset;
+                Vector3 bossPos = bossRoot.position + Vector3.up * DragonKingConfig.BossChestHeightOffset;
                 Vector3 direction = (playerPos - bossPos).normalized;
 
                 // 创建棱彩弹
@@ -522,9 +529,10 @@ namespace BossRush
             }
 
             // 后备方案：使用龙王位置附近
-            if (bossCharacter != null)
+            Transform bossRoot = BossTransform;
+            if (bossRoot != null)
             {
-                return bossCharacter.transform.position + Vector3.forward * 5f + Vector3.down * DragonKingConfig.ChildProtectionFlyHeight;
+                return bossRoot.position + Vector3.forward * 5f + Vector3.down * DragonKingConfig.ChildProtectionFlyHeight;
             }
 
             return Vector3.zero;
@@ -600,7 +608,8 @@ namespace BossRush
         /// </summary>
         private void TriggerLinkedDeath()
         {
-            if (bossCharacter == null || bossHealth == null) return;
+            Transform bossRoot = BossTransform;
+            if (bossRoot == null || bossHealth == null) return;
 
             ModBehaviour.DevLog("[DragonKing] 执行联动死亡");
 
@@ -614,7 +623,7 @@ namespace BossRush
             // 将龙王传送回起飞前的位置（确保掉落物生成在地面）
             if (preFlyPosition != Vector3.zero)
             {
-                bossCharacter.transform.position = preFlyPosition;
+                bossRoot.position = preFlyPosition;
                 ModBehaviour.DevLog($"[DragonKing] 已将龙王传送回起飞前位置: {preFlyPosition}");
             }
 

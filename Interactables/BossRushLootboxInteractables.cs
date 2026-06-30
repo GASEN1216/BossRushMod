@@ -683,12 +683,14 @@ namespace BossRush
         private bool isCarrying = false;
         private CharacterMainControl carrier = null;
         private Transform carrierRoot = null;
+        private Transform cachedTransform = null;
+        private Transform carrierTransform = null;
         private Rigidbody rb = null;
         private InteractableLootbox lootbox = null;
         private Vector3 carryOffset = new Vector3(0f, 1f, 0.8f);
-
         protected override void Awake()
         {
+            this.cachedTransform = transform;
             try
             {
                 this.overrideInteractName = true;
@@ -772,6 +774,7 @@ namespace BossRush
             }
 
             this.carrier = character;
+            this.carrierTransform = character.transform;
             this.isCarrying = true;
 
             try
@@ -843,26 +846,39 @@ namespace BossRush
                 // 尝试将箱子放到玩家朝向方向前方一点的地面上，而不是玩家脚下，避免把玩家挤进地形
                 try
                 {
-                    Vector3 dropPos = base.transform.position;
+                    Transform selfTransform = this.cachedTransform;
+                    if (selfTransform == null)
+                    {
+                        selfTransform = transform;
+                        this.cachedTransform = selfTransform;
+                    }
+                    Vector3 dropPos = selfTransform.position;
 
                     if (this.carrier != null)
                     {
+                        Transform currentCarrierTransform = this.carrierTransform;
+                        if (currentCarrierTransform == null)
+                        {
+                            currentCarrierTransform = this.carrier.transform;
+                            this.carrierTransform = currentCarrierTransform;
+                        }
+
                         // 使用角色的瞄准方向（CurrentAimDirection），再投影到水平面上作为前方方向
                         Vector3 fwd = this.carrier.CurrentAimDirection;
                         fwd.y = 0f;
                         if (fwd.sqrMagnitude < 0.0001f)
                         {
                             // 退回到 transform.forward，防止极端情况下长度为 0
-                            fwd = this.carrier.transform.forward;
+                            fwd = currentCarrierTransform.forward;
                             fwd.y = 0f;
                         }
                         if (fwd.sqrMagnitude < 0.0001f)
                         {
-                            fwd = this.carrier.transform.forward;
+                            fwd = currentCarrierTransform.forward;
                         }
                         fwd.Normalize();
 
-                        Vector3 baseForwardPos = this.carrier.transform.position + fwd * 1.0f;
+                        Vector3 baseForwardPos = currentCarrierTransform.position + fwd * 1.0f;
                         Vector3 origin = baseForwardPos + Vector3.up * 1f;
                         Vector3 dir = Vector3.down;
                         float maxDist = 5f;
@@ -893,7 +909,7 @@ namespace BossRush
                     }
                     else
                     {
-                        base.transform.position = dropPos;
+                        selfTransform.position = dropPos;
                     }
                 }
                 catch {}
@@ -916,6 +932,7 @@ namespace BossRush
 
             this.carrier = null;
             this.carrierRoot = null;
+            this.carrierTransform = null;
 
             try
             {
@@ -952,8 +969,14 @@ namespace BossRush
                 }
                 else
                 {
-                    Vector3 forward = this.carrier.transform.forward;
-                    targetPos = this.carrier.transform.position + forward * this.carryOffset.z + Vector3.up * this.carryOffset.y;
+                    Transform currentCarrierTransform = this.carrierTransform;
+                    if (currentCarrierTransform == null)
+                    {
+                        currentCarrierTransform = this.carrier.transform;
+                        this.carrierTransform = currentCarrierTransform;
+                    }
+                    Vector3 forward = currentCarrierTransform.forward;
+                    targetPos = currentCarrierTransform.position + forward * this.carryOffset.z + Vector3.up * this.carryOffset.y;
                 }
 
                 if (this.rb != null)
@@ -962,7 +985,13 @@ namespace BossRush
                 }
                 else
                 {
-                    base.transform.position = targetPos;
+                    Transform selfTransform = this.cachedTransform;
+                    if (selfTransform == null)
+                    {
+                        selfTransform = transform;
+                        this.cachedTransform = selfTransform;
+                    }
+                    selfTransform.position = targetPos;
                 }
             }
             catch {}

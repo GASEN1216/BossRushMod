@@ -731,7 +731,7 @@ namespace BossRush
                         // 回退到 FindObjectsOfTypeAll
                         try
                         {
-                            var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                            var allPresets = ObjectCache.GetCharacterPresets();
                             foreach (var preset in allPresets)
                             {
                                 if (preset == null) continue;

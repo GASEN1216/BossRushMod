@@ -25,6 +25,7 @@ namespace BossRush
         public bool AdaptiveRangedActive;
         public bool AdaptiveMeleeActive;
         public CharacterMainControl Owner;
+        public AICharacterController CachedAI;
         public readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> RuntimeModifierRecords =
             new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
 
@@ -34,16 +35,17 @@ namespace BossRush
         // 字段保留指向已失活的组件即可（IsShieldActive() 会返回 false）。
         public ZombieModeBossShieldRuntime AllyShield;
         public ZombieModeShieldedAffixRuntime ShieldedAffix;
+        public ZombieModeCommanderAuraTargetRuntime CommanderAuraTargetRuntime;
         public float SuppressedForceTraceDistance;
         public bool HasSuppressedForceTraceDistance;
     }
 
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        // Hot path 早返集合（审查 §3.1）：OnHurt / OnDead 是 Health 全局事件，丧尸模式
+        // Hot path 早返/marker 缓存（审查 §3.1）：OnHurt / OnDead 是 Health 全局事件，丧尸模式
         // 启动后场内每次扣血都会触发；过去需要付出 GetComponent<ZombieModeEnemyRuntimeMarker>
-        // 才能判断是否丧尸模式敌人。引入此 InstanceID 集合后，handler 可以做 O(1) Contains
-        // 早返；只有在敌人/Boss spawn 路径里才付一次 GetInstanceID。
+        // 才能判断是否丧尸模式敌人。引入 InstanceID 集合和 marker 字典后，handler 可以做 O(1)
+        // 早返并复用 spawn 时注册的 marker；只有 fallback 才重新 GetComponent。
         // 同步路径：
         //   - spawn:   RegisterZombieModeEnemyRuntimeShell 内 Add
         //   - death:   HandleZombieModeHealthDead 在 marker.DeathSettled = true 之后 Remove
@@ -51,17 +53,58 @@ namespace BossRush
         //   - cleanup: ClearRuntime / CleanupZombieModeRunOnlyState 调用 Clear
         private readonly System.Collections.Generic.HashSet<int> zombieModeEnemyInstanceIds
             = new System.Collections.Generic.HashSet<int>();
+        private readonly System.Collections.Generic.Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId
+            = new System.Collections.Generic.Dictionary<int, ZombieModeEnemyRuntimeMarker>();
 
         internal bool IsZombieModeKnownEnemy(CharacterMainControl character)
         {
             return character != null && zombieModeEnemyInstanceIds.Contains(character.GetInstanceID());
         }
 
+        internal bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl character, out ZombieModeEnemyRuntimeMarker marker)
+        {
+            marker = null;
+            if (character == null)
+            {
+                return false;
+            }
+
+            int instanceId = character.GetInstanceID();
+            if (!zombieModeEnemyInstanceIds.Contains(instanceId))
+            {
+                return false;
+            }
+
+            if (zombieModeEnemyMarkersByInstanceId.TryGetValue(instanceId, out marker) &&
+                marker != null)
+            {
+                return true;
+            }
+
+            marker = character.GetComponent<ZombieModeEnemyRuntimeMarker>();
+            if (marker != null)
+            {
+                zombieModeEnemyMarkersByInstanceId[instanceId] = marker;
+            }
+
+            return true;
+        }
+
         internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character)
+        {
+            RegisterZombieModeEnemyInstanceId(character, null);
+        }
+
+        internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character, ZombieModeEnemyRuntimeMarker marker)
         {
             if (character != null)
             {
-                zombieModeEnemyInstanceIds.Add(character.GetInstanceID());
+                int instanceId = character.GetInstanceID();
+                zombieModeEnemyInstanceIds.Add(instanceId);
+                if (marker != null)
+                {
+                    zombieModeEnemyMarkersByInstanceId[instanceId] = marker;
+                }
             }
         }
 
@@ -69,13 +112,16 @@ namespace BossRush
         {
             if (character != null)
             {
-                zombieModeEnemyInstanceIds.Remove(character.GetInstanceID());
+                int instanceId = character.GetInstanceID();
+                zombieModeEnemyInstanceIds.Remove(instanceId);
+                zombieModeEnemyMarkersByInstanceId.Remove(instanceId);
             }
         }
 
         internal void ClearZombieModeEnemyInstanceIds()
         {
             zombieModeEnemyInstanceIds.Clear();
+            zombieModeEnemyMarkersByInstanceId.Clear();
         }
 
         private ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(
@@ -111,10 +157,12 @@ namespace BossRush
             marker.EnemyKind = isBoss ? ZombieModeEnemyKind.Elite : enemyKind;
             marker.SpecialKind = specialKind;
             marker.Owner = enemy;
+            marker.CachedAI = null;
             marker.RuntimeModifierRecords.Clear();
             marker.EliteAffixes.Clear();
             marker.AllyShield = null;
             marker.ShieldedAffix = null;
+            marker.CommanderAuraTargetRuntime = null;
             marker.SuppressedForceTraceDistance = 0f;
             marker.HasSuppressedForceTraceDistance = false;
             if (eliteAffixes != null)
@@ -122,7 +170,7 @@ namespace BossRush
                 marker.EliteAffixes.AddRange(eliteAffixes);
             }
 
-            RegisterZombieModeEnemyInstanceId(enemy);
+            RegisterZombieModeEnemyInstanceId(enemy, marker);
 
             RegisterZombieModeRunOnlyObject(
                 runId,
@@ -131,6 +179,37 @@ namespace BossRush
                 marker,
                 null);
             return marker;
+        }
+
+        private static AICharacterController GetZombieModeEnemyAI(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker)
+        {
+            if (enemyObject == null)
+            {
+                return null;
+            }
+
+            if (marker != null && marker.gameObject != enemyObject)
+            {
+                marker = null;
+            }
+
+            AICharacterController ai = marker != null ? marker.CachedAI : null;
+            if (ai != null &&
+                ai.gameObject != null &&
+                ai.gameObject.activeInHierarchy &&
+                ai.transform != null &&
+                ai.transform.IsChildOf(enemyObject.transform))
+            {
+                return ai;
+            }
+
+            ai = enemyObject.GetComponentInChildren<AICharacterController>();
+            if (marker != null)
+            {
+                marker.CachedAI = ai;
+            }
+
+            return ai;
         }
     }
 }

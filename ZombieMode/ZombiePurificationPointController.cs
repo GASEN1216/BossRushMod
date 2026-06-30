@@ -9,7 +9,10 @@ namespace BossRush
     /// </summary>
     public sealed class ZombiePurificationPointController : MonoBehaviour
     {
+        private const float MAGNET_RADIUS = ZombieModeTuning.StarMagnetRadius;
+        private const float MAGNET_RADIUS_SQR = MAGNET_RADIUS * MAGNET_RADIUS;
         private const float PICKUP_DISTANCE = ZombieModeTuning.StarPickupDistance;
+        private const float PICKUP_DISTANCE_SQR = PICKUP_DISTANCE * PICKUP_DISTANCE;
         private const float AUTO_COLLECT_SECONDS = ZombieModeTuning.SettlementMaxWaitSeconds;
 
         public int RunId;
@@ -18,13 +21,30 @@ namespace BossRush
         private bool collected;
         private float lifeTime;
         private Vector3 baseScale;
+        private ModBehaviour owner;
+        private Transform cachedTransform;
+        private static Transform cachedPlayerTransform;
+        private static int cachedPlayerTransformFrame = -1;
+
+        private void Awake()
+        {
+            cachedTransform = transform;
+        }
 
         public void Initialize(int runId, int value, ZombiePurificationStar starRecord)
         {
             RunId = runId;
             Value = value;
             StarRecord = starRecord;
-            baseScale = transform.localScale;
+            Transform pointTransform = cachedTransform;
+            if (pointTransform == null)
+            {
+                pointTransform = transform;
+                cachedTransform = pointTransform;
+            }
+
+            baseScale = pointTransform.localScale;
+            owner = ModBehaviour.Instance;
         }
 
         private void Update()
@@ -34,7 +54,7 @@ namespace BossRush
                 return;
             }
 
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst != null && inst.IsZombieModeRuntimePaused())
             {
                 return;
@@ -42,23 +62,35 @@ namespace BossRush
 
             lifeTime += Time.deltaTime;
             float pulse = 1f + Mathf.Sin(Time.time * 7f) * 0.12f;
-            transform.localScale = baseScale * pulse;
-            transform.Rotate(Vector3.up, 120f * Time.deltaTime, Space.World);
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player != null)
+            Transform pointTransform = cachedTransform;
+            if (pointTransform == null)
             {
-                float distanceToPlayer = Vector3.Distance(player.transform.position, transform.position);
-                if (distanceToPlayer <= ZombieModeTuning.StarMagnetRadius)
+                pointTransform = transform;
+                cachedTransform = pointTransform;
+            }
+
+            pointTransform.localScale = baseScale * pulse;
+            pointTransform.Rotate(Vector3.up, 120f * Time.deltaTime, Space.World);
+
+            Transform playerTransform = GetCachedPlayerTransform();
+            if (playerTransform != null)
+            {
+                Vector3 playerPos = playerTransform.position;
+                Vector3 currentPosition = pointTransform.position;
+                Vector3 deltaToPlayer = playerPos - currentPosition;
+                float distanceSqr = deltaToPlayer.sqrMagnitude;
+                if (distanceSqr <= MAGNET_RADIUS_SQR)
                 {
-                    float speed = Mathf.Lerp(4f, 18f, 1f - Mathf.Clamp01(distanceToPlayer / ZombieModeTuning.StarMagnetRadius));
-                    transform.position = Vector3.MoveTowards(
-                        transform.position,
-                        player.transform.position + Vector3.up * 0.8f,
+                    float distanceToPlayer = Mathf.Sqrt(distanceSqr);
+                    float speed = Mathf.Lerp(4f, 18f, 1f - Mathf.Clamp01(distanceToPlayer / MAGNET_RADIUS));
+                    currentPosition = Vector3.MoveTowards(
+                        currentPosition,
+                        playerPos + Vector3.up * 0.8f,
                         speed * Time.unscaledDeltaTime);
+                    pointTransform.position = currentPosition;
                 }
 
-                if ((player.transform.position - transform.position).sqrMagnitude <= PICKUP_DISTANCE * PICKUP_DISTANCE)
+                if ((playerPos - currentPosition).sqrMagnitude <= PICKUP_DISTANCE_SQR)
                 {
                     Collect();
                     return;
@@ -74,11 +106,34 @@ namespace BossRush
         private void Collect()
         {
             collected = true;
-            ModBehaviour inst = ModBehaviour.Instance;
+            ModBehaviour inst = GetRuntimeOwner();
             if (inst != null)
             {
                 inst.CollectZombieModePurificationPoint(RunId, Value, gameObject, StarRecord);
             }
+        }
+
+        private ModBehaviour GetRuntimeOwner()
+        {
+            ModBehaviour inst = owner;
+            if (inst == null)
+            {
+                inst = ModBehaviour.Instance;
+                owner = inst;
+            }
+            return inst;
+        }
+
+        private static Transform GetCachedPlayerTransform()
+        {
+            if (cachedPlayerTransformFrame != Time.frameCount)
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                cachedPlayerTransform = player != null ? player.transform : null;
+                cachedPlayerTransformFrame = Time.frameCount;
+            }
+
+            return cachedPlayerTransform;
         }
     }
 
@@ -280,10 +335,9 @@ namespace BossRush
                 return;
             }
 
-            ZombiePurificationStar[] pending = zombieModeRunState.PendingPurificationStars.ToArray();
-            for (int i = 0; i < pending.Length; i++)
+            for (int i = zombieModeRunState.PendingPurificationStars.Count - 1; i >= 0; i--)
             {
-                ZombiePurificationStar star = pending[i];
+                ZombiePurificationStar star = zombieModeRunState.PendingPurificationStars[i];
                 if (star == null || star.Settled)
                 {
                     continue;

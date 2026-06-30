@@ -71,6 +71,12 @@ namespace BossRush
 
             /// <summary>死亡亡魂系统开关（默认开启）</summary>
             public bool enableDeathWraithSystem = true;
+
+            /// <summary>每局变异词条系统开关（默认关闭，避免改变既有模式默认玩法）</summary>
+            public bool enableMutators = false;
+
+            /// <summary>每局变异词条数量（1-3，默认2）</summary>
+            public int mutatorCount = 2;
         }
         
         #endregion
@@ -252,6 +258,8 @@ namespace BossRush
                 string bossStatKey = ModName + "_BossStatMultiplier";
                 string milestoneRestKey = ModName + "_milestoneRestBonusSeconds";
                 string deathWraithKey = ModName + "_EnableDeathWraithSystem";
+                string mutatorsKey = ModName + "_EnableMutators";
+                string mutatorCountKey = ModName + "_MutatorCount";
 
                 MethodInfo loadMethod = optionsManagerType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
                 if (loadMethod != null)
@@ -373,7 +381,15 @@ namespace BossRush
                     bool loadedDeathWraith = (bool)deathWraithResult;
                     config.enableDeathWraithSystem = loadedDeathWraith;
 
-                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith);
+                    object mutatorsResult = boolLoadMethod.Invoke(null, new object[] { mutatorsKey, config.enableMutators });
+                    bool loadedMutators = (bool)mutatorsResult;
+                    config.enableMutators = loadedMutators;
+
+                    object mutatorCountResult = intLoadMethod.Invoke(null, new object[] { mutatorCountKey, config.mutatorCount });
+                    int loadedMutatorCount = Mathf.Clamp((int)mutatorCountResult, 1, 3);
+                    config.mutatorCount = loadedMutatorCount;
+
+                    DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
                 }
                 else
                 {
@@ -534,6 +550,24 @@ namespace BossRush
                     config.enableDeathWraithSystem = (bool)deathWraithResult;
                     return true;
                 }
+
+                string mutatorsKey = ModName + "_EnableMutators";
+                if (changedKey == mutatorsKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object mutatorsResult = boolLoadMethod.Invoke(null, new object[] { mutatorsKey, config.enableMutators });
+                    config.enableMutators = (bool)mutatorsResult;
+                    return true;
+                }
+
+                string mutatorCountKey = ModName + "_MutatorCount";
+                if (changedKey == mutatorCountKey)
+                {
+                    MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
+                    object mutatorCountResult = intLoadMethod.Invoke(null, new object[] { mutatorCountKey, config.mutatorCount });
+                    config.mutatorCount = Mathf.Clamp((int)mutatorCountResult, 1, 3);
+                    return true;
+                }
             }
             catch (Exception ex)
             {
@@ -596,6 +630,8 @@ namespace BossRush
                    changedKey == ModName + "_EnableDragonDash" ||
                    changedKey == ModName + "_UseWolfModelForWildHorn" ||
                    changedKey == ModName + "_EnableDeathWraithSystem" ||
+                   changedKey == ModName + "_EnableMutators" ||
+                   changedKey == ModName + "_MutatorCount" ||
                    changedKey == ModName + "_ModeDEnemiesPerWave" ||
                    changedKey == ModName + "_AchievementHotkey";
         }
@@ -620,6 +656,12 @@ namespace BossRush
                 return;
             }
 
+            if (changedKey == ModName + "_EnableMutators")
+            {
+                DevLog("[BossRush] 检测到变异词条系统配置变更");
+                return;
+            }
+
             DevLog("[BossRush] 检测到配置变更: " + changedKey);
         }
 
@@ -635,6 +677,15 @@ namespace BossRush
             if (changedKey == ModName + "_EnableDeathWraithSystem")
             {
                 HandleDeathWraithConfigChanged_DeathWraith();
+                return;
+            }
+
+            if (changedKey == ModName + "_EnableMutators")
+            {
+                if (config != null && !config.enableMutators)
+                {
+                    ClearMutatorsForMode("Config");
+                }
                 return;
             }
 
@@ -802,6 +853,23 @@ namespace BossRush
                     DevLog("[BossRush] 注册死亡亡魂配置项失败: " + ex.Message);
                 }
 
+                // 变异词条系统：默认关闭，玩家主动开启才影响既有模式玩法
+                try
+                {
+                    string mutatorsLabel = L10n.T("每局变异词条系统", "Run Mutators");
+                    string mutatorsKey = ModName + "_EnableMutators";
+
+                    if (addBoolMethod != null)
+                    {
+                        addBoolMethod.Invoke(null, new object[] { ModName, mutatorsKey, mutatorsLabel, config.enableMutators });
+                        DevLog("[BossRush] 变异词条配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册变异词条配置项失败: " + ex.Message);
+                }
+
                 // ========== 数值滑条类配置 ==========
                 
                 // 波次间休息时间
@@ -902,6 +970,26 @@ namespace BossRush
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册白手起家敌人数配置项失败: " + ex.Message);
+                }
+
+                // 变异词条数量
+                try
+                {
+                    int mutatorCountValue = Mathf.Clamp(config.mutatorCount, 1, 3);
+                    config.mutatorCount = mutatorCountValue;
+
+                    string mutatorCountLabel = L10n.T("每局变异词条数量", "Run Mutator Count");
+                    string mutatorCountKey = ModName + "_MutatorCount";
+
+                    if (addSliderMethod != null)
+                    {
+                        addSliderMethod.Invoke(null, new object[] { ModName, mutatorCountKey, mutatorCountLabel, typeof(int), mutatorCountValue, new Vector2(1f, 3f) });
+                        DevLog("[BossRush] 变异词条数量配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册变异词条数量配置项失败: " + ex.Message);
                 }
 
                 // ========== 按键配置 ==========
@@ -1042,5 +1130,6 @@ namespace BossRush
         public const int AdventureJournal = 500007;
         public const int ZombieTideInvitation = 500045;
         public const int ZombieTideBeacon = 500046;
+        public const int SpeedrunGauntletTicket = 500047;
     }
 }

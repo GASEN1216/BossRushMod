@@ -23,6 +23,7 @@ namespace BossRush
     {
         private Animator animator;
         private Transform playerTransform;
+        private Transform cachedTransform;
         private bool hasAnimator = false;
         private readonly HashSet<int> floatParams = new HashSet<int>();
         private readonly HashSet<int> boolParams = new HashSet<int>();
@@ -121,8 +122,22 @@ namespace BossRush
         private static readonly int hash_IsArrived = Animator.StringToHash("IsArrived");
         private static readonly int hash_NoBoss = Animator.StringToHash("NoBoss");
 
+        private Transform CachedTransform
+        {
+            get
+            {
+                if (cachedTransform == null)
+                {
+                    cachedTransform = transform;
+                }
+
+                return cachedTransform;
+            }
+        }
+
         void Awake()
         {
+            cachedTransform = transform;
             animator = GetComponentInChildren<Animator>();
             hasAnimator = animator != null;
 
@@ -153,27 +168,18 @@ namespace BossRush
 
         void Start()
         {
-            // 获取玩家引用
-            try
+            Transform foundPlayerTransform;
+            NPCPlayerLookupSource playerLookupSource;
+            if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform, out playerLookupSource))
             {
-                if (CharacterMainControl.Main != null)
+                playerTransform = foundPlayerTransform;
+                if (playerLookupSource == NPCPlayerLookupSource.PlayerTag)
                 {
-                    playerTransform = CharacterMainControl.Main.transform;
-                    ModBehaviour.DevLog("[CourierNPC] Controller.Start: 获取到玩家引用");
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[CourierNPC] [WARNING] 获取 CharacterMainControl.Main 失败: " + e.Message);
-            }
-
-            if (playerTransform == null)
-            {
-                var player = GameObject.FindGameObjectWithTag("Player");
-                if (player != null)
-                {
-                    playerTransform = player.transform;
                     ModBehaviour.DevLog("[CourierNPC] Controller.Start: 通过 Tag 获取到玩家引用");
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[CourierNPC] Controller.Start: 获取到玩家引用");
                 }
             }
 
@@ -236,7 +242,7 @@ namespace BossRush
             }
 
             if (NPCNameTagHelper.RegisterOriginalHealthBarName(
-                transform,
+                CachedTransform,
                 courierName,
                 NAME_TAG_HEIGHT,
                 "[CourierNPC]"))
@@ -247,12 +253,12 @@ namespace BossRush
 
         void LateUpdate()
         {
-            NPCNameTagHelper.RefreshOriginalHealthBarName(transform);
+            NPCNameTagHelper.RefreshOriginalHealthBarName(CachedTransform);
         }
 
         void OnDestroy()
         {
-            NPCNameTagHelper.UnregisterOriginalHealthBarName(transform);
+            NPCNameTagHelper.UnregisterOriginalHealthBarName(CachedTransform);
         }
 
         /// <summary>
@@ -385,7 +391,7 @@ namespace BossRush
 
             // 检测玩家距离
             float nearDistanceSqr = NEAR_DISTANCE * NEAR_DISTANCE;
-            if ((transform.position - playerTransform.position).sqrMagnitude <= nearDistanceSqr)
+            if ((CachedTransform.position - playerTransform.position).sqrMagnitude <= nearDistanceSqr)
             {
                 // 触发首次见面对话
                 ModBehaviour.DevLog("[CourierNPC] 玩家进入范围，触发首次见面对话");
@@ -487,11 +493,12 @@ namespace BossRush
 
             NPCExceptionHandler.TryExecute(() =>
             {
-                Vector3 direction = playerTransform.position - transform.position;
+                Transform selfTransform = CachedTransform;
+                Vector3 direction = playerTransform.position - selfTransform.position;
                 direction.y = 0;  // 只在水平面上旋转
                 if (direction.sqrMagnitude > 0.01f)
                 {
-                    transform.rotation = Quaternion.LookRotation(direction);
+                    selfTransform.rotation = Quaternion.LookRotation(direction);
                 }
             }, "CourierNPCController.FacePlayer", false);
         }
@@ -513,7 +520,7 @@ namespace BossRush
                 }
 
                 // 在NPC脚下生成物品（而不是直接发送给玩家）
-                Vector3 dropPosition = transform.position;
+                Vector3 dropPosition = CachedTransform.position;
                 Vector3 dropDirection = Vector3.forward;
                 wikiBook.Drop(dropPosition, true, dropDirection, 0f);
 
@@ -532,18 +539,17 @@ namespace BossRush
         {
             if (playerTransform == null)
             {
-                try
+                Transform foundPlayerTransform;
+                if (NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform))
                 {
-                    if (CharacterMainControl.Main != null)
-                        playerTransform = CharacterMainControl.Main.transform;
+                    playerTransform = foundPlayerTransform;
                 }
-                catch { }
             }
 
             if (playerTransform == null || !hasAnimator) return;
 
             float nearDistanceSqr = NEAR_DISTANCE * NEAR_DISTANCE;
-            bool isNear = (transform.position - playerTransform.position).sqrMagnitude <= nearDistanceSqr;
+            bool isNear = (CachedTransform.position - playerTransform.position).sqrMagnitude <= nearDistanceSqr;
 
             SafeSetBool(hash_IsNearPlayer, isNear);
         }

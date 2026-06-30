@@ -23,6 +23,9 @@ namespace BossRush
         private float baseWalkSpeed;
         private float baseRunSpeed;
         private bool followDefaultsInitialized;
+        private int cachedFollowDistanceFrame = -1;
+        private float cachedFollowDistanceSqr = float.MaxValue;
+        private Transform cachedSelfTransform;
 
         protected bool IsFollowingPlayer
         {
@@ -50,9 +53,22 @@ namespace BossRush
         protected abstract void StopCurrentFollowMovement();
         protected abstract void HandleFollowPathComplete(Path path, int requestId);
 
+        protected Transform SelfTransform
+        {
+            get
+            {
+                if (cachedSelfTransform == null)
+                {
+                    cachedSelfTransform = transform;
+                }
+
+                return cachedSelfTransform;
+            }
+        }
+
         protected virtual Vector3 GetFollowDestination(Transform target)
         {
-            return target != null ? target.position : transform.position;
+            return target != null ? target.position : SelfTransform.position;
         }
 
         protected virtual void OnEnable()
@@ -97,7 +113,7 @@ namespace BossRush
             EnsureFollowDefaultsInitialized();
             followPlayerEnabled = true;
             RefreshFollowPlayerCharacter(true);
-            SyncFollowSpeed(GetDistanceToPlayer());
+            SyncFollowSpeedSqr(GetDistanceToPlayerSqr());
             nextFollowRepathTime = 0f;
             StopMoveForFollow();
         }
@@ -115,15 +131,7 @@ namespace BossRush
         {
             CharacterMainControl currentPlayer = null;
 
-            try
-            {
-                currentPlayer = CharacterMainControl.Main;
-            }
-            catch
-            {
-            }
-
-            if (currentPlayer != null)
+            if (NPCPlayerLookupCache.TryGetPlayerCharacter(out currentPlayer))
             {
                 if (force || playerCharacter != currentPlayer)
                 {
@@ -141,8 +149,10 @@ namespace BossRush
 
             if (playerTransform == null || force)
             {
-                GameObject player = GameObject.FindGameObjectWithTag("Player");
-                playerTransform = player != null ? player.transform : null;
+                Transform foundPlayerTransform;
+                playerTransform = NPCPlayerLookupCache.TryGetPlayerTransform(out foundPlayerTransform)
+                    ? foundPlayerTransform
+                    : null;
             }
         }
 
@@ -159,17 +169,21 @@ namespace BossRush
                 return;
             }
 
-            float distanceToPlayer = GetDistanceToPlayer();
-            SyncFollowSpeed(distanceToPlayer);
+            float distanceToPlayerSqr = GetDistanceToPlayerSqr();
+            SyncFollowSpeedSqr(distanceToPlayerSqr);
 
-            if (distanceToPlayer >= FollowTeleportDistance)
+            float followTeleportDistance = FollowTeleportDistance;
+            float followTeleportDistanceSqr = followTeleportDistance * followTeleportDistance;
+            if (distanceToPlayerSqr >= followTeleportDistanceSqr)
             {
                 TeleportNearPlayer(playerTransform.position);
                 return;
             }
 
             bool hasFollowTask = moving || waitingForPathResult || hasPath;
-            if (distanceToPlayer <= FollowStopDistance)
+            float followStopDistance = FollowStopDistance;
+            float followStopDistanceSqr = followStopDistance * followStopDistance;
+            if (distanceToPlayerSqr <= followStopDistanceSqr)
             {
                 if (hasFollowTask)
                 {
@@ -191,9 +205,11 @@ namespace BossRush
 
         protected bool ShouldRunWhileFollowing()
         {
+            float followRunDistance = FollowRunDistance;
+            float followRunDistanceSqr = followRunDistance * followRunDistance;
             return followPlayerEnabled
                 && playerTransform != null
-                && GetDistanceToPlayer() > FollowRunDistance;
+                && GetDistanceToPlayerSqr() > followRunDistanceSqr;
         }
 
         protected virtual void StopMoveForFollow()
@@ -213,7 +229,7 @@ namespace BossRush
 
             int requestId = ++FollowActivePathRequestId;
             FollowWaitingForPathResult = true;
-            FollowSeeker.StartPath(transform.position, destination, p => HandleFollowPathComplete(p, requestId));
+            FollowSeeker.StartPath(SelfTransform.position, destination, p => HandleFollowPathComplete(p, requestId));
             return true;
         }
 
@@ -227,7 +243,7 @@ namespace BossRush
                 controller.enabled = false;
             }
 
-            transform.position = targetPosition;
+            SelfTransform.position = targetPosition;
 
             if (wasEnabled)
             {
@@ -279,23 +295,32 @@ namespace BossRush
         private void TeleportNearPlayer(Vector3 playerPosition)
         {
             TeleportToFollowPosition(playerPosition);
+            cachedFollowDistanceFrame = -1;
             nextFollowRepathTime = 0f;
             StopMoveForFollow();
         }
 
-        private float GetDistanceToPlayer()
+        private float GetDistanceToPlayerSqr()
         {
             if (playerTransform == null)
             {
                 return float.MaxValue;
             }
 
-            Vector3 toPlayer = playerTransform.position - transform.position;
+            int frame = Time.frameCount;
+            if (cachedFollowDistanceFrame == frame)
+            {
+                return cachedFollowDistanceSqr;
+            }
+
+            Vector3 toPlayer = playerTransform.position - SelfTransform.position;
             toPlayer.y = 0f;
-            return toPlayer.magnitude;
+            cachedFollowDistanceSqr = toPlayer.sqrMagnitude;
+            cachedFollowDistanceFrame = frame;
+            return cachedFollowDistanceSqr;
         }
 
-        private void SyncFollowSpeed(float distanceToPlayer)
+        private void SyncFollowSpeedSqr(float distanceToPlayerSqr)
         {
             EnsureFollowDefaultsInitialized();
 
@@ -304,12 +329,16 @@ namespace BossRush
                 return;
             }
 
-            if (distanceToPlayer > FollowSpeedBoostDistance)
+            float followSpeedBoostDistance = FollowSpeedBoostDistance;
+            float followSpeedBoostDistanceSqr = followSpeedBoostDistance * followSpeedBoostDistance;
+            float followSpeedResetDistance = FollowSpeedResetDistance;
+            float followSpeedResetDistanceSqr = followSpeedResetDistance * followSpeedResetDistance;
+            if (distanceToPlayerSqr > followSpeedBoostDistanceSqr)
             {
                 WalkSpeed = Mathf.Max(baseWalkSpeed, playerCharacter.CharacterWalkSpeed + 2f);
                 RunSpeed = Mathf.Max(baseRunSpeed, playerCharacter.CharacterRunSpeed + 2f);
             }
-            else if (distanceToPlayer < FollowSpeedResetDistance)
+            else if (distanceToPlayerSqr < followSpeedResetDistanceSqr)
             {
                 WalkSpeed = Mathf.Max(baseWalkSpeed, playerCharacter.CharacterWalkSpeed);
                 RunSpeed = Mathf.Max(baseRunSpeed, playerCharacter.CharacterRunSpeed);
@@ -337,6 +366,87 @@ namespace BossRush
             baseWalkSpeed = WalkSpeed;
             baseRunSpeed = RunSpeed;
             followDefaultsInitialized = true;
+        }
+    }
+
+    internal enum NPCPlayerLookupSource
+    {
+        None,
+        CharacterMainControlMain,
+        PlayerTag
+    }
+
+    internal static class NPCPlayerLookupCache
+    {
+        private static int cachedPlayerLookupFrame = -1;
+        private static CharacterMainControl cachedPlayerCharacter;
+        private static Transform cachedPlayerTransform;
+        private static NPCPlayerLookupSource cachedPlayerLookupSource = NPCPlayerLookupSource.None;
+
+        public static bool TryGetPlayerCharacter(out CharacterMainControl player)
+        {
+            RefreshFrameCache();
+            player = cachedPlayerCharacter;
+            return player != null;
+        }
+
+        public static bool TryGetPlayerTransform(out Transform playerTransform)
+        {
+            RefreshFrameCache();
+            playerTransform = cachedPlayerTransform;
+            return playerTransform != null;
+        }
+
+        public static bool TryGetPlayerTransform(out Transform playerTransform, out NPCPlayerLookupSource source)
+        {
+            RefreshFrameCache();
+            playerTransform = cachedPlayerTransform;
+            source = cachedPlayerLookupSource;
+            return playerTransform != null;
+        }
+
+        public static void ResetStaticCaches()
+        {
+            cachedPlayerLookupFrame = -1;
+            cachedPlayerCharacter = null;
+            cachedPlayerTransform = null;
+            cachedPlayerLookupSource = NPCPlayerLookupSource.None;
+        }
+
+        private static void RefreshFrameCache()
+        {
+            if (cachedPlayerLookupFrame == Time.frameCount)
+            {
+                return;
+            }
+
+            cachedPlayerLookupFrame = Time.frameCount;
+            cachedPlayerCharacter = null;
+            cachedPlayerTransform = null;
+            cachedPlayerLookupSource = NPCPlayerLookupSource.None;
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null)
+                {
+                    cachedPlayerCharacter = player;
+                    cachedPlayerTransform = player.transform;
+                    cachedPlayerLookupSource = NPCPlayerLookupSource.CharacterMainControlMain;
+                    return;
+                }
+            }
+            catch
+            {
+                /* best-effort fallback intentionally ignored */
+            }
+
+            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+            if (playerObject != null)
+            {
+                cachedPlayerTransform = playerObject.transform;
+                cachedPlayerLookupSource = NPCPlayerLookupSource.PlayerTag;
+            }
         }
     }
 }

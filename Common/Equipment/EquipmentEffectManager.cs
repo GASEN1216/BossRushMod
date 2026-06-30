@@ -26,6 +26,7 @@ namespace BossRush.Common.Equipment
         // ========== 单例 ==========
 
         private static EquipmentEffectManager<TConfig, TManager> _instance;
+        private static readonly Type[] CharacterManagerParameterTypes = { typeof(CharacterMainControl) };
 
         /// <summary>
         /// 单例实例
@@ -279,7 +280,7 @@ namespace BossRush.Common.Equipment
                 if (manager != null)
                 {
                     // 使用反射调用 RebindToCharacter
-                    var rebindMethod = manager.GetType().GetMethod("RebindToCharacter", new Type[] { typeof(CharacterMainControl) });
+                    var rebindMethod = manager.GetType().GetMethod("RebindToCharacter", CharacterManagerParameterTypes);
                     rebindMethod?.Invoke(manager, new object[] { character });
                 }
                 lastRegisteredCharacter = character;
@@ -326,7 +327,7 @@ namespace BossRush.Common.Equipment
             if (manager != null)
             {
                 // 使用反射调用 RegisterAbility
-                var registerMethod = manager.GetType().GetMethod("RegisterAbility", new Type[] { typeof(CharacterMainControl) });
+                var registerMethod = manager.GetType().GetMethod("RegisterAbility", CharacterManagerParameterTypes);
                 registerMethod?.Invoke(manager, new object[] { character });
                 abilityActivated = true;
                 LogIfVerbose("ActivateAbility: 能力已激活");
