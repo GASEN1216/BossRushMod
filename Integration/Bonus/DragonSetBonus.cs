@@ -719,6 +719,7 @@ namespace BossRush
         private static Duckov.Buffs.Buff cachedBurnBuff = null;
         private static int characterLayerMask = -1;
         private Collider[] hitBuffer = new Collider[16];
+        private Transform cachedTransform = null;
 
         /// <summary>
         /// 初始化熔浆区域
@@ -730,6 +731,7 @@ namespace BossRush
             duration = dur;
             radius = rad;
             createTime = Time.time;
+            cachedTransform = transform;
 
             // 缓存点燃Buff
             if (cachedBurnBuff == null)
@@ -754,8 +756,10 @@ namespace BossRush
 
         void Update()
         {
+            float currentTime = Time.time;
+
             // 检查是否超时
-            float elapsed = Time.time - createTime;
+            float elapsed = currentTime - createTime;
             if (elapsed > duration)
             {
                 Destroy(gameObject);
@@ -763,10 +767,10 @@ namespace BossRush
             }
 
             // 检测并伤害敌人
-            if (Time.time - lastDamageTime >= damageInterval)
+            if (currentTime - lastDamageTime >= damageInterval)
             {
                 DamageEnemiesInRange();
-                lastDamageTime = Time.time;
+                lastDamageTime = currentTime;
             }
         }
 
@@ -776,7 +780,14 @@ namespace BossRush
         /// </summary>
         private void DamageEnemiesInRange()
         {
-            int hitCount = Physics.OverlapSphereNonAlloc(transform.position, radius, hitBuffer, characterLayerMask);
+            Transform zoneTransform = cachedTransform;
+            if (zoneTransform == null)
+            {
+                zoneTransform = transform;
+                cachedTransform = zoneTransform;
+            }
+
+            int hitCount = Physics.OverlapSphereNonAlloc(zoneTransform.position, radius, hitBuffer, characterLayerMask);
 
             for (int i = 0; i < hitCount; i++)
             {
