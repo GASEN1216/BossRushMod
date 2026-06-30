@@ -813,10 +813,11 @@ namespace BossRush
                 if (moneySlider != null)
                 {
                     // 设置滑块范围为玩家金钱，最小值为基础费用
-                    int playerMoney = GetPlayerMoney();
+                    // 注意：playerMoney 为 long，避免余额超过 int.MaxValue(约21.4亿)时溢出为负数
+                    long playerMoney = GetPlayerMoney();
                     int baseCost = ReforgeSystem.MIN_REFORGE_COST; // 初始时没有选中物品，使用最低费用
                     moneySlider.minValue = baseCost;
-                    moneySlider.maxValue = Mathf.Max(baseCost, playerMoney);
+                    moneySlider.maxValue = Math.Max((long)baseCost, playerMoney);
                     moneySlider.value = baseCost;
                     moneySlider.wholeNumbers = true;
 

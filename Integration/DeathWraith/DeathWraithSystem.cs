@@ -70,6 +70,38 @@ namespace BossRush
         public ItemTreeData itemTreeData;
     }
 
+    internal sealed class PendingDeathWraithContext_DeathWraith
+    {
+        public bool valid;
+        public uint raidID;
+        public string sceneName;
+        public string subSceneID;
+        public Vector3 worldPosition;
+        public string playerPresetName;
+        public string playerPresetRuntimeName;
+        public string playerName;
+        public int droppedItemsValue;
+        public long playerTotalWealth;
+        public float playerMaxHealth;
+        public bool hasPlayerFaceData;
+        public CustomFaceSettingData playerFaceData;
+        public AudioManager.VoiceType playerVoiceType;
+        public AudioManager.FootStepMaterialType playerFootStepMaterialType;
+        public bool hasBoundMeleeSnapshot;
+        public int boundMeleeTypeId;
+        public string boundMeleeDisplayName;
+        public ItemTreeData boundMeleeItemTreeData;
+    }
+
+    internal sealed class OriginalDeadBodyInfo_DeathWraith
+    {
+        public bool valid;
+        public uint raidID;
+        public string subSceneID;
+        public Vector3 worldPosition;
+        public ItemTreeData itemTreeData;
+    }
+
     internal sealed class DeadBodySpawnContext_DeathWraith
     {
         public uint raidID;
@@ -124,9 +156,24 @@ namespace BossRush
         private static readonly MethodInfo ItemAgentMeleeWeapon_OnInitializeMethod_DeathWraith =
             typeof(ItemAgent_MeleeWeapon).GetMethod("OnInitialize",
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        private WraithInfo pendingDeathWraithInfo;
+        private PendingDeathWraithContext_DeathWraith pendingDeathWraithContext;
         private int pendingDeathWraithPrimedFrame = -1;
         private float pendingDeathWraithPrimedRealtime = -1f;
+        private OriginalDeadBodyInfo_DeathWraith pendingOriginalDeadBodyInfo_DeathWraith;
+        private int pendingOriginalDeadBodyInfoFrame_DeathWraith = -1;
+        private float pendingOriginalDeadBodyInfoRealtime_DeathWraith = -1f;
+
+        // [性能优化] 亡魂记录列表内存缓存：进局加载一次，死亡帧只改内存 + 标脏，
+        // 真正的 ES3 序列化延后到游戏的官方存档点（OnCollectSaveData / 场景切换 / 去抖 tick），
+        // 避免在死亡那一帧同步反序列化 + 序列化整张含完整物品树的列表（抬回去动画卡顿主因）。
+        private List<WraithInfo> _deathWraithListCache;        // 内存中的权威副本；null 表示尚未从存档加载
+        private bool _deathWraithListDirty;                    // 是否有未写入 ES3 的改动
+        private float _deathWraithListDirtySince = -1f;        // 变脏的时刻（用于去抖）
+        // 去抖延迟设得较长：正常流程下游戏在撤离/切场景时触发 OnCollectSaveData 会先把列表刷掉
+        // （那一刻游戏本就在序列化整个角色，叠加我们一次列表序列化几乎无感）。
+        // 这个 tick 只是「玩家长时间停留、迟迟没碰到官方存档点」时的兜底，
+        // 设得长是为了避免它在死亡抬回去动画播放途中突然刷盘、反而制造卡顿。
+        private const float DEATH_WRAITH_SAVE_DELAY = 30f;
         private Dictionary<string, CharacterRandomPreset> deathWraithPresetCacheByNameKey;
         private Dictionary<string, CharacterRandomPreset> deathWraithPresetCacheByRuntimeName;
         private readonly Dictionary<uint, CharacterMainControl> activeWraithsByRaidId =
@@ -160,6 +207,7 @@ namespace BossRush
                 Health.OnDead -= RecordDeathWraithData_DeathWraith;
                 Health.OnDead -= OnWraithDied_DeathWraith;
                 SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+                SavesSystem.OnCollectSaveData -= FlushDeathWraithListIfDirty_DeathWraith;
 
                 if (!IsDeathWraithSystemEnabled())
                 {
@@ -170,6 +218,9 @@ namespace BossRush
                 Health.OnDead += RecordDeathWraithData_DeathWraith;
                 Health.OnDead += OnWraithDied_DeathWraith;
                 SavesSystem.OnCollectSaveData += OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+                // 借道游戏官方存档收集点把内存中的亡魂列表落到 ES3 缓存（撤离/切场景/退出时都会触发），
+                // 这样死亡帧本身不再做 Load+Save 全表序列化。
+                SavesSystem.OnCollectSaveData += FlushDeathWraithListIfDirty_DeathWraith;
             }
             catch (Exception e)
             {
@@ -181,6 +232,11 @@ namespace BossRush
         {
             pendingDeadBodySpawnContexts.Clear();
             spawningWraithRaidIds.Clear();
+            // 切换存档槽：丢弃内存缓存，下次访问时从新槽位重新加载，避免跨槽串档。
+            // 不在此 flush——OnSetFile 发生在切槽时，旧槽的内容应已通过官方存档点写过。
+            _deathWraithListCache = null;
+            _deathWraithListDirty = false;
+            _deathWraithListDirtySince = -1f;
         }
 
         #endregion

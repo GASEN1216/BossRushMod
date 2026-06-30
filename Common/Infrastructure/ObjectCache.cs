@@ -3,6 +3,8 @@ using UnityEngine.SceneManagement;
 using Duckov.UI;
 using Duckov.Economy;
 using TMPro;
+using System;
+using System.Collections.Generic;
 
 namespace BossRush
 {
@@ -19,6 +21,8 @@ namespace BossRush
         private static CharacterSpawnerRoot[] _cachedCharacterSpawnerRoots;
         private static StockShop[] _cachedStockShops;
         private static TMP_FontAsset[] _cachedTmpFonts;
+        private static readonly Dictionary<Type, UnityEngine.Object[]> _cachedObjectsByType =
+            new Dictionary<Type, UnityEngine.Object[]>();
         private static string _lastSceneName;
 
         /// <summary>
@@ -36,6 +40,7 @@ namespace BossRush
                     _cachedCharacterSpawnerRoots = null;
                     _cachedStockShops = null;
                     _cachedTmpFonts = null;
+                    _cachedObjectsByType.Clear();
                     _lastSceneName = currentScene;
                 }
             }
@@ -53,7 +58,17 @@ namespace BossRush
             _cachedStockShops = null;
             _cachedTmpFonts = null;
             _cachedCharacterPresets = null;
+            _cachedObjectsByType.Clear();
             _lastSceneName = null;
+        }
+
+        /// <summary>
+        /// Mod 卸载时清空所有静态缓存（与项目其它静态缓存生命周期约定一致），
+        /// 避免持有已销毁场景对象的引用跨 Mod 生命周期泄漏。
+        /// </summary>
+        public static void ResetStaticCaches()
+        {
+            ForceRefresh();
         }
 
         private static bool IsUnityObjectArrayAlive<T>(T[] objects) where T : UnityEngine.Object
@@ -154,6 +169,35 @@ namespace BossRush
                 _cachedNotificationTexts = Resources.FindObjectsOfTypeAll<NotificationText>();
             }
             return _cachedNotificationTexts;
+        }
+
+        public static UnityEngine.Object[] GetSceneObjectsByType(Type type)
+        {
+            if (type == null)
+            {
+                return null;
+            }
+
+            RefreshIfNeeded();
+            UnityEngine.Object[] cached;
+            if (_cachedObjectsByType.TryGetValue(type, out cached) && IsUnityObjectArrayAlive(cached))
+            {
+                return cached;
+            }
+
+            cached = UnityEngine.Object.FindObjectsOfType(type);
+            _cachedObjectsByType[type] = cached;
+            return cached;
+        }
+
+        public static void InvalidateSceneObjectsByType(Type type)
+        {
+            if (type == null)
+            {
+                return;
+            }
+
+            _cachedObjectsByType.Remove(type);
         }
     }
 }

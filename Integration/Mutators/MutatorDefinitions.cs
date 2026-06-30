@@ -3,7 +3,7 @@
 // ============================================================================
 // 模块说明：
 //   定义所有可用的变异词条及其应用/清理逻辑。
-//   词条分三类：敌人强化、掉落变异、环境规则。
+//   词条分三类：敌人强化、玩家增益、环境规则（含死亡触发）。
 //   每条词条只改一个维度，效果一句话说清。
 // ============================================================================
 
@@ -21,7 +21,7 @@ namespace BossRush
     public enum MutatorCategory
     {
         EnemyBuff,        // 敌人强化
-        LootChange,       // 掉落变异
+        PlayerBoon,       // 玩家增益（幸运词条）
         EnvironmentRule   // 环境规则
     }
 
@@ -43,6 +43,14 @@ namespace BossRush
         /// <summary>敌人生成时调用的回调列表（EnemyBuff 类词条注册到这里）</summary>
         public List<Action<CharacterMainControl>> EnemySpawnCallbacks
             = new List<Action<CharacterMainControl>>();
+
+        /// <summary>
+        /// 敌人被玩家击杀时调用的回调列表（嗜血/殉爆 等死亡触发词条注册到这里）。
+        /// 参数为死亡敌人的角色（可能为 null）与其死亡位置。
+        /// 由 MutatorManager 统一订阅 Health.OnDead 静态事件并转发，退局时统一退订。
+        /// </summary>
+        public List<Action<CharacterMainControl, UnityEngine.Vector3>> EnemyKilledCallbacks
+            = new List<Action<CharacterMainControl, UnityEngine.Vector3>>();
     }
 
     /// <summary>
@@ -80,7 +88,7 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 词条池：定义所有可用的变异词条（10条）
+    /// 词条池：定义所有可用的变异词条（15条）
     /// </summary>
     public static class MutatorPool
     {
@@ -90,7 +98,7 @@ namespace BossRush
         public static readonly MutatorDefinition[] All = new MutatorDefinition[]
         {
             // ═══════════════════════════════════════════
-            // 敌人强化类（3条）
+            // 敌人强化类（7条）
             // ═══════════════════════════════════════════
 
             new MutatorDefinition
@@ -185,52 +193,189 @@ namespace BossRush
                 OnRemove = ctx => { }
             },
 
-            // ═══════════════════════════════════════════
-            // 掉落变异类（3条）
-            // ═══════════════════════════════════════════
-
             new MutatorDefinition
             {
-                Id = "loot_quality_up",
-                NameCn = "鉴宝慧眼",
-                NameEn = "Keen Eye",
-                DescCn = "掉落品质 +1",
-                DescEn = "Loot quality +1",
-                Category = MutatorCategory.LootChange,
-                OnApply = ctx => { MutatorManager.LootQualityOffset += 1; },
-                OnRemove = ctx => { MutatorManager.LootQualityOffset -= 1; }
-            },
-
-            new MutatorDefinition
-            {
-                Id = "loot_quantity_double",
-                NameCn = "双倍丰收",
-                NameEn = "Double Harvest",
-                DescCn = "掉落数量 x2，但品质 -1",
-                DescEn = "Loot x2, but quality -1",
-                Category = MutatorCategory.LootChange,
+                Id = "enemy_giant",
+                NameCn = "巨灵兵",
+                NameEn = "Giants",
+                DescCn = "敌人体型变大，血量 +40%",
+                DescEn = "Enemies grow huge, HP +40%",
+                Category = MutatorCategory.EnemyBuff,
                 OnApply = ctx =>
                 {
-                    MutatorManager.LootQuantityMultiplier = 2;
-                    MutatorManager.LootQualityOffset -= 1;
+                    ctx.EnemySpawnCallbacks.Add(enemy =>
+                    {
+                        // 体型放大（纯视觉 + 碰撞体，敌人退场即随对象销毁，无需清理）
+                        if (enemy.transform != null)
+                        {
+                            enemy.transform.localScale = enemy.transform.localScale * 1.4f;
+                        }
+
+                        Item enemyItem = enemy.CharacterItem;
+                        if (enemyItem == null) return;
+                        Stat hpStat = enemyItem.GetStat("MaxHealth");
+                        if (hpStat == null) return;
+                        var mod = new Modifier(ModifierType.PercentageAdd, 0.4f, MutatorSource);
+                        hpStat.AddModifier(mod);
+                        ctx.EnemyAppliedModifiers.Add((hpStat, mod));
+                        // 同步当前血量，避免血条出现空缺（与 enemy_health_up 同一做法）
+                        if (enemy.Health != null)
+                        {
+                            enemy.Health.AddHealth(hpStat.BaseValue * 0.4f);
+                        }
+                    });
                 },
-                OnRemove = ctx =>
-                {
-                    MutatorManager.LootQuantityMultiplier = 1;
-                    MutatorManager.LootQualityOffset += 1;
-                }
+                OnRemove = ctx => { }
             },
 
             new MutatorDefinition
             {
-                Id = "loot_melee_only",
-                NameCn = "近身肉搏",
-                NameEn = "Melee Only",
-                DescCn = "只掉落近战武器",
-                DescEn = "Only melee weapons drop",
-                Category = MutatorCategory.LootChange,
-                OnApply = ctx => { MutatorManager.LootTypeFilter = "melee"; },
-                OnRemove = ctx => { MutatorManager.LootTypeFilter = null; }
+                Id = "enemy_swarm",
+                NameCn = "群鼠战术",
+                NameEn = "Ratswarm",
+                DescCn = "敌人体型缩小，移动速度 +45%",
+                DescEn = "Enemies shrink, move speed +45%",
+                Category = MutatorCategory.EnemyBuff,
+                OnApply = ctx =>
+                {
+                    ctx.EnemySpawnCallbacks.Add(enemy =>
+                    {
+                        if (enemy.transform != null)
+                        {
+                            enemy.transform.localScale = enemy.transform.localScale * 0.6f;
+                        }
+
+                        Item enemyItem = enemy.CharacterItem;
+                        if (enemyItem == null) return;
+                        Stat walk = enemyItem.GetStat("WalkSpeed");
+                        Stat run = enemyItem.GetStat("RunSpeed");
+                        if (walk != null)
+                        {
+                            var mod = new Modifier(ModifierType.PercentageAdd, 0.45f, MutatorSource);
+                            walk.AddModifier(mod);
+                            ctx.EnemyAppliedModifiers.Add((walk, mod));
+                        }
+                        if (run != null)
+                        {
+                            var mod = new Modifier(ModifierType.PercentageAdd, 0.45f, MutatorSource);
+                            run.AddModifier(mod);
+                            ctx.EnemyAppliedModifiers.Add((run, mod));
+                        }
+                    });
+                },
+                OnRemove = ctx => { }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "enemy_bloodhound",
+                NameCn = "嗜血猎犬",
+                NameEn = "Bloodhounds",
+                DescCn = "敌人永久锁定你，视野拉满",
+                DescEn = "Enemies lock onto you, infinite sight",
+                Category = MutatorCategory.EnemyBuff,
+                OnApply = ctx =>
+                {
+                    ctx.EnemySpawnCallbacks.Add(enemy =>
+                    {
+                        // AI 字段直接改，组件随敌人对象销毁，无需清理
+                        AICharacterController ai = enemy.GetComponentInChildren<AICharacterController>();
+                        if (ai == null) return;
+                        ai.forceTracePlayerDistance = 99999f; // 永不脱战
+                        ai.noticed = true;                    // 立刻进入警觉
+                    });
+                },
+                OnRemove = ctx => { }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "enemy_vicious",
+                NameCn = "穷凶极恶",
+                NameEn = "Vicious",
+                DescCn = "敌人造成的伤害 +30%",
+                DescEn = "Enemies deal +30% damage",
+                Category = MutatorCategory.EnemyBuff,
+                OnApply = ctx =>
+                {
+                    ctx.EnemySpawnCallbacks.Add(enemy =>
+                    {
+                        Item enemyItem = enemy.CharacterItem;
+                        if (enemyItem == null) return;
+                        // 伤害倍率走加法（与 glass_cannon / ModeFBounty 同款）：基础 1.0 → +0.3 即 +30%
+                        Stat gunDmg = enemyItem.GetStat("GunDamageMultiplier");
+                        if (gunDmg != null)
+                        {
+                            var mod = new Modifier(ModifierType.Add, 0.3f, MutatorSource);
+                            gunDmg.AddModifier(mod);
+                            ctx.EnemyAppliedModifiers.Add((gunDmg, mod));
+                        }
+                        Stat meleeDmg = enemyItem.GetStat("MeleeDamageMultiplier");
+                        if (meleeDmg != null)
+                        {
+                            var mod = new Modifier(ModifierType.Add, 0.3f, MutatorSource);
+                            meleeDmg.AddModifier(mod);
+                            ctx.EnemyAppliedModifiers.Add((meleeDmg, mod));
+                        }
+                    });
+                },
+                OnRemove = ctx => { }
+            },
+
+            // ═══════════════════════════════════════════
+            // 玩家增益类（幸运词条，2条）
+            // ═══════════════════════════════════════════
+
+            new MutatorDefinition
+            {
+                Id = "player_swift",
+                NameCn = "闪电步伐",
+                NameEn = "Fleet Footed",
+                DescCn = "玩家移动速度 +35%",
+                DescEn = "Player move speed +35%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat walk = playerItem.GetStat("WalkSpeed");
+                    Stat run = playerItem.GetStat("RunSpeed");
+                    if (walk != null)
+                    {
+                        var mod = new Modifier(ModifierType.PercentageAdd, 0.35f, MutatorSource);
+                        walk.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((walk, mod));
+                    }
+                    if (run != null)
+                    {
+                        var mod = new Modifier(ModifierType.PercentageAdd, 0.35f, MutatorSource);
+                        run.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((run, mod));
+                    }
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_sharpshooter",
+                NameCn = "百步穿杨",
+                NameEn = "Sharpshooter",
+                DescCn = "玩家枪械暴击率 +30%",
+                DescEn = "Player gun crit rate +30%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat critStat = playerItem.GetStat("GunCritRateGain");
+                    if (critStat == null) return;
+                    // GunCritRateGain 走加法（与 ZombieMode 暴击专注同款）
+                    var mod = new Modifier(ModifierType.Add, 0.3f, MutatorSource);
+                    critStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((critStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
             },
 
             // ═══════════════════════════════════════════
@@ -324,6 +469,70 @@ namespace BossRush
                     }
                 },
                 OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            // ═══════════════════════════════════════════
+            // 死亡触发类（刺激词条，2条）
+            // ═══════════════════════════════════════════
+
+            new MutatorDefinition
+            {
+                Id = "lifesteal_on_kill",
+                NameCn = "嗜血",
+                NameEn = "Lifesteal",
+                DescCn = "击杀敌人回复 8% 最大生命",
+                DescEn = "Killing an enemy heals 8% max HP",
+                Category = MutatorCategory.EnvironmentRule,
+                OnApply = ctx =>
+                {
+                    // 注册到死亡回调，由 MutatorManager 统一订阅 Health.OnDead（玩家击杀才触发）
+                    ctx.EnemyKilledCallbacks.Add((dead, pos) =>
+                    {
+                        CharacterMainControl player = ctx.Player;
+                        if (player == null || player.Health == null) return;
+                        if (player.Health.IsDead) return;
+                        float heal = player.Health.MaxHealth * 0.08f;
+                        if (heal > 0f) player.AddHealth(heal);
+                    });
+                },
+                OnRemove = ctx => { /* Health.OnDead 由 MutatorManager.RemoveAll 统一退订 */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "explode_on_death",
+                NameCn = "天降殉爆",
+                NameEn = "Volatile Remains",
+                DescCn = "敌人死亡时爆炸（小心被波及！）",
+                DescEn = "Enemies explode on death (mind the blast!)",
+                Category = MutatorCategory.EnvironmentRule,
+                OnApply = ctx =>
+                {
+                    ctx.EnemyKilledCallbacks.Add((dead, pos) =>
+                    {
+                        CharacterMainControl player = ctx.Player;
+                        if (player == null) return;
+                        if (LevelManager.Instance == null || LevelManager.Instance.ExplosionManager == null) return;
+
+                        // 爆炸来源记为玩家，但不豁免任何人——会波及玩家自身（风险与收益并存）
+                        DamageInfo dmg = new DamageInfo(player);
+                        dmg.damageValue = 40f;
+                        dmg.damagePoint = pos;
+                        dmg.isExplosion = true;
+                        dmg.AddElementFactor(ElementTypes.fire, 1.0f);
+
+                        LevelManager.Instance.ExplosionManager.CreateExplosion(
+                            pos,
+                            3.0f,
+                            dmg,
+                            // 原版 ExplosionManager 只为 normal / flash 生成爆炸特效；
+                            // fire 没有对应特效预制体会导致“看不见的爆炸”，故用 normal 保证可见反馈。
+                            ExplosionFxTypes.normal,
+                            0.35f,
+                            true); // canHurtSelf=true：连玩家一起炸
+                    });
+                },
+                OnRemove = ctx => { /* Health.OnDead 由 MutatorManager.RemoveAll 统一退订 */ }
             }
         };
     }

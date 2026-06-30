@@ -911,6 +911,11 @@ namespace BossRush
             }
         }
 
+        // [性能优化] 本地化 ToPlainText 的反射结果缓存：此前每个 preset 都做一次
+        // Type.GetType + GetMethod（过图进竞技场时逐 preset 调用），现解析一次复用。
+        private static System.Reflection.MethodInfo _cachedToPlainTextMethod;
+        private static bool _toPlainTextResolved;
+
         private string GetLocalizedCharacterName(string nameKey)
         {
             if (string.IsNullOrEmpty(nameKey))
@@ -920,34 +925,14 @@ namespace BossRush
 
             try
             {
-                string[] types = new string[]
+                System.Reflection.MethodInfo method = ResolveToPlainTextMethod();
+                if (method != null)
                 {
-                    "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
-                    "SodaCraft.Localizations.LocalizationManager, TeamSoda.Duckov.Core",
-                    "LocalizationManager, Assembly-CSharp"
-                };
-
-                Type locType = null;
-                for (int i = 0; i < types.Length; i++)
-                {
-                    locType = Type.GetType(types[i]);
-                    if (locType != null)
+                    object result = method.Invoke(null, new object[] { nameKey });
+                    string str = result as string;
+                    if (!string.IsNullOrEmpty(str))
                     {
-                        break;
-                    }
-                }
-
-                if (locType != null)
-                {
-                    var method = locType.GetMethod("ToPlainText", BindingFlags.Static | BindingFlags.Public);
-                    if (method != null)
-                    {
-                        object result = method.Invoke(null, new object[] { nameKey });
-                        string str = result as string;
-                        if (!string.IsNullOrEmpty(str))
-                        {
-                            return str;
-                        }
+                        return str;
                     }
                 }
             }
@@ -956,6 +941,41 @@ namespace BossRush
             }
 
             return nameKey;
+        }
+
+        private static System.Reflection.MethodInfo ResolveToPlainTextMethod()
+        {
+            if (_toPlainTextResolved)
+            {
+                return _cachedToPlainTextMethod;
+            }
+
+            _toPlainTextResolved = true;
+
+            string[] types = new string[]
+            {
+                "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
+                "SodaCraft.Localizations.LocalizationManager, TeamSoda.Duckov.Core",
+                "LocalizationManager, Assembly-CSharp"
+            };
+
+            Type locType = null;
+            for (int i = 0; i < types.Length; i++)
+            {
+                locType = Type.GetType(types[i]);
+                if (locType != null)
+                {
+                    break;
+                }
+            }
+
+            if (locType != null)
+            {
+                _cachedToPlainTextMethod = locType.GetMethod(
+                    "ToPlainText", BindingFlags.Static | BindingFlags.Public);
+            }
+
+            return _cachedToPlainTextMethod;
         }
 
     }

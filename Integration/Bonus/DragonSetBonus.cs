@@ -647,12 +647,19 @@ namespace BossRush
                     var model = modelField.GetValue(character);
                     if (model != null)
                     {
-                        var headSocketField = model.GetType().GetField("headSocket",
+                        Type modelType = model.GetType();
+                        PropertyInfo helmatSocketProperty = modelType.GetProperty("HelmatSocket",
                             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-                        if (headSocketField != null)
+                        if (helmatSocketProperty != null)
                         {
-                            return headSocketField.GetValue(model) as Transform;
+                            return helmatSocketProperty.GetValue(model, null) as Transform;
+                        }
+
+                        FieldInfo helmatSocketField = modelType.GetField("helmatSocket",
+                            BindingFlags.NonPublic | BindingFlags.Instance);
+                        if (helmatSocketField != null)
+                        {
+                            return helmatSocketField.GetValue(model) as Transform;
                         }
                     }
                 }

@@ -44,16 +44,10 @@ namespace BossRush
 
                 DevLog("[BossRush] SpawnBossRushMapObjects: 开始在 " + currentScene + " 生成 " + configs.Count + " 个阻挡物");
 
-                // 如果配置数量较多（如仓库区84个围栏），使用协程分帧生成避免卡顿
-                if (configs.Count > 20)
-                {
-                    StartCoroutine(SpawnMapObjectsAsync(configs));
-                }
-                else
-                {
-                    // [性能优化] 少量配置也使用模板缓存，避免重复遍历
-                    SpawnMapObjectsWithCache(configs);
-                }
+                // [性能优化] 统一走异步分帧生成，避免在过图帧同步 FindObjectsOfType<Transform>
+                // 全场景扫描 + O(transforms×configs) 嵌套循环造成卡顿。
+                // 之前 ≤20 个配置走同步分支，仍会在场景加载帧整段阻塞。
+                StartCoroutine(SpawnMapObjectsAsync(configs));
 
                 // 为特定地图创建撤离点（使用游戏原生方式）
                 CreateBossRushExitForScene(currentScene);
@@ -88,74 +82,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 使用模板缓存同步生成地图阻挡物（适用于少量配置）
-        /// [性能优化] 只遍历一次场景对象，缓存所有需要的模板
-        /// </summary>
-        private void SpawnMapObjectsWithCache(List<MapObjectCloneConfig> configs)
-        {
-            // 收集所有需要查找的模板名称
-            HashSet<string> templateNames = new HashSet<string>();
-            foreach (var config in configs)
-            {
-                templateNames.Add(config.templateName);
-            }
-
-            // 一次性查找所有模板（只遍历一次场景）
-            Dictionary<string, GameObject> templateCache = new Dictionary<string, GameObject>();
-            Dictionary<string, Transform> parentCache = new Dictionary<string, Transform>();
-
-            // [性能优化] 使用 FindObjectsOfType<Transform> 比 FindObjectsOfType<GameObject> 更快
-            Transform[] allTransforms = UnityEngine.Object.FindObjectsOfType<Transform>();
-
-            foreach (Transform t in allTransforms)
-            {
-                if (templateNames.Contains(t.name))
-                {
-                    // 为每个配置检查父对象前缀
-                    foreach (var config in configs)
-                    {
-                        if (t.name == config.templateName)
-                        {
-                            string cacheKey = config.templateName + "|" + config.parentNamePrefix;
-                            if (!templateCache.ContainsKey(cacheKey))
-                            {
-                                if (t.parent != null && t.parent.name.StartsWith(config.parentNamePrefix))
-                                {
-                                    templateCache[cacheKey] = t.gameObject;
-                                    parentCache[cacheKey] = t.parent;
-                                }
-                                else if (string.IsNullOrEmpty(config.parentNamePrefix))
-                                {
-                                    templateCache[cacheKey] = t.gameObject;
-                                    parentCache[cacheKey] = t.parent;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 使用缓存的模板生成所有阻挡物
-            int totalCreated = 0;
-            foreach (var config in configs)
-            {
-                string cacheKey = config.templateName + "|" + config.parentNamePrefix;
-                if (templateCache.TryGetValue(cacheKey, out GameObject template))
-                {
-                    Transform parentTransform = parentCache.ContainsKey(cacheKey) ? parentCache[cacheKey] : null;
-                    CloneMapObjectFast(template, parentTransform, config);
-                    totalCreated++;
-                }
-                else
-                {
-                    DevLog("[BossRush] CloneMapObject: 未找到模板 " + config.templateName + " (父对象前缀: " + config.parentNamePrefix + ")");
-                }
-            }
-
-            DevLog("[BossRush] SpawnBossRushMapObjects: 完成，共创建 " + totalCreated + " 个阻挡物");
-        }
-
-        /// <summary>
         /// 异步分帧生成地图阻挡物（平滑生成，在2秒内完成，避免卡顿）
         /// [性能优化] 使用 Transform 查找替代 GameObject，减少内存分配
         /// </summary>
@@ -172,7 +98,7 @@ namespace BossRush
             }
 
             // [性能优化] 使用 FindObjectsOfType<Transform> 比 FindObjectsOfType<GameObject> 更快
-            Transform[] allTransforms = UnityEngine.Object.FindObjectsOfType<Transform>();
+            UnityEngine.Object[] allTransforms = ObjectCache.GetSceneObjectsByType(typeof(Transform));
 
             // 预先查找并缓存模板对象（只遍历一次）
             Dictionary<string, GameObject> templateCache = new Dictionary<string, GameObject>();

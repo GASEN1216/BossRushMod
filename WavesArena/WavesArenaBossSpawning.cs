@@ -76,6 +76,10 @@ namespace BossRush
                 BeginAchievementSession(infiniteHellMode ? "InfiniteHell" : "BossRush");
                 ShowMessage(L10n.T("开始BossRush挑战！", "BossRush challenge started!"));
                 SetBossRushRuntimeActive(true);
+
+                // 抽取并应用本局变异词条（必须在生成第一个敌人之前，敌人增益才能作用到首波）
+                TryRollMutatorsForMode(infiniteHellMode ? "InfiniteHell" : "BossRush");
+
                 currentEnemyIndex = 0;
                 defeatedEnemies = 0;
 

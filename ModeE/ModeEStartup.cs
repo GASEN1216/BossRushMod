@@ -1026,6 +1026,10 @@ namespace BossRush
                 CaptureModeEFLootboxBaseline();
                 profiler.Mark("CaptureLootboxBaseline");
 
+                // 应用变异词条（必须先于任何 Boss 生成，敌人增益才能稳定作用到首批特殊 Boss）
+                TryRollMutatorsForMode("ModeE");
+                profiler.Mark("RollMutators");
+
                 // 一次性生成所有阵营的 Boss（UniTaskVoid fire-and-forget，抑制 CS4014 警告）
                 #pragma warning disable CS4014
                 ModeESpawnAllBosses(modeESessionToken: modeESessionToken, modeESessionRelatedScene: relatedScene);
@@ -1041,10 +1045,6 @@ namespace BossRush
                 // 在玩家出生点生成快递员阿稳（站在原地不移动）
                 SpawnCourierNPC();
                 profiler.Mark("SpawnCourier");
-
-                // 应用变异词条（与标准 BossRush 共用同一套）
-                TryRollMutatorsForMode("ModeE");
-                profiler.Mark("RollMutators");
 
                 ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),

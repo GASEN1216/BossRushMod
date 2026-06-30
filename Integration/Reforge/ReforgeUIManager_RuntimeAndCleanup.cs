@@ -48,7 +48,7 @@ namespace BossRush
                     if (prefabItem == null)
                     {
                         ModBehaviour.DevLog("[ReforgeUI] 无法获取预制体，使用玩家物品显示");
-                        MethodInfo setupMethod = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.Instance);
+                        MethodInfo setupMethod = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                         if (setupMethod != null) setupMethod.Invoke(detailsDisplayObj, new object[] { playerItem });
                         return;
                     }
@@ -140,7 +140,7 @@ namespace BossRush
 
                 if (prefabItem != null)
                 {
-                    MethodInfo setup = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.Instance);
+                    MethodInfo setup = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     if (setup != null)
                     {
                         setup.Invoke(detailsDisplayObj, new object[] { prefabItem });
@@ -165,7 +165,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ReforgeUI] 设置预制体对比失败: " + e.Message);
                 try
                 {
-                    MethodInfo setupMethod = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.Instance);
+                    MethodInfo setupMethod = detailsDisplayObj.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     if (setupMethod != null) setupMethod.Invoke(detailsDisplayObj, new object[] { playerItem });
                 }
                 catch { }

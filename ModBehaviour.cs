@@ -1100,6 +1100,23 @@ namespace BossRush
                     return null;
                 }
 
+                // 海岛更新后，部分 Boss 预设的 team 变为 Teams.middle（中立），
+                // 导致 Team.IsEnemy(player, middle)==false：玩家无法对其造成伤害、AI 强制追踪被忽略，
+                // Boss 永不死亡 → 波次无法推进。此处兜底：若生成的 Boss 对玩家非敌对，
+                // 强制改为 Teams.wolf（与龙王/龙裔 Boss 阵营一致，Mode E/F 走独立生成路径不受影响）。
+                try
+                {
+                    if (!Team.IsEnemy(Teams.player, character.Team))
+                    {
+                        DevLog("[BossRush] 检测到非敌对 Boss (team=" + character.Team + ")，强制设为 Teams.wolf");
+                        character.SetTeam(Teams.wolf);
+                    }
+                }
+                catch (Exception teamEx)
+                {
+                    DevLog("[BossRush] 强制 Boss 阵营失败: " + teamEx.Message);
+                }
+
                 currentBoss = character;
                 character.gameObject.name = "BossRush_" + preset.displayName;
 

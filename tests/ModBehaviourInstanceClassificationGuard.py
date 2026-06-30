@@ -25,7 +25,7 @@ EXPECTED_COUNTS = {
     "ModeE": 12,
     "Audio": 8,
     "ModeF": 6,
-    "Patches": 5,
+    "Patches": 6,
     "MapSelection": 3,
     "TeleportDebugMonitor.cs": 2,
     "ModeD": 1,
@@ -66,19 +66,19 @@ def main() -> int:
         return fail("current counts differ from documented baseline: " + repr(counts))
 
     total = sum(counts.values())
-    if total != 322:
-        return fail("expected 322 ModBehaviour.Instance lines, got " + str(total))
+    if total != 323:
+        return fail("expected 323 ModBehaviour.Instance lines, got " + str(total))
 
     doc = DOC.read_text(encoding="utf-8")
     required_doc_tokens = [
-        "- Raw matches: 322",
+        "- Raw matches: 323",
         "| `Integration/` | 220 |",
         "| `ZombieMode/` | 38 |",
         "| `Interactables/` | 26 |",
         "| `ModeE/` | 12 |",
         "| `Audio/` | 8 |",
         "| `ModeF/` | 6 |",
-        "| `Patches/` | 5 |",
+        "| `Patches/` | 6 |",
         "| `MapSelection/` | 3 |",
         "| `root`, `ModeD`, `DebugAndTools` | 4 |",
         "Keep: Unity owner",

@@ -144,6 +144,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     DebugAndTools\NPCTeleportUI.cs ^
     Integration\BossRushIntegration.cs ^
     Integration\BossRushIntegration_StartAndScene.cs ^
+    Integration\IntegrationDeferredBootstrap.cs ^
     Integration\BossRushIntegration_TravelAndSetup.cs ^
     Integration\BossRushIntegration_MapObjectsAndDragonBreath.cs ^
     Integration\Mutators\MutatorDefinitions.cs ^
@@ -153,6 +154,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\ZombieModeIntegration.cs ^
     Integration\DeathWraith\DeathWraithSystem.cs ^
     Integration\DeathWraith\DeathWraithRecording.cs ^
+    Integration\DeathWraith\DeathWraithOriginalDeadBodyBridge.cs ^
     Integration\DeathWraith\DeathWraithSpawnFlow.cs ^
     Integration\DeathWraith\DeathWraithCombatLoadout.cs ^
     Integration\DeathWraith\DeathWraithLifecycleAndPersistence.cs ^
@@ -162,6 +164,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Patches\Combat\CharacterOnDeadPatch.cs ^
     Patches\Combat\ProjectileHalfObstaclePatch.cs ^
     Patches\Combat\CombatPatchGroup.cs ^
+    Patches\Death\DeadBodyAppendPatch.cs ^
     Patches\Death\DeadBodySpawnPatch.cs ^
     Patches\Death\TombLootboxPatch.cs ^
     Patches\Death\DeadBodyTouchedPatch.cs ^
@@ -317,6 +320,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     BossFilter\BossFilter.cs ^
     BossFilter\BossFilterUi.cs ^
     MapSelection\BossRushMapSelectionHelper.cs ^
+    MapSelection\MapThumbnailCache.cs ^
     Integration\DragonDescendant\DragonDescendantConfig.cs ^
     Integration\DragonDescendant\DragonDescendantAbilities.cs ^
     Integration\DragonDescendant\DragonDescendantAbilities_ProjectilesAndGrenades.cs ^

@@ -273,6 +273,7 @@ namespace BossRush
                     return;
                 }
 
+                ObjectCache.InvalidateSceneObjectsByType(GetBuildingType());
                 RequestRestoreWishFountainBuildings("OnBuildingBuilt");
             }
             catch (Exception e)
@@ -299,6 +300,7 @@ namespace BossRush
         private void ResetStarwishPreparedBuildingCache()
         {
             preparedStarwishBuildingInstanceIds.Clear();
+            ObjectCache.InvalidateSceneObjectsByType(GetBuildingType());
             preparedStarwishSceneHandle = int.MinValue;
         }
 
@@ -359,6 +361,12 @@ namespace BossRush
             {
                 return true;
             }
+        }
+
+        private bool HasPreparedStarwishBuildingsInActiveScene()
+        {
+            RefreshStarwishPreparedBuildingCacheForActiveScene();
+            return preparedStarwishBuildingInstanceIds.Count > 0;
         }
 
         private bool IsStarwishBuildingComponent(Component buildingComp)
@@ -446,6 +454,11 @@ namespace BossRush
                     yield break;
                 }
 
+                if (HasPreparedStarwishBuildingsInActiveScene())
+                {
+                    yield break;
+                }
+
                 Type buildingType = GetBuildingType();
                 if (buildingType == null)
                 {
@@ -454,7 +467,7 @@ namespace BossRush
                 }
 
                 int restoredCount = 0;
-                UnityEngine.Object[] allBuildings = UnityEngine.Object.FindObjectsOfType(buildingType);
+                UnityEngine.Object[] allBuildings = ObjectCache.GetSceneObjectsByType(buildingType);
                 for (int i = 0; i < allBuildings.Length; i++)
                 {
                     Component buildingComponent = allBuildings[i] as Component;

@@ -22,37 +22,32 @@ namespace BossRush
         /// </summary>
         private void InjectLocalization_Extra_Integration()
         {
-            // 统一调用 LocalizationInjector 注入所有本地化
             LocalizationInjector.InjectUILocalization();
             LocalizationInjector.InjectMapNameLocalizations();
-            LocalizationInjector.InjectCommonNPCLocalization();   // 通用NPC交互键（聊天/赠礼/商店）
-            LocalizationInjector.InjectCourierNPCLocalization();  // 快递员NPC本地化
-            LocalizationInjector.InjectGoblinNPCLocalization();   // 哥布林NPC本地化（重铸服务）
-            LocalizationInjector.InjectNurseNPCLocalization();    // 护士NPC本地化
-            AwenCourierTokenConfig.InjectLocalization();  // 阿稳快递牌物品本地化
-            LocalizationInjector.InjectColdQuenchFluidLocalization();  // 冷淬液物品本地化
-            LocalizationInjector.InjectBrickStoneLocalization();  // 砖石物品本地化
-            LocalizationInjector.InjectDiamondLocalization();     // 钻石物品本地化
-            LocalizationInjector.InjectDiamondRingLocalization(); // 钻石戒指物品本地化
-            LocalizationInjector.InjectCalmingDropsLocalization(); // 安神滴剂物品本地化
-            LocalizationInjector.InjectPeaceCharmLocalization();   // 平安护身符物品本地化
-            DingdangDrawingConfig.InjectLocalization();  // 叮当涂鸦物品本地化
-            WildHornConfig.InjectLocalization();  // 荒野号角物品本地化
-            AwenLootSweepTokenConfig.InjectLocalization();  // 阿稳扫箱令物品本地化
-            FactionFlagConfig.InjectLocalization();  // 营旗物品本地化（Mode E）
-            RespawnItemConfig.InjectLocalization();  // 刷怪消耗品本地化（Mode E）
-            LocalizationInjector.InjectZombieModeLocalization();  // 末日丧尸模式全部本地化（含物品名 + OpenMapFailed/NoInvitation/InvitationUseDesc 等消息键）
-            InjectModeFItemLocalization();  // Mode F 物品本地化
-            AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
-            FactionFlagConfig.InjectIntoShops();  // 将营旗注入到售货机
-            BloodhuntTransponderConfig.InjectIntoShops();  // 将血猎收发器注入到售货机（Mode F）
-            ZombieTideInvitationConfig.InjectIntoShops();
+            LocalizationInjector.InjectCommonNPCLocalization();
+            LocalizationInjector.InjectCourierNPCLocalization();
+            LocalizationInjector.InjectGoblinNPCLocalization();
+            LocalizationInjector.InjectNurseNPCLocalization();
+            AwenCourierTokenConfig.InjectLocalization();
+            LocalizationInjector.InjectColdQuenchFluidLocalization();
+            LocalizationInjector.InjectBrickStoneLocalization();
+            LocalizationInjector.InjectDiamondLocalization();
+            LocalizationInjector.InjectDiamondRingLocalization();
+            LocalizationInjector.InjectCalmingDropsLocalization();
+            LocalizationInjector.InjectPeaceCharmLocalization();
+            DingdangDrawingConfig.InjectLocalization();
+            WildHornConfig.InjectLocalization();
+            AwenLootSweepTokenConfig.InjectLocalization();
+            FactionFlagConfig.InjectLocalization();
+            RespawnItemConfig.InjectLocalization();
+            LocalizationInjector.InjectZombieModeLocalization();
+            InjectModeFItemLocalization();
             EquipmentLocalization.InjectAllEquipmentLocalizations();
-            NewWeaponPlaceholderRegistry.InjectLocalization();  // P0 新武器（毒蛇匕首/召唤法杖/能量盾/冰霜长矛/雷电戒指）名称与描述本地化
-            SetBonusPlaceholderRegistry.InjectLocalization();   // P1 套装（霜冠/寒冰铠甲/雷神之角/雷霆战甲）DisplayNameRaw=BossRush_* 键本地化
-            InjectReverseScaleLocalization();  // 逆鳞图腾本地化
-            LocalizationInjector.InjectWeddingBuildingLocalization();  // 婚礼教堂建筑本地化
-            DevLog("[BossRush] 扩展本地化注入完成");
+            NewWeaponPlaceholderRegistry.InjectLocalization();
+            SetBonusPlaceholderRegistry.InjectLocalization();
+            InjectReverseScaleLocalization();
+            LocalizationInjector.InjectWeddingBuildingLocalization();
+            DevLog("[BossRush] extension localization injected");
         }
 
         void Start_Integration()
@@ -62,19 +57,14 @@ namespace BossRush
             if (modConfigType != null)
             {
                 SetupModConfig();
-                // ModConfig 已安装：以 ModConfig 当前值为准回拉并覆盖本地 config.cfg，
-                // 保证玩家在 ModConfig 面板里的设置始终是唯一事实源。
                 LoadConfigFromModConfig();
-                DevLog("[BossRush] 已从 ModConfig 同步配置并将覆盖本地 config.cfg");
+                DevLog("[BossRush] loaded config from ModConfig and synced local config.cfg");
                 SaveConfigToFile();
             }
+
             RefreshDeathWraithEventBindings_DeathWraith();
             ApplyDevModeRuntimeState();
-
-            // 尝试注入本地化字典
             InjectLocalization();
-
-            // 注册需要在实例恢复后再次补配的自定义武器
             RegisterCustomWeaponRuntimeConfigs();
 
             if (runtimeStateMonitorCoroutine == null)
@@ -82,81 +72,29 @@ namespace BossRush
                 runtimeStateMonitorCoroutine = StartCoroutine(MonitorLateRuntimeStateRestore());
             }
 
-            InitializeDynamicItems();
-            InjectBossRushTicketLocalization();
-            InjectBossRushTicketIntoShops();
-
-            // 初始化生日蛋糕物品
-            InitializeBirthdayCakeItem();
-            InjectBirthdayCakeLocalization();
-            // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
-
-            // 初始化 Wiki Book 物品（冒险家日志）
-            InitializeWikiBookItem();
-            InjectWikiBookLocalization();
-            InjectAdventureJournalIntoShops_Integration();  // 将冒险家日志注入到售货机
-
-            // 初始化成就勋章物品（配置器已在 ItemFactory.LoadAllItems 之前注册）
-            InjectAchievementMedalLocalization();
-            InjectAchievementMedalIntoShops();  // 将成就勋章注入到售货机（排在最前面）
-            AwenCourierTokenConfig.InjectIntoShops();  // 将阿稳快递牌注入到售货机
-            InjectBrickStoneIntoShops();  // 将砖石注入到售货机
-            ZombieTideInvitationConfig.InjectIntoShops();
-
-            // 初始化自定义装备（自动扫描加载 Assets/Equipment/ 目录）
-            LoadEquipmentContent();
-
-            // 初始化早期装备能力系统
-            InitializeEarlyEquipmentAbilitySystems();
-
-            // 注意：龙息武器Buff处理器现在是按需订阅
-            // 只在玩家装备龙息武器时才订阅Health.OnHurt事件，卸下时取消订阅
-            // 这样可以避免在所有伤害事件中进行武器ID检查，提升性能
-
-            DevLog("[BossRush] ========================================");
-            DevLog("[BossRush] Boss Rush Mod v1.0 已加载");
-            DevLog("[BossRush] ========================================");
-            DevLog("[BossRush] 使用方法:");
-            DevLog("[BossRush]   1. 购买'Boss Rush船票'（在商店中）");
-            // 延迟初始化，等待游戏系统完全加载
-
-            // 注册场景加载事件，在进入新场景时注入交互
             SceneManager.sceneLoaded += OnSceneLoaded;
-            // 注册商店购买事件，用于检测进货行为
+            SceneLoader.onAfterSceneInitialize += OnAfterSceneInitialize_Integration;
             StockShop.OnItemPurchased += OnItemPurchased_Integration;
 
-            // 注册存档系统事件，用于持久化船票库存
             SavesSystem.OnCollectSaveData += OnCollectSaveData_TicketStock;
             SavesSystem.OnSetFile += OnSetFile_TicketStock;
-
-            // 注册存档系统事件，用于持久化冒险家日志库存
             SavesSystem.OnCollectSaveData += OnCollectSaveData_JournalStock;
             SavesSystem.OnSetFile += OnSetFile_JournalStock;
-
-            // 注册存档系统事件，用于持久化成就勋章库存
             SavesSystem.OnCollectSaveData += OnCollectSaveData_MedalStock;
             SavesSystem.OnSetFile += OnSetFile_MedalStock;
-
-            // 注册存档系统事件，用于持久化砖石库存
             SavesSystem.OnCollectSaveData += OnCollectSaveData_BrickStoneStock;
             SavesSystem.OnSetFile += OnSetFile_BrickStoneStock;
-
-            // 亡魂系统：切换存档时重置当前文件的亡魂清理状态
             SavesSystem.OnSetFile += OnSetFile_DeathWraith;
 
-            // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
-
-            // 注册霜冠/雷神套装装备槽与关卡初始化事件
             RegisterSetBonusEvents();
 
-            // 初始化后置装备能力系统
-            InitializeLateEquipmentAbilitySystems();
+            EnsureIntegrationContentBootstrapScheduled("Start");
+            ScheduleDeferredSceneSetupForActiveScene("Start");
 
-            // 如果当前已经在场景中，立即执行一次
             if (CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
             {
-                StartCoroutine(FindInteractionTargets(5)); // 立即扫描5次
+                StartCoroutine(FindInteractionTargets(5));
             }
         }
 
@@ -168,7 +106,10 @@ namespace BossRush
                 runtimeStateMonitorCoroutine = null;
             }
 
+            CleanupDeferredIntegrationBootstrap_Integration();
+
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneLoader.onAfterSceneInitialize -= OnAfterSceneInitialize_Integration;
             StockShop.OnItemPurchased -= OnItemPurchased_Integration;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_TicketStock;
             SavesSystem.OnSetFile -= OnSetFile_TicketStock;
@@ -180,6 +121,9 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_BrickStoneStock;
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+            // 卸载前把内存中尚未写盘的亡魂列表刷一次，再解绑刷写回调，避免丢失死亡记录。
+            FlushDeathWraithListIfDirty_DeathWraith();
+            SavesSystem.OnCollectSaveData -= FlushDeathWraithListIfDirty_DeathWraith;
             Health.OnDead -= OnWraithDied_DeathWraith;
             Health.OnDead -= OnEnemyDiedWithDamageInfo;
             ClearDeathWraithState_DeathWraith();
@@ -234,6 +178,7 @@ namespace BossRush
             ModBehaviour.ResetDragonDescendantBossStaticCaches();
             ModBehaviour.ResetLootAndRewardsStaticCaches();
             ReforgeUIManager.ResetStaticCaches();
+            ObjectCache.ResetStaticCaches();
             try
             {
                 Type modBehaviourType = FindModConfigType("ModConfig.ModBehaviour");
@@ -300,31 +245,17 @@ namespace BossRush
 
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
         {
-            DevLog("[BossRush] 场景加载: " + scene.name);
+            DevLog("[BossRush] scene loaded: " + scene.name);
+            ObjectCache.ForceRefresh();
             InvalidateIntegrationStockShopCache();
             bool isGameplayScene = IsGameplaySceneName(scene.name);
 
-            // 亡魂系统：场景切换时清理状态
             ClearDeathWraithState_DeathWraith();
-
-            // [内存优化] 场景切换时清理龙裔遗族相关的静态缓存，防止持有已销毁对象引用
             ClearDragonDescendantStaticCache();
-
-            // [内存优化] 场景切换时清理龙王相关的静态缓存
             ClearDragonKingStaticCache();
-
-            // [内存优化] 场景切换时清理幽灵女巫相关的静态缓存
             ClearPhantomWitchStaticCache();
-
-            // [内存优化] 场景切换时清理荒野号角坐骑缓存
             WildHornUsage.ClearMountCache();
-
-            // [修复] 场景切换时清除重铸恢复追踪，允许重新恢复重铸属性
-            // 背包物品是 DontDestroyOnLoad，InstanceID 不变，
-            // 如果不清除，ReapplyModifiers 的 Harmony Prefix 会跳过恢复
             ReforgeDataPersistence.ClearRestoredTracking();
-
-            // 平安护身符在每个场景仅可触发一次，切图时重置
             PeaceCharmRuntime.ResetSceneTrigger();
 
             if (isGameplayScene)
@@ -334,6 +265,7 @@ namespace BossRush
             }
 
             SetupFlightTotemForScene(scene);
+            SetupReverseScaleForScene(scene);
             SetupFenHuangHalberdForScene(scene);
             SetupFrostmourneForScene(scene);
             SetupPhantomWitchScytheForScene(scene);
@@ -344,133 +276,70 @@ namespace BossRush
                 StartCoroutine(DelayedApplyDragonGunAmmoOverride());
             }
 
-            // 亡魂系统改为直接绑定原版遗失物创建链，这里不再做场景重试生成。
             if (!IsDeathWraithSystemEnabled())
             {
-                InvalidateStoredDeathWraithRecords_DeathWraith("场景加载时配置关闭");
+                InvalidateStoredDeathWraithRecords_DeathWraith("scene load with death-wraith disabled");
             }
+
+            ScheduleDeferredSceneSetupForActiveScene("SceneLoaded:" + scene.name);
 
             try
             {
-                InjectBossRushTicketIntoShops_Integration(scene.name);
-                InjectAdventureJournalIntoShops_Integration(scene.name);
-                InjectAchievementMedalIntoShops(scene.name);  // 注入成就勋章
-                AwenCourierTokenConfig.InjectIntoShops(scene.name);  // 注入阿稳快递牌
-                InjectBrickStoneIntoShops(scene.name);  // 注入砖石
-                ZombieTideInvitationConfig.InjectIntoShops(scene.name);
-                FactionFlagConfig.InjectIntoShops(scene.name);  // 注入营旗（Mode E）
-                BloodhuntTransponderConfig.InjectIntoShops(scene.name);  // 注入血猎收发器（Mode F）
-                // 不再注入商店，生日蛋糕仅通过12月自动赠送获得
-
-                // 在基地场景检查并赠送12月份生日蛋糕
-                if (scene.name == "Base_SceneV2")
-                {
-                    StartCoroutine(DelayedBirthdayCakeGift());
-
-                    // 初始化婚礼教堂建筑系统（注入建筑数据 + 恢复已放置建筑的NPC）
-                    InitWeddingBuilding();
-                    RestoreWeddingBuildingNPC();
-
-                    // 初始化布满了灰尘的星愿许愿台建筑系统
-                    InitWishFountainBuilding();
-                    RestoreWishFountainBuildings();
-                    ScheduleWishRewardPoolWarmup();
-                }
-
-                // 使用配置系统检查是否是有效的 BossRush 竞技场场景
                 BossRushMapConfig loadedMapConfig = GetMapConfigBySceneName(scene.name);
                 if (TryHandleZombieModePendingMapSceneLoaded(scene, loadedMapConfig))
                 {
                     return;
                 }
+
                 if (loadedMapConfig != null && !loadedMapConfig.customSpawnPos.HasValue)
                 {
-                    // 只有在通过 BossRush 启动且是默认传送位置的地图时才执行竞技场逻辑
                     if (bossRushArenaPlanned)
                     {
                         BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
                         InitializeEnemyPresets();
-                        InitializeItemValueCacheAsync(); // 异步初始化物品价值缓存
+                        InitializeItemValueCacheAsync();
                         InitializeBossPoolFilter();
                         bossRushArenaActive = true;
                         bossRushArenaPlanned = false;
-
-                        // [Bug修复] 确保订阅龙息Buff处理器，使龙裔遗族Boss的龙息能触发龙焰灼烧
                         DragonBreathBuffHandler.Subscribe();
-
-                        // 设置当前地图的刷新点
                         SetCurrentMapSpawnPoints(scene.name);
-
-                        // [性能优化] 立即设置竞技场中心，确保后续清理有范围限制
                         SetArenaCenterFromMapConfig(scene.name);
-                        spawnersDisabled = false; // 重置标志确保能重新禁用
-
-                        // [Mode E] 在禁用 spawner 之前预缓存原地图刷怪点位置
-                        // Mode E 需要使用这些位置作为阵营刷怪点
+                        spawnersDisabled = false;
                         PreCacheMapSpawnerPositions();
                         ScheduleModeEStartupWarmup("OnSceneLoaded");
-
-                        // [修复] 立即禁用 spawner，防止敌人生成
-                        // 场景加载时 spawner 已经存在，必须立即禁用
                         DisableAllSpawners();
-                        DevLog("[BossRush] 场景加载后立即禁用 spawner");
-
-                        // [修复] 立即启动持续清理协程，清理已生成的敌人
                         StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
-                        DevLog("[BossRush] 场景加载后立即启动持续清理协程");
-
-                        // 设置BossRush竞技场
                         demoChallengeStartPosition = Vector3.zero;
-                        // 延迟到地图完全加载后再执行传送、禁用spawner和创建交互点
                         StartCoroutine(WaitForLevelInitializedThenSetup(scene));
                     }
                 }
-                // 处理 BossRush 自定义传送位置（如零号区等其他地图）
-                // 只在目标子场景加载后才执行传送，避免在 LoadingScreen 场景就触发
                 else if (bossRushArenaPlanned)
                 {
-                    // 检查当前场景是否是待处理地图的目标子场景
                     string targetSubScene = BossRushMapSelectionHelper.GetPendingTargetSubSceneName();
                     string targetMainScene = BossRushMapSelectionHelper.GetPendingMainSceneName();
                     Vector3? customPos = BossRushMapSelectionHelper.GetPendingCustomPosition();
 
-                    // 只有当前场景匹配目标子场景时才执行传送
                     if (targetSubScene != null && scene.name == targetSubScene && customPos.HasValue)
                     {
-                        DevLog("[BossRush] 检测到目标子场景加载: " + scene.name + ", 执行自定义传送到: " + customPos.Value);
                         BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
                         bossRushArenaPlanned = false;
-
-                        // 延迟传送玩家到自定义位置
                         StartCoroutine(TeleportPlayerToCustomPosition(customPos.Value));
-
-                        // 清除待处理的地图条目
                         BossRushMapSelectionHelper.ClearPendingMapEntry();
                     }
-                    // 如果是加载屏幕、菜单场景或主场景（_Main），保持标记等待子场景加载
                     else if (scene.name.Contains("Loading") || scene.name.Contains("Menu") ||
                              (targetMainScene != null && scene.name == targetMainScene))
                     {
-                        DevLog("[BossRush] 检测到中间场景: " + scene.name + ", 保持传送标记等待目标子场景");
-                        // 不重置 bossRushArenaPlanned，等待目标场景加载
                     }
-                    // 特殊处理：风暴区地下场景 - 如果加载了错误的子场景（地上），强制传送到地下
                     else if (targetSubScene == "Level_StormZone_B0" && scene.name == "Level_StormZone_1" && customPos.HasValue)
                     {
-                        DevLog("[BossRush] 检测到加载了错误的子场景: " + scene.name + " (期望: " + targetSubScene + "), 强制传送到地下场景");
-                        // 使用 MultiSceneCore.LoadAndTeleport 强制传送到地下场景
                         StartCoroutine(ForceTeleportToSubScene(targetSubScene, customPos.Value));
                     }
-                    // 特殊处理：迷宫冷藏区 - 如果加载了雪地军事基地主场景，强制传送到冷藏区子场景
                     else if (targetSubScene == "Level_SnowMilitaryBase_ColdStorage" && scene.name == "Level_SnowMilitaryBase" && customPos.HasValue)
                     {
-                        DevLog("[BossRush] 检测到加载了错误的子场景: " + scene.name + " (期望: " + targetSubScene + "), 强制传送到冷藏区");
                         StartCoroutine(ForceTeleportToSubScene(targetSubScene, customPos.Value));
                     }
                     else
                     {
-                        // 其他场景，重置标记
-                        DevLog("[BossRush] 非目标场景: " + scene.name + ", 重置传送标记");
                         bossRushArenaPlanned = false;
                         BossRushMapSelectionHelper.ClearPendingMapEntry();
                         BossRushMapSelectionHelper.ClearPendingEntryFlowState();
@@ -478,51 +347,30 @@ namespace BossRush
                 }
                 else
                 {
-                    // Bug #1 修复：从竞技场撤离到其他场景时重置状态
                     if (IsActive || bossRushArenaActive)
                     {
-                        DevLog("[BossRush] 检测到场景切换（离开竞技场），重置 BossRush 状态");
-                        // 优先清空 BossRush 内部的下一波倒计时/提示状态和 NotificationText 队列，防止在基地继续播报 "下一波将在 X 秒后开始"
                         waitingForNextWave = false;
                         waveCountdown = 0f;
                         lastWaveCountdownSeconds = -1;
                         statusMessage = string.Empty;
                         messageTimer = 0f;
-
-                        // [多次进入优化] 清理波次相关状态
                         currentWaveBosses.Clear();
                         bossesInCurrentWaveTotal = 0;
                         bossesInCurrentWaveRemaining = 0;
                         currentEnemyIndex = 0;
                         defeatedEnemies = 0;
                         totalEnemies = 0;
-
-                        // [多次进入优化] 清理大兴兴追踪集合，防止持有已销毁对象引用
                         bossRushOwnedDaXingXing.Clear();
-
-                        // 清理龙裔遗族实例
                         CleanupDragonDescendant();
-
-                        // [多龙皇修复] 清理龙皇实例字典和套装效果
                         CleanupTrackedDragonKingsOnArenaExit();
                         if (dragonKingSetBonusRegistered)
                         {
-                            try
-                            {
-                                Health.OnHurt -= OnDragonKingBossHurt;
-                            }
-                            catch (Exception e)
-                            {
-                                DevLog("[BossRush] [WARNING] 离开竞技场时注销龙皇受伤事件失败: " + e.Message);
-                            }
+                            try { Health.OnHurt -= OnDragonKingBossHurt; } catch { }
                             dragonKingSetBonusRegistered = false;
                         }
                         activeDragonKingHealths.Clear();
-
-                        // 清理幽灵女巫实例字典
                         CleanupPhantomWitchTrackedStateOnArenaExit();
 
-                        // 清理 NotificationText.pendingTexts 队列
                         try
                         {
                             System.Type notifType = typeof(NotificationText);
@@ -536,22 +384,15 @@ namespace BossRush
                                 }
                             }
                         }
-                        catch (Exception e)
-                        {
-                            DevLog("[BossRush] [WARNING] 离开竞技场时清理通知队列失败: " + e.Message);
-                        }
+                        catch { }
 
-                        // 最后再重置 BossRush 状态标志，避免因为 IsActive 过早被置为 false 导致某些清理逻辑被跳过
                         SetBossRushRuntimeActive(false);
                         bossRushArenaActive = false;
                         bossRushArenaPlanned = false;
                         currentBoss = null;
-
-                        // 统一销毁公共 NPC（快递员/哥布林/护士）
-                        DestroyCommonNPCs("离开竞技场场景");
-
-                        // 重置 spawner 禁用标志，以便下次进入竞技场时能重新禁用
+                        DestroyCommonNPCs("LeaveBossRushScene");
                         spawnersDisabled = false;
+
                         try
                         {
                             if (ammoShop != null)
@@ -563,60 +404,44 @@ namespace BossRush
                                         UnityEngine.Object.Destroy(ammoShop.gameObject);
                                     }
                                 }
-                                catch (Exception e)
-                                {
-                                    DevLog("[BossRush] [WARNING] 离开竞技场时销毁加油站商店对象失败: " + e.Message);
-                                }
+                                catch { }
                                 ammoShop = null;
                             }
                         }
-                        catch (Exception e)
-                        {
-                            DevLog("[BossRush] [WARNING] 离开竞技场时清理加油站商店失败: " + e.Message);
-                        }
+                        catch { }
 
-                        // 取消敌人死亡监听
                         Health.OnDead -= OnEnemyDiedWithDamageInfo;
 
-                        // 如果是 Mode D 模式，结束 Mode D
                         if (modeDActive)
                         {
                             EndModeD();
                         }
 
-                        // 如果是 Mode E 模式，结束 Mode E
                         if (modeEActive)
                         {
                             EndModeE();
                         }
                     }
 
-                    // 普通模式下：若当前场景有任意公共 NPC 模块可生成，则延迟统一生成
                     if (ShouldSpawnCommonNPCsInScene(scene.name))
                     {
-                        DevLog("[NPCSpawn] 普通模式检测到可生成公共NPC场景: " + scene.name + ", 延迟统一生成");
                         StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(scene.name));
                     }
 
-                    ScheduleRestoreFollowingSpouse(scene.name, "普通场景加载");
+                    ScheduleRestoreFollowingSpouse(scene.name, "NormalSceneLoaded");
 
-                    // 其他场景：注入传送到竞技场的交互选项
-                if (isGameplayScene)
-                {
-                    StartCoroutine(FindInteractionTargets(10));
-                }
+                    if (isGameplayScene)
+                    {
+                        StartCoroutine(FindInteractionTargets(10));
+                    }
                 }
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [WARNING] OnSceneLoaded_Integration 处理失败: scene=" + scene.name + ", " + e.Message);
+                DevLog("[BossRush] [WARNING] OnSceneLoaded_Integration failed: scene=" + scene.name + ", " + e.Message);
             }
         }
 
-        /// <summary>
-        /// 延迟恢复背包物品的重铸数据
-        /// 解决纯 Stats 物品（如焚皇断界戟）不触发 ReapplyModifiers 导致重铸效果丢失的问题
-        /// </summary>
         private System.Collections.IEnumerator DelayedRestoreReforgeDataForInventory()
         {
             // 等待玩家角色可用

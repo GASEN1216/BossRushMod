@@ -68,6 +68,11 @@ namespace BossRush
         /// <summary>是否已初始化</summary>
         private static bool isInitialized = false;
 
+        public static bool IsInitialized
+        {
+            get { return isInitialized; }
+        }
+
         /// <summary>数据是否有变更（脏标记）</summary>
         private static bool isDirty = false;
 

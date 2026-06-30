@@ -39,15 +39,6 @@ namespace BossRush
         // 全局修改器（供外部系统读取）
         // ═══════════════════════════════════════════
 
-        /// <summary>掉落品质偏移（正数=提升，负数=降低）</summary>
-        public static int LootQualityOffset { get; set; }
-
-        /// <summary>掉落数量倍率（默认1）</summary>
-        public static int LootQuantityMultiplier { get; set; } = 1;
-
-        /// <summary>掉落类型过滤（null=不过滤，"melee"=只掉近战）</summary>
-        public static string LootTypeFilter { get; set; }
-
         /// <summary>流血速率倍率（默认1.0）</summary>
         public static float BleedRateMultiplier { get; set; } = 1.0f;
 
@@ -58,6 +49,12 @@ namespace BossRush
         private static float _bossRegenTimer;
         private const float BossRegenInterval = 10f;
         private const float BossRegenPercent = 0.05f;
+
+        // 是否已订阅 Health.OnDead 死亡事件（防止重复订阅 / 跨局泄漏）
+        private static bool _enemyKilledSubscribed;
+
+        // 死亡回调重入守卫：防止"殉爆"等效果同帧连环触发死亡 → 无限递归 / 卡顿 / 秒杀玩家
+        private static bool _dispatchingEnemyKilled;
 
         // ═══════════════════════════════════════════
         // 核心方法
@@ -129,6 +126,9 @@ namespace BossRush
             IsActive = true;
             _bossRegenTimer = 0f;
 
+            // 若有词条注册了"敌人被击杀"回调，统一订阅一次 Health.OnDead（退局时在 RemoveAll 退订）
+            TrySubscribeEnemyKilled();
+
             ModBehaviour.DevLog("[Mutator] 已抽取并应用 " + _activeMutators.Count +
                       " 条变异词条，modeTag=" + (string.IsNullOrEmpty(modeTag) ? "Default" : modeTag));
         }
@@ -143,6 +143,10 @@ namespace BossRush
             {
                 return; // 没有需要清理的
             }
+
+            // 0. 退订死亡事件（务必在最前，避免静态事件跨局泄漏）
+            TryUnsubscribeEnemyKilled();
+            _dispatchingEnemyKilled = false;
 
             // 1. 集中清理敌人身上的 Modifier（针对仍然存活的敌人）
             if (_currentContext != null)
@@ -182,9 +186,6 @@ namespace BossRush
             _currentContext = null;
 
             // 4. 强制重置所有全局修改器（双保险）
-            LootQualityOffset = 0;
-            LootQuantityMultiplier = 1;
-            LootTypeFilter = null;
             BleedRateMultiplier = 1.0f;
             BossRegenEnabled = false;
             _bossRegenTimer = 0f;
@@ -224,6 +225,112 @@ namespace BossRush
         public static IReadOnlyList<MutatorDefinition> GetActiveMutators()
         {
             return _activeMutators;
+        }
+
+        /// <summary>
+        /// 查询指定词条当前是否生效。
+        /// 供模式级后处理在不重新叠加数值 Modifier 的前提下，兼容保留特殊行为类词条。
+        /// </summary>
+        public static bool HasActiveMutator(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return false;
+
+            for (int i = 0; i < _activeMutators.Count; i++)
+            {
+                MutatorDefinition active = _activeMutators[i];
+                if (active == null) continue;
+                if (string.Equals(active.Id, id, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // ═══════════════════════════════════════════
+        // 敌人死亡事件（嗜血 / 殉爆等死亡触发词条）
+        // ═══════════════════════════════════════════
+
+        /// <summary>
+        /// 若当前上下文里有词条注册了 EnemyKilledCallbacks，则订阅一次 Health.OnDead 静态事件。
+        /// 幂等：重复调用只订阅一次。
+        /// </summary>
+        private static void TrySubscribeEnemyKilled()
+        {
+            if (_enemyKilledSubscribed) return;
+            if (_currentContext == null) return;
+            if (_currentContext.EnemyKilledCallbacks.Count == 0) return;
+
+            Health.OnDead += OnAnyCharacterDead;
+            _enemyKilledSubscribed = true;
+        }
+
+        /// <summary>
+        /// 退订 Health.OnDead。务必在退局时调用，避免静态事件跨局泄漏（项目里已有同类泄漏前例）。
+        /// 幂等：未订阅时安全空转。
+        /// </summary>
+        private static void TryUnsubscribeEnemyKilled()
+        {
+            if (!_enemyKilledSubscribed) return;
+            Health.OnDead -= OnAnyCharacterDead;
+            _enemyKilledSubscribed = false;
+        }
+
+        /// <summary>
+        /// Health.OnDead 转发器：只处理"敌人被玩家击杀"，再分发给各死亡触发词条回调。
+        /// </summary>
+        private static void OnAnyCharacterDead(Health deadHealth, DamageInfo damageInfo)
+        {
+            try
+            {
+                if (!IsActive || _currentContext == null) return;
+                if (_currentContext.EnemyKilledCallbacks.Count == 0) return;
+                if (deadHealth == null) return;
+
+                // 重入守卫：若一次死亡分发过程中（如殉爆）又触发了新的死亡，
+                // 不再递归分发，避免同帧连环爆炸把玩家瞬间炸死 / 深递归卡死。
+                if (_dispatchingEnemyKilled) return;
+
+                CharacterMainControl dead = deadHealth.TryGetCharacter();
+                CharacterMainControl player = _currentContext.Player;
+                if (player == null) return;
+
+                // 跳过玩家自己的死亡
+                if (dead != null && object.ReferenceEquals(dead, player)) return;
+
+                // 仅统计玩家造成的击杀（与套装效果同款判定）
+                if (damageInfo.fromCharacter == null) return;
+                if (!object.ReferenceEquals(damageInfo.fromCharacter, player)) return;
+
+                Vector3 pos = dead != null && dead.transform != null
+                    ? dead.transform.position
+                    : damageInfo.damagePoint;
+
+                _dispatchingEnemyKilled = true;
+                try
+                {
+                    for (int i = 0; i < _currentContext.EnemyKilledCallbacks.Count; i++)
+                    {
+                        try
+                        {
+                            _currentContext.EnemyKilledCallbacks[i]?.Invoke(dead, pos);
+                        }
+                        catch (Exception e)
+                        {
+                            ModBehaviour.DevLog("[Mutator] EnemyKilled 回调失败: " + e.Message);
+                        }
+                    }
+                }
+                finally
+                {
+                    _dispatchingEnemyKilled = false;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Mutator] OnAnyCharacterDead 异常: " + e.Message);
+            }
         }
 
         // ═══════════════════════════════════════════

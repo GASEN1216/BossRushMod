@@ -406,30 +406,86 @@ namespace BossRush
 
         private List<WraithInfo> LoadStoredDeathWraithInfos_DeathWraith()
         {
+            // [性能优化] 返回内存中的权威副本；仅首次访问时从 ES3 反序列化。
+            // 之前每次 Load 都同步反序列化整张含完整物品树的列表，死亡帧调用一次即卡。
+            if (_deathWraithListCache != null)
+            {
+                return _deathWraithListCache;
+            }
+
             try
             {
                 List<WraithInfo> infos =
                     SavesSystem.Load<List<WraithInfo>>(DEATH_WRAITH_LIST_SAVE_KEY);
-                return infos ?? new List<WraithInfo>();
+                _deathWraithListCache = infos ?? new List<WraithInfo>();
             }
             catch (Exception e)
             {
                 DevLog("[DeathWraith] 读取亡魂记录列表失败: " + e.Message);
-                return new List<WraithInfo>();
+                _deathWraithListCache = new List<WraithInfo>();
             }
+
+            return _deathWraithListCache;
         }
 
         private void SaveStoredDeathWraithInfos_DeathWraith(List<WraithInfo> infos)
         {
+            // [性能优化] 不在此处同步写 ES3。把列表认作权威内存副本并标脏，
+            // 真正的序列化延后到官方存档点（OnCollectSaveData）或去抖 tick。
+            // 这样死亡帧的 Append 不再触发 Load+Save 全表序列化。
+            _deathWraithListCache = infos ?? new List<WraithInfo>();
+            MarkDeathWraithListDirty_DeathWraith();
+        }
+
+        private void MarkDeathWraithListDirty_DeathWraith()
+        {
+            if (!_deathWraithListDirty)
+            {
+                _deathWraithListDirty = true;
+                _deathWraithListDirtySince = Time.realtimeSinceStartup;
+            }
+        }
+
+        /// <summary>
+        /// 把内存中的亡魂列表真正写入 ES3 缓存（仅在有改动时）。
+        /// 由游戏官方存档收集点 OnCollectSaveData 调用（撤离/切场景/退出都会触发），
+        /// 因此死亡帧本身不需要做这次序列化。
+        /// </summary>
+        private void FlushDeathWraithListIfDirty_DeathWraith()
+        {
+            if (!_deathWraithListDirty)
+            {
+                return;
+            }
+
             try
             {
                 SavesSystem.Save<List<WraithInfo>>(
                     DEATH_WRAITH_LIST_SAVE_KEY,
-                    infos ?? new List<WraithInfo>());
+                    _deathWraithListCache ?? new List<WraithInfo>());
+                _deathWraithListDirty = false;
+                _deathWraithListDirtySince = -1f;
             }
             catch (Exception e)
             {
                 DevLog("[DeathWraith] 保存亡魂记录列表失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 去抖兜底：变脏后超过 DEATH_WRAITH_SAVE_DELAY 仍未被官方存档点刷写时，主动写一次。
+        /// 由 TickAlwaysOnRuntime 每帧调用（极轻量：未变脏时直接返回）。
+        /// </summary>
+        internal void UpdateDeferredDeathWraithSave_DeathWraith()
+        {
+            if (!_deathWraithListDirty)
+            {
+                return;
+            }
+
+            if (Time.realtimeSinceStartup - _deathWraithListDirtySince >= DEATH_WRAITH_SAVE_DELAY)
+            {
+                FlushDeathWraithListIfDirty_DeathWraith();
             }
         }
 

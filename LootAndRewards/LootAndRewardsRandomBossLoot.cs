@@ -402,13 +402,6 @@ namespace BossRush
                 }
                 baseCount = Mathf.Clamp(baseCount, 7, 15);
 
-                // 变异词条：掉落数量倍率
-                if (MutatorManager.IsActive && MutatorManager.LootQuantityMultiplier > 1)
-                {
-                    baseCount = baseCount * MutatorManager.LootQuantityMultiplier;
-                    baseCount = Mathf.Min(baseCount, 30); // 上限保护
-                }
-
                 // 每100血量增加的高品质概率加成
                 float lootHealthBonusRate = LOOT_HEALTH_BONUS_RATE;
                 float highChanceBonusByHealth = (maxHealth / 100f) * lootHealthBonusRate;
@@ -422,7 +415,6 @@ namespace BossRush
                     + "秒, MaxHP=" + maxHealth
                     + ", 基础掉落数量=" + baseCount
                     + ", 高品质概率加成=" + highChanceBonusByHealth.ToString("P3")
-                    + ", 品质偏移=" + GetActiveMutatorLootQualityOffset()
                     + ", legacyBonusFactor=" + legacyBonusFactor.ToString("F3"));
 
                 // 随机生成物品并填充到Boss掉落源（CharacterItem.Inventory），由原版逻辑创建LootBox
@@ -624,7 +616,7 @@ namespace BossRush
 	                                        double probability = legacyDistribution.GetProbabilityForQuality(q);
 	                                        if (probability > 0.0)
 	                                        {
-	                                            qualities.AddEntry(ApplyMutatorLootQualityOffset(q), (float)probability);
+	                                            qualities.AddEntry(q, (float)probability);
 	                                        }
 	                                    }
                                 }
@@ -654,7 +646,7 @@ namespace BossRush
                                     float perLowQualityWeight = lowWeight / lowQualityTiers;
 	                                    for (int q = lowQualityMin; q <= lowQualityMax; q++)
 	                                    {
-	                                        qualities.AddEntry(ApplyMutatorLootQualityOffset(q), perLowQualityWeight);
+	                                        qualities.AddEntry(q, perLowQualityWeight);
 	                                    }
 
                                     // 高品质：按 4:3:2:1 比例分配（品质5占4份，品质6占3份，品质7占2份，品质8占1份）
@@ -665,7 +657,7 @@ namespace BossRush
 	                                        if (q <= highQualityMax)
 	                                        {
 	                                            float weight = highWeight * (GetBossLootHighQualityRatio(i) / totalRatio);
-	                                            qualities.AddEntry(ApplyMutatorLootQualityOffset(q), weight);
+	                                            qualities.AddEntry(q, weight);
 	                                        }
 	                                    }
                                 }
@@ -701,24 +693,6 @@ namespace BossRush
                                         if (tagExclude.Contains(t))
                                         {
                                             continue;
-                                        }
-                                        // 变异词条：近战限定过滤
-                                        if (MutatorManager.IsActive && MutatorManager.LootTypeFilter == "melee")
-                                        {
-                                            string tagName = t.name;
-                                            if (!string.IsNullOrEmpty(tagName))
-                                            {
-                                                // 只保留包含 melee/sword/knife/axe/hammer 关键词的 tag
-                                                string lower = tagName.ToLowerInvariant();
-                                                bool isMelee = lower.Contains("melee") ||
-                                                               lower.Contains("sword") ||
-                                                               lower.Contains("knife") ||
-                                                               lower.Contains("axe") ||
-                                                               lower.Contains("hammer") ||
-                                                               lower.Contains("bat") ||
-                                                               lower.Contains("club");
-                                                if (!isMelee) continue;
-                                            }
                                         }
                                         tagsContainer.AddEntry(t, 1f);
                                     }
@@ -833,7 +807,6 @@ namespace BossRush
                                             {
                                                 int id2 = candidateIds[candidateIndex];
 	                                                int quality = GetBossLootCandidateQuality(id2);
-	                                                quality = ApplyMutatorLootQualityOffset(quality);
 
                                                 itemQualities[id2] = quality;
 
@@ -1096,22 +1069,6 @@ namespace BossRush
                 FinalizeBossRushLootboxPathTracking(bossMain);
                 DevLog("[BossRush] RandomizeBossLoot 错误: " + e.Message);
             }
-        }
-
-        private int GetActiveMutatorLootQualityOffset()
-        {
-            return MutatorManager.IsActive ? MutatorManager.LootQualityOffset : 0;
-        }
-
-        private int ApplyMutatorLootQualityOffset(int quality)
-        {
-            int offset = GetActiveMutatorLootQualityOffset();
-            if (offset == 0)
-            {
-                return Mathf.Clamp(quality, LOOT_LOW_QUALITY_MIN, LOOT_HIGH_QUALITY_MAX);
-            }
-
-            return Mathf.Clamp(quality + offset, LOOT_LOW_QUALITY_MIN, LOOT_HIGH_QUALITY_MAX);
         }
     }
 }

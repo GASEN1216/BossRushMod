@@ -54,7 +54,7 @@ namespace BossRush
 
         // 分类颜色
         private static readonly Color ColorEnemyBuff = new Color(0.9f, 0.3f, 0.3f, 1f);       // 红色
-        private static readonly Color ColorLootChange = new Color(1f, 0.8f, 0.2f, 1f);        // 金色
+        private static readonly Color ColorPlayerBoon = new Color(0.3f, 0.85f, 0.4f, 1f);      // 绿色
         private static readonly Color ColorEnvironmentRule = new Color(0.7f, 0.4f, 0.9f, 1f);  // 紫色
 
         // ═══════════════════════════════════════════
@@ -231,7 +231,7 @@ namespace BossRush
             switch (category)
             {
                 case MutatorCategory.EnemyBuff: return ColorEnemyBuff;
-                case MutatorCategory.LootChange: return ColorLootChange;
+                case MutatorCategory.PlayerBoon: return ColorPlayerBoon;
                 case MutatorCategory.EnvironmentRule: return ColorEnvironmentRule;
                 default: return Color.white;
             }
@@ -242,7 +242,7 @@ namespace BossRush
             switch (category)
             {
                 case MutatorCategory.EnemyBuff: return "⚔";
-                case MutatorCategory.LootChange: return "✦";
+                case MutatorCategory.PlayerBoon: return "★";
                 case MutatorCategory.EnvironmentRule: return "☠";
                 default: return "•";
             }

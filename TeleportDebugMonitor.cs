@@ -207,14 +207,14 @@ namespace BossRush
             try
             {
                 Type contextType = context.GetType();
-                FieldInfo sceneIdField = contextType.GetField("sceneID", BindingFlags.Public | BindingFlags.Instance);
+                FieldInfo sceneNameField = contextType.GetField("sceneName", BindingFlags.Public | BindingFlags.Instance);
                 FieldInfo useLocationField = contextType.GetField("useLocation", BindingFlags.Public | BindingFlags.Instance);
                 FieldInfo locationField = contextType.GetField("location", BindingFlags.Public | BindingFlags.Instance);
 
-                if (sceneIdField != null)
+                if (sceneNameField != null)
                 {
-                    string sceneId = (string)sceneIdField.GetValue(context);
-                    Log("  SceneID: " + sceneId);
+                    string sceneName = (string)sceneNameField.GetValue(context);
+                    Log("  SceneName: " + sceneName);
                 }
 
                 if (useLocationField != null)

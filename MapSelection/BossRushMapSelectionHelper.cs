@@ -531,44 +531,11 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 根据文件名加载自定义背景图片
+        /// 根据文件名加载自定义背景图片（走缓存，避免每次打开菜单重读盘 + 新建纹理）
         /// </summary>
         private static Sprite LoadCustomBackgroundSpriteByName(string imageName)
         {
-            try
-            {
-                string modPath = GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-                
-                // 尝试 Assets/preview 子目录
-                string imagePath = System.IO.Path.Combine(modPath, "Assets", "preview", imageName);
-                if (!System.IO.File.Exists(imagePath))
-                {
-                    // 回退到 Assets 目录
-                    imagePath = System.IO.Path.Combine(modPath, "Assets", imageName);
-                    if (!System.IO.File.Exists(imagePath))
-                    {
-                        // 回退到根目录
-                        imagePath = System.IO.Path.Combine(modPath, imageName);
-                        if (!System.IO.File.Exists(imagePath))
-                        {
-                            return null;
-                        }
-                    }
-                }
-                
-                byte[] imageData = System.IO.File.ReadAllBytes(imagePath);
-                Texture2D texture = new Texture2D(2, 2);
-                if (ImageConversion.LoadImage(texture, imageData))
-                {
-                    return Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] LoadCustomBackgroundSpriteByName 失败: " + e.Message);
-            }
-            return null;
+            return MapThumbnailCache.GetOrLoad(GetModPath(), imageName);
         }
         
         /// <summary>

@@ -53,12 +53,12 @@ namespace BossRush
         /// <summary>
         /// 重置UI状态（滑块、按钮、概率显示）
         /// </summary>
-        private static void ResetUIState(int maxMoney)
+        private static void ResetUIState(long maxMoney)
         {
             // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
             int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
 
-            int optimalMagMaxSliderValue = maxMoney;
+            long optimalMagMaxSliderValue = maxMoney;
             if (selectedItem != null)
             {
                 float itemValue = ReforgeSystem.GetItemValue(selectedItem);
@@ -102,12 +102,12 @@ namespace BossRush
         /// <summary>
         /// 更新UI状态但保留滑块值（用于重铸完成后，方便玩家多次快速重铸）
         /// </summary>
-        private static void UpdateUIStateKeepSlider(int maxMoney)
+        private static void UpdateUIStateKeepSlider(long maxMoney)
         {
             // 计算基础费用（物品价值的1/10，应用哥布林好感度折扣）
             int baseCost = selectedItem != null ? ReforgeSystem.GetDiscountedCost(selectedItem) : ReforgeSystem.MIN_REFORGE_COST;
 
-            int optimalMagMaxSliderValue = maxMoney;
+            long optimalMagMaxSliderValue = maxMoney;
             if (selectedItem != null)
             {
                 float itemValue = ReforgeSystem.GetItemValue(selectedItem);
@@ -139,7 +139,7 @@ namespace BossRush
                 if (currentValue > optimalMagMaxSliderValue)
                 {
                     moneySlider.value = optimalMagMaxSliderValue;
-                    currentMoney = optimalMagMaxSliderValue;
+                    currentMoney = (int)optimalMagMaxSliderValue;
                 }
                 else if (currentValue < baseCost)
                 {
@@ -188,7 +188,7 @@ namespace BossRush
 
             // 计算基础费用（应用哥布林好感度折扣）
             int baseCost = ReforgeSystem.GetDiscountedCost(selectedItem);
-            int playerMoney = GetPlayerMoney();
+            long playerMoney = GetPlayerMoney();
             float discount = ReforgeSystem.GetCurrentDiscount();
             int tendencyCost = GetTendencyCost();
             int totalCost = currentMoney + tendencyCost;
@@ -293,7 +293,7 @@ namespace BossRush
         /// <summary>
         /// 延迟重置UI状态（防止原版覆盖）
         /// </summary>
-        private static System.Collections.IEnumerator ResetUIStateDelayed(int maxMoney, int frameDelay = 1)
+        private static System.Collections.IEnumerator ResetUIStateDelayed(long maxMoney, int frameDelay = 1)
         {
             for (int i = 0; i < frameDelay; i++)
             {
@@ -479,7 +479,7 @@ namespace BossRush
                 ShowPropertyChanges();
 
                 // 立即更新UI状态（金钱已扣除，保留滑块值方便多次快速重铸）
-                int newMax = GetPlayerMoney();
+                long newMax = GetPlayerMoney();
                 UpdateUIStateKeepSlider(newMax);
 
                 // 合并协程：延迟刷新物品详情和锁定图标（性能优化：减少协程调度开销）
@@ -1077,7 +1077,7 @@ namespace BossRush
         /// <summary>
         /// 获取玩家金钱
         /// </summary>
-        private static int GetPlayerMoney()
+        private static long GetPlayerMoney()
         {
             try
             {
@@ -1088,7 +1088,9 @@ namespace BossRush
                     return ModBehaviour.Instance.GetZombieModePurificationPointsForRealNpcUi(currentController);
                 }
 
-                return (int)EconomyManager.Money;
+                // EconomyManager.Money 是 long；玩家余额超过 int.MaxValue(约21.4亿)时
+                // 强转 int 会溢出为负数，导致重铸页面显示负数金额。此处保持 long。
+                return EconomyManager.Money;
             }
             catch { }
             return 0;

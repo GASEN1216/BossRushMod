@@ -340,6 +340,9 @@ namespace BossRush
                 // 清除原始撤离点
                 ClearOriginalExtractionPoints();
 
+                // 抽取并应用本局变异词条（必须先于 Boss 生成，敌人增益才能作用；流血加速词条仅 ModeF 可抽）
+                TryRollMutatorsForMode("ModeF");
+
                 // 一次性生成所有 Boss（复用 Mode E 逻辑）
                 #pragma warning disable CS4014
                 ModeESpawnAllBosses(modeFSessionToken, relatedScene);

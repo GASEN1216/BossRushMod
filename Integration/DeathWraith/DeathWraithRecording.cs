@@ -97,7 +97,8 @@ namespace BossRush
                     return;
                 }
 
-                WraithInfo primedInfo = BuildCurrentPlayerWraithInfo_DeathWraith(main);
+                PendingDeathWraithContext_DeathWraith primedInfo =
+                    BuildPendingDeathWraithContext_DeathWraith(main);
                 StorePendingDeathWraithInfo_DeathWraith(primedInfo);
                 if (primedInfo != null)
                 {
@@ -143,7 +144,15 @@ namespace BossRush
                     return;
                 }
 
-                RecordDeathWraithDataForMainCharacter_DeathWraith(main, damageInfo, source);
+                PendingDeathWraithContext_DeathWraith context =
+                    BuildPendingDeathWraithContext_DeathWraith(main);
+                if (context == null)
+                {
+                    return;
+                }
+
+                StorePendingDeathWraithInfo_DeathWraith(context);
+                TryFinalizePendingDeathWraithRecord_DeathWraith(source);
             }
             catch (Exception e)
             {
@@ -165,7 +174,7 @@ namespace BossRush
             if (!IsDeathWraithSystemEnabled())
             {
                 ClearPendingDeathWraithInfo_DeathWraith();
-                InvalidateStoredDeathWraithRecords_DeathWraith("配置关闭，跳过死亡记录");
+                InvalidateStoredDeathWraithRecords_DeathWraith("death-wraith disabled during death record");
                 return;
             }
 
@@ -175,31 +184,139 @@ namespace BossRush
                 return;
             }
 
-            WraithInfo info = ConsumePendingDeathWraithInfo_DeathWraith(main);
-            if (info == null)
+            PendingDeathWraithContext_DeathWraith context =
+                GetPendingDeathWraithContext_DeathWraith();
+            if (context == null)
             {
-                info = BuildCurrentPlayerWraithInfo_DeathWraith(main);
+                context = BuildPendingDeathWraithContext_DeathWraith(main);
             }
 
-            if (info == null)
+            if (context == null)
             {
-                DevLog("[DeathWraith] 未能构建亡魂数据，跳过记录"
-                    + (string.IsNullOrEmpty(source) ? "" : (": source=" + source)));
+                DevLog("[DeathWraith] pending death-wraith context missing"
+                    + (string.IsNullOrEmpty(source) ? string.Empty : (": source=" + source)));
                 return;
             }
 
-            AppendStoredDeathWraithInfo_DeathWraith(info);
-            DevLog("[DeathWraith] 已记录亡魂数据"
-                + (string.IsNullOrEmpty(source) ? "" : ("[" + source + "]"))
-                + ": raidID=" + info.raidID
-                + ": scene=" + info.sceneName
-                + ", subScene=" + info.subSceneID
-                + ", faceSaved=" + info.hasPlayerFaceData
-                + ", meleeSaved=" + info.hasBoundMeleeSnapshot
-                + " value=" + info.droppedItemsValue
-                + " wealth=" + info.playerTotalWealth
-                + " maxHp=" + info.playerMaxHealth
-                + " pos=(" + info.posX + "," + info.posY + "," + info.posZ + ")");
+            StorePendingDeathWraithInfo_DeathWraith(context);
+            TryFinalizePendingDeathWraithRecord_DeathWraith(source);
+        }
+
+        private PendingDeathWraithContext_DeathWraith BuildPendingDeathWraithContext_DeathWraith(
+            CharacterMainControl main)
+        {
+            if (main == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                string presetNameKey = string.Empty;
+                string presetRuntimeName = string.Empty;
+                try
+                {
+                    if (main.characterPreset != null)
+                    {
+                        presetNameKey = main.characterPreset.nameKey ?? string.Empty;
+                        presetRuntimeName = NormalizeWraithRuntimePresetName_DeathWraith(
+                            main.characterPreset.name);
+                    }
+                    else
+                    {
+                        presetRuntimeName = NormalizeWraithRuntimePresetName_DeathWraith(main.name);
+                        DevLog("[DeathWraith] characterPreset missing, fallback to main.name runtimeName: "
+                            + presetRuntimeName);
+                    }
+                }
+                catch { }
+
+                CustomFaceSettingData playerFaceData = default(CustomFaceSettingData);
+                bool hasPlayerFaceData = TryCapturePlayerFaceData_DeathWraith(main, out playerFaceData);
+                ItemTreeData boundMeleeItemTree = null;
+                int boundMeleeTypeId = 0;
+                string boundMeleeDisplayName = null;
+                bool hasBoundMeleeSnapshot = TryCaptureBoundMeleeSnapshot_DeathWraith(
+                    main,
+                    out boundMeleeItemTree,
+                    out boundMeleeTypeId,
+                    out boundMeleeDisplayName);
+                if (!hasBoundMeleeSnapshot)
+                {
+                    hasBoundMeleeSnapshot = TryLoadPersistedBoundMeleeSnapshot_DeathWraith(
+                        out boundMeleeItemTree,
+                        out boundMeleeTypeId,
+                        out boundMeleeDisplayName);
+                }
+
+                int droppedValue = 0;
+                try
+                {
+                    if (main.CharacterItem != null)
+                    {
+                        droppedValue = main.CharacterItem.GetTotalRawValue();
+                    }
+                }
+                catch { }
+
+                long totalMoney = 0;
+                try
+                {
+                    totalMoney = (long)EconomyManager.Money;
+                }
+                catch { }
+
+                long totalWealth = Math.Max(0L, totalMoney) + Math.Max(0, droppedValue);
+                float playerMaxHealth = 0f;
+                try
+                {
+                    if (main.Health != null)
+                    {
+                        playerMaxHealth = main.Health.MaxHealth;
+                    }
+                }
+                catch { }
+
+                string playerName = GetWraithPlayerName_DeathWraith();
+                AudioManager.VoiceType voiceType = AudioManager.VoiceType.Duck;
+                AudioManager.FootStepMaterialType footStepMaterialType = AudioManager.FootStepMaterialType.organic;
+                try
+                {
+                    voiceType = main.AudioVoiceType;
+                    footStepMaterialType = main.FootStepMaterialType;
+                }
+                catch { }
+
+                return new PendingDeathWraithContext_DeathWraith
+                {
+                    valid = true,
+                    raidID = GetCurrentRaidId_DeathWraith(),
+                    sceneName = GetActiveSceneName_DeathWraith(),
+                    subSceneID = GetActiveSubSceneId_DeathWraith(),
+                    worldPosition = main.transform.position,
+                    playerPresetName = !string.IsNullOrEmpty(presetNameKey)
+                        ? presetNameKey
+                        : presetRuntimeName,
+                    playerPresetRuntimeName = presetRuntimeName,
+                    playerName = playerName,
+                    droppedItemsValue = droppedValue,
+                    playerTotalWealth = totalWealth,
+                    playerMaxHealth = playerMaxHealth,
+                    hasPlayerFaceData = hasPlayerFaceData,
+                    playerFaceData = playerFaceData,
+                    playerVoiceType = voiceType,
+                    playerFootStepMaterialType = footStepMaterialType,
+                    hasBoundMeleeSnapshot = hasBoundMeleeSnapshot,
+                    boundMeleeTypeId = boundMeleeTypeId,
+                    boundMeleeDisplayName = boundMeleeDisplayName,
+                    boundMeleeItemTreeData = boundMeleeItemTree
+                };
+            }
+            catch (Exception e)
+            {
+                DevLog("[DeathWraith] BuildPendingDeathWraithContext exception: " + e.Message);
+                return null;
+            }
         }
 
         private WraithInfo BuildCurrentPlayerWraithInfo_DeathWraith(CharacterMainControl main)
@@ -522,12 +639,11 @@ namespace BossRush
             SaveCurrentPlayerBoundMeleeSnapshot_DeathWraith("CollectSaveData");
         }
 
-        private WraithInfo ConsumePendingDeathWraithInfo_DeathWraith(CharacterMainControl main)
+        private PendingDeathWraithContext_DeathWraith GetPendingDeathWraithContext_DeathWraith()
         {
-            WraithInfo info = pendingDeathWraithInfo;
+            PendingDeathWraithContext_DeathWraith info = pendingDeathWraithContext;
             int primedFrame = pendingDeathWraithPrimedFrame;
             float primedRealtime = pendingDeathWraithPrimedRealtime;
-            ClearPendingDeathWraithInfo_DeathWraith();
 
             if (info == null || !info.valid)
             {
@@ -538,35 +654,16 @@ namespace BossRush
             {
                 DevLog("[DeathWraith] 放弃使用过期的预缓存亡魂数据: primedFrame="
                     + primedFrame + ", nowFrame=" + Time.frameCount);
+                ClearPendingDeathWraithContext_DeathWraith();
                 return null;
             }
-
-            if (main == null)
-            {
-                return info;
-            }
-
-            try
-            {
-                info.sceneName = GetActiveSceneName_DeathWraith();
-                info.subSceneID = GetActiveSubSceneId_DeathWraith();
-            }
-            catch { }
-
-            try
-            {
-                info.posX = main.transform.position.x;
-                info.posY = main.transform.position.y;
-                info.posZ = main.transform.position.z;
-            }
-            catch { }
 
             return info;
         }
 
-        private void StorePendingDeathWraithInfo_DeathWraith(WraithInfo info)
+        private void StorePendingDeathWraithInfo_DeathWraith(PendingDeathWraithContext_DeathWraith info)
         {
-            pendingDeathWraithInfo = info;
+            pendingDeathWraithContext = info;
             if (info != null)
             {
                 pendingDeathWraithPrimedFrame = Time.frameCount;
@@ -578,11 +675,24 @@ namespace BossRush
             pendingDeathWraithPrimedRealtime = -1f;
         }
 
-        private void ClearPendingDeathWraithInfo_DeathWraith()
+        private void ClearPendingDeathWraithContext_DeathWraith()
         {
-            pendingDeathWraithInfo = null;
+            pendingDeathWraithContext = null;
             pendingDeathWraithPrimedFrame = -1;
             pendingDeathWraithPrimedRealtime = -1f;
+        }
+
+        private void ClearPendingOriginalDeadBodyInfo_DeathWraith()
+        {
+            pendingOriginalDeadBodyInfo_DeathWraith = null;
+            pendingOriginalDeadBodyInfoFrame_DeathWraith = -1;
+            pendingOriginalDeadBodyInfoRealtime_DeathWraith = -1f;
+        }
+
+        private void ClearPendingDeathWraithInfo_DeathWraith()
+        {
+            ClearPendingDeathWraithContext_DeathWraith();
+            ClearPendingOriginalDeadBodyInfo_DeathWraith();
         }
 
         private bool IsPendingDeathWraithInfoFresh_DeathWraith(int primedFrame, float primedRealtime)

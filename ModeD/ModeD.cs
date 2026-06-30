@@ -177,6 +177,9 @@ namespace BossRush
                 // 给玩家发放开局装备
                 GivePlayerStarterKit();
 
+                // 抽取并应用本局变异词条（首波敌人由路牌触发，此处先于任何刷怪）
+                TryRollMutatorsForMode("ModeD");
+
                 // 设置路牌为 Mode D 模式
                 SetupSignForModeD();
                 
@@ -242,6 +245,9 @@ namespace BossRush
                 modeDWaveIndex = 0;
                 modeDCurrentWaveEnemies.Clear();
                 ClearEnemyRecoveryMonitorState();
+
+                // 清理变异词条（覆盖场景退出 / 玩家死亡 / 手动退出，幂等）
+                ClearMutatorsForMode("ModeD");
 
                 // 使用保存的波次数显示消息
                 ShowMessage(L10n.T(

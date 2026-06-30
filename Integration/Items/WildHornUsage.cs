@@ -302,8 +302,8 @@ namespace BossRush
                 wolfSocket.transform.localRotation *= Quaternion.Euler(WildHornConfig.WOLF_RIDE_ROTATION_OFFSET);
 
                 // 通过反射修改 characterModel.VehicleSocket
-                var vehicleSocketField = charCtrl.characterModel.GetType().GetField("VehicleSocket",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                var vehicleSocketField = charCtrl.characterModel.GetType().GetField("vehicleSocket",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 
                 if (vehicleSocketField != null)
                 {

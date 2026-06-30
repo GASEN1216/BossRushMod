@@ -72,8 +72,8 @@ namespace BossRush
             /// <summary>死亡亡魂系统开关（默认开启）</summary>
             public bool enableDeathWraithSystem = true;
 
-            /// <summary>每局变异词条系统开关（默认关闭，避免改变既有模式默认玩法）</summary>
-            public bool enableMutators = false;
+            /// <summary>每局变异词条系统开关（默认开启，所有 BossRush 模式开局随机抽取词条）</summary>
+            public bool enableMutators = true;
 
             /// <summary>每局变异词条数量（1-3，默认2）</summary>
             public int mutatorCount = 2;
@@ -853,7 +853,7 @@ namespace BossRush
                     DevLog("[BossRush] 注册死亡亡魂配置项失败: " + ex.Message);
                 }
 
-                // 变异词条系统：默认关闭，玩家主动开启才影响既有模式玩法
+                // 变异词条系统：默认开启，玩家可在此关闭
                 try
                 {
                     string mutatorsLabel = L10n.T("每局变异词条系统", "Run Mutators");

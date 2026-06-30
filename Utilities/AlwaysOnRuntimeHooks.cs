@@ -27,10 +27,24 @@ namespace BossRush
 
         internal void InitializeAlwaysOnRuntime()
         {
+            try
+            {
+                WishFountainService.EnsureRuntime();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] WishFountainService initialization exception: " + e.Message);
+            }
+
+            WikiContentManager.Instance.ResetCache();
+        }
+
+        internal void InitializeAlwaysOnDeferredContent()
+        {
             string modPath = GetModPath();
             if (string.IsNullOrEmpty(modPath))
             {
-                DevLog("[BossRush] [WARNING] 无法获取 Mod 路径，EntityModelFactory 未初始化");
+                DevLog("[BossRush] [WARNING] Could not get Mod path; EntityModelFactory not initialized");
             }
             else
             {
@@ -40,30 +54,19 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[BossRush] [WARNING] EntityModelFactory 初始化异常: " + e.Message);
+                    DevLog("[BossRush] [WARNING] EntityModelFactory initialization exception: " + e.Message);
                 }
 
                 try
                 {
-                    // 初始化地图刷新点注册表（同步扫描 Assets/SpawnPoints/*.json）
                     _mapSpawnRegistry.Initialize(modPath);
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[BossRush] [ERROR] 地图刷新点注册表初始化异常: " + e.Message);
+                    DevLog("[BossRush] [ERROR] MapSpawnPointRegistry initialization exception: " + e.Message);
                 }
             }
 
-            try
-            {
-                WishFountainService.EnsureRuntime();
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[BossRush] [WARNING] WishFountainService 初始化异常: " + e.Message);
-            }
-
-            WikiContentManager.Instance.ResetCache();
             InitializeAffinitySystem();
         }
 
@@ -71,6 +74,8 @@ namespace BossRush
         {
             UpdateMessage();
             AffinityManager.UpdateDeferredSave();
+            // 死亡帧把亡魂列表写盘的成本已移走，这里兜底把内存中的脏数据去抖刷回 ES3。
+            UpdateDeferredDeathWraithSave_DeathWraith();
         }
 
         internal void OnSceneUnloadAlwaysOnRuntime()
@@ -120,6 +125,15 @@ namespace BossRush
             catch (System.Exception e)
             {
                 DevLog("[BossRush] [WARNING] NPC UI/Dialogue 缓存卸载异常: " + e.Message);
+            }
+
+            try
+            {
+                MapThumbnailCache.ResetStaticCaches();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 地图缩略图缓存卸载异常: " + e.Message);
             }
 
             try

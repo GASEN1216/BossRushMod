@@ -1,4 +1,9 @@
-"""Mutator semantics must match their descriptions and active modes."""
+"""Mutator semantics must match their descriptions and active modes.
+
+Run mutators only buff enemies or change environment rules. They must NOT
+alter loot box quality / quantity / type, and the system defaults ON so every
+BossRush mode rolls a mutator at run start.
+"""
 
 from pathlib import Path
 import sys
@@ -49,25 +54,27 @@ def main() -> int:
         return fail("runtime bridge must pass modeTag into RollAndApply")
     if 'infiniteHellMode ? "InfiniteHell" : "BossRush"' not in waves:
         return fail("standard BossRush mutators must pass an explicit modeTag")
-    if "public bool enableMutators = false;" not in config:
-        return fail("mutators must default off so existing modes keep their gameplay unless opted in")
+    if "TryRollMutatorsForMode(" not in waves:
+        return fail("standard BossRush must roll a run mutator at StartFirstWave")
+    if "public bool enableMutators = true;" not in config:
+        return fail("mutators must default on so every BossRush mode rolls a run mutator")
     if 'ModName + "_EnableMutators"' not in config:
         return fail("mutator enable switch must be exposed through ModConfig")
     if 'ModName + "_MutatorCount"' not in config:
         return fail("mutator count must be exposed through ModConfig")
 
-    required_loot_snippets = [
-        "GetActiveMutatorLootQualityOffset()",
-        "ApplyMutatorLootQualityOffset(",
-        "quality = ApplyMutatorLootQualityOffset(quality);",
-        "qualities.AddEntry(ApplyMutatorLootQualityOffset(q)",
+    # Mutators must NOT touch loot box quality / quantity / type anymore.
+    forbidden_loot_symbols = [
+        "LootQualityOffset",
+        "LootQuantityMultiplier",
+        "LootTypeFilter",
+        "ApplyMutatorLootQualityOffset",
+        "GetActiveMutatorLootQualityOffset",
+        "MutatorCategory.LootChange",
     ]
-    for snippet in required_loot_snippets:
-        if snippet not in loot:
-            return fail("loot quality offset missing snippet -> " + snippet)
-
-    if "LootQualityOffset * 0.15f" in loot:
-        return fail("loot_quality_up must not be implemented as a probability-only bonus")
+    for symbol in forbidden_loot_symbols:
+        if symbol in loot or symbol in definitions or symbol in manager:
+            return fail("mutators must not alter loot box quality/quantity/type -> " + symbol)
 
     print("MutatorSemanticsGuard: PASS")
     return 0

@@ -32,6 +32,16 @@ namespace BossRush
             // 标记：后续进入 DEMO 挑战地图应由 BossRush 控制
             bossRushArenaPlanned = true;
 
+            // [性能优化] 预热角色预设缓存：InitializeEnemyPresets 在进竞技场那一帧会同步
+            // Resources.FindObjectsOfTypeAll<CharacterRandomPreset> 全内存扫描（最贵的单项）。
+            // 这里趁玩家刚发起进入、场景尚未切换（loading 期）先把它扫好缓存起来，
+            // _cachedCharacterPresets 不随场景失效，进图那一帧即可命中缓存而非现场扫描。
+            try
+            {
+                ObjectCache.GetCharacterPresets();
+            }
+            catch { }
+
             // 设置 pending 地图索引为 DEMO 挑战地图（索引 0），确保中间场景检查能正确识别目标场景
             BossRushMapSelectionHelper.SetPendingMapEntryIndex(0);
             DevLog("[BossRush] F9 快捷启动：设置 pending 地图索引为 0 (DEMO挑战)");

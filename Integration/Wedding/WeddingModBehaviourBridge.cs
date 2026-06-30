@@ -492,6 +492,11 @@ namespace BossRush
                 return false;
             }
 
+            if (!AffinityManager.IsInitialized)
+            {
+                return true;
+            }
+
             string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
             return !string.IsNullOrEmpty(spouseNpcId) && AffinityManager.IsSpouseFollowingPlayer(spouseNpcId);
         }

@@ -11,6 +11,7 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
     Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
+    Path("Integration/IntegrationDeferredBootstrap.cs"),
 ]
 ITEM_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
@@ -195,20 +196,36 @@ def main() -> int:
         if occurrence_error:
             return fail(occurrence_error)
 
+    # 装备内容/能力系统初始化已从 Start_Integration 同步路径下沉到
+    # IntegrationDeferredBootstrap.cs 的跨帧协程（性能优化：避免过图帧同步重负载）。
+    # 这里改为校验“延迟引导协程”内的有序性，并确认 Start_Integration 不再做同步重初始化。
+    deferred_text = Path("Integration/IntegrationDeferredBootstrap.cs").read_text(
+        encoding="utf-8", errors="ignore")
+    start_text = Path("Integration/BossRushIntegration_StartAndScene.cs").read_text(
+        encoding="utf-8", errors="ignore")
+
     integration_equipment_start_order_error = require_ordered_tokens(
-        integration_text,
+        deferred_text,
         [
-            "ZombieTideInvitationConfig.InjectIntoShops();",
-            "LoadEquipmentContent();",
-            "InitializeEarlyEquipmentAbilitySystems();",
-            "SceneManager.sceneLoaded += OnSceneLoaded;",
-            "RegisterDragonSetEvents();",
-            "InitializeLateEquipmentAbilitySystems();",
-            "StartCoroutine(FindInteractionTargets(5));",
+            "() => LoadEquipmentContent()",
+            "() => InitializeEarlyEquipmentAbilitySystems()",
+            "() => InitializeLateEquipmentAbilitySystems()",
         ],
-        "ContentRegistryGuard: integration equipment start bootstrap")
+        "ContentRegistryGuard: deferred equipment bootstrap")
     if integration_equipment_start_order_error:
         return fail(integration_equipment_start_order_error)
+
+    start_register_order_error = require_ordered_tokens(
+        start_text,
+        [
+            "SceneManager.sceneLoaded += OnSceneLoaded;",
+            "RegisterDragonSetEvents();",
+            "EnsureIntegrationContentBootstrapScheduled(",
+            "StartCoroutine(FindInteractionTargets(5));",
+        ],
+        "ContentRegistryGuard: integration start registration")
+    if start_register_order_error:
+        return fail(start_register_order_error)
 
     integration_equipment_cleanup_order_error = require_ordered_tokens(
         integration_text,
@@ -222,9 +239,9 @@ def main() -> int:
         return fail(integration_equipment_cleanup_order_error)
 
     for token in [
-        "LoadEquipmentContent();",
-        "InitializeEarlyEquipmentAbilitySystems();",
-        "InitializeLateEquipmentAbilitySystems();",
+        "() => LoadEquipmentContent()",
+        "() => InitializeEarlyEquipmentAbilitySystems()",
+        "() => InitializeLateEquipmentAbilitySystems()",
         "CleanupEquipmentAbilitySystems();",
     ]:
         occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration equipment wrapper")

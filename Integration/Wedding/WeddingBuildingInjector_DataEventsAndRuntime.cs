@@ -283,6 +283,7 @@ namespace BossRush
                 DevLog("[WeddingBuilding] 检测到婚礼教堂被放置，GUID=" + guid);
                 SetWeddingBuildingPresence(true);
                 ResetWeddingBuildingLocationCache();
+                ObjectCache.InvalidateSceneObjectsByType(GetBuildingType());
 
                 // 延迟生成NPC（等待建筑实例化完成）
                 StartCoroutine(DelayedSpawnWeddingNPC(guid));
@@ -312,6 +313,7 @@ namespace BossRush
                 }
 
                 ResetWeddingBuildingLocationCache();
+                ObjectCache.InvalidateSceneObjectsByType(GetBuildingType());
                 DestroyWeddingPlaceholder();
 
                 string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
@@ -390,7 +392,7 @@ namespace BossRush
                 FieldInfo idField = buildingType.GetField("id", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (idField == null) yield break;
 
-                Component[] allBuildings = FindObjectsOfType(buildingType) as Component[];
+                UnityEngine.Object[] allBuildings = ObjectCache.GetSceneObjectsByType(buildingType);
                 if (allBuildings == null) yield break;
 
                 foreach (Component b in allBuildings)
@@ -535,13 +537,19 @@ namespace BossRush
                     return Vector3.zero;
                 }
 
-                var allBuildings = UnityEngine.Object.FindObjectsOfType(buildingType);
+                if (!cachedWeddingBuildingPresent)
+                {
+                    return Vector3.zero;
+                }
+
+                var allBuildings = ObjectCache.GetSceneObjectsByType(buildingType);
                 foreach (Component building in allBuildings)
                 {
                     string id = idProp?.GetValue(building) as string;
 
                     if (id == WEDDING_BUILDING_ID)
                     {
+                        SetWeddingBuildingPresence(true);
                         cachedWeddingBuildingTransform = building.transform;
                         EnsureWeddingBuildingFunctionPoints(building.gameObject);
 

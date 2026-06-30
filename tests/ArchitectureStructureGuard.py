@@ -205,15 +205,23 @@ def main() -> int:
     if not always_on_init_body:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing InitializeAlwaysOnRuntime wrapper")
     for required in [
-        "string modPath = GetModPath();",
-        "EntityModelFactory.Initialize(modPath);",
-        'DevLog("[BossRush] [WARNING] 无法获取 Mod 路径，EntityModelFactory 未初始化");',
-        'DevLog("[BossRush] [WARNING] EntityModelFactory 初始化异常: " + e.Message);',
+        "WishFountainService.EnsureRuntime();",
         "WikiContentManager.Instance.ResetCache();",
-        "InitializeAffinitySystem();",
     ]:
         if required not in always_on_init_body:
             return fail("ArchitectureStructureGuard: InitializeAlwaysOnRuntime missing token: " + required)
+
+    always_on_deferred_body = extract_method_body(always_on_hooks, "internal void InitializeAlwaysOnDeferredContent()")
+    if not always_on_deferred_body:
+        return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing InitializeAlwaysOnDeferredContent wrapper")
+    for required in [
+        "string modPath = GetModPath();",
+        "EntityModelFactory.Initialize(modPath);",
+        "_mapSpawnRegistry.Initialize(modPath);",
+        "InitializeAffinitySystem();",
+    ]:
+        if required not in always_on_deferred_body:
+            return fail("ArchitectureStructureGuard: InitializeAlwaysOnDeferredContent missing token: " + required)
 
     bootstrap_body = extract_method_body(always_on_hooks, "internal void InitializeBootstrapRuntime()")
     if not bootstrap_body:
@@ -375,8 +383,13 @@ def main() -> int:
     for signature, required_tokens in {
         "private void DisableAllSpawners()": [
             "_cachedCreatedField = typeof(CharacterSpawnerRoot).GetField(\"created\"",
-            "Light[] lights = root.gameObject.GetComponentsInChildren<Light>(true);",
             "spawnersDisabled = true;",
+        ],
+        # 销毁 + 灯光保留已拆到跨帧协程（性能优化：避免单帧批量 Destroy 尖峰），
+        # 行为不变，token 改在此方法体内校验。
+        "private IEnumerator DestroySpawnerRootsAcrossFrames(": [
+            "Light[] lights = root.gameObject.GetComponentsInChildren<Light>(true);",
+            "UnityEngine.Object.Destroy(root.gameObject);",
         ],
         "private void TryFixStuckWaveIfNoBossAlive()": [
             "bossesPerWave > 1",

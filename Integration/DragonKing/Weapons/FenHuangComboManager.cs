@@ -603,6 +603,9 @@ namespace BossRush
         /// <summary>
         /// 通过反射暂停敌人的地面约束（缓存 MethodInfo 避免重复反射）
         /// </summary>
+        private static FieldInfo cachedCharacterMovementField;
+        private static Type cachedMovementControlType;
+        private static Type cachedCharacterMovementType;
         private static MethodInfo cachedPauseGroundConstraintMethod;
         private static bool pauseMethodCached;
 
@@ -617,17 +620,39 @@ namespace BossRush
 
                 var movementControl = character.movementControl;
 
-                if (!pauseMethodCached)
+                Type movementControlType = movementControl.GetType();
+                if (cachedMovementControlType != movementControlType)
                 {
-                    cachedPauseGroundConstraintMethod = movementControl.GetType().GetMethod(
+                    cachedCharacterMovementField = movementControlType.GetField(
+                        "characterMovement",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    cachedMovementControlType = movementControlType;
+                    cachedCharacterMovementType = null;
+                    cachedPauseGroundConstraintMethod = null;
+                    pauseMethodCached = false;
+                }
+
+                object characterMovement = cachedCharacterMovementField != null
+                    ? cachedCharacterMovementField.GetValue(movementControl)
+                    : null;
+                if (characterMovement == null)
+                {
+                    return;
+                }
+
+                Type characterMovementType = characterMovement.GetType();
+                if (!pauseMethodCached || cachedCharacterMovementType != characterMovementType)
+                {
+                    cachedPauseGroundConstraintMethod = characterMovementType.GetMethod(
                         "PauseGroundConstraint",
                         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    cachedCharacterMovementType = characterMovementType;
                     pauseMethodCached = true;
                 }
 
                 if (cachedPauseGroundConstraintMethod != null)
                 {
-                    cachedPauseGroundConstraintMethod.Invoke(movementControl, new object[] { duration });
+                    cachedPauseGroundConstraintMethod.Invoke(characterMovement, new object[] { duration });
                 }
             }
             catch
