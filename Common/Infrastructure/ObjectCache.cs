@@ -52,6 +52,7 @@ namespace BossRush
             _cachedCharacterSpawnerRoots = null;
             _cachedStockShops = null;
             _cachedTmpFonts = null;
+            _cachedCharacterPresets = null;
             _lastSceneName = null;
         }
 
@@ -129,6 +130,17 @@ namespace BossRush
         {
             TMP_FontAsset[] fonts = GetTmpFonts();
             return fonts != null && fonts.Length > 0 ? fonts[0] : null;
+        }
+
+        private static CharacterRandomPreset[] _cachedCharacterPresets;
+
+        public static CharacterRandomPreset[] GetCharacterPresets()
+        {
+            if (_cachedCharacterPresets == null)
+            {
+                _cachedCharacterPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+            }
+            return _cachedCharacterPresets;
         }
 
         /// <summary>

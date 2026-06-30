@@ -41,6 +41,17 @@ for /f "delims=" %%i in ('dir /b /ad /o-n "C:\Program Files\dotnet\sdk" 2^>nul')
     goto :found_sdk
 )
 :found_sdk
+if not defined DOTNET_SDK (
+    echo [FAIL] .NET SDK was not found under C:\Program Files\dotnet\sdk.
+    echo        Install the .NET SDK or adjust compile_official.bat to point at csc.dll.
+    if not defined BOSSRUSH_NO_PAUSE pause
+    exit /b 1
+)
+if not exist "%DOTNET_SDK%\Roslyn\bincore\csc.dll" (
+    echo [FAIL] Roslyn compiler was not found: "%DOTNET_SDK%\Roslyn\bincore\csc.dll"
+    if not defined BOSSRUSH_NO_PAUSE pause
+    exit /b 1
+)
 dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     /langversion:7.3 ^
     /target:library ^
@@ -135,6 +146,10 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\BossRushIntegration_StartAndScene.cs ^
     Integration\BossRushIntegration_TravelAndSetup.cs ^
     Integration\BossRushIntegration_MapObjectsAndDragonBreath.cs ^
+    Integration\Mutators\MutatorDefinitions.cs ^
+    Integration\Mutators\MutatorManager.cs ^
+    Integration\Mutators\MutatorUI.cs ^
+    Integration\Mutators\MutatorRuntimeBridge.cs ^
     Integration\ZombieModeIntegration.cs ^
     Integration\DeathWraith\DeathWraithSystem.cs ^
     Integration\DeathWraith\DeathWraithRecording.cs ^
@@ -159,8 +174,13 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\EquipmentRuntimeHooks.cs ^
     Integration\IntegrationRuntimeHooks.cs ^
     Integration\EquipmentHelper.cs ^
+    Integration\EquipmentHelperIcon.cs ^
     Integration\Bonus\DragonSetBonus.cs ^
     Integration\Bonus\DragonSetBonus_Dash.cs ^
+    Integration\Bonus\SetBonusManager.cs ^
+    Integration\Bonus\FrostSetBonus.cs ^
+    Integration\Bonus\ThunderSetBonus.cs ^
+    Integration\Bonus\SetBonusPlaceholderRegistry.cs ^
     Integration\Config\DragonSetConfig.cs ^
     Integration\Config\FlightTotemConfig.cs ^
     Integration\Config\DragonKingSetConfig.cs ^
@@ -372,6 +392,24 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Frostmourne\FrostmourneAction.cs ^
     Integration\Frostmourne\FrostmourneAbilityManager.cs ^
     Integration\Frostmourne\FrostmourneBootstrap.cs ^
+    Integration\NewWeapons\Common\NewWeaponIds.cs ^
+    Integration\NewWeapons\Common\NewWeaponBootstrap.cs ^
+    Integration\NewWeapons\Common\NewWeaponPlaceholderRegistry.cs ^
+    Integration\NewWeapons\ViperDagger\ViperDaggerConfig.cs ^
+    Integration\NewWeapons\ViperDagger\ViperDaggerWeaponConfig.cs ^
+    Integration\NewWeapons\ViperDagger\ViperDaggerRuntime.cs ^
+    Integration\NewWeapons\SummonStaff\SummonStaffConfig.cs ^
+    Integration\NewWeapons\SummonStaff\SummonStaffWeaponConfig.cs ^
+    Integration\NewWeapons\SummonStaff\SummonStaffAction.cs ^
+    Integration\NewWeapons\SummonStaff\SummonStaffManager.cs ^
+    Integration\NewWeapons\EnergyShield\EnergyShieldConfig.cs ^
+    Integration\NewWeapons\EnergyShield\EnergyShieldWeaponConfig.cs ^
+    Integration\NewWeapons\EnergyShield\EnergyShieldRuntime.cs ^
+    Integration\NewWeapons\FrostSpear\FrostSpearConfig.cs ^
+    Integration\NewWeapons\FrostSpear\FrostSpearWeaponConfig.cs ^
+    Integration\NewWeapons\ThunderRing\ThunderRingConfig.cs ^
+    Integration\NewWeapons\ThunderRing\ThunderRingWeaponConfig.cs ^
+    Integration\NewWeapons\ThunderRing\ThunderRingRuntime.cs ^
     Integration\FlightTotem\FlightConfig.cs ^
     Integration\FlightTotem\FlightTotemFactory.cs ^
     Integration\FlightTotem\FlightTotemBootstrap.cs ^

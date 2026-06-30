@@ -112,6 +112,8 @@ namespace BossRush
                 InjectDragonDescendantLocalization();
                 InjectDragonBreathWeaponLocalization();
                 InjectDragonBurnBuffLocalization();
+                InjectFrostSetLocalization();       // 冰霜套装
+                InjectThunderSetLocalization();     // 雷霆套装
                 ModBehaviour.DevLog("[EquipmentLocalization] 所有装备本地化注入完成");
             }
             catch (Exception e)
@@ -545,6 +547,152 @@ namespace BossRush
             return L10n.T(DragonBurnDescCN, DragonBurnDescEN);
         }
         
+        #endregion
+
+        #region 冰霜套装本地化数据
+
+        // 霜冠（冰霜头盔）
+        private static readonly string FrostHelmNameCN = "霜冠";
+        private static readonly string FrostHelmNameEN = "Frost Crown";
+        private static readonly string FrostHelmDescCN = "寒冰凝结的王冠，散发着刺骨的冷气。\n<color=#87CEEB>套装件之一（2/2 激活套装效果）</color>";
+        private static readonly string FrostHelmDescEN = "A crown forged from condensed ice, radiating bone-chilling cold.\n<color=#87CEEB>Set piece (2/2 to activate set bonus)</color>";
+
+        // 寒冰铠甲
+        private static readonly string FrostArmorNameCN = "寒冰铠甲";
+        private static readonly string FrostArmorNameEN = "Ice Armor";
+        private static readonly string FrostArmorDescCN = "以万年寒冰铸就的铠甲，受击时能冻结来犯之敌。\n<color=#87CEEB>套装件之一（2/2 激活套装效果）</color>\n<color=#AADDFF>套装效果：冰抗+50%，受击30%概率冻结攻击者</color>";
+        private static readonly string FrostArmorDescEN = "Armor forged from ancient ice. Freezes attackers when struck.\n<color=#87CEEB>Set piece (2/2 to activate set bonus)</color>\n<color=#AADDFF>Set bonus: +50% Ice Resist, 30% chance to freeze attacker</color>";
+
+        // 冰冻 Buff
+        private static readonly string FrostBuffNameCN = "冰冻";
+        private static readonly string FrostBuffNameEN = "Frozen";
+        private static readonly string FrostBuffDescCN = "被寒冰之力冻结，移动速度大幅降低。";
+        private static readonly string FrostBuffDescEN = "Frozen by ice power, movement speed greatly reduced.";
+
+        #endregion
+
+        #region 雷霆套装本地化数据
+
+        // 雷神之角（雷霆头盔）
+        private static readonly string ThunderHelmNameCN = "雷神之角";
+        private static readonly string ThunderHelmNameEN = "Thunder Horn";
+        private static readonly string ThunderHelmDescCN = "蕴含雷霆之力的角盔，电弧在表面游走。\n<color=#FFD700>套装件之一（2/2 激活套装效果）</color>";
+        private static readonly string ThunderHelmDescEN = "A horned helm imbued with thunder, arcs of lightning dance across its surface.\n<color=#FFD700>Set piece (2/2 to activate set bonus)</color>";
+
+        // 雷霆战甲
+        private static readonly string ThunderArmorNameCN = "雷霆战甲";
+        private static readonly string ThunderArmorNameEN = "Thunder Armor";
+        private static readonly string ThunderArmorDescCN = "以雷电淬炼的战甲，受击时释放电击反制周围敌人。\n<color=#FFD700>套装件之一（2/2 激活套装效果）</color>\n<color=#FFEE88>套装效果：电抗+50%，受击25%概率释放电击AOE</color>";
+        private static readonly string ThunderArmorDescEN = "Armor tempered by lightning. Releases electric counter when struck.\n<color=#FFD700>Set piece (2/2 to activate set bonus)</color>\n<color=#FFEE88>Set bonus: +50% Elec Resist, 25% chance to release lightning AOE</color>";
+
+        #endregion
+
+        #region 冰霜套装本地化注入
+
+        /// <summary>
+        /// 注入冰霜套装本地化
+        /// </summary>
+        public static void InjectFrostSetLocalization()
+        {
+            try
+            {
+                // 霜冠
+                string frostHelmName = L10n.T(FrostHelmNameCN, FrostHelmNameEN);
+                string frostHelmDesc = L10n.T(FrostHelmDescCN, FrostHelmDescEN);
+                LocalizationHelper.InjectLocalization("霜冠", frostHelmName);
+                LocalizationHelper.InjectLocalization("霜冠_Desc", frostHelmDesc);
+                LocalizationHelper.InjectLocalization("Item_500053", frostHelmName);
+                LocalizationHelper.InjectLocalization("Item_500053_Desc", frostHelmDesc);
+
+                // 寒冰铠甲
+                string frostArmorName = L10n.T(FrostArmorNameCN, FrostArmorNameEN);
+                string frostArmorDesc = L10n.T(FrostArmorDescCN, FrostArmorDescEN);
+                LocalizationHelper.InjectLocalization("寒冰铠甲", frostArmorName);
+                LocalizationHelper.InjectLocalization("寒冰铠甲_Desc", frostArmorDesc);
+                LocalizationHelper.InjectLocalization("Item_500054", frostArmorName);
+                LocalizationHelper.InjectLocalization("Item_500054_Desc", frostArmorDesc);
+
+                // 冰冻 Buff
+                string frostBuffName = L10n.T(FrostBuffNameCN, FrostBuffNameEN);
+                string frostBuffDesc = L10n.T(FrostBuffDescCN, FrostBuffDescEN);
+                LocalizationHelper.InjectLocalization("FrostSet_Freeze", frostBuffName);
+                LocalizationHelper.InjectLocalization("FrostSet_Freeze_Desc", frostBuffDesc);
+
+                ModBehaviour.DevLog("[EquipmentLocalization] 冰霜套装本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入冰霜套装本地化失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 获取霜冠显示名称
+        /// </summary>
+        public static string GetFrostHelmName()
+        {
+            return L10n.T(FrostHelmNameCN, FrostHelmNameEN);
+        }
+
+        /// <summary>
+        /// 获取寒冰铠甲显示名称
+        /// </summary>
+        public static string GetFrostArmorName()
+        {
+            return L10n.T(FrostArmorNameCN, FrostArmorNameEN);
+        }
+
+        #endregion
+
+        #region 雷霆套装本地化注入
+
+        /// <summary>
+        /// 注入雷霆套装本地化
+        /// </summary>
+        public static void InjectThunderSetLocalization()
+        {
+            try
+            {
+                // 雷神之角
+                string thunderHelmName = L10n.T(ThunderHelmNameCN, ThunderHelmNameEN);
+                string thunderHelmDesc = L10n.T(ThunderHelmDescCN, ThunderHelmDescEN);
+                LocalizationHelper.InjectLocalization("雷神之角", thunderHelmName);
+                LocalizationHelper.InjectLocalization("雷神之角_Desc", thunderHelmDesc);
+                LocalizationHelper.InjectLocalization("Item_500055", thunderHelmName);
+                LocalizationHelper.InjectLocalization("Item_500055_Desc", thunderHelmDesc);
+
+                // 雷霆战甲
+                string thunderArmorName = L10n.T(ThunderArmorNameCN, ThunderArmorNameEN);
+                string thunderArmorDesc = L10n.T(ThunderArmorDescCN, ThunderArmorDescEN);
+                LocalizationHelper.InjectLocalization("雷霆战甲", thunderArmorName);
+                LocalizationHelper.InjectLocalization("雷霆战甲_Desc", thunderArmorDesc);
+                LocalizationHelper.InjectLocalization("Item_500056", thunderArmorName);
+                LocalizationHelper.InjectLocalization("Item_500056_Desc", thunderArmorDesc);
+
+                ModBehaviour.DevLog("[EquipmentLocalization] 雷霆套装本地化注入完成");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentLocalization] 注入雷霆套装本地化失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 获取雷神之角显示名称
+        /// </summary>
+        public static string GetThunderHelmName()
+        {
+            return L10n.T(ThunderHelmNameCN, ThunderHelmNameEN);
+        }
+
+        /// <summary>
+        /// 获取雷霆战甲显示名称
+        /// </summary>
+        public static string GetThunderArmorName()
+        {
+            return L10n.T(ThunderArmorNameCN, ThunderArmorNameEN);
+        }
+
         #endregion
     }
 }

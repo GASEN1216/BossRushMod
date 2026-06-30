@@ -48,6 +48,8 @@ namespace BossRush
             BloodhuntTransponderConfig.InjectIntoShops();  // 将血猎收发器注入到售货机（Mode F）
             ZombieTideInvitationConfig.InjectIntoShops();
             EquipmentLocalization.InjectAllEquipmentLocalizations();
+            NewWeaponPlaceholderRegistry.InjectLocalization();  // P0 新武器（毒蛇匕首/召唤法杖/能量盾/冰霜长矛/雷电戒指）名称与描述本地化
+            SetBonusPlaceholderRegistry.InjectLocalization();   // P1 套装（霜冠/寒冰铠甲/雷神之角/雷霆战甲）DisplayNameRaw=BossRush_* 键本地化
             InjectReverseScaleLocalization();  // 逆鳞图腾本地化
             LocalizationInjector.InjectWeddingBuildingLocalization();  // 婚礼教堂建筑本地化
             DevLog("[BossRush] 扩展本地化注入完成");
@@ -145,6 +147,9 @@ namespace BossRush
             // 注册龙套装装备槽变化事件
             RegisterDragonSetEvents();
 
+            // 注册霜冠/雷神套装装备槽与关卡初始化事件
+            RegisterSetBonusEvents();
+
             // 初始化后置装备能力系统
             InitializeLateEquipmentAbilitySystems();
 
@@ -185,6 +190,9 @@ namespace BossRush
             // 取消注册龙套装事件
             UnregisterDragonSetEvents();
 
+            // 取消注册霜冠/雷神套装事件
+            UnregisterSetBonusEvents();
+
             // 清理装备能力系统
             CleanupEquipmentAbilitySystems();
 
@@ -220,6 +228,9 @@ namespace BossRush
             CustomItemRuntimeStateHelper.ResetStaticCaches();
             NPCShopSystem.ResetStaticCaches();
             BossRush.Utils.NPCNameTagHelper.ResetStaticCaches();
+            NPCPlayerLookupCache.ResetStaticCaches();
+            PhantomWitchPerformancePolicy.ResetStaticCaches();
+            EquipmentHelperIcon.ResetStaticCaches();
             ModBehaviour.ResetDragonDescendantBossStaticCaches();
             ModBehaviour.ResetLootAndRewardsStaticCaches();
             ReforgeUIManager.ResetStaticCaches();
@@ -326,6 +337,7 @@ namespace BossRush
             SetupFenHuangHalberdForScene(scene);
             SetupFrostmourneForScene(scene);
             SetupPhantomWitchScytheForScene(scene);
+            SetupNewWeaponsForScene(scene);
 
             if (isGameplayScene)
             {

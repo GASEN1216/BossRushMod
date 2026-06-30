@@ -362,9 +362,11 @@ namespace BossRush
                 DragonBreathBuffHandler.Subscribe();
             }
 
-            // 模式结束时清理现金磁铁飞行状态
+            // 模式结束时清理变异词条和现金磁铁飞行状态
             if (!active)
             {
+                MutatorManager.RemoveAll();
+                MutatorUI.HideAll();
                 ClearCashMagnetState();
             }
         }
@@ -396,6 +398,21 @@ namespace BossRush
         internal static bool CanRunGameplayRuntimeNow(string sceneName)
         {
             return SceneRuntimeGate.CanRunGameplayRuntimeNow(sceneName);
+        }
+
+        private static int _staticCanRunFrame = -1;
+        private static bool _staticCanRunResult;
+
+        internal static bool CanRunGameplayRuntimeCached()
+        {
+            int frame = Time.frameCount;
+            if (frame != _staticCanRunFrame)
+            {
+                _staticCanRunFrame = frame;
+                _staticCanRunResult = SceneRuntimeGate.CanRunGameplayRuntimeNow(
+                    SceneManager.GetActiveScene().name);
+            }
+            return _staticCanRunResult;
         }
 
         internal static bool ShouldRunGameplaySceneRuntimeHooks(string sceneName)
@@ -495,6 +512,8 @@ namespace BossRush
         private int bossesInCurrentWaveTotal = 0;
         private int bossesInCurrentWaveRemaining = 0;
         private readonly List<MonoBehaviour> currentWaveBosses = new List<MonoBehaviour>();
+        // 变异词条：单Boss模式回血用的临时列表（避免每帧分配）
+        private readonly List<MonoBehaviour> _singleBossRegenList = new List<MonoBehaviour>(1);
         // 波次完整性自检计时器
         private float waveIntegrityCheckTimer = 0f;
         private const float WaveIntegrityCheckInterval = 10f;
@@ -574,6 +593,11 @@ namespace BossRush
 
         void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
             DevLog("[BossRush] 正在加载 Boss Rush Mod...");
             Instance = this;
             DontDestroyOnLoad(gameObject);
@@ -593,19 +617,27 @@ namespace BossRush
 
         void OnGUI()
         {
-            if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
+            if (!CanRunGameplayThisFrame())
             {
                 return;
             }
 
             // Boss 池配置窗口现在使用 Unity UI Canvas 实现，不再需要 OnGUI
 
+            // 绘制变异词条 UI
+            MutatorUI.DrawGUI();
+
             DrawDebugToolsRuntimeGui();
+        }
+
+        private bool CanRunGameplayThisFrame()
+        {
+            return CanRunGameplayRuntimeCached();
         }
 
         void Update()
         {
-            bool runGameplaySceneHooks = CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name);
+            bool runGameplaySceneHooks = CanRunGameplayThisFrame();
 
             TickAlwaysOnRuntime();
 
@@ -627,6 +659,68 @@ namespace BossRush
                 return;
             }
 
+            // 变异词条：Boss 回血 Tick
+            if (MutatorManager.BossRegenEnabled)
+            {
+                if (IsActive)
+                {
+                    if (bossesPerWave > 1)
+                    {
+                        MutatorManager.TickBossRegen(Time.deltaTime, currentWaveBosses);
+                    }
+                    else if (currentBoss != null)
+                    {
+                        // 复用静态临时列表避免每帧分配
+                        _singleBossRegenList.Clear();
+                        _singleBossRegenList.Add(currentBoss);
+                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
+                    }
+                }
+                if (modeDActive && modeDCurrentWaveEnemies.Count > 0)
+                {
+                    // Mode D：把当前波次所有存活敌人都喂给 BossRegen
+                    // （Mode D 的"敌人"逻辑上都是 Boss 池里的角色，回血一致处理）
+                    _singleBossRegenList.Clear();
+                    for (int i = 0; i < modeDCurrentWaveEnemies.Count; i++)
+                    {
+                        CharacterMainControl boss = modeDCurrentWaveEnemies[i];
+                        if (boss != null) _singleBossRegenList.Add(boss);
+                    }
+                    if (_singleBossRegenList.Count > 0)
+                    {
+                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
+                    }
+                }
+                else if (modeEActive && ModeEAliveEnemies != null && ModeEAliveEnemies.Count > 0)
+                {
+                    // Mode E：所有阵营的 Boss 都回血（设计上对称，所有阵营吃同一条规则）
+                    _singleBossRegenList.Clear();
+                    for (int i = 0; i < ModeEAliveEnemies.Count; i++)
+                    {
+                        CharacterMainControl boss = ModeEAliveEnemies[i];
+                        if (boss != null) _singleBossRegenList.Add(boss);
+                    }
+                    if (_singleBossRegenList.Count > 0)
+                    {
+                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
+                    }
+                }
+                else if (modeFActive && modeFActiveBossSet.Count > 0)
+                {
+                    // Mode F：HashSet 转列表喂入。Mode F 已经在用 BleedRateMultiplier，
+                    // 这里再补 BossRegen 让两个环境规则词条都能在血猎模式生效
+                    _singleBossRegenList.Clear();
+                    foreach (CharacterMainControl boss in modeFActiveBossSet)
+                    {
+                        if (boss != null) _singleBossRegenList.Add(boss);
+                    }
+                    if (_singleBossRegenList.Count > 0)
+                    {
+                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
+                    }
+                }
+            }
+
             if (f3DebugCheatMenuVisible)
             {
                 return;
@@ -637,7 +731,7 @@ namespace BossRush
 
         void LateUpdate()
         {
-            if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
+            if (!CanRunGameplayThisFrame())
             {
                 return;
             }
@@ -922,6 +1016,7 @@ namespace BossRush
                         position,
                         isChildProtectionSummon: false,
                         notifyBossRushOnFailure: false);
+                    MutatorManager.ApplyToEnemy(dragonBoss);
                     return dragonBoss;
                 }
 
@@ -929,17 +1024,21 @@ namespace BossRush
                 if (IsDragonKingPreset(preset))
                 {
                     // 龙王使用独立生成逻辑
-                    return await SpawnDragonKing(position, notifyBossRushOnFailure: false);
+                    var dragonKing = await SpawnDragonKing(position, notifyBossRushOnFailure: false);
+                    MutatorManager.ApplyToEnemy(dragonKing);
+                    return dragonKing;
                 }
 
                 // 检查是否是幽灵女巫Boss，使用专门的生成方法
                 if (IsPhantomWitchPreset(preset))
                 {
-                    return await SpawnPhantomWitch(position, notifyBossRushOnFailure: false);
+                    var phantomWitch = await SpawnPhantomWitch(position, notifyBossRushOnFailure: false);
+                    MutatorManager.ApplyToEnemy(phantomWitch);
+                    return phantomWitch;
                 }
 
                 // 查找所有CharacterRandomPreset（从Resources中查找）
-                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                var allPresets = ObjectCache.GetCharacterPresets();
                 CharacterRandomPreset targetPreset = null;
 
                 // 优先通过本地化键（nameKey）精确匹配预设
@@ -1037,6 +1136,9 @@ namespace BossRush
 
                 // 激活敌人
                 character.gameObject.SetActive(true);
+
+                // 应用变异词条效果到新生成的敌人
+                MutatorManager.ApplyToEnemy(character);
 
                 // 记录 Boss 生成时间和原始掉落数量（用于掉落随机化）
                 try
@@ -1184,8 +1286,7 @@ namespace BossRush
 
                 if (!string.IsNullOrEmpty(preset.name))
                 {
-                    string lower = preset.name.ToLowerInvariant();
-                    if (lower.Contains("daxing"))
+                    if (preset.name.IndexOf("daxing", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         return true;
                     }
@@ -1302,8 +1403,7 @@ namespace BossRush
 
                                 if (!string.IsNullOrEmpty(key))
                                 {
-                                    string lowerKey = key.ToLowerInvariant();
-                                    if (lowerKey.Contains("daxing"))
+                                    if (key.IndexOf("daxing", StringComparison.OrdinalIgnoreCase) >= 0)
                                     {
                                         isDaXing = true;
                                     }
