@@ -191,26 +191,39 @@ namespace BossRush
         {
             actualQuality = -1;
 
-            List<int> candidateIds = new List<int>();
-            Dictionary<int, List<int>> qualityBuckets = new Dictionary<int, List<int>>();
-            if (!TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets))
-            {
-                return -1;
-            }
+            // 复用实例级 scratch 容器，避免每次保底判定都分配候选列表/品质桶字典。
+            // TryGetLegacyBossLootCandidates 内部会先 Clear 候选列表并重建品质桶，
+            // 这里仅需在使用前清空品质桶的复用列表，使用后由 finally 再次清空释放引用。
+            List<int> candidateIds = legacyBossGuaranteeCandidateScratch;
+            Dictionary<int, List<int>> qualityBuckets = legacyBossGuaranteeQualityBucketsScratch;
+            ClearLegacyBossGuaranteeQualityBucketsScratch();
 
-            for (int quality = desiredQuality; quality >= 5; quality--)
+            try
             {
-                List<int> bucket = null;
-                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
+                if (!TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets))
                 {
-                    continue;
+                    return -1;
                 }
 
-                actualQuality = quality;
-                return bucket[UnityEngine.Random.Range(0, bucket.Count)];
-            }
+                for (int quality = desiredQuality; quality >= 5; quality--)
+                {
+                    List<int> bucket = null;
+                    if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
+                    {
+                        continue;
+                    }
 
-            return -1;
+                    actualQuality = quality;
+                    return bucket[UnityEngine.Random.Range(0, bucket.Count)];
+                }
+
+                return -1;
+            }
+            finally
+            {
+                candidateIds.Clear();
+                ClearLegacyBossGuaranteeQualityBucketsScratch();
+            }
         }
 
         private bool TryAddLegacyBossGuaranteeItem(Inventory inv)
@@ -338,10 +351,13 @@ namespace BossRush
 
                 int beforeCount = content.Count;
 
-                // 按品质和价格分三档：高品质高价、高品质低价、其它
-                List<Item> preferred = new List<Item>();
-                List<Item> fallbackHighQuality = new List<Item>();
-                List<Item> fallbackOthers = new List<Item>();
+                // 按品质和价格分两档：高品质高价、高品质低价。
+                // 低品质物品（Quality<5）一律不保留，无需单独装桶。
+                // 复用实例级 scratch 列表，避免每次清理都分配。
+                List<Item> preferred = difficultyRewardPreferredScratch;
+                List<Item> fallbackHighQuality = difficultyRewardFallbackHighQualityScratch;
+                preferred.Clear();
+                fallbackHighQuality.Clear();
 
                 const int priceThreshold = 2000;
 
@@ -349,6 +365,11 @@ namespace BossRush
                 {
                     Item item = content[i];
                     if (item == null)
+                    {
+                        continue;
+                    }
+
+                    if (item.Quality < 5)
                     {
                         continue;
                     }
@@ -363,20 +384,13 @@ namespace BossRush
                         value = 0;
                     }
 
-                    if (item.Quality >= 5)
+                    if (value >= priceThreshold)
                     {
-                        if (value >= priceThreshold)
-                        {
-                            preferred.Add(item);
-                        }
-                        else
-                        {
-                            fallbackHighQuality.Add(item);
-                        }
+                        preferred.Add(item);
                     }
                     else
                     {
-                        fallbackOthers.Add(item);
+                        fallbackHighQuality.Add(item);
                     }
                 }
 
@@ -390,7 +404,8 @@ namespace BossRush
                     target = beforeCount;
                 }
 
-                List<Item> keep = new List<Item>(target);
+                List<Item> keep = difficultyRewardKeepScratch;
+                keep.Clear();
 
                 // 1) 优先保留高品质高价物品
                 for (int i = 0; i < preferred.Count && keep.Count < target; i++)
@@ -404,7 +419,7 @@ namespace BossRush
                     keep.Add(fallbackHighQuality[i]);
                 }
 
-                // 3) 仍然完全不使用低品质物品 (fallbackOthers)，保证 Quality>=5
+                // 3) 仍然完全不保留低品质物品（Quality<5），保证 Quality>=5
 
                 int removed = 0;
 
@@ -465,6 +480,21 @@ namespace BossRush
             {
                 DevLog("[BossRush] 清理通关奖励箱低品质物品失败: " + cleanEx.Message);
             }
+            finally
+            {
+                // 清空 scratch 列表，释放对 Item 的引用，避免跨清理批次悬挂。
+                ClearDifficultyRewardCleanupScratch();
+            }
+        }
+
+        /// <summary>
+        /// 清空通关奖励清理用的复用 scratch 列表，释放其中持有的 Item 引用。
+        /// </summary>
+        private void ClearDifficultyRewardCleanupScratch()
+        {
+            difficultyRewardPreferredScratch.Clear();
+            difficultyRewardFallbackHighQualityScratch.Clear();
+            difficultyRewardKeepScratch.Clear();
         }
 
         /// <summary>

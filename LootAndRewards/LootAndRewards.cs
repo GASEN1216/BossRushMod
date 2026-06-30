@@ -232,7 +232,14 @@ namespace BossRush
         private readonly HashSet<CharacterMainControl> bossRushLootboxPathBosses = new HashSet<CharacterMainControl>();
         private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
             = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
+        private readonly List<CharacterMainControl> bossRushLootboxPathTrackedBossScratch = new List<CharacterMainControl>(16);
+        private readonly List<CharacterMainControl> bossRushLootboxPathStaleBossScratch = new List<CharacterMainControl>(4);
         private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();
+        private readonly List<int> legacyBossGuaranteeCandidateScratch = new List<int>(1024);
+        private readonly Dictionary<int, List<int>> legacyBossGuaranteeQualityBucketsScratch = new Dictionary<int, List<int>>(8);
+        private readonly List<Item> difficultyRewardPreferredScratch = new List<Item>(32);
+        private readonly List<Item> difficultyRewardFallbackHighQualityScratch = new List<Item>(32);
+        private readonly List<Item> difficultyRewardKeepScratch = new List<Item>(32);
         private const float LOOT_WARNING_LOG_INTERVAL = 5f;
         private readonly Dictionary<string, float> lootNextWarningLogTimes = new Dictionary<string, float>();
 
@@ -296,7 +303,10 @@ namespace BossRush
         // 已发放的最高里程碑阶数（每100波递进，0表示尚未发放任何里程碑奖励）
         private int infiniteHellMilestoneRewardTier = 0;
         private long infiniteHellWaveCashThisWave = 0L;
-        private List<int> infiniteHellHighQualityItemPool = null;
+        private readonly List<int> infiniteHellHighQualityItemPool = new List<int>(256);
+        private readonly HashSet<int> infiniteHellHighQualityCandidateIdScratch = new HashSet<int>();
+        private readonly List<int> infiniteHellHighQualityPreferredScratch = new List<int>(128);
+        private readonly List<int> infiniteHellHighQualityFallbackScratch = new List<int>(128);
         private bool infiniteHellHighQualityItemPoolInitialized = false;
 
         // ============================================================================
@@ -429,41 +439,43 @@ namespace BossRush
                 return;
             }
 
-            List<CharacterMainControl> staleBosses = null;
-            List<CharacterMainControl> trackedBosses =
-                new List<CharacterMainControl>(bossSpawnTimes.Keys);
-
-            for (int i = 0; i < trackedBosses.Count; i++)
+            bossRushLootboxPathTrackedBossScratch.Clear();
+            bossRushLootboxPathStaleBossScratch.Clear();
+            foreach (CharacterMainControl boss in bossSpawnTimes.Keys)
             {
-                CharacterMainControl boss = trackedBosses[i];
+                bossRushLootboxPathTrackedBossScratch.Add(boss);
+            }
+
+            for (int i = 0; i < bossRushLootboxPathTrackedBossScratch.Count; i++)
+            {
+                CharacterMainControl boss = bossRushLootboxPathTrackedBossScratch[i];
                 if (boss == null)
                 {
-                    if (staleBosses == null)
-                    {
-                        staleBosses = new List<CharacterMainControl>();
-                    }
-
-                    staleBosses.Add(boss);
+                    bossRushLootboxPathStaleBossScratch.Add(boss);
                     continue;
                 }
 
                 MarkBossRushLootboxPathTracking(boss);
             }
 
-            if (staleBosses == null)
+            if (bossRushLootboxPathStaleBossScratch.Count == 0)
             {
+                bossRushLootboxPathTrackedBossScratch.Clear();
                 return;
             }
 
-            for (int i = 0; i < staleBosses.Count; i++)
+            for (int i = 0; i < bossRushLootboxPathStaleBossScratch.Count; i++)
             {
-                CharacterMainControl staleBoss = staleBosses[i];
+                CharacterMainControl staleBoss = bossRushLootboxPathStaleBossScratch[i];
                 bossSpawnTimes.Remove(staleBoss);
                 bossOriginalLootCounts.Remove(staleBoss);
                 countedDeadBosses.Remove(staleBoss);
                 trackedBossLootHooks.Remove(staleBoss);
                 bossRushLootboxPathBosses.Remove(staleBoss);
             }
+
+            bossRushLootboxPathTrackedBossScratch.Clear();
+            bossRushLootboxPathStaleBossScratch.Clear();
         }
 
         /// <summary>
@@ -593,6 +605,18 @@ namespace BossRush
         private HashSet<int> BuildGeneralBossLootCandidateIdSet()
         {
             HashSet<int> idSet = new HashSet<int>();
+            BuildGeneralBossLootCandidateIdSet(idSet);
+            return idSet;
+        }
+
+        private bool BuildGeneralBossLootCandidateIdSet(HashSet<int> idSet)
+        {
+            if (idSet == null)
+            {
+                return false;
+            }
+
+            idSet.Clear();
             try
             {
                 Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
@@ -635,7 +659,7 @@ namespace BossRush
                 DevLog("[BossRush] 收集候选物品ID失败: " + e.Message);
             }
 
-            return idSet;
+            return idSet.Count > 0;
         }
 
         private void AddLegacyBossLootCandidateToQualityBucket(int itemId, int quality)
@@ -718,7 +742,7 @@ namespace BossRush
                 return;
             }
 
-            destination.Clear();
+            ClearLegacyBossLootQualityBucketLists(destination);
             foreach (KeyValuePair<int, List<int>> pair in _legacyBossLootCandidateIdsByQuality)
             {
                 if (pair.Value == null || pair.Value.Count == 0)
@@ -726,8 +750,35 @@ namespace BossRush
                     continue;
                 }
 
-                destination[pair.Key] = new List<int>(pair.Value);
+                List<int> bucket = null;
+                if (!destination.TryGetValue(pair.Key, out bucket) || bucket == null)
+                {
+                    bucket = new List<int>(pair.Value.Count);
+                    destination[pair.Key] = bucket;
+                }
+                bucket.AddRange(pair.Value);
             }
+        }
+
+        private void ClearLegacyBossLootQualityBucketLists(Dictionary<int, List<int>> buckets)
+        {
+            if (buckets == null)
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<int, List<int>> pair in buckets)
+            {
+                if (pair.Value != null)
+                {
+                    pair.Value.Clear();
+                }
+            }
+        }
+
+        private void ClearLegacyBossGuaranteeQualityBucketsScratch()
+        {
+            ClearLegacyBossLootQualityBucketLists(legacyBossGuaranteeQualityBucketsScratch);
         }
 
         private bool TryGetLegacyBossLootCandidates(List<int> candidateIds, Dictionary<int, List<int>> qualityBuckets = null)
@@ -758,7 +809,7 @@ namespace BossRush
             candidateIds.AddRange(dynamicIds);
             if (qualityBuckets != null)
             {
-                qualityBuckets.Clear();
+                ClearLegacyBossLootQualityBucketLists(qualityBuckets);
                 BuildLegacyBossLootQualityBucketsFromIds(candidateIds, qualityBuckets);
             }
 

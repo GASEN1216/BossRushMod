@@ -24,6 +24,96 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        private static class BossLootBoxLoaderReflection
+        {
+            private const BindingFlags InstancePrivate = BindingFlags.NonPublic | BindingFlags.Instance;
+            private const BindingFlags InstancePublic = BindingFlags.Public | BindingFlags.Instance;
+            private const BindingFlags NestedAny = BindingFlags.NonPublic | BindingFlags.Public;
+
+            internal static readonly Type LoaderType;
+            internal static readonly FieldInfo RandomCountField;
+            internal static readonly FieldInfo QualitiesField;
+            internal static readonly FieldInfo TagsField;
+            internal static readonly FieldInfo ExcludeTagsField;
+            internal static readonly FieldInfo RandomPoolField;
+            internal static readonly FieldInfo FixedItemsField;
+            internal static readonly FieldInfo FixedChanceField;
+            internal static readonly Type LoaderEntryType;
+            internal static readonly FieldInfo LootEntryItemIdField;
+            internal static readonly FieldInfo RandomPoolEntriesField;
+            internal static readonly Type RandomPoolEntryType;
+            internal static readonly FieldInfo RandomPoolEntryValueField;
+            internal static readonly FieldInfo RandomPoolEntryWeightField;
+
+            static BossLootBoxLoaderReflection()
+            {
+                try
+                {
+                    LoaderType = typeof(Duckov.Utilities.LootBoxLoader);
+                    RandomCountField = LoaderType.GetField("randomCount", InstancePrivate);
+                    QualitiesField = LoaderType.GetField("qualities", InstancePrivate);
+                    TagsField = LoaderType.GetField("tags", InstancePrivate);
+                    ExcludeTagsField = LoaderType.GetField("excludeTags", InstancePrivate);
+                    RandomPoolField = LoaderType.GetField("randomPool", InstancePrivate);
+                    FixedItemsField = LoaderType.GetField("fixedItems", InstancePrivate);
+                    FixedChanceField = LoaderType.GetField("fixedItemSpawnChance", InstancePrivate);
+                    LoaderEntryType = LoaderType.GetNestedType("Entry", NestedAny);
+                    LootEntryItemIdField = LoaderEntryType != null
+                        ? LoaderEntryType.GetField("itemTypeID", InstancePublic)
+                        : null;
+
+                    Type randomPoolType = RandomPoolField != null ? RandomPoolField.FieldType : null;
+                    if (randomPoolType != null)
+                    {
+                        RandomPoolEntriesField = randomPoolType.GetField("entries", InstancePublic);
+                        Type randomPoolEntryType = randomPoolType.GetNestedType("Entry", NestedAny);
+                        if (randomPoolEntryType != null && randomPoolEntryType.ContainsGenericParameters && randomPoolType.IsGenericType)
+                        {
+                            Type[] genericArgs = randomPoolType.GetGenericArguments();
+                            if (genericArgs != null && genericArgs.Length > 0)
+                            {
+                                randomPoolEntryType = randomPoolEntryType.MakeGenericType(genericArgs);
+                            }
+                        }
+
+                        RandomPoolEntryType = randomPoolEntryType;
+                        if (RandomPoolEntryType != null)
+                        {
+                            RandomPoolEntryValueField = RandomPoolEntryType.GetField("value", InstancePublic);
+                            RandomPoolEntryWeightField = RandomPoolEntryType.GetField("weight", InstancePublic);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog("[BossRush] BossLootBoxLoaderReflection 初始化失败: " + e.Message);
+                }
+            }
+        }
+
+        private readonly List<int> bossRandomLootCandidateIdScratch = new List<int>(1024);
+        private readonly Dictionary<int, int> bossRandomLootQualityScratch = new Dictionary<int, int>(1024);
+        private readonly int[] bossRandomLootHighQualityCountsScratch = new int[4];
+        private readonly int[] bossRandomLootLowQualityCountsScratch = new int[4];
+        private readonly float[] bossRandomLootHighWeightsScratch = new float[4];
+
+        private static float GetBossLootHighQualityRatio(int index)
+        {
+            switch (index)
+            {
+                case 0:
+                    return 4f;
+                case 1:
+                    return 3f;
+                case 2:
+                    return 2f;
+                case 3:
+                    return 1f;
+                default:
+                    return 0f;
+            }
+        }
+
         /// <summary>
         /// 玩家死亡保护（BossRush期间）- 参考keep_items_on_death实现（LootAndRewards 分部实现）
         /// 不干预游戏死亡流程，只阻止物品掉落
@@ -312,6 +402,13 @@ namespace BossRush
                 }
                 baseCount = Mathf.Clamp(baseCount, 7, 15);
 
+                // 变异词条：掉落数量倍率
+                if (MutatorManager.IsActive && MutatorManager.LootQuantityMultiplier > 1)
+                {
+                    baseCount = baseCount * MutatorManager.LootQuantityMultiplier;
+                    baseCount = Mathf.Min(baseCount, 30); // 上限保护
+                }
+
                 // 每100血量增加的高品质概率加成
                 float lootHealthBonusRate = LOOT_HEALTH_BONUS_RATE;
                 float highChanceBonusByHealth = (maxHealth / 100f) * lootHealthBonusRate;
@@ -325,6 +422,7 @@ namespace BossRush
                     + "秒, MaxHP=" + maxHealth
                     + ", 基础掉落数量=" + baseCount
                     + ", 高品质概率加成=" + highChanceBonusByHealth.ToString("P3")
+                    + ", 品质偏移=" + GetActiveMutatorLootQualityOffset()
                     + ", legacyBonusFactor=" + legacyBonusFactor.ToString("F3"));
 
                 // 随机生成物品并填充到Boss掉落源（CharacterItem.Inventory），由原版逻辑创建LootBox
@@ -439,12 +537,8 @@ namespace BossRush
                 // 这是解决"箱子没有奖励且格子为64"问题的关键
                 try
                 {
-                    System.Type lootboxType = typeof(InteractableLootbox);
-                    System.Reflection.MethodInfo createLocalInventoryMethod =
-                        lootboxType.GetMethod("CreateLocalInventory", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                    if (createLocalInventoryMethod != null)
+                    if (InteractableLootboxInventoryHelper.EnsureLocalInventory(lootbox, 512))
                     {
-                        createLocalInventoryMethod.Invoke(lootbox, null);
                         DevLog("[BossRush] Boss 奖励箱已创建独立本地 Inventory");
                     }
                 }
@@ -503,13 +597,11 @@ namespace BossRush
                 {
                     try
                     {
-                        System.Type loaderType = typeof(Duckov.Utilities.LootBoxLoader);
-
                         // 根据 totalCount 设定随机数量范围（不再向下浮动，保证不少于目标数量）
                         int minCount = Math.Max(1, totalCount);
                         int maxCount = Math.Max(minCount, totalCount + 1);
 
-                        System.Reflection.FieldInfo randomCountField = loaderType.GetField("randomCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        System.Reflection.FieldInfo randomCountField = BossLootBoxLoaderReflection.RandomCountField;
                         if (randomCountField != null)
                         {
                             Vector2Int rc = new Vector2Int(minCount, maxCount);
@@ -517,7 +609,7 @@ namespace BossRush
                         }
 
                         // 调整品质权重：开启原版概率开关时使用固定区间分布，否则沿用旧的高品质总概率逻辑
-                        System.Reflection.FieldInfo qualitiesField = loaderType.GetField("qualities", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        System.Reflection.FieldInfo qualitiesField = BossLootBoxLoaderReflection.QualitiesField;
                         if (qualitiesField != null)
                         {
                             Duckov.Utilities.RandomContainer<int> qualities = qualitiesField.GetValue(loader) as Duckov.Utilities.RandomContainer<int>;
@@ -527,14 +619,14 @@ namespace BossRush
 
                                 if (useLegacyProbabilities)
                                 {
-                                    for (int q = 1; q <= 8; q++)
-                                    {
-                                        double probability = legacyDistribution.GetProbabilityForQuality(q);
-                                        if (probability > 0.0)
-                                        {
-                                            qualities.AddEntry(q, (float)probability);
-                                        }
-                                    }
+	                                    for (int q = 1; q <= 8; q++)
+	                                    {
+	                                        double probability = legacyDistribution.GetProbabilityForQuality(q);
+	                                        if (probability > 0.0)
+	                                        {
+	                                            qualities.AddEntry(ApplyMutatorLootQualityOffset(q), (float)probability);
+	                                        }
+	                                    }
                                 }
                                 else
                                 {
@@ -560,31 +652,30 @@ namespace BossRush
                                     // 普通品质
                                     int lowQualityTiers = lowQualityMax - lowQualityMin + 1;
                                     float perLowQualityWeight = lowWeight / lowQualityTiers;
-                                    for (int q = lowQualityMin; q <= lowQualityMax; q++)
-                                    {
-                                        qualities.AddEntry(q, perLowQualityWeight);
-                                    }
+	                                    for (int q = lowQualityMin; q <= lowQualityMax; q++)
+	                                    {
+	                                        qualities.AddEntry(ApplyMutatorLootQualityOffset(q), perLowQualityWeight);
+	                                    }
 
                                     // 高品质：按 4:3:2:1 比例分配（品质5占4份，品质6占3份，品质7占2份，品质8占1份）
-                                    float[] highQualityRatios = new float[] { 4f, 3f, 2f, 1f };
                                     float totalRatio = 10f;
-                                    for (int i = 0; i < highQualityRatios.Length; i++)
+                                    for (int i = 0; i < 4; i++)
                                     {
                                         int q = highQualityMin + i;
-                                        if (q <= highQualityMax)
-                                        {
-                                            float weight = highWeight * (highQualityRatios[i] / totalRatio);
-                                            qualities.AddEntry(q, weight);
-                                        }
-                                    }
+	                                        if (q <= highQualityMax)
+	                                        {
+	                                            float weight = highWeight * (GetBossLootHighQualityRatio(i) / totalRatio);
+	                                            qualities.AddEntry(ApplyMutatorLootQualityOffset(q), weight);
+	                                        }
+	                                    }
                                 }
 
                                 qualities.RefreshPercent();
                             }
                         }
 
-                        System.Reflection.FieldInfo tagsField = loaderType.GetField("tags", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        System.Reflection.FieldInfo excludeTagsField = loaderType.GetField("excludeTags", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        System.Reflection.FieldInfo tagsField = BossLootBoxLoaderReflection.TagsField;
+                        System.Reflection.FieldInfo excludeTagsField = BossLootBoxLoaderReflection.ExcludeTagsField;
 
                         if (tagsField != null)
                         {
@@ -611,6 +702,24 @@ namespace BossRush
                                         {
                                             continue;
                                         }
+                                        // 变异词条：近战限定过滤
+                                        if (MutatorManager.IsActive && MutatorManager.LootTypeFilter == "melee")
+                                        {
+                                            string tagName = t.name;
+                                            if (!string.IsNullOrEmpty(tagName))
+                                            {
+                                                // 只保留包含 melee/sword/knife/axe/hammer 关键词的 tag
+                                                string lower = tagName.ToLowerInvariant();
+                                                bool isMelee = lower.Contains("melee") ||
+                                                               lower.Contains("sword") ||
+                                                               lower.Contains("knife") ||
+                                                               lower.Contains("axe") ||
+                                                               lower.Contains("hammer") ||
+                                                               lower.Contains("bat") ||
+                                                               lower.Contains("club");
+                                                if (!isMelee) continue;
+                                            }
+                                        }
                                         tagsContainer.AddEntry(t, 1f);
                                     }
                                 }
@@ -634,8 +743,8 @@ namespace BossRush
 
                         try
                         {
-                            System.Type loaderEntryType = loaderType.GetNestedType("Entry", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-                            System.Reflection.FieldInfo randomPoolField = loaderType.GetField("randomPool", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                            System.Type loaderEntryType = BossLootBoxLoaderReflection.LoaderEntryType;
+                            System.Reflection.FieldInfo randomPoolField = BossLootBoxLoaderReflection.RandomPoolField;
                             object randomPoolObj = (randomPoolField != null) ? randomPoolField.GetValue(loader) : null;
 
                             // 新增：在新增 LootBoxLoader 组件时，randomPool 可能为 null，这里显式创建一个实例
@@ -654,20 +763,10 @@ namespace BossRush
 
                             if (loaderEntryType != null && randomPoolObj != null)
                             {
-                                System.Type randomPoolType = randomPoolObj.GetType();
-                                System.Reflection.FieldInfo entriesField = randomPoolType.GetField("entries", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                                System.Reflection.FieldInfo entriesField = BossLootBoxLoaderReflection.RandomPoolEntriesField;
                                 object entriesObj = (entriesField != null) ? entriesField.GetValue(randomPoolObj) : null;
                                 System.Collections.IList entriesList = entriesObj as System.Collections.IList;
-                                System.Type randomContainerEntryType = randomPoolType.GetNestedType("Entry", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-
-                                if (randomContainerEntryType != null && randomContainerEntryType.ContainsGenericParameters && randomPoolType.IsGenericType)
-                                {
-                                    System.Type[] genericArgs = randomPoolType.GetGenericArguments();
-                                    if (genericArgs != null && genericArgs.Length > 0)
-                                    {
-                                        randomContainerEntryType = randomContainerEntryType.MakeGenericType(genericArgs);
-                                    }
-                                }
+                                System.Type randomContainerEntryType = BossLootBoxLoaderReflection.RandomPoolEntryType;
 
                                 // 新增：如果 entries 列表本身为 null，则创建一个新的列表实例
                                 if (entriesList == null && entriesField != null)
@@ -688,13 +787,14 @@ namespace BossRush
                                 {
                                     entriesList.Clear();
 
-                                    System.Reflection.FieldInfo lootEntryItemIdField = loaderEntryType.GetField("itemTypeID", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                                    System.Reflection.FieldInfo rcValueField = randomContainerEntryType.GetField("value", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                                    System.Reflection.FieldInfo rcWeightField = randomContainerEntryType.GetField("weight", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                                    System.Reflection.FieldInfo lootEntryItemIdField = BossLootBoxLoaderReflection.LootEntryItemIdField;
+                                    System.Reflection.FieldInfo rcValueField = BossLootBoxLoaderReflection.RandomPoolEntryValueField;
+                                    System.Reflection.FieldInfo rcWeightField = BossLootBoxLoaderReflection.RandomPoolEntryWeightField;
 
                                     if (lootEntryItemIdField != null && rcValueField != null && rcWeightField != null)
                                     {
-                                        List<int> candidateIds = new List<int>();
+                                        List<int> candidateIds = bossRandomLootCandidateIdScratch;
+                                        candidateIds.Clear();
                                         bool hasCandidateCache = false;
                                         if (useLegacyProbabilities)
                                         {
@@ -720,17 +820,20 @@ namespace BossRush
 
                                             // 第一遍：统计各品质物品数量（按具体品质等级分别统计）
                                             int lowQualityItemCount = 0;
-                                            Dictionary<int, int> itemQualities = new Dictionary<int, int>();
+                                            Dictionary<int, int> itemQualities = bossRandomLootQualityScratch;
+                                            itemQualities.Clear();
                                             // 统计各高品质等级的物品数量：quality5Count, quality6Count, quality7Count, quality8Count
-                                            int[] highQualityCounts = new int[4]; // 索引0=品质5, 1=品质6, 2=品质7, 3=品质8
+                                            int[] highQualityCounts = bossRandomLootHighQualityCountsScratch; // 索引0=品质5, 1=品质6, 2=品质7, 3=品质8
+                                            Array.Clear(highQualityCounts, 0, highQualityCounts.Length);
                                             // 低品质按 Q1-Q4 分别统计，供 legacy 分支直接使用，避免后续重复遍历 itemQualities
-                                            int[] lowQualityCountsByGrade = new int[4]; // 索引0=Q1, 1=Q2, 2=Q3, 3=Q4
+                                            int[] lowQualityCountsByGrade = bossRandomLootLowQualityCountsScratch; // 索引0=Q1, 1=Q2, 2=Q3, 3=Q4
+                                            Array.Clear(lowQualityCountsByGrade, 0, lowQualityCountsByGrade.Length);
 
                                             for (int candidateIndex = 0; candidateIndex < candidateIds.Count; candidateIndex++)
                                             {
                                                 int id2 = candidateIds[candidateIndex];
-                                                int quality = -1;
-                                                quality = GetBossLootCandidateQuality(id2);
+	                                                int quality = GetBossLootCandidateQuality(id2);
+	                                                quality = ApplyMutatorLootQualityOffset(quality);
 
                                                 itemQualities[id2] = quality;
 
@@ -763,7 +866,8 @@ namespace BossRush
                                             DevLog("[BossRush] Boss 奖励品质统计: 普通品质=" + lowQualityItemCount + ", 高品质=" + totalHighQualityItemCount + " (Q5=" + highQualityCounts[0] + ", Q6=" + highQualityCounts[1] + ", Q7=" + highQualityCounts[2] + ", Q8=" + highQualityCounts[3] + ")");
 
                                             float perLowWeight = 0f;
-                                            float[] perHighWeightByQuality = new float[4];
+                                            float[] perHighWeightByQuality = bossRandomLootHighWeightsScratch;
+                                            Array.Clear(perHighWeightByQuality, 0, perHighWeightByQuality.Length);
                                             if (useLegacyProbabilities)
                                             {
                                                 // 直接复用第一遍统计的 lowQualityCountsByGrade / highQualityCounts，
@@ -838,11 +942,10 @@ namespace BossRush
                                                 int safeLowCount = (lowQualityItemCount == 0) ? 1 : lowQualityItemCount;
                                                 perLowWeight = lowTotalWeight / safeLowCount;
 
-                                                float[] highQualityRatios = new float[] { 4f, 3f, 2f, 1f };
                                                 float totalRatio = 10f;
                                                 for (int i = 0; i < 4; i++)
                                                 {
-                                                    float qualityTotalWeight = highTotalWeight * (highQualityRatios[i] / totalRatio);
+                                                    float qualityTotalWeight = highTotalWeight * (GetBossLootHighQualityRatio(i) / totalRatio);
                                                     int count = highQualityCounts[i];
                                                     if (count == 0) count = 1;
                                                     perHighWeightByQuality[i] = qualityTotalWeight / count;
@@ -888,8 +991,8 @@ namespace BossRush
 
                                         // 不使用 LootBoxLoader 自带的 fixedItems 保底；legacy Q5+ 保底在后续协程中追加
                                         // 这里仍需初始化 fixedItems 字段，避免 LootBoxLoader.Setup() 空引用
-                                        System.Reflection.FieldInfo fixedItemsField = loaderType.GetField("fixedItems", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                        System.Reflection.FieldInfo fixedChanceField = loaderType.GetField("fixedItemSpawnChance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                        System.Reflection.FieldInfo fixedItemsField = BossLootBoxLoaderReflection.FixedItemsField;
+                                        System.Reflection.FieldInfo fixedChanceField = BossLootBoxLoaderReflection.FixedChanceField;
 
                                         if (fixedItemsField != null)
                                         {
@@ -993,6 +1096,22 @@ namespace BossRush
                 FinalizeBossRushLootboxPathTracking(bossMain);
                 DevLog("[BossRush] RandomizeBossLoot 错误: " + e.Message);
             }
+        }
+
+        private int GetActiveMutatorLootQualityOffset()
+        {
+            return MutatorManager.IsActive ? MutatorManager.LootQualityOffset : 0;
+        }
+
+        private int ApplyMutatorLootQualityOffset(int quality)
+        {
+            int offset = GetActiveMutatorLootQualityOffset();
+            if (offset == 0)
+            {
+                return Mathf.Clamp(quality, LOOT_LOW_QUALITY_MIN, LOOT_HIGH_QUALITY_MAX);
+            }
+
+            return Mathf.Clamp(quality + offset, LOOT_LOW_QUALITY_MIN, LOOT_HIGH_QUALITY_MAX);
         }
     }
 }

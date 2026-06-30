@@ -46,8 +46,10 @@ namespace BossRush
 
         private ModBehaviour owner;
         private CharacterMainControl player;
+        private Transform playerTransform;
         private InteractableLootbox sourcePrefab;
         private GameObject ghostObject;
+        private Transform ghostTransform;
         private Vector3 ghostBaseScale = Vector3.one;
         private Light ghostAuraLight;
         private ShadowCrateState state = ShadowCrateState.Following;
@@ -64,6 +66,7 @@ namespace BossRush
         {
             owner = ownerInstance;
             player = playerCharacter;
+            playerTransform = player != null ? player.transform : null;
             sourcePrefab = visualPrefab;
             highQualityCount = rewardHighQualityCount;
             state = ShadowCrateState.Following;
@@ -78,14 +81,15 @@ namespace BossRush
             {
                 ghostObject = UnityEngine.Object.Instantiate(sourcePrefab.gameObject);
                 ghostObject.name = "BossRush_VictoryRewardShadowCrate";
-                ghostBaseScale = ghostObject.transform.localScale;
+                ghostTransform = ghostObject.transform;
+                ghostBaseScale = ghostTransform.localScale;
                 MultiSceneCore.MoveToActiveWithScene(ghostObject, SceneManager.GetActiveScene().buildIndex);
                 DisableGhostInteraction(ghostObject);
                 CreateGhostAuraLight();
                 CacheGhostMaterials();
                 ApplyGhostVisual(InitialGhostAlpha, InitialGhostScale);
                 UpdateFollowPose(Time.unscaledTime);
-                ModBehaviour.DevLog("[BossRush] 通关奖励箱虚影已创建: pos=" + ghostObject.transform.position);
+                ModBehaviour.DevLog("[BossRush] 通关奖励箱虚影已创建: pos=" + ghostTransform.position);
                 return true;
             }
             catch (Exception e)
@@ -109,10 +113,10 @@ namespace BossRush
             stateElapsedSeconds = 0f;
             ModBehaviour.DevLog("[BossRush] 通关奖励箱虚影开始凝实: anchor=" + anchorPosition + ", landing=" + landingPosition);
 
-            if (ghostObject != null)
+            if (ghostTransform != null)
             {
-                Vector3 currentPosition = ghostObject.transform.position;
-                ghostObject.transform.position = new Vector3(anchorPosition.x, currentPosition.y, anchorPosition.z);
+                Vector3 currentPosition = ghostTransform.position;
+                ghostTransform.position = new Vector3(anchorPosition.x, currentPosition.y, anchorPosition.z);
             }
         }
 
@@ -139,15 +143,15 @@ namespace BossRush
 
         private void UpdateFollowPose(float elapsedSeconds)
         {
-            if (ghostObject == null)
+            if (ghostTransform == null)
             {
                 return;
             }
 
             Vector3 anchorPosition = ResolveAnchorPosition();
             float followY = VictoryRewardShadowMath.ComputeFollowY(anchorPosition.y, elapsedSeconds);
-            ghostObject.transform.position = new Vector3(anchorPosition.x, followY, anchorPosition.z);
-            ghostObject.transform.Rotate(0f, RotationSpeedDegreesPerSecond * Time.unscaledDeltaTime, 0f, Space.World);
+            ghostTransform.position = new Vector3(anchorPosition.x, followY, anchorPosition.z);
+            ghostTransform.Rotate(0f, RotationSpeedDegreesPerSecond * Time.unscaledDeltaTime, 0f, Space.World);
         }
 
         private void UpdateMaterialize(float deltaTime)
@@ -157,7 +161,10 @@ namespace BossRush
             float alpha = Mathf.Lerp(InitialGhostAlpha, FinalGhostAlpha, t);
             float scale = Mathf.Lerp(InitialGhostScale, FinalGhostScale, t);
             ApplyGhostVisual(alpha, scale);
-            ghostObject.transform.Rotate(0f, RotationSpeedDegreesPerSecond * deltaTime, 0f, Space.World);
+            if (ghostTransform != null)
+            {
+                ghostTransform.Rotate(0f, RotationSpeedDegreesPerSecond * deltaTime, 0f, Space.World);
+            }
 
             if (t >= 1f)
             {
@@ -169,15 +176,20 @@ namespace BossRush
         private void UpdateDescending(float deltaTime)
         {
             stateElapsedSeconds += deltaTime;
-            Vector3 currentPosition = ghostObject.transform.position;
+            if (ghostTransform == null)
+            {
+                return;
+            }
+
+            Vector3 currentPosition = ghostTransform.position;
             float nextY = VictoryRewardShadowMath.MoveTowardsY(
                 currentPosition.y,
                 landingPosition.y,
                 DescendSpeedMetersPerSecond,
                 deltaTime);
 
-            ghostObject.transform.position = new Vector3(landingPosition.x, nextY, landingPosition.z);
-            ghostObject.transform.Rotate(0f, RotationSpeedDegreesPerSecond * deltaTime, 0f, Space.World);
+            ghostTransform.position = new Vector3(landingPosition.x, nextY, landingPosition.z);
+            ghostTransform.Rotate(0f, RotationSpeedDegreesPerSecond * deltaTime, 0f, Space.World);
 
             if (Mathf.Abs(nextY - landingPosition.y) <= 0.0001f)
             {
@@ -189,18 +201,18 @@ namespace BossRush
         {
             try
             {
-                if (player != null && player.transform != null)
+                if (playerTransform != null)
                 {
-                    return player.transform.position;
+                    return playerTransform.position;
                 }
             }
             catch (Exception)
             {
             }
 
-            if (ghostObject != null)
+            if (ghostTransform != null)
             {
-                return ghostObject.transform.position;
+                return ghostTransform.position;
             }
 
             return Vector3.zero;
@@ -262,13 +274,13 @@ namespace BossRush
 
         private void CreateGhostAuraLight()
         {
-            if (ghostObject == null)
+            if (ghostTransform == null)
             {
                 return;
             }
 
             GameObject auraLightObject = new GameObject("BossRush_VictoryRewardShadowAuraLight");
-            auraLightObject.transform.SetParent(ghostObject.transform, false);
+            auraLightObject.transform.SetParent(ghostTransform, false);
             auraLightObject.transform.localPosition = Vector3.zero;
             ghostAuraLight = auraLightObject.AddComponent<Light>();
             ghostAuraLight.type = LightType.Point;
@@ -411,9 +423,9 @@ namespace BossRush
 
         private void ApplyGhostVisual(float alpha, float scale)
         {
-            if (ghostObject != null)
+            if (ghostTransform != null)
             {
-                ghostObject.transform.localScale = ghostBaseScale * (GhostHeroScaleMultiplier * scale);
+                ghostTransform.localScale = ghostBaseScale * (GhostHeroScaleMultiplier * scale);
             }
 
             for (int i = 0; i < ghostMaterials.Count; i++)
@@ -627,6 +639,8 @@ namespace BossRush
                 UnityEngine.Object.Destroy(ghostObject);
                 ghostObject = null;
             }
+            ghostTransform = null;
+            playerTransform = null;
 
             if (owner != null)
             {

@@ -317,172 +317,138 @@ namespace BossRush
             const int CROWN_TYPE_ID = 1254;
             const float CROWN_REROLL_CHANCE = 0.9f;
 
-            if (infiniteHellHighQualityItemPoolInitialized && infiniteHellHighQualityItemPool != null && infiniteHellHighQualityItemPool.Count > 0)
+            if (infiniteHellHighQualityItemPoolInitialized && infiniteHellHighQualityItemPool.Count > 0)
             {
-                int cachedIndex = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
-                int resultId = infiniteHellHighQualityItemPool[cachedIndex];
-
-                // 如果抽到皇冠，90%概率重新抽取
-                if (resultId == CROWN_TYPE_ID && UnityEngine.Random.value < CROWN_REROLL_CHANCE)
-                {
-                    cachedIndex = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
-                    resultId = infiniteHellHighQualityItemPool[cachedIndex];
-                }
-
-                return resultId;
+                return RollInfiniteHellHighQualityRewardTypeID(CROWN_TYPE_ID, CROWN_REROLL_CHANCE);
             }
 
             infiniteHellHighQualityItemPoolInitialized = true;
 
-            Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
-            if (tagsData == null || tagsData.AllTags == null || tagsData.AllTags.Count == 0)
-            {
-                return -1;
-            }
-
-            List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
-
-            List<Duckov.Utilities.Tag> includeTags = new List<Duckov.Utilities.Tag>();
-            for (int i = 0; i < tagsData.AllTags.Count; i++)
-            {
-                Duckov.Utilities.Tag tag = tagsData.AllTags[i];
-                if (tag == null)
-                {
-                    continue;
-                }
-                if (baseExclude.Contains(tag))
-                {
-                    continue;
-                }
-                includeTags.Add(tag);
-            }
-
-            HashSet<int> idSet = new HashSet<int>();
-
-            for (int i = 0; i < includeTags.Count; i++)
-            {
-                Duckov.Utilities.Tag requireTag = includeTags[i];
-                if (requireTag == null)
-                {
-                    continue;
-                }
-
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[]
-                {
-                    requireTag
-                };
-                filter.excludeTags = baseExclude.ToArray();
-                filter.minQuality = 1;
-                filter.maxQuality = 8;
-
-                int[] ids = ItemAssetsCollection.Search(filter);
-                if (ids == null)
-                {
-                    continue;
-                }
-
-                for (int j = 0; j < ids.Length; j++)
-                {
-                    int id = ids[j];
-                    if (id > 0)
-                    {
-                        if (IsItemBlacklisted(id))
-                        {
-                            continue;
-                        }
-                        idSet.Add(id);
-                    }
-                }
-            }
-
-            if (idSet.Count == 0)
-            {
-                return -1;
-            }
-
             const int priceThreshold = 10000;
-            List<int> preferred = new List<int>();
-            List<int> fallbackHighQuality = new List<int>();
+            List<int> preferred = infiniteHellHighQualityPreferredScratch;
+            List<int> fallbackHighQuality = infiniteHellHighQualityFallbackScratch;
+            preferred.Clear();
+            fallbackHighQuality.Clear();
 
-            foreach (int candidateId in idSet)
+            try
             {
-                int v = 0;
-                int quality = -1;
-
-                try
+                if (!BuildGeneralBossLootCandidateIdSet(infiniteHellHighQualityCandidateIdScratch))
                 {
-                    Item temp = ItemAssetsCollection.InstantiateSync(candidateId);
-                    if (temp != null)
-                    {
-                        try
-                        {
-                            v = temp.Value;
-                        }
-                        catch
-                        {
-                            v = 0;
-                        }
-
-                        try
-                        {
-                            quality = temp.Quality;
-                        }
-                        catch
-                        {
-                            quality = -1;
-                        }
-
-                        UnityEngine.Object.Destroy(temp.gameObject);
-                    }
-                }
-                catch
-                {
-                    v = 0;
+                    return -1;
                 }
 
-                if (quality >= 5)
+                foreach (int candidateId in infiniteHellHighQualityCandidateIdScratch)
                 {
-                    if (v >= priceThreshold)
+                    int v = 0;
+                    int quality = -1;
+
+                    if (!TryGetInfiniteHellRewardCandidateValueQuality(candidateId, out v, out quality))
                     {
-                        preferred.Add(candidateId);
+                        continue;
                     }
-                    else
+
+                    if (quality >= 5)
                     {
-                        fallbackHighQuality.Add(candidateId);
+                        if (v >= priceThreshold)
+                        {
+                            preferred.Add(candidateId);
+                        }
+                        else
+                        {
+                            fallbackHighQuality.Add(candidateId);
+                        }
                     }
                 }
+
+                List<int> pool = null;
+
+                if (preferred.Count > 0)
+                {
+                    pool = preferred;
+                }
+                else if (fallbackHighQuality.Count > 0)
+                {
+                    pool = fallbackHighQuality;
+                }
+
+                if (pool == null || pool.Count == 0)
+                {
+                    return -1;
+                }
+
+                infiniteHellHighQualityItemPool.Clear();
+                infiniteHellHighQualityItemPool.AddRange(pool);
             }
-
-            List<int> pool = null;
-
-            if (preferred.Count > 0)
+            finally
             {
-                pool = preferred;
-            }
-            else if (fallbackHighQuality.Count > 0)
-            {
-                pool = fallbackHighQuality;
+                ClearInfiniteHellHighQualityRewardScratch();
             }
 
-            if (pool == null || pool.Count == 0)
+            return RollInfiniteHellHighQualityRewardTypeID(CROWN_TYPE_ID, CROWN_REROLL_CHANCE);
+        }
+
+        private int RollInfiniteHellHighQualityRewardTypeID(int crownTypeId, float crownRerollChance)
+        {
+            if (infiniteHellHighQualityItemPool.Count <= 0)
             {
                 return -1;
             }
-
-            infiniteHellHighQualityItemPool = pool;
 
             int index = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
             int finalId = infiniteHellHighQualityItemPool[index];
 
             // 如果抽到皇冠，90%概率重新抽取
-            if (finalId == CROWN_TYPE_ID && UnityEngine.Random.value < CROWN_REROLL_CHANCE)
+            if (finalId == crownTypeId && UnityEngine.Random.value < crownRerollChance)
             {
                 index = UnityEngine.Random.Range(0, infiniteHellHighQualityItemPool.Count);
                 finalId = infiniteHellHighQualityItemPool[index];
             }
 
             return finalId;
+        }
+
+        private bool TryGetInfiniteHellRewardCandidateValueQuality(int candidateId, out int value, out int quality)
+        {
+            if (TryGetCachedItemValue(candidateId, out value, out quality))
+            {
+                return true;
+            }
+
+            value = 0;
+            quality = -1;
+            Item temp = null;
+            try
+            {
+                temp = ItemAssetsCollection.InstantiateSync(candidateId);
+                if (temp == null)
+                {
+                    return false;
+                }
+
+                try { value = temp.Value; } catch { value = 0; }
+                try { quality = temp.Quality; } catch { quality = -1; }
+                return true;
+            }
+            catch
+            {
+                value = 0;
+                quality = -1;
+                return false;
+            }
+            finally
+            {
+                if (temp != null && temp.gameObject != null)
+                {
+                    UnityEngine.Object.Destroy(temp.gameObject);
+                }
+            }
+        }
+
+        private void ClearInfiniteHellHighQualityRewardScratch()
+        {
+            infiniteHellHighQualityCandidateIdScratch.Clear();
+            infiniteHellHighQualityPreferredScratch.Clear();
+            infiniteHellHighQualityFallbackScratch.Clear();
         }
     }
 }
