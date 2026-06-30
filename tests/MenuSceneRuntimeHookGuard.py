@@ -248,8 +248,18 @@ def main() -> int:
     update_guard = update.find("if (!runGameplaySceneHooks)")
     equipment_runtime_tick = update.find("TickEquipmentAbilityRuntime();")
     always_on_runtime_tick = update.find("TickAlwaysOnRuntime();")
-    if "bool runGameplaySceneHooks = CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name);" not in update:
-        return fail("ModBehaviour.Update must cache the gameplay-scene guard")
+    cached_helper = extract_method(mod_text, "internal static bool CanRunGameplayRuntimeCached")
+    if not cached_helper:
+        return fail("could not find frame-cached gameplay runtime helper")
+    for token in [
+        "int frame = Time.frameCount;",
+        "if (frame != _staticCanRunFrame)",
+        "SceneRuntimeGate.CanRunGameplayRuntimeNow(",
+    ]:
+        if token not in cached_helper:
+            return fail("frame-cached gameplay runtime helper missing token -> " + token)
+    if "bool runGameplaySceneHooks = CanRunGameplayThisFrame();" not in update:
+        return fail("ModBehaviour.Update must cache the gameplay-scene guard through the per-frame helper")
     if update_guard < 0 or equipment_runtime_tick < 0 or update_guard > equipment_runtime_tick:
         return fail("ModBehaviour.Update must return before gameplay per-frame work in menu/loading scenes")
     if always_on_runtime_tick < 0 or always_on_runtime_tick > update_guard:
@@ -271,10 +281,10 @@ def main() -> int:
         block = extract_method(mod_text, signature)
         if not block:
             return fail("could not find ModBehaviour." + signature)
-        if "if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))" not in block:
-            return fail("ModBehaviour." + signature + " must skip menu/loading scenes")
+        if "if (!CanRunGameplayThisFrame())" not in block:
+            return fail("ModBehaviour." + signature + " must skip menu/loading scenes through the per-frame helper")
 
-    manager_guard = "if (!ModBehaviour.CanRunGameplayRuntimeNow(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))"
+    manager_guard = "if (!ModBehaviour.CanRunGameplayRuntimeCached())"
     for path, signature in PER_FRAME_MANAGER_METHODS:
         text = path.read_text(encoding="utf-8", errors="ignore")
         block = extract_method(text, signature)

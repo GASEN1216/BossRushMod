@@ -102,8 +102,19 @@ def main() -> int:
     if not face_block:
         return fail("PhantomWitchTrackedTeleportFacingGuard: missing FaceTarget block")
 
-    if "Vector3.Angle(" not in face_block:
-        return fail("PhantomWitchTrackedTeleportFacingGuard: FaceTarget still snaps without angle threshold")
+    if "Vector3.Angle(" in face_block:
+        return fail("PhantomWitchTrackedTeleportFacingGuard: FaceTarget still uses Vector3.Angle for micro-turn gating")
+
+    required_facing_tokens = [
+        "float faceTargetDotThreshold = Mathf.Cos(12f * Mathf.Deg2Rad);",
+        "float currentForwardSqr = currentForward.sqrMagnitude;",
+        "float currentForwardLength = Mathf.Sqrt(currentForwardSqr);",
+        "float currentForwardDot = Vector3.Dot(currentForward, desiredForward);",
+        "if (currentForwardDot > currentForwardLength * faceTargetDotThreshold)",
+    ]
+    for token in required_facing_tokens:
+        if token not in face_block:
+            return fail("PhantomWitchTrackedTeleportFacingGuard: FaceTarget missing dot-threshold token -> " + token)
 
     if "Quaternion.LookRotation" not in face_block:
         return fail("PhantomWitchTrackedTeleportFacingGuard: FaceTarget no longer rotates toward target")

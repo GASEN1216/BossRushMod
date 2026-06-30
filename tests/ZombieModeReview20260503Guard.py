@@ -175,7 +175,7 @@ def main() -> int:
                        "UnregisterZombieModeEnemyInstanceId", "ClearZombieModeEnemyInstanceIds")
     if err:
         return fail(err)
-    err = must_contain(wave, "IsZombieModeKnownEnemy", "TryProcessZombieModeSafeZoneStealthBreak")
+    err = must_contain(wave, "TryGetZombieModeKnownEnemyMarker", "TryProcessZombieModeSafeZoneStealthBreak")
     if err:
         return fail(err)
     err = must_contain(cleanup, "ClearZombieModeEnemyInstanceIds()")

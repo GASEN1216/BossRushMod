@@ -94,7 +94,7 @@ def main() -> int:
 
     for snippet in [
         "if (ShouldSuppressZombieModeEnemyAggroForSafeZone())",
-        "SetZombieModeEnemyThreatSuppressed(enemy.gameObject, true);",
+        "SetZombieModeEnemyThreatSuppressed(enemy.gameObject, marker, true);",
     ]:
         result = require(spawner, snippet, "spawn aggro suppression")
         if result:
