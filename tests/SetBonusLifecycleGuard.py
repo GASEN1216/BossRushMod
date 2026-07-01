@@ -9,6 +9,7 @@ THUNDER = Path("Integration/Bonus/ThunderSetBonus.cs")
 MANAGER = Path("Integration/Bonus/SetBonusManager.cs")
 PLACEHOLDER = Path("Integration/Bonus/SetBonusPlaceholderRegistry.cs")
 FACTORY = Path("Integration/EquipmentFactory.cs")
+CONFIG = Path("Integration/Config/FrostThunderSetConfig.cs")
 
 
 def fail(message: str) -> int:
@@ -22,6 +23,7 @@ def main() -> int:
     manager = MANAGER.read_text(encoding="utf-8")
     placeholder = PLACEHOLDER.read_text(encoding="utf-8")
     factory = FACTORY.read_text(encoding="utf-8")
+    config = CONFIG.read_text(encoding="utf-8")
 
     for snippet in (
         "private const float FROST_SET_CLOSE_RANGE",
@@ -71,15 +73,25 @@ def main() -> int:
             return fail("equipment factory missing resource-model binding snippet -> " + snippet)
 
     for snippet in (
-        'private const string FROST_HELMET_MODEL = "FrostCrown_Helmet";',
-        'private const string FROST_ARMOR_MODEL = "IceArmor_Armor";',
-        'private const string THUNDER_HELMET_MODEL = "ThunderHorn_Helmet";',
-        'private const string THUNDER_ARMOR_MODEL = "ThunderArmor_Armor";',
-        "TryBindSetItemModel(clone, typeId, prefabName);",
-        "EquipmentFactory.TryBindLoadedEquipmentModel(clone, modelBaseName)",
+        'private const string FROST_HELMET_BASE = "FrostCrown_Helmet";',
+        'private const string FROST_ARMOR_BASE = "IceArmor_Armor";',
+        'private const string THUNDER_HELMET_BASE = "ThunderHorn_Helmet";',
+        'private const string THUNDER_ARMOR_BASE = "ThunderArmor_Armor";',
+        "public static bool TryConfigure(Item item, string baseName)",
+        "public static bool TryConfigureByTypeId(Item item)",
+        "EquipmentFactory.TryBindLoadedEquipmentModel(item, modelBaseName);",
+        "EquipmentHelperIcon.TryInjectIcon(item, bundleName, iconAssetName);",
+    ):
+        if snippet not in config:
+            return fail("frost/thunder config missing snippet -> " + snippet)
+
+    for snippet in (
+        "FrostThunderSetConfig.TryConfigureByTypeId(existing);",
+        "FrostThunderSetConfig.TryConfigureByTypeId(clone);",
+        "Item clone = UnityEngine.Object.Instantiate(source);",
     ):
         if snippet not in placeholder:
-            return fail("set bonus placeholder missing resource-model binding snippet -> " + snippet)
+            return fail("set bonus placeholder missing fallback-delegation snippet -> " + snippet)
 
     print("SetBonusLifecycleGuard: PASS")
     return 0

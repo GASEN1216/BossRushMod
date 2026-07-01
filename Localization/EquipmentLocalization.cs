@@ -599,6 +599,8 @@ namespace BossRush
                 // 霜冠
                 string frostHelmName = L10n.T(FrostHelmNameCN, FrostHelmNameEN);
                 string frostHelmDesc = L10n.T(FrostHelmDescCN, FrostHelmDescEN);
+                LocalizationHelper.InjectLocalization("BossRush_FrostCrown", frostHelmName);
+                LocalizationHelper.InjectLocalization("BossRush_FrostCrown_Desc", frostHelmDesc);
                 LocalizationHelper.InjectLocalization("霜冠", frostHelmName);
                 LocalizationHelper.InjectLocalization("霜冠_Desc", frostHelmDesc);
                 LocalizationHelper.InjectLocalization("Item_500053", frostHelmName);
@@ -607,6 +609,8 @@ namespace BossRush
                 // 寒冰铠甲
                 string frostArmorName = L10n.T(FrostArmorNameCN, FrostArmorNameEN);
                 string frostArmorDesc = L10n.T(FrostArmorDescCN, FrostArmorDescEN);
+                LocalizationHelper.InjectLocalization("BossRush_IceArmor", frostArmorName);
+                LocalizationHelper.InjectLocalization("BossRush_IceArmor_Desc", frostArmorDesc);
                 LocalizationHelper.InjectLocalization("寒冰铠甲", frostArmorName);
                 LocalizationHelper.InjectLocalization("寒冰铠甲_Desc", frostArmorDesc);
                 LocalizationHelper.InjectLocalization("Item_500054", frostArmorName);
@@ -656,6 +660,8 @@ namespace BossRush
                 // 雷神之角
                 string thunderHelmName = L10n.T(ThunderHelmNameCN, ThunderHelmNameEN);
                 string thunderHelmDesc = L10n.T(ThunderHelmDescCN, ThunderHelmDescEN);
+                LocalizationHelper.InjectLocalization("BossRush_ThunderHorn", thunderHelmName);
+                LocalizationHelper.InjectLocalization("BossRush_ThunderHorn_Desc", thunderHelmDesc);
                 LocalizationHelper.InjectLocalization("雷神之角", thunderHelmName);
                 LocalizationHelper.InjectLocalization("雷神之角_Desc", thunderHelmDesc);
                 LocalizationHelper.InjectLocalization("Item_500055", thunderHelmName);
@@ -664,6 +670,8 @@ namespace BossRush
                 // 雷霆战甲
                 string thunderArmorName = L10n.T(ThunderArmorNameCN, ThunderArmorNameEN);
                 string thunderArmorDesc = L10n.T(ThunderArmorDescCN, ThunderArmorDescEN);
+                LocalizationHelper.InjectLocalization("BossRush_ThunderArmor", thunderArmorName);
+                LocalizationHelper.InjectLocalization("BossRush_ThunderArmor_Desc", thunderArmorDesc);
                 LocalizationHelper.InjectLocalization("雷霆战甲", thunderArmorName);
                 LocalizationHelper.InjectLocalization("雷霆战甲_Desc", thunderArmorDesc);
                 LocalizationHelper.InjectLocalization("Item_500056", thunderArmorName);

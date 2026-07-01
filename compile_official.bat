@@ -188,6 +188,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Config\DragonSetConfig.cs ^
     Integration\Config\FlightTotemConfig.cs ^
     Integration\Config\DragonKingSetConfig.cs ^
+    Integration\Config\FrostThunderSetConfig.cs ^
     Utilities\Utilities.cs ^
     Utilities\AlwaysOnRuntimeHooks.cs ^
     Utilities\PlayerLifecycleRuntimeHooks.cs ^

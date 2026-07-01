@@ -44,7 +44,6 @@ namespace BossRush
             InjectModeFItemLocalization();
             EquipmentLocalization.InjectAllEquipmentLocalizations();
             NewWeaponPlaceholderRegistry.InjectLocalization();
-            SetBonusPlaceholderRegistry.InjectLocalization();
             InjectReverseScaleLocalization();
             LocalizationInjector.InjectWeddingBuildingLocalization();
             DevLog("[BossRush] extension localization injected");
