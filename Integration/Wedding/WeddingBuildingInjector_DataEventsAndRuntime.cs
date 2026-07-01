@@ -10,6 +10,8 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        private Coroutine weddingBuildingAreaRepaintCoroutine = null;
+
         private void InjectWeddingBuildingData()
         {
             // 获取 BuildingDataCollection 类型和实例
@@ -181,6 +183,85 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[WeddingBuilding] 设置费用失败: " + e.Message + "，建筑将免费");
+            }
+        }
+
+        private void RequestWeddingBuildingAreaRepaint(string source)
+        {
+            if (!weddingBuildingInjected)
+            {
+                return;
+            }
+
+            if (!IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            {
+                return;
+            }
+
+            if (weddingBuildingAreaRepaintCoroutine != null)
+            {
+                StopCoroutine(weddingBuildingAreaRepaintCoroutine);
+            }
+
+            weddingBuildingAreaRepaintCoroutine = StartCoroutine(RepaintWeddingBuildingAreasDelayed(source));
+        }
+
+        private IEnumerator RepaintWeddingBuildingAreasDelayed(string source)
+        {
+            yield return null;
+            yield return null;
+
+            try
+            {
+                if (!IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+                {
+                    yield break;
+                }
+
+                Type buildingAreaType = FindGameType("Duckov.Buildings.BuildingArea");
+                if (buildingAreaType == null)
+                {
+                    yield break;
+                }
+
+                MethodInfo repaintMethod = buildingAreaType.GetMethod(
+                    "RepaintAll",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (repaintMethod == null)
+                {
+                    yield break;
+                }
+
+                ObjectCache.InvalidateSceneObjectsByType(buildingAreaType);
+                UnityEngine.Object[] buildingAreas = ObjectCache.GetSceneObjectsByType(buildingAreaType);
+                int repaintCount = 0;
+                for (int i = 0; i < buildingAreas.Length; i++)
+                {
+                    Component buildingArea = buildingAreas[i] as Component;
+                    if (buildingArea == null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        repaintMethod.Invoke(buildingArea, null);
+                        repaintCount++;
+                    }
+                    catch (Exception repaintError)
+                    {
+                        DevLog("[WeddingBuilding] 重绘基地建筑区失败: " + repaintError.Message);
+                    }
+                }
+
+                if (repaintCount > 0)
+                {
+                    DevLog("[WeddingBuilding] 已重绘基地建筑区 " + repaintCount + " 个, source=" + source);
+                }
+            }
+            finally
+            {
+                weddingBuildingAreaRepaintCoroutine = null;
             }
         }
 

@@ -154,6 +154,7 @@ namespace BossRush
                 if (ModBehaviour.Instance != null)
                 {
                     currentDiffCoroutine = ModBehaviour.Instance.StartCoroutine(ModifyPropertyTextsDelayed(
+                        playerItem,
                         _reusablePlayerModifiers, _reusablePlayerStats, _reusablePlayerVariables,
                         cachedPrefabModifiers, cachedPrefabStats, cachedPrefabVariables));
                 }
@@ -176,6 +177,7 @@ namespace BossRush
         /// 延迟修改属性文本以显示差异（使用缓存的反射字段，避免重复反射）
         /// </summary>
         private static System.Collections.IEnumerator ModifyPropertyTextsDelayed(
+            Item playerItem,
             Dictionary<string, float> playerModifiers,
             Dictionary<string, float> playerStats,
             Dictionary<string, float> playerVariables,
@@ -249,8 +251,12 @@ namespace BossRush
 
                     if (Mathf.Abs(diff) < DIFF_THRESHOLD) continue;
 
-                    // 获取基础文本（移除旧的差异标记）
-                    string baseText = valueText.text;
+                    string baseText;
+                    if (!TryGetCurrentItemPropertyDisplayText(playerItem, key, propType, entryOrdinal, out baseText))
+                    {
+                        baseText = valueText.text;
+                    }
+
                     int colorTagIndex = baseText.IndexOf(" <color=");
                     if (colorTagIndex > 0)
                     {

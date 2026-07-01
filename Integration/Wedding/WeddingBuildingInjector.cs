@@ -318,11 +318,54 @@ namespace BossRush
                 RegisterWeddingBuildingEvents();
 
                 weddingBuildingInjected = true;
+                RequestWeddingBuildingAreaRepaint("InitWeddingBuilding");
                 DevLog("[WeddingBuilding] 婚礼教堂建筑系统初始化完成（好感度条件已满足）");
             }
             catch (Exception e)
             {
                 ModBehaviour.LogError("[WeddingBuilding] 初始化失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+
+        private void TryInitializeWeddingBuildingEarly()
+        {
+            try
+            {
+                if (weddingBuildingInjected)
+                {
+                    return;
+                }
+
+                UnityEngine.SceneManagement.Scene activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                if (!activeScene.IsValid() || !IsBaseHubSceneName(activeScene.name))
+                {
+                    return;
+                }
+
+                if (!AffinityManager.HasAnyNPCEverReachedMaxLevel())
+                {
+                    return;
+                }
+
+                Type buildingDataCollectionType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+                if (buildingDataCollectionType == null)
+                {
+                    return;
+                }
+
+                PropertyInfo instanceProperty = buildingDataCollectionType.GetProperty(
+                    "Instance",
+                    BindingFlags.Public | BindingFlags.Static);
+                if (instanceProperty == null || instanceProperty.GetValue(null, null) == null)
+                {
+                    return;
+                }
+
+                InitWeddingBuilding();
+            }
+            catch (Exception e)
+            {
+                DevLog("[WeddingBuilding] 早期初始化失败: " + e.Message);
             }
         }
 

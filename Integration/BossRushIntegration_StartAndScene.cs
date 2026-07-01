@@ -258,6 +258,11 @@ namespace BossRush
             ReforgeDataPersistence.ClearRestoredTracking();
             PeaceCharmRuntime.ResetSceneTrigger();
 
+            if (IsBaseHubSceneName(scene.name))
+            {
+                TryInitializeWeddingBuildingEarly();
+            }
+
             if (isGameplayScene)
             {
                 StartCoroutine(DelayedRestoreReforgeDataForInventory());

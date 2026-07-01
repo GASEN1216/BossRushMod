@@ -880,6 +880,81 @@ namespace BossRush
             return false;
         }
 
+        private static bool TryGetCurrentItemPropertyDisplayText(Item item, string key, PropertyType propType, int entryOrdinal, out string displayText)
+        {
+            displayText = null;
+            if (item == null || string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            switch (propType)
+            {
+                case PropertyType.Modifier:
+                    if (item.Modifiers == null) return false;
+                    int modifierIndex = 0;
+                    foreach (var mod in item.Modifiers)
+                    {
+                        if (mod.Key != key) continue;
+
+                        if (modifierIndex != entryOrdinal)
+                        {
+                            modifierIndex++;
+                            continue;
+                        }
+
+                        displayText = mod.GetDisplayValueString(StatInfoDatabase.Get(key).DisplayFormat);
+                        return true;
+                    }
+                    break;
+
+                case PropertyType.Stat:
+                    if (item.Stats == null) return false;
+                    int statIndex = 0;
+                    foreach (var stat in item.Stats)
+                    {
+                        if (stat.Key != key) continue;
+
+                        if (statIndex != entryOrdinal)
+                        {
+                            statIndex++;
+                            continue;
+                        }
+
+                        displayText = stat.Value.ToString(StatInfoDatabase.Get(stat.Key).DisplayFormat);
+                        return true;
+                    }
+                    break;
+
+                case PropertyType.Variable:
+                    if (item.Variables == null) return false;
+                    int variableIndex = 0;
+                    foreach (var variable in item.Variables)
+                    {
+                        if (variable.Key != key) continue;
+
+                        if (variableIndex != entryOrdinal)
+                        {
+                            variableIndex++;
+                            continue;
+                        }
+
+                        try
+                        {
+                            displayText = variable.GetValueDisplayString("");
+                            return true;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }
+                    break;
+            }
+
+            return false;
+        }
+
         private static bool TryGetCachedPrefabValue(string key, PropertyType propType, int entryOrdinal, out float value)
         {
             string snapshotKey = BuildSnapshotKey(key, propType, entryOrdinal);
