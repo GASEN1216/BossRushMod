@@ -229,7 +229,6 @@ namespace BossRush
             new string[] { "有啥要寄存尽管来，我这人信得过，童叟无欺。", "Need to store something? Come find me. I've never lost a package." },
             new string[] { "有时候送的快也很重要，直接就把钱拿过来，概不赊账！", "Sometimes speed matters, just hand over the money, no credit!" },
             new string[] { "你要是能活到下一波，我给你盖个章，再塞你一瓶'有糖的'——有灵魂那种。", "If you survive the next wave, I'll stamp your card and slip you a 'sugared' one - the kind with soul." },
-            new string[] { "我这把年纪了还在跑单，外星水熊虫母舰来了都得排队签收。", "At my age still running deliveries. Even alien tardigrade motherships have to queue for pickup." },
             new string[] { "签收方式：按爪印、按羽毛、或者交一块蓝色方块当押金。", "Sign for delivery: paw print, feather, or leave a blue cube as deposit." },
 
             // ============ 焚天龙皇Boss相关 ============
@@ -293,7 +292,7 @@ namespace BossRush
             // ============ 标准BossRush模式 ============
             new string[] { "船票你买了吧？拿着它选张图就能进竞技场。路牌上有难度选项，别上来就找刺激。", "Got your ticket? Pick a map and you're in. The signpost has difficulty options—don't go looking for trouble on day one." },
             new string[] { "竞技场里的路牌可不止是摆设——弹药、维修、清箱子、回出生点，全在它周围。", "The signpost in the arena isn't just decoration—ammo, repairs, cleanup, respawn point, all right there." },
-            new string[] { "打完了记得去中央领通关奖励箱，那可是你拼死拼活换来的。", "Don't forget to grab the victory chest in the center after clearing all waves. That's what you bled for." },
+            new string[] { "打完了通关奖励箱会在你头顶上高光缓缓落下来，那可是你拼死拼活换来的，别急着跑。", "Clear all waves and the victory chest drifts down onto your head in a spotlight. That's what you bled for—don't rush off." },
             new string[] { "打完Boss走撤离点出去，别在里面发呆，又不是旅游景点。", "Use the extraction point when you're done. It's not a tourist attraction." },
             new string[] { "前二十个波次不会出四骑士、龙裔遗族和焚天龙皇这种狠角色，给你热身的时间。别浪费了。", "First twenty waves won't spawn the Four Horsemen, Dragon Descendant, or the Dragon King. That's your warm-up—don't waste it." },
 
@@ -423,8 +422,20 @@ namespace BossRush
             // ============ 更多日常/世界观 ============
             new string[] { "当快递员最怕的不是Boss，是送到了没人签收。你知道老板催单多凶吗？", "The scariest thing about being a courier isn't bosses—it's delivering to nobody. You know how hard the boss pushes?" },
             new string[] { "有些路线我跑了好几百遍了，闭着眼都能到。但每次Boss出来还是得绕路。", "I've run some routes hundreds of times. Could do them blindfolded. But bosses always make me detour." },
-            new string[] { "我以前也想过当冒险家来着，后来算了一下快递赚得更多。", "I used to dream of being an adventurer. Then I did the math—courier pays better." },
-            new string[] { "今天风有点大，快递差点被吹跑了。你们在里面打得热火朝天，我在外面追包裹。", "Windy today. Almost lost a package. You're in there fighting for your life, I'm out here chasing boxes." }
+
+            // ============ 末日丧尸模式（v2.2.0） ============
+            new string[] { "基地商人那有'尸潮邀请函'，一张一进。裸装进去，物件都替你收进仓库了——放心，我经手的东西丢不了。", "The base merchant stocks 'Zombie Tide Invitations'—one per run. You go in bare, your stuff's stashed in the warehouse. Relax, nothing I handle goes missing." },
+            new string[] { "尸潮那边杀丧尸掉净化点数，撤离的时候一比一换现金带走。死了？点数清零，邀请函也不退。跟KPI一样冷酷。", "Kill zombies in the tide, they drop purification points. Extract and it's one-to-one cash. Die? Points wiped, invitation gone. Cold as any KPI." },
+            new string[] { "尸潮里有个'污染'的说法，你撑得越久它越浓，丧尸越肉越凶，精英越来越多。见好就撤，别贪。", "The tide's got this 'pollution' thing—longer you last, thicker it gets. Zombies turn tankier, meaner, more elites. Extract while you're ahead. Don't get greedy." },
+            new string[] { "嫌准备阶段磨叽？带上'尸潮信标'，直接跳过读秒开打。急性子的都爱这个。", "Prep phase too slow? Bring a 'Zombie Tide Beacon' and skip the countdown straight into the fight. The impatient ones love it." },
+
+            // ============ 变异词条系统（v2.2.0） ============
+            new string[] { "现在每局开场都会抽一两个'变异词条'，屏幕上头会弹横幅告诉你抽到了啥。看清楚再动手——有的帮你，有的坑你。", "Every run now rolls a mutator or two—a banner up top tells you what you drew. Read it before you move. Some help you, some bury you." },
+            new string[] { "词条这东西两头下注：'玻璃大炮'伤害翻倍但护甲清零，'嗜血猎犬'让全场敌人死盯着你。左边有常驻小图标，随时能翻。", "Mutators cut both ways: 'Glass Cannon' doubles your damage but zeroes your armor, 'Bloodhounds' makes every enemy lock onto you. There's a permanent icon on the left—check it anytime." },
+            new string[] { "不喜欢开盲盒？配置里能把变异词条关了，也能调抽几个。不过要我说，有词条那局才有味儿。", "Not a fan of the gamble? You can switch mutators off in the config, or change how many you draw. Though if you ask me, a run's only got flavor with them on." },
+
+            // ============ 新装备预告（v2.2.0，暂未开放获取） ============
+            new string[] { "仓库最近进了一批新货——毒蛇匕首、召唤法杖、能量盾、冰霜长矛、雷电戒指，还有两套霜雷的甲。上头还没批出库，你现在还拿不到，急也没用。", "Warehouse just took in a new batch—Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring, plus two sets of frost-and-thunder armor. Upper management hasn't cleared them for release, so you can't get them yet. No use rushing me." }
         };
 
         // ============================================================================

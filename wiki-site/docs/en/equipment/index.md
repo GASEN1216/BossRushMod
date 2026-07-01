@@ -2,6 +2,8 @@
 
 Custom gear from three Boss lines: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch. Plus Frostmourne from vanilla Blue Bosses.
 
+v2.2.0 also adds 5 new weapons and 2 new sets (9 items total), which currently have **no standard obtain path** — acquisition routes are planned for a future update.
+
 # Full List
 
 - **Dragon Set** — Helmet + Armor (Dragon Descendant)
@@ -13,6 +15,21 @@ Custom gear from three Boss lines: Dragon Descendant, Skyburner Dragon Lord, and
 - **Dragon Cannon** — 15-ammo-type gun (Dragon Lord, 5%)
 - **Soulreaper's Requiem** — Ghost scythe with curse (Phantom Witch, 50%)
 - **Frostmourne** — Ice melee with undead summon (Blue Boss, 50%)
+
+# New Equipment (v2.2.0, Developer Preview · No Obtain Path Yet)
+
+**P0 New Weapons (5)**
+
+- **Viper Dagger** — Poison dagger; stack 5 poison layers for a burst
+- **Summoning Staff** — Right-click summons 3 soul warriors to soak aggro
+- **Energy Shield** — Totem; frontal hits restore part of the damage as HP
+- **Frost Spear** — Ice spear with long reach and guaranteed freeze on hit
+- **Thunder Ring** — Totem; charge on hits taken, release lightning burst at max
+
+**P1 Sets (2)**
+
+- **Frost Set** (Frost Crown + Ice Armor) — Ice resistance + reactive freeze counter
+- **Thunder Set** (Thunder Horn + Thunder Armor) — Electricity resistance + reactive lightning AOE
 
 # Set Effects
 

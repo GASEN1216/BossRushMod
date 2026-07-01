@@ -14,20 +14,20 @@ hero:
 
 features:
   - icon: ⚔️
-    title: 五大游戏模式
-    details: 标准 BossRush、无间炼狱、白手起家、划地为营、血猎追击
+    title: 六大游戏模式
+    details: 标准 BossRush、无间炼狱、白手起家、划地为营、血猎追击、末日丧尸模式
   - icon: 🐉
     title: 自定义 Boss
-    details: 龙裔遗族与焚天龙皇，独立技能体系与专属掉落
+    details: 龙裔遗族、焚天龙皇与幽灵女巫，独立技能体系与专属掉落
   - icon: 🛡️
     title: 装备体系
-    details: 龙裔套装、龙王套装、图腾、逆鳞、传奇武器
+    details: 龙系套装、图腾、逆鳞、传奇武器，以及全新霜/雷武器与套装
   - icon: 👥
     title: NPC 系统
     details: 哥布林工匠、护士、快递员——好感度、送礼、婚姻
-  - icon: 🏆
-    title: 35 项成就
-    details: 通关、无伤、速通、击杀、收集全覆盖
+  - icon: 🎲
+    title: 变异词条
+    details: 每局随机 1~3 个词条，改变敌人 / 玩家 / 环境规则
   - icon: 🔧
     title: 重铸系统
     details: 装备属性重铸 + 冷淬液锁定词条

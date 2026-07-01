@@ -93,6 +93,16 @@
 - Range: true/false
 - Whether to enable the Death Wraith system; when disabled, the mod stops recording/spawning wraiths and clears the current saved wraith record
 
+#### enableMutators
+- Default: true
+- Range: true/false
+- Whether to enable the per-run mutator system; when disabled, modes no longer roll mutators at run start (Zombie Mode is unaffected by this system either way)
+
+#### mutatorCount
+- Default: 2
+- Range: 1-3
+- Number of mutators drawn per run
+
 ### Recommended Adjustments
 - Want a faster pace: lower `waveIntervalSeconds` (for example `5-8`).
 - Want higher difficulty: increase `bossStatMultiplier` (for example `1.5-2.0`).

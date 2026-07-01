@@ -14,5 +14,6 @@
 - **1.9.x**: courier service, Dragon Descendant, dragon gear, localization, boss-pool tools.
 - **2.0.x**: wiki book, custom signpost, Dragon's Breath, dragon burn, dragon dash improvements.
 - **2.1.x**: Dragon King line, flight, reverse scale, reforge, achievements, affinity, wedding, Mode E, nurse, halberd, Dragon King gun, Zone 37 and Maze.
+- **2.2.x**: Zombie Mode (standalone Roguelite survival), the per-run mutator system, five new weapons and two new equipment sets, plus major transition-performance and bug fixes.
 
-[tip] For fast historical context, start with `v2.1.0` and `v2.1.20`.
+[tip] For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest big additions, see `v2.2.0`.

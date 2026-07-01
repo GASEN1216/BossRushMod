@@ -64,6 +64,7 @@ function sidebarZh() {
         { text: '白手起家', link: '/game-modes/mode-d' },
         { text: '划地为营', link: '/game-modes/mode-e' },
         { text: '血猎追击', link: '/game-modes/mode-f' },
+        { text: '末日丧尸模式', link: '/game-modes/zombie-mode' },
       ],
     },
     {
@@ -78,6 +79,7 @@ function sidebarZh() {
         { text: 'Boss 总览', link: '/bosses/' },
         { text: '龙裔遗族', link: '/bosses/dragon-descendant' },
         { text: '焚天龙皇', link: '/bosses/dragon-king' },
+        { text: '幽灵女巫', link: '/bosses/phantom-witch' },
       ],
     },
     {
@@ -93,6 +95,7 @@ function sidebarZh() {
       text: '装备',
       items: [
         { text: '装备总览', link: '/equipment/' },
+        { text: '噬魂挽歌', link: '/equipment/phantom-scythe' },
         { text: '龙裔套装', link: '/equipment/dragon-set' },
         { text: '龙王套装', link: '/equipment/dragon-king-set' },
         { text: '腾云驾雾图腾', link: '/equipment/flight-totem' },
@@ -100,6 +103,14 @@ function sidebarZh() {
         { text: '焚皇断界戟', link: '/equipment/halberd' },
         { text: '龙息', link: '/equipment/dragon-breath' },
         { text: '焚天龙铳', link: '/equipment/dragon-cannon' },
+        { text: '霜之哀伤', link: '/equipment/frostmourne' },
+        { text: '毒蛇匕首', link: '/equipment/viper-dagger' },
+        { text: '召唤法杖', link: '/equipment/summon-staff' },
+        { text: '能量盾', link: '/equipment/energy-shield' },
+        { text: '冰霜长矛', link: '/equipment/frost-spear' },
+        { text: '雷电戒指', link: '/equipment/thunder-ring' },
+        { text: '霜冠套装', link: '/equipment/frost-set' },
+        { text: '雷神套装', link: '/equipment/thunder-set' },
       ],
     },
     {
@@ -116,8 +127,11 @@ function sidebarZh() {
       text: '系统',
       items: [
         { text: '掉落与奖励', link: '/systems/loot-rewards' },
+        { text: '死亡亡魂', link: '/systems/death-wraith' },
+        { text: '布满了灰尘的星愿许愿台', link: '/systems/starwish-fountain' },
         { text: '重铸系统', link: '/systems/reforge' },
         { text: 'Boss 筛选器', link: '/systems/boss-filter' },
+        { text: '变异词条系统', link: '/systems/mutators' },
         { text: '好感度与婚姻', link: '/systems/affinity-marriage' },
         { text: '配置选项', link: '/systems/configuration' },
       ],
@@ -171,6 +185,7 @@ function sidebarEn() {
         { text: 'From Scratch', link: '/en/game-modes/mode-d' },
         { text: 'Faction War', link: '/en/game-modes/mode-e' },
         { text: 'Blood Hunt', link: '/en/game-modes/mode-f' },
+        { text: 'Zombie Mode', link: '/en/game-modes/zombie-mode' },
       ],
     },
     {
@@ -185,6 +200,7 @@ function sidebarEn() {
         { text: 'Boss Overview', link: '/en/bosses/' },
         { text: 'Dragon Descendant', link: '/en/bosses/dragon-descendant' },
         { text: 'Skyburner Dragon Lord', link: '/en/bosses/dragon-king' },
+        { text: 'Phantom Witch', link: '/en/bosses/phantom-witch' },
       ],
     },
     {
@@ -200,6 +216,7 @@ function sidebarEn() {
       text: 'Equipment',
       items: [
         { text: 'Equipment Overview', link: '/en/equipment/' },
+        { text: "Soulreaper's Requiem", link: '/en/equipment/phantom-scythe' },
         { text: 'Dragon Set', link: '/en/equipment/dragon-set' },
         { text: 'Dragon King Set', link: '/en/equipment/dragon-king-set' },
         { text: 'Cloud Rider Totem', link: '/en/equipment/flight-totem' },
@@ -207,6 +224,14 @@ function sidebarEn() {
         { text: 'Skyburner Halberd', link: '/en/equipment/halberd' },
         { text: 'Dragon Breath', link: '/en/equipment/dragon-breath' },
         { text: 'Dragon Cannon', link: '/en/equipment/dragon-cannon' },
+        { text: 'Frostmourne', link: '/en/equipment/frostmourne' },
+        { text: 'Viper Dagger', link: '/en/equipment/viper-dagger' },
+        { text: 'Summoning Staff', link: '/en/equipment/summon-staff' },
+        { text: 'Energy Shield', link: '/en/equipment/energy-shield' },
+        { text: 'Frost Spear', link: '/en/equipment/frost-spear' },
+        { text: 'Thunder Ring', link: '/en/equipment/thunder-ring' },
+        { text: 'Frost Set', link: '/en/equipment/frost-set' },
+        { text: 'Thunder Set', link: '/en/equipment/thunder-set' },
       ],
     },
     {
@@ -223,8 +248,11 @@ function sidebarEn() {
       text: 'Systems',
       items: [
         { text: 'Loot & Rewards', link: '/en/systems/loot-rewards' },
+        { text: 'Death Wraith', link: '/en/systems/death-wraith' },
+        { text: 'Dust-Covered StarWish Fountain', link: '/en/systems/starwish-fountain' },
         { text: 'Reforge System', link: '/en/systems/reforge' },
         { text: 'Boss Filter', link: '/en/systems/boss-filter' },
+        { text: 'Mutator System', link: '/en/systems/mutators' },
         { text: 'Affinity & Marriage', link: '/en/systems/affinity-marriage' },
         { text: 'Configuration', link: '/en/systems/configuration' },
       ],

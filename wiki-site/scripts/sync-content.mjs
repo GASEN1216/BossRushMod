@@ -40,16 +40,19 @@ const ENTRY_TO_PATH = {
   'mode__mode_d':               'game-modes/mode-d.md',
   'mode__mode_e':               'game-modes/mode-e.md',
   'mode__mode_f':               'game-modes/mode-f.md',
+  'mode__zombie_mode':          'game-modes/zombie-mode.md',
   'map__overview':              'maps/index.md',
   'boss__overview':             'bosses/index.md',
   'boss__dragon_descendant':    'bosses/dragon-descendant.md',
   'boss__dragon_king':          'bosses/dragon-king.md',
+  'boss__phantom_witch':        'bosses/phantom-witch.md',
   'npc__overview':              'npcs/index.md',
   'npc__goblin':                'npcs/goblin.md',
   'npc__nurse':                 'npcs/nurse.md',
   'npc__courier':               'npcs/courier.md',
   'npc__affinity_and_marriage': 'systems/affinity-marriage.md',
   'equipment__overview':        'equipment/index.md',
+  'equipment__phantom_scythe':  'equipment/phantom-scythe.md',
   'equipment__dragon_set':      'equipment/dragon-set.md',
   'equipment__dragon_king_set': 'equipment/dragon-king-set.md',
   'equipment__flight_totem':    'equipment/flight-totem.md',
@@ -57,6 +60,14 @@ const ENTRY_TO_PATH = {
   'equipment__halberd':         'equipment/halberd.md',
   'equipment__dragon_breath':   'equipment/dragon-breath.md',
   'equipment__dragon_cannon':   'equipment/dragon-cannon.md',
+  'equipment__frostmourne':     'equipment/frostmourne.md',
+  'equipment__viper_dagger':    'equipment/viper-dagger.md',
+  'equipment__summon_staff':    'equipment/summon-staff.md',
+  'equipment__energy_shield':   'equipment/energy-shield.md',
+  'equipment__frost_spear':     'equipment/frost-spear.md',
+  'equipment__thunder_ring':    'equipment/thunder-ring.md',
+  'equipment__frost_set':       'equipment/frost-set.md',
+  'equipment__thunder_set':     'equipment/thunder-set.md',
   'item__overview':             'items/index.md',
   'item__key_items':            'items/key-items.md',
   'item__npc_items':            'items/npc-items.md',
@@ -68,6 +79,7 @@ const ENTRY_TO_PATH = {
   'system__reforge_and_achievements': 'systems/reforge.md',
   'system__boss_filter_and_wiki':     'systems/boss-filter.md',
   'system__achievements_list':        'achievements/index.md',
+  'system__mutators':                 'systems/mutators.md',
   'config__overview':                 'systems/configuration.md',
   'tips__new_player_route':     'guides/beginner-route.md',
   'tips__hell_and_mode_d':      'guides/hell-and-mode-d.md',
@@ -194,20 +206,20 @@ hero:
 
 features:
   - icon: ⚔️
-    title: 5 Game Modes
-    details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt
+    title: 6 Game Modes
+    details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt, Zombie Mode
   - icon: 🐉
     title: Custom Bosses
-    details: Dragon Descendant and Skyburner Dragon Lord with unique skill sets
+    details: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch with unique skill sets
   - icon: 🛡️
     title: Equipment System
-    details: Dragon Set, Dragon King Set, totems, and legendary weapons
+    details: Dragon sets, totems, legendary weapons, plus new frost/thunder gear
   - icon: 👥
     title: NPC System
     details: Goblin Smith, Nurse, Courier — affinity, gifting, and marriage
-  - icon: 🏆
-    title: 35 Achievements
-    details: Completion, no-hit, speedrun, collection, and more
+  - icon: 🎲
+    title: Run Mutators
+    details: 1–3 random mutators per run change enemy, player, and environment rules
   - icon: 🔧
     title: Reforge System
     details: Reroll equipment stats and lock affixes with Cold Quench Fluid
