@@ -8,6 +8,11 @@ echo.
 
 set OUTPUT_DIR=Build
 set MOD_NAME=BossRush
+set "BOSSRUSH_DEFINE_ARGS="
+if defined BOSSRUSH_DEV_BUILD (
+    set "BOSSRUSH_DEFINE_ARGS=/define:BOSSRUSH_DEV"
+    echo [DEV] BOSSRUSH_DEV enabled: DevLog calls will be compiled in.
+)
 :: HarmonyLoadMod (Workshop ID: 3588386576)
 set HARMONY_MOD_ID=3588386576
 call :ensure_game_path
@@ -54,6 +59,7 @@ if not exist "%DOTNET_SDK%\Roslyn\bincore\csc.dll" (
 )
 dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     /langversion:7.3 ^
+    %BOSSRUSH_DEFINE_ARGS% ^
     /target:library ^
     /out:"%OUTPUT_DIR%\%MOD_NAME%.dll" ^
     /lib:"%GAME_PATH%\Duckov_Data\Managed" ^

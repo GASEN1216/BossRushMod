@@ -462,14 +462,18 @@ namespace BossRush
         }
 
         // DevMode 仅保留源码硬编码开关，不再暴露给玩家配置。
-        // 本地开发调试时手动改为 true，正式发布前保持 false。
+        // 常规源码默认保持 false；本地开发调试请使用 compile_dev.bat 注入 BOSSRUSH_DEV。
         private const bool HardcodedDevModeEnabled = false;
 
         internal static bool DevModeEnabled
         {
             get
             {
+#if BOSSRUSH_DEV
+                return true;
+#else
                 return HardcodedDevModeEnabled;
+#endif
             }
         }
 

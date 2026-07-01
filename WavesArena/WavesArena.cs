@@ -762,6 +762,16 @@ namespace BossRush
                    string.Equals(nameKey, "Cname_Boss_Blue", StringComparison.Ordinal);
         }
 
+        private static bool IsBossPoolHardExcludedPresetName(string presetName)
+        {
+            if (string.IsNullOrEmpty(presetName))
+            {
+                return false;
+            }
+
+            return string.Equals(presetName, "Character_Ming", StringComparison.Ordinal);
+        }
+
         private int PruneNonBossEnemyPresetsFromCache()
         {
             if (enemyPresets == null || enemyPresets.Count == 0)
@@ -812,13 +822,21 @@ namespace BossRush
                         continue;
                     }
 
-                    bool canonicalShowName = false;
-                    if (!showNameByKey.TryGetValue(preset.name, out canonicalShowName) || canonicalShowName)
+                    if (IsManagedBossPreset(preset))
                     {
                         continue;
                     }
 
-                    if (IsManagedBossPreset(preset))
+                    if (IsBossPoolHardExcludedPresetName(preset.name))
+                    {
+                        enemyPresets.RemoveAt(i);
+                        removed++;
+                        DevLog("[BossRush] 已从 Boss 池缓存中移除预设名硬排除的非 Boss 预设: " + preset.name + " (" + preset.displayName + ")");
+                        continue;
+                    }
+
+                    bool canonicalShowName = false;
+                    if (!showNameByKey.TryGetValue(preset.name, out canonicalShowName) || canonicalShowName)
                     {
                         continue;
                     }
@@ -834,7 +852,7 @@ namespace BossRush
 
                 if (removed > 0)
                 {
-                    DevLog("[BossRush] 已从 Boss 池缓存中移除 " + removed + " 个被运行时 showName 克隆误判的小怪预设");
+                    DevLog("[BossRush] 已从 Boss 池缓存中移除 " + removed + " 个非 Boss 预设");
                 }
 
                 return removed;
@@ -879,6 +897,12 @@ namespace BossRush
 
                         if (!preset.showName && !isSpecialUnknownBoss)
                         {
+                            continue;
+                        }
+
+                        if (IsBossPoolHardExcludedPresetName(nameKey))
+                        {
+                            DevLog("[BossRush] 已跳过预设名硬排除的非 Boss 预设: " + nameKey + " (" + displayName + ")");
                             continue;
                         }
 

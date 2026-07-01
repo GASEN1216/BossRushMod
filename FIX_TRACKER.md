@@ -41,6 +41,29 @@
 ## 修复记录
 
 ---
+### 2026-07-01 “小明”非 Boss 预设误入 Boss 池
+
+**状态**: fixed
+**Finding**: 玩家反馈 / `Player.log` 排查
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: `Player.log` 先只能看到鸭鸭市场通知队列输出 `<color=red>小明</color> 将在 ... 秒后抵达战场` 与 `第 6/7 波: <color=red>小明</color> ...`；打开开发日志后确认该官方角色预设 `nameKey` 为 `Character_Ming`。
+**根因**: Boss 池动态扫描当前按 `CharacterRandomPreset.showName`、阵营和基础血量筛选敌对预设；“小明”属于有显示名且满足基础条件的非 Boss 角色，因此绕过了既有 `showName=false` 小怪清理规则。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `WavesArena/WavesArena.cs`
+
+**兼容性影响**: 不涉及存档 schema、配置 key、TypeID、Harmony/反射或资源文件变更；仅在 Boss 池初始化/缓存清理阶段按稳定预设名 `Character_Ming` 硬排除已知非 Boss 角色“小明”。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过
+2. Guard: `python tests\\ModeEFPrewarmCacheGuard.py` 通过
+3. Guard: `python tests\\ArchitectureStructureGuard.py` 通过
+4. 人工 smoke: 未运行
+**未验证/需人工**: 需要进游戏重新开一局 BossRush，确认 Boss 池配置窗口和波次预告不再出现“小明”。
+
+---
 ### 2026-07-01 龙皇孩儿护我失效、龙裔同源复活风险与 Boss 名称兼容
 
 **状态**: fixed  
