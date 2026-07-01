@@ -430,8 +430,8 @@ namespace BossRush
             new string[] { "嫌准备阶段磨叽？带上'尸潮信标'，直接跳过读秒开打。急性子的都爱这个。", "Prep phase too slow? Bring a 'Zombie Tide Beacon' and skip the countdown straight into the fight. The impatient ones love it." },
 
             // ============ 变异词条系统（v2.2.0） ============
-            new string[] { "现在每局开场都会抽一两个'变异词条'，屏幕上头会弹横幅告诉你抽到了啥。看清楚再动手——有的帮你，有的坑你。", "Every run now rolls a mutator or two—a banner up top tells you what you drew. Read it before you move. Some help you, some bury you." },
-            new string[] { "词条这东西两头下注：'玻璃大炮'伤害翻倍但护甲清零，'嗜血猎犬'让全场敌人死盯着你。左边有常驻小图标，随时能翻。", "Mutators cut both ways: 'Glass Cannon' doubles your damage but zeroes your armor, 'Bloodhounds' makes every enemy lock onto you. There's a permanent icon on the left—check it anytime." },
+            new string[] { "现在每局开场都会抽一两个'变异词条'，左边会常驻显示本局词条。鼠标移到词条提示上再看详情——有的帮你，有的坑你。", "Every run now rolls a mutator or two. A persistent list on the left shows what you drew; hover it for details. Some help you, some bury you." },
+            new string[] { "词条这东西两头下注：'玻璃大炮'伤害翻倍但护甲清零，'嗜血猎犬'让全场敌人死盯着你。左边有常驻小提示，鼠标移上去能翻详情。", "Mutators cut both ways: 'Glass Cannon' doubles your damage but zeroes your armor, 'Bloodhounds' makes every enemy lock onto you. The left-side hint stays up; hover it for details." },
             new string[] { "不喜欢开盲盒？配置里能把变异词条关了，也能调抽几个。不过要我说，有词条那局才有味儿。", "Not a fan of the gamble? You can switch mutators off in the config, or change how many you draw. Though if you ask me, a run's only got flavor with them on." },
 
             // ============ 新装备预告（v2.2.0，暂未开放获取） ============

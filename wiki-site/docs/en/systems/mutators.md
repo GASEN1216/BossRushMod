@@ -19,8 +19,8 @@ At the start of every run, the system draws **1–3 random mutators** from a poo
 
 # How to See Active Mutators
 
-- A **banner appears at the top** of the screen for 4 seconds when a run starts, listing all active mutators
-- After the banner fades, a **persistent icon stays in the left edge** of the screen (~25% down) so you can always check
+- A persistent hint stays on the **left edge** of the screen (~25% down) after the run starts
+- Hover the left-side mutator hint to show full effect details; moving the mouse away hides them
 
 # Configuration
 
