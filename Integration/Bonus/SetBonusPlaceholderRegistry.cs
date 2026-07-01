@@ -111,6 +111,18 @@ namespace BossRush
                 6);
         }
 
+        public static void RegisterConfigurators()
+        {
+            ItemFactory.RegisterConfigurator(FROST_HELMET_ID,
+                item => ConfigureLoadedSetItem(item, "BossRush_FrostCrown", "Helmat", 6, FROST_HELMET_ID, "FrostCrown_Helmet_Item"));
+            ItemFactory.RegisterConfigurator(FROST_ARMOR_ID,
+                item => ConfigureLoadedSetItem(item, "BossRush_IceArmor", "Armor", 6, FROST_ARMOR_ID, "IceArmor_Armor_Item"));
+            ItemFactory.RegisterConfigurator(THUNDER_HELMET_ID,
+                item => ConfigureLoadedSetItem(item, "BossRush_ThunderHorn", "Helmat", 6, THUNDER_HELMET_ID, "ThunderHorn_Helmet_Item"));
+            ItemFactory.RegisterConfigurator(THUNDER_ARMOR_ID,
+                item => ConfigureLoadedSetItem(item, "BossRush_ThunderArmor", "Armor", 6, THUNDER_ARMOR_ID, "ThunderArmor_Armor_Item"));
+        }
+
         /// <summary>
         /// 确保单个套装物品已注册
         /// </summary>
@@ -167,34 +179,7 @@ namespace BossRush
                 catch  { /* best-effort fallback intentionally ignored */ }
                 try { clone.Variables.Clear(); } catch  { /* best-effort fallback intentionally ignored */ }
 
-                // 基础配置
-                clone.DisplayNameRaw = locKey;
-                clone.Quality = quality;
-                clone.MaxDurability = 999f;
-                clone.Durability = 999f;
-                clone.MaxStackCount = 1;
-                if (clone.StackCount <= 0) clone.StackCount = 1;
-
-                // 给护甲/头盔补一个最低限度的"基础防御"，避免占位符完全裸露不挡伤害。
-                // 数值远低于龙裔（5/3 vs 7/8），玩家依然要靠套装效果取胜。
-                try
-                {
-                    if (slotTag == "Helmat")
-                    {
-                        EquipmentHelper.AddModifierToItem(clone, "HeadArmor", ModifierType.Add, 5f, true);
-                    }
-                    else if (slotTag == "Armor")
-                    {
-                        EquipmentHelper.AddModifierToItem(clone, "BodyArmor", ModifierType.Add, 5f, true);
-                    }
-                }
-                catch (Exception modEx)
-                {
-                    ModBehaviour.DevLog("[SetBonusPlaceholder] [WARNING] 基础护甲 modifier 失败: " + modEx.Message);
-                }
-
-                // 确保正确的装备槽标签
-                EquipmentHelper.AddTagToItem(clone, slotTag);
+                ApplySetItemBasics(clone, locKey, slotTag, quality);
 
                 // 如果用户只提供模型 AssetBundle 而不提供 Item Prefab，把已扫描到的模型绑定到占位 Item。
                 TryBindSetItemModel(clone, typeId, prefabName);
@@ -211,6 +196,85 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[SetBonusPlaceholder] 注册失败 " + prefabName + ": " + e.Message);
             }
+        }
+
+        private static void ConfigureLoadedSetItem(
+            Item item,
+            string locKey,
+            string slotTag,
+            int quality,
+            int typeId,
+            string prefabName)
+        {
+            ApplySetItemBasics(item, locKey, slotTag, quality);
+            TryBindSetItemModel(item, typeId, prefabName);
+            EquipmentHelperIcon.TryInjectIcon(item, GetBundleNameForSetItem(typeId), GetIconNameForSetItem(typeId));
+        }
+
+        private static void ApplySetItemBasics(Item item, string locKey, string slotTag, int quality)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            item.DisplayNameRaw = locKey;
+            item.Quality = quality;
+            item.MaxDurability = 999f;
+            item.Durability = 999f;
+            item.MaxStackCount = 1;
+            if (item.StackCount <= 0) item.StackCount = 1;
+
+            EquipmentHelper.AddTagToItem(item, slotTag);
+
+            try
+            {
+                if (slotTag == "Helmat")
+                {
+                    EnsureBaseArmorModifier(item, "HeadArmor", 5f);
+                }
+                else if (slotTag == "Armor")
+                {
+                    EnsureBaseArmorModifier(item, "BodyArmor", 5f);
+                }
+            }
+            catch (Exception modEx)
+            {
+                ModBehaviour.DevLog("[SetBonusPlaceholder] [WARNING] 基础护甲 modifier 失败: " + modEx.Message);
+            }
+        }
+
+        private static void EnsureBaseArmorModifier(Item item, string key, float value)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            if (PrefabHasModifier(item, key))
+            {
+                return;
+            }
+
+            EquipmentHelper.AddModifierToItem(item, key, ModifierType.Add, value, true);
+        }
+
+        private static bool PrefabHasModifier(Item item, string key)
+        {
+            if (item == null || item.Modifiers == null)
+            {
+                return false;
+            }
+
+            foreach (ModifierDescription mod in item.Modifiers)
+            {
+                if (mod != null && mod.Key == key)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void TryBindSetItemModel(Item clone, int typeId, string prefabName)

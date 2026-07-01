@@ -23,6 +23,7 @@ namespace BossRush
             ReinforcedRoadblockPackConfig.RegisterConfigurator();
             BarbedWirePackConfig.RegisterConfigurator();
             EmergencyRepairSprayConfig.RegisterConfigurator();
+            SetBonusPlaceholderRegistry.RegisterConfigurators();
             ZombieTideInvitationConfig.RegisterConfigurator();
             ZombieTideBeaconConfig.RegisterConfigurator();
             ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);

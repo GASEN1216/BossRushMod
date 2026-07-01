@@ -41,6 +41,7 @@ namespace BossRush
                 ConfigureTags(item);
 
                 // 2. 注入本地化
+                TryBindLoadedModel(item);
                 InjectLocalization(item);
 
                 ModBehaviour.DevLog(ThunderRingConfig.LogPrefix + " 配置完成 (TypeID=" + item.TypeID + ")");
@@ -58,6 +59,18 @@ namespace BossRush
             EquipmentHelper.AddTagToItem(item, "Totem");
             EquipmentHelper.AddTagToItem(item, "DontDropOnDeadInSlot");
             EquipmentHelper.AddTagToItem(item, "Special");
+        }
+
+        private static void TryBindLoadedModel(Item item)
+        {
+            try
+            {
+                EquipmentFactory.TryBindLoadedEquipmentModel(item, NewWeaponIds.ThunderRingModelBaseName);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(ThunderRingConfig.LogPrefix + " 绑定模型失败: " + e.Message);
+            }
         }
 
         private static void InjectLocalization(Item item)

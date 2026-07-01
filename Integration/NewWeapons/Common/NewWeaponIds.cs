@@ -30,6 +30,7 @@ namespace BossRush
         public const int EnergyShieldTypeId = 500050;
         public const string EnergyShieldBundleName = "energy_shield";
         public const string EnergyShieldBaseName = "EnergyShield";
+        public const string EnergyShieldModelBaseName = "EnergyShield_Totem";
         public const string EnergyShieldIconAssetName = "energy_shield_icon";
 
         // ========== 冰霜长矛 ==========
@@ -43,6 +44,7 @@ namespace BossRush
         public const int ThunderRingTypeId = 500052;
         public const string ThunderRingBundleName = "thunder_ring";
         public const string ThunderRingBaseName = "ThunderRing";
+        public const string ThunderRingModelBaseName = "ThunderRing_Totem";
         public const string ThunderRingIconAssetName = "thunder_ring_icon";
     }
 }

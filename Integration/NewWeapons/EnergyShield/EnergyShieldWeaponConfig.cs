@@ -42,6 +42,7 @@ namespace BossRush
                 ConfigureTags(item);
 
                 // 2. 添加护甲 modifier
+                TryBindLoadedModel(item);
                 ConfigureModifiers(item);
 
                 // 3. 注入本地化
@@ -62,6 +63,18 @@ namespace BossRush
             EquipmentHelper.AddTagToItem(item, "Totem");
             EquipmentHelper.AddTagToItem(item, "DontDropOnDeadInSlot");
             EquipmentHelper.AddTagToItem(item, "Special");
+        }
+
+        private static void TryBindLoadedModel(Item item)
+        {
+            try
+            {
+                EquipmentFactory.TryBindLoadedEquipmentModel(item, NewWeaponIds.EnergyShieldModelBaseName);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(EnergyShieldConfig.LogPrefix + " 绑定模型失败: " + e.Message);
+            }
         }
 
         private static void ConfigureModifiers(Item item)
