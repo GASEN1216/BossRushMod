@@ -1,5 +1,7 @@
 # BossRushMod for Escape from Duckov
 
+> **AI 协作请先读 [AGENTS.md](AGENTS.md)** —— 仓库级唯一事实来源，含构建门禁、TypeID 分配、本地化注入、刷怪安全网等不可违背的硬约束。
+
 **中文** | **[English](README_EN.md)**
 
 <p align="center">
@@ -71,7 +73,28 @@ BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 
 - 飞行图腾
 - 逆鳞
 - 龙王专属武器系统
-- 霜之哀伤（Frostmourne）：自定义近战武器，带右键召唤亡灵与冰焰特效
+- 霜之哀伤（Frostmourne，500041）：自定义近战武器，带右键召唤亡灵与冰焰特效
+
+#### NewWeapons 扩展包（500048–500052）
+
+| TypeID | 名称 | 英文名 |
+|--------|------|--------|
+| 500048 | 毒蛇匕首 | Viper Dagger |
+| 500049 | 召唤法杖 | Summon Staff |
+| 500050 | 能量盾 | Energy Shield |
+| 500051 | 冰霜长矛 | Frost Spear |
+| 500052 | 雷电戒指 | Thunder Ring |
+
+#### 套装（SetBonus 体系，500053–500056）
+
+| TypeID | 名称 | 所属套装 |
+|--------|------|----------|
+| 500053 | 霜冠 | 冰霜套（头盔） |
+| 500054 | 寒冰铠甲 | 冰霜套（护甲） |
+| 500055 | 雷神之角 | 雷霆套（头盔） |
+| 500056 | 雷霆战甲 | 雷霆套（护甲） |
+
+> 完整、权威的 TypeID 分配见 [docs/Bossrush使用物品ID表.md](docs/Bossrush使用物品ID表.md)。
 
 ### 关键物品
 
@@ -132,7 +155,17 @@ BossRush 目前同时支持两种配置入口：
 | 运行时 | Unity（游戏内嵌 Mono） |
 | 构建方式 | `compile_official.bat` 直接调用已安装 .NET SDK 的 Roslyn `csc.dll`，无 `.csproj` |
 | 输出 | `Build/BossRush.dll` |
-| Harmony | 通过 Workshop 路径下的 `0Harmony.dll` 引用，主要用于 Mode E 运行时补丁 |
+| Harmony | 通过 Workshop 路径下的 `0Harmony.dll` 引用，全项目 31 个 `[HarmonyPatch]`，注册于 `Utilities/AlwaysOnRuntimeHooks.cs`（`PatchAll()`） |
+
+### 验证方式
+
+本项目**没有 C# 单元测试框架**，验证靠三层：
+
+1. **Windows 编译**：`compile_official.bat` 编译出 `Build/BossRush.dll`（静态类型/语法/引用检查，C# 7.3）。仅 Windows 可编译，WSL/Linux 无编译器。
+2. **架构守卫脚本**：`tests/` 下 358 个 Python 脚本静态断言结构不变式（常量一致性、生命周期契约、缓存复用、变异词条语义禁区等），`python3 tests/*.py`。
+3. **游戏内 smoke 测试**：Windows 侧启动 `Duckov.exe`，手工验证波次、武器/套装、售货机 UI、过图性能等运行时行为。
+
+编译通过**不代表**运行时无异常——31 个 Harmony patch 与 493 处字符串反射只能在游戏内验证（官方更新可能静默作废绑定，详见 [docs/架构说明/Harmony补丁契约稳定性.md](docs/架构说明/Harmony补丁契约稳定性.md)）。
 
 ## 从源码构建
 
