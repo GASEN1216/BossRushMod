@@ -1,28 +1,12 @@
 ---
-description: BossRushMod 仓库级协作约定入口，指向 AGENTS.md
+description: BossRushMod canonical agent guidance entrypoint
 globs:
-  - "**/*.cs"
+  - "**/*"
 alwaysApply: true
 ---
 
-# BossRushMod — Cursor 协作规则
+# Cursor Rules
 
-本仓库的**权威协作约定见根目录 [`AGENTS.md`](../../AGENTS.md)**（构建门禁、TypeID、本地化、刷怪安全网、事件生命周期、提交规范、验证方法、高风险边界）。本文件只是指针，实质约定不在此重复。
+The agent guidance for this repository is `AGENTS.md` at the repository root, with subsystem-specific guidance in `<subsystem>/AGENTS.md` where present. Read those first; they are the source of truth.
 
-## 硬约束速览（完整版见 AGENTS.md）
-
-- **新增 `.cs` 必须手动加入 `compile_official.bat`**（无通配符，483 条显式列表），否则静默不编译。
-- **WSL/Linux 不能编译**（需 Windows .NET SDK + 游戏 DLL）；禁止仅凭 Linux 侧断言"已验证"。
-- **提交信息用中文简短摘要**（如 `修复售货机 UI 崩溃`），禁止英文 conventional-commit；仅用户明确要求时提交。
-- **TypeID 在 5000xx 区间严格递增、不复用**，发版前登记 `docs/Bossrush使用物品ID表.md`。
-- **`DisplayNameRaw = "BossRush_<Name>"` 必须注入本地化 key**，否则显示 `*BossRush_<Name>*`。
-- **`CreateCharacter` 后非敌对队伍必须 `SetTeam(Teams.wolf)`**，否则卡波次。
-- **静态事件订阅幂等 + 销毁时退订**；**~807 个空 catch 是有意保险，不得成批清除**。
-
-## 风格
-
-4 空格缩进，Allman 大括号，PascalCase 公有 / camelCase 局部，命名空间 `BossRush`。
-
-## 验证
-
-Windows 编译 + `python3 tests/*.py`（358 守卫）+ 游戏内 smoke。无 C# 单测框架。
+Do not rely on this file for independent rules. It only points back to the canonical instructions.

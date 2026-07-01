@@ -1,5 +1,7 @@
 # BossRushMod for Escape from Duckov
 
+> **AI collaborators should read [AGENTS.md](AGENTS.md) first**. It is the repository-level source of truth for build gates, TypeID allocation, localization injection, spawn safety, review workflow, and compatibility boundaries.
+
 **English** | **[中文](README.md)**
 
 <p align="center">
