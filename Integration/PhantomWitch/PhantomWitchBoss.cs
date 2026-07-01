@@ -197,7 +197,7 @@ namespace BossRush
                 if (character.characterPreset != null)
                 {
                     CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(character.characterPreset);
-                    customPreset.name = "PhantomWitch_Preset";
+                    customPreset.name = PhantomWitchConfig.BossNameKey;
                     customPreset.showName = true;
                     customPreset.showHealthBar = true;
                     customPreset.nameKey = PhantomWitchConfig.BossNameKey;

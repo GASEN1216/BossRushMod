@@ -162,6 +162,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Patches\BaseHub\BaseHubBoatPatch.cs ^
     Patches\BaseHub\BaseHubPatchGroup.cs ^
     Patches\Combat\CharacterOnDeadPatch.cs ^
+    Patches\Combat\BossLethalHealthProtectionPatch.cs ^
     Patches\Combat\ProjectileHalfObstaclePatch.cs ^
     Patches\Combat\CombatPatchGroup.cs ^
     Patches\Death\DeadBodyAppendPatch.cs ^

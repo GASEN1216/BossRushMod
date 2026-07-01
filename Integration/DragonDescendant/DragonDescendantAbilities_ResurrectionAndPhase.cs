@@ -56,6 +56,22 @@ namespace BossRush
         /// 检测并累加冰属性伤害
         /// [性能优化] 移除字符串拼接日志，减少GC分配
         /// </summary>
+        /// <summary>
+        /// 在原版 Health.Hurt() 进入死亡分支前，为龙裔遗族的一次性复活保留触发窗口。
+        /// </summary>
+        internal bool ShouldClampLethalHealthDuringHurt()
+        {
+            return bossCharacter != null &&
+                   bossHealth != null &&
+                   !hasResurrected &&
+                   !isResurrecting &&
+                   !isInvulnerable;
+        }
+
+        /// <summary>
+        /// 检测并累加冰属性伤害
+        /// [性能优化] 移除字符串拼接日志，减少GC分配
+        /// </summary>
         private void CheckIceDamage(DamageInfo damageInfo)
         {
             try

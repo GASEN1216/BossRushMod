@@ -132,7 +132,11 @@ namespace BossRush
                 string displayName = L10n.T(DragonDescendantNameCN, DragonDescendantNameEN);
                 
                 // 注入Boss名称键
-                LocalizationHelper.InjectLocalization("DragonDescendant", displayName);
+                LocalizationHelper.InjectLocalization(DragonDescendantConfig.BOSS_NAME_KEY, displayName);
+                LocalizationHelper.InjectLocalization("Characters_" + DragonDescendantConfig.BOSS_NAME_KEY, displayName);
+                LocalizationHelper.InjectLocalization("DragonDescendant_Preset", displayName);
+                LocalizationHelper.InjectLocalization(DragonDescendantConfig.BOSS_NAME_CN, displayName);
+                LocalizationHelper.InjectLocalization(DragonDescendantConfig.BOSS_NAME_EN, displayName);
                 LocalizationHelper.InjectLocalization("龙裔遗族", displayName);
                 
                 ModBehaviour.DevLog("[EquipmentLocalization] 龙裔遗族本地化注入完成");
@@ -189,7 +193,11 @@ namespace BossRush
                 string displayName = L10n.T(DragonKingBossNameCN, DragonKingBossNameEN);
                 
                 // 注入Boss名称键（与DragonKingConfig.BossNameKey一致）
-                LocalizationHelper.InjectLocalization("boss_dragonking", displayName);
+                LocalizationHelper.InjectLocalization(DragonKingConfig.BossNameKey, displayName);
+                LocalizationHelper.InjectLocalization("Characters_" + DragonKingConfig.BossNameKey, displayName);
+                LocalizationHelper.InjectLocalization("DragonKing_Preset", displayName);
+                LocalizationHelper.InjectLocalization(DragonKingConfig.BossNameCN, displayName);
+                LocalizationHelper.InjectLocalization(DragonKingConfig.BossNameEN, displayName);
                 // 也注入旧名称键以保持兼容
                 LocalizationHelper.InjectLocalization("龙王", displayName);
                 LocalizationHelper.InjectLocalization("Dragon King", displayName);
@@ -220,6 +228,10 @@ namespace BossRush
                 string displayName = L10n.T(PhantomWitchBossNameCN, PhantomWitchBossNameEN);
 
                 LocalizationHelper.InjectLocalization(PhantomWitchConfig.BossNameKey, displayName);
+                LocalizationHelper.InjectLocalization("Characters_" + PhantomWitchConfig.BossNameKey, displayName);
+                LocalizationHelper.InjectLocalization("PhantomWitch_Preset", displayName);
+                LocalizationHelper.InjectLocalization(PhantomWitchConfig.BossNameCN, displayName);
+                LocalizationHelper.InjectLocalization(PhantomWitchConfig.BossNameEN, displayName);
 
                 ModBehaviour.DevLog("[EquipmentLocalization] 幽灵女巫Boss本地化注入完成");
             }

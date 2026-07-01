@@ -41,6 +41,46 @@
 ## 修复记录
 
 ---
+### 2026-07-01 龙皇孩儿护我失效、龙裔同源复活风险与 Boss 名称兼容
+
+**状态**: fixed  
+**Finding**: 日志排查 / 玩家反馈  
+**兼容分类**: COMPAT / WIRE+  
+**版本/Commit**: 未提交  
+**Owner decision**: 不需要  
+
+**现象**: 玩家反馈更新后焚天龙皇“孩儿护我”不再触发；对照代码后确认龙裔遗族的一次性复活也存在同源风险。部分外部模组会把 BossRush 自定义 Boss 名称显示成 `Unknown`。最新 `Player.log` 里还能看到婚礼建筑初始化阶段触发的 `BuildingArea.RepaintAll()` 原版 `Debug.LogError`。  
+**根因**:  
+1. 原版 `Health.Hurt()` 在当前官源中的执行顺序为“扣血 -> 死亡分支 -> `OnDeadEvent` -> `SetActive(false)` -> `OnHurtEvent`”。龙皇孩儿护我和龙裔复活都挂在 `OnHurtEvent`，致死伤害会先把对象送入死亡路径，导致保命机制来不及触发。  
+2. 三只自定义 Boss 的运行时 `CharacterRandomPreset.name` 使用内部 `*_Preset` 名称，且龙皇/幽灵女巫缺少 `Characters_` / 运行时 preset 名称别名，本地化兼容键不完整，外部模组若读取 `preset.name` 或兼容键，容易回退成 `Unknown`。  
+3. 婚礼建筑系统初始化时无条件重绘基地建筑区，即使当前存档没有放置婚礼教堂，也会提前触发一次原版建筑重绘。  
+**修复内容**:
+- 新增文件: `Patches/Combat/BossLethalHealthProtectionPatch.cs`（已加入 `compile_official.bat`）
+- 修改文件: `Integration/DragonKing/DragonKingAbilityController_AttackFlow.cs`
+- 修改文件: `Integration/DragonDescendant/DragonDescendantAbilities_ResurrectionAndPhase.cs`
+- 修改文件: `Integration/DragonKing/DragonKingBoss.cs`
+- 修改文件: `Integration/DragonDescendant/DragonDescendantBoss.cs`
+- 修改文件: `Integration/DragonDescendant/DragonDescendantBoss_RuntimeAndCleanup.cs`
+- 修改文件: `Integration/PhantomWitch/PhantomWitchBoss.cs`
+- 修改文件: `Localization/EquipmentLocalization.cs`
+- 修改文件: `Integration/Wedding/WeddingBuildingInjector.cs`
+- 修改文件: `compile_official.bat`
+
+**兼容性影响**: 不涉及存档 schema、配置 key、TypeID 变更；新增一处针对 `Health.Hurt` / `Health.CurrentHealth` 的 Harmony 兼容补丁；运行时 Boss preset 的 `name` 统一改为稳定 `BossNameKey`，仅影响运行时识别兼容性。  
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat`
+2. Guard: `python tests\\BossCleanupSharedHelperGuard.py`
+3. Guard: `python tests\\DragonKingBossEventLifecycleGuard.py`
+4. Guard: `python tests\\DragonKingChildProtectionTransformCacheGuard.py`
+5. Guard: `python tests\\SceneObjectTypeCacheGuard.py`
+6. Guard: `python tests\\DeferredIntegrationBootstrapGuard.py`
+**未验证/需人工**:
+- 游戏内实机确认龙皇“孩儿护我”可再次触发，且击杀其召出的龙裔后能正常联动处死龙皇。
+- 游戏内实机确认龙裔遗族一次性复活恢复为 50% 血量后仍能完整进入狂暴二阶段。
+- 使用玩家提到的外部模组实机确认三只自定义 Boss 不再显示为 `Unknown`。
+- 若存档里已经放置婚礼教堂，需要在基地场景实机确认跳过无意义重绘后，旧存档中的教堂仍能正确显示。
+
+---
 ### 2026-07-01 售货机 UI 崩溃（延迟注入导致 itemInstances 未缓存）
 
 **状态**: fixed  

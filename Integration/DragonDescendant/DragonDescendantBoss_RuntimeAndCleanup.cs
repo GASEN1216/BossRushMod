@@ -293,7 +293,7 @@ namespace BossRush
                 var presetInfo = new EnemyPresetInfo
                 {
                     name = DragonDescendantConfig.BOSS_NAME_KEY,
-                    displayName = DragonDescendantConfig.BOSS_NAME_CN,
+                    displayName = L10n.T(DragonDescendantConfig.BOSS_NAME_CN, DragonDescendantConfig.BOSS_NAME_EN),
                     team = (int)Teams.wolf, // 狼群阵营（Mode E 阵营体系统一）
                     baseHealth = DragonDescendantConfig.BaseHealth,
                     baseDamage = 50f,

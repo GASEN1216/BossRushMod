@@ -318,7 +318,14 @@ namespace BossRush
                 RegisterWeddingBuildingEvents();
 
                 weddingBuildingInjected = true;
-                RequestWeddingBuildingAreaRepaint("InitWeddingBuilding");
+                if (RefreshWeddingBuildingPresence())
+                {
+                    RequestWeddingBuildingAreaRepaint("InitWeddingBuilding");
+                }
+                else
+                {
+                    DevLog("[WeddingBuilding] 当前存档未放置婚礼教堂，跳过建筑区重绘");
+                }
                 DevLog("[WeddingBuilding] 婚礼教堂建筑系统初始化完成（好感度条件已满足）");
             }
             catch (Exception e)

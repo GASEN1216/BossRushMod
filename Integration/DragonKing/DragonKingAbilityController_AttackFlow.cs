@@ -464,6 +464,22 @@ namespace BossRush
         /// <summary>
         /// 执行攻击
         /// </summary>
+        /// <summary>
+        /// 在原版 Health.Hurt() 进入死亡分支前，为孩儿护我保留触发窗口。
+        /// </summary>
+        internal bool ShouldClampLethalHealthDuringHurt()
+        {
+            return bossCharacter != null &&
+                   bossHealth != null &&
+                   !childProtectionTriggered &&
+                   !isInChildProtection &&
+                   CurrentPhase != DragonKingPhase.Dead &&
+                   CurrentPhase != DragonKingPhase.Transitioning;
+        }
+
+        /// <summary>
+        /// 执行攻击
+        /// </summary>
         private IEnumerator ExecuteAttack(DragonKingAttackType attackType)
         {
             // 【修改】不再在技能开始时停止射击，只有转阶段时才停止
