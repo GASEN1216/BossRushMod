@@ -28,9 +28,10 @@ namespace BossRush
         // ============================================================================
         
         /// <summary>
-        /// Wiki Book 物品 TypeID（需要与 Unity 预制体中的 typeID 一致）
+        /// Wiki Book 物品 TypeID。
+        /// 历史教程里曾用 500100 作为临时高位 ID；当前发布契约统一为 500007。
         /// </summary>
-        private const int WIKI_BOOK_TYPE_ID = 500100;
+        private const int WIKI_BOOK_TYPE_ID = BossRushItemIds.AdventureJournal;
         
         /// <summary>
         /// Wiki Book 显示名称（中文）
@@ -109,13 +110,15 @@ namespace BossRush
                     Item itemPrefab = wikiBookPrefab.GetComponent<Item>();
                     if (itemPrefab != null)
                     {
+                        if (itemPrefab.TypeID != WIKI_BOOK_TYPE_ID)
+                        {
+                            itemPrefab.SetTypeID(WIKI_BOOK_TYPE_ID);
+                        }
+
                         ConfigureWikiBookItem(itemPrefab);
                         ItemAssetsCollection.AddDynamicEntry(itemPrefab);
                         
-                        if (wikiBookTypeId <= 0 && itemPrefab.TypeID > 0)
-                        {
-                            wikiBookTypeId = itemPrefab.TypeID;
-                        }
+                        wikiBookTypeId = itemPrefab.TypeID;
                         
                         DevLog("[WikiBook] 成功注册 Wiki Book 物品: TypeID=" + itemPrefab.TypeID);
                     }

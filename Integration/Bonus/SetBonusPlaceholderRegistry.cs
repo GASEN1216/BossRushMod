@@ -33,33 +33,54 @@ namespace BossRush
         public static void EnsureAllRegistered()
         {
             if (initialized) return;
-            initialized = true;
 
             // 霜冠 - 头盔
-            EnsureSetItemRegistered(
-                FROST_HELMET_ID,
-                "FrostCrown_Placeholder");
+            EnsureRegistered(FROST_HELMET_ID);
 
             // 寒冰铠甲 - 护甲
-            EnsureSetItemRegistered(
-                FROST_ARMOR_ID,
-                "IceArmor_Placeholder");
+            EnsureRegistered(FROST_ARMOR_ID);
 
             // 雷神之角 - 头盔
-            EnsureSetItemRegistered(
-                THUNDER_HELMET_ID,
-                "ThunderHorn_Placeholder");
+            EnsureRegistered(THUNDER_HELMET_ID);
 
             // 雷霆战甲 - 护甲
-            EnsureSetItemRegistered(
-                THUNDER_ARMOR_ID,
-                "ThunderArmor_Placeholder");
+            EnsureRegistered(THUNDER_ARMOR_ID);
+
+            initialized = true;
+        }
+
+        /// <summary>
+        /// 按 TypeID 确保单个 P1 套装物品已注册，供 BossRushDynamicItemRegistry 按需调用。
+        /// </summary>
+        public static bool EnsureRegistered(int typeId)
+        {
+            if (typeId == FROST_HELMET_ID)
+            {
+                return EnsureSetItemRegistered(FROST_HELMET_ID, "FrostCrown_Placeholder");
+            }
+
+            if (typeId == FROST_ARMOR_ID)
+            {
+                return EnsureSetItemRegistered(FROST_ARMOR_ID, "IceArmor_Placeholder");
+            }
+
+            if (typeId == THUNDER_HELMET_ID)
+            {
+                return EnsureSetItemRegistered(THUNDER_HELMET_ID, "ThunderHorn_Placeholder");
+            }
+
+            if (typeId == THUNDER_ARMOR_ID)
+            {
+                return EnsureSetItemRegistered(THUNDER_ARMOR_ID, "ThunderArmor_Placeholder");
+            }
+
+            return false;
         }
 
         /// <summary>
         /// 确保单个套装物品已注册
         /// </summary>
-        private static void EnsureSetItemRegistered(int typeId, string prefabName)
+        private static bool EnsureSetItemRegistered(int typeId, string prefabName)
         {
             try
             {
@@ -68,7 +89,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     FrostThunderSetConfig.TryConfigureByTypeId(existing);
-                    return;
+                    return true;
                 }
 
                 existing = ItemFactory.GetLoadedItem(typeId);
@@ -76,7 +97,7 @@ namespace BossRush
                 {
                     FrostThunderSetConfig.TryConfigureByTypeId(existing);
                     try { ItemAssetsCollection.AddDynamicEntry(existing); } catch  { /* best-effort fallback intentionally ignored */ }
-                    return;
+                    return true;
                 }
 
                 // 查找同类型的克隆源（优先找已有的龙裔装备）
@@ -85,7 +106,7 @@ namespace BossRush
                 if (source == null)
                 {
                     ModBehaviour.DevLog("[SetBonusPlaceholder] 无法找到 " + sourceSlotTag + " 类型克隆源，跳过: " + prefabName);
-                    return;
+                    return false;
                 }
 
                 // 克隆并配置
@@ -93,7 +114,7 @@ namespace BossRush
                 if (clone == null)
                 {
                     ModBehaviour.DevLog("[SetBonusPlaceholder] 克隆失败: " + prefabName);
-                    return;
+                    return false;
                 }
 
                 clone.gameObject.name = prefabName;
@@ -123,11 +144,18 @@ namespace BossRush
                 ItemAssetsCollection.AddDynamicEntry(clone);
 
                 ModBehaviour.DevLog("[SetBonusPlaceholder] 占位符已注册: " + prefabName + " (TypeID=" + typeId + ")");
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[SetBonusPlaceholder] 注册失败 " + prefabName + ": " + e.Message);
+                return false;
             }
+        }
+
+        public static void ResetStaticCaches()
+        {
+            initialized = false;
         }
 
         private static string GetFallbackSourceSlotTag(int typeId)

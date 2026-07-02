@@ -36,55 +36,89 @@ namespace BossRush
         public static void EnsureAllRegistered()
         {
             if (initialized) return;
-            initialized = true;
 
             // 毒蛇匕首 - 近战武器
-            EnsureWeaponRegistered(
-                NewWeaponIds.ViperDaggerTypeId,
-                "ViperDagger_Placeholder",
-                "BossRush_ViperDagger",
-                NewWeaponIds.ViperDaggerBaseName,
-                isMelee: true);
+            EnsureRegistered(NewWeaponIds.ViperDaggerTypeId);
 
             // 召唤法杖 - 近战武器
-            EnsureWeaponRegistered(
-                NewWeaponIds.SummonStaffTypeId,
-                "SummonStaff_Placeholder",
-                "BossRush_SummonStaff",
-                NewWeaponIds.SummonStaffBaseName,
-                isMelee: true);
+            EnsureRegistered(NewWeaponIds.SummonStaffTypeId);
 
             // 能量盾 - 图腾槽位
-            EnsureWeaponRegistered(
-                NewWeaponIds.EnergyShieldTypeId,
-                "EnergyShield_Placeholder",
-                "BossRush_EnergyShield",
-                NewWeaponIds.EnergyShieldBaseName,
-                isMelee: false,
-                tag: "Totem");
+            EnsureRegistered(NewWeaponIds.EnergyShieldTypeId);
 
             // 冰霜长矛 - 近战武器
-            EnsureWeaponRegistered(
-                NewWeaponIds.FrostSpearTypeId,
-                "FrostSpear_Placeholder",
-                "BossRush_FrostSpear",
-                NewWeaponIds.FrostSpearBaseName,
-                isMelee: true);
+            EnsureRegistered(NewWeaponIds.FrostSpearTypeId);
 
             // 雷电戒指 - 图腾槽位
-            EnsureWeaponRegistered(
-                NewWeaponIds.ThunderRingTypeId,
-                "ThunderRing_Placeholder",
-                "BossRush_ThunderRing",
-                NewWeaponIds.ThunderRingBaseName,
-                isMelee: false,
-                tag: "Totem");
+            EnsureRegistered(NewWeaponIds.ThunderRingTypeId);
+
+            initialized = true;
+        }
+
+        /// <summary>
+        /// 按 TypeID 确保单个 P0 新武器已注册，供 BossRushDynamicItemRegistry 按需调用。
+        /// </summary>
+        public static bool EnsureRegistered(int typeId)
+        {
+            if (typeId == NewWeaponIds.ViperDaggerTypeId)
+            {
+                return EnsureWeaponRegistered(
+                    NewWeaponIds.ViperDaggerTypeId,
+                    "ViperDagger_Placeholder",
+                    "BossRush_ViperDagger",
+                    NewWeaponIds.ViperDaggerBaseName,
+                    isMelee: true);
+            }
+
+            if (typeId == NewWeaponIds.SummonStaffTypeId)
+            {
+                return EnsureWeaponRegistered(
+                    NewWeaponIds.SummonStaffTypeId,
+                    "SummonStaff_Placeholder",
+                    "BossRush_SummonStaff",
+                    NewWeaponIds.SummonStaffBaseName,
+                    isMelee: true);
+            }
+
+            if (typeId == NewWeaponIds.EnergyShieldTypeId)
+            {
+                return EnsureWeaponRegistered(
+                    NewWeaponIds.EnergyShieldTypeId,
+                    "EnergyShield_Placeholder",
+                    "BossRush_EnergyShield",
+                    NewWeaponIds.EnergyShieldBaseName,
+                    isMelee: false,
+                    tag: "Totem");
+            }
+
+            if (typeId == NewWeaponIds.FrostSpearTypeId)
+            {
+                return EnsureWeaponRegistered(
+                    NewWeaponIds.FrostSpearTypeId,
+                    "FrostSpear_Placeholder",
+                    "BossRush_FrostSpear",
+                    NewWeaponIds.FrostSpearBaseName,
+                    isMelee: true);
+            }
+
+            if (typeId == NewWeaponIds.ThunderRingTypeId)
+            {
+                return EnsureWeaponRegistered(
+                    NewWeaponIds.ThunderRingTypeId,
+                    "ThunderRing_Placeholder",
+                    "BossRush_ThunderRing",
+                    NewWeaponIds.ThunderRingBaseName,
+                    isMelee: false,
+                    tag: "Totem");
+            }
+
+            return false;
         }
 
         /// <summary>
         /// 确保单个武器已注册，未注册时创建占位符并直接调用对应 WeaponConfig.TryConfigure
         /// </summary>
-        private static void EnsureWeaponRegistered(
+        private static bool EnsureWeaponRegistered(
             int typeId,
             string prefabName,
             string locKey,
@@ -97,13 +131,13 @@ namespace BossRush
                 // 检查是否已通过 AssetBundle 加载
                 Item existing = null;
                 try { existing = ItemAssetsCollection.GetPrefab(typeId); } catch  { /* best-effort fallback intentionally ignored */ }
-                if (existing != null) return;
+                if (existing != null) return true;
 
                 existing = ItemFactory.GetLoadedItem(typeId);
                 if (existing != null)
                 {
                     try { ItemAssetsCollection.AddDynamicEntry(existing); } catch  { /* best-effort fallback intentionally ignored */ }
-                    return;
+                    return true;
                 }
 
                 // 查找克隆源：图腾用真图腾物品（500010 飞行图腾 / 500013 逆鳞）作源，
@@ -114,7 +148,7 @@ namespace BossRush
                 if (source == null)
                 {
                     ModBehaviour.DevLog("[NewWeaponPlaceholder] 无法找到克隆源物品，跳过: " + prefabName);
-                    return;
+                    return false;
                 }
 
                 // 克隆并配置
@@ -122,7 +156,7 @@ namespace BossRush
                 if (clone == null)
                 {
                     ModBehaviour.DevLog("[NewWeaponPlaceholder] 克隆失败: " + prefabName);
-                    return;
+                    return false;
                 }
 
                 clone.gameObject.name = prefabName;
@@ -188,11 +222,18 @@ namespace BossRush
                 TryInjectWeaponIcon(clone, typeId);
 
                 ModBehaviour.DevLog("[NewWeaponPlaceholder] 占位符已注册并配置完成: " + prefabName + " (TypeID=" + typeId + ")");
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[NewWeaponPlaceholder] 注册失败 " + prefabName + ": " + e.Message);
+                return false;
             }
+        }
+
+        public static void ResetStaticCaches()
+        {
+            initialized = false;
         }
 
         /// <summary>

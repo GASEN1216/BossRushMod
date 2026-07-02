@@ -444,71 +444,18 @@ namespace BossRush
             }
             dynamicItemsInitialized = true;
 
-            AssetBundle bundle = null;
             try
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
-                string bundlePath = Path.Combine(modDir, "Assets", "bossrush_ticket");
-
-                if (!File.Exists(bundlePath))
+                if (!EnsureBossRushTicketItemRegisteredForDynamicRegistry())
                 {
-                    DevLog("[BossRush] 未找到 bossrush_ticket AssetBundle: " + bundlePath);
-                    return;
+                    DevLog("[BossRush] BossRush 船票按需注册失败，继续加载其他动态物品");
                 }
 
-                bundle = AssetBundle.LoadFromFile(bundlePath);
-                if (bundle == null)
-                {
-                    DevLog("[BossRush] AssetBundle.LoadFromFile 失败: " + bundlePath);
-                    return;
-                }
-
-                // 加载所有资源，然后从 GameObject 中查找挂载的 Item 组件
-                UnityEngine.Object[] assets = bundle.LoadAllAssets<UnityEngine.Object>();
-                if (assets == null || assets.Length == 0)
-                {
-                    DevLog("[BossRush] bossrush_ticket AssetBundle 中未找到任何资源");
-                    return;
-                }
-
-                int itemCount = 0;
-                foreach (UnityEngine.Object obj in assets)
-                {
-                    GameObject go = obj as GameObject;
-                    if (go == null)
-                    {
-                        continue;
-                    }
-
-                    Item itemPrefab = go.GetComponent<Item>();
-                    if (itemPrefab == null)
-                    {
-                        continue;
-                    }
-
-                    // 为船票添加 Tag（Key = 钥匙，SpecialKey = 钥匙（无法录入））
-                    AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" });
-
-                    ItemAssetsCollection.AddDynamicEntry(itemPrefab);
-                    itemCount++;
-
-                    if (bossRushTicketTypeId <= 0 && itemPrefab.TypeID > 0)
-                    {
-                        bossRushTicketTypeId = itemPrefab.TypeID;
-                    }
-                }
-
-                DevLog("[BossRush] 动态物品初始化完成：从 bossrush_ticket 加载 " + itemCount + " 个 Item，BossRushTicketTypeId=" + bossRushTicketTypeId);
+                DevLog("[BossRush] BossRush 船票注册检查完成，BossRushTicketTypeId=" + bossRushTicketTypeId);
             }
             catch (Exception e)
             {
                 DevLog("[BossRush] InitializeDynamicItems 出错: " + e.Message);
-            }
-            finally
-            {
-                // 资源已完成加载和注册，释放 bundle 句柄即可。
-                AssetBundleUnloadHelper.TryUnload(bundle, "[BossRush]");
             }
 
             // 初始化 ItemFactory（加载消耗品等非装备类物品）

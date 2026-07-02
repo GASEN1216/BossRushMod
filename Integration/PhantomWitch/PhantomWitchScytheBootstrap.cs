@@ -294,19 +294,12 @@ namespace BossRush
         {
             try
             {
-                if (ItemAssetsCollection.GetPrefab(PhantomWitchScytheIds.WeaponTypeId) != null)
+                if (BossRushDynamicItemRegistry.EnsureRegistered(PhantomWitchScytheIds.WeaponTypeId))
                 {
                     return true;
                 }
 
-                EquipmentFactory.LoadBundle("phantom_scythe");
-
-                if (ItemAssetsCollection.GetPrefab(PhantomWitchScytheIds.WeaponTypeId) != null)
-                {
-                    return true;
-                }
-
-                ModBehaviour.DevLog("[PhantomWitchScythe] [WARNING] phantom_scythe bundle 加载后仍未找到噬魂挽歌 prefab (TypeID=" + PhantomWitchScytheIds.WeaponTypeId + ")");
+                ModBehaviour.DevLog("[PhantomWitchScythe] [WARNING] 按需注册后仍未找到噬魂挽歌 prefab (TypeID=" + PhantomWitchScytheIds.WeaponTypeId + ")");
             }
             catch (Exception e)
             {

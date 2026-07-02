@@ -799,6 +799,11 @@ namespace BossRush
 
             try
             {
+                if (!EnsureDragonBossRewardPrefabLoaded(selectedTypeId, "[DragonDescendant]"))
+                {
+                    yield break;
+                }
+
                 Item newItem = ItemAssetsCollection.InstantiateSync(selectedTypeId);
                 if (newItem == null)
                 {
@@ -918,6 +923,11 @@ namespace BossRush
         {
             try
             {
+                if (!EnsureDragonBossRewardPrefabLoaded(typeId, "[DragonKing]"))
+                {
+                    return false;
+                }
+
                 Item newItem = ItemAssetsCollection.InstantiateSync(typeId);
                 if (newItem == null)
                 {
@@ -952,6 +962,31 @@ namespace BossRush
                 DevLog("[DragonKing] 添加掉落物失败: " + itemName + " - " + e.Message);
                 return false;
             }
+        }
+
+        private bool EnsureDragonBossRewardPrefabLoaded(int typeId, string logPrefix)
+        {
+            if (BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(typeId))
+            {
+                return true;
+            }
+
+            try
+            {
+                BossRushDynamicItemRegistry.EnsureRegistered(typeId);
+            }
+            catch (Exception e)
+            {
+                DevLog(logPrefix + " [WARNING] 兜底按需注册奖励 prefab 失败: " + e.Message);
+            }
+
+            if (BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(typeId))
+            {
+                return true;
+            }
+
+            DevLog(logPrefix + " [WARNING] 掉落前仍未找到奖励 prefab: TypeID=" + typeId);
+            return false;
         }
 
         /// <summary>
