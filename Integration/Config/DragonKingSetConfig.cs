@@ -29,12 +29,12 @@ namespace BossRush
         private const float DRAGON_KING_HELM_DURABILITY = 200f; // 耐久度
         
         // 龙王之冕属性（无负面效果）
-        private const float DRAGON_KING_HELM_PHYSICS_RESIST = -0.15f;   // 物理减伤15%
+        private const float DRAGON_KING_HELM_PHYSICS_RESIST = -0.15f;   // 物理承伤倍率固定-0.15
         private const float DRAGON_KING_HELM_STORM_PROTECTION = 1f;    // 风暴防护+1
         private const float DRAGON_KING_HELM_COLD_PROTECTION = 1f;     // 寒冷防护+1
         private const float DRAGON_KING_HELM_CRIT_DAMAGE_GAIN = 0.15f;  // 枪械爆头伤害+15%
-        private const float DRAGON_KING_HELM_FIRE_FACTOR = -0.2f;     // 火承伤倍率-20%
-        private const float DRAGON_KING_HELM_ELECTRIC_FACTOR = -0.2f; // 电承伤倍率-20%
+        private const float DRAGON_KING_HELM_FIRE_FACTOR = -0.2f;     // 火承伤倍率固定-0.2
+        private const float DRAGON_KING_HELM_ELECTRIC_FACTOR = -0.2f; // 电承伤倍率固定-0.2
         // 移除：毒承伤倍率、视野角度减少
 
         // ========== 龙王鳞铠配置 ==========
@@ -42,11 +42,11 @@ namespace BossRush
         private const float DRAGON_KING_ARMOR_DURABILITY = 200f; // 耐久度
         
         // 龙王鳞铠属性（无负面效果）
-        private const float DRAGON_KING_ARMOR_PHYSICS_RESIST = -0.25f;   // 物理减伤25%
+        private const float DRAGON_KING_ARMOR_PHYSICS_RESIST = -0.25f;   // 物理承伤倍率固定-0.25
         private const float DRAGON_KING_ARMOR_STORM_PROTECTION = 1f;    // 风暴防护+1
         private const float DRAGON_KING_ARMOR_COLD_PROTECTION = 1f;     // 寒冷防护+1
-        private const float DRAGON_KING_ARMOR_FIRE_FACTOR = -0.25f;      // 火承伤倍率-25%
-        private const float DRAGON_KING_ARMOR_ELECTRIC_FACTOR = -0.25f;  // 电承伤倍率-25%
+        private const float DRAGON_KING_ARMOR_FIRE_FACTOR = -0.25f;      // 火承伤倍率固定-0.25
+        private const float DRAGON_KING_ARMOR_ELECTRIC_FACTOR = -0.25f;  // 电承伤倍率固定-0.25
         // 移除：毒承伤倍率
 
         /// <summary>
@@ -120,14 +120,14 @@ namespace BossRush
             // 枪械爆头伤害+10%
             EquipmentHelper.AddModifierToItem(item, "GunCritDamageGain", ModifierType.PercentageAdd, DRAGON_KING_HELM_CRIT_DAMAGE_GAIN, true);
 
-            // 物理减伤10%
-            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Physics", ModifierType.PercentageAdd, DRAGON_KING_HELM_PHYSICS_RESIST, true);
+            // 固定降低物理承伤倍率 0.15，避免被其他固定抗性再稀释
+            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Physics", ModifierType.Add, DRAGON_KING_HELM_PHYSICS_RESIST, true);
 
-            // 火承伤倍率-15%
-            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Fire", ModifierType.PercentageAdd, DRAGON_KING_HELM_FIRE_FACTOR, true);
+            // 固定降低火承伤倍率 0.2
+            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Fire", ModifierType.Add, DRAGON_KING_HELM_FIRE_FACTOR, true);
 
-            // 电承伤倍率-15%
-            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Electricity", ModifierType.PercentageAdd, DRAGON_KING_HELM_ELECTRIC_FACTOR, true);
+            // 固定降低电承伤倍率 0.2
+            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Electricity", ModifierType.Add, DRAGON_KING_HELM_ELECTRIC_FACTOR, true);
 
             // 龙王套装：移除毒承伤和视野减少的负面效果
 
@@ -163,14 +163,14 @@ namespace BossRush
             // 寒冷防护+1
             EquipmentHelper.AddModifierToItem(item, "ColdProtection", ModifierType.Add, DRAGON_KING_ARMOR_COLD_PROTECTION, true);
 
-            // 物理减伤20%
-            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Physics", ModifierType.PercentageAdd, DRAGON_KING_ARMOR_PHYSICS_RESIST, true);
+            // 固定降低物理承伤倍率 0.25，避免被其他固定抗性再稀释
+            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Physics", ModifierType.Add, DRAGON_KING_ARMOR_PHYSICS_RESIST, true);
 
-            // 火承伤倍率-20%
-            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Fire", ModifierType.PercentageAdd, DRAGON_KING_ARMOR_FIRE_FACTOR, true);
+            // 固定降低火承伤倍率 0.25
+            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Fire", ModifierType.Add, DRAGON_KING_ARMOR_FIRE_FACTOR, true);
 
-            // 电承伤倍率-20%
-            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Electricity", ModifierType.PercentageAdd, DRAGON_KING_ARMOR_ELECTRIC_FACTOR, true);
+            // 固定降低电承伤倍率 0.25
+            EquipmentHelper.AddModifierToItem(item, "ElementFactor_Electricity", ModifierType.Add, DRAGON_KING_ARMOR_ELECTRIC_FACTOR, true);
 
             // 龙王套装：移除毒承伤的负面效果
 

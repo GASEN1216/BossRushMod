@@ -177,6 +177,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Patches\Death\DeadBodyTouchedPatch.cs ^
     Patches\Death\DeathPatchGroup.cs ^
     Patches\Economy\StockShopGetItemInstanceDirectPatch.cs ^
+    Patches\UI\ItemUIUtilitiesElementFactorFormatPatch.cs ^
     Integration\BirthdayCakeItem.cs ^
     Integration\EquipmentFactory.cs ^
     Integration\EquipmentFactory_ItemProcessing.cs ^

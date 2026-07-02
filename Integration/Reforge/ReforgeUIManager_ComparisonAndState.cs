@@ -903,7 +903,7 @@ namespace BossRush
                             continue;
                         }
 
-                        displayText = mod.GetDisplayValueString(StatInfoDatabase.Get(key).DisplayFormat);
+                        displayText = ItemModifierDisplayTextFormatter.GetDisplayText(mod);
                         return true;
                     }
                     break;
