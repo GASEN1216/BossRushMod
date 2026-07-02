@@ -95,12 +95,14 @@ Breaking:
 - 通用物品走 `Assets/Items/` + `ItemFactory`。
 - 工厂依赖文件名、Prefab base name、`_Bullet` / `_Buff` 等命名规则。
 - 历史拼写如 `dargon_Helmet`、`dargon_Armor` 不要随手纠正。
+- 已发布自定义物品/装备 TypeID 必须登记到 `Integration/BossRushDynamicItemRegistry.cs`。官方存档、仓库、商店和 UI 可能早于延迟 bootstrap 调用 `ItemAssetsCollection.GetMetaData/GetPrefab/Instantiate*`，统一注册表是避免白底问号和 `FallbackItem_<id>` 的按需兜底入口。
 
 Breaking:
 
 - 改 AssetBundle 文件名或 Prefab base name 但不更新工厂配置。
 - 把已有资源移动到新目录导致工厂扫描不到。
 - 删除已有模型、图标、Buff、Projectile 依赖。
+- 新增或迁移已发布 TypeID 后未同步 `BossRushDynamicItemRegistry`，导致重启后存档物品按官方 fallback 还原。
 
 ## 7. Harmony、反射与官方游戏契约
 
