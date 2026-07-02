@@ -38,7 +38,172 @@
 **失败尝试**: 如有
 ```
 
+---
+### 2026-07-02 进存档时卡死在许愿台弹幕预热
+**状态**: fixed
+**Finding**: `Player.log` 排查
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+**现象**: 进入基地存档后主线程卡死，最新日志停在 `WishFountain` 注册完 `OnBuildingBuilt` / `OnBuildingDestroyed` 事件后，不再继续打印“布满了灰尘的星愿许愿台建筑系统初始化完成”。
+**根因**: `WishFountainView.CreateRuntime()` 在初始化阶段调用弹幕层预热，随后进入 `WishFountainDanmakuView.EnsurePoolCapacity()`。原实现用 `AcquireItem()` 在 `while (allocatedItemCount < targetCount)` 里反复从池中取出再放回；首个对象创建后，后续循环只会复用池中对象，不再增加 `allocatedItemCount`，导致循环永不退出，主线程卡在许愿台 View 运行时构建阶段。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/WishFountain/WishFountainDanmakuView.cs`
+- 修改文件: `FIX_TRACKER.md`
+
+**兼容性影响**: 不涉及存档、配置、TypeID、外部协议或反射目标变更；仅修正弹幕对象池预热的容量补足逻辑，保持既有 UI 行为与资源结构不变。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过
+2. Guard: 未运行（本次未触及相关 guard 断言结构）
+3. 人工 smoke: 未运行
+**未验证/需人工**: 需要进游戏重新加载问题存档，确认不再卡死，且许愿台面板首次打开时弹幕层仍能正常显示。
+**失败尝试**: 无
+
 ## 修复记录
+
+---
+### 2026-07-02 BossRush 动态物品重启后显示白底问号
+
+**状态**: fixed
+**Finding**: 玩家反馈 / 鸭科夫源码核对
+**兼容分类**: COMPAT / WIRE+
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: 玩家反馈 Mod 启用/禁用后装备和道具会恢复可用，但完整重启游戏后又变成白底问号占位图标；前置存在且排序在本 Mod 前。
+**根因**: 官方 `ItemAssetsCollection.GetMetaData/GetPrefab/InstantiateSync/InstantiateAsync` 在 BossRush 延迟内容 bootstrap 完成前被存档、仓库、商店或 UI 按 TypeID 调用时，动态 prefab 尚未注册；`InstantiateSync` 会创建 `FallbackItem_<id>`，`GetMetaData` 也会返回默认 metadata，最终表现为白底问号或不可用占位。
+**修复内容**:
+- 新增文件: `Integration/BossRushDynamicItemRegistry.cs`（已加入 `compile_official.bat`）
+- 新增文件: `Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs`（已加入 `compile_official.bat`）
+- 新增文件: `tests/BossRushDynamicItemRegistryGuard.py`
+- 修改文件: `Integration/BossRushIntegration.cs`
+- 修改文件: `Integration/EquipmentContentRegistry.cs`
+- 修改文件: `Integration/BossRushIntegration_StartAndScene.cs`
+- 修改文件: `Integration/NewWeapons/Common/NewWeaponPlaceholderRegistry.cs`
+- 修改文件: `Integration/Bonus/SetBonusPlaceholderRegistry.cs`
+- 修改文件: `Integration/WikiBookItem.cs`
+- 修改文件: `LootAndRewards/LootAndRewardsSpecialLoot.cs`
+- 修改文件: `Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs`
+- 修改文件: `tests/DragonBossRewardContentPreloadGuard.py`
+- 修改文件: `tests/PhantomWitchScytheRewardBundleGuard.py`
+- 修改文件: `docs/contracts.md`
+- 修改文件: `docs/架构说明/Harmony补丁契约稳定性.md`
+- 修改文件: `docs/Bossrush使用物品ID表.md`
+- 修改文件: `docs/制作教程/WikiBookUI_Guide.md`
+
+**兼容性影响**: 不改 TypeID、存档 key、配置 schema 或资源命名；新增 Harmony prefix 覆盖官方按 TypeID 查询/实例化入口，按需精确加载已登记的 BossRush 资源。统一注册表优先复用现有 Config 常量和集中 TypeID 数组，避免多处重复维护 bundle/TypeID 映射；冒险家日志旧教程临时 ID `500100` 会在运行时收敛为发布 ID `500007`。属于向后兼容运行时兜底。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过
+2. Guard: `python tests\BossRushDynamicItemRegistryGuard.py` 通过
+3. Guard: `python tests\DragonBossRewardContentPreloadGuard.py` 通过
+4. Guard: `python tests\PhantomWitchScytheRewardBundleGuard.py` 通过
+5. Guard: `python tests\ContentRegistryGuard.py` 通过
+6. Guard: `python tests\DeferredIntegrationBootstrapGuard.py` 通过
+7. Guard: `python tests\SetBonusLifecycleGuard.py` 通过
+**未验证/需人工**: 需要游戏内用包含 BossRush 自定义物品/装备的存档完整重启后进入基地/仓库/背包，确认 `500001-500056` 内已发布物品不再显示白底问号，装备可正常实例化、装备和使用。
+**失败尝试**: 无
+
+---
+### 2026-07-02 已建许愿台在旧存档进基地时可能不显示
+
+**状态**: fixed
+**Finding**: `Player.log` 排查
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: 基地加载时原版 `BuildingArea.Display` 在许愿台注入前先报 `No prefab for building starwish_fountain`；如果玩家存档里已经放过许愿台，该建筑可能不会在本次进档时被实例化出来，导致场景里不可见也无法交互。
+**根因**: 许愿台建筑数据原本只在 deferred base-scene setup 阶段注入，时机晚于原版建筑区首轮显示；注入完成后又没有像婚礼教堂那样走一次基地建筑区重绘，因此“首轮缺 prefab”不会被补刷回来。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/WishFountain/WishFountainBuilder.cs`
+- 修改文件: `Integration/BossRushIntegration_StartAndScene.cs`
+- 修改文件: `Integration/Wedding/WeddingBuildingInjector.cs`
+- 修改文件: `Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs`
+
+**兼容性影响**: 不涉及存档 schema、配置 key、TypeID、反射目标或资源命名；仅把许愿台建筑注入提前到基地场景早期，并复用基地建筑区重绘 helper 作为晚注入兜底。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过
+2. Guard: `python tests\\DeferredIntegrationBootstrapGuard.py` 通过
+3. Guard: `python tests\\SceneObjectTypeCacheGuard.py` 通过
+4. Guard: `python tests\\StaticCacheLifecycleGuard.py` 通过
+5. 人工 smoke: 未运行
+**未验证/需人工**: 需要进游戏加载一个已经建过许愿台的存档，确认基地首帧后建筑可见、可交互，且不再出现同轮次的缺 prefab 回归。
+
+---
+### 2026-07-02 许愿台弹幕当前打开轮次不接最新数据
+
+**状态**: fixed
+**Finding**: CR-2026-07-02-001
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: 许愿台面板先用本地缓存或内存缓存启动弹幕后，联网成功拿到的新弹幕数据不会作用到当前这次打开；玩家要关掉再打开一次，才会看到更新后的内容池。
+**根因**: `WishFountainUI.RefreshDanmakuDisplay()` 为避免中途整层重置，在“已有可见弹幕”场景下直接跳过成功回调里的显示更新，导致当前轮次只更新缓存、不更新在播来源。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/WishFountain/WishFountainUI.cs`
+- 修改文件: `Integration/WishFountain/WishFountainDanmakuView.cs`
+- 修改文件: `CODE_REVIEW_FINDINGS.md`
+
+**兼容性影响**: 不涉及存档、配置、TypeID、反射或外部协议；仅把联网成功后的新数据无缝切入后续入场弹幕，保留已有对象池与滚动状态。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过
+2. Guard: `python tests\\WishDanmakuJsonEscapeGuard.py` 通过
+3. 人工 smoke: 未运行
+**未验证/需人工**: 需要进游戏确认已有缓存时打开许愿台，联网返回后不会整层闪烁，且后续入场弹幕会换成最新数据源。
+
+---
+### 2026-07-02 许愿台弹幕失败结果被短 TTL 缓存，重开面板也不会立刻重试
+
+**状态**: fixed
+**Finding**: CR-2026-07-02-002
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: 只要飞书鉴权或弹幕列表请求瞬时失败一次，玩家在接下来约 45 秒里重复关闭再打开许愿台，也只会马上复用失败结果或旧缓存，不会重新联网拉取。
+**根因**: `TryReturnRecentDanmakuResult()` 把“最近一次失败”也纳入和成功结果相同的 TTL 快取，导致 reopen 无法触发新的网络请求。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/WishFountain/WishFountainFetchPipeline.cs`
+- 修改文件: `Integration/WishFountain/WishFountainService.cs`
+- 修改文件: `CODE_REVIEW_FINDINGS.md`
+- 修改文件: `FIX_TRACKER.md`
+
+**兼容性影响**: 不涉及存档、配置、TypeID、反射或外部协议；仅将 TTL 缓存限定为成功结果，失败后允许玩家重开面板立即重试。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过
+2. Guard: `python tests\\WishDanmakuFetchLifecycleGuard.py` 通过
+3. 人工 smoke: 未运行
+**未验证/需人工**: 需要进游戏在弱网或临时断网后反复开关许愿台，确认恢复联网后无需等待 45 秒即可重新拉到弹幕。
+
+---
+### 2026-07-02 许愿台关闭后未解绑静态弹幕回调
+
+**状态**: fixed
+**Finding**: CR-2026-07-02-003
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: 在慢网、切场景或频繁开关许愿台时，旧面板实例会一直被静态拉取回调引用到请求结束；虽然版本号判断会把回调变成 no-op，但这些闭包和 View 引用会额外滞留一段时间。
+**根因**: `WishFountainService.RequestRecentWishes()` 把 success/failure lambda 追加到静态 waiter 委托中，而 `WishFountainView.CancelDanmakuFetch()` 只递增本地版本号，没有显式从静态 waiter 中退订。
+**修复内容**:
+- 新增文件: `tests/WishDanmakuFetchLifecycleGuard.py`
+- 修改文件: `Integration/WishFountain/WishFountainFetchPipeline.cs`
+- 修改文件: `Integration/WishFountain/WishFountainUI.cs`
+- 修改文件: `CODE_REVIEW_FINDINGS.md`
+- 修改文件: `FIX_TRACKER.md`
+
+**兼容性影响**: 不涉及存档、配置、TypeID、Harmony/反射或资源结构；仅为弹幕拉取 waiter 增加显式解绑路径，降低旧 View 在慢网场景下的无效保留。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过
+2. Guard: `python tests\\WishDanmakuFetchLifecycleGuard.py` 通过
+3. 人工 smoke: 未运行
+**未验证/需人工**: 需要进游戏弱网下频繁打开/关闭许愿台并切图，确认不会报错、不会出现旧 UI 干扰下一次打开。
 
 ---
 ### 2026-07-01 “小明”非 Boss 预设误入 Boss 池
