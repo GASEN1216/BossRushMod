@@ -149,8 +149,11 @@ namespace BossRush
             CleanupWishFountainBuilding();
             // 静态缓存兜底清理：星愿许愿台抽奖动画
             WishFountainRewardAnimationView.ResetStaticCaches();
+            BossRushDynamicItemRegistry.ResetStaticCaches();
             ItemFactory.ResetStaticCaches();
             EquipmentFactory.ResetStaticCaches();
+            NewWeaponPlaceholderRegistry.ResetStaticCaches();
+            SetBonusPlaceholderRegistry.ResetStaticCaches();
             FactionFlagConfig.ResetStaticCaches();
             DragonBreathWeaponConfig.ClearStaticCache();
             DragonBreathBuffHandler.ClearStaticCache();
@@ -260,6 +263,7 @@ namespace BossRush
             if (IsBaseHubSceneName(scene.name))
             {
                 TryInitializeWeddingBuildingEarly();
+                TryInitializeWishFountainEarly();
             }
 
             if (isGameplayScene)

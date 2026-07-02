@@ -320,7 +320,7 @@ namespace BossRush
                 weddingBuildingInjected = true;
                 if (RefreshWeddingBuildingPresence())
                 {
-                    RequestWeddingBuildingAreaRepaint("InitWeddingBuilding");
+                    RequestBaseBuildingAreaRepaint("InitWeddingBuilding");
                 }
                 else
                 {

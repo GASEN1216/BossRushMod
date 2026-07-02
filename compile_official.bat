@@ -148,6 +148,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     DebugAndTools\F3DebugCheatMenuPlayerStats.cs ^
     DebugAndTools\F3DebugCheatMenuActions.cs ^
     DebugAndTools\NPCTeleportUI.cs ^
+    Integration\BossRushDynamicItemRegistry.cs ^
     Integration\BossRushIntegration.cs ^
     Integration\BossRushIntegration_StartAndScene.cs ^
     Integration\IntegrationDeferredBootstrap.cs ^
@@ -177,6 +178,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Patches\Death\DeadBodyTouchedPatch.cs ^
     Patches\Death\DeathPatchGroup.cs ^
     Patches\Economy\StockShopGetItemInstanceDirectPatch.cs ^
+    Patches\ItemStatsSystem\ItemAssetsCollectionDynamicRegistrationPatch.cs ^
     Patches\UI\ItemUIUtilitiesElementFactorFormatPatch.cs ^
     Integration\BirthdayCakeItem.cs ^
     Integration\EquipmentFactory.cs ^
@@ -582,7 +584,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\WishFountain\WishFountainRewardPoolBuild.cs ^
     Integration\WishFountain\WishFountainRewardSelection.cs ^
     Integration\WishFountain\WishFountainSendPipeline.cs ^
+    Integration\WishFountain\WishFountainFetchPipeline.cs ^
     Integration\WishFountain\WishFountainInteractable.cs ^
+    Integration\WishFountain\WishFountainDanmakuView.cs ^
     Integration\WishFountain\WishFountainUI.cs ^
     Integration\WishFountain\WishFountainUIBridge.cs ^
     Integration\WishFountain\WishFountainRewardAnimationView.cs ^

@@ -106,10 +106,16 @@ namespace BossRush
         /// </summary>
         public void InitWishFountainBuilding()
         {
+            InitWishFountainBuilding(false);
+        }
+
+        private void InitWishFountainBuilding(bool isEarlyInit)
+        {
             try
             {
                 if (starwishBuildingInjected)
                 {
+                    EnsureWishFountainView();
                     DevLog("[WishFountain] 建筑数据已注入，跳过");
                     return;
                 }
@@ -136,11 +142,55 @@ namespace BossRush
                 EnsureWishFountainView();
 
                 starwishBuildingInjected = true;
+                if (!isEarlyInit && HasPendingStarwishBuildingsInManager())
+                {
+                    RequestBaseBuildingAreaRepaint("InitWishFountainBuilding");
+                }
                 DevLog("[WishFountain] 布满了灰尘的星愿许愿台建筑系统初始化完成");
             }
             catch (Exception e)
             {
                 ModBehaviour.LogError("[WishFountain] 初始化失败: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
+
+        /// <summary>
+        /// 在基地场景尽早注入许愿台建筑数据，避免已有存档在 BuildingArea.Start 阶段先报缺 prefab
+        /// </summary>
+        private void TryInitializeWishFountainEarly()
+        {
+            try
+            {
+                if (starwishBuildingInjected)
+                {
+                    return;
+                }
+
+                Scene activeScene = SceneManager.GetActiveScene();
+                if (!activeScene.IsValid() || !IsBaseHubSceneName(activeScene.name))
+                {
+                    return;
+                }
+
+                Type buildingDataCollectionType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+                if (buildingDataCollectionType == null)
+                {
+                    return;
+                }
+
+                PropertyInfo instanceProperty = buildingDataCollectionType.GetProperty(
+                    "Instance",
+                    BindingFlags.Public | BindingFlags.Static);
+                if (instanceProperty == null || instanceProperty.GetValue(null, null) == null)
+                {
+                    return;
+                }
+
+                InitWishFountainBuilding(true);
+            }
+            catch (Exception e)
+            {
+                DevLog("[WishFountain] 早期初始化失败: " + e.Message);
             }
         }
 

@@ -50,9 +50,14 @@ namespace BossRush
         private bool hasExplicitStatus;
         private Color statusColor = new Color(1f, 0.75f, 0.35f);
         private Coroutine autoCloseCoroutine;
+        private Coroutine danmakuWarmupCoroutine;
 
         private RectTransform panelRectTransform;
+        private WishFountainDanmakuView danmakuView;
+        private List<string> cachedDanmakuContents;
         private LayoutElement inputContainerLayoutElement;
+        private Action<List<string>> danmakuFetchSuccessHandler;
+        private Action<string> danmakuFetchFailureHandler;
         private int lastScreenWidth;
         private int lastScreenHeight;
         private int lastCooldownRemaining = -1;
@@ -60,6 +65,8 @@ namespace BossRush
         private bool cooldownStateInitialized;
         private bool lastInputFocusState;
         private bool inputFocusStateInitialized;
+        private int danmakuRequestVersion;
+        private bool danmakuWarmupScheduled;
 
         private const float BASE_PANEL_WIDTH = 820f;
         private const float MIN_PANEL_WIDTH = 400f;
@@ -68,6 +75,7 @@ namespace BossRush
         private const float BASE_INPUT_HEIGHT = 186f;
         private const float MIN_INPUT_HEIGHT = 100f;
         private const float FIXED_CONTENT_HEIGHT = 466f;
+        private const int HOST_TOPMOST_SORTING_ORDER = 1100;
 
         public static WishFountainView CreateRuntime(Transform parent)
         {
@@ -76,11 +84,16 @@ namespace BossRush
                 return null;
             }
 
-            GameObject host = new GameObject("BossRush_WishFountainViewHost", typeof(RectTransform));
+            GameObject host = new GameObject(
+                "BossRush_WishFountainViewHost",
+                typeof(RectTransform),
+                typeof(Canvas),
+                typeof(GraphicRaycaster));
             host.transform.SetParent(parent, false);
 
             RectTransform hostRect = host.GetComponent<RectTransform>();
             StretchRect(hostRect);
+            ConfigureHostCanvas(parent, host.GetComponent<Canvas>());
 
             GameObject root = new GameObject(
                 "WishFountainView",
@@ -107,6 +120,8 @@ namespace BossRush
             WishFountainView view = root.AddComponent<WishFountainView>();
             view.fadeGroup = fadeGroup;
             view.BuildLayout(rootRect);
+            view.EnsureDanmakuLayer();
+            view.ScheduleDanmakuWarmup();
 
             root.SetActive(true);
             view.HideImmediately();
@@ -178,6 +193,16 @@ namespace BossRush
                 Instance = null;
             }
 
+            if (danmakuWarmupCoroutine != null && ModBehaviour.Instance != null)
+            {
+                ModBehaviour.Instance.StopCoroutine(danmakuWarmupCoroutine);
+                danmakuWarmupCoroutine = null;
+            }
+
+            CancelDanmakuFetch();
+            cachedDanmakuContents = null;
+            danmakuView = null;
+
             base.OnDestroy();
         }
 
@@ -217,6 +242,7 @@ namespace BossRush
 
             if (open)
             {
+                RefreshDanmakuDisplay();
                 StartCoroutine(FocusInputFieldNextFrame());
                 return;
             }
@@ -227,6 +253,10 @@ namespace BossRush
         protected override void OnOpen()
         {
             base.OnOpen();
+            if (transform.parent != null)
+            {
+                transform.parent.SetAsLastSibling();
+            }
             transform.SetAsLastSibling();
 
             if (fadeGroup != null)
@@ -235,6 +265,7 @@ namespace BossRush
             }
 
             AdjustPanelForResolution();
+            RefreshDanmakuDisplay();
             StartCoroutine(FocusInputFieldNextFrame());
         }
 
@@ -247,6 +278,8 @@ namespace BossRush
                 fadeGroup.SkipHide();
             }
 
+            CancelDanmakuFetch();
+            HideDanmaku();
             MaybeShowCloseReminder();
 
             sending = false;
@@ -646,12 +679,152 @@ namespace BossRush
             LayoutRebuilder.ForceRebuildLayoutImmediate(panelRectTransform);
         }
 
+        private void EnsureDanmakuLayer()
+        {
+            if (danmakuView != null)
+            {
+                return;
+            }
+
+            Transform root = transform;
+            if (root == null)
+            {
+                return;
+            }
+
+            danmakuView = WishFountainDanmakuView.CreateRuntime(root, panelRectTransform);
+            if (panelRectTransform != null)
+            {
+                panelRectTransform.SetAsLastSibling();
+            }
+        }
+
+        private void RefreshDanmakuDisplay()
+        {
+            EnsureDanmakuLayer();
+            ScheduleDanmakuWarmup();
+            if (danmakuView == null)
+            {
+                return;
+            }
+
+            if (cachedDanmakuContents == null || cachedDanmakuContents.Count <= 0)
+            {
+                cachedDanmakuContents = WishFountainService.TryLoadDanmakuCacheSnapshot();
+            }
+
+            if (cachedDanmakuContents != null && cachedDanmakuContents.Count > 0)
+            {
+                danmakuView.Show(cachedDanmakuContents);
+            }
+            else
+            {
+                danmakuView.Hide();
+            }
+
+            CancelDanmakuFetch();
+
+            int requestVersion = ++danmakuRequestVersion;
+            danmakuFetchSuccessHandler =
+                wishContents =>
+                {
+                    if (requestVersion != danmakuRequestVersion)
+                    {
+                        return;
+                    }
+
+                    bool hadVisibleDanmaku = cachedDanmakuContents != null && cachedDanmakuContents.Count > 0;
+                    cachedDanmakuContents = wishContents != null && wishContents.Count > 0
+                        ? new List<string>(wishContents)
+                        : null;
+
+                    if (!open || danmakuView == null)
+                    {
+                        return;
+                    }
+
+                    if (cachedDanmakuContents != null && cachedDanmakuContents.Count > 0)
+                    {
+                        danmakuView.UpdateContents(cachedDanmakuContents, hadVisibleDanmaku);
+                        if (panelRectTransform != null)
+                        {
+                            panelRectTransform.SetAsLastSibling();
+                        }
+                    }
+                    else
+                    {
+                        danmakuView.Hide();
+                    }
+                };
+            danmakuFetchFailureHandler =
+                error =>
+                {
+                    if (requestVersion != danmakuRequestVersion)
+                    {
+                        return;
+                    }
+
+                    ModBehaviour.DevLog("[WishFountain] 弹幕读取未展示: " + (error ?? "unknown"));
+                    if (!open || danmakuView == null || (cachedDanmakuContents != null && cachedDanmakuContents.Count > 0))
+                    {
+                        return;
+                    }
+
+                    danmakuView.Hide();
+                };
+            WishFountainService.RequestRecentWishes(danmakuFetchSuccessHandler, danmakuFetchFailureHandler);
+        }
+
+        private void CancelDanmakuFetch()
+        {
+            danmakuRequestVersion++;
+            WishFountainService.CancelRecentWishesRequest(danmakuFetchSuccessHandler, danmakuFetchFailureHandler);
+            danmakuFetchSuccessHandler = null;
+            danmakuFetchFailureHandler = null;
+        }
+
+        private void HideDanmaku()
+        {
+            if (danmakuView != null)
+            {
+                danmakuView.Hide();
+            }
+        }
+
         private void HideImmediately()
         {
+            CancelDanmakuFetch();
+            HideDanmaku();
             if (fadeGroup != null)
             {
                 fadeGroup.SkipHide();
             }
+        }
+
+        private void ScheduleDanmakuWarmup()
+        {
+            EnsureDanmakuLayer();
+            if (danmakuWarmupScheduled || danmakuView == null || ModBehaviour.Instance == null)
+            {
+                return;
+            }
+
+            danmakuWarmupScheduled = true;
+            danmakuView.WarmupPoolImmediate();
+            danmakuWarmupCoroutine = ModBehaviour.Instance.StartCoroutine(WarmupDanmakuPoolAfterDelay());
+        }
+
+        private IEnumerator WarmupDanmakuPoolAfterDelay()
+        {
+            yield return null;
+            yield return null;
+
+            if (danmakuView != null)
+            {
+                yield return danmakuView.WarmupPoolIncrementally();
+            }
+
+            danmakuWarmupCoroutine = null;
         }
 
         private IEnumerator FocusInputFieldNextFrame()
@@ -1000,6 +1173,28 @@ namespace BossRush
             {
                 fadeElementsField.SetValue(fadeGroup, new List<FadeElement> { canvasFade });
             }
+        }
+
+        private static void ConfigureHostCanvas(Transform parent, Canvas hostCanvas)
+        {
+            if (hostCanvas == null)
+            {
+                return;
+            }
+
+            Canvas parentCanvas = parent != null ? parent.GetComponentInParent<Canvas>() : null;
+            if (parentCanvas != null)
+            {
+                hostCanvas.renderMode = parentCanvas.renderMode;
+                hostCanvas.worldCamera = parentCanvas.worldCamera;
+                hostCanvas.planeDistance = parentCanvas.planeDistance;
+                hostCanvas.sortingLayerID = parentCanvas.sortingLayerID;
+            }
+
+            hostCanvas.overrideSorting = true;
+            hostCanvas.sortingOrder = parentCanvas != null
+                ? Mathf.Max(HOST_TOPMOST_SORTING_ORDER, parentCanvas.sortingOrder + 20)
+                : HOST_TOPMOST_SORTING_ORDER;
         }
 
         private static void ConfigureCanvasGroupFade(CanvasGroupFade canvasFade, CanvasGroup canvasGroup)

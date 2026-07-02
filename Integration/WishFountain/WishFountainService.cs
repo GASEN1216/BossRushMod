@@ -101,6 +101,18 @@ namespace BossRush
         /// <summary>tenant access token 到期时间（UTC）</summary>
         private static DateTime cachedTenantAccessTokenExpiryUtc = DateTime.MinValue;
 
+        /// <summary>弹幕读取成功结果的短 TTL，避免每次开面板都重新鉴权拉表</summary>
+        private const float DANMAKU_FETCH_TTL_SECONDS = 45f;
+
+        private static float lastDanmakuFetchAttemptRealtime = -999f;
+        private static bool lastDanmakuFetchSucceeded = false;
+        private static string lastDanmakuFetchFailureReason = null;
+        private static bool danmakuFetchInProgress = false;
+        private static List<string> cachedDanmakuFetchSnapshot = null;
+        private static Coroutine danmakuFetchBackgroundCoroutine = null;
+        private static Action<List<string>> danmakuFetchSuccessWaiters = null;
+        private static Action<string> danmakuFetchFailureWaiters = null;
+
         /// <summary>许愿奖励冷却（小时）</summary>
         private const int WISH_REWARD_COOLDOWN_HOURS = 4;
 
@@ -176,6 +188,7 @@ namespace BossRush
             configLoaded = false;
             cachedModVersion = null;
             InvalidateCachedTenantAccessToken();
+            ResetDanmakuFetchState();
             cachedWishRewardNextAvailableTicks = 0L;
             wishRewardCooldownLoaded = false;
             lastWishRewardPoolInitAttemptRealtime = -999f;

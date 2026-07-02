@@ -10,7 +10,7 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
-        private Coroutine weddingBuildingAreaRepaintCoroutine = null;
+        private Coroutine baseBuildingAreaRepaintCoroutine = null;
 
         private void InjectWeddingBuildingData()
         {
@@ -186,27 +186,22 @@ namespace BossRush
             }
         }
 
-        private void RequestWeddingBuildingAreaRepaint(string source)
+        private void RequestBaseBuildingAreaRepaint(string source)
         {
-            if (!weddingBuildingInjected)
-            {
-                return;
-            }
-
             if (!IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
             {
                 return;
             }
 
-            if (weddingBuildingAreaRepaintCoroutine != null)
+            if (baseBuildingAreaRepaintCoroutine != null)
             {
-                StopCoroutine(weddingBuildingAreaRepaintCoroutine);
+                StopCoroutine(baseBuildingAreaRepaintCoroutine);
             }
 
-            weddingBuildingAreaRepaintCoroutine = StartCoroutine(RepaintWeddingBuildingAreasDelayed(source));
+            baseBuildingAreaRepaintCoroutine = StartCoroutine(RepaintBaseBuildingAreasDelayed(source));
         }
 
-        private IEnumerator RepaintWeddingBuildingAreasDelayed(string source)
+        private IEnumerator RepaintBaseBuildingAreasDelayed(string source)
         {
             yield return null;
             yield return null;
@@ -261,7 +256,7 @@ namespace BossRush
             }
             finally
             {
-                weddingBuildingAreaRepaintCoroutine = null;
+                baseBuildingAreaRepaintCoroutine = null;
             }
         }
 
