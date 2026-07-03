@@ -79,6 +79,17 @@ namespace BossRush
             }
 
             ZombieModeThreatRuntime runtime = enemy.gameObject.GetComponent<ZombieModeThreatRuntime>();
+            if (marker.EnemyKind == ZombieModeEnemyKind.Special &&
+                marker.SpecialKind == ZombieModeSpecialKind.OfficialExploder)
+            {
+                if (runtime != null)
+                {
+                    runtime.enabled = false;
+                    Destroy(runtime);
+                }
+                return;
+            }
+
             if (runtime == null)
             {
                 runtime = enemy.gameObject.AddComponent<ZombieModeThreatRuntime>();
@@ -112,6 +123,7 @@ namespace BossRush
                 case ZombieModeSpecialKind.Sprinter:
                     return ZombieModeTuning.SprinterCooldownSeconds;
                 case ZombieModeSpecialKind.Exploder:
+                case ZombieModeSpecialKind.OfficialExploder:
                     return ZombieModeTuning.ExploderCooldownSeconds;
                 case ZombieModeSpecialKind.Plague:
                     return ZombieModeTuning.PoisonCooldownSeconds;
@@ -184,6 +196,9 @@ namespace BossRush
                         ZombieModeTuning.ExploderDeathDamage,
                         ZombieModeTuning.ExploderDetonationDelaySeconds,
                         L10n.T("BossRush_ZombieMode_Special_Exploder"));
+                    break;
+                case ZombieModeSpecialKind.OfficialExploder:
+                    // 官方自爆型直接复用原版技能；这里不再叠自定义爆炸。
                     break;
                 case ZombieModeSpecialKind.Plague:
                     StartZombieModeTelegraphedAreaDamage(

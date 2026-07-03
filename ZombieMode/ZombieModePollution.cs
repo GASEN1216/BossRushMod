@@ -401,6 +401,7 @@ namespace BossRush
         {
             ZombieModeSpecialKind.Sprinter,
             ZombieModeSpecialKind.Exploder,
+            ZombieModeSpecialKind.OfficialExploder,
             ZombieModeSpecialKind.Plague,
             ZombieModeSpecialKind.Summoner,
             ZombieModeSpecialKind.Harasser
@@ -615,6 +616,7 @@ namespace BossRush
                     speedMultiplier *= 1.20f;
                     break;
                 case ZombieModeSpecialKind.Exploder:
+                case ZombieModeSpecialKind.OfficialExploder:
                     healthMultiplier *= 1.30f / ZombieModeTuning.SpecialHealthMultiplier;
                     break;
                 case ZombieModeSpecialKind.Plague:
@@ -996,6 +998,8 @@ namespace BossRush
                     return L10n.T("BossRush_ZombieMode_Special_Sprinter");
                 case ZombieModeSpecialKind.Exploder:
                     return L10n.T("BossRush_ZombieMode_Special_Exploder");
+                case ZombieModeSpecialKind.OfficialExploder:
+                    return L10n.T("BossRush_ZombieMode_Special_OfficialExploder");
                 case ZombieModeSpecialKind.Plague:
                     return L10n.T("BossRush_ZombieMode_Special_Plague");
                 case ZombieModeSpecialKind.Summoner:

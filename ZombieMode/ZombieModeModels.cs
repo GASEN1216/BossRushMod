@@ -195,6 +195,7 @@ namespace BossRush
         None,
         Sprinter,
         Exploder,
+        OfficialExploder,
         Plague,
         Summoner,
         Harasser

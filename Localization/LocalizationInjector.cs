@@ -856,6 +856,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Elite", "精英丧尸", "Elite Zombie");
             InjectZombieModeString("BossRush_ZombieMode_Special_Sprinter", "冲刺丧尸", "Sprinter Zombie");
             InjectZombieModeString("BossRush_ZombieMode_Special_Exploder", "自爆丧尸", "Exploder Zombie");
+            InjectZombieModeString("BossRush_ZombieMode_Special_OfficialExploder", "自爆丧尸", "Exploder Zombie");
             InjectZombieModeString("BossRush_ZombieMode_Special_Plague", "毒疫丧尸", "Plague Zombie");
             InjectZombieModeString("BossRush_ZombieMode_Special_Summoner", "召唤丧尸", "Summoner Zombie");
             InjectZombieModeString("BossRush_ZombieMode_Special_Harasser", "骚扰丧尸", "Harasser Zombie");

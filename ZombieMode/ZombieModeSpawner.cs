@@ -385,6 +385,7 @@ namespace BossRush
                         zombie.gameObject.name = "ZombieMode_NormalZombie_Run" + runId;
                         ReleaseZombieModeNormalSpawnSlot();
                         ZombieModeEnemyRuntimeMarker marker = RegisterZombieModeEnemyRuntimeShell(runId, zombie, false, ZombieModeBossKind.Titan, -1, enemyKind, specialKind, eliteAffixes);
+                        SanitizeBossRushZombieSpawn(zombie, "ZombieModeNormal");
                         PrepareZombieModeSpawnedEnemy(zombie, marker, ZombieModeTuning.NormalZombieForceTraceDistance);
                         ApplyZombieModeEnemyTuning(zombie, marker);
                         RegisterEnemyRecoveryAnchor(zombie, ctx.position);
@@ -485,6 +486,7 @@ namespace BossRush
 
                         boss.gameObject.name = "ZombieMode_Boss_" + kind.ToString() + "_Run" + runId;
                         ZombieModeEnemyRuntimeMarker bossMarker = RegisterZombieModeEnemyRuntimeShell(runId, boss, true, kind, GetZombieModeBossPointValue(kind));
+                        SanitizeBossRushZombieSpawn(boss, "ZombieModeBoss");
                         PrepareZombieModeSpawnedEnemy(boss, bossMarker, 180f);
                         ApplyZombieModeBossTuning(boss, kind, bossMarker);
                         RegisterEnemyRecoveryAnchor(boss, ctx.position);
