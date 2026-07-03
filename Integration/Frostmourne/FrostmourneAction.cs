@@ -221,6 +221,7 @@ namespace BossRush
 
                             // 设置为玩家同阵营
                             zombie.SetTeam(playerTeam);
+                            ModBehaviour.Instance?.SanitizeBossRushZombieSpawn(zombie, "Frostmourne");
 
                             // 禁止掉落
                             zombie.dropBoxOnDead = false;

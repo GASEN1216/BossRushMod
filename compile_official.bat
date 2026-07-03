@@ -208,6 +208,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\VictoryRewardShadowMath.cs ^
     Utilities\F3DebugCheatMath.cs ^
     Utilities\EnemySpawnCore.cs ^
+    Utilities\ZombieSpawnSanitizer.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
     Utilities\GameplayRuntimeHooks.cs ^
     Utilities\ModeRuntimeHooks.cs ^

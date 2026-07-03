@@ -151,6 +151,7 @@ namespace BossRush
                         // 配置友军
                         SetAllyHealth(ally, SummonStaffConfig.SummonHealth);
                         ally.SetTeam(playerTeam);
+                        ModBehaviour.Instance?.SanitizeBossRushZombieSpawn(ally, "SummonStaff");
                         ally.dropBoxOnDead = false;
                         ally.gameObject.name = "SummonStaff_Ally_" + (summonedAllies.Count + 1);
                         ally.gameObject.SetActive(true);
