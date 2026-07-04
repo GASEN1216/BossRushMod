@@ -17,5 +17,5 @@
 - **2.2.x**: Zombie Mode (standalone Roguelite survival), the per-run mutator system, five new weapons and two new equipment sets, plus major transition-performance and bug fixes.
 
 ::: tip
-For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.2.0`. For the latest small update, see `v2.2.1`.
+For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.2.0`. For the latest small update, see `v2.2.3`.
 :::

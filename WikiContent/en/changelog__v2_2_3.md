@@ -1,0 +1,22 @@
+## v2.2.3
+
+### Release Date
+- 2026-07-04
+
+### Main Theme
+- **Mutator Expansion**: added a handful of new run mutators to make positive rolls and run-to-run combinations more varied.
+- **Mode E/F Spawn Optimization**: continued improving Faction War / Blood Hunt enemy spawning to reduce in-run spawn hitching.
+
+---
+
+### Detailed Update Log
+
+#### New: More Run Mutators
+
+- The mutator pool has been expanded again, giving each run more possible mutator combinations.
+- This update builds on the existing mutator system without changing its config entry points or its core roll rules.
+
+#### Improvement: Mode E/F Spawning
+
+- Continued optimizing the spawning flow and runtime behavior in Mode E / Mode F.
+- The main goal is to reduce perceived hitching during spawn-heavy combat sequences and improve overall stability.
