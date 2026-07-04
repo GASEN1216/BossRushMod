@@ -88,7 +88,7 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 词条池：定义所有可用的变异词条（15条）
+    /// 词条池：定义所有可用的变异词条（28条）
     /// </summary>
     public static class MutatorPool
     {
@@ -98,7 +98,7 @@ namespace BossRush
         public static readonly MutatorDefinition[] All = new MutatorDefinition[]
         {
             // ═══════════════════════════════════════════
-            // 敌人强化类（7条）
+            // 敌人强化类（9条）
             // ═══════════════════════════════════════════
 
             new MutatorDefinition
@@ -322,8 +322,76 @@ namespace BossRush
                 OnRemove = ctx => { }
             },
 
+            new MutatorDefinition
+            {
+                Id = "enemy_sharpshooter",
+                NameCn = "神枪敌军",
+                NameEn = "Enemy Marksman",
+                DescCn = "敌人枪械散射 -25%",
+                DescEn = "Enemy gun scatter -25%",
+                Category = MutatorCategory.EnemyBuff,
+                OnApply = ctx =>
+                {
+                    ctx.EnemySpawnCallbacks.Add(enemy =>
+                    {
+                        Item enemyItem = enemy.CharacterItem;
+                        if (enemyItem == null) return;
+                        // 直接压低敌人 GunScatterMultiplier，让敌人枪线更紧、更准
+                        Stat scatterStat = enemyItem.GetStat("GunScatterMultiplier");
+                        if (scatterStat == null) return;
+                        var mod = new Modifier(ModifierType.PercentageAdd, -0.25f, MutatorSource);
+                        scatterStat.AddModifier(mod);
+                        ctx.EnemyAppliedModifiers.Add((scatterStat, mod));
+                    });
+                },
+                OnRemove = ctx => { }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "frenzy",
+                NameCn = "血腥狂欢",
+                NameEn = "Frenzy",
+                DescCn = "敌人移速和射速各 +20%",
+                DescEn = "Enemy move speed and fire rate +20%",
+                Category = MutatorCategory.EnemyBuff,
+                OnApply = ctx =>
+                {
+                    ctx.EnemySpawnCallbacks.Add(enemy =>
+                    {
+                        Item enemyItem = enemy.CharacterItem;
+                        if (enemyItem == null) return;
+
+                        Stat walk = enemyItem.GetStat("WalkSpeed");
+                        if (walk != null)
+                        {
+                            var mod = new Modifier(ModifierType.PercentageAdd, 0.2f, MutatorSource);
+                            walk.AddModifier(mod);
+                            ctx.EnemyAppliedModifiers.Add((walk, mod));
+                        }
+
+                        Stat run = enemyItem.GetStat("RunSpeed");
+                        if (run != null)
+                        {
+                            var mod = new Modifier(ModifierType.PercentageAdd, 0.2f, MutatorSource);
+                            run.AddModifier(mod);
+                            ctx.EnemyAppliedModifiers.Add((run, mod));
+                        }
+
+                        Stat shootStat = enemyItem.GetStat("GunShootSpeedMultiplier");
+                        if (shootStat != null)
+                        {
+                            var mod = new Modifier(ModifierType.PercentageAdd, 0.2f, MutatorSource);
+                            shootStat.AddModifier(mod);
+                            ctx.EnemyAppliedModifiers.Add((shootStat, mod));
+                        }
+                    });
+                },
+                OnRemove = ctx => { }
+            },
+
             // ═══════════════════════════════════════════
-            // 玩家增益类（幸运词条，2条）
+            // 玩家增益类（幸运词条，11条）
             // ═══════════════════════════════════════════
 
             new MutatorDefinition
@@ -378,8 +446,216 @@ namespace BossRush
                 OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
             },
 
+            new MutatorDefinition
+            {
+                Id = "player_rapid_fire",
+                NameCn = "疾速扳机",
+                NameEn = "Trigger Discipline",
+                DescCn = "玩家射速 +25%",
+                DescEn = "Player fire rate +25%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat shootStat = playerItem.GetStat("GunShootSpeedMultiplier");
+                    if (shootStat == null) return;
+                    var mod = new Modifier(ModifierType.PercentageAdd, 0.25f, MutatorSource);
+                    shootStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((shootStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_steady_aim",
+                NameCn = "稳如磐石",
+                NameEn = "Steady Aim",
+                DescCn = "玩家枪械散射 -30%",
+                DescEn = "Player gun scatter -30%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat scatterStat = playerItem.GetStat("GunScatterMultiplier");
+                    if (scatterStat == null) return;
+                    var mod = new Modifier(ModifierType.PercentageAdd, -0.3f, MutatorSource);
+                    scatterStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((scatterStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_fast_reload",
+                NameCn = "快速换弹",
+                NameEn = "Fast Hands",
+                DescCn = "换弹速度 +40%",
+                DescEn = "Reload speed +40%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat reloadStat = playerItem.GetStat("ReloadSpeedGain");
+                    if (reloadStat == null) return;
+                    var mod = new Modifier(ModifierType.Add, 0.4f, MutatorSource);
+                    reloadStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((reloadStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_crit_damage",
+                NameCn = "致命一击",
+                NameEn = "Lethal Strike",
+                DescCn = "玩家枪械暴伤 +50%",
+                DescEn = "Player gun crit damage +50%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    // GunCritDamageGain 会进入 (1f + gain) 乘区，+0.5 即 +50% 暴伤
+                    Stat critDamageStat = playerItem.GetStat("GunCritDamageGain");
+                    if (critDamageStat == null) return;
+                    var mod = new Modifier(ModifierType.Add, 0.5f, MutatorSource);
+                    critDamageStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((critDamageStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_long_shot",
+                NameCn = "千里狙",
+                NameEn = "Long Shot",
+                DescCn = "玩家枪械射程 +30%",
+                DescEn = "Player gun range +30%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat distanceStat = playerItem.GetStat("GunDistanceMultiplier");
+                    if (distanceStat == null) return;
+                    var mod = new Modifier(ModifierType.PercentageAdd, 0.3f, MutatorSource);
+                    distanceStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((distanceStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_melee_master",
+                NameCn = "近战宗师",
+                NameEn = "Melee Master",
+                DescCn = "玩家近战伤害 +40%",
+                DescEn = "Player melee damage +40%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat meleeDmgStat = playerItem.GetStat("MeleeDamageMultiplier");
+                    if (meleeDmgStat == null) return;
+                    var mod = new Modifier(ModifierType.Add, 0.4f, MutatorSource);
+                    meleeDmgStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((meleeDmgStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_tank",
+                NameCn = "铜皮铁骨",
+                NameEn = "Tank",
+                DescCn = "玩家血量 +30%",
+                DescEn = "Player max HP +30%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat maxHealthStat = playerItem.GetStat("MaxHealth");
+                    if (maxHealthStat == null) return;
+
+                    float oldMaxHealth = ctx.Player != null && ctx.Player.Health != null
+                        ? ctx.Player.Health.MaxHealth
+                        : -1f;
+
+                    var mod = new Modifier(ModifierType.PercentageAdd, 0.3f, MutatorSource);
+                    maxHealthStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((maxHealthStat, mod));
+
+                    SyncCurrentHealthWithRaisedMax(ctx.Player, oldMaxHealth);
+                },
+                OnRemove = ctx => { ClampCurrentHealthToMax(ctx != null ? ctx.Player : null); }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_swift_heal",
+                NameCn = "妙手回春",
+                NameEn = "Field Medic",
+                DescCn = "治疗效果 +50%",
+                DescEn = "Healing +50%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+                    Stat healStat = playerItem.GetStat("HealGain");
+                    if (healStat == null) return;
+                    var mod = new Modifier(ModifierType.Add, 0.5f, MutatorSource);
+                    healStat.AddModifier(mod);
+                    ctx.PlayerAppliedModifiers.Add((healStat, mod));
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "player_lucky_crit",
+                NameCn = "幸运星",
+                NameEn = "Lucky Star",
+                DescCn = "玩家枪械与近战暴击率各 +20%",
+                DescEn = "Player gun and melee crit rate +20%",
+                Category = MutatorCategory.PlayerBoon,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+
+                    Stat gunCritStat = playerItem.GetStat("GunCritRateGain");
+                    if (gunCritStat != null)
+                    {
+                        var mod = new Modifier(ModifierType.Add, 0.2f, MutatorSource);
+                        gunCritStat.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((gunCritStat, mod));
+                    }
+
+                    Stat meleeCritStat = playerItem.GetStat("MeleeCritRateGain");
+                    if (meleeCritStat != null)
+                    {
+                        var mod = new Modifier(ModifierType.Add, 0.2f, MutatorSource);
+                        meleeCritStat.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((meleeCritStat, mod));
+                    }
+                },
+                OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
+            },
+
             // ═══════════════════════════════════════════
-            // 环境规则类（4条）
+            // 环境规则类（5条）
             // ═══════════════════════════════════════════
 
             new MutatorDefinition
@@ -471,8 +747,49 @@ namespace BossRush
                 OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
             },
 
+            new MutatorDefinition
+            {
+                Id = "glass_speed",
+                NameCn = "疾影",
+                NameEn = "Blitz",
+                DescCn = "玩家移动速度 +40%，但血量 -20%",
+                DescEn = "Player move speed +40%, but max HP -20%",
+                Category = MutatorCategory.EnvironmentRule,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem == null) return;
+
+                    Stat walk = playerItem.GetStat("WalkSpeed");
+                    if (walk != null)
+                    {
+                        var mod = new Modifier(ModifierType.PercentageAdd, 0.4f, MutatorSource);
+                        walk.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((walk, mod));
+                    }
+
+                    Stat run = playerItem.GetStat("RunSpeed");
+                    if (run != null)
+                    {
+                        var mod = new Modifier(ModifierType.PercentageAdd, 0.4f, MutatorSource);
+                        run.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((run, mod));
+                    }
+
+                    Stat maxHealthStat = playerItem.GetStat("MaxHealth");
+                    if (maxHealthStat != null)
+                    {
+                        var mod = new Modifier(ModifierType.PercentageAdd, -0.2f, MutatorSource);
+                        maxHealthStat.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((maxHealthStat, mod));
+                        ClampCurrentHealthToMax(ctx.Player);
+                    }
+                },
+                OnRemove = ctx => { /* 移除后最大生命只会上升，无需额外裁血 */ }
+            },
+
             // ═══════════════════════════════════════════
-            // 死亡触发类（刺激词条，2条）
+            // 死亡触发类（刺激词条，3条）
             // ═══════════════════════════════════════════
 
             new MutatorDefinition
@@ -493,6 +810,42 @@ namespace BossRush
                         if (player.Health.IsDead) return;
                         float heal = player.Health.MaxHealth * 0.08f;
                         if (heal > 0f) player.AddHealth(heal);
+                    });
+                },
+                OnRemove = ctx => { /* Health.OnDead 由 MutatorManager.RemoveAll 统一退订 */ }
+            },
+
+            new MutatorDefinition
+            {
+                Id = "blood_pact",
+                NameCn = "血之契约",
+                NameEn = "Blood Pact",
+                DescCn = "玩家直接击杀回复 16% 最大生命，但治疗效果 -30%",
+                DescEn = "Direct player kills heal 16% max HP, but healing -30%",
+                Category = MutatorCategory.EnvironmentRule,
+                OnApply = ctx =>
+                {
+                    Item playerItem = ctx.Player.CharacterItem;
+                    if (playerItem != null)
+                    {
+                        Stat healStat = playerItem.GetStat("HealGain");
+                        if (healStat != null)
+                        {
+                            var mod = new Modifier(ModifierType.Add, -0.3f, MutatorSource);
+                            healStat.AddModifier(mod);
+                            ctx.PlayerAppliedModifiers.Add((healStat, mod));
+                        }
+                    }
+
+                    // 只走 MutatorManager 已经筛过的"玩家直接归因击杀"回调；
+                    // 回血直接调用 Health.AddHealth，故意不再吃一层 HealGain。
+                    ctx.EnemyKilledCallbacks.Add((dead, pos) =>
+                    {
+                        CharacterMainControl player = ctx.Player;
+                        if (player == null || player.Health == null) return;
+                        if (player.Health.IsDead) return;
+                        float heal = player.Health.MaxHealth * 0.16f;
+                        if (heal > 0f) player.Health.AddHealth(heal);
                     });
                 },
                 OnRemove = ctx => { /* Health.OnDead 由 MutatorManager.RemoveAll 统一退订 */ }
@@ -535,5 +888,23 @@ namespace BossRush
                 OnRemove = ctx => { /* Health.OnDead 由 MutatorManager.RemoveAll 统一退订 */ }
             }
         };
+
+        private static void SyncCurrentHealthWithRaisedMax(CharacterMainControl character, float oldMaxHealth)
+        {
+            if (character == null || character.Health == null) return;
+            if (oldMaxHealth <= 0f) return;
+
+            float newMaxHealth = character.Health.MaxHealth;
+            if (newMaxHealth <= oldMaxHealth) return;
+
+            float targetHealth = character.Health.CurrentHealth + (newMaxHealth - oldMaxHealth);
+            character.Health.SetHealth(targetHealth);
+        }
+
+        private static void ClampCurrentHealthToMax(CharacterMainControl character)
+        {
+            if (character == null || character.Health == null) return;
+            character.Health.SetHealth(character.Health.CurrentHealth);
+        }
     }
 }

@@ -36,10 +36,35 @@ def main() -> int:
         'string.Equals(modeTag, "ModeF", StringComparison.OrdinalIgnoreCase)',
         'playerItem.GetStat("GunDamageMultiplier")',
         'playerItem.GetStat("MeleeDamageMultiplier")',
+        'SyncCurrentHealthWithRaisedMax(ctx.Player, oldMaxHealth);',
+        'ClampCurrentHealthToMax(ctx.Player);',
     ]
     for snippet in required_definition_snippets:
         if snippet not in definitions:
             return fail("mutator definitions missing snippet -> " + snippet)
+
+    expected_new_mutators = [
+        "player_rapid_fire",
+        "player_steady_aim",
+        "player_fast_reload",
+        "player_crit_damage",
+        "player_long_shot",
+        "player_melee_master",
+        "player_tank",
+        "player_swift_heal",
+        "player_lucky_crit",
+        "glass_speed",
+        "blood_pact",
+        "enemy_sharpshooter",
+        "frenzy",
+    ]
+    for mutator_id in expected_new_mutators:
+        marker = f'Id = "{mutator_id}"'
+        if marker not in definitions:
+            return fail("missing 2026-07 mutator definition -> " + mutator_id)
+
+    if definitions.count('Id = "') != 28:
+        return fail("mutator pool should contain exactly 28 definitions after 2026-07 expansion")
 
     required_manager_snippets = [
         "string modeTag = null",
