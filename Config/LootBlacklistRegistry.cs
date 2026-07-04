@@ -138,6 +138,12 @@ namespace BossRush
                 DragonKingBossGunConfig.WeaponTypeId,
                 FrostmourneIds.WeaponTypeId,
                 PhantomWitchScytheIds.WeaponTypeId,
+                NewWeaponIds.ViperDaggerTypeId,
+                NewWeaponIds.SummonStaffTypeId,
+                NewWeaponIds.EnergyShieldTypeId,
+                NewWeaponIds.FrostSpearTypeId,
+                NewWeaponIds.ThunderRingTypeId,
+                500053, 500054, 500055, 500056,
 
                 FactionFlagConfig.RANDOM_FLAG_TYPE_ID,
                 FactionFlagConfig.SCAV_FLAG_TYPE_ID,
