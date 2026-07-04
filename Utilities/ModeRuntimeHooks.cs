@@ -11,6 +11,11 @@ namespace BossRush
                 return true;
             }
 
+            if (modeEActive || modeFActive)
+            {
+                TickModeEFSpawnPostprocessScheduler();
+            }
+
             TickModeERuntime(deltaTime);
             TickModeFRuntime(deltaTime);
             TickZombieModeRuntime(unscaledDeltaTime);

@@ -61,7 +61,8 @@ namespace BossRush
         public async UniTask<CharacterMainControl> SpawnDragonDescendant(
             Vector3 position,
             bool isChildProtectionSummon = false,
-            bool notifyBossRushOnFailure = true)
+            bool notifyBossRushOnFailure = true,
+            bool deferActivationUntilNextFrame = false)
         {
             try
             {
@@ -162,6 +163,11 @@ namespace BossRush
                 // 添加能力控制器（传入原始武器完整属性）
                 dragonDescendantAbilities = character.gameObject.AddComponent<DragonDescendantAbilityController>();
                 dragonDescendantAbilities.Initialize(character, originalWeaponData);
+
+                if (deferActivationUntilNextFrame)
+                {
+                    await UniTask.Yield();
+                }
 
                 // 激活角色
                 character.gameObject.SetActive(true);

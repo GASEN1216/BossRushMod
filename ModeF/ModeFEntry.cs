@@ -264,11 +264,13 @@ namespace BossRush
         /// </summary>
         private bool StartModeF()
         {
+            ModeEFSpawnProfiler profiler = new ModeEFSpawnProfiler("StartModeF");
             try
             {
                 if (modeFActive || modeFState.IsActive)
                 {
                     DevLog("[ModeF] [WARNING] StartModeF 在模式已激活时被重复调用，已忽略");
+                    profiler.Complete("skipped: already active");
                     return false;
                 }
 
@@ -285,34 +287,42 @@ namespace BossRush
                 modeFActive = true;
                 modeFState.Reset();
                 modeFActiveBossSet.Clear();
+                ClearModeFBossRegenCache();
                 modeFState.IsActive = true;
                 int modeFSessionToken = BeginModeFSession();
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 ClearEnemyRecoveryMonitorState();
                 PrepareModeESharedRuntimeForModeF();
+                profiler.Mark("ResetState");
 
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
                 EnsureModeEFSpawnPoolsReady("StartModeF");
                 EnsureModeDGlobalItemPool();
+                profiler.Mark("WarmPools");
 
                 // 订阅龙息Buff处理器
                 DragonBreathBuffHandler.Subscribe();
+                profiler.Mark("SubscribeDragonBreath");
 
                 // 分配刷怪点（复用 Mode E 逻辑）
                 PreCacheMapSpawnerPositions();
                 AllocateSpawnPoints();
+                profiler.Mark("AllocateSpawnPoints");
 
                 // 传送玩家到安全位置
                 TeleportPlayerToSafePosition();
+                profiler.Mark("TeleportPlayer");
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）
                 GivePlayerStarterKit();
 
                 // 零度挑战地图：额外发放保暖装备
                 ModeEGiveColdWeatherGear();
+                profiler.Mark("GiveLoadout");
 
                 CaptureModeEFLootboxBaseline();
+                profiler.Mark("CaptureLootboxBaseline");
 
                 // 额外发放折叠掩体包 x1（背包满时掉在脚下，避免静默丢失）
                 try
@@ -339,25 +349,31 @@ namespace BossRush
 
                 // 清除原始撤离点
                 ClearOriginalExtractionPoints();
+                profiler.Mark("ClearExtractionPoints");
 
                 // 抽取并应用本局变异词条（必须先于 Boss 生成，敌人增益才能作用；流血加速词条仅 ModeF 可抽）
                 TryRollMutatorsForMode("ModeF");
+                profiler.Mark("RollMutators");
 
                 // 一次性生成所有 Boss（复用 Mode E 逻辑）
                 #pragma warning disable CS4014
                 ModeESpawnAllBosses(modeFSessionToken, relatedScene);
                 #pragma warning restore CS4014
+                profiler.Mark("ScheduleBosses");
 
                 // 生成神秘商人 NPC
                 #pragma warning disable CS4014
                 SpawnModeEMerchant(modeFSessionToken, relatedScene);
                 #pragma warning restore CS4014
+                profiler.Mark("ScheduleMerchant");
 
                 // 生成快递员
                 SpawnCourierNPC();
+                profiler.Mark("SpawnCourier");
 
                 // 启动状态机
                 StartModeFRun();
+                profiler.Mark("StartRuntime");
 
                 ShowMessage(L10n.T(
                     "血猎追击模式已激活！持续掉血，击杀Boss回血续命！",
@@ -367,11 +383,13 @@ namespace BossRush
                     "欢迎来到 <color=red>血猎追击</color>！",
                     "Welcome to <color=red>Bloodhunt</color>!"
                 ));
+                profiler.Complete("success");
                 return true;
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] StartModeF 失败: " + e.Message);
+                profiler.Complete("failed");
                 try { ExitModeF(false); } catch { }
                 return false;
             }

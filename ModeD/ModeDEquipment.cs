@@ -623,6 +623,689 @@ namespace BossRush
         }
 
         /// <summary>
+        /// Mode E/F 普通 Boss 的隐藏配装计划。
+        /// 只记录决策与剩余步骤，不在建计划阶段实例化物品。
+        /// </summary>
+        private sealed class SharedModeEnemyEquipmentMaterializationPlan
+        {
+            public int qualityLevel;
+            public float enemyHealth;
+            public bool preserveHelmetAndArmor;
+            public bool hasInventory;
+            public bool keepOriginalMeleeSetup;
+            public int extraSharedLootItemsRemaining;
+            public int selectedWeaponId;
+            public int selectedMeleeId;
+            public Item pendingWeapon;
+            public int nextWeaponAttachmentSlotIndex;
+            public int inventoryTargetItemCount;
+            public bool inventoryFillRemainingInitialized;
+            public int remainingInventoryFillSteps;
+            public bool hasCapturedRandomState;
+            public UnityEngine.Random.State capturedRandomState;
+            public SharedModeEnemyEquipmentPlanPhase phase;
+        }
+
+        private enum SharedModeEnemyEquipmentPlanPhase
+        {
+            ClearInventory = 0,
+            ExtraSharedLoot = 1,
+            CreateWeapon = 2,
+            WeaponAttachments = 3,
+            EquipWeapon = 4,
+            WeaponMagazine = 5,
+            AddWeaponPrimaryAmmo = 6,
+            AddWeaponSecondaryAmmo = 7,
+            EquipMelee = 8,
+            FillInventory = 9,
+            Completed = 10,
+        }
+
+        private SharedModeEnemyEquipmentMaterializationPlan CreateSharedModeEnemyEquipmentMaterializationPlan(
+            CharacterMainControl enemy,
+            int waveIndex,
+            float enemyHealth,
+            bool isBoss)
+        {
+            try
+            {
+                if (enemy == null)
+                {
+                    return null;
+                }
+
+                Item characterItem = enemy.CharacterItem;
+                if (characterItem == null)
+                {
+                    return null;
+                }
+
+                int qualityLevel = CalculateQualityLevel(waveIndex, enemyHealth);
+                bool hasPrimaryOrSecondaryWeapon = false;
+                bool hasMeleeWeapon = false;
+
+                try
+                {
+                    Slot prim = enemy.PrimWeaponSlot();
+                    if (prim != null && prim.Content != null)
+                    {
+                        hasPrimaryOrSecondaryWeapon = true;
+                    }
+                }
+                catch {}
+
+                try
+                {
+                    Slot sec = enemy.SecWeaponSlot();
+                    if (sec != null && sec.Content != null)
+                    {
+                        hasPrimaryOrSecondaryWeapon = true;
+                    }
+                }
+                catch {}
+
+                try
+                {
+                    Slot meleeSlot = enemy.MeleeWeaponSlot();
+                    if (meleeSlot != null && meleeSlot.Content != null)
+                    {
+                        hasMeleeWeapon = true;
+                    }
+                }
+                catch {}
+
+                bool hasPetAI = false;
+                try
+                {
+                    hasPetAI = enemy.GetComponentInChildren<PetAI>() != null;
+                }
+                catch {}
+
+                bool keepOriginalMeleeSetup = (!hasPrimaryOrSecondaryWeapon && hasMeleeWeapon) || hasPetAI;
+                Inventory inventory = characterItem.Inventory;
+                bool hasInventory = inventory != null;
+                int minQ = Mathf.Max(1, qualityLevel - 1);
+                int maxQ = Mathf.Min(8, qualityLevel + 2);
+
+                int targetItemCount = 5 + Mathf.FloorToInt(enemyHealth / 100f);
+                if (targetItemCount < 5)
+                {
+                    targetItemCount = 5;
+                }
+
+                int selectedWeaponId = 0;
+                int selectedMeleeId = 0;
+                if (!keepOriginalMeleeSetup)
+                {
+                    if (modeDWeaponPool.Count > 0)
+                    {
+                        selectedWeaponId = GetRandomItemByQuality(modeDWeaponPool, minQ, maxQ);
+                    }
+
+                    if (modeDMeleePool.Count > 0)
+                    {
+                        selectedMeleeId = modeDMeleePool[UnityEngine.Random.Range(0, modeDMeleePool.Count)];
+                    }
+                }
+
+                SharedModeEnemyEquipmentMaterializationPlan plan = new SharedModeEnemyEquipmentMaterializationPlan
+                {
+                    qualityLevel = qualityLevel,
+                    enemyHealth = enemyHealth,
+                    preserveHelmetAndArmor = isBoss,
+                    hasInventory = hasInventory,
+                    keepOriginalMeleeSetup = keepOriginalMeleeSetup,
+                    extraSharedLootItemsRemaining = (hasInventory && !keepOriginalMeleeSetup) ? 3 : 0,
+                    selectedWeaponId = selectedWeaponId,
+                    selectedMeleeId = selectedMeleeId,
+                    pendingWeapon = null,
+                    nextWeaponAttachmentSlotIndex = 0,
+                    inventoryTargetItemCount = hasInventory ? targetItemCount : 0,
+                    inventoryFillRemainingInitialized = false,
+                    remainingInventoryFillSteps = 0,
+                    hasCapturedRandomState = true,
+                    capturedRandomState = UnityEngine.Random.state,
+                    phase = keepOriginalMeleeSetup
+                        ? SharedModeEnemyEquipmentPlanPhase.FillInventory
+                        : SharedModeEnemyEquipmentPlanPhase.ClearInventory,
+                };
+
+                return plan;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] CreateSharedModeEnemyEquipmentMaterializationPlan 失败: " + e.Message);
+                return null;
+            }
+        }
+
+        private bool MaterializeNextSharedModeEnemyEquipmentPlanStep(
+            CharacterMainControl enemy,
+            SharedModeEnemyEquipmentMaterializationPlan plan)
+        {
+            try
+            {
+                if (enemy == null || plan == null)
+                {
+                    return true;
+                }
+
+                // Deferred materialization must consume the same RNG stream it would have
+                // consumed on the original spawn frame, otherwise unrelated systems can
+                // perturb equipment/drop results between yields.
+                return ExecuteSharedModeEnemyPlanStepWithCapturedRandomState(plan, () =>
+                {
+                    switch (plan.phase)
+                    {
+                        case SharedModeEnemyEquipmentPlanPhase.ClearInventory:
+                            ClearEnemyInventory(enemy, plan.preserveHelmetAndArmor);
+                            plan.phase = plan.extraSharedLootItemsRemaining > 0
+                                ? SharedModeEnemyEquipmentPlanPhase.ExtraSharedLoot
+                                : SharedModeEnemyEquipmentPlanPhase.CreateWeapon;
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.ExtraSharedLoot:
+                            if (!plan.hasInventory || plan.extraSharedLootItemsRemaining <= 0)
+                            {
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.CreateWeapon;
+                                return false;
+                            }
+
+                            Inventory extraInventory = enemy.CharacterItem != null ? enemy.CharacterItem.Inventory : null;
+                            if (extraInventory != null)
+                            {
+                                Item randomExtraItem = null;
+                                if (TryCreateBossRushStyleInventoryLootItemForSharedModes(plan.enemyHealth, out randomExtraItem) &&
+                                    randomExtraItem != null)
+                                {
+                                    extraInventory.AddAndMerge(randomExtraItem, 0);
+                                }
+                            }
+
+                            plan.extraSharedLootItemsRemaining--;
+                            if (plan.extraSharedLootItemsRemaining <= 0)
+                            {
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.CreateWeapon;
+                            }
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.CreateWeapon:
+                            if (plan.selectedWeaponId <= 0 || !TryCreatePendingSharedModeWeapon(plan))
+                            {
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.EquipMelee;
+                                return false;
+                            }
+
+                            plan.phase = SharedModeEnemyEquipmentPlanPhase.WeaponAttachments;
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.WeaponAttachments:
+                            if (TryAddNextSharedModeWeaponAttachment(plan))
+                            {
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.EquipWeapon;
+                            }
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.EquipWeapon:
+                            TryEquipPendingSharedModeWeapon(enemy, plan);
+                            plan.phase = SharedModeEnemyEquipmentPlanPhase.WeaponMagazine;
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.WeaponMagazine:
+                            ItemSetting_Gun pendingGunSetting = null;
+                            if (!TryGetPendingSharedModeWeaponGunSetting(plan, out pendingGunSetting))
+                            {
+                                ClearPendingSharedModeWeaponReference(plan);
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.EquipMelee;
+                                return false;
+                            }
+
+                            if (pendingGunSetting.TargetBulletID < 0 && plan.pendingWeapon != null)
+                            {
+                                EnsureStarterGunHasBulletType(plan.pendingWeapon);
+                                pendingGunSetting = plan.pendingWeapon.GetComponent<ItemSetting_Gun>();
+                            }
+
+                            if (pendingGunSetting != null && pendingGunSetting.TargetBulletID >= 0 && plan.pendingWeapon != null)
+                            {
+                                FillGunMagazine(plan.pendingWeapon);
+                            }
+
+                            plan.phase = SharedModeEnemyEquipmentPlanPhase.AddWeaponPrimaryAmmo;
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.AddWeaponPrimaryAmmo:
+                            ItemSetting_Gun primaryAmmoGunSetting = null;
+                            if (!TryGetPendingSharedModeWeaponGunSetting(plan, out primaryAmmoGunSetting))
+                            {
+                                ClearPendingSharedModeWeaponReference(plan);
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.EquipMelee;
+                                return false;
+                            }
+
+                            TryAddPendingSharedModeWeaponPrimaryAmmo(enemy, plan, primaryAmmoGunSetting);
+                            plan.phase = SharedModeEnemyEquipmentPlanPhase.AddWeaponSecondaryAmmo;
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.AddWeaponSecondaryAmmo:
+                            ItemSetting_Gun secondaryAmmoGunSetting = null;
+                            if (TryGetPendingSharedModeWeaponGunSetting(plan, out secondaryAmmoGunSetting))
+                            {
+                                TryAddPendingSharedModeWeaponSecondaryAmmo(enemy, plan, secondaryAmmoGunSetting);
+                            }
+
+                            ClearPendingSharedModeWeaponReference(plan);
+                            plan.phase = SharedModeEnemyEquipmentPlanPhase.EquipMelee;
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.EquipMelee:
+                            if (!plan.keepOriginalMeleeSetup && plan.selectedMeleeId > 0)
+                            {
+                                TryGiveSpecificMeleeWeaponToEnemy(enemy, plan.selectedMeleeId);
+                            }
+
+                            plan.phase = SharedModeEnemyEquipmentPlanPhase.FillInventory;
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.FillInventory:
+                            if (!plan.hasInventory)
+                            {
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.Completed;
+                                return true;
+                            }
+
+                            if (!plan.inventoryFillRemainingInitialized)
+                            {
+                                Inventory fillInventory = enemy.CharacterItem != null ? enemy.CharacterItem.Inventory : null;
+                                int currentCount = GetModeDInventoryContentCount(fillInventory);
+                                plan.remainingInventoryFillSteps = Mathf.Max(0, plan.inventoryTargetItemCount - currentCount);
+                                plan.inventoryFillRemainingInitialized = true;
+                                if (plan.remainingInventoryFillSteps <= 0)
+                                {
+                                    plan.phase = SharedModeEnemyEquipmentPlanPhase.Completed;
+                                    return true;
+                                }
+                            }
+
+                            if (!TryMaterializeNextModeDInventoryLootItem(enemy, plan.qualityLevel, plan.enemyHealth))
+                            {
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.Completed;
+                                return true;
+                            }
+
+                            plan.remainingInventoryFillSteps--;
+                            if (plan.remainingInventoryFillSteps <= 0)
+                            {
+                                plan.phase = SharedModeEnemyEquipmentPlanPhase.Completed;
+                                return true;
+                            }
+
+                            return false;
+
+                        case SharedModeEnemyEquipmentPlanPhase.Completed:
+                        default:
+                            return true;
+                    }
+                });
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] MaterializeNextSharedModeEnemyEquipmentPlanStep 失败: " + e.Message);
+                return true;
+            }
+        }
+
+        private bool ExecuteSharedModeEnemyPlanStepWithCapturedRandomState(
+            SharedModeEnemyEquipmentMaterializationPlan plan,
+            Func<bool> action)
+        {
+            if (action == null)
+            {
+                return true;
+            }
+
+            if (plan == null || !plan.hasCapturedRandomState)
+            {
+                return action();
+            }
+
+            UnityEngine.Random.State previousState = UnityEngine.Random.state;
+            try
+            {
+                UnityEngine.Random.state = plan.capturedRandomState;
+                bool result = action();
+                plan.capturedRandomState = UnityEngine.Random.state;
+                return result;
+            }
+            finally
+            {
+                UnityEngine.Random.state = previousState;
+            }
+        }
+
+        private bool TryCreatePendingSharedModeWeapon(SharedModeEnemyEquipmentMaterializationPlan plan)
+        {
+            try
+            {
+                if (plan == null || plan.selectedWeaponId <= 0)
+                {
+                    return false;
+                }
+
+                Item weapon = ItemAssetsCollection.InstantiateSync(plan.selectedWeaponId);
+                if (weapon == null)
+                {
+                    return false;
+                }
+
+                plan.pendingWeapon = weapon;
+                plan.nextWeaponAttachmentSlotIndex = 0;
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] TryCreatePendingSharedModeWeapon 失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private bool TryAddNextSharedModeWeaponAttachment(SharedModeEnemyEquipmentMaterializationPlan plan)
+        {
+            try
+            {
+                if (plan == null || plan.pendingWeapon == null || plan.pendingWeapon.Slots == null)
+                {
+                    return true;
+                }
+
+                if (modeDAccessoryPool.Count == 0)
+                {
+                    InitializeAccessoryPool();
+                }
+
+                if (modeDAccessoryPool.Count == 0)
+                {
+                    return true;
+                }
+
+                while (plan.nextWeaponAttachmentSlotIndex < plan.pendingWeapon.Slots.Count)
+                {
+                    Slot slot = plan.pendingWeapon.Slots[plan.nextWeaponAttachmentSlotIndex];
+                    plan.nextWeaponAttachmentSlotIndex++;
+                    if (slot == null || slot.Content != null)
+                    {
+                        continue;
+                    }
+
+                    if (UnityEngine.Random.value > 0.7f)
+                    {
+                        TryFillSlotWithRandomAccessory(plan.pendingWeapon, slot);
+                        break;
+                    }
+                }
+
+                return plan.nextWeaponAttachmentSlotIndex >= plan.pendingWeapon.Slots.Count;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] TryAddNextSharedModeWeaponAttachment 失败: " + e.Message);
+                return true;
+            }
+        }
+
+        private void TryEquipPendingSharedModeWeapon(
+            CharacterMainControl enemy,
+            SharedModeEnemyEquipmentMaterializationPlan plan)
+        {
+            try
+            {
+                if (enemy == null || enemy.CharacterItem == null || plan == null || plan.pendingWeapon == null)
+                {
+                    return;
+                }
+
+                bool equipped = enemy.CharacterItem.TryPlug(plan.pendingWeapon, true, null, 0);
+                if (!equipped)
+                {
+                    Inventory inventory = enemy.CharacterItem.Inventory;
+                    if (inventory != null)
+                    {
+                        inventory.AddAndMerge(plan.pendingWeapon, 0);
+                    }
+                    else
+                    {
+                        UnityEngine.Object.Destroy(plan.pendingWeapon.gameObject);
+                        plan.pendingWeapon = null;
+                        DevLog("[ModeD] [WARNING] 敌人武器装备失败且无背包，已销毁武器");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] TryEquipPendingSharedModeWeapon 失败: " + e.Message);
+            }
+        }
+
+        private bool TryGetPendingSharedModeWeaponGunSetting(
+            SharedModeEnemyEquipmentMaterializationPlan plan,
+            out ItemSetting_Gun gunSetting)
+        {
+            gunSetting = null;
+            try
+            {
+                if (plan == null || plan.pendingWeapon == null)
+                {
+                    return false;
+                }
+
+                gunSetting = plan.pendingWeapon.GetComponent<ItemSetting_Gun>();
+                return gunSetting != null;
+            }
+            catch {}
+
+            return false;
+        }
+
+        private void TryAddPendingSharedModeWeaponPrimaryAmmo(
+            CharacterMainControl enemy,
+            SharedModeEnemyEquipmentMaterializationPlan plan,
+            ItemSetting_Gun gunSetting)
+        {
+            try
+            {
+                if (enemy == null || enemy.CharacterItem == null || plan == null || gunSetting == null)
+                {
+                    return;
+                }
+
+                if (gunSetting.TargetBulletID < 0)
+                {
+                    return;
+                }
+
+                Inventory enemyInventory = enemy.CharacterItem.Inventory;
+                if (enemyInventory == null)
+                {
+                    return;
+                }
+
+                Item ammo = ItemAssetsCollection.InstantiateSync(gunSetting.TargetBulletID);
+                if (ammo != null)
+                {
+                    ammo.StackCount = UnityEngine.Random.Range(30, 60);
+                    enemyInventory.AddAndMerge(ammo, 0);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] TryAddPendingSharedModeWeaponPrimaryAmmo 失败: " + e.Message);
+            }
+        }
+
+        private void TryAddPendingSharedModeWeaponSecondaryAmmo(
+            CharacterMainControl enemy,
+            SharedModeEnemyEquipmentMaterializationPlan plan,
+            ItemSetting_Gun gunSetting)
+        {
+            try
+            {
+                if (enemy == null || enemy.CharacterItem == null || plan == null)
+                {
+                    return;
+                }
+
+                Inventory enemyInventory = enemy.CharacterItem.Inventory;
+                if (enemyInventory == null)
+                {
+                    return;
+                }
+
+                Item randomAmmo = ShouldUseLegacyModeDStyleEnemyLootQualityDistribution()
+                    ? CreateRandomAmmoForEnemyLoot(
+                        plan.qualityLevel,
+                        Mathf.Max(1, plan.qualityLevel - 1),
+                        Mathf.Min(8, plan.qualityLevel + 2))
+                    : CreateRandomAmmo(
+                        Mathf.Max(1, plan.qualityLevel - 1),
+                        Mathf.Min(8, plan.qualityLevel + 2));
+                if (randomAmmo != null)
+                {
+                    randomAmmo.StackCount = UnityEngine.Random.Range(60, 121);
+                    enemyInventory.AddAndMerge(randomAmmo, 0);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] TryAddPendingSharedModeWeaponSecondaryAmmo 失败: " + e.Message);
+            }
+        }
+
+        private void ClearPendingSharedModeWeaponReference(SharedModeEnemyEquipmentMaterializationPlan plan)
+        {
+            if (plan != null)
+            {
+                plan.pendingWeapon = null;
+            }
+        }
+
+        private void CleanupSharedModeEnemyEquipmentMaterializationPlan(SharedModeEnemyEquipmentMaterializationPlan plan)
+        {
+            try
+            {
+                if (plan == null || plan.pendingWeapon == null || plan.pendingWeapon.gameObject == null)
+                {
+                    return;
+                }
+
+                UnityEngine.Object.Destroy(plan.pendingWeapon.gameObject);
+                plan.pendingWeapon = null;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [WARNING] CleanupSharedModeEnemyEquipmentMaterializationPlan 失败: " + e.Message);
+            }
+        }
+
+        private void TryGiveSpecificMeleeWeaponToEnemy(CharacterMainControl enemy, int meleeId)
+        {
+            try
+            {
+                if (enemy == null || enemy.CharacterItem == null || meleeId <= 0)
+                {
+                    return;
+                }
+
+                Item melee = ItemAssetsCollection.InstantiateSync(meleeId);
+                if (melee == null)
+                {
+                    return;
+                }
+
+                bool equipped = enemy.CharacterItem.TryPlug(melee, true, null, 0);
+                if (!equipped)
+                {
+                    Inventory inventory = enemy.CharacterItem.Inventory;
+                    if (inventory != null)
+                    {
+                        inventory.AddAndMerge(melee, 0);
+                    }
+                    else
+                    {
+                        UnityEngine.Object.Destroy(melee.gameObject);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] TryGiveSpecificMeleeWeaponToEnemy 失败: " + e.Message);
+            }
+        }
+
+        private int GetModeDInventoryContentCount(Inventory inventory)
+        {
+            try
+            {
+                if (inventory != null && inventory.Content != null)
+                {
+                    return inventory.Content.Count;
+                }
+            }
+            catch {}
+
+            return 0;
+        }
+
+        private bool TryMaterializeNextModeDInventoryLootItem(CharacterMainControl enemy, int qualityLevel, float enemyHealth)
+        {
+            try
+            {
+                if (enemy == null || enemy.CharacterItem == null)
+                {
+                    return false;
+                }
+
+                Inventory inventory = enemy.CharacterItem.Inventory;
+                if (inventory == null)
+                {
+                    return false;
+                }
+
+                int firstEmpty = -1;
+                try
+                {
+                    firstEmpty = inventory.GetFirstEmptyPosition(0);
+                }
+                catch {}
+
+                if (firstEmpty < 0)
+                {
+                    return false;
+                }
+
+                int minQ = Mathf.Max(1, qualityLevel - 1);
+                int maxQ = Mathf.Min(8, qualityLevel + 2);
+
+                Item randomItem = null;
+                if (!TryCreateBossRushStyleInventoryLootItemForSharedModes(enemyHealth, out randomItem))
+                {
+                    randomItem = CreateRandomGlobalItemForModeD(minQ, maxQ, enemyHealth);
+                }
+
+                if (randomItem != null)
+                {
+                    inventory.AddAndMerge(randomItem, 0);
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeD] [ERROR] TryMaterializeNextModeDInventoryLootItem 失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 尝试将敌人背包进一步填满一些（仅 Mode D 使用）
         /// </summary>
         private void FillEnemyInventoryForModeD(CharacterMainControl enemy, int qualityLevel, float enemyHealth, int maxItemsToAdd)

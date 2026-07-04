@@ -432,7 +432,8 @@ namespace BossRush
         /// <summary>
         /// 开发模式日志输出（仅在 DevModeEnabled = true 时输出）
         /// </summary>
-        internal const bool ModeEStartupProfilingEnabled = false;
+        internal const bool ModeEStartupProfilingEnabled = true;
+        internal const bool ModeEFSpawnProfilingEnabled = true;
         internal const bool VerboseStartupDebugLogsEnabled = true;
 
         /// <summary>

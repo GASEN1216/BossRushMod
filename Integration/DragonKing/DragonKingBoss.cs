@@ -208,7 +208,8 @@ namespace BossRush
         /// </summary>
         public async UniTask<CharacterMainControl> SpawnDragonKing(
             Vector3 position,
-            bool notifyBossRushOnFailure = true)
+            bool notifyBossRushOnFailure = true,
+            bool deferActivationUntilNextFrame = false)
         {
             try
             {
@@ -291,7 +292,12 @@ namespace BossRush
                 var abilities = character.gameObject.AddComponent<DragonKingAbilityController>();
                 abilities.Initialize(character);
                 dragonKingInstances[character] = abilities;
-                
+
+                if (deferActivationUntilNextFrame)
+                {
+                    await UniTask.Yield();
+                }
+
                 // 激活角色
                 character.gameObject.SetActive(true);
                 

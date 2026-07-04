@@ -535,11 +535,7 @@ namespace BossRush
                         modeFRelatedScene,
                         modeESessionToken,
                         modeESessionRelatedScene),
-                    onSpawned: (ctx) =>
-                    {
-                        SyncModeEDragonDescendantSpawnFlag(capturedIsDD, ctx != null ? ctx.preset : null, "ModeE");
-                        OnModeEEnemySpawned(ctx, capturedFaction, capturedPromoted);
-                    },
+                    onSpawned: null,
                     onFailed: () =>
                     {
                         // 龙裔生成失败时回退全局标记，允许后续刷怪点再次尝试
@@ -554,7 +550,13 @@ namespace BossRush
                     },
                     waveIndex: 1,
                     skipDragonDescendant: skipDragon,
-                    skipDragonKing: skipKing
+                    skipDragonKing: skipKing,
+                    deferActivationUntilNextFrame: true,
+                    onCommit: (ctx) =>
+                    {
+                        SyncModeEDragonDescendantSpawnFlag(capturedIsDD, ctx != null ? ctx.preset : null, "ModeE");
+                        return OnModeEEnemySpawned(ctx, capturedFaction, capturedPromoted);
+                    }
                 );
             }
             catch (Exception e)
@@ -591,15 +593,21 @@ namespace BossRush
         /// 阵营来自 Boss 预设的原始 team，通过 SetTeam 确保运行时一致性
         /// </summary>
         /// <param name="promotedToBoss">是否为小怪被提升为 Boss（需要克隆预设设 showName=true）</param>
-        private void OnModeEEnemySpawned(EnemySpawnContext ctx, Teams faction, bool promotedToBoss = false)
+        private bool OnModeEEnemySpawned(EnemySpawnContext ctx, Teams faction, bool promotedToBoss = false)
         {
+            CharacterMainControl character = null;
             try
             {
-                CharacterMainControl character = ctx.character;
+                if (ctx == null)
+                {
+                    return false;
+                }
+
+                character = ctx.character;
                 bool isModeFRun = modeFActive && !modeEActive;
                 if (character == null)
                 {
-                    return;
+                    return false;
                 }
 
                 Teams runtimeFaction = isModeFRun
@@ -694,10 +702,24 @@ namespace BossRush
                 ResolveModeESpawnAttempt();
                 MarkModeEStartupBossSpawned();
                 DevLog("[ModeE] 生成结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
+                return true;
             }
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] OnModeEEnemySpawned 失败: " + e.Message);
+                try
+                {
+                    if (character != null)
+                    {
+                        CleanupModeEEnemyRuntimeState(character);
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    DevLog("[ModeE] [WARNING] OnModeEEnemySpawned 失败后清理异常: " + cleanupEx.Message);
+                }
+
+                return false;
             }
         }
 

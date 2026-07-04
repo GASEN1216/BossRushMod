@@ -698,29 +698,20 @@ namespace BossRush
                 else if (modeEActive && ModeEAliveEnemies != null && ModeEAliveEnemies.Count > 0)
                 {
                     // Mode E：所有阵营的 Boss 都回血（设计上对称，所有阵营吃同一条规则）
-                    _singleBossRegenList.Clear();
-                    for (int i = 0; i < ModeEAliveEnemies.Count; i++)
+                    List<MonoBehaviour> modeERegenCache = GetModeEBossRegenCache();
+                    if (modeERegenCache.Count > 0)
                     {
-                        CharacterMainControl boss = ModeEAliveEnemies[i];
-                        if (boss != null) _singleBossRegenList.Add(boss);
-                    }
-                    if (_singleBossRegenList.Count > 0)
-                    {
-                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
+                        MutatorManager.TickBossRegen(Time.deltaTime, modeERegenCache);
                     }
                 }
                 else if (modeFActive && modeFActiveBossSet.Count > 0)
                 {
                     // Mode F：HashSet 转列表喂入。Mode F 已经在用 BleedRateMultiplier，
                     // 这里再补 BossRegen 让两个环境规则词条都能在血猎模式生效
-                    _singleBossRegenList.Clear();
-                    foreach (CharacterMainControl boss in modeFActiveBossSet)
+                    List<MonoBehaviour> modeFRegenCache = GetModeFBossRegenCache();
+                    if (modeFRegenCache.Count > 0)
                     {
-                        if (boss != null) _singleBossRegenList.Add(boss);
-                    }
-                    if (_singleBossRegenList.Count > 0)
-                    {
-                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
+                        MutatorManager.TickBossRegen(Time.deltaTime, modeFRegenCache);
                     }
                 }
             }

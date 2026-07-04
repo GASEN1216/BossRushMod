@@ -139,7 +139,8 @@ namespace BossRush
         /// </summary>
         public async UniTask<CharacterMainControl> SpawnPhantomWitch(
             Vector3 position,
-            bool notifyBossRushOnFailure = true)
+            bool notifyBossRushOnFailure = true,
+            bool deferActivationUntilNextFrame = false)
         {
             CharacterMainControl character = null;
             PhantomWitchAbilityController abilities = null;
@@ -262,6 +263,11 @@ namespace BossRush
                 abilities = controllerGO.AddComponent<PhantomWitchAbilityController>();
                 abilities.Initialize(character, position);
                 phantomWitchInstances[character] = abilities;
+
+                if (deferActivationUntilNextFrame)
+                {
+                    await UniTask.Yield();
+                }
 
                 // 激活角色
                 character.gameObject.SetActive(true);

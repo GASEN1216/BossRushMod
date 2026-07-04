@@ -55,7 +55,7 @@ def main() -> int:
     if "private void ResolveModeESpawnAttempt" not in battle_text:
         return fail("ModeESpawnFailureResolutionGuard: missing ResolveModeESpawnAttempt helper")
 
-    spawned_body = extract_method_body(battle_text, "private void OnModeEEnemySpawned")
+    spawned_body = extract_method_body(battle_text, "private bool OnModeEEnemySpawned")
     if spawned_body is None:
         return fail("ModeESpawnFailureResolutionGuard: missing OnModeEEnemySpawned body")
     if "ResolveModeESpawnAttempt(" not in spawned_body:

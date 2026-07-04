@@ -397,6 +397,7 @@ namespace BossRush
                 RebuildModeDQualityBuckets(modeDMedicalPool, modeDMedicalPoolByQuality);
                 RebuildModeDQualityBuckets(modeDTotemPool, modeDTotemPoolByQuality);
                 RebuildModeDQualityBuckets(modeDMaskPool, modeDMaskPoolByQuality);
+                InitializeAccessoryPool();
 
                 modeDItemPoolsInitialized = true;
                 if (logEnabled)
@@ -1036,4 +1037,3 @@ namespace BossRush
         #endregion
     }
 }
-

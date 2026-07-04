@@ -67,6 +67,83 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        private sealed class ModeEFSpawnProfiler
+        {
+            private readonly bool enabled;
+            private readonly string scope;
+            private readonly float startTime;
+            private float lastCheckpointTime;
+            private bool completed;
+
+            public ModeEFSpawnProfiler(string scope, string detail = null)
+            {
+                enabled = DevModeEnabled && ModeEFSpawnProfilingEnabled;
+                if (!enabled)
+                {
+                    return;
+                }
+
+                this.scope = string.IsNullOrEmpty(detail) ? scope : scope + " [" + detail + "]";
+                startTime = Time.realtimeSinceStartup;
+                lastCheckpointTime = startTime;
+                DevLog("[ModeE/F] [Profile] " + this.scope + " begin");
+            }
+
+            public void Mark(string stageName)
+            {
+                if (!enabled || completed)
+                {
+                    return;
+                }
+
+                float now = Time.realtimeSinceStartup;
+                DevLog("[ModeE/F] [Profile] " + scope + " | " + stageName + ": +" +
+                    ((now - lastCheckpointTime) * 1000f).ToString("F1") + " ms");
+                lastCheckpointTime = now;
+            }
+
+            public void Complete(string status = "completed")
+            {
+                if (!enabled || completed)
+                {
+                    return;
+                }
+
+                completed = true;
+                float now = Time.realtimeSinceStartup;
+                DevLog("[ModeE/F] [Profile] " + scope + " | " + status + " | total=" +
+                    ((now - startTime) * 1000f).ToString("F1") + " ms");
+            }
+        }
+
+        private sealed class ModeEFSpawnPostprocessJob
+        {
+            public EnemySpawnContext context;
+            public EnemyPresetInfo actualPreset;
+            public Func<bool> isActiveCheck;
+            public SharedModeEnemyEquipmentMaterializationPlan equipmentPlan;
+            public bool equipmentPlanCompleted;
+            public bool bossMultiplierApplied;
+            public bool applyBossMultiplier;
+            public bool skipBossRushLootTracking;
+            public Func<EnemySpawnContext, bool> onCommit;
+            public UniTaskCompletionSource<EnemySpawnCoreResult> completionSource;
+            public ModeEFSpawnProfiler profiler;
+            public int queuedFrame;
+            public int deadlineFrame;
+        }
+
+        private const int MODE_EF_SPAWN_POSTPROCESS_SOFT_DEADLINE_FRAMES = 60;
+        private const int MODE_EF_SPAWN_POSTPROCESS_FINAL_SPRINT_FRAMES = 5;
+        private const float MODE_EF_SPAWN_POSTPROCESS_FRAME_BUDGET_MS = 1000f / 60f;
+        private const float MODE_EF_SPAWN_POSTPROCESS_SPRINT_FRAME_BUDGET_MS = 1000f / 30f;
+        private const int MODE_EF_SPAWN_POSTPROCESS_BASE_JOB_STEPS = 1;
+        private const int MODE_EF_SPAWN_POSTPROCESS_SPRINT_JOB_STEPS = 3;
+        private const int MODE_EF_SPAWN_POSTPROCESS_MAX_STEPS_PER_TICK = 8;
+        private const int MODE_EF_SPAWN_POSTPROCESS_SPRINT_MAX_STEPS_PER_TICK = 16;
+        private readonly Queue<ModeEFSpawnPostprocessJob> modeEFSpawnPostprocessQueue
+            = new Queue<ModeEFSpawnPostprocessJob>();
+
         /// <summary>
         /// 确保 cachedCharacterPresets 字典已经构建（审查 §1.1）。
         /// ZombieMode 入口路径调用此方法以避免依赖 Mode D 先初始化；
@@ -109,6 +186,302 @@ namespace BossRush
             }
         }
 
+        private void ClearModeEFSpawnPostprocessScheduler()
+        {
+            while (modeEFSpawnPostprocessQueue.Count > 0)
+            {
+                ModeEFSpawnPostprocessJob job = modeEFSpawnPostprocessQueue.Dequeue();
+                CompleteModeEFSpawnPostprocessJobFailure(job, "scheduler_cleared", destroyCharacter: true);
+            }
+        }
+
+        private void TickModeEFSpawnPostprocessScheduler()
+        {
+            if (modeEFSpawnPostprocessQueue.Count <= 0)
+            {
+                return;
+            }
+
+            int currentFrame = Time.frameCount;
+            bool hasSprintPressure = HasModeEFSpawnPostprocessSprintPressure(currentFrame);
+            float frameBudgetMs = hasSprintPressure
+                ? MODE_EF_SPAWN_POSTPROCESS_SPRINT_FRAME_BUDGET_MS
+                : MODE_EF_SPAWN_POSTPROCESS_FRAME_BUDGET_MS;
+            int maxStepsThisTick = hasSprintPressure
+                ? MODE_EF_SPAWN_POSTPROCESS_SPRINT_MAX_STEPS_PER_TICK
+                : MODE_EF_SPAWN_POSTPROCESS_MAX_STEPS_PER_TICK;
+            float frameStart = Time.realtimeSinceStartup;
+            int steps = 0;
+            while (modeEFSpawnPostprocessQueue.Count > 0 &&
+                   steps < maxStepsThisTick)
+            {
+                float elapsedMs = (Time.realtimeSinceStartup - frameStart) * 1000f;
+                if (elapsedMs >= frameBudgetMs && steps > 0)
+                {
+                    break;
+                }
+
+                ModeEFSpawnPostprocessJob job = modeEFSpawnPostprocessQueue.Dequeue();
+                bool completed = false;
+                int jobStepBudget = GetModeEFSpawnPostprocessJobStepBudget(job, currentFrame);
+                for (int jobStep = 0; jobStep < jobStepBudget; jobStep++)
+                {
+                    completed = ProcessModeEFSpawnPostprocessJobStep(job);
+                    steps++;
+                    if (completed || steps >= maxStepsThisTick)
+                    {
+                        break;
+                    }
+
+                    float innerElapsedMs = (Time.realtimeSinceStartup - frameStart) * 1000f;
+                    if (innerElapsedMs >= frameBudgetMs)
+                    {
+                        break;
+                    }
+                }
+
+                if (!completed)
+                {
+                    modeEFSpawnPostprocessQueue.Enqueue(job);
+                }
+            }
+        }
+
+        private bool HasModeEFSpawnPostprocessSprintPressure(int currentFrame)
+        {
+            foreach (ModeEFSpawnPostprocessJob queuedJob in modeEFSpawnPostprocessQueue)
+            {
+                if (IsModeEFSpawnPostprocessJobInFinalSprint(queuedJob, currentFrame))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsModeEFSpawnPostprocessJobInFinalSprint(
+            ModeEFSpawnPostprocessJob job,
+            int currentFrame)
+        {
+            return job != null &&
+                currentFrame >= (job.deadlineFrame - MODE_EF_SPAWN_POSTPROCESS_FINAL_SPRINT_FRAMES);
+        }
+
+        private static int GetModeEFSpawnPostprocessJobStepBudget(
+            ModeEFSpawnPostprocessJob job,
+            int currentFrame)
+        {
+            return IsModeEFSpawnPostprocessJobInFinalSprint(job, currentFrame)
+                ? MODE_EF_SPAWN_POSTPROCESS_SPRINT_JOB_STEPS
+                : MODE_EF_SPAWN_POSTPROCESS_BASE_JOB_STEPS;
+        }
+
+        private UniTask<EnemySpawnCoreResult> ScheduleModeEFSpawnPostprocessAsync(
+            CharacterMainControl character,
+            EnemyPresetInfo actualPreset,
+            bool isBoss,
+            Vector3 position,
+            Func<bool> isActiveCheck,
+            SharedModeEnemyEquipmentMaterializationPlan equipmentPlan,
+            bool applyBossMultiplier,
+            bool skipBossRushLootTracking,
+            Func<EnemySpawnContext, bool> onCommit)
+        {
+            EnemySpawnContext ctx = new EnemySpawnContext
+            {
+                character = character,
+                preset = actualPreset,
+                isBoss = isBoss,
+                position = position
+            };
+
+            string detail = actualPreset != null ? actualPreset.displayName : "unknown";
+            ModeEFSpawnProfiler profiler = new ModeEFSpawnProfiler("ModeEFSpawnPostprocess", detail);
+            profiler.Mark("Queued");
+            int queuedFrame = Time.frameCount;
+
+            UniTaskCompletionSource<EnemySpawnCoreResult> completionSource =
+                new UniTaskCompletionSource<EnemySpawnCoreResult>();
+            modeEFSpawnPostprocessQueue.Enqueue(new ModeEFSpawnPostprocessJob
+            {
+                context = ctx,
+                actualPreset = actualPreset,
+                isActiveCheck = isActiveCheck,
+                equipmentPlan = equipmentPlan,
+                equipmentPlanCompleted = equipmentPlan == null,
+                bossMultiplierApplied = !applyBossMultiplier,
+                applyBossMultiplier = applyBossMultiplier,
+                skipBossRushLootTracking = skipBossRushLootTracking,
+                onCommit = onCommit,
+                completionSource = completionSource,
+                profiler = profiler,
+                queuedFrame = queuedFrame,
+                deadlineFrame = queuedFrame + MODE_EF_SPAWN_POSTPROCESS_SOFT_DEADLINE_FRAMES,
+            });
+            return completionSource.Task;
+        }
+
+        private bool ProcessModeEFSpawnPostprocessJobStep(ModeEFSpawnPostprocessJob job)
+        {
+            try
+            {
+                if (job == null || job.context == null)
+                {
+                    return true;
+                }
+
+                CharacterMainControl character = job.context.character;
+                if (character == null || character.gameObject == null)
+                {
+                    CompleteModeEFSpawnPostprocessJobFailure(job, "character_missing", destroyCharacter: false);
+                    return true;
+                }
+
+                if (job.isActiveCheck != null && !job.isActiveCheck())
+                {
+                    CompleteModeEFSpawnPostprocessJobFailure(job, "mode_ended", destroyCharacter: true);
+                    return true;
+                }
+
+                if (!job.equipmentPlanCompleted)
+                {
+                    job.equipmentPlanCompleted = MaterializeNextSharedModeEnemyEquipmentPlanStep(character, job.equipmentPlan);
+                    if (job.equipmentPlanCompleted)
+                    {
+                        job.profiler.Mark("EquipmentReady");
+                    }
+
+                    return false;
+                }
+
+                if (!job.bossMultiplierApplied)
+                {
+                    ApplyBossStatMultiplier(character);
+                    job.bossMultiplierApplied = true;
+                    job.profiler.Mark("BossMultiplier");
+                    return false;
+                }
+
+                if (!FinalizeModeEFSpawnPostprocessJob(job))
+                {
+                    CompleteModeEFSpawnPostprocessJobFailure(job, "commit_failed", destroyCharacter: true);
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[SpawnCore] [ERROR] ProcessModeEFSpawnPostprocessJobStep 失败: " + e.Message);
+                CompleteModeEFSpawnPostprocessJobFailure(job, "postprocess_exception", destroyCharacter: true);
+                return true;
+            }
+        }
+
+        private bool FinalizeModeEFSpawnPostprocessJob(ModeEFSpawnPostprocessJob job)
+        {
+            CharacterMainControl character = job.context.character;
+            if (character == null || character.gameObject == null)
+            {
+                return false;
+            }
+
+            character.gameObject.SetActive(true);
+            MutatorManager.ApplyToEnemy(character);
+
+            if (job.context.isBoss && !job.skipBossRushLootTracking)
+            {
+                try
+                {
+                    int originalLootCount = 0;
+                    if (character.CharacterItem != null && character.CharacterItem.Inventory != null)
+                    {
+                        originalLootCount = 3;
+                    }
+
+                    RegisterBossRandomLootTracking(character, originalLootCount);
+                    DevLog("[SpawnCore] 已注册 Boss 掉落追踪: " + job.context.preset.displayName
+                        + " (原始掉落数量=" + originalLootCount + ")");
+                }
+                catch (Exception lootTrackEx)
+                {
+                    DevLog("[SpawnCore] [WARNING] 注册 Boss 掉落追踪失败: " + lootTrackEx.Message);
+                }
+            }
+
+            if (!InvokeSpawnCoreCommitCallback(job.onCommit, job.context))
+            {
+                return false;
+            }
+
+            job.profiler.Mark("Commit");
+            job.profiler.Complete("success");
+            job.completionSource.TrySetResult(EnemySpawnCoreResult.Succeeded(job.context, job.actualPreset));
+            return true;
+        }
+
+        private void CompleteModeEFSpawnPostprocessJobFailure(
+            ModeEFSpawnPostprocessJob job,
+            string reason,
+            bool destroyCharacter)
+        {
+            if (job == null)
+            {
+                return;
+            }
+
+            CharacterMainControl character = null;
+            try { character = job.context != null ? job.context.character : null; } catch {}
+
+            try
+            {
+                if (job.equipmentPlan != null)
+                {
+                    CleanupSharedModeEnemyEquipmentMaterializationPlan(job.equipmentPlan);
+                }
+            }
+            catch (Exception cleanupPlanEx)
+            {
+                DevLog("[SpawnCore] [WARNING] 清理延后配装计划失败: " + cleanupPlanEx.Message);
+            }
+
+            if (destroyCharacter && character != null)
+            {
+                try
+                {
+                    if (character.gameObject != null)
+                    {
+                        UnityEngine.Object.Destroy(character.gameObject);
+                    }
+                }
+                catch (Exception destroyEx)
+                {
+                    DevLog("[SpawnCore] [WARNING] 销毁后处理失败角色异常: " + destroyEx.Message);
+                }
+            }
+
+            job.profiler.Complete(reason);
+            job.completionSource.TrySetResult(EnemySpawnCoreResult.Failed(reason, job.actualPreset));
+        }
+
+        private bool InvokeSpawnCoreCommitCallback(Func<EnemySpawnContext, bool> onCommit, EnemySpawnContext context)
+        {
+            if (onCommit == null)
+            {
+                return true;
+            }
+
+            try
+            {
+                return onCommit.Invoke(context);
+            }
+            catch (Exception commitEx)
+            {
+                DevLog("[SpawnCore] [WARNING] 提交回调执行异常: " + commitEx.Message);
+                return false;
+            }
+        }
+
         /// <summary>
         /// 通用敌人生成核心方法
         /// <para>处理预设查找、重试、龙裔遗族/龙王特殊生成、大兴兴标记、属性标准化等通用流程。</para>
@@ -140,7 +513,9 @@ namespace BossRush
             bool applyBossMultiplier = true,
             CharacterRandomPreset directPreset = null,
             bool skipBossRushLootTracking = false,
-            bool normalizeDamageMultiplier = true)
+            bool normalizeDamageMultiplier = true,
+            bool deferActivationUntilNextFrame = false,
+            Func<EnemySpawnContext, bool> onCommit = null)
         {
             SpawnEnemyCoreFireAndForgetAsync(
                 preset,
@@ -156,7 +531,9 @@ namespace BossRush
                 applyBossMultiplier,
                 directPreset,
                 skipBossRushLootTracking,
-                normalizeDamageMultiplier).Forget();
+                normalizeDamageMultiplier,
+                deferActivationUntilNextFrame,
+                onCommit).Forget();
         }
 
         private async UniTaskVoid SpawnEnemyCoreFireAndForgetAsync(
@@ -173,7 +550,9 @@ namespace BossRush
             bool applyBossMultiplier = true,
             CharacterRandomPreset directPreset = null,
             bool skipBossRushLootTracking = false,
-            bool normalizeDamageMultiplier = true)
+            bool normalizeDamageMultiplier = true,
+            bool deferActivationUntilNextFrame = false,
+            Func<EnemySpawnContext, bool> onCommit = null)
         {
             EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(
                 preset,
@@ -187,7 +566,9 @@ namespace BossRush
                 applyBossMultiplier,
                 directPreset,
                 skipBossRushLootTracking,
-                normalizeDamageMultiplier);
+                normalizeDamageMultiplier,
+                deferActivationUntilNextFrame,
+                onCommit);
 
             if (result != null && result.success)
             {
@@ -222,7 +603,9 @@ namespace BossRush
             bool applyBossMultiplier = true,
             CharacterRandomPreset directPreset = null,
             bool skipBossRushLootTracking = false,
-            bool normalizeDamageMultiplier = true)
+            bool normalizeDamageMultiplier = true,
+            bool deferActivationUntilNextFrame = false,
+            Func<EnemySpawnContext, bool> onCommit = null)
         {
             try
             {
@@ -283,7 +666,8 @@ namespace BossRush
                                 character = await SpawnDragonDescendant(
                                     position,
                                     isChildProtectionSummon: false,
-                                    notifyBossRushOnFailure: false);
+                                    notifyBossRushOnFailure: false,
+                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame);
                             }
                             catch (Exception dragonEx)
                             {
@@ -297,7 +681,10 @@ namespace BossRush
                         {
                             try
                             {
-                                character = await SpawnDragonKing(position, notifyBossRushOnFailure: false);
+                                character = await SpawnDragonKing(
+                                    position,
+                                    notifyBossRushOnFailure: false,
+                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame);
                             }
                             catch (Exception kingEx)
                             {
@@ -311,7 +698,10 @@ namespace BossRush
                         {
                             try
                             {
-                                character = await SpawnPhantomWitch(position, notifyBossRushOnFailure: false);
+                                character = await SpawnPhantomWitch(
+                                    position,
+                                    notifyBossRushOnFailure: false,
+                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame);
                             }
                             catch (Exception witchEx)
                             {
@@ -355,13 +745,9 @@ namespace BossRush
                             continue;
                         }
 
-                        // 判断是否为龙裔/龙王专用生成路径
-                        // 龙裔/龙王在 SpawnDragonDescendant/SpawnDragonKing 内部已完成：
-                        //   - 属性设置、装备配置、能力控制器初始化
-                        //   - ApplyBossStatMultiplier（全局倍率）
-                        //   - SetActive(true)（角色激活）
-                        // 因此这里需要跳过重复操作，并在 Yield 之前立即调用 onSpawned
-                        // 以确保 Mode E 的 SetTeam 在角色激活后尽快执行
+                        // 判断是否为 BossRush 自定义特殊 Boss。
+                        // 这些 Boss 在各自生成方法内自管装备、能力、激活与掉落追踪；
+                        // SpawnCore 这里只补统一的伤害倍率归一化、Mutator 和提交回调。
                         bool isManagedBossSpawn = IsManagedBossPreset(currentPreset);
 
                         if (isManagedBossSpawn)
@@ -408,6 +794,23 @@ namespace BossRush
                             // 应用变异词条效果到特殊Boss
                             MutatorManager.ApplyToEnemy(character);
 
+                            if (!InvokeSpawnCoreCommitCallback(onCommit, ctx))
+                            {
+                                try
+                                {
+                                    if (character.gameObject != null)
+                                    {
+                                        UnityEngine.Object.Destroy(character.gameObject);
+                                    }
+                                }
+                                catch (Exception destroyOnCommitEx)
+                                {
+                                    DevLog("[SpawnCore] [WARNING] 特殊Boss提交失败后销毁异常: " + destroyOnCommitEx.Message);
+                                }
+
+                                return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
+                            }
+
                             DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
                             return EnemySpawnCoreResult.Succeeded(ctx, currentPreset);
                         }
@@ -433,6 +836,24 @@ namespace BossRush
                             {
                                 // 统一伤害倍率
                                 NormalizeDamageMultiplier(character);
+                            }
+
+                            if (deferActivationUntilNextFrame)
+                            {
+                                SharedModeEnemyEquipmentMaterializationPlan equipmentPlan = applyEquipment
+                                    ? CreateSharedModeEnemyEquipmentMaterializationPlan(character, waveIndex, currentPreset.baseHealth, isBoss)
+                                    : null;
+
+                                return await ScheduleModeEFSpawnPostprocessAsync(
+                                    character,
+                                    currentPreset,
+                                    isBoss,
+                                    position,
+                                    isActiveCheck,
+                                    equipmentPlan,
+                                    applyBossMultiplier,
+                                    skipBossRushLootTracking,
+                                    onCommit);
                             }
 
                             // 应用配装（Boss 保留原有头盔和护甲）
@@ -481,6 +902,14 @@ namespace BossRush
                                 isBoss = isBoss,
                                 position = position
                             };
+
+                            if (!InvokeSpawnCoreCommitCallback(onCommit, ctx))
+                            {
+                                UnityEngine.Object.Destroy(character.gameObject);
+                                DevLog("[SpawnCore] 提交回调失败，销毁普通Boss: " + currentPreset.displayName);
+                                return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
+                            }
+
                             DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
                             return EnemySpawnCoreResult.Succeeded(ctx, currentPreset);
                         }

@@ -529,23 +529,7 @@ namespace BossRush
                         }
 
                         CleanupModeFBossRuntimeState(boss, bossTeam);
-
-                        if (!(boss == null) && boss.gameObject != null)
-                        {
-                            boss.dropBoxOnDead = false;
-                            Health health = boss.Health;
-                            if (health != null && !health.IsDead)
-                            {
-                                DamageInfo dmgInfo = new DamageInfo();
-                                dmgInfo.damageValue = health.MaxHealth * 10f;
-                                dmgInfo.ignoreArmor = true;
-                                health.Hurt(dmgInfo);
-                            }
-                            else
-                            {
-                                UnityEngine.Object.Destroy(boss.gameObject);
-                            }
-                        }
+                        RetireModeFActiveBossAtExit(boss);
                     },
                     (e, boss) => DevLog("[ModeF] [WARNING] Cleanup active boss failed: " + e.Message));
 
@@ -575,6 +559,7 @@ namespace BossRush
                 // 重置状态
                 modeFState.Reset();
                 modeFActiveBossSet.Clear();
+                ClearModeFBossRegenCache();
                 ClearEnemyRecoveryMonitorState();
                 ClearAllModeFBossPlunderLootState();
 
@@ -590,6 +575,67 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] ExitModeF 失败: " + e.Message);
+            }
+        }
+
+        private void RetireModeFActiveBossAtExit(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null))
+            {
+                return;
+            }
+
+            try
+            {
+                AICharacterController ai = null;
+                try { ai = GetModeFBossAIController(boss); } catch { }
+                if (ai != null)
+                {
+                    try { ai.searchedEnemy = null; } catch { }
+                    try { ai.noticed = false; } catch { }
+                    try { ai.forceTracePlayerDistance = 0f; } catch { }
+                    try { ai.enabled = false; } catch { }
+                }
+
+                try { boss.SetRunInput(false); } catch { }
+                try { boss.dropBoxOnDead = false; } catch { }
+
+                GameObject bossObject = null;
+                try { bossObject = boss.gameObject; } catch { }
+                if (bossObject == null)
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (bossObject.activeSelf)
+                    {
+                        bossObject.SetActive(false);
+                    }
+                }
+                catch { }
+
+                StartCoroutine(DestroyModeFExitBossDeferred(bossObject));
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] RetireModeFActiveBossAtExit failed: " + e.Message);
+            }
+        }
+
+        private System.Collections.IEnumerator DestroyModeFExitBossDeferred(GameObject bossObject)
+        {
+            if (bossObject == null)
+            {
+                yield break;
+            }
+
+            yield return new WaitForSeconds(0.25f);
+
+            if (bossObject != null)
+            {
+                UnityEngine.Object.Destroy(bossObject);
             }
         }
 

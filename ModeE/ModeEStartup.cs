@@ -87,6 +87,8 @@ namespace BossRush
             modeEPlayerFaction = Teams.player;
             modeEAliveEnemies.Clear();
             modeEAliveEnemySet.Clear();
+            ClearModeEBossRegenCache();
+            ClearModeEFSpawnPostprocessScheduler();
             modeEAliveEnemyFactionMap.Clear();
             modeEFactionDeathCount.Clear();
             modeEFactionAliveMap.Clear();
@@ -109,7 +111,6 @@ namespace BossRush
             {
                 modeESpawnAllocation = null;
                 modeEFlattenedSpawnPoints = null;
-                modeECachedSmokeVfxPrefab = null;
             }
 
             if (clearSpawnerCache)
@@ -295,6 +296,18 @@ namespace BossRush
 
             yield return StartCoroutine(WarmModeEMerchantCachesAsync());
             profiler.Mark("WarmModeEMerchantCachesAsync");
+            yield return null;
+
+            if (!TryRunModeEStartupWarmupStep(
+                PrewarmModeESmokeVfxPrefab,
+                profiler,
+                "PrewarmModeESmokeVfxPrefab",
+                "PrepareModeEStartup.PrewarmModeESmokeVfxPrefab",
+                sceneName))
+            {
+                yield break;
+            }
+
             profiler.Complete();
             ClearModeEStartupWarmupCoroutine(sceneName);
         }

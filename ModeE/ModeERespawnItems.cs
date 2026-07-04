@@ -81,48 +81,65 @@ namespace BossRush
 
         /// <summary>
         /// 获取距离玩家最近的N个刷怪点
-        /// 从 modeESpawnAllocation 合并所有阵营刷怪点，按距离玩家排序，取前 count 个
+        /// 从 modeESpawnAllocation 合并所有阵营刷怪点，按距离玩家选择前 count 个
         /// 不足 count 个时返回全部
         /// </summary>
         private List<Vector3> GetNearestSpawnPoints(int count)
         {
             Vector3[] cachedPoints = GetModeEFlattenedSpawnPoints();
-            List<Vector3> allPoints = modeERespawnSpawnPointScratch;
-            allPoints.Clear();
-            if (cachedPoints.Length > 0)
+            List<Vector3> nearestPoints = modeERespawnSpawnPointScratch;
+            nearestPoints.Clear();
+            if (count <= 0 || cachedPoints.Length <= 0)
             {
-                if (allPoints.Capacity < cachedPoints.Length)
-                {
-                    allPoints.Capacity = cachedPoints.Length;
-                }
-
-                for (int i = 0; i < cachedPoints.Length; i++)
-                {
-                    allPoints.Add(cachedPoints[i]);
-                }
+                return nearestPoints;
             }
 
-            if (allPoints.Count == 0) return allPoints;
+            int targetCount = Mathf.Min(count, cachedPoints.Length);
+            int requiredCapacity = targetCount + 1;
+            if (nearestPoints.Capacity < requiredCapacity)
+            {
+                nearestPoints.Capacity = requiredCapacity;
+            }
 
             // 获取玩家位置
             Vector3 playerPos = Vector3.zero;
             CharacterMainControl playerRef = CharacterMainControl.Main;
             if (playerRef != null) playerPos = playerRef.transform.position;
 
-            // 按距离玩家由近到远排序
-            allPoints.Sort((a, b) =>
+            // 维护固定容量 top-N，避免大图全量排序。
+            for (int i = 0; i < cachedPoints.Length; i++)
             {
-                float distA = Vector3.SqrMagnitude(a - playerPos);
-                float distB = Vector3.SqrMagnitude(b - playerPos);
-                return distA.CompareTo(distB);
-            });
-
-            if (allPoints.Count > count)
-            {
-                allPoints.RemoveRange(count, allPoints.Count - count);
+                InsertNearestModeERespawnPoint(nearestPoints, cachedPoints[i], playerPos, targetCount);
             }
 
-            return allPoints;
+            return nearestPoints;
+        }
+
+        private void InsertNearestModeERespawnPoint(List<Vector3> nearestPoints, Vector3 candidate, Vector3 playerPos, int targetCount)
+        {
+            float candidateDistanceSqr = Vector3.SqrMagnitude(candidate - playerPos);
+            int insertIndex = nearestPoints.Count;
+            while (insertIndex > 0)
+            {
+                float existingDistanceSqr = Vector3.SqrMagnitude(nearestPoints[insertIndex - 1] - playerPos);
+                if (candidateDistanceSqr >= existingDistanceSqr)
+                {
+                    break;
+                }
+
+                insertIndex--;
+            }
+
+            if (insertIndex >= targetCount)
+            {
+                return;
+            }
+
+            nearestPoints.Insert(insertIndex, candidate);
+            if (nearestPoints.Count > targetCount)
+            {
+                nearestPoints.RemoveAt(nearestPoints.Count - 1);
+            }
         }
 
         /// <summary>
@@ -215,6 +232,16 @@ namespace BossRush
                     DevLog("[ModeE] [WARNING] 清理原版烟雾弹临时物体失败: " + destroyEx.Message);
                 }
             }
+        }
+
+        private void PrewarmModeESmokeVfxPrefab()
+        {
+            if (modeECachedSmokeVfxPrefab != null)
+            {
+                return;
+            }
+
+            GetModeESmokeVfxPrefab();
         }
 
         private void PlaySmokeVFX()
@@ -368,21 +395,27 @@ namespace BossRush
             out int respawnCount)
         {
             respawnCount = 0;
+            ModeEFSpawnProfiler profiler = new ModeEFSpawnProfiler("ModeERespawn", itemNameEn);
             if (points == null || points.Count == 0)
             {
+                profiler.Complete("failed: no points");
                 return false;
             }
 
             if (!CanUseModeERespawnItem(true))
             {
+                profiler.Complete("failed: gate rejected");
                 return false;
             }
+            profiler.Mark("GateCheck");
 
             int availableSlots = GetModeERespawnAvailableSpawnSlots();
             if (availableSlots <= 0)
             {
+                profiler.Complete("failed: no slots");
                 return false;
             }
+            profiler.Mark("ResolveSlots");
 
             int acceptedPointCount = points.Count;
             if (points.Count > availableSlots)
@@ -395,17 +428,19 @@ namespace BossRush
             }
 
             List<Vector3> acceptedPoints = CopyModeERespawnAcceptedPoints(points, acceptedPointCount);
+            profiler.Mark("ClipAcceptedPoints");
 
             respawnCount = acceptedPoints.Count;
             if (respawnCount <= 0)
             {
+                profiler.Complete("failed: accepted 0");
                 return false;
             }
 
             int modeESessionToken = CurrentModeESessionToken;
             int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
             modeERespawnTaskRunning = true;
-            RespawnBossesAtPoints(acceptedPoints, modeESessionToken, relatedScene).Forget();
+            RespawnBossesAtPoints(acceptedPoints, modeESessionToken, relatedScene, profiler).Forget();
             return true;
         }
 
@@ -414,17 +449,23 @@ namespace BossRush
         /// 遍历刷怪点，随机选择阵营，调用 SpawnSingleModeEBoss
         /// 新 Boss 自动注册到 modeEAliveEnemies 和 modeEFactionAliveMap（由 OnModeEEnemySpawned 处理）
         /// </summary>
-        private async UniTaskVoid RespawnBossesAtPoints(List<Vector3> points, int modeESessionToken, int relatedScene)
+        private async UniTaskVoid RespawnBossesAtPoints(
+            List<Vector3> points,
+            int modeESessionToken,
+            int relatedScene,
+            ModeEFSpawnProfiler profiler)
         {
             try
             {
                 if (points == null || points.Count == 0)
                 {
                     DevLog("[ModeE] RespawnBossesAtPoints: 刷怪点列表为空，跳过");
+                    if (profiler != null) profiler.Complete("failed: no points");
                     return;
                 }
 
                 DevLog("[ModeE] 开始重生Boss，刷怪点数量: " + points.Count);
+                if (profiler != null) profiler.Mark("BeginDispatch");
 
                 for (int i = 0; i < points.Count; i++)
                 {
@@ -453,10 +494,12 @@ namespace BossRush
                 }
 
                 DevLog("[ModeE] Boss 重生任务完成");
+                if (profiler != null) profiler.Complete("success");
             }
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] RespawnBossesAtPoints 失败: " + e.Message);
+                if (profiler != null) profiler.Complete("failed: exception");
             }
             finally
             {

@@ -67,8 +67,9 @@ def main() -> int:
         return fail("missing RespawnModeFBossAsync")
     for needle, message in (
         ("EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(", "Mode F respawn must await observable spawn core completion"),
+        ("onCommit: (ctx) => ConfigureModeFRespawnedBoss(ctx, selectedDragonDescendant, spawnPos)", "Mode F respawn must commit registration inside the spawn-core activation barrier"),
         ("CompleteModeFBossRespawnAttempt(false, true);", "Mode F respawn failures must requeue through the existing completion path"),
-        ("CompleteModeFBossRespawnAttempt(configured, true);", "Mode F respawn success must complete through the existing completion path"),
+        ("CompleteModeFBossRespawnAttempt(true, true);", "Mode F respawn success must complete through the existing completion path"),
         ("skipDragonDescendant: !selectedDragonDescendant", "Mode F respawn must preserve dragon descendant skip semantics"),
         ("skipDragonKing: true", "Mode F respawn must still skip dragon king"),
     ):

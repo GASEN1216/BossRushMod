@@ -16,6 +16,8 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> modeFBossLootHandlers
             = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
         private readonly HashSet<CharacterMainControl> modeFActiveBossSet = new HashSet<CharacterMainControl>();
+        private readonly List<MonoBehaviour> modeFBossRegenCache = new List<MonoBehaviour>(16);
+        private bool modeFBossRegenCacheDirty = true;
         private readonly HashSet<int> modeFHandledBossDeathIds = new HashSet<int>();
         private int modeFPendingRespawnCount = 0;
         private int modeFRespawnInFlightCount = 0;
@@ -109,6 +111,37 @@ namespace BossRush
             }
         }
 
+        private void MarkModeFBossRegenCacheDirty()
+        {
+            modeFBossRegenCacheDirty = true;
+        }
+
+        private void ClearModeFBossRegenCache()
+        {
+            modeFBossRegenCache.Clear();
+            modeFBossRegenCacheDirty = false;
+        }
+
+        private List<MonoBehaviour> GetModeFBossRegenCache()
+        {
+            if (!modeFBossRegenCacheDirty)
+            {
+                return modeFBossRegenCache;
+            }
+
+            modeFBossRegenCache.Clear();
+            foreach (CharacterMainControl boss in modeFActiveBossSet)
+            {
+                if (boss != null)
+                {
+                    modeFBossRegenCache.Add(boss);
+                }
+            }
+
+            modeFBossRegenCacheDirty = false;
+            return modeFBossRegenCache;
+        }
+
         private void EnsureModeFBossHasBaseBountyMark(CharacterMainControl boss)
         {
             if (boss == null || !modeFActive || !IsModeFBountyPhaseActive())
@@ -178,7 +211,11 @@ namespace BossRush
                 return false;
             }
 
-            modeFActiveBossSet.Remove(boss);
+            bool removedFromSet = modeFActiveBossSet.Remove(boss);
+            if (removedFromSet)
+            {
+                MarkModeFBossRegenCacheDirty();
+            }
 
             bool removed = false;
             for (int i = modeFState.ActiveBosses.Count - 1; i >= 0; i--)
@@ -249,6 +286,27 @@ namespace BossRush
             catch (Exception marksEx)
             {
                 DevLog("[ModeF] [WARNING] " + context + " 清理悬赏印记失败: " + marksEx.Message);
+                return false;
+            }
+        }
+
+        private bool TryGetModeFBossInstanceId(CharacterMainControl boss, out int bossId, string context)
+        {
+            bossId = 0;
+            if (object.ReferenceEquals(boss, null))
+            {
+                return false;
+            }
+
+            try
+            {
+                bossId = boss.GetInstanceID();
+                return bossId != 0;
+            }
+            catch (Exception idEx)
+            {
+                DevLog("[ModeF] [WARNING] " + context + " 读取Boss实例ID失败: " + idEx.Message);
+                bossId = 0;
                 return false;
             }
         }
@@ -363,33 +421,47 @@ namespace BossRush
             bool removeBountyMarks = true,
             bool clearLootResolutionState = true)
         {
-            if (!object.ReferenceEquals(boss, null))
+            try
             {
-                if (!faction.HasValue)
+                if (!object.ReferenceEquals(boss, null))
                 {
-                    faction = TryGetModeFBossTeam(boss, "CleanupModeFBossRuntimeState");
+                    if (!faction.HasValue)
+                    {
+                        faction = TryGetModeFBossTeam(boss, "CleanupModeFBossRuntimeState");
+                    }
+
+                    RemoveModeFBossGrowthModifiers(boss);
+                    modeFBossForcedTargets.Remove(boss);
+                    ApplyModeFBossMoveSpeedModifier(boss, 0f);
+                    modeFBossAiControllers.Remove(boss);
+                    if (modeFActiveBossSet.Remove(boss))
+                    {
+                        MarkModeFBossRegenCacheDirty();
+                    }
                 }
 
-                RemoveModeFBossGrowthModifiers(boss);
-                modeFBossForcedTargets.Remove(boss);
-                ApplyModeFBossMoveSpeedModifier(boss, 0f);
-                modeFBossAiControllers.Remove(boss);
-                modeFActiveBossSet.Remove(boss);
+                CleanupModeESharedRuntimeForModeFBoss(boss, faction);
+                UnregisterModeFBossLoot(boss);
+                UnregisterModeFBossDeath(boss);
+
+                if (clearLootResolutionState)
+                {
+                    ClearModeFBossPlunderLootState(boss);
+                    ClearBossRandomLootTracking(boss);
+                }
+
+                if (removeBountyMarks)
+                {
+                    int bossId;
+                    if (TryGetModeFBossInstanceId(boss, out bossId, "CleanupModeFBossRuntimeState"))
+                    {
+                        TryRemoveModeFBountyMarks(bossId, "CleanupModeFBossRuntimeState");
+                    }
+                }
             }
-
-            CleanupModeESharedRuntimeForModeFBoss(boss, faction);
-            UnregisterModeFBossLoot(boss);
-            UnregisterModeFBossDeath(boss);
-
-            if (clearLootResolutionState)
+            catch (Exception e)
             {
-                ClearModeFBossPlunderLootState(boss);
-                ClearBossRandomLootTracking(boss);
-            }
-
-            if (removeBountyMarks && !object.ReferenceEquals(boss, null))
-            {
-                TryRemoveModeFBountyMarks(boss.GetInstanceID(), "CleanupModeFBossRuntimeState");
+                DevLog("[ModeF] [WARNING] CleanupModeFBossRuntimeState failed: " + e.Message);
             }
         }
 
@@ -405,6 +477,7 @@ namespace BossRush
                 bool isNewBoss = modeFActiveBossSet.Add(boss);
                 if (isNewBoss)
                 {
+                    MarkModeFBossRegenCacheDirty();
                     modeFState.ActiveBosses.Add(boss);
                 }
 
@@ -681,20 +754,25 @@ namespace BossRush
         private async UniTaskVoid RespawnModeFBossAsync()
         {
             bool selectedDragonDescendant = false;
+            ModeEFSpawnProfiler profiler = new ModeEFSpawnProfiler("ModeFRespawn", "DeathRefill");
             try
             {
                 if (!modeFActive)
                 {
+                    profiler.Complete("skipped: inactive");
                     CompleteModeFBossRespawnAttempt(false, false);
                     return;
                 }
 
                 EnsureModeEFSpawnPoolsReady("ModeF.RespawnModeFBoss");
+                profiler.Mark("EnsureSpawnPools");
                 Vector3 spawnPos = FindSpawnPointAwayFromPlayer(50f);
+                profiler.Mark("ResolveSpawnPoint");
                 EnemyPresetInfo preset = GetRandomModeFRespawnBossPreset();
                 if (preset == null)
                 {
                     DevLog("[ModeF] [WARNING] RespawnModeFBoss: no boss preset is available.");
+                    profiler.Complete("failed: no preset");
                     CompleteModeFBossRespawnAttempt(false, true);
                     return;
                 }
@@ -706,6 +784,7 @@ namespace BossRush
                 {
                     modeEDragonDescendantSpawned = true;
                 }
+                profiler.Mark("PickPreset");
 
                 DevLog("[ModeF] [RESPAWN] request preset=" + preset.displayName + " | pos=" + spawnPos);
 
@@ -716,8 +795,11 @@ namespace BossRush
                     () => IsModeFSessionStillValid(modeFSessionToken, relatedScene),
                     1,
                     skipDragonDescendant: !selectedDragonDescendant,
-                    skipDragonKing: true
+                    skipDragonKing: true,
+                    deferActivationUntilNextFrame: true,
+                    onCommit: (ctx) => ConfigureModeFRespawnedBoss(ctx, selectedDragonDescendant, spawnPos)
                 );
+                profiler.Mark("AwaitSpawnCore");
 
                 if (result == null || !result.success)
                 {
@@ -729,12 +811,13 @@ namespace BossRush
                     string reason = result != null ? result.failureReason : "null result";
                     DevLog("[ModeF] [WARNING] Failed to spawn replacement boss: " + reason);
                     DevLog("[ModeF] [RESPAWN] spawnFailed");
+                    profiler.Complete("failed: " + reason);
                     CompleteModeFBossRespawnAttempt(false, true);
                     return;
                 }
 
-                bool configured = ConfigureModeFRespawnedBoss(result.context, selectedDragonDescendant, spawnPos);
-                CompleteModeFBossRespawnAttempt(configured, true);
+                profiler.Complete("success");
+                CompleteModeFBossRespawnAttempt(true, true);
             }
             catch (Exception e)
             {
@@ -744,6 +827,7 @@ namespace BossRush
                     modeEDragonDescendantSpawned = false;
                 }
 
+                profiler.Complete("failed: exception");
                 CompleteModeFBossRespawnAttempt(false, true);
             }
         }

@@ -90,7 +90,8 @@ def main() -> int:
         (phases, "RefreshModeFBossTargets();", "Mode F target refresh call baseline missing"),
         (respawn_f, "modeFPendingRespawnCount += count;", "Mode F death respawn must keep pending count semantics"),
         (respawn_f, "modeFRespawnInFlightCount += 1;", "Mode F death respawn must keep in-flight count semantics"),
-        (respawn_f, "CompleteModeFBossRespawnAttempt(configured, true);", "Mode F respawn success/failure completion baseline missing"),
+        (respawn_f, "onCommit: (ctx) => ConfigureModeFRespawnedBoss(ctx, selectedDragonDescendant, spawnPos)", "Mode F respawn must still finish registration through the shared commit barrier"),
+        (respawn_f, "CompleteModeFBossRespawnAttempt(true, true);", "Mode F respawn success completion baseline missing"),
     ):
         result = require(text, needle, message)
         if result is not None:

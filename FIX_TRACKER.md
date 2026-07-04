@@ -39,6 +39,51 @@
 ```
 
 ---
+### 2026-07-04 Mode E/F 刷怪卡顿低风险优化
+
+**状态**: fixed
+**Finding**: 无（玩家反馈 + `docs/测试分析/2026-07-03_ModeE刷怪卡顿无行为优化审查.md` 静态审查建议）
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 用户要求按审查文档执行；当前工作区已补齐普通 Boss plan 化/隐藏物化、Mode E/F 共享 postprocess scheduler、提交屏障，以及三类自定义特殊 Boss 的 Mode E/F 显式 deferred activation。P0 现有 dev 日志仅覆盖 Mode E 开局，剩余三类场景仍需同机 profiler 复测。
+**现象**: 玩家反馈 Mode E/F 刷怪时仍会“一卡一卡”，尤其单只 Boss 生成配置链和重刷道具连续生成时容易产生主观尖刺。
+**根因**: 静态核对显示普通 Boss 的配装/倍率/激活/变异词条/掉落追踪与 Mode E/F 登记回调仍会压到相邻帧；BossRegen 词条开启时 Mode E/F 还会每帧重建存活 Boss 列表；挑衅烟雾弹首次使用时会同步解析原版烟雾 VFX；最近点选择仍对全量点排序。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `ModBehaviour.cs`
+- 修改文件: `Utilities/EnemySpawnCore.cs`
+- 修改文件: `Utilities/ModeRuntimeHooks.cs`
+- 修改文件: `ModeE/ModeE.cs`
+- 修改文件: `ModeE/ModeEStartup.cs`
+- 修改文件: `ModeE/ModeEIntegrityAndHelpers.cs`
+- 修改文件: `ModeE/ModeERespawnItems.cs`
+- 修改文件: `ModeE/ModeEBattle.cs`
+- 修改文件: `ModeF/ModeFEntry.cs`
+- 修改文件: `ModeF/ModeFPhases.cs`
+- 修改文件: `ModeF/ModeFRespawn.cs`
+ - 修改文件: `Integration/DragonDescendant/DragonDescendantBoss.cs`
+ - 修改文件: `Integration/DragonKing/DragonKingBoss.cs`
+ - 修改文件: `Integration/PhantomWitch/PhantomWitchBoss.cs`
+ - 修改文件: `tests/ModeEFSpawnPostprocessSchedulerGuard.py`
+ - 修改文件: `tests/ManagedSpecialBossDeferredActivationGuard.py`
+ - 修改文件: `tests/ModeESpawnFailureResolutionGuard.py`
+**兼容性影响**: 不改 Boss 数量、阵营、刷怪点、安全距离、重刷 250ms 节奏、掉落/奖励、TypeID、配置或存档 schema。新增普通 Boss 激活前一帧屏障默认关闭，仅 Mode E/F 显式启用；不会出现已激活但未登记的跨帧窗口。BossRegen 仍在有非空缓存时每帧调用 `TickBossRegen` 推进内部 10 秒计时。
+**验证方法**:
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_dev.bat"` 通过
+2. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过
+3. Guard: `python tests\\ModeEFSpawnPostprocessSchedulerGuard.py` 通过
+4. Guard: `python tests\\ManagedSpecialBossDeferredActivationGuard.py` 通过
+5. Guard: `python tests\\EnemySpawnCoreObservableGuard.py` 通过
+6. Guard: `python tests\\ModeFRespawnObservableSpawnGuard.py` 通过
+7. Guard: `python tests\\ModeEFSpawnParityGuard.py` 通过
+8. Guard: `python tests\\ModeESpawnFailureResolutionGuard.py` 通过
+9. Guard: `python tests\\ArchitectureStructureGuard.py` 通过
+10. 人工 smoke: 未运行
+11. dev/profiler 日志: 2026-07-04 `latest.log` / `2026-07-04_11-20-22.log` 已覆盖 `PrepareModeEStartup`、`StartModeE` 与普通 Boss `ModeEFSpawnPostprocess`
+**未验证/需人工**: 现有本机 dev 日志未覆盖 `ModeERespawn`（挑衅烟雾弹重刷）、`StartModeF`（Mode F 开局批量刷怪）、`ModeFRespawn`（Mode F 死亡补位）。已按文档实现并通过编译/guard，但仍需实机 profiler 与游戏内 smoke 才能断言问题已解决。
+**失败尝试**: 无
+
+---
 ### 2026-07-02 进存档时卡死在许愿台弹幕预热
 **状态**: fixed
 **Finding**: `Player.log` 排查

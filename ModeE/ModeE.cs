@@ -57,6 +57,10 @@ namespace BossRush
         /// <summary>Mode E 存活敌人的去重集合，避免重复注册导致列表和扫描路径膨胀。</summary>
         private readonly HashSet<CharacterMainControl> modeEAliveEnemySet = new HashSet<CharacterMainControl>();
 
+        /// <summary>BossRegen 专用缓存，避免变异词条开启时每帧重建存活列表。</summary>
+        private readonly List<MonoBehaviour> modeEBossRegenCache = new List<MonoBehaviour>(32);
+        private bool modeEBossRegenCacheDirty = true;
+
         /// <summary>Mode E 存活敌人的阵营缓存，避免清理路径回退到全阵营扫描。</summary>
         private readonly Dictionary<CharacterMainControl, Teams> modeEAliveEnemyFactionMap
             = new Dictionary<CharacterMainControl, Teams>();

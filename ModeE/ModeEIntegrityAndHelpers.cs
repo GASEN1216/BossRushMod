@@ -36,6 +36,7 @@ namespace BossRush
                     if (object.ReferenceEquals(enemy, null))
                     {
                         modeEAliveEnemies.RemoveAt(i);
+                        MarkModeEBossRegenCacheDirty();
                         removedCount++;
                         continue;
                     }
@@ -101,6 +102,38 @@ namespace BossRush
         #endregion
 
         #region Mode E 辅助方法
+
+        private void MarkModeEBossRegenCacheDirty()
+        {
+            modeEBossRegenCacheDirty = true;
+        }
+
+        private void ClearModeEBossRegenCache()
+        {
+            modeEBossRegenCache.Clear();
+            modeEBossRegenCacheDirty = false;
+        }
+
+        private List<MonoBehaviour> GetModeEBossRegenCache()
+        {
+            if (!modeEBossRegenCacheDirty)
+            {
+                return modeEBossRegenCache;
+            }
+
+            modeEBossRegenCache.Clear();
+            for (int i = 0; i < modeEAliveEnemies.Count; i++)
+            {
+                CharacterMainControl boss = modeEAliveEnemies[i];
+                if (boss != null)
+                {
+                    modeEBossRegenCache.Add(boss);
+                }
+            }
+
+            modeEBossRegenCacheDirty = false;
+            return modeEBossRegenCache;
+        }
 
         /// <summary>
         /// 零度挑战地图专用：发放保暖装备（头盔 + 护甲）
@@ -434,6 +467,7 @@ namespace BossRush
             modeEAliveEnemies.Add(enemy);
             modeEAliveEnemyFactionMap[enemy] = faction;
             AddToFactionAliveList(faction, enemy);
+            MarkModeEBossRegenCacheDirty();
         }
 
         /// <summary>
@@ -446,8 +480,12 @@ namespace BossRush
                 return;
             }
 
-            modeEAliveEnemySet.Remove(enemy);
-            modeEAliveEnemies.Remove(enemy);
+            bool removedFromSet = modeEAliveEnemySet.Remove(enemy);
+            bool removedFromList = modeEAliveEnemies.Remove(enemy);
+            if (removedFromSet || removedFromList)
+            {
+                MarkModeEBossRegenCacheDirty();
+            }
 
             Teams trackedFaction;
             if (!faction.HasValue && modeEAliveEnemyFactionMap.TryGetValue(enemy, out trackedFaction))
