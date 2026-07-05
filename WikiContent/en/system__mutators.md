@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-At the start of every run, the system draws **1–3 random mutators** from a pool of 28 and applies them immediately for the entire run. Mutators can buff enemies, buff the player, or change environment rules — randomized every time.
+At the start of every run, the system draws **1–10 random mutators** from a pool of 28 and applies them immediately for the entire run. Mutators can buff enemies, buff the player, or change environment rules — randomized every time.
 
 > **Zombie Mode is excluded**: it has its own independent in-run buff system and does not use this mechanic.
 
@@ -25,7 +25,7 @@ At the start of every run, the system draws **1–3 random mutators** from a poo
 ### Configuration
 
 - **Toggle**: `enableMutators` (default: `true`)
-- **Count**: `mutatorCount`, range 1–3, default **2** per run
+- **Count**: `mutatorCount`, range 1–10, default **3** per run
 - Adjustable via ModConfig UI or config file
 
 ---

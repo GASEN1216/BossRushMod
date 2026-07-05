@@ -27,4 +27,4 @@ Carrying multiple entry items? The system picks by priority:
 - Standard, From Scratch, and Blood Hunt drop loot crates from Boss kills; Infinite Hell uses a cash pool; Faction War only drops crates from **enemy-faction** Bosses
 - Zombie Mode is a **standalone survival mode**: no ticket entry, its own purification-point economy — see the "Zombie Mode" page for full rules
 
-[tip] Except for Zombie Mode, all five modes roll 1–3 random "mutators" at run start, changing enemy/player/environment rules for that run. See the "Mutator System" page.
+[tip] Except for Zombie Mode, all five modes roll 1–10 random "mutators" at run start, changing enemy/player/environment rules for that run. See the "Mutator System" page.

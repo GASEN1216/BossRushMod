@@ -35,7 +35,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null) return;
 
-                int count = Mathf.Clamp(config.mutatorCount, 1, 3);
+                int count = ClampMutatorCount(config.mutatorCount);
                 MutatorManager.RollAndApply(player, count, null, modeTag);
                 MutatorUI.ShowBanner();
 

@@ -27,7 +27,7 @@ features:
     details: 哥布林工匠、护士、快递员——好感度、送礼、婚姻
   - icon: 🎲
     title: 变异词条
-    details: 每局随机 1~3 个词条，改变敌人 / 玩家 / 环境规则
+    details: 每局随机 1~10 个词条，改变敌人 / 玩家 / 环境规则
   - icon: 🔧
     title: 重铸系统
     details: 装备属性重铸 + 冷淬液锁定词条

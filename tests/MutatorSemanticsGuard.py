@@ -87,6 +87,14 @@ def main() -> int:
         return fail("mutator enable switch must be exposed through ModConfig")
     if 'ModName + "_MutatorCount"' not in config:
         return fail("mutator count must be exposed through ModConfig")
+    if "public int mutatorCount = 3;" not in config:
+        return fail("mutator count must default to 3")
+    if "private const int MutatorCountMin = 1;" not in config:
+        return fail("mutator count minimum must stay at 1")
+    if "private const int MutatorCountMax = 10;" not in config:
+        return fail("mutator count maximum must stay at 10")
+    if "ClampMutatorCount" not in config or "ClampMutatorCount(config.mutatorCount)" not in runtime_bridge:
+        return fail("mutator count clamps must use the shared 1-10 helper")
 
     # Mutators must NOT touch loot box quality / quantity / type anymore.
     forbidden_loot_symbols = [

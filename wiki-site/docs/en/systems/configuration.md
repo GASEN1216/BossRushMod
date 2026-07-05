@@ -101,9 +101,9 @@ This option is off by default. When enabled, loot crates can serve as temporary 
 - Whether to enable the per-run mutator system; when disabled, modes no longer roll mutators at run start (Zombie Mode is unaffected by this system either way)
 
 # mutatorCount
-- Default: 2
-- Range: 1-3
-- Number of mutators drawn per run
+- Default: 3
+- Range: 1-10
+- Number of mutators drawn per run, default 3
 
 # Recommended Adjustments
 - Want a faster pace: lower `waveIntervalSeconds` (for example `5-8`).

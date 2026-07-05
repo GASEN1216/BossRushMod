@@ -17,6 +17,7 @@
 //   - modeDEnemiesPerWave: 白手起家每波敌人数（1-10，默认3）
 //   - disabledBosses: 被禁用的 Boss 名称列表（用于 Boss 池筛选）
 //   - enableDeathWraithSystem: 死亡亡魂系统开关
+//   - mutatorCount: 每局变异词条数量（1-10，默认3）
 // ============================================================================
 
 using System;
@@ -75,8 +76,8 @@ namespace BossRush
             /// <summary>每局变异词条系统开关（默认开启，所有 BossRush 模式开局随机抽取词条）</summary>
             public bool enableMutators = true;
 
-            /// <summary>每局变异词条数量（1-3，默认2）</summary>
-            public int mutatorCount = 2;
+            /// <summary>每局变异词条数量（1-10，默认3）</summary>
+            public int mutatorCount = 3;
         }
         
         #endregion
@@ -85,6 +86,9 @@ namespace BossRush
         
         /// <summary>模组名称（用于 ModConfig 注册）</summary>
         private const string ModName = "BossRush";
+
+        private const int MutatorCountMin = 1;
+        private const int MutatorCountMax = 10;
         
         /// <summary>当前配置实例</summary>
         private BossRushConfig config = new BossRushConfig();
@@ -386,7 +390,7 @@ namespace BossRush
                     config.enableMutators = loadedMutators;
 
                     object mutatorCountResult = intLoadMethod.Invoke(null, new object[] { mutatorCountKey, config.mutatorCount });
-                    int loadedMutatorCount = Mathf.Clamp((int)mutatorCountResult, 1, 3);
+                    int loadedMutatorCount = ClampMutatorCount((int)mutatorCountResult);
                     config.mutatorCount = loadedMutatorCount;
 
                     DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
@@ -565,7 +569,7 @@ namespace BossRush
                 {
                     MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
                     object mutatorCountResult = intLoadMethod.Invoke(null, new object[] { mutatorCountKey, config.mutatorCount });
-                    config.mutatorCount = Mathf.Clamp((int)mutatorCountResult, 1, 3);
+                    config.mutatorCount = ClampMutatorCount((int)mutatorCountResult);
                     return true;
                 }
             }
@@ -975,7 +979,7 @@ namespace BossRush
                 // 变异词条数量
                 try
                 {
-                    int mutatorCountValue = Mathf.Clamp(config.mutatorCount, 1, 3);
+                    int mutatorCountValue = ClampMutatorCount(config.mutatorCount);
                     config.mutatorCount = mutatorCountValue;
 
                     string mutatorCountLabel = L10n.T("每局变异词条数量", "Run Mutator Count");
@@ -983,7 +987,7 @@ namespace BossRush
 
                     if (addSliderMethod != null)
                     {
-                        addSliderMethod.Invoke(null, new object[] { ModName, mutatorCountKey, mutatorCountLabel, typeof(int), mutatorCountValue, new Vector2(1f, 3f) });
+                        addSliderMethod.Invoke(null, new object[] { ModName, mutatorCountKey, mutatorCountLabel, typeof(int), mutatorCountValue, new Vector2(MutatorCountMin, MutatorCountMax) });
                         DevLog("[BossRush] 变异词条数量配置项注册成功");
                     }
                 }
@@ -1039,6 +1043,11 @@ namespace BossRush
         #endregion
         
         #region 配置访问方法
+
+        private int ClampMutatorCount(int value)
+        {
+            return Mathf.Clamp(value, MutatorCountMin, MutatorCountMax);
+        }
         
         /// <summary>
         /// 获取波次间隔时间（秒）

@@ -219,7 +219,7 @@ features:
     details: Goblin Smith, Nurse, Courier — affinity, gifting, and marriage
   - icon: 🎲
     title: Run Mutators
-    details: 1–3 random mutators per run change enemy, player, and environment rules
+    details: 1–10 random mutators per run change enemy, player, and environment rules
   - icon: 🔧
     title: Reforge System
     details: Reroll equipment stats and lock affixes with Cold Quench Fluid
