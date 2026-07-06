@@ -225,13 +225,14 @@ namespace BossRush
                 GameObject fireFx = new GameObject("DragonGun_FireExplosionFx");
                 fireFx.transform.position = position;
                 DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(fireFx);
+                float fireFxLifetime = Mathf.Clamp(fxDuration, 0.2f, 2f);
 
                 ParticleSystem[] particles = fireFx.GetComponentsInChildren<ParticleSystem>(true);
                 foreach (var ps in particles)
                 {
                     var main = ps.main;
                     main.loop = false;
-                    main.duration = 0.5f;
+                    main.duration = Mathf.Min(0.5f, fireFxLifetime);
 
                     var em = ps.emission;
                     em.rateOverDistance = 0;
@@ -246,7 +247,7 @@ namespace BossRush
                     ps.Play(true);
                 }
 
-                UnityEngine.Object.Destroy(fireFx, 2f);
+                UnityEngine.Object.Destroy(fireFx, fireFxLifetime);
                 return;
             }
 
@@ -321,7 +322,7 @@ namespace BossRush
             DragonKingBossGunHitStage hitStage,
             int sourceReceiverId = -1)
         {
-            bool useNative = profile != null && profile.UseNativeProjectile;
+            bool useNative = profile != null && profile.UseNativeProjectile && isSecondary;
             Projectile nativeProjectile = useNative ? GetNativeRocketProjectile() : null;
             Projectile baseProjectile = nativeProjectile != null ? nativeProjectile : GetDragonProjectile();
             if (baseProjectile == null || LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
@@ -368,13 +369,6 @@ namespace BossRush
                 traceAbilityOverride,
                 isSecondary,
                 hitStage);
-
-            // 原版火箭弹：设置原版爆炸参数，让 Projectile.Update() 自动处理爆炸
-            if (useNative && !isSecondary && profile.ExplosionRange > 0f)
-            {
-                context.explosionRange = profile.ExplosionRange;
-                context.explosionDamage = context.damage * Mathf.Max(0.1f, profile.ExplosionDamageFactor);
-            }
 
             projectile.transform.rotation = Quaternion.LookRotation(context.direction, Vector3.up);
             projectile.Init(context);
@@ -434,6 +428,11 @@ namespace BossRush
             }
             context.traceTarget = null;
             context.traceAbility = traceAbilityOverride >= 0f ? traceAbilityOverride : profile.TraceAbility;
+            if (isSecondary && profile.SplitGravity > 0f)
+            {
+                context.traceAbility = 0f;
+            }
+
             if (context.traceAbility > 0.01f && gun != null)
             {
                 context.traceTarget = GetTraceTarget(gun);
@@ -504,6 +503,13 @@ namespace BossRush
 
             ApplyElement(ref context, profile.Element);
 
+            if (isSecondary && profile.UseNativeProjectile && profile.SplitExplosionRange > 0f)
+            {
+                context.explosionRange = Mathf.Max(0.3f, profile.SplitExplosionRange);
+                context.explosionDamage = context.damage * Mathf.Max(0.1f, profile.SplitExplosionDamageFactor);
+            }
+
+            context.fromGunItemSetting = gun != null ? gun.GunItemSetting : null;
             context.fromWeaponItemID = gun != null && gun.Item != null ? gun.Item.TypeID : 0;
             context.buff = null;
             context.buffChance = EncodeShotMarker(shotId, profile.Id, hitStage);
@@ -641,23 +647,35 @@ namespace BossRush
 
                 case DragonKingBossGunSplitPattern.Radial:
                 {
-                    Vector3 axis = normal.sqrMagnitude > 0.001f ? normal.normalized : Vector3.up;
-                    Vector3 radialBase = Vector3.Cross(axis, Vector3.right);
-                    if (radialBase.sqrMagnitude < 0.001f)
+                    bool useParabolicScatter = profile.SplitGravity > 0f;
+                    Vector3 axis = useParabolicScatter ? Vector3.up : (normal.sqrMagnitude > 0.001f ? normal.normalized : Vector3.up);
+                    Vector3 radialBase;
+                    if (useParabolicScatter)
                     {
-                        radialBase = Vector3.Cross(axis, Vector3.forward);
+                        radialBase = Vector3.ProjectOnPlane(forward, Vector3.up);
+                        if (radialBase.sqrMagnitude < 0.001f)
+                        {
+                            radialBase = Vector3.forward;
+                        }
+                    }
+                    else
+                    {
+                        radialBase = Vector3.Cross(axis, Vector3.right);
+                        if (radialBase.sqrMagnitude < 0.001f)
+                        {
+                            radialBase = Vector3.Cross(axis, Vector3.forward);
+                        }
                     }
 
                     radialBase.Normalize();
-                    bool useParabolicScatter = profile.SplitGravity > 0f;
                     for (int i = 0; i < count; i++)
                     {
                         float angle = 360f * i / count + UnityEngine.Random.Range(-12f, 12f);
                         Vector3 dir = Quaternion.AngleAxis(angle, axis) * radialBase;
                         if (useParabolicScatter)
                         {
-                            float upLift = 0.55f + UnityEngine.Random.Range(-0.15f, 0.2f);
-                            dir = (dir + Vector3.up * upLift + forward * 0.1f).normalized;
+                            float downwardBias = UnityEngine.Random.Range(0.03f, 0.12f);
+                            dir = (dir + Vector3.down * downwardBias).normalized;
                         }
                         else
                         {
@@ -722,7 +740,7 @@ namespace BossRush
                 if (currentLoadedBullet != null && IsCompatibleBullet(__instance.Item, currentLoadedBullet))
                 {
                     __instance.SetTargetBulletType(currentLoadedBullet);
-                    ApplyAmmoAttributeFromBullet(__instance.Item, currentLoadedBullet);
+                    ApplyAmmoAttributeFromBullet(__instance, currentLoadedBullet);
                     __result = true;
                     return false;
                 }
@@ -738,7 +756,7 @@ namespace BossRush
                         }
 
                         __instance.SetTargetBulletType(item);
-                        ApplyAmmoAttributeFromBullet(__instance.Item, item);
+                        ApplyAmmoAttributeFromBullet(__instance, item);
                         __result = true;
                         return false;
                     }
@@ -748,13 +766,23 @@ namespace BossRush
                 return false;
             }
 
-            private static void ApplyAmmoAttributeFromBullet(Item gunItem, Item bulletItem)
+            private static void ApplyAmmoAttributeFromBullet(ItemSetting_Gun gunSetting, Item bulletItem)
             {
                 DragonKingBossGunShotProfile profile;
                 if (DragonKingBossGunProfiles.TryResolve(bulletItem, out profile))
                 {
-                    ApplyAmmoAttributeOverride(gunItem, profile);
+                    TryApplyAmmoProfile(gunSetting != null ? gunSetting.Item : null, profile, "AutoSetTypeInInventory");
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(ItemSetting_Gun), "SetTargetBulletType", new Type[] { typeof(int) })]
+        private static class DragonKingBossGunSetTargetBulletTypePatch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(ItemSetting_Gun __instance, int typeID)
+            {
+                TryApplyAmmoProfileFromTargetType(__instance, typeID, "SetTargetBulletType");
             }
         }
 
@@ -801,6 +829,29 @@ namespace BossRush
             }
         }
 
+        [HarmonyPatch(typeof(ItemAgent_Gun), "UpdateStates")]
+        private static class DragonKingBossGunReloadCompletePatch
+        {
+            [HarmonyPrefix]
+            private static void Prefix(ItemAgent_Gun __instance, out bool __state)
+            {
+                __state = __instance != null &&
+                          IsDragonKingBossGun(__instance.Item) &&
+                          __instance.IsReloading();
+            }
+
+            [HarmonyPostfix]
+            private static void Postfix(ItemAgent_Gun __instance, bool __state)
+            {
+                if (!__state || __instance == null || __instance.IsReloading())
+                {
+                    return;
+                }
+
+                TryApplyAmmoProfileFromLoadedBullet(__instance.GunItemSetting, "ReloadComplete");
+            }
+        }
+
         [HarmonyPatch(typeof(ItemAgent_Gun), "ShootOneBullet")]
         private static class DragonKingBossGunShootPatch
         {
@@ -837,10 +888,7 @@ namespace BossRush
                 }
 
                 // 射击时检测弹种是否变化，确保属性覆盖已应用
-                if (!hasAppliedProfile || lastAppliedProfileId != profile.Id)
-                {
-                    ApplyAmmoAttributeOverride(__instance.Item, profile);
-                }
+                TryApplyAmmoProfile(__instance.Item, profile, "ShootOneBullet");
 
                 Vector3 adjustedDirection = ApplyWeaponScatter(__instance, _shootDirection);
                 SpawnPrimaryProjectiles(__instance, profile, _muzzlePoint, adjustedDirection, firstFrameCheckStartPoint);

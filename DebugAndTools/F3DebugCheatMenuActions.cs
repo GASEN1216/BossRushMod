@@ -19,6 +19,8 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        private const int DragonKingBossGunDebugAmmoStackCount = 120;
+
         private void HealPlayerToFull()
         {
             CharacterMainControl player;
@@ -228,6 +230,68 @@ namespace BossRush
                 DevLog("[BossRush] F3 快捷发物品失败: typeId=" + itemId + ", error=" + e.Message);
                 SetF3DebugCheatStatus(L10n.T("快捷发物品失败", "Quick spawn failed"), true);
             }
+        }
+
+        private void SpawnDragonKingBossGunDebugKitFromF3()
+        {
+            int weaponSuccess = 0;
+            int ammoSuccess = 0;
+            int failedCount = 0;
+
+            try
+            {
+                Item weapon = ItemAssetsCollection.InstantiateSync(DragonKingBossGunConfig.WeaponTypeId);
+                if (weapon != null)
+                {
+                    ItemUtilities.SendToPlayer(weapon);
+                    weaponSuccess = 1;
+                }
+                else
+                {
+                    failedCount++;
+                    DevLog("[BossRush] F3 焚天龙铳测试套装缺少武器 typeId=" + DragonKingBossGunConfig.WeaponTypeId);
+                }
+
+                foreach (int ammoTypeId in DragonKingBossGunProfiles.SupportedTypeIds)
+                {
+                    Item ammo = ItemAssetsCollection.InstantiateSync(ammoTypeId);
+                    if (ammo == null)
+                    {
+                        failedCount++;
+                        DevLog("[BossRush] F3 焚天龙铳测试套装缺少弹药 typeId=" + ammoTypeId);
+                        continue;
+                    }
+
+                    ammo.StackCount = ResolveDragonKingBossGunDebugAmmoStackCount(ammo);
+                    ItemUtilities.SendToPlayer(ammo);
+                    ammoSuccess++;
+                }
+
+                if (weaponSuccess <= 0 || ammoSuccess < DragonKingBossGunProfiles.SupportedTypeIds.Count)
+                {
+                    SetF3DebugCheatStatus(
+                        L10n.T("焚天龙铳测试套装发放不完整：武器 x", "Dragon Gun debug kit incomplete: weapon x") + weaponSuccess +
+                        L10n.T("，弹药种类 x", ", ammo types x") + ammoSuccess +
+                        L10n.T("，失败 x", ", failed x") + failedCount,
+                        true);
+                    return;
+                }
+
+                SetF3DebugCheatStatus(
+                    L10n.T("已发放焚天龙铳测试套装：武器 x1，弹药种类 x", "Granted Dragon Gun debug kit: weapon x1, ammo types x") + ammoSuccess,
+                    false);
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] F3 焚天龙铳测试套装发放失败: " + e.Message);
+                SetF3DebugCheatStatus(L10n.T("焚天龙铳测试套装发放失败", "Failed to grant Dragon Gun debug kit"), true);
+            }
+        }
+
+        private int ResolveDragonKingBossGunDebugAmmoStackCount(Item ammo)
+        {
+            int maxStack = ammo != null && ammo.MaxStackCount > 0 ? ammo.MaxStackCount : DragonKingBossGunDebugAmmoStackCount;
+            return Math.Max(1, Math.Min(DragonKingBossGunDebugAmmoStackCount, maxStack));
         }
 
         private bool TryReadPositiveInt(InputField field, out int value)

@@ -22,6 +22,12 @@ namespace BossRush
         private const int PhysicsBufferSize = 64;
         private const float GroundImpactDotThreshold = 0.45f;
         private const string BossRedPresetNameKey = "Cname_Boss_Red";
+        private const int NativeRocketBulletTypeId = 326;
+        private const float DefaultProfileDamage = 26f;
+        private const float DefaultProfileShootSpeed = 9.2f;
+        private const float DefaultProfileCapacity = 15f;
+        private const float DefaultProfileReloadTime = 3.35f;
+        private const float DefaultProfileBulletDistance = 24f;
 
         internal static readonly Collider[] SharedColliderBuffer = new Collider[PhysicsBufferSize];
         internal static readonly HashSet<int> SharedReceiverIdSet = new HashSet<int>();
@@ -46,6 +52,15 @@ namespace BossRush
             public int spawnCount;
         }
 
+        private struct DragonKingBossGunStatBaseline
+        {
+            public float Damage;
+            public float ShootSpeed;
+            public float Capacity;
+            public float ReloadTime;
+            public float BulletDistance;
+        }
+
         private static readonly Dictionary<long, ProcessedHitState> processedHitPairs = new Dictionary<long, ProcessedHitState>();
         private static readonly Dictionary<long, ProcessedGroundZoneState> processedGroundZoneShots = new Dictionary<long, ProcessedGroundZoneState>();
         private static readonly List<long> processedHitKeysToRemove = new List<long>();
@@ -64,10 +79,11 @@ namespace BossRush
         private static Vector3 cachedProjectileScale = Vector3.one;
         private static GameObject cachedExplosionFx;
         private static Projectile cachedNativeRocketProjectile;
+        private static bool nativeRocketProjectileLookupAttempted;
 
-        // 弹种属性覆盖：记录当前已应用的 profile，避免重复覆写
-        private static DragonKingBossGunProfileId lastAppliedProfileId;
-        private static bool hasAppliedProfile;
+        // 弹种属性覆盖：按枪实例记录已应用 profile 和重铸后的属性基准。
+        private static readonly Dictionary<int, DragonKingBossGunProfileId> appliedProfileByItemInstance = new Dictionary<int, DragonKingBossGunProfileId>();
+        private static readonly Dictionary<int, DragonKingBossGunStatBaseline> statBaselineByItemInstance = new Dictionary<int, DragonKingBossGunStatBaseline>();
 
         private static readonly Vector3[] fanDirectionBuffer = new Vector3[16];
         private static readonly Vector3[] splitDirectionBuffer = new Vector3[16];
@@ -100,18 +116,18 @@ namespace BossRush
 
         public static void CleanupRuntime()
         {
-            if (!hurtEventSubscribed)
+            if (hurtEventSubscribed)
             {
-                return;
+                Health.OnHurt -= OnDragonKingBossGunHurt;
+                hurtEventSubscribed = false;
             }
 
-            Health.OnHurt -= OnDragonKingBossGunHurt;
-            hurtEventSubscribed = false;
             ClearSceneCaches();
+            ClearAmmoProfileStateCaches();
         }
 
         /// <summary>
-        /// 场景切换时清理临时缓存，但保留 Health.OnHurt 订阅（龙枪可能仍在玩家手中）。
+        /// 场景切换时清理弹幕/命中临时缓存，但保留 Health.OnHurt 订阅和枪实例弹种基准。
         /// </summary>
         public static void ClearSceneCaches()
         {
@@ -121,12 +137,17 @@ namespace BossRush
             cachedDragonProjectile = null;
             cachedExplosionFx = null;
             cachedNativeRocketProjectile = null;
+            nativeRocketProjectileLookupAttempted = false;
             shotSequence = 0;
             lastCleanupTime = 0f;
             bossRedProjectileWarmupStarted = false;
-            lastAppliedProfileId = default(DragonKingBossGunProfileId);
-            hasAppliedProfile = false;
             DragonKingBossGunProjectileAgent.ClearStaticCaches();
+        }
+
+        private static void ClearAmmoProfileStateCaches()
+        {
+            appliedProfileByItemInstance.Clear();
+            statBaselineByItemInstance.Clear();
         }
 
         private static async UniTaskVoid PreloadBossRedProjectileAsync()
@@ -541,51 +562,321 @@ namespace BossRush
         /// </summary>
         internal static void ApplyAmmoAttributeOverride(Item gunItem, DragonKingBossGunShotProfile profile)
         {
+            ApplyAmmoProfileInternal(gunItem, profile, "Legacy");
+        }
+
+        private static bool ApplyAmmoProfileInternal(Item gunItem, DragonKingBossGunShotProfile profile, string reason)
+        {
             if (gunItem == null || profile == null || !IsDragonKingBossGun(gunItem))
             {
-                return;
+                return false;
             }
 
             StatCollection stats = gunItem.Stats;
             if (stats == null)
             {
-                return;
+                return false;
             }
+
+            int itemKey = gunItem.GetInstanceID();
+            DragonKingBossGunStatBaseline baseline = CaptureAmmoStatBaseline(stats, itemKey);
+            float shootSpeed = Mathf.Max(0.01f, baseline.ShootSpeed * Mathf.Max(0.01f, profile.FireRateMult));
+            float damage = Mathf.Max(0.01f, baseline.Damage * Mathf.Max(0.01f, profile.GunDamageMult));
+            float capacityRatio = profile.OverrideCapacity > 0 ? profile.OverrideCapacity / DefaultProfileCapacity : 1f;
+            int capacity = Mathf.Max(1, Mathf.RoundToInt(baseline.Capacity * capacityRatio));
+            float reloadRatio = profile.OverrideReloadTime > 0f ? profile.OverrideReloadTime / DefaultProfileReloadTime : 1f;
+            float reloadTime = Mathf.Max(0.05f, baseline.ReloadTime * reloadRatio);
+            float distanceRatio = profile.OverrideBulletDistance > 0f ? profile.OverrideBulletDistance / DefaultProfileBulletDistance : 1f;
+            float bulletDistance = Mathf.Max(0.5f, baseline.BulletDistance * distanceRatio);
 
             // 射速覆盖
-            SetStatValue(stats, "ShootSpeed", 9.2f * profile.FireRateMult);
+            SetStatValue(stats, "ShootSpeed", shootSpeed);
 
             // 伤害覆盖
-            SetStatValue(stats, "Damage", 26f * profile.GunDamageMult);
+            SetStatValue(stats, "Damage", damage);
 
             // 弹匣容量覆盖
-            if (profile.OverrideCapacity > 0)
-            {
-                SetStatValue(stats, "Capacity", profile.OverrideCapacity);
-            }
+            SetStatValue(stats, "Capacity", capacity);
 
             // 换弹时间覆盖
-            if (profile.OverrideReloadTime > 0f)
-            {
-                SetStatValue(stats, "ReloadTime", profile.OverrideReloadTime);
-            }
+            SetStatValue(stats, "ReloadTime", reloadTime);
 
             // 射程覆盖
-            if (profile.OverrideBulletDistance > 0f)
-            {
-                SetStatValue(stats, "BulletDistance", profile.OverrideBulletDistance);
-            }
+            SetStatValue(stats, "BulletDistance", bulletDistance);
 
             // 统一去震屏
             SetStatValue(stats, "RecoilScaleV", 0f);
             SetStatValue(stats, "RecoilScaleH", 0f);
 
-            lastAppliedProfileId = profile.Id;
-            hasAppliedProfile = true;
+            statBaselineByItemInstance[itemKey] = baseline;
+            appliedProfileByItemInstance[itemKey] = profile.Id;
             ModBehaviour.DevLog("[DragonKingBossGun] 应用弹种属性覆盖: " + profile.Id +
-                " ShootSpeed=" + (9.2f * profile.FireRateMult).ToString("F2") +
-                " Damage=" + (26f * profile.GunDamageMult).ToString("F2") +
-                " Capacity=" + profile.OverrideCapacity);
+                " Reason=" + (reason ?? string.Empty) +
+                " ShootSpeed=" + shootSpeed.ToString("F2") +
+                " Damage=" + damage.ToString("F2") +
+                " Capacity=" + capacity);
+            return true;
+        }
+
+        internal static bool TryApplyAmmoProfile(Item gunItem, DragonKingBossGunShotProfile profile, string reason)
+        {
+            if (gunItem == null || profile == null || !IsDragonKingBossGun(gunItem))
+            {
+                return false;
+            }
+
+            int itemKey = gunItem.GetInstanceID();
+            DragonKingBossGunProfileId appliedProfileId;
+            if (!ShouldForceAmmoProfileApply(reason) &&
+                appliedProfileByItemInstance.TryGetValue(itemKey, out appliedProfileId) &&
+                appliedProfileId == profile.Id &&
+                statBaselineByItemInstance.ContainsKey(itemKey))
+            {
+                return false;
+            }
+
+            return ApplyAmmoProfileInternal(gunItem, profile, reason);
+        }
+
+        private static bool ShouldForceAmmoProfileApply(string reason)
+        {
+            return string.Equals(reason, "Legacy", StringComparison.Ordinal) ||
+                   string.Equals(reason, "RuntimeRestore", StringComparison.Ordinal) ||
+                   string.Equals(reason, "SceneReapply", StringComparison.Ordinal);
+        }
+
+        internal static bool TryApplyAmmoProfileFromTargetType(ItemSetting_Gun gunSetting, int targetTypeId, string reason)
+        {
+            if (gunSetting == null || !IsDragonKingBossGun(gunSetting.Item))
+            {
+                return false;
+            }
+
+            DragonKingBossGunShotProfile profile;
+            if (!TryResolveTargetBulletProfile(gunSetting, targetTypeId, out profile))
+            {
+                return false;
+            }
+
+            return TryApplyAmmoProfile(gunSetting.Item, profile, reason);
+        }
+
+        private static bool TryResolveTargetBulletProfile(ItemSetting_Gun gunSetting, int targetTypeId, out DragonKingBossGunShotProfile profile)
+        {
+            profile = null;
+            if (targetTypeId <= 0)
+            {
+                return false;
+            }
+
+            if (DragonKingBossGunProfiles.TryResolveTypeId(targetTypeId, out profile))
+            {
+                return true;
+            }
+
+            Item bulletItem = FindTargetBulletItem(gunSetting, targetTypeId);
+            return bulletItem != null && DragonKingBossGunProfiles.TryResolve(bulletItem, out profile);
+        }
+
+        private static Item FindTargetBulletItem(ItemSetting_Gun gunSetting, int targetTypeId)
+        {
+            if (gunSetting == null || targetTypeId <= 0)
+            {
+                return null;
+            }
+
+            Item preferredBullet = gunSetting.PreferdBulletsToLoad;
+            if (IsResolvableBulletOfType(preferredBullet, targetTypeId))
+            {
+                return preferredBullet;
+            }
+
+            Item currentLoadedBullet = gunSetting.GetCurrentLoadedBullet();
+            if (IsResolvableBulletOfType(currentLoadedBullet, targetTypeId))
+            {
+                return currentLoadedBullet;
+            }
+
+            Item gunItem = gunSetting.Item;
+            Item found = FindTargetBulletItem(gunItem != null ? gunItem.Inventory : null, targetTypeId);
+            if (found != null)
+            {
+                return found;
+            }
+
+            ItemAgent_Gun gunAgent = gunItem != null ? gunItem.ActiveAgent as ItemAgent_Gun : null;
+            if (gunAgent != null && gunAgent.Holder != null && gunAgent.Holder.CharacterItem != null)
+            {
+                found = FindTargetBulletItem(gunAgent.Holder.CharacterItem.Inventory, targetTypeId);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            found = FindTargetBulletItem(gunItem != null ? gunItem.InInventory : null, targetTypeId);
+            if (found != null)
+            {
+                return found;
+            }
+
+            if (LevelManager.Instance != null &&
+                LevelManager.Instance.MainCharacter != null &&
+                LevelManager.Instance.MainCharacter.CharacterItem != null)
+            {
+                found = FindTargetBulletItem(LevelManager.Instance.MainCharacter.CharacterItem.Inventory, targetTypeId);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
+        private static Item FindTargetBulletItem(Inventory inventory, int targetTypeId)
+        {
+            if (inventory == null || targetTypeId <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                foreach (Item item in inventory)
+                {
+                    if (IsResolvableBulletOfType(item, targetTypeId))
+                    {
+                        return item;
+                    }
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        private static bool IsResolvableBulletOfType(Item bulletItem, int targetTypeId)
+        {
+            if (bulletItem == null || bulletItem.TypeID != targetTypeId)
+            {
+                return false;
+            }
+
+            if (bulletItem.Stackable && bulletItem.StackCount <= 0)
+            {
+                return false;
+            }
+
+            DragonKingBossGunShotProfile ignoredProfile;
+            return DragonKingBossGunProfiles.TryResolve(bulletItem, out ignoredProfile);
+        }
+
+        internal static bool TryApplyAmmoProfileFromLoadedBullet(ItemSetting_Gun gunSetting, string reason)
+        {
+            if (gunSetting == null || !IsDragonKingBossGun(gunSetting.Item))
+            {
+                return false;
+            }
+
+            DragonKingBossGunShotProfile profile;
+            Item bulletItem = gunSetting.GetCurrentLoadedBullet();
+            if (bulletItem != null && DragonKingBossGunProfiles.TryResolve(bulletItem, out profile))
+            {
+                return TryApplyAmmoProfile(gunSetting.Item, profile, reason);
+            }
+
+            if (gunSetting.TargetBulletID > 0 &&
+                TryResolveTargetBulletProfile(gunSetting, gunSetting.TargetBulletID, out profile))
+            {
+                return TryApplyAmmoProfile(gunSetting.Item, profile, reason);
+            }
+
+            return false;
+        }
+
+        public static void RefreshAmmoProfileAfterRuntimeRestore(Item gunItem)
+        {
+            InvalidateAmmoProfileState(gunItem);
+            ItemSetting_Gun gunSetting = gunItem != null ? gunItem.GetComponent<ItemSetting_Gun>() : null;
+            TryApplyAmmoProfileFromLoadedBullet(gunSetting, "RuntimeRestore");
+        }
+
+        private static void InvalidateAmmoProfileState(Item gunItem)
+        {
+            if (gunItem == null)
+            {
+                return;
+            }
+
+            int itemKey = gunItem.GetInstanceID();
+            appliedProfileByItemInstance.Remove(itemKey);
+            statBaselineByItemInstance.Remove(itemKey);
+        }
+
+        private static DragonKingBossGunStatBaseline CaptureAmmoStatBaseline(StatCollection stats, int itemKey)
+        {
+            DragonKingBossGunStatBaseline cachedBaseline;
+            if (statBaselineByItemInstance.TryGetValue(itemKey, out cachedBaseline))
+            {
+                return cachedBaseline;
+            }
+
+            DragonKingBossGunProfileId previousProfileId;
+            if (appliedProfileByItemInstance.TryGetValue(itemKey, out previousProfileId))
+            {
+                DragonKingBossGunShotProfile previousProfile = DragonKingBossGunProfiles.GetProfile(previousProfileId);
+                return new DragonKingBossGunStatBaseline
+                {
+                    Damage = ReverseStatValue(stats, "Damage", DefaultProfileDamage, previousProfile.GunDamageMult),
+                    ShootSpeed = ReverseStatValue(stats, "ShootSpeed", DefaultProfileShootSpeed, previousProfile.FireRateMult),
+                    Capacity = ReverseStatValue(stats, "Capacity", DefaultProfileCapacity, previousProfile.OverrideCapacity > 0 ? previousProfile.OverrideCapacity / DefaultProfileCapacity : 1f),
+                    ReloadTime = ReverseStatValue(stats, "ReloadTime", DefaultProfileReloadTime, previousProfile.OverrideReloadTime > 0f ? previousProfile.OverrideReloadTime / DefaultProfileReloadTime : 1f),
+                    BulletDistance = ReverseStatValue(stats, "BulletDistance", DefaultProfileBulletDistance, previousProfile.OverrideBulletDistance > 0f ? previousProfile.OverrideBulletDistance / DefaultProfileBulletDistance : 1f)
+                };
+            }
+
+            return new DragonKingBossGunStatBaseline
+            {
+                Damage = ReadPositiveStatValue(stats, "Damage", DefaultProfileDamage),
+                ShootSpeed = ReadPositiveStatValue(stats, "ShootSpeed", DefaultProfileShootSpeed),
+                Capacity = ReadPositiveStatValue(stats, "Capacity", DefaultProfileCapacity),
+                ReloadTime = ReadPositiveStatValue(stats, "ReloadTime", DefaultProfileReloadTime),
+                BulletDistance = ReadPositiveStatValue(stats, "BulletDistance", DefaultProfileBulletDistance)
+            };
+        }
+
+        private static float ReverseStatValue(StatCollection stats, string key, float defaultBaseValue, float profileRatio)
+        {
+            if (profileRatio <= 0.0001f)
+            {
+                return defaultBaseValue;
+            }
+
+            float currentValue = ReadPositiveStatValue(stats, key, defaultBaseValue * profileRatio);
+            float baselineValue = currentValue / profileRatio;
+            if (float.IsNaN(baselineValue) || float.IsInfinity(baselineValue) || baselineValue <= 0f)
+            {
+                return defaultBaseValue;
+            }
+
+            return baselineValue;
+        }
+
+        private static float ReadPositiveStatValue(StatCollection stats, string key, float fallback)
+        {
+            if (stats == null)
+            {
+                return fallback;
+            }
+
+            Stat stat = stats.GetStat(key);
+            if (stat == null || float.IsNaN(stat.BaseValue) || float.IsInfinity(stat.BaseValue) || stat.BaseValue <= 0f)
+            {
+                return fallback;
+            }
+
+            return stat.BaseValue;
         }
 
         /// <summary>
@@ -593,8 +884,6 @@ namespace BossRush
         /// </summary>
         public static void ReapplyAmmoAttributeOverrideForScene()
         {
-            hasAppliedProfile = false;
-
             if (LevelManager.Instance == null)
             {
                 return;
@@ -612,17 +901,7 @@ namespace BossRush
                 return;
             }
 
-            Item bulletItem = gunAgent.GunItemSetting != null ? gunAgent.GunItemSetting.GetCurrentLoadedBullet() : null;
-            if (bulletItem == null)
-            {
-                return;
-            }
-
-            DragonKingBossGunShotProfile profile;
-            if (DragonKingBossGunProfiles.TryResolve(bulletItem, out profile))
-            {
-                ApplyAmmoAttributeOverride(gunAgent.Item, profile);
-            }
+            TryApplyAmmoProfileFromLoadedBullet(gunAgent.GunItemSetting, "SceneReapply");
         }
 
         private static void SetStatValue(StatCollection stats, string key, float value)
@@ -677,42 +956,25 @@ namespace BossRush
                 return cachedNativeRocketProjectile;
             }
 
+            if (nativeRocketProjectileLookupAttempted)
+            {
+                return null;
+            }
+
+            nativeRocketProjectileLookupAttempted = true;
             try
             {
-                // 从游戏中所有已加载的枪械中查找使用 Rocket 口径的原版枪
+                if (TryCacheNativeRocketProjectileFromItemCollection())
+                {
+                    return cachedNativeRocketProjectile;
+                }
+
+                // 按原版火箭弹 TypeID 精确关联原版枪械，避免通过预制体名称猜测。
                 ItemSetting_Gun[] allGunSettings = Resources.FindObjectsOfTypeAll<ItemSetting_Gun>();
                 for (int i = 0; i < allGunSettings.Length; i++)
                 {
-                    ItemSetting_Gun gs = allGunSettings[i];
-                    if (gs == null || gs.bulletPfb == null || gs.Item == null)
+                    if (TryCacheNativeRocketProjectileFromGunSetting(allGunSettings[i]))
                     {
-                        continue;
-                    }
-
-                    if (IsDragonKingBossGun(gs.Item))
-                    {
-                        continue;
-                    }
-
-                    string caliber = gs.Item.Constants != null ? gs.Item.Constants.GetString("Caliber", null) : null;
-                    if (string.Equals(caliber, "Rocket", StringComparison.OrdinalIgnoreCase))
-                    {
-                        cachedNativeRocketProjectile = gs.bulletPfb;
-                        ModBehaviour.DevLog("[DragonKingBossGun] 缓存原版火箭弹预制体: " + gs.bulletPfb.name + " (来自 " + gs.Item.name + ")");
-                        return cachedNativeRocketProjectile;
-                    }
-                }
-
-                // fallback: 从 Projectile 池中查找名称含 Rocket 的
-                Projectile[] allProjectiles = Resources.FindObjectsOfTypeAll<Projectile>();
-                for (int i = 0; i < allProjectiles.Length; i++)
-                {
-                    if (allProjectiles[i] != null &&
-                        !string.IsNullOrEmpty(allProjectiles[i].name) &&
-                        allProjectiles[i].name.IndexOf("Rocket", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        cachedNativeRocketProjectile = allProjectiles[i];
-                        ModBehaviour.DevLog("[DragonKingBossGun] 缓存原版火箭弹预制体(fallback): " + allProjectiles[i].name);
                         return cachedNativeRocketProjectile;
                     }
                 }
@@ -723,6 +985,83 @@ namespace BossRush
             }
 
             return null;
+        }
+
+        private static bool TryCacheNativeRocketProjectileFromItemCollection()
+        {
+            try
+            {
+                var instance = ItemAssetsCollection.Instance;
+                if (instance == null || instance.entries == null)
+                {
+                    return false;
+                }
+
+                foreach (var entry in instance.entries)
+                {
+                    if (entry == null || entry.prefab == null)
+                    {
+                        continue;
+                    }
+
+                    if (TryCacheNativeRocketProjectileFromGunSetting(entry.prefab.GetComponent<ItemSetting_Gun>()))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        private static bool TryCacheNativeRocketProjectileFromGunSetting(ItemSetting_Gun gunSetting)
+        {
+            if (gunSetting == null || gunSetting.bulletPfb == null || gunSetting.Item == null)
+            {
+                return false;
+            }
+
+            if (IsDragonKingBossGun(gunSetting.Item) || !IsNativeRocketBulletGun(gunSetting))
+            {
+                return false;
+            }
+
+            cachedNativeRocketProjectile = gunSetting.bulletPfb;
+            nativeRocketProjectileLookupAttempted = true;
+            ModBehaviour.DevLog("[DragonKingBossGun] 按火箭弹 TypeID=" + NativeRocketBulletTypeId + " 缓存原版火箭弹预制体: " + gunSetting.bulletPfb.name + " (来自 " + gunSetting.Item.name + ")");
+            return true;
+        }
+
+        private static bool IsNativeRocketBulletGun(ItemSetting_Gun gunSetting)
+        {
+            if (gunSetting == null)
+            {
+                return false;
+            }
+
+            if (gunSetting.TargetBulletID == NativeRocketBulletTypeId)
+            {
+                return true;
+            }
+
+            Item preferredBullet = gunSetting.PreferdBulletsToLoad;
+            if (preferredBullet != null && preferredBullet.TypeID == NativeRocketBulletTypeId)
+            {
+                return true;
+            }
+
+            try
+            {
+                Item loadedBullet = gunSetting.GetCurrentLoadedBullet();
+                if (loadedBullet != null && loadedBullet.TypeID == NativeRocketBulletTypeId)
+                {
+                    return true;
+                }
+            }
+            catch { }
+
+            return false;
         }
 
         private static Projectile TryResolveFallbackProjectile()

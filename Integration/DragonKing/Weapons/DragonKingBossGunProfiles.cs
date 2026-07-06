@@ -203,19 +203,19 @@ namespace BossRush
                 UseSplit = true,
                 SplitOnAirburst = true,
                 AirburstDistanceFactor = 0.52f,
-                SplitCount = 1,
+                SplitCount = 6,
                 SplitScale = 0.72f,
-                SplitSpeedFactor = 0.78f,
+                SplitSpeedFactor = 0.12f,
                 SplitDistanceFactor = 0.92f,
                 SplitDamageFactor = 0.55f,
-                SplitSpreadAngle = 0f,
-                SplitPattern = DragonKingBossGunSplitPattern.DownBurst,
+                SplitSpreadAngle = 360f,
+                SplitPattern = DragonKingBossGunSplitPattern.Radial,
                 SplitIgnoreSourceOnSplit = true,
-                SplitGravity = 7.5f,
+                SplitGravity = 24f,
                 ExplosionRange = 1.5f,
                 ExplosionDamageFactor = 0.6f,
-                SplitExplosionRange = 0.8f,
-                SplitExplosionDamageFactor = 0.35f,
+                SplitExplosionRange = 1.8f,
+                SplitExplosionDamageFactor = 1.45f,
                 ExplosionFxDuration = 0.35f,
                 MarkPerHit = 3,
                 MaxMarksPerTargetPerShot = 3,
@@ -720,6 +720,11 @@ namespace BossRush
             }
 
             return DefaultProfile;
+        }
+
+        public static bool TryResolveTypeId(int typeId, out DragonKingBossGunShotProfile profile)
+        {
+            return typeProfiles.TryGetValue(typeId, out profile);
         }
 
         public static bool TryResolve(Item bulletItem, out DragonKingBossGunShotProfile profile)

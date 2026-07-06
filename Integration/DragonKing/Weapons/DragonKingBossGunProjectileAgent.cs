@@ -159,7 +159,7 @@ namespace BossRush
             splitTriggered = false;
             deathHandled = false;
             customTraceLerp = 0f;
-            airburstDistance = profile != null && profile.SplitOnAirburst ? projectile.context.distance * Mathf.Clamp01(profile.AirburstDistanceFactor) : float.MaxValue;
+            airburstDistance = ResolveAirburstDistance();
             remainingBounce = profile != null ? Mathf.Max(0, profile.Bounce) : 0;
             remainingTargetHits = projectile != null ? Mathf.Max(1, projectile.context.penetrate + 1) : 1;
             successfulHits = 0;
@@ -183,17 +183,17 @@ namespace BossRush
             damagedReceiverIds.Clear();
 
             savedExplosionFx = projectileInstance != null ? projectileInstance.explosionFx : null;
-            bool keepNativeExplosionFx = profile != null && profile.UseNativeProjectile && !isSecondary;
-            if (projectileInstance != null && !keepNativeExplosionFx)
+            bool usesNativeVisual = profile != null && profile.UseNativeProjectile && secondaryProjectile;
+            if (projectileInstance != null && !usesNativeVisual)
             {
                 projectileInstance.explosionFx = null;
             }
 
-            if (customTrailInstance == null && profile != null && !profile.UseNativeProjectile && !string.IsNullOrEmpty(profile.TrailFxPrefab))
+            if (customTrailInstance == null && profile != null && !usesNativeVisual && !string.IsNullOrEmpty(profile.TrailFxPrefab))
             {
                 customTrailInstance = DragonKingAssetManager.InstantiateEffect(profile.TrailFxPrefab, transform.position, transform.rotation, transform);
             }
-            else if (customTrailInstance == null && profile != null && !profile.UseNativeProjectile && profile.Element == ElementTypes.fire)
+            else if (customTrailInstance == null && profile != null && !usesNativeVisual && profile.Element == ElementTypes.fire)
             {
                 customTrailInstance = new GameObject("DragonGun_FireTrailFx");
                 customTrailInstance.transform.SetParent(transform);
@@ -214,8 +214,38 @@ namespace BossRush
                 CreateIceBladeTrail();
             }
 
-            // 保留原版弹幕视觉，缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理
+            // 弹体视觉缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理。
             enabled = true;
+        }
+
+        private float ResolveAirburstDistance()
+        {
+            if (projectile == null || profile == null || !profile.SplitOnAirburst)
+            {
+                return float.MaxValue;
+            }
+
+            float fallbackDistance = projectile.context.distance * Mathf.Clamp01(profile.AirburstDistanceFactor);
+            if (secondaryProjectile || sourceGun == null || sourceGun.Holder == null || !sourceGun.Holder.IsMainCharacter)
+            {
+                return fallbackDistance;
+            }
+
+            try
+            {
+                Vector3 aimPoint = sourceGun.Holder.GetCurrentAimPoint();
+                float aimedDistance = Vector3.Distance(projectile.context.firstFrameCheckStartPoint, aimPoint);
+                if (float.IsNaN(aimedDistance) || float.IsInfinity(aimedDistance) || aimedDistance <= 0f)
+                {
+                    return fallbackDistance;
+                }
+
+                return Mathf.Clamp(aimedDistance, 0.5f, Mathf.Max(0.5f, projectile.context.distance));
+            }
+            catch
+            {
+                return fallbackDistance;
+            }
         }
 
         private void CreateIceBladeTrail()
@@ -358,6 +388,19 @@ namespace BossRush
             hasDeathContext = true;
         }
 
+        private void SuppressNativeExplosionForAirburst()
+        {
+            if (projectile == null || profile == null || !profile.UseNativeProjectile || secondaryProjectile)
+            {
+                return;
+            }
+
+            ProjectileContext context = projectile.context;
+            context.explosionRange = 0f;
+            context.explosionDamage = 0f;
+            projectile.context = context;
+        }
+
         private Vector3 GetDeathPoint()
         {
             return hasDeathContext ? deathPoint : transform.position;
@@ -472,6 +515,7 @@ namespace BossRush
             {
                 SetDeathContext(DragonKingBossGunProjectileDeathReason.Airburst, transform.position, -directionRef(projectile));
                 TriggerSplit(ShouldPlaySplitTriggerFx());
+                SuppressNativeExplosionForAirburst();
                 deadRef(projectile) = true;
             }
         }
@@ -492,6 +536,7 @@ namespace BossRush
             {
                 SetDeathContext(DragonKingBossGunProjectileDeathReason.Airburst, transform.position, -directionRef(projectile));
                 TriggerSplit(ShouldPlaySplitTriggerFx());
+                SuppressNativeExplosionForAirburst();
                 deadRef(projectile) = true;
             }
 
@@ -615,6 +660,7 @@ namespace BossRush
             {
                 SetDeathContext(DragonKingBossGunProjectileDeathReason.Airburst, transform.position, -directionRef(projectile));
                 TriggerSplit(ShouldPlaySplitTriggerFx());
+                SuppressNativeExplosionForAirburst();
                 deadRef(projectile) = true;
             }
         }
@@ -798,6 +844,11 @@ namespace BossRush
 
             receiver.Hurt(damageInfo);
             receiver.AddBuff(GameplayDataSettings.Buffs.Pain, projectile.context.fromCharacter);
+            if (projectile.context.fromGunItemSetting != null)
+            {
+                projectile.context.fromGunItemSetting.TriggerOnHurtEnemyEvent(receiver, damageInfo);
+            }
+
             successfulHits++;
             remainingTargetHits--;
             lastHitReceiverId = receiverId;
@@ -935,9 +986,15 @@ namespace BossRush
             deathHandled = true;
             Vector3 resolvedDeathPoint = GetDeathPoint();
             bool playDeathExplosionFx = ShouldPlayDeathExplosionFx();
-            bool isNativeExplosion = profile.UseNativeProjectile && !secondaryProjectile;
+            bool isNativeExplosion = profile.UseNativeProjectile && secondaryProjectile;
+            bool suppressPrimaryAirburstExplosion = !secondaryProjectile &&
+                                                   deathReason == DragonKingBossGunProjectileDeathReason.Airburst;
+            bool secondaryCollisionExplosion =
+                deathReason == DragonKingBossGunProjectileDeathReason.DamageReceiver ||
+                deathReason == DragonKingBossGunProjectileDeathReason.Obstacle ||
+                deathReason == DragonKingBossGunProjectileDeathReason.StickyAttach;
 
-            if (!isNativeExplosion && !secondaryProjectile && profile.ExplosionRange > 0f)
+            if (!isNativeExplosion && !secondaryProjectile && !suppressPrimaryAirburstExplosion && profile.ExplosionRange > 0f)
             {
                 if (playDeathExplosionFx)
                 {
@@ -969,7 +1026,7 @@ namespace BossRush
                 DragonKingBossGunRuntime.SpawnGroundZone(resolvedDeathPoint, sourceGun, projectile.context, profile);
             }
 
-            if (secondaryProjectile && profile.SplitExplosionRange > 0f)
+            if (!isNativeExplosion && secondaryProjectile && secondaryCollisionExplosion && profile.SplitExplosionRange > 0f)
             {
                 if (playDeathExplosionFx)
                 {

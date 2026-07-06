@@ -2,7 +2,7 @@
 
 # What Is It?
 
-The Skyburner Dragon Lord's personal gun. **15 ammo types** that dynamically switch during combat. Also a 5% player drop — the rarest weapon in the mod.
+The Skyburner Dragon Lord's personal gun. It supports **15 selectable ammo types** through the normal ammo-type UI; each compatible round is rewritten into a different dragonfire barrage. Also a 5% player drop — the rarest weapon in the mod.
 
 ::: tip
 5% drop from the Dragon Lord. You'll earn this one.
@@ -14,7 +14,9 @@ The Skyburner Dragon Lord's personal gun. **15 ammo types** that dynamically swi
 - Dmg 26 / ROF 9.2 / Mag 15 / Reload 3.35s / Speed 108 / Range 24
 - Crit 28% / Crit Dmg 1.6x / Move 85%
 
-# 15 Ammo Types
+# 15 Selectable Ammo Types
+
+If compatible ammo is in your inventory, it appears in the ammo-type list. Select it and reload to sync the cannon's fire rate, damage, magazine, reload time, range, and projectile behavior.
 
 # High Damage
 - **Sniper** — 4 pierce, ROF ×0.12, dmg ×4, range 36. One-shot potential

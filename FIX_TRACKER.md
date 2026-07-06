@@ -55,11 +55,66 @@
 - 修改文件: `Integration/ReverseScale/ReverseScaleConfig.cs`
 **兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名或掉落表；扩展既有 `Health.Hurt` / `Health.CurrentHealth` Harmony 兼容补丁，在玩家装备逆鳞且受到致死伤害时先钳到触发阈值，并确保逆鳞 `OnHurt` 回调已注册。逆鳞触发回血后新增 0.5 秒免伤窗口。
 **验证方法**:
-1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过；最终部署目标 `Mods\BossRush\BossRush.dll` 被正在运行的 `Duckov.exe` 占用，自动部署和手动覆盖均失败，`Build\BossRush.dll` 已生成
-2. Guard: `python tests\ReverseScaleLethalProtectionGuard.py` 通过
-3. Guard: `python tests\EventSubscriptionLifecycleGuard.py` 通过
-4. Guard: `python tests\MenuSceneRuntimeHookGuard.py` 通过
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过；最终部署目标 `Mods\\BossRush\\BossRush.dll` 被正在运行的 `Duckov.exe` 占用，自动部署和手动覆盖均失败，`Build\\BossRush.dll` 已生成
+2. Guard: `python tests\\ReverseScaleLethalProtectionGuard.py` 通过
+3. Guard: `python tests\\EventSubscriptionLifecycleGuard.py` 通过
+4. Guard: `python tests\\MenuSceneRuntimeHookGuard.py` 通过
 **未验证/需人工**: 关闭游戏释放 DLL 锁后重新部署，再进游戏装备逆鳞承受致死伤害，确认回血、棱彩弹、气泡、图腾销毁和触发后 0.5 秒免伤都符合预期。
+
+---
+### 2026-07-06 焚天龙铳火箭弹空爆只单次爆炸
+
+**状态**: fixed
+**Finding**: 玩家实机反馈 / 无
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于焚天龙铳火箭弹表现修复
+**现象**: 火箭弹到空爆距离后只在空中触发一枚原版爆炸，未表现为多枚分裂火箭落地/命中后的连续爆炸；后续实测中分裂弹又会在敌人头上散开后高速飞走，且主弹仍按固定射程比例空爆，不是射到鼠标位置再爆开。再次调整时用户要求分裂弹不再按固定定时爆炸，而是依靠自身碰撞爆炸。最新实测中日志已缓存 `BulletRocket`，但分裂弹命中后没有爆炸。
+**根因**: 火箭 profile 的 `SplitCount` 仍为 1 且使用向下分裂；同时主弹使用原版火箭预制体，空爆置 `dead` 后仍会被原版 `Projectile.Update()` 按 `context.explosionRange` 当作最终爆炸处理。后续迭代中分裂弹固定引信路径全生命周期跳过碰撞，且主弹空爆距离仍用 `distance * AirburstDistanceFactor`，没有读取玩家当前鼠标瞄准点；原版火箭预制体缓存还会接受 Rocket 口径武器上的 `BulletNormal_Burn`，导致分裂弹视觉/行为取错基底。官源 `Projectile.Init()` 的 `hitLayers` 只包含敌人、墙、地面和 `blockBulletLayers`，不包含 Projectile 自身，因此分裂弹之间不会因为彼此弹体互相触发爆炸。最新问题是分裂弹虽已使用原版 `BulletRocket` 预设，但自定义 `ProjectileContext` 没有设置 `explosionRange` / `explosionDamage`，原版 `Projectile.Update()` 因 `context.explosionRange == 0` 不会调用 `ExplosionManager.CreateExplosion`。
+**修复内容**:
+- 新增文件: `tests/DragonKingBossGunRocketSplitGuard.py`
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs`
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent.cs`
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs`
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunRuntime_ProjectilesAndPatches.cs`
+**性能处理**: 按用户要求将主弹/分裂弹预设互换：主弹用焚天龙铳轻量弹体负责飞到玩家鼠标瞄准点后空爆，分裂弹使用原版火箭视觉，并且原版预制体缓存改为按火箭弹 TypeID `326` 的确定关系绑定：只接受 `TargetBulletID`、`PreferdBulletsToLoad.TypeID` 或枪内当前装填弹 TypeID 等于 `326` 的原版枪械，不再用 `Rocket` / `RPG` / `Missile` 名字模糊匹配，也不再扫 `Projectile` 名字池兜底。火箭分裂弹数量固定 6 枚，继续走对象池与复用的 `raycastBuffer`；取消出生 `0.1s` 免碰撞窗口和 `SplitFuseTime` 定时爆炸，让分裂弹从第一帧开始使用同一套 `SphereCastNonAlloc` 检测敌人、墙和地面，自身不互相碰撞，命中后由原版 `Projectile.Update()` 根据 `context.explosionRange` 走 `ExplosionManager.CreateExplosion` 爆炸，未命中则按射程自然结束。重力分裂弹禁用追踪，二段初速从 `0.78x` 降到 `0.12x`，`SplitGravity` 提到 `24`，带重力 Radial 分裂固定使用世界水平圆环轴并加入轻微向下偏置，使其按水平 360 度径向初速 + 重力在首发弹四周下坠散开；非原版预设的二段爆炸才保留自定义 `OverlapSphereNonAlloc` 半径伤害，避免原版火箭双重伤害/双重特效。火焰爆炸 FX 改为尊重 profile 的 `ExplosionFxDuration`，火箭小爆炸按 `0.35s` 级别清理，避免固定残留 2 秒。
+**兼容性影响**: 不涉及存档、配置、TypeID 或资源文件变更；仅调整焚天龙铳火箭弹运行时弹幕表现。
+**验证方法**:
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过
+2. Guard: `python tests\DragonKingBossGunRocketSplitGuard.py` 通过
+3. Guard: `python tests\DragonKingBossGunProfileCoverageGuard.py` 通过
+4. Guard: `python tests\DragonKingBossGunAmmoSwitchGuard.py` 通过
+5. Guard: `python tests\DragonKingBossGunReforgeBaselineGuard.py` 通过
+6. Guard: `python tests\F3DragonKingBossGunDebugKitGuard.py` 通过
+7. 格式: `git diff --check -- Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent.cs Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs Integration/DragonKing/Weapons/DragonKingBossGunRuntime_ProjectilesAndPatches.cs Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs tests/DragonKingBossGunRocketSplitGuard.py FIX_TRACKER.md` 通过
+**未验证/需人工**: 需要进游戏用 TypeID `326` 火箭弹实测，确认日志出现 `按火箭弹 TypeID=326 缓存原版火箭弹预制体: BulletRocket`，主弹在鼠标瞄准点附近空爆、空爆后散出 6 枚子火箭、分裂弹不会因彼此重叠互相引爆、分裂弹可正常因命中敌人/墙/地面触发原版火箭爆炸且未命中时按射程自然结束。
+---
+### 2026-07-06 焚天龙铳弹种 baseline 与射击热路径修复
+
+**状态**: fixed
+**Finding**: CR-2026-07-05-001 / CR-2026-07-05-002 / CR-2026-07-05-003
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于已确认的焚天龙铳运行时稳定性修复
+**现象**: 重铸过容量的焚天龙铳连续切换弹种时，弹匣 baseline 可能因取整反推被污染；场景切换清理会丢失手持枪的弹种 baseline；射击兜底每发重复写 Stat 并在 dev 模式刷覆盖日志；弹药 UI 选择仅靠 Caliber 兼容的 TypeID 时，本次换弹可能沿用上一弹种容量/换弹时间。
+**根因**: 弹种 baseline 捕获优先从已套 profile 的当前 Stat 反推；`ClearSceneCaches()` 同时清掉枪实例弹种状态；`ShootOneBullet` 路径没有按枪实例跳过已应用的同 profile；`SetTargetBulletType(int)` / 空枪 TargetBulletID 兜底只查 `TryResolveTypeId`，没有回到真实弹药实例走 Caliber 解析。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs`
+- 修改文件: `tests/DragonKingBossGunAmmoSwitchGuard.py`
+- 修改文件: `tests/DragonKingBossGunReforgeBaselineGuard.py`
+- 修改文件: `CODE_REVIEW_FINDINGS.md`
+**兼容性影响**: 不改 TypeID、存档 key、配置 schema、资源命名或掉落表；仅调整焚天龙铳运行时 Stat 覆盖缓存生命周期与重复写入判定。场景级弹幕/命中缓存仍在切图时清理，枪实例弹种 baseline 改为卸载/reset 时清理；targetTypeId 解析兜底只读取背包/枪内弹药实例用于 Caliber profile 同步。
+**验证方法**:
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过
+2. Guard: `python tests\\DragonKingBossGunProfileCoverageGuard.py` 通过
+3. Guard: `python tests\\DragonKingBossGunAmmoSwitchGuard.py` 通过
+4. Guard: `python tests\\DragonKingBossGunReforgeBaselineGuard.py` 通过
+5. Guard: `python tests\\EventSubscriptionLifecycleGuard.py` 通过
+6. Guard: `python tests\\StaticCacheLifecycleGuard.py` 通过
+**未验证/需人工**: 需要游戏内验证重铸容量后连续切弹、切图后当前弹种属性、dev 模式高射速射击日志量，以及 UI 选择仅按 Caliber 兼容弹药后的首次换弹容量/时间。
+**失败尝试**: 无
+
 ---
 ### 2026-07-04 Mode E/F 刷怪卡顿低风险优化
 

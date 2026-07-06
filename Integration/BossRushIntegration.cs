@@ -563,7 +563,8 @@ namespace BossRush
             CustomItemRuntimeStateHelper.RegisterGunRuntimeConfiguredItem(
                 DragonKingBossGunConfig.WeaponTypeId,
                 DragonKingBossGunConfig.ConfigureWeapon,
-                "焚皇铳");
+                "焚皇铳",
+                DragonKingBossGunRuntime.RefreshAmmoProfileAfterRuntimeRestore);
 
             CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
                 FenHuangHalberdIds.WeaponTypeId,

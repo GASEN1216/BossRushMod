@@ -7,13 +7,85 @@
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 1 | 0 | 0 | 1 |
-| P1 | 0 | 0 | 0 | 0 | 0 |
-| P2 | 0 | 3 | 0 | 0 | 3 |
+| P1 | 0 | 2 | 0 | 0 | 2 |
+| P2 | 0 | 4 | 0 | 0 | 4 |
 | P3 | 0 | 0 | 0 | 0 | 0 |
 
-最后更新：2026-07-02。
+最后更新：2026-07-06。
 
 ## Confirmed Findings
+
+### CR-2026-07-05-001：焚天龙铳切弹时容量 baseline 会被取整反推污染
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：代码审查 + 静态代码验证。
+
+#### 位置
+
+- 修复文件：`Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs`
+- 守卫文件：`tests/DragonKingBossGunReforgeBaselineGuard.py`
+
+#### 问题
+
+弹种属性切换时优先从当前已套 profile 的 Stat 反推 baseline，而不是优先使用已缓存 baseline。`Capacity` 写入前会取整，重铸过容量后连续切弹可能把真实弹匣基准反推歪。
+
+#### 修复
+
+`CaptureAmmoStatBaseline()` 改为优先返回 `statBaselineByItemInstance` 中的真实基准，只在缓存缺失时才从上一 profile 反推。守卫新增顺序断言，避免回退。
+
+#### 验证需求
+
+Windows 编译和相关 guard 通过；仍需进游戏确认重铸容量后的连续切弹面板与实际弹匣符合预期。
+
+### CR-2026-07-05-002：焚天龙铳场景清理会丢失手持枪弹种 baseline
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：代码审查 + 静态代码验证。
+
+#### 位置
+
+- 修复文件：`Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs`
+- 守卫文件：`tests/DragonKingBossGunReforgeBaselineGuard.py`
+
+#### 问题
+
+场景加载时 `ClearDragonKingStaticCache()` 会调用龙铳 `ClearSceneCaches()`，旧实现同时清掉 per-item profile/baseline。若玩家手持枪实例仍保留已套 profile 的 Stat，后续场景重应用可能把已覆盖值当成新 baseline。
+
+#### 修复
+
+把场景级弹幕/命中缓存与枪实例弹种状态分离：`ClearSceneCaches()` 不再清 per-item profile/baseline；`CleanupRuntime()` / reset 路径统一清理弹种状态。守卫新增约束。
+
+#### 验证需求
+
+Windows 编译和相关 guard 通过；仍需进游戏切图后确认当前装填弹种属性不会二次倍率。
+
+### CR-2026-07-05-003：焚天龙铳射击热路径每发重复写 Stat
+
+**严重级**：P2 Minor
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：代码审查 + 静态代码验证。
+
+#### 位置
+
+- 修复文件：`Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs`
+- 守卫文件：`tests/DragonKingBossGunReforgeBaselineGuard.py`
+
+#### 问题
+
+`ShootOneBullet` 兜底每发都会调用弹种属性应用，重复写入 `Damage`、`ShootSpeed`、`Capacity`、`ReloadTime`、`BulletDistance` 并在 dev 模式产生噪声日志。高射速弹种下会放大热路径开销。
+
+#### 修复
+
+`TryApplyAmmoProfile()` 在同一枪实例已经应用同一 profile 且 baseline 存在时直接跳过；仅 `Legacy`、`RuntimeRestore`、`SceneReapply` 强制重写。守卫禁止把 `ShootOneBullet` 加入强制重写路径。
+
+#### 验证需求
+
+Windows 编译和相关 guard 通过；仍需 dev 模式实机确认高射速射击不再刷弹种覆盖日志。
 
 ### CR-2026-07-01-001：售货机 UI 崩溃 — 延迟注入商品未缓存 itemInstance
 

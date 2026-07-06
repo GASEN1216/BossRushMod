@@ -412,6 +412,7 @@ namespace BossRush
             {
                 SpawnQuickTestItem(AwenCourierTokenConfig.TYPE_ID, 1, L10n.T("已发放阿稳快递牌", "Granted Awen Courier Token"));
             });
+            CreateActionButton(quickItemRow.transform, font, L10n.T("焚天龙铳套装", "Dragon Gun Kit"), new Color(0.24f, 0.34f, 0.44f, 1f), SpawnDragonKingBossGunDebugKitFromF3);
 
             GameObject moneyRow = CreateF3Row(section.transform);
             CreateLabelWithWidth(moneyRow.transform, font, L10n.T("加钱", "Add Money"), 18, 150f);
