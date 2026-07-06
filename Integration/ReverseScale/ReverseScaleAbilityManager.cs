@@ -64,6 +64,9 @@ namespace BossRush
         // 性能优化：预分配敌人搜索缓冲区（避免每次搜索产生 GC）
         private static Collider[] enemySearchBuffer = new Collider[32];
 
+        private static Health postTriggerInvincibleHealth = null;
+        private static float postTriggerInvincibleUntil = -1f;
+
         // ========== 生命周期 ==========
 
         private void Awake()
@@ -84,6 +87,7 @@ namespace BossRush
         {
             // 只有在真正销毁时才取消事件订阅
             ForceUnregisterHurtEvent();
+            ClearPostTriggerInvincibility();
             SceneManager.sceneLoaded -= OnSceneLoaded;
             if (_instance == this)
             {
@@ -221,6 +225,7 @@ namespace BossRush
             equippedSlot = null;
             isRegistered = false;
             effectTriggered = false;
+            ClearPostTriggerInvincibility();
             ModBehaviour.DevLog($"{config.LogPrefix} 能力已强制停用");
         }
 
@@ -250,6 +255,8 @@ namespace BossRush
         /// </summary>
         public static void Cleanup()
         {
+            ClearPostTriggerInvincibility();
+
             if (_instance != null)
             {
                 _instance.ForceUnregisterAbility();
@@ -258,28 +265,131 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// Health.Hurt 致死写血补丁调用：确认玩家仍装备逆鳞，并确保 OnHurt 回调已注册。
+        /// </summary>
+        internal static bool TryPrepareLethalProtectionDuringHurt(Health health)
+        {
+            try
+            {
+                if (health == null || !health.IsMainCharacterHealth)
+                {
+                    return false;
+                }
+
+                CharacterMainControl main = CharacterMainControl.Main;
+                Slot foundSlot;
+                Item foundItem;
+                if (!TryFindEquippedReverseScale(main, out foundSlot, out foundItem))
+                {
+                    return false;
+                }
+
+                EnsureInstance();
+                ReverseScaleAbilityManager manager = Instance;
+                if (manager != null)
+                {
+                    manager.PrepareLethalProtection(main, foundSlot, foundItem);
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"{ReverseScaleConfig.Instance.LogPrefix} 准备致死保护失败: {e.Message}");
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Health.Hurt 前缀补丁调用：逆鳞触发后的短暂免伤窗口。
+        /// </summary>
+        internal static bool IsPostTriggerInvincible(Health health)
+        {
+            if (health == null || postTriggerInvincibleHealth == null)
+            {
+                return false;
+            }
+
+            if (Time.time > postTriggerInvincibleUntil)
+            {
+                ClearPostTriggerInvincibility();
+                return false;
+            }
+
+            return health == postTriggerInvincibleHealth && health.IsMainCharacterHealth;
+        }
+
         // ========== 内部方法 ==========
+
+        private static void ClearPostTriggerInvincibility()
+        {
+            postTriggerInvincibleHealth = null;
+            postTriggerInvincibleUntil = -1f;
+        }
+
+        private static void BeginPostTriggerInvincibility(Health health, float duration)
+        {
+            if (health == null || duration <= 0f)
+            {
+                return;
+            }
+
+            postTriggerInvincibleHealth = health;
+            postTriggerInvincibleUntil = Time.time + duration;
+            ModBehaviour.DevLog($"{ReverseScaleConfig.Instance.LogPrefix} 触发后无敌 {duration:F1}s");
+        }
+
+        private static bool TryFindEquippedReverseScale(CharacterMainControl character, out Slot foundSlot, out Item foundItem)
+        {
+            foundSlot = null;
+            foundItem = null;
+
+            if (character == null || character.CharacterItem == null)
+            {
+                return false;
+            }
+
+            foreach (Slot slot in character.CharacterItem.Slots)
+            {
+                if (slot == null || slot.Content == null) continue;
+                if (slot.Key == null || !slot.Key.StartsWith(ReverseScaleConfig.TotemSlotPrefix)) continue;
+
+                if (slot.Content.TypeID == ReverseScaleConfig.TotemTypeId)
+                {
+                    foundSlot = slot;
+                    foundItem = slot.Content;
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// 查找装备的逆鳞物品
         /// </summary>
         private void FindEquippedReverseScale(CharacterMainControl character)
         {
-            if (character == null || character.CharacterItem == null) return;
-
-            foreach (Slot slot in character.CharacterItem.Slots)
+            Slot foundSlot;
+            Item foundItem;
+            if (TryFindEquippedReverseScale(character, out foundSlot, out foundItem))
             {
-                if (slot == null || slot.Content == null) continue;
-                if (!slot.Key.StartsWith(ReverseScaleConfig.TotemSlotPrefix)) continue;
-
-                if (slot.Content.TypeID == ReverseScaleConfig.TotemTypeId)
-                {
-                    equippedItem = slot.Content;
-                    equippedSlot = slot;
-                    ModBehaviour.DevLog($"{config.LogPrefix} 找到装备的逆鳞: 槽位={slot.Key}");
-                    return;
-                }
+                equippedItem = foundItem;
+                equippedSlot = foundSlot;
+                ModBehaviour.DevLog($"{config.LogPrefix} 找到装备的逆鳞: 槽位={foundSlot.Key}");
             }
+        }
+
+        private void PrepareLethalProtection(CharacterMainControl character, Slot slot, Item item)
+        {
+            registeredCharacter = character;
+            equippedSlot = slot;
+            equippedItem = item;
+
+            RegisterHurtEvent();
+            isRegistered = true;
         }
 
         /// <summary>
@@ -343,8 +453,9 @@ namespace BossRush
         /// 玩家受伤事件回调 - 检测是否触发逆鳞效果
         /// </summary>
         /// <remarks>
-        /// 重要：OnHurt 事件在 Health.Hurt() 中于 CurrentHealth -= finalDamage 之后、
-        /// 死亡判定之前触发。因此 health.CurrentHealth 已经是扣血后的值。
+        /// 官方新版本的 OnHurt 事件已经移动到死亡分支之后。BossRush 的
+        /// Health.CurrentHealth setter 补丁会在致死写血前把逆鳞玩家钳到触发阈值，
+        /// 因此这里仍然可以按扣血后的 CurrentHealth 判断。
         /// 
         /// 注意：此方法会动态检查玩家是否仍然装备着逆鳞图腾，
         /// 而不是依赖 isRegistered 标记，以处理场景切换时的状态不一致问题。
@@ -361,31 +472,10 @@ namespace BossRush
                 
                 // 动态检查玩家是否仍然装备着逆鳞图腾
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null || main.CharacterItem == null)
-                {
-                    return;
-                }
-                
-                // 查找装备的逆鳞
-                bool hasReverseScale = false;
                 Slot foundSlot = null;
                 Item foundItem = null;
-                
-                foreach (Slot slot in main.CharacterItem.Slots)
-                {
-                    if (slot == null || slot.Content == null) continue;
-                    if (!slot.Key.StartsWith(ReverseScaleConfig.TotemSlotPrefix)) continue;
 
-                    if (slot.Content.TypeID == ReverseScaleConfig.TotemTypeId)
-                    {
-                        hasReverseScale = true;
-                        foundSlot = slot;
-                        foundItem = slot.Content;
-                        break;
-                    }
-                }
-                
-                if (!hasReverseScale)
+                if (!TryFindEquippedReverseScale(main, out foundSlot, out foundItem))
                 {
                     // 玩家没有装备逆鳞，跳过
                     return;
@@ -446,6 +536,7 @@ namespace BossRush
                 float healAmount = health.MaxHealth * healPercent;
                 health.AddHealth(healAmount);
                 ModBehaviour.DevLog($"{config.LogPrefix} 恢复血量: +{healAmount} ({healPercent*100}%), 当前血量: {health.CurrentHealth}");
+                BeginPostTriggerInvincibility(health, config.ReviveInvincibilityDuration);
 
                 // 2. 触发棱彩弹攻击（触之必怒！）
                 FirePrismaticBolts(main);

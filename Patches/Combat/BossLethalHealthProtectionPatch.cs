@@ -2,10 +2,10 @@
 // BossLethalHealthProtectionPatch.cs - custom Boss lethal-health guard patch
 // ============================================================================
 // 作用：
-//   - 修复龙裔遗族“复活”与焚天龙皇“孩儿护我”都挂在 Health.OnHurtEvent 上，
-//     但原版 Health.Hurt() 会先进入死亡分支、最后才触发 OnHurtEvent 的时序问题。
-//   - 在 Health.Hurt() 内部写入致死 CurrentHealth 之前，针对仍有保命机制的自定义 Boss
-//     先把血量钳回到触发阈值，让后续 OnHurtEvent 还能正常启动二命/护驾逻辑。
+//   - 修复龙裔遗族“复活”、焚天龙皇“孩儿护我”和逆鳞图腾都依赖 OnHurt
+//     触发窗口，但原版 Health.Hurt() 会先进入死亡分支、最后才触发 OnHurt 的时序问题。
+//   - 在 Health.Hurt() 内部写入致死 CurrentHealth 之前，针对仍有保命机制的目标
+//     先把血量钳回到触发阈值，让后续 OnHurt / OnHurtEvent 还能正常启动保命逻辑。
 // ============================================================================
 
 using System;
@@ -25,9 +25,16 @@ namespace BossRush
         }
 
         [HarmonyPrefix]
-        private static void Prefix()
+        private static bool Prefix(Health __instance, ref bool __result)
         {
+            if (ReverseScaleAbilityManager.IsPostTriggerInvincible(__instance))
+            {
+                __result = false;
+                return false;
+            }
+
             hurtDepth++;
+            return true;
         }
 
         [HarmonyFinalizer]
@@ -55,12 +62,29 @@ namespace BossRush
                 return;
             }
 
+            if (TryClampReverseScale(__instance, ref value))
+            {
+                return;
+            }
+
             if (TryClampDragonKing(__instance, ref value))
             {
                 return;
             }
 
             TryClampDragonDescendant(__instance, ref value);
+        }
+
+        private static bool TryClampReverseScale(Health health, ref float value)
+        {
+            if (!ReverseScaleAbilityManager.TryPrepareLethalProtectionDuringHurt(health))
+            {
+                return false;
+            }
+
+            value = ReverseScaleConfig.Instance.TriggerHealthThreshold;
+            ModBehaviour.DevLog("[ReverseScale] 拦截致死伤害，保留逆鳞触发窗口");
+            return true;
         }
 
         private static bool TryClampDragonKing(Health health, ref float value)

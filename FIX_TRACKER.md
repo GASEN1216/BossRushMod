@@ -39,6 +39,28 @@
 ```
 
 ---
+### 2026-07-06 逆鳞致死触发兼容与复活后短暂无敌
+
+**状态**: fixed
+**Finding**: 玩家反馈 / 官源静态确认
+**兼容分类**: COMPAT / WIRE+
+**版本/Commit**: 本次提交
+**Owner decision**: 不需要；属于官方 `Health.Hurt()` 时序变化后的逆鳞兼容修复
+**现象**: 玩家反馈新版本更新后逆鳞不触发；致死伤害下无法完成“濒死回血、反击、碎裂”的保命流程。
+**根因**: 当前官源 `Health.Hurt()` 的执行顺序为扣血后先进入死亡分支、触发 `OnDeadEvent` / `Health.OnDead` 并 `SetActive(false)`，最后才触发 `OnHurtEvent` / `Health.OnHurt`。逆鳞旧逻辑只在 `Health.OnHurt` 里看 `CurrentHealth <= 1`，致死伤害会先把主角送入死亡流程，导致保命窗口来不及触发。
+**修复内容**:
+- 新增文件: `tests/ReverseScaleLethalProtectionGuard.py`
+- 修改文件: `Patches/Combat/BossLethalHealthProtectionPatch.cs`
+- 修改文件: `Integration/ReverseScale/ReverseScaleAbilityManager.cs`
+- 修改文件: `Integration/ReverseScale/ReverseScaleConfig.cs`
+**兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名或掉落表；扩展既有 `Health.Hurt` / `Health.CurrentHealth` Harmony 兼容补丁，在玩家装备逆鳞且受到致死伤害时先钳到触发阈值，并确保逆鳞 `OnHurt` 回调已注册。逆鳞触发回血后新增 0.5 秒免伤窗口。
+**验证方法**:
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过；最终部署目标 `Mods\BossRush\BossRush.dll` 被正在运行的 `Duckov.exe` 占用，自动部署和手动覆盖均失败，`Build\BossRush.dll` 已生成
+2. Guard: `python tests\ReverseScaleLethalProtectionGuard.py` 通过
+3. Guard: `python tests\EventSubscriptionLifecycleGuard.py` 通过
+4. Guard: `python tests\MenuSceneRuntimeHookGuard.py` 通过
+**未验证/需人工**: 关闭游戏释放 DLL 锁后重新部署，再进游戏装备逆鳞承受致死伤害，确认回血、棱彩弹、气泡、图腾销毁和触发后 0.5 秒免伤都符合预期。
+---
 ### 2026-07-04 Mode E/F 刷怪卡顿低风险优化
 
 **状态**: fixed

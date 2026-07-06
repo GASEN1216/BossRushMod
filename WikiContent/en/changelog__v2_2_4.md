@@ -1,0 +1,16 @@
+## v2.2.4
+
+### Release Date
+- 2026-07-06
+
+### Main Theme
+- **Reverse Scale Compatibility Fix**: fixed Reverse Scale sometimes failing to trigger after the latest damage-event timing changes.
+
+---
+
+### Detailed Update Log
+
+#### Fix: Reverse Scale Near-Death Protection
+
+- Reverse Scale now preserves its trigger window before lethal damage can enter the original death flow.
+- After healing, Reverse Scale grants a short 0.5s invincibility window to reduce instant follow-up deaths.

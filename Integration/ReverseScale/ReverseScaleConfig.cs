@@ -59,6 +59,11 @@ namespace BossRush
         /// </summary>
         public float HealPercent => 0.5f;
 
+        /// <summary>
+        /// 逆鳞触发后的短暂无敌时间（秒）
+        /// </summary>
+        public float ReviveInvincibilityDuration => 0.5f;
+
         // ========== 棱彩弹参数（触之必怒）==========
         // 与龙王Boss的棱彩弹参数完全一致
 
