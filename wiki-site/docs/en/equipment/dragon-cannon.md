@@ -25,7 +25,7 @@ If compatible ammo is in your inventory, it appears in the ammo-type list. Selec
 - **IceBlade** — Ice, dmg ×2, half ROF, 1.25m explosion
 
 # Spread / Multi-Shot
-- **Shotgun** — 10 pellets, 26° spread, dmg ×1.5, burning ground on impact
+- **Shotgun** — 12-pellet 20° dragonbreath cone, dmg ×1.65, up to 2 burning zones on hit or endpoint
 - **Assault** — 3 pellets, bullets bounce once
 - **SMG** — 2-round burst, helix trajectory, ROF ×1.6, mag 30
 - **Candy** — 6 pellets in 180° random, bounce, ROF ×1.2, mag 20

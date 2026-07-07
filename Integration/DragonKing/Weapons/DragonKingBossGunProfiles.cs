@@ -225,10 +225,7 @@ namespace BossRush
                 GunDamageMult = 2.2f,
                 OverrideCapacity = 5,
                 OverrideReloadTime = 4.5f,
-                OverrideBulletDistance = 18f,
-                TrailFxPrefab = "",
-                HitFxPrefab = "",
-                ExplosionFxPrefab = ""
+                OverrideBulletDistance = 18f
             },
             new DragonKingBossGunShotProfile
             {
@@ -253,9 +250,7 @@ namespace BossRush
                 OverrideCapacity = 30,
                 OverrideReloadTime = 2.5f,
                 OverrideBulletDistance = 18f,
-                TrailFxPrefab = "Fx_DragonGun_SMG_Trail",
-                HitFxPrefab = "",
-                ExplosionFxPrefab = ""
+                TrailFxPrefab = "Fx_DragonGun_SMG_Trail"
             },
             new DragonKingBossGunShotProfile
             {
@@ -320,6 +315,7 @@ namespace BossRush
                 TraceAbility = 0.2f,
                 Pierce = 4,
                 PierceDamageDecay = new[] { 0.8f, 0.65f, 0.5f, 0.25f },
+                PlayObstacleHitFx = false,
                 MarkPerHit = 4,
                 MaxMarksPerTargetPerShot = 4,
                 FireRateMult = 0.12f,
@@ -327,36 +323,34 @@ namespace BossRush
                 OverrideCapacity = 5,
                 OverrideReloadTime = 4f,
                 OverrideBulletDistance = 36f,
-                TrailFxPrefab = "Fx_DragonGun_Sniper_Trail",
-                HitFxPrefab = "Fx_DragonGun_Sniper_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_Sniper_Explosion"
+                TrailFxPrefab = "Fx_DragonGun_Sniper_Trail"
             },
             new DragonKingBossGunShotProfile
             {
                 Id = DragonKingBossGunProfileId.Shotgun,
                 TypeIds = new[] { 630 },
                 Calibers = new[] { "SHT" },
-                ShotCount = 10,
-                Scale = 0.35f,
-                SpeedFactor = 0.95f,
-                DistanceFactor = 0.5f,
-                DamageFactor = 0.56f,
-                SpreadAngle = 26f,
+                ShotCount = 12,
+                Scale = 0.38f,
+                SpeedFactor = 1.1f,
+                DistanceFactor = 0.48f,
+                DamageFactor = 0.72f,
+                SpreadAngle = 20f,
                 UseGroundZone = true,
-                MaxGroundZonesPerShot = 1,
-                GroundZoneRadius = 1.05f,
-                GroundZoneDuration = 1.25f,
-                GroundZoneTickDamageFactor = 0.12f,
+                MaxGroundZonesPerShot = 2,
+                GroundZoneRadius = 1.25f,
+                GroundZoneDuration = 1.6f,
+                GroundZoneTickDamageFactor = 0.1f,
+                GroundZoneRequireGroundImpact = false,
+                PlayObstacleHitFx = false,
                 MarkPerHit = 1,
-                MaxMarksPerTargetPerShot = 2,
-                FireRateMult = 0.35f,
-                GunDamageMult = 1.5f,
-                OverrideCapacity = 8,
-                OverrideReloadTime = 3.5f,
-                OverrideBulletDistance = 12f,
-                TrailFxPrefab = "Fx_DragonGun_Shotgun_Trail",
-                HitFxPrefab = "Fx_DragonGun_Shotgun_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_Shotgun_Explosion"
+                MaxMarksPerTargetPerShot = 3,
+                FireRateMult = 0.52f,
+                GunDamageMult = 1.65f,
+                OverrideCapacity = 10,
+                OverrideReloadTime = 3.2f,
+                OverrideBulletDistance = 13f,
+                TrailFxPrefab = "Fx_DragonGun_Shotgun_Trail"
             },
             new DragonKingBossGunShotProfile
             {
