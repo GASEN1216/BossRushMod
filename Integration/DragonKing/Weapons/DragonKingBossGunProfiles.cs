@@ -245,6 +245,7 @@ namespace BossRush
                 HelixAmplitude = 0.18f,
                 HelixFrequency = 10f,
                 HelixVerticalLift = 0.04f,
+                PlayObstacleHitFx = false,
                 MarkPerHit = 1,
                 MaxMarksPerTargetPerShot = 2,
                 FireRateMult = 1.6f,
@@ -253,8 +254,8 @@ namespace BossRush
                 OverrideReloadTime = 2.5f,
                 OverrideBulletDistance = 18f,
                 TrailFxPrefab = "Fx_DragonGun_SMG_Trail",
-                HitFxPrefab = "Fx_DragonGun_SMG_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_SMG_Explosion"
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
             },
             new DragonKingBossGunShotProfile
             {
