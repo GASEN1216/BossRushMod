@@ -32,7 +32,7 @@ If compatible ammo is in your inventory, it appears in the ammo-type list. Selec
 
 # Special Trajectory
 - **Magnum** — 3 pierce, boomerang return, dmg ×1.9
-- **Arrow** — Arc, sticks then detonates after 1s, dmg ×1.8
+- **Arrow** — Slight drop, sticks then detonates after a short delay, dmg ×1.8
 - **Energy** — Electric, tracking, splits into 3
 - **Nano** — Strong tracking, splits into 5
 - **Firework** — Helix arc, airbursts into 8

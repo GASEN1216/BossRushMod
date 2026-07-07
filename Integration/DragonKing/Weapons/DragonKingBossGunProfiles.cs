@@ -388,10 +388,11 @@ namespace BossRush
                 DistanceFactor = 0.88f,
                 DamageFactor = 0.96f,
                 Arc = DragonKingBossGunArcMode.Low,
-                ArcLift = 0.32f,
-                Gravity = 6.5f,
+                ArcLift = 0.06f,
+                Gravity = 4f,
                 UseSticky = true,
-                StickyDelay = 1f,
+                StickyDelay = 0.45f,
+                ExplosionFxDuration = 0.45f,
                 PlayObstacleHitFx = false,
                 RequiresCustomMovement = true,
                 MarkPerHit = 1,
@@ -402,8 +403,8 @@ namespace BossRush
                 OverrideReloadTime = 3.2f,
                 OverrideBulletDistance = 20f,
                 TrailFxPrefab = "Fx_DragonGun_Arrow_Trail",
-                HitFxPrefab = "Fx_DragonGun_Arrow_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_Arrow_Explosion"
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
             },
             new DragonKingBossGunShotProfile
             {

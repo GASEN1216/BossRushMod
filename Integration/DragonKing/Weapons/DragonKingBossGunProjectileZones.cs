@@ -397,6 +397,14 @@ namespace BossRush
         private Vector3 localOffset;
         private float elapsed;
 
+        private float CleanupDelay
+        {
+            get
+            {
+                return profile != null ? Mathf.Clamp(profile.ExplosionFxDuration, 0.1f, 2f) : 0.35f;
+            }
+        }
+
         private Transform CachedTransform
         {
             get
@@ -435,14 +443,17 @@ namespace BossRush
             {
                 if (elapsed >= MaxLifetime)
                 {
-                    DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, 2f);
+                    DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, CleanupDelay);
                     enabled = false;
                 }
 
                 return;
             }
 
-            DragonKingBossGunRuntime.TrySpawnExplosionFx(chargePosition, profile);
+            if (profile.PlayObstacleHitFx)
+            {
+                DragonKingBossGunRuntime.TrySpawnExplosionFx(chargePosition, profile);
+            }
             float marker = DragonKingBossGunRuntime.EncodeShotMarker(
                 shotId,
                 profile.Id,
@@ -455,7 +466,7 @@ namespace BossRush
                 false,
                 true,
                 marker);
-            DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, 2f);
+            DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, CleanupDelay);
             enabled = false;
         }
     }

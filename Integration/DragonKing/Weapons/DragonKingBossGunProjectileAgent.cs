@@ -70,6 +70,13 @@ namespace BossRush
         private int splitSourceReceiverId = -1;
         private int lastHitReceiverId = -1;
         private Vector3 returnTargetPoint;
+        private bool stickyAttached;
+        private Transform stickyFollowTarget;
+        private Vector3 stickyLocalOffset;
+        private Vector3 stickyWorldPoint;
+        private Vector3 stickyNormal;
+        private float stickyElapsed;
+        private GameObject stickyFireFxInstance;
         private DragonKingBossGunProjectileDeathReason deathReason;
         private Vector3 deathPoint;
         private Vector3 deathNormal;
@@ -106,18 +113,105 @@ namespace BossRush
             get { return projectile != null && deadRef(projectile); }
         }
 
-        private void CreateStickyCharge(DamageReceiver target, Vector3 point, Vector3 normal)
+        private void BeginStickyAttachment(DamageReceiver target, GameObject hitObject, Vector3 point, Vector3 normal)
         {
-            GameObject chargeObj = new GameObject("DragonGun_StickyCharge");
-            chargeObj.transform.position = point;
+            stickyAttached = true;
+            stickyFollowTarget = target != null ? target.transform : (hitObject != null ? hitObject.transform : null);
+            stickyLocalOffset = stickyFollowTarget != null ? stickyFollowTarget.InverseTransformPoint(point) : Vector3.zero;
+            stickyWorldPoint = point;
+            stickyNormal = normal.sqrMagnitude > 0.001f ? normal.normalized : -directionRef(projectile);
+            stickyElapsed = 0f;
 
-            if (profile.Element == ElementTypes.fire)
+            transform.position = point;
+            transform.rotation = ResolveStickyRotation(normal);
+            velocityRef(projectile) = Vector3.zero;
+            distanceThisFrameRef(projectile) = 0f;
+            stopMovementThisFrame = true;
+
+            EnsureStickyFireFx();
+        }
+
+        private Quaternion ResolveStickyRotation(Vector3 normal)
+        {
+            Vector3 forward = directionRef(projectile);
+            if (forward.sqrMagnitude <= 0.001f)
             {
-                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(chargeObj);
+                forward = normal.sqrMagnitude > 0.001f ? -normal.normalized : transform.forward;
             }
 
-            DragonKingBossGunStickyCharge charge = chargeObj.AddComponent<DragonKingBossGunStickyCharge>();
-            charge.Initialize(projectile.context, profile, shotId, target != null ? target.transform : null, point);
+            return Quaternion.LookRotation(forward.normalized, Vector3.up);
+        }
+
+        private void EnsureStickyFireFx()
+        {
+            if (stickyFireFxInstance != null || profile == null || profile.Element != ElementTypes.fire)
+            {
+                return;
+            }
+
+            stickyFireFxInstance = new GameObject("DragonGun_StickyFireFx");
+            stickyFireFxInstance.transform.SetParent(transform);
+            stickyFireFxInstance.transform.localPosition = Vector3.zero;
+            stickyFireFxInstance.transform.localRotation = Quaternion.identity;
+            DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(stickyFireFxInstance);
+            StripPhysicsComponents(stickyFireFxInstance);
+        }
+
+        private void UpdateStickyAttachment(float deltaTime)
+        {
+            stickyElapsed += deltaTime;
+            Vector3 attachPoint = stickyWorldPoint;
+            if (stickyFollowTarget != null)
+            {
+                attachPoint = stickyFollowTarget.TransformPoint(stickyLocalOffset);
+                stickyWorldPoint = attachPoint;
+            }
+
+            transform.position = attachPoint;
+            velocityRef(projectile) = Vector3.zero;
+            distanceThisFrameRef(projectile) = 0f;
+
+            if (stickyElapsed < Mathf.Max(0.05f, profile.StickyDelay))
+            {
+                return;
+            }
+
+            DetonateStickyAttachment(attachPoint);
+        }
+
+        private void DetonateStickyAttachment(Vector3 attachPoint)
+        {
+            stickyAttached = false;
+            SetDeathContext(DragonKingBossGunProjectileDeathReason.StickyAttach, attachPoint, stickyNormal);
+            if (profile.PlayObstacleHitFx)
+            {
+                DragonKingBossGunRuntime.TrySpawnExplosionFx(attachPoint, profile);
+            }
+            float marker = DragonKingBossGunRuntime.EncodeShotMarker(
+                shotId,
+                profile.Id,
+                DragonKingBossGunRuntime.DragonKingBossGunHitStage.Secondary);
+            DragonKingBossGunRuntime.ApplyRadiusDamage(
+                attachPoint,
+                Mathf.Max(0.4f, profile.StickyExplosionRange),
+                projectile.context,
+                Mathf.Max(0.2f, profile.StickyExplosionDamageFactor),
+                false,
+                true,
+                marker);
+
+            if (stickyFireFxInstance != null)
+            {
+                UnityEngine.Object.Destroy(stickyFireFxInstance);
+                stickyFireFxInstance = null;
+            }
+
+            ProjectileContext context = projectile.context;
+            context.explosionRange = 0f;
+            context.explosionDamage = 0f;
+            projectile.context = context;
+            deathHandled = true;
+            deadRef(projectile) = true;
         }
 
 
@@ -478,6 +572,12 @@ namespace BossRush
             splitSourceReceiverId = -1;
             lastHitReceiverId = -1;
             returnTargetPoint = Vector3.zero;
+            stickyAttached = false;
+            stickyFollowTarget = null;
+            stickyLocalOffset = Vector3.zero;
+            stickyWorldPoint = Vector3.zero;
+            stickyNormal = Vector3.up;
+            stickyElapsed = 0f;
             deathReason = DragonKingBossGunProjectileDeathReason.None;
             deathPoint = Vector3.zero;
             deathNormal = Vector3.up;
@@ -490,6 +590,12 @@ namespace BossRush
             {
                 UnityEngine.Object.Destroy(customTrailInstance, 2f);
                 customTrailInstance = null;
+            }
+
+            if (stickyFireFxInstance != null)
+            {
+                UnityEngine.Object.Destroy(stickyFireFxInstance);
+                stickyFireFxInstance = null;
             }
         }
 
@@ -576,6 +682,12 @@ namespace BossRush
             }
 
             float deltaTime = Mathf.Min(Time.deltaTime, 0.04f);
+
+            if (stickyAttached)
+            {
+                UpdateStickyAttachment(deltaTime);
+                return;
+            }
 
             UpdateSplitActivation(deltaTime);
 
@@ -860,10 +972,7 @@ namespace BossRush
 
             if (profile.UseSticky)
             {
-                CreateStickyCharge(receiver, hitPoint, hitNormal);
-                SetDeathContext(DragonKingBossGunProjectileDeathReason.StickyAttach, hitPoint, hitNormal, hitObject);
-                transform.position = hitPoint;
-                deadRef(projectile) = true;
+                BeginStickyAttachment(receiver, hitObject, hitPoint, hitNormal);
                 return true;
             }
 
@@ -887,10 +996,7 @@ namespace BossRush
 
             if (profile.UseSticky)
             {
-                CreateStickyCharge(null, hitPoint, hitNormal);
-                SetDeathContext(DragonKingBossGunProjectileDeathReason.StickyAttach, hitPoint, hitNormal, hitObject);
-                transform.position = hitPoint;
-                deadRef(projectile) = true;
+                BeginStickyAttachment(null, hitObject, hitPoint, hitNormal);
                 return true;
             }
 
