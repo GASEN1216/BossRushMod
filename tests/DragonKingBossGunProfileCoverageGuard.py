@@ -72,6 +72,23 @@ def main() -> int:
         if not re.search(pattern, text):
             return fail(f"missing TypeIds entry for {type_id}")
 
+    candy_start = text.find("Id = DragonKingBossGunProfileId.Candy")
+    candy_end = text.find("new DragonKingBossGunShotProfile", candy_start + 1)
+    if candy_start < 0 or candy_end < 0:
+        return fail("missing Candy profile")
+
+    candy_block = text[candy_start:candy_end]
+    for snippet in [
+        "ShotCount = 6",
+        "DamageFactor = 0.52f",
+        "DivideDamageByProjectileCount = false",
+    ]:
+        if snippet not in candy_block:
+            return fail("Candy profile lost full pellet damage invariant -> " + snippet)
+
+    if "public bool DivideDamageByProjectileCount = true;" not in text:
+        return fail("missing default projectile damage sharing switch")
+
     if "public static bool TryResolveTypeId(int typeId" not in text:
         return fail("missing TryResolveTypeId helper for UI-selected ammo")
 

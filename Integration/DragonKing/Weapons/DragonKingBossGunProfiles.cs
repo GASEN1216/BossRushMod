@@ -52,6 +52,7 @@ namespace BossRush
         public float DistanceFactor = 1f;
         public float LifetimeFactor = 1f;
         public float DamageFactor = 1f;
+        public bool DivideDamageByProjectileCount = true;
         public float SpreadAngle;
         public bool RandomSpread;
         public DragonKingBossGunArcMode Arc = DragonKingBossGunArcMode.None;
@@ -497,6 +498,7 @@ namespace BossRush
                 SpeedFactor = 1f,
                 DistanceFactor = 1.1f,
                 DamageFactor = 0.52f,
+                DivideDamageByProjectileCount = false,
                 SpreadAngle = 180f,
                 RandomSpread = true,
                 Bounce = 1,

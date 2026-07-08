@@ -472,12 +472,13 @@ namespace BossRush
             }
 
             context.penetrate = Mathf.Max(gun != null ? gun.Penetrate : 0, profile.Pierce);
+            int damageProjectileCount = profile.DivideDamageByProjectileCount ? projectileCount : 1;
             context.damage = (gun != null ? gun.Damage : 20f) *
                              (gun != null ? gun.BulletDamageMultiplier : 1f) *
                              profile.DamageFactor *
                              damageFactor *
                              characterDamageMultiplier /
-                             Mathf.Max(1, projectileCount);
+                             Mathf.Max(1, damageProjectileCount);
             if (gun != null && gun.Damage > 1f && context.damage < 1f)
             {
                 context.damage = 1f;
