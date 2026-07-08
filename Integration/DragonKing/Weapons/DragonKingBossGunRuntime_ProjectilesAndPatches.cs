@@ -455,11 +455,20 @@ namespace BossRush
                 context.team = Teams.all;
             }
 
-            context.distance = (gun != null ? gun.BulletDistance : 24f) * profile.DistanceFactor * distanceFactor + 0.4f;
+            context.distance = (gun != null ? gun.BulletDistance : 24f) *
+                               profile.DistanceFactor *
+                               Mathf.Max(0.05f, profile.LifetimeFactor) *
+                               distanceFactor +
+                               0.4f;
             context.halfDamageDistance = context.distance * 0.5f;
             if (!isMainCharacterShot)
             {
                 context.distance *= 1.05f;
+            }
+            if (isSecondary && profile.SplitMaxLifetimeSeconds > 0f)
+            {
+                context.distance = Mathf.Max(0.4f, context.speed * profile.SplitMaxLifetimeSeconds);
+                context.halfDamageDistance = context.distance * 0.5f;
             }
 
             context.penetrate = Mathf.Max(gun != null ? gun.Penetrate : 0, profile.Pierce);
@@ -648,9 +657,12 @@ namespace BossRush
                 case DragonKingBossGunSplitPattern.Radial:
                 {
                     bool useParabolicScatter = profile.SplitGravity > 0f;
-                    Vector3 axis = useParabolicScatter ? Vector3.up : (normal.sqrMagnitude > 0.001f ? normal.normalized : Vector3.up);
+                    bool forceHorizontalScatter = profile.Id == DragonKingBossGunProfileId.Energy;
+                    Vector3 axis = (useParabolicScatter || forceHorizontalScatter)
+                        ? Vector3.up
+                        : (normal.sqrMagnitude > 0.001f ? normal.normalized : Vector3.up);
                     Vector3 radialBase;
-                    if (useParabolicScatter)
+                    if (useParabolicScatter || forceHorizontalScatter)
                     {
                         radialBase = Vector3.ProjectOnPlane(forward, Vector3.up);
                         if (radialBase.sqrMagnitude < 0.001f)
@@ -676,6 +688,16 @@ namespace BossRush
                         {
                             float downwardBias = UnityEngine.Random.Range(0.03f, 0.12f);
                             dir = (dir + Vector3.down * downwardBias).normalized;
+                        }
+                        else if (forceHorizontalScatter)
+                        {
+                            Vector3 horizontalForward = Vector3.ProjectOnPlane(forward, Vector3.up);
+                            if (horizontalForward.sqrMagnitude < 0.001f)
+                            {
+                                horizontalForward = radialBase;
+                            }
+
+                            dir = Vector3.ProjectOnPlane(dir + horizontalForward.normalized * 0.25f, Vector3.up).normalized;
                         }
                         else
                         {

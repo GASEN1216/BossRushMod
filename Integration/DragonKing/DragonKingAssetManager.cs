@@ -30,6 +30,7 @@ namespace BossRush
         /// 预制体缓存
         /// </summary>
         private static Dictionary<string, GameObject> prefabCache = new Dictionary<string, GameObject>();
+        private static HashSet<string> missingPrefabCache = new HashSet<string>();
 
         /// <summary>
         /// 是否已尝试加载
@@ -233,6 +234,10 @@ namespace BossRush
             {
                 return cached;
             }
+            if (missingPrefabCache.Contains(name))
+            {
+                return null;
+            }
             
             // 从AssetBundle加载
             if (loadedBundle == null)
@@ -247,6 +252,7 @@ namespace BossRush
                 if (prefab != null)
                 {
                     prefabCache[name] = prefab;
+                    missingPrefabCache.Remove(name);
                     ModBehaviour.DevLog($"[DragonKing] 加载预制体成功: {name}");
                     
                     // 输出预制体详细信息用于调试
@@ -254,6 +260,7 @@ namespace BossRush
                 }
                 else
                 {
+                    missingPrefabCache.Add(name);
                     ModBehaviour.DevLog($"[DragonKing] [WARNING] 预制体不存在: {name}");
                 }
                 return prefab;
@@ -431,6 +438,26 @@ namespace BossRush
                 return null;
             }
         }
+
+        private static GameObject CreateFallbackEffect(string prefabName, Vector3 position, Quaternion rotation, Transform parent)
+        {
+            try
+            {
+                GameObject fallback = new GameObject($"Fallback_{prefabName}");
+                fallback.transform.SetParent(parent, false);
+                fallback.transform.position = position;
+                fallback.transform.rotation = rotation;
+                fallback.transform.localScale = Vector3.one;
+
+                AddFallbackVisuals(fallback, prefabName);
+                return fallback;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] 鍒涘缓甯︾埗鑺傜偣鍚庡鐗规晥澶辫触: {e.Message}");
+                return null;
+            }
+        }
         
         /// <summary>
         /// 为对象添加后备视觉效果
@@ -517,6 +544,10 @@ namespace BossRush
                     return new Color(0.5f, 0f, 1f, 1f); // 紫色
                 case DragonKingConfig.PhaseTransitionPrefab:
                     return new Color(1f, 1f, 0f, 1f); // 黄色
+                case "Fx_DragonGun_Energy_Trail":
+                case "Fx_DragonGun_Energy_Hit":
+                case "Fx_DragonGun_Energy_Explosion":
+                    return new Color(0.2f, 0.95f, 1f, 1f);
                 default:
                     return Color.white;
             }
@@ -543,6 +574,12 @@ namespace BossRush
                     return 1.0f;
                 case DragonKingConfig.PhaseTransitionPrefab:
                     return 2.0f;
+                case "Fx_DragonGun_Energy_Trail":
+                    return 0.14f;
+                case "Fx_DragonGun_Energy_Hit":
+                    return 0.3f;
+                case "Fx_DragonGun_Energy_Explosion":
+                    return 0.6f;
                 default:
                     return 0.5f;
             }
@@ -572,7 +609,10 @@ namespace BossRush
         public static GameObject InstantiateEffect(string prefabName, Vector3 position, Quaternion rotation, Transform parent)
         {
             GameObject prefab = GetPrefab(prefabName);
-            if (prefab == null) return null;
+            if (prefab == null)
+            {
+                return CreateFallbackEffect(prefabName, position, rotation, parent);
+            }
 
             try
             {
@@ -580,13 +620,14 @@ namespace BossRush
 
                 // 与无 parent 版本保持一致：播放粒子系统
                 PlayAllParticleSystems(instance);
+                EnableAllLights(instance);
 
                 return instance;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog($"[DragonKing] [ERROR] 实例化特效失败: {prefabName} - {e.Message}");
-                return null;
+                return CreateFallbackEffect(prefabName, position, rotation, parent);
             }
         }
         
@@ -606,6 +647,7 @@ namespace BossRush
             }
 
             prefabCache.Clear();
+            missingPrefabCache.Clear();
             loadAttempted = false;
             loadSucceeded = false;
             assetBundleRefCount = 0;
@@ -646,6 +688,7 @@ namespace BossRush
             }
 
             prefabCache.Clear();
+            missingPrefabCache.Clear();
             loadAttempted = false;
             loadSucceeded = false;
             assetBundleRefCount = 0;

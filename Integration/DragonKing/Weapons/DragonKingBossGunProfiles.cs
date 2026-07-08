@@ -50,6 +50,7 @@ namespace BossRush
         public float Scale = 1f;
         public float SpeedFactor = 1f;
         public float DistanceFactor = 1f;
+        public float LifetimeFactor = 1f;
         public float DamageFactor = 1f;
         public float SpreadAngle;
         public bool RandomSpread;
@@ -84,6 +85,7 @@ namespace BossRush
         public float SplitScale = 0.55f;
         public float SplitSpeedFactor = 0.92f;
         public float SplitDistanceFactor = 0.55f;
+        public float SplitMaxLifetimeSeconds;
         public float SplitDamageFactor = 0.45f;
         public float SplitSpreadAngle = 24f;
         public float SplitTraceAbility;
@@ -91,6 +93,9 @@ namespace BossRush
         public float[] PierceDamageDecay;
         public float SplitActivationDelay;
         public float SplitInitialSpeedMult = 0.3f;
+        public float SplitInvulnerableDuration;
+        public float SplitOrbitRadius;
+        public float SplitOrbitAngularSpeed = 720f;
         public bool SplitIgnoreSourceOnSplit;
         public float SplitGravity;
         public float ExplosionFxDuration = 3f;
@@ -414,6 +419,7 @@ namespace BossRush
                 Scale = 0.75f,
                 SpeedFactor = 1.05f,
                 DistanceFactor = 0.92f,
+                LifetimeFactor = 0.5f,
                 DamageFactor = 1f,
                 TraceAbility = 0.55f,
                 Element = ElementTypes.electricity,
@@ -424,12 +430,16 @@ namespace BossRush
                 SplitScale = 0.45f,
                 SplitSpeedFactor = 0.72f,
                 SplitDistanceFactor = 1.35f,
+                SplitMaxLifetimeSeconds = 2f,
                 SplitDamageFactor = 0.34f,
                 SplitSpreadAngle = 24f,
                 SplitTraceAbility = 0.65f,
                 SplitPattern = DragonKingBossGunSplitPattern.Radial,
-                SplitActivationDelay = 0.5f,
+                SplitActivationDelay = 0.1f,
                 SplitInitialSpeedMult = 0.35f,
+                SplitInvulnerableDuration = 0.1f,
+                SplitOrbitRadius = 0.65f,
+                SplitOrbitAngularSpeed = 900f,
                 SplitIgnoreSourceOnSplit = true,
                 MarkPerHit = 1,
                 MaxMarksPerTargetPerShot = 1,

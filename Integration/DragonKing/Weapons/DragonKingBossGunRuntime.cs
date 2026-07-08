@@ -913,7 +913,7 @@ namespace BossRush
             }
         }
 
-        private static CharacterMainControl GetTraceTarget(ItemAgent_Gun gun)
+        internal static CharacterMainControl GetTraceTarget(ItemAgent_Gun gun)
         {
             if (traceTargetField == null || gun == null)
             {

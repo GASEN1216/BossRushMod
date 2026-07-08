@@ -26,6 +26,17 @@ namespace BossRush
             public int Compare(RaycastHit a, RaycastHit b) { return a.distance.CompareTo(b.distance); }
         }
 
+        private struct TraceTargetCandidate
+        {
+            public CharacterMainControl Character;
+            public Transform Transform;
+
+            public bool IsValid
+            {
+                get { return Character != null || Transform != null; }
+            }
+        }
+
         private const int RaycastBufferSize = 32;
         private static readonly RaycastHit[] raycastBuffer = new RaycastHit[RaycastBufferSize];
 
@@ -68,6 +79,12 @@ namespace BossRush
         private float splitActivationTimer;
         private bool splitActivated = true;
         private int splitSourceReceiverId = -1;
+        private float traceRefreshTimer;
+        private bool mandatorySplitTraceRefresh;
+        private Transform explicitTraceTargetTransform;
+        private Vector3 splitOrbitCenter;
+        private Vector3 splitOrbitAxis;
+        private Vector3 splitOrbitBaseOffset;
         private int lastHitReceiverId = -1;
         private Vector3 returnTargetPoint;
         private bool stickyAttached;
@@ -267,6 +284,13 @@ namespace BossRush
             splitActivationTimer = 0f;
             splitActivated = !isSecondary || profile == null || (profile.SplitActivationDelay <= 0f && profile.SplitGravity <= 0f);
             splitSourceReceiverId = sourceReceiverId;
+            traceRefreshTimer = 0f;
+            mandatorySplitTraceRefresh = isSecondary &&
+                                         profile != null &&
+                                         profile.Id == DragonKingBossGunProfileId.Energy &&
+                                         profile.SplitTraceAbility > 0.01f;
+            explicitTraceTargetTransform = null;
+            InitializeSplitOrbit(projectileInstance);
             lastHitReceiverId = -1;
             returnTargetPoint = projectileInstance != null ? projectileInstance.transform.position : Vector3.zero;
             deathReason = DragonKingBossGunProjectileDeathReason.None;
@@ -445,6 +469,74 @@ namespace BossRush
             UnityEngine.Object.Destroy(obj, delay);
         }
 
+        private void InitializeSplitOrbit(Projectile projectileInstance)
+        {
+            splitOrbitCenter = projectileInstance != null ? projectileInstance.transform.position : Vector3.zero;
+            splitOrbitAxis = Vector3.up;
+            splitOrbitBaseOffset = Vector3.zero;
+
+            if (!secondaryProjectile || profile == null || profile.SplitOrbitRadius <= 0f || projectileInstance == null)
+            {
+                return;
+            }
+
+            Vector3 radial = Vector3.ProjectOnPlane(directionRef(projectileInstance), splitOrbitAxis);
+            if (radial.sqrMagnitude <= 0.001f)
+            {
+                float angle = profile.SplitCount > 0 ? 360f * projectileIndex / profile.SplitCount : 0f;
+                radial = Quaternion.AngleAxis(angle, splitOrbitAxis) * Vector3.forward;
+            }
+
+            splitOrbitBaseOffset = radial.normalized * Mathf.Max(0.05f, profile.SplitOrbitRadius);
+        }
+
+        private bool IsSplitWarmupActive()
+        {
+            if (!secondaryProjectile || splitActivated || profile == null)
+            {
+                return false;
+            }
+
+            float warmupDuration = Mathf.Max(profile.SplitActivationDelay, profile.SplitInvulnerableDuration);
+            return warmupDuration > 0f && splitActivationTimer < warmupDuration;
+        }
+
+        private bool UpdateSplitWarmup(float deltaTime)
+        {
+            if (!IsSplitWarmupActive())
+            {
+                return false;
+            }
+
+            if (profile.SplitOrbitRadius > 0f && splitOrbitBaseOffset.sqrMagnitude > 0.001f)
+            {
+                float angle = profile.SplitOrbitAngularSpeed * splitActivationTimer;
+                Vector3 offset = Quaternion.AngleAxis(angle, splitOrbitAxis) * splitOrbitBaseOffset;
+                float growDuration = Mathf.Min(0.08f, Mathf.Max(0.01f, profile.SplitActivationDelay));
+                float grow = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(splitActivationTimer / growDuration));
+                transform.position = splitOrbitCenter + offset * grow;
+
+                Vector3 tangent = Vector3.Cross(splitOrbitAxis, offset);
+                if (profile.SplitOrbitAngularSpeed < 0f)
+                {
+                    tangent = -tangent;
+                }
+
+                if (tangent.sqrMagnitude > 0.001f)
+                {
+                    Vector3 direction = tangent.normalized;
+                    float speed = Mathf.Max(6f, velocityRef(projectile).magnitude);
+                    directionRef(projectile) = direction;
+                    velocityRef(projectile) = direction * speed;
+                    transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
+                }
+            }
+
+            distanceThisFrameRef(projectile) = 0f;
+            stopMovementThisFrame = true;
+            return true;
+        }
+
         private void UpdateSplitActivation(float deltaTime)
         {
             if (splitActivated || profile == null || profile.SplitActivationDelay <= 0f)
@@ -461,6 +553,7 @@ namespace BossRush
                 float splitInitialSpeedMult = Mathf.Max(0.01f, profile.SplitInitialSpeedMult);
                 velocityRef(projectile) = direction * (velocity.magnitude / splitInitialSpeedMult);
                 customTraceLerp = 0f;
+                traceRefreshTimer = 0f;
                 return;
             }
 
@@ -472,6 +565,284 @@ namespace BossRush
                 velocityRef(projectile) = direction * (velocity.magnitude * splitInitialSpeedMult);
             }
         }
+
+        private void TryRefreshTraceTarget(float deltaTime)
+        {
+            if (!splitActivated ||
+                projectile == null ||
+                profile == null ||
+                profile.Id != DragonKingBossGunProfileId.Energy ||
+                projectile.context.traceAbility <= 0.01f)
+            {
+                return;
+            }
+
+            bool currentTraceTargetUsable = HasUsableTraceTarget();
+            if (currentTraceTargetUsable && !mandatorySplitTraceRefresh)
+            {
+                return;
+            }
+
+            if (!mandatorySplitTraceRefresh)
+            {
+                traceRefreshTimer -= deltaTime;
+                if (traceRefreshTimer > 0f)
+                {
+                    return;
+                }
+            }
+
+            traceRefreshTimer = 0.08f;
+            TraceTargetCandidate target = mandatorySplitTraceRefresh ? FindNearestTraceTarget() : GetGunTraceTargetCandidate();
+            if (!target.IsValid)
+            {
+                target = mandatorySplitTraceRefresh ? GetGunTraceTargetCandidate() : FindNearestTraceTarget();
+            }
+
+            if (!target.IsValid)
+            {
+                if (currentTraceTargetUsable)
+                {
+                    mandatorySplitTraceRefresh = false;
+                }
+
+                return;
+            }
+
+            SetTraceTarget(target);
+            mandatorySplitTraceRefresh = false;
+        }
+
+        private bool HasUsableTraceTarget()
+        {
+            return IsTraceTargetUsable(projectile != null ? projectile.context.traceTarget : null) ||
+                   IsTraceTransformUsable(explicitTraceTargetTransform);
+        }
+
+        private TraceTargetCandidate GetGunTraceTargetCandidate()
+        {
+            CharacterMainControl target = DragonKingBossGunRuntime.GetTraceTarget(sourceGun);
+            if (IsTraceTargetUsable(target))
+            {
+                TraceTargetCandidate candidate = default(TraceTargetCandidate);
+                candidate.Character = target;
+                return candidate;
+            }
+
+            return default(TraceTargetCandidate);
+        }
+
+        private void SetTraceTarget(TraceTargetCandidate target)
+        {
+            if (target.Character != null)
+            {
+                SetTraceTarget(target.Character);
+                return;
+            }
+
+            SetTraceTarget(target.Transform);
+        }
+
+        private void SetTraceTarget(CharacterMainControl target)
+        {
+            if (target == null || projectile == null)
+            {
+                return;
+            }
+
+            ApplyTraceTargetContext(target);
+            explicitTraceTargetTransform = null;
+        }
+
+        private void SetTraceTarget(Transform targetTransform)
+        {
+            if (targetTransform == null || projectile == null)
+            {
+                return;
+            }
+
+            ApplyTraceTargetContext(null);
+            explicitTraceTargetTransform = targetTransform;
+        }
+
+        private void ApplyTraceTargetContext(CharacterMainControl traceTarget)
+        {
+            ProjectileContext context = projectile.context;
+            context.traceTarget = traceTarget;
+            context.ignoreHalfObsticle = true;
+            context.critRate = 1f;
+            projectile.context = context;
+        }
+
+        private bool IsTraceTargetUsable(CharacterMainControl target)
+        {
+            if (target == null || projectile == null)
+            {
+                return false;
+            }
+
+            if (target == projectile.context.realFromCharacter)
+            {
+                return false;
+            }
+
+            if (target.Hidden)
+            {
+                return false;
+            }
+
+            if (target.Team == Teams.all || projectile.context.team == Teams.all)
+            {
+                return true;
+            }
+
+            return Team.IsEnemy(projectile.context.team, target.Team);
+        }
+
+        private bool IsTraceTransformUsable(Transform targetTransform)
+        {
+            return targetTransform != null && targetTransform.gameObject.activeInHierarchy;
+        }
+
+        private bool IsTraceReceiverUsable(DamageReceiver receiver, CharacterMainControl candidateCharacter, bool allowBaseSceneReceivers)
+        {
+            if (receiver == null || projectile == null)
+            {
+                return false;
+            }
+
+            if (candidateCharacter != null)
+            {
+                return IsTraceTargetUsable(candidateCharacter);
+            }
+
+            if (!receiver.gameObject.activeInHierarchy || receiver.health == null)
+            {
+                return false;
+            }
+
+            if (receiver.Team == Teams.all || projectile.context.team == Teams.all)
+            {
+                return true;
+            }
+
+            if (allowBaseSceneReceivers)
+            {
+                return true;
+            }
+
+            return Team.IsEnemy(projectile.context.team, receiver.Team);
+        }
+
+        private TraceTargetCandidate FindNearestTraceTarget()
+        {
+            Vector3 traceCenter;
+            if (TryGetOfficialTraceCenter(out traceCenter))
+            {
+                TraceTargetCandidate target = FindNearestTraceTargetAround(traceCenter, 8f);
+                if (target.IsValid)
+                {
+                    return target;
+                }
+            }
+
+            float remainingDistance = Mathf.Max(4f, projectile.context.distance - traveledDistanceRef(projectile));
+            return FindNearestTraceTargetAround(transform.position, remainingDistance);
+        }
+
+        private bool TryGetOfficialTraceCenter(out Vector3 traceCenter)
+        {
+            CharacterMainControl holder = sourceGun != null ? sourceGun.Holder : null;
+            if (holder == null)
+            {
+                traceCenter = Vector3.zero;
+                return false;
+            }
+
+            if (holder.IsMainCharacter && LevelManager.Instance != null && LevelManager.Instance.InputManager != null)
+            {
+                traceCenter = LevelManager.Instance.InputManager.InputAimPoint;
+                return true;
+            }
+
+            traceCenter = holder.GetCurrentAimPoint();
+            return true;
+        }
+
+        private TraceTargetCandidate FindNearestTraceTargetAround(Vector3 center, float radius)
+        {
+            if (radius <= 0f)
+            {
+                return default(TraceTargetCandidate);
+            }
+
+            int count = Physics.OverlapSphereNonAlloc(
+                center,
+                radius,
+                DragonKingBossGunRuntime.SharedColliderBuffer,
+                GameplayDataSettings.Layers.damageReceiverLayerMask,
+                QueryTriggerInteraction.Ignore);
+
+            TraceTargetCandidate bestTarget = default(TraceTargetCandidate);
+            float bestDistanceSqr = float.MaxValue;
+            bool allowBaseSceneReceivers = IsBaseScene();
+            DragonKingBossGunRuntime.SharedReceiverIdSet.Clear();
+
+            for (int i = 0; i < count; i++)
+            {
+                Collider collider = DragonKingBossGunRuntime.SharedColliderBuffer[i];
+                DamageReceiver receiver = collider != null ? collider.GetComponent<DamageReceiver>() : null;
+                if (receiver == null)
+                {
+                    continue;
+                }
+
+                int receiverId = receiver.GetInstanceID();
+                if (DragonKingBossGunRuntime.SharedReceiverIdSet.Contains(receiverId))
+                {
+                    continue;
+                }
+
+                if (splitSourceReceiverId >= 0 && receiverId == splitSourceReceiverId)
+                {
+                    DragonKingBossGunRuntime.SharedReceiverIdSet.Add(receiverId);
+                    continue;
+                }
+
+                DragonKingBossGunRuntime.SharedReceiverIdSet.Add(receiverId);
+                CharacterMainControl candidateCharacter = receiver.health != null ? receiver.health.TryGetCharacter() : null;
+                if (!IsTraceReceiverUsable(receiver, candidateCharacter, allowBaseSceneReceivers))
+                {
+                    continue;
+                }
+
+                Transform candidateTransform = candidateCharacter != null ? candidateCharacter.transform : receiver.transform;
+                if (candidateTransform == null)
+                {
+                    continue;
+                }
+
+                float distanceSqr = (candidateTransform.position - center).sqrMagnitude;
+                if (distanceSqr >= bestDistanceSqr)
+                {
+                    continue;
+                }
+
+                bestDistanceSqr = distanceSqr;
+                bestTarget.Character = candidateCharacter;
+                bestTarget.Transform = candidateCharacter == null ? candidateTransform : null;
+            }
+
+            return bestTarget;
+        }
+
+        private bool IsBaseScene()
+        {
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            return string.Equals(sceneName, "Base", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(sceneName, "Base_SceneV2", StringComparison.OrdinalIgnoreCase);
+        }
+
 
         private void SetDeathContext(DragonKingBossGunProjectileDeathReason reason, Vector3 point, Vector3 normal, GameObject hitObject = null)
         {
@@ -570,6 +941,12 @@ namespace BossRush
             splitActivationTimer = 0f;
             splitActivated = true;
             splitSourceReceiverId = -1;
+            traceRefreshTimer = 0f;
+            mandatorySplitTraceRefresh = false;
+            explicitTraceTargetTransform = null;
+            splitOrbitCenter = Vector3.zero;
+            splitOrbitAxis = Vector3.up;
+            splitOrbitBaseOffset = Vector3.zero;
             lastHitReceiverId = -1;
             returnTargetPoint = Vector3.zero;
             stickyAttached = false;
@@ -690,6 +1067,18 @@ namespace BossRush
             }
 
             UpdateSplitActivation(deltaTime);
+            if (UpdateSplitWarmup(deltaTime))
+            {
+                if (isFirstFrame)
+                {
+                    startPointRef(projectile) = splitOrbitCenter;
+                    firstFrameRef(projectile) = false;
+                }
+
+                return;
+            }
+
+            TryRefreshTraceTarget(deltaTime);
 
             float currentSpeed = UpdateDirectionAndVelocity(deltaTime);
 
@@ -795,11 +1184,11 @@ namespace BossRush
                 }
                 velocity = direction * currentSpeed;
             }
-            else if (splitActivated && projectile.context.traceTarget != null && projectile.context.traceAbility > 0.01f)
+            else if (splitActivated && projectile.context.traceAbility > 0.01f && HasUsableTraceTarget())
             {
-                Vector3 targetDirection = GetTraceDirection(projectile.context.traceTarget);
+                Vector3 targetDirection = GetTraceDirection();
                 customTraceLerp = Mathf.MoveTowards(customTraceLerp, 1f, projectile.context.traceAbility * deltaTime);
-                direction = Vector3.Lerp(direction, targetDirection, customTraceLerp).normalized;
+                direction = Vector3.Lerp(projectile.context.direction, targetDirection, customTraceLerp).normalized;
                 currentSpeed = Mathf.Max(6f, velocity.magnitude);
                 if (direction.sqrMagnitude <= 0.0000000001f)
                 {
@@ -820,6 +1209,16 @@ namespace BossRush
             return currentSpeed;
         }
 
+        private Vector3 GetTraceDirection()
+        {
+            if (IsTraceTargetUsable(projectile != null ? projectile.context.traceTarget : null))
+            {
+                return GetTraceDirection(projectile.context.traceTarget);
+            }
+
+            return GetTraceDirection(explicitTraceTargetTransform);
+        }
+
         private Vector3 GetTraceDirection(CharacterMainControl target)
         {
             if (target == null)
@@ -828,6 +1227,17 @@ namespace BossRush
             }
 
             Transform targetTransform = target.characterModel != null ? target.characterModel.HelmatSocket : target.transform;
+            Vector3 direction = targetTransform.position - transform.position;
+            return direction.sqrMagnitude > 0.001f ? direction.normalized : directionRef(projectile);
+        }
+
+        private Vector3 GetTraceDirection(Transform targetTransform)
+        {
+            if (targetTransform == null)
+            {
+                return directionRef(projectile);
+            }
+
             Vector3 direction = targetTransform.position - transform.position;
             return direction.sqrMagnitude > 0.001f ? direction.normalized : directionRef(projectile);
         }
