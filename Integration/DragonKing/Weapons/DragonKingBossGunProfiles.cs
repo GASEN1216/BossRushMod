@@ -483,9 +483,9 @@ namespace BossRush
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
                 OverrideBulletDistance = 60f,
-                TrailFxPrefab = "Fx_DragonGun_Poop_Trail",
-                HitFxPrefab = "Fx_DragonGun_Poop_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_Poop_Explosion"
+                TrailFxPrefab = "",
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
             },
             new DragonKingBossGunShotProfile
             {

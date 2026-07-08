@@ -11,6 +11,10 @@ namespace BossRush
     internal sealed class DragonKingBossGunGroundZone : MonoBehaviour
     {
         private const float MaxLifetime = 15f;
+        private const int MaxActivePoisonZones = 6;
+        private const int PoisonZoneMaxParticles = 36;
+        private const float PoisonZoneEmissionMin = 14f;
+        private const float PoisonZoneEmissionMax = 24f;
         private const float PoisonTickLockDuration = 0.32f;
         private const float PoisonTickKeepTime = 1.2f;
         private const float PoisonTickCleanupInterval = 1f;
@@ -20,6 +24,7 @@ namespace BossRush
 
         private static readonly Dictionary<int, float> poisonTickTimes = new Dictionary<int, float>();
         private static readonly List<int> poisonTickKeysToRemove = new List<int>();
+        private static readonly List<DragonKingBossGunGroundZone> activePoisonZones = new List<DragonKingBossGunGroundZone>();
         private static readonly Vector3 RingHeightOffset = Vector3.up * 0.04f;
         private static readonly Vector3[] RingUnitOffsets = BuildRingUnitOffsets();
         private static float lastPoisonTickCleanup;
@@ -54,6 +59,7 @@ namespace BossRush
             cachedZoneShader = null;
             poisonTickTimes.Clear();
             poisonTickKeysToRemove.Clear();
+            activePoisonZones.Clear();
         }
 
         public void Initialize(ProjectileContext projectileContext, DragonKingBossGunShotProfile profile)
@@ -68,7 +74,43 @@ namespace BossRush
             pulseTime = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
             transform.position = FenHuangHalberdRuntime.SnapToGround(transform.position, transform.position.y);
 
+            RegisterZonePerformanceBudget();
             CreateZoneVisual();
+        }
+
+        private void RegisterZonePerformanceBudget()
+        {
+            if (profile == null || profile.GroundZoneElement != ElementTypes.poison)
+            {
+                return;
+            }
+
+            CompactActivePoisonZones();
+            while (activePoisonZones.Count >= MaxActivePoisonZones)
+            {
+                DragonKingBossGunGroundZone oldestZone = activePoisonZones[0];
+                activePoisonZones.RemoveAt(0);
+                if (oldestZone == null)
+                {
+                    continue;
+                }
+
+                UnityEngine.Object.Destroy(oldestZone.gameObject);
+            }
+
+            activePoisonZones.Add(this);
+        }
+
+        private static void CompactActivePoisonZones()
+        {
+            for (int i = activePoisonZones.Count - 1; i >= 0; i--)
+            {
+                DragonKingBossGunGroundZone zone = activePoisonZones[i];
+                if (zone == null)
+                {
+                    activePoisonZones.RemoveAt(i);
+                }
+            }
         }
 
         private void CreateZoneVisual()
@@ -91,7 +133,10 @@ namespace BossRush
 
             EnsureZoneShaderCached();
             CreateZoneRing(zoneColor);
-            CreateZoneLight(zoneColor);
+            if (profile.GroundZoneElement != ElementTypes.poison)
+            {
+                CreateZoneLight(zoneColor);
+            }
 
             GameObject fxObj = new GameObject("ZoneRingFx");
             fxObj.transform.SetParent(transform);
@@ -106,10 +151,12 @@ namespace BossRush
             main.startSize = Mathf.Clamp(radius * 0.14f, 0.08f, 0.22f);
             main.startColor = zoneColor;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 72;
+            main.maxParticles = profile.GroundZoneElement == ElementTypes.poison ? PoisonZoneMaxParticles : 72;
 
             var emission = ps.emission;
-            emission.rateOverTime = Mathf.Lerp(22f, 42f, Mathf.InverseLerp(0.5f, 2f, radius));
+            float emissionMin = profile.GroundZoneElement == ElementTypes.poison ? PoisonZoneEmissionMin : 22f;
+            float emissionMax = profile.GroundZoneElement == ElementTypes.poison ? PoisonZoneEmissionMax : 42f;
+            emission.rateOverTime = Mathf.Lerp(emissionMin, emissionMax, Mathf.InverseLerp(0.5f, 2f, radius));
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Circle;
@@ -380,6 +427,8 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            activePoisonZones.Remove(this);
+
             // Material 已改为静态共享缓存，不在单个 zone 销毁时 Destroy
             zoneRingMaterial = null;
         }
