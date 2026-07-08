@@ -732,6 +732,32 @@ namespace BossRush
                     return count;
                 }
 
+                case DragonKingBossGunSplitPattern.FireworkBloom:
+                {
+                    Vector3 horizontalBase = Vector3.ProjectOnPlane(forward, Vector3.up);
+                    if (horizontalBase.sqrMagnitude < 0.001f)
+                    {
+                        horizontalBase = Vector3.forward;
+                    }
+
+                    horizontalBase.Normalize();
+                    const float goldenAngle = 137.508f;
+                    for (int i = 0; i < count; i++)
+                    {
+                        float t = count > 1 ? (float)i / (count - 1) : 0.5f;
+                        float vertical = Mathf.Lerp(0.62f, -0.38f, t) + UnityEngine.Random.Range(-0.12f, 0.12f);
+                        vertical = Mathf.Clamp(vertical, -0.48f, 0.72f);
+
+                        float azimuth = i * goldenAngle + UnityEngine.Random.Range(-8f, 8f);
+                        Vector3 horizontal = Quaternion.AngleAxis(azimuth, Vector3.up) * horizontalBase;
+                        float horizontalWeight = Mathf.Sqrt(Mathf.Max(0.18f, 1f - vertical * vertical));
+                        Vector3 dir = horizontal * horizontalWeight + Vector3.up * vertical;
+                        buffer[i] = dir.sqrMagnitude > 0.001f ? dir.normalized : horizontalBase;
+                    }
+
+                    return count;
+                }
+
                 case DragonKingBossGunSplitPattern.ForwardFan:
                 default:
                     return BuildFanDirections(forward, count, profile.SplitSpreadAngle, buffer, false);

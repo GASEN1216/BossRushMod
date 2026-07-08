@@ -37,7 +37,8 @@ namespace BossRush
         None = 0,
         ForwardFan = 1,
         DownBurst = 2,
-        Radial = 3
+        Radial = 3,
+        FireworkBloom = 4
     }
 
     internal sealed class DragonKingBossGunShotProfile
@@ -67,6 +68,7 @@ namespace BossRush
         public float HelixAmplitude;
         public float HelixFrequency = 6f;
         public float HelixVerticalLift;
+        public bool LockHelixToHorizontalPlane;
         public bool UseReturn;
         public bool UseSticky;
         public float StickyDelay = 0.3f;
@@ -618,32 +620,39 @@ namespace BossRush
                 Id = DragonKingBossGunProfileId.Firework,
                 TypeIds = new[] { 1523 },
                 Calibers = new[] { "FireWork" },
-                Scale = 0.85f,
-                SpeedFactor = 0.8f,
-                DistanceFactor = 0.78f,
-                DamageFactor = 0.88f,
-                Arc = DragonKingBossGunArcMode.Low,
-                ArcLift = 0.3f,
-                Gravity = 3f,
+                Scale = 0.68f,
+                SpeedFactor = 0.72f,
+                DistanceFactor = 0.92f,
+                DamageFactor = 0.82f,
+                Arc = DragonKingBossGunArcMode.None,
+                ArcLift = 0f,
+                Gravity = 0f,
                 UseHelix = true,
-                HelixAmplitude = 0.22f,
-                HelixFrequency = 9f,
-                HelixVerticalLift = 0.26f,
+                HelixAmplitude = 0.18f,
+                HelixFrequency = 12f,
+                HelixVerticalLift = 0f,
+                LockHelixToHorizontalPlane = true,
+                FixedSpeed = 18f,
                 PlayObstacleHitFx = false,
                 PlaySplitTriggerFx = false,
                 UseSplit = true,
                 SplitOnAirburst = true,
-                AirburstDistanceFactor = 0.62f,
-                SplitCount = 8,
-                SplitScale = 0.34f,
-                SplitSpeedFactor = 0.75f,
-                SplitDistanceFactor = 0.7f,
-                SplitDamageFactor = 0.26f,
+                AirburstDistanceFactor = 0.72f,
+                SplitCount = 12,
+                SplitScale = 0.22f,
+                SplitSpeedFactor = 0.58f,
+                SplitDistanceFactor = 0.42f,
+                SplitMaxLifetimeSeconds = 0.68f,
+                SplitDamageFactor = 0.14f,
                 SplitSpreadAngle = 360f,
-                SplitPattern = DragonKingBossGunSplitPattern.Radial,
-                SplitActivationDelay = 0.35f,
-                SplitInitialSpeedMult = 0.45f,
+                SplitPattern = DragonKingBossGunSplitPattern.FireworkBloom,
+                SplitActivationDelay = 0.08f,
+                SplitInitialSpeedMult = 0.18f,
                 SplitIgnoreSourceOnSplit = true,
+                SplitGravity = 1.6f,
+                SplitFixedSpeed = 11f,
+                SplitExplosionRange = 0.75f,
+                SplitExplosionDamageFactor = 0.12f,
                 MarkPerHit = 2,
                 MaxMarksPerTargetPerShot = 2,
                 SecondaryMarkPerHit = 1,
@@ -653,9 +662,9 @@ namespace BossRush
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
                 OverrideBulletDistance = 20f,
-                TrailFxPrefab = "Fx_DragonGun_Firework_Trail",
-                HitFxPrefab = "Fx_DragonGun_Firework_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_Firework_Explosion"
+                TrailFxPrefab = "",
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
             }
         };
 

@@ -53,10 +53,21 @@ namespace BossRush
         internal static void ClearStaticCaches()
         {
             cachedIceMaterial = null;
+            cachedFireworkMaterial = null;
             DragonKingBossGunGroundZone.ClearStaticCaches();
         }
 
         private static Material cachedIceMaterial;
+        private static Material cachedFireworkMaterial;
+        private static readonly Color[] FireworkPalette =
+        {
+            new Color(1f, 0.28f, 0.18f),
+            new Color(1f, 0.82f, 0.22f),
+            new Color(0.24f, 0.95f, 0.72f),
+            new Color(0.32f, 0.72f, 1f),
+            new Color(0.82f, 0.36f, 1f),
+            new Color(1f, 0.36f, 0.78f)
+        };
 
         private Projectile projectile;
         private ItemAgent_Gun sourceGun;
@@ -320,6 +331,10 @@ namespace BossRush
             {
                 customTrailInstance = DragonKingAssetManager.InstantiateEffect(profile.TrailFxPrefab, transform.position, transform.rotation, transform);
             }
+            else if (customTrailInstance == null && profile != null && !usesNativeVisual && profile.Id == DragonKingBossGunProfileId.Firework)
+            {
+                customTrailInstance = CreateFireworkTrail();
+            }
             else if (customTrailInstance == null && profile != null && !usesNativeVisual && profile.Element == ElementTypes.fire)
             {
                 customTrailInstance = new GameObject("DragonGun_FireTrailFx");
@@ -411,6 +426,193 @@ namespace BossRush
 
             iceBladeTrailRenderer.Clear();
             iceBladeTrailRenderer.enabled = false;
+        }
+
+        private GameObject CreateFireworkTrail()
+        {
+            bool spark = secondaryProjectile;
+            Color color = ResolveFireworkColor(spark ? projectileIndex : shotId, spark);
+            Color hotColor = Color.Lerp(Color.white, color, spark ? 0.35f : 0.2f);
+
+            GameObject trailObject = new GameObject(spark ? "DragonGun_FireworkSparkTrailFx" : "DragonGun_FireworkShellTrailFx");
+            trailObject.transform.SetParent(transform);
+            trailObject.transform.localPosition = Vector3.zero;
+            trailObject.transform.localRotation = Quaternion.identity;
+
+            TrailRenderer trail = trailObject.AddComponent<TrailRenderer>();
+            trail.time = spark ? 0.58f : 0.46f;
+            trail.startWidth = spark ? 0.11f : 0.22f;
+            trail.endWidth = 0.018f;
+            trail.startColor = WithAlpha(hotColor, spark ? 0.92f : 0.98f);
+            trail.endColor = WithAlpha(color, 0f);
+            trail.sharedMaterial = GetOrCreateFireworkMaterial();
+            trail.numCornerVertices = 4;
+            trail.numCapVertices = 4;
+            trail.minVertexDistance = 0.025f;
+
+            ParticleSystem ps = trailObject.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.duration = 0.35f;
+            main.startLifetime = spark ? new ParticleSystem.MinMaxCurve(0.18f, 0.36f) : new ParticleSystem.MinMaxCurve(0.26f, 0.5f);
+            main.startSpeed = spark ? new ParticleSystem.MinMaxCurve(0.25f, 0.9f) : new ParticleSystem.MinMaxCurve(0.08f, 0.45f);
+            main.startSize = spark ? new ParticleSystem.MinMaxCurve(0.025f, 0.07f) : new ParticleSystem.MinMaxCurve(0.04f, 0.11f);
+            main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(hotColor, 0.88f), WithAlpha(color, 0.72f));
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = spark ? 36 : 28;
+
+            var emission = ps.emission;
+            emission.rateOverTime = spark ? 24f : 18f;
+            emission.rateOverDistance = spark ? 8f : 5f;
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = spark ? 0.035f : 0.055f;
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(hotColor, 0f), new GradientColorKey(color, 0.45f), new GradientColorKey(color, 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.86f, 0f), new GradientAlphaKey(0.52f, 0.45f), new GradientAlphaKey(0f, 1f) });
+            colorOverLifetime.color = gradient;
+
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.18f));
+
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = spark ? ParticleSystemRenderMode.Stretch : ParticleSystemRenderMode.Billboard;
+            renderer.lengthScale = spark ? 0.8f : 0.45f;
+            renderer.velocityScale = spark ? 0.18f : 0.08f;
+            renderer.sharedMaterial = GetOrCreateFireworkMaterial();
+
+            ps.Play(true);
+            return trailObject;
+        }
+
+        private void SpawnFireworkBloomEffect(Vector3 position)
+        {
+            GameObject fx = new GameObject("DragonGun_FireworkBloomFx");
+            fx.transform.position = position;
+
+            Color colorA = ResolveFireworkColor(shotId, true);
+            Color colorB = ResolveFireworkColor(shotId + 3, true);
+            Color flashColor = new Color(1f, 0.92f, 0.55f);
+
+            ParticleSystem burst = fx.AddComponent<ParticleSystem>();
+            var main = burst.main;
+            main.loop = false;
+            main.duration = 0.08f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.42f, 0.86f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(4.2f, 7.2f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.105f);
+            main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(colorA, 0.95f), WithAlpha(colorB, 0.95f));
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.gravityModifier = 0.22f;
+            main.maxParticles = 96;
+
+            var emission = burst.emission;
+            emission.rateOverTime = 0;
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 72) });
+
+            var shape = burst.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.08f;
+
+            var colorOverLifetime = burst.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            Gradient burstGradient = new Gradient();
+            burstGradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(colorA, 0.28f), new GradientColorKey(colorB, 0.72f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.98f, 0f), new GradientAlphaKey(0.78f, 0.28f), new GradientAlphaKey(0f, 1f) });
+            colorOverLifetime.color = burstGradient;
+
+            var sizeOverLifetime = burst.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.05f));
+
+            var burstRenderer = burst.GetComponent<ParticleSystemRenderer>();
+            burstRenderer.renderMode = ParticleSystemRenderMode.Stretch;
+            burstRenderer.lengthScale = 1.1f;
+            burstRenderer.velocityScale = 0.22f;
+            burstRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
+
+            GameObject flashObject = new GameObject("BloomFlash");
+            flashObject.transform.SetParent(fx.transform);
+            flashObject.transform.localPosition = Vector3.zero;
+            flashObject.transform.localRotation = Quaternion.identity;
+
+            ParticleSystem flash = flashObject.AddComponent<ParticleSystem>();
+            var flashMain = flash.main;
+            flashMain.loop = false;
+            flashMain.duration = 0.05f;
+            flashMain.startLifetime = new ParticleSystem.MinMaxCurve(0.09f, 0.16f);
+            flashMain.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 1.1f);
+            flashMain.startSize = new ParticleSystem.MinMaxCurve(0.22f, 0.48f);
+            flashMain.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.95f), WithAlpha(flashColor, 0.9f));
+            flashMain.simulationSpace = ParticleSystemSimulationSpace.World;
+            flashMain.maxParticles = 12;
+
+            var flashEmission = flash.emission;
+            flashEmission.rateOverTime = 0;
+            flashEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 10) });
+
+            var flashShape = flash.shape;
+            flashShape.shapeType = ParticleSystemShapeType.Sphere;
+            flashShape.radius = 0.03f;
+
+            var flashRenderer = flash.GetComponent<ParticleSystemRenderer>();
+            flashRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+            flashRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
+
+            burst.Play(true);
+            flash.Play(true);
+            UnityEngine.Object.Destroy(fx, 1.35f);
+        }
+
+        private void SpawnFireworkSparkEffect(Vector3 position)
+        {
+            GameObject fx = new GameObject("DragonGun_FireworkSparkEndFx");
+            fx.transform.position = position;
+
+            Color color = ResolveFireworkColor(projectileIndex + shotId, true);
+            ParticleSystem ps = fx.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = false;
+            main.duration = 0.06f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.34f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2.4f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.07f);
+            main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.9f), WithAlpha(color, 0.82f));
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.gravityModifier = 0.2f;
+            main.maxParticles = 16;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0;
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 12) });
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.035f;
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(color, 0.45f), new GradientColorKey(color, 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.86f, 0f), new GradientAlphaKey(0.45f, 0.45f), new GradientAlphaKey(0f, 1f) });
+            colorOverLifetime.color = gradient;
+
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Stretch;
+            renderer.lengthScale = 0.8f;
+            renderer.velocityScale = 0.16f;
+            renderer.sharedMaterial = GetOrCreateFireworkMaterial();
+
+            ps.Play(true);
+            UnityEngine.Object.Destroy(fx, 0.65f);
         }
 
         private void SpawnIcePierceEffect(Vector3 hitPoint, Vector3 hitNormal)
@@ -522,6 +724,28 @@ namespace BossRush
                 cachedIceMaterial = new Material(Shader.Find("Sprites/Default"));
             }
             return cachedIceMaterial;
+        }
+
+        private static Material GetOrCreateFireworkMaterial()
+        {
+            if (cachedFireworkMaterial == null)
+            {
+                cachedFireworkMaterial = new Material(Shader.Find("Sprites/Default"));
+            }
+            return cachedFireworkMaterial;
+        }
+
+        private static Color ResolveFireworkColor(int seed, bool secondary)
+        {
+            int index = Mathf.Abs(seed) % FireworkPalette.Length;
+            Color color = FireworkPalette[index];
+            return secondary ? color : Color.Lerp(color, new Color(1f, 0.82f, 0.28f), 0.45f);
+        }
+
+        private static Color WithAlpha(Color color, float alpha)
+        {
+            color.a = alpha;
+            return color;
         }
 
         private static void StripPhysicsComponents(GameObject obj)
@@ -1742,6 +1966,15 @@ namespace BossRush
                     true,
                     0f);
             }
+
+            if (profile.Id == DragonKingBossGunProfileId.Firework &&
+                secondaryProjectile &&
+                (deathReason == DragonKingBossGunProjectileDeathReason.DamageReceiver ||
+                 deathReason == DragonKingBossGunProjectileDeathReason.Obstacle ||
+                 deathReason == DragonKingBossGunProjectileDeathReason.MaxDistance))
+            {
+                SpawnFireworkSparkEffect(resolvedDeathPoint);
+            }
         }
 
         private void TriggerSplit(bool playFx = true)
@@ -1755,7 +1988,11 @@ namespace BossRush
             int sourceId = profile.SplitIgnoreSourceOnSplit ? lastHitReceiverId : -1;
             Vector3 splitNormal = hasDeathContext ? deathNormal : Vector3.up;
             DragonKingBossGunRuntime.SpawnSplitProjectiles(sourceGun, profile, shotId, transform.position, directionRef(projectile), splitNormal, sourceId);
-            if (playFx)
+            if (profile.Id == DragonKingBossGunProfileId.Firework)
+            {
+                SpawnFireworkBloomEffect(transform.position);
+            }
+            else if (playFx)
             {
                 DragonKingBossGunRuntime.TrySpawnExplosionFx(transform.position, profile);
             }
@@ -1778,10 +2015,14 @@ namespace BossRush
             }
 
             lateral.Normalize();
-            Vector3 vertical = Vector3.Cross(forward, lateral);
 
             Vector3 offset = lateral * (Mathf.Sin(phase) * profile.HelixAmplitude);
-            offset += vertical * (Mathf.Cos(phase) * profile.HelixAmplitude * 0.55f);
+            if (!profile.LockHelixToHorizontalPlane)
+            {
+                Vector3 vertical = Vector3.Cross(forward, lateral);
+                offset += vertical * (Mathf.Cos(phase) * profile.HelixAmplitude * 0.55f);
+            }
+
             if (profile.HelixVerticalLift > 0f)
             {
                 offset += Vector3.up * (traveledDistanceRef(projectile) * profile.HelixVerticalLift * 0.02f);
