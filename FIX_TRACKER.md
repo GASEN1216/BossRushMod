@@ -39,6 +39,46 @@
 ```
 
 ---
+### 2026-07-08 焚天龙铳烟花弹多余开火/终点特效
+
+**状态**: fixed
+**Finding**: 玩家实机反馈 / 无
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于焚天龙铳烟花弹表现修复
+**现象**: 烟花弹 FireWork 与前面多个弹种类似，开火或弹幕结束处仍会出现不适配的多余资源特效。
+**根因**: Firework profile 已关闭 `PlayObstacleHitFx` / `PlaySplitTriggerFx`，但仍保留 `Fx_DragonGun_Firework_*` 的 Trail/Hit/Explosion prefab，导致部分路径仍可实例化烟花弹专属资源特效。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs`
+- 修改文件: `FIX_TRACKER.md`
+**兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名、掉落表或 Harmony/反射；仅清空烟花弹自定义资源特效引用，螺旋飞行、空爆分裂、伤害和标记逻辑保持不变。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过并部署到游戏 Mods 目录
+2. Guard: `Get-ChildItem tests -Filter 'DragonKingBossGun*.py' | ForEach-Object { python $_.FullName }` 通过
+**未验证/需人工**: 需要进游戏用 FireWork 烟花弹实测，确认开火、空爆分裂和弹幕结束处不再出现多余光效。
+
+---
+### 2026-07-08 焚天龙铳纳米弹多余开火/终点特效
+
+**状态**: fixed
+**Finding**: 玩家实机反馈 / 无
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于焚天龙铳纳米弹表现修复
+**现象**: 纳米弹 NM 与前面多个弹种类似，开火或弹幕结束处仍会出现不适配的多余资源特效。
+**根因**: Nano profile 已关闭 `PlayObstacleHitFx` / `PlaySplitTriggerFx`，但仍保留 `Fx_DragonGun_Nano_*` 的 Trail/Hit/Explosion prefab，导致部分路径仍可实例化纳米弹专属资源特效。
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs`
+- 修改文件: `FIX_TRACKER.md`
+**兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名、掉落表或 Harmony/反射；仅清空纳米弹自定义资源特效引用，追踪、分裂、伤害和标记逻辑保持不变。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 通过并部署到游戏 Mods 目录
+2. Guard: `Get-ChildItem tests -Filter 'DragonKingBossGun*.py' | ForEach-Object { python $_.FullName }` 通过
+**未验证/需人工**: 需要进游戏用 NM 纳米弹实测，确认开火、分裂触发和弹幕结束处不再出现多余光效。
+
+---
 ### 2026-07-08 焚天龙铳雪球弹滚雪球重做
 
 **状态**: fixed
