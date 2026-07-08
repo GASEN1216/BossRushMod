@@ -51,6 +51,7 @@ namespace BossRush
         public float SpeedFactor = 1f;
         public float DistanceFactor = 1f;
         public float LifetimeFactor = 1f;
+        public float MaxLifetimeSeconds;
         public float DamageFactor = 1f;
         public bool DivideDamageByProjectileCount = true;
         public float SpreadAngle;
@@ -104,6 +105,15 @@ namespace BossRush
         public float ExplosionDamageFactor = 1f;
         public float SplitExplosionRange;
         public float SplitExplosionDamageFactor = 0.3f;
+        public bool UseRollingSnowball;
+        public float FixedSpeed;
+        public float SplitFixedSpeed;
+        public float RollingGrowthDuration;
+        public float RollingStartScaleFactor = 1f;
+        public float RollingEndScaleFactor = 1f;
+        public float RollingSecondaryGrowthDuration;
+        public float RollingSecondaryStartScaleFactor = 1f;
+        public float RollingSecondaryEndScaleFactor = 1f;
         public bool PlayObstacleHitFx = true;
         public bool PlaySplitTriggerFx = true;
         public bool RequiresCustomMovement;
@@ -522,34 +532,48 @@ namespace BossRush
                 Id = DragonKingBossGunProfileId.Snow,
                 TypeIds = new[] { 1351 },
                 Calibers = new[] { "Snow" },
-                Scale = 1.6f,
-                SpeedFactor = 0.6f,
-                DistanceFactor = 0.75f,
-                DamageFactor = 0.8f,
-                Arc = DragonKingBossGunArcMode.High,
-                ArcLift = 0.78f,
-                Gravity = 10f,
+                Scale = 1f,
+                SpeedFactor = 0.08f,
+                DistanceFactor = 1f,
+                MaxLifetimeSeconds = 5f,
+                DamageFactor = 0.25f,
+                Arc = DragonKingBossGunArcMode.None,
+                Gravity = 0f,
                 Element = ElementTypes.ice,
                 PlayObstacleHitFx = false,
                 PlaySplitTriggerFx = false,
+                RequiresCustomMovement = true,
+                UseRollingSnowball = true,
+                FixedSpeed = 5.2f,
+                SplitFixedSpeed = 4.8f,
+                RollingGrowthDuration = 5f,
+                RollingStartScaleFactor = 0.72f,
+                RollingEndScaleFactor = 21.5f,
+                RollingSecondaryGrowthDuration = 2f,
+                RollingSecondaryStartScaleFactor = 1f,
+                RollingSecondaryEndScaleFactor = 5f,
                 UseSplit = true,
                 SplitCount = 4,
-                SplitScale = 0.42f,
-                SplitSpeedFactor = 0.74f,
-                SplitDistanceFactor = 1.1f,
-                SplitDamageFactor = 0.3f,
-                SplitSpreadAngle = 42f,
+                SplitScale = 0.48f,
+                SplitSpeedFactor = 1f,
+                SplitDistanceFactor = 1f,
+                SplitMaxLifetimeSeconds = 2f,
+                SplitDamageFactor = 0.16f,
+                SplitSpreadAngle = 360f,
                 SplitPattern = DragonKingBossGunSplitPattern.Radial,
-                SplitActivationDelay = 0.35f,
-                SplitInitialSpeedMult = 0.45f,
+                SplitActivationDelay = 0f,
+                SplitInitialSpeedMult = 1f,
+                SplitInvulnerableDuration = 0.1f,
                 SplitIgnoreSourceOnSplit = true,
                 UseGroundZone = true,
-                MaxGroundZonesPerShot = 2,
-                GroundZoneRadius = 1.85f,
-                GroundZoneDuration = 2.4f,
+                MaxGroundZonesPerShot = 4,
+                GroundZoneRadius = 1.35f,
+                GroundZoneDuration = 1f,
                 GroundZoneTickDamageFactor = 0.12f,
                 GroundZoneElement = ElementTypes.ice,
-                GroundZoneAllowSecondary = true,
+                GroundZoneAllowSecondary = false,
+                SplitExplosionRange = 1.15f,
+                SplitExplosionDamageFactor = 0.18f,
                 MarkPerHit = 1,
                 MaxMarksPerTargetPerShot = 1,
                 SecondaryMarkPerHit = 0,
@@ -559,9 +583,9 @@ namespace BossRush
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.8f,
                 OverrideBulletDistance = 18f,
-                TrailFxPrefab = "Fx_DragonGun_Snow_Trail",
-                HitFxPrefab = "Fx_DragonGun_Snow_Hit",
-                ExplosionFxPrefab = "Fx_DragonGun_Snow_Explosion"
+                TrailFxPrefab = "",
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
             },
             new DragonKingBossGunShotProfile
             {

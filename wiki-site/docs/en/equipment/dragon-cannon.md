@@ -38,7 +38,7 @@ If compatible ammo is in your inventory, it appears in the ammo-type list. Selec
 - **Firework** — Helix arc, airbursts into 8
 
 # Special Element
-- **Snow** — Ice, high arc, splits into 4, creates ice zone (2.4s)
+- **Snow** — Ice, lower base damage, ultra-slow straight rolling snowball for 5s; damage scales with size and the main snowball grows to about 10x the previous maximum. On hit or timeout it splits into 4 small snowballs with 0.1s spawn protection; each rolls for 2s and grows to 5x its spawn size. Only the main snowball leaves a 1s ice zone
 - **Poop** — Poison, high arc, dmg ×3.2, poison pool (4s), range 60. **Yes, it's called Poop.**
 
 # Why This Matters

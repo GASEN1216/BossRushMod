@@ -100,6 +100,10 @@ namespace BossRush
         private Vector3 deathNormal;
         private bool hasDeathContext;
         private bool deathGroundImpact;
+        private float rollingElapsed;
+        private Vector3 rollingBaseScale = Vector3.one;
+        private float rollingBaseRadius;
+        private float rollingCurrentScaleFactor = 1f;
         private readonly HashSet<int> damagedReceiverIds = new HashSet<int>();
 
         public bool IsActiveForRuntime
@@ -283,7 +287,7 @@ namespace BossRush
             lastHelixOffset = Vector3.zero;
             stopMovementThisFrame = false;
             splitActivationTimer = 0f;
-            splitActivated = !isSecondary || profile == null || (profile.SplitActivationDelay <= 0f && profile.SplitGravity <= 0f);
+            splitActivated = !isSecondary || profile == null || (profile.SplitActivationDelay <= 0f && profile.SplitInvulnerableDuration <= 0f && profile.SplitGravity <= 0f);
             splitSourceReceiverId = sourceReceiverId;
             traceRefreshTimer = 0f;
             mandatorySplitTraceRefresh = isSecondary &&
@@ -299,6 +303,10 @@ namespace BossRush
             deathNormal = Vector3.up;
             hasDeathContext = false;
             deathGroundImpact = false;
+            rollingElapsed = 0f;
+            rollingBaseScale = projectileInstance != null ? projectileInstance.transform.localScale : Vector3.one;
+            rollingBaseRadius = projectileInstance != null ? projectileInstance.radius : 0f;
+            rollingCurrentScaleFactor = 1f;
             damagedReceiverIds.Clear();
 
             savedExplosionFx = projectileInstance != null ? projectileInstance.explosionFx : null;
@@ -338,6 +346,7 @@ namespace BossRush
             }
 
             // 弹体视觉缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理。
+            ApplyRollingSnowballVisual(0f);
             enabled = true;
         }
 
@@ -588,6 +597,11 @@ namespace BossRush
                 return false;
             }
 
+            if (profile.UseRollingSnowball)
+            {
+                return false;
+            }
+
             if (profile.SplitOrbitRadius > 0f && splitOrbitBaseOffset.sqrMagnitude > 0.001f)
             {
                 float angle = profile.SplitOrbitAngularSpeed * splitActivationTimer;
@@ -619,8 +633,19 @@ namespace BossRush
 
         private void UpdateSplitActivation(float deltaTime)
         {
-            if (splitActivated || profile == null || profile.SplitActivationDelay <= 0f)
+            if (splitActivated || profile == null)
             {
+                return;
+            }
+
+            if (profile.SplitActivationDelay <= 0f)
+            {
+                splitActivationTimer += deltaTime;
+                if (splitActivationTimer >= Mathf.Max(0f, profile.SplitInvulnerableDuration))
+                {
+                    splitActivated = true;
+                }
+
                 return;
             }
 
@@ -968,6 +993,14 @@ namespace BossRush
                 return false;
             }
 
+            if (profile.UseRollingSnowball &&
+                secondaryProjectile &&
+                (deathReason == DragonKingBossGunProjectileDeathReason.DamageReceiver ||
+                 deathReason == DragonKingBossGunProjectileDeathReason.Obstacle))
+            {
+                return profile.PlayObstacleHitFx;
+            }
+
             if (deathReason == DragonKingBossGunProjectileDeathReason.Obstacle ||
                 deathReason == DragonKingBossGunProjectileDeathReason.MaxDistance)
             {
@@ -982,6 +1015,14 @@ namespace BossRush
             if (profile == null || !profile.UseGroundZone)
             {
                 return false;
+            }
+
+            if (profile.UseRollingSnowball)
+            {
+                return !secondaryProjectile &&
+                       (deathReason == DragonKingBossGunProjectileDeathReason.DamageReceiver ||
+                        deathReason == DragonKingBossGunProjectileDeathReason.Obstacle ||
+                        deathReason == DragonKingBossGunProjectileDeathReason.MaxDistance);
             }
 
             if (secondaryProjectile && !profile.GroundZoneAllowSecondary)
@@ -1040,6 +1081,10 @@ namespace BossRush
             deathNormal = Vector3.up;
             hasDeathContext = false;
             deathGroundImpact = false;
+            rollingElapsed = 0f;
+            rollingBaseScale = Vector3.one;
+            rollingBaseRadius = 0f;
+            rollingCurrentScaleFactor = 1f;
             damagedReceiverIds.Clear();
             savedExplosionFx = null;
 
@@ -1141,6 +1186,7 @@ namespace BossRush
             }
 
             float deltaTime = Mathf.Min(Time.deltaTime, 0.04f);
+            ApplyRollingSnowballVisual(deltaTime);
 
             if (stickyAttached)
             {
@@ -1291,6 +1337,49 @@ namespace BossRush
             return currentSpeed;
         }
 
+        private void ApplyRollingSnowballVisual(float deltaTime)
+        {
+            if (projectile == null || profile == null || !profile.UseRollingSnowball)
+            {
+                return;
+            }
+
+            rollingElapsed += Mathf.Max(0f, deltaTime);
+
+            float scaleFactor = ResolveRollingScaleFactor();
+
+            rollingCurrentScaleFactor = scaleFactor;
+            transform.localScale = rollingBaseScale * scaleFactor;
+            if (rollingBaseRadius > 0f)
+            {
+                projectile.radius = Mathf.Max(0.02f, rollingBaseRadius * scaleFactor);
+            }
+        }
+
+        private float ResolveRollingScaleFactor()
+        {
+            float growDuration = secondaryProjectile
+                ? (profile.RollingSecondaryGrowthDuration > 0f ? profile.RollingSecondaryGrowthDuration : profile.SplitMaxLifetimeSeconds)
+                : (profile.RollingGrowthDuration > 0f ? profile.RollingGrowthDuration : profile.MaxLifetimeSeconds);
+            float startScale = secondaryProjectile ? profile.RollingSecondaryStartScaleFactor : profile.RollingStartScaleFactor;
+            float endScale = secondaryProjectile ? profile.RollingSecondaryEndScaleFactor : profile.RollingEndScaleFactor;
+            float progress = Mathf.Clamp01(rollingElapsed / Mathf.Max(0.01f, growDuration));
+            return Mathf.Lerp(
+                Mathf.Max(0.1f, startScale),
+                Mathf.Max(0.1f, endScale),
+                Mathf.SmoothStep(0f, 1f, progress));
+        }
+
+        private float ResolveRollingDamageFactor()
+        {
+            if (profile == null || !profile.UseRollingSnowball)
+            {
+                return 1f;
+            }
+
+            return Mathf.Max(0.1f, rollingCurrentScaleFactor);
+        }
+
         private Vector3 GetTraceDirection()
         {
             if (IsTraceTargetUsable(projectile != null ? projectile.context.traceTarget : null))
@@ -1379,6 +1468,11 @@ namespace BossRush
         {
             int receiverId = receiver.GetInstanceID();
 
+            if (!splitActivated && profile.UseRollingSnowball)
+            {
+                return false;
+            }
+
             if (!splitActivated)
             {
                 // 未激活的分裂弹命中敌人时立即激活，而非忽略
@@ -1425,6 +1519,7 @@ namespace BossRush
             DragonKingBossGunRuntime.DragonKingBossGunHitStage hitStage = ResolveHitStage();
             float marker = DragonKingBossGunRuntime.EncodeShotMarker(shotId, profile.Id, hitStage);
             DamageInfo damageInfo = DragonKingBossGunRuntime.CreateDamageInfo(projectile.context, 1f, hitPoint, hitNormal, false, false, marker);
+            damageInfo.damageValue *= ResolveRollingDamageFactor();
             float halfDamageDistance = projectile.context.halfDamageDistance;
             if (halfDamageDistance > 0f)
             {
@@ -1642,7 +1737,7 @@ namespace BossRush
                     resolvedDeathPoint,
                     Mathf.Max(0.3f, profile.SplitExplosionRange),
                     projectile.context,
-                    Mathf.Max(0.1f, profile.SplitExplosionDamageFactor),
+                    Mathf.Max(0.1f, profile.SplitExplosionDamageFactor) * ResolveRollingDamageFactor(),
                     true,
                     true,
                     0f);

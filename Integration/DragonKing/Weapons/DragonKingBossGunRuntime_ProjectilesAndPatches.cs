@@ -455,6 +455,12 @@ namespace BossRush
                 context.team = Teams.all;
             }
 
+            float fixedSpeed = isSecondary ? profile.SplitFixedSpeed : profile.FixedSpeed;
+            if (fixedSpeed > 0f)
+            {
+                context.speed = fixedSpeed;
+            }
+
             context.distance = (gun != null ? gun.BulletDistance : 24f) *
                                profile.DistanceFactor *
                                Mathf.Max(0.05f, profile.LifetimeFactor) *
@@ -465,7 +471,12 @@ namespace BossRush
             {
                 context.distance *= 1.05f;
             }
-            if (isSecondary && profile.SplitMaxLifetimeSeconds > 0f)
+            if (!isSecondary && profile.MaxLifetimeSeconds > 0f)
+            {
+                context.distance = Mathf.Max(0.4f, context.speed * profile.MaxLifetimeSeconds);
+                context.halfDamageDistance = context.distance * 0.5f;
+            }
+            else if (isSecondary && profile.SplitMaxLifetimeSeconds > 0f)
             {
                 context.distance = Mathf.Max(0.4f, context.speed * profile.SplitMaxLifetimeSeconds);
                 context.halfDamageDistance = context.distance * 0.5f;
@@ -558,6 +569,12 @@ namespace BossRush
             if (isSecondary && profile.SplitGravity > 0f)
             {
                 return direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.forward;
+            }
+
+            if (profile.UseRollingSnowball)
+            {
+                Vector3 horizontal = Vector3.ProjectOnPlane(direction, Vector3.up);
+                return horizontal.sqrMagnitude > 0.001f ? horizontal.normalized : Vector3.forward;
             }
 
             if (profile.Arc == DragonKingBossGunArcMode.None)
@@ -659,6 +676,10 @@ namespace BossRush
                 {
                     bool useParabolicScatter = profile.SplitGravity > 0f;
                     bool forceHorizontalScatter = profile.Id == DragonKingBossGunProfileId.Energy;
+                    if (profile.UseRollingSnowball)
+                    {
+                        forceHorizontalScatter = true;
+                    }
                     Vector3 axis = (useParabolicScatter || forceHorizontalScatter)
                         ? Vector3.up
                         : (normal.sqrMagnitude > 0.001f ? normal.normalized : Vector3.up);

@@ -39,6 +39,35 @@
 ```
 
 ---
+### 2026-07-08 焚天龙铳雪球弹滚雪球重做
+
+**状态**: fixed
+**Finding**: 玩家实机反馈 / 无
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于焚天龙铳雪球弹表现修复
+**现象**: 用户不希望 Snow 继续作为高弧线冰弹，而是要超慢速直线滚雪球：主雪球滚 5 秒并越滚越大，命中/死亡后分裂 4 个小雪球；小雪球滚 2 秒继续变大，出生后短暂无敌防止刚分裂就被敌怪吞掉。后续又要求主雪球最大改为旧最大雪球 10 倍、小雪球最大 5 倍、降低基础伤害，并且只允许主雪球留下冰区。
+**根因**: 旧 Snow profile 使用 High arc / gravity / 落地冰区的通用配置，主弹和二段弹都复用同一套冰区生成策略；分裂弹没有专门的出生保护，也没有“当前体积影响伤害”的运行时状态。
+**修复内容**:
+- 新增文件: `tests/DragonKingBossGunSnowballGuard.py`
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs`
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent.cs`
+- 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunRuntime_ProjectilesAndPatches.cs`
+- 修改文件: `WikiContent/zh/equipment/equipment__dragon_cannon.md`
+- 修改文件: `WikiContent/en/equipment/equipment__dragon_cannon.md`
+- 修改文件: `wiki-site/docs/equipment/dragon-cannon.md`
+- 修改文件: `wiki-site/docs/en/equipment/dragon-cannon.md`
+- 修改文件: `FIX_TRACKER.md`
+**兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名、掉落表或 Harmony/反射；仅调整 Snow profile 与 DragonKingBossGunProjectileAgent/发射上下文运行时表现。复用既有弹体、对象池、分裂、半径伤害和冰区系统；未新增每帧分配或独立弹幕系统。
+**验证方法**:
+1. 编译: `cmd.exe /c compile_official.bat` 编译通过；若游戏进程运行中，自动部署会因 DLL 被锁而失败，需关游戏后重新部署
+2. Guard: `python tests\\DragonKingBossGunSnowballGuard.py` 通过
+3. Guard: `python tests\\DragonKingBossGunProfileCoverageGuard.py` 通过
+4. Guard: `python tests\\DragonKingBossGunEnergyPwsGuard.py` 通过
+5. Guard: `python tests\\F3DragonKingBossGunDebugKitGuard.py` 通过
+**未验证/需人工**: 需要进游戏用雪球弹实测，确认主雪球直线慢滚 5 秒、最大视觉接近旧最大 10 倍且伤害随体积提高；主雪球命中/寿命结束分裂 4 个小雪球，小雪球 0.1 秒内不会被敌怪吞掉、2 秒内长到出生 5 倍；只有主雪球留下 1 秒冰区，小雪球不再铺冰。
+
+---
 ### 2026-07-06 逆鳞致死触发兼容与复活后短暂无敌
 
 **状态**: fixed
