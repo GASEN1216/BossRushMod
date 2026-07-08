@@ -74,6 +74,7 @@ namespace BossRush
         private int successfulHits;
         private Vector3 lastHelixOffset;
         private GameObject customTrailInstance;
+        private TrailRenderer iceBladeTrailRenderer;
         private GameObject savedExplosionFx;
         private bool stopMovementThisFrame;
         private float splitActivationTimer;
@@ -331,6 +332,10 @@ namespace BossRush
             {
                 CreateIceBladeTrail();
             }
+            else
+            {
+                DisableIceBladeTrail();
+            }
 
             // 弹体视觉缩放已在 SpawnDragonProjectile 中通过 transform.localScale 处理。
             enabled = true;
@@ -368,21 +373,35 @@ namespace BossRush
 
         private void CreateIceBladeTrail()
         {
-            TrailRenderer trail = gameObject.GetComponent<TrailRenderer>();
+            TrailRenderer trail = iceBladeTrailRenderer != null ? iceBladeTrailRenderer : gameObject.GetComponent<TrailRenderer>();
             if (trail == null)
             {
                 trail = gameObject.AddComponent<TrailRenderer>();
             }
 
-            trail.time = 0.25f;
-            trail.startWidth = 0.25f;
-            trail.endWidth = 0f;
-            trail.startColor = new Color(0.5f, 0.8f, 1f, 0.8f);
-            trail.endColor = new Color(0.5f, 0.8f, 1f, 0f);
-            trail.material = GetOrCreateIceMaterial();
-            trail.numCornerVertices = 2;
-            trail.numCapVertices = 2;
-            trail.minVertexDistance = 0.05f;
+            iceBladeTrailRenderer = trail;
+            trail.enabled = true;
+            trail.Clear();
+            trail.time = 0.34f;
+            trail.startWidth = 0.34f;
+            trail.endWidth = 0.035f;
+            trail.startColor = new Color(0.55f, 0.92f, 1f, 0.92f);
+            trail.endColor = new Color(0.2f, 0.55f, 1f, 0f);
+            trail.sharedMaterial = GetOrCreateIceMaterial();
+            trail.numCornerVertices = 4;
+            trail.numCapVertices = 4;
+            trail.minVertexDistance = 0.025f;
+        }
+
+        private void DisableIceBladeTrail()
+        {
+            if (iceBladeTrailRenderer == null)
+            {
+                return;
+            }
+
+            iceBladeTrailRenderer.Clear();
+            iceBladeTrailRenderer.enabled = false;
         }
 
         private void SpawnIcePierceEffect(Vector3 hitPoint, Vector3 hitNormal)
@@ -394,36 +413,97 @@ namespace BossRush
             ParticleSystem ps = iceFx.AddComponent<ParticleSystem>();
             var main = ps.main;
             main.loop = false;
-            main.duration = 0.15f;
-            main.startLifetime = 0.35f;
-            main.startSpeed = 4f;
-            main.startSize = 0.12f;
-            main.startColor = new Color(0.5f, 0.8f, 1f, 0.9f);
+            main.duration = 0.16f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.34f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(3.2f, 6.2f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.095f);
+            main.startColor = new ParticleSystem.MinMaxGradient(
+                new Color(0.9f, 1f, 1f, 0.88f),
+                new Color(0.42f, 0.78f, 1f, 0.7f));
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 12;
+            main.maxParticles = 18;
 
             var emission = ps.emission;
             emission.rateOverTime = 0;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 12) });
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 14) });
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = 35f;
-            shape.radius = 0.05f;
+            shape.angle = 28f;
+            shape.radius = 0.045f;
 
             var col = ps.colorOverLifetime;
             col.enabled = true;
             Gradient gradient = new Gradient();
             gradient.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(new Color(0.5f, 0.8f, 1f), 0f), new GradientColorKey(new Color(0.7f, 0.9f, 1f), 1f) },
+                new GradientColorKey[] { new GradientColorKey(new Color(0.9f, 1f, 1f), 0f), new GradientColorKey(new Color(0.45f, 0.75f, 1f), 0.55f), new GradientColorKey(new Color(0.2f, 0.45f, 1f), 1f) },
                 new GradientAlphaKey[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0f, 1f) });
             col.color = gradient;
 
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.08f));
+
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = GetOrCreateIceMaterial();
+            renderer.renderMode = ParticleSystemRenderMode.Stretch;
+            renderer.lengthScale = 1.35f;
+            renderer.velocityScale = 0.22f;
+            renderer.sharedMaterial = GetOrCreateIceMaterial();
 
             ps.Play();
-            UnityEngine.Object.Destroy(iceFx, 1f);
+            UnityEngine.Object.Destroy(iceFx, 0.65f);
+        }
+
+        private void SpawnIceBladeShatterEffect(Vector3 hitPoint, Vector3 hitNormal)
+        {
+            GameObject iceFx = new GameObject("DragonGun_IceBladeShatterFx");
+            iceFx.transform.position = hitPoint;
+            iceFx.transform.rotation = hitNormal.sqrMagnitude > 0.001f
+                ? Quaternion.LookRotation(hitNormal.normalized, Vector3.up)
+                : Quaternion.identity;
+
+            ParticleSystem shards = iceFx.AddComponent<ParticleSystem>();
+            var main = shards.main;
+            main.loop = false;
+            main.duration = 0.16f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.22f, 0.42f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(5.5f, 9.5f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.09f);
+            main.startColor = new ParticleSystem.MinMaxGradient(
+                new Color(0.92f, 1f, 1f, 0.86f),
+                new Color(0.38f, 0.75f, 1f, 0.68f));
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 18;
+
+            var emission = shards.emission;
+            emission.rateOverTime = 0;
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 14) });
+
+            var shape = shards.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 32f;
+            shape.radius = 0.07f;
+
+            var colorOverLifetime = shards.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(new Color(0.95f, 1f, 1f), 0f), new GradientColorKey(new Color(0.42f, 0.74f, 1f), 0.6f), new GradientColorKey(new Color(0.25f, 0.42f, 1f), 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.95f, 0f), new GradientAlphaKey(0.65f, 0.35f), new GradientAlphaKey(0f, 1f) });
+            colorOverLifetime.color = gradient;
+
+            var sizeOverLifetime = shards.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.06f));
+
+            var renderer = shards.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Stretch;
+            renderer.lengthScale = 1.75f;
+            renderer.velocityScale = 0.28f;
+            renderer.sharedMaterial = GetOrCreateIceMaterial();
+
+            shards.Play();
+            UnityEngine.Object.Destroy(iceFx, 0.7f);
         }
 
         private static Material GetOrCreateIceMaterial()
@@ -968,6 +1048,8 @@ namespace BossRush
                 UnityEngine.Object.Destroy(customTrailInstance, 2f);
                 customTrailInstance = null;
             }
+
+            DisableIceBladeTrail();
 
             if (stickyFireFxInstance != null)
             {
@@ -1514,7 +1596,14 @@ namespace BossRush
             {
                 if (playDeathExplosionFx)
                 {
-                    DragonKingBossGunRuntime.TrySpawnExplosionFx(resolvedDeathPoint, profile);
+                    if (profile.Id == DragonKingBossGunProfileId.IceBlade)
+                    {
+                        SpawnIceBladeShatterEffect(resolvedDeathPoint, deathNormal);
+                    }
+                    else
+                    {
+                        DragonKingBossGunRuntime.TrySpawnExplosionFx(resolvedDeathPoint, profile);
+                    }
                 }
 
                 DragonKingBossGunRuntime.ApplyRadiusDamage(
