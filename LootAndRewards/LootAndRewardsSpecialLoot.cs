@@ -619,7 +619,7 @@ namespace BossRush
                 }
                 else if (IsDragonKingBoss(bossMain))
                 {
-                    // 龙王：按概率掉落专属物品（飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳5%、逆鳞35%）
+                    // 龙王：按概率掉落专属物品（飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳1%、逆鳞39%）
                     yield return AddDragonKingLoot(inv);
                 }
 
@@ -850,7 +850,7 @@ namespace BossRush
 
         /// <summary>
         /// 添加龙王专属掉落物到Inventory
-        /// 共享掉落格：飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳5%、逆鳞35%
+        /// 共享掉落格：飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳1%、逆鳞39%
         /// </summary>
         private IEnumerator AddDragonKingLoot(Inventory inv)
         {
@@ -863,7 +863,7 @@ namespace BossRush
             float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;      // 0.30
             float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;      // 0.45
             float threshold4 = threshold3 + DragonKingConfig.DROP_CHANCE_HALBERD;    // 0.60
-            float threshold5 = threshold4 + DragonKingConfig.DROP_CHANCE_BOSS_GUN;   // 0.65
+            float threshold5 = threshold4 + DragonKingConfig.DROP_CHANCE_BOSS_GUN;   // 0.61
 
             if (roll < threshold1)
             {
@@ -891,13 +891,13 @@ namespace BossRush
             }
             else if (roll < threshold5)
             {
-                // 5% 焚天龙铳
+                // 1% 焚天龙铳
                 selectedTypeId = DragonKingBossGunConfig.WeaponTypeId;
                 itemName = DragonKingBossGunConfig.WeaponNameCN;
             }
             else
             {
-                // 35% 逆鳞
+                // 39% 逆鳞
                 selectedTypeId = DragonKingConfig.REVERSE_SCALE_TYPE_ID;
                 itemName = "逆鳞";
             }

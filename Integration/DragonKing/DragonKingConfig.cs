@@ -624,14 +624,14 @@ namespace BossRush
         public const float DROP_CHANCE_ARMOR = 0.15f;
         
         /// <summary>
-        /// 逆鳞掉落概率（35%）
+        /// 逆鳞掉落概率（39%）
         /// </summary>
-        public const float DROP_CHANCE_REVERSE_SCALE = 0.35f;
+        public const float DROP_CHANCE_REVERSE_SCALE = 0.39f;
 
         /// <summary>
-        /// 焚天龙铳掉落概率（5%）
+        /// 焚天龙铳掉落概率（1%）
         /// </summary>
-        public const float DROP_CHANCE_BOSS_GUN = 0.05f;
+        public const float DROP_CHANCE_BOSS_GUN = 0.01f;
         
         // ========== 装备配置 ==========
         
