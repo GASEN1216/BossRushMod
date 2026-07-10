@@ -111,9 +111,9 @@ When killing a custom Boss, in addition to the regular loot crate, exclusive equ
 - Cloud Rider (Totem): 15% drop rate
 - Dragon King Crown (Helmet): 15% drop rate
 - Dragon King Scale Armor (Armor): 15% drop rate
-- Reverse Scale (Totem): 35% drop rate
+- Reverse Scale (Totem): 39% drop rate
 - Skyburner Halberd (Melee): 15% drop rate
-- Dragon Cannon (Firearm): 5% drop rate
+- Dragon Cannon (Firearm): 1% drop rate
 
 # Phantom Witch
 - Soulreaper's Requiem (Melee): 50% drop rate

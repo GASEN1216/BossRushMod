@@ -40,12 +40,12 @@ At 1 HP, the Dragon Lord doesn't die. It **ascends to 5m and summons a half-stat
 
 ### Drops
 
-- **Reverse Scale** (Totem): 35%
+- **Reverse Scale** (Totem): 39%
 - **Cloud Rider** (Totem): 15%
 - **Dragon King Crown** (Helmet): 15%
 - **Dragon King Scale Armor** (Armor): 15%
 - **Skyburner Halberd** (Melee): 15%
-- **Dragon Cannon** (Firearm): 5% — the rarest drop
+- **Dragon Cannon** (Firearm): 1% — the rarest drop
 
 ### How to Fight It
 

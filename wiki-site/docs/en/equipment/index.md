@@ -12,7 +12,7 @@ v2.2.0 also adds 5 new weapons and 2 new sets (9 items total), which currently h
 - **Reverse Scale** — One-time lifesave totem (Dragon Lord)
 - **Skyburner Halberd** — Fire melee with 3-hit combo (Dragon Lord)
 - **Dragon Breath** — Fire gun with burn DOT (Dragon Descendant)
-- **Dragon Cannon** — 15-ammo-type gun (Dragon Lord, 5%)
+- **Dragon Cannon** — 15 selectable ammo profiles (Dragon Lord, 1%)
 - **Soulreaper's Requiem** — Ghost scythe with curse (Phantom Witch, 50%)
 - **Frostmourne** — Ice melee with undead summon (Blue Boss, 50%)
 

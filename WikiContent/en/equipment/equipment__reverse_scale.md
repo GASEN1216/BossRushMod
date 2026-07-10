@@ -6,13 +6,14 @@ Touch the dragon's scale, and face its wrath. **A one-time lifesave totem**: aut
 
 ### Stats
 
-- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (35%) / Won't drop on death
+- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (39%) / Won't drop on death
 
 ### How It Works
 
 - **Trigger**: HP drops to 1 or below
 - **Heal**: 50% of max HP
 - **Counterattack**: 8 Prismatic Bolts in all directions, auto-tracking nearest enemy within 15m (15 dmg each, 2.5s tracking + 5s lifetime)
+- **Protection**: gains a brief **0.5s invincibility** window after activation
 - **Then**: Totem shatters, removed from slot
 
 [warn] "The Reverse Scale shattered..." — you'll see this message. Then it's gone.
