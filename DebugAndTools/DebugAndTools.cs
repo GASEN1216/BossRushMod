@@ -139,7 +139,7 @@ namespace BossRush
         /// </summary>
         private void RegisterShootDebugListener()
         {
-            if (!DevModeEnabled) return;
+            if (!HardcodedDevModeEnabled || !DevModeEnabled) return;
             if (shootDebugListenerRegistered) return;
 
             try
@@ -206,7 +206,7 @@ namespace BossRush
         /// <param name="gunAgent">开枪的枪械Agent</param>
         private static void OnMainCharacterShootDebug(ItemAgent_Gun gunAgent)
         {
-            if (!DevModeEnabled) return;
+            if (!HardcodedDevModeEnabled || !DevModeEnabled) return;
             if (gunAgent == null) return;
 
             try

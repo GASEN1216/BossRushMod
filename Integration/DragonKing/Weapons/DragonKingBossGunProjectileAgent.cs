@@ -53,6 +53,8 @@ namespace BossRush
         internal static void ClearStaticCaches()
         {
             cachedIceMaterial = null;
+            ClearFireworkSparkEffectPool();
+            ClearFireworkBloomEffectPool();
             cachedFireworkMaterial = null;
             DragonKingBossGunGroundZone.ClearStaticCaches();
         }
@@ -69,6 +71,204 @@ namespace BossRush
             new Color(1f, 0.36f, 0.78f)
         };
 
+        private const int MaxPooledFireworkSparkEffects = 24;
+        private static readonly Stack<FireworkSparkEffectHandle> fireworkSparkEffectPool = new Stack<FireworkSparkEffectHandle>();
+        private static int fireworkSparkEffectPoolGeneration;
+
+        private sealed class FireworkSparkEffectHandle : MonoBehaviour
+        {
+            private ParticleSystem particles;
+            private float releaseTime;
+            private int poolGeneration;
+            private bool leased;
+
+            internal void Initialize()
+            {
+                particles = gameObject.AddComponent<ParticleSystem>();
+                var main = particles.main;
+                main.loop = false;
+                main.duration = 0.06f;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.34f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2.4f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.07f);
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.gravityModifier = 0.2f;
+                main.maxParticles = 16;
+
+                var emission = particles.emission;
+                emission.rateOverTime = 0;
+                emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 12) });
+
+                var shape = particles.shape;
+                shape.shapeType = ParticleSystemShapeType.Sphere;
+                shape.radius = 0.035f;
+
+                var colorOverLifetime = particles.colorOverLifetime;
+                colorOverLifetime.enabled = true;
+
+                var renderer = particles.GetComponent<ParticleSystemRenderer>();
+                renderer.renderMode = ParticleSystemRenderMode.Stretch;
+                renderer.lengthScale = 0.8f;
+                renderer.velocityScale = 0.16f;
+                renderer.sharedMaterial = GetOrCreateFireworkMaterial();
+            }
+
+            internal void Play(Vector3 position, Color color, int generation)
+            {
+                transform.position = position;
+                poolGeneration = generation;
+                leased = true;
+                gameObject.SetActive(true);
+
+                var main = particles.main;
+                main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.9f), WithAlpha(color, 0.82f));
+
+                Gradient gradient = new Gradient();
+                gradient.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(color, 0.45f), new GradientColorKey(color, 1f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(0.86f, 0f), new GradientAlphaKey(0.45f, 0.45f), new GradientAlphaKey(0f, 1f) });
+                var colorOverLifetime = particles.colorOverLifetime;
+                colorOverLifetime.color = gradient;
+
+                particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                particles.Play(true);
+                releaseTime = Time.time + 0.65f;
+            }
+
+            private void Update()
+            {
+                if (!leased || Time.time < releaseTime)
+                {
+                    return;
+                }
+
+                leased = false;
+                if (poolGeneration != fireworkSparkEffectPoolGeneration || fireworkSparkEffectPool.Count >= MaxPooledFireworkSparkEffects)
+                {
+                    UnityEngine.Object.Destroy(gameObject);
+                    return;
+                }
+
+                gameObject.SetActive(false);
+                fireworkSparkEffectPool.Push(this);
+            }
+        }
+        private const int MaxPooledFireworkBloomEffects = 24;
+        private static readonly Stack<FireworkBloomEffectHandle> fireworkBloomEffectPool = new Stack<FireworkBloomEffectHandle>();
+        private static int fireworkBloomEffectPoolGeneration;
+
+        private sealed class FireworkBloomEffectHandle : MonoBehaviour
+        {
+            private ParticleSystem burst;
+            private ParticleSystem flash;
+            private float releaseTime;
+            private int poolGeneration;
+            private bool leased;
+
+            internal void Initialize()
+            {
+                burst = gameObject.AddComponent<ParticleSystem>();
+                var main = burst.main;
+                main.loop = false;
+                main.duration = 0.08f;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.42f, 0.86f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(4.2f, 7.2f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.105f);
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.gravityModifier = 0.22f;
+                main.maxParticles = 96;
+
+                var emission = burst.emission;
+                emission.rateOverTime = 0;
+                emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 72) });
+
+                var shape = burst.shape;
+                shape.shapeType = ParticleSystemShapeType.Sphere;
+                shape.radius = 0.08f;
+
+                var colorOverLifetime = burst.colorOverLifetime;
+                colorOverLifetime.enabled = true;
+
+                var sizeOverLifetime = burst.sizeOverLifetime;
+                sizeOverLifetime.enabled = true;
+                sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.05f));
+
+                var burstRenderer = burst.GetComponent<ParticleSystemRenderer>();
+                burstRenderer.renderMode = ParticleSystemRenderMode.Stretch;
+                burstRenderer.lengthScale = 1.1f;
+                burstRenderer.velocityScale = 0.22f;
+                burstRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
+
+                GameObject flashObject = new GameObject("BloomFlash");
+                flashObject.transform.SetParent(transform);
+                flashObject.transform.localPosition = Vector3.zero;
+                flashObject.transform.localRotation = Quaternion.identity;
+                flash = flashObject.AddComponent<ParticleSystem>();
+                var flashMain = flash.main;
+                flashMain.loop = false;
+                flashMain.duration = 0.05f;
+                flashMain.startLifetime = new ParticleSystem.MinMaxCurve(0.09f, 0.16f);
+                flashMain.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 1.1f);
+                flashMain.startSize = new ParticleSystem.MinMaxCurve(0.22f, 0.48f);
+                flashMain.simulationSpace = ParticleSystemSimulationSpace.World;
+                flashMain.maxParticles = 12;
+
+                var flashEmission = flash.emission;
+                flashEmission.rateOverTime = 0;
+                flashEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 10) });
+
+                var flashShape = flash.shape;
+                flashShape.shapeType = ParticleSystemShapeType.Sphere;
+                flashShape.radius = 0.03f;
+
+                var flashRenderer = flash.GetComponent<ParticleSystemRenderer>();
+                flashRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+                flashRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
+            }
+
+            internal void Play(Vector3 position, Color colorA, Color colorB, int generation)
+            {
+                transform.position = position;
+                poolGeneration = generation;
+                leased = true;
+                gameObject.SetActive(true);
+
+                var burstMain = burst.main;
+                burstMain.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(colorA, 0.95f), WithAlpha(colorB, 0.95f));
+                Gradient burstGradient = new Gradient();
+                burstGradient.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(colorA, 0.28f), new GradientColorKey(colorB, 0.72f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(0.98f, 0f), new GradientAlphaKey(0.78f, 0.28f), new GradientAlphaKey(0f, 1f) });
+                var burstColorOverLifetime = burst.colorOverLifetime;
+                burstColorOverLifetime.color = burstGradient;
+
+                var flashMain = flash.main;
+                flashMain.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.95f), WithAlpha(new Color(1f, 0.92f, 0.55f), 0.9f));
+                burst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                flash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                burst.Play(true);
+                flash.Play(true);
+                releaseTime = Time.time + 1.35f;
+            }
+
+            private void Update()
+            {
+                if (!leased || Time.time < releaseTime)
+                {
+                    return;
+                }
+
+                leased = false;
+                if (poolGeneration != fireworkBloomEffectPoolGeneration || fireworkBloomEffectPool.Count >= MaxPooledFireworkBloomEffects)
+                {
+                    UnityEngine.Object.Destroy(gameObject);
+                    return;
+                }
+
+                gameObject.SetActive(false);
+                fireworkBloomEffectPool.Push(this);
+            }
+        }
         private Projectile projectile;
         private ItemAgent_Gun sourceGun;
         private DragonKingBossGunShotProfile profile;
@@ -115,6 +315,8 @@ namespace BossRush
         private Vector3 rollingBaseScale = Vector3.one;
         private float rollingBaseRadius;
         private float rollingCurrentScaleFactor = 1f;
+        private Vector3 fireworkCollisionCheckStart;
+        private bool fireworkCollisionCheckStartValid;
         private readonly HashSet<int> damagedReceiverIds = new HashSet<int>();
 
         public bool IsActiveForRuntime
@@ -282,6 +484,10 @@ namespace BossRush
             shotId = currentShotId;
             projectileIndex = currentProjectileIndex;
             secondaryProjectile = isSecondary;
+            if (!secondaryProjectile && profile != null && profile.Id == DragonKingBossGunProfileId.Firework)
+            {
+                DragonKingBossGunRuntime.RequestFireExplosionEffectWarmup(Mathf.Max(12, profile.SplitCount * 2));
+            }
             returning = false;
             splitTriggered = false;
             deathHandled = false;
@@ -298,7 +504,7 @@ namespace BossRush
             lastHelixOffset = Vector3.zero;
             stopMovementThisFrame = false;
             splitActivationTimer = 0f;
-            splitActivated = !isSecondary || profile == null || (profile.SplitActivationDelay <= 0f && profile.SplitInvulnerableDuration <= 0f && profile.SplitGravity <= 0f);
+            splitActivated = !isSecondary || profile == null || (ResolveSplitActivationDelay() <= 0f && profile.SplitInvulnerableDuration <= 0f && profile.SplitGravity <= 0f);
             splitSourceReceiverId = sourceReceiverId;
             traceRefreshTimer = 0f;
             mandatorySplitTraceRefresh = isSecondary &&
@@ -318,6 +524,8 @@ namespace BossRush
             rollingBaseScale = projectileInstance != null ? projectileInstance.transform.localScale : Vector3.one;
             rollingBaseRadius = projectileInstance != null ? projectileInstance.radius : 0f;
             rollingCurrentScaleFactor = 1f;
+            fireworkCollisionCheckStart = projectileInstance != null ? projectileInstance.transform.position : Vector3.zero;
+            fireworkCollisionCheckStartValid = projectileInstance != null;
             damagedReceiverIds.Clear();
 
             savedExplosionFx = projectileInstance != null ? projectileInstance.explosionFx : null;
@@ -493,126 +701,79 @@ namespace BossRush
 
         private void SpawnFireworkBloomEffect(Vector3 position)
         {
-            GameObject fx = new GameObject("DragonGun_FireworkBloomFx");
-            fx.transform.position = position;
-
-            Color colorA = ResolveFireworkColor(shotId, true);
-            Color colorB = ResolveFireworkColor(shotId + 3, true);
-            Color flashColor = new Color(1f, 0.92f, 0.55f);
-
-            ParticleSystem burst = fx.AddComponent<ParticleSystem>();
-            var main = burst.main;
-            main.loop = false;
-            main.duration = 0.08f;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.42f, 0.86f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(4.2f, 7.2f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.105f);
-            main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(colorA, 0.95f), WithAlpha(colorB, 0.95f));
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.gravityModifier = 0.22f;
-            main.maxParticles = 96;
-
-            var emission = burst.emission;
-            emission.rateOverTime = 0;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 72) });
-
-            var shape = burst.shape;
-            shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 0.08f;
-
-            var colorOverLifetime = burst.colorOverLifetime;
-            colorOverLifetime.enabled = true;
-            Gradient burstGradient = new Gradient();
-            burstGradient.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(colorA, 0.28f), new GradientColorKey(colorB, 0.72f) },
-                new GradientAlphaKey[] { new GradientAlphaKey(0.98f, 0f), new GradientAlphaKey(0.78f, 0.28f), new GradientAlphaKey(0f, 1f) });
-            colorOverLifetime.color = burstGradient;
-
-            var sizeOverLifetime = burst.sizeOverLifetime;
-            sizeOverLifetime.enabled = true;
-            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.05f));
-
-            var burstRenderer = burst.GetComponent<ParticleSystemRenderer>();
-            burstRenderer.renderMode = ParticleSystemRenderMode.Stretch;
-            burstRenderer.lengthScale = 1.1f;
-            burstRenderer.velocityScale = 0.22f;
-            burstRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
-
-            GameObject flashObject = new GameObject("BloomFlash");
-            flashObject.transform.SetParent(fx.transform);
-            flashObject.transform.localPosition = Vector3.zero;
-            flashObject.transform.localRotation = Quaternion.identity;
-
-            ParticleSystem flash = flashObject.AddComponent<ParticleSystem>();
-            var flashMain = flash.main;
-            flashMain.loop = false;
-            flashMain.duration = 0.05f;
-            flashMain.startLifetime = new ParticleSystem.MinMaxCurve(0.09f, 0.16f);
-            flashMain.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 1.1f);
-            flashMain.startSize = new ParticleSystem.MinMaxCurve(0.22f, 0.48f);
-            flashMain.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.95f), WithAlpha(flashColor, 0.9f));
-            flashMain.simulationSpace = ParticleSystemSimulationSpace.World;
-            flashMain.maxParticles = 12;
-
-            var flashEmission = flash.emission;
-            flashEmission.rateOverTime = 0;
-            flashEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 10) });
-
-            var flashShape = flash.shape;
-            flashShape.shapeType = ParticleSystemShapeType.Sphere;
-            flashShape.radius = 0.03f;
-
-            var flashRenderer = flash.GetComponent<ParticleSystemRenderer>();
-            flashRenderer.renderMode = ParticleSystemRenderMode.Billboard;
-            flashRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
-
-            burst.Play(true);
-            flash.Play(true);
-            UnityEngine.Object.Destroy(fx, 1.35f);
+            FireworkBloomEffectHandle effect = RentFireworkBloomEffect();
+            effect.Play(
+                position,
+                ResolveFireworkColor(shotId, true),
+                ResolveFireworkColor(shotId + 3, true),
+                fireworkBloomEffectPoolGeneration);
         }
 
+        private static FireworkBloomEffectHandle RentFireworkBloomEffect()
+        {
+            while (fireworkBloomEffectPool.Count > 0)
+            {
+                FireworkBloomEffectHandle effect = fireworkBloomEffectPool.Pop();
+                if (effect != null)
+                {
+                    return effect;
+                }
+            }
+
+            GameObject effectObject = new GameObject("DragonGun_FireworkBloomFx");
+            FireworkBloomEffectHandle createdEffect = effectObject.AddComponent<FireworkBloomEffectHandle>();
+            createdEffect.Initialize();
+            effectObject.SetActive(false);
+            return createdEffect;
+        }
+
+        private static void ClearFireworkBloomEffectPool()
+        {
+            fireworkBloomEffectPoolGeneration++;
+            while (fireworkBloomEffectPool.Count > 0)
+            {
+                FireworkBloomEffectHandle effect = fireworkBloomEffectPool.Pop();
+                if (effect != null)
+                {
+                    UnityEngine.Object.Destroy(effect.gameObject);
+                }
+            }
+        }
         private void SpawnFireworkSparkEffect(Vector3 position)
         {
-            GameObject fx = new GameObject("DragonGun_FireworkSparkEndFx");
-            fx.transform.position = position;
+            FireworkSparkEffectHandle effect = RentFireworkSparkEffect();
+            effect.Play(position, ResolveFireworkColor(projectileIndex + shotId, true), fireworkSparkEffectPoolGeneration);
+        }
 
-            Color color = ResolveFireworkColor(projectileIndex + shotId, true);
-            ParticleSystem ps = fx.AddComponent<ParticleSystem>();
-            var main = ps.main;
-            main.loop = false;
-            main.duration = 0.06f;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.34f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2.4f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.07f);
-            main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.9f), WithAlpha(color, 0.82f));
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.gravityModifier = 0.2f;
-            main.maxParticles = 16;
+        private static FireworkSparkEffectHandle RentFireworkSparkEffect()
+        {
+            while (fireworkSparkEffectPool.Count > 0)
+            {
+                FireworkSparkEffectHandle effect = fireworkSparkEffectPool.Pop();
+                if (effect != null)
+                {
+                    return effect;
+                }
+            }
 
-            var emission = ps.emission;
-            emission.rateOverTime = 0;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 12) });
+            GameObject effectObject = new GameObject("DragonGun_FireworkSparkEndFx");
+            FireworkSparkEffectHandle createdEffect = effectObject.AddComponent<FireworkSparkEffectHandle>();
+            createdEffect.Initialize();
+            effectObject.SetActive(false);
+            return createdEffect;
+        }
 
-            var shape = ps.shape;
-            shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 0.035f;
-
-            var colorOverLifetime = ps.colorOverLifetime;
-            colorOverLifetime.enabled = true;
-            Gradient gradient = new Gradient();
-            gradient.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(color, 0.45f), new GradientColorKey(color, 1f) },
-                new GradientAlphaKey[] { new GradientAlphaKey(0.86f, 0f), new GradientAlphaKey(0.45f, 0.45f), new GradientAlphaKey(0f, 1f) });
-            colorOverLifetime.color = gradient;
-
-            var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.renderMode = ParticleSystemRenderMode.Stretch;
-            renderer.lengthScale = 0.8f;
-            renderer.velocityScale = 0.16f;
-            renderer.sharedMaterial = GetOrCreateFireworkMaterial();
-
-            ps.Play(true);
-            UnityEngine.Object.Destroy(fx, 0.65f);
+        private static void ClearFireworkSparkEffectPool()
+        {
+            fireworkSparkEffectPoolGeneration++;
+            while (fireworkSparkEffectPool.Count > 0)
+            {
+                FireworkSparkEffectHandle effect = fireworkSparkEffectPool.Pop();
+                if (effect != null)
+                {
+                    UnityEngine.Object.Destroy(effect.gameObject);
+                }
+            }
         }
 
         private void SpawnIcePierceEffect(Vector3 hitPoint, Vector3 hitNormal)
@@ -810,7 +971,7 @@ namespace BossRush
                 return false;
             }
 
-            float warmupDuration = Mathf.Max(profile.SplitActivationDelay, profile.SplitInvulnerableDuration);
+            float warmupDuration = Mathf.Max(ResolveSplitActivationDelay(), profile.SplitInvulnerableDuration);
             return warmupDuration > 0f && splitActivationTimer < warmupDuration;
         }
 
@@ -830,7 +991,7 @@ namespace BossRush
             {
                 float angle = profile.SplitOrbitAngularSpeed * splitActivationTimer;
                 Vector3 offset = Quaternion.AngleAxis(angle, splitOrbitAxis) * splitOrbitBaseOffset;
-                float growDuration = Mathf.Min(0.08f, Mathf.Max(0.01f, profile.SplitActivationDelay));
+                float growDuration = Mathf.Min(0.08f, Mathf.Max(0.01f, ResolveSplitActivationDelay()));
                 float grow = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(splitActivationTimer / growDuration));
                 transform.position = splitOrbitCenter + offset * grow;
 
@@ -862,7 +1023,8 @@ namespace BossRush
                 return;
             }
 
-            if (profile.SplitActivationDelay <= 0f)
+            float activationDelay = ResolveSplitActivationDelay();
+            if (activationDelay <= 0f)
             {
                 splitActivationTimer += deltaTime;
                 if (splitActivationTimer >= Mathf.Max(0f, profile.SplitInvulnerableDuration))
@@ -874,7 +1036,7 @@ namespace BossRush
             }
 
             splitActivationTimer += deltaTime;
-            if (splitActivationTimer >= profile.SplitActivationDelay)
+            if (splitActivationTimer >= activationDelay)
             {
                 splitActivated = true;
                 Vector3 direction = directionRef(projectile);
@@ -893,6 +1055,16 @@ namespace BossRush
                 float splitInitialSpeedMult = Mathf.Max(0.01f, profile.SplitInitialSpeedMult);
                 velocityRef(projectile) = direction * (velocity.magnitude * splitInitialSpeedMult);
             }
+        }
+
+        private float ResolveSplitActivationDelay()
+        {
+            if (!secondaryProjectile || profile == null)
+            {
+                return 0f;
+            }
+
+            return Mathf.Max(0f, profile.SplitActivationDelay + projectileIndex * profile.SplitActivationStagger);
         }
 
         private void TryRefreshTraceTarget(float deltaTime)
@@ -1309,6 +1481,8 @@ namespace BossRush
             rollingBaseScale = Vector3.one;
             rollingBaseRadius = 0f;
             rollingCurrentScaleFactor = 1f;
+            fireworkCollisionCheckStart = Vector3.zero;
+            fireworkCollisionCheckStartValid = false;
             damagedReceiverIds.Clear();
             savedExplosionFx = null;
 
@@ -1453,39 +1627,66 @@ namespace BossRush
 
             distanceThisFrameRef(projectile) = distanceThisFrame;
 
-            Vector3 castStart = transform.position - transform.forward * 0.1f;
-            if (isFirstFrame && projectile.context.firstFrameCheck)
+            bool staggerFireworkCollisionCheck = secondaryProjectile &&
+                                               profile.Id == DragonKingBossGunProfileId.Firework &&
+                                               splitActivated &&
+                                               !isFirstFrame;
+            bool shouldCheckCollision = !staggerFireworkCollisionCheck ||
+                                        ((Time.frameCount + projectileIndex) & 1) == 0;
+            if (shouldCheckCollision)
             {
-                castStart = projectile.context.firstFrameCheckStartPoint;
-            }
-
-            if (isFirstFrame)
-            {
-                firstFrameRef(projectile) = false;
-            }
-
-            int hitCount = Physics.SphereCastNonAlloc(
-                castStart,
-                projectile.radius,
-                directionRef(projectile),
-                raycastBuffer,
-                distanceThisFrame + 0.3f,
-                hitLayersRef(projectile),
-                QueryTriggerInteraction.Ignore);
-            if (hitCount > 1)
-            {
-                Array.Sort(raycastBuffer, 0, hitCount, RaycastHitDistanceComparer.Instance);
-            }
-
-            for (int i = 0; i < hitCount; i++)
-            {
-                if (HandleHit(raycastBuffer[i]))
+                Vector3 castStart = transform.position - transform.forward * 0.1f;
+                Vector3 castDirection = directionRef(projectile);
+                float castDistance = distanceThisFrame + 0.3f;
+                Vector3 predictedEnd = transform.position + castDirection * distanceThisFrame;
+                if (isFirstFrame && projectile.context.firstFrameCheck)
                 {
-                    break;
+                    castStart = projectile.context.firstFrameCheckStartPoint;
                 }
-            }
+                else if (staggerFireworkCollisionCheck && fireworkCollisionCheckStartValid)
+                {
+                    Vector3 castDelta = predictedEnd - fireworkCollisionCheckStart;
+                    float castDeltaMagnitude = castDelta.magnitude;
+                    if (castDeltaMagnitude > 0.0001f)
+                    {
+                        castStart = fireworkCollisionCheckStart;
+                        castDirection = castDelta / castDeltaMagnitude;
+                        castDistance = castDeltaMagnitude + 0.3f;
+                    }
+                }
 
-            if (overMaxDistanceRef(projectile))
+                if (isFirstFrame)
+                {
+                    firstFrameRef(projectile) = false;
+                }
+
+                int hitCount = Physics.SphereCastNonAlloc(
+                    castStart,
+                    projectile.radius,
+                    castDirection,
+                    raycastBuffer,
+                    castDistance,
+                    hitLayersRef(projectile),
+                    QueryTriggerInteraction.Ignore);
+                if (hitCount > 1)
+                {
+                    Array.Sort(raycastBuffer, 0, hitCount, RaycastHitDistanceComparer.Instance);
+                }
+
+                for (int i = 0; i < hitCount; i++)
+                {
+                    if (HandleHit(raycastBuffer[i]))
+                    {
+                        break;
+                    }
+                }
+
+                if (staggerFireworkCollisionCheck)
+                {
+                    fireworkCollisionCheckStart = predictedEnd;
+                    fireworkCollisionCheckStartValid = true;
+                }
+            }            if (overMaxDistanceRef(projectile))
             {
                 if (profile.UseReturn && !returning)
                 {
@@ -1964,7 +2165,8 @@ namespace BossRush
                     Mathf.Max(0.1f, profile.SplitExplosionDamageFactor) * ResolveRollingDamageFactor(),
                     true,
                     true,
-                    0f);
+                    0f,
+                    profile.SplitIgnoreSourceOnSplit ? splitSourceReceiverId : -1);
             }
 
             if (profile.Id == DragonKingBossGunProfileId.Firework &&

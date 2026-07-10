@@ -15,6 +15,76 @@ namespace BossRush
     {
         private const float DamageNormalFallbackSqr = 0.0000000001f;
 
+        private const int MaxPooledFireExplosionEffects = 96;
+        private static readonly Stack<FireExplosionEffectHandle> fireExplosionEffectPool = new Stack<FireExplosionEffectHandle>();
+        private static int fireExplosionEffectPoolGeneration;
+        private static bool fireExplosionEffectWarmupRunning;
+        private static int requestedFireExplosionEffectPoolSize;
+
+        private sealed class FireExplosionEffectHandle : MonoBehaviour
+        {
+            private ParticleSystem[] particles;
+            private float releaseTime;
+            private int poolGeneration;
+            private bool leased;
+
+            internal void Initialize()
+            {
+                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(gameObject);
+                particles = GetComponentsInChildren<ParticleSystem>(true);
+                for (int i = 0; i < particles.Length; i++)
+                {
+                    ParticleSystem particle = particles[i];
+                    var main = particle.main;
+                    main.loop = false;
+                    main.duration = 0.5f;
+
+                    var emission = particle.emission;
+                    emission.rateOverDistance = 0;
+                    emission.rateOverTime = 0;
+                    emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 30) });
+
+                    var shape = particle.shape;
+                    shape.shapeType = ParticleSystemShapeType.Sphere;
+                    shape.radius = 1f;
+                }
+            }
+
+            internal void Play(Vector3 position, float lifetime, int generation)
+            {
+                transform.position = position;
+                poolGeneration = generation;
+                leased = true;
+                gameObject.SetActive(true);
+                for (int i = 0; i < particles.Length; i++)
+                {
+                    ParticleSystem particle = particles[i];
+                    particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    particle.Play(true);
+                }
+
+                releaseTime = Time.time + lifetime;
+            }
+
+            private void Update()
+            {
+                if (!leased || Time.time < releaseTime)
+                {
+                    return;
+                }
+
+                leased = false;
+                if (poolGeneration != fireExplosionEffectPoolGeneration || fireExplosionEffectPool.Count >= MaxPooledFireExplosionEffects)
+                {
+                    UnityEngine.Object.Destroy(gameObject);
+                    return;
+                }
+
+                gameObject.SetActive(false);
+                fireExplosionEffectPool.Push(this);
+            }
+        }
+
         private static Vector3 ApplyWeaponScatter(ItemAgent_Gun gun, Vector3 shootDirection)
         {
             bool isMainCharacterShot = gun.Holder != null && gun.Holder.IsMainCharacter;
@@ -156,7 +226,7 @@ namespace BossRush
             sticky.Initialize(sourceContext, profile, shotId, followTarget, position);
         }
 
-        internal static void ApplyRadiusDamage(Vector3 position, float radius, ProjectileContext sourceContext, float damageFactor, bool treatAsEffect, bool ignoreOwner, float markerOverride = -1f)
+        internal static void ApplyRadiusDamage(Vector3 position, float radius, ProjectileContext sourceContext, float damageFactor, bool treatAsEffect, bool ignoreOwner, float markerOverride = -1f, int ignoredReceiverId = -1)
         {
             if (radius <= 0f)
             {
@@ -175,7 +245,7 @@ namespace BossRush
                 }
 
                 int receiverId = receiver.GetInstanceID();
-                if (SharedReceiverIdSet.Contains(receiverId))
+                if (receiverId == ignoredReceiverId || SharedReceiverIdSet.Contains(receiverId))
                 {
                     continue;
                 }
@@ -222,35 +292,13 @@ namespace BossRush
 
             if (profile != null && profile.Element == ElementTypes.fire)
             {
-                GameObject fireFx = new GameObject("DragonGun_FireExplosionFx");
-                fireFx.transform.position = position;
-                DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(fireFx);
-                float fireFxLifetime = Mathf.Clamp(fxDuration, 0.2f, 2f);
-
-                ParticleSystem[] particles = fireFx.GetComponentsInChildren<ParticleSystem>(true);
-                foreach (var ps in particles)
-                {
-                    var main = ps.main;
-                    main.loop = false;
-                    main.duration = Mathf.Min(0.5f, fireFxLifetime);
-
-                    var em = ps.emission;
-                    em.rateOverDistance = 0;
-                    em.rateOverTime = 0;
-                    em.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 30) });
-
-                    var shape = ps.shape;
-                    shape.shapeType = ParticleSystemShapeType.Sphere;
-                    shape.radius = 1f;
-
-                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                    ps.Play(true);
-                }
-
-                UnityEngine.Object.Destroy(fireFx, fireFxLifetime);
+                float fireFxLifetime = profile.Id == DragonKingBossGunProfileId.Firework
+                    ? 0.65f
+                    : Mathf.Clamp(fxDuration, 0.2f, 2f);
+                FireExplosionEffectHandle fireFx = RentFireExplosionEffect();
+                fireFx.Play(position, fireFxLifetime, fireExplosionEffectPoolGeneration);
                 return;
             }
-
             if (cachedExplosionFx != null)
             {
                 GameObject fx = UnityEngine.Object.Instantiate(cachedExplosionFx, position, Quaternion.identity);
@@ -261,6 +309,81 @@ namespace BossRush
             }
         }
 
+        internal static void RequestFireExplosionEffectWarmup(int desiredPoolSize)
+        {
+            desiredPoolSize = Mathf.Clamp(desiredPoolSize, 0, MaxPooledFireExplosionEffects);
+            if (desiredPoolSize <= fireExplosionEffectPool.Count)
+            {
+                return;
+            }
+
+            requestedFireExplosionEffectPoolSize = Mathf.Max(requestedFireExplosionEffectPoolSize, desiredPoolSize);
+            if (fireExplosionEffectWarmupRunning)
+            {
+                return;
+            }
+
+            WarmFireExplosionEffectPoolAsync().Forget();
+        }
+
+        private static async UniTaskVoid WarmFireExplosionEffectPoolAsync()
+        {
+            fireExplosionEffectWarmupRunning = true;
+            int generation = fireExplosionEffectPoolGeneration;
+            try
+            {
+                while (generation == fireExplosionEffectPoolGeneration &&
+                       fireExplosionEffectPool.Count < requestedFireExplosionEffectPoolSize)
+                {
+                    FireExplosionEffectHandle effect = CreateFireExplosionEffect();
+                    effect.gameObject.SetActive(false);
+                    fireExplosionEffectPool.Push(effect);
+                    await UniTask.DelayFrame(1);
+                }
+            }
+            finally
+            {
+                if (generation == fireExplosionEffectPoolGeneration)
+                {
+                    fireExplosionEffectWarmupRunning = false;
+                    requestedFireExplosionEffectPoolSize = fireExplosionEffectPool.Count;
+                }
+            }
+        }
+
+        private static FireExplosionEffectHandle RentFireExplosionEffect()
+        {
+            while (fireExplosionEffectPool.Count > 0)
+            {
+                FireExplosionEffectHandle effect = fireExplosionEffectPool.Pop();
+                if (effect != null)
+                {
+                    return effect;
+                }
+            }
+
+            return CreateFireExplosionEffect();
+        }
+
+        private static FireExplosionEffectHandle CreateFireExplosionEffect()
+        {
+            GameObject effectObject = new GameObject("DragonGun_FireExplosionFx");
+            FireExplosionEffectHandle createdEffect = effectObject.AddComponent<FireExplosionEffectHandle>();
+            createdEffect.Initialize();
+            return createdEffect;
+        }
+        internal static void ClearFireExplosionEffectPool()
+        {
+            fireExplosionEffectPoolGeneration++;
+            while (fireExplosionEffectPool.Count > 0)
+            {
+                FireExplosionEffectHandle effect = fireExplosionEffectPool.Pop();
+                if (effect != null)
+                {
+                    UnityEngine.Object.Destroy(effect.gameObject);
+                }
+            }
+        }
         internal static bool IsGroundSurface(GameObject hitObject, Vector3 hitNormal)
         {
             int layer = hitObject != null ? hitObject.layer : -1;

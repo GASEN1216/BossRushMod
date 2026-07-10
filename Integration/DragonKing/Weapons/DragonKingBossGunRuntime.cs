@@ -141,6 +141,7 @@ namespace BossRush
             shotSequence = 0;
             lastCleanupTime = 0f;
             bossRedProjectileWarmupStarted = false;
+            ClearFireExplosionEffectPool();
             DragonKingBossGunProjectileAgent.ClearStaticCaches();
         }
 

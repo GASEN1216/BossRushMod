@@ -96,6 +96,7 @@ namespace BossRush
         public DragonKingBossGunSplitPattern SplitPattern = DragonKingBossGunSplitPattern.None;
         public float[] PierceDamageDecay;
         public float SplitActivationDelay;
+        public float SplitActivationStagger;
         public float SplitInitialSpeedMult = 0.3f;
         public float SplitInvulnerableDuration;
         public float SplitOrbitRadius;
@@ -647,6 +648,7 @@ namespace BossRush
                 SplitSpreadAngle = 360f,
                 SplitPattern = DragonKingBossGunSplitPattern.FireworkBloom,
                 SplitActivationDelay = 0.08f,
+                SplitActivationStagger = 0.02f,
                 SplitInitialSpeedMult = 0.18f,
                 SplitIgnoreSourceOnSplit = true,
                 SplitGravity = 1.6f,
