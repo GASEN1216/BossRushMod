@@ -298,7 +298,8 @@ namespace BossRush
                 ZombieModeTuning.CorruptorZoneStartupSeconds + ZombieModeTuning.CorruptorZoneDurationSeconds,
                 ZombieModeTuning.CorruptorZoneDamagePerSecond,
                 0.5f,
-                ZombieModeTuning.CorruptorZoneSlowPercent);
+                ZombieModeTuning.CorruptorZoneSlowPercent,
+                ZombieModeTuning.CorruptorZoneStartupSeconds);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, zone, runtime, null);
         }
 
@@ -778,7 +779,7 @@ namespace BossRush
 
             if (marker.BossKind == ZombieModeBossKind.Splitter)
             {
-                DealZombieModeAreaDamageToPlayer(
+                DealZombieModeExplosionAreaDamage(
                     runId,
                     character,
                     character.transform.position,
@@ -797,7 +798,7 @@ namespace BossRush
             }
             else if (marker.BossKind == ZombieModeBossKind.Titan)
             {
-                DealZombieModeAreaDamageToPlayer(runId, character, character.transform.position, 6f, 60f);
+                DealZombieModeExplosionAreaDamage(runId, character, character.transform.position, 6f, 60f);
             }
         }
 
@@ -953,15 +954,26 @@ namespace BossRush
         private float slowPercent;
         private float tickInterval;
         private float nextTickTime;
+        private bool followSourcePosition;
 
-        public void Initialize(int newRunId, CharacterMainControl newSource, float newRadius, float duration, float dps, float tick, float slow = 0f)
+        public void Initialize(
+            int newRunId,
+            CharacterMainControl newSource,
+            float newRadius,
+            float duration,
+            float dps,
+            float tick,
+            float slow = 0f,
+            float startupDelay = 0f,
+            bool followSource = false)
         {
             source = newSource;
             radius = Mathf.Max(0.5f, newRadius);
             damagePerSecond = dps;
             slowPercent = Mathf.Max(0f, slow);
             tickInterval = Mathf.Max(0.1f, tick);
-            nextTickTime = Time.unscaledTime + tickInterval;
+            followSourcePosition = followSource;
+            nextTickTime = Time.unscaledTime + Mathf.Max(Mathf.Max(0f, startupDelay), tickInterval);
             InitializeTimedRuntime(newRunId, duration);
         }
 
@@ -972,6 +984,11 @@ namespace BossRush
 
         protected override void TickRuntime(ModBehaviour inst)
         {
+            if (followSourcePosition && source != null && source.transform != null)
+            {
+                transform.position = source.transform.position + Vector3.up * 0.04f;
+            }
+
             if (Time.unscaledTime < nextTickTime)
             {
                 return;
@@ -979,10 +996,14 @@ namespace BossRush
 
             nextTickTime = Time.unscaledTime + tickInterval;
             float tickDamage = damagePerSecond * tickInterval;
-            inst.DealZombieModeRuntimeAreaDamageToPlayer(RuntimeRunId, source, transform.position, radius, tickDamage);
+            if (tickDamage > 0f)
+            {
+                inst.DealZombieModeRuntimeAreaDamageToPlayer(RuntimeRunId, source, transform.position, radius, tickDamage);
+            }
+
             if (slowPercent > 0f)
             {
-                inst.TryApplyZombieModePlayerSlow(RuntimeRunId, slowPercent, tickInterval * 2f);
+                inst.TryApplyZombieModePlayerSlowInArea(RuntimeRunId, transform.position, radius, slowPercent, tickInterval * 2f);
             }
         }
     }

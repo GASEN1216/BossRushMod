@@ -10,6 +10,7 @@ namespace BossRush
         public bool IsBoss;
         public bool DeathSettled;
         public bool RemovedFromRuntime;
+        public bool CustomExploderSkillDetonated;
         public ZombieModeBossKind BossKind;
         public ZombieModeEnemyKind EnemyKind;
         public ZombieModeSpecialKind SpecialKind;
@@ -153,6 +154,7 @@ namespace BossRush
             marker.IsBoss = isBoss;
             marker.DeathSettled = false;
             marker.RemovedFromRuntime = false;
+            marker.CustomExploderSkillDetonated = false;
             marker.BossKind = bossKind;
             marker.EnemyKind = isBoss ? ZombieModeEnemyKind.Elite : enemyKind;
             marker.SpecialKind = specialKind;

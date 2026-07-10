@@ -15,12 +15,15 @@ namespace BossRush
     {
         private void HandleZombieModeSpecialDeathEffects(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl character)
         {
-            if (marker == null || marker.SpecialKind != ZombieModeSpecialKind.Exploder || character == null)
+            if (marker == null ||
+                marker.SpecialKind != ZombieModeSpecialKind.Exploder ||
+                marker.CustomExploderSkillDetonated ||
+                character == null)
             {
                 return;
             }
 
-            DealZombieModeAreaDamageToPlayer(
+            DealZombieModeExplosionAreaDamage(
                 runId,
                 character,
                 character.transform.position,
@@ -37,7 +40,7 @@ namespace BossRush
 
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Burst))
             {
-                DealZombieModeAreaDamageToPlayer(
+                DealZombieModeExplosionAreaDamage(
                     runId,
                     character,
                     character.transform.position,
@@ -179,15 +182,17 @@ namespace BossRush
             switch (marker.SpecialKind)
             {
                 case ZombieModeSpecialKind.Sprinter:
-                    character.PopText(L10n.T("BossRush_ZombieMode_Special_Sprinter"));
-                    Vector3 dashTarget = Vector3.MoveTowards(
-                        character.transform.position,
-                        player.transform.position,
-                        ZombieModeTuning.SprinterDashDistance);
-                    dashTarget.y = character.transform.position.y;
-                    character.transform.position = dashTarget;
+                    StartZombieModeSprinterDash(runId, character, player.transform.position);
                     break;
                 case ZombieModeSpecialKind.Exploder:
+                    Vector3 exploderDelta = player.transform.position - character.transform.position;
+                    exploderDelta.y = 0f;
+                    float triggerDistance = Mathf.Max(0.1f, ZombieModeTuning.ExploderTriggerDistance);
+                    if (exploderDelta.sqrMagnitude > triggerDistance * triggerDistance)
+                    {
+                        break;
+                    }
+
                     StartZombieModeTelegraphedAreaDamage(
                         runId,
                         character,
@@ -195,20 +200,25 @@ namespace BossRush
                         ZombieModeTuning.ExploderDeathRadius,
                         ZombieModeTuning.ExploderDeathDamage,
                         ZombieModeTuning.ExploderDetonationDelaySeconds,
-                        L10n.T("BossRush_ZombieMode_Special_Exploder"));
+                        L10n.T("BossRush_ZombieMode_Special_Exploder"),
+                        true);
                     break;
                 case ZombieModeSpecialKind.OfficialExploder:
                     // 官方自爆型直接复用原版技能；这里不再叠自定义爆炸。
                     break;
                 case ZombieModeSpecialKind.Plague:
-                    StartZombieModeTelegraphedAreaDamage(
+                    StartZombieModeTelegraphedDamageCloud(
                         runId,
                         character,
                         character.transform.position,
                         ZombieModeTuning.PlagueCloudRadius,
-                        ZombieModeTuning.PlagueCloudDamagePerSecond * ZombieModeTuning.PlagueCloudDurationSeconds,
+                        ZombieModeTuning.PlagueCloudDurationSeconds,
+                        ZombieModeTuning.PlagueCloudDamagePerSecond,
+                        0.5f,
                         ZombieModeTuning.ThreatTelegraphDelaySeconds,
-                        L10n.T("BossRush_ZombieMode_Special_Plague"));
+                        L10n.T("BossRush_ZombieMode_Special_Plague"),
+                        "ZombieMode_PlagueCloud",
+                        new Color(0.18f, 0.82f, 0.28f, 0.42f));
                     break;
                 case ZombieModeSpecialKind.Summoner:
                     character.PopText(L10n.T("BossRush_ZombieMode_Special_Summoner"));
@@ -219,14 +229,16 @@ namespace BossRush
                     }
                     break;
                 case ZombieModeSpecialKind.Harasser:
-                    StartZombieModeTelegraphedPlayerSlow(
+                    StartZombieModeHarasserProjectile(
                         runId,
                         character,
                         player.transform.position,
+                        ZombieModeTuning.HarasserProjectileSpeed,
+                        ZombieModeTuning.HarasserProjectileDamage,
+                        ZombieModeTuning.HarasserProjectileLifetimeSeconds,
                         ZombieModeTuning.HarasserSlowRadius,
                         ZombieModeTuning.HarasserSlowPercent,
                         ZombieModeTuning.HarasserSlowDurationSeconds,
-                        ZombieModeTuning.ThreatTelegraphDelaySeconds,
                         L10n.T("BossRush_ZombieMode_Special_Harasser"));
                     break;
             }
@@ -246,14 +258,22 @@ namespace BossRush
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.ToxicAura) ||
                 marker.EliteAffixes.Contains(ZombieModeEliteAffix.Plague))
             {
-                StartZombieModeTelegraphedAreaDamage(
+                bool toxicAura = marker.EliteAffixes.Contains(ZombieModeEliteAffix.ToxicAura);
+                float eliteCloudDps = 26f / Mathf.Max(0.1f, ZombieModeTuning.PlagueCloudDurationSeconds);
+                StartZombieModeTelegraphedDamageCloud(
                     runId,
                     character,
                     character.transform.position,
                     5.5f,
-                    26f,
+                    ZombieModeTuning.PlagueCloudDurationSeconds,
+                    eliteCloudDps,
+                    0.5f,
                     ZombieModeTuning.ThreatTelegraphDelaySeconds,
-                    L10n.T("BossRush_ZombieMode_Affix_ToxicAura"));
+                    toxicAura ? L10n.T("BossRush_ZombieMode_Affix_ToxicAura") : L10n.T("BossRush_ZombieMode_Affix_Plague"),
+                    toxicAura ? "ZombieMode_ToxicAuraCloud" : "ZombieMode_ElitePlagueCloud",
+                    toxicAura ? new Color(0.45f, 0.92f, 0.32f, 0.38f) : new Color(0.18f, 0.82f, 0.28f, 0.40f),
+                    toxicAura,
+                    toxicAura);
             }
 
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Shielded))
@@ -425,6 +445,40 @@ namespace BossRush
             commanderAuraStaleTargetsScratch.Clear();
         }
 
+        private void StartZombieModeSprinterDash(
+            int runId,
+            CharacterMainControl source,
+            Vector3 targetPosition)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            if (source == null)
+            {
+                return;
+            }
+
+            source.PopText(L10n.T("BossRush_ZombieMode_Special_Sprinter"));
+            GameObject telegraph = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_SprinterDashTelegraph",
+                source.transform.position + Vector3.up * 0.035f,
+                1.4f,
+                0.02f,
+                new Color(1f, 0.82f, 0.10f, 0.30f));
+
+            ZombieModeSprinterDashRuntime runtime = telegraph.AddComponent<ZombieModeSprinterDashRuntime>();
+            runtime.Initialize(
+                runId,
+                source,
+                targetPosition,
+                ZombieModeTuning.SprinterDashDistance,
+                ZombieModeTuning.SprinterDashStartupSeconds,
+                0.18f);
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, runtime, null);
+        }
+
         private void StartZombieModeTelegraphedAreaDamage(
             int runId,
             CharacterMainControl source,
@@ -432,7 +486,8 @@ namespace BossRush
             float radius,
             float damage,
             float delay,
-            string label)
+            string label,
+            bool followSourcePosition = false)
         {
             if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
             {
@@ -453,7 +508,7 @@ namespace BossRush
                 new Color(1f, 0.16f, 0.08f, 0.35f));
 
             ZombieModeTelegraphedAreaDamageRuntime runtime = telegraph.AddComponent<ZombieModeTelegraphedAreaDamageRuntime>();
-            runtime.Initialize(runId, source, origin, radius, damage, delay);
+            runtime.Initialize(runId, source, origin, radius, damage, delay, followSourcePosition);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, runtime, null);
         }
 
@@ -489,6 +544,219 @@ namespace BossRush
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, runtime, null);
         }
 
+        private void StartZombieModeTelegraphedDamageCloud(
+            int runId,
+            CharacterMainControl source,
+            Vector3 origin,
+            float radius,
+            float duration,
+            float damagePerSecond,
+            float tickInterval,
+            float delay,
+            string label,
+            string cloudName,
+            Color cloudColor,
+            bool followSourceDuringTelegraph = false,
+            bool followSourceAfterSpawn = false)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            if (source != null && !string.IsNullOrEmpty(label))
+            {
+                source.PopText(label);
+            }
+
+            GameObject telegraph = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_DamageCloudTelegraph",
+                origin + Vector3.up * 0.03f,
+                radius,
+                0.02f,
+                new Color(cloudColor.r, cloudColor.g, cloudColor.b, Mathf.Max(0.20f, cloudColor.a)));
+
+            ZombieModeTelegraphedDamageCloudRuntime runtime = telegraph.AddComponent<ZombieModeTelegraphedDamageCloudRuntime>();
+            runtime.Initialize(
+                runId,
+                source,
+                origin,
+                radius,
+                duration,
+                damagePerSecond,
+                tickInterval,
+                delay,
+                cloudName,
+                cloudColor,
+                followSourceDuringTelegraph,
+                followSourceAfterSpawn);
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, runtime, null);
+        }
+
+        public void SpawnZombieModeDamageCloud(
+            int runId,
+            CharacterMainControl source,
+            Vector3 origin,
+            float radius,
+            float duration,
+            float damagePerSecond,
+            float tickInterval,
+            string cloudName,
+            Color cloudColor,
+            bool followSourcePosition)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            GameObject cloud = CreateZombieModeFlatZoneVisual(
+                string.IsNullOrEmpty(cloudName) ? "ZombieMode_DamageCloud" : cloudName,
+                origin + Vector3.up * 0.04f,
+                radius,
+                0.04f,
+                cloudColor);
+
+            ZombieModeAreaTickRuntime runtime = cloud.AddComponent<ZombieModeAreaTickRuntime>();
+            runtime.Initialize(
+                runId,
+                source,
+                radius,
+                duration,
+                damagePerSecond,
+                tickInterval,
+                0f,
+                0f,
+                followSourcePosition);
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, cloud, runtime, null);
+        }
+
+        private void StartZombieModeHarasserProjectile(
+            int runId,
+            CharacterMainControl source,
+            Vector3 targetPosition,
+            float speed,
+            float damage,
+            float lifetime,
+            float slowRadius,
+            float slowPercent,
+            float slowDuration,
+            string label)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            if (source != null && !string.IsNullOrEmpty(label))
+            {
+                source.PopText(label);
+            }
+
+            Vector3 origin = source != null ? source.transform.position + Vector3.up * 0.35f : targetPosition + Vector3.up * 0.35f;
+            GameObject projectile = new GameObject("ZombieMode_HarasserProjectile");
+            projectile.transform.position = origin;
+            ConfigureZombieModeHarasserProjectileVisual(projectile);
+
+            ZombieModeHarasserProjectileRuntime runtime = projectile.AddComponent<ZombieModeHarasserProjectileRuntime>();
+            runtime.Initialize(
+                runId,
+                source,
+                origin,
+                targetPosition,
+                speed,
+                damage,
+                lifetime,
+                slowRadius,
+                slowPercent,
+                slowDuration);
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, projectile, runtime, null);
+        }
+
+        private static void ConfigureZombieModeHarasserProjectileVisual(GameObject projectile)
+        {
+            if (projectile == null)
+            {
+                return;
+            }
+
+            ParticleSystem particles = projectile.AddComponent<ParticleSystem>();
+            ParticleSystem.MainModule main = particles.main;
+            main.loop = true;
+            main.duration = 0.35f;
+            main.startLifetime = 0.22f;
+            main.startSpeed = 0.08f;
+            main.startSize = 0.22f;
+            main.startColor = new Color(0.12f, 0.75f, 1f, 0.90f);
+
+            ParticleSystem.EmissionModule emission = particles.emission;
+            emission.rateOverTime = 18f;
+
+            ParticleSystem.ShapeModule shape = particles.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.08f;
+
+            ParticleSystemRenderer renderer = projectile.GetComponent<ParticleSystemRenderer>();
+            if (renderer != null)
+            {
+                renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            }
+        }
+
+        public void TryExecuteZombieModeHarasserProjectileImpact(
+            int runId,
+            CharacterMainControl source,
+            Vector3 impactPosition,
+            float damage,
+            float slowRadius,
+            float slowPercent,
+            float slowDuration)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player != null)
+            {
+                impactPosition.y = player.transform.position.y;
+            }
+            else if (source != null)
+            {
+                impactPosition.y = source.transform.position.y;
+            }
+
+            DealZombieModeRuntimeAreaDamageToPlayer(runId, source, impactPosition, 0.85f, damage);
+            SpawnZombieModeSlowZone(runId, impactPosition, slowRadius, slowPercent, slowDuration);
+        }
+
+        private void SpawnZombieModeSlowZone(int runId, Vector3 origin, float radius, float slowPercent, float duration)
+        {
+            if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(zombieModeRunState.CombatPhase))
+            {
+                return;
+            }
+
+            GameObject zone = CreateZombieModeFlatZoneVisual(
+                "ZombieMode_HarasserSlowZone",
+                origin + Vector3.up * 0.035f,
+                radius,
+                0.03f,
+                new Color(0.12f, 0.75f, 1f, 0.32f));
+
+            ZombieModeAreaTickRuntime runtime = zone.AddComponent<ZombieModeAreaTickRuntime>();
+            runtime.Initialize(
+                runId,
+                null,
+                radius,
+                duration,
+                0f,
+                0.25f,
+                slowPercent);
+            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, zone, runtime, null);
+        }
+
         public void TryExecuteZombieModeTelegraphedAreaDamage(
             int runId,
             CharacterMainControl source,
@@ -503,7 +771,38 @@ namespace BossRush
                 // 玩家与丧尸都按 team 命中，自动尊重墙体阻挡 / VFX / 屏幕震动；
                 // source 为空时 helper 内部回退为 player-only 实现保持原行为。
                 DealZombieModeExplosionAreaDamage(runId, source, origin, radius, damage);
+                TryKillZombieModeCustomExploderAfterDetonation(runId, source, origin);
             }
+        }
+
+        private void TryKillZombieModeCustomExploderAfterDetonation(int runId, CharacterMainControl source, Vector3 origin)
+        {
+            if (source == null || source.Health == null)
+            {
+                return;
+            }
+
+            ZombieModeEnemyRuntimeMarker marker = source.GetComponent<ZombieModeEnemyRuntimeMarker>();
+            if (marker == null ||
+                marker.RunId != runId ||
+                marker.IsBoss ||
+                marker.DeathSettled ||
+                marker.RemovedFromRuntime ||
+                marker.EnemyKind != ZombieModeEnemyKind.Special ||
+                marker.SpecialKind != ZombieModeSpecialKind.Exploder)
+            {
+                return;
+            }
+
+            marker.CustomExploderSkillDetonated = true;
+            DamageInfo selfDamage = new DamageInfo(source);
+            selfDamage.damageType = DamageTypes.normal;
+            selfDamage.damageValue = Mathf.Max(source.Health.CurrentHealth + 1f, source.Health.MaxHealth + 1f, 1f);
+            selfDamage.damagePoint = origin;
+            selfDamage.damageNormal = Vector3.up;
+            selfDamage.isExplosion = true;
+            selfDamage.isFromBuffOrEffect = true;
+            source.Health.Hurt(selfDamage);
         }
 
         public void TryApplyZombieModePlayerSlowInArea(int runId, Vector3 origin, float radius, float percent, float duration)

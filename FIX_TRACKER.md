@@ -39,6 +39,99 @@
 ```
 
 ---
+### 2026-07-09 丧尸模式自定义自爆怪无距离门控且未自毁
+
+**状态**: fixed
+**Finding**: 玩家反馈 / 静态代码确认
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于既有 `ExploderTriggerDistance` 调参常量未接入、且“自爆怪”语义未闭环的行为修复
+**现象**: 玩家反馈丧尸模式 BOSS 关有东西持续追着玩家爆炸。静态排查确认 BOSS 波仍会按既有压力系统维持环境尸潮；第 6 波以后特殊怪池包含自定义 `Exploder` 和官方 `OfficialExploder`。其中自定义 `Exploder` 的技能冷却到点后直接原地起手爆炸，没有检查与玩家距离，爆炸后不会死亡；起手期间若丧尸移动，旧实现还会保留起手时的旧爆心。
+**根因**: `ZombieModeTuning.ExploderTriggerDistance = 2.5f` 已存在，但 `TryExecuteZombieModeSpecialSkill()` 的 `ZombieModeSpecialKind.Exploder` 分支未使用该距离门控；同时自定义爆炸只调用 telegraph/ExplosionManager 伤害路径，没有对自身走 `Health.Hurt()` 死亡链路，导致自定义自爆怪只要存活并追踪玩家，就会按 9 秒冷却反复放红圈爆炸。通用 telegraph 默认固定起手坐标，不能表达“自爆中心始终是丧尸当前位置”。
+**修复内容**:
+- 新增文件: `tests/ZombieModeExploderTriggerDistanceGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
+- 修改文件: `ZombieMode/ZombieModeEnemyRuntime.cs`
+- 修改文件: `ZombieMode/ZombieModePollution_RuntimeComponents.cs`
+- 修改文件: `ZombieMode/ZombieModePollution_RuntimeSkills.cs`
+- 修改文件: `tests/ZombieModeExploderOfficialSelfDestructGuard.py`
+- 修改文件: `FIX_TRACKER.md`
+**兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名、掉落表或 Harmony/反射；不改变 BOSS 波环境尸潮规则，也不改变官方 `OfficialExploder` 的原版自爆保留逻辑。自定义 `Exploder` 改为遵守既有 2.5 米触发距离，技能起手红圈跟随丧尸当前位置，爆炸后走正常死亡链路自毁；被玩家提前打死时也会在死亡位置触发一次自爆。通过 marker 标记跳过技能自爆后的死亡二次爆炸，并让 pending 跟随红圈在来源已死亡时取消，避免双炸。
+**验证方法**:
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过并部署到游戏 Mods 目录
+2. Guard: `python tests\ZombieModeExploderTriggerDistanceGuard.py` 通过
+3. Guard: `python tests\ZombieModeExploderOfficialSelfDestructGuard.py` 通过
+4. Guard: `python tests\ZombieBoomAttachmentSanitizerGuard.py` 通过
+5. Guard: `python tests\ZombieModeWaveEventMarkerCacheGuard.py` 通过
+6. Guard: `python tests\ZombieModeNormalZombieCapAndAggroGuard.py` 通过
+**未验证/需人工**: 需要进游戏在第 10 波及以后 BOSS 关实测，确认自定义 `Exploder` 只有贴近后才起爆，红圈/爆心跟随丧尸当前位置，起爆后正常死亡、不再反复追炸；同时确认起手期间被击杀只在死亡位置爆一次。`Hunter` Boss 每 5 秒闪近并在玩家脚下放爆炸圈仍是当前设计技能。
+**失败尝试**: 无
+
+---
+### 2026-07-09 丧尸模式瘟疫/骚扰特殊怪行为与公开描述不一致
+
+**状态**: fixed
+**Finding**: 全面静态排查 / Wiki 与调参常量对照
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于公开描述、调参常量与运行时行为对齐的行为修复
+**现象**: 继续排查特殊丧尸、精英词缀和 BOSS 技能后确认，瘟疫者描述为持续毒云但旧实现是一次性爆点；精英 `ToxicAura`/`Plague` 描述为毒雾/毒云但旧实现也是一次性爆点；骚扰者描述为发射投射物命中后生成减速区，但旧实现是在玩家脚下直接延迟减速；共享区域 tick 在带 `slowPercent` 时直接给玩家上减速，导致可见区域外也可能吃到减速；腐蚀者毒圈有起手常量但首跳没有真正延迟。
+**根因**: `TryExecuteZombieModeSpecialSkill()` 和 `TryExecuteZombieModeEliteSkill()` 复用了瞬发 telegraph damage helper 表达毒云/毒雾；骚扰者复用了玩家减速 telegraph 而没有投射物 runtime；`ZombieModeAreaTickRuntime` 只把 slow 当作全局玩家状态写入，没有走范围判定 helper；腐蚀区只把 startup 加进对象寿命，未传入首 tick 延迟。
+**修复内容**:
+- 新增文件: `tests/ZombieModePlagueCloudBehaviorGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
+- 新增文件: `tests/ZombieModeHarasserProjectileGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
+- 新增文件: `tests/ZombieModeAreaTickSlowScopeGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
+- 修改文件: `ZombieMode/ZombieModeBossController.cs`
+- 修改文件: `ZombieMode/ZombieModePollution_RuntimeComponents.cs`
+- 修改文件: `ZombieMode/ZombieModePollution_RuntimeSkills.cs`
+- 修改文件: `tests/ZombieModeAreaDamagePlayerGuard.py`
+- 修改文件: `FIX_TRACKER.md`
+**兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名、掉落表或 Harmony/反射；不改变特殊怪/精英/BOSS 刷新池或数值常量。瘟疫者和精英毒雾改为 telegraph 后生成持续区域伤害云；骚扰者改为生成可飞行投射物，命中或到期后才结算 25 伤害并创建 3.5m 减速区；区域减速改为只在玩家位于可见区域内时生效；腐蚀区首跳遵守 `CorruptorZoneStartupSeconds`。
+**验证方法**:
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过并部署到游戏 Mods 目录
+2. Guard: `python tests\ZombieModePlagueCloudBehaviorGuard.py` 通过
+3. Guard: `python tests\ZombieModeHarasserProjectileGuard.py` 通过
+4. Guard: `python tests\ZombieModeAreaTickSlowScopeGuard.py` 通过
+5. Guard: `python tests\ZombieModeAreaDamagePlayerGuard.py` 通过
+6. Guard: `python tests\ZombieModePauseMenuGuard.py`、`python tests\ZombieModeTimeAxisGuard.py` 退出码 0
+7. Guard: `python tests\ZombieModeRunOnlyCleanupGuard.py`、`python tests\ZombieModeCompileListGuard.py` 通过
+8. Guard: `python tests\ZombieBoomAttachmentSanitizerGuard.py`、`python tests\ZombieModeWaveEventMarkerCacheGuard.py`、`python tests\ZombieModeNormalZombieCapAndAggroGuard.py` 通过
+9. 静态检查: `git diff --check` 无 whitespace 错误，仅有既有 CRLF 提示
+**未验证/需人工**: 需要进游戏在普通波和 BOSS 波实测，确认瘟疫/毒雾持续云、骚扰者投射物、腐蚀区起手与减速范围符合可见表现。
+**设计确认项**: `SprinterDashStartupSeconds = 0.5f` 已在后续修复接入；`Hunter` Boss 仍按当前 Wiki 明文描述执行 15m 传送式 Dash，若后续要改成可躲避冲刺，需要 owner 作为设计改动确认。
+**失败尝试**: 无
+
+---
+### 2026-07-09 丧尸模式疾行者瞬移与死亡爆炸表现不一致
+
+**状态**: fixed
+**Finding**: 全面静态排查 / Wiki 与调参常量对照
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；属于调参常量、公开描述与运行时行为对齐的行为修复
+**现象**: 继续排查特殊丧尸、精英词缀和 BOSS 死亡效果后确认，疾行者描述/常量是 0.5 秒起手后的 12m 冲刺，但旧实现直接 `transform.position` 改坐标，表现为瞬移；精英 `Burst`、Splitter/Titan 死亡爆炸走 player-only 区域伤害路径，玩家会吃到伤害但缺少原生爆炸 VFX、屏幕反馈和墙体阻挡语义。
+**根因**: `ZombieModeTuning.SprinterDashStartupSeconds` 只存在于调参表，`TryExecuteZombieModeSpecialSkill()` 的 `Sprinter` 分支没有接入；死亡爆炸沿用了早期 `DealZombieModeAreaDamageToPlayer()` fallback，而不是 `ExplosionManager.CreateExplosion` 封装。
+**修复内容**:
+- 新增文件: `tests/ZombieModeSprinterDashTelegraphGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
+- 新增文件: `tests/ZombieModeDeathExplosionVisualGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
+- 修改文件: `ZombieMode/ZombieModePollution_RuntimeComponents.cs`
+- 修改文件: `ZombieMode/ZombieModePollution_RuntimeSkills.cs`
+- 修改文件: `ZombieMode/ZombieModeBossController.cs`
+- 修改文件: `FIX_TRACKER.md`
+**兼容性影响**: 不涉及 TypeID、存档 key、配置 schema、资源命名、掉落表或 Harmony/反射；不改变疾行者冷却、冲刺距离或死亡爆炸数值。疾行者改为先显示跟随本体的短起手提示，再用 `SetForceMoveVelocity` 执行 12m 冲刺，并在暂停、死亡、run 清理和销毁时归零强制速度；精英 Burst、Splitter/Titan 死亡爆炸改走原生爆炸路径，保留 fallback 避免 ExplosionManager 不可用时技能失效。
+**验证方法**:
+1. 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1 && compile_official.bat"` 通过并部署到游戏 Mods 目录
+2. Guard: `python tests\ZombieModeSprinterDashTelegraphGuard.py` 通过
+3. Guard: `python tests\ZombieModeDeathExplosionVisualGuard.py` 通过
+4. Guard: `python tests\ZombieModeExploderTriggerDistanceGuard.py`、`python tests\ZombieModeExploderOfficialSelfDestructGuard.py` 通过
+5. Guard: `python tests\ZombieModePlagueCloudBehaviorGuard.py`、`python tests\ZombieModeHarasserProjectileGuard.py`、`python tests\ZombieModeAreaTickSlowScopeGuard.py` 通过
+6. Guard: `python tests\ZombieModeAreaDamagePlayerGuard.py`、`python tests\ZombieModePauseMenuGuard.py`、`python tests\ZombieModeTimeAxisGuard.py`、`python tests\ZombieModeRunOnlyCleanupGuard.py`、`python tests\ZombieModeCompileListGuard.py` 退出码 0
+7. Guard: `python tests\ZombieBoomAttachmentSanitizerGuard.py`、`python tests\ZombieModeWaveEventMarkerCacheGuard.py`、`python tests\ZombieModeNormalZombieCapAndAggroGuard.py` 通过
+8. 静态检查: `git diff --check` 无 whitespace 错误，仅有既有 CRLF 提示
+**未验证/需人工**: 需要进游戏实测疾行者起手提示/冲刺体感，以及 Burst、Splitter、Titan 死亡爆炸的 VFX、屏幕反馈、伤害和墙体阻挡。
+**设计确认项**: `Hunter` Boss 仍按 Wiki 明文描述执行 15m 传送式 Dash；若需要把它也改为可预警冲刺，应按设计改动单独确认。
+**失败尝试**: 无
+
+---
 ### 2026-07-08 焚天龙铳烟花弹多余开火/终点特效
 
 **状态**: fixed

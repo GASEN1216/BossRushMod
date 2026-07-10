@@ -58,8 +58,8 @@ def main() -> int:
         return fail("missing HandleZombieModeSpecialDeathEffects body")
     if "marker.SpecialKind != ZombieModeSpecialKind.Exploder" not in death_body:
         return fail("custom Exploder death-effect guard lost special-kind filter")
-    if "DealZombieModeAreaDamageToPlayer(" not in death_body:
-        return fail("custom Exploder death effect no longer deals area damage")
+    if "DealZombieModeExplosionAreaDamage(" not in death_body:
+        return fail("custom Exploder death effect no longer uses native explosion area damage")
     if "OfficialExploder" in death_body:
         return fail("official exploder leaked into custom death-effect handler")
 

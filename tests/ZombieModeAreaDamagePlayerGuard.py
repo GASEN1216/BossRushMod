@@ -96,10 +96,16 @@ def main() -> int:
         "SpawnZombieModePoisonPathSegment(runId, boss, boss.transform.position);",
         "SpawnZombieModeDeathCloud(runId, character, character.transform.position);",
         "runtime.Initialize(\n                runId,\n                source,",
-        "DealZombieModeAreaDamageToPlayer(\n                runId,\n                character,",
     ]:
         if token not in boss and token not in pollution:
             return fail("death/corruptor area damage must pass its zombie source -> " + token)
+
+    death_source_patterns = [
+        r"DealZombieModeAreaDamageToPlayer\(\s*runId,\s*character,",
+        r"DealZombieModeExplosionAreaDamage\(\s*runId,\s*character,",
+    ]
+    if not any(re.search(pattern, boss) or re.search(pattern, pollution) for pattern in death_source_patterns):
+        return fail("death area damage must pass character as source")
 
     print("ZombieModeAreaDamagePlayerGuard: PASS")
     return 0

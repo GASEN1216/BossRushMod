@@ -11,6 +11,147 @@ using UnityEngine;
 
 namespace BossRush
 {
+    public sealed class ZombieModeSprinterDashRuntime : ZombieModeTimedRunScopedRuntime
+    {
+        private CharacterMainControl source;
+        private Vector3 targetPosition;
+        private Vector3 dashDirection;
+        private float dashDistance;
+        private float startupEndTime;
+        private float dashDuration;
+        private float dashEndTime;
+        private bool dashStarted;
+        private bool stopped;
+
+        public void Initialize(
+            int newRunId,
+            CharacterMainControl newSource,
+            Vector3 newTargetPosition,
+            float newDashDistance,
+            float startupSeconds,
+            float newDashDuration)
+        {
+            source = newSource;
+            targetPosition = newTargetPosition;
+            dashDistance = Mathf.Max(0.5f, newDashDistance);
+            dashDuration = Mathf.Max(0.05f, newDashDuration);
+            startupEndTime = Time.unscaledTime + Mathf.Max(0.05f, startupSeconds);
+            dashEndTime = 0f;
+            dashStarted = false;
+            stopped = false;
+            InitializeTimedRuntime(newRunId, Mathf.Max(0.05f, startupSeconds) + dashDuration + 0.1f);
+        }
+
+        protected override void TickRuntime(ModBehaviour inst)
+        {
+            if (ShouldCancelDash())
+            {
+                StopDashVelocity();
+                Destroy(gameObject);
+                return;
+            }
+
+            RefreshTelegraphPosition();
+            if (!dashStarted)
+            {
+                if (Time.unscaledTime < startupEndTime)
+                {
+                    return;
+                }
+
+                StartDash();
+            }
+
+            if (Time.unscaledTime >= dashEndTime)
+            {
+                StopDashVelocity();
+                Destroy(gameObject);
+                return;
+            }
+
+            source.SetForceMoveVelocity(dashDirection * (dashDistance / dashDuration));
+        }
+
+        protected override void OnRuntimeStopping(ModBehaviour inst, bool expired)
+        {
+            StopDashVelocity();
+        }
+
+        private void OnDestroy()
+        {
+            StopDashVelocity();
+        }
+
+        protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
+        {
+            startupEndTime += pausedDuration;
+            if (dashStarted)
+            {
+                dashEndTime += pausedDuration;
+            }
+        }
+
+        private void StartDash()
+        {
+            dashDirection = targetPosition - source.transform.position;
+            dashDirection.y = 0f;
+            if (dashDirection.sqrMagnitude <= 0.0001f)
+            {
+                dashDirection = source.transform.forward;
+                dashDirection.y = 0f;
+            }
+
+            dashDirection = dashDirection.sqrMagnitude > 0.0001f ? dashDirection.normalized : Vector3.forward;
+            if (dashDirection.sqrMagnitude > 0.0001f)
+            {
+                source.transform.rotation = Quaternion.LookRotation(dashDirection, Vector3.up);
+            }
+
+            dashStarted = true;
+            dashEndTime = Time.unscaledTime + dashDuration;
+        }
+
+        private void RefreshTelegraphPosition()
+        {
+            if (source == null || source.transform == null)
+            {
+                return;
+            }
+
+            transform.position = source.transform.position + Vector3.up * 0.035f;
+        }
+
+        private bool ShouldCancelDash()
+        {
+            if (source == null || source.Health == null)
+            {
+                return true;
+            }
+
+            ZombieModeEnemyRuntimeMarker marker = source.GetComponent<ZombieModeEnemyRuntimeMarker>();
+            if (marker != null && (marker.DeathSettled || marker.RemovedFromRuntime))
+            {
+                return true;
+            }
+
+            return source.Health.CurrentHealth <= 0f;
+        }
+
+        private void StopDashVelocity()
+        {
+            if (stopped)
+            {
+                return;
+            }
+
+            stopped = true;
+            if (dashStarted && source != null)
+            {
+                source.SetForceMoveVelocity(Vector3.zero);
+            }
+        }
+    }
+
     public sealed class ZombieModeTelegraphedAreaDamageRuntime : ZombieModeTimedRunScopedRuntime
     {
         private CharacterMainControl source;
@@ -19,6 +160,7 @@ namespace BossRush
         private float damage;
         private float triggerTime;
         private bool triggered;
+        private bool followSourcePosition;
 
         public void Initialize(
             int newRunId,
@@ -26,12 +168,14 @@ namespace BossRush
             Vector3 newOrigin,
             float newRadius,
             float newDamage,
-            float delay)
+            float delay,
+            bool newFollowSourcePosition = false)
         {
             source = newSource;
             origin = newOrigin;
             radius = newRadius;
             damage = newDamage;
+            followSourcePosition = newFollowSourcePosition;
             triggerTime = Time.unscaledTime + Mathf.Max(0.05f, delay);
             triggered = false;
             InitializeTimedRuntime(newRunId, Mathf.Max(0.05f, delay) + 0.1f);
@@ -39,6 +183,13 @@ namespace BossRush
 
         protected override void TickRuntime(ModBehaviour inst)
         {
+            if (ShouldCancelFollowSourceRuntime())
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            RefreshFollowSourceOrigin();
             if (triggered || Time.unscaledTime < triggerTime)
             {
                 return;
@@ -47,6 +198,38 @@ namespace BossRush
             triggered = true;
             inst.TryExecuteZombieModeTelegraphedAreaDamage(RuntimeRunId, source, origin, radius, damage);
             Destroy(gameObject);
+        }
+
+        private void RefreshFollowSourceOrigin()
+        {
+            if (!followSourcePosition || source == null || source.transform == null)
+            {
+                return;
+            }
+
+            origin = source.transform.position;
+            transform.position = origin + Vector3.up * 0.03f;
+        }
+
+        private bool ShouldCancelFollowSourceRuntime()
+        {
+            if (!followSourcePosition)
+            {
+                return false;
+            }
+
+            if (source == null || source.Health == null)
+            {
+                return true;
+            }
+
+            ZombieModeEnemyRuntimeMarker marker = source.GetComponent<ZombieModeEnemyRuntimeMarker>();
+            if (marker != null && (marker.DeathSettled || marker.RemovedFromRuntime))
+            {
+                return true;
+            }
+
+            return source.Health.CurrentHealth <= 0f;
         }
 
         protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
@@ -99,6 +282,263 @@ namespace BossRush
         }
     }
 
+    public sealed class ZombieModeTelegraphedDamageCloudRuntime : ZombieModeTimedRunScopedRuntime
+    {
+        private CharacterMainControl source;
+        private Vector3 origin;
+        private float radius;
+        private float duration;
+        private float damagePerSecond;
+        private float tickInterval;
+        private float triggerTime;
+        private bool triggered;
+        private bool followSourceDuringTelegraph;
+        private bool followSourceAfterSpawn;
+        private string cloudName;
+        private Color cloudColor;
+
+        public void Initialize(
+            int newRunId,
+            CharacterMainControl newSource,
+            Vector3 newOrigin,
+            float newRadius,
+            float newDuration,
+            float newDamagePerSecond,
+            float newTickInterval,
+            float delay,
+            string newCloudName,
+            Color newCloudColor,
+            bool newFollowSourceDuringTelegraph,
+            bool newFollowSourceAfterSpawn)
+        {
+            source = newSource;
+            origin = newOrigin;
+            radius = Mathf.Max(0.5f, newRadius);
+            duration = Mathf.Max(0.1f, newDuration);
+            damagePerSecond = Mathf.Max(0f, newDamagePerSecond);
+            tickInterval = Mathf.Max(0.1f, newTickInterval);
+            triggerTime = Time.unscaledTime + Mathf.Max(0.05f, delay);
+            triggered = false;
+            followSourceDuringTelegraph = newFollowSourceDuringTelegraph;
+            followSourceAfterSpawn = newFollowSourceAfterSpawn;
+            cloudName = string.IsNullOrEmpty(newCloudName) ? "ZombieMode_DamageCloud" : newCloudName;
+            cloudColor = newCloudColor;
+            InitializeTimedRuntime(newRunId, Mathf.Max(0.05f, delay) + 0.1f);
+        }
+
+        protected override void TickRuntime(ModBehaviour inst)
+        {
+            if (ShouldCancelFollowSourceRuntime())
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            RefreshFollowSourceOrigin();
+            if (triggered || Time.unscaledTime < triggerTime)
+            {
+                return;
+            }
+
+            triggered = true;
+            inst.SpawnZombieModeDamageCloud(
+                RuntimeRunId,
+                source,
+                origin,
+                radius,
+                duration,
+                damagePerSecond,
+                tickInterval,
+                cloudName,
+                cloudColor,
+                followSourceAfterSpawn);
+            Destroy(gameObject);
+        }
+
+        private void RefreshFollowSourceOrigin()
+        {
+            if (!followSourceDuringTelegraph || source == null || source.transform == null)
+            {
+                return;
+            }
+
+            origin = source.transform.position;
+            transform.position = origin + Vector3.up * 0.03f;
+        }
+
+        private bool ShouldCancelFollowSourceRuntime()
+        {
+            if (!followSourceDuringTelegraph)
+            {
+                return false;
+            }
+
+            if (source == null || source.Health == null)
+            {
+                return true;
+            }
+
+            ZombieModeEnemyRuntimeMarker marker = source.GetComponent<ZombieModeEnemyRuntimeMarker>();
+            if (marker != null && (marker.DeathSettled || marker.RemovedFromRuntime))
+            {
+                return true;
+            }
+
+            return source.Health.CurrentHealth <= 0f;
+        }
+
+        protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
+        {
+            triggerTime += pausedDuration;
+        }
+    }
+
+    public sealed class ZombieModeHarasserProjectileRuntime : ZombieModeTimedRunScopedRuntime
+    {
+        private CharacterMainControl source;
+        private Vector3 targetPosition;
+        private Vector3 velocity;
+        private float speed;
+        private float maxTravelDistance;
+        private float travelledDistance;
+        private float lastDistanceToTarget;
+        private float impactRadius;
+        private float damage;
+        private float slowRadius;
+        private float slowPercent;
+        private float slowDuration;
+        private bool resolved;
+
+        public void Initialize(
+            int newRunId,
+            CharacterMainControl newSource,
+            Vector3 origin,
+            Vector3 target,
+            float newSpeed,
+            float newDamage,
+            float lifetime,
+            float newSlowRadius,
+            float newSlowPercent,
+            float newSlowDuration)
+        {
+            source = newSource;
+            transform.position = origin;
+            targetPosition = target;
+            targetPosition.y = origin.y;
+            Vector3 direction = targetPosition - origin;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                direction = source != null ? source.transform.forward : Vector3.forward;
+                direction.y = 0f;
+            }
+
+            velocity = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
+            speed = Mathf.Max(0.1f, newSpeed);
+            damage = Mathf.Max(0f, newDamage);
+            slowRadius = Mathf.Max(0.5f, newSlowRadius);
+            slowPercent = Mathf.Clamp01(newSlowPercent);
+            slowDuration = Mathf.Max(0.1f, newSlowDuration);
+            impactRadius = 0.85f;
+            travelledDistance = 0f;
+            float targetDistance = Mathf.Max(0.1f, direction.magnitude);
+            maxTravelDistance = Mathf.Max(targetDistance, speed * Mathf.Max(0.1f, lifetime));
+            lastDistanceToTarget = targetDistance;
+            resolved = false;
+            if (velocity.sqrMagnitude > 0.0001f)
+            {
+                transform.rotation = Quaternion.LookRotation(velocity, Vector3.up);
+            }
+
+            InitializeTimedRuntime(newRunId, Mathf.Max(0.1f, lifetime) + 0.05f);
+        }
+
+        protected override void TickRuntime(ModBehaviour inst)
+        {
+            if (resolved)
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (IsPlayerHit(player))
+            {
+                ResolveImpact(inst, player.transform.position);
+                return;
+            }
+
+            float step = speed * Time.unscaledDeltaTime;
+            if (step <= 0f)
+            {
+                return;
+            }
+
+            transform.position += velocity * step;
+            travelledDistance += step;
+
+            if (IsPlayerHit(player))
+            {
+                ResolveImpact(inst, player.transform.position);
+                return;
+            }
+
+            Vector3 toTarget = targetPosition - transform.position;
+            toTarget.y = 0f;
+            float distanceToTarget = toTarget.magnitude;
+            if (distanceToTarget <= impactRadius ||
+                travelledDistance >= maxTravelDistance ||
+                distanceToTarget > lastDistanceToTarget + 0.05f)
+            {
+                ResolveImpact(inst, transform.position);
+                return;
+            }
+
+            lastDistanceToTarget = distanceToTarget;
+        }
+
+        protected override void OnRuntimeStopping(ModBehaviour inst, bool expired)
+        {
+            if (expired && !resolved)
+            {
+                ResolveImpact(inst, transform.position);
+            }
+        }
+
+        private bool IsPlayerHit(CharacterMainControl player)
+        {
+            if (player == null)
+            {
+                return false;
+            }
+
+            Vector3 delta = player.transform.position - transform.position;
+            delta.y = 0f;
+            return delta.sqrMagnitude <= impactRadius * impactRadius;
+        }
+
+        private void ResolveImpact(ModBehaviour inst, Vector3 impactPosition)
+        {
+            if (resolved)
+            {
+                return;
+            }
+
+            resolved = true;
+            if (inst != null)
+            {
+                inst.TryExecuteZombieModeHarasserProjectileImpact(
+                    RuntimeRunId,
+                    source,
+                    impactPosition,
+                    damage,
+                    slowRadius,
+                    slowPercent,
+                    slowDuration);
+            }
+
+            Destroy(gameObject);
+        }
+    }
     public sealed class ZombieModeThreatRuntime : MonoBehaviour
     {
         private int runId;
