@@ -45,6 +45,7 @@ def main() -> int:
         "public sealed class ZombieModeTemporaryNpcProtectionMarker",
         "public int RunId;",
         "public string ServiceType",
+        "public Health[] CachedHealths;",
     ]:
         result = require(models, snippet, "temporary NPC marker model")
         if result:
@@ -61,7 +62,10 @@ def main() -> int:
         "ApplyZombieModeTemporaryNpcProtection(npc, runId, serviceType);",
         "ZombieModeTemporaryNpcProtectionMarker marker",
         "TrySetZombieModeTemporaryNpcInvincible",
-        "Health[] healths = npc.GetComponentsInChildren<Health>(true)",
+        "marker.CachedHealths",
+        "if (healths == null)",
+        "Health[] healths = marker != null ? marker.CachedHealths : null",
+        "healths = npc.GetComponentsInChildren<Health>(true)",
         "health.SetInvincible(true)",
         "TickZombieModeTemporaryNpcProtection",
         "ClearZombieModeTemporaryNpcThreatTargets",
@@ -72,6 +76,12 @@ def main() -> int:
         result = require(rewards, snippet, "temporary NPC invulnerability and AI filtering")
         if result:
             return result
+
+    apply_start = rewards.find("private void ApplyZombieModeTemporaryNpcProtection")
+    apply_end = rewards.find("private void TrySetZombieModeTemporaryNpcInvincible", apply_start)
+    apply_body = rewards[apply_start:apply_end]
+    if "ClearZombieModeTemporaryNpcThreatTargets();" in apply_body:
+        return fail("ZombieModeTemporaryNpcProtectionGuard: per-NPC protection still repeats the full threat scan")
 
     for snippet in [
         "SetZombieModeEnemyTargetToMainPlayer(ai);",

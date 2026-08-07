@@ -802,6 +802,8 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Npc_InteractNurse", "按 {0} 使用医疗终端", "Press {0} to use Medical Terminal");
             InjectZombieModeString("BossRush_ZombieMode_Npc_ServicePrice", "价格 {0}", "Price {0}");
             InjectZombieModeString("BossRush_ZombieMode_Npc_ServiceRemaining", "剩余 {0}", "Left {0}");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_MerchantSubtitle", "净化点 {0} · 分类补给", "Purification {0} · Categorized supplies");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_NurseSubtitle", "净化点 {0} · 治疗 / 解毒 / 止血", "Purification {0} · Heal / Detox / Stop bleeding");
             InjectZombieModeString("BossRush_ZombieMode_Npc_Close", "关闭", "Close");
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_RandomAmmo", "随机弹药", "Random Ammo");
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_RandomMedical", "随机医疗品", "Random Medical");

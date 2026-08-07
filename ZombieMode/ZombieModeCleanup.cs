@@ -14,6 +14,22 @@ namespace BossRush
                 return;
             }
 
+            if (kind == ZombieModeRunOnlyObjectKind.RewardUi)
+            {
+                for (int i = zombieModeRunState.RunOnlyObjects.Count - 1; i >= 0; i--)
+                {
+                    ZombieModeRunOnlyRecord existing = zombieModeRunState.RunOnlyObjects[i];
+                    if (existing != null &&
+                        existing.RunId == runId &&
+                        existing.Kind == ZombieModeRunOnlyObjectKind.RewardUi &&
+                        existing.GameObject == null &&
+                        existing.CleanupAction == null)
+                    {
+                        zombieModeRunState.RunOnlyObjects.RemoveAt(i);
+                    }
+                }
+            }
+
             ZombieModeRunOnlyRecord record = new ZombieModeRunOnlyRecord();
             record.RunId = runId;
             record.Kind = kind;

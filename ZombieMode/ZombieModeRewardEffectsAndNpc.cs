@@ -266,6 +266,7 @@ namespace BossRush
 
             AttachZombieModeTemporaryRealNpcMarker(npc, runId, npcType);
             ApplyZombieModeTemporaryNpcProtection(npc, runId, npcType);
+            ClearZombieModeTemporaryNpcThreatTargets();
 
             ZombieModeTemporaryRealNpcRecord record = new ZombieModeTemporaryRealNpcRecord();
             record.GameObject = npc;
@@ -786,6 +787,7 @@ namespace BossRush
 
             ZombieModeTemporaryNpcInteractable interactable = npc.GetComponent<ZombieModeTemporaryNpcInteractable>();
             ApplyZombieModeTemporaryNpcProtection(npc, runId, serviceType);
+            ClearZombieModeTemporaryNpcThreatTargets();
 
             ZombieModeTemporaryNpc record = CreateZombieModeTemporaryNpcRecord(npc, serviceType, bossNodeStock);
             zombieModeRunState.TemporaryNpcs.Add(record);
@@ -864,18 +866,26 @@ namespace BossRush
 
             marker.RunId = runId;
             marker.ServiceType = serviceType ?? string.Empty;
-            TrySetZombieModeTemporaryNpcInvincible(npc);
-            ClearZombieModeTemporaryNpcThreatTargets();
+            TrySetZombieModeTemporaryNpcInvincible(npc, marker);
         }
 
-        private void TrySetZombieModeTemporaryNpcInvincible(GameObject npc)
+        private void TrySetZombieModeTemporaryNpcInvincible(GameObject npc, ZombieModeTemporaryNpcProtectionMarker marker)
         {
             if (npc == null)
             {
                 return;
             }
 
-            Health[] healths = npc.GetComponentsInChildren<Health>(true);
+            Health[] healths = marker != null ? marker.CachedHealths : null;
+            if (healths == null)
+            {
+                healths = npc.GetComponentsInChildren<Health>(true);
+                if (marker != null)
+                {
+                    marker.CachedHealths = healths;
+                }
+            }
+
             for (int i = 0; i < healths.Length; i++)
             {
                 Health health = healths[i];

@@ -33,6 +33,7 @@ def main() -> int:
         'DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Mask"',
         'DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Medical"',
         'DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Food"',
+        'DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomDrink"',
         'DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bait"',
     ]:
         result = require(catalog, snippet, "Zombie merchant display key")
@@ -51,6 +52,7 @@ def main() -> int:
         'InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Mask"',
         'InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Medical"',
         'InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Food"',
+        'InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_RandomDrink"',
         'InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Bait"',
     ]:
         result = require(localization, snippet, "Zombie merchant localization")

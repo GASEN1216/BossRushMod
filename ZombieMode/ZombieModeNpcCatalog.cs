@@ -38,6 +38,7 @@ namespace BossRush
             new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 180, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Mask",       GrantTag = "Mask",      GrantMinQuality = 1, GrantMaxQuality = 4 },
             new MerchantStockEntry { TypeId = -1, StockCount = 3, BasePrice = 80,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Medical",    GrantTag = "Medical",   GrantMinQuality = 1, GrantMaxQuality = 4 },
             new MerchantStockEntry { TypeId = -1, StockCount = 4, BasePrice = 30,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Food",       GrantTag = "Food",      GrantMinQuality = 1, GrantMaxQuality = 3 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 4, BasePrice = 30,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomDrink", GrantTag = "Drink",    GrantMinQuality = 1, GrantMaxQuality = 3 },
             new MerchantStockEntry { TypeId = -1, StockCount = 3, BasePrice = 45,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bait",       GrantTag = "Bait",      GrantMinQuality = 1, GrantMaxQuality = 3 }
         };
 
@@ -54,6 +55,7 @@ namespace BossRush
             new MerchantStockEntry { TypeId = -1, StockCount = 1, BasePrice = 280, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Mask",       GrantTag = "Mask",      GrantMinQuality = 3, GrantMaxQuality = 6 },
             new MerchantStockEntry { TypeId = -1, StockCount = 2, BasePrice = 180, DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Medical",    GrantTag = "Medical",   GrantMinQuality = 3, GrantMaxQuality = 6 },
             new MerchantStockEntry { TypeId = -1, StockCount = 3, BasePrice = 50,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Food",       GrantTag = "Food",      GrantMinQuality = 2, GrantMaxQuality = 5 },
+            new MerchantStockEntry { TypeId = -1, StockCount = 3, BasePrice = 50,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_RandomDrink", GrantTag = "Drink",    GrantMinQuality = 2, GrantMaxQuality = 5 },
             new MerchantStockEntry { TypeId = -1, StockCount = 2, BasePrice = 70,  DisplayKey = "BossRush_ZombieMode_Npc_Merchant_Bait",       GrantTag = "Bait",      GrantMinQuality = 2, GrantMaxQuality = 5 }
         };
 

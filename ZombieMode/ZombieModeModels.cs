@@ -563,6 +563,7 @@ namespace BossRush
     {
         public int RunId;
         public string ServiceType = string.Empty;
+        public Health[] CachedHealths;
     }
 
     public sealed class ZombieModeTemporaryRealNpcMarker : MonoBehaviour

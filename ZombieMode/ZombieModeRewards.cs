@@ -197,11 +197,13 @@ namespace BossRush
             CreateStyledRefreshButton(refreshRow.transform, "FreeRefresh",
                 string.Format(L10n.T("BossRush_ZombieMode_Reward_RefreshFree"), owner.GetZombieModeRewardFreeRefreshes(runId)),
                 FreeRefreshColor, FreeRefreshHoverColor, FreeRefreshDisabledColor,
-                hasFreeRefresh, false);
+                hasFreeRefresh, true, false);
+            int paidRefreshCost = owner.GetZombieModeRewardPaidRefreshCost(runId);
+            bool canAffordPaidRefresh = owner.GetZombieModePurificationPoints(runId) >= paidRefreshCost;
             CreateStyledRefreshButton(refreshRow.transform, "PaidRefresh",
-                string.Format(L10n.T("BossRush_ZombieMode_Reward_RefreshPaid"), owner.GetZombieModeRewardPaidRefreshCost(runId).ToString("N0")),
+                string.Format(L10n.T("BossRush_ZombieMode_Reward_RefreshPaid"), paidRefreshCost.ToString("N0")),
                 PaidRefreshColor, PaidRefreshHoverColor, FreeRefreshDisabledColor,
-                true, true);
+                true, canAffordPaidRefresh, true);
         }
 
         private void CreateRewardCard(string name, Transform parent, string text, Vector2 position, Vector2 size, ZombieModeRewardType rewardType)
@@ -250,15 +252,19 @@ namespace BossRush
 
         private void CreateStyledRefreshButton(Transform parent, string name, string text,
             Color baseColor, Color hoverColor, Color disabledColor,
-            bool interactable, bool paid)
+            bool interactable, bool affordable, bool paid)
         {
             float btnW = 240f;
             float btnH = 44f;
+            Color visibleColor = interactable
+                ? (affordable ? baseColor : new Color(0.30f, 0.18f, 0.14f, 0.92f))
+                : disabledColor;
+            Color visibleHoverColor = affordable ? hoverColor : new Color(0.42f, 0.24f, 0.18f, 1f);
             Button button = ZombieModeUIHelper.CreateButton(
                 name, parent, text,
                 new Vector2(0.5f, 0.5f), Vector2.zero,
                 new Vector2(btnW, btnH),
-                interactable ? baseColor : disabledColor, 16,
+                visibleColor, 16,
                 new Vector2(btnW - 14f, btnH - 8f),
                 null, interactable);
 
@@ -276,10 +282,10 @@ namespace BossRush
 
             Image image = button.GetComponent<Image>();
             ColorBlock colors = button.colors;
-            colors.normalColor = interactable ? baseColor : disabledColor;
-            colors.highlightedColor = hoverColor;
-            colors.pressedColor = baseColor * 0.85f;
-            colors.selectedColor = hoverColor;
+            colors.normalColor = visibleColor;
+            colors.highlightedColor = visibleHoverColor;
+            colors.pressedColor = visibleColor * 0.85f;
+            colors.selectedColor = visibleHoverColor;
             colors.disabledColor = disabledColor;
             colors.colorMultiplier = 1f;
             button.colors = colors;
@@ -493,12 +499,14 @@ namespace BossRush
                 new Vector2(0f, -headerH), 2f, new Color(0.35f, 0.55f, 0.85f, 0.70f));
 
             // ── 副标题 ──
+            int purificationPoints = owner != null ? owner.GetZombieModePurificationPoints(runId) : 0;
+            string subtitleKey = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
+                ? "BossRush_ZombieMode_Npc_NurseSubtitle"
+                : "BossRush_ZombieMode_Npc_MerchantSubtitle";
             ZombieModeUIHelper.CreateText(
                 "Subtitle",
                 panel.transform,
-                string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
-                    ? "治疗 / 解毒 / 止血"
-                    : "丧尸模式终端分类抽取",
+                string.Format(L10n.T(subtitleKey), purificationPoints.ToString("N0")),
                 15,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(headerH + 22f)), new Vector2(-40f, 30f),
@@ -592,16 +600,22 @@ namespace BossRush
             ZombieModeNpcCatalog.MerchantStockEntry[] stock = owner != null
                 ? owner.GetZombieModeMerchantStock(runId, serviceType)
                 : new ZombieModeNpcCatalog.MerchantStockEntry[0];
+            int availablePurificationPoints = owner != null ? owner.GetZombieModePurificationPoints(runId) : 0;
             for (int i = 0; i < stock.Length && i < ZombieModeNpcCatalog.MaxMerchantStockButtons; i++)
             {
                 ZombieModeNpcCatalog.MerchantStockEntry entry = stock[i];
                 int index = i;
                 int remaining = owner != null ? owner.GetZombieModeNpcServiceRemaining(runId, serviceType, index) : 0;
                 int price = owner != null ? owner.GetZombieModeNpcServicePrice(runId, entry.BasePrice) : entry.BasePrice;
+                bool affordable = owner != null && availablePurificationPoints >= price;
                 string label = L10n.T(entry.DisplayKey) +
                     "\n<size=80%>" + string.Format(L10n.T("BossRush_ZombieMode_Npc_ServicePrice"), price) +
                     "  " + string.Format(L10n.T("BossRush_ZombieMode_Npc_ServiceRemaining"), remaining) + "</size>";
-                CreateServiceButton(parent, "Merchant_" + i, label, Vector2.zero, remaining > 0, delegate
+                if (remaining > 0 && !affordable)
+                {
+                    label += "\n<color=#D98B79><size=75%>" + L10n.T("BossRush_ZombieMode_Notify_NpcServiceNoPoints") + "</size></color>";
+                }
+                CreateServiceButton(parent, "Merchant_" + i, label, Vector2.zero, remaining > 0, affordable, delegate
                 {
                     if (owner != null && owner.TryPurchaseZombieModeMerchantStock(runId, serviceType, index))
                     {
@@ -629,16 +643,22 @@ namespace BossRush
             ZombieModeNpcCatalog.NurseServiceEntry[] services = owner != null
                 ? owner.GetZombieModeNurseServices(runId, serviceType)
                 : new ZombieModeNpcCatalog.NurseServiceEntry[0];
+            int availablePurificationPoints = owner != null ? owner.GetZombieModePurificationPoints(runId) : 0;
             for (int i = 0; i < services.Length; i++)
             {
                 ZombieModeNpcCatalog.NurseServiceEntry entry = services[i];
                 int index = i;
                 int remaining = owner != null ? owner.GetZombieModeNpcServiceRemaining(runId, serviceType, index) : 0;
                 int price = owner != null ? owner.GetZombieModeNpcServicePrice(runId, entry.BasePrice) : entry.BasePrice;
+                bool affordable = owner != null && availablePurificationPoints >= price;
                 string label = L10n.T(entry.ServiceKey) +
                     "\n<size=80%>" + string.Format(L10n.T("BossRush_ZombieMode_Npc_ServicePrice"), price) +
                     "  " + string.Format(L10n.T("BossRush_ZombieMode_Npc_ServiceRemaining"), remaining) + "</size>";
-                CreateServiceButton(parent, "Nurse_" + i, label, Vector2.zero, remaining > 0, delegate
+                if (remaining > 0 && !affordable)
+                {
+                    label += "\n<color=#D98B79><size=75%>" + L10n.T("BossRush_ZombieMode_Notify_NpcServiceNoPoints") + "</size></color>";
+                }
+                CreateServiceButton(parent, "Nurse_" + i, label, Vector2.zero, remaining > 0, affordable, delegate
                 {
                     if (owner != null && owner.TryUseZombieModeNurseService(runId, serviceType, index))
                     {
@@ -657,11 +677,17 @@ namespace BossRush
             Build();
         }
 
-        private void CreateServiceButton(Transform parent, string name, string text, Vector2 position, bool interactable, UnityEngine.Events.UnityAction action)
+        private void CreateServiceButton(Transform parent, string name, string text, Vector2 position, bool interactable, bool affordable, UnityEngine.Events.UnityAction action)
         {
-            Color normalColor = interactable ? new Color(0.12f, 0.18f, 0.26f, 0.98f) : new Color(0.14f, 0.14f, 0.14f, 0.70f);
-            Color hoverColor = new Color(0.18f, 0.28f, 0.38f, 1.00f);
-            Color accentColor = interactable ? new Color(0.44f, 0.82f, 0.92f, 0.95f) : new Color(0.30f, 0.30f, 0.30f, 0.70f);
+            Color normalColor = !interactable
+                ? new Color(0.14f, 0.14f, 0.14f, 0.70f)
+                : (affordable ? new Color(0.12f, 0.18f, 0.26f, 0.98f) : new Color(0.28f, 0.16f, 0.13f, 0.92f));
+            Color hoverColor = affordable
+                ? new Color(0.18f, 0.28f, 0.38f, 1.00f)
+                : new Color(0.40f, 0.23f, 0.18f, 1.00f);
+            Color accentColor = !interactable
+                ? new Color(0.30f, 0.30f, 0.30f, 0.70f)
+                : (affordable ? new Color(0.44f, 0.82f, 0.92f, 0.95f) : new Color(0.86f, 0.48f, 0.34f, 0.92f));
 
             GameObject obj = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(168f, 102f));
             RectTransform rect = obj.GetComponent<RectTransform>();

@@ -120,8 +120,6 @@ namespace BossRush
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.StarterReroll, ZombieModeRewardCategory.Equipment, 10);
 
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.PurificationPoints, ZombieModeRewardCategory.Economy, 25);
-            AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.CurrentNodeFreeRefresh, ZombieModeRewardCategory.Economy, 12);
-            AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.NextNodeFreeRefresh, ZombieModeRewardCategory.Economy, 8);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.HalfPricePaidRefresh, ZombieModeRewardCategory.Economy, 8);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.Heal, ZombieModeRewardCategory.Economy, 8);
 
@@ -226,12 +224,18 @@ namespace BossRush
         {
             switch (rewardType)
             {
+                case ZombieModeRewardType.TempMerchant:
+                    return zombieModeRunState.GuaranteedMerchantPurchasePending;
+                case ZombieModeRewardType.TempNurse:
+                    return FindZombieModeTemporaryNpc("Nurse") != null;
                 case ZombieModeRewardType.TempGoblinNpc:
                     return FindZombieModeTemporaryRealNpc("Goblin") != null;
                 case ZombieModeRewardType.TempNurseNpc:
                     return FindZombieModeTemporaryRealNpc("NurseNpc") != null;
                 case ZombieModeRewardType.TempCourierNpc:
                     return FindZombieModeTemporaryRealNpc("Courier") != null;
+                case ZombieModeRewardType.HalfPricePaidRefresh:
+                    return zombieModeRunState.HalfPriceNextPaidRefresh;
             }
 
             ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
@@ -721,13 +725,14 @@ namespace BossRush
             switch (rewardType)
             {
                 case ZombieModeRewardType.PurificationPoints:
-                    return string.Format(
-                        L10n.T("BossRush_ZombieMode_Reward_PurificationPoints"),
-                        CalculateZombieModePurificationRewardPoints(bossNode));
+                    return "[" + L10n.T("BossRush_ZombieMode_RewardCat_Economy") + "] " +
+                        string.Format(
+                            L10n.T("BossRush_ZombieMode_Reward_PurificationPoints"),
+                            CalculateZombieModePurificationRewardPoints(bossNode));
                 case ZombieModeRewardType.Heal:
-                    return L10n.T("BossRush_ZombieMode_Reward_Heal");
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Economy", "BossRush_ZombieMode_Reward_Heal");
                 case ZombieModeRewardType.RandomSupply:
-                    return L10n.T("BossRush_ZombieMode_Reward_RandomSupply");
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_RandomSupply");
                 case ZombieModeRewardType.RandomMeleeWeapon:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_RandomMeleeWeapon");
                 case ZombieModeRewardType.RandomGunWithAmmo:
@@ -739,15 +744,15 @@ namespace BossRush
                 case ZombieModeRewardType.ArmorOrHelmet:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_ArmorOrHelmet");
                 case ZombieModeRewardType.RandomHighQualityItem:
-                    return L10n.T("BossRush_ZombieMode_Reward_RandomHighQualityItem");
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_RandomHighQualityItem");
                 case ZombieModeRewardType.StarterReroll:
-                    return L10n.T("BossRush_ZombieMode_Reward_StarterReroll");
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_StarterReroll");
                 case ZombieModeRewardType.CurrentNodeFreeRefresh:
-                    return L10n.T("BossRush_ZombieMode_Reward_CurrentNodeFreeRefresh");
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Economy", "BossRush_ZombieMode_Reward_CurrentNodeFreeRefresh");
                 case ZombieModeRewardType.NextNodeFreeRefresh:
-                    return L10n.T("BossRush_ZombieMode_Reward_NextNodeFreeRefresh");
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Economy", "BossRush_ZombieMode_Reward_NextNodeFreeRefresh");
                 case ZombieModeRewardType.HalfPricePaidRefresh:
-                    return L10n.T("BossRush_ZombieMode_Reward_HalfPricePaidRefresh");
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Economy", "BossRush_ZombieMode_Reward_HalfPricePaidRefresh");
                 case ZombieModeRewardType.AttributeMaxHealth:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Attribute", "BossRush_ZombieMode_Reward_Attribute_MaxHealth");
                 case ZombieModeRewardType.AttributeMoveSpeed:
