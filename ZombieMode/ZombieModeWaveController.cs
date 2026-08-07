@@ -469,6 +469,7 @@ namespace BossRush
             }
 
             zombieModeRunState.PeriodicSpawnTimer = 0f;
+            ReconcileZombieModeLivingEnemyCounts(runId);
             int spawnCount = GetZombieModePeriodicSpawnCount();
             if (spawnCount <= 0)
             {
@@ -486,6 +487,7 @@ namespace BossRush
                 return;
             }
 
+            ReconcileZombieModeLivingEnemyCounts(runId);
             int spawnCount = GetZombieModePeriodicSpawnCount();
             if (spawnCount <= 0)
             {
@@ -508,6 +510,24 @@ namespace BossRush
         {
             int activeOrPending = zombieModeRunState.LivingNormalZombieCount + zombieModeRunState.PendingNormalZombieSpawns;
             return Mathf.Max(0, ZombieModeTuning.MaxNormalZombieCount - activeOrPending);
+        }
+
+        private void ReconcileZombieModeLivingEnemyCounts(int runId)
+        {
+            int livingTotal = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true);
+            int livingNormal = 0;
+            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
+            {
+                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
+                if (marker != null && !marker.IsBoss)
+                {
+                    livingNormal++;
+                }
+            }
+
+            zombieModeRunState.LivingZombieCount = livingTotal;
+            zombieModeRunState.LivingNormalZombieCount = livingNormal;
+            zombieModeEnemyMarkerScratch.Clear();
         }
 
         private int GetZombieModePeriodicSpawnCount()
@@ -538,13 +558,23 @@ namespace BossRush
                     int remainingToKill = Mathf.Max(
                         0,
                         zombieModeRunState.CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills);
-                    target = Mathf.Min(target, remainingToKill);
+                    int preparationFloor = GetZombieModePreparationPressureTarget(zombieModeRunState.CurrentWave + 1);
+                    int ebbTarget = Mathf.Max(
+                        preparationFloor,
+                        remainingToKill * ZombieModeTuning.NormalWavePressurePerRemainingKill);
+                    target = Mathf.Min(target, ebbTarget);
                 }
 
                 return Mathf.Clamp(target, 0, ZombieModeTuning.MaxNormalZombieCount);
             }
 
-            int preparationTarget = Mathf.CeilToInt(target * ZombieModeTuning.PreparationPressureFraction);
+            return GetZombieModePreparationPressureTarget(pacingWave);
+        }
+
+        private int GetZombieModePreparationPressureTarget(int wave)
+        {
+            int preparationTarget = Mathf.CeilToInt(
+                GetZombieModeWavePressureTarget(wave) * ZombieModeTuning.PreparationPressureFraction);
             return Mathf.Clamp(
                 preparationTarget,
                 ZombieModeTuning.PreparationPressureMinimum,
@@ -738,19 +768,7 @@ namespace BossRush
 
         private bool TryGetNextZombieModeMapSpawnPosition(out Vector3 position)
         {
-            if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out position))
-            {
-                return true;
-            }
-
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
-            {
-                return true;
-            }
-
-            position = Vector3.zero;
-            return false;
+            return TryGetZombieModeReliableSpawnPosition(out position);
         }
 
         private void HandleZombieModeBossDefeated(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl character)

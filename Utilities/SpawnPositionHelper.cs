@@ -204,7 +204,8 @@ namespace BossRush
             out Vector3 resolved,
             float liftOffset = DefaultLiftOffset,
             float minPlayerDistance = 0f,
-            float navMeshSampleRadius = DefaultNavMeshSampleRadius)
+            float navMeshSampleRadius = DefaultNavMeshSampleRadius,
+            int startIndex = 0)
         {
             resolved = playerPos;
             if (ringCount <= 0 || radius <= 0f)
@@ -212,9 +213,16 @@ namespace BossRush
                 return false;
             }
 
+            int normalizedStartIndex = startIndex % ringCount;
+            if (normalizedStartIndex < 0)
+            {
+                normalizedStartIndex += ringCount;
+            }
+
             for (int i = 0; i < ringCount; i++)
             {
-                float angle = 360f * i / ringCount;
+                int candidateIndex = (normalizedStartIndex + i) % ringCount;
+                float angle = 360f * candidateIndex / ringCount;
                 Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * radius;
                 Vector3 candidate = playerPos + offset;
                 Vector3 sampled;

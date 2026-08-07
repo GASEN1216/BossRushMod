@@ -1,4 +1,4 @@
-"""ZombieModeNormalZombieCapAndAggroGuard: tidal zombie pressure stays capped, distant, and player-focused."""
+"""ZombieModeNormalZombieCapAndAggroGuard: triple pressure stays bounded, reachable, and player-focused."""
 
 from pathlib import Path
 import re
@@ -10,6 +10,7 @@ TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+RECOVERY = Path("Utilities/EnemyRecoveryMonitor.cs")
 REWARD_PARTS = [
     REWARDS,
     Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
@@ -56,10 +57,17 @@ def main() -> int:
     models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     spawner = SPAWNER.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")
+    recovery = RECOVERY.read_text(encoding="utf-8")
     rewards = read_rewards()
 
     for token in [
         "public const int MaxNormalZombieCount = Spawn.MaxNormalZombieCount;",
+        "public const int MaxNormalZombieCount = 150;",
+        "public const int NormalWavePressureBase = 24;",
+        "public const int NormalWaveKillTargetBase = 18;",
+        "public const int NormalWavePressurePerRemainingKill = 3;",
+        "public const int PreparationPressureMinimum = 12;",
+        "public const int PreparationPressureMaximum = 48;",
         "public int LivingNormalZombieCount;",
         "public int PendingNormalZombieSpawns;",
     ]:
@@ -88,12 +96,25 @@ def main() -> int:
         return fail("GetZombieModeAmbientPressureTarget not found")
     for token in [
         "CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills",
-        "target = Mathf.Min(target, remainingToKill);",
+        "GetZombieModePreparationPressureTarget(zombieModeRunState.CurrentWave + 1)",
+        "remainingToKill * ZombieModeTuning.NormalWavePressurePerRemainingKill",
+        "target = Mathf.Min(target, ebbTarget);",
+        "return GetZombieModePreparationPressureTarget(pacingWave);",
+    ]:
+        result = require(pressure_target, token, "combat pressure must ebb near wave completion and delegate preparation pressure")
+        if result:
+            return result
+
+    preparation_target = extract_method(waves, "GetZombieModePreparationPressureTarget")
+    if not preparation_target:
+        return fail("GetZombieModePreparationPressureTarget not found")
+    for token in [
+        "GetZombieModeWavePressureTarget(wave)",
         "ZombieModeTuning.PreparationPressureFraction",
         "ZombieModeTuning.PreparationPressureMinimum",
         "ZombieModeTuning.PreparationPressureMaximum",
     ]:
-        result = require(pressure_target, token, "pressure must ebb near wave completion and remain low during preparation")
+        result = require(preparation_target, token, "preparation pressure must remain a bounded fraction of the next wave")
         if result:
             return result
 
@@ -124,6 +145,7 @@ def main() -> int:
         return fail("TickZombieModeAmbientZombiePressure not found")
     for token in [
         "IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase)",
+        "ReconcileZombieModeLivingEnemyCounts(runId);",
         "SpawnZombieModeWaveAcrossMapAsync(runId, spawnCount, false).Forget();",
     ]:
         result = require(ambient_tick, token, "ambient pressure must run in combat and preparation phases")
@@ -175,16 +197,40 @@ def main() -> int:
     if result:
         return result
 
+    reconcile = extract_method(waves, "ReconcileZombieModeLivingEnemyCounts")
+    if not reconcile:
+        return fail("ReconcileZombieModeLivingEnemyCounts not found")
+    for token in [
+        "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true)",
+        "!marker.IsBoss",
+        "zombieModeRunState.LivingZombieCount = livingTotal;",
+        "zombieModeRunState.LivingNormalZombieCount = livingNormal;",
+        "zombieModeEnemyMarkerScratch.Clear();",
+    ]:
+        result = require(reconcile, token, "periodic pressure must repair stale living counters without allocations")
+        if result:
+            return result
+
     next_position = extract_method(waves, "TryGetNextZombieModeMapSpawnPosition")
     if not next_position:
         return fail("TryGetNextZombieModeMapSpawnPosition not found")
+    result = require(
+        next_position,
+        "return TryGetZombieModeReliableSpawnPosition(out position);",
+        "map pressure spawns must reuse the reliable shared selector")
+    if result:
+        return result
+
+    reliable = extract_method(spawner, "TryGetZombieModeReliableSpawnPosition")
+    if not reliable:
+        return fail("TryGetZombieModeReliableSpawnPosition not found")
     for token in [
-        "TryGetNearestZombieModeMapSpawnPositionToPlayer(out position)",
         "TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position)",
+        "TryGetNearestZombieModeMapSpawnPositionToPlayer(out position)",
+        "ZombieModeTuning.SpawnPointMinPlayerDistance",
         "position = Vector3.zero;",
-        "return false;",
     ]:
-        result = require(next_position, token, "map pressure spawns must skip when no distant stored or virtual point is safe")
+        result = require(reliable, token, "reliable selector must prefer nearby NavMesh points and retain a 12m fallback")
         if result:
             return result
 
@@ -193,23 +239,28 @@ def main() -> int:
         return fail("TryGetNearestZombieModeMapSpawnPositionToPlayer not found")
     for token in [
         "CharacterMainControl.Main",
-        "bestDistanceSqr",
+        "preferredMinDistanceSqr",
+        "fallbackMinDistanceSqr",
+        "bestPreferredIndex",
+        "bestFallbackIndex",
         "delta.sqrMagnitude",
         "GetZombieModeSpawnPointMinPlayerDistance()",
+        "ZombieModeTuning.SpawnPointMinPlayerDistance",
+        "int bestIndex = bestPreferredIndex >= 0 ? bestPreferredIndex : bestFallbackIndex;",
         "if (bestIndex < 0)",
         "return false;",
     ]:
-        result = require(nearest, token, "nearest spawn-point helper must enforce the dynamic distance without a too-close fallback")
+        result = require(nearest, token, "nearest helper must select preferred and 12m-safe candidates in one scan")
         if result:
             return result
 
-    virtual_spawn = extract_method(spawner, "TryFindZombieModeVirtualSpawnAroundPlayer")
     for token in [
         "GetZombieModeSpawnPointMinPlayerDistance()",
-        "Mathf.Max(24f, minPlayerDistance + 6f)",
+        "Mathf.Max(18f, minPlayerDistance + 6f)",
         "minPlayerDistance: minPlayerDistance",
+        "startIndex: startIndex",
     ]:
-        result = require(virtual_spawn, token, "virtual spawn ring must expand with the dynamic player-safe distance")
+        result = require(spawner, token, "virtual spawn ring must expand with the dynamic player-safe distance")
         if result:
             return result
 
@@ -245,6 +296,28 @@ def main() -> int:
     result = require(prepare, "ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, forceTraceDistance);", "spawned zombies must keep enough force-trace distance")
     if result:
         return result
+
+    distant_recovery = extract_method(recovery, "ShouldRecoverDistantZombie")
+    recover = extract_method(recovery, "TryRecoverEnemyToNearestSpawnPoint")
+    if not distant_recovery or not recover:
+        return fail("distant normal-zombie recovery path not found")
+    for token in [
+        "zombieMarker == null || zombieMarker.IsBoss",
+        "ZombieModeTuning.NormalZombieDistantRecoveryDistance",
+        "ZombieModeTuning.NormalZombieDistantRecoveryDelaySeconds",
+        "GetHorizontalSqrDistance(currentPos, player.transform.position)",
+    ]:
+        result = require(distant_recovery, token, "only long-distance non-Boss zombies should be recovered")
+        if result:
+            return result
+    for token in [
+        "reason == ZombieModeDistantRecoveryReason",
+        "TryGetZombieModeReliableSpawnPosition(out targetPos)",
+        "TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos)",
+    ]:
+        result = require(recover, token, "distant recovery must reuse the player-near selector and retain generic fallback")
+        if result:
+            return result
 
     print("ZombieModeNormalZombieCapAndAggroGuard: PASS")
     return 0

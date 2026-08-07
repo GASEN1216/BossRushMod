@@ -36,19 +36,21 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8")
-    body = extract_method_body(text, "private Vector3 GetZombieModeSpawnPosition()")
+    body = extract_method_body(text, "private bool TryGetNearestZombieModeMapSpawnPositionToPlayer(out Vector3 position)")
     if body is None:
-        return fail("missing GetZombieModeSpawnPosition body")
+        return fail("missing TryGetNearestZombieModeMapSpawnPositionToPlayer body")
 
-    if "float distance = delta.magnitude;" in body:
-        return fail("spawn selection still computes magnitude before min-distance rejection")
+    if ".magnitude" in body or "Mathf.Sqrt" in body:
+        return fail("spawn selection should compare squared distances only")
 
     required = [
-        "float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();",
-        "float minPlayerDistanceSqr = minPlayerDistance * minPlayerDistance;",
-        "float distanceSqr = delta.sqrMagnitude;",
-        "if (distanceSqr < minPlayerDistanceSqr)",
-        "float distance = Mathf.Sqrt(distanceSqr);",
+        "float preferredMinDistance = GetZombieModeSpawnPointMinPlayerDistance();",
+        "float preferredMinDistanceSqr = preferredMinDistance * preferredMinDistance;",
+        "float fallbackMinDistanceSqr = ZombieModeTuning.SpawnPointMinPlayerDistance * ZombieModeTuning.SpawnPointMinPlayerDistance;",
+        "float distanceSqr = main != null ? delta.sqrMagnitude : offset;",
+        "if (main != null && distanceSqr < fallbackMinDistanceSqr)",
+        "if (main != null && distanceSqr < preferredMinDistanceSqr)",
+        "int bestIndex = bestPreferredIndex >= 0 ? bestPreferredIndex : bestFallbackIndex;",
     ]
     for snippet in required:
         if snippet not in body:

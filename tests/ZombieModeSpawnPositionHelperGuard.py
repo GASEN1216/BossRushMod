@@ -35,6 +35,7 @@ def main() -> int:
         "internal static bool TrySnapToGround(",
         "internal static bool PassesMinPlayerDistance(",
         "private static float GetXZDistanceSqr(",
+        "int candidateIndex = (normalizedStartIndex + i) % ringCount;",
     ]:
         if snippet not in helper_text:
             return fail("ZombieModeSpawnPositionHelperGuard: SpawnPositionHelper missing API -> " + snippet)

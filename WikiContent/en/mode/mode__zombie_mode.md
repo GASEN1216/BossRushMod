@@ -46,7 +46,7 @@ Every 5th wave is a **Boss Wave**; all others are normal waves.
 - Zone flashes yellow in the last 5 seconds as warning
 - A **Supply Terminal** (merchant NPC) spawns inside the safe zone
 - You can use the **Zombie Tide Beacon** to skip the countdown and start the next wave immediately (3-second channel)
-- Preparation does not stop spawning: a small low-tide population remains outside the safe zone, replenishing at most one zombie every 5 seconds
+- Preparation does not stop spawning: 12-48 low-tide zombies remain outside the safe zone, replenishing at most one zombie every 1.65 seconds
 
 ### Extraction Opportunity
 
@@ -66,15 +66,15 @@ The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Pe
 
 | Cycle Wave | Stage | Field Pressure | Kill Target | Refill Interval | Non-Boss Move Speed |
 |------------|-------|----------------|-------------|-----------------|------------------|
-| Wave 1 | Low Tide | 8 | 18 | 3.0s | 72% |
-| Wave 2 | Rising Tide | 12 | 24 | 2.6s | 76% |
-| Wave 3 | High Tide | 17 | 30 | 2.2s | 79% |
-| Wave 4 | Peak Tide | 23 | 38 | 1.8s | 83% |
-| Wave 5 | Boss Tide | 8 support zombies | Defeat the Boss | 3.0s | 86% (support only) |
+| Wave 1 | Low Tide | 24 | 18 | 1.00s | 72% |
+| Wave 2 | Rising Tide | 36 | 24 | 0.86s | 76% |
+| Wave 3 | High Tide | 51 | 30 | 0.72s | 79% |
+| Wave 4 | Peak Tide | 69 | 38 | 0.58s | 83% |
+| Wave 5 | Boss Tide | 24 support zombies | Defeat the Boss | 1.00s | 86% (support only) |
 
-- After each Boss, the next cycle drops back to Low Tide with +6 normal-wave baseline pressure, +18 kill targets, and slightly faster refills
+- After each Boss, the next cycle drops back to Low Tide with +18 normal-wave baseline pressure, the original +18 kill-target growth, and slightly faster refills
 - Non-Boss enemy move speed starts at 72%, increases by 3.5% each wave, and caps at the original 100%
-- **50** remains a hard safety cap for normal zombies, not a target that every refill tries to fill
+- **150** remains a hard safety cap for normal zombies, not a target that every refill tries to fill
 - As a normal wave approaches its kill target, pressure falls automatically to create a finishable ebb
 
 #### Boss Waves (wave 5, 10, 15...)
@@ -87,13 +87,13 @@ The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Pe
 
 | Boss Wave | Boss Count | Per-Boss HP | Per-Boss Damage | Support Pressure | Per-Boss Purification | Roguelite Rewards |
 |-----------|------------|-------------|-----------------|------------------|-----------------------|-------------------|
-| Wave 5 | 1 | 100% | 100% | 8 | 100% | One full-pool 4-choice pick |
-| Wave 10 | 2 | 130% | 112% | 11 | 125% | One combat 4-choice pick + one full-pool 4-choice pick |
-| Wave 15 | 3 | 160% | 124% | 14 | 150% | One combat 4-choice pick + one full-pool 4-choice pick |
-| Wave 20 | 4 | 190% | 136% | 17 | 175% | One combat 4-choice pick + one full-pool 4-choice pick |
-| Wave 25 | 5 | 220% | 148% | 20 | 200% | One combat 4-choice pick + one full-pool 4-choice pick |
+| Wave 5 | 1 | 100% | 100% | 24 | 100% | One full-pool 4-choice pick |
+| Wave 10 | 2 | 130% | 112% | 33 | 125% | One combat 4-choice pick + one full-pool 4-choice pick |
+| Wave 15 | 3 | 160% | 124% | 42 | 150% | One combat 4-choice pick + one full-pool 4-choice pick |
+| Wave 20 | 4 | 190% | 136% | 51 | 175% | One combat 4-choice pick + one full-pool 4-choice pick |
+| Wave 25 | 5 | 220% | 148% | 60 | 200% | One combat 4-choice pick + one full-pool 4-choice pick |
 
-- Later Bosses cap at 250% HP and 180% damage; support pressure caps at 20 and purification gain caps at 300%
+- Later Bosses cap at 250% HP and 180% damage; support pressure caps at 60 and purification gain caps at 300%
 - The bonus combat pick only contains attributes, projectiles, triggers, and run mutators; NPC, ordinary supply, and economy choices cannot occupy it
 - Every Boss independently drops purification stars and one lootbox, so total wave purification and lootbox count keep growing with Boss count and have no gameplay cap
 - Per-Boss kill purification and the reward-screen purification choice use the purification multiplier; each lootbox's quantity and quality rise on the same cycle
@@ -101,9 +101,10 @@ The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Pe
 
 #### Ambient Pressure
 
-- Preparation maintains 35% of the next wave's pressure, clamped to 4–16 zombies, and replenishes at most one every 5 seconds
-- Combat refills toward its current pressure target in bounded batches; a spawn is skipped when no position is far enough from the player
-- Minimum spawn distance is 28m for waves 1–2, 24m for waves 3–5, and 20m afterward
+- Preparation maintains 35% of the next wave's pressure, clamped to 12-48 zombies, and replenishes at most one every 1.65 seconds
+- Combat refills toward its current pressure target in bounded batches; it prefers reachable NavMesh positions near the player and retains a safe fallback of at least 12m when strict candidates fail
+- Preferred spawn distance is 22m for waves 1-2, 20m for waves 3-5, and 18m afterward
+- Living counts are reconciled against valid runtime enemies before each refill; a normal zombie that remains more than 60m away for 8 seconds is recovered near the player instead of occupying a hidden slot
 - Zombies actively track the player (trace distance: 500m)
 
 ---

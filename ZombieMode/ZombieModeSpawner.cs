@@ -149,63 +149,45 @@ namespace BossRush
 
         private Vector3 GetZombieModeSpawnPosition()
         {
-            Vector3 storedPoint;
-            if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out storedPoint))
+            Vector3 reliablePosition;
+            if (TryGetZombieModeReliableSpawnPosition(out reliablePosition))
             {
-                return storedPoint;
-            }
-
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main != null)
-            {
-                Vector3 nearby;
-                if (TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out nearby))
-                {
-                    return nearby;
-                }
+                return reliablePosition;
             }
 
             if (zombieModeRunState.SpawnPoints.Count <= 0)
             {
+                CharacterMainControl main = CharacterMainControl.Main;
                 return main != null ? main.transform.position : Vector3.zero;
             }
 
-            Vector3 playerPos = main != null ? main.transform.position : Vector3.zero;
-            float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();
-            float minPlayerDistanceSqr = minPlayerDistance * minPlayerDistance;
-            float bestScore = float.MinValue;
-            Vector3 best = zombieModeRunState.SpawnPoints[0].Position;
-            for (int i = 0; i < zombieModeRunState.SpawnPoints.Count; i++)
-            {
-                Vector3 point = zombieModeRunState.SpawnPoints[i].Position;
-                Vector3 delta = point - playerPos;
-                delta.y = 0f;
-                float distanceSqr = delta.sqrMagnitude;
-                if (distanceSqr < minPlayerDistanceSqr)
-                {
-                    continue;
-                }
+            return zombieModeRunState.SpawnPoints[0].Position;
+        }
 
-                float distance = Mathf.Sqrt(distanceSqr);
-                float score = distance > 80f ? 80f - (distance - 80f) : distance;
-                score += Random.Range(0f, 8f);
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best = point;
-                }
+        private bool TryGetZombieModeReliableSpawnPosition(out Vector3 position)
+        {
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
+            {
+                return true;
             }
 
-            if (bestScore == float.MinValue && main != null)
+            if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out position))
             {
-                Vector3 fallback;
-                if (TryFindZombieModeVirtualSpawnAroundPlayer(playerPos, out fallback))
-                {
-                    return fallback;
-                }
+                return true;
             }
 
-            return best;
+            if (main != null &&
+                TryFindZombieModeVirtualSpawnAroundPlayer(
+                    main.transform.position,
+                    ZombieModeTuning.SpawnPointMinPlayerDistance,
+                    out position))
+            {
+                return true;
+            }
+
+            position = Vector3.zero;
+            return false;
         }
 
         private bool TryGetNearestZombieModeMapSpawnPositionToPlayer(out Vector3 position)
@@ -221,10 +203,13 @@ namespace BossRush
 
             CharacterMainControl main = CharacterMainControl.Main;
             Vector3 playerPos = main != null ? main.transform.position : Vector3.zero;
-            float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();
-            float minDistanceSqr = minPlayerDistance * minPlayerDistance;
-            float bestDistanceSqr = float.MaxValue;
-            int bestIndex = -1;
+            float preferredMinDistance = GetZombieModeSpawnPointMinPlayerDistance();
+            float preferredMinDistanceSqr = preferredMinDistance * preferredMinDistance;
+            float fallbackMinDistanceSqr = ZombieModeTuning.SpawnPointMinPlayerDistance * ZombieModeTuning.SpawnPointMinPlayerDistance;
+            float bestPreferredDistanceSqr = float.MaxValue;
+            float bestFallbackDistanceSqr = float.MaxValue;
+            int bestPreferredIndex = -1;
+            int bestFallbackIndex = -1;
             int startIndex = Mathf.Abs(zombieModeRunState.NextSpawnPointIndex) % points.Count;
             for (int offset = 0; offset < points.Count; offset++)
             {
@@ -233,18 +218,30 @@ namespace BossRush
                 Vector3 delta = point - playerPos;
                 delta.y = 0f;
                 float distanceSqr = main != null ? delta.sqrMagnitude : offset;
-                if (main != null && distanceSqr < minDistanceSqr)
+                if (main != null && distanceSqr < fallbackMinDistanceSqr)
                 {
                     continue;
                 }
 
-                if (distanceSqr < bestDistanceSqr)
+                if (distanceSqr < bestFallbackDistanceSqr)
                 {
-                    bestDistanceSqr = distanceSqr;
-                    bestIndex = index;
+                    bestFallbackDistanceSqr = distanceSqr;
+                    bestFallbackIndex = index;
+                }
+
+                if (main != null && distanceSqr < preferredMinDistanceSqr)
+                {
+                    continue;
+                }
+
+                if (distanceSqr < bestPreferredDistanceSqr)
+                {
+                    bestPreferredDistanceSqr = distanceSqr;
+                    bestPreferredIndex = index;
                 }
             }
 
+            int bestIndex = bestPreferredIndex >= 0 ? bestPreferredIndex : bestFallbackIndex;
             if (bestIndex < 0)
             {
                 return false;
@@ -257,15 +254,28 @@ namespace BossRush
 
         private bool TryFindZombieModeVirtualSpawnAroundPlayer(Vector3 playerPos, out Vector3 resolved)
         {
-            float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();
+            return TryFindZombieModeVirtualSpawnAroundPlayer(
+                playerPos,
+                GetZombieModeSpawnPointMinPlayerDistance(),
+                out resolved);
+        }
+
+        private bool TryFindZombieModeVirtualSpawnAroundPlayer(
+            Vector3 playerPos,
+            float minPlayerDistance,
+            out Vector3 resolved)
+        {
+            int startIndex = Mathf.Abs(zombieModeRunState.NextSpawnPointIndex) % 12;
+            zombieModeRunState.NextSpawnPointIndex = (startIndex + 1) % 12;
             return SpawnPositionHelper.TryFindAroundPlayer(
                 playerPos,
                 ringCount: 12,
-                radius: Mathf.Max(24f, minPlayerDistance + 6f),
+                radius: Mathf.Max(18f, minPlayerDistance + 6f),
                 resolved: out resolved,
                 liftOffset: ZombieModeTuning.NavMeshLiftOffset,
                 minPlayerDistance: minPlayerDistance,
-                navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius);
+                navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius,
+                startIndex: startIndex);
         }
 
         private bool TryResolveZombieModeSpawnPoint(Vector3 position, bool virtualPoint, out Vector3 resolved)

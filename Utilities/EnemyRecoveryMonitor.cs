@@ -12,6 +12,7 @@ namespace BossRush
             public Vector3 lastSamplePosition;
             public float lastMovedTime;
             public float lastRecoveryTime;
+            public float farFromPlayerSince;
             public Vector3 excludedAnchorPosition;
             public bool hasExcludedAnchorPosition;
             public int continuousFallSamples;
@@ -34,6 +35,7 @@ namespace BossRush
         private const float EnemySpawnPointExclusionRadius = 1.5f;
         private const float EnemyCurrentPointExclusionRadius = 1f;
         private const float EnemyGroundLiftOffset = 0.15f;
+        private const string ZombieModeDistantRecoveryReason = "distant";
 
         private readonly Dictionary<CharacterMainControl, EnemyRecoveryState> enemyRecoveryStates
             = new Dictionary<CharacterMainControl, EnemyRecoveryState>();
@@ -98,6 +100,7 @@ namespace BossRush
                         lastSamplePosition = currentPos,
                         lastMovedTime = Time.time,
                         lastRecoveryTime = -EnemyRecoveryCooldown,
+                        farFromPlayerSince = -1f,
                         continuousFallSamples = 0
                     };
 
@@ -279,6 +282,7 @@ namespace BossRush
                         lastSamplePosition = spawnPos,
                         lastMovedTime = Time.time,
                         lastRecoveryTime = -EnemyRecoveryCooldown,
+                        farFromPlayerSince = -1f,
                         excludedAnchorPosition = spawnPos,
                         hasExcludedAnchorPosition = true,
                         continuousFallSamples = 0
@@ -303,10 +307,15 @@ namespace BossRush
                     bool stuckUnderground = !fallingOut &&
                                             now - state.lastMovedTime >= EnemyStationaryRecoveryDelay &&
                                             ShouldRecoverStationaryEnemy(state, currentPos, player);
+                    bool distantZombie = !fallingOut &&
+                                          !stuckUnderground &&
+                                          ShouldRecoverDistantZombie(state, currentPos, player, zombieMarker, now);
 
-                    if (fallingOut || stuckUnderground)
+                    if (fallingOut || stuckUnderground || distantZombie)
                     {
-                        string reason = fallingOut ? "falling" : "stuck";
+                        string reason = fallingOut
+                            ? "falling"
+                            : (stuckUnderground ? "stuck" : ZombieModeDistantRecoveryReason);
                         Vector3 recoveredPos;
                         if (TryRecoverEnemyToNearestSpawnPoint(enemy, state, player, reason, zombieMarker, out recoveredPos))
                         {
@@ -316,6 +325,7 @@ namespace BossRush
                             state.lastRecoveryTime = now;
                             state.lastSamplePosition = recoveredPos;
                             state.continuousFallSamples = 0;
+                            state.farFromPlayerSince = -1f;
                         }
                     }
                 }
@@ -409,6 +419,38 @@ namespace BossRush
                    state.continuousFallSamples > 0;
         }
 
+        private bool ShouldRecoverDistantZombie(
+            EnemyRecoveryState state,
+            Vector3 currentPos,
+            CharacterMainControl player,
+            ZombieModeEnemyRuntimeMarker zombieMarker,
+            float now)
+        {
+            if (state == null || player == null || zombieMarker == null || zombieMarker.IsBoss)
+            {
+                if (state != null)
+                {
+                    state.farFromPlayerSince = -1f;
+                }
+                return false;
+            }
+
+            float recoveryDistance = ZombieModeTuning.NormalZombieDistantRecoveryDistance;
+            if (GetHorizontalSqrDistance(currentPos, player.transform.position) <= recoveryDistance * recoveryDistance)
+            {
+                state.farFromPlayerSince = -1f;
+                return false;
+            }
+
+            if (state.farFromPlayerSince < 0f)
+            {
+                state.farFromPlayerSince = now;
+                return false;
+            }
+
+            return now - state.farFromPlayerSince >= ZombieModeTuning.NormalZombieDistantRecoveryDelaySeconds;
+        }
+
         private bool TryRecoverEnemyToNearestSpawnPoint(
             CharacterMainControl enemy,
             EnemyRecoveryState state,
@@ -434,8 +476,11 @@ namespace BossRush
                 }
                 catch {}
 
-                Vector3 targetPos;
-                if (!TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos))
+                Vector3 targetPos = Vector3.zero;
+                bool recoveredNearPlayer = reason == ZombieModeDistantRecoveryReason &&
+                                           player != null &&
+                                           TryGetZombieModeReliableSpawnPosition(out targetPos);
+                if (!recoveredNearPlayer && !TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos))
                 {
                     DevLog("[EnemyRecovery] [WARNING] No valid recovery spawn found for " + enemy.name + " reason=" + reason);
                     return false;
