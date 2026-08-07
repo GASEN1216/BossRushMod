@@ -13,44 +13,44 @@ Skyburner Dragon Lord is the strongest custom boss in BossRush Mod. It hovers in
 
 # Attack Skills
 
-## Continuous Fire
+# Continuous Fire
 Constantly fires straight projectiles from its chest — no magazine, no reload, no pauses.
 - Phase 1: 1 shot per 0.1s, ±2m offset toward the target
 - Phase 2: 2 shots per 0.1s, ±4m offset
 - 15 damage, 10% crit rate, 1.5x crit multiplier
 
-## Prismatic Bolt
+# Prismatic Bolt
 Fires 8 homing bolts at the player. Bolts track for 2.5 seconds then fly straight, 15 damage per bolt.
 
-## Spiral Prismatic Bolt (Phase 2)
+# Spiral Prismatic Bolt (Phase 2)
 Rapidly fires prismatic bolts in a spiral pattern, one bolt per 0.1 seconds for 1 second, angle increments by 15°, tracks for 2 seconds.
 
-## Charge
+# Charge
 - 0.8 second windup then high-speed charge at the player (speed 25)
 - Warning ring appears on the ground during the last 0.3 seconds of windup — move sideways immediately
 - 30 damage on hit, leaves a magma trail (5 damage per 0.5s, 1m radius, lasts 3s)
 - **Phase 2 charges twice in succession** — the second windup is only 0.3 seconds, don't think you're safe after dodging the first one
 
-## Solar Dance
+# Solar Dance
 - 1.5 second ground warning appears 2-3m near the player
 - Dragon Lord teleports to the marked position, releasing rotating beams and a 24-direction barrage
 - Lasts 5 seconds, 10 damage per 0.2 seconds
 
-## Rainbow Ring
+# Rainbow Ring
 - Releases 13 orbs spiraling outward to 10m then contracting
 - Trail deals 5 damage, lasts 8 seconds
 
-## Phantom Spear
+# Phantom Spear
 - Phase 1: 3 waves of 10 spears each, with warning lines (about 1s), then fire in both directions, 25 damage each at speed 40
 - Phase 2 upgrade: 4 waves of 16 spears each, wider coverage, 0.5s warning then one-sided fire
 
 # Combat Phases
 
-## Phase 1 (100% ~ 50% HP)
+# Phase 1 (100% ~ 50% HP)
 - Attack interval: 1.0 second
 - Skill rotation: Prismatic Bolt → Charge → Solar Dance → Charge → Rainbow Ring → Prismatic Bolt → Charge → Phantom Spear → Charge → Rainbow Ring → Loop
 
-## Phase 2 (Below 50% HP)
+# Phase 2 (Below 50% HP)
 - Attack interval reduced to 0.5 seconds, all skills upgraded
 - Skill rotation: Phantom Spear Barrage → Prismatic Bolt → Charge → Rainbow Ring → Prismatic Bolt → Solar Dance → Phantom Spear → Charge → Spiral Prismatic Bolt → Loop
 - On phase transition, the Dragon Lord teleports above the player and displays a frenzy alert

@@ -11,12 +11,12 @@ Dragon Descendant is the first custom boss in BossRush Mod, featuring a two-phas
 
 # Combat Phases
 
-## Phase 1 (Full HP ~ First Lethal Hit)
+# Phase 1 (Full HP ~ First Lethal Hit)
 - Shooting: Uses Dragon Breath for standard gunfire; every 10th shot triggers a small blast at the player's feet if within 5m (5 fire damage, 1m radius) — staying 5m+ away avoids this entirely
 - Incendiary Grenade: Thrown every 5 seconds, always aimed at the player's feet
 - Phase 1 damage multiplier is low (0.3x), mainly to let you learn its attack patterns
 
-## Revival Mechanic
+# Revival Mechanic
 Dragon Descendant doesn't die when its HP first hits zero. When it takes lethal damage:
 
 1. HP locks at 1, and it says: **"I... will not fall!"**
@@ -29,7 +29,7 @@ This triggers only once. Note: **it's NOT triggered at 50% HP** — it triggers 
 When you see 1 HP and the revival line, create distance! Standing on the body waiting for loot is the easiest way to get hit by the eight-way incendiaries and contact damage at the same time.
 :::
 
-## Phase 2 (After Revival)
+# Phase 2 (After Revival)
 After revival it enters a frenzied state with a completely new rhythm:
 - Damage multiplier increased to 1.1x
 - Contact damage now procs on touch

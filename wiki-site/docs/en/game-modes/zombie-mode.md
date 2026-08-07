@@ -86,48 +86,58 @@ Base enemies using the `Cname_Zombie` preset. Drop **1** purification star (3–
 
 # Special Zombies
 
-Stronger than normal with unique abilities. Drop **3** purification stars (30–60 points total).
+Stronger than normal with unique abilities. Drop **3** purification stars (30–60 points total). The multipliers below are the final special-type values before pollution scaling; every Special starts from HP ×1.40, damage ×1.20, and speed ×1.10.
 
-| Type | Traits |
-|------|--------|
-| **Sprinter** | Move speed ×1.2, dash ability (12m distance, 8s cooldown) |
-| **Exploder** | HP ×1.3, detonates within 2.5m (1s delay, 4m radius, 80 damage) |
-| **Plague** | HP ×1.5, speed ×0.95, green plague aura, releases poison cloud (4m radius, 3s duration, 8 DPS) |
-| **Summoner** | HP ×1.5, speed ×0.95, periodically summons 2 normal zombies (15s cooldown) |
-| **Harasser** | HP ×1.3, fires projectiles (speed 12, 25 damage), creates slow zone on hit (3.5m radius, 50% slow, 2s) |
+| Encyclopedia entry (internal `SpecialKind`) | Combat multipliers before pollution | Target color / safe visual scale | Known behavior |
+|------|------|------|------|
+| **Sprinter (`Sprinter`)** | HP ×1.40 / damage ×1.20 / speed ×1.32 | Yellow target `#FFD91F`; safe visual subtree ×1.35 | Dash distance 12m, 0.5s startup, 8s cooldown. |
+| **Exploder (`Exploder`)** | HP ×1.30 / damage ×1.20 / speed ×1.10 | Red-orange target `#FF4D14`; safe visual subtree ×1.60 | Detonates when the player enters 2.5m; 1s delay, 4m radius, 80 damage, 9s skill cycle; self-destructs after triggering, and a pre-detonation death can trigger the blast once. |
+| **Official Exploder (`OfficialExploder`)** | HP ×1.30 / damage ×1.20 / speed ×1.10 | Red-orange target `#FF4D14`; safe visual subtree ×1.60 | Uses the official preset's explosion skill. The mod does not layer a second custom blast; official range and damage remain resource-defined and are not guessed here. |
+| **Plague (`Plague`)** | HP ×1.50 / damage ×1.20 / speed ×0.95 | Green target `#2EFF59`; safe visual subtree ×1.80 | Every 12s, casts a poison cloud with 0.9s telegraph, 4m radius, 3s duration, and 8 DPS. The ground zone stays at the cast point; the mutant also carries a green plague aura. |
+| **Summoner (`Summoner`)** | HP ×1.50 / damage ×1.20 / speed ×0.95 | Purple target `#BF4DFF`; safe visual subtree ×2.00 | Every 15s, summons 2 normal zombies. Summoned normal zombies use the split-child visual scale ×0.60. |
+| **Harasser (`Harasser`)** | HP ×1.30 / damage ×1.20 / speed ×1.10 | Cyan target `#26F2FF`; safe visual subtree ×1.45 | Every 4s, fires a projectile (speed 12, damage 25, lifetime 2s). On impact it creates a 3.5m slow zone: 50% slow for 2s. |
 
-> Exploders don't appear in the first 5 waves.
+> The early special pool (waves 1–5) excludes both `Exploder` and `OfficialExploder`; the full pool is used from wave 6.
 
 # Elite Zombies
 
-Powerful mutants carrying 1–3 affixes. Drop **5** purification stars (80–150 points total).
+Powerful mutants carrying 1–3 affixes. Drop **5** purification stars (80–150 points total). Normal elites use HP ×2.50 / damage ×1.50 / speed ×1.10; at pollution **≥15**, enhanced elites use HP ×3.20 / damage ×1.70 / speed ×1.30.
 
-**Base multipliers**:
-- Normal elite: HP ×2.5 / Damage ×1.5 / Speed ×1.1
-- Enhanced elite (pollution ≥15): HP ×3.2 / Damage ×1.7 / Speed ×1.3
+Pollution is applied after the base and affix multipliers: HP ×`(1 + pollution × 0.05)` and damage ×`(1 + pollution × 0.04)`; speed has no pollution multiplier. Affix multipliers stack multiplicatively.
 
-**Affix System**:
+**Affix encyclopedia**:
 
-| Affix | Effect | Unlock Tier |
-|-------|--------|-------------|
-| **Swift** | Speed ×1.3 | 0 |
-| **Frenzied** | Damage ×1.15, speed ×1.1 | 0 |
-| **Tough** | HP ×1.4 | 0 |
-| **Stalwart** | HP ×1.15, 90% ranged damage reduction | 1 |
-| **Regenerating** | Continuous health regeneration | 1 |
-| **Burst** | Explodes on death (4m radius, 40 damage) | 1 |
-| **Plague** | Releases poison clouds | 1 |
-| **Commander** | Aura buffs nearby zombies (8m radius, +20% speed, +15% damage) | 3 |
-| **Toxic Aura** | Continuous toxic damage | 3 |
-| **Splitting** | Splits into 2 smaller zombies on death | 3 |
-| **Shielded** | HP ×1.25, periodic shield (25% max HP, 5s duration, 12s cooldown) | 3 |
-| **Adaptive** | After 5 consecutive hits from same source, gains 60% damage reduction for 8s | 5 |
+| Affix (internal `EliteAffixes`) | Exact effect | Target color (priority) | Visual scale bonus | Unlock tier |
+|-------|-------|-------|-------|-------|
+| **Swift (`Swift`)** | Additional speed ×1.30. | Yellow `#FFD91F` (5) | None | 0 |
+| **Frenzied (`Frenzied`)** | Additional damage ×1.15 and speed ×1.10. | Yellow `#FFD91F` (5) | None | 0 |
+| **Tough (`Tough`)** | Additional HP ×1.40. | Default orange `#FFA61F` (6) | +0.20 | 0 |
+| **Stalwart (`Stalwart`)** | Additional HP ×1.15; damage from the main player that is not melee is reduced to 10% (90% reduction). | Default orange `#FFA61F` (6) | +0.20 | 1 |
+| **Regenerating (`Regenerating`)** | Restores 2.5% of max HP every second, with a minimum of 1 HP. | Green `#2EFF59` (2) | None | 1 |
+| **Burst (`Burst`)** | Death explosion: 4m radius, 40 damage. | Red-orange `#FF4D14` (4) | None | 1 |
+| **Plague (`Plague`)** | Every 12s, casts a fixed-position poison cloud: 0.9s telegraph, 5.5m radius, 3s duration, 26 total damage (about 8.67 DPS). | Green `#2EFF59` (2) | None | 1 |
+| **Commander (`Commander`)** | An 8m aura refreshes every 0.5s; nearby zombies gain +20% walk/run speed and +15% melee/gun damage. | Purple `#BF4DFF` (1) | None | 3 |
+| **Toxic Aura (`ToxicAura`)** | Every 12s, creates a caster-following toxic zone: 0.9s telegraph, 5.5m radius, 3s duration, 26 total damage (about 8.67 DPS). | Green `#2EFF59` (2) | None | 3 |
+| **Splitting (`Splitting`)** | On death, spawns 2 normal small zombies; child visual scale is ×0.60. | Purple `#BF4DFF` (1) | None | 3 |
+| **Shielded (`Shielded`)** | Additional HP ×1.25; every 12s gains a shield equal to 25% of max HP for 5s. | Cyan `#26F2FF` (3) | +0.20 | 3 |
+| **Adaptive (`Adaptive`)** | After 5 consecutive melee or 5 consecutive non-melee hits from the main player, damage from that category is reduced by 60% for 8s; switching category resets the opposite counter. | Cyan `#26F2FF` (3) | None | 5 |
 
 **Affix count by pollution**:
 - Pollution < 5: 1 affix
 - Pollution 5–14: 1 (65%) or 2 (35%)
 - Pollution 15–24: 2 affixes
 - Pollution ≥ 25: 2–3 affixes
+
+**Forbidden combinations**:
+- Stalwart + Shielded + Regenerating is never allowed.
+- Below pollution 15, Stalwart + Swift is forbidden.
+- Below pollution 15, ToxicAura + Plague + Swift is forbidden.
+
+**Color and scale rules**:
+- For multiple affixes, color priority is purple (Commander/Splitting) > green (Plague/ToxicAura/Regenerating) > cyan (Shielded/Adaptive) > red-orange (Burst) > yellow (Swift/Frenzied) > default orange (Tough/Stalwart or no match). These are target colors, not guaranteed final hex values: face and safe renderers blend 65% toward the target, so the original material changes the result.
+- Elite safe visual subtrees scale by affix count: 1 = ×1.65, 2 = ×1.95, 3 = ×2.25. Tough, Stalwart, or Shielded adds ×0.20; the hard cap is ×3.00 (the current three-affix high-threat maximum is ×2.45).
+- Scaling is limited to checked renderer/skeleton subtrees. The character root, `CharacterModel`, colliders, navigation, sockets, weapons, and attack ancestors are excluded. If both `CustomFace` and safe scaling fail, a pooled foot marker is used as the persistent fallback.
+- All Bosses, including Titan, are excluded from this mutation identity system; this page documents only Specials and Elites.
 
 # Spawn Probability
 

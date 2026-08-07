@@ -16,34 +16,34 @@ The Phantom Witch is the third custom Boss in BossRush Mod. She roams the battle
 
 # Attack Skills
 
-## Tracked Teleport
+# Tracked Teleport
 Her most important move. The Witch places a violet marker about 2.2m from the player, and **the marker follows you for 2 seconds**, locking at its final position before the Witch blinks there and immediately sweeps.
 - Sweep damage: 18, range 3.1m, 170° arc
 - Moving one step when the marker appears isn't enough — keep strafing until it locks, or she'll land on your retreat path
 
-## Scythe Sweep (Standalone)
+# Scythe Sweep (Standalone)
 - Windup: 0.35s
 - Damage: 18
 - Range: 3.1m, 170° arc
 
-## Requiem Arc
+# Requiem Arc
 - Windup: 0.55s
 - Damage: 16
 - Range: 4.8m midrange sector
 
-## Wraith Trail
+# Wraith Trail
 - Windup: 0.45s (with a ~3m outline warning)
 - Two-part hit: first cone at ~3.2m, **second cone at ~3.6m after 0.3 seconds**
 - 18 damage per hit
 - Many players dodge the first hit and turn back for damage, only to be caught by the second
 
-## Curse Realm
+# Curse Realm
 - Shows a 1.05-second shrinking warning ring under the player, then creates a damage zone
 - Phases 1/2: 4.5m radius, lasts 4 seconds
 - Phase 3: radius shrinks to 3.6m, lasts 3 seconds
 - 15 ghost damage every 0.5 seconds, applies curse slow
 
-## Undead Summoning (Phase 3)
+# Undead Summoning (Phase 3)
 - 1.0s windup, summons 2 ghost minions (max 2 alive at once)
 - Minion HP: 150
 - Two roles:
@@ -69,13 +69,13 @@ Be wary at one curse stack. If you eat another from a Curse Realm or the Harass 
 
 # Tactical Package Rotation
 
-## Phase 1 (interval 1.2s)
+# Phase 1 (interval 1.2s)
 Tracked Teleport → Requiem Arc → Wraith Trail
 
-## Phase 2 (interval 0.85s)
+# Phase 2 (interval 0.85s)
 Tracked Teleport → Requiem + Trail Combo → Curse Realm → Tracked Teleport
 
-## Phase 3 (interval 1.1s)
+# Phase 3 (interval 1.1s)
 Short Drift → Undead Summon → Curse Realm → Minion Retreat
 
 # Drops
