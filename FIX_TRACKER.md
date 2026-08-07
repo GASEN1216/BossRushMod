@@ -748,8 +748,35 @@
 
 **失败尝试**: 旧记录中的 `StockShop.Awake` 早期注入补丁受 `ModBehaviour.Instance` 初始化时序影响，不能稳定解决。
 
+---
+### 2026-08-07 Wiki 右书页文字超出页面
+
+**状态**: fixed
+**Finding**: 玩家截图反馈
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: Wiki 文章翻页后，右侧书页末尾文字继续绘制到书页及底部 UI 之外。
+
+**根因**: 左页使用 TMP `Page` 模式生成分页，右页则把对应页的源字符串切出后重新补齐富文本标签、重新换行，并使用无边界 `Overflow` 模式。“末日丧尸模式”第 7/15 页恰好在密集表格、列表和标题之间分页，二次排版改变了换行边界，TMP 遂继续绘制到书页外。
+
+**修复内容**:
+
+- 修改 `Integration/WikiUIManager.cs`：删除右页源文本切片、富文本标签修复和二次排版路径；左右页共用完整文本与 TMP `Page` 分页，只切换奇偶 `pageToDisplay`。
+- 新增 `tests/WikiUIPageOverflowGuard.py`：同时守卫左右页 `Page` 模式、共享完整文本及“禁止右页二次切片”约束。
+
+**验证方法**:
+
+1. Windows 编译：`cmd.exe /c compile_official.bat` 通过
+2. Guard：`python tests\\WikiUIPageOverflowGuard.py` 通过
+3. Guard：`python tests\\OfficialCompileListFileExistenceGuard.py` 通过
+
+**未验证/需人工**: 需进游戏打开 Wiki 的“末日丧尸模式”文章，翻到原截图的第 7/15 页，确认右页文字不再越界且翻页内容连续。
+
 ## 变更日志
 
 | 日期 | 变更 | 说明 |
 | --- | --- | --- |
+| 2026-08-07 | 修复 Wiki 右书页文字越界 | 删除右页二次文本切片，左右页统一使用完整文本 + TMP `Page` 分页，并新增守卫。 |
 | 2026-07-01 | AI 协作文档收敛 | 从旧 `docs/协作/FIX_TRACKER.md` 迁移 confirmed 修复记录；新增状态、owner decision、兼容分类字段。 |

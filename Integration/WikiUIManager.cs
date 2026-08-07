@@ -11,7 +11,6 @@
 // ============================================================================
 
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -671,12 +670,14 @@ namespace BossRush
                 EnsureLinkHandler(txtLeft);
             }
 
-            // 右栏：用 Overflow 模式，内容由 RefreshArticleContent 时从左栏 pageInfo 切片赋值。
-            // 不用 firstVisibleCharacter：它不改变 TMP 布局位置，会导致字符渲染在 rect 外空白。
+            // 右栏使用与左栏完全相同的源文本和 Page 分页，只切换 pageToDisplay。
+            // 不单独截取源字符串，避免富文本标签补全和二次换行改变页边界。
             if (txtRight != null)
             {
-                txtRight.overflowMode = TMPro.TextOverflowModes.Overflow;
-                txtRight.text = "";
+                txtRight.text = currentParsedContent;
+                txtRight.overflowMode = TMPro.TextOverflowModes.Page;
+                txtRight.pageToDisplay = 2;
+                txtRight.ForceMeshUpdate();
                 EnsureLinkHandler(txtRight);
             }
 
@@ -686,137 +687,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 从左栏（master）的 pageInfo 中取第 pageNumber 页对应的源字符串切片。
-        /// 用于右栏直接 txtRight.text = 切片，保证与左栏分页完全对齐且从 rect 左上角开始布局。
-        /// </summary>
-        private string ExtractPageSourceText(int pageNumber)
-        {
-            if (string.IsNullOrEmpty(currentParsedContent)) return "";
-            if (txtLeft == null || txtLeft.textInfo == null) return "";
-            if (pageNumber < 1 || pageNumber > totalPages) return "";
-
-            var textInfo = txtLeft.textInfo;
-            if (textInfo.pageInfo == null || pageNumber - 1 >= textInfo.pageInfo.Length) return "";
-            if (textInfo.characterInfo == null) return "";
-
-            int charInfoLen = textInfo.characterCount;
-            if (charInfoLen <= 0) return "";
-
-            var pageInfo = textInfo.pageInfo[pageNumber - 1];
-            int firstCharIdx = pageInfo.firstCharacterIndex;
-            int lastCharIdx = pageInfo.lastCharacterIndex;
-
-            if (firstCharIdx < 0) firstCharIdx = 0;
-            if (firstCharIdx >= charInfoLen) return "";
-            if (lastCharIdx < firstCharIdx) lastCharIdx = firstCharIdx;
-            if (lastCharIdx >= charInfoLen) lastCharIdx = charInfoLen - 1;
-
-            var firstChar = textInfo.characterInfo[firstCharIdx];
-            var lastChar = textInfo.characterInfo[lastCharIdx];
-
-            int srcStart = firstChar.index;
-            int srcEndExclusive = lastChar.index + Math.Max(1, lastChar.stringLength);
-
-            if (srcStart < 0) srcStart = 0;
-            if (srcStart >= currentParsedContent.Length) return "";
-            if (srcEndExclusive > currentParsedContent.Length) srcEndExclusive = currentParsedContent.Length;
-            if (srcEndExclusive <= srcStart) return "";
-
-            string slice = currentParsedContent.Substring(srcStart, srcEndExclusive - srcStart);
-            return RepairRichTextTags(slice, currentParsedContent, srcStart, srcEndExclusive);
-        }
-
-        /// <summary>
-        /// 补全切片内 TMP rich text 标签的开闭配对。
-        /// 1) 切片前（source[0..sliceStart]）所有已"打开"但未在切片前关闭的标签 → 补到切片开头。
-        /// 2) 切片尾部未关闭的标签 → 补闭合标签到切片结尾。
-        /// 只处理常见块级标签：b,i,u,s,color,size,mark,sub,sup,align,indent,link,style,voffset,cspace,line-height,mspace,pos,space,sprite,font。
-        /// </summary>
-        private static string RepairRichTextTags(string slice, string fullSource, int sliceStart, int sliceEndExclusive)
-        {
-            if (string.IsNullOrEmpty(slice)) return slice;
-
-            // 第一步：分析 fullSource[0..sliceStart] 中打开但未关闭的标签
-            List<string> openTags = CollectOpenTags(fullSource, 0, sliceStart);
-            if (openTags.Count == 0) return slice;
-
-            // 第二步：分析切片自身是否已关闭这些标签
-            List<string> stillOpen = CollectOpenTags(fullSource, sliceStart, sliceEndExclusive);
-
-            // 拼接：在切片前补开标签，在切片末补闭标签（逆序闭合）
-            var sb = new System.Text.StringBuilder(slice.Length + 64);
-            for (int i = 0; i < openTags.Count; i++)
-            {
-                sb.Append("<").Append(openTags[i]).Append(">");
-            }
-            sb.Append(slice);
-            for (int i = stillOpen.Count - 1; i >= 0; i--)
-            {
-                string tag = stillOpen[i];
-                int eq = tag.IndexOf('=');
-                string tagName = eq >= 0 ? tag.Substring(0, eq) : tag;
-                sb.Append("</").Append(tagName).Append(">");
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>扫描 source[start..end] 中未闭合的 rich text 标签（栈方式），返回由旧到新的标签原文（不含尖括号）。</summary>
-        private static List<string> CollectOpenTags(string source, int start, int end)
-        {
-            var stack = new List<string>();
-            if (start < 0) start = 0;
-            if (end > source.Length) end = source.Length;
-            int i = start;
-            while (i < end)
-            {
-                int lt = source.IndexOf('<', i);
-                if (lt < 0 || lt >= end) break;
-                int gt = source.IndexOf('>', lt + 1);
-                if (gt < 0 || gt >= end) break;
-
-                string inner = source.Substring(lt + 1, gt - lt - 1);
-                if (inner.Length == 0) { i = gt + 1; continue; }
-
-                bool isClosing = inner[0] == '/';
-                string tagContent = isClosing ? inner.Substring(1) : inner;
-                int eq = tagContent.IndexOf('=');
-                string tagName = eq >= 0 ? tagContent.Substring(0, eq) : tagContent;
-                tagName = tagName.Trim().ToLowerInvariant();
-
-                // 过滤非 rich text 场景（无名 / 空白）
-                if (tagName.Length > 0)
-                {
-                    if (isClosing)
-                    {
-                        // 从栈尾向前查找同名的开标签并移除
-                        for (int k = stack.Count - 1; k >= 0; k--)
-                        {
-                            int ek = stack[k].IndexOf('=');
-                            string sk = ek >= 0 ? stack[k].Substring(0, ek) : stack[k];
-                            if (sk.Equals(tagName, StringComparison.OrdinalIgnoreCase))
-                            {
-                                stack.RemoveAt(k);
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // <br> 等自闭合标签不入栈
-                        if (tagName != "br" && tagName != "sprite")
-                        {
-                            stack.Add(tagContent);
-                        }
-                    }
-                }
-                i = gt + 1;
-            }
-            return stack;
-        }
-
-        /// <summary>
-        /// 将右栏的所有影响分页/布局的字体属性强制同步到左栏；
-        /// characterInfo 数组仅依赖 text + 字体参数，这样右栏用左栏索引才能精确命中字符。
+        /// 将右栏的所有影响分页/布局的字体属性强制同步到左栏，
+        /// 确保左右栏对同一份完整文本产生相同的 TMP 分页边界。
         /// </summary>
         private void SyncRightTextPropertiesFromLeft()
         {
@@ -861,21 +733,15 @@ namespace BossRush
                 txtLeft.ForceMeshUpdate();
             }
 
-            // 右栏：从左栏 pageInfo 切出源字符串范围直接赋值，保证从 rect 左上角开始布局显示。
-            // （不使用 firstVisibleCharacter，因为它不改变布局位置，会导致右栏首字符渲染到 rect 外产生空白。）
+            // 右栏显示同一份完整文本的偶数 TMP 页，不做字符串切片和二次排版。
             if (txtRight != null)
             {
-                string rightText = ExtractPageSourceText(rightPageToDisplay);
-                if (!string.IsNullOrEmpty(rightText))
+                bool hasRightPage = rightPageToDisplay <= totalPages;
+                txtRight.gameObject.SetActive(hasRightPage);
+                if (hasRightPage)
                 {
-                    txtRight.gameObject.SetActive(true);
-                    txtRight.text = rightText;
+                    txtRight.pageToDisplay = rightPageToDisplay;
                     txtRight.ForceMeshUpdate();
-                }
-                else
-                {
-                    txtRight.text = "";
-                    txtRight.gameObject.SetActive(false);
                 }
             }
 
