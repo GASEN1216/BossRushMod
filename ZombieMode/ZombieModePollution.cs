@@ -362,15 +362,51 @@ namespace BossRush
         private ZombieModeEnemyKind RollZombieModeEnemyKind()
         {
             int pollution = zombieModeRunState.TotalPollution;
-            int eliteChance = GetZombieModeEliteChancePercent(pollution);
-            int specialChance = GetZombieModeSpecialChancePercent(pollution);
-            int roll = Random.Range(0, 100);
-            if (roll < eliteChance)
+            int pacingWave = GetZombieModePacingWave();
+            float eliteWeight;
+            float specialWeight;
+            float normalWeight;
+            if (pacingWave <= 1)
+            {
+                eliteWeight = 0f;
+                specialWeight = 0f;
+                normalWeight = 100f;
+            }
+            else if (pacingWave == 2)
+            {
+                eliteWeight = 0f;
+                specialWeight = 3f;
+                normalWeight = 97f;
+            }
+            else if (pacingWave == 3)
+            {
+                eliteWeight = 0f;
+                specialWeight = 5f;
+                normalWeight = 95f;
+            }
+            else if (pacingWave <= 5)
+            {
+                eliteWeight = 1f;
+                specialWeight = 8f;
+                normalWeight = 91f;
+            }
+            else
+            {
+                int lateWave = pacingWave - 5;
+                eliteWeight = GetZombieModeEliteBaseWeight(pollution) +
+                              lateWave * (float)ZombieModeTuning.LateWaveEliteWeightPerWave;
+                specialWeight = GetZombieModeSpecialBaseWeight(pollution) +
+                                lateWave * (float)ZombieModeTuning.LateWaveSpecialWeightPerWave;
+                normalWeight = ZombieModeTuning.LateWaveNormalEnemyWeight;
+            }
+
+            float roll = Random.value * (eliteWeight + specialWeight + normalWeight);
+            if (roll < eliteWeight)
             {
                 return ZombieModeEnemyKind.Elite;
             }
 
-            if (roll < eliteChance + specialChance)
+            if (roll < eliteWeight + specialWeight)
             {
                 return ZombieModeEnemyKind.Special;
             }
@@ -378,7 +414,7 @@ namespace BossRush
             return ZombieModeEnemyKind.Normal;
         }
 
-        private int GetZombieModeSpecialChancePercent(int pollution)
+        private int GetZombieModeSpecialBaseWeight(int pollution)
         {
             if (pollution >= 25) return 30;
             if (pollution >= 20) return 25;
@@ -388,7 +424,7 @@ namespace BossRush
             return 5;
         }
 
-        private int GetZombieModeEliteChancePercent(int pollution)
+        private int GetZombieModeEliteBaseWeight(int pollution)
         {
             if (pollution >= 25) return 10;
             if (pollution >= 20) return 8;
@@ -595,6 +631,7 @@ namespace BossRush
                 ApplyZombieModeEliteAffixTuning(enemy, marker, ref healthMultiplier, ref damageMultiplier, ref speedMultiplier);
             }
 
+            speedMultiplier *= GetZombieModeWaveSpeedMultiplier(GetZombieModePacingWave());
             float pollutionHealthScale = 1f + zombieModeRunState.TotalPollution * ZombieModeTuning.PollutionHealthScalePerPoint;
             float pollutionDamageScale = 1f + zombieModeRunState.TotalPollution * ZombieModeTuning.PollutionDamageScalePerPoint;
             marker.HealthMultiplier = healthMultiplier * pollutionHealthScale;

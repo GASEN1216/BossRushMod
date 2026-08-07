@@ -44,7 +44,7 @@ def main() -> int:
         return fail("spawn selection still computes magnitude before min-distance rejection")
 
     required = [
-        "float minPlayerDistance = ZombieModeTuning.SpawnPointMinPlayerDistance;",
+        "float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();",
         "float minPlayerDistanceSqr = minPlayerDistance * minPlayerDistance;",
         "float distanceSqr = delta.sqrMagnitude;",
         "if (distanceSqr < minPlayerDistanceSqr)",

@@ -350,8 +350,25 @@ namespace BossRush
                 return;
             }
 
-            int maxQuality = Mathf.Clamp(4 + zombieModeRunState.PollutionTier + 1, 5, 8);
-            GameObject drop = TrySpawnZombieModeBossLootbox(runId, marker.BossKind, position, maxQuality);
+            int cycle = GetZombieModeWaveCycleIndex(zombieModeRunState.CurrentWave);
+            int minItems = Mathf.Min(
+                ZombieModeTuning.BossLootboxMinItemsMaximum,
+                ZombieModeTuning.BossLootboxMinItemsBase + cycle * ZombieModeTuning.BossLootboxItemsPerCycle);
+            int maxItems = Mathf.Min(
+                ZombieModeTuning.BossLootboxMaxItemsMaximum,
+                ZombieModeTuning.BossLootboxMaxItemsBase + cycle * ZombieModeTuning.BossLootboxItemsPerCycle);
+            int minQuality = Mathf.Min(
+                ZombieModeTuning.BossLootboxMinQualityMaximum,
+                ZombieModeTuning.BossLootboxMinQualityBase + cycle / ZombieModeTuning.BossLootboxMinQualityCycleStep);
+            int maxQuality = Mathf.Clamp(5 + zombieModeRunState.PollutionTier + cycle, minQuality, 8);
+            GameObject drop = TrySpawnZombieModeBossLootbox(
+                runId,
+                marker.BossKind,
+                position,
+                minItems,
+                maxItems,
+                minQuality,
+                maxQuality);
             if (drop != null)
             {
                 ZombieModeBossDrop bossDrop = new ZombieModeBossDrop();
@@ -362,7 +379,14 @@ namespace BossRush
             }
         }
 
-        private GameObject TrySpawnZombieModeBossLootbox(int runId, ZombieModeBossKind bossKind, Vector3 position, int maxQuality)
+        private GameObject TrySpawnZombieModeBossLootbox(
+            int runId,
+            ZombieModeBossKind bossKind,
+            Vector3 position,
+            int minItems,
+            int maxItems,
+            int minQuality,
+            int maxQuality)
         {
             if (!IsZombieModeRunValid(runId))
             {
@@ -386,7 +410,7 @@ namespace BossRush
                 lootbox.gameObject.name = "ZombieMode_BossLootbox_" + bossKind.ToString();
                 TryCreateZombieModeLootboxLocalInventory(lootbox);
                 ClearZombieModeLootboxInventory(lootbox);
-                RefillZombieModeLootboxInventory(runId, lootbox, 6, 9, 3, maxQuality, true);
+                RefillZombieModeLootboxInventory(runId, lootbox, minItems, maxItems, minQuality, maxQuality, true);
                 try { MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex); } catch (Exception e) { DevLog("[ZombieMode] MoveToActiveWithScene 失败: " + e.Message); }
                 try { ApplyLootBoxCoverSetting(lootbox, true); } catch (Exception e) { DevLog("[ZombieMode] ApplyLootBoxCoverSetting 失败: " + e.Message); }
                 try { BossRushLootboxUtility.DecorateLootbox(lootbox, this, false, true); } catch (Exception e) { DevLog("[ZombieMode] DecorateLootbox 失败: " + e.Message); }

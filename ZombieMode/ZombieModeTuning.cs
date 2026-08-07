@@ -53,7 +53,14 @@ namespace BossRush
             public const float BossPreparationCountdownSeconds = 75f;
             public const float BeaconChannelDurationSeconds = 3f;
             public const float ExtractionCountdownSeconds = 15f;
-            public const float PeriodicSpawnIntervalSeconds = 1f;
+            public const float PreparationSpawnIntervalSeconds = 5f;
+            public const float NormalWaveSpawnIntervalStartSeconds = 3f;
+            public const float NormalWaveSpawnIntervalStageStepSeconds = 0.4f;
+            public const float NormalWaveSpawnIntervalCycleStepSeconds = 0.15f;
+            public const float NormalWaveSpawnIntervalMinSeconds = 1.25f;
+            public const float BossWaveSpawnIntervalStartSeconds = 3f;
+            public const float BossWaveSpawnIntervalCycleStepSeconds = 0.1f;
+            public const float BossWaveSpawnIntervalMinSeconds = 2f;
             public const float SettlementMaxWaitSeconds = 3.5f;
             public const float BannerDurationSeconds = 2.5f;
         }
@@ -86,8 +93,35 @@ namespace BossRush
             public const float NavMeshSampleRadius = 8f;
             public const float DuplicateDistance = 4f;
             public const float MinPlayerDistance = 12f;
+            public const float EarlyWaveMinPlayerDistance = 28f;
+            public const float MidWaveMinPlayerDistance = 24f;
+            public const float LateWaveMinPlayerDistance = 20f;
             public const float NavMeshLiftOffset = 0.05f;
             public const int MaxNormalZombieCount = 50;
+            public const int NormalWavePressureBase = 8;
+            public const int NormalWavePressurePerCycle = 6;
+            public static readonly int[] NormalWavePressureStageOffsets = { 0, 4, 9, 15 };
+            public const int NormalWaveKillTargetBase = 18;
+            public const int NormalWaveKillTargetPerCycle = 18;
+            public static readonly int[] NormalWaveKillTargetStageOffsets = { 0, 6, 12, 20 };
+            public const int PreparationPressureMinimum = 4;
+            public const int PreparationPressureMaximum = 16;
+            public const float PreparationPressureFraction = 0.35f;
+            public const int PreparationSpawnBatchSize = 1;
+            public const int NormalWaveSpawnBatchBase = 2;
+            public const int NormalWaveSpawnBatchMaximum = 6;
+            public const int BossWaveCountBase = 1;
+            public const int BossWaveCountPerCycle = 1;
+            public const int BossWaveSupportPressureBase = 8;
+            public const int BossWaveSupportPressurePerCycle = 3;
+            public const int BossWaveSupportPressureMaximum = 20;
+            public const int BossWaveSpawnBatchMaximum = 3;
+            public const float WaveSpeedMultiplierStart = 0.72f;
+            public const float WaveSpeedMultiplierPerWave = 0.035f;
+            public const float WaveSpeedMultiplierMaximum = 1f;
+            public const int LateWaveNormalEnemyWeight = 100;
+            public const int LateWaveEliteWeightPerWave = 3;
+            public const int LateWaveSpecialWeightPerWave = 5;
             public const float NormalZombieForceTraceDistance = 500f;
         }
 
@@ -101,6 +135,18 @@ namespace BossRush
             public const float PurificationPollutionScalePerStep = 0.10f;
             public const int PurificationPollutionStep = 10;
             public const float PurificationPollutionScaleMax = 1.5f;
+            public const float BossRewardScalePerCycle = 0.25f;
+            public const float BossRewardScaleMaximum = 3f;
+            public const int BossBonusSelectionStartCycle = 1;
+            public const int BossRewardSelectionMaximum = 2;
+            public const int BossLootboxMinItemsBase = 6;
+            public const int BossLootboxMaxItemsBase = 9;
+            public const int BossLootboxItemsPerCycle = 1;
+            public const int BossLootboxMinItemsMaximum = 10;
+            public const int BossLootboxMaxItemsMaximum = 13;
+            public const int BossLootboxMinQualityBase = 3;
+            public const int BossLootboxMinQualityCycleStep = 2;
+            public const int BossLootboxMinQualityMaximum = 7;
             public const int StarterMaxQuality = 5;
             public const int StarterGunnerExtraAmmoCount = 1000;
         }
@@ -189,6 +235,12 @@ namespace BossRush
 
         private static class Boss
         {
+            // 单 Boss 追逐战按 Boss 轮次增强本体，不叠加额外移速。
+            public const float HealthScalePerCycle = 0.30f;
+            public const float HealthScaleMaximum = 2.5f;
+            public const float DamageScalePerCycle = 0.12f;
+            public const float DamageScaleMaximum = 1.8f;
+
             // Titan
             public const float TitanShockwaveRadius = 6f;
             public const float TitanShockwaveDamage = 60f;
@@ -338,7 +390,14 @@ namespace BossRush
         public const float BossPreparationCountdownSeconds = Pacing.BossPreparationCountdownSeconds;
         public const float BeaconChannelDurationSeconds = Pacing.BeaconChannelDurationSeconds;
         public const float ExtractionCountdownSeconds = Pacing.ExtractionCountdownSeconds;
-        public const float PeriodicSpawnIntervalSeconds = Pacing.PeriodicSpawnIntervalSeconds;
+        public const float PreparationSpawnIntervalSeconds = Pacing.PreparationSpawnIntervalSeconds;
+        public const float NormalWaveSpawnIntervalStartSeconds = Pacing.NormalWaveSpawnIntervalStartSeconds;
+        public const float NormalWaveSpawnIntervalStageStepSeconds = Pacing.NormalWaveSpawnIntervalStageStepSeconds;
+        public const float NormalWaveSpawnIntervalCycleStepSeconds = Pacing.NormalWaveSpawnIntervalCycleStepSeconds;
+        public const float NormalWaveSpawnIntervalMinSeconds = Pacing.NormalWaveSpawnIntervalMinSeconds;
+        public const float BossWaveSpawnIntervalStartSeconds = Pacing.BossWaveSpawnIntervalStartSeconds;
+        public const float BossWaveSpawnIntervalCycleStepSeconds = Pacing.BossWaveSpawnIntervalCycleStepSeconds;
+        public const float BossWaveSpawnIntervalMinSeconds = Pacing.BossWaveSpawnIntervalMinSeconds;
         public const float SettlementMaxWaitSeconds = Pacing.SettlementMaxWaitSeconds;
         public const float BannerDurationSeconds = Pacing.BannerDurationSeconds;
 
@@ -364,8 +423,35 @@ namespace BossRush
         public const float SpawnPointNavMeshSampleRadius = Spawn.NavMeshSampleRadius;
         public const float SpawnPointDuplicateDistance = Spawn.DuplicateDistance;
         public const float SpawnPointMinPlayerDistance = Spawn.MinPlayerDistance;
+        public const float EarlyWaveSpawnPointMinPlayerDistance = Spawn.EarlyWaveMinPlayerDistance;
+        public const float MidWaveSpawnPointMinPlayerDistance = Spawn.MidWaveMinPlayerDistance;
+        public const float LateWaveSpawnPointMinPlayerDistance = Spawn.LateWaveMinPlayerDistance;
         public const float NavMeshLiftOffset = Spawn.NavMeshLiftOffset;
         public const int MaxNormalZombieCount = Spawn.MaxNormalZombieCount;
+        public const int NormalWavePressureBase = Spawn.NormalWavePressureBase;
+        public const int NormalWavePressurePerCycle = Spawn.NormalWavePressurePerCycle;
+        public static readonly int[] NormalWavePressureStageOffsets = Spawn.NormalWavePressureStageOffsets;
+        public const int NormalWaveKillTargetBase = Spawn.NormalWaveKillTargetBase;
+        public const int NormalWaveKillTargetPerCycle = Spawn.NormalWaveKillTargetPerCycle;
+        public static readonly int[] NormalWaveKillTargetStageOffsets = Spawn.NormalWaveKillTargetStageOffsets;
+        public const int PreparationPressureMinimum = Spawn.PreparationPressureMinimum;
+        public const int PreparationPressureMaximum = Spawn.PreparationPressureMaximum;
+        public const float PreparationPressureFraction = Spawn.PreparationPressureFraction;
+        public const int PreparationSpawnBatchSize = Spawn.PreparationSpawnBatchSize;
+        public const int NormalWaveSpawnBatchBase = Spawn.NormalWaveSpawnBatchBase;
+        public const int NormalWaveSpawnBatchMaximum = Spawn.NormalWaveSpawnBatchMaximum;
+        public const int BossWaveCountBase = Spawn.BossWaveCountBase;
+        public const int BossWaveCountPerCycle = Spawn.BossWaveCountPerCycle;
+        public const int BossWaveSupportPressureBase = Spawn.BossWaveSupportPressureBase;
+        public const int BossWaveSupportPressurePerCycle = Spawn.BossWaveSupportPressurePerCycle;
+        public const int BossWaveSupportPressureMaximum = Spawn.BossWaveSupportPressureMaximum;
+        public const int BossWaveSpawnBatchMaximum = Spawn.BossWaveSpawnBatchMaximum;
+        public const float WaveSpeedMultiplierStart = Spawn.WaveSpeedMultiplierStart;
+        public const float WaveSpeedMultiplierPerWave = Spawn.WaveSpeedMultiplierPerWave;
+        public const float WaveSpeedMultiplierMaximum = Spawn.WaveSpeedMultiplierMaximum;
+        public const int LateWaveNormalEnemyWeight = Spawn.LateWaveNormalEnemyWeight;
+        public const int LateWaveEliteWeightPerWave = Spawn.LateWaveEliteWeightPerWave;
+        public const int LateWaveSpecialWeightPerWave = Spawn.LateWaveSpecialWeightPerWave;
         public const float NormalZombieForceTraceDistance = Spawn.NormalZombieForceTraceDistance;
 
         // Reward
@@ -377,6 +463,18 @@ namespace BossRush
         public const float PurificationPollutionScalePerStep = Reward.PurificationPollutionScalePerStep;
         public const int PurificationPollutionStep = Reward.PurificationPollutionStep;
         public const float PurificationPollutionScaleMax = Reward.PurificationPollutionScaleMax;
+        public const float BossRewardScalePerCycle = Reward.BossRewardScalePerCycle;
+        public const float BossRewardScaleMaximum = Reward.BossRewardScaleMaximum;
+        public const int BossBonusSelectionStartCycle = Reward.BossBonusSelectionStartCycle;
+        public const int BossRewardSelectionMaximum = Reward.BossRewardSelectionMaximum;
+        public const int BossLootboxMinItemsBase = Reward.BossLootboxMinItemsBase;
+        public const int BossLootboxMaxItemsBase = Reward.BossLootboxMaxItemsBase;
+        public const int BossLootboxItemsPerCycle = Reward.BossLootboxItemsPerCycle;
+        public const int BossLootboxMinItemsMaximum = Reward.BossLootboxMinItemsMaximum;
+        public const int BossLootboxMaxItemsMaximum = Reward.BossLootboxMaxItemsMaximum;
+        public const int BossLootboxMinQualityBase = Reward.BossLootboxMinQualityBase;
+        public const int BossLootboxMinQualityCycleStep = Reward.BossLootboxMinQualityCycleStep;
+        public const int BossLootboxMinQualityMaximum = Reward.BossLootboxMinQualityMaximum;
         public const int StarterMaxQuality = Reward.StarterMaxQuality;
         public const int StarterGunnerExtraAmmoCount = Reward.StarterGunnerExtraAmmoCount;
 
@@ -457,6 +555,12 @@ namespace BossRush
         public const float ZombieModeEliteThreeAffixVisualScale = VisualIdentity.EliteThreeAffixScale;
         public const float ZombieModeHighThreatAffixVisualBonus = VisualIdentity.HighThreatAffixBonus;
         public const float ZombieModeMaxVisualScale = VisualIdentity.MaxVisualScale;
+
+        // Boss - 轮次成长
+        public const float BossHealthScalePerCycle = Boss.HealthScalePerCycle;
+        public const float BossHealthScaleMaximum = Boss.HealthScaleMaximum;
+        public const float BossDamageScalePerCycle = Boss.DamageScalePerCycle;
+        public const float BossDamageScaleMaximum = Boss.DamageScaleMaximum;
 
         // Boss - Titan
         public const float TitanShockwaveRadius = Boss.TitanShockwaveRadius;

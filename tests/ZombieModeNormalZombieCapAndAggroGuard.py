@@ -1,4 +1,4 @@
-"""ZombieModeNormalZombieCapAndAggroGuard: normal zombie pressure stays capped and player-focused."""
+"""ZombieModeNormalZombieCapAndAggroGuard: tidal zombie pressure stays capped, distant, and player-focused."""
 
 from pathlib import Path
 import re
@@ -72,15 +72,30 @@ def main() -> int:
         return fail("GetZombieModePeriodicSpawnCount not found")
     for token in [
         "GetZombieModeNormalZombieSpawnSlots()",
+        "GetZombieModeAmbientPressureTarget()",
+        "GetZombieModeSpawnBatchSize()",
+        "desiredSlots",
         "ZombieModeTuning.MaxNormalZombieCount",
     ]:
-        result = require(periodic_count, token, "periodic spawns must be based on open 50-cap slots")
+        result = require(periodic_count, token, "periodic spawns must approach the tidal pressure target in bounded batches")
         if result:
             return result
-    if "ZombieModeTuning.MaxPeriodicSpawnCount" in periodic_count:
-        return fail("periodic spawn count must fill open slots toward the 50-zombie field cap, not trickle one per interval")
     if "Mathf.Max(1, effectiveSpawnPointCount)" in periodic_count:
         return fail("periodic spawn count must not scale from collected map spawn point count")
+
+    pressure_target = extract_method(waves, "GetZombieModeAmbientPressureTarget")
+    if not pressure_target:
+        return fail("GetZombieModeAmbientPressureTarget not found")
+    for token in [
+        "CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills",
+        "target = Mathf.Min(target, remainingToKill);",
+        "ZombieModeTuning.PreparationPressureFraction",
+        "ZombieModeTuning.PreparationPressureMinimum",
+        "ZombieModeTuning.PreparationPressureMaximum",
+    ]:
+        result = require(pressure_target, token, "pressure must ebb near wave completion and remain low during preparation")
+        if result:
+            return result
 
     tick = extract_method(waves, "TickZombieModeWaveController")
     if not tick:
@@ -160,14 +175,16 @@ def main() -> int:
     if result:
         return result
 
-    next_position = extract_method(waves, "GetNextZombieModeMapSpawnPosition")
+    next_position = extract_method(waves, "TryGetNextZombieModeMapSpawnPosition")
     if not next_position:
-        return fail("GetNextZombieModeMapSpawnPosition not found")
+        return fail("TryGetNextZombieModeMapSpawnPosition not found")
     for token in [
         "TryGetNearestZombieModeMapSpawnPositionToPlayer(out position)",
-        "return position;",
+        "TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position)",
+        "position = Vector3.zero;",
+        "return false;",
     ]:
-        result = require(next_position, token, "map pressure spawns must prefer nearest BossRush stored spawn point")
+        result = require(next_position, token, "map pressure spawns must skip when no distant stored or virtual point is safe")
         if result:
             return result
 
@@ -178,9 +195,21 @@ def main() -> int:
         "CharacterMainControl.Main",
         "bestDistanceSqr",
         "delta.sqrMagnitude",
-        "ZombieModeTuning.SpawnPointMinPlayerDistance",
+        "GetZombieModeSpawnPointMinPlayerDistance()",
+        "if (bestIndex < 0)",
+        "return false;",
     ]:
-        result = require(nearest, token, "nearest spawn-point helper must choose by player distance with minimum-distance filtering")
+        result = require(nearest, token, "nearest spawn-point helper must enforce the dynamic distance without a too-close fallback")
+        if result:
+            return result
+
+    virtual_spawn = extract_method(spawner, "TryFindZombieModeVirtualSpawnAroundPlayer")
+    for token in [
+        "GetZombieModeSpawnPointMinPlayerDistance()",
+        "Mathf.Max(24f, minPlayerDistance + 6f)",
+        "minPlayerDistance: minPlayerDistance",
+    ]:
+        result = require(virtual_spawn, token, "virtual spawn ring must expand with the dynamic player-safe distance")
         if result:
             return result
 

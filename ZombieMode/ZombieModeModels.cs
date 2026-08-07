@@ -407,6 +407,7 @@ namespace BossRush
     {
         public int Wave;
         public bool BossNode;
+        public int RemainingSelections = 1;
         public readonly List<ZombieModeRewardType> Options = new List<ZombieModeRewardType>();
     }
 

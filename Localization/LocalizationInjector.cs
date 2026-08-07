@@ -612,6 +612,12 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Hud_KillProgress", "击杀 {0}/{1}", "Kills {0}/{1}");
             InjectZombieModeString("BossRush_ZombieMode_Hud_BossProgress", "Boss {0}/{1}", "Boss {0}/{1}");
             InjectZombieModeString("BossRush_ZombieMode_Hud_PurificationPoints", "净化点数 {0}", "Purification {0}");
+            InjectZombieModeString("BossRush_ZombieMode_Hud_Pressure", "场上尸潮 {0}/{1}（{2}）", "Tide Pressure {0}/{1} ({2})");
+            InjectZombieModeString("BossRush_ZombieMode_Tide_Low", "低潮", "Low Tide");
+            InjectZombieModeString("BossRush_ZombieMode_Tide_Rising", "涨潮", "Rising Tide");
+            InjectZombieModeString("BossRush_ZombieMode_Tide_High", "高潮", "High Tide");
+            InjectZombieModeString("BossRush_ZombieMode_Tide_Peak", "峰值", "Peak Tide");
+            InjectZombieModeString("BossRush_ZombieMode_Tide_Boss", "Boss 潮", "Boss Tide");
             InjectZombieModeString("BossRush_ZombieMode_Hud_NextBoss", "距下次 Boss 节点 {0} 波", "{0} waves to next Boss");
             InjectZombieModeString("BossRush_ZombieMode_Hud_NextBossNow", "下一波即为 Boss 节点", "Next wave is a Boss node");
             InjectZombieModeString("BossRush_ZombieMode_Hud_PreparationTimer", "倒计时 {0}s", "Countdown {0}s");
@@ -629,7 +635,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Hud_BeaconReady", "信标可用", "Beacon Ready");
             InjectZombieModeString("BossRush_ZombieMode_Hud_BeaconUnavailable", "信标不可用", "Beacon Unavailable");
             InjectZombieModeString("BossRush_ZombieMode_Hud_ExtractionOpenHint", "撤离点已开放 - 仅本准备期有效", "Extraction Open - This Preparation Only");
-            InjectZombieModeString("BossRush_ZombieMode_Banner_Started", "<color=green>末日丧尸模式开始</color>", "<color=green>Zombie Mode Started</color>");
+            InjectZombieModeString("BossRush_ZombieMode_Banner_Started", "<color=green>击杀目标 → 选择强化 → 第 5 波 Boss 后可撤离</color>", "<color=green>Kill targets → choose upgrades → extract after the Wave 5 Boss</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_PreparationStarted", "末日丧尸模式：准备阶段开始。", "Zombie Mode: preparation started.");
             InjectZombieModeString("BossRush_ZombieMode_Banner_PreparationNextWave", "下一波尸潮即将到来。", "Next zombie wave is coming.");
             InjectZombieModeString("BossRush_ZombieMode_Banner_WaveIncoming", "第 <color=yellow>{0}</color> 波尸潮来袭！", "Zombie wave <color=yellow>{0}</color> incoming!");
@@ -701,8 +707,10 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reason_SuccessfulExtraction", "撤离成功。", "Extraction successful.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_Unknown", "未知原因。", "Unknown reason.");
             InjectZombieModeString("BossRush_ZombieMode_Reward_Title_Normal", "第 {0} 波 奖励选择", "Wave {0} Rewards");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_Title_Boss", "<color=red>Boss 节点 - 第 {0} 波</color>", "<color=red>Boss Node - Wave {0}</color>");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_Title_Boss", "<color=red>Boss 第 {0} 波</color> | 净化收益 {1}% | 剩余 {2} 选", "<color=red>Boss W{0}</color> | Purification {1}% | {2} Pick(s) Left");
             InjectZombieModeString("BossRush_ZombieMode_Reward_Info", "净化点: {0}    免费刷新: {1}    付费刷新: {2}", "Purification: {0}    Free Refreshes: {1}    Paid Refresh: {2}");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_NextWavePreview", "下一波 {0}：压力 {1} | 非 Boss 移速 {2}% | {3}", "Next Wave {0}: Pressure {1} | Non-Boss Speed {2}% | {3}");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_NextBossPreview", "下一波 {0}：Boss 强度 {1} | 数量 {2} | 生命 {3}% | 伤害 {4}% | 支援 {5} | 净化收益 {6}%", "Next Wave {0}: Boss Tier {1} | Count {2} | HP {3}% | Damage {4}% | Support {5} | Purification {6}%");
             InjectZombieModeString("BossRush_ZombieMode_Reward_PointsHeader", "净化点数 {0}", "Purification {0}");
             InjectZombieModeString("BossRush_ZombieMode_Reward_PickButton", "选择", "Pick");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RefreshFree", "免费刷新", "Free Refresh");

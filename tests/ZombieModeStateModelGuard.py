@@ -51,6 +51,7 @@ REQUIRED_MODEL_SNIPPETS = [
     "public int PollutionFromNatural;",
     "public int TotalPollution",
     "public ZombieModeRewardNode CurrentRewardNode;",
+    "public int RemainingSelections = 1;",
     "public readonly ZombieModeInsuranceState InsuranceState",
     "public readonly List<ZombieModeDropCandidate> EntityDropCleanupCandidates",
     "public string StarterAmmoCaliber",

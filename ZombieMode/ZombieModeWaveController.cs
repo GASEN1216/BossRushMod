@@ -365,7 +365,7 @@ namespace BossRush
             if (IsZombieModeBossWave(zombieModeRunState.CurrentWave))
             {
                 zombieModeRunState.CurrentWaveKillTarget = 0;
-                zombieModeRunState.CurrentWaveBossesRemaining = GetZombieModeBossCount();
+                zombieModeRunState.CurrentWaveBossesRemaining = GetZombieModeBossCountForWave(zombieModeRunState.CurrentWave);
                 ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveIncoming"), zombieModeRunState.CurrentWave));
                 SpawnZombieModeBossWaveAsync(runId, zombieModeRunState.CurrentWaveBossesRemaining).Forget();
                 return;
@@ -377,7 +377,12 @@ namespace BossRush
 
         private int GetZombieModeBaseWaveKillTarget()
         {
-            return 32 + Mathf.Max(0, zombieModeRunState.CurrentWave - 1) * 5;
+            int wave = Mathf.Max(1, zombieModeRunState.CurrentWave);
+            int cycle = GetZombieModeWaveCycleIndex(wave);
+            int stage = GetZombieModeNormalWaveStageIndex(wave);
+            return ZombieModeTuning.NormalWaveKillTargetBase +
+                   cycle * ZombieModeTuning.NormalWaveKillTargetPerCycle +
+                   ZombieModeTuning.NormalWaveKillTargetStageOffsets[stage];
         }
 
         private async UniTask SpawnZombieModeWaveAsync(int runId, int count, bool adjustKillTargetOnFailure = true)
@@ -458,7 +463,7 @@ namespace BossRush
             }
 
             zombieModeRunState.PeriodicSpawnTimer += deltaTime;
-            if (zombieModeRunState.PeriodicSpawnTimer < ZombieModeTuning.PeriodicSpawnIntervalSeconds)
+            if (zombieModeRunState.PeriodicSpawnTimer < GetZombieModeSpawnIntervalSeconds())
             {
                 return;
             }
@@ -513,7 +518,179 @@ namespace BossRush
                 return 0;
             }
 
-            return Mathf.Clamp(slots, 1, ZombieModeTuning.MaxNormalZombieCount);
+            int activeOrPending = zombieModeRunState.LivingNormalZombieCount + zombieModeRunState.PendingNormalZombieSpawns;
+            int desiredSlots = Mathf.Max(0, GetZombieModeAmbientPressureTarget() - activeOrPending);
+            int batchSize = GetZombieModeSpawnBatchSize();
+            return Mathf.Clamp(
+                Mathf.Min(slots, Mathf.Min(desiredSlots, batchSize)),
+                0,
+                ZombieModeTuning.MaxNormalZombieCount);
+        }
+
+        private int GetZombieModeAmbientPressureTarget()
+        {
+            int pacingWave = GetZombieModePacingWave();
+            int target = GetZombieModeWavePressureTarget(pacingWave);
+            if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat)
+            {
+                if (!IsZombieModeBossWave(zombieModeRunState.CurrentWave))
+                {
+                    int remainingToKill = Mathf.Max(
+                        0,
+                        zombieModeRunState.CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills);
+                    target = Mathf.Min(target, remainingToKill);
+                }
+
+                return Mathf.Clamp(target, 0, ZombieModeTuning.MaxNormalZombieCount);
+            }
+
+            int preparationTarget = Mathf.CeilToInt(target * ZombieModeTuning.PreparationPressureFraction);
+            return Mathf.Clamp(
+                preparationTarget,
+                ZombieModeTuning.PreparationPressureMinimum,
+                ZombieModeTuning.PreparationPressureMaximum);
+        }
+
+        private int GetZombieModeWavePressureTarget(int wave)
+        {
+            wave = Mathf.Max(1, wave);
+            int cycle = GetZombieModeWaveCycleIndex(wave);
+            if (IsZombieModeBossWave(wave))
+            {
+                return Mathf.Min(
+                    ZombieModeTuning.BossWaveSupportPressureMaximum,
+                    ZombieModeTuning.BossWaveSupportPressureBase +
+                    cycle * ZombieModeTuning.BossWaveSupportPressurePerCycle);
+            }
+
+            int stage = GetZombieModeNormalWaveStageIndex(wave);
+            return Mathf.Min(
+                ZombieModeTuning.MaxNormalZombieCount,
+                ZombieModeTuning.NormalWavePressureBase +
+                cycle * ZombieModeTuning.NormalWavePressurePerCycle +
+                ZombieModeTuning.NormalWavePressureStageOffsets[stage]);
+        }
+
+        private int GetZombieModeSpawnBatchSize()
+        {
+            if (zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Combat)
+            {
+                return ZombieModeTuning.PreparationSpawnBatchSize;
+            }
+
+            int wave = Mathf.Max(1, zombieModeRunState.CurrentWave);
+            int cycle = GetZombieModeWaveCycleIndex(wave);
+            if (IsZombieModeBossWave(wave))
+            {
+                return Mathf.Clamp(1 + cycle / 2, 1, ZombieModeTuning.BossWaveSpawnBatchMaximum);
+            }
+
+            int stage = GetZombieModeNormalWaveStageIndex(wave);
+            return Mathf.Clamp(
+                ZombieModeTuning.NormalWaveSpawnBatchBase + stage / 2 + cycle / 2,
+                1,
+                ZombieModeTuning.NormalWaveSpawnBatchMaximum);
+        }
+
+        private float GetZombieModeSpawnIntervalSeconds()
+        {
+            if (zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Combat)
+            {
+                return ZombieModeTuning.PreparationSpawnIntervalSeconds;
+            }
+
+            int wave = Mathf.Max(1, zombieModeRunState.CurrentWave);
+            int cycle = GetZombieModeWaveCycleIndex(wave);
+            if (IsZombieModeBossWave(wave))
+            {
+                return Mathf.Max(
+                    ZombieModeTuning.BossWaveSpawnIntervalMinSeconds,
+                    ZombieModeTuning.BossWaveSpawnIntervalStartSeconds -
+                    cycle * ZombieModeTuning.BossWaveSpawnIntervalCycleStepSeconds);
+            }
+
+            int stage = GetZombieModeNormalWaveStageIndex(wave);
+            return Mathf.Max(
+                ZombieModeTuning.NormalWaveSpawnIntervalMinSeconds,
+                ZombieModeTuning.NormalWaveSpawnIntervalStartSeconds -
+                stage * ZombieModeTuning.NormalWaveSpawnIntervalStageStepSeconds -
+                cycle * ZombieModeTuning.NormalWaveSpawnIntervalCycleStepSeconds);
+        }
+
+        private int GetZombieModePacingWave()
+        {
+            return zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat
+                ? Mathf.Max(1, zombieModeRunState.CurrentWave)
+                : Mathf.Max(1, zombieModeRunState.CurrentWave + 1);
+        }
+
+        private static int GetZombieModeWaveCycleIndex(int wave)
+        {
+            return Mathf.Max(0, (Mathf.Max(1, wave) - 1) / 5);
+        }
+
+        private static float GetZombieModeBossHealthScale(int wave)
+        {
+            return Mathf.Min(
+                ZombieModeTuning.BossHealthScaleMaximum,
+                1f + GetZombieModeWaveCycleIndex(wave) * ZombieModeTuning.BossHealthScalePerCycle);
+        }
+
+        private static int GetZombieModeBossCountForWave(int wave)
+        {
+            return ZombieModeTuning.BossWaveCountBase +
+                   GetZombieModeWaveCycleIndex(wave) * ZombieModeTuning.BossWaveCountPerCycle;
+        }
+
+        private static float GetZombieModeBossDamageScale(int wave)
+        {
+            return Mathf.Min(
+                ZombieModeTuning.BossDamageScaleMaximum,
+                1f + GetZombieModeWaveCycleIndex(wave) * ZombieModeTuning.BossDamageScalePerCycle);
+        }
+
+        private static float GetZombieModeBossRewardScale(int wave)
+        {
+            return Mathf.Min(
+                ZombieModeTuning.BossRewardScaleMaximum,
+                1f + GetZombieModeWaveCycleIndex(wave) * ZombieModeTuning.BossRewardScalePerCycle);
+        }
+
+        private static int GetZombieModeBossRewardSelectionCount(int wave)
+        {
+            return GetZombieModeWaveCycleIndex(wave) >= ZombieModeTuning.BossBonusSelectionStartCycle
+                ? ZombieModeTuning.BossRewardSelectionMaximum
+                : 1;
+        }
+
+        private static int GetZombieModeNormalWaveStageIndex(int wave)
+        {
+            return Mathf.Clamp((Mathf.Max(1, wave) - 1) % 5, 0, 3);
+        }
+
+        private float GetZombieModeWaveSpeedMultiplier(int wave)
+        {
+            return Mathf.Clamp(
+                ZombieModeTuning.WaveSpeedMultiplierStart +
+                Mathf.Max(0, wave - 1) * ZombieModeTuning.WaveSpeedMultiplierPerWave,
+                ZombieModeTuning.WaveSpeedMultiplierStart,
+                ZombieModeTuning.WaveSpeedMultiplierMaximum);
+        }
+
+        private float GetZombieModeSpawnPointMinPlayerDistance()
+        {
+            int wave = GetZombieModePacingWave();
+            if (wave <= 2)
+            {
+                return ZombieModeTuning.EarlyWaveSpawnPointMinPlayerDistance;
+            }
+
+            if (wave <= 5)
+            {
+                return ZombieModeTuning.MidWaveSpawnPointMinPlayerDistance;
+            }
+
+            return ZombieModeTuning.LateWaveSpawnPointMinPlayerDistance;
         }
 
         private async UniTask SpawnZombieModeWaveAcrossMapAsync(int runId, int count, bool adjustKillTargetOnFailure = true)
@@ -531,7 +708,13 @@ namespace BossRush
                     return;
                 }
 
-                Vector3 spawnPosition = GetNextZombieModeMapSpawnPosition();
+                Vector3 spawnPosition;
+                if (!TryGetNextZombieModeMapSpawnPosition(out spawnPosition))
+                {
+                    await UniTask.Yield();
+                    continue;
+                }
+
                 CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
                     runId,
                     spawnPosition,
@@ -553,15 +736,21 @@ namespace BossRush
             }
         }
 
-        private Vector3 GetNextZombieModeMapSpawnPosition()
+        private bool TryGetNextZombieModeMapSpawnPosition(out Vector3 position)
         {
-            Vector3 position;
             if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out position))
             {
-                return position;
+                return true;
             }
 
-            return GetZombieModeSpawnPosition();
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
+            {
+                return true;
+            }
+
+            position = Vector3.zero;
+            return false;
         }
 
         private void HandleZombieModeBossDefeated(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl character)

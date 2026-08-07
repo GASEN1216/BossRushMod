@@ -168,7 +168,7 @@ namespace BossRush
                     boss,
                     boss.transform.position,
                     ZombieModeTuning.TitanShockwaveRadius,
-                    ZombieModeTuning.TitanShockwaveDamage,
+                    ZombieModeTuning.TitanShockwaveDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave),
                     ZombieModeTuning.TitanShockwaveStartupSeconds,
                     L10n.T("BossRush_ZombieMode_BossSkill_TitanShockwave"));
             }
@@ -202,7 +202,7 @@ namespace BossRush
                     boss,
                     player.transform.position,
                     ZombieModeTuning.HunterDashRadius,
-                    ZombieModeTuning.HunterDashDamage,
+                    ZombieModeTuning.HunterDashDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave),
                     ZombieModeTuning.HunterDashStartupSeconds,
                     L10n.T("BossRush_ZombieMode_BossSkill_HunterDash"));
             }
@@ -296,7 +296,7 @@ namespace BossRush
                 source,
                 ZombieModeTuning.CorruptorZoneRadius,
                 ZombieModeTuning.CorruptorZoneStartupSeconds + ZombieModeTuning.CorruptorZoneDurationSeconds,
-                ZombieModeTuning.CorruptorZoneDamagePerSecond,
+                ZombieModeTuning.CorruptorZoneDamagePerSecond * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave),
                 0.5f,
                 ZombieModeTuning.CorruptorZoneSlowPercent,
                 ZombieModeTuning.CorruptorZoneStartupSeconds);
@@ -322,7 +322,7 @@ namespace BossRush
                 source,
                 radius,
                 ZombieModeTuning.CorruptorPoisonPathDurationSeconds,
-                ZombieModeTuning.CorruptorPoisonPathDamagePerSecond,
+                ZombieModeTuning.CorruptorPoisonPathDamagePerSecond * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave),
                 0.5f);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, seg, runtime, null);
         }
@@ -784,7 +784,7 @@ namespace BossRush
                     character,
                     character.transform.position,
                     ZombieModeTuning.SplitterBossDeathRadius,
-                    ZombieModeTuning.SplitterBossDeathDamage);
+                    ZombieModeTuning.SplitterBossDeathDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave));
                 int count = ZombieModeTuning.SplitterBossDeathSpawnCount;
                 for (int i = 0; i < count; i++)
                 {
@@ -798,7 +798,12 @@ namespace BossRush
             }
             else if (marker.BossKind == ZombieModeBossKind.Titan)
             {
-                DealZombieModeExplosionAreaDamage(runId, character, character.transform.position, 6f, 60f);
+                DealZombieModeExplosionAreaDamage(
+                    runId,
+                    character,
+                    character.transform.position,
+                    ZombieModeTuning.TitanShockwaveRadius,
+                    ZombieModeTuning.TitanShockwaveDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave));
             }
         }
 
@@ -823,7 +828,7 @@ namespace BossRush
                 source,
                 ZombieModeTuning.CorruptorDeathCloudRadius,
                 ZombieModeTuning.CorruptorDeathCloudDurationSeconds,
-                ZombieModeTuning.CorruptorDeathCloudDamagePerSecond,
+                ZombieModeTuning.CorruptorDeathCloudDamagePerSecond * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave),
                 ZombieModeTuning.CorruptorDeathCloudTickIntervalSeconds);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, cloud, runtime, null);
         }

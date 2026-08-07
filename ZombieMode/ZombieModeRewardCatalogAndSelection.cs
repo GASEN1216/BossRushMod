@@ -40,6 +40,9 @@ namespace BossRush
                 zombieModeRunState.CurrentRewardNode = new ZombieModeRewardNode();
                 zombieModeRunState.CurrentRewardNode.Wave = zombieModeRunState.CurrentWave;
                 zombieModeRunState.CurrentRewardNode.BossNode = bossNode;
+                zombieModeRunState.CurrentRewardNode.RemainingSelections = bossNode
+                    ? GetZombieModeBossRewardSelectionCount(zombieModeRunState.CurrentWave)
+                    : 1;
                 zombieModeRunState.FreeRefreshesRemainingCurrentNode = Mathf.Clamp(
                     ZombieModeTuning.FreeRefreshCapPerNode + zombieModeRunState.PendingFreeRefreshNextNode,
                     0,
@@ -51,6 +54,12 @@ namespace BossRush
             }
 
             zombieModeRunState.CurrentRewardNode.BossNode = bossNode;
+            if (zombieModeRunState.CurrentRewardNode.RemainingSelections <= 0)
+            {
+                zombieModeRunState.CurrentRewardNode.RemainingSelections = bossNode
+                    ? GetZombieModeBossRewardSelectionCount(zombieModeRunState.CurrentWave)
+                    : 1;
+            }
             if (zombieModeRunState.CurrentRewardNode.Options.Count <= 0)
             {
                 RollZombieModeRewardOptions();
@@ -69,7 +78,17 @@ namespace BossRush
             int optionCount = node.BossNode ? 4 : 3;
             int minimumCategoryCount = GetZombieModeMinimumRewardCategoryCount(node.BossNode);
             List<ZombieModeRewardCatalogEntry> catalog = BuildZombieModeRewardCatalogEntries(node.BossNode);
+            if (IsZombieModeBossBonusRewardSelection(node))
+            {
+                KeepZombieModeBossBonusRewardEntries(catalog);
+            }
             List<ZombieModeRewardCategory> categories = new List<ZombieModeRewardCategory>();
+            if (!node.BossNode && node.Wave <= 2)
+            {
+                TryAddZombieModeEarlyGuaranteedReward(node, catalog, categories, true);
+                TryAddZombieModeEarlyGuaranteedReward(node, catalog, categories, false);
+            }
+
             while (node.Options.Count < optionCount && catalog.Count > 0)
             {
                 ZombieModeRewardCategory category = RollZombieModeRewardCategory(catalog, categories, node.Options.Count, minimumCategoryCount);
@@ -93,6 +112,102 @@ namespace BossRush
             }
 
             EnsureZombieModeRewardCategoryDiversity(node, catalog, minimumCategoryCount);
+        }
+
+        private static bool IsZombieModeBossBonusRewardSelection(ZombieModeRewardNode node)
+        {
+            return node != null && node.BossNode && node.RemainingSelections > 1;
+        }
+
+        private static void KeepZombieModeBossBonusRewardEntries(List<ZombieModeRewardCatalogEntry> catalog)
+        {
+            if (catalog == null)
+            {
+                return;
+            }
+
+            for (int i = catalog.Count - 1; i >= 0; i--)
+            {
+                ZombieModeRewardCatalogEntry entry = catalog[i];
+                if (entry == null ||
+                    entry.Category != ZombieModeRewardCategory.Attribute &&
+                    entry.Category != ZombieModeRewardCategory.ProjectileMod &&
+                    entry.Category != ZombieModeRewardCategory.Trigger &&
+                    entry.Category != ZombieModeRewardCategory.Mutator)
+                {
+                    catalog.RemoveAt(i);
+                }
+            }
+        }
+
+        private void TryAddZombieModeEarlyGuaranteedReward(
+            ZombieModeRewardNode node,
+            List<ZombieModeRewardCatalogEntry> catalog,
+            List<ZombieModeRewardCategory> categories,
+            bool offense)
+        {
+            int totalWeight = 0;
+            for (int i = 0; i < catalog.Count; i++)
+            {
+                ZombieModeRewardCatalogEntry entry = catalog[i];
+                if (entry != null && IsZombieModeEarlyGuaranteedReward(entry.RewardType, offense))
+                {
+                    totalWeight += Mathf.Max(1, entry.Weight);
+                }
+            }
+
+            if (totalWeight <= 0)
+            {
+                return;
+            }
+
+            int roll = Random.Range(0, totalWeight);
+            for (int i = 0; i < catalog.Count; i++)
+            {
+                ZombieModeRewardCatalogEntry entry = catalog[i];
+                if (entry == null || !IsZombieModeEarlyGuaranteedReward(entry.RewardType, offense))
+                {
+                    continue;
+                }
+
+                roll -= Mathf.Max(1, entry.Weight);
+                if (roll >= 0)
+                {
+                    continue;
+                }
+
+                node.Options.Add(entry.RewardType);
+                if (!categories.Contains(entry.Category))
+                {
+                    categories.Add(entry.Category);
+                }
+                catalog.RemoveAt(i);
+                return;
+            }
+        }
+
+        private bool IsZombieModeEarlyGuaranteedReward(ZombieModeRewardType rewardType, bool offense)
+        {
+            if (!offense)
+            {
+                return rewardType == ZombieModeRewardType.MedicalSupply ||
+                       rewardType == ZombieModeRewardType.ArmorOrHelmet ||
+                       rewardType == ZombieModeRewardType.Heal;
+            }
+
+            if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Melee)
+            {
+                return rewardType == ZombieModeRewardType.AttributeMeleeDamage;
+            }
+
+            if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Gunner)
+            {
+                return rewardType == ZombieModeRewardType.AttributeRangedDamage ||
+                       rewardType == ZombieModeRewardType.AttributeReloadSpeed;
+            }
+
+            return rewardType == ZombieModeRewardType.AttributeMeleeDamage ||
+                   rewardType == ZombieModeRewardType.AttributeRangedDamage;
         }
 
         private int GetZombieModeMinimumRewardCategoryCount(bool bossNode)
@@ -714,9 +829,16 @@ namespace BossRush
 
         public string GetZombieModeRewardTitle(int runId)
         {
-            return IsZombieModeBossRewardNode(runId)
-                ? string.Format(L10n.T("BossRush_ZombieMode_Reward_Title_Boss"), zombieModeRunState.CurrentWave)
-                : string.Format(L10n.T("BossRush_ZombieMode_Reward_Title_Normal"), zombieModeRunState.CurrentWave);
+            if (!IsZombieModeBossRewardNode(runId))
+            {
+                return string.Format(L10n.T("BossRush_ZombieMode_Reward_Title_Normal"), zombieModeRunState.CurrentWave);
+            }
+
+            return string.Format(
+                L10n.T("BossRush_ZombieMode_Reward_Title_Boss"),
+                zombieModeRunState.CurrentWave,
+                Mathf.RoundToInt(GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave) * 100f),
+                Mathf.Max(1, zombieModeRunState.CurrentRewardNode.RemainingSelections));
         }
 
         public string GetZombieModeRewardDisplayText(int runId, ZombieModeRewardType rewardType)
@@ -882,6 +1004,12 @@ namespace BossRush
                 return;
             }
 
+            ZombieModeRewardNode selectedNode = zombieModeRunState.CurrentRewardNode;
+            if (selectedNode == null || !selectedNode.Options.Contains(rewardType))
+            {
+                return;
+            }
+
             if (IsZombieModeRewardUnaffordable(rewardType))
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_RefreshNoPoints"));
@@ -895,11 +1023,20 @@ namespace BossRush
                 return;
             }
 
-            bool extractionOpportunity = zombieModeRunState.CurrentRewardNode != null && zombieModeRunState.CurrentRewardNode.BossNode;
+            bool extractionOpportunity = selectedNode != null && selectedNode.BossNode;
+            bool bonusSelection = IsZombieModeBossBonusRewardSelection(selectedNode);
             string pendingTemporaryNpcServiceType = GetZombieModePendingTemporaryNpcServiceType(rewardType);
             if (!ApplyZombieModeReward(rewardType))
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_RewardDeliveryFailed"));
+                return;
+            }
+
+            if (bonusSelection)
+            {
+                selectedNode.RemainingSelections = Mathf.Max(1, selectedNode.RemainingSelections - 1);
+                RollZombieModeRewardOptions();
+                ShowZombieModeRewardSelection(runId, true);
                 return;
             }
 

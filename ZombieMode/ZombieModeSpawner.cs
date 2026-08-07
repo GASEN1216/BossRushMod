@@ -171,7 +171,7 @@ namespace BossRush
             }
 
             Vector3 playerPos = main != null ? main.transform.position : Vector3.zero;
-            float minPlayerDistance = ZombieModeTuning.SpawnPointMinPlayerDistance;
+            float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();
             float minPlayerDistanceSqr = minPlayerDistance * minPlayerDistance;
             float bestScore = float.MinValue;
             Vector3 best = zombieModeRunState.SpawnPoints[0].Position;
@@ -221,7 +221,8 @@ namespace BossRush
 
             CharacterMainControl main = CharacterMainControl.Main;
             Vector3 playerPos = main != null ? main.transform.position : Vector3.zero;
-            float minDistanceSqr = ZombieModeTuning.SpawnPointMinPlayerDistance * ZombieModeTuning.SpawnPointMinPlayerDistance;
+            float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();
+            float minDistanceSqr = minPlayerDistance * minPlayerDistance;
             float bestDistanceSqr = float.MaxValue;
             int bestIndex = -1;
             int startIndex = Mathf.Abs(zombieModeRunState.NextSpawnPointIndex) % points.Count;
@@ -244,24 +245,6 @@ namespace BossRush
                 }
             }
 
-            if (bestIndex < 0 && main != null)
-            {
-                bestDistanceSqr = float.MaxValue;
-                for (int offset = 0; offset < points.Count; offset++)
-                {
-                    int index = (startIndex + offset) % points.Count;
-                    Vector3 point = points[index].Position;
-                    Vector3 delta = point - playerPos;
-                    delta.y = 0f;
-                    float distanceSqr = delta.sqrMagnitude;
-                    if (distanceSqr < bestDistanceSqr)
-                    {
-                        bestDistanceSqr = distanceSqr;
-                        bestIndex = index;
-                    }
-                }
-            }
-
             if (bestIndex < 0)
             {
                 return false;
@@ -274,13 +257,14 @@ namespace BossRush
 
         private bool TryFindZombieModeVirtualSpawnAroundPlayer(Vector3 playerPos, out Vector3 resolved)
         {
+            float minPlayerDistance = GetZombieModeSpawnPointMinPlayerDistance();
             return SpawnPositionHelper.TryFindAroundPlayer(
                 playerPos,
                 ringCount: 12,
-                radius: 24f,
+                radius: Mathf.Max(24f, minPlayerDistance + 6f),
                 resolved: out resolved,
                 liftOffset: ZombieModeTuning.NavMeshLiftOffset,
-                minPlayerDistance: ZombieModeTuning.SpawnPointMinPlayerDistance,
+                minPlayerDistance: minPlayerDistance,
                 navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius);
         }
 
@@ -298,7 +282,7 @@ namespace BossRush
                 {
                     return false;
                 }
-                return SpawnPositionHelper.PassesMinPlayerDistance(resolved, ZombieModeTuning.SpawnPointMinPlayerDistance);
+                return SpawnPositionHelper.PassesMinPlayerDistance(resolved, GetZombieModeSpawnPointMinPlayerDistance());
             }
 
             return SpawnPositionHelper.TrySnapToGround(
@@ -575,14 +559,6 @@ namespace BossRush
             }
         }
 
-        private int GetZombieModeBossCount()
-        {
-            int effectiveSpawnPointCount = zombieModeRunState.EffectiveSpawnPoints.Count > 0
-                ? zombieModeRunState.EffectiveSpawnPoints.Count
-                : zombieModeRunState.SpawnPoints.Count;
-            return Mathf.Max(1, 1 + Mathf.FloorToInt(effectiveSpawnPointCount / 10f));
-        }
-
         // 静态读取以避免每波刷怪 new[] 装箱（审查 §3.7）。
         private static readonly ZombieModeBossKind[] s_zombieModeBossKindOrder = new ZombieModeBossKind[]
         {
@@ -636,6 +612,7 @@ namespace BossRush
             float multiplier = Mathf.Min(
                 1f + pollutionSteps * ZombieModeTuning.PurificationPollutionScalePerStep,
                 ZombieModeTuning.PurificationPollutionScaleMax);
+            multiplier *= GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave);
             return Mathf.Max(1, Mathf.FloorToInt(baseValue * multiplier));
         }
 
@@ -647,10 +624,14 @@ namespace BossRush
             }
 
             BossKindTuning tuning = ZombieModeTuning.GetBossKind(kind);
-            float healthMultiplier = tuning.HealthMultiplier;
-            float damageMultiplier = tuning.DamageMultiplier;
+            float healthMultiplier = tuning.HealthMultiplier * GetZombieModeBossHealthScale(zombieModeRunState.CurrentWave);
+            float damageMultiplier = tuning.DamageMultiplier * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave);
             float scaleMultiplier = tuning.ScaleMultiplier;
             float speedMultiplier = tuning.SpeedMultiplier;
+
+            marker.HealthMultiplier = healthMultiplier;
+            marker.DamageMultiplier = damageMultiplier;
+            marker.MoveSpeedMultiplier = speedMultiplier;
 
             ApplyZombieModeHealthOnlyMultiplier(boss, healthMultiplier, marker);
 

@@ -72,7 +72,8 @@ def main() -> int:
 
     for token in [
         "DealZombieModeExplosionAreaDamage(\n                    runId,\n                    character,\n                    character.transform.position,\n                    ZombieModeTuning.SplitterBossDeathRadius",
-        "DealZombieModeExplosionAreaDamage(runId, character, character.transform.position, 6f, 60f);",
+        "DealZombieModeExplosionAreaDamage(\n                    runId,\n                    character,\n                    character.transform.position,\n                    ZombieModeTuning.TitanShockwaveRadius",
+        "ZombieModeTuning.TitanShockwaveDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
     ]:
         if token not in boss_death:
             return fail("boss death explosion missing token -> " + token)

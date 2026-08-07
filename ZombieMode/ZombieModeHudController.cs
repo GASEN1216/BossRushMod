@@ -46,6 +46,7 @@ namespace BossRush
             string wave = string.Format(L10n.T("BossRush_ZombieMode_Hud_Wave"), zombieModeRunState.CurrentWave);
             string pollution = string.Format(L10n.T("BossRush_ZombieMode_Hud_Pollution"), zombieModeRunState.TotalPollution, GetZombieModePollutionTierText());
             string purification = string.Format(L10n.T("BossRush_ZombieMode_Hud_PurificationPoints"), zombieModeRunState.PurificationPoints);
+            string pressure = GetZombieModeHudPressureText();
             string kills = string.Empty;
             if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat && zombieModeRunState.CurrentWaveKillTarget > 0)
             {
@@ -57,12 +58,86 @@ namespace BossRush
             }
 
             string result = L10n.T("BossRush_ZombieMode_EntryName") + "\n" + wave + "\n" + pollution + "\n" + purification;
+            if (!string.IsNullOrEmpty(pressure))
+            {
+                result += "\n" + pressure;
+            }
             if (!string.IsNullOrEmpty(kills))
             {
                 result += "\n" + kills;
             }
             result += "\n" + GetZombieModeNextBossText();
             return result;
+        }
+
+        public string GetZombieModeNextWavePreviewText(int runId)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return string.Empty;
+            }
+
+            int nextWave = Mathf.Max(1, zombieModeRunState.CurrentWave + 1);
+            if (IsZombieModeBossWave(nextWave))
+            {
+                return string.Format(
+                    L10n.T("BossRush_ZombieMode_Reward_NextBossPreview"),
+                    nextWave,
+                    GetZombieModeWaveCycleIndex(nextWave) + 1,
+                    GetZombieModeBossCountForWave(nextWave),
+                    Mathf.RoundToInt(GetZombieModeBossHealthScale(nextWave) * 100f),
+                    Mathf.RoundToInt(GetZombieModeBossDamageScale(nextWave) * 100f),
+                    GetZombieModeWavePressureTarget(nextWave),
+                    Mathf.RoundToInt(GetZombieModeBossRewardScale(nextWave) * 100f));
+            }
+
+            return string.Format(
+                L10n.T("BossRush_ZombieMode_Reward_NextWavePreview"),
+                nextWave,
+                GetZombieModeWavePressureTarget(nextWave),
+                Mathf.RoundToInt(GetZombieModeWaveSpeedMultiplier(nextWave) * 100f),
+                GetZombieModeTideStageText(nextWave, false));
+        }
+
+        private string GetZombieModeHudPressureText()
+        {
+            if (!IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase))
+            {
+                return string.Empty;
+            }
+
+            bool preparation = zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Combat;
+            int wave = GetZombieModePacingWave();
+            return string.Format(
+                L10n.T("BossRush_ZombieMode_Hud_Pressure"),
+                zombieModeRunState.LivingNormalZombieCount,
+                GetZombieModeAmbientPressureTarget(),
+                GetZombieModeTideStageText(wave, preparation));
+        }
+
+        private string GetZombieModeTideStageText(int wave, bool preparation)
+        {
+            if (preparation)
+            {
+                return L10n.T("BossRush_ZombieMode_Tide_Low");
+            }
+
+            if (IsZombieModeBossWave(wave))
+            {
+                return L10n.T("BossRush_ZombieMode_Tide_Boss");
+            }
+
+            switch (GetZombieModeNormalWaveStageIndex(wave))
+            {
+                case 0:
+                    return L10n.T("BossRush_ZombieMode_Tide_Low");
+                case 1:
+                    return L10n.T("BossRush_ZombieMode_Tide_Rising");
+                case 2:
+                    return L10n.T("BossRush_ZombieMode_Tide_High");
+                default:
+                    return L10n.T("BossRush_ZombieMode_Tide_Peak");
+            }
         }
 
         public string GetZombieModeHudSafeZoneText(int runId)
@@ -145,12 +220,7 @@ namespace BossRush
 
         private string GetZombieModeBossProgressText()
         {
-            if (zombieModeRunState.CurrentWaveBossInstances.Count <= 0)
-            {
-                return string.Format(L10n.T("BossRush_ZombieMode_Hud_BossProgress"), 0, 0);
-            }
-
-            int total = zombieModeRunState.CurrentWaveBossInstances.Count;
+            int total = GetZombieModeBossCountForWave(zombieModeRunState.CurrentWave);
             int defeated = Mathf.Max(0, total - zombieModeRunState.CurrentWaveBossesRemaining);
             return string.Format(L10n.T("BossRush_ZombieMode_Hud_BossProgress"), defeated, total);
         }

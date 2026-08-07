@@ -37,7 +37,7 @@ Every 5th wave is a **Boss Wave**; all others are normal waves.
 
 # Preparation Phase
 
-- Lasts **30 seconds** countdown
+- Normal preparation lasts **45 seconds**; preparation after a Boss Wave lasts **75 seconds** and includes the extraction opportunity
 - A **Safe Zone** spawns at your feet (radius 8m, green circle)
 - Inside the Safe Zone:
   - Zombies are pushed outside the boundary
@@ -46,6 +46,7 @@ Every 5th wave is a **Boss Wave**; all others are normal waves.
 - Zone flashes yellow in the last 5 seconds as warning
 - A **Supply Terminal** (merchant NPC) spawns inside the safe zone
 - You can use the **Zombie Tide Beacon** to skip the countdown and start the next wave immediately (3-second channel)
+- Preparation does not stop spawning: a small low-tide population remains outside the safe zone, replenishing at most one zombie every 5 seconds
 
 # Extraction Opportunity
 
@@ -61,19 +62,48 @@ After each Boss Wave, the preparation phase includes an **extraction opportunity
 
 # Normal Waves (non-multiples of 5)
 
-- Kill target: **32 + (current wave - 1) × 5** zombies
-- Zombies continuously respawn, max **50** normal zombies on the field at once
-- Population checked and replenished every second
+The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Peak Tide → Boss Tide.
+
+| Cycle Wave | Stage | Field Pressure | Kill Target | Refill Interval | Non-Boss Move Speed |
+|------------|-------|----------------|-------------|-----------------|------------------|
+| Wave 1 | Low Tide | 8 | 18 | 3.0s | 72% |
+| Wave 2 | Rising Tide | 12 | 24 | 2.6s | 76% |
+| Wave 3 | High Tide | 17 | 30 | 2.2s | 79% |
+| Wave 4 | Peak Tide | 23 | 38 | 1.8s | 83% |
+| Wave 5 | Boss Tide | 8 support zombies | Defeat the Boss | 3.0s | 86% (support only) |
+
+- After each Boss, the next cycle drops back to Low Tide with +6 normal-wave baseline pressure, +18 kill targets, and slightly faster refills
+- Non-Boss enemy move speed starts at 72%, increases by 3.5% each wave, and caps at the original 100%
+- **50** remains a hard safety cap for normal zombies, not a target that every refill tries to fill
+- As a normal wave approaches its kill target, pressure falls automatically to create a finishable ebb
 
 # Boss Waves (wave 5, 10, 15...)
 
-- No kill count target — defeat all Bosses instead
-- Boss count scales with wave number
-- Wave completes when all Bosses are dead
+- There is no kill-count target; defeat every Boss in the wave instead
+- Boss count grows only with progression: waves 5/10/15/20/25 contain **1/2/3/4/5 Bosses**, then every later Boss wave adds one more with no gameplay cap
+- Boss count is independent of map size and spawn-point count
+- Boss cycles do not add movement speed; difficulty grows through Boss health, damage, and support pressure
+- The wave completes only after every Boss is dead
+
+| Boss Wave | Boss Count | Per-Boss HP | Per-Boss Damage | Support Pressure | Per-Boss Purification | Roguelite Rewards |
+|-----------|------------|-------------|-----------------|------------------|-----------------------|-------------------|
+| Wave 5 | 1 | 100% | 100% | 8 | 100% | One full-pool 4-choice pick |
+| Wave 10 | 2 | 130% | 112% | 11 | 125% | One combat 4-choice pick + one full-pool 4-choice pick |
+| Wave 15 | 3 | 160% | 124% | 14 | 150% | One combat 4-choice pick + one full-pool 4-choice pick |
+| Wave 20 | 4 | 190% | 136% | 17 | 175% | One combat 4-choice pick + one full-pool 4-choice pick |
+| Wave 25 | 5 | 220% | 148% | 20 | 200% | One combat 4-choice pick + one full-pool 4-choice pick |
+
+- Later Bosses cap at 250% HP and 180% damage; support pressure caps at 20 and purification gain caps at 300%
+- The bonus combat pick only contains attributes, projectiles, triggers, and run mutators; NPC, ordinary supply, and economy choices cannot occupy it
+- Every Boss independently drops purification stars and one lootbox, so total wave purification and lootbox count keep growing with Boss count and have no gameplay cap
+- Per-Boss kill purification and the reward-screen purification choice use the purification multiplier; each lootbox's quantity and quality rise on the same cycle
+- Each Boss lootbox gains one item per cycle (starting at 6-9, capped at 10-13); maximum quality rises toward Q8 and minimum quality rises every two cycles
 
 # Ambient Pressure
 
-- Zombies spawn during both preparation and combat phases
+- Preparation maintains 35% of the next wave's pressure, clamped to 4–16 zombies, and replenishes at most one every 5 seconds
+- Combat refills toward its current pressure target in bounded batches; a spawn is skipped when no position is far enough from the player
+- Minimum spawn distance is 28m for waves 1–2, 24m for waves 3–5, and 20m afterward
 - Zombies actively track the player (trace distance: 500m)
 
 ---
@@ -141,14 +171,26 @@ Pollution is applied after the base and affix multipliers: HP ×`(1 + pollution 
 
 # Spawn Probability
 
-| Pollution | Elite % | Special % | Normal % |
-|-----------|---------|-----------|----------|
-| 0–4 | 1% | 5% | 94% |
-| 5–9 | 2% | 10% | 88% |
-| 10–14 | 4% | 15% | 81% |
-| 15–19 | 6% | 20% | 74% |
-| 20–24 | 8% | 25% | 67% |
-| ≥25 | 10% | 30% | 60% |
+The first five waves use a fixed onboarding curve instead of the pollution table:
+
+| Wave | Elite % | Special % |
+|------|---------|-----------|
+| Wave 1 | 0% | 0% |
+| Wave 2 | 0% | 3% |
+| Wave 3 | 0% | 5% |
+| Waves 4–5 | 1% | 8% |
+
+From wave 6 onward, the mode uses continuously growing weights. Normal weight stays at 100; Elite weight is "pollution base + 3 × (wave - 5)"; Special weight is "pollution base + 5 × (wave - 5)." The three weights are normalized, so the combined Elite/Special chance keeps approaching 100% without either type crowding out the other.
+
+Examples below assume pollution 0; higher pollution raises the Elite and Special shares further:
+
+| Wave | Elite % | Special % | Elite + Special |
+|------|---------|-----------|-----------------|
+| Wave 6 | 3.5% | 8.8% | 12.3% |
+| Wave 10 | 11.0% | 20.5% | 31.5% |
+| Wave 20 | 20.4% | 35.4% | 55.8% |
+| Wave 50 | 29.2% | 49.4% | 78.5% |
+| Wave 100 | 33.0% | 55.4% | 88.5% |
 
 ---
 
@@ -244,7 +286,9 @@ Pollution is the difficulty scaling mechanic.
 
 After each wave, choose from rewards:
 - Normal waves: **3** options
-- Boss waves: **4** options
+- Wave 5 Boss: **pick 1 of 4**
+- From the Wave 10 Boss onward: first pick **1 of 4** combat upgrades, then pick **1 of 4** from the full reward pool, for two rewards total
+- Waves 1–2 always include one offense upgrade matching the starter loadout and one medical, armor, or healing option
 
 **Refresh** options:
 - **3 free refreshes** per node

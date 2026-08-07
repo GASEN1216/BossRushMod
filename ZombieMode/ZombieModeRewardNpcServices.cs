@@ -534,7 +534,10 @@ namespace BossRush
         {
             int basePoints = bossNode ? ZombieModeTuning.InstantPurificationBossBase : ZombieModeTuning.InstantPurificationNormalBase;
             int pollutionBonus = (bossNode ? 25 : 10) * zombieModeRunState.TotalPollution;
-            return Mathf.Max(1, basePoints + pollutionBonus);
+            float rewardScale = bossNode
+                ? GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave)
+                : 1f;
+            return Mathf.Max(1, Mathf.FloorToInt((basePoints + pollutionBonus) * rewardScale));
         }
 
         private void ClearZombieModeRewardShell()

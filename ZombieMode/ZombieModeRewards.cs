@@ -136,6 +136,14 @@ namespace BossRush
                 TextAlignmentOptions.Center, InfoTextColor);
             yPos += infoH + 10f;
 
+            float previewH = 40f;
+            ZombieModeUIHelper.CreateText("NextWavePreview", panel.transform,
+                owner.GetZombieModeNextWavePreviewText(runId), 15,
+                new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, -(yPos + previewH * 0.5f)), new Vector2(-40f, previewH),
+                TextAlignmentOptions.Center, RewardCardAccentColor);
+            yPos += previewH + 8f;
+
             // ── 奖励卡片 ──
             IList<ZombieModeRewardType> options = owner.GetZombieModeRewardOptions(runId);
             bool bossNode = owner.IsZombieModeBossRewardNode(runId);
