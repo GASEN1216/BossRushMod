@@ -19,7 +19,7 @@ def main() -> int:
     combined = support + "\n" + mode_e
 
     required = [
-        "private const long MODE_E_SHELL_CASH_UNIT = 10000L;",
+        "private const long MODE_E_SHELL_CASH_UNIT = 2000L;",
         "internal void NormalizeModeEShellStackForShop(StockShop shop, Item item)",
         'string.Equals(shop.MerchantID, "ModeE_Bullet"',
         "item.StackCount = item.MaxStackCount;",

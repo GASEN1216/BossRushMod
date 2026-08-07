@@ -94,26 +94,50 @@ namespace BossRush
     public static class ModeEMerchantShopViewSetupReusePatch
     {
         [HarmonyPrefix]
-        public static bool Prefix(StockShopView __instance, StockShop target)
+        private static bool Prefix(
+            StockShopView __instance,
+            StockShop target,
+            ref ModeEMerchantSellAllUI.ProgressiveShopViewSetupState __state)
         {
+            __state = null;
             if (ModeEMerchantSellAllUI.CanReuseShopViewSetup(__instance, target))
             {
                 return false;
             }
 
             ModeEMerchantSellAllUI.BeginShopViewSetup(target);
+            __state = ModeEMerchantSellAllUI.PrepareProgressiveShopViewSetup(
+                __instance,
+                target);
             return true;
         }
 
         [HarmonyPostfix]
-        public static void Postfix()
+        private static void Postfix(
+            StockShopView __instance,
+            StockShop target,
+            ModeEMerchantSellAllUI.ProgressiveShopViewSetupState __state)
         {
+            ModeEMerchantSellAllUI.CompleteProgressiveShopViewSetup(
+                __instance,
+                target,
+                __state,
+                true);
             ModeEMerchantSellAllUI.EndShopViewSetup();
         }
 
         [HarmonyFinalizer]
-        public static Exception Finalizer(Exception __exception)
+        private static Exception Finalizer(
+            Exception __exception,
+            StockShopView __instance,
+            StockShop target,
+            ModeEMerchantSellAllUI.ProgressiveShopViewSetupState __state)
         {
+            ModeEMerchantSellAllUI.CompleteProgressiveShopViewSetup(
+                __instance,
+                target,
+                __state,
+                __exception == null);
             ModeEMerchantSellAllUI.EndShopViewSetup();
             return __exception;
         }

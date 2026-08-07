@@ -37,6 +37,31 @@
 **未验证/需人工**: 如有
 **失败尝试**: 如有
 ```
+---
+### 2026-08-07 Mode E 分类商店首开卡顿与贝壳价格过低
+
+**状态**: fixed
+**Finding**: 玩家实机反馈 / `Player.log` 与官方 `StockShopView.Setup` 反编译复核
+**兼容分类**: COMPAT / WIRE+
+**版本/Commit**: 本提交
+**Owner decision**: 已确认；提高 Mode E 贝壳商品价格并修复商店首开卡顿
+**现象**: Mode E 商人分类商店首次打开前会明显卡顿；首轮分帧创建上线后，玩家实测从饰品切到护甲仍会出现数秒 0 帧停顿。当前 `/10000` 价格量化还使玩家击杀少量 Boss 后即可快速购买大量商品。
+**根因**: 官方 `StockShopView.Setup()` 会在主线程一次遍历分类全部条目并同步创建、绑定 UI；当前最大分类有 456 件商品。首轮修复只分摊了创建，最新 `Player.log` 显示饰品已成功分帧创建 `24 + 432` 个条目，随后打开护甲时才卡顿；官方 `PrefabPool.ReleaseAll()` 对 active list 逐个调用 `Remove`，再逐个禁用和重挂 456 个 UI，切店释放仍形成二次方与布局尖峰。线性回收上线后的实测进一步显示 Setup 已降至 `1-3ms`、`ShowUI` 约 `37-72ms`，但完整打开仍偶发 `153-961ms`；剩余时间位于 Attach 阶段，其全量刷新使用 `GetComponentsInChildren(..., true)`，把对象池中已隐藏的旧条目也重复刷新。Mode E 贝壳奖励常见为晋升 Boss 每只约 7–20，首个正奖励额外 10，而大量低中价商品经 `/10000` 向上取整后只需少量贝壳。
+**修复内容**:
+- 修改 `ModeE/ModeEHarmonyPatch.cs`、`ModeE/ModeEMerchantSupportClasses.cs`：Mode E 首开只同步建立 24 个商品条目，其余每帧追加 12 个；切店时先关闭商品内容根节点、清空 active 索引并线性归还旧条目，使原版 `ReleaseAll()` 不再重复做二次方删除，首批绑定后一次恢复布局；切换分类、关闭 UI、模式失效和 runtime reset 会让旧任务失效，反射契约漂移时回退完整原版 Setup；同分类完整加载后继续复用现有 UI。
+- 修改 `ModeE/ModeEMerchantSupportClasses.cs`：新增 `[Profile] shop setup sync` 与 `shop open sync` 日志，分别记录分类条目数、回收数、回收/Setup 耗时，以及样本就绪检查、`ShowUI` 和完整交互同步耗时，供实机确认剩余尖峰。
+- 修改 `ModeE/ModeEMerchantSupportClasses.cs`：Attach、余额和交易门控刷新不再遍历任何商品行；价格完成事件只刷新当前活动层级中匹配的商品行，排除对象池内隐藏条目；打开日志新增 `attachMs`。复用的一键卖出按钮尺寸改为每次从原整理按钮派生，避免重复打开后宽度累加。
+- 修改 `ModeE/ModeEMerchantSupportClasses.cs`：现金价格量化单位由 `10000` 调整为 `2000`，即非取整边界商品约提高到原来的 5 倍贝壳价格，保留向上取整、子弹满堆和最小 1 贝壳规则。
+- 修改 `tests/ModeEMerchantOpenReuseGuard.py`、`tests/ModeEShellPriceNormalizationGuard.py`：锁定 Mode E 作用域、首批/逐帧预算、线性回收、内容根节点恢复、完整 entries 恢复、生命周期失效和新价格单位。
+**兼容性影响**: 不改变存档、配置、TypeID、商品池、Boss 奖励、出售现金、模式 F 或普通官方商店；沿用现有精确 `StockShopView.Setup(StockShop)` Harmony 目标，并新增对其私有 `_entryPool`、`PrefabPool.activeObjects` 和 `StockShopItemEntry.Setup` 的可选反射使用，字段类型或方法契约不匹配时不接管对应优化并回退原版行为。
+**验证方法**:
+1. Windows 编译: `compile_official.bat` 通过并部署 `Build/BossRush.dll`。
+2. Guard: `ModeEMerchantOpenReuseGuard.py`、`ModeEShellPriceNormalizationGuard.py`、`ModeEShellHarmonyUiContractGuard.py` 通过。
+3. 最新实机日志: 分类切换 Setup 为 `1-3ms`、`recycleMs=0`，护甲稳定重开为 `47-58ms`；日志未出现 Mode E 商店异常。该日志同时定位并推动修复了 Attach 隐藏池条目刷新尖峰。
+4. 静态检查: 本次 Mode E 作用域 `git diff --check` 通过。
+**未验证/需人工**: Attach 收敛后的最终 DLL 仍需按“饰品完整加载 -> 关闭 -> 打开护甲/诱饵”复测，确认新日志 `attachMs` 保持低值、完整打开不再出现百毫秒至秒级尖峰，UI 首屏立即显示且余下条目约 1 秒内补齐；还需复测 5 倍价格下的前 10 次击杀购买节奏。
+**失败尝试**: 第一版只分帧创建，没有处理下一次切店时原版同步释放全部活动条目，最新实测仍卡；首次误把量化单位提高到 `50000`，复核公式后确认这会降低价格，未保留该改动；Harmony `__state` 初版公开方法触发 C# 可见性编译错误，已将该补丁方法收为私有静态并重新验证。
+
 
 ---
 ### 2026-08-06 丧尸模式变异僵尸中英文图鉴与源码一致性守卫

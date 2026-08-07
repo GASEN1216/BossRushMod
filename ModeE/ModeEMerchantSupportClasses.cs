@@ -13,6 +13,7 @@ using Duckov.Economy.UI;
 using Duckov.ItemUsage;
 using Duckov.Scenes;
 using Duckov.UI;
+using Duckov.Utilities;
 using ItemStatsSystem;
 using ItemStatsSystem.Data;
 using TMPro;
@@ -26,7 +27,7 @@ namespace BossRush
         private const string MODE_E_SHELL_HARMONY_OWNER = "com.bossrush.mod";
         // TryGetIDByName 按 ItemMetaData.Name 查询；Item_SeaShell 是本地化键，不是物品内部名。
         private const string MODE_E_SHELL_ITEM_NAME = "SeaShell";
-        private const long MODE_E_SHELL_CASH_UNIT = 10000L;
+        private const long MODE_E_SHELL_CASH_UNIT = 2000L;
 
         private static long NextModeEShellCounter(ref long counter)
         {
@@ -1927,18 +1928,28 @@ namespace BossRush
             StockShopView view = StockShopView.Instance;
             if (view == null || !object.ReferenceEquals(view.Target, shop)) return;
 
-            try
+            // Setup/Postfix already applies the shell price to every newly bound row.
+            // Only a completed price event needs to revisit a row; balance/gate changes
+            // affect the interaction button, not every pooled entry.
+            if (itemTypeID.HasValue)
             {
-                StockShopItemEntry[] entries = view.GetComponentsInChildren<StockShopItemEntry>(true);
-                for (int i = 0; i < entries.Length; i++)
+                try
                 {
-                    StockShopItemEntry row = entries[i];
-                    if (row == null || row.Target == null) continue;
-                    if (itemTypeID.HasValue && row.Target.ItemTypeID != itemTypeID.Value) continue;
-                    ApplyModeEShellItemEntryUi(row, view, row.Target);
+                    StockShopItemEntry[] entries =
+                        view.GetComponentsInChildren<StockShopItemEntry>(false);
+                    for (int i = 0; i < entries.Length; i++)
+                    {
+                        StockShopItemEntry row = entries[i];
+                        if (row == null || row.Target == null ||
+                            row.Target.ItemTypeID != itemTypeID.Value)
+                        {
+                            continue;
+                        }
+                        ApplyModeEShellItemEntryUi(row, view, row.Target);
+                    }
                 }
+                catch { }
             }
-            catch { }
 
             try { modeEShellRefreshInteractionButtonTarget.Invoke(view, null); }
             catch (Exception e) { DevLog("[ModeE/Shell] UI event refresh failed: " + e.Message); }
@@ -2047,6 +2058,11 @@ namespace BossRush
         /// </summary>
         protected override void OnTimeOut()
         {
+            System.Diagnostics.Stopwatch openStopwatch =
+                System.Diagnostics.Stopwatch.StartNew();
+            long readinessMilliseconds = 0L;
+            long showUiMilliseconds = 0L;
+            long attachMilliseconds = 0L;
             try
             {
                 if (_shop == null)
@@ -2064,15 +2080,37 @@ namespace BossRush
                     if (inst != null) inst.ShowModeEShopLoadingFeedback();
                     return;
                 }
-                if (disposition == ModeEShellShopPatchDisposition.HandleModeE &&
-                    !inst.AreAllModeEShopOfficialSamplesReady(_shop))
+                if (disposition == ModeEShellShopPatchDisposition.HandleModeE)
                 {
-                    inst.ShowModeEShopLoadingFeedback();
-                    return;
+                    long readinessStarted = openStopwatch.ElapsedMilliseconds;
+                    bool samplesReady = inst.AreAllModeEShopOfficialSamplesReady(_shop);
+                    readinessMilliseconds =
+                        openStopwatch.ElapsedMilliseconds - readinessStarted;
+                    if (!samplesReady)
+                    {
+                        inst.ShowModeEShopLoadingFeedback();
+                        return;
+                    }
                 }
 
+                long showUiStarted = openStopwatch.ElapsedMilliseconds;
                 _shop.ShowUI();
+                showUiMilliseconds = openStopwatch.ElapsedMilliseconds - showUiStarted;
+                long attachStarted = openStopwatch.ElapsedMilliseconds;
                 ModeEMerchantSellAllUI.Attach(_shop);
+                attachMilliseconds = openStopwatch.ElapsedMilliseconds - attachStarted;
+
+                if (openStopwatch.ElapsedMilliseconds >= 16L)
+                {
+                    int itemCount = _shop.entries != null ? _shop.entries.Count : 0;
+                    ModBehaviour.DevLog(
+                        "[ModeE] [Profile] shop open sync: merchant=" + _shop.MerchantID +
+                        ", items=" + itemCount +
+                        ", readinessMs=" + readinessMilliseconds +
+                        ", showUiMs=" + showUiMilliseconds +
+                        ", attachMs=" + attachMilliseconds +
+                        ", totalMs=" + openStopwatch.ElapsedMilliseconds);
+                }
             }
             catch (Exception e)
             {
@@ -2083,11 +2121,32 @@ namespace BossRush
 
     internal static class ModeEMerchantSellAllUI
     {
+        private const int MODE_E_SHOP_INITIAL_ENTRY_COUNT = 24;
+        private const int MODE_E_SHOP_ENTRIES_PER_FRAME = 12;
+
+        internal sealed class ProgressiveShopViewSetupState
+        {
+            internal StockShop Shop;
+            internal List<StockShop.Entry> OriginalEntries;
+            internal GameObject EntryContentRoot;
+            internal bool EntryContentRootWasActive;
+            internal int TotalEntryCount;
+            internal int InitialEntryCount;
+            internal int RecycledEntryCount;
+            internal long RecycleElapsedMilliseconds;
+            internal long SetupStartedTimestamp;
+            internal long PopulationID;
+            internal bool Restored;
+        }
+
         private static FieldInfo playerInventoryDisplayField;
         private static FieldInfo characterInventoryDisplayField;
         private static FieldInfo sortButtonField;
         private static FieldInfo merchantNameTextField;
+        private static FieldInfo stockShopEntryPoolField;
+        private static FieldInfo stockShopPoolActiveEntriesField;
         private static MethodInfo sellMethod;
+        private static Action<StockShopItemEntry, StockShopView, StockShop.Entry> stockShopItemEntrySetup;
         private static bool reflectionInitialized;
 
         private static StockShop currentShop;
@@ -2103,6 +2162,9 @@ namespace BossRush
         private static ModBehaviour modeEShellOwner;
         private static long modeEShellUiBindingID;
         private static bool modeEMerchantShopViewSetupInProgress;
+        private static long modeEMerchantProgressivePopulationID;
+        private static StockShop modeEMerchantProgressiveShop;
+        private static bool modeEMerchantProgressivePopulationComplete;
 
         private static long BeginSellAllOperation()
         {
@@ -2145,7 +2207,8 @@ namespace BossRush
                 inst.GetModeEShellShopPatchDisposition(shop);
             if (disposition == ModeEShellShopPatchDisposition.HandleModeE)
             {
-                return true;
+                return !object.ReferenceEquals(modeEMerchantProgressiveShop, shop) ||
+                       modeEMerchantProgressivePopulationComplete;
             }
 
             // Mode F 复用同一分类 StockShop，但不进入贝壳交易边界。
@@ -2163,6 +2226,324 @@ namespace BossRush
         internal static void EndShopViewSetup()
         {
             modeEMerchantShopViewSetupInProgress = false;
+        }
+
+        internal static ProgressiveShopViewSetupState PrepareProgressiveShopViewSetup(
+            StockShopView shopView,
+            StockShop shop)
+        {
+            if (shopView == null || shop == null || shop.entries == null)
+            {
+                return null;
+            }
+
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null ||
+                inst.GetModeEShellShopPatchDisposition(shop) !=
+                    ModeEShellShopPatchDisposition.HandleModeE)
+            {
+                return null;
+            }
+
+            InitializeReflection();
+            ProgressiveShopViewSetupState state = new ProgressiveShopViewSetupState
+            {
+                Shop = shop,
+                TotalEntryCount = shop.entries.Count,
+                SetupStartedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp(),
+                Restored = false
+            };
+            TryRecycleActiveModeEShopEntries(shopView, state);
+
+            if (shop.entries.Count <= MODE_E_SHOP_INITIAL_ENTRY_COUNT)
+            {
+                return state;
+            }
+
+            if (stockShopEntryPoolField == null ||
+                stockShopEntryPoolField.FieldType != typeof(PrefabPool<StockShopItemEntry>) ||
+                stockShopItemEntrySetup == null)
+            {
+                // Contract drift falls back to the complete original Setup.
+                return state;
+            }
+
+            List<StockShop.Entry> originalEntries = shop.entries;
+            List<StockShop.Entry> initialEntries = new List<StockShop.Entry>(
+                MODE_E_SHOP_INITIAL_ENTRY_COUNT);
+            for (int i = 0; i < MODE_E_SHOP_INITIAL_ENTRY_COUNT; i++)
+            {
+                initialEntries.Add(originalEntries[i]);
+            }
+
+            long populationID = NextProgressivePopulationID();
+            modeEMerchantProgressiveShop = shop;
+            modeEMerchantProgressivePopulationComplete = false;
+            shop.entries = initialEntries;
+            state.OriginalEntries = originalEntries;
+            state.InitialEntryCount = initialEntries.Count;
+            state.PopulationID = populationID;
+            return state;
+        }
+
+        internal static void CompleteProgressiveShopViewSetup(
+            StockShopView shopView,
+            StockShop shop,
+            ProgressiveShopViewSetupState state,
+            bool setupSucceeded)
+        {
+            if (state == null)
+            {
+                if (setupSucceeded && shopView != null && shop != null &&
+                    object.ReferenceEquals(shopView.Target, shop))
+                {
+                    modeEMerchantProgressiveShop = shop;
+                    modeEMerchantProgressivePopulationComplete = true;
+                }
+                return;
+            }
+
+            if (state.Restored) return;
+            state.Restored = true;
+
+            try
+            {
+                if (state.Shop != null && state.OriginalEntries != null)
+                {
+                    state.Shop.entries = state.OriginalEntries;
+                }
+                RestoreModeEShopEntryContentRoot(state);
+                LogModeEShopSynchronousSetup(state);
+
+                if (!setupSucceeded || shopView == null || state.Shop == null ||
+                    !object.ReferenceEquals(shopView.Target, state.Shop))
+                {
+                    return;
+                }
+
+                if (state.OriginalEntries == null)
+                {
+                    modeEMerchantProgressiveShop = state.Shop;
+                    modeEMerchantProgressivePopulationComplete = true;
+                    return;
+                }
+
+                PopulateRemainingModeEShopEntriesAsync(shopView, state).Forget();
+            }
+            catch (Exception e)
+            {
+                modeEMerchantProgressivePopulationComplete = false;
+                ModBehaviour.DevLog("[ModeE] [WARNING] 商店分帧加载启动失败: " + e.Message);
+            }
+        }
+
+        private static void TryRecycleActiveModeEShopEntries(
+            StockShopView shopView,
+            ProgressiveShopViewSetupState state)
+        {
+            if (shopView == null || state == null ||
+                stockShopEntryPoolField == null ||
+                stockShopEntryPoolField.FieldType != typeof(PrefabPool<StockShopItemEntry>) ||
+                stockShopPoolActiveEntriesField == null ||
+                stockShopPoolActiveEntriesField.FieldType != typeof(List<StockShopItemEntry>))
+            {
+                return;
+            }
+
+            PrefabPool<StockShopItemEntry> entryPool =
+                stockShopEntryPoolField.GetValue(shopView) as PrefabPool<StockShopItemEntry>;
+            if (entryPool == null) return;
+
+            List<StockShopItemEntry> activeEntries =
+                stockShopPoolActiveEntriesField.GetValue(entryPool) as List<StockShopItemEntry>;
+            if (activeEntries == null || activeEntries.Count == 0) return;
+
+            Transform contentRoot = entryPool.poolParent;
+            if (contentRoot != null && contentRoot.gameObject != null)
+            {
+                state.EntryContentRoot = contentRoot.gameObject;
+                state.EntryContentRootWasActive = state.EntryContentRoot.activeSelf;
+                if (state.EntryContentRootWasActive)
+                {
+                    state.EntryContentRoot.SetActive(false);
+                }
+            }
+
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            activeEntries.RemoveAll(entry => entry == null);
+            StockShopItemEntry[] entriesToRelease = activeEntries.ToArray();
+            activeEntries.Clear();
+
+            int released = 0;
+            try
+            {
+                for (int i = 0; i < entriesToRelease.Length; i++)
+                {
+                    entryPool.Release(entriesToRelease[i]);
+                    released++;
+                }
+            }
+            catch (Exception e)
+            {
+                // Restore unreleased ownership so the original ReleaseAll can finish safely.
+                for (int i = released; i < entriesToRelease.Length; i++)
+                {
+                    StockShopItemEntry entry = entriesToRelease[i];
+                    if (entry != null && !activeEntries.Contains(entry))
+                    {
+                        activeEntries.Add(entry);
+                    }
+                }
+                ModBehaviour.DevLog("[ModeE] [WARNING] 商店对象池线性回收失败，回退原版: " + e.Message);
+            }
+
+            state.RecycledEntryCount = released;
+            state.RecycleElapsedMilliseconds = GetElapsedMilliseconds(started);
+        }
+
+        private static void RestoreModeEShopEntryContentRoot(
+            ProgressiveShopViewSetupState state)
+        {
+            if (state == null || state.EntryContentRoot == null ||
+                !state.EntryContentRootWasActive)
+            {
+                return;
+            }
+
+            try { state.EntryContentRoot.SetActive(true); }
+            catch { }
+        }
+
+        private static long GetElapsedMilliseconds(long startedTimestamp)
+        {
+            long elapsedTicks = System.Diagnostics.Stopwatch.GetTimestamp() - startedTimestamp;
+            if (elapsedTicks <= 0L) return 0L;
+            return (long)(elapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        }
+
+        private static void LogModeEShopSynchronousSetup(
+            ProgressiveShopViewSetupState state)
+        {
+            if (state == null || state.SetupStartedTimestamp <= 0L) return;
+
+            long totalMilliseconds = GetElapsedMilliseconds(state.SetupStartedTimestamp);
+            if (totalMilliseconds < 16L && state.RecycledEntryCount == 0) return;
+
+            string merchantID = state.Shop != null ? state.Shop.MerchantID : "<null>";
+            ModBehaviour.DevLog(
+                "[ModeE] [Profile] shop setup sync: merchant=" + merchantID +
+                ", items=" + state.TotalEntryCount +
+                ", recycled=" + state.RecycledEntryCount +
+                ", recycleMs=" + state.RecycleElapsedMilliseconds +
+                ", totalMs=" + totalMilliseconds);
+        }
+
+        private static long NextProgressivePopulationID()
+        {
+            if (modeEMerchantProgressivePopulationID == long.MaxValue)
+            {
+                modeEMerchantProgressivePopulationID = 1L;
+            }
+            else
+            {
+                modeEMerchantProgressivePopulationID++;
+                if (modeEMerchantProgressivePopulationID <= 0L)
+                {
+                    modeEMerchantProgressivePopulationID = 1L;
+                }
+            }
+            return modeEMerchantProgressivePopulationID;
+        }
+
+        private static void CancelProgressiveShopViewPopulation(StockShop shop)
+        {
+            if (shop == null || !object.ReferenceEquals(modeEMerchantProgressiveShop, shop))
+            {
+                return;
+            }
+            NextProgressivePopulationID();
+        }
+
+        private static bool IsCurrentProgressivePopulation(
+            StockShopView shopView,
+            ProgressiveShopViewSetupState state)
+        {
+            return state != null &&
+                   state.PopulationID == modeEMerchantProgressivePopulationID &&
+                   shopView != null &&
+                   state.Shop != null &&
+                   state.OriginalEntries != null &&
+                   object.ReferenceEquals(shopView.Target, state.Shop) &&
+                   object.ReferenceEquals(state.Shop.entries, state.OriginalEntries);
+        }
+
+        private static async UniTask PopulateRemainingModeEShopEntriesAsync(
+            StockShopView shopView,
+            ProgressiveShopViewSetupState state)
+        {
+            int loaded = 0;
+            int failed = 0;
+            await UniTask.Yield();
+
+            try
+            {
+                if (!IsCurrentProgressivePopulation(shopView, state)) return;
+
+                PrefabPool<StockShopItemEntry> entryPool =
+                    stockShopEntryPoolField.GetValue(shopView) as PrefabPool<StockShopItemEntry>;
+                if (entryPool == null)
+                {
+                    modeEMerchantProgressivePopulationComplete = false;
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 商店分帧加载无法获取 EntryPool");
+                    return;
+                }
+                ModBehaviour owner = ModBehaviour.Instance;
+
+                for (int i = state.InitialEntryCount; i < state.OriginalEntries.Count; i++)
+                {
+                    if (!IsCurrentProgressivePopulation(shopView, state)) return;
+
+                    StockShop.Entry entry = state.OriginalEntries[i];
+                    if (entry == null || !entry.Show) continue;
+
+                    StockShopItemEntry itemEntry = null;
+                    try
+                    {
+                        itemEntry = entryPool.Get();
+                        stockShopItemEntrySetup(itemEntry, shopView, entry);
+                        if (owner != null)
+                        {
+                            owner.ApplyModeEShellItemEntryUi(itemEntry, shopView, entry);
+                        }
+                        itemEntry.transform.SetAsLastSibling();
+                        loaded++;
+                    }
+                    catch
+                    {
+                        failed++;
+                        if (itemEntry != null)
+                        {
+                            try { entryPool.Release(itemEntry); } catch { }
+                        }
+                    }
+
+                    if ((loaded + failed) % MODE_E_SHOP_ENTRIES_PER_FRAME == 0)
+                    {
+                        await UniTask.Yield();
+                    }
+                }
+
+                if (!IsCurrentProgressivePopulation(shopView, state)) return;
+                modeEMerchantProgressivePopulationComplete = true;
+                ModBehaviour.DevLog(
+                    "[ModeE] 商店首开分帧加载完成: initial=" + state.InitialEntryCount +
+                    ", deferred=" + loaded + ", failed=" + failed);
+            }
+            catch (Exception e)
+            {
+                modeEMerchantProgressivePopulationComplete = false;
+                ModBehaviour.DevLog("[ModeE] [WARNING] 商店分帧加载失败: " + e.Message);
+            }
         }
 
         internal static bool CanReuseInventoryDisplaySetup(
@@ -2257,7 +2638,29 @@ namespace BossRush
             characterInventoryDisplayField = typeof(StockShopView).GetField("characterInventoryDisplay", privateInstance);
             sortButtonField = typeof(Duckov.UI.InventoryDisplay).GetField("sortButton", privateInstance);
             merchantNameTextField = typeof(StockShopView).GetField("merchantNameText", privateInstance);
+            stockShopEntryPoolField = typeof(StockShopView).GetField("_entryPool", privateInstance);
+            stockShopPoolActiveEntriesField = typeof(PrefabPool<StockShopItemEntry>).GetField(
+                "activeObjects",
+                privateInstance);
             sellMethod = typeof(StockShop).GetMethod("Sell", privateInstance, null, new Type[] { typeof(Item) }, null);
+            MethodInfo itemEntrySetupMethod = typeof(StockShopItemEntry).GetMethod(
+                "Setup",
+                privateInstance,
+                null,
+                new Type[] { typeof(StockShopView), typeof(StockShop.Entry) },
+                null);
+            try
+            {
+                stockShopItemEntrySetup = itemEntrySetupMethod != null
+                    ? (Action<StockShopItemEntry, StockShopView, StockShop.Entry>)Delegate.CreateDelegate(
+                        typeof(Action<StockShopItemEntry, StockShopView, StockShop.Entry>),
+                        itemEntrySetupMethod)
+                    : null;
+            }
+            catch
+            {
+                stockShopItemEntrySetup = null;
+            }
             reflectionInitialized = true;
         }
 
@@ -2404,16 +2807,17 @@ namespace BossRush
                 }
 
                 LayoutElement layoutElement = sellAllButtonObject.GetComponent<LayoutElement>();
+                LayoutElement sourceLayoutElement = sortButton.GetComponent<LayoutElement>();
                 if (layoutElement != null)
                 {
-                    if (layoutElement.preferredWidth > 0f)
+                    if (sourceLayoutElement != null && sourceLayoutElement.preferredWidth > 0f)
                     {
-                        layoutElement.preferredWidth += 80f;
+                        layoutElement.preferredWidth = sourceLayoutElement.preferredWidth + 80f;
                     }
 
-                    if (layoutElement.minWidth > 0f)
+                    if (sourceLayoutElement != null && sourceLayoutElement.minWidth > 0f)
                     {
-                        layoutElement.minWidth += 80f;
+                        layoutElement.minWidth = sourceLayoutElement.minWidth + 80f;
                     }
                 }
 
@@ -2808,6 +3212,7 @@ namespace BossRush
                 return;
             }
 
+            CancelProgressiveShopViewPopulation(currentShop);
             Cleanup(false);
         }
 
@@ -2876,6 +3281,7 @@ namespace BossRush
         internal static void DetachForModeEShellInvalidation(ModBehaviour owner, string reason)
         {
             if (owner == null || !object.ReferenceEquals(modeEShellOwner, owner)) return;
+            CancelProgressiveShopViewPopulation(currentShop);
             Cleanup(false);
         }
 
@@ -2886,12 +3292,18 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             modeEMerchantShopViewSetupInProgress = false;
+            CancelProgressiveShopViewPopulation(modeEMerchantProgressiveShop);
+            modeEMerchantProgressiveShop = null;
+            modeEMerchantProgressivePopulationComplete = false;
             Cleanup(true);
             playerInventoryDisplayField = null;
             characterInventoryDisplayField = null;
             sortButtonField = null;
             merchantNameTextField = null;
+            stockShopEntryPoolField = null;
+            stockShopPoolActiveEntriesField = null;
             sellMethod = null;
+            stockShopItemEntrySetup = null;
             reflectionInitialized = false;
         }
 
