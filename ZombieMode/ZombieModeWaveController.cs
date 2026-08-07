@@ -63,7 +63,7 @@ namespace BossRush
 
             CharacterMainControl victim = health.TryGetCharacter();
             // O(1) HashSet 早返替代 GetComponent<ZombieModeEnemyRuntimeMarker>（审查 §3.1）。
-            // 非丧尸模式敌人不走 marker 路径；但仍要走安全区破隐检测（玩家是伤害源时）。
+            // 非丧尸模式敌人不走 marker 路径，也不能误触发安全区破隐。
             ZombieModeEnemyRuntimeMarker marker;
             if (victim == null || !TryGetZombieModeKnownEnemyMarker(victim, out marker))
             {
@@ -72,6 +72,7 @@ namespace BossRush
 
             if (marker != null && marker.RunId == runId)
             {
+                TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, victim);
                 ApplyZombieModeEnemyHurtAffixes(runId, health, damageInfo, marker);
                 HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);
                 if (marker.IsBoss)
@@ -99,7 +100,6 @@ namespace BossRush
                 }
             }
 
-            TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, victim);
         }
 
         // 安全区破隐：玩家在安全区内用枪械或近战武器伤害丧尸模式敌人时破隐；
@@ -140,6 +140,7 @@ namespace BossRush
                 Duckov.Utilities.Tag tag = metaData.tags[i];
                 if (tag != null &&
                     (tag.name == "Gun" ||
+                     tag.name == "Weapon" ||
                      tag.name == "MeleeWeapon" ||
                      tag.name == "Melee"))
                 {
@@ -222,6 +223,9 @@ namespace BossRush
                 return;
             }
 
+            // 官方 Health.Hurt 的致死顺序是 OnDead -> SetActive(false) -> OnHurt。
+            // 必须在 DeathSettled 和 hot-path marker 注销前处理，否则致死一击不会破隐。
+            TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, character);
             HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);
             marker.DeathSettled = true;
             // 一旦 DeathSettled 就从 hot path 集合移除——后续技能命中尸体不会重新进入 marker 路径。
@@ -282,7 +286,9 @@ namespace BossRush
             zombieModeRunState.CombatPhase = initial
                 ? ZombieModeCombatPhase.InitialPreparation
                 : (extractionOpportunity ? ZombieModeCombatPhase.ExtractionOpportunity : ZombieModeCombatPhase.Preparation);
-            zombieModeRunState.PreparationTimer = ZombieModeTuning.PreparationCountdownSeconds;
+            zombieModeRunState.PreparationTimer = extractionOpportunity
+                ? ZombieModeTuning.BossPreparationCountdownSeconds
+                : ZombieModeTuning.PreparationCountdownSeconds;
             zombieModeRunState.PeriodicSpawnTimer = 0f;
             zombieModeRunState.BeaconChanneling = false;
             zombieModeRunState.BeaconChannelStartTime = 0f;

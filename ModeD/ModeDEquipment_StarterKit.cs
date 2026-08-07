@@ -29,6 +29,10 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        private static readonly string[] SharedStarterMedicalRequiredTags = { "Healing" };
+        private static readonly string[] SharedStarterMeleeRequiredTags = { "MeleeWeapon" };
+        private static readonly int[] SharedStarterMedicalFallbackIds = { 401, 402, 403 };
+
         #region 玩家开局装备发放
 
         /// <summary>
@@ -202,13 +206,14 @@ namespace BossRush
         {
             try
             {
-                if (modeDMeleePool.Count == 0)
+                List<int> starterMeleePool = GetStarterMeleePool();
+                if (starterMeleePool.Count == 0)
                 {
                     DevLog("[ModeD] 近战武器池为空，跳过近战武器发放");
                     return;
                 }
 
-                int meleeId = modeDMeleePool[UnityEngine.Random.Range(0, modeDMeleePool.Count)];
+                int meleeId = starterMeleePool[UnityEngine.Random.Range(0, starterMeleePool.Count)];
                 Item melee = ItemAssetsCollection.InstantiateSync(meleeId);
                 if (melee == null)
                 {
@@ -543,14 +548,15 @@ namespace BossRush
             Duckov.Utilities.Tag healingTag = FindTagByName("Healing");
             if (healingTag == null || modeDMedicalPool.Count == 0)
             {
-                return modeDMedicalPool;
+                if (modeDMedicalPool.Count == 0) return modeDMedicalPool;
             }
 
             List<int> filteredPool = new List<int>(modeDMedicalPool.Count);
             for (int i = 0; i < modeDMedicalPool.Count; i++)
             {
                 int typeId = modeDMedicalPool[i];
-                if (ItemTypeHasTag(typeId, healingTag))
+                if ((healingTag == null || ItemTypeHasTag(typeId, healingTag)) &&
+                    IsZombieModeRewardCandidateAllowed(typeId, SharedStarterMedicalRequiredTags))
                 {
                     filteredPool.Add(typeId);
                 }
@@ -558,10 +564,55 @@ namespace BossRush
 
             if (filteredPool.Count != modeDMedicalPool.Count)
             {
-                DevLog("[ModeD] 开局医疗品池附加 Healing 过滤: " + modeDMedicalPool.Count + " -> " + filteredPool.Count);
+                DevLog("[ModeD] 开局医疗品池应用 Healing/Zombie 过滤: " +
+                    modeDMedicalPool.Count + " -> " + filteredPool.Count);
             }
 
             return filteredPool;
+        }
+
+        private List<int> GetStarterMeleePool()
+        {
+            if (modeDMeleePool.Count == 0) return modeDMeleePool;
+
+            List<int> filteredPool = new List<int>(modeDMeleePool.Count);
+            for (int i = 0; i < modeDMeleePool.Count; i++)
+            {
+                int typeId = modeDMeleePool[i];
+                if (IsZombieModeRewardCandidateAllowed(typeId, SharedStarterMeleeRequiredTags))
+                {
+                    filteredPool.Add(typeId);
+                }
+            }
+
+            if (filteredPool.Count != modeDMeleePool.Count)
+            {
+                DevLog("[ModeD] 开局近战武器池应用 Zombie 过滤: " +
+                    modeDMeleePool.Count + " -> " + filteredPool.Count);
+            }
+
+            return filteredPool;
+        }
+
+        private int SelectAllowedStarterFallbackItemId(int[] candidates, string[] requiredTags)
+        {
+            if (candidates == null || candidates.Length == 0) return -1;
+
+            int selected = -1;
+            int allowedCount = 0;
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                int typeId = candidates[i];
+                if (!IsZombieModeRewardCandidateAllowed(typeId, requiredTags)) continue;
+
+                allowedCount++;
+                if (UnityEngine.Random.Range(0, allowedCount) == 0)
+                {
+                    selected = typeId;
+                }
+            }
+
+            return selected;
         }
 
         /// <summary>
@@ -579,9 +630,15 @@ namespace BossRush
                 {
                     if (starterMedicalPool.Count == 0)
                     {
-                        // 使用硬编码的常见医疗品
-                        int[] commonMedIds = new int[] { 401, 402, 403 };
-                        int medId = commonMedIds[UnityEngine.Random.Range(0, commonMedIds.Length)];
+                        // 使用同一丧尸模式排除契约过滤硬编码兜底；没有安全物品时宁可少发。
+                        int medId = SelectAllowedStarterFallbackItemId(
+                            SharedStarterMedicalFallbackIds,
+                            SharedStarterMedicalRequiredTags);
+                        if (medId <= 0)
+                        {
+                            DevLog("[ModeD] 没有通过 Zombie 医疗过滤的硬编码兜底，跳过该格");
+                            continue;
+                        }
 
                         Item med = ItemAssetsCollection.InstantiateSync(medId);
                         if (med != null)

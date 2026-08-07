@@ -300,10 +300,6 @@ namespace BossRush
             int maxQuality = Mathf.Clamp(2 + zombieModeRunState.PollutionTier, 3, 7);
             string[] tags = GetZombieModeDropTags(marker);
             int typeId = FindRandomItemTypeByTags(tags, minQuality, maxQuality);
-            if (typeId <= 0)
-            {
-                typeId = FindRandomItemTypeByTags(null, minQuality, maxQuality);
-            }
 
             bool highValue = marker.EnemyKind == ZombieModeEnemyKind.Elite;
             TryDropZombieModeItemNearPosition(runId, typeId, position, highValue, false);
@@ -438,23 +434,80 @@ namespace BossRush
                     return null;
                 }
 
-                CharacterMainControl player = CharacterMainControl.Main;
-                if (player != null && player.CharacterItem != null && player.CharacterItem.Inventory != null)
+                GameObject itemObject = item.gameObject;
+                string itemName = L10n.T("未知物品", "Unknown item");
+                int itemQuality = 1;
+                float itemWeight = 0f;
+                bool itemWeightAvailable = false;
+                try
                 {
-                    bool added = player.CharacterItem.Inventory.AddAndMerge(item, 0);
-                    if (added)
+                    if (!string.IsNullOrEmpty(item.DisplayName)) itemName = item.DisplayName;
+                    itemQuality = Mathf.Clamp(item.Quality, 1, 8);
+                    itemWeight = item.TotalWeight;
+                    itemWeightAvailable = true;
+                }
+                catch (Exception e)
+                {
+                    // 名称/品质已有安全默认值；重量不可用时保留旧入包路径。
+                    DevLog("[ZombieMode] 掉落属性快照失败，跳过负重预检: " + e.Message);
+                }
+
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null)
+                {
+                    if (player.CharacterItem != null && player.CharacterItem.Inventory != null)
                     {
-                        string itemName = string.IsNullOrEmpty(item.DisplayName) ? "未知物品" : item.DisplayName;
-                        int itemQuality = 1;
-                        try { itemQuality = Mathf.Clamp(item.Quality, 1, 8); } catch { itemQuality = 1; }
-                        TryShowZombieModeInventoryPickupPopText(player, itemName, itemQuality);
-                        return item.gameObject;
+                        bool projectedOverweight = false;
+                        try
+                        {
+                            float maxWeight = player.MaxWeight;
+                            if (itemWeightAvailable && maxWeight > 0f)
+                            {
+                                float projectedWeight = player.CharacterItem.TotalWeight;
+                                if (player.carryAction != null && player.carryAction.Running)
+                                {
+                                    projectedWeight += player.carryAction.GetWeight();
+                                }
+                                projectedWeight += itemWeight;
+                                projectedOverweight = projectedWeight > maxWeight;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            // 官方重量字段读取失败时保留旧入包路径，避免误吞掉落。
+                            DevLog("[ZombieMode] 掉落负重预检失败，保留入包路径: " + e.Message);
+                        }
+
+                        if (projectedOverweight)
+                        {
+                            DropZombieModeItemAtPlayerFeet(
+                                runId,
+                                item,
+                                player,
+                                highValue,
+                                bossDrop,
+                                itemName,
+                                itemQuality);
+                            return itemObject;
+                        }
+
+                        bool added = player.CharacterItem.Inventory.AddAndMerge(item, 0);
+                        if (added)
+                        {
+                            TryShowZombieModeInventoryPickupPopText(player, itemName, itemQuality);
+                            return itemObject;
+                        }
                     }
 
-                    item.Drop(player, true);
-                    GameObject obj = item.gameObject;
-                    RegisterZombieModeDropCandidate(runId, obj, highValue, bossDrop);
-                    return obj;
+                    DropZombieModeItemAtPlayerFeet(
+                        runId,
+                        item,
+                        player,
+                        highValue,
+                        bossDrop,
+                        itemName,
+                        itemQuality);
+                    return itemObject;
                 }
 
                 Vector3 dropPosition = position + Vector3.up * 0.35f;
@@ -468,6 +521,41 @@ namespace BossRush
             {
                 return null;
             }
+        }
+
+        private void DropZombieModeItemAtPlayerFeet(
+            int runId,
+            Item item,
+            CharacterMainControl player,
+            bool highValue,
+            bool bossDrop,
+            string itemName,
+            int itemQuality)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (player != null)
+                {
+                    item.Drop(player, true);
+                }
+                else
+                {
+                    item.Drop(item.transform.position, true, UnityEngine.Random.insideUnitSphere.normalized, bossDrop ? 30f : 18f);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ZombieMode] 负重掉落落脚边失败: " + e.Message);
+            }
+
+            GameObject obj = item.gameObject;
+            RegisterZombieModeDropCandidate(runId, obj, highValue, bossDrop);
+            TryShowZombieModeSpottedPickupPopText(player, itemName, itemQuality);
         }
 
         private void TryShowZombieModeInventoryPickupPopText(CharacterMainControl player, string itemName, int itemQuality)
@@ -533,6 +621,30 @@ namespace BossRush
             }
 
             CleanupZombieModeExpiredDropCandidates();
+        }
+
+        private void TryShowZombieModeSpottedPickupPopText(
+            CharacterMainControl player,
+            string itemName,
+            int itemQuality)
+        {
+            if (player == null || string.IsNullOrEmpty(itemName))
+            {
+                return;
+            }
+
+            string color = GetZombieModeDropQualityColorHex(itemQuality);
+            string message = L10n.T(
+                "看到了<color=" + color + ">" + itemName + "</color>",
+                "Spotted <color=" + color + ">" + itemName + "</color>");
+            try
+            {
+                player.PopText(message, -1f);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ZombieMode] 玩家落地掉落气泡显示失败: " + e.Message);
+            }
         }
 
         private void CleanupZombieModeExpiredDropCandidates()

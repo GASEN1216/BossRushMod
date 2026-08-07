@@ -48,7 +48,9 @@ namespace BossRush
 
         private static class Pacing
         {
-            public const float PreparationCountdownSeconds = 30f;
+            public const float PreparationCountdownSeconds = 45f;
+            // Boss 波奖励与撤离决定 modal 不限时；玩家选择“继续”后才开始消耗这个更长的整理时间。
+            public const float BossPreparationCountdownSeconds = 75f;
             public const float BeaconChannelDurationSeconds = 3f;
             public const float ExtractionCountdownSeconds = 15f;
             public const float PeriodicSpawnIntervalSeconds = 1f;
@@ -169,6 +171,20 @@ namespace BossRush
             public const float HarasserSlowRadius = 3.5f;
             public const float HarasserSlowPercent = 0.50f;
             public const float HarasserSlowDurationSeconds = 2f;
+        }
+
+        private static class VisualIdentity
+        {
+            public const float SprinterScale = 1.35f;
+            public const float HarasserScale = 1.45f;
+            public const float ExploderScale = 1.60f;
+            public const float PlagueScale = 1.80f;
+            public const float SummonerScale = 2.00f;
+            public const float EliteOneAffixScale = 1.65f;
+            public const float EliteTwoAffixScale = 1.95f;
+            public const float EliteThreeAffixScale = 2.25f;
+            public const float HighThreatAffixBonus = 0.20f;
+            public const float MaxVisualScale = 3.00f;
         }
 
         private static class Boss
@@ -319,6 +335,7 @@ namespace BossRush
 
         // Pacing
         public const float PreparationCountdownSeconds = Pacing.PreparationCountdownSeconds;
+        public const float BossPreparationCountdownSeconds = Pacing.BossPreparationCountdownSeconds;
         public const float BeaconChannelDurationSeconds = Pacing.BeaconChannelDurationSeconds;
         public const float ExtractionCountdownSeconds = Pacing.ExtractionCountdownSeconds;
         public const float PeriodicSpawnIntervalSeconds = Pacing.PeriodicSpawnIntervalSeconds;
@@ -427,6 +444,19 @@ namespace BossRush
         public const float HarasserSlowRadius = Combat.HarasserSlowRadius;
         public const float HarasserSlowPercent = Combat.HarasserSlowPercent;
         public const float HarasserSlowDurationSeconds = Combat.HarasserSlowDurationSeconds;
+
+        // Persistent mutation visual identity. This only applies to safe renderer subtrees;
+        // CharacterModel/root/collider/navigation transforms are never scaled.
+        public const float ZombieModeSprinterVisualScale = VisualIdentity.SprinterScale;
+        public const float ZombieModeHarasserVisualScale = VisualIdentity.HarasserScale;
+        public const float ZombieModeExploderVisualScale = VisualIdentity.ExploderScale;
+        public const float ZombieModePlagueVisualScale = VisualIdentity.PlagueScale;
+        public const float ZombieModeSummonerVisualScale = VisualIdentity.SummonerScale;
+        public const float ZombieModeEliteOneAffixVisualScale = VisualIdentity.EliteOneAffixScale;
+        public const float ZombieModeEliteTwoAffixVisualScale = VisualIdentity.EliteTwoAffixScale;
+        public const float ZombieModeEliteThreeAffixVisualScale = VisualIdentity.EliteThreeAffixScale;
+        public const float ZombieModeHighThreatAffixVisualBonus = VisualIdentity.HighThreatAffixBonus;
+        public const float ZombieModeMaxVisualScale = VisualIdentity.MaxVisualScale;
 
         // Boss - Titan
         public const float TitanShockwaveRadius = Boss.TitanShockwaveRadius;

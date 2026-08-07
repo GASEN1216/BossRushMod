@@ -18,6 +18,9 @@ namespace BossRush
         private readonly ZombieModeEntryTransaction zombieModeEntryTransaction = new ZombieModeEntryTransaction();
         private readonly Dictionary<string, int[]> zombieModeRewardCandidateCache = new Dictionary<string, int[]>();
         private readonly List<int> zombieModeRewardSafeCandidateScratch = new List<int>();
+        private readonly HashSet<int> zombieModeOpaqueFilterLogIds = new HashSet<int>();
+        private static readonly int[] ZombieModeMedicalExcludedTypeIds = { 1243, 1244, 1245, 1246 };
+        private static readonly int[] ZombieModeMeleeExcludedTypeIds = { 1, 305, 343, 1095, 1096 };
         private static readonly string[] ZombieModeRewardTagAmmo = { "Ammo" };
         private static readonly string[] ZombieModeRewardTagArmor = { "Armor" };
         private static readonly string[] ZombieModeRewardTagBodyArmor = { "BodyArmor" };
@@ -742,6 +745,23 @@ namespace BossRush
             try
             {
                 int[] candidates = GetZombieModeRewardCandidateIds(requiredTags, minQuality, maxQuality);
+                // 过滤后的候选可能为空，但原始 Search 结果曾经非空；只在同一标签上下文内逐级降低品质，
+                // 不退化成无标签搜索，也不把被排除物品重新放回池中。
+                if ((candidates == null || candidates.Length <= 0) &&
+                    (HasZombieModeRequestedTag(requiredTags, "Medic") ||
+                     HasZombieModeRequestedTag(requiredTags, "Medical") ||
+                     HasZombieModeRequestedTag(requiredTags, "Healing") ||
+                     HasZombieModeRequestedTag(requiredTags, "MeleeWeapon")))
+                {
+                    for (int fallbackQuality = minQuality - 1; fallbackQuality >= 0; fallbackQuality--)
+                    {
+                        candidates = GetZombieModeRewardCandidateIds(requiredTags, fallbackQuality, fallbackQuality);
+                        if (candidates != null && candidates.Length > 0)
+                        {
+                            break;
+                        }
+                    }
+                }
                 if (candidates == null || candidates.Length <= 0)
                 {
                     return -1;
@@ -825,6 +845,7 @@ namespace BossRush
             }
 
             zombieModeRewardSafeCandidateScratch.Clear();
+            EnsureZombieModeOpaqueFilterDiagnosticsLogged(requiredTags);
 
             if (requiredTags == null || requiredTags.Length <= 0)
             {
@@ -834,7 +855,7 @@ namespace BossRush
                 filter.maxQuality = maxQuality;
                 filter.caliber = string.Empty;
                 int[] candidates = ItemAssetsCollection.Search(filter);
-                AddZombieModeRewardCandidates(candidates);
+                AddZombieModeRewardCandidates(candidates, requiredTags);
             }
             else
             {
@@ -862,7 +883,7 @@ namespace BossRush
                         filter.maxQuality = maxQuality;
                         filter.caliber = string.Empty;
                         int[] candidates = ItemAssetsCollection.Search(filter);
-                        AddZombieModeRewardCandidates(candidates);
+                        AddZombieModeRewardCandidates(candidates, requiredTags);
                     }
                 }
 
@@ -880,7 +901,7 @@ namespace BossRush
             return cached;
         }
 
-        private void AddZombieModeRewardCandidates(int[] candidates)
+        private void AddZombieModeRewardCandidates(int[] candidates, string[] requiredTags)
         {
             if (candidates == null || candidates.Length <= 0)
             {
@@ -889,7 +910,7 @@ namespace BossRush
 
             for (int i = 0; i < candidates.Length; i++)
             {
-                if (IsZombieModeRewardCandidateAllowed(candidates[i]) &&
+                if (IsZombieModeRewardCandidateAllowed(candidates[i], requiredTags) &&
                     !zombieModeRewardSafeCandidateScratch.Contains(candidates[i]))
                 {
                     zombieModeRewardSafeCandidateScratch.Add(candidates[i]);
@@ -1024,11 +1045,174 @@ namespace BossRush
             return new string[] { tagName };
         }
 
-        private bool IsZombieModeRewardCandidateAllowed(int typeId)
+        private bool IsZombieModeRewardCandidateAllowed(int typeId, string[] requiredTags)
         {
-            return typeId > 0 &&
-                   typeId != BossRushItemIds.ZombieTideInvitation &&
-                   typeId != BossRushItemIds.ZombieTideBeacon;
+            if (typeId <= 0 ||
+                typeId == BossRushItemIds.ZombieTideInvitation ||
+                typeId == BossRushItemIds.ZombieTideBeacon)
+            {
+                return false;
+            }
+
+            bool medicalContext = HasZombieModeRequestedTag(requiredTags, "Medic") ||
+                                  HasZombieModeRequestedTag(requiredTags, "Medical") ||
+                                  HasZombieModeRequestedTag(requiredTags, "Healing");
+            bool meleeContext = HasZombieModeRequestedTag(requiredTags, "MeleeWeapon");
+            if (!medicalContext && !meleeContext)
+            {
+                return true;
+            }
+
+            if (medicalContext && ContainsZombieModeTypeId(ZombieModeMedicalExcludedTypeIds, typeId))
+            {
+                LogZombieModeOpaqueFilterCandidate(typeId);
+                return false;
+            }
+
+            if (meleeContext && ContainsZombieModeTypeId(ZombieModeMeleeExcludedTypeIds, typeId))
+            {
+                LogZombieModeOpaqueFilterCandidate(typeId);
+                return false;
+            }
+
+            try
+            {
+                ItemMetaData metaData = ItemAssetsCollection.GetMetaData(typeId);
+                if (medicalContext)
+                {
+                    if (metaData.id <= 0 || metaData.tags == null)
+                    {
+                        DevLogOnceZombieModeOpaqueFilterFailure(typeId, "metadata/tags unavailable");
+                        return false;
+                    }
+
+                    Tag advancedDebuffTag = GameplayDataSettings.Tags != null
+                        ? GameplayDataSettings.Tags.AdvancedDebuffMode
+                        : null;
+                    for (int i = 0; i < metaData.tags.Length; i++)
+                    {
+                        Tag tag = metaData.tags[i];
+                        if (tag == null)
+                        {
+                            DevLogOnceZombieModeOpaqueFilterFailure(typeId, "null tag");
+                            return false;
+                        }
+
+                        if ((advancedDebuffTag != null && tag == advancedDebuffTag) ||
+                            string.Equals(tag.name, "AdvancedDebuffMode", System.StringComparison.Ordinal))
+                        {
+                            LogZombieModeOpaqueFilterCandidate(typeId);
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                if (medicalContext)
+                {
+                    DevLogOnceZombieModeOpaqueFilterFailure(typeId, e.Message);
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        private static bool HasZombieModeRequestedTag(string[] requiredTags, string tagName)
+        {
+            if (requiredTags == null || string.IsNullOrEmpty(tagName))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < requiredTags.Length; i++)
+            {
+                if (string.Equals(requiredTags[i], tagName, System.StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool ContainsZombieModeTypeId(int[] values, int typeId)
+        {
+            if (values == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i] == typeId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void LogZombieModeOpaqueFilterCandidate(int typeId)
+        {
+            if (!DevModeEnabled || !zombieModeOpaqueFilterLogIds.Add(typeId))
+            {
+                return;
+            }
+
+            try
+            {
+                ItemMetaData metaData = ItemAssetsCollection.GetMetaData(typeId);
+                string tags = metaData.tags == null
+                    ? "<null>"
+                    : string.Join(",", System.Array.ConvertAll(metaData.tags, tag => tag == null ? "<null>" : tag.name));
+                DevLog("[ZombieMode] opaque filter candidate id=" + typeId +
+                    " name=" + metaData.Name +
+                    " displayNameKey=" + metaData.DisplayNameKey +
+                    " tags=" + tags);
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] opaque filter candidate id=" + typeId + " metadata log failed: " + e.Message);
+            }
+        }
+
+        private void EnsureZombieModeOpaqueFilterDiagnosticsLogged(string[] requiredTags)
+        {
+            bool medicalContext = HasZombieModeRequestedTag(requiredTags, "Medic") ||
+                                  HasZombieModeRequestedTag(requiredTags, "Medical") ||
+                                  HasZombieModeRequestedTag(requiredTags, "Healing");
+            bool meleeContext = HasZombieModeRequestedTag(requiredTags, "MeleeWeapon");
+            if (!medicalContext && !meleeContext)
+            {
+                return;
+            }
+
+            if (medicalContext)
+            {
+                for (int i = 0; i < ZombieModeMedicalExcludedTypeIds.Length; i++)
+                {
+                    LogZombieModeOpaqueFilterCandidate(ZombieModeMedicalExcludedTypeIds[i]);
+                }
+            }
+            if (meleeContext)
+            {
+                for (int i = 0; i < ZombieModeMeleeExcludedTypeIds.Length; i++)
+                {
+                    LogZombieModeOpaqueFilterCandidate(ZombieModeMeleeExcludedTypeIds[i]);
+                }
+            }
+        }
+
+        private void DevLogOnceZombieModeOpaqueFilterFailure(int typeId, string reason)
+        {
+            if (!DevModeEnabled || !zombieModeOpaqueFilterLogIds.Add(typeId))
+            {
+                return;
+            }
+
+            DevLog("[ZombieMode] medical candidate fail-closed id=" + typeId + " reason=" + reason);
         }
     }
 }

@@ -4,6 +4,7 @@ import sys
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
+WAVE_CONTROLLER = Path("ZombieMode/ZombieModeWaveController.cs")
 
 
 def fail(message: str) -> int:
@@ -13,6 +14,17 @@ def fail(message: str) -> int:
 
 def main() -> int:
     text = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
+    wave_text = WAVE_CONTROLLER.read_text(encoding="utf-8")
+
+    for required in [
+        "public const float PreparationCountdownSeconds = 45f;",
+        "public const float BossPreparationCountdownSeconds = 75f;",
+    ]:
+        if required not in text:
+            return fail("preparation pacing contract missing -> " + required)
+
+    if "extractionOpportunity\n                ? ZombieModeTuning.BossPreparationCountdownSeconds\n                : ZombieModeTuning.PreparationCountdownSeconds" not in wave_text:
+        return fail("BeginZombieModePreparation must select 75/45 seconds from extractionOpportunity")
 
     required = "public const float PeriodicSpawnIntervalSeconds = 1f;"
     if required not in text:

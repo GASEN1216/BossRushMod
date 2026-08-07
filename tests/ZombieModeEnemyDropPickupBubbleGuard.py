@@ -20,6 +20,9 @@ def main() -> int:
         "player.PopText(message, -1f);",
         "搜到了<color=",
         "Found <color=",
+        "TryShowZombieModeSpottedPickupPopText(player, itemName, itemQuality);",
+        "看到了<color=",
+        "Spotted <color=",
         "GetZombieModeDropQualityColorHex",
     ]
     for token in required_tokens:

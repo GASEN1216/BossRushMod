@@ -25,6 +25,7 @@ namespace BossRush
         internal void CleanupZombieModeOnDestroyRuntime()
         {
             CleanupZombieModeOnDestroy();
+            ZombieModeFootMarkerPool.Clear();
         }
     }
 }

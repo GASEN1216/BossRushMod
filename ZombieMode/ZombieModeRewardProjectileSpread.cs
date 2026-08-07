@@ -308,7 +308,8 @@ namespace BossRush
                 int trapStacks = Mathf.Min(2, zombieModeRunState.OptionRuntime.BattlefieldCurseTrapStacks);
                 if (trapStacks > 0 && now >= nextTrapTime)
                 {
-                    Vector3 origin = player.transform.position + player.transform.forward * (trapStacks >= 2 ? 4f : 3f);
+                    Vector3 origin = player.transform.position + GetZombieModePlayerModelForward(player) *
+                        (trapStacks >= 2 ? 4f : 3f);
                     float radius = trapStacks >= 2 ? 4.5f : 3.5f;
                     float damage = trapStacks >= 2 ? 70f : 45f;
                     StartZombieModeTelegraphedAreaDamage(
@@ -326,6 +327,31 @@ namespace BossRush
             }
 
             zombieModeRunState.OptionRuntime.BattlefieldAreaRuntimeStarted = false;
+        }
+
+        private static Vector3 GetZombieModePlayerModelForward(CharacterMainControl player)
+        {
+            if (player != null && player.characterModel != null)
+            {
+                Vector3 modelForward = player.characterModel.transform.forward;
+                modelForward.y = 0f;
+                if (modelForward.sqrMagnitude > 0.001f)
+                {
+                    return modelForward.normalized;
+                }
+            }
+
+            if (player != null)
+            {
+                Vector3 rootForward = player.transform.forward;
+                rootForward.y = 0f;
+                if (rootForward.sqrMagnitude > 0.001f)
+                {
+                    return rootForward.normalized;
+                }
+            }
+
+            return Vector3.forward;
         }
 
         private void StartZombieModeBattlefieldGravityRuntimeIfNeeded(int runId)

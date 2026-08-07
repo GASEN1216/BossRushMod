@@ -30,6 +30,7 @@ def read_effects() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
 
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
+PROJECTILE_SPREAD = Path("ZombieMode/ZombieModeRewardProjectileSpread.cs")
 
 
 def fail(message: str) -> int:
@@ -41,6 +42,7 @@ def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
     rewards = read_rewards()
     effects = read_effects() if EFFECTS.exists() else ""
+    projectile_spread = PROJECTILE_SPREAD.read_text(encoding="utf-8")
     localization = LOCALIZATION.read_text(encoding="utf-8")
 
     for reward_type in ["BattlefieldPurgeAura", "BattlefieldCurseTrap"]:
@@ -58,9 +60,21 @@ def main() -> int:
         "ZombieModeBattlefieldAreaCoroutine",
         "StartZombieModeTelegraphedAreaDamage",
         "DealZombieModeExplosionAreaDamage",
+        "GetZombieModePlayerModelForward",
+        "characterModel.transform.forward",
+        "rootForward = player.transform.forward",
     ]:
         if token not in effects:
             return fail("ZombieModeRewardAreaOptionGuard: missing token -> " + token)
+
+    helper_start = projectile_spread.find("private static Vector3 GetZombieModePlayerModelForward(")
+    if helper_start < 0:
+        return fail("ZombieModeRewardAreaGuard: missing model-forward helper")
+    helper = projectile_spread[helper_start:]
+    model_index = helper.find("characterModel.transform.forward")
+    root_index = helper.find("player.transform.forward")
+    if model_index < 0 or root_index < 0 or model_index > root_index:
+        return fail("ZombieModeRewardAreaGuard: model forward must precede root fallback")
 
     for banned in ["OnTriggerEnter", "OnTriggerExit", "Zone.Healths"]:
         if banned in effects:

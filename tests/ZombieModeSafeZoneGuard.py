@@ -22,6 +22,24 @@ def require(text: str, snippet: str, label: str) -> int:
     return 0
 
 
+def extract_method(text: str, signature: str) -> str:
+    start = text.find(signature)
+    if start < 0:
+        return ""
+    brace = text.find("{", start)
+    if brace < 0:
+        return ""
+    depth = 0
+    for index in range(brace, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+    return ""
+
+
 def main() -> int:
     models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     safe_zone = SAFE_ZONE.read_text(encoding="utf-8")
@@ -91,6 +109,42 @@ def main() -> int:
         result = require(waves, snippet, "damage-driven safe zone stealth break")
         if result:
             return result
+
+    hurt_handler = extract_method(
+        waves,
+        "private void HandleZombieModeHealthHurt(int runId, Health health, DamageInfo damageInfo)",
+    )
+    stealth_index = hurt_handler.find("TryProcessZombieModeSafeZoneStealthBreak")
+    marker_index = hurt_handler.find("TryGetZombieModeKnownEnemyMarker")
+    if stealth_index < 0 or marker_index < 0 or stealth_index < marker_index:
+        return fail(
+            "ZombieModeSafeZoneGuard: non-lethal stealth break must require a known zombie marker"
+        )
+
+    dead_handler = extract_method(
+        waves,
+        "private void HandleZombieModeHealthDead(int runId, Health health, DamageInfo damageInfo)",
+    )
+    lethal_stealth_index = dead_handler.find("TryProcessZombieModeSafeZoneStealthBreak")
+    death_settled_index = dead_handler.find("marker.DeathSettled = true;")
+    unregister_index = dead_handler.find("UnregisterZombieModeEnemyInstanceId")
+    if (
+        lethal_stealth_index < 0
+        or death_settled_index < 0
+        or unregister_index < 0
+        or lethal_stealth_index > death_settled_index
+        or lethal_stealth_index > unregister_index
+    ):
+        return fail(
+            "ZombieModeSafeZoneGuard: lethal stealth break must run before death settlement and marker unregister"
+        )
+
+    stealth_weapon = extract_method(
+        waves,
+        "private bool IsZombieModeDamageFromStealthBreakingWeapon(DamageInfo damageInfo)",
+    )
+    if 'tag.name == "Weapon"' not in stealth_weapon:
+        return fail("ZombieModeSafeZoneGuard: custom melee Weapon tag is not recognized")
 
     for snippet in [
         "if (ShouldSuppressZombieModeEnemyAggroForSafeZone())",

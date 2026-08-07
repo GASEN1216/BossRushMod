@@ -2,6 +2,69 @@ using UnityEngine;
 
 namespace BossRush
 {
+    public sealed class ZombieModeVisualScaleRecord
+    {
+        public Transform Target;
+        public Vector3 OriginalScale;
+    }
+
+    internal static class ZombieModeFootMarkerPool
+    {
+        private static readonly System.Collections.Generic.Stack<GameObject> Pool =
+            new System.Collections.Generic.Stack<GameObject>();
+
+        internal static GameObject Acquire(Transform owner, Mesh mesh, Material material)
+        {
+            GameObject marker = null;
+            while (Pool.Count > 0 && marker == null)
+            {
+                marker = Pool.Pop();
+            }
+
+            if (marker == null)
+            {
+                marker = new GameObject("ZombieMode_PersistentFootMarker");
+                marker.AddComponent<MeshFilter>();
+                marker.AddComponent<MeshRenderer>();
+            }
+
+            MeshFilter meshFilter = marker.GetComponent<MeshFilter>();
+            MeshRenderer meshRenderer = marker.GetComponent<MeshRenderer>();
+            meshFilter.sharedMesh = mesh;
+            meshRenderer.sharedMaterial = material;
+            marker.transform.SetParent(owner, false);
+            marker.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+            marker.transform.localRotation = Quaternion.identity;
+            marker.transform.localScale = new Vector3(0.65f, 0.02f, 0.65f);
+            marker.SetActive(true);
+            return marker;
+        }
+
+        internal static void Release(GameObject marker)
+        {
+            if (marker == null)
+            {
+                return;
+            }
+
+            marker.transform.SetParent(null, false);
+            marker.SetActive(false);
+            Pool.Push(marker);
+        }
+
+        internal static void Clear()
+        {
+            while (Pool.Count > 0)
+            {
+                GameObject marker = Pool.Pop();
+                if (marker != null)
+                {
+                    UnityEngine.Object.Destroy(marker);
+                }
+            }
+        }
+    }
+
     public sealed class ZombieModeEnemyRuntimeMarker : MonoBehaviour
     {
         public int RunId;
@@ -39,6 +102,13 @@ namespace BossRush
         public ZombieModeCommanderAuraTargetRuntime CommanderAuraTargetRuntime;
         public float SuppressedForceTraceDistance;
         public bool HasSuppressedForceTraceDistance;
+        public bool VisualIdentityApplied;
+        public bool VisualScaleApplied;
+        public bool VisualFaceApplied;
+        public bool VisualFootMarkerFallbackApplied;
+        public GameObject VisualFootMarker;
+        public readonly System.Collections.Generic.List<ZombieModeVisualScaleRecord> VisualScaleRecords =
+            new System.Collections.Generic.List<ZombieModeVisualScaleRecord>();
     }
 
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
@@ -167,6 +237,12 @@ namespace BossRush
             marker.CommanderAuraTargetRuntime = null;
             marker.SuppressedForceTraceDistance = 0f;
             marker.HasSuppressedForceTraceDistance = false;
+            RestoreZombieModeVisualScale(marker);
+            ReleaseZombieModeFootMarker(marker);
+            marker.VisualIdentityApplied = false;
+            marker.VisualScaleApplied = false;
+            marker.VisualFaceApplied = false;
+            marker.VisualFootMarkerFallbackApplied = false;
             if (eliteAffixes != null)
             {
                 marker.EliteAffixes.AddRange(eliteAffixes);
@@ -179,8 +255,43 @@ namespace BossRush
                 isBoss ? ZombieModeRunOnlyObjectKind.Boss : ZombieModeRunOnlyObjectKind.Enemy,
                 marker.gameObject,
                 marker,
-                null);
+                () => ReleaseZombieModeFootMarker(marker));
             return marker;
+        }
+
+        private static void RestoreZombieModeVisualScale(ZombieModeEnemyRuntimeMarker marker)
+        {
+            if (marker == null || marker.VisualScaleRecords == null)
+            {
+                return;
+            }
+
+            for (int i = marker.VisualScaleRecords.Count - 1; i >= 0; i--)
+            {
+                ZombieModeVisualScaleRecord record = marker.VisualScaleRecords[i];
+                try
+                {
+                    if (record != null && record.Target != null)
+                    {
+                        record.Target.localScale = record.OriginalScale;
+                    }
+                }
+                catch { }
+            }
+            marker.VisualScaleRecords.Clear();
+        }
+
+        private static void ReleaseZombieModeFootMarker(ZombieModeEnemyRuntimeMarker marker)
+        {
+            if (marker == null || marker.VisualFootMarker == null)
+            {
+                return;
+            }
+
+            GameObject visual = marker.VisualFootMarker;
+            marker.VisualFootMarker = null;
+            marker.VisualFootMarkerFallbackApplied = false;
+            ZombieModeFootMarkerPool.Release(visual);
         }
 
         private static AICharacterController GetZombieModeEnemyAI(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker)
