@@ -11,6 +11,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -23,6 +24,9 @@ namespace BossRush
     /// </summary>
     public class WikiUIManager
     {
+        private const string ExternalWikiCategoryId = "_wiki_link";
+        private const string ExternalWikiUrl = "https://bossrushmod.pages.dev/";
+
         // ============================================================================
         // 单例
         // ============================================================================
@@ -89,6 +93,7 @@ namespace BossRush
         // ============================================================================
 
         private string currentParsedContent = "";
+        private readonly List<string> currentArticlePages = new List<string>();
         private int leftPageToDisplay = 1;
         private int rightPageToDisplay = 2;
 
@@ -117,6 +122,7 @@ namespace BossRush
                 DisablePlayerInput();
                 uiRoot.SetActive(true);
                 IsUIOpen = true;
+                WikiContentManager.Instance.LoadCatalog();
                 ShowIndexPage();
                 SubscribeEscapeKey();
             }
@@ -389,18 +395,34 @@ namespace BossRush
 
             if (txtArticleTitle != null) txtArticleTitle.text = "Boss Rush";
 
+            var categories = WikiContentManager.Instance.GetCategories();
+            currentCategoryId = ResolveContentCategoryId(categories);
             RefreshCategoryList();
             ClearAllEntryToggles();
 
-            // 恢复之前选中的分类，或默认选中第一个
-            var categories = WikiContentManager.Instance.GetCategories();
-            if (categories != null && categories.Count > 0)
+            if (!string.IsNullOrEmpty(currentCategoryId))
             {
-                string targetId = !string.IsNullOrEmpty(currentCategoryId)
-                    ? currentCategoryId
-                    : categories[0].Id;
-                RefreshEntryList(targetId);
+                RefreshEntryList(currentCategoryId);
             }
+        }
+
+        private string ResolveContentCategoryId(List<WikiCategory> categories)
+        {
+            if (categories == null || categories.Count == 0) return null;
+
+            if (!string.IsNullOrEmpty(currentCategoryId) && currentCategoryId != ExternalWikiCategoryId)
+            {
+                for (int i = 0; i < categories.Count; i++)
+                {
+                    if (categories[i].Id == currentCategoryId) return currentCategoryId;
+                }
+            }
+
+            for (int i = 0; i < categories.Count; i++)
+            {
+                if (categories[i].Id != ExternalWikiCategoryId) return categories[i].Id;
+            }
+            return null;
         }
 
         private void ShowArticlePage(string entryId)
@@ -516,16 +538,12 @@ namespace BossRush
             var categories = WikiContentManager.Instance.GetCategories();
             if (categories == null || categories.Count == 0) return;
 
-            bool isFirst = true;
             foreach (var category in categories)
             {
                 var item = CreateListItem(categoryTemplate, categoryContainer,
                     "Category_" + category.Id, category.GetTitle());
 
-                // 确定初始选中状态
-                bool shouldSelect = !string.IsNullOrEmpty(currentCategoryId)
-                    ? (category.Id == currentCategoryId)
-                    : isFirst;
+                bool shouldSelect = category.Id == currentCategoryId;
 
                 var toggle = SetupToggle(item, shouldSelect);
                 if (toggle != null)
@@ -535,6 +553,13 @@ namespace BossRush
                     {
                         if (isOn)
                         {
+                            if (categoryId == ExternalWikiCategoryId)
+                            {
+                                toggle.SetIsOnWithoutNotify(false);
+                                SelectCategory(categoryId);
+                                return;
+                            }
+
                             ClearOtherToggles(categoryContainer, categoryTemplate, item);
                             SelectCategory(categoryId);
                         }
@@ -551,15 +576,14 @@ namespace BossRush
                 }
 
                 item.SetActive(true);
-                isFirst = false;
             }
         }
 
         private void SelectCategory(string categoryId)
         {
-            if (categoryId == "_wiki_link")
+            if (categoryId == ExternalWikiCategoryId)
             {
-                Application.OpenURL("https://bossrushmod.pages.dev/");
+                Application.OpenURL(ExternalWikiUrl);
                 return;
             }
 
@@ -655,7 +679,9 @@ namespace BossRush
             if (txtRight != null)
                 LayoutRebuilder.ForceRebuildLayoutImmediate(txtRight.rectTransform);
 
-            // 左栏：权威分页源（master），用 Page 模式产出 pageInfo
+            // 左栏只在这里充当权威分页源（master），用 Page 模式产出 pageInfo。
+            // 随后把连续的源文本区间缓存成页块，避免右栏独立分页丢失偶数页。
+            currentArticlePages.Clear();
             totalPages = 1;
             if (txtLeft != null)
             {
@@ -664,22 +690,18 @@ namespace BossRush
                 txtLeft.pageToDisplay = 1;
                 txtLeft.ForceMeshUpdate();
 
-                totalPages = txtLeft.textInfo.pageCount;
-                if (totalPages < 1) totalPages = 1;
-
-                EnsureLinkHandler(txtLeft);
+                BuildArticlePageSlices();
             }
 
-            // 右栏使用与左栏完全相同的源文本和 Page 分页，只切换 pageToDisplay。
-            // 不单独截取源字符串，避免富文本标签补全和二次换行改变页边界。
-            if (txtRight != null)
+            if (currentArticlePages.Count == 0)
             {
-                txtRight.text = currentParsedContent;
-                txtRight.overflowMode = TMPro.TextOverflowModes.Page;
-                txtRight.pageToDisplay = 2;
-                txtRight.ForceMeshUpdate();
-                EnsureLinkHandler(txtRight);
+                currentArticlePages.Add(currentParsedContent);
             }
+
+            PrepareArticlePageRenderer(txtLeft);
+            PrepareArticlePageRenderer(txtRight);
+            NormalizeArticlePageSlices();
+            totalPages = currentArticlePages.Count;
 
             currentPageIndex = 0;
             leftPageToDisplay = 1;
@@ -687,8 +709,240 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 将右栏的所有影响分页/布局的字体属性强制同步到左栏，
-        /// 确保左右栏对同一份完整文本产生相同的 TMP 分页边界。
+        /// 将 master TMP 的分页边界转换成连续源文本页块。每个源字符只属于一个页块，
+        /// 富文本标签只在页块边界补齐，不参与决定下一页起点。
+        /// </summary>
+        private void BuildArticlePageSlices()
+        {
+            currentArticlePages.Clear();
+            if (txtLeft == null || txtLeft.textInfo == null || string.IsNullOrEmpty(currentParsedContent)) return;
+
+            var textInfo = txtLeft.textInfo;
+            int pageCount = textInfo.pageCount;
+            if (pageCount < 1 || textInfo.pageInfo == null || textInfo.characterInfo == null) return;
+
+            int[] boundaries = new int[pageCount + 1];
+            boundaries[0] = 0;
+            boundaries[pageCount] = currentParsedContent.Length;
+
+            for (int pageIndex = 1; pageIndex < pageCount; pageIndex++)
+            {
+                int sourceIndex = ResolvePageSourceStart(textInfo, pageIndex, boundaries[pageIndex - 1]);
+                boundaries[pageIndex] = Math.Max(boundaries[pageIndex - 1], Math.Min(sourceIndex, currentParsedContent.Length));
+            }
+
+            for (int pageIndex = 0; pageIndex < pageCount; pageIndex++)
+            {
+                int sliceStart = boundaries[pageIndex];
+                int sliceEnd = boundaries[pageIndex + 1];
+                string slice = currentParsedContent.Substring(sliceStart, sliceEnd - sliceStart);
+                currentArticlePages.Add(RepairPageRichText(slice, currentParsedContent, sliceStart, sliceEnd));
+            }
+        }
+
+        private int ResolvePageSourceStart(TMP_TextInfo textInfo, int pageIndex, int fallback)
+        {
+            if (pageIndex < 0 || pageIndex >= textInfo.pageCount || pageIndex >= textInfo.pageInfo.Length) return fallback;
+
+            int characterIndex = textInfo.pageInfo[pageIndex].firstCharacterIndex;
+            if (characterIndex < 0 || characterIndex >= textInfo.characterCount) return fallback;
+
+            int sourceIndex = textInfo.characterInfo[characterIndex].index;
+            return sourceIndex >= 0 ? sourceIndex : fallback;
+        }
+
+        private static string RepairPageRichText(string slice, string fullSource, int sliceStart, int sliceEnd)
+        {
+            List<string> openAtStart = CollectOpenRichTextTags(fullSource, sliceStart);
+            List<string> openAtEnd = CollectOpenRichTextTags(fullSource, sliceEnd);
+            if (openAtStart.Count == 0 && openAtEnd.Count == 0) return slice;
+
+            var result = new System.Text.StringBuilder(slice.Length + 64);
+            for (int i = 0; i < openAtStart.Count; i++)
+            {
+                result.Append('<').Append(openAtStart[i]).Append('>');
+            }
+
+            result.Append(slice);
+
+            for (int i = openAtEnd.Count - 1; i >= 0; i--)
+            {
+                result.Append("</").Append(GetRichTextTagName(openAtEnd[i])).Append('>');
+            }
+            return result.ToString();
+        }
+
+        private static List<string> CollectOpenRichTextTags(string source, int end)
+        {
+            var stack = new List<string>();
+            if (string.IsNullOrEmpty(source) || end <= 0) return stack;
+            if (end > source.Length) end = source.Length;
+
+            int cursor = 0;
+            while (cursor < end)
+            {
+                int open = source.IndexOf('<', cursor);
+                if (open < 0 || open >= end) break;
+
+                int nameStart = open + 1;
+                if (nameStart < end && source[nameStart] == '/') nameStart++;
+                if (nameStart >= end || !IsAsciiLetter(source[nameStart]))
+                {
+                    cursor = open + 1;
+                    continue;
+                }
+
+                int close = source.IndexOf('>', open + 1);
+                if (close < 0 || close >= end) break;
+
+                string tag = source.Substring(open + 1, close - open - 1).Trim();
+                bool isClosing = tag.StartsWith("/", StringComparison.Ordinal);
+                string tagBody = isClosing ? tag.Substring(1).Trim() : tag;
+                string tagName = GetRichTextTagName(tagBody);
+
+                if (IsTrackedRichTextTag(tagName))
+                {
+                    if (isClosing)
+                    {
+                        for (int i = stack.Count - 1; i >= 0; i--)
+                        {
+                            if (string.Equals(GetRichTextTagName(stack[i]), tagName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                stack.RemoveAt(i);
+                                break;
+                            }
+                        }
+                    }
+                    else if (!IsStandaloneRichTextTag(tagName, tagBody))
+                    {
+                        stack.Add(tagBody);
+                    }
+                }
+
+                cursor = close + 1;
+            }
+            return stack;
+        }
+
+        private static bool IsAsciiLetter(char value)
+        {
+            return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z');
+        }
+
+        private static bool IsTrackedRichTextTag(string tagName)
+        {
+            return string.Equals(tagName, "b", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tagName, "color", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tagName, "link", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tagName, "size", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tagName, "u", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string GetRichTextTagName(string tag)
+        {
+            if (string.IsNullOrEmpty(tag)) return "";
+            int length = 0;
+            while (length < tag.Length && tag[length] != '=' && !char.IsWhiteSpace(tag[length]) && tag[length] != '/')
+            {
+                length++;
+            }
+            return length > 0 ? tag.Substring(0, length) : "";
+        }
+
+        private static bool IsStandaloneRichTextTag(string tagName, string tagBody)
+        {
+            return tagBody.EndsWith("/", StringComparison.Ordinal)
+                || string.Equals(tagName, "br", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tagName, "sprite", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tagName, "space", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tagName, "page", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void PrepareArticlePageRenderer(TMP_Text text)
+        {
+            if (text == null) return;
+            text.text = "";
+            text.overflowMode = TMPro.TextOverflowModes.Page;
+            text.pageToDisplay = 1;
+            EnsureLinkHandler(text);
+        }
+
+        /// <summary>
+        /// 用页块最终所在的左右 TMP 组件复测布局。若补齐富文本或左右矩形差异令页块
+        /// 再次产生多页，则按该组件的第 2 页起点继续拆分，避免隐藏后续字符。
+        /// </summary>
+        private void NormalizeArticlePageSlices()
+        {
+            int pageIndex = 0;
+            int splitCount = 0;
+            while (pageIndex < currentArticlePages.Count)
+            {
+                TMP_Text renderer = pageIndex % 2 == 0 || txtRight == null ? txtLeft : txtRight;
+                string firstPage;
+                string remainder;
+                if (!TrySplitOverflowingPage(renderer, currentArticlePages[pageIndex], out firstPage, out remainder))
+                {
+                    pageIndex++;
+                    continue;
+                }
+
+                currentArticlePages[pageIndex] = firstPage;
+                currentArticlePages.Insert(pageIndex + 1, remainder);
+                splitCount++;
+            }
+
+            if (splitCount > 0)
+            {
+                ModBehaviour.DevLog("[WikiUI] 页块二次校正完成: 追加 " + splitCount + " 个物理页");
+            }
+        }
+
+        private bool TrySplitOverflowingPage(TMP_Text renderer, string pageText, out string firstPage, out string remainder)
+        {
+            firstPage = pageText;
+            remainder = "";
+            if (renderer == null || string.IsNullOrEmpty(pageText)) return false;
+
+            renderer.text = pageText;
+            renderer.overflowMode = TMPro.TextOverflowModes.Page;
+            renderer.pageToDisplay = 1;
+            renderer.ForceMeshUpdate(true, true);
+
+            TMP_TextInfo textInfo = renderer.textInfo;
+            if (textInfo == null || textInfo.pageCount <= 1) return false;
+
+            int splitIndex = ResolvePageSourceStart(textInfo, 1, -1);
+            if (splitIndex <= 0 || splitIndex >= pageText.Length)
+            {
+                splitIndex = ResolvePageSourceEnd(textInfo, 0, -1);
+            }
+            if (splitIndex <= 0 || splitIndex >= pageText.Length)
+            {
+                ModBehaviour.DevLog("[WikiUI] [WARNING] 无法解析溢出页边界，保留原页块");
+                return false;
+            }
+
+            string firstSlice = pageText.Substring(0, splitIndex);
+            string remainingSlice = pageText.Substring(splitIndex);
+            firstPage = RepairPageRichText(firstSlice, pageText, 0, splitIndex);
+            remainder = RepairPageRichText(remainingSlice, pageText, splitIndex, pageText.Length);
+            return !string.IsNullOrEmpty(firstPage) && !string.IsNullOrEmpty(remainder);
+        }
+
+        private int ResolvePageSourceEnd(TMP_TextInfo textInfo, int pageIndex, int fallback)
+        {
+            if (pageIndex < 0 || pageIndex >= textInfo.pageCount || pageIndex >= textInfo.pageInfo.Length) return fallback;
+
+            int characterIndex = textInfo.pageInfo[pageIndex].lastCharacterIndex;
+            if (characterIndex < 0 || characterIndex >= textInfo.characterCount) return fallback;
+
+            TMP_CharacterInfo character = textInfo.characterInfo[characterIndex];
+            return character.index + Math.Max(1, character.stringLength);
+        }
+
+        /// <summary>
+        /// 将右栏所有影响分页/布局的字体属性强制同步到左栏，
+        /// 确保缓存页块在左右两个显示组件中的排版尺寸一致。
         /// </summary>
         private void SyncRightTextPropertiesFromLeft()
         {
@@ -726,30 +980,32 @@ namespace BossRush
             leftPageToDisplay = currentPageIndex * 2 + 1;
             rightPageToDisplay = currentPageIndex * 2 + 2;
 
-            // 左栏：权威页，用 TMP 内置 pageToDisplay 显示
-            if (txtLeft != null)
-            {
-                txtLeft.pageToDisplay = leftPageToDisplay;
-                txtLeft.ForceMeshUpdate();
-            }
-
-            // 右栏显示同一份完整文本的偶数 TMP 页，不做字符串切片和二次排版。
-            if (txtRight != null)
-            {
-                bool hasRightPage = rightPageToDisplay <= totalPages;
-                txtRight.gameObject.SetActive(hasRightPage);
-                if (hasRightPage)
-                {
-                    txtRight.pageToDisplay = rightPageToDisplay;
-                    txtRight.ForceMeshUpdate();
-                }
-            }
+            RenderArticlePage(txtLeft, leftPageToDisplay);
+            RenderArticlePage(txtRight, rightPageToDisplay);
 
             if (txtPageNumber != null)
                 txtPageNumber.text = (currentPageIndex + 1) + "/" + BookTotalPages;
 
             if (btnPrevPage != null) btnPrevPage.interactable = currentPageIndex > 0;
             if (btnNextPage != null) btnNextPage.interactable = currentPageIndex < BookTotalPages - 1;
+        }
+
+        private void RenderArticlePage(TMP_Text text, int pageNumber)
+        {
+            if (text == null) return;
+
+            bool hasPage = pageNumber >= 1 && pageNumber <= currentArticlePages.Count;
+            text.gameObject.SetActive(hasPage);
+            if (!hasPage)
+            {
+                text.text = "";
+                return;
+            }
+
+            text.text = currentArticlePages[pageNumber - 1];
+            text.overflowMode = TMPro.TextOverflowModes.Page;
+            text.pageToDisplay = 1;
+            text.ForceMeshUpdate();
         }
 
         private void EnsureLinkHandler(TMP_Text tmpText)

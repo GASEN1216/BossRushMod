@@ -1,4 +1,4 @@
-"""Guard: Wiki article text must stay inside both book page rectangles."""
+"""Guard: Wiki pages must stay bounded and consume every page slice exactly once."""
 
 from pathlib import Path
 import sys
@@ -19,32 +19,38 @@ def main() -> int:
     if start < 0 or end < 0:
         return fail("cannot locate Wiki article paging setup")
 
-    setup = source[start:end]
     required = (
         "txtLeft.text = currentParsedContent;",
         "txtLeft.overflowMode = TMPro.TextOverflowModes.Page;",
-        "txtRight.text = currentParsedContent;",
-        "txtRight.overflowMode = TMPro.TextOverflowModes.Page;",
-        "txtRight.pageToDisplay = 2;",
-        "txtRight.pageToDisplay = rightPageToDisplay;",
+        "private readonly List<string> currentArticlePages",
+        "BuildArticlePageSlices();",
+        "boundaries[0] = 0;",
+        "boundaries[pageCount] = currentParsedContent.Length;",
+        "currentParsedContent.Substring(sliceStart, sliceEnd - sliceStart)",
+        "RenderArticlePage(txtLeft, leftPageToDisplay);",
+        "RenderArticlePage(txtRight, rightPageToDisplay);",
+        "text.text = currentArticlePages[pageNumber - 1];",
+        "text.overflowMode = TMPro.TextOverflowModes.Page;",
+        "text.pageToDisplay = 1;",
+        "NormalizeArticlePageSlices();",
+        "TrySplitOverflowingPage",
+        "renderer.ForceMeshUpdate(true, true);",
+        "currentArticlePages.Insert(pageIndex + 1, remainder);",
     )
     for pattern in required:
         if pattern not in source:
-            return fail("missing right-page boundary invariant: " + pattern)
-
-    if "txtRight.overflowMode = TMPro.TextOverflowModes.Overflow;" in setup:
-        return fail("right article page uses unbounded Overflow mode")
+            return fail("missing bounded contiguous-page invariant: " + pattern)
 
     forbidden = (
-        "ExtractPageSourceText",
-        "RepairRichTextTags",
-        "CollectOpenTags",
+        "TextOverflowModes.Overflow",
+        "txtRight.text = currentParsedContent;",
+        "txtRight.pageToDisplay = rightPageToDisplay;",
     )
     for pattern in forbidden:
-        if pattern in source:
-            return fail("right article page still uses a second-pass text slice: " + pattern)
+        if pattern in source[start:]:
+            return fail("Wiki article can overflow or independently skip pages: " + pattern)
 
-    print("WikiUIPageOverflowGuard: PASS")
+    print("WikiUIPageOverflowGuard: PASS - bounded renderers use contiguous cached page slices")
     return 0
 
 
