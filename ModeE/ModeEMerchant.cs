@@ -79,13 +79,25 @@ namespace BossRush
             int modeESessionToken = 0,
             int modeESessionRelatedScene = -1)
         {
+            CharacterMainControl spawnedCharacter = null;
             try
             {
+                if (modeESessionToken > 0 &&
+                    (!modeEShellEconomyAvailable || !VerifyModeEShellPatchInstallation()))
+                {
+                    SetModeEShellEconomyUnavailable("merchant spawn preflight failed", true);
+                    return;
+                }
+
                 CharacterRandomPreset merchantPreset = GetModeEMerchantPreset();
 
                 if (merchantPreset == null)
                 {
                     DevLog("[ModeE] [ERROR] 未找到任何商人预设，跳过神秘商人生成");
+                    if (modeESessionToken > 0)
+                    {
+                        FailModeEShellMerchantBuild(null, "merchant preset unavailable");
+                    }
                     return;
                 }
 
@@ -93,6 +105,10 @@ namespace BossRush
                 if (player == null)
                 {
                     DevLog("[ModeE] [ERROR] 玩家实例为空，跳过神秘商人生成");
+                    if (modeESessionToken > 0)
+                    {
+                        FailModeEShellMerchantBuild(null, "merchant player unavailable");
+                    }
                     return;
                 }
 
@@ -100,10 +116,20 @@ namespace BossRush
                 Vector3 dir = -player.transform.forward;
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
 
-                var character = await merchantPreset.CreateCharacterAsync(spawnPos, dir, relatedScene, null, false);
+                spawnedCharacter = await merchantPreset.CreateCharacterAsync(
+                    spawnPos,
+                    dir,
+                    relatedScene,
+                    null,
+                    false);
+                CharacterMainControl character = spawnedCharacter;
                 if (character == null)
                 {
                     DevLog("[ModeE] [ERROR] CreateCharacterAsync 返回空，神秘商人生成失败");
+                    if (modeESessionToken > 0)
+                    {
+                        FailModeEShellMerchantBuild(null, "merchant character creation failed");
+                    }
                     return;
                 }
 
@@ -127,6 +153,15 @@ namespace BossRush
                     return;
                 }
 
+                if (modeESessionToken > 0 &&
+                    (!modeEShellEconomyAvailable || !VerifyModeEShellPatchInstallation()))
+                {
+                    FailModeEShellMerchantBuild(
+                        character.gameObject,
+                        "merchant async continuation preflight failed");
+                    return;
+                }
+
                 // 验证阵营有效性后再设置（modeEPlayerFaction 默认为 Teams.player）
                 character.SetTeam(modeEPlayerFaction);
                 modeEMerchantNPC = character;
@@ -142,6 +177,16 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] SpawnModeEMerchant 失败: " + e.Message);
+                if (modeESessionToken > 0)
+                {
+                    GameObject spawnedGo = null;
+                    try
+                    {
+                        if (spawnedCharacter != null) spawnedGo = spawnedCharacter.gameObject;
+                    }
+                    catch { }
+                    FailModeEShellMerchantBuild(spawnedGo, "merchant spawn failed");
+                }
             }
         }
 
@@ -188,6 +233,72 @@ namespace BossRush
         // 构建分类商店并注入交互选项
         // ====================================================================
 
+        private void FailModeEShellMerchantBuild(GameObject npcGo, string reason)
+        {
+            SetModeEShellEconomyUnavailable(reason, true);
+            modeEMerchantMainInteract = null;
+            try
+            {
+                if (npcGo == null && modeEMerchantNPC != null)
+                {
+                    npcGo = modeEMerchantNPC.gameObject;
+                }
+                if (npcGo != null)
+                {
+                    npcGo.SetActive(false);
+                    UnityEngine.Object.Destroy(npcGo);
+                }
+            }
+            catch { }
+            modeEMerchantNPC = null;
+        }
+
+        private bool TryConfigureModeEMerchantShopIdentity(
+            StockShop shop,
+            string merchantID,
+            bool requireVerified)
+        {
+            try
+            {
+                var merchantField = ReflectionCache.StockShop_MerchantID;
+                var accountField = ReflectionCache.StockShop_AccountAvaliable;
+                if (merchantField == null || accountField == null)
+                {
+                    if (requireVerified)
+                    {
+                        DevLog("[ModeE/Shell] 商店 merchantID/accountAvaliable 反射字段缺失");
+                    }
+                    return !requireVerified;
+                }
+
+                merchantField.SetValue(shop, merchantID);
+                accountField.SetValue(shop, true);
+                if (!requireVerified) return true;
+
+                object merchantReadBack = merchantField.GetValue(shop);
+                object accountReadBack = accountField.GetValue(shop);
+                bool valid = merchantReadBack is string &&
+                             string.Equals((string)merchantReadBack, merchantID, StringComparison.Ordinal) &&
+                             accountReadBack is bool && (bool)accountReadBack &&
+                             string.Equals(shop.MerchantID, merchantID, StringComparison.Ordinal) &&
+                             shop.AccountAvaliable;
+                if (!valid)
+                {
+                    DevLog("[ModeE/Shell] 商店 merchantID/accountAvaliable 设置回读失败: " +
+                        merchantID);
+                }
+                return valid;
+            }
+            catch (Exception e)
+            {
+                if (requireVerified)
+                {
+                    DevLog("[ModeE/Shell] 商店身份设置异常: " + merchantID + ", " + e.Message);
+                }
+                return !requireVerified;
+            }
+        }
+
         /// <summary>
         /// 找到商人原有的 InteractableBase，保留原版交互但修改其显示名称为"召唤煤球"，
         /// 并注入每个物品分类的独立商店交互选项。
@@ -195,13 +306,24 @@ namespace BossRush
         /// </summary>
         private void BuildModeEMerchantShop(GameObject npcGo)
         {
+            bool shellMode = modeEActive && !modeFActive;
             try
             {
+                if (shellMode && !BeginModeEShellMerchantGeneration("merchant create/rebuild"))
+                {
+                    FailModeEShellMerchantBuild(npcGo, "merchant generation preflight failed");
+                    return;
+                }
+
                 // 找到商人原有的 InteractableBase（主交互点）
                 InteractableBase mainInteract = npcGo.GetComponentInChildren<InteractableBase>(true);
                 if (mainInteract == null)
                 {
                     DevLog("[ModeE] [WARNING] 商人 NPC 上未找到 InteractableBase，无法注入商店");
+                    if (shellMode)
+                    {
+                        FailModeEShellMerchantBuild(npcGo, "merchant interactable missing");
+                    }
                     return;
                 }
 
@@ -228,6 +350,10 @@ namespace BossRush
                 if (field == null)
                 {
                     DevLog("[ModeE] [ERROR] 未找到 otherInterablesInGroup 反射字段");
+                    if (shellMode)
+                    {
+                        FailModeEShellMerchantBuild(npcGo, "merchant interaction group contract missing");
+                    }
                     return;
                 }
 
@@ -274,6 +400,10 @@ namespace BossRush
                 if (tagsData == null)
                 {
                     DevLog("[ModeE] [WARNING] 无法获取 TagsData");
+                    if (shellMode)
+                    {
+                        FailModeEShellMerchantBuild(npcGo, "merchant tags unavailable");
+                    }
                     return;
                 }
 
@@ -310,25 +440,29 @@ namespace BossRush
 
                     // 创建 StockShop 组件
                     StockShop shop = shopObj.AddComponent<StockShop>();
-                    modeEMerchantShops.Add(shop);
-
-                    // 设置 merchantID（自定义值，不会从 StockShopDatabase 加载原版商品）
-                    try
+                    if (shellMode)
                     {
-                        var fMerchant = ReflectionCache.StockShop_MerchantID;
-                        if (fMerchant != null)
-                            fMerchant.SetValue(shop, "ModeE_" + suffix);
+                        if (!RegisterModeEShellMerchantShop(shop))
+                        {
+                            UnityEngine.Object.Destroy(shopObj);
+                            FailModeEShellMerchantBuild(npcGo, "shop registration failed");
+                            return;
+                        }
                     }
-                    catch { }
-
-                    // 设置 accountAvaliable = true
-                    try
+                    else
                     {
-                        var fAccount = ReflectionCache.StockShop_AccountAvaliable;
-                        if (fAccount != null)
-                            fAccount.SetValue(shop, true);
+                        modeEMerchantShops.Add(shop);
                     }
-                    catch { }
+
+                    // merchantID 决定 Bullet 满堆规则，accountAvaliable 保留出售到账户语义。
+                    if (!TryConfigureModeEMerchantShopIdentity(
+                            shop,
+                            "ModeE_" + suffix,
+                            shellMode))
+                    {
+                        FailModeEShellMerchantBuild(npcGo, "merchant identity contract failed");
+                        return;
+                    }
 
                     // 填充商品（子弹原价，其余 ×10）
                     float shopPriceFactor = (suffix == "Bullet") ? 1.0f : 10.0f;
@@ -379,25 +513,28 @@ namespace BossRush
                     otherShopObj.transform.localScale = Vector3.one;
 
                     StockShop otherShop = otherShopObj.AddComponent<StockShop>();
-                    modeEMerchantShops.Add(otherShop);
-
-                    // 设置 merchantID
-                    try
+                    if (shellMode)
                     {
-                        var fMerchant = ReflectionCache.StockShop_MerchantID;
-                        if (fMerchant != null)
-                            fMerchant.SetValue(otherShop, "ModeE_Other");
+                        if (!RegisterModeEShellMerchantShop(otherShop))
+                        {
+                            UnityEngine.Object.Destroy(otherShopObj);
+                            FailModeEShellMerchantBuild(npcGo, "other shop registration failed");
+                            return;
+                        }
                     }
-                    catch { }
-
-                    // 设置 accountAvaliable = true
-                    try
+                    else
                     {
-                        var fAccount = ReflectionCache.StockShop_AccountAvaliable;
-                        if (fAccount != null)
-                            fAccount.SetValue(otherShop, true);
+                        modeEMerchantShops.Add(otherShop);
                     }
-                    catch { }
+
+                    if (!TryConfigureModeEMerchantShopIdentity(
+                            otherShop,
+                            "ModeE_Other",
+                            shellMode))
+                    {
+                        FailModeEShellMerchantBuild(npcGo, "other shop identity contract failed");
+                        return;
+                    }
 
                     // 填充商品（ID=388，原价）
                     if (otherShop.entries == null)
@@ -446,13 +583,28 @@ namespace BossRush
 
                 DevLog("[ModeE] 分类商店注入完成，共 " + (categories.Count + 1) + " 个分类，" + totalItems + " 个商品");
 
-                // 异步分帧预缓存所有商店的 itemInstances，避免打开商店时同步实例化导致卡顿
-                // 在缓存完成前打开商店仍可正常使用（原版按需加载兜底）
-                StartCoroutine(CacheAllModeEShopItemInstancesAsync());
+                if (shellMode)
+                {
+                    CacheAllModeEShopItemInstancesAsync(
+                        modeEShellSessionToken,
+                        modeEShellSessionScene,
+                        modeEShellSessionGeneration,
+                        modeEShellMerchantGeneration,
+                        modeEMerchantShops.ToArray()).Forget();
+                }
+                else
+                {
+                    // Mode F 保留旧预热；贝壳经济从不写入或拥有官方 itemInstances。
+                    StartCoroutine(CacheAllModeFShopItemInstancesAsync());
+                }
             }
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] BuildModeEMerchantShop 失败: " + e.Message);
+                if (shellMode)
+                {
+                    FailModeEShellMerchantBuild(npcGo, "merchant build failed");
+                }
             }
         }
 
@@ -872,7 +1024,7 @@ namespace BossRush
         /// 每帧实例化一批物品（BATCH_SIZE 个），避免低端机商人生成时一次性加载数百物品导致卡顿。
         /// 在缓存完成前打开商店仍可正常使用（原版按需加载兜底），缓存完成后打开商店不再卡顿。
         /// </summary>
-        private System.Collections.IEnumerator CacheAllModeEShopItemInstancesAsync()
+        private System.Collections.IEnumerator CacheAllModeFShopItemInstancesAsync()
         {
             const int BATCH_SIZE = 8;
 
@@ -941,6 +1093,11 @@ namespace BossRush
             {
                 // 清理煤球预设缓存
                 ModeEPetSpawner.ClearCache();
+
+                if (HasModeEShellSessionState())
+                {
+                    InvalidateModeEShellMerchantGeneration("CleanupModeEMerchant");
+                }
 
                 // 销毁所有分类商店的子 GameObject
                 RunScopedRegistry.ForEachReverse(

@@ -92,6 +92,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     /reference:TeamSoda.Duckov.Utilities.dll ^
     /reference:AstarPathfindingProject.dll ^
     /reference:PackageTools.dll ^
+    /reference:Plugins.dll ^
     /reference:Drawing.dll ^
     /reference:SodaLocalization.dll ^
     /reference:NodeCanvas.dll ^

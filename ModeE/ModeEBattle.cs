@@ -191,6 +191,56 @@ namespace BossRush
             return modeEMinionPoolByFaction.TryGetValue(faction, out list) ? list : null;
         }
 
+        private static bool ModeEPresetIdentityMatches(EnemyPresetInfo left, EnemyPresetInfo right)
+        {
+            if (object.ReferenceEquals(left, right)) return true;
+            return left != null && right != null &&
+                   !string.IsNullOrEmpty(left.name) &&
+                   string.Equals(left.name, right.name, StringComparison.Ordinal);
+        }
+
+        private static bool ModeEPresetMapContains(
+            Dictionary<Teams, List<EnemyPresetInfo>> map,
+            EnemyPresetInfo preset)
+        {
+            if (map == null || preset == null) return false;
+            foreach (KeyValuePair<Teams, List<EnemyPresetInfo>> pair in map)
+            {
+                List<EnemyPresetInfo> list = pair.Value;
+                if (list == null) continue;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (ModeEPresetIdentityMatches(list[i], preset)) return true;
+                }
+            }
+            return false;
+        }
+
+        private ModeEShellRewardKind ClassifyFinalModeEShellRewardKind(
+            EnemyPresetInfo finalPreset,
+            bool isBoss,
+            bool isModeFRun)
+        {
+            if (isModeFRun || !isBoss || finalPreset == null)
+            {
+                return ModeEShellRewardKind.None;
+            }
+
+            BuildModeEFactionPresetCaches();
+            if (ModeEPresetMapContains(modeEBossPoolByFaction, finalPreset))
+            {
+                return ModeEShellRewardKind.StandardBoss;
+            }
+            if (ModeEPresetMapContains(modeEMinionPoolByFaction, finalPreset))
+            {
+                return ModeEShellRewardKind.PromotedBoss;
+            }
+
+            DevLog("[ModeE/Shell] final preset reward classification unavailable: " +
+                (finalPreset.name ?? "<unnamed>"));
+            return ModeEShellRewardKind.None;
+        }
+
         /// <summary>
         /// 在所有阵营的刷怪点一次性生成全部 Boss
         /// 按距离玩家由近到远分批生成，每批之间让出一帧，避免卡顿
@@ -683,6 +733,25 @@ namespace BossRush
                 CleanupModeEEnemyRuntimeState(character);
                 ModeEEnemyScalingState scalingState = new ModeEEnemyScalingState();
                 scalingState.deathBaseline = GetModeEFactionDeathCount(trackedFaction);
+                scalingState.birthMaxHealth = GetModeEMaxHealthValue(character);
+                if (scalingState.birthMaxHealth <= 0f && character.Health != null)
+                {
+                    scalingState.birthMaxHealth = character.Health.MaxHealth;
+                }
+                scalingState.rewardKind = ClassifyFinalModeEShellRewardKind(
+                    ctx.preset,
+                    ctx.isBoss,
+                    isModeFRun);
+                scalingState.registeredFaction = trackedFaction;
+                scalingState.rewardSessionToken = modeEShellSessionToken;
+                scalingState.rewardSceneBuildIndex = modeEShellSessionScene;
+                scalingState.rewardSessionGeneration = modeEShellSessionGeneration;
+                scalingState.rewardStateComplete = !isModeFRun &&
+                    scalingState.birthMaxHealth > 0f &&
+                    scalingState.rewardKind != ModeEShellRewardKind.None &&
+                    scalingState.rewardSessionToken > 0 &&
+                    scalingState.rewardSceneBuildIndex >= 0 &&
+                    scalingState.rewardSessionGeneration > 0L;
                 modeEEnemyScalingStates[character] = scalingState;
                 TrackModeEAliveEnemy(character, trackedFaction);
                 RegisterEnemyRecoveryAnchor(character, ctx.position);

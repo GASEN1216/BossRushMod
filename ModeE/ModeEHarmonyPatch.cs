@@ -13,9 +13,146 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
 using Duckov.UI;
+using Duckov.Economy;
+using Duckov.Economy.UI;
+using ItemStatsSystem;
+using Cysharp.Threading.Tasks;
 
 namespace BossRush
 {
+    [HarmonyPatch(typeof(StockShop), "Buy", new Type[] { typeof(int), typeof(int) })]
+    public static class ModeEShellBuyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(
+            StockShop __instance,
+            int itemTypeID,
+            int amount,
+            ref UniTask<bool> __result)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null) return true;
+
+            ModeEShellShopPatchDisposition disposition =
+                inst.GetModeEShellShopPatchDisposition(__instance);
+            if (disposition == ModeEShellShopPatchDisposition.PassOriginal) return true;
+            if (disposition == ModeEShellShopPatchDisposition.Block)
+            {
+                __result = UniTask.FromResult(false);
+                return false;
+            }
+
+            __result = inst.BuyModeEShellItemAsync(__instance, itemTypeID, amount);
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(StockShop), "Sell", new Type[] { typeof(Item) })]
+    public static class ModeEShellSellPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(StockShop __instance, Item target, ref UniTask __result)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null || inst.ShouldBypassModeEShellSellPatch(__instance)) return true;
+
+            ModeEShellShopPatchDisposition disposition =
+                inst.GetModeEShellShopPatchDisposition(__instance);
+            if (disposition == ModeEShellShopPatchDisposition.PassOriginal) return true;
+            if (disposition == ModeEShellShopPatchDisposition.Block)
+            {
+                __result = UniTask.CompletedTask;
+                return false;
+            }
+
+            __result = inst.WrapModeEShellSellAsync(__instance, target);
+            return false;
+        }
+    }
+
+    [HarmonyPatch(
+        typeof(StockShopItemEntry),
+        "Setup",
+        new Type[] { typeof(StockShopView), typeof(StockShop.Entry) })]
+    public static class ModeEShellShopItemEntryPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(
+            StockShopItemEntry __instance,
+            StockShopView master,
+            StockShop.Entry entry)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst != null)
+            {
+                inst.ApplyModeEShellItemEntryUi(__instance, master, entry);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(StockShopView), "Setup", new Type[] { typeof(StockShop) })]
+    public static class ModeEMerchantShopViewSetupReusePatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(StockShopView __instance, StockShop target)
+        {
+            if (ModeEMerchantSellAllUI.CanReuseShopViewSetup(__instance, target))
+            {
+                return false;
+            }
+
+            ModeEMerchantSellAllUI.BeginShopViewSetup(target);
+            return true;
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            ModeEMerchantSellAllUI.EndShopViewSetup();
+        }
+
+        [HarmonyFinalizer]
+        public static Exception Finalizer(Exception __exception)
+        {
+            ModeEMerchantSellAllUI.EndShopViewSetup();
+            return __exception;
+        }
+    }
+
+    [HarmonyPatch(
+        typeof(Duckov.UI.InventoryDisplay),
+        "Setup",
+        new Type[]
+        {
+            typeof(Inventory),
+            typeof(Func<Item, bool>),
+            typeof(Func<Item, bool>),
+            typeof(bool),
+            typeof(Func<Item, bool>)
+        })]
+    public static class ModeEMerchantInventoryDisplaySetupReusePatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Duckov.UI.InventoryDisplay __instance, Inventory target)
+        {
+            return !ModeEMerchantSellAllUI.CanReuseInventoryDisplaySetup(__instance, target);
+        }
+    }
+
+    [HarmonyPatch(typeof(StockShopView), "RefreshInteractionButton")]
+    public static class ModeEShellInteractionButtonPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(StockShopView __instance)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst != null)
+            {
+                inst.ApplyModeEShellInteractionButtonUi(__instance);
+            }
+        }
+    }
+
     /// <summary>
     /// Patch CharacterMainControl.SetTeam：
     /// Mode E 中阻止主角阵营被篡改为 Teams.all
@@ -129,12 +266,20 @@ namespace BossRush
         public static void Postfix(Duckov.Economy.StockShop __instance, ref ItemStatsSystem.Item __result)
         {
             var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive)
+            if (inst == null)
             {
                 return;
             }
 
-            if (__instance.MerchantID == "ModeE_Bullet" && __result != null && __result.Stackable)
+            if (inst.IsCurrentModeEShellCapability(__instance))
+            {
+                inst.NormalizeModeEShellStackForShop(__instance, __result);
+                return;
+            }
+
+            // Mode F 继续沿用原子弹满堆显示，不继承贝壳经济。
+            if (inst.IsModeFActive && __instance.MerchantID == "ModeE_Bullet" &&
+                __result != null && __result.Stackable)
             {
                 __result.StackCount = __result.MaxStackCount;
             }
@@ -153,7 +298,9 @@ namespace BossRush
         public static void Prefix(ItemStatsSystem.Item item)
         {
             var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive || item == null || !item.Stackable)
+            // Mode E 专用交易使用捕获商店和统一规范化 helper；该旧 Prefix 仅保留 Mode F 兼容。
+            if (inst == null || inst.IsModeEActive || !inst.IsModeFActive ||
+                item == null || !item.Stackable)
             {
                 return;
             }

@@ -24,10 +24,44 @@ using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using Duckov.UI.DialogueBubbles;
 using Duckov.UI;
+using Duckov.Economy;
 using HarmonyLib;
 
 namespace BossRush
 {
+    internal enum ModeEShellShopPatchDisposition
+    {
+        PassOriginal,
+        Block,
+        HandleModeE
+    }
+
+    internal sealed class ModeEShellBalanceChangedEvent
+    {
+        internal int SessionToken;
+        internal long SessionGeneration;
+        internal int NewBalance;
+    }
+
+    internal sealed class ModeEShellPriceCacheChangedEvent
+    {
+        internal int SessionToken;
+        internal int SceneBuildIndex;
+        internal long SessionGeneration;
+        internal long MerchantGeneration;
+        internal StockShop Shop;
+        internal int? ItemTypeID;
+    }
+
+    internal sealed class ModeEShellTransactionGateChangedEvent
+    {
+        internal int SessionToken;
+        internal long MerchantGeneration;
+        internal long TransactionID;
+        internal bool IsBusy;
+        internal StockShop Shop;
+    }
+
     /// <summary>
     /// Mode E（划地为营）：多阵营沙盒混战模式
     /// <para>玩家裸装+营旗入场，分配阵营，Boss一次性生成，按个人基线层数动态缩放</para>
@@ -47,6 +81,140 @@ namespace BossRush
 
         /// <summary>当前有效的 Mode E 会话令牌。</summary>
         private int modeESessionToken = 0;
+
+        /// <summary>贝壳经济整局代号。只在整局初始化/失效时递增。</summary>
+        private long modeEShellSessionGeneration = 0L;
+
+        /// <summary>贝壳经济商人代号。商人创建、清理或重建时递增。</summary>
+        private long modeEShellMerchantGeneration = 0L;
+
+        private int modeEShellSessionToken = 0;
+        private int modeEShellSessionScene = -1;
+        private bool modeEShellEconomyAvailable = false;
+        private bool modeEShellFirstPositiveRewardGranted = false;
+        private int modeEShellBalance = 0;
+        private int modeEShellItemTypeID = -1;
+
+        // 计数器跨 session 保持单调，旧异步 continuation 不能复用新 owner 身份。
+        private long modeEShellNextTransactionID = 0L;
+        private long modeEShellNextUiBindingID = 0L;
+        private long modeEShellActiveUiBindingID = 0L;
+        private StockShop modeEShellActiveUiShop = null;
+
+        private readonly Dictionary<StockShop, long> modeEMerchantShopGenerations
+            = new Dictionary<StockShop, long>();
+        private readonly HashSet<StockShop> modeEOwnedShopTombstones
+            = new HashSet<StockShop>();
+
+        private struct ModeEShellPriceKey : IEquatable<ModeEShellPriceKey>
+        {
+            internal StockShop Shop;
+            internal int ItemTypeID;
+            internal long MerchantGeneration;
+
+            public bool Equals(ModeEShellPriceKey other)
+            {
+                return object.ReferenceEquals(Shop, other.Shop) &&
+                       ItemTypeID == other.ItemTypeID &&
+                       MerchantGeneration == other.MerchantGeneration;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ModeEShellPriceKey && Equals((ModeEShellPriceKey)obj);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = Shop != null
+                        ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Shop)
+                        : 0;
+                    hash = (hash * 397) ^ ItemTypeID;
+                    hash = (hash * 397) ^ MerchantGeneration.GetHashCode();
+                    return hash;
+                }
+            }
+        }
+
+        private sealed class ModeEShellTransactionOwner
+        {
+            internal int SessionToken;
+            internal long MerchantGeneration;
+            internal long TransactionID;
+            internal StockShop Shop;
+            internal bool OwnsBuying;
+            internal bool OwnsSelling;
+            internal bool IsSellAll;
+        }
+
+        private ModeEShellTransactionOwner modeEShellTransactionOwner = null;
+        private readonly Dictionary<long, long> modeEShellTransactionUiBindings
+            = new Dictionary<long, long>();
+        private bool modeEShellOriginalSellBypassArmed = false;
+        private long modeEShellOriginalSellBypassTransactionID = 0L;
+        private StockShop modeEShellOriginalSellBypassShop = null;
+        private readonly Dictionary<long, int> modeEShellDebits = new Dictionary<long, int>();
+        private readonly HashSet<long> modeEShellRefundedTransactions = new HashSet<long>();
+        private readonly HashSet<long> modeEShellCommittedTransactions = new HashSet<long>();
+        private readonly Dictionary<ModeEShellPriceKey, int> modeEShellPriceCache
+            = new Dictionary<ModeEShellPriceKey, int>();
+        private readonly HashSet<ModeEShellPriceKey> modeEShellPendingPriceKeys
+            = new HashSet<ModeEShellPriceKey>();
+        private bool modeEShellFatalCleanupPending = false;
+        private long modeEShellDeathCallbackSequence = 0L;
+
+        private enum ModeEShellRewardKind
+        {
+            None,
+            StandardBoss,
+            PromotedBoss
+        }
+
+        private struct ModeEShellRewardSnapshot
+        {
+            internal bool Claimed;
+            internal float BirthMaxHealth;
+            internal ModeEShellRewardKind RewardKind;
+            internal Teams RegisteredFaction;
+            internal int SessionToken;
+            internal int SceneBuildIndex;
+            internal long SessionGeneration;
+            internal CharacterMainControl Killer;
+            internal bool PlayerAliveAtSnapshot;
+            internal bool HasDeathPosition;
+            internal Vector3 DeathPosition;
+            internal bool HasPlayerPosition;
+            internal Vector3 PlayerPosition;
+            internal int Frame;
+            internal long CallbackSequence;
+        }
+
+        private event Action<ModeEShellBalanceChangedEvent> ModeEShellBalanceChanged;
+        private event Action<ModeEShellPriceCacheChangedEvent> ModeEShellPriceCacheChanged;
+        private event Action<ModeEShellTransactionGateChangedEvent> ModeEShellTransactionGateChanged;
+
+        // 当前 DLL 的 M0/M1 反射契约；每个 session 都会重新解析并验证补丁安装。
+        private MethodInfo modeEShellBuyTarget;
+        private MethodInfo modeEShellSellTarget;
+        private MethodInfo modeEShellGetItemInstanceDirectTarget;
+        private MethodInfo modeEShellItemEntrySetupTarget;
+        private MethodInfo modeEShellViewSetupTarget;
+        private MethodInfo modeEShellRefreshInteractionButtonTarget;
+        private FieldInfo modeEShellBuyingField;
+        private FieldInfo modeEShellSellingField;
+        private FieldInfo modeEShellCurrentStockField;
+        private FieldInfo modeEShellOnStockChangedField;
+        private FieldInfo modeEShellOnAfterItemSoldField;
+        private FieldInfo modeEShellOnItemPurchasedField;
+        private PropertyInfo modeEShellPurchaseNotificationFormatProperty;
+        private FieldInfo modeEShellItemEntryPriceTextField;
+        private FieldInfo modeEShellViewPriceTextField;
+        private FieldInfo modeEShellViewInteractionButtonField;
+        private FieldInfo modeEShellViewInteractionButtonImageField;
+        private FieldInfo modeEShellViewInteractionTextField;
+        private FieldInfo modeEShellViewMerchantNameTextField;
 
         /// <summary>当前所有存活的 Mode E 敌人（跨阵营）</summary>
         private readonly List<CharacterMainControl> modeEAliveEnemies = new List<CharacterMainControl>();

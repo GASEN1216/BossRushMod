@@ -22,6 +22,14 @@ namespace BossRush
             public Modifier hp;
             public Modifier gunDmg;
             public Modifier meleeDmg;
+            public float birthMaxHealth = -1f;
+            public ModeEShellRewardKind rewardKind = ModeEShellRewardKind.None;
+            public Teams registeredFaction;
+            public int rewardSessionToken;
+            public int rewardSceneBuildIndex = -1;
+            public long rewardSessionGeneration;
+            public bool rewardStateComplete;
+            public bool rewardSettled;
         }
 
         private sealed class ModeEPlayerScalingState
@@ -394,6 +402,156 @@ namespace BossRush
             UntrackModeEAliveEnemy(enemy, faction);
         }
 
+        private ModeEShellRewardSnapshot CaptureAndClaimModeEShellRewardSnapshot(
+            CharacterMainControl enemy,
+            DamageInfo damageInfo)
+        {
+            ModeEShellRewardSnapshot snapshot = new ModeEShellRewardSnapshot();
+            ModeEEnemyScalingState state;
+            if (enemy == null ||
+                !modeEEnemyScalingStates.TryGetValue(enemy, out state) ||
+                state == null ||
+                !state.rewardStateComplete ||
+                state.rewardSettled)
+            {
+                return snapshot;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl killer = null;
+            try { killer = damageInfo.fromCharacter; } catch { }
+
+            bool playerAlive = false;
+            try
+            {
+                playerAlive = player != null && player.Health != null && !player.Health.IsDead;
+            }
+            catch { }
+
+            bool hasDeathPosition = false;
+            Vector3 deathPosition = Vector3.zero;
+            try
+            {
+                if (enemy.transform != null)
+                {
+                    deathPosition = enemy.transform.position;
+                    hasDeathPosition = true;
+                }
+            }
+            catch { }
+
+            bool hasPlayerPosition = false;
+            Vector3 playerPosition = Vector3.zero;
+            try
+            {
+                if (player != null && player.transform != null)
+                {
+                    playerPosition = player.transform.position;
+                    hasPlayerPosition = true;
+                }
+            }
+            catch { }
+
+            // 完整 state 的首次死亡无论最终奖励是否为 0，都在任何外部回调前 claim。
+            state.rewardSettled = true;
+            modeEShellDeathCallbackSequence++;
+            snapshot.Claimed = true;
+            snapshot.BirthMaxHealth = state.birthMaxHealth;
+            snapshot.RewardKind = state.rewardKind;
+            snapshot.RegisteredFaction = state.registeredFaction;
+            snapshot.SessionToken = state.rewardSessionToken;
+            snapshot.SceneBuildIndex = state.rewardSceneBuildIndex;
+            snapshot.SessionGeneration = state.rewardSessionGeneration;
+            snapshot.Killer = killer;
+            snapshot.PlayerAliveAtSnapshot = playerAlive;
+            snapshot.HasDeathPosition = hasDeathPosition;
+            snapshot.DeathPosition = deathPosition;
+            snapshot.HasPlayerPosition = hasPlayerPosition;
+            snapshot.PlayerPosition = playerPosition;
+            snapshot.Frame = Time.frameCount;
+            snapshot.CallbackSequence = modeEShellDeathCallbackSequence;
+
+            DevLog("[ModeE/Shell] death snapshot frame=" + snapshot.Frame +
+                ", order=" + snapshot.CallbackSequence +
+                ", playerAlive=" + snapshot.PlayerAliveAtSnapshot +
+                ", claimed=true, kind=" + snapshot.RewardKind);
+            return snapshot;
+        }
+
+        private static int CalculateModeEShellStandardBossBase(float birthMaxHealth)
+        {
+            double normalized = Math.Max(1000.0, birthMaxHealth) / 1000.0;
+            int tier = (int)Math.Floor(Math.Log(normalized, 2.0));
+            tier = Mathf.Clamp(tier, 0, 6);
+            return 10 + 3 * tier;
+        }
+
+        private void SettleModeEShellRewardNoThrow(ModeEShellRewardSnapshot snapshot)
+        {
+            if (!snapshot.Claimed) return;
+            try
+            {
+                if (!modeEShellEconomyAvailable || modeFActive || !snapshot.PlayerAliveAtSnapshot ||
+                    !IsCurrentModeEShellSession(
+                        snapshot.SessionToken,
+                        snapshot.SceneBuildIndex,
+                        snapshot.SessionGeneration) ||
+                    snapshot.RewardKind == ModeEShellRewardKind.None ||
+                    snapshot.RegisteredFaction == modeEPlayerFaction)
+                {
+                    return;
+                }
+
+                float rewardRatio = 0f;
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (snapshot.Killer != null && snapshot.Killer == player)
+                {
+                    rewardRatio = 1f;
+                }
+                else if (snapshot.HasDeathPosition && snapshot.HasPlayerPosition &&
+                         (snapshot.DeathPosition - snapshot.PlayerPosition).sqrMagnitude <= 64f)
+                {
+                    rewardRatio = 0.5f;
+                }
+
+                if (rewardRatio <= 0f) return;
+
+                int standardBase = CalculateModeEShellStandardBossBase(snapshot.BirthMaxHealth);
+                int rewardBase = snapshot.RewardKind == ModeEShellRewardKind.PromotedBoss
+                    ? Mathf.CeilToInt(standardBase * 0.70f)
+                    : standardBase;
+                int reward = Mathf.CeilToInt(rewardBase * rewardRatio);
+                if (reward <= 0) return;
+
+                if (!modeEShellFirstPositiveRewardGranted)
+                {
+                    modeEShellFirstPositiveRewardGranted = true;
+                    reward += 10;
+                }
+
+                int balance = CreditModeEShell(reward, "Boss reward");
+                CharacterMainControl currentPlayer = CharacterMainControl.Main;
+                if (currentPlayer != null && currentPlayer.transform != null)
+                {
+                    string text = L10n.T(
+                        "贝壳 +" + reward + "（持有 " + balance + "）",
+                        "Shells +" + reward + " (Held " + balance + ")");
+                    DialogueBubblesManager.Show(
+                        text,
+                        currentPlayer.transform,
+                        2.5f,
+                        false,
+                        false,
+                        -1f,
+                        3f);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE/Shell] reward settlement isolated failure: " + e.Message);
+            }
+        }
+
         /// <summary>
         /// Mode E 敌人死亡回调
         /// [性能优化] 死亡时只记录计数和标记脏阵营，不立即遍历应用缩放
@@ -401,9 +559,12 @@ namespace BossRush
         /// </summary>
         private void OnModeEEnemyDeath(CharacterMainControl enemy, DamageInfo damageInfo)
         {
+            ModeEShellRewardSnapshot rewardSnapshot = new ModeEShellRewardSnapshot();
             try
             {
                 if (!modeEActive) return;
+
+                rewardSnapshot = CaptureAndClaimModeEShellRewardSnapshot(enemy, damageInfo);
 
                 // 获取死亡敌人的阵营
                 Teams enemyFaction = enemy.Team;
@@ -483,6 +644,11 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] OnModeEEnemyDeath 失败: " + e.Message);
+            }
+            finally
+            {
+                // 原有 cleanup、死亡计数、重刷与掉落追踪先完成；奖励异常不得阻断死亡链。
+                SettleModeEShellRewardNoThrow(rewardSnapshot);
             }
         }
 

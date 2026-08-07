@@ -43,6 +43,16 @@ namespace BossRush.Patches.Economy
         {
             try
             {
+                // Mode E 的贝壳价格任务只能读取官方 sample；缺失时由 shell-owned
+                // 临时实例计价，不能借这个全局兼容补丁写回官方 itemInstances。
+                ModBehaviour inst = ModBehaviour.Instance;
+                if (inst != null &&
+                    inst.GetModeEShellShopPatchDisposition(__instance) !=
+                        ModeEShellShopPatchDisposition.PassOriginal)
+                {
+                    return;
+                }
+
                 // 使用反射获取 itemInstances 字典
                 var fItems = ReflectionCache.StockShop_ItemInstances;
                 if (fItems == null)

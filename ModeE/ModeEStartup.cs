@@ -961,6 +961,7 @@ namespace BossRush
                 modeEPlayerLastHitKillCount = 0;
                 RemoveModeEPlayerScalingModifiers();
                 ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
+                InitializeModeEShellSession(modeESessionToken, relatedScene);
                 ResetModeEUiCaches();
                 modeEPlayerFaction = faction;
                 ClearEnemyRecoveryMonitorState();
