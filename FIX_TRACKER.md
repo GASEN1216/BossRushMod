@@ -85,9 +85,9 @@
 **验证方法**:
 1. Windows 编译: `compile_official.bat` 通过并部署 `Build/BossRush.dll`。
 2. Guard: `ModeEMerchantOpenReuseGuard.py`、`ModeEShellPriceNormalizationGuard.py`、`ModeEShellHarmonyUiContractGuard.py` 通过。
-3. 最新实机日志: 分类切换 Setup 为 `1-3ms`、`recycleMs=0`，护甲稳定重开为 `47-58ms`；日志未出现 Mode E 商店异常。该日志同时定位并推动修复了 Attach 隐藏池条目刷新尖峰。
+3. 最终实机日志: 所有分类首次打开总耗时为 `37-65ms`、`attachMs=1-4ms`；饰品 456 条完整加载后切护甲时回收 `456` 条仅 `3ms`，`ShowUI=64ms`、`attachMs=1ms`、总耗时 `65ms`，随后分帧加载 `24+31` 条且 `failed=0`。日志未出现 Mode E 商店异常、分帧失败或对象池回收失败。
 4. 静态检查: 本次 Mode E 作用域 `git diff --check` 通过。
-**未验证/需人工**: Attach 收敛后的最终 DLL 仍需按“饰品完整加载 -> 关闭 -> 打开护甲/诱饵”复测，确认新日志 `attachMs` 保持低值、完整打开不再出现百毫秒至秒级尖峰，UI 首屏立即显示且余下条目约 1 秒内补齐；还需复测 5 倍价格下的前 10 次击杀购买节奏。
+**未验证/需人工**: 性能与分类切换已完成实机验证；仍需按前 10 次击杀的实际购买选择观察 5 倍价格下的经济节奏，必要时再做小幅数值微调。
 **失败尝试**: 第一版只分帧创建，没有处理下一次切店时原版同步释放全部活动条目，最新实测仍卡；首次误把量化单位提高到 `50000`，复核公式后确认这会降低价格，未保留该改动；Harmony `__state` 初版公开方法触发 C# 可见性编译错误，已将该补丁方法收为私有静态并重新验证。
 
 
