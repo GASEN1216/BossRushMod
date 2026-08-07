@@ -229,8 +229,13 @@ def main() -> int:
     for required in [
         'var harmony = new Harmony("com.bossrush.mod");',
         "harmony.PatchAll();",
-        'DevLog("[BossRush] Harmony Patch 已应用（Item.OnEnable）");',
-        'DevLog("[BossRush] [WARNING] Harmony Patch 应用失败: " + e.Message);',
+        'DevLog("[BossRush] Harmony Patch 扫描完成");',
+        'DevLog("[BossRush] [WARNING] Harmony Patch 扫描失败: " + e);',
+        ".EnsureCriticalPatchesApplied(harmony);",
+        'DevLog("[BossRush] [ERROR] 动态物品关键补丁验证失败: " + e);',
+        "if (!criticalDynamicItemPatchesReady)",
+        "BossRushDynamicItemRegistry.EnsureAllRegistered();",
+        "BossRushDynamicItemRegistry.PublishedTypeCount;",
     ]:
         if required not in bootstrap_body:
             return fail("ArchitectureStructureGuard: InitializeBootstrapRuntime missing token: " + required)

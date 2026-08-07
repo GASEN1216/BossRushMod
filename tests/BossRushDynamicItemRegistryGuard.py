@@ -7,6 +7,7 @@ import sys
 COMPILE = Path("compile_official.bat")
 REGISTRY = Path("Integration/BossRushDynamicItemRegistry.cs")
 PATCH = Path("Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs")
+ALWAYS_ON_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
 START = Path("Integration/BossRushIntegration_StartAndScene.cs")
 WIKI_BOOK = Path("Integration/WikiBookItem.cs")
@@ -29,6 +30,7 @@ def main() -> int:
     compile_text = normalize_slashes(COMPILE.read_text(encoding="utf-8", errors="ignore"))
     registry = REGISTRY.read_text(encoding="utf-8", errors="ignore")
     patch = PATCH.read_text(encoding="utf-8", errors="ignore")
+    always_on_hooks = ALWAYS_ON_HOOKS.read_text(encoding="utf-8", errors="ignore")
     equipment = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
     start = START.read_text(encoding="utf-8", errors="ignore")
     wiki_book = WIKI_BOOK.read_text(encoding="utf-8", errors="ignore")
@@ -50,8 +52,11 @@ def main() -> int:
         '"InstantiateSync"',
         '"InstantiateAsync"',
         '"InstantiateAsync_Local"',
+        '"InstantiateFallbackItem"',
         "typeof(ItemTreeData)",
+        "typeof(InventoryData)",
         "data.entries",
+        "EnsureCriticalPatchesApplied",
     ):
         if token not in patch:
             return fail("patch missing token: " + token)
@@ -94,7 +99,11 @@ def main() -> int:
         "WildHornConfig.BUNDLE_NAME",
         "WildHornConfig.TYPE_ID",
         "FactionFlagConfig.ALL_FLAG_TYPE_IDS",
-        "RespawnItemConfig.ALL_RESPAWN_ITEM_TYPE_IDS",
+        'ItemOnly("respawn_items")',
+        "RespawnItemConfig.TAUNT_SMOKE_TYPE_ID",
+        "RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID",
+        'ItemOnly("bosscall_whistle"), RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID',
+        'ItemOnly("bloodhunt_beacon"), RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID',
         "DiamondRingConfig.BUNDLE_NAME",
         "DiamondRingConfig.TYPE_ID",
         "CalmingDropsConfig.BUNDLE_NAME",
@@ -131,6 +140,32 @@ def main() -> int:
     for token in required_registry_tokens:
         if token not in registry:
             return fail("registry missing mapping token: " + token)
+
+    if 'ItemOnly("respawn_items"), RespawnItemConfig.ALL_RESPAWN_ITEM_TYPE_IDS' in registry:
+        return fail("500032/500033 must not map to respawn_items")
+
+    for token in (
+        "InventoryDataLoadIntoInventoryDynamicRegistrationPatch",
+        "ItemAssetsCollectionInstantiateFallbackDynamicRegistrationPatch",
+        "GetRegisteredPrefabWithoutEnsuring",
+        "internal static int EnsureAllRegistered()",
+        "return EnsureRegistered(Plans.Keys);",
+        "internal static int PublishedTypeCount",
+    ):
+        if token not in patch + registry:
+            return fail("dynamic registration recovery path missing token: " + token)
+
+    if "DynamicItemRegistrationPatchSupport" not in always_on_hooks:
+        return fail("bootstrap must verify critical dynamic item patches")
+    if ".EnsureCriticalPatchesApplied(harmony);" not in always_on_hooks:
+        return fail("bootstrap must repair missing critical dynamic item patches")
+    for token in (
+        "if (!criticalDynamicItemPatchesReady)",
+        "BossRushDynamicItemRegistry.EnsureAllRegistered();",
+        "BossRushDynamicItemRegistry.PublishedTypeCount;",
+    ):
+        if token not in always_on_hooks:
+            return fail("bootstrap missing critical-patch failure fallback: " + token)
 
     if "EnsureDragonBossRewardContentPreloaded" in start + equipment:
         return fail("dragon reward content must not be synchronously preloaded at Start")

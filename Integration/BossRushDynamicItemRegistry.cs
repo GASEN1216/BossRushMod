@@ -39,6 +39,11 @@ namespace BossRush
             return Plans.ContainsKey(typeId);
         }
 
+        internal static int PublishedTypeCount
+        {
+            get { return Plans.Count; }
+        }
+
         internal static bool EnsureRegistered(int typeId)
         {
             RegistrationPlan plan;
@@ -118,16 +123,26 @@ namespace BossRush
             return readyCount;
         }
 
+        internal static int EnsureAllRegistered()
+        {
+            return EnsureRegistered(Plans.Keys);
+        }
+
         internal static bool HasRegisteredPrefabWithoutEnsuring(int typeId)
+        {
+            return GetRegisteredPrefabWithoutEnsuring(typeId) != null;
+        }
+
+        internal static Item GetRegisteredPrefabWithoutEnsuring(int typeId)
         {
             prefabCheckDepth++;
             try
             {
-                return ItemAssetsCollection.GetPrefab(typeId) != null;
+                return ItemAssetsCollection.GetPrefab(typeId);
             }
             catch
             {
-                return false;
+                return null;
             }
             finally
             {
@@ -281,7 +296,11 @@ namespace BossRush
             Add(plans, ItemOnly(AchievementMedalConfig.BUNDLE_NAME), AchievementMedalConfig.TYPE_ID);
             Add(plans, ItemOnly(WildHornConfig.BUNDLE_NAME), WildHornConfig.TYPE_ID);
             Add(plans, ItemOnly("faction_flags"), FactionFlagConfig.ALL_FLAG_TYPE_IDS);
-            Add(plans, ItemOnly("respawn_items"), RespawnItemConfig.ALL_RESPAWN_ITEM_TYPE_IDS);
+            Add(plans, ItemOnly("respawn_items"),
+                RespawnItemConfig.TAUNT_SMOKE_TYPE_ID,
+                RespawnItemConfig.CHAOS_DETONATOR_TYPE_ID);
+            Add(plans, ItemOnly("bosscall_whistle"), RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID);
+            Add(plans, ItemOnly("bloodhunt_beacon"), RespawnItemConfig.ALL_KINGS_BANNER_TYPE_ID);
             Add(plans, ItemOnly(DiamondRingConfig.BUNDLE_NAME), DiamondRingConfig.TYPE_ID);
             Add(plans, ItemOnly(CalmingDropsConfig.BUNDLE_NAME), CalmingDropsConfig.TYPE_ID);
             Add(plans, ItemOnly(PeaceCharmConfig.BUNDLE_NAME), PeaceCharmConfig.TYPE_ID);

@@ -6,12 +6,46 @@ namespace BossRush
     {
         internal void InitializeBootstrapRuntime()
         {
+            var harmony = new Harmony("com.bossrush.mod");
             try
             {
-                var harmony = new Harmony("com.bossrush.mod");
                 harmony.PatchAll();
-                DevLog("[BossRush] Harmony Patch 已应用（Item.OnEnable）");
+                DevLog("[BossRush] Harmony Patch 扫描完成");
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] Harmony Patch 扫描失败: " + e);
+            }
 
+            bool criticalDynamicItemPatchesReady = false;
+            try
+            {
+                criticalDynamicItemPatchesReady = BossRush.Patches.ItemStatsSystem.DynamicItemRegistrationPatchSupport
+                    .EnsureCriticalPatchesApplied(harmony);
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [ERROR] 动态物品关键补丁验证失败: " + e);
+            }
+
+            if (!criticalDynamicItemPatchesReady)
+            {
+                try
+                {
+                    int readyCount = BossRushDynamicItemRegistry.EnsureAllRegistered();
+                    int totalCount = BossRushDynamicItemRegistry.PublishedTypeCount;
+                    string level = readyCount == totalCount ? "[WARNING]" : "[ERROR]";
+                    DevLog("[BossRush] " + level + " 动态物品关键补丁不完整，已执行全量同步注册: "
+                        + readyCount + "/" + totalCount);
+                }
+                catch (System.Exception e)
+                {
+                    DevLog("[BossRush] [ERROR] 动态物品全量同步注册失败: " + e);
+                }
+            }
+
+            try
+            {
                 // 注册 Harmony Patch 分组（仅日志与元数据，不改变 Patch apply 方式）
                 HarmonyPatchGroupRegistrar.Clear();
                 HarmonyPatchGroupRegistrar.Register(new BaseHubPatchGroup());
@@ -21,7 +55,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[BossRush] [WARNING] Harmony Patch 应用失败: " + e.Message);
+                DevLog("[BossRush] [WARNING] Harmony Patch 分组元数据注册失败: " + e);
             }
         }
 

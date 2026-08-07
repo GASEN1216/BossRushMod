@@ -37,6 +37,34 @@
 **未验证/需人工**: 如有
 **失败尝试**: 如有
 ```
+
+---
+### 2026-08-07 动态物品偶发整批变成问号
+
+**状态**: fixed
+**Finding**: 多名玩家反馈 / `鸭科夫源码` 与当前 Managed DLL 反编译复核
+**兼容分类**: COMPAT / WIRE+
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+**现象**: 修复加载菜单卡顿、把内容注册移入延迟 bootstrap 后，部分玩家完整启动或进入基地时会看到 BossRush 物品变成白底问号；出现频率受官方存档恢复与 Mod 延迟注册的先后顺序影响。
+**根因**: 官方 `SavedInventory.Start()` 经 `InventoryData.LoadIntoInventory()` / `ItemTreeData.InstantiateAsync()` 立即按 TypeID 实例化存档物品，找不到动态 prefab 时会创建 `FallbackItem_<TypeID>`。现有 2026-07-02 按需注册只依赖程序集级 `Harmony.PatchAll()` 和逐物品入口，没有验证关键补丁是否真的挂载，也没有在整批库存实例化前建立注册屏障；此外 `500032/500033` 被错误映射到只包含 `500027/500028` 的 `respawn_items` bundle。
+**修复内容**:
+- 修改 `Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs`：新增 `InventoryData.LoadIntoInventory` 批量注册屏障，先扫描所有根物品和嵌套物品 TypeID，再允许官方异步实例化；新增 `InstantiateFallbackItem` 最后兜底，能注册 BossRush prefab 时直接返回真实实例。
+- 修改 `Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs`、`Utilities/AlwaysOnRuntimeHooks.cs`：启动后逐项验证 8 个动态物品关键 Harmony prefix；程序集全量 Patch 失败或漏装时单独补装关键补丁，并输出 `verified/total` 日志。
+- 修改 `Integration/BossRushDynamicItemRegistry.cs`：提供绕过 prefix 的已注册 prefab 读取；将 `500027/500028` 保留在 `respawn_items`，把 `500032` 改到 `bosscall_whistle`、`500033` 改到 `bloodhunt_beacon`。
+- 修改 `Integration/BossRushDynamicItemRegistry.cs`、`Utilities/AlwaysOnRuntimeHooks.cs`：若关键补丁补装后仍未达到 `8/8`，立即同步注册注册表中的全部已发布 TypeID；仅异常分支承担全量加载开销，避免补丁失效时继续生成问号占位物品。
+- 修改 `tests/BossRushDynamicItemRegistryGuard.py`：锁定库存批量屏障、fallback 兜底、启动自检调用和三组正确 bundle 映射。
+**兼容性影响**: 不改 TypeID、存档 key、配置 schema、AssetBundle 文件名或正常延迟加载策略；关键补丁完整时只在官方准备恢复 BossRush 存档物品时同步加载该存档实际需要的 bundle，只有补丁验证失败的异常环境会在启动时全量同步注册。
+**验证方法**:
+1. 当前 Managed DLL 反编译确认 `InventoryData.LoadIntoInventory` 会逐项调用 `ItemTreeData.InstantiateAsync`，缺失 prefab 最终进入 `InstantiateFallbackItem`。
+2. Windows 编译: `compile_official.bat` 通过并部署 `Build/BossRush.dll`。
+3. Guard: `BossRushDynamicItemRegistryGuard.py`、`DeferredIntegrationBootstrapGuard.py`、`ContentRegistryGuard.py`、`DragonBossRewardContentPreloadGuard.py`、`PhantomWitchScytheRewardBundleGuard.py`、Harmony 相关守卫通过。
+4. 静态检查: 本次相关文件 `git diff --check` 通过。
+5. 全量 400 个 Python guard 中 392 个通过；其余 8 个是本次改动前已存在、来自工作区其他未提交改动或需要实机刷新日志的无关失败：`DragonKingBossGunRocketSplitGuard.py`、`EmptyCatchGuard.py`、`LargeFileBudgetGuard.py`、`ModBehaviourInstanceClassificationGuard.py`、`SmokeLogScan.py`、`ZombieModeNormalZombieCapAndAggroGuard.py`、`ZombieModePacingTuningGuard.py`、`ZombieModeSpawnSelectionSqrGuard.py`。
+6. 游戏内 smoke: `Player.log` 显示 `关键补丁验证完成: 8/8, 补装=0`，未出现 `FallbackItem_5000xx` 或动态注册失败；`500032/500033` 分别从 `bosscall_whistle` / `bloodhunt_beacon` 成功加载，ItemFactory 36 件、EquipmentFactory 19 件均完成注册。
+**未验证/需人工**: 仍建议在不同玩家环境连续冷启动复测；缺失或损坏的 Workshop 资源文件不属于代码可恢复范围。日志中的 `FallbackItem_-1` 来自官方 `Duckov.MiniGames.GamingConsole.Load()`，不属于 BossRush TypeID 注册链。
+**失败尝试**: 首轮编译中 `Patches` 在补丁命名空间内被解析成命名空间，已将 Harmony patch-info 类型改为 `HarmonyLib.Patches` 后重新编译通过。
+
 ---
 ### 2026-08-07 Mode E 分类商店首开卡顿与贝壳价格过低
 
