@@ -39,6 +39,171 @@
 ```
 
 ---
+### 2026-08-06 丧尸模式变异僵尸中英文图鉴与源码一致性守卫
+
+**状态**: fixed
+**Finding**: `2026-08-03_玩家反馈保守优化方案复审.md` 第 12.1 节
+**兼容分类**: SAFE
+**版本/Commit**: `224c35d`
+**Owner decision**: 不需要；纯文档与开发期静态导出，不修改战斗运行时
+**现象**: 丧尸模式 Wiki 只有 Special/Elite 能力简表，未覆盖 `OfficialExploder`，也没有登记确定性的目标色、安全视觉体型、污染倍率、完整技能参数或精英颜色优先级。
+**根因**: Wiki 页面早于变异视觉身份实现，`SpecialKind`、`EliteAffixes`、`ZombieModeTuning` 与运行时技能数据没有开发期一致性检查，页面随源码演进后出现信息缺口。
+**修复内容**:
+- 修改 `WikiContent/zh/mode/mode__zombie_mode.md` 与 `WikiContent/en/mode/mode__zombie_mode.md`：覆盖 6 个 Special 和 12 个 Elite 词缀，登记污染前战斗倍率、目标色、安全视觉缩放、颜色优先级、爆炸/冲刺/毒区/减速/召唤/护盾/适应等已知数据及运行时未知边界。
+- 生成 `wiki-site/docs/game-modes/zombie-mode.md` 与 `wiki-site/docs/en/game-modes/zombie-mode.md`。
+- 新增 `tests/ZombieModeMutantWikiGuard.py`：从 C# 枚举读取图鉴身份，核对调优/技能/视觉常量、双语覆盖、生成页同步和 ZombieMode 运行时代码无 Wiki 扫描引用；Python guard 不进入 `compile_official.bat`。
+**兼容性影响**: 不改变 TypeID、存档、配置、掉落、战斗倍率、技能、资源或 schema；开发期同步继续以 `WikiContent/` 为唯一权威源，未新增 C# Wiki 导出器、战斗实体扫描或常驻工作。
+**验证方法**:
+1. C# 编译：未运行；本条只修改 Markdown、生成 Markdown 与 Python guard，没有 `.cs` 或编译清单变更。
+2. Guard：`ZombieModeMutantWikiGuard.py` 通过（6 个 Special、12 个词缀、双语生成页同步）；`ZombieModeMutantVisualProfileGuard.py` 与 `BossWikiGuideContentGuard.py` 通过。
+3. Wiki：`npm.cmd run sync` 成功生成中文 99 篇、英文 99 篇；`npm.cmd run build` 通过，VitePress 1.6.4 完成客户端/服务端 bundle 与页面渲染。
+4. 静态检查：本条作用域 `git diff --check` 无 whitespace 错误，仅有仓库既有 LF/CRLF 转换提示。
+**未验证/需人工**: 游戏内置 Wiki 的长表横向阅读、字体换行和颜色代码显示仍需实机打开页面确认；纯文档改动不需要战斗行为 smoke。
+
+---
+### 2026-08-06 玩家反馈：D/E/F 开局资源、丧尸破隐/朝向与分类商店重复卡顿
+
+**状态**: fixed
+**Finding**: 最新玩家反馈 / 完整调用链与官方反编译复核
+**兼容分类**: COMPAT / WIRE+
+**版本/Commit**: `012c900` / `8f5d9b5`
+**Owner decision**: 不需要；沿用已确认的 ZombieMode 医疗/近战排除契约与现有 Mode E/F 商店边界
+**现象**: Mode D/E/F 共用的开局医疗/近战发放仍可能绕过丧尸模式排除；丧尸模式前方延迟爆炸使用角色根节点朝向；安全区内对丧尸的致死一击或自定义近战伤害可能不破隐；Mode E/F 分类商店重开时每次重复全量 UI Setup，Mode E 附加按钮和余额文本还反复克隆/销毁。
+**根因**: `GivePlayerStarterKit()` 只调用未带 Zombie 排除的池选择，医疗硬编码兜底也未过滤；`ZombieModeBattlefieldAreaCoroutine()` 直接读取 `player.transform.forward`；官方致死事件顺序为 `OnDead -> SetActive(false) -> OnHurt`，死亡处理先注销 marker 后，旧 `OnHurt` 破隐路径会提前返回，且自定义近战实际使用的 `Weapon` 标签未被识别；官方 `StockShopView.Setup()` 每次 `SetupAndShow()` 都遍历商品并对玩家/宠物/仓库重复调用会清空重建条目的 `InventoryDisplay.Setup()`，Mode E 附加控件生命周期也没有复用。
+**修复内容**:
+- 修改 `ModeD/ModeDEquipment_StarterKit.cs`：D/E/F 共用医疗与近战 starter pool 使用 `IsZombieModeRewardCandidateAllowed()`，401/402/403 硬编码兜底也经过同一过滤；无安全候选时跳过该格。
+- 修改 `ZombieMode/ZombieModeRewardProjectileSpread.cs`：延迟爆炸优先取 `player.characterModel.transform.forward`，水平化并归一化，根节点/世界前方仅作兜底。
+- 修改 `ZombieMode/ZombieModeWaveController.cs`：非致死命中只在确认 Zombie marker 后破隐；致死命中按官方同帧事件顺序在 `DeathSettled` 和 marker 注销前破隐；补充自定义近战 `Weapon` 标签，避免误伤非丧尸目标也破隐。
+- 修改 `ModeE/ModeEHarmonyPatch.cs`、`ModeE/ModeE.cs`、`ModeE/ModeEMerchantSupportClasses.cs`：同一 BossRush Mode E/F 分类商店重开时跳过重复官方 `Setup`；切换分类仍完整刷新商品列表，但相同玩家/宠物/仓库 Inventory 不再清空重建；一键卖出按钮与贝壳余额文本关闭时隐藏、运行时销毁时释放，避免重复 Instantiate/Destroy。
+- 新增/修改守卫：`tests/ModeDStarterKitZombieFilterGuard.py`、`tests/ModeEMerchantOpenReuseGuard.py`、`tests/ModeEShellHarmonyUiContractGuard.py`、`tests/ZombieModeRewardAreaOptionGuard.py`、`tests/ZombieModeSafeZoneGuard.py`。
+**兼容性影响**: 不改变 TypeID、存档、配置、奖励数值、商店商品池或普通官方商店；新增 `StockShopView.Setup(StockShop)` 与 `InventoryDisplay.Setup(Inventory,Func<Item,bool>,Func<Item,bool>,bool,Func<Item,bool>)` Harmony 契约只在 BossRush Mode E/F 分类商店同步 Setup 调用栈内复用相同 Inventory，契约缺失时既有 Mode E fail-closed 逻辑保持关闭。新增文件均为 Python guard，不进入 `compile_official.bat`。
+**验证方法**:
+1. 日志：`Player.log`（2026-08-06 19:41，282265 bytes）未出现 `[ZombieMode]`、商店打开耗时或 BossRush 相关异常；可见异常是官方 `Duckov.MiniGames.GamingConsole.Load` 在 `Item ID:-1` 后的 NRE，以及第三方 TriangleDuckAttachmentExpansion 退出清理 NRE。
+2. Windows 编译：`cmd.exe /c compile_official.bat` 通过并部署 `Build/BossRush.dll`。
+3. Guard：定向 starter、safe-zone、延迟爆炸朝向、Mode E Harmony 契约和商店复用 guard 通过；`git diff --check` 通过。
+**未验证/需人工**: ZombieMode 实际 characterModel 朝向、同帧死亡/对象销毁窗口、Harmony 实际命中、Mode D/E/F 开局抽样、安全区枪械/近战破隐、同店重开/切换分类 UI 手感和商店卡顿改善仍需实机验证；当前日志无法量化商店卡顿。
+**失败尝试**: 无。
+
+---
+### 2026-08-06 Mode E 贝壳物品内部名误用导致商人全部关闭
+
+**状态**: fixed
+**Finding**: 玩家实机反馈 / 最新 `Player.log` 静态回溯
+**兼容分类**: COMPAT
+**版本/Commit**: `012c900`
+**Owner decision**: 不需要；修复既定贝壳 economy capability 的运行时物品身份解析
+**现象**: 进入 Mode E 后分类商人完全不生成；日志先出现 `[ModeE/Shell] capability disabled: session preflight failed`，随后出现 `merchant spawn preflight failed`。
+**根因**: `ItemAssetsCollection.TryGetIDByName()` 按 `ItemMetaData.Name` 查找。当前游戏资源中贝壳内部名为 `SeaShell`，`Item_SeaShell` 是显示文本本地化键；错误查询返回 `-1`，使商人创建按 fail-closed 契约直接退出。
+**修复内容**:
+- 修改 `ModeE/ModeEMerchantSupportClasses.cs`：使用常量 `MODE_E_SHELL_ITEM_NAME = "SeaShell"` 查询，并在返回 `-1` 或抛异常时记录可区分的身份诊断；反射契约与 Harmony 安装证明现在逐项报告失败名称。
+- 修改 `tests/ModeEShellCurrencyBoundaryGuard.py`、`tests/ModeEShellHarmonyUiContractGuard.py`：锁定 metadata name 与 localization key 的边界，并要求完整契约/补丁诊断。
+**兼容性影响**: 不改变 TypeID、价格、余额、存档、配置、Harmony 目标或商人商品池；仅恢复当前资源下本应可用的 Mode E 贝壳 capability 和商人生成，并改善失败诊断。
+**验证方法**:
+1. 资源/官方契约：当前 `resources.assets` 同一贝壳记录包含内部名 `SeaShell` 与本地化键 `Item_SeaShell`；官方反编译确认 `TryGetIDByName` 比较 `Entry.metaData.Name`。
+2. Windows 编译：`compile_official.bat` 通过并部署到游戏 Mods 目录。
+3. Guard：全部 Mode E guards 通过；`BossWikiGuideContentGuard.py` 通过。
+**未验证/需人工**: 需重新启动游戏进入 Mode E，确认日志出现 `M1 capability ready ... SeaShell=<TypeID>`、四个 Harmony 安装证明成功、神秘商人生成成功，并实际打开至少一个分类商店；购买/出售、Incoming Buffer、切图和 UI 手感仍需实机验证。
+**失败尝试**: 无。
+
+---
+### 2026-08-06 Mode E 退役商店伪 null 现金旁路与复审 guard 失真
+
+**状态**: fixed
+**Finding**: 2026-08-03 玩家反馈保守优化方案复审 / 本轮完整调用链复核
+**兼容分类**: COMPAT / SAFE
+**版本/Commit**: `012c900` / `224c35d`
+**Owner decision**: 不需要；修复既定“受管 Mode E 商店不得回落原版现金购买”契约，并收紧静态守卫
+**现象**: Mode E 商店退役并调用 `Destroy` 后，Unity 会在实际销毁前把组件比较为 `null`。此时同帧迟到的购买/出售/UI 回调可能被三态路由误判为普通商店，放行原版现金逻辑。另有发货 guard 仍断言旧版五参数事务入口，造成正确实现被误报；Wiki 12 个目标页面没有成对同步与最低完整度 guard。
+**根因**: `GetModeEShellShopPatchDisposition()` 使用 Unity 重载的 `shop == null` 作为 `PassOriginal` 条件，没有区分真实 CLR null 与仍在 tombstone 中的 Unity 伪 null；`ModeEShellDeliveryContractGuard.py` 未随事务 owner 签名收敛；Wiki 仅依赖人工同步和站点构建。
+**修复内容**:
+- 修改 `ModeE/ModeEMerchantSupportClasses.cs`：用 `object.ReferenceEquals` 识别真实 CLR null，使受管但已退役的 Unity 对象继续返回 `Block`，不再回落现金路径。
+- 修改 `tests/ModeEShellModeScopeGuard.py`：精确提取 disposition 方法，强制真实 null / 伪 null 分类顺序，并禁止重新引入 `shop == null` 放行。
+- 修改 `tests/ModeEShellDeliveryContractGuard.py`：改为当前事务 owner 签名，并验证 `isSellAll`、Busy 所有权初始状态等契约。
+- 新增 `tests/BossWikiGuideContentGuard.py`：检查 6 个 canonical 页面与 6 个生成页面、catalog 登记、玩家所需的概述/基础数据/技能或阶段/掉落/战斗建议/出现限制章节，以及忽略站点标题和提示框标记后的正文同步；不再强制开发者式源码路径、待实机字样、固定标题或表格数量。
+**兼容性影响**: 不改变 TypeID、存档、配置、掉落、价格或交易 schema；仅阻止已属 Mode E 的退役商店在 Unity 销毁窗口误入原版现金路径。新文件为 Python guard，不进入 `compile_official.bat`。
+**验证方法**:
+1. Windows 编译：`cmd.exe /d /c "set BOSSRUSH_NO_PAUSE=1&&call compile_official.bat"` 通过并部署。
+2. Guard：复审文档 31 个 guard 加 Wiki guard 共 32/32 通过；全部 `ZombieMode*.py` 与 `ModeE*.py` 共 171/171 通过；编译清单与内容注册 guard 通过。
+3. Wiki：`npm.cmd --prefix wiki-site run build` 通过，中文 99 篇、英文 99 篇同步，VitePress 1.6.4 构建完成。
+4. 静态检查：`git diff --check` 无 whitespace 错误，仅有既有 LF/CRLF 提示。
+**未验证/需人工**: Unity 伪 null 同帧迟到回调、Harmony 实际命中、商店对象销毁、UI 手感、Incoming Buffer 故障注入和性能仍需实机验证。
+**失败尝试**: 首次从 `wiki-site` 子目录直接运行仓库根相对路径 guard，因工作目录错误失败；改回仓库根后通过，内容同步本身未失败。首次最终 `git diff --check` 还发现本条目的 Markdown 硬换行空格，已移除并复检。
+
+---
+### 2026-08-05 丧尸模式候选、准备节奏、直接掉落与变异辨识优化
+
+**状态**: fixed
+**Finding**: 玩家反馈 / `2026-08-03_玩家反馈保守优化方案复审.md`
+**兼容分类**: COMPAT
+**版本/Commit**: `8f5d9b5`
+**Owner decision**: 已确认；采用九个 opaque TypeID 的上下文过滤、45/75 秒节奏和双失败脚底标记规则
+**现象**: 丧尸模式可能抽到不适用的医疗品或近战物品，普通准备时间偏紧；敌人直接掉落在分类失败时可能退化为任意物品，重物或背包满时缺少统一落地反馈；Special/Elite 混群中的常驻辨识不足。
+**根因**: 候选缓存只有标签/品质通用过滤；准备阶段只有单一常量；敌人直接掉落保留无类别 fallback 且未在 `AddAndMerge` 前投影负重；变异身份虽已登记，但没有安全视觉节点、完整 CustomFace 探针和双失败常驻 fallback 的闭环。
+**修复内容**:
+- 新增文件: `tests/ZombieModeRewardContextFilterGuard.py`、`tests/ZombieModeMutantVisualProfileGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
+- 修改文件: `ZombieMode/ZombieModeEntry.cs`、`ZombieMode/ZombieModeTuning.cs`、`ZombieMode/ZombieModeWaveController.cs`
+- 修改文件: `ZombieMode/ZombieModeDropsAndPerformance.cs`、`ZombieMode/ZombieModeEnemyRuntime.cs`、`ZombieMode/ZombieModePollution.cs`、`ZombieMode/ZombieModeRuntimeHooks.cs`
+- 修改文件: `tests/ZombieModeStateModelGuard.py`、`tests/ZombieModePacingTuningGuard.py`、`tests/ZombieModeEnemyDropInventoryGuard.py`、`tests/ZombieModeEnemyDropPickupBubbleGuard.py`
+- 变异视觉节点现在同时检查 renderer 子树和 renderer 到敌人根节点的祖先链；武器、socket、碰撞、攻击、导航等祖先一律 fail-closed。Elite 常驻颜色按词条语义映射为黄/红/绿/紫/青/橙，并保留 CustomFace 与双失败脚底标记兜底。
+**兼容性影响**: 不新增 TypeID、存档 key、配置 key 或地图 schema；过滤仅作用于 ZombieMode 对应医疗/近战上下文，同标签逐级降品质，不扩散到其他模式。敌人直接掉落不再做无类别 fallback，箱子和其他发货路径保持原样。全部 Boss 跳过变异视觉二次缩放。
+**验证方法**:
+1. Windows 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1&&compile_official.bat"` 已在最终共享代码树通过并部署
+2. Guard: 15 个 ZombieMode 定向守卫全部通过；其中 `ZombieModeRunScopedRegistryGuard.py` 成功路径静默退出码 0
+3. 静态检查: `git diff --check` 无 whitespace 错误，仅有换行符提示
+**未验证/需人工**: 文档第 10.1 节仍需游戏内完成 30 局医疗/近战候选抽样、200 次敌人直接掉落、CustomFace 覆盖与故障注入、安全缩放节点及碰撞/socket 核对，以及 50 敌人 Profiler 压测。
+
+---
+### 2026-08-05 Mode E 局内贝壳购买与 Boss 奖励闭环
+
+**状态**: fixed
+**Finding**: 玩家反馈 / `2026-08-03_玩家反馈保守优化方案复审.md`
+**兼容分类**: BREAKING / WIRE+ / OPERATIONAL
+**版本/Commit**: `012c900`
+**Owner decision**: 已确认；购买替换为本局账本式贝壳，价格按现金基准 `/10000` 单调量化，首版限制 `amount == 1`，出售继续使用现金
+**现象**: Mode E 分类商店沿用局外账户现金，裸装入场仍可用局外财富购买；敌对 Boss 没有局内货币奖励，缺少从战斗到购买的会话内经济闭环。
+**根因**: 原商店完全复用官方现金购买事务、UI 和商品 sample 缓存，没有独立 session 余额、价格身份、交易 owner、发货提交边界或 Boss 奖励 state。
+**修复内容**:
+- 新增文件: `tests/ModeEShellCurrencyBoundaryGuard.py`、`tests/ModeEShellModeScopeGuard.py`、`tests/ModeEShellTransactionGateGuard.py`
+- 新增文件: `tests/ModeEShellDeliveryContractGuard.py`、`tests/ModeEShellObserverOrderGuard.py`、`tests/ModeEShellPriceNormalizationGuard.py`
+- 新增文件: `tests/ModeEShellRewardGuard.py`、`tests/ModeEShellRuntimeLifecycleGuard.py`、`tests/ModeEShellHarmonyUiContractGuard.py`（均为 Python guard，不进入编译清单）
+- 修改文件: `ModeE/ModeE.cs`、`ModeE/ModeEStartup.cs`、`ModeE/ModeEMerchant.cs`、`ModeE/ModeEMerchantSupportClasses.cs`
+- 修改文件: `ModeE/ModeEHarmonyPatch.cs`、`ModeE/ModeEBattle.cs`、`ModeE/ModeEBattle_ScalingAndRuntime.cs`、`ModeE/ModeELifecycle.cs`、`ModeE/ModeERuntimeModule.cs`
+- 修改文件: `Patches/Economy/StockShopGetItemInstanceDirectPatch.cs`、`compile_official.bat`
+- 交易 owner 初始不认领官方 `buying`/`selling`；Buy、Sell、SellAll 只有在通过捕获商店 `Busy` 检查后才标记对应字段所有权，`finally` 不会清理由其他流程持有的 Busy。异步购买返回后还会确认捕获条目仍以同一对象引用存在于当前 `shop.entries`。
+**兼容性影响**: Mode E 已登记分类商店的购买支付由现金破坏性替换为本局内存贝壳账本；不写存档、不生成实体贝壳，不改变商品池、库存、Bullet 满堆、出售现金、Mode F 或普通商店。新增四个精确 Harmony/反射契约与非 Harmony 安装证明；`compile_official.bat` 增加现有游戏 DLL `Plugins.dll` 引用以使用官方通知格式扩展。
+**验证方法**:
+1. Windows 编译: `cmd.exe /c "set BOSSRUSH_NO_PAUSE=1&&compile_official.bat"` 通过并部署
+2. Guard: 9 个 `ModeEShell*.py` 全部通过
+3. Guard: 复审文档第 9 节列出的 10 个 Mode E 回归守卫全部通过
+4. Guard: `StaticCacheLifecycleGuard.py` 为 `PASS=64, WARN=11, FAIL=0`，警告均为既有白名单
+5. 静态检查: `git diff --check` 无 whitespace 错误，仅有换行符提示
+**未验证/需人工**: 文档第 10.2 节 30 项事务矩阵、M0 Harmony 命中/对象状态探针、Incoming Buffer 故障注入、UI 操作、Mode F 隔离和连续购买 Profiler 数据仍需游戏内执行；当前静态 guard 不能替代这些运行时门禁。
+
+---
+### 2026-08-05 三个原创 Boss 中英文完整攻略与数据卡
+
+**状态**: fixed
+**Finding**: 玩家反馈 / `2026-08-03_玩家反馈保守优化方案复审.md`
+**兼容分类**: SAFE
+**版本/Commit**: `224c35d`
+**Owner decision**: 不需要；仅按当前活动源码补齐攻略和来源标注
+**现象**: 龙裔遗族、焚天龙皇和幽灵女巫的中英文页面缺少统一生存/移动与武器/技能数据卡，阶段打法、常见误区、模式规则和来源说明不足。
+**根因**: 旧页面以简短机制摘要为主，没有系统区分活动源码常量、掉落装备面板、AssetBundle 数据和待实机快照字段。
+**修复内容**:
+- 修改文件: `WikiContent/zh/boss/boss__dragon_descendant.md`、`boss__dragon_king.md`、`boss__phantom_witch.md`
+- 修改文件: `WikiContent/en/boss/boss__dragon_descendant.md`、`boss__dragon_king.md`、`boss__phantom_witch.md`
+- 生成文件: `wiki-site/docs/bosses/` 与 `wiki-site/docs/en/bosses/` 下对应六个页面
+- 三位 Boss 的掉落概率与龙裔/龙皇成就奖金已补充到具体源码文件；幽灵女巫实际手持武器行逐项登记伤害、元素、攻击间隔、近战射程的待实机状态，以及散布、弹速、弹匣、装填的近战 N/A。
+**兼容性影响**: 纯文档内容；不改变 `WikiContent/catalog.tsv`、运行时数值、TypeID、资源或任何 schema。龙裔二阶段直线弹与扇形弹明确记录 `SpawnBulletDirect` 强制 100% 火焰元素，未知面板继续标为待实机快照。
+**验证方法**:
+1. 同步: `npm.cmd run sync` 成功，中文 99 篇、英文 99 篇，共 198 篇
+2. 构建: `npm.cmd run build` 通过，VitePress 1.6.4 完成客户端/服务端 bundle 与页面渲染
+3. 定向检查: canonical 与生成页面均包含已确认的二阶段火焰元素、当前英文成就名称、掉落/成就源码路径及幽灵女巫逐项武器字段
+4. 浏览器渲染: `/BossRushMod/` 下中英文三个 Boss 共六个路由均已打开；标题、正文、三张表、warning 块正常，根容器无横向溢出
+5. 静态检查: Wiki 作用域 `git diff --check` 无 whitespace 错误，仅有换行符提示
+**未验证/需人工**: 文档第 10.3 节的游戏内置 Wiki 实机阅读仍待后续验证，所有标注“待实机快照”的字段也仍需按指定采样条件补录。
+
+---
 ### 2026-07-09 丧尸模式自定义自爆怪无距离门控且未自毁
 
 **状态**: fixed
