@@ -110,6 +110,23 @@ namespace BossRush
             if (!MutatorManager.IsActive) return;
             if (_cachedInfos.Count == 0) return;
 
+            // Views and custom modal overlays disable gameplay input while open. The image
+            // viewer pauses time without taking an input lease, so cover that path as well.
+            // Suppress only this frame so the cached mutator list returns after closing them.
+            try
+            {
+                if (!InputManager.InputActived || Time.timeScale <= 0f)
+                {
+                    _detailHoverRect = Rect.zero;
+                    return;
+                }
+            }
+            catch
+            {
+                _detailHoverRect = Rect.zero;
+                return;
+            }
+
             EnsureStyles();
 
             // 绘制角落图标（持续显示直到模式结束）
