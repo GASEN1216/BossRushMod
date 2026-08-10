@@ -75,27 +75,19 @@ namespace BossRush
 
     public sealed class ZombieModeCashInvestmentView : MonoBehaviour
     {
-        // ==================== 优化后的配色方案 ====================
-        // 全屏遮罩：更深的半透明黑，加强弹窗聚焦效果
-        private static readonly Color BackdropColor = new Color(0f, 0f, 0f, 0.70f);
-        // 外框：深靛色微光边框，给面板添加质感
-        private static readonly Color PanelOuterColor = new Color(0.12f, 0.16f, 0.24f, 0.98f);
-        // 内框亮边：模拟内发光效果
-        private static readonly Color PanelBorderColor = new Color(0.22f, 0.30f, 0.44f, 0.45f);
-        // 主面板底色：深蓝灰，比旧版稍亮以增强可读性
-        private static readonly Color PanelInnerColor = new Color(0.10f, 0.12f, 0.16f, 0.98f);
-        // 标题栏：深靛蓝渐变感
-        private static readonly Color HeaderColor = new Color(0.14f, 0.20f, 0.32f, 1.00f);
+        // ==================== 生存模式配色方案 ====================
+        // 标题栏：中性深灰，避免全屏界面被单一蓝色占满。
+        private static readonly Color HeaderColor = new Color(0.09f, 0.12f, 0.13f, 0.12f);
         // 标题装饰线
-        private static readonly Color AccentLineColor = new Color(0.35f, 0.55f, 0.85f, 0.70f);
+        private static readonly Color AccentLineColor = new Color(0.20f, 0.72f, 0.67f, 0.82f);
         // 输入行底色
-        private static readonly Color RowColor = new Color(0.08f, 0.10f, 0.14f, 1.00f);
+        private static readonly Color RowColor = new Color(0.08f, 0.10f, 0.14f, 0.18f);
         // 输入框底色
-        private static readonly Color InputBgColor = new Color(0.04f, 0.05f, 0.08f, 1.00f);
+        private static readonly Color InputBgColor = new Color(0.04f, 0.05f, 0.08f, 0.64f);
         // 输入框边框
-        private static readonly Color InputBorderColor = new Color(0.25f, 0.35f, 0.55f, 0.50f);
+        private static readonly Color InputBorderColor = new Color(0.25f, 0.35f, 0.55f, 0.34f);
         // 预览条底色：暗金色调
-        private static readonly Color PreviewBarColor = new Color(0.12f, 0.14f, 0.08f, 0.90f);
+        private static readonly Color PreviewBarColor = new Color(0.12f, 0.14f, 0.08f, 0.20f);
         // 正文说明色：降低纯白刺眼感
         private static readonly Color BodyTextColor = new Color(0.78f, 0.82f, 0.88f, 1.00f);
         // 余额金色
@@ -104,14 +96,14 @@ namespace BossRush
         private static readonly Color PreviewTextColor = new Color(0.75f, 0.92f, 0.45f, 1.00f);
 
         // 按钮配色：更柔和的现代色调
-        private static readonly Color ConfirmColor = new Color(0.16f, 0.50f, 0.35f, 1.00f);
-        private static readonly Color ConfirmHoverColor = new Color(0.22f, 0.62f, 0.42f, 1.00f);
-        private static readonly Color SkipColor = new Color(0.38f, 0.34f, 0.16f, 1.00f);
-        private static readonly Color SkipHoverColor = new Color(0.50f, 0.44f, 0.22f, 1.00f);
-        private static readonly Color CancelColor = new Color(0.35f, 0.16f, 0.18f, 1.00f);
-        private static readonly Color CancelHoverColor = new Color(0.48f, 0.22f, 0.24f, 1.00f);
-        private static readonly Color QuickColor = new Color(0.16f, 0.22f, 0.32f, 1.00f);
-        private static readonly Color QuickHoverColor = new Color(0.24f, 0.34f, 0.50f, 1.00f);
+        private static readonly Color ConfirmColor = new Color(0.16f, 0.50f, 0.35f, 0.72f);
+        private static readonly Color ConfirmHoverColor = new Color(0.22f, 0.62f, 0.42f, 0.94f);
+        private static readonly Color SkipColor = new Color(0.38f, 0.34f, 0.16f, 0.68f);
+        private static readonly Color SkipHoverColor = new Color(0.50f, 0.44f, 0.22f, 0.92f);
+        private static readonly Color CancelColor = new Color(0.35f, 0.16f, 0.18f, 0.62f);
+        private static readonly Color CancelHoverColor = new Color(0.48f, 0.22f, 0.24f, 0.90f);
+        private static readonly Color QuickColor = new Color(0.16f, 0.22f, 0.32f, 0.50f);
+        private static readonly Color QuickHoverColor = new Color(0.24f, 0.34f, 0.50f, 0.84f);
 
         private ModBehaviour owner;
         private System.Action onConfirmed;
@@ -123,6 +115,7 @@ namespace BossRush
         private TextMeshProUGUI errorText;
         private TextMeshProUGUI previewText;
         private TextMeshProUGUI balanceText;
+        private Image inputBorderImage;
 
         public void Initialize(ModBehaviour newOwner, System.Action newOnConfirmed, System.Action newOnCancelled)
         {
@@ -132,6 +125,11 @@ namespace BossRush
             Build();
             ClaimInputAndPause();
             UpdatePreview();
+            if (amountField != null)
+            {
+                amountField.Select();
+                amountField.ActivateInputField();
+            }
         }
 
         private void Build()
@@ -144,32 +142,11 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
-            // ── 全屏遮罩 ──
-            GameObject backdrop = ZombieModeUIHelper.CreateRect("Backdrop", transform, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero, Vector2.zero);
-            Image backdropImage = backdrop.AddComponent<Image>();
-            backdropImage.color = BackdropColor;
-            backdropImage.raycastTarget = true;
-
-            // ── 外框（深靛色） ──
-            GameObject outer = ZombieModeUIHelper.CreateRect("PanelOuter", transform,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(780f, 460f), new Vector2(0.5f, 0.5f));
-            Image outerImage = outer.AddComponent<Image>();
-            outerImage.color = PanelOuterColor;
-
-            // ── 亮边层：模拟发光边框 ──
-            GameObject borderGlow = ZombieModeUIHelper.CreateRect("BorderGlow", outer.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image borderImg = borderGlow.AddComponent<Image>();
-            borderImg.color = PanelBorderColor;
-
-            // ── 主面板 ──
-            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", borderGlow.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image panelImage = panel.AddComponent<Image>();
-            panelImage.color = PanelInnerColor;
+            GameObject panel = ZombieModeUIHelper.CreateModalSurface(
+                "Panel",
+                transform,
+                new Vector2(780f, 460f),
+                AccentLineColor);
 
             // ────────────────────────────────────────────────────────────
             // 以下所有子元素均使用「top-stretch」锚定（anchorMin(0,1) anchorMax(1,1)）
@@ -185,11 +162,12 @@ namespace BossRush
             Image headerImage = header.AddComponent<Image>();
             headerImage.color = HeaderColor;
 
-            ZombieModeUIHelper.CreateText("Title", header.transform,
+            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText("Title", header.transform,
                 L10n.T("BossRush_ZombieMode_CashPrompt_Title"), 26,
                 new Vector2(0f, 0f), new Vector2(0.65f, 1f),
                 new Vector2(20f, 0f), new Vector2(0f, 0f),
-                TextAlignmentOptions.Left, Color.white);
+                TextAlignmentOptions.Left, ZombieModeUIHelper.TextPrimaryColor);
+            titleText.fontStyle = FontStyles.Bold;
 
             balanceText = ZombieModeUIHelper.CreateText("Balance", header.transform,
                 GetBalanceLabel(), 18,
@@ -233,8 +211,8 @@ namespace BossRush
             GameObject inputBorder = ZombieModeUIHelper.CreateRect("InputBorder", row.transform,
                 new Vector2(0.20f, 0.10f), new Vector2(0.50f, 0.90f),
                 Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
-            Image inputBorderImg = inputBorder.AddComponent<Image>();
-            inputBorderImg.color = InputBorderColor;
+            inputBorderImage = inputBorder.AddComponent<Image>();
+            inputBorderImage.color = InputBorderColor;
 
             // 输入框内部
             GameObject inputObj = ZombieModeUIHelper.CreateRect("Input", inputBorder.transform,
@@ -254,6 +232,10 @@ namespace BossRush
             amountField.targetGraphic = inputBg;
             amountField.textComponent = inputText;
             amountField.textViewport = textArea.GetComponent<RectTransform>();
+            amountField.lineType = TMP_InputField.LineType.SingleLine;
+            amountField.customCaretColor = true;
+            amountField.caretColor = AccentLineColor;
+            amountField.selectionColor = new Color(0.20f, 0.72f, 0.67f, 0.35f);
             amountField.text = "0";
             amountField.onValueChanged.AddListener(delegate { UpdatePreview(); });
 
@@ -353,6 +335,18 @@ namespace BossRush
             long points = amount > 0L ? (amount / ZombieModeTuning.CashToPurificationRatio) : 0L;
             previewText.text = string.Format(L10n.T("BossRush_ZombieMode_CashPrompt_Preview"), amount, points);
 
+            bool affordable = true;
+            try
+            {
+                affordable = amount <= Duckov.Economy.EconomyManager.Money;
+            }
+            catch { /* Keep the preview usable when economy state is unavailable. */ }
+            previewText.color = affordable ? PreviewTextColor : new Color(1f, 0.48f, 0.42f, 1f);
+            if (inputBorderImage != null)
+            {
+                inputBorderImage.color = affordable ? InputBorderColor : ZombieModeUIHelper.DangerHoverColor;
+            }
+
             if (errorText != null)
             {
                 errorText.text = string.Empty;
@@ -383,7 +377,7 @@ namespace BossRush
                     if (money < 0L) money = 0L;
                     amountField.text = money.ToString();
                 }
-                catch { }
+                catch { /* Keep the current amount when economy state is unavailable. */ }
             };
         }
 
@@ -493,17 +487,7 @@ namespace BossRush
             layoutElement.flexibleWidth = 0f;
             layoutElement.flexibleHeight = 0f;
 
-            Image image = button.GetComponent<Image>();
-
-            ColorBlock colors = button.colors;
-            colors.normalColor = baseColor;
-            colors.highlightedColor = hoverColor;
-            colors.pressedColor = baseColor * 0.85f;
-            colors.selectedColor = hoverColor;
-            colors.disabledColor = baseColor * 0.6f;
-            colors.colorMultiplier = 1f;
-            button.colors = colors;
-            button.targetGraphic = image;
+            ZombieModeUIHelper.ApplyButtonColors(button, baseColor, hoverColor, baseColor * 0.6f);
         }
 
         /// <summary>
@@ -527,17 +511,7 @@ namespace BossRush
                     UpdatePreview();
                 },
                 true);
-            Image image = button.GetComponent<Image>();
-
-            ColorBlock colors = button.colors;
-            colors.normalColor = QuickColor;
-            colors.highlightedColor = QuickHoverColor;
-            colors.pressedColor = QuickColor * 0.85f;
-            colors.selectedColor = QuickHoverColor;
-            colors.disabledColor = QuickColor * 0.6f;
-            colors.colorMultiplier = 1f;
-            button.colors = colors;
-            button.targetGraphic = image;
+            ZombieModeUIHelper.ApplyButtonColors(button, QuickColor, QuickHoverColor, QuickColor * 0.6f);
         }
     }
 }

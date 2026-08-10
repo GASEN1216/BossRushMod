@@ -54,10 +54,10 @@ def main() -> int:
     for text, needle, message in (
         (respawn, "private readonly List<Vector3> modeERespawnSpawnPointScratch", "Mode E respawn must reuse a spawn-point scratch list"),
         (respawn, "private readonly List<Vector3> modeERespawnAcceptedPointScratch", "Mode E respawn must reuse the accepted-point list while the async task is running"),
-        (respawn, "private const int MODE_E_RESPAWN_ALIVE_BOSS_LIMIT = 64;", "Mode E respawn limit must remain 64"),
+        (respawn, "List<Vector3> acceptedPoints = CopyModeERespawnAcceptedPoints(points, points.Count);", "Mode E respawn must copy every selected point without clipping"),
+        (respawn, "modeERespawnTaskRunning = true;", "Mode E respawn must preserve single-task gating"),
         (respawn, "await UniTask.Delay(250);", "Mode E respawn cadence must remain 250ms"),
         (respawn, "Teams faction = RespawnFactions[UnityEngine.Random.Range(0, RespawnFactions.Length)];", "Mode E respawn faction randomization must remain unchanged"),
-        (respawn, "int pressureCount = CountValidModeEAliveBosses() + GetModeERespawnPendingBossCount();", "Mode E exact slot check must still use valid alive plus pending counts"),
         (scaling, "public int appliedStacks = -1;", "Mode E enemy scaling state must remember the applied stack count"),
         (scaling, "if (scalingState.appliedStacks == personalStacks)", "Mode E scaling must skip repeated modifier rewrites for unchanged stacks"),
         (scaling, "float hpPercent = personalStacks * 0.05f;", "Mode E enemy HP scaling must remain 5 percent per stack"),
@@ -93,6 +93,9 @@ def main() -> int:
     for needle, message in (
         ("points.GetRange", "TryStartModeERespawn must not allocate clipped spawn lists with GetRange"),
         ("new List<Vector3>(points)", "TryStartModeERespawn must not allocate a copied spawn list"),
+        ("availableSlots", "TryStartModeERespawn must not restore a population cap"),
+        ("acceptedPointCount", "TryStartModeERespawn must not clip selected spawn points"),
+        ("active Boss limit", "TryStartModeERespawn must not restore a population-cap message"),
     ):
         result = forbid(start_body, needle, message)
         if result is not None:

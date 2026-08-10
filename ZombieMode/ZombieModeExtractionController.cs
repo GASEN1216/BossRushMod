@@ -797,26 +797,73 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
-            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", transform, new Vector2(0.5f, 0.5f), new Vector2(540f, 260f));
-            Image panelImage = panel.AddComponent<Image>();
-            panelImage.color = new Color(0f, 0f, 0f, 0.86f);
-            ZombieModeUIHelper.CreateText("Title", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_Title"), 28, new Vector2(0f, 80f), new Vector2(500f, 60f), TextAlignmentOptions.Center, Color.white);
-            CreateButton("Extract", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_ExtractNow"), new Vector2(-130f, -30f), true);
-            CreateButton("Continue", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_Continue"), new Vector2(130f, -30f), false);
+            GameObject panel = ZombieModeUIHelper.CreateModalSurface(
+                "Panel",
+                transform,
+                new Vector2(680f, 340f),
+                ZombieModeUIHelper.WarningColor);
+
+            GameObject header = ZombieModeUIHelper.CreateRect(
+                "Header",
+                panel.transform,
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, -34f),
+                new Vector2(0f, 68f),
+                new Vector2(0.5f, 0.5f));
+            Image headerImage = header.AddComponent<Image>();
+            headerImage.color = ZombieModeUIHelper.ModalHeaderColor;
+            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText(
+                "Title",
+                header.transform,
+                L10n.T("BossRush_ZombieMode_Extraction_Title"),
+                27,
+                Vector2.zero,
+                new Vector2(620f, 56f),
+                TextAlignmentOptions.Center,
+                ZombieModeUIHelper.TextPrimaryColor);
+            titleText.fontStyle = FontStyles.Bold;
+            ZombieModeUIHelper.CreateSeparator(
+                "HeaderDivider",
+                panel.transform,
+                Vector2.up,
+                Vector2.one,
+                new Vector2(0f, -68f),
+                2f,
+                ZombieModeUIHelper.WarningColor);
+
+            GameObject actionArea = ZombieModeUIHelper.CreateRect(
+                "DecisionArea",
+                panel.transform,
+                new Vector2(0f, 0f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, -32f),
+                new Vector2(-44f, -128f),
+                new Vector2(0.5f, 0.5f));
+            CreateButton("Extract", actionArea.transform, L10n.T("BossRush_ZombieMode_Extraction_ExtractNow"), new Vector2(-142f, 0f), true);
+            CreateButton("Continue", actionArea.transform, L10n.T("BossRush_ZombieMode_Extraction_Continue"), new Vector2(142f, 0f), false);
         }
 
         private void CreateButton(string name, Transform parent, string text, Vector2 position, bool extract)
         {
-            ZombieModeUIHelper.CreateButton(
+            Color normalColor = extract
+                ? ZombieModeUIHelper.SuccessColor
+                : ZombieModeUIHelper.WarningColor;
+            Color hoverColor = extract
+                ? ZombieModeUIHelper.SuccessHoverColor
+                : ZombieModeUIHelper.WarningHoverColor;
+            normalColor.a = 0.68f;
+            hoverColor.a = 0.92f;
+            Button button = ZombieModeUIHelper.CreateButton(
                 name,
                 parent,
                 text,
                 new Vector2(0.5f, 0.5f),
                 position,
-                new Vector2(210f, 78f),
-                extract ? new Color(0.18f, 0.36f, 0.22f, 0.95f) : new Color(0.36f, 0.24f, 0.18f, 0.95f),
-                22,
-                new Vector2(200f, 68f),
+                new Vector2(256f, 108f),
+                normalColor,
+                21,
+                new Vector2(228f, 86f),
                 delegate
                 {
                     if (owner == null)
@@ -836,6 +883,23 @@ namespace BossRush
                     }
                 },
                 true);
+            ZombieModeUIHelper.ApplyButtonColors(
+                button,
+                normalColor,
+                hoverColor,
+                ZombieModeUIHelper.DisabledColor);
+
+            GameObject stateBar = ZombieModeUIHelper.CreateRect(
+                "StateBar",
+                button.transform,
+                new Vector2(0.10f, 0f),
+                new Vector2(0.90f, 0f),
+                new Vector2(0f, 2f),
+                new Vector2(0f, 4f),
+                new Vector2(0.5f, 0f));
+            Image stateBarImage = stateBar.AddComponent<Image>();
+            stateBarImage.color = Color.Lerp(normalColor, Color.white, 0.30f);
+            stateBarImage.raycastTarget = false;
         }
 
         private void ClaimInputAndPause()

@@ -269,6 +269,8 @@ namespace BossRush
                 return;
             }
 
+            AnimateModeFBountyRadarEntries();
+
             if (Time.unscaledTime < modeFNextBountyRadarRefreshTime)
             {
                 return;
@@ -519,13 +521,53 @@ namespace BossRush
             float size = leaderStyle ? MODEF_BOUNTY_RADAR_LEADER_SIZE : MODEF_BOUNTY_RADAR_REGULAR_SIZE;
             TMP_FontAsset font = GetModeFBountyRadarFont();
 
-            GameObject root = new GameObject("ModeF_BountyRadar_" + name, typeof(RectTransform));
+            GameObject root = new GameObject("ModeF_BountyRadar_" + name, typeof(RectTransform), typeof(CanvasGroup));
             RectTransform rootRect = root.GetComponent<RectTransform>();
             rootRect.SetParent(modeFBountyRadarCenterRect, false);
             rootRect.anchorMin = new Vector2(0.5f, 0.5f);
             rootRect.anchorMax = new Vector2(0.5f, 0.5f);
             rootRect.pivot = new Vector2(0.5f, 0.5f);
             rootRect.sizeDelta = new Vector2(size, size);
+
+            CanvasGroup canvasGroup = root.GetComponent<CanvasGroup>();
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+
+            RectTransform pulseRect = null;
+            Image pulseImage = null;
+            if (leaderStyle)
+            {
+                GameObject pulseObject = new GameObject("LeaderPulse", typeof(RectTransform), typeof(Image));
+                pulseRect = pulseObject.GetComponent<RectTransform>();
+                pulseRect.SetParent(rootRect, false);
+                pulseRect.anchorMin = new Vector2(0.5f, 0.5f);
+                pulseRect.anchorMax = new Vector2(0.5f, 0.5f);
+                pulseRect.pivot = new Vector2(0.5f, 0.5f);
+                pulseRect.sizeDelta = new Vector2(size * 1.34f, size * 1.34f);
+
+                pulseImage = pulseObject.GetComponent<Image>();
+                pulseImage.sprite = GetModeFBountyRadarGuideSprite();
+                pulseImage.color = new Color(
+                    ModeFBountyRadarLeaderColor.r,
+                    ModeFBountyRadarLeaderColor.g,
+                    ModeFBountyRadarLeaderColor.b,
+                    0.12f);
+                pulseImage.raycastTarget = false;
+            }
+
+            GameObject directionObject = new GameObject("Direction", typeof(RectTransform), typeof(Image));
+            RectTransform directionRect = directionObject.GetComponent<RectTransform>();
+            directionRect.SetParent(rootRect, false);
+            directionRect.anchorMin = new Vector2(0.5f, 0.5f);
+            directionRect.anchorMax = new Vector2(0.5f, 0.5f);
+            directionRect.pivot = new Vector2(0.5f, 0.5f);
+            directionRect.sizeDelta = leaderStyle ? new Vector2(18f, 13f) : new Vector2(15f, 11f);
+
+            Image directionImage = directionObject.GetComponent<Image>();
+            directionImage.sprite = GetModeFBountyRadarArrowSprite();
+            directionImage.color = leaderStyle ? ModeFBountyRadarLeaderColor : ModeFBountyRadarRegularColor;
+            directionImage.raycastTarget = false;
 
             GameObject iconObject = new GameObject("Icon", typeof(RectTransform), typeof(Image));
             RectTransform iconRect = iconObject.GetComponent<RectTransform>();
@@ -553,38 +595,91 @@ namespace BossRush
                 countText.font = font;
             }
             countText.alignment = TextAlignmentOptions.Center;
-            countText.fontSize = leaderStyle ? 25f : 21f;
+            countText.fontSize = leaderStyle ? 23f : 20f;
+            countText.enableAutoSizing = true;
+            countText.fontSizeMin = 11f;
+            countText.fontSizeMax = leaderStyle ? 23f : 20f;
+            countText.fontStyle = FontStyles.Bold;
             countText.color = Color.white;
             countText.raycastTarget = false;
+            AddModeFBountyRadarTextOutline(countText, leaderStyle ? 1.5f : 1.2f);
 
-            GameObject distanceObject = new GameObject("Distance", typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject typeObject = new GameObject("Type", typeof(RectTransform), typeof(TextMeshProUGUI));
+            RectTransform typeRect = typeObject.GetComponent<RectTransform>();
+            typeRect.SetParent(iconRect, false);
+            typeRect.anchorMin = new Vector2(0.5f, 0.5f);
+            typeRect.anchorMax = new Vector2(0.5f, 0.5f);
+            typeRect.pivot = new Vector2(0.5f, 0.5f);
+            typeRect.anchoredPosition = new Vector2(0f, size * 0.23f);
+            typeRect.sizeDelta = new Vector2(size * 0.86f, 14f);
+
+            TextMeshProUGUI typeText = typeObject.GetComponent<TextMeshProUGUI>();
+            if (font != null)
+            {
+                typeText.font = font;
+            }
+            typeText.alignment = TextAlignmentOptions.Center;
+            typeText.fontSize = 9f;
+            typeText.fontStyle = FontStyles.Bold;
+            typeText.color = leaderStyle ? ModeFBountyRadarLeaderColor : ModeFBountyRadarRegularColor;
+            typeText.raycastTarget = false;
+            typeText.gameObject.SetActive(leaderStyle);
+            AddModeFBountyRadarTextOutline(typeText, 1f);
+
+            GameObject distanceObject = new GameObject("Distance", typeof(RectTransform), typeof(Image));
             RectTransform distanceRect = distanceObject.GetComponent<RectTransform>();
             distanceRect.SetParent(rootRect, false);
             distanceRect.anchorMin = new Vector2(0.5f, 0.5f);
             distanceRect.anchorMax = new Vector2(0.5f, 0.5f);
             distanceRect.pivot = new Vector2(0.5f, 0.5f);
             distanceRect.anchoredPosition = new Vector2(0f, -size * 0.82f);
-            distanceRect.sizeDelta = new Vector2(90f, 26f);
+            distanceRect.sizeDelta = leaderStyle ? new Vector2(70f, 20f) : new Vector2(62f, 18f);
 
-            TextMeshProUGUI distanceText = distanceObject.GetComponent<TextMeshProUGUI>();
+            Image distanceBackground = distanceObject.GetComponent<Image>();
+            distanceBackground.sprite = GetModeFBountyRadarPanelSprite();
+            distanceBackground.color = ModeFBountyRadarDistancePanelColor;
+            distanceBackground.raycastTarget = false;
+
+            GameObject distanceTextObject = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            RectTransform distanceTextRect = distanceTextObject.GetComponent<RectTransform>();
+            distanceTextRect.SetParent(distanceRect, false);
+            distanceTextRect.anchorMin = Vector2.zero;
+            distanceTextRect.anchorMax = Vector2.one;
+            distanceTextRect.offsetMin = new Vector2(4f, 0f);
+            distanceTextRect.offsetMax = new Vector2(-4f, 0f);
+
+            TextMeshProUGUI distanceText = distanceTextObject.GetComponent<TextMeshProUGUI>();
             if (font != null)
             {
                 distanceText.font = font;
             }
             distanceText.alignment = TextAlignmentOptions.Center;
-            distanceText.fontSize = leaderStyle ? 18f : 16f;
-            distanceText.color = Color.white;
+            distanceText.fontSize = leaderStyle ? 15f : 14f;
+            distanceText.enableAutoSizing = true;
+            distanceText.fontSizeMin = 10f;
+            distanceText.fontSizeMax = leaderStyle ? 15f : 14f;
+            distanceText.fontStyle = FontStyles.Bold;
+            distanceText.color = leaderStyle ? ModeFBountyRadarLeaderColor : Color.white;
             distanceText.raycastTarget = false;
+            AddModeFBountyRadarTextOutline(distanceText, 1f);
 
             root.SetActive(false);
             return new ModeFBountyRadarEntryUi
             {
                 root = root,
                 rect = rootRect,
+                canvasGroup = canvasGroup,
+                pulseRect = pulseRect,
+                pulseImage = pulseImage,
+                directionRect = directionRect,
+                directionImage = directionImage,
                 icon = icon,
                 countText = countText,
+                typeText = typeText,
                 distanceRect = distanceRect,
-                distanceText = distanceText
+                distanceBackground = distanceBackground,
+                distanceText = distanceText,
+                leaderStyle = leaderStyle
             };
         }
 
@@ -608,22 +703,52 @@ namespace BossRush
 
             Vector2 direction = GetModeFBountyRadarDirection(playerPos, targetPos, radarForward, radarRight);
             entry.rect.sizeDelta = new Vector2(size, size);
-            entry.rect.anchoredPosition = direction * radius;
+            float safeRadius = GetModeFBountyRadarSafeRadius(radius, size);
+            entry.rect.anchoredPosition = direction * safeRadius;
+
+            if (entry.directionRect != null)
+            {
+                float directionAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
+                entry.directionRect.anchoredPosition = direction * (size * 0.72f);
+                entry.directionRect.localRotation = Quaternion.Euler(0f, 0f, directionAngle);
+            }
+
+            if (entry.directionImage != null)
+            {
+                entry.directionImage.color = leaderStyle ? ModeFBountyRadarLeaderColor : ModeFBountyRadarRegularColor;
+            }
 
             if (entry.icon != null)
             {
                 entry.icon.sprite = leaderStyle ? GetModeFBountyRadarLeaderSprite() : GetModeFBountyRadarRegularSprite();
+                entry.icon.color = Color.white;
             }
 
             if (entry.countText != null)
             {
-                entry.countText.fontSize = leaderStyle ? 25f : 21f;
-                entry.countText.text = Mathf.Max(1, marks).ToString();
+                entry.countText.fontSize = leaderStyle ? 23f : 20f;
+                entry.countText.fontSizeMax = leaderStyle ? 23f : 20f;
+                entry.countText.rectTransform.anchoredPosition = leaderStyle ? new Vector2(0f, -4f) : Vector2.zero;
+                entry.countText.text = "x" + Mathf.Max(1, marks);
+            }
+
+            if (entry.typeText != null)
+            {
+                entry.typeText.text = L10n.T("首领", "LEADER");
+                entry.typeText.gameObject.SetActive(leaderStyle);
             }
 
             if (entry.distanceRect != null)
             {
-                entry.distanceRect.anchoredPosition = new Vector2(0f, -size * 0.82f);
+                float horizontalDistanceBias = Mathf.Abs(direction.x);
+                float labelDistance = Mathf.Lerp(size * 0.82f, size * 1.25f, horizontalDistanceBias);
+                entry.distanceRect.anchoredPosition = -direction * labelDistance;
+                entry.distanceRect.sizeDelta = leaderStyle ? new Vector2(70f, 20f) : new Vector2(62f, 18f);
+            }
+
+            if (entry.distanceBackground != null)
+            {
+                entry.distanceBackground.color = ModeFBountyRadarDistancePanelColor;
             }
 
             if (entry.distanceText != null)
@@ -632,14 +757,93 @@ namespace BossRush
                 {
                     displayDistanceSqr = 0f;
                 }
-                entry.distanceText.fontSize = leaderStyle ? 18f : 16f;
+                entry.distanceText.fontSize = leaderStyle ? 15f : 14f;
+                entry.distanceText.fontSizeMax = leaderStyle ? 15f : 14f;
+                entry.distanceText.color = leaderStyle ? ModeFBountyRadarLeaderColor : Color.white;
                 entry.distanceText.text = Mathf.RoundToInt(Mathf.Sqrt(displayDistanceSqr)) + "m";
             }
 
             if (!entry.root.activeSelf)
             {
+                if (entry.canvasGroup != null)
+                {
+                    entry.canvasGroup.alpha = 0f;
+                }
                 entry.root.SetActive(true);
             }
+        }
+
+        private float GetModeFBountyRadarSafeRadius(float desiredRadius, float size)
+        {
+            if (modeFBountyRadarCenterRect == null)
+            {
+                return desiredRadius;
+            }
+
+            RectTransform canvasRect = modeFBountyRadarCenterRect.parent as RectTransform;
+            if (canvasRect == null || canvasRect.rect.width <= 1f || canvasRect.rect.height <= 1f)
+            {
+                return desiredRadius;
+            }
+
+            float halfWidth = canvasRect.rect.width * 0.5f;
+            float halfHeight = canvasRect.rect.height * 0.5f;
+            float markerClearance = MODEF_BOUNTY_RADAR_EDGE_MARGIN + size * 0.9f;
+            float maxRadius = Mathf.Max(72f, Mathf.Min(halfWidth, halfHeight) - markerClearance);
+            return Mathf.Min(desiredRadius, maxRadius);
+        }
+
+        private void AnimateModeFBountyRadarEntries()
+        {
+            for (int i = 0; i < modeFBountyRadarEntries.Count; i++)
+            {
+                AnimateModeFBountyRadarEntry(modeFBountyRadarEntries[i]);
+            }
+
+            AnimateModeFBountyRadarEntry(modeFBountyLeaderRadarEntry);
+        }
+
+        private static void AnimateModeFBountyRadarEntry(ModeFBountyRadarEntryUi entry)
+        {
+            if (entry == null || entry.root == null || !entry.root.activeSelf)
+            {
+                return;
+            }
+
+            if (entry.canvasGroup != null)
+            {
+                entry.canvasGroup.alpha = Mathf.MoveTowards(
+                    entry.canvasGroup.alpha,
+                    1f,
+                    Time.unscaledDeltaTime * 7f);
+            }
+
+            if (!entry.leaderStyle || entry.pulseRect == null || entry.pulseImage == null)
+            {
+                return;
+            }
+
+            float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 3.4f);
+            float pulseScale = Mathf.Lerp(0.96f, 1.10f, pulse);
+            entry.pulseRect.localScale = new Vector3(pulseScale, pulseScale, 1f);
+            entry.pulseImage.color = new Color(
+                ModeFBountyRadarLeaderColor.r,
+                ModeFBountyRadarLeaderColor.g,
+                ModeFBountyRadarLeaderColor.b,
+                Mathf.Lerp(0.10f, 0.28f, pulse));
+        }
+
+        private static void AddModeFBountyRadarTextOutline(TextMeshProUGUI text, float distance)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            Outline outline = text.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.82f);
+            outline.effectDistance = new Vector2(distance, -distance);
+            outline.useGraphicAlpha = true;
         }
 
         private CharacterMainControl GetModeFBountyRadarLeader(out int leaderMarks)
@@ -887,135 +1091,6 @@ namespace BossRush
             return modeFBountyRadarFont;
         }
 
-        private static Sprite GetModeFBountyRadarRegularSprite()
-        {
-            if (modeFBountyRadarRegularSprite == null)
-            {
-                modeFBountyRadarRegularSprite = LoadModeFBountyRadarSpriteFromFile(
-                    MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH,
-                    MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH_LEGACY);
-                if (modeFBountyRadarRegularSprite == null)
-                {
-                    modeFBountyRadarRegularSprite = CreateModeFBountyRadarSprite(
-                        new Color(0.95f, 0.28f, 0.18f, 0.28f),
-                        new Color(1f, 0.72f, 0.32f, 0.95f),
-                        0.22f,
-                        0.40f);
-                }
-            }
-
-            return modeFBountyRadarRegularSprite;
-        }
-
-        private static Sprite GetModeFBountyRadarLeaderSprite()
-        {
-            if (modeFBountyRadarLeaderSprite == null)
-            {
-                modeFBountyRadarLeaderSprite = LoadModeFBountyRadarSpriteFromFile(
-                    MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH,
-                    MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH_LEGACY);
-                if (modeFBountyRadarLeaderSprite == null)
-                {
-                    modeFBountyRadarLeaderSprite = CreateModeFBountyRadarSprite(
-                        new Color(0.95f, 0.78f, 0.18f, 0.30f),
-                        new Color(1f, 0.93f, 0.55f, 1f),
-                        0.18f,
-                        0.44f);
-                }
-            }
-
-            return modeFBountyRadarLeaderSprite;
-        }
-
-        private static Sprite GetModeFBountyRadarGuideSprite()
-        {
-            if (modeFBountyRadarGuideSprite == null)
-            {
-                modeFBountyRadarGuideSprite = CreateModeFBountyRadarSprite(
-                    new Color(1f, 1f, 1f, 0f),
-                    new Color(1f, 1f, 1f, 0.20f),
-                    0.47f,
-                    0.50f);
-            }
-
-            return modeFBountyRadarGuideSprite;
-        }
-
-        private static Sprite CreateModeFBountyRadarSprite(Color fillColor, Color ringColor, float fillRadius, float ringRadius)
-        {
-            const int textureSize = 128;
-            Texture2D texture = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
-
-            float halfSize = (textureSize - 1) * 0.5f;
-            Color clear = new Color(0f, 0f, 0f, 0f);
-            for (int y = 0; y < textureSize; y++)
-            {
-                for (int x = 0; x < textureSize; x++)
-                {
-                    float normalizedX = (x - halfSize) / halfSize;
-                    float normalizedY = (y - halfSize) / halfSize;
-                    float distance = Mathf.Sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
-
-                    Color pixel = clear;
-                    if (distance <= ringRadius)
-                    {
-                        if (distance <= fillRadius)
-                        {
-                            pixel = fillColor;
-                        }
-                        else
-                        {
-                            float ringBlend = Mathf.InverseLerp(fillRadius, ringRadius, distance);
-                            pixel = Color.Lerp(fillColor, ringColor, Mathf.Clamp01(ringBlend));
-                        }
-                    }
-
-                    texture.SetPixel(x, y, pixel);
-                }
-            }
-
-            texture.Apply();
-            return Sprite.Create(
-                texture,
-                new Rect(0f, 0f, texture.width, texture.height),
-                new Vector2(0.5f, 0.5f),
-                texture.width);
-        }
-
-        private static Sprite LoadModeFBountyRadarSpriteFromFile(params string[] relativePaths)
-        {
-            if (relativePaths == null || relativePaths.Length <= 0)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < relativePaths.Length; i++)
-            {
-                string relativePath = relativePaths[i];
-                if (string.IsNullOrEmpty(relativePath))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    Sprite sprite = ItemFactory.GetSpriteFromFile(relativePath);
-                    if (sprite != null)
-                    {
-                        DevLog("[ModeF] 已加载悬赏雷达贴图: " + relativePath);
-                        return sprite;
-                    }
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ModeF] 加载悬赏雷达贴图失败: " + relativePath + " - " + e.Message);
-                }
-            }
-
-            return null;
-        }
     }
 
     [HarmonyPatch(typeof(HealthBar), "LateUpdate")]

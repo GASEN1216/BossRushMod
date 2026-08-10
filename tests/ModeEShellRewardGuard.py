@@ -92,6 +92,23 @@ def main() -> int:
     if "catch" not in settle:
         return fail("settle must be no-throw")
 
+    reward_formula = extract_method(
+        scaling, "private static int CalculateModeEShellStandardBossBase(")
+    for token in [
+        "MODE_E_SHELL_REFERENCE_HEALTH = 500.0",
+        "MODE_E_SHELL_REFERENCE_HEALTH",
+        "MODE_E_SHELL_REFERENCE_REWARD",
+        "MODE_E_SHELL_REWARD_PER_HEALTH_DOUBLING",
+        "safeHealth / MODE_E_SHELL_REFERENCE_HEALTH",
+        "Math.Log(normalizedHealth, 2.0)",
+        "Math.Ceiling(continuousReward)",
+    ]:
+        if token not in scaling and token not in reward_formula:
+            return fail("continuous health-based reward formula missing -> " + token)
+    for forbidden in ["Math.Floor", "Mathf.Clamp", "tier ="]:
+        if forbidden in reward_formula:
+            return fail("Boss reward must not use hard-coded health tiers -> " + forbidden)
+
     death = extract_method(scaling, "private void OnModeEEnemyDeath(")
     if not death:
         return fail("missing OnModeEEnemyDeath")

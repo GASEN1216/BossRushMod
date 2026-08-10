@@ -519,6 +519,24 @@ namespace BossRush
             get { return modeEShellBalance; }
         }
 
+        internal Sprite CurrentModeEShellIcon
+        {
+            get
+            {
+                try
+                {
+                    Item shellPrefab = modeEShellItemTypeID >= 0
+                        ? ItemAssetsCollection.GetPrefab(modeEShellItemTypeID)
+                        : null;
+                    return shellPrefab != null ? shellPrefab.Icon : null;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
+
         internal bool IsModeEShellTransactionGateBusy
         {
             get { return modeEShellTransactionOwner != null; }
@@ -727,6 +745,7 @@ namespace BossRush
             modeEShellMerchantGeneration++;
             if (modeEShellMerchantGeneration <= 0L) modeEShellMerchantGeneration = 1L;
 
+            ClearModeELotteryMerchantRuntime();
             ModeEMerchantSellAllUI.DetachForModeEShellInvalidation(this, reason);
             InvalidateModeEShellUiBinding(reason);
 
@@ -1081,6 +1100,7 @@ namespace BossRush
                 if (IsCurrentModeEShellMerchantScope(shop, merchantGeneration) &&
                     modeEShellEconomyAvailable)
                 {
+                    BuildModeELotteryPoolState(shop, merchantGeneration);
                     PublishModeEShellPriceChanged(shop, merchantGeneration, null);
                 }
             }
@@ -2143,6 +2163,9 @@ namespace BossRush
         private static FieldInfo characterInventoryDisplayField;
         private static FieldInfo sortButtonField;
         private static FieldInfo merchantNameTextField;
+        private static FieldInfo refreshCountDownTextField;
+        private static FieldInfo contextualCashDisplayField;
+        private static FieldInfo cashDisplayTextField;
         private static FieldInfo stockShopEntryPoolField;
         private static FieldInfo stockShopPoolActiveEntriesField;
         private static MethodInfo sellMethod;
@@ -2156,6 +2179,10 @@ namespace BossRush
         private static TextMeshProUGUI sellAllButtonText;
         private static GameObject shellBalanceTextObject;
         private static TextMeshProUGUI shellBalanceText;
+        private static bool shellBalanceHasShellIcon;
+        private static GameObject lotteryButtonObject;
+        private static Button lotteryButton;
+        private static TextMeshProUGUI lotteryButtonText;
         private static bool isSelling;
         private static long sellAllOperationCounter;
         private static long activeSellAllOperationID;
@@ -2615,8 +2642,10 @@ namespace BossRush
             RegisterEvents();
             CreateSellAllButton();
             CreateShellBalanceText();
+            CreateLotteryButton();
             UpdateButtonState();
             UpdateShellBalanceText();
+            UpdateLotteryButtonState();
             if (modeEShellOwner != null)
             {
                 modeEShellOwner.RefreshOpenModeEShellUi(
@@ -2638,6 +2667,13 @@ namespace BossRush
             characterInventoryDisplayField = typeof(StockShopView).GetField("characterInventoryDisplay", privateInstance);
             sortButtonField = typeof(Duckov.UI.InventoryDisplay).GetField("sortButton", privateInstance);
             merchantNameTextField = typeof(StockShopView).GetField("merchantNameText", privateInstance);
+            refreshCountDownTextField = typeof(StockShopView).GetField(
+                "refreshCountDown",
+                privateInstance);
+            contextualCashDisplayField = typeof(ContextualMoneyAndCash).GetField(
+                "cashDisplay",
+                privateInstance);
+            cashDisplayTextField = typeof(CashDisplay).GetField("text", privateInstance);
             stockShopEntryPoolField = typeof(StockShopView).GetField("_entryPool", privateInstance);
             stockShopPoolActiveEntriesField = typeof(PrefabPool<StockShopItemEntry>).GetField(
                 "activeObjects",
@@ -2682,6 +2718,9 @@ namespace BossRush
                    merchantNameTextField != null &&
                    merchantNameTextField.FieldType == typeof(TextMeshProUGUI) &&
                    !merchantNameTextField.IsStatic &&
+                   refreshCountDownTextField != null &&
+                   refreshCountDownTextField.FieldType == typeof(TextMeshProUGUI) &&
+                   !refreshCountDownTextField.IsStatic &&
                    sellMethod != null &&
                    sellMethod.ReturnType == typeof(UniTask) &&
                    !sellMethod.IsStatic &&
@@ -2849,27 +2888,64 @@ namespace BossRush
         {
             if (modeEShellOwner == null) return;
             StockShopView shopView = StockShopView.Instance;
-            if (shopView == null || shopView.Target != currentShop || merchantNameTextField == null) return;
+            if (shopView == null || shopView.Target != currentShop) return;
 
             try
             {
-                TextMeshProUGUI merchantName = merchantNameTextField.GetValue(shopView) as TextMeshProUGUI;
-                if (merchantName == null) return;
+                GameObject currencyTemplate;
+                if (!TryFindModeECurrencyDisplayTemplate(shopView, out currencyTemplate))
+                {
+                    ModBehaviour.DevLog("[ModeE/Shell] 未找到原版现金显示容器，跳过左上角贝壳栏");
+                    return;
+                }
+                Transform currencyParent = currencyTemplate.transform.parent;
+                if (currencyParent == null) return;
 
                 if (shellBalanceTextObject == null)
                 {
                     shellBalanceTextObject = UnityEngine.Object.Instantiate(
-                        merchantName.gameObject,
-                        merchantName.transform.parent);
-                    shellBalanceTextObject.name = "ModeEShellBalanceText";
+                        currencyTemplate,
+                        currencyParent);
+                    shellBalanceTextObject.name = "ModeEShellBalanceDisplay";
+
+                    CashDisplay clonedCashDisplay =
+                        shellBalanceTextObject.GetComponentInChildren<CashDisplay>(true);
+                    shellBalanceText = clonedCashDisplay != null && cashDisplayTextField != null
+                        ? cashDisplayTextField.GetValue(clonedCashDisplay) as TextMeshProUGUI
+                        : null;
+                    DisableClonedModeECurrencyUpdaters(shellBalanceTextObject);
                 }
-                else if (shellBalanceTextObject.transform.parent != merchantName.transform.parent)
+                else if (shellBalanceTextObject.transform.parent != currencyParent)
                 {
-                    shellBalanceTextObject.transform.SetParent(merchantName.transform.parent, false);
+                    shellBalanceTextObject.transform.SetParent(currencyParent, false);
                 }
-                shellBalanceTextObject.SetActive(true);
-                shellBalanceTextObject.name = "ModeEShellBalanceText";
-                shellBalanceText = shellBalanceTextObject.GetComponent<TextMeshProUGUI>();
+
+                shellBalanceTextObject.name = "ModeEShellBalanceDisplay";
+                shellBalanceTextObject.transform.SetSiblingIndex(
+                    Mathf.Min(
+                        currencyParent.childCount - 1,
+                        currencyTemplate.transform.GetSiblingIndex() + 1));
+
+                if (currencyParent.GetComponent<HorizontalOrVerticalLayoutGroup>() == null)
+                {
+                    RectTransform sourceRect = currencyTemplate.transform as RectTransform;
+                    RectTransform targetRect = shellBalanceTextObject.transform as RectTransform;
+                    if (sourceRect != null && targetRect != null)
+                    {
+                        targetRect.anchorMin = sourceRect.anchorMin;
+                        targetRect.anchorMax = sourceRect.anchorMax;
+                        targetRect.pivot = sourceRect.pivot;
+                        targetRect.sizeDelta = sourceRect.sizeDelta;
+                        targetRect.anchoredPosition = sourceRect.anchoredPosition +
+                            new Vector2(Mathf.Abs(sourceRect.rect.width) + 8f, 0f);
+                    }
+                }
+
+                if (shellBalanceText == null)
+                {
+                    shellBalanceText =
+                        shellBalanceTextObject.GetComponentInChildren<TextMeshProUGUI>(true);
+                }
                 if (shellBalanceText == null)
                 {
                     UnityEngine.Object.Destroy(shellBalanceTextObject);
@@ -2878,20 +2954,21 @@ namespace BossRush
                 }
 
                 shellBalanceText.richText = false;
-                shellBalanceText.fontSize = Mathf.Max(14f, merchantName.fontSize * 0.72f);
-                RectTransform sourceRect = merchantName.rectTransform;
-                RectTransform targetRect = shellBalanceText.rectTransform;
-                if (sourceRect != null && targetRect != null)
-                {
-                    targetRect.anchorMin = sourceRect.anchorMin;
-                    targetRect.anchorMax = sourceRect.anchorMax;
-                    targetRect.pivot = sourceRect.pivot;
-                    targetRect.sizeDelta = sourceRect.sizeDelta;
-                    targetRect.anchoredPosition = sourceRect.anchoredPosition +
-                        new Vector2(0f, -Mathf.Max(24f, sourceRect.rect.height * 0.65f));
-                }
+                shellBalanceText.enableAutoSizing = true;
+                shellBalanceText.fontSizeMin = 12f;
+                shellBalanceText.enableWordWrapping = false;
+                shellBalanceText.overflowMode = TextOverflowModes.Ellipsis;
 
+                shellBalanceHasShellIcon = TryApplyModeEShellIcon(
+                    shellBalanceTextObject,
+                    modeEShellOwner.CurrentModeEShellIcon);
                 shellBalanceTextObject.SetActive(true);
+                RectTransform currencyParentRect = currencyParent as RectTransform;
+                if (currencyParentRect != null)
+                {
+                    LayoutRebuilder.MarkLayoutForRebuild(currencyParentRect);
+                }
+                UpdateShellBalanceText();
             }
             catch (Exception e)
             {
@@ -2899,11 +2976,286 @@ namespace BossRush
             }
         }
 
+        private static bool TryFindModeECurrencyDisplayTemplate(
+            StockShopView shopView,
+            out GameObject currencyTemplate)
+        {
+            currencyTemplate = null;
+            if (shopView == null || contextualCashDisplayField == null ||
+                contextualCashDisplayField.FieldType != typeof(GameObject))
+            {
+                return false;
+            }
+
+            ContextualMoneyAndCash[] currencyBars =
+                Resources.FindObjectsOfTypeAll<ContextualMoneyAndCash>();
+            for (int i = 0; i < currencyBars.Length; i++)
+            {
+                ContextualMoneyAndCash currencyBar = currencyBars[i];
+                if (currencyBar == null || !currencyBar.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                GameObject cashDisplay =
+                    contextualCashDisplayField.GetValue(currencyBar) as GameObject;
+                if (cashDisplay == null || !cashDisplay.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                currencyTemplate = cashDisplay;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void DisableClonedModeECurrencyUpdaters(GameObject displayObject)
+        {
+            if (displayObject == null) return;
+
+            CashDisplay[] cashDisplays = displayObject.GetComponentsInChildren<CashDisplay>(true);
+            for (int i = 0; i < cashDisplays.Length; i++)
+            {
+                CashDisplay cashDisplay = cashDisplays[i];
+                if (cashDisplay == null) continue;
+                cashDisplay.enabled = false;
+                UnityEngine.Object.Destroy(cashDisplay);
+            }
+
+            MoneyDisplay[] moneyDisplays = displayObject.GetComponentsInChildren<MoneyDisplay>(true);
+            for (int i = 0; i < moneyDisplays.Length; i++)
+            {
+                MoneyDisplay moneyDisplay = moneyDisplays[i];
+                if (moneyDisplay == null) continue;
+                moneyDisplay.enabled = false;
+                UnityEngine.Object.Destroy(moneyDisplay);
+            }
+        }
+
+        private static bool TryApplyModeEShellIcon(GameObject displayObject, Sprite shellIcon)
+        {
+            if (displayObject == null || shellIcon == null) return false;
+
+            Image[] images = displayObject.GetComponentsInChildren<Image>(true);
+            Image iconImage = null;
+            float smallestArea = float.MaxValue;
+            for (int i = 0; i < images.Length; i++)
+            {
+                Image image = images[i];
+                if (image == null || image.sprite == null) continue;
+                Rect rect = image.rectTransform.rect;
+                float width = Mathf.Abs(rect.width);
+                float height = Mathf.Abs(rect.height);
+                if (width < 8f || height < 8f || width > 64f || height > 64f)
+                {
+                    continue;
+                }
+
+                float area = width * height;
+                if (area < smallestArea)
+                {
+                    smallestArea = area;
+                    iconImage = image;
+                }
+            }
+
+            if (iconImage == null) return false;
+            iconImage.sprite = shellIcon;
+            iconImage.preserveAspect = true;
+            iconImage.color = Color.white;
+            return true;
+        }
+
+        private static void CreateLotteryButton()
+        {
+            if (modeEShellOwner == null || sellAllButtonObject == null) return;
+            StockShopView shopView = StockShopView.Instance;
+            if (shopView == null || shopView.Target != currentShop ||
+                refreshCountDownTextField == null)
+            {
+                return;
+            }
+
+            try
+            {
+                TextMeshProUGUI headerAnchor = refreshCountDownTextField != null
+                    ? refreshCountDownTextField.GetValue(shopView) as TextMeshProUGUI
+                    : null;
+                if (headerAnchor == null) return;
+                RectTransform root = FindModeEHeaderActionRoot(shopView);
+                if (root == null) return;
+
+                if (lotteryButtonObject == null)
+                {
+                    lotteryButtonObject = CreateModeELotteryButtonObject(root);
+                    if (lotteryButtonObject == null) return;
+                }
+                else if (lotteryButtonObject.transform.parent != root)
+                {
+                    lotteryButtonObject.transform.SetParent(root, false);
+                }
+
+                lotteryButtonObject.SetActive(true);
+                lotteryButton = lotteryButtonObject.GetComponent<Button>();
+                lotteryButtonText = lotteryButtonObject.GetComponentInChildren<TextMeshProUGUI>();
+                if (lotteryButton == null || lotteryButtonText == null)
+                {
+                    lotteryButtonObject.SetActive(false);
+                    return;
+                }
+
+                lotteryButton.onClick.RemoveAllListeners();
+                lotteryButton.onClick.AddListener(OnLotteryButtonClicked);
+                lotteryButtonText.alignment = TextAlignmentOptions.Center;
+                lotteryButtonText.enableAutoSizing = true;
+                lotteryButtonText.fontSize = 15f;
+                lotteryButtonText.fontSizeMin = 11f;
+                lotteryButtonText.fontSizeMax = 15f;
+                lotteryButtonText.enableWordWrapping = false;
+                lotteryButtonText.overflowMode = TextOverflowModes.Ellipsis;
+
+                RectTransform targetRect = lotteryButtonObject.GetComponent<RectTransform>();
+                if (targetRect != null)
+                {
+                    PositionModeELotteryButtonOutsideShop(
+                        root,
+                        headerAnchor.rectTransform,
+                        targetRect);
+                }
+
+                UpdateLotteryButtonState();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeE/Lottery] 创建抽奖按钮失败: " + e.Message);
+            }
+        }
+
+        private static void PositionModeELotteryButtonOutsideShop(
+            RectTransform root,
+            RectTransform refreshCountDown,
+            RectTransform targetRect)
+        {
+            if (root == null || refreshCountDown == null || targetRect == null) return;
+
+            Bounds countdownBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                root,
+                refreshCountDown);
+            const float buttonWidth = 132f;
+            const float buttonHeight = 32f;
+            float buttonRight = countdownBounds.min.x - 12f;
+            float buttonCenterX = buttonRight - buttonWidth * 0.5f;
+            float buttonCenterY = countdownBounds.center.y;
+            if (buttonCenterX - buttonWidth * 0.5f < root.rect.xMin + 12f)
+            {
+                buttonRight = Mathf.Min(root.rect.xMax - 12f, countdownBounds.max.x);
+                buttonCenterX = buttonRight - buttonWidth * 0.5f;
+                buttonCenterY = countdownBounds.min.y - 8f - buttonHeight * 0.5f;
+            }
+
+            targetRect.anchorMin = new Vector2(0.5f, 1f);
+            targetRect.anchorMax = new Vector2(0.5f, 1f);
+            targetRect.pivot = new Vector2(0.5f, 0.5f);
+            targetRect.sizeDelta = new Vector2(buttonWidth, buttonHeight);
+            targetRect.anchoredPosition = new Vector2(
+                buttonCenterX - root.rect.center.x,
+                buttonCenterY - root.rect.yMax);
+            targetRect.SetAsLastSibling();
+        }
+
+        private static RectTransform FindModeEHeaderActionRoot(StockShopView shopView)
+        {
+            // Header containers clip children outside their single-line bounds.
+            // The view root is the nearest stable overlay that remains visible below the countdown.
+            return shopView != null
+                ? shopView.transform as RectTransform
+                : null;
+        }
+
+        private static GameObject CreateModeELotteryButtonObject(Transform parent)
+        {
+            if (parent == null || sellAllButton == null || sellAllButtonText == null)
+            {
+                return null;
+            }
+
+            GameObject buttonObject = UnityEngine.Object.Instantiate(
+                sellAllButtonObject,
+                parent);
+            buttonObject.name = "ModeELotteryButton";
+            buttonObject.SetActive(false);
+
+            Button targetButton = buttonObject.GetComponent<Button>();
+            if (targetButton != null)
+            {
+                targetButton.onClick.RemoveAllListeners();
+                Navigation navigation = targetButton.navigation;
+                navigation.mode = Navigation.Mode.None;
+                targetButton.navigation = navigation;
+            }
+
+            LayoutElement layoutElement = buttonObject.GetComponent<LayoutElement>();
+            if (layoutElement != null)
+            {
+                layoutElement.ignoreLayout = true;
+            }
+            ContentSizeFitter contentSizeFitter = buttonObject.GetComponent<ContentSizeFitter>();
+            if (contentSizeFitter != null)
+            {
+                contentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                contentSizeFitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+            }
+
+            return buttonObject;
+        }
+
+        private static void OnLotteryButtonClicked()
+        {
+            if (modeEShellOwner == null || currentShop == null ||
+                modeEShellUiBindingID <= 0L)
+            {
+                return;
+            }
+
+            modeEShellOwner.BuyModeELotteryAsync(
+                currentShop,
+                modeEShellUiBindingID).Forget();
+        }
+
+        private static void UpdateLotteryButtonState()
+        {
+            if (lotteryButton == null || lotteryButtonText == null ||
+                modeEShellOwner == null || currentShop == null)
+            {
+                return;
+            }
+
+            int price;
+            bool ready = modeEShellOwner.TryGetModeELotteryUiState(currentShop, out price);
+            bool enough = ready && modeEShellOwner.CurrentModeEShellBalance >= price;
+            bool interactable = enough && !modeEShellOwner.IsModeEShellTransactionGateBusy;
+            string displayText = ready
+                ? L10n.T("抽奖 ", "Lottery ") + price.ToString("N0") +
+                    L10n.T(" 贝壳", " Shells")
+                : L10n.T("抽奖载入中", "Lottery loading");
+            ApplyButtonState(
+                lotteryButton,
+                lotteryButtonObject,
+                lotteryButtonText,
+                displayText,
+                interactable,
+                interactable ? new Color(0.2f, 0.65f, 0.85f) : Color.gray);
+        }
+
         private static void UpdateShellBalanceText()
         {
             if (shellBalanceText == null || modeEShellOwner == null) return;
-            shellBalanceText.text = L10n.T("贝壳：", "Shells: ") +
-                modeEShellOwner.CurrentModeEShellBalance.ToString("N0");
+            string amount = modeEShellOwner.CurrentModeEShellBalance.ToString("N0");
+            shellBalanceText.text = shellBalanceHasShellIcon
+                ? amount
+                : L10n.T("贝壳 ", "Shells ") + amount;
         }
 
         private static void OnModeEShellBalanceChanged(ModeEShellBalanceChangedEvent evt)
@@ -2918,6 +3270,7 @@ namespace BossRush
             }
 
             UpdateShellBalanceText();
+            UpdateLotteryButtonState();
             modeEShellOwner.RefreshOpenModeEShellUi(currentShop, modeEShellUiBindingID, null);
         }
 
@@ -2936,6 +3289,7 @@ namespace BossRush
                 currentShop,
                 modeEShellUiBindingID,
                 evt.ItemTypeID);
+            UpdateLotteryButtonState();
         }
 
         private static void OnModeEShellTransactionGateChanged(ModeEShellTransactionGateChangedEvent evt)
@@ -2950,6 +3304,7 @@ namespace BossRush
             }
 
             UpdateButtonState();
+            UpdateLotteryButtonState();
             modeEShellOwner.RefreshOpenModeEShellUi(currentShop, modeEShellUiBindingID, null);
         }
 
@@ -3272,6 +3627,24 @@ namespace BossRush
             if (destroyUiObjects)
             {
                 shellBalanceText = null;
+                shellBalanceHasShellIcon = false;
+            }
+            if (lotteryButtonObject != null)
+            {
+                if (destroyUiObjects)
+                {
+                    UnityEngine.Object.Destroy(lotteryButtonObject);
+                    lotteryButtonObject = null;
+                }
+                else
+                {
+                    lotteryButtonObject.SetActive(false);
+                }
+            }
+            if (destroyUiObjects)
+            {
+                lotteryButton = null;
+                lotteryButtonText = null;
             }
             currentShop = null;
             activeSellAllOperationID = 0L;
@@ -3300,6 +3673,9 @@ namespace BossRush
             characterInventoryDisplayField = null;
             sortButtonField = null;
             merchantNameTextField = null;
+            refreshCountDownTextField = null;
+            contextualCashDisplayField = null;
+            cashDisplayTextField = null;
             stockShopEntryPoolField = null;
             stockShopPoolActiveEntriesField = null;
             sellMethod = null;

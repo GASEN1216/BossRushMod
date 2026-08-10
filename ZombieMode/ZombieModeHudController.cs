@@ -57,7 +57,7 @@ namespace BossRush
                 kills = GetZombieModeBossProgressText();
             }
 
-            string result = L10n.T("BossRush_ZombieMode_EntryName") + "\n" + wave + "\n" + pollution + "\n" + purification;
+            string result = "<b><color=#70D9CB>" + L10n.T("BossRush_ZombieMode_EntryName") + "</color></b>\n" + wave + "\n" + pollution + "\n" + purification;
             if (!string.IsNullOrEmpty(pressure))
             {
                 result += "\n" + pressure;
@@ -336,10 +336,10 @@ namespace BossRush
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
                 new Vector2(24f, -294f),
-                new Vector2(420f, 200f),
-                22f,
+                new Vector2(392f, 184f),
+                18f,
                 TextAlignmentOptions.TopLeft,
-                new Color(0.75f, 1f, 0.75f, 0.95f));
+                ZombieModeUIHelper.TextPrimaryColor);
 
             safeZoneText = CreatePanel(
                 "SafeZonePanel",
@@ -347,8 +347,8 @@ namespace BossRush
                 new Vector2(1f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(-408f, -24f),
-                new Vector2(320f, 120f),
-                24f,
+                new Vector2(300f, 108f),
+                19f,
                 TextAlignmentOptions.TopRight,
                 new Color(0.18f, 0.78f, 0.32f, 0.95f));
 
@@ -358,8 +358,8 @@ namespace BossRush
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
                 new Vector2(0f, 156f),
-                new Vector2(600f, 48f),
-                28f,
+                new Vector2(560f, 42f),
+                20f,
                 TextAlignmentOptions.Center,
                 new Color(1f, 0.92f, 0.55f, 0.95f));
         }
@@ -375,15 +375,39 @@ namespace BossRush
             TextAlignmentOptions alignment,
             Color color)
         {
-            GameObject obj = new GameObject(name);
-            obj.transform.SetParent(transform, false);
-            RectTransform rect = obj.AddComponent<RectTransform>();
+            GameObject obj = ZombieModeUIHelper.CreateRect(
+                name,
+                transform,
+                anchorMin,
+                anchorMax,
+                position,
+                size,
+                pivot);
+            RectTransform rect = obj.GetComponent<RectTransform>();
             rect.anchorMin = anchorMin;
             rect.anchorMax = anchorMax;
             rect.pivot = pivot;
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
-            TextMeshProUGUI tmp = ZombieModeUIHelper.CreateTMPText(obj, string.Empty, fontSize, alignment, color);
+
+            bool stagePanel = name == "StagePanel";
+            GameObject textObject = ZombieModeUIHelper.CreateRect(
+                "Text",
+                obj.transform,
+                Vector2.zero,
+                Vector2.one,
+                Vector2.zero,
+                Vector2.zero,
+                new Vector2(0.5f, 0.5f));
+            RectTransform textRect = textObject.GetComponent<RectTransform>();
+            textRect.offsetMin = stagePanel ? new Vector2(8f, 4f) : new Vector2(2f, 4f);
+            textRect.offsetMax = stagePanel ? new Vector2(-8f, -4f) : new Vector2(-2f, -8f);
+            TextMeshProUGUI tmp = ZombieModeUIHelper.CreateTMPText(textObject, string.Empty, fontSize, alignment, color);
+            tmp.lineSpacing = stagePanel ? 0f : 4f;
+            Shadow textShadow = textObject.AddComponent<Shadow>();
+            textShadow.effectColor = new Color(0f, 0f, 0f, 0.78f);
+            textShadow.effectDistance = new Vector2(1.5f, -1.5f);
+            textShadow.useGraphicAlpha = true;
             return tmp;
         }
 
@@ -416,6 +440,7 @@ namespace BossRush
             if (safeZoneText != null)
             {
                 SetTextIfChanged(safeZoneText, inst.GetZombieModeHudSafeZoneText(RunId), ref lastSafeZoneText);
+                SetPanelVisible(safeZoneText, !string.IsNullOrEmpty(lastSafeZoneText));
                 SetSafeZoneColorIfChanged(inst.GetZombieModeHudSafeZoneColor(RunId));
             }
 
@@ -452,6 +477,14 @@ namespace BossRush
             lastSafeZoneColor = value;
             hasLastSafeZoneColor = true;
             safeZoneText.color = value;
+        }
+
+        private static void SetPanelVisible(TextMeshProUGUI target, bool visible)
+        {
+            if (target != null && target.transform.parent != null && target.transform.parent.gameObject.activeSelf != visible)
+            {
+                target.transform.parent.gameObject.SetActive(visible);
+            }
         }
 
         private ModBehaviour GetRuntimeOwner()

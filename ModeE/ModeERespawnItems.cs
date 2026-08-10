@@ -52,8 +52,6 @@ namespace BossRush
 
         private const bool MODE_E_LOG_PER_ENEMY_WAKE = false;
 
-        private const int MODE_E_RESPAWN_ALIVE_BOSS_LIMIT = 64;
-
         private bool modeERespawnTaskRunning = false;
 
         private readonly List<Vector3> modeERespawnSpawnPointScratch = new List<Vector3>();
@@ -301,50 +299,11 @@ namespace BossRush
             return modeERespawnAcceptedPointScratch;
         }
 
-        private int CountValidModeEAliveBosses()
-        {
-            int count = 0;
-            for (int i = 0; i < modeEAliveEnemies.Count; i++)
-            {
-                if (IsValidModeEEnemyTarget(modeEAliveEnemies[i]))
-                {
-                    count++;
-                }
-            }
-
-            return count;
-        }
-
-        private int GetModeERespawnPendingBossCount()
-        {
-            int pendingCount = modeETotalSpawnExpected - modeESpawnResolved;
-            return pendingCount > 0 ? pendingCount : 0;
-        }
-
-        private int GetModeERespawnAvailableSpawnSlots()
-        {
-            int pressureCount = CountValidModeEAliveBosses() + GetModeERespawnPendingBossCount();
-            int availableSlots = MODE_E_RESPAWN_ALIVE_BOSS_LIMIT - pressureCount;
-            return availableSlots > 0 ? availableSlots : 0;
-        }
-
-        private int GetModeERespawnApproximateAliveBossPressureCount()
-        {
-            int aliveCount = modeEAliveEnemies != null ? modeEAliveEnemies.Count : 0;
-            return aliveCount + GetModeERespawnPendingBossCount();
-        }
-
-        private int GetModeERespawnApproximateAvailableSpawnSlots()
-        {
-            int availableSlots = MODE_E_RESPAWN_ALIVE_BOSS_LIMIT - GetModeERespawnApproximateAliveBossPressureCount();
-            return availableSlots > 0 ? availableSlots : 0;
-        }
-
         internal bool CanQueryUseModeERespawnItem()
         {
             if (!modeEActive) return false;
             if (modeERespawnTaskRunning) return false;
-            return GetModeERespawnApproximateAvailableSpawnSlots() > 0;
+            return true;
         }
 
         internal bool CanUseModeERespawnItem(bool showFailureFeedback)
@@ -373,24 +332,11 @@ namespace BossRush
                 return false;
             }
 
-            if (GetModeERespawnAvailableSpawnSlots() <= 0)
-            {
-                if (showFailureFeedback)
-                {
-                    ShowMessage(L10n.T(
-                        "场上 Boss 数量已达上限，先清理一些敌人！",
-                        "The active Boss limit has been reached. Clear some enemies first!"
-                    ));
-                }
-                return false;
-            }
-
             return true;
         }
 
         private bool TryStartModeERespawn(
             List<Vector3> points,
-            string itemNameZh,
             string itemNameEn,
             out int respawnCount)
         {
@@ -409,26 +355,8 @@ namespace BossRush
             }
             profiler.Mark("GateCheck");
 
-            int availableSlots = GetModeERespawnAvailableSpawnSlots();
-            if (availableSlots <= 0)
-            {
-                profiler.Complete("failed: no slots");
-                return false;
-            }
-            profiler.Mark("ResolveSlots");
-
-            int acceptedPointCount = points.Count;
-            if (points.Count > availableSlots)
-            {
-                acceptedPointCount = availableSlots;
-                ShowMessage(L10n.T(
-                    itemNameZh + " 已受 Boss 上限保护，本次只呼叫 " + availableSlots + " 个 Boss。",
-                    itemNameEn + " was capped by the active Boss limit. Spawning " + availableSlots + " Bosses."
-                ));
-            }
-
-            List<Vector3> acceptedPoints = CopyModeERespawnAcceptedPoints(points, acceptedPointCount);
-            profiler.Mark("ClipAcceptedPoints");
+            List<Vector3> acceptedPoints = CopyModeERespawnAcceptedPoints(points, points.Count);
+            profiler.Mark("CopySpawnPoints");
 
             respawnCount = acceptedPoints.Count;
             if (respawnCount <= 0)
@@ -543,7 +471,7 @@ namespace BossRush
                 }
 
                 int respawnCount;
-                if (!TryStartModeERespawn(nearestPoints, "挑衅烟雾弹", "Taunt Smoke", out respawnCount))
+                if (!TryStartModeERespawn(nearestPoints, "Taunt Smoke", out respawnCount))
                 {
                     return;
                 }
@@ -596,7 +524,7 @@ namespace BossRush
                 }
 
                 int respawnCount;
-                if (!TryStartModeERespawn(allPoints, "混沌引爆器", "Chaos Detonator", out respawnCount))
+                if (!TryStartModeERespawn(allPoints, "Chaos Detonator", out respawnCount))
                 {
                     return;
                 }

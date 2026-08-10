@@ -81,6 +81,8 @@ namespace BossRush
 
         private void ResetModeESharedRuntimeState(bool clearSpawnAllocation, bool clearSpawnerCache, bool stopWarmupCoroutine)
         {
+            CleanupModeELotteryAndHiringRuntime();
+
             // 尝试对称清理玩家缩放 Modifier；若玩家对象暂不可用，保留句柄供后续重试。
             RemoveModeEPlayerScalingModifiers();
 
@@ -964,6 +966,7 @@ namespace BossRush
                 InitializeModeEShellSession(modeESessionToken, relatedScene);
                 ResetModeEUiCaches();
                 modeEPlayerFaction = faction;
+                InitializeModeELotteryAndHiringRuntime();
                 ClearEnemyRecoveryMonitorState();
 
                 // 重置龙裔/龙王全局限制标记

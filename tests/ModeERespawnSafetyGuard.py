@@ -1,7 +1,6 @@
 """
-Guard: Mode E respawn consumables must be gated by one active spawn task and
-an alive/pending Boss pressure cap. This prevents stacked fire-and-forget
-respawn jobs from multiplying AI, health bars, lootboxes, and death callbacks.
+Guard: Mode E respawn consumables have no population cap, while still allowing
+only one active spawn task and cancelling further spawns after the session ends.
 """
 
 from pathlib import Path
@@ -44,14 +43,38 @@ def main() -> int:
     usage_text = USAGE.read_text(encoding="utf-8")
 
     for required in (
-        "MODE_E_RESPAWN_ALIVE_BOSS_LIMIT",
         "modeERespawnTaskRunning",
-        "GetModeERespawnAvailableSpawnSlots",
+        "CanQueryUseModeERespawnItem",
         "CanUseModeERespawnItem",
         "TryStartModeERespawn",
     ):
         if required not in respawn_text:
             return fail(f"ModeERespawnSafetyGuard: missing respawn safety invariant -> {required}")
+
+    for forbidden in (
+        "MODE_E_RESPAWN_MINIMUM_ALIVE_BOSS_LIMIT",
+        "CountValidModeEAliveBosses",
+        "GetModeERespawnPendingBossCount",
+        "GetModeERespawnPopulationLimit",
+        "GetModeERespawnAvailableSpawnSlots",
+        "GetModeERespawnApproximateAliveBossPressureCount",
+        "GetModeERespawnApproximateAvailableSpawnSlots",
+        "场上 Boss 数量已达上限",
+        "active Boss limit",
+    ):
+        if forbidden in respawn_text:
+            return fail(f"ModeERespawnSafetyGuard: population cap regression -> {forbidden}")
+
+    can_query_body = extract_method_body(respawn_text, "internal bool CanQueryUseModeERespawnItem")
+    if can_query_body is None:
+        return fail("ModeERespawnSafetyGuard: missing CanQueryUseModeERespawnItem body")
+    for required in (
+        "!modeEActive",
+        "modeERespawnTaskRunning",
+        "return true",
+    ):
+        if required not in can_query_body:
+            return fail(f"ModeERespawnSafetyGuard: CanQueryUseModeERespawnItem lacks -> {required}")
 
     start_body = extract_method_body(respawn_text, "private bool TryStartModeERespawn")
     if start_body is None:
@@ -59,12 +82,22 @@ def main() -> int:
 
     for required in (
         "CanUseModeERespawnItem(true)",
-        "GetModeERespawnAvailableSpawnSlots()",
+        "CopyModeERespawnAcceptedPoints(points, points.Count)",
         "modeERespawnTaskRunning = true",
         "RespawnBossesAtPoints(",
     ):
         if required not in start_body:
             return fail(f"ModeERespawnSafetyGuard: TryStartModeERespawn lacks -> {required}")
+
+    for forbidden in (
+        "availableSlots",
+        "acceptedPointCount",
+        "ResolveSlots",
+        "ClipAcceptedPoints",
+        "itemNameZh",
+    ):
+        if forbidden in start_body:
+            return fail(f"ModeERespawnSafetyGuard: TryStartModeERespawn still caps spawn points -> {forbidden}")
 
     respawn_body = extract_method_body(respawn_text, "private async UniTaskVoid RespawnBossesAtPoints")
     if respawn_body is None:

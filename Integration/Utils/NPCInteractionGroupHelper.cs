@@ -152,35 +152,66 @@ namespace BossRush.Utils
 
             Transform child = parent.Find(childName);
             GameObject childObj = child != null ? child.gameObject : new GameObject(childName);
-            childObj.transform.SetParent(parent, false);
-            childObj.transform.localPosition = localPosition;
-            childObj.transform.localRotation = Quaternion.identity;
-            childObj.transform.localScale = Vector3.one;
-
-            int interactableLayer = LayerMask.NameToLayer("Interactable");
-            if (interactableLayer != -1)
+            bool createdChild = child == null;
+            bool restoreActive = childObj.activeSelf;
+            bool setupSucceeded = false;
+            if (restoreActive)
             {
-                childObj.layer = interactableLayer;
+                childObj.SetActive(false);
             }
 
-            SphereCollider sphereCollider = childObj.GetComponent<SphereCollider>();
-            if (sphereCollider == null)
+            try
             {
-                sphereCollider = childObj.AddComponent<SphereCollider>();
+                childObj.transform.SetParent(parent, false);
+                childObj.transform.localPosition = localPosition;
+                childObj.transform.localRotation = Quaternion.identity;
+                childObj.transform.localScale = Vector3.one;
+
+                int interactableLayer = LayerMask.NameToLayer("Interactable");
+                if (interactableLayer != -1)
+                {
+                    childObj.layer = interactableLayer;
+                }
+
+                SphereCollider sphereCollider = childObj.GetComponent<SphereCollider>();
+                if (sphereCollider == null)
+                {
+                    sphereCollider = childObj.AddComponent<SphereCollider>();
+                }
+
+                sphereCollider.isTrigger = false;
+                sphereCollider.radius = 0.22f;
+                sphereCollider.center = Vector3.zero;
+
+                T component = childObj.GetComponent<T>();
+                if (component == null)
+                {
+                    component = childObj.AddComponent<T>();
+                }
+
+                if (GetOrCreateGroupList(
+                        component,
+                        "[NPCInteractionGroup/Standalone]") == null)
+                {
+                    throw new InvalidOperationException(
+                        "failed to initialize InteractableBase group list");
+                }
+
+                setup?.Invoke(component);
+                setupSucceeded = true;
+                return component;
             }
-
-            sphereCollider.isTrigger = false;
-            sphereCollider.radius = 0.22f;
-            sphereCollider.center = Vector3.zero;
-
-            T component = childObj.GetComponent<T>();
-            if (component == null)
+            finally
             {
-                component = childObj.AddComponent<T>();
+                if (!setupSucceeded && createdChild && childObj != null)
+                {
+                    UnityEngine.Object.Destroy(childObj);
+                }
+                else if (restoreActive && childObj != null)
+                {
+                    childObj.SetActive(true);
+                }
             }
-
-            setup?.Invoke(component);
-            return component;
         }
     }
 }

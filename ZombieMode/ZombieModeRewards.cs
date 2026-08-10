@@ -28,17 +28,13 @@ namespace BossRush
     public sealed class ZombieModeRewardSelectionView : MonoBehaviour
     {
         // ==================== 配色方案 ====================
-        private static readonly Color BackdropColor = new Color(0f, 0f, 0f, 0.72f);
-        private static readonly Color PanelOuterColor = new Color(0.12f, 0.16f, 0.24f, 0.98f);
-        private static readonly Color PanelBorderColor = new Color(0.22f, 0.30f, 0.44f, 0.45f);
-        private static readonly Color PanelInnerColor = new Color(0.10f, 0.12f, 0.16f, 0.98f);
-        private static readonly Color HeaderColor = new Color(0.14f, 0.20f, 0.32f, 1.00f);
-        private static readonly Color AccentLineColor = new Color(0.35f, 0.55f, 0.85f, 0.70f);
+        private static readonly Color HeaderColor = new Color(0.09f, 0.115f, 0.13f, 0.12f);
+        private static readonly Color AccentLineColor = new Color(0.44f, 0.82f, 0.92f, 0.80f);
 
         // 奖励卡片
-        private static readonly Color RewardCardColor = new Color(0.12f, 0.16f, 0.22f, 0.98f);
+        private static readonly Color RewardCardColor = new Color(0.12f, 0.16f, 0.22f, 0.62f);
         private static readonly Color RewardCardAccentColor = new Color(0.44f, 0.82f, 0.92f, 0.95f);
-        private static readonly Color RewardCardHoverColor = new Color(0.18f, 0.24f, 0.32f, 1.00f);
+        private static readonly Color RewardCardHoverColor = new Color(0.18f, 0.24f, 0.32f, 0.90f);
 
         // 免费刷新
         private static readonly Color FreeRefreshColor = new Color(0.14f, 0.36f, 0.28f, 1.00f);
@@ -71,34 +67,11 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
-            // ── 全屏遮罩 ──
-            GameObject backdrop = ZombieModeUIHelper.CreateRect("Backdrop", transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, Vector2.zero, Vector2.zero);
-            Image backdropImage = backdrop.AddComponent<Image>();
-            backdropImage.color = BackdropColor;
-            backdropImage.raycastTarget = true;
-
-            // ── 外框 ──
-            GameObject outer = ZombieModeUIHelper.CreateRect("PanelOuter", transform,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(860f, 540f), new Vector2(0.5f, 0.5f));
-            Image outerImage = outer.AddComponent<Image>();
-            outerImage.color = PanelOuterColor;
-
-            // ── 亮边层 ──
-            GameObject borderGlow = ZombieModeUIHelper.CreateRect("BorderGlow", outer.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image borderImg = borderGlow.AddComponent<Image>();
-            borderImg.color = PanelBorderColor;
-
-            // ── 主面板 ──
-            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", borderGlow.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image panelImage = panel.AddComponent<Image>();
-            panelImage.color = PanelInnerColor;
+            GameObject panel = ZombieModeUIHelper.CreateModalSurface(
+                "Panel",
+                transform,
+                new Vector2(860f, 540f),
+                RewardCardAccentColor);
 
             // ── 标题栏 ──
             float yPos = 0f;
@@ -109,11 +82,12 @@ namespace BossRush
             Image headerImage = header.AddComponent<Image>();
             headerImage.color = HeaderColor;
 
-            ZombieModeUIHelper.CreateText("Title", header.transform,
+            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText("Title", header.transform,
                 owner.GetZombieModeRewardTitle(runId), 26,
                 new Vector2(0f, 0f), new Vector2(1f, 1f),
                 Vector2.zero, Vector2.zero,
-                TextAlignmentOptions.Center, Color.white);
+                TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
+            titleText.fontStyle = FontStyles.Bold;
             yPos += headerH;
 
             // ── 标题装饰线 ──
@@ -137,11 +111,12 @@ namespace BossRush
             yPos += infoH + 10f;
 
             float previewH = 40f;
-            ZombieModeUIHelper.CreateText("NextWavePreview", panel.transform,
+            ZombieModeUIHelper.CreateHighlightBar("NextWavePreview", panel.transform,
                 owner.GetZombieModeNextWavePreviewText(runId), 15,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(yPos + previewH * 0.5f)), new Vector2(-40f, previewH),
-                TextAlignmentOptions.Center, RewardCardAccentColor);
+                TextAlignmentOptions.Center, RewardCardAccentColor,
+                new Color(0.055f, 0.12f, 0.13f, 0.22f));
             yPos += previewH + 8f;
 
             // ── 奖励卡片 ──
@@ -224,12 +199,12 @@ namespace BossRush
             cardImage.color = RewardCardColor;
 
             // ── 顶部高亮条 ──
-            GameObject topAccent = ZombieModeUIHelper.CreateRect("TopAccent", card.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -2f), new Vector2(0f, 4f), new Vector2(0.5f, 1f));
-            Image topAccentImg = topAccent.AddComponent<Image>();
-            topAccentImg.color = RewardCardAccentColor;
-            topAccentImg.raycastTarget = false;
+            GameObject sideAccent = ZombieModeUIHelper.CreateRect("SideAccent", card.transform,
+                new Vector2(0f, 0.18f), new Vector2(0f, 0.82f),
+                new Vector2(2f, 0f), new Vector2(4f, 0f), new Vector2(0f, 0.5f));
+            Image sideAccentImage = sideAccent.AddComponent<Image>();
+            sideAccentImage.color = RewardCardAccentColor;
+            sideAccentImage.raycastTarget = false;
 
             // ── 文本 ──
             ZombieModeUIHelper.CreateText("Text", card.transform, text, 18,
@@ -239,15 +214,11 @@ namespace BossRush
 
             // ── 按钮 ──
             Button button = card.AddComponent<Button>();
-            ColorBlock colors = button.colors;
-            colors.normalColor = RewardCardColor;
-            colors.highlightedColor = RewardCardHoverColor;
-            colors.pressedColor = RewardCardColor * 0.85f;
-            colors.selectedColor = RewardCardHoverColor;
-            colors.disabledColor = RewardCardColor * 0.6f;
-            colors.colorMultiplier = 1f;
-            button.colors = colors;
-            button.targetGraphic = cardImage;
+            ZombieModeUIHelper.ApplyButtonColors(
+                button,
+                RewardCardColor,
+                RewardCardHoverColor,
+                RewardCardColor * 0.6f);
 
             button.onClick.AddListener(delegate
             {
@@ -288,16 +259,7 @@ namespace BossRush
             layoutElement.flexibleWidth = 0f;
             layoutElement.flexibleHeight = 0f;
 
-            Image image = button.GetComponent<Image>();
-            ColorBlock colors = button.colors;
-            colors.normalColor = visibleColor;
-            colors.highlightedColor = visibleHoverColor;
-            colors.pressedColor = visibleColor * 0.85f;
-            colors.selectedColor = visibleHoverColor;
-            colors.disabledColor = disabledColor;
-            colors.colorMultiplier = 1f;
-            button.colors = colors;
-            button.targetGraphic = image;
+            ZombieModeUIHelper.ApplyButtonColors(button, visibleColor, visibleHoverColor, disabledColor);
 
             if (interactable)
             {
@@ -455,34 +417,14 @@ namespace BossRush
                 gameObject.AddComponent<GraphicRaycaster>();
             }
 
-            // ── 全屏遮罩 ──
-            GameObject backdrop = ZombieModeUIHelper.CreateRect("Backdrop", transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, Vector2.zero, Vector2.zero);
-            Image backdropImage = backdrop.AddComponent<Image>();
-            backdropImage.color = new Color(0f, 0f, 0f, 0.72f);
-            backdropImage.raycastTarget = true;
-
-            // ── 外框 ──
-            GameObject outer = ZombieModeUIHelper.CreateRect("PanelOuter", transform,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(820f, 620f), new Vector2(0.5f, 0.5f));
-            Image outerImage = outer.AddComponent<Image>();
-            outerImage.color = new Color(0.12f, 0.16f, 0.24f, 0.98f);
-
-            // ── 亮边层 ──
-            GameObject borderGlow = ZombieModeUIHelper.CreateRect("BorderGlow", outer.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image borderImg = borderGlow.AddComponent<Image>();
-            borderImg.color = new Color(0.22f, 0.30f, 0.44f, 0.45f);
-
-            // ── 主面板 ──
-            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", borderGlow.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image panelImage = panel.AddComponent<Image>();
-            panelImage.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+            Color serviceAccent = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
+                ? new Color(0.30f, 0.76f, 0.58f, 1f)
+                : new Color(0.82f, 0.66f, 0.30f, 1f);
+            GameObject panel = ZombieModeUIHelper.CreateModalSurface(
+                "Panel",
+                transform,
+                new Vector2(820f, 620f),
+                serviceAccent);
 
             // ── 标题栏 ──
             float headerH = 64f;
@@ -490,21 +432,22 @@ namespace BossRush
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(headerH * 0.5f)), new Vector2(0f, headerH), new Vector2(0.5f, 0.5f));
             Image headerImage = header.AddComponent<Image>();
-            headerImage.color = new Color(0.14f, 0.20f, 0.32f, 1.00f);
+            headerImage.color = ZombieModeUIHelper.ModalHeaderColor;
 
             string titleKey = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
                 ? "BossRush_ZombieMode_Npc_TempNurse"
                 : "BossRush_ZombieMode_Npc_TempMerchant";
-            ZombieModeUIHelper.CreateText("Title", header.transform,
+            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText("Title", header.transform,
                 L10n.T(titleKey), 26,
                 new Vector2(0f, 0f), new Vector2(1f, 1f),
                 Vector2.zero, new Vector2(700f, 60f),
-                TextAlignmentOptions.Center, Color.white);
+                TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
+            titleText.fontStyle = FontStyles.Bold;
 
             // ── 标题装饰线 ──
             ZombieModeUIHelper.CreateSeparator("AccentLine", panel.transform,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -headerH), 2f, new Color(0.35f, 0.55f, 0.85f, 0.70f));
+                new Vector2(0f, -headerH), 2f, serviceAccent);
 
             // ── 副标题 ──
             int purificationPoints = owner != null ? owner.GetZombieModePurificationPoints(runId) : 0;
@@ -552,7 +495,7 @@ namespace BossRush
             bodyRect.offsetMax = new Vector2(-20f, -110f); // 顶部留给标题栏+副标题
 
             Image bodyImage = body.AddComponent<Image>();
-            bodyImage.color = new Color(0.06f, 0.08f, 0.12f, 0.60f);
+            bodyImage.color = new Color(0.06f, 0.08f, 0.12f, 0.14f);
 
             ScrollRect scrollRect = body.AddComponent<ScrollRect>();
             scrollRect.horizontal = false;
@@ -689,10 +632,10 @@ namespace BossRush
         {
             Color normalColor = !interactable
                 ? new Color(0.14f, 0.14f, 0.14f, 0.70f)
-                : (affordable ? new Color(0.12f, 0.18f, 0.26f, 0.98f) : new Color(0.28f, 0.16f, 0.13f, 0.92f));
+                : (affordable ? new Color(0.12f, 0.18f, 0.26f, 0.60f) : new Color(0.28f, 0.16f, 0.13f, 0.64f));
             Color hoverColor = affordable
-                ? new Color(0.18f, 0.28f, 0.38f, 1.00f)
-                : new Color(0.40f, 0.23f, 0.18f, 1.00f);
+                ? new Color(0.18f, 0.28f, 0.38f, 0.90f)
+                : new Color(0.40f, 0.23f, 0.18f, 0.88f);
             Color accentColor = !interactable
                 ? new Color(0.30f, 0.30f, 0.30f, 0.70f)
                 : (affordable ? new Color(0.44f, 0.82f, 0.92f, 0.95f) : new Color(0.86f, 0.48f, 0.34f, 0.92f));
@@ -710,26 +653,17 @@ namespace BossRush
             Button button = obj.AddComponent<Button>();
             button.interactable = interactable;
 
-            // 悬停色
-            ColorBlock colors = button.colors;
-            colors.normalColor = normalColor;
-            colors.highlightedColor = hoverColor;
-            colors.pressedColor = normalColor * 0.85f;
-            colors.selectedColor = hoverColor;
-            colors.disabledColor = normalColor;
-            colors.colorMultiplier = 1f;
-            button.colors = colors;
-            button.targetGraphic = image;
+            ZombieModeUIHelper.ApplyButtonColors(button, normalColor, hoverColor, normalColor);
 
             // 顶部高亮条
             GameObject accent = ZombieModeUIHelper.CreateRect(
                 "Accent",
                 obj.transform,
-                new Vector2(0f, 1f),
-                new Vector2(1f, 1f),
-                new Vector2(0f, -2f),
-                new Vector2(0f, 4f),
-                new Vector2(0.5f, 1f));
+                new Vector2(0f, 0.20f),
+                new Vector2(0f, 0.80f),
+                new Vector2(2f, 0f),
+                new Vector2(4f, 0f),
+                new Vector2(0f, 0.5f));
             Image accentImage = accent.AddComponent<Image>();
             accentImage.color = accentColor;
             accentImage.raycastTarget = false;
@@ -742,8 +676,8 @@ namespace BossRush
 
         private void CreateCloseButton(Transform parent)
         {
-            Color closeNormal = new Color(0.35f, 0.16f, 0.18f, 1.00f);
-            Color closeHover = new Color(0.48f, 0.22f, 0.24f, 1.00f);
+            Color closeNormal = new Color(0.18f, 0.21f, 0.22f, 1.00f);
+            Color closeHover = new Color(0.27f, 0.32f, 0.34f, 1.00f);
 
             // 固定到面板底部
             Button button = ZombieModeUIHelper.CreateButton(
@@ -759,16 +693,7 @@ namespace BossRush
                 null,
                 true);
 
-            Image btnImage = button.GetComponent<Image>();
-            ColorBlock colors = button.colors;
-            colors.normalColor = closeNormal;
-            colors.highlightedColor = closeHover;
-            colors.pressedColor = closeNormal * 0.85f;
-            colors.selectedColor = closeHover;
-            colors.disabledColor = closeNormal * 0.6f;
-            colors.colorMultiplier = 1f;
-            button.colors = colors;
-            button.targetGraphic = btnImage;
+            ZombieModeUIHelper.ApplyButtonColors(button, closeNormal, closeHover, closeNormal * 0.6f);
 
             button.onClick.AddListener(delegate
             {
@@ -795,5 +720,6 @@ namespace BossRush
         {
             RestoreInputState();
         }
+
     }
 }

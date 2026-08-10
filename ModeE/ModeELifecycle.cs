@@ -58,6 +58,7 @@ namespace BossRush
                 // 先置 modeEActive = false，防止后续 Hurt() 触发的 OnModeEEnemyDeath
                 // 回调中再对即将死亡的敌人执行无意义的 ApplyFactionDeathScaling
                 modeEActive = false;
+                CleanupModeELotteryAndHiringRuntime();
                 InvalidateAndResetModeEShellSession("EndModeE");
                 InvalidateModeESession();
                 ClearEnemyRecoveryMonitorState();

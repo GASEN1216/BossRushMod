@@ -62,6 +62,9 @@ namespace BossRush
 
         /// <summary>缩放批量应用间隔（秒）- 每 5 秒统一应用一次，避免连锁死亡时的帧率尖刺</summary>
         private const float MODE_E_SCALING_BATCH_INTERVAL = 5f;
+        private const double MODE_E_SHELL_REFERENCE_HEALTH = 500.0;
+        private const double MODE_E_SHELL_REFERENCE_REWARD = 10.0;
+        private const double MODE_E_SHELL_REWARD_PER_HEALTH_DOUBLING = 3.0;
 
         /// <summary>
         /// 注册敌人死亡事件，触发按阵营的动态缩放
@@ -392,6 +395,7 @@ namespace BossRush
                 return;
             }
 
+            UnregisterModeEBossHireRuntime(enemy, true);
             UnregisterModeEEnemyDeath(enemy);
             UnregisterModeEEnemyLootHandler(enemy);
             UnregisterModeEEnemyFromSpawnerRoot(enemy);
@@ -480,10 +484,18 @@ namespace BossRush
 
         private static int CalculateModeEShellStandardBossBase(float birthMaxHealth)
         {
-            double normalized = Math.Max(1000.0, birthMaxHealth) / 1000.0;
-            int tier = (int)Math.Floor(Math.Log(normalized, 2.0));
-            tier = Mathf.Clamp(tier, 0, 6);
-            return 10 + 3 * tier;
+            double safeHealth = birthMaxHealth;
+            if (double.IsNaN(safeHealth) || double.IsInfinity(safeHealth) ||
+                safeHealth <= 0.0)
+            {
+                safeHealth = MODE_E_SHELL_REFERENCE_HEALTH;
+            }
+
+            double normalizedHealth = safeHealth / MODE_E_SHELL_REFERENCE_HEALTH;
+            double continuousReward = MODE_E_SHELL_REFERENCE_REWARD +
+                MODE_E_SHELL_REWARD_PER_HEALTH_DOUBLING *
+                Math.Log(normalizedHealth, 2.0);
+            return Math.Max(1, (int)Math.Ceiling(continuousReward));
         }
 
         private void SettleModeEShellRewardNoThrow(ModeEShellRewardSnapshot snapshot)

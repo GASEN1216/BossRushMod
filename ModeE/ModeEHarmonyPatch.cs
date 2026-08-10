@@ -9,6 +9,9 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,6 +23,69 @@ using Cysharp.Threading.Tasks;
 
 namespace BossRush
 {
+    [HarmonyPatch(typeof(Health), "Hurt", new Type[] { typeof(DamageInfo) })]
+    public static class ModeEHiredBossKillAttributionPatch
+    {
+        [HarmonyTranspiler]
+        public static IEnumerable<CodeInstruction> Transpiler(
+            IEnumerable<CodeInstruction> source)
+        {
+            List<CodeInstruction> instructions = new List<CodeInstruction>(source);
+            FieldInfo isDeadField = AccessTools.Field(typeof(Health), "isDead");
+            MethodInfo attributeMethod = AccessTools.Method(
+                typeof(ModeEHiredBossKillAttributionPatch),
+                nameof(AttributeKillToOwner));
+            if (isDeadField == null || attributeMethod == null)
+            {
+                Debug.LogError("[ModeE/Hire] Health.Hurt kill attribution binding failed");
+                return instructions;
+            }
+
+            int insertIndex = -1;
+            for (int i = 0; i < instructions.Count; i++)
+            {
+                CodeInstruction instruction = instructions[i];
+                if (instruction.opcode != OpCodes.Stfld ||
+                    !object.Equals(instruction.operand, isDeadField))
+                {
+                    continue;
+                }
+
+                if (insertIndex >= 0)
+                {
+                    Debug.LogError("[ModeE/Hire] Health.Hurt has multiple isDead writes");
+                    return instructions;
+                }
+                insertIndex = i + 1;
+            }
+
+            if (insertIndex < 0)
+            {
+                Debug.LogError("[ModeE/Hire] Health.Hurt death point was not found");
+                return instructions;
+            }
+
+            instructions.InsertRange(insertIndex, new[]
+            {
+                new CodeInstruction(OpCodes.Ldarga_S, (byte)1),
+                new CodeInstruction(OpCodes.Call, attributeMethod)
+            });
+            return instructions;
+        }
+
+        public static void AttributeKillToOwner(ref DamageInfo damageInfo)
+        {
+            ModBehaviour inst = ModBehaviour.Instance;
+            if (inst == null || !inst.IsModeEActive ||
+                damageInfo.fromCharacter == null)
+            {
+                return;
+            }
+
+            inst.AttributeModeEHiredBossKillToOwner(ref damageInfo);
+        }
+    }
+
     [HarmonyPatch(typeof(StockShop), "Buy", new Type[] { typeof(int), typeof(int) })]
     public static class ModeEShellBuyPatch
     {
@@ -187,9 +253,16 @@ namespace BossRush
         [HarmonyPrefix]
         public static bool Prefix(CharacterMainControl __instance, Teams _team)
         {
-            // 非 Mode E 或非 Teams.all 时放行
             var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive || _team != Teams.all)
+            if (inst == null || !inst.IsModeEActive)
+                return true;
+
+            // 已雇佣 Boss 的阵营由雇佣事务唯一拥有，阻止托管技能改回敌对/中立。
+            if (inst.ShouldBlockModeEHiredBossTeamChange(__instance, _team))
+                return false;
+
+            // 主角仅需要阻止原版控制逻辑改为 Teams.all。
+            if (_team != Teams.all)
                 return true;
 
             // 只保护主角

@@ -29,6 +29,7 @@ namespace BossRush
         private const float MODEF_BOUNTY_RADAR_LEADER_SIZE = 64f;
         private const float MODEF_BOUNTY_RADAR_WORLD_HEIGHT = 1.4f;
         private const float MODEF_BOUNTY_RADAR_GUIDE_SIZE = 760f;
+        private const float MODEF_BOUNTY_RADAR_EDGE_MARGIN = 54f;
         private const int MODEF_BOUNTY_RADAR_CANVAS_ORDER = 240;
         private const string MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH = "Assets/ui/modef_bounty_radar/bounty_circle_regular.png";
         private const string MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH = "Assets/ui/modef_bounty_radar/bounty_circle_leader.png";
@@ -61,6 +62,11 @@ namespace BossRush
         private static Sprite modeFBountyRadarRegularSprite = null;
         private static Sprite modeFBountyRadarLeaderSprite = null;
         private static Sprite modeFBountyRadarGuideSprite = null;
+        private static Sprite modeFBountyRadarArrowSprite = null;
+        private static Sprite modeFBountyRadarPanelSprite = null;
+        private static readonly Color ModeFBountyRadarRegularColor = new Color(1f, 0.48f, 0.22f, 1f);
+        private static readonly Color ModeFBountyRadarLeaderColor = new Color(1f, 0.83f, 0.30f, 1f);
+        private static readonly Color ModeFBountyRadarDistancePanelColor = new Color(0.025f, 0.03f, 0.035f, 0.14f);
 
         private struct ModeFBountyRadarTarget
         {
@@ -75,10 +81,18 @@ namespace BossRush
         {
             public GameObject root;
             public RectTransform rect;
+            public CanvasGroup canvasGroup;
+            public RectTransform pulseRect;
+            public Image pulseImage;
+            public RectTransform directionRect;
+            public Image directionImage;
             public Image icon;
             public TextMeshProUGUI countText;
+            public TextMeshProUGUI typeText;
             public RectTransform distanceRect;
+            public Image distanceBackground;
             public TextMeshProUGUI distanceText;
+            public bool leaderStyle;
         }
 
         private void ResetModeFUiCaches()

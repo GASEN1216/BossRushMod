@@ -267,6 +267,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeE\ModeERuntimeHooks.cs ^
     ModeE\ModeEMerchant.cs ^
     ModeE\ModeEMerchantSupportClasses.cs ^
+    ModeE\ModeELotteryAndHiring.cs ^
     ModeE\ModeESpawnAllocation.cs ^
     ModeE\ModeEBattle.cs ^
     ModeE\ModeEBattle_ScalingAndRuntime.cs ^
@@ -291,6 +292,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFUIStaticCacheReset.cs ^
     ModeF\ModeFUI.cs ^
     ModeF\ModeFUI_BountyRadarAndHealthBars.cs ^
+    ModeF\ModeFUI_BountyRadarAssets.cs ^
     ModeF\ModeFMerchant.cs ^
     ZombieMode\ZombieModeModels.cs ^
     ZombieMode\ZombieModeTuning.cs ^

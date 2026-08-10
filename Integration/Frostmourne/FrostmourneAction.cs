@@ -665,6 +665,7 @@ namespace BossRush
         private const float FollowRunDistanceValue = 4.5f;
         private const float FollowTeleportDistanceValue = 20f;
         private const float FollowRepathIntervalValue = 0.35f;
+        private const float ModeESharedPathRequestInterval = 0.05f;
         private const float FollowSpeedBoostDistanceValue = 5.5f;
         private const float FollowSpeedResetDistanceValue = 3.5f;
         private const float NextWaypointDistance = 0.45f;
@@ -686,12 +687,42 @@ namespace BossRush
         private float runSpeed = 4.6f;
         private float verticalVelocity;
         private int followSlotIndex;
+        private int followSlotCount = FrostmourneConfig.SummonCount;
+        private float followRepathInterval = FollowRepathIntervalValue;
+        private bool useModeESharedPathBudget;
         private bool initialized;
+        private static float modeENextSharedPathRequestTime;
         private static readonly int HashMoveSpeed = Animator.StringToHash("MoveSpeed");
 
         public void Initialize(CharacterMainControl player, int slotIndex)
         {
-            bool slotChanged = followSlotIndex != Mathf.Max(0, slotIndex);
+            InitializeCore(
+                player,
+                slotIndex,
+                FrostmourneConfig.SummonCount,
+                FollowRepathIntervalValue,
+                false);
+        }
+
+        public void InitializeForModeE(
+            CharacterMainControl player,
+            int slotIndex,
+            int slotCount)
+        {
+            InitializeCore(player, slotIndex, slotCount, 0.55f, true);
+        }
+
+        private void InitializeCore(
+            CharacterMainControl player,
+            int slotIndex,
+            int slotCount,
+            float repathInterval,
+            bool shareModeEPathBudget)
+        {
+            int safeSlotIndex = Mathf.Max(0, slotIndex);
+            int safeSlotCount = Mathf.Max(1, slotCount);
+            bool slotChanged = followSlotIndex != safeSlotIndex ||
+                followSlotCount != safeSlotCount;
 
             if (!initialized)
             {
@@ -701,7 +732,10 @@ namespace BossRush
                 slotChanged = true;
             }
 
-            followSlotIndex = Mathf.Max(0, slotIndex);
+            followSlotIndex = safeSlotIndex;
+            followSlotCount = safeSlotCount;
+            followRepathInterval = Mathf.Max(0.2f, repathInterval);
+            useModeESharedPathBudget = shareModeEPathBudget;
             if (player != null)
             {
                 bool targetChanged = CurrentPlayerTransform != player.transform || !IsFollowingPlayer;
@@ -731,7 +765,7 @@ namespace BossRush
 
         protected override float FollowRepathInterval
         {
-            get { return FollowRepathIntervalValue; }
+            get { return followRepathInterval; }
         }
 
         protected override float FollowStopDistance
@@ -802,11 +836,32 @@ namespace BossRush
             }
             forward.Normalize();
 
-            float angle = 360f * (followSlotIndex % FrostmourneConfig.SummonCount) / Mathf.Max(1, FrostmourneConfig.SummonCount);
+            float angle = 360f * (followSlotIndex % followSlotCount) /
+                Mathf.Max(1, followSlotCount);
             Vector3 offset = Quaternion.Euler(0f, angle, 0f) * forward * FollowRingRadius;
             Vector3 desired = target.position + offset;
 
             return SnapToGround(desired, target.position.y);
+        }
+
+        protected override bool TryRequestFollowPath(Vector3 destination)
+        {
+            if (useModeESharedPathBudget && Time.time < modeENextSharedPathRequestTime)
+            {
+                return false;
+            }
+
+            if (!base.TryRequestFollowPath(destination))
+            {
+                return false;
+            }
+
+            if (useModeESharedPathBudget)
+            {
+                modeENextSharedPathRequestTime =
+                    Time.time + ModeESharedPathRequestInterval;
+            }
+            return true;
         }
 
         protected override void StopCurrentFollowMovement()
@@ -858,6 +913,15 @@ namespace BossRush
                 return;
             }
 
+            if (aiController != null && !aiController.enabled)
+            {
+                if (moving || waitingForPathResult)
+                {
+                    StopMoveForFollow();
+                }
+                return;
+            }
+
             UpdateGravityVelocity();
 
             if (ShouldSuspendFollowForCombat())
@@ -902,6 +966,12 @@ namespace BossRush
             if (aiController == null)
             {
                 return false;
+            }
+
+            // Managed Boss abilities pause their AI while they own movement/teleports.
+            if (!aiController.enabled)
+            {
+                return true;
             }
 
             DamageReceiver searchedEnemy = aiController.searchedEnemy;

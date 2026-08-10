@@ -71,16 +71,10 @@ def scan_forbidden_tokens() -> int | None:
         "MODEF_ACTIVE_BOSS_LIMIT",
         "MODEE_ACTIVE_BOSS_LIMIT",
     )
-    allowed = {
-        "MODE_E_RESPAWN_ALIVE_BOSS_LIMIT",
-    }
-
     for root in (MODEE_DIR, MODEF_DIR):
         for path in sorted(root.rglob("*.cs")):
             text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
             for token in banned:
-                if token in allowed:
-                    continue
                 if token in text:
                     return fail(f"unexpected gameplay throttle token {token} in {path.as_posix()}")
 
@@ -98,7 +92,8 @@ def main() -> int:
         (battle, "const int SPAWN_DELAY_MS = 500;", "Mode E startup spawn cadence must stay 500ms after the opening batch"),
         (battle, "const int INITIAL_BATCH_DELAY_MS = 800;", "Mode E startup opening cadence must stay 800ms"),
         (battle, "modeETotalSpawnExpected = spawnTasks.Count;", "Mode E startup must continue counting every queued spawn task"),
-        (respawn_e, "private const int MODE_E_RESPAWN_ALIVE_BOSS_LIMIT = 64;", "Mode E respawn pressure limit must remain the existing 64"),
+        (respawn_e, "List<Vector3> acceptedPoints = CopyModeERespawnAcceptedPoints(points, points.Count);", "Mode E respawn items must dispatch every selected spawn point"),
+        (respawn_e, "modeERespawnTaskRunning = true;", "Mode E respawn items must preserve single-task gating"),
         (respawn_e, "await UniTask.Delay(250);", "Mode E respawn item cadence must stay 250ms"),
         (phases, "private const float MODEF_PREPARATION_DURATION = 180f;", "Mode F preparation duration must remain 180s"),
         (phases, "private const float MODEF_BOUNTY_DURATION = 180f;", "Mode F bounty duration must remain 180s"),
@@ -124,6 +119,18 @@ def main() -> int:
         ("activeBossLimit", "Mode E/F initial spawns must not add an active boss limit"),
     ):
         result = forbid(spawn_all_body, needle, message)
+        if result is not None:
+            return result
+
+    for token in (
+        "MODE_E_RESPAWN_MINIMUM_ALIVE_BOSS_LIMIT",
+        "GetModeERespawnPopulationLimit",
+        "GetModeERespawnAvailableSpawnSlots",
+        "GetModeERespawnApproximateAvailableSpawnSlots",
+        "availableSlots",
+        "active Boss limit",
+    ):
+        result = forbid(respawn_e, token, "Mode E respawn items must not restore a population cap")
         if result is not None:
             return result
 

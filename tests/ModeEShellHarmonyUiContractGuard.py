@@ -214,6 +214,7 @@ def main() -> int:
         "characterInventoryDisplayField.FieldType == typeof(Duckov.UI.InventoryDisplay)",
         "sortButtonField.FieldType == typeof(Button)",
         "merchantNameTextField.FieldType == typeof(TextMeshProUGUI)",
+        "refreshCountDownTextField.FieldType == typeof(TextMeshProUGUI)",
         "sellMethod.ReturnType == typeof(UniTask)",
         "sellParameters[0].ParameterType == typeof(Item)",
     ]:

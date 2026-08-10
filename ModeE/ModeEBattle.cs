@@ -762,6 +762,10 @@ namespace BossRush
                 // 注册死亡事件
                 RegisterModeEEnemyDeath(character);
                 RegisterModeEEnemyLootHandler(character, trackedFaction);
+                if (!isModeFRun)
+                {
+                    RegisterModeEBossHireOffer(character, trackedFaction, ctx.isBoss);
+                }
                 if (isModeFRun)
                 {
                     RegisterModeFBoss(character);

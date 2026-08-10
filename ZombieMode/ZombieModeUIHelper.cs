@@ -27,6 +27,21 @@ namespace BossRush
     /// </summary>
     internal static class ZombieModeUIHelper
     {
+        internal static readonly Color ModalBackdropColor = new Color(0.015f, 0.02f, 0.025f, 0.62f);
+        internal static readonly Color ModalSurfaceColor = new Color(0.045f, 0.055f, 0.065f, 0.92f);
+        internal static readonly Color ModalHeaderColor = new Color(0.09f, 0.115f, 0.13f, 0.16f);
+        internal static readonly Color DividerColor = new Color(0.42f, 0.52f, 0.58f, 0.32f);
+        internal static readonly Color TextPrimaryColor = new Color(0.94f, 0.96f, 0.97f, 1f);
+        internal static readonly Color TextSecondaryColor = new Color(0.67f, 0.72f, 0.75f, 1f);
+        internal static readonly Color AccentColor = new Color(0.20f, 0.72f, 0.67f, 1f);
+        internal static readonly Color SuccessColor = new Color(0.18f, 0.52f, 0.36f, 1f);
+        internal static readonly Color SuccessHoverColor = new Color(0.24f, 0.66f, 0.45f, 1f);
+        internal static readonly Color WarningColor = new Color(0.58f, 0.42f, 0.17f, 1f);
+        internal static readonly Color WarningHoverColor = new Color(0.70f, 0.52f, 0.23f, 1f);
+        internal static readonly Color DangerColor = new Color(0.48f, 0.20f, 0.20f, 1f);
+        internal static readonly Color DangerHoverColor = new Color(0.62f, 0.27f, 0.26f, 1f);
+        internal static readonly Color DisabledColor = new Color(0.16f, 0.17f, 0.17f, 0.82f);
+
         private static TMP_FontAsset _cachedFont;
         private static int _modalInputLeaseCount;
         private static float _modalPreviousTimeScale = 1f;
@@ -331,6 +346,85 @@ namespace BossRush
             }
 
             return button;
+        }
+
+        internal static GameObject CreateModalSurface(
+            string name,
+            Transform parent,
+            Vector2 size,
+            Color accentColor)
+        {
+            GameObject backdrop = CreateRect(
+                name + "_Backdrop",
+                parent,
+                Vector2.zero,
+                Vector2.one,
+                Vector2.zero,
+                Vector2.zero,
+                Vector2.zero);
+            Image backdropImage = backdrop.AddComponent<Image>();
+            backdropImage.color = ModalBackdropColor;
+            backdropImage.raycastTarget = true;
+
+            GameObject surface = CreateRect(
+                name,
+                parent,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                size,
+                new Vector2(0.5f, 0.5f));
+            Image surfaceImage = surface.AddComponent<Image>();
+            surfaceImage.color = ModalSurfaceColor;
+
+            GameObject accent = CreateRect(
+                name + "_AccentRail",
+                surface.transform,
+                new Vector2(0f, 0.58f),
+                new Vector2(0f, 1f),
+                new Vector2(2f, 0f),
+                new Vector2(4f, 0f),
+                new Vector2(0f, 0.5f));
+            Image accentImage = accent.AddComponent<Image>();
+            accentImage.color = accentColor;
+            accentImage.raycastTarget = false;
+
+            GameObject topTrace = CreateRect(
+                name + "_TopTrace",
+                surface.transform,
+                new Vector2(0f, 1f),
+                new Vector2(0.36f, 1f),
+                new Vector2(0f, -1f),
+                new Vector2(0f, 2f),
+                new Vector2(0.5f, 1f));
+            Image topTraceImage = topTrace.AddComponent<Image>();
+            topTraceImage.color = new Color(accentColor.r, accentColor.g, accentColor.b, accentColor.a * 0.45f);
+            topTraceImage.raycastTarget = false;
+            return surface;
+        }
+
+        internal static void ApplyButtonColors(
+            Button button,
+            Color normalColor,
+            Color highlightedColor,
+            Color disabledColor)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            ColorBlock colors = button.colors;
+            colors.normalColor = normalColor;
+            colors.highlightedColor = highlightedColor;
+            colors.pressedColor = Color.Lerp(normalColor, Color.black, 0.18f);
+            colors.selectedColor = highlightedColor;
+            colors.disabledColor = disabledColor;
+            colors.colorMultiplier = 1f;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+            button.transition = Selectable.Transition.ColorTint;
+            button.targetGraphic = button.GetComponent<Graphic>();
         }
 
         /// <summary>
