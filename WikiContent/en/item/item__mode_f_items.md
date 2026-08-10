@@ -11,6 +11,8 @@ Purchasable from Mystery Merchant "Other" shop. **Faction War only.**
 
 Every 10 Boss kills auto-grants 1 Smoke Bomb. Banners: see Entry & Utility Items.
 
+Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss population cap. The former always attempts the nearest 10 spawn points, while the latter attempts every point on the map. A new call cannot start until the current respawn task finishes.
+
 ---
 
 ### Blood Hunt — Fortifications

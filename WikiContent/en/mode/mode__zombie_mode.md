@@ -301,7 +301,7 @@ After each wave, choose from rewards:
 |----------|-------------|
 | **Attribute** | Permanent boosts to HP/speed/melee damage/ranged damage/reload speed/damage reduction |
 | **Equipment** | Random weapons/ammo/medical/armor/high-quality items |
-| **Economy** | Purification points/free refreshes/healing |
+| **Economy** | Purification Points/paid-refresh discounts/healing |
 | **NPC** | Temporarily summon merchant/nurse/goblin/courier |
 | **Fortification** | Defensive structure supply packs |
 | **Contract** | High-risk high-reward trades (may increase pollution) |
@@ -333,11 +333,14 @@ Spawns automatically in the safe zone each preparation phase. All items cost Pur
 | Mask | 1 | 180 |
 | Medical | 3 | 80 |
 | Food | 4 | 30 |
+| Drinks | 4 | 30 |
 | Bait | 3 | 45 |
 
 #### Boss Node Stock
 
-After Boss Waves, stock quality increases (quality 3–6) with higher prices.
+After Boss Waves, stock quality increases (quality 3–6) with higher prices. Drinks have 3 units of stock with a base price of 50.
+
+The terminal shows current Purification balance, stock, and price directly. When you cannot afford an item, its price and purchase action provide clear feedback before you commit.
 
 #### Nurse Services
 

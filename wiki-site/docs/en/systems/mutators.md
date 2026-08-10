@@ -19,8 +19,10 @@ At the start of every run, the system draws **1–10 random mutators** from a po
 
 # How to See Active Mutators
 
-- A persistent hint stays on the **left edge** of the screen (~25% down) after the run starts
-- Hover the left-side mutator hint to show full effect details; moving the mouse away hides them
+- An **ACTIVE MUTATORS** list appears on the left edge after the run starts and shows the total count
+- Every row is labeled **Enemy / Boon / Rule**, with category colors for quick scanning
+- Hover a row to open the full descriptions on the right; the row you are reading is highlighted
+- The detail panel scrolls when the list is long, and remains open while moving the pointer from the compact list into the details
 
 # Configuration
 

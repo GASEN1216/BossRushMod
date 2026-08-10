@@ -31,9 +31,13 @@ When the Bounty Phase begins, all surviving Bosses get marked.
 
 # Bounty Radar
 
-- Red-orange dots = regular bounty targets (off-screen)
-- Gold dot = Bounty Leader
-- Shows mark count and distance
+When a bounty target moves off-screen, the radar pins it to a safe screen edge:
+
+- **Red-orange rings** track up to the 5 nearest regular bounty targets
+- A separate **gold ring** tracks the Bounty Leader with a LEADER label and pulse
+- `xN` inside the ring is its mark count; a direction arrow and distance label show where to move
+- The edge marker disappears when the target returns on-screen
+- The radar hides while the full map or another interaction screen is open
 
 # Kill Rewards
 

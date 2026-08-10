@@ -15,7 +15,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 ### Phase 2: Bounty (180s, 1.5%/sec)
 
 - Bounty list generated — all surviving Bosses marked
-- Watch the Bounty Radar, prioritize high-mark targets
+- Read the Bounty Radar's direction arrow, distance, and `x mark count`; when the gold LEADER marker appears, decide quickly whether you can take that high-value fight
 - Bounty kills heal 75% (vs 50% normal) + extra drops
 - Bosses kill each other and **inherit marks** — track the Bounty Leader
 - Marks accumulated = extraction reward count

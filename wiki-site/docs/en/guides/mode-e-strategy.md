@@ -24,9 +24,17 @@ Sandbox free-for-all. No win/loss conditions. Set your own goals:
 
 # Economy
 
-- Mystery Merchant: ammo at base price, everything else **x10**
-- Prioritize ammo — auto-fills your stack on purchase
-- **Enemy faction** Boss kills drop loot crates. Same-faction kills don't
+- Category shops use run-only Shells. Prices are the original cash value divided by 2,000 and rounded up; selling still pays account cash
+- Direct hostile-Boss kills pay full Shells; otherwise, being within 8 meters at death pays half. Friendly-faction deaths pay no Shells and no hostile loot crate
+- Spend the first few rewards on a main weapon, ammo, and survival gear. Ammo purchases deliver a full stack
+- Category lottery costs the category's median price and shifts toward higher quality over time. Roll when your build is flexible; buy directly when you need a specific piece
+
+# Hiring Order
+
+- Base hiring cost follows Boss maximum health, and every living hire doubles the next offer
+- A cheap Boss that follows and deals consistent damage is often the best first recruit
+- Hired-Boss kills count as yours and can build player growth, but that Boss no longer pays Shells when it dies
+- There is no hard hire cap; Shell income and escalating price are the real limits
 
 # Growth System
 
