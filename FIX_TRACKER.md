@@ -39,6 +39,218 @@
 ```
 
 ---
+### 2026-08-11 Mode E 抽奖价格改回中位数
+
+**状态**: fixed
+**Finding**: owner 决策反馈
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 已确认；抽奖价格改用该分类全部可抽商品价格的中位数，不再用算术平均
+
+**现象**: owner 上一轮要求抽奖价 = 全店平均价；本轮反馈平均价被高价装备拉高，更希望用中位数贴近"中档商品"的价格。
+
+**根因**: `BuildModeELotteryPoolState()` 上一轮实现为算术平均（`(totalPrice + pricedItemCount - 1L) / pricedItemCount`），对偏态分布（少量高价装备 + 大量低价消耗品）会偏离典型商品价。
+
+**修复内容**:
+- `ModeE/ModeELotteryAndHiring.cs`: `BuildModeELotteryPoolState()` 改为收集所有可抽商品价格到 `List<int> prices`，`prices.Sort()` 后取 `prices[prices.Count / 2]`（偶数项取上中位数）作为抽奖价。
+- `tests/ModeELotteryGuard.py`: 反转不变式——要求 `prices.Sort()`、`medianPrice`，禁止 `averagePrice` 与算术平均除法。
+
+**兼容性影响**: 不改变存档、配置、TypeID、商店商品池或 Harmony 目标；只调整 Mode E 局内抽奖价算法。
+
+**验证方法**:
+1. Guard: `python tests/ModeELotteryGuard.py` 通过。
+2. 编译: 需 Windows `compile_official.bat`。
+
+**未验证/需人工**: 需实机确认各分类抽奖按钮价格是否贴近该分类中档商品价格。
+
+---
+### 2026-08-11 Mode E 子弹商店整组贝壳价上调
+
+**状态**: fixed
+**Finding**: owner 实机截图反馈 / 官方 `StockShop.ConvertPrice`、`Item.GetTotalRawValue` 源码复核
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 已确认；子弹商店显示的价格要像“一组”的价格，不能接近一发的价格
+
+**现象**: 子弹商店整组（如 320 发）只显示 1~21 贝壳，owner 认为仍是一发子弹的价钱。
+
+**根因**: 整组计价链路本身无 bug——`NormalizeModeEShellStackForShop()` 在计价前把样品补到 `MaxStackCount`，官方 `GetTotalRawValue()` 对可堆叠物品乘 `StackCount`，截图中 11/15/21 贝壳的中高级弹不可能是单发价（单发现金值不可能超过 25000）。真正原因是子弹商店 `priceFactor = 1.0`（其余分类 ×10）且单发现金值仅几到几百，导致整组折算后只有 1~2 贝壳，体感等同单发价。
+
+**修复内容**:
+- `ModeE/ModeEMerchantSupportClasses.cs`: 新增 `MODE_E_SHELL_BULLET_STACK_PRICE_FACTOR = 5L`，`TryCalculateModeEShellPrice()` 对 `ModeE_Bullet` 商店且已补满整组的样品，在 `ConvertPrice` 现金结果上乘该系数再折算贝壳；新增 `IsModeEBulletStackShop()` 统一子弹商店判定。
+- `tests/ModeEShellPriceNormalizationGuard.py`: 锁定溢价系数常量、辅助方法与乘算调用。
+- 子弹抽奖价格（全店平均）随单组价格同步上调约 5 倍；卖出走原版现金路径，不产生套利。
+
+**兼容性影响**: 不改变存档、配置、TypeID、商店商品池、Mode F 现金价格或 Harmony 目标；只调整 Mode E 局内子弹商店的贝壳价格水平。
+
+**验证方法**:
+1. Guard: `python tests/ModeEShellPriceNormalizationGuard.py`、`python tests/ModeELotteryGuard.py` 通过。
+2. 编译: 需 Windows `compile_official.bat`。
+
+**未验证/需人工**: 需实机确认子弹整组价格（基础弹约 5 贝壳/组，高级穿甲约 55~105 贝壳/组）与子弹抽奖均价是否合适。
+
+---
+### 2026-08-10 Mode E 商品与抽奖贝壳价格再平衡
+
+**状态**: fixed
+**Finding**: 玩家实机反馈 / 官方 `StockShop.ConvertPrice` 与 `Item.GetTotalRawValue` 契约复核
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 已确认；降低固定商品的贝壳价格，抽奖使用当前分类全部可抽商品的平均价，整组商品按整组计价和交付
+
+**现象**: 上一轮将现金折算单位从 `10000` 调到 `2000` 后，高价装备的贝壳成本偏高；抽奖价格仍取分类价格中位数，未满足全店平均价语义；整组商品需要继续确保显示、扣费与到手数量使用同一组数。
+
+**根因**: 固定商品仍沿用偏激进的 `/2000` 向上取整；`BuildModeELotteryPoolState()` 对价格排序后取中位项；整组语义依赖计价和交付前共同调用 `NormalizeModeEShellStackForShop()`，需要由守卫持续锁定。
+
+**修复内容**:
+- Mode E 固定商品改为按原版商店现金基准价 `/5000` 向上取整，最低 1 贝壳；介于最初 `/10000` 和上一轮 `/2000` 之间。
+- 抽奖池只纳入已有有效贝壳价的可见商品，对分类内每个可抽商品价格求算术平均并向上取整，不再取中位数。
+- 保留 Bullet 商店在计价、UI 样品和实际交付前补到 `MaxStackCount` 的统一路径；原版总价值会乘 `StackCount`，因此价格与到手数量均为整组口径。
+- 更新 `ModeEShellPriceNormalizationGuard.py` 与 `ModeELotteryGuard.py`，锁定折算单位、整组计价/交付和平均价算法。
+
+**兼容性影响**: 不改变存档、配置、TypeID、商店商品池、Boss 贝壳奖励、Mode F 现金商店或 Harmony 目标；只调整 Mode E 局内贝壳价格和抽奖成本。
+
+**验证方法**:
+1. Windows 编译: `cmd.exe /d /c "set BOSSRUSH_NO_PAUSE=1&&call compile_official.bat"` 通过，并部署 `Build/BossRush.dll`。
+2. Guard: 全部 28 个 `ModeE*.py` 守卫通过。
+3. 静态检查: 本次相关文件 `git diff --check` 通过，仅有仓库既有 LF/CRLF 转换提示。
+
+**未验证/需人工**: 需实机检查不同分类的价格分布、子弹整组显示/扣费/到手数量，以及抽奖按钮价格与该分类手工平均值一致。
+
+---
+### 2026-08-10 Mode E 贝壳折算单位再下调至 2500
+
+**状态**: fixed
+**Finding**: owner 实机反馈
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 已确认；贝壳很容易刷到几百个，/5000 下商店整体太便宜，需要再上调价格。
+
+**现象**: owner 反馈贝壳在局内容易积累到几百个，/5000 折算下绝大多数商品只要 1~30 贝壳，购买缺乏重量感。
+
+**根因**: 上一轮将 `MODE_E_SHELL_CASH_UNIT` 定为 `5000L` 后，价格回归偏便宜的一端；贝壳奖励基准（500 血量 = 10 贝壳，每翻倍 +3）不变，导致中后期几百贝壳可大量扫货。
+
+**修复内容**:
+- `ModeE/ModeEMerchantSupportClasses.cs`: `MODE_E_SHELL_CASH_UNIT` 从 `5000L` 降到 `2500L`，固定商品贝壳价格整体提高约 2 倍。
+- `tests/ModeEShellPriceNormalizationGuard.py`: 同步锁定值到 `2500L`。
+- 抽奖价格（全店可抽商品算术平均）和子弹整组计价/交付路径不变，价格随折算单位自然上调。
+
+**兼容性影响**: 不改变存档、配置、TypeID、商店商品池、Boss 贝壳奖励或 Harmony 目标；只调整 Mode E 局内贝壳价格水平。
+
+**验证方法**:
+1. Guard: `python tests/ModeEShellPriceNormalizationGuard.py` 通过。
+2. 编译: 需 Windows `compile_official.bat`。
+
+**未验证/需人工**: 需实机确认各分类价格体感、抽奖价格与子弹整组价格是否合适；若高价装备仍偏贵或低价消耗品偏贵，可进一步微调。
+
+---
+### 2026-08-10 Mode E 抽奖按钮改为刷新标题下方组合
+
+**状态**: fixed
+**Finding**: 新实机截图 / 官方 `StockShopView` 源码复核 / owner 明确布局要求
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；刷新提示在上，抽奖按钮居中放在其下方，并放大按钮与文字
+
+**现象**: 抽奖按钮虽然已经避开刷新标题，但仍位于标题右侧；按钮和文字偏小，不符合新的目标布局。
+
+**根因**: 官方 `StockShopView` 只通过私有 `refreshCountDown` 更新倒计时数字，"下次刷新"前缀属于预制体静态文本；原自定义按钮逻辑仍按左右并排布局处理。
+
+**修复内容**:
+- 修改 `ModeE/ModeEMerchantSupportClasses.cs`：以完整可见刷新标题字形中心为锚点，将抽奖按钮固定放在标题下方，取消左右排列和窄屏横向回退。
+- 抽奖按钮尺寸调整为 `176x42`，按钮文字字号调整为 `18`，自动适配范围 `14-18`。
+- 更新 `tests/ModeELotteryGuard.py`，锁定上下排列、尺寸和放大字体契约。
+
+**兼容性影响**: 不改变存档、配置、TypeID、资源、反射字段或交易行为；仅改变 Mode E 商店抽奖按钮的位置和视觉尺寸。
+
+**验证方法**:
+1. Windows 正式编译：`compile_official.bat` 通过并部署 `Build/BossRush.dll`。
+2. Guard: Mode E/Mutator 相关守卫全部通过。
+3. 静态检查：`git diff --check` 无 whitespace 错误。
+
+**未验证/需人工**: 需重启游戏确认当前分辨率和窄分辨率下标题在上、按钮在下且不遮挡商店第一行；英文文本和重复打开商店也需确认。
+
+---
+### 2026-08-10 Mode E 抽奖按钮继续遮挡刷新标题字形
+
+**状态**: fixed
+**Finding**: 新实机截图 / `Player.log` 商店打开记录 / TMP 布局静态复核
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；按钮必须避让完整可见的刷新标题
+
+**现象**: 按刷新标题父级 RectTransform 左边界定位后，抽奖按钮仍压住"下次刷新"的第一个字。
+
+**根因**: TMP 文本的实际字形边界可向其 RectTransform 外溢出；父级矩形边缘并不等于玩家看到的标题起点。重新定位时若把抽奖按钮自身纳入文本扫描，还会造成重复刷新后的自引用漂移。
+
+**修复内容**:
+- 修改 `ModeE/ModeEMerchantSupportClasses.cs`：扫描商店根节点内与倒计时处于同一水平带的 TMP 文本，调用 `ForceMeshUpdate` 后合并实际 `textBounds`，以完整可见标题范围定位按钮。
+- 排除 `ModeELotteryButton` 自身及其子节点，避免布局刷新时按钮参与边界计算。
+- 窄屏回退和纵向对齐同样使用合并后的可见标题范围；无有效字形时保留原 RectTransform 兜底。
+- 更新 `tests/ModeELotteryGuard.py`，锁定字形边界、按钮排除和布局定位契约。
+
+**兼容性影响**: 不改变存档、配置、TypeID、资源、反射字段或交易行为；仅调整 Mode E 商店按钮布局。
+
+**验证方法**:
+1. Windows 正式编译：`compile_official.bat` 通过并部署 `Build/BossRush.dll`。
+2. Guard: Mode E/Mutator 相关守卫全部通过。
+3. 静态检查：`git diff --check` 无 whitespace 错误。
+
+**未验证/需人工**: 需重启游戏，在中文与英文、当前截图分辨率及窄分辨率下确认按钮与"下次刷新"标题之间保留间距，且不发生重复打开商店后的漂移。
+
+---
+### 2026-08-10 变异词条 UI 避让模态界面
+
+**状态**: fixed
+**Finding**: 玩家反馈 / 官方 `InputManager.InputActived` 与仓库 UI 输入租约静态复核
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；模态界面打开期间隐藏，关闭后恢复
+
+**现象**: 打开背包或其他会接管游戏输入的 UI 时，左侧变异词条列表仍通过 `OnGUI` 绘制，遮挡界面内容。
+
+**根因**: `MutatorUI.DrawGUI()` 只按模式和缓存状态绘制，没有跟随官方 View、暂停状态或自定义 UI 的输入门控。
+
+**修复内容**:
+- 修改 `Integration/Mutators/MutatorUI.cs`：绘制前检查 `InputManager.InputActived` 与 `Time.timeScale`；输入被 UI 接管或游戏暂停时跳过当前帧，并清理悬停详情矩形，关闭 UI 后缓存自动恢复。
+- 新增 `tests/MutatorUiOverlaySuppressionGuard.py`：锁定门控位于 IMGUI 实际绘制前，并要求抑制期间清理 hover 状态。
+
+**兼容性影响**: 不改变变异词条、模式状态、存档或配置；只改变模态 UI/暂停期间的 HUD 可见性。
+
+**验证方法**:
+1. Windows 正式编译：`compile_official.bat` 通过；最终构建时游戏已启动，目标 DLL 被占用，未自动部署。
+2. Guard: `MutatorUiOverlaySuppressionGuard.py`、变异语义/Mode E 相关守卫通过。
+
+**未验证/需人工**: 退出游戏后需部署最终 `Build/BossRush.dll`；随后分别打开背包、商店、地图、暂停、Wiki/成就、图片查看器，确认词条 UI 隐藏，关闭后确认列表与悬停详情恢复。
+
+---
+### 2026-08-10 Mode E 抽奖按钮避让完整刷新标题
+
+**状态**: fixed
+**Finding**: 玩家实机截图反馈 / `StockShopView.refreshCountDown` 原版字段与当前布局静态复核
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；保持抽奖按钮位于刷新标题左侧
+
+**现象**: 抽奖按钮虽然已移到商店根节点，但仍插在"下次刷新"前缀与倒计时数字之间，遮挡标题并表现为横向错位。
+
+**根因**: `PositionModeELotteryButtonOutsideShop()` 只用 `refreshCountDown` 数字文本自身的左边界定位按钮，没有把同一父容器中的本地化刷新前缀算入占用范围。
+
+**修复内容**:
+- 按 `refreshCountDown` 父级刷新标题容器的完整边界计算按钮右侧位置，同时继续以倒计时文本中心做纵向对齐。
+- 按完整刷新标题边界执行窄屏下移回退，按钮仍挂在无遮罩的 `StockShopView` 根节点，并保持 132x32 单行尺寸。
+- 更新 `ModeELotteryGuard.py`，锁定完整刷新标题避让规则。
+
+**兼容性影响**: 不改变存档、配置、TypeID、资源、反射字段或交易行为；只调整 Mode E 商店抽奖按钮布局。
+
+**验证方法**:
+1. Windows 正式编译：`compile_official.bat` 通过；最终构建时游戏已启动，目标 DLL 被占用，未自动部署。
+2. Guard: `ModeELotteryGuard.py`、`ModeEShellHarmonyUiContractGuard.py` 及 Mode E/Mutator 相关守卫通过。
+3. 静态检查: 相关文件 `git diff --check` 无 whitespace error，仅有仓库既有 LF/CRLF 转换提示。
+
+**未验证/需人工**: 退出游戏后需部署最终 `Build/BossRush.dll`；随后在当前截图分辨率及窄分辨率下确认按钮完整位于"下次刷新"左侧，且窄屏回退不遮挡商店面板。
+
+---
 ### 2026-08-07 动态物品偶发整批变成问号
 
 **状态**: fixed
@@ -164,7 +376,7 @@
 **Finding**: 2026-08-03 玩家反馈保守优化方案复审 / 本轮完整调用链复核
 **兼容分类**: COMPAT / SAFE
 **版本/Commit**: `012c900` / `224c35d`
-**Owner decision**: 不需要；修复既定“受管 Mode E 商店不得回落原版现金购买”契约，并收紧静态守卫
+**Owner decision**: 不需要；修复既定"受管 Mode E 商店不得回落原版现金购买"契约，并收紧静态守卫
 **现象**: Mode E 商店退役并调用 `Destroy` 后，Unity 会在实际销毁前把组件比较为 `null`。此时同帧迟到的购买/出售/UI 回调可能被三态路由误判为普通商店，放行原版现金逻辑。另有发货 guard 仍断言旧版五参数事务入口，造成正确实现被误报；Wiki 12 个目标页面没有成对同步与最低完整度 guard。
 **根因**: `GetModeEShellShopPatchDisposition()` 使用 Unity 重载的 `shop == null` 作为 `PassOriginal` 条件，没有区分真实 CLR null 与仍在 tombstone 中的 Unity 伪 null；`ModeEShellDeliveryContractGuard.py` 未随事务 owner 签名收敛；Wiki 仅依赖人工同步和站点构建。
 **修复内容**:
@@ -253,7 +465,7 @@
 3. 定向检查: canonical 与生成页面均包含已确认的二阶段火焰元素、当前英文成就名称、掉落/成就源码路径及幽灵女巫逐项武器字段
 4. 浏览器渲染: `/BossRushMod/` 下中英文三个 Boss 共六个路由均已打开；标题、正文、三张表、warning 块正常，根容器无横向溢出
 5. 静态检查: Wiki 作用域 `git diff --check` 无 whitespace 错误，仅有换行符提示
-**未验证/需人工**: 文档第 10.3 节的游戏内置 Wiki 实机阅读仍待后续验证，所有标注“待实机快照”的字段也仍需按指定采样条件补录。
+**未验证/需人工**: 文档第 10.3 节的游戏内置 Wiki 实机阅读仍待后续验证，所有标注"待实机快照"的字段也仍需按指定采样条件补录。
 
 ---
 ### 2026-07-09 丧尸模式自定义自爆怪无距离门控且未自毁
@@ -262,9 +474,9 @@
 **Finding**: 玩家反馈 / 静态代码确认
 **兼容分类**: COMPAT
 **版本/Commit**: 未提交
-**Owner decision**: 不需要；属于既有 `ExploderTriggerDistance` 调参常量未接入、且“自爆怪”语义未闭环的行为修复
+**Owner decision**: 不需要；属于既有 `ExploderTriggerDistance` 调参常量未接入、且"自爆怪"语义未闭环的行为修复
 **现象**: 玩家反馈丧尸模式 BOSS 关有东西持续追着玩家爆炸。静态排查确认 BOSS 波仍会按既有压力系统维持环境尸潮；第 6 波以后特殊怪池包含自定义 `Exploder` 和官方 `OfficialExploder`。其中自定义 `Exploder` 的技能冷却到点后直接原地起手爆炸，没有检查与玩家距离，爆炸后不会死亡；起手期间若丧尸移动，旧实现还会保留起手时的旧爆心。
-**根因**: `ZombieModeTuning.ExploderTriggerDistance = 2.5f` 已存在，但 `TryExecuteZombieModeSpecialSkill()` 的 `ZombieModeSpecialKind.Exploder` 分支未使用该距离门控；同时自定义爆炸只调用 telegraph/ExplosionManager 伤害路径，没有对自身走 `Health.Hurt()` 死亡链路，导致自定义自爆怪只要存活并追踪玩家，就会按 9 秒冷却反复放红圈爆炸。通用 telegraph 默认固定起手坐标，不能表达“自爆中心始终是丧尸当前位置”。
+**根因**: `ZombieModeTuning.ExploderTriggerDistance = 2.5f` 已存在，但 `TryExecuteZombieModeSpecialSkill()` 的 `ZombieModeSpecialKind.Exploder` 分支未使用该距离门控；同时自定义爆炸只调用 telegraph/ExplosionManager 伤害路径，没有对自身走 `Health.Hurt()` 死亡链路，导致自定义自爆怪只要存活并追踪玩家，就会按 9 秒冷却反复放红圈爆炸。通用 telegraph 默认固定起手坐标，不能表达"自爆中心始终是丧尸当前位置"。
 **修复内容**:
 - 新增文件: `tests/ZombieModeExploderTriggerDistanceGuard.py`（非 `.cs`，不需要加入 `compile_official.bat`）
 - 修改文件: `ZombieMode/ZombieModeEnemyRuntime.cs`
@@ -397,7 +609,7 @@
 **版本/Commit**: 未提交
 **Owner decision**: 不需要；属于焚天龙铳雪球弹表现修复
 **现象**: 用户不希望 Snow 继续作为高弧线冰弹，而是要超慢速直线滚雪球：主雪球滚 5 秒并越滚越大，命中/死亡后分裂 4 个小雪球；小雪球滚 2 秒继续变大，出生后短暂无敌防止刚分裂就被敌怪吞掉。后续又要求主雪球最大改为旧最大雪球 10 倍、小雪球最大 5 倍、降低基础伤害，并且只允许主雪球留下冰区。
-**根因**: 旧 Snow profile 使用 High arc / gravity / 落地冰区的通用配置，主弹和二段弹都复用同一套冰区生成策略；分裂弹没有专门的出生保护，也没有“当前体积影响伤害”的运行时状态。
+**根因**: 旧 Snow profile 使用 High arc / gravity / 落地冰区的通用配置，主弹和二段弹都复用同一套冰区生成策略；分裂弹没有专门的出生保护，也没有"当前体积影响伤害"的运行时状态。
 **修复内容**:
 - 新增文件: `tests/DragonKingBossGunSnowballGuard.py`
 - 修改文件: `Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs`
@@ -425,7 +637,7 @@
 **兼容分类**: COMPAT / WIRE+
 **版本/Commit**: 本次提交
 **Owner decision**: 不需要；属于官方 `Health.Hurt()` 时序变化后的逆鳞兼容修复
-**现象**: 玩家反馈新版本更新后逆鳞不触发；致死伤害下无法完成“濒死回血、反击、碎裂”的保命流程。
+**现象**: 玩家反馈新版本更新后逆鳞不触发；致死伤害下无法完成"濒死回血、反击、碎裂"的保命流程。
 **根因**: 当前官源 `Health.Hurt()` 的执行顺序为扣血后先进入死亡分支、触发 `OnDeadEvent` / `Health.OnDead` 并 `SetActive(false)`，最后才触发 `OnHurtEvent` / `Health.OnHurt`。逆鳞旧逻辑只在 `Health.OnHurt` 里看 `CurrentHealth <= 1`，致死伤害会先把主角送入死亡流程，导致保命窗口来不及触发。
 **修复内容**:
 - 新增文件: `tests/ReverseScaleLethalProtectionGuard.py`
@@ -502,7 +714,7 @@
 **兼容分类**: COMPAT
 **版本/Commit**: 未提交
 **Owner decision**: 用户要求按审查文档执行；当前工作区已补齐普通 Boss plan 化/隐藏物化、Mode E/F 共享 postprocess scheduler、提交屏障，以及三类自定义特殊 Boss 的 Mode E/F 显式 deferred activation。P0 现有 dev 日志仅覆盖 Mode E 开局，剩余三类场景仍需同机 profiler 复测。
-**现象**: 玩家反馈 Mode E/F 刷怪时仍会“一卡一卡”，尤其单只 Boss 生成配置链和重刷道具连续生成时容易产生主观尖刺。
+**现象**: 玩家反馈 Mode E/F 刷怪时仍会"一卡一卡"，尤其单只 Boss 生成配置链和重刷道具连续生成时容易产生主观尖刺。
 **根因**: 静态核对显示普通 Boss 的配装/倍率/激活/变异词条/掉落追踪与 Mode E/F 登记回调仍会压到相邻帧；BossRegen 词条开启时 Mode E/F 还会每帧重建存活 Boss 列表；挑衅烟雾弹首次使用时会同步解析原版烟雾 VFX；最近点选择仍对全量点排序。
 **修复内容**:
 - 新增文件: 无
@@ -546,7 +758,7 @@
 **兼容分类**: COMPAT
 **版本/Commit**: 未提交
 **Owner decision**: 不需要
-**现象**: 进入基地存档后主线程卡死，最新日志停在 `WishFountain` 注册完 `OnBuildingBuilt` / `OnBuildingDestroyed` 事件后，不再继续打印“布满了灰尘的星愿许愿台建筑系统初始化完成”。
+**现象**: 进入基地存档后主线程卡死，最新日志停在 `WishFountain` 注册完 `OnBuildingBuilt` / `OnBuildingDestroyed` 事件后，不再继续打印"布满了灰尘的星愿许愿台建筑系统初始化完成"。
 **根因**: `WishFountainView.CreateRuntime()` 在初始化阶段调用弹幕层预热，随后进入 `WishFountainDanmakuView.EnsurePoolCapacity()`。原实现用 `AcquireItem()` 在 `while (allocatedItemCount < targetCount)` 里反复从池中取出再放回；首个对象创建后，后续循环只会复用池中对象，不再增加 `allocatedItemCount`，导致循环永不退出，主线程卡在许愿台 View 运行时构建阶段。
 **修复内容**:
 - 新增文件: 无
@@ -615,7 +827,7 @@
 **Owner decision**: 不需要
 
 **现象**: 基地加载时原版 `BuildingArea.Display` 在许愿台注入前先报 `No prefab for building starwish_fountain`；如果玩家存档里已经放过许愿台，该建筑可能不会在本次进档时被实例化出来，导致场景里不可见也无法交互。
-**根因**: 许愿台建筑数据原本只在 deferred base-scene setup 阶段注入，时机晚于原版建筑区首轮显示；注入完成后又没有像婚礼教堂那样走一次基地建筑区重绘，因此“首轮缺 prefab”不会被补刷回来。
+**根因**: 许愿台建筑数据原本只在 deferred base-scene setup 阶段注入，时机晚于原版建筑区首轮显示；注入完成后又没有像婚礼教堂那样走一次基地建筑区重绘，因此"首轮缺 prefab"不会被补刷回来。
 **修复内容**:
 - 新增文件: 无
 - 修改文件: `Integration/WishFountain/WishFountainBuilder.cs`
@@ -642,7 +854,7 @@
 **Owner decision**: 不需要
 
 **现象**: 许愿台面板先用本地缓存或内存缓存启动弹幕后，联网成功拿到的新弹幕数据不会作用到当前这次打开；玩家要关掉再打开一次，才会看到更新后的内容池。
-**根因**: `WishFountainUI.RefreshDanmakuDisplay()` 为避免中途整层重置，在“已有可见弹幕”场景下直接跳过成功回调里的显示更新，导致当前轮次只更新缓存、不更新在播来源。
+**根因**: `WishFountainUI.RefreshDanmakuDisplay()` 为避免中途整层重置，在"已有可见弹幕"场景下直接跳过成功回调里的显示更新，导致当前轮次只更新缓存、不更新在播来源。
 **修复内容**:
 - 新增文件: 无
 - 修改文件: `Integration/WishFountain/WishFountainUI.cs`
@@ -666,7 +878,7 @@
 **Owner decision**: 不需要
 
 **现象**: 只要飞书鉴权或弹幕列表请求瞬时失败一次，玩家在接下来约 45 秒里重复关闭再打开许愿台，也只会马上复用失败结果或旧缓存，不会重新联网拉取。
-**根因**: `TryReturnRecentDanmakuResult()` 把“最近一次失败”也纳入和成功结果相同的 TTL 快取，导致 reopen 无法触发新的网络请求。
+**根因**: `TryReturnRecentDanmakuResult()` 把"最近一次失败"也纳入和成功结果相同的 TTL 快取，导致 reopen 无法触发新的网络请求。
 **修复内容**:
 - 新增文件: 无
 - 修改文件: `Integration/WishFountain/WishFountainFetchPipeline.cs`
@@ -707,7 +919,7 @@
 **未验证/需人工**: 需要进游戏弱网下频繁打开/关闭许愿台并切图，确认不会报错、不会出现旧 UI 干扰下一次打开。
 
 ---
-### 2026-07-01 “小明”非 Boss 预设误入 Boss 池
+### 2026-07-01 "小明"非 Boss 预设误入 Boss 池
 
 **状态**: fixed
 **Finding**: 玩家反馈 / `Player.log` 排查
@@ -716,18 +928,18 @@
 **Owner decision**: 不需要
 
 **现象**: `Player.log` 先只能看到鸭鸭市场通知队列输出 `<color=red>小明</color> 将在 ... 秒后抵达战场` 与 `第 6/7 波: <color=red>小明</color> ...`；打开开发日志后确认该官方角色预设 `nameKey` 为 `Character_Ming`。
-**根因**: Boss 池动态扫描当前按 `CharacterRandomPreset.showName`、阵营和基础血量筛选敌对预设；“小明”属于有显示名且满足基础条件的非 Boss 角色，因此绕过了既有 `showName=false` 小怪清理规则。
+**根因**: Boss 池动态扫描当前按 `CharacterRandomPreset.showName`、阵营和基础血量筛选敌对预设；"小明"属于有显示名且满足基础条件的非 Boss 角色，因此绕过了既有 `showName=false` 小怪清理规则。
 **修复内容**:
 - 新增文件: 无
 - 修改文件: `WavesArena/WavesArena.cs`
 
-**兼容性影响**: 不涉及存档 schema、配置 key、TypeID、Harmony/反射或资源文件变更；仅在 Boss 池初始化/缓存清理阶段按稳定预设名 `Character_Ming` 硬排除已知非 Boss 角色“小明”。
+**兼容性影响**: 不涉及存档 schema、配置 key、TypeID、Harmony/反射或资源文件变更；仅在 Boss 池初始化/缓存清理阶段按稳定预设名 `Character_Ming` 硬排除已知非 Boss 角色"小明"。
 **验证方法**:
 1. 编译: `cmd.exe /c compile_official.bat` 通过
 2. Guard: `python tests\\ModeEFPrewarmCacheGuard.py` 通过
 3. Guard: `python tests\\ArchitectureStructureGuard.py` 通过
 4. 人工 smoke: 未运行
-**未验证/需人工**: 需要进游戏重新开一局 BossRush，确认 Boss 池配置窗口和波次预告不再出现“小明”。
+**未验证/需人工**: 需要进游戏重新开一局 BossRush，确认 Boss 池配置窗口和波次预告不再出现"小明"。
 
 ---
 ### 2026-07-01 龙皇孩儿护我失效、龙裔同源复活风险与 Boss 名称兼容
@@ -738,9 +950,9 @@
 **版本/Commit**: 未提交  
 **Owner decision**: 不需要  
 
-**现象**: 玩家反馈更新后焚天龙皇“孩儿护我”不再触发；对照代码后确认龙裔遗族的一次性复活也存在同源风险。部分外部模组会把 BossRush 自定义 Boss 名称显示成 `Unknown`。最新 `Player.log` 里还能看到婚礼建筑初始化阶段触发的 `BuildingArea.RepaintAll()` 原版 `Debug.LogError`。  
+**现象**: 玩家反馈更新后焚天龙皇"孩儿护我"不再触发；对照代码后确认龙裔遗族的一次性复活也存在同源风险。部分外部模组会把 BossRush 自定义 Boss 名称显示成 `Unknown`。最新 `Player.log` 里还能看到婚礼建筑初始化阶段触发的 `BuildingArea.RepaintAll()` 原版 `Debug.LogError`。  
 **根因**:  
-1. 原版 `Health.Hurt()` 在当前官源中的执行顺序为“扣血 -> 死亡分支 -> `OnDeadEvent` -> `SetActive(false)` -> `OnHurtEvent`”。龙皇孩儿护我和龙裔复活都挂在 `OnHurtEvent`，致死伤害会先把对象送入死亡路径，导致保命机制来不及触发。  
+1. 原版 `Health.Hurt()` 在当前官源中的执行顺序为"扣血 -> 死亡分支 -> `OnDeadEvent` -> `SetActive(false)` -> `OnHurtEvent`"。龙皇孩儿护我和龙裔复活都挂在 `OnHurtEvent`，致死伤害会先把对象送入死亡路径，导致保命机制来不及触发。  
 2. 三只自定义 Boss 的运行时 `CharacterRandomPreset.name` 使用内部 `*_Preset` 名称，且龙皇/幽灵女巫缺少 `Characters_` / 运行时 preset 名称别名，本地化兼容键不完整，外部模组若读取 `preset.name` 或兼容键，容易回退成 `Unknown`。  
 3. 婚礼建筑系统初始化时无条件重绘基地建筑区，即使当前存档没有放置婚礼教堂，也会提前触发一次原版建筑重绘。  
 **修复内容**:
@@ -764,7 +976,7 @@
 5. Guard: `python tests\\SceneObjectTypeCacheGuard.py`
 6. Guard: `python tests\\DeferredIntegrationBootstrapGuard.py`
 **未验证/需人工**:
-- 游戏内实机确认龙皇“孩儿护我”可再次触发，且击杀其召出的龙裔后能正常联动处死龙皇。
+- 游戏内实机确认龙皇"孩儿护我"可再次触发，且击杀其召出的龙裔后能正常联动处死龙皇。
 - 游戏内实机确认龙裔遗族一次性复活恢复为 50% 血量后仍能完整进入狂暴二阶段。
 - 使用玩家提到的外部模组实机确认三只自定义 Boss 不再显示为 `Unknown`。
 - 若存档里已经放置婚礼教堂，需要在基地场景实机确认跳过无意义重绘后，旧存档中的教堂仍能正确显示。
@@ -830,7 +1042,7 @@
 5. 目录静态审计：100 个 catalog 路由无重复；排除 1 个官网伪条目后，99 个游戏内条目均有中英文 Markdown，且无孤儿文件
 6. 当前 `Player.log` 未发现 Wiki/TMP 异常，但本轮没有打开 Wiki 的运行时日志证据
 
-**未验证/需人工**: 需进游戏打开 Wiki 的“末日丧尸模式”文章，连续检查第 7/15、13/15、14/15 页，确认左右页都有内容、文字不越界、相邻页首尾连续且末页无正文缺失。
+**未验证/需人工**: 需进游戏打开 Wiki 的"末日丧尸模式"文章，连续检查第 7/15、13/15、14/15 页，确认左右页都有内容、文字不越界、相邻页首尾连续且末页无正文缺失。
 
 **失败尝试**: `7dd1e15` 删除右页页块渲染，改为右 TMP 对全文独立设置偶数 `pageToDisplay`；静态 guard 只检查了 API 形态，没有覆盖两个 TMP 的实机分页状态是否等价，导致右页空白和偶数页跳过。
 
@@ -870,7 +1082,7 @@
 **Finding**: 进游戏前专项复审
 **兼容分类**: COMPAT
 **版本/Commit**: 未提交
-**Owner decision**: 初版固定单 Boss；后续已被 owner 最新“Boss 数量随波次无上限递增”决策覆盖
+**Owner decision**: 初版固定单 Boss；后续已被 owner 最新"Boss 数量随波次无上限递增"决策覆盖
 
 **现象**:
 - Boss 波数量由有效刷怪点数量计算，使用 `modeESpawnPoints` 后，不同地图第 5 波可能生成约 4~46 个 Boss。
@@ -891,7 +1103,7 @@
 
 **未验证/需人工**: 需进游戏推进到第 5 波，确认只出现 1 个 Boss、支援怪压力约为 8、击败 Boss 后正常进入奖励与撤离机会。
 
-**后续覆盖**: 地图规模解耦继续保留；“所有 Boss 波固定 1 只”已由后续的纯波次递增公式替代，详见“丧尸模式 Boss 数量与后期变异权重持续成长”。
+**后续覆盖**: 地图规模解耦继续保留；"所有 Boss 波固定 1 只"已由后续的纯波次递增公式替代，详见"丧尸模式 Boss 数量与后期变异权重持续成长"。
 
 ---
 ### 2026-08-07 丧尸模式 Boss 风险收益与肉鸽成长曲线
@@ -904,7 +1116,7 @@
 
 **现象**:
 - 固定单 Boss 解决了追逐战同时塞入大量 Boss 的问题，但 Boss 本体属性、击杀收益、奖励箱和奖励选择没有按 Boss 轮次成长，后期风险收益曲线被压平。
-- 既有支援尸潮会逐轮增加，但玩家每个 Boss 节点始终只能拿一项奖励，缺少“越难、越富、成型后越爽”的正反馈。
+- 既有支援尸潮会逐轮增加，但玩家每个 Boss 节点始终只能拿一项奖励，缺少"越难、越富、成型后越爽"的正反馈。
 
 **修复内容**:
 - 第 5/10/15/20 波 Boss 生命倍率为 100%/130%/160%/190%，伤害倍率为 100%/112%/124%/136%；生命最高 250%，伤害最高 180%。倍率覆盖普攻、泰坦冲击波、猎手突进、腐化区域/毒径及 Boss 死亡效果，不增加 Boss 移速。
@@ -996,7 +1208,7 @@
 - 雇佣交互仅为玩家出生阵营的 Boss 注册，敌对阵营和特殊托管 Boss 无法雇佣；雇佣单位击杀仍以 NPC 作为 `DamageInfo.fromCharacter`，原版经验、击杀计数和任务不会统一视为玩家击杀。
 
 **修复内容**:
-- 贝壳余额不再占用商店面板标题行；运行时复用原版 `ContextualMoneyAndCash.cashDisplay` 完整现金胶囊，在同一父布局中插到现金右侧，并优先把现金图标替换为 `SeaShell` 物品图标。克隆体移除原版 `CashDisplay`/`MoneyDisplay` 更新器，余额只由当前 Mode E 会话事件刷新；图标不可用时回退显示“贝壳/ Shells + 数量”。
+- 贝壳余额不再占用商店面板标题行；运行时复用原版 `ContextualMoneyAndCash.cashDisplay` 完整现金胶囊，在同一父布局中插到现金右侧，并优先把现金图标替换为 `SeaShell` 物品图标。克隆体移除原版 `CashDisplay`/`MoneyDisplay` 更新器，余额只由当前 Mode E 会话事件刷新；图标不可用时回退显示"贝壳/ Shells + 数量"。
 - 抽奖按钮继续完整复用已正常显示的一键卖出按钮视觉层级并清除旧监听，但不再挂入商品网格标题行；按钮直接挂到无遮罩的 `StockShopView` 根节点，固定 132x32 单行尺寸，优先位于刷新倒计时左侧的商店外部空位，窄分辨率才回退到倒计时下方。
 - 移除 Boss 雇佣的出生阵营限制。成交时复用原 Boss 实例，切换至玩家阵营，清空旧 AI 仇恨，迁移 Mode E 存活阵营追踪，重设死亡缩放基线并取消该实例后续贝壳奖励；任一步失败会恢复阵营、AI、追踪、缩放和奖励状态并返还本次扣款。成交后由唯一 owner 阵营守卫阻止托管技能把龙王、龙裔、幽灵女巫等实例改回中立或敌对阵营。
 - 复用 `FrostmourneZombieFollower` 处理普通与托管 Boss 跟随；无玩法数量上限，当前价格仍按 Boss 出生最大生命计算，并按存活雇佣数逐次翻倍。
@@ -1043,6 +1255,24 @@
 **未验证/需人工**: 当前部署 DLL 已由 `Duckov` 进程加载，尚需游戏内 smoke。重点检查初始准备期约 12 只、第一波约 24 只场上压力但击杀目标仍为 18、1 秒补怪、环形分散生成，以及故意远离尸群后 8 秒左右重新回收到附近。
 
 **失败尝试**: 首次 Wiki 构建调用 `npm.ps1` 被本机 PowerShell 执行策略拦截；改用同一 Node 安装下的 `npm.cmd run build` 后通过。
+
+---
+### 2026-08-10 Mode E 抽奖按钮按真实倒计时层级定位
+**状态**: fixed
+**Finding**: 玩家实机 `Player.log` 的 `[ModeE/UIHierarchy]` 诊断
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**根因**: 旧逻辑按纵向邻近合并整个 `StockShopView` 的 TMP 字形边界，把顶部中央"交易"和左右标题一起纳入倒计时范围，导致右侧倒计时中心 `x≈1069` 被错误拉到 `x=12`。
+**修复内容**:
+- 直接使用官方 `StockShopView/Content/MerchantStuff/Title/CountDown` 完整行作为唯一锚点，不再扫描或合并其他 TMP 文本。
+- 抽奖按钮占用原倒计时行中心；完整"下次刷新 + 时间"行迁到根节点并放在按钮正上方，绕开 `Title` 的 `VerticalLayoutGroup` 裁剪与重排。
+- 按钮扩大到 `256x54`，字体自动范围提高到 `18-24`。
+- 缓存倒计时行的父级、兄弟序号、RectTransform、旋转、缩放和激活状态；关闭、失效、重复 Attach、静态清理或创建异常时恢复官方层级并请求布局重建。
+- 实机确认位置正确后，删除用于定位的完整 UI 层级诊断及其编译登记，避免 DevMode 开店时输出约 9,400 行日志。
+**验证方法**:
+1. `ModeELotteryGuard.py`、`ModeEMerchantOpenReuseGuard.py`、`ModeEShellRuntimeLifecycleGuard.py`、`OfficialCompileListFileExistenceGuard.py` 通过。
+2. 删除诊断后，`cmd.exe /d /c "set BOSSRUSH_NO_PAUSE=1&&call compile_official.bat"` 正式编译成功并部署。
+3. 玩家已确认位置正确；重复开关商店的恢复路径仍由静态守卫覆盖。
 
 ## 变更日志
 

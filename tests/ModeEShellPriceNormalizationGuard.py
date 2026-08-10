@@ -1,4 +1,4 @@
-"""Guard Mode E shell price cache: full-stack Bullet normalize, decoupled samples, long ceil."""
+"""Guard Mode E shell prices: balanced cash conversion and full-stack sale quantity."""
 
 from pathlib import Path
 import sys
@@ -19,7 +19,10 @@ def main() -> int:
     combined = support + "\n" + mode_e
 
     required = [
-        "private const long MODE_E_SHELL_CASH_UNIT = 2000L;",
+        "private const long MODE_E_SHELL_CASH_UNIT = 2500L;",
+        "private const long MODE_E_SHELL_BULLET_STACK_PRICE_FACTOR = 5L;",
+        "internal static bool IsModeEBulletStackShop(StockShop shop)",
+        "raw *= MODE_E_SHELL_BULLET_STACK_PRICE_FACTOR;",
         "internal void NormalizeModeEShellStackForShop(StockShop shop, Item item)",
         'string.Equals(shop.MerchantID, "ModeE_Bullet"',
         "item.StackCount = item.MaxStackCount;",

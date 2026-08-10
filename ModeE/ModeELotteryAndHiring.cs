@@ -134,12 +134,18 @@ namespace BossRush
 
             SortedDictionary<int, List<int>> mutableBuckets =
                 new SortedDictionary<int, List<int>>();
-            List<int> prices = new List<int>(shop.entries.Count);
+            List<int> prices = new List<int>();
 
             for (int i = 0; i < shop.entries.Count; i++)
             {
                 StockShop.Entry entry = shop.entries[i];
                 if (entry == null || !entry.Show) continue;
+
+                int price;
+                if (!TryGetModeEShellPrice(shop, entry.ItemTypeID, out price) || price <= 0)
+                {
+                    continue;
+                }
 
                 int quality = 1;
                 try
@@ -158,12 +164,7 @@ namespace BossRush
                     mutableBuckets[quality] = bucket;
                 }
                 bucket.Add(entry.ItemTypeID);
-
-                int price;
-                if (TryGetModeEShellPrice(shop, entry.ItemTypeID, out price) && price > 0)
-                {
-                    prices.Add(price);
-                }
+                prices.Add(price);
             }
 
             if (mutableBuckets.Count == 0 || prices.Count == 0)
@@ -174,6 +175,12 @@ namespace BossRush
 
             prices.Sort();
             int medianPrice = prices[prices.Count / 2];
+            if (medianPrice <= 0)
+            {
+                modeELotteryPools.Remove(shop);
+                return;
+            }
+
             Dictionary<int, int[]> immutableBuckets = new Dictionary<int, int[]>();
             int[] qualities = new int[mutableBuckets.Count];
             int qualityIndex = 0;
@@ -186,7 +193,7 @@ namespace BossRush
             modeELotteryPools[shop] = new ModeELotteryPoolState
             {
                 MerchantGeneration = merchantGeneration,
-                Price = Mathf.Max(1, medianPrice),
+                Price = medianPrice,
                 Qualities = qualities,
                 TypeIDsByQuality = immutableBuckets
             };

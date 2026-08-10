@@ -27,7 +27,10 @@ namespace BossRush
         private const string MODE_E_SHELL_HARMONY_OWNER = "com.bossrush.mod";
         // TryGetIDByName 按 ItemMetaData.Name 查询；Item_SeaShell 是本地化键，不是物品内部名。
         private const string MODE_E_SHELL_ITEM_NAME = "SeaShell";
-        private const long MODE_E_SHELL_CASH_UNIT = 2000L;
+        private const long MODE_E_SHELL_CASH_UNIT = 2500L;
+        // 子弹整组现金基数低且商店 priceFactor 为 1（其余分类 ×10），
+        // 贝壳侧额外乘整组溢价，避免一组子弹只值 1~2 贝壳。
+        private const long MODE_E_SHELL_BULLET_STACK_PRICE_FACTOR = 5L;
 
         private static long NextModeEShellCounter(ref long counter)
         {
@@ -880,10 +883,16 @@ namespace BossRush
             catch { }
         }
 
+        internal static bool IsModeEBulletStackShop(StockShop shop)
+        {
+            return shop != null &&
+                   string.Equals(shop.MerchantID, "ModeE_Bullet", StringComparison.Ordinal);
+        }
+
         internal void NormalizeModeEShellStackForShop(StockShop shop, Item item)
         {
             if (shop == null || item == null || !item.Stackable) return;
-            if (!string.Equals(shop.MerchantID, "ModeE_Bullet", StringComparison.Ordinal)) return;
+            if (!IsModeEBulletStackShop(shop)) return;
             if (item.StackCount < item.MaxStackCount)
             {
                 item.StackCount = item.MaxStackCount;
@@ -901,6 +910,10 @@ namespace BossRush
                 int cashPrice = shop.ConvertPrice(sample, false);
                 if (cashPrice <= 0) return false;
                 long raw = cashPrice;
+                if (IsModeEBulletStackShop(shop) && sample.Stackable && sample.StackCount > 1)
+                {
+                    raw *= MODE_E_SHELL_BULLET_STACK_PRICE_FACTOR;
+                }
                 long quantified = (raw + MODE_E_SHELL_CASH_UNIT - 1L) / MODE_E_SHELL_CASH_UNIT;
                 if (quantified < 1L || quantified > int.MaxValue) return false;
                 shellPrice = (int)quantified;
@@ -2183,6 +2196,18 @@ namespace BossRush
         private static GameObject lotteryButtonObject;
         private static Button lotteryButton;
         private static TextMeshProUGUI lotteryButtonText;
+        private static RectTransform lotteryCountDownRow;
+        private static Transform lotteryCountDownOriginalParent;
+        private static int lotteryCountDownOriginalSiblingIndex;
+        private static Vector2 lotteryCountDownOriginalAnchorMin;
+        private static Vector2 lotteryCountDownOriginalAnchorMax;
+        private static Vector2 lotteryCountDownOriginalPivot;
+        private static Vector2 lotteryCountDownOriginalAnchoredPosition;
+        private static Vector2 lotteryCountDownOriginalSizeDelta;
+        private static Quaternion lotteryCountDownOriginalLocalRotation;
+        private static Vector3 lotteryCountDownOriginalLocalScale;
+        private static bool lotteryCountDownOriginalActiveSelf;
+        private static bool lotteryCountDownLayoutCaptured;
         private static bool isSelling;
         private static long sellAllOperationCounter;
         private static long activeSellAllOperationID;
@@ -3110,9 +3135,9 @@ namespace BossRush
                 lotteryButton.onClick.AddListener(OnLotteryButtonClicked);
                 lotteryButtonText.alignment = TextAlignmentOptions.Center;
                 lotteryButtonText.enableAutoSizing = true;
-                lotteryButtonText.fontSize = 15f;
-                lotteryButtonText.fontSizeMin = 11f;
-                lotteryButtonText.fontSizeMax = 15f;
+                lotteryButtonText.fontSize = 24f;
+                lotteryButtonText.fontSizeMin = 18f;
+                lotteryButtonText.fontSizeMax = 24f;
                 lotteryButtonText.enableWordWrapping = false;
                 lotteryButtonText.overflowMode = TextOverflowModes.Ellipsis;
 
@@ -3129,6 +3154,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                RestoreModeELotteryCountdownLayout();
                 ModBehaviour.DevLog("[ModeE/Lottery] 创建抽奖按钮失败: " + e.Message);
             }
         }
@@ -3140,20 +3166,34 @@ namespace BossRush
         {
             if (root == null || refreshCountDown == null || targetRect == null) return;
 
+            RectTransform countdownRow = refreshCountDown.parent as RectTransform;
+            if (countdownRow == null) countdownRow = refreshCountDown;
             Bounds countdownBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
                 root,
-                refreshCountDown);
-            const float buttonWidth = 132f;
-            const float buttonHeight = 32f;
-            float buttonRight = countdownBounds.min.x - 12f;
-            float buttonCenterX = buttonRight - buttonWidth * 0.5f;
+                countdownRow);
+            if (!CaptureModeELotteryCountdownLayout(countdownRow)) return;
+
+            const float buttonWidth = 256f;
+            const float buttonHeight = 54f;
+            const float countdownButtonGap = 8f;
+            float buttonCenterX = countdownBounds.center.x;
             float buttonCenterY = countdownBounds.center.y;
-            if (buttonCenterX - buttonWidth * 0.5f < root.rect.xMin + 12f)
-            {
-                buttonRight = Mathf.Min(root.rect.xMax - 12f, countdownBounds.max.x);
-                buttonCenterX = buttonRight - buttonWidth * 0.5f;
-                buttonCenterY = countdownBounds.min.y - 8f - buttonHeight * 0.5f;
-            }
+            float countdownWidth = Mathf.Max(countdownBounds.size.x, buttonWidth);
+            float countdownHeight = Mathf.Max(countdownBounds.size.y, 1f);
+            float countdownCenterY = buttonCenterY + buttonHeight * 0.5f +
+                countdownButtonGap + countdownHeight * 0.5f;
+
+            countdownRow.SetParent(root, false);
+            countdownRow.anchorMin = new Vector2(0.5f, 1f);
+            countdownRow.anchorMax = new Vector2(0.5f, 1f);
+            countdownRow.pivot = new Vector2(0.5f, 0.5f);
+            countdownRow.sizeDelta = new Vector2(countdownWidth, countdownHeight);
+            countdownRow.anchoredPosition = new Vector2(
+                buttonCenterX - root.rect.center.x,
+                countdownCenterY - root.rect.yMax);
+            countdownRow.localRotation = Quaternion.identity;
+            countdownRow.localScale = Vector3.one;
+            countdownRow.SetAsLastSibling();
 
             targetRect.anchorMin = new Vector2(0.5f, 1f);
             targetRect.anchorMax = new Vector2(0.5f, 1f);
@@ -3163,6 +3203,84 @@ namespace BossRush
                 buttonCenterX - root.rect.center.x,
                 buttonCenterY - root.rect.yMax);
             targetRect.SetAsLastSibling();
+        }
+
+        private static bool CaptureModeELotteryCountdownLayout(RectTransform countdownRow)
+        {
+            if (countdownRow == null) return false;
+            if (lotteryCountDownLayoutCaptured)
+            {
+                return lotteryCountDownRow == countdownRow;
+            }
+
+            lotteryCountDownRow = countdownRow;
+            lotteryCountDownOriginalParent = countdownRow.parent;
+            if (lotteryCountDownOriginalParent == null)
+            {
+                lotteryCountDownRow = null;
+                return false;
+            }
+
+            lotteryCountDownOriginalSiblingIndex = countdownRow.GetSiblingIndex();
+            lotteryCountDownOriginalAnchorMin = countdownRow.anchorMin;
+            lotteryCountDownOriginalAnchorMax = countdownRow.anchorMax;
+            lotteryCountDownOriginalPivot = countdownRow.pivot;
+            lotteryCountDownOriginalAnchoredPosition = countdownRow.anchoredPosition;
+            lotteryCountDownOriginalSizeDelta = countdownRow.sizeDelta;
+            lotteryCountDownOriginalLocalRotation = countdownRow.localRotation;
+            lotteryCountDownOriginalLocalScale = countdownRow.localScale;
+            lotteryCountDownOriginalActiveSelf = countdownRow.gameObject.activeSelf;
+            lotteryCountDownLayoutCaptured = true;
+            return true;
+        }
+
+        private static void RestoreModeELotteryCountdownLayout()
+        {
+            if (!lotteryCountDownLayoutCaptured) return;
+
+            try
+            {
+                if (lotteryCountDownRow != null && lotteryCountDownOriginalParent != null)
+                {
+                    lotteryCountDownRow.SetParent(lotteryCountDownOriginalParent, false);
+                    lotteryCountDownRow.anchorMin = lotteryCountDownOriginalAnchorMin;
+                    lotteryCountDownRow.anchorMax = lotteryCountDownOriginalAnchorMax;
+                    lotteryCountDownRow.pivot = lotteryCountDownOriginalPivot;
+                    lotteryCountDownRow.anchoredPosition = lotteryCountDownOriginalAnchoredPosition;
+                    lotteryCountDownRow.sizeDelta = lotteryCountDownOriginalSizeDelta;
+                    lotteryCountDownRow.localRotation = lotteryCountDownOriginalLocalRotation;
+                    lotteryCountDownRow.localScale = lotteryCountDownOriginalLocalScale;
+                    lotteryCountDownRow.gameObject.SetActive(lotteryCountDownOriginalActiveSelf);
+                    int siblingIndex = Mathf.Clamp(
+                        lotteryCountDownOriginalSiblingIndex,
+                        0,
+                        Mathf.Max(0, lotteryCountDownOriginalParent.childCount - 1));
+                    lotteryCountDownRow.SetSiblingIndex(siblingIndex);
+                    RectTransform originalParentRect =
+                        lotteryCountDownOriginalParent as RectTransform;
+                    if (originalParentRect != null)
+                    {
+                        LayoutRebuilder.MarkLayoutForRebuild(originalParentRect);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeE/Lottery] 恢复刷新倒计时布局失败: " + e.Message);
+            }
+
+            lotteryCountDownRow = null;
+            lotteryCountDownOriginalParent = null;
+            lotteryCountDownOriginalSiblingIndex = 0;
+            lotteryCountDownOriginalAnchorMin = Vector2.zero;
+            lotteryCountDownOriginalAnchorMax = Vector2.zero;
+            lotteryCountDownOriginalPivot = Vector2.zero;
+            lotteryCountDownOriginalAnchoredPosition = Vector2.zero;
+            lotteryCountDownOriginalSizeDelta = Vector2.zero;
+            lotteryCountDownOriginalLocalRotation = Quaternion.identity;
+            lotteryCountDownOriginalLocalScale = Vector3.one;
+            lotteryCountDownOriginalActiveSelf = false;
+            lotteryCountDownLayoutCaptured = false;
         }
 
         private static RectTransform FindModeEHeaderActionRoot(StockShopView shopView)
@@ -3629,6 +3747,7 @@ namespace BossRush
                 shellBalanceText = null;
                 shellBalanceHasShellIcon = false;
             }
+            RestoreModeELotteryCountdownLayout();
             if (lotteryButtonObject != null)
             {
                 if (destroyUiObjects)

@@ -45,12 +45,21 @@ def main() -> int:
         "shop.entries",
         "ItemAssetsCollection.GetMetaData(entry.ItemTypeID).quality",
         "SortedDictionary<int, List<int>>",
+        "List<int> prices = new List<int>();",
+        "prices.Add(price);",
         "prices.Sort();",
-        "prices[prices.Count / 2]",
+        "int medianPrice = prices[prices.Count / 2];",
+        "Price = medianPrice",
         "pair.Value.ToArray()",
     ]:
         if token not in build:
             return fail("lottery must cache existing shop entries by quality -> " + token)
+    if "(totalPrice + pricedItemCount - 1L) / pricedItemCount" in build or "averagePrice" in build:
+        return fail("lottery price must use the median, not the arithmetic mean")
+    price_check = build.find("TryGetModeEShellPrice(shop, entry.ItemTypeID, out price)")
+    candidate_add = build.find("bucket.Add(entry.ItemTypeID);")
+    if price_check < 0 or candidate_add < 0 or price_check >= candidate_add:
+        return fail("lottery candidates must have a valid shell price before entering the pool")
     if "new StockShop" in feature or "AddComponent<StockShop>" in feature:
         return fail("lottery must not register a hidden or additional StockShop")
 
@@ -101,7 +110,19 @@ def main() -> int:
         "return shopView != null",
         "? shopView.transform as RectTransform",
         "RectTransformUtility.CalculateRelativeRectTransformBounds(",
-        "float buttonRight = countdownBounds.min.x - 12f;",
+        "RectTransform countdownRow = refreshCountDown.parent as RectTransform;",
+        "CaptureModeELotteryCountdownLayout(countdownRow)",
+        "countdownRow.SetParent(root, false);",
+        "const float buttonWidth = 256f;",
+        "const float buttonHeight = 54f;",
+        "float buttonCenterX = countdownBounds.center.x;",
+        "float buttonCenterY = countdownBounds.center.y;",
+        "float countdownCenterY = buttonCenterY + buttonHeight * 0.5f +",
+        "countdownButtonGap + countdownHeight * 0.5f",
+        "lotteryCountDownOriginalActiveSelf = countdownRow.gameObject.activeSelf;",
+        "lotteryCountDownRow.gameObject.SetActive(lotteryCountDownOriginalActiveSelf);",
+        "LayoutRebuilder.MarkLayoutForRebuild(originalParentRect);",
+        "RestoreModeELotteryCountdownLayout();",
         "CreateModeELotteryButtonObject(root)",
         'buttonObject.name = "ModeELotteryButton";',
         "UnityEngine.Object.Instantiate(",
@@ -130,10 +151,20 @@ def main() -> int:
         return fail("shell balance must reuse the original top-left currency bar")
     if "TryEnsureModeEHeaderActionRow(" in support or "ModeEHeaderActionRow" in support:
         return fail("shop header action row must not return after moving shells to the currency bar")
-    if "enableWordWrapping = false;" not in lottery_ui:
-        return fail("lottery command and price must stay on one stable line")
+    for token in [
+        "enableWordWrapping = false;",
+        "lotteryButtonText.fontSize = 24f;",
+        "lotteryButtonText.fontSizeMin = 18f;",
+        "lotteryButtonText.fontSizeMax = 24f;",
+    ]:
+        if token not in lottery_ui:
+            return fail("lottery command text must use the enlarged single-line style -> " + token)
     if "sellAllButtonObject" not in lottery_factory or "new GameObject" in lottery_factory:
         return fail("lottery button must preserve the visible sell-all button hierarchy")
+    if "CalculateModeERefreshHeaderVisualBounds(" in support:
+        return fail("lottery placement must not merge unrelated top-level TMP text")
+    if "ForceMeshUpdate(" in support or "GetComponentsInChildren<TextMeshProUGUI>" in support:
+        return fail("lottery placement must not scan or rebuild the full shop text tree")
     root_method = extract_method(
         support, "private static RectTransform FindModeEHeaderActionRoot(")
     if "refreshCountDown.parent" in root_method or "current.parent" in root_method:
