@@ -34,6 +34,7 @@ namespace BossRush
         {
             internal long MerchantGeneration;
             internal int Price;
+            internal int DrawCount;
             internal int[] Qualities;
             internal Dictionary<int, int[]> TypeIDsByQuality;
         }
@@ -213,7 +214,10 @@ namespace BossRush
                 return false;
             }
 
-            price = state.Price;
+            // 每抽一次价格线性递增：第 N 次抽奖价格 = 基础价格 * N
+            int multiplier = state.DrawCount + 1;
+            long scaled = (long)state.Price * multiplier;
+            price = scaled > int.MaxValue ? int.MaxValue : (int)scaled;
             return true;
         }
 
@@ -354,6 +358,7 @@ namespace BossRush
                 }
 
                 committed = true;
+                state.DrawCount++;
                 MarkModeEShellTransactionCommitted(owner.TransactionID);
                 try { ItemUtilities.SendToPlayerCharacterInventory(deliveryItem, false); }
                 catch (Exception e)
