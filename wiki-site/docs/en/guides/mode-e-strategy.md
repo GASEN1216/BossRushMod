@@ -24,7 +24,7 @@ Sandbox free-for-all. No win/loss conditions. Set your own goals:
 
 # Economy
 
-- Category shops use run-only Shells. Prices are the original cash value divided by 2,000 and rounded up; selling still pays account cash
+- Category shops use run-only Shells. Prices are the original cash value divided by 2,500 and rounded up; selling still pays account cash
 - Direct hostile-Boss kills pay full Shells; otherwise, being within 8 meters at death pays half. Friendly-faction deaths pay no Shells and no hostile loot crate
 - Spend the first few rewards on a main weapon, ammo, and survival gear. Ammo purchases deliver a full stack
 - Category lottery costs the category's median price and shifts toward higher quality over time. Roll when your build is flexible; buy directly when you need a specific piece

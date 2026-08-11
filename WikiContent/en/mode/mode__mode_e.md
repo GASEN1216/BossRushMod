@@ -73,7 +73,7 @@ Stay close and contest kills if you want purchasing power. Watching the whole wa
 
 Spawns in front of you with a `Repair` option + 13 categorized shops:
 
-- Shell price is the original cash price divided by 2,000 and rounded up, with a minimum of 1 Shell
+- Shell price is the original cash price divided by 2,500 and rounded up, with a minimum of 1 Shell
 - **Ammo** is delivered as a full stack; its displayed Shell price already reflects that stack
 - Selling backpack items still pays cash into your normal account, not Shells
 - Shell balance appears beside cash and bank balance; the shop shows price, held balance, and insufficient-funds state directly

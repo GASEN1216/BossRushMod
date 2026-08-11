@@ -62,12 +62,12 @@ Also spawns in Blood Hunt with categorized shops + `Repair` option + `Sell All` 
 
 4 deployable items:
 
-- **Foldable Cover** (2500 HP) — Light cover, most common
-- **Reinforced Roadblock** (5000 HP) — Heavy barricade, **very tough**
-- **Barbed Wire** (2000 HP) — Slows enemy advance
+- **Foldable Cover** (250 HP) — Light cover, most common
+- **Reinforced Roadblock** (500 HP) — Heavy barricade, **very tough**
+- **Barbed Wire** (200 HP) — Slows enemy advance
 - **Repair Spray** — Fixes nearest friendly fortification within 3m, restores 25% max HP
 
-Deploy 2m in front of you. Can't overlap, can't clip into scenery. Failed deployment refunds the item. Start with 1 free Cover Pack.
+Deploy where your mouse points. Can't overlap, can't clip into scenery. Failed deployment refunds the item. Start with 1 free Cover Pack.
 
 # Boss Behavior by Phase
 

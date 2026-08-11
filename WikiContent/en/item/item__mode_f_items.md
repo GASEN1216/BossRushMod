@@ -19,15 +19,15 @@ Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss pop
 
 **Blood Hunt only.** From Boss kills or Mystery Merchant.
 
-- **Foldable Cover** (Green, stack 10) — Light cover, 2500 HP
-- **Barbed Wire** (Blue, stack 5) — Slows enemies, 2000 HP
-- **Reinforced Roadblock** (Purple, stack 5) — Heavy cover, 5000 HP
+- **Foldable Cover** (Green, stack 10) — Light cover, 250 HP
+- **Barbed Wire** (Blue, stack 5) — Slows enemies, 200 HP
+- **Reinforced Roadblock** (Purple, stack 5) — Heavy cover, 500 HP
 - **Repair Spray** (Green, stack 10) — Fixes nearest friendly fortification within 3m, restores 25% max HP
 
 #### Deployment
 
 - Place with LMB, cancel with RMB, scroll to rotate, MMB for 90°
-- Deploys 2m in front. Can't overlap, can't clip scenery. **Failed = refunded**
+- Deploys where your mouse points. Can't overlap, can't clip scenery. **Failed = refunded**
 
 #### Drop Schedule
 

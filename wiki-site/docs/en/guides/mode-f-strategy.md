@@ -43,7 +43,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 # Fortification Strategy
 
 - **Covers** — Deploy liberally (most common drop)
-- **Roadblocks** — Key chokepoints + extraction point (5000 HP, very durable)
+- **Roadblocks** — Key chokepoints + extraction point (500 HP, very durable)
 - **Barbed Wire** — On approach routes to slow Bosses
 - **Repair Spray** — Extend fortification lifespan
 
