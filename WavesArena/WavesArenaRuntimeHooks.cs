@@ -6,6 +6,22 @@ namespace BossRush
     {
         internal bool TickWavesArenaRuntime(float deltaTime)
         {
+            // Mode G 门控（加法分支）：Mode G Starting/Active/Rewarding/Exiting 时
+            // 冻结并清零 Legacy 波次倒计时，绝不调用 SpawnNextEnemy（含波次完整性自检路径）。
+            // 查询 no-throw、默认 false；未运行时本分支不命中，后续逻辑逐字不变。
+            // 返回 false 保证后续 TickWavesArenaBossCleanupRuntime（大兴兴 owner-aware 清理）继续运行。
+            if (IsModeGRunInProgressSafe())
+            {
+                if (waitingForNextWave || waveCountdown > 0f || lastWaveCountdownSeconds >= 0)
+                {
+                    waitingForNextWave = false;
+                    waveCountdown = 0f;
+                    lastWaveCountdownSeconds = -1;
+                }
+                waveIntegrityCheckTimer = 0f;
+                return false;
+            }
+
             // 单波模式倒计时
             if (waitingForNextWave && waveCountdown > 0f)
             {
@@ -82,6 +98,22 @@ namespace BossRush
             else
             {
                 daXingXingCleanTimer = 0f;
+            }
+        }
+
+        /// <summary>
+        /// Mode G 运行状态的全 partial 共享 no-throw 读取（异常视为未运行，保持 Legacy 行为）。
+        /// 只反映 lifecycle（LifecyclePhase != None），绝不包含 late sink quarantine。
+        /// </summary>
+        internal static bool IsModeGRunInProgressSafe()
+        {
+            try
+            {
+                return ModeGRuntimeGates.IsModeGRunInProgress;
+            }
+            catch
+            {
+                return false;
             }
         }
     }

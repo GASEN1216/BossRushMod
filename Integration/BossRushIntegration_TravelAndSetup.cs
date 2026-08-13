@@ -379,6 +379,33 @@ namespace BossRush
                 yield break;
             }
 
+            // Mode G 独立分支：成功或失败都不得落入普通 BossRush 初始化。
+            if (entryMode == BossRushEntryMode.ModeG)
+            {
+                DevLog("[BossRush] SetupBossRushInGroundZero: 检测到船票+宿命回响信物+裸装入场，将尝试启动 Mode G");
+                DisableAllSpawners();
+                ClearEnemiesForBossRush();
+
+                yield return new UnityEngine.WaitForSeconds(0.5f);
+                bool startedModeG = TryStartModeG();
+                if (startedModeG)
+                {
+                    SpawnCommonNPCs("GroundZero场景 Mode G 初始化完成");
+                    ScheduleRestoreFollowingSpouse(
+                        UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
+                        "GroundZero场景 Mode G 初始化完成");
+                }
+                else
+                {
+                    DevLog("[BossRush] [WARNING] SetupBossRushInGroundZero: Mode G 启动失败，已中止本次竞技场初始化");
+                    ShowMessage(L10n.T(
+                        "宿命回响启动失败，入场物品已恢复。",
+                        "Fate Echo failed to start. Entry items were restored."));
+                }
+                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                yield break;
+            }
+
             // 1. [重要] 先生成地图阻挡物和撤离点（必须在销毁 spawner 之前执行）
             // 因为撤离点模板 ExitNoSmoke Variant 位于 EnemySpawner_TestBossZone 下
             SpawnBossRushMapObjects();

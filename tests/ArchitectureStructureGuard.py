@@ -353,6 +353,7 @@ def main() -> int:
             "DetermineBossRushEntryMode(\"SetupBossRushInDemoChallenge\")",
             "TryStartModeE();",
             "TryStartModeF();",
+            "TryStartModeG();",
             "TryStartModeD();",
             "BossRushMapSelectionHelper.ClearPendingEntryFlowState();",
         ],

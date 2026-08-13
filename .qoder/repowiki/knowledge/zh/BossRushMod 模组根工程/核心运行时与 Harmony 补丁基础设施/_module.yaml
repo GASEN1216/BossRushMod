@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: core_runtime
+title: 核心运行时与 Harmony 补丁基础设施
+scope:
+    - Common/
+    - Injection/
+    - Patches/
+source_files: []
+depends_on: []
+related_to:
+    - path: utilities

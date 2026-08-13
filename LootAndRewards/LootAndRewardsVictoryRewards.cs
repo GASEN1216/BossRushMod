@@ -344,6 +344,101 @@ namespace BossRush
             }
         }
 
+        // Mode G strict materializer 当前活动实例（加法分支，Legacy 恒为 null）
+        private ModeGRewardStrictMaterializer _activeModeGRewardMaterializer;
+
+        /// <summary>
+        /// Mode G 可观察胜利奖励 Try 入口（任务 #7 加法分支，设计文档 §11/§13）。
+        /// 保留旧 void/Loader 入口不变；本入口接收固定 TypeID 快照，
+        /// 创建每帧一件的同步 strict materializer，逐件回调 + 完成回调全部可观察。
+        /// 只复用现有 InstantiateSync 与 public Item/Inventory API。
+        /// </summary>
+        /// <param name="fixedTypeIds">冻结的奖励 TypeID 快照（内部拷贝）</param>
+        /// <param name="targetInventory">奖励目标 Inventory（public API）</param>
+        /// <param name="onItemCommitted">每件完成回调 (typeId, item或null, 是否成功)</param>
+        /// <param name="onAllCompleted">全部完成回调 (total, succeeded, failed)</param>
+        /// <param name="failureReason">启动失败原因（成功时为 null）</param>
+        internal bool TryStartModeGRewardMaterialization_LootAndRewards(
+            int[] fixedTypeIds,
+            ItemStatsSystem.Inventory targetInventory,
+            Action<int, ItemStatsSystem.Item, bool> onItemCommitted,
+            Action<int, int, int> onAllCompleted,
+            out string failureReason)
+        {
+            failureReason = null;
+
+            try
+            {
+                if (fixedTypeIds == null || fixedTypeIds.Length <= 0)
+                {
+                    failureReason = "TypeID 快照为空";
+                    return false;
+                }
+
+                if (targetInventory == null)
+                {
+                    failureReason = "目标 Inventory 为空";
+                    return false;
+                }
+
+                // strict 事务：同一时刻只允许一个活动 materializer，新事务先取消旧事务
+                try
+                {
+                    if (_activeModeGRewardMaterializer != null)
+                    {
+                        _activeModeGRewardMaterializer.CancelAndDestroy();
+                        _activeModeGRewardMaterializer = null;
+                    }
+                }
+                catch { }
+
+                GameObject materializerObject = new GameObject("BossRush_ModeGRewardStrictMaterializer");
+                try
+                {
+                    MultiSceneCore.MoveToActiveWithScene(materializerObject, SceneManager.GetActiveScene().buildIndex);
+                }
+                catch { }
+
+                ModeGRewardStrictMaterializer materializer = materializerObject.AddComponent<ModeGRewardStrictMaterializer>();
+                if (!materializer.Initialize(fixedTypeIds, targetInventory, onItemCommitted, onAllCompleted))
+                {
+                    try
+                    {
+                        UnityEngine.Object.Destroy(materializerObject);
+                    }
+                    catch { }
+                    failureReason = "materializer 初始化失败";
+                    return false;
+                }
+
+                _activeModeGRewardMaterializer = materializer;
+                DevLog("[ModeG] 胜利奖励 strict materializer 已启动: 件数=" + fixedTypeIds.Length);
+                return true;
+            }
+            catch (Exception e)
+            {
+                failureReason = "启动异常: " + e.Message;
+                DevLog("[ModeG] [WARNING] 启动胜利奖励 strict materializer 失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 取消当前 Mode G 奖励 materializer（幂等；Mode G End/cleanup 路径使用）。
+        /// </summary>
+        internal void CancelModeGRewardMaterialization_LootAndRewards()
+        {
+            try
+            {
+                if (_activeModeGRewardMaterializer != null)
+                {
+                    _activeModeGRewardMaterializer.CancelAndDestroy();
+                    _activeModeGRewardMaterializer = null;
+                }
+            }
+            catch { }
+        }
+
         internal void SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards(int highQualityCount, Vector3 worldPosition)
         {
             _difficultyRewardSpawnPositionOverrideActive = true;

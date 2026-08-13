@@ -929,6 +929,7 @@ namespace BossRush
 
         public static bool IsLoaded => loadedBundle != null;
         public static bool HasActiveReferences => assetBundleRefCount > 0;
+        public static int ActiveReferenceCount => assetBundleRefCount;
     }
     
     /// <summary>

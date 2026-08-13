@@ -1,0 +1,271 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-08-12T13:56:17Z"
+modules:
+    "":
+        dir_name: BossRushMod 模组根工程
+        title: BossRushMod 模组根工程
+        scope:
+            - README.md
+            - README_EN.md
+            - AGENTS.md
+            - CLAUDE.md
+            - CODE_REVIEW.md
+            - CODE_REVIEW_FINDINGS.md
+            - GEMINI.md
+            - .gitignore
+            - .gitattributes
+            - ModBehaviour.cs
+            - ModConfigApi.cs
+            - TeleportDebugMonitor.cs
+            - compile_dev.bat
+            - gen_fate_echo_icon.ps1
+            - test_bossrush_smoke_manual.bat
+            - test_logic_official.bat
+            - test_zombiemode_goal_windows.bat
+            - validate_refactor_step.bat
+            - .codex
+            - FIX_TRACKER.md
+            - LICENSE
+            - big_preview2.png
+            - preview.png
+        source_files: []
+        children:
+            - achievement_system
+            - assets
+            - config
+            - core_runtime
+            - debug_and_tools
+            - integration_content
+            - localization
+            - loot_and_rewards
+            - mode_d
+            - mode_e
+            - mode_f
+            - mode_g
+            - tests
+            - ui_and_signs
+            - utilities
+            - waves_arena
+            - wiki_content
+            - wiki_site
+            - zombie_mode
+        depends_on: []
+        related_to: []
+    achievement_system:
+        dir_name: Boss Rush 成就与音效系统
+        title: Boss Rush 成就与音效系统
+        scope:
+            - Achievement/
+            - Audio/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: ui_and_signs
+    assets:
+        dir_name: BossRushMod 资源包（Assets）
+        title: BossRushMod 资源包（Assets）
+        scope:
+            - Assets/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: integration_content/integration_bootstrap
+    config:
+        dir_name: BossRush 配置与数据注册中心
+        title: BossRush 配置与数据注册中心
+        scope:
+            - Config/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: loot_and_rewards
+    core_runtime:
+        dir_name: 核心运行时与 Harmony 补丁基础设施
+        title: 核心运行时与 Harmony 补丁基础设施
+        scope:
+            - Common/
+            - Injection/
+            - Patches/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: utilities
+    debug_and_tools:
+        dir_name: BossRush 调试工具与作弊菜单模块
+        title: BossRush 调试工具与作弊菜单模块
+        scope:
+            - DebugAndTools/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    integration_content:
+        dir_name: Integration_ 内容集成层
+        title: Integration/ 内容集成层
+        scope:
+            - Integration/
+        source_files: []
+        children:
+            - integration_content/integration_bootstrap
+        depends_on: []
+        related_to:
+            - path: localization
+    integration_content/integration_bootstrap:
+        dir_name: BossRushMod 内容集成总线
+        title: BossRushMod 内容集成总线
+        scope:
+            - Integration/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: assets
+    localization:
+        dir_name: BossRush 模组本地化系统
+        title: BossRush 模组本地化系统
+        scope:
+            - Localization/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: integration_content
+    loot_and_rewards:
+        dir_name: BossRush 掉落与奖励系统
+        title: BossRush 掉落与奖励系统
+        scope:
+            - LootAndRewards/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: config
+            - path: mode_d
+            - path: mode_e
+            - path: mode_f
+            - path: mode_g
+            - path: waves_arena
+            - path: zombie_mode
+    mode_d:
+        dir_name: Mode D 白手起家模式（无限波次挑战）
+        title: Mode D 白手起家模式（无限波次挑战）
+        scope:
+            - ModeD/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: loot_and_rewards
+    mode_e:
+        dir_name: ModeE 划地为营多阵营沙盒模式
+        title: ModeE 划地为营多阵营沙盒模式
+        scope:
+            - ModeE/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: loot_and_rewards
+    mode_f:
+        dir_name: ModeF 血猎追击模式（BossRushMod 子模式）
+        title: ModeF 血猎追击模式（BossRushMod 子模式）
+        scope:
+            - ModeF/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: loot_and_rewards
+    mode_g:
+        dir_name: Mode G 宿命回响模式运行时
+        title: Mode G 宿命回响模式运行时
+        scope:
+            - ModeG/
+            - Utilities/ManagedBossSpawnContracts.cs
+            - Integration/DragonDescendant/DragonDescendantBoss_ModeGAdapter.cs
+            - Integration/DragonKing/DragonKingBoss_ModeGAdapter.cs
+            - Integration/PhantomWitch/PhantomWitchBoss_ModeGAdapter.cs
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: loot_and_rewards
+            - path: integration_content
+            - path: localization
+    tests:
+        dir_name: BossRushMod 静态守护与冒烟测试套件
+        title: BossRushMod 静态守护与冒烟测试套件
+        scope:
+            - tests/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    ui_and_signs:
+        dir_name: BossRush UI与路牌交互系统
+        title: BossRush UI与路牌交互系统
+        scope:
+            - UIAndSigns/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: achievement_system
+    utilities:
+        dir_name: BossRush 运行时基础设施与跨模块工具集
+        title: BossRush 运行时基础设施与跨模块工具集
+        scope:
+            - Utilities/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: core_runtime
+    waves_arena:
+        dir_name: BossRush 波次竞技场系统
+        title: BossRush 波次竞技场系统
+        scope:
+            - WavesArena/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: loot_and_rewards
+    wiki_content:
+        dir_name: BossRush Mod 多语言 Wiki 内容库
+        title: BossRush Mod 多语言 Wiki 内容库
+        scope:
+            - WikiContent/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: wiki_site
+    wiki_site:
+        dir_name: BossRush Mod 多语言 Wiki 站点
+        title: BossRush Mod 多语言 Wiki 站点
+        scope:
+            - wiki-site/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: wiki_content
+    zombie_mode:
+        dir_name: 末日丧尸模式（ZombieMode）独立玩法模块
+        title: 末日丧尸模式（ZombieMode）独立玩法模块
+        scope:
+            - ZombieMode/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: loot_and_rewards

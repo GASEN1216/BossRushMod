@@ -1,7 +1,7 @@
 # AI 协作文档收敛迁移记录
 
 日期：2026-07-01  
-范围：只改文档，不改业务代码。
+范围：登记知识库和文档维护入口；同一提交另含 Mode G 功能基线。
 
 ## 1. Inventory 摘要
 
@@ -87,3 +87,29 @@
 - 未运行 `compile_official.bat`。
 - 未运行 Python guard 全量套件。
 - 未提交 git commit。
+
+---
+
+# 追加记录：登记 `.qoder/repowiki/` 详细 Wiki 内容库
+
+日期：2026-08-12
+范围：只改文档，不改业务代码。
+
+## 背景
+
+仓库 `.qoder/repowiki/` 已生成详细的 Wiki 内容库（约 290 个文件）：`knowledge/zh/` 模块级知识卡（`_index.yaml` 为模块索引）与 `zh/content/` 主题级详解（架构、模式、Boss、装备、NPC、调试等），此前未在任何协作文档中登记，导致代码变更不会同步维护该目录。
+
+## 本次变更
+
+- `.qoder/repowiki/README.md`：新增面向维护者的知识库导航、检索方式、文档边界和同步清单。
+- `AGENTS.md`：阅读顺序、子系统地图、Golden Rule 4.13（代码变更必须同步 repowiki）、验证要求第 3 步（repowiki 同步检查）、第 11 节区分 `.qoder/` 工具材料与 repowiki、最后更新日期。
+- `docs/项目全景文档.md`：目录结构总览、补充说明、第 11.4 节文档索引。
+- `README.md` / `README_EN.md`：开发向说明指向 repowiki。
+
+## 兼容性
+
+本节记录的知识库登记为 `SAFE`；同一提交中的 Mode G 为 `COMPAT`（新增玩法、物品、持久化 key 与共享层接入）。
+
+## 验证
+
+以最终提交前实际执行的 Windows 编译、Python guard 和知识库静态检查为准。

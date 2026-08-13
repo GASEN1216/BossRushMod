@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: loot_and_rewards
+title: BossRush 掉落与奖励系统
+scope:
+    - LootAndRewards/
+source_files: []
+depends_on: []
+related_to:
+    - path: config
+    - path: mode_d
+    - path: mode_e
+    - path: mode_f
+    - path: mode_g
+    - path: waves_arena
+    - path: zombie_mode

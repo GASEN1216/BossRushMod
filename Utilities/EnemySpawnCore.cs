@@ -32,6 +32,9 @@ namespace BossRush
 
         /// <summary>生成位置</summary>
         public Vector3 position;
+
+        /// <summary>Mode G 托管 Boss 的延迟激活/精确清理句柄；普通路径为 null。</summary>
+        internal ManagedBossRuntimeHandle managedBossHandle;
     }
 
     internal sealed class EnemySpawnCoreResult
@@ -60,6 +63,35 @@ namespace BossRush
                 actualPreset = actualPreset
             };
         }
+    }
+
+    /// <summary>
+    /// SpawnCore 附加选项（Mode G 托管 Boss 门控，任务 #7 跨任务契约）。
+    /// 不传或传 null 时行为逐字不变（完全 Legacy）。
+    /// </summary>
+    public sealed class EnemySpawnCoreOptions
+    {
+        /// <summary>
+        /// 为外部提交保留：跳过 Legacy onCommit 提交回调，
+        /// 由 Mode G 侧按 ManagedBossRuntimeHandle 自行提交。
+        /// </summary>
+        public bool HoldForExternalCommit = false;
+
+        /// <summary>
+        /// 是否应用共享 Mutator 词条（Mode G 托管 Boss 传 false）。
+        /// </summary>
+        public bool ApplySharedMutators = true;
+
+        /// <summary>
+        /// 失败后是否允许随机重试回退（Mode G 托管 Boss 传 false，只走调用方已确认预设）。
+        /// </summary>
+        public bool AllowRandomRetryFallback = true;
+
+        /// <summary>
+        /// 托管 Boss 上下文。用 object 引用避免与 Felix 的新类型（ManagedBossSpawnContext）
+        /// 产生编辑冲突；Felix 侧自行强转。null = Legacy。
+        /// </summary>
+        public object ManagedBossContext = null;
     }
 
     /// <summary>
@@ -591,6 +623,15 @@ namespace BossRush
             InvokeSpawnCoreFailureCallback(onFailed, reason);
         }
 
+        /// <summary>
+        /// Mode G 托管 Boss 生成分流钩子（加法分支，默认 null = 对 Legacy 无任何影响）。
+        /// 由 Felix 的 Utilities/ManagedBossSpawnContracts.cs 接线；
+        /// 输入 (preset, position, managedContext, deferActivationUntilNextFrame)，
+        /// 返回 prepared Character + handle，失败返回 null。
+        /// 钩子未接线或返回 null 均 fail-closed，绝不回退 Legacy 生成器。
+        /// </summary>
+        internal static Func<EnemyPresetInfo, Vector3, object, bool, UniTask<ManagedBossPrepareResult>> ManagedBossSpawnDispatcher;
+
         private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync(
             EnemyPresetInfo preset,
             Vector3 position,
@@ -605,23 +646,35 @@ namespace BossRush
             bool skipBossRushLootTracking = false,
             bool normalizeDamageMultiplier = true,
             bool deferActivationUntilNextFrame = false,
-            Func<EnemySpawnContext, bool> onCommit = null)
+            Func<EnemySpawnContext, bool> onCommit = null,
+            EnemySpawnCoreOptions options = null)
         {
             try
             {
                 const int maxAttempts = 5;
+                // Mode G 禁用随机回退时只跑调用方已确认预设；Legacy 仍保持 5 次重试。
+                int attemptLimit = (options != null && !options.AllowRandomRetryFallback) ? 1 : maxAttempts;
                 EnemyPresetInfo currentPreset = preset;
 
                 // 记录调用方传入的原始预设，用于区分"首次使用"和"重试随机"
                 EnemyPresetInfo originalPreset = preset;
 
-                for (int attempt = 0; attempt < maxAttempts; attempt++)
+                // Mode G 门控（加法分支）：托管 Boss 上下文；null = Legacy
+                object managedBossContext = options != null ? options.ManagedBossContext : null;
+
+                for (int attempt = 0; attempt < attemptLimit; attempt++)
                 {
                     try
                     {
                         // 预设为空时重新随机
                         if (currentPreset == null)
                         {
+                            // Mode G 门控（加法分支）：禁用随机重试回退时不重新随机，直接 fail-closed
+                            if (options != null && !options.AllowRandomRetryFallback)
+                            {
+                                return EnemySpawnCoreResult.Failed("预设为空且禁用随机重试", preset);
+                            }
+
                             currentPreset = isBoss ? GetRandomBossPreset() : GetRandomMinionPreset();
                         }
                         if (currentPreset == null)
@@ -657,9 +710,49 @@ namespace BossRush
 
                         int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                         CharacterMainControl character = null;
+                        ManagedBossRuntimeHandle managedBossHandle = null;
 
+                        // Mode G 托管 Boss 分流（加法分支）：带托管 context 时必须走托管生成契约
+                        // （Felix 侧 Prepare/Activate 分离 + ManagedBossRuntimeHandle），
+                        // 绝不回退 Legacy 公开生成器；未接线/失败即 fail-closed。
+                        if (managedBossContext != null)
+                        {
+                            var managedDispatcher = ManagedBossSpawnDispatcher;
+                            if (managedDispatcher == null)
+                            {
+                                DevLog("[SpawnCore] [ERROR] 传入托管 Boss 上下文但 ManagedBossSpawnDispatcher 未接线，fail-closed");
+                                return EnemySpawnCoreResult.Failed("托管生成契约未接线", currentPreset);
+                            }
+
+                            try
+                            {
+                                ManagedBossPrepareResult prepared = await managedDispatcher(
+                                    currentPreset, position, managedBossContext, deferActivationUntilNextFrame);
+                                if (prepared != null)
+                                {
+                                    character = prepared.Character;
+                                    managedBossHandle = prepared.Handle;
+                                }
+                            }
+                            catch (Exception managedEx)
+                            {
+                                DevLog("[SpawnCore] 托管 Boss 生成异常: " + managedEx.Message);
+                                character = null;
+                            }
+
+                            if (character == null || managedBossHandle == null)
+                            {
+                                if (options != null && !options.AllowRandomRetryFallback)
+                                {
+                                    return EnemySpawnCoreResult.Failed("托管 Boss 生成失败（禁用重试）", currentPreset);
+                                }
+
+                                currentPreset = null;
+                                continue;
+                            }
+                        }
                         // 龙裔遗族Boss：使用专用生成方法
-                        if (IsDragonDescendantPreset(currentPreset))
+                        else if (IsDragonDescendantPreset(currentPreset))
                         {
                             try
                             {
@@ -775,7 +868,8 @@ namespace BossRush
                                 character = character,
                                 preset = currentPreset,
                                 isBoss = isBoss,
-                                position = position
+                                position = position,
+                                managedBossHandle = managedBossHandle
                             };
 
                             // 标记大兴兴（防止被误清理）
@@ -792,23 +886,32 @@ namespace BossRush
                             // 跳过 SetActive（龙裔/龙王已在内部激活）
 
                             // 应用变异词条效果到特殊Boss
-                            MutatorManager.ApplyToEnemy(character);
-
-                            if (!InvokeSpawnCoreCommitCallback(onCommit, ctx))
+                            // Mode G 门控（加法分支）：托管 Boss 禁用共享 Mutator；options == null 逐字保持原行为
+                            if (options == null || options.ApplySharedMutators)
                             {
-                                try
-                                {
-                                    if (character.gameObject != null)
-                                    {
-                                        UnityEngine.Object.Destroy(character.gameObject);
-                                    }
-                                }
-                                catch (Exception destroyOnCommitEx)
-                                {
-                                    DevLog("[SpawnCore] [WARNING] 特殊Boss提交失败后销毁异常: " + destroyOnCommitEx.Message);
-                                }
+                                MutatorManager.ApplyToEnemy(character);
+                            }
 
-                                return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
+                            // Mode G 门控（加法分支）：HoldForExternalCommit 时跳过 Legacy 提交回调，
+                            // 由 Mode G 按 handle 自行提交；options == null 逐字保持原行为
+                            if (options == null || !options.HoldForExternalCommit)
+                            {
+                                if (!InvokeSpawnCoreCommitCallback(onCommit, ctx))
+                                {
+                                    try
+                                    {
+                                        if (character.gameObject != null)
+                                        {
+                                            UnityEngine.Object.Destroy(character.gameObject);
+                                        }
+                                    }
+                                    catch (Exception destroyOnCommitEx)
+                                    {
+                                        DevLog("[SpawnCore] [WARNING] 特殊Boss提交失败后销毁异常: " + destroyOnCommitEx.Message);
+                                    }
+
+                                    return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
+                                }
                             }
 
                             DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
@@ -868,11 +971,23 @@ namespace BossRush
                                 ApplyBossStatMultiplier(character);
                             }
 
-                            // 激活敌人
-                            character.gameObject.SetActive(true);
+                            // Mode G 外部提交路径先冻结，全部槽位结案后由 run owner 批量激活。
+                            if (options != null && options.HoldForExternalCommit)
+                            {
+                                if (character.Health != null) character.Health.SetInvincible(true);
+                                character.gameObject.SetActive(false);
+                            }
+                            else
+                            {
+                                character.gameObject.SetActive(true);
+                            }
 
                             // 应用变异词条效果到新生成的敌人
-                            MutatorManager.ApplyToEnemy(character);
+                            // Mode G 门控（加法分支）：options == null 逐字保持原行为
+                            if (options == null || options.ApplySharedMutators)
+                            {
+                                MutatorManager.ApplyToEnemy(character);
+                            }
 
                             if (isBoss && !skipBossRushLootTracking && character != null)
                             {
@@ -903,11 +1018,16 @@ namespace BossRush
                                 position = position
                             };
 
-                            if (!InvokeSpawnCoreCommitCallback(onCommit, ctx))
+                            // Mode G 门控（加法分支）：HoldForExternalCommit 时跳过 Legacy 提交回调；
+                            // options == null 逐字保持原行为
+                            if (options == null || !options.HoldForExternalCommit)
                             {
-                                UnityEngine.Object.Destroy(character.gameObject);
-                                DevLog("[SpawnCore] 提交回调失败，销毁普通Boss: " + currentPreset.displayName);
-                                return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
+                                if (!InvokeSpawnCoreCommitCallback(onCommit, ctx))
+                                {
+                                    UnityEngine.Object.Destroy(character.gameObject);
+                                    DevLog("[SpawnCore] 提交回调失败，销毁普通Boss: " + currentPreset.displayName);
+                                    return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
+                                }
                             }
 
                             DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);

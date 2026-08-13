@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: zombie_mode
+title: 末日丧尸模式（ZombieMode）独立玩法模块
+scope:
+    - ZombieMode/
+source_files: []
+depends_on: []
+related_to:
+    - path: loot_and_rewards

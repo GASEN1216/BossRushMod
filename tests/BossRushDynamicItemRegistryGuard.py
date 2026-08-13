@@ -112,6 +112,8 @@ def main() -> int:
         "PeaceCharmConfig.TYPE_ID",
         "BloodhuntTransponderConfig.BUNDLE_NAME",
         "BloodhuntTransponderConfig.TYPE_ID",
+        "FateEchoRelicConfig.BUNDLE_NAME",
+        "FateEchoRelicConfig.TYPE_ID",
         "FoldableCoverPackConfig.BUNDLE_NAME",
         "FoldableCoverPackConfig.TYPE_ID",
         "ReinforcedRoadblockPackConfig.BUNDLE_NAME",

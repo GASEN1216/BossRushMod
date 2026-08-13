@@ -39,6 +39,9 @@ BossRush选项修改方案.md
 /鸭科夫源码
 /skills
 /.codex_tmp
+/.qoder/better-harness/
+/.qoder/better-harness-runs/
+/tmp/
 
 # Wiki 站点构建产物
 wiki-site/node_modules/

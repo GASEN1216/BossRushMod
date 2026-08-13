@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: ui_and_signs
+title: BossRush UI与路牌交互系统
+scope:
+    - UIAndSigns/
+source_files: []
+depends_on: []
+related_to:
+    - path: achievement_system

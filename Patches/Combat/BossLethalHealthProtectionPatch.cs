@@ -16,8 +16,13 @@ namespace BossRush
     [HarmonyPatch(typeof(Health), nameof(Health.Hurt))]
     internal static class BossRushHealthHurtContextPatch
     {
-        [ThreadStatic]
+        // hurtDepth 所有权改为逐调用 Harmony __state：
+        // 只有本次 Prefix 实际执行了 hurtDepth++ 时，Finalizer 才递减。
         private static int hurtDepth;
+
+        // 限频告警：Mode G staging 查询异常时最多每 5 秒打一条，OnHurt 热路径零分配
+        private static float _lastStagingQueryFaultLogTime = -1000f;
+        private const float StagingQueryFaultLogIntervalSeconds = 5f;
 
         internal static bool IsInsideHurt
         {
@@ -25,8 +30,33 @@ namespace BossRush
         }
 
         [HarmonyPrefix]
-        private static bool Prefix(Health __instance, ref bool __result)
+        private static bool Prefix(Health __instance, ref bool __result, ref bool __state)
         {
+            __state = false;
+
+            // Mode G staging 屏障（加法分支）：先读静态 active bool 快速早返，
+            // 未激活时零分配；命中已登记 clone/exact 身份时返回 false 并由 Felix 侧记 blocked-hit。
+            // 静态 active false/查询异常/非 staging 时继续现有 ReverseScale/深度逻辑。
+            if (IsModeGStagingBarrierArmed())
+            {
+                bool stagingBlocked = false;
+                try
+                {
+                    stagingBlocked = ModeGRuntimeGates.IsModeGStagingHealthBlocked(__instance);
+                }
+                catch (Exception stagingQueryEx)
+                {
+                    stagingBlocked = false;
+                    LogStagingQueryFaultLimited(stagingQueryEx);
+                }
+
+                if (stagingBlocked)
+                {
+                    __result = false;
+                    return false;
+                }
+            }
+
             if (ReverseScaleAbilityManager.IsPostTriggerInvincible(__instance))
             {
                 __result = false;
@@ -34,18 +64,52 @@ namespace BossRush
             }
 
             hurtDepth++;
+            __state = true;
             return true;
         }
 
         [HarmonyFinalizer]
-        private static Exception Finalizer(Exception __exception)
+        private static Exception Finalizer(Exception __exception, bool __state)
         {
-            if (hurtDepth > 0)
+            // 只有本次调用实际 hurtDepth++ 过（Prefix 走到 __state = true）才递减
+            if (__state && hurtDepth > 0)
             {
                 hurtDepth--;
             }
 
             return __exception;
+        }
+
+        /// <summary>
+        /// Mode G staging 屏障静态开关快速早返（no-throw；异常视为未激活）。
+        /// </summary>
+        private static bool IsModeGStagingBarrierArmed()
+        {
+            try
+            {
+                return ModeGRuntimeGates.IsModeGStagingBarrierActive;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 限频打印 staging 查询异常（5 秒一条，避免 OnHurt 热路径日志风暴）。
+        /// </summary>
+        private static void LogStagingQueryFaultLimited(Exception ex)
+        {
+            try
+            {
+                float now = UnityEngine.Time.unscaledTime;
+                if (now - _lastStagingQueryFaultLogTime >= StagingQueryFaultLogIntervalSeconds)
+                {
+                    _lastStagingQueryFaultLogTime = now;
+                    ModBehaviour.DevLog("[ModeG] [WARNING] Hurt staging 查询异常，继续现有保护逻辑: " + ex.Message);
+                }
+            }
+            catch { }
         }
     }
 

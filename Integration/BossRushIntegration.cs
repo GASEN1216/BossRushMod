@@ -430,6 +430,8 @@ namespace BossRush
             if (TryInjectBrickStoneIntoShop(shop)) injectedCount++;
             if (ZombieTideInvitationConfig.TryInjectIntoShop(shop, this)) injectedCount++;
             injectedCount += FactionFlagConfig.TryInjectIntoShop(shop);
+            if (BloodhuntTransponderConfig.TryInjectIntoShop(shop, this)) injectedCount++;
+            if (FateEchoRelicConfig.TryInjectIntoShop(shop, this)) injectedCount++;
             return injectedCount;
         }
 
@@ -524,6 +526,11 @@ namespace BossRush
                 InjectModeFItemLoc(EmergencyRepairSprayConfig.LOC_KEY_DISPLAY, EmergencyRepairSprayConfig.TYPE_ID,
                     EmergencyRepairSprayConfig.DISPLAY_NAME_CN, EmergencyRepairSprayConfig.DISPLAY_NAME_EN,
                     EmergencyRepairSprayConfig.DESCRIPTION_CN, EmergencyRepairSprayConfig.DESCRIPTION_EN, isChinese);
+
+                // 宿命回响信物（Mode G 入场物品）
+                InjectModeFItemLoc(FateEchoRelicConfig.LOC_KEY_DISPLAY, FateEchoRelicConfig.TYPE_ID,
+                    FateEchoRelicConfig.DISPLAY_NAME_CN, FateEchoRelicConfig.DISPLAY_NAME_EN,
+                    FateEchoRelicConfig.DESCRIPTION_CN, FateEchoRelicConfig.DESCRIPTION_EN, isChinese);
 
                 DevLog("[BossRush] Mode F 物品本地化注入完成");
             }

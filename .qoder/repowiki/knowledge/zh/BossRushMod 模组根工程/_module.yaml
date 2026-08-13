@@ -1,0 +1,30 @@
+schema_version: 1
+module_path: ""
+title: BossRushMod 模组根工程
+scope:
+    - README.md
+    - README_EN.md
+    - AGENTS.md
+    - CLAUDE.md
+    - CODE_REVIEW.md
+    - CODE_REVIEW_FINDINGS.md
+    - GEMINI.md
+    - .gitignore
+    - .gitattributes
+    - ModBehaviour.cs
+    - ModConfigApi.cs
+    - TeleportDebugMonitor.cs
+    - compile_dev.bat
+    - gen_fate_echo_icon.ps1
+    - test_bossrush_smoke_manual.bat
+    - test_logic_official.bat
+    - test_zombiemode_goal_windows.bat
+    - validate_refactor_step.bat
+    - .codex
+    - FIX_TRACKER.md
+    - LICENSE
+    - big_preview2.png
+    - preview.png
+source_files: []
+depends_on: []
+related_to: []

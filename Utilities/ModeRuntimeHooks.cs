@@ -18,6 +18,7 @@ namespace BossRush
 
             TickModeERuntime(deltaTime);
             TickModeFRuntime(deltaTime);
+            UpdateModeG(deltaTime);
             TickZombieModeRuntime(unscaledDeltaTime);
             TickWavesArenaBossCleanupRuntime(deltaTime);
 
@@ -33,6 +34,11 @@ namespace BossRush
         {
             CleanupZombieModeForSceneLoad(scene);
             CleanupModeFForSceneChange();
+            if (modeGActive)
+            {
+                DevLog("[ModeG] 场景切换清理 Mode G");
+                ShutdownModeG();
+            }
         }
 
         internal void CleanupModeRuntimeOnDestroy()
@@ -41,6 +47,7 @@ namespace BossRush
             ModBehaviour.ResetModeDGlobalLootStaticCaches();
             BossRushHealthBarNamePatch.ResetStaticCaches();
             CleanupZombieModeOnDestroyRuntime();
+            ShutdownModeG();
         }
     }
 }

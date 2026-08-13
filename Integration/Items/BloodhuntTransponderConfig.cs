@@ -79,35 +79,7 @@ namespace BossRush
                 int addedCount = 0;
                 foreach (Duckov.Economy.StockShop shop in shops)
                 {
-                    if (shop == null || shop.entries == null) continue;
-                    if (inst == null || !inst.IsBaseHubNormalMerchantShop(shop)) continue;
-
-                    // 检查是否已存在
-                    bool exists = false;
-                    foreach (Duckov.Economy.StockShop.Entry entry in shop.entries)
-                    {
-                        if (entry != null && entry.ItemTypeID == TYPE_ID)
-                        {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    if (exists) continue;
-
-                    StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-                    itemEntry.typeID = TYPE_ID;
-                    itemEntry.maxStock = 5;
-                    itemEntry.forceUnlock = true;
-                    itemEntry.priceFactor = 1f;
-                    itemEntry.possibility = 1f;
-                    itemEntry.lockInDemo = false;
-
-                    Duckov.Economy.StockShop.Entry wrapped = new Duckov.Economy.StockShop.Entry(itemEntry);
-                    wrapped.CurrentStock = 5;
-                    wrapped.Show = true;
-
-                    shop.entries.Add(wrapped);
-                    addedCount++;
+                    if (TryInjectIntoShop(shop, inst)) addedCount++;
                 }
 
                 if (addedCount > 0)
@@ -119,6 +91,33 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[BloodhuntTransponderConfig] 商店注入失败: " + e.Message);
             }
+        }
+
+        public static bool TryInjectIntoShop(Duckov.Economy.StockShop shop, ModBehaviour inst = null)
+        {
+            if (shop == null || shop.entries == null) return false;
+
+            inst = inst ?? ModBehaviour.Instance;
+            if (inst == null || !inst.IsBaseHubNormalMerchantShop(shop)) return false;
+
+            foreach (Duckov.Economy.StockShop.Entry entry in shop.entries)
+            {
+                if (entry != null && entry.ItemTypeID == TYPE_ID) return false;
+            }
+
+            StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+            itemEntry.typeID = TYPE_ID;
+            itemEntry.maxStock = 5;
+            itemEntry.forceUnlock = true;
+            itemEntry.priceFactor = 1f;
+            itemEntry.possibility = 1f;
+            itemEntry.lockInDemo = false;
+
+            Duckov.Economy.StockShop.Entry wrapped = new Duckov.Economy.StockShop.Entry(itemEntry);
+            wrapped.CurrentStock = 5;
+            wrapped.Show = true;
+            shop.entries.Add(wrapped);
+            return true;
         }
 
     }

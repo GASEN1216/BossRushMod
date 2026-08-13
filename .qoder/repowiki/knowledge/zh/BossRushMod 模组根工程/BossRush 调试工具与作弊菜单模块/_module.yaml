@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: debug_and_tools
+title: BossRush 调试工具与作弊菜单模块
+scope:
+    - DebugAndTools/
+source_files: []
+depends_on: []
+related_to: []

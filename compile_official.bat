@@ -208,6 +208,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\AwenLootSweepMath.cs ^
     Utilities\VictoryRewardShadowMath.cs ^
     Utilities\F3DebugCheatMath.cs ^
+    Utilities\ManagedBossSpawnContracts.cs ^
     Utilities\EnemySpawnCore.cs ^
     Utilities\ZombieSpawnSanitizer.cs ^
     Utilities\EnemyRecoveryMonitor.cs ^
@@ -282,6 +283,31 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFEntry.cs ^
     ModeF\ModeFPhases.cs ^
     ModeF\ModeFBounty.cs ^
+    ModeG\ModeGEntry.cs ^
+    ModeG\ModeGAvailability.cs ^
+    ModeG\ModeGDeterministicRandom.cs ^
+    ModeG\ModeGStateModel.cs ^
+    ModeG\ModeGRunState.cs ^
+    ModeG\ModeGWavePlan.cs ^
+    ModeG\ModeGAdaptiveCombat.cs ^
+    ModeG\ModeGCombatTelemetry.cs ^
+    ModeG\ModeGWeaponScoringCompatibilityMatrix.cs ^
+    ModeG\ModeGDeathRouting.cs ^
+    ModeG\ModeGNemesisPersistence.cs ^
+    ModeG\ModeGProfilePersistence.cs ^
+    ModeG\ModeGRewardTransaction.cs ^
+    ModeG\ModeGMapSupportRegistry.cs ^
+    ModeG\ModeGFateContract.cs ^
+    ModeG\ModeGEncounterVariation.cs ^
+    ModeG\ModeGPresentationAssetCache.cs ^
+    ModeG\ModeGSpawnTransaction.cs ^
+    ModeG\ModeGCleanupController.cs ^
+    ModeG\ModeGRuntimeModule.cs ^
+    ModeG\ModeGRuntimeLifecycle.cs ^
+    ModeG\ModeGRuntimeBridge.cs ^
+    ModeG\ModeGHUD.cs ^
+    ModeG\ModeGRecapPanel.cs ^
+    ModeG\ModeGInteractable.cs ^
     ModeF\ModeFBounty_EquipmentAndLoot.cs ^
     ModeF\ModeFRespawn.cs ^
     ModeF\ModeFExtraction.cs ^
@@ -346,6 +372,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\DragonDescendant\DragonDescendantBoss.cs ^
     Integration\DragonDescendant\DragonDescendantBoss_RuntimeAndCleanup.cs ^
     Integration\DragonDescendant\DragonDescendantBossStaticCacheReset.cs ^
+    Integration\DragonDescendant\DragonDescendantBoss_ModeGAdapter.cs ^
     Integration\DragonDescendant\DragonBreathConfig.cs ^
     Integration\DragonDescendant\DragonBreathBuffHandler.cs ^
     Integration\DragonDescendant\DragonBreathWeaponConfig.cs ^
@@ -360,6 +387,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\DragonKing\DragonKingAbilityHelpers.cs ^
     Integration\DragonKing\DragonKingShockwaveEffect.cs ^
     Integration\DragonKing\DragonKingBoss.cs ^
+    Integration\DragonKing\DragonKingBoss_ModeGAdapter.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdIds.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdConfig.cs ^
     Integration\DragonKing\Weapons\FenHuangHalberdRuntime.cs ^
@@ -396,6 +424,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\PhantomWitch\PhantomWitchAbilityController_CleanupAndTelemetry.cs ^
     Integration\PhantomWitch\PhantomWitchBossCurseRealmRuntime.cs ^
     Integration\PhantomWitch\PhantomWitchBoss.cs ^
+    Integration\PhantomWitch\PhantomWitchBoss_ModeGAdapter.cs ^
     Integration\PhantomWitch\PhantomWitchScytheIds.cs ^
     Integration\PhantomWitch\PhantomWitchScytheConfig.cs ^
     Integration\PhantomWitch\PhantomWitchScytheSwingFx.cs ^
@@ -514,6 +543,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Items\WildHornConfig.cs ^
     Integration\Items\WildHornUsage.cs ^
     Integration\Items\BloodhuntTransponderConfig.cs ^
+    Integration\Items\FateEchoRelicConfig.cs ^
     Integration\Items\ModeFItemConfigHelper.cs ^
     Integration\Items\FoldableCoverPackConfig.cs ^
     Integration\Items\ReinforcedRoadblockPackConfig.cs ^
@@ -629,6 +659,15 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo WARNING: Data JSON deploy failed.
             ) else (
                 echo Deployed Data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data
+            )
+        )
+        if exist "Assets\ui\modeg_presentation" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
+            copy /Y "Assets\ui\modeg_presentation" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\modeg_presentation" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: Mode G presentation bundle deploy failed.
+            ) else (
+                echo Deployed Mode G presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
             )
         )
     )

@@ -95,6 +95,8 @@
 - `RunScopedRegistryGuard.py`：通用局生命周期注册表迭代 helper；ZombieMode cleanup 必须复用 helper。
 - `ModeD*Guard.py`：Mode D 波次/装备/掉落 invariant。
 - `ModeE*Guard.py`、`ModeF*Guard.py`：对应模式守护。
+- `ModeG*Guard.py`：Mode G 九波结构、确定性随机、生成事务、宿敌/档案持久化、奖励、展示资源、发布门控及原模式隔离 invariant。
+- `ManagedBossSpawnOwnershipGuard.py`、`DragonKingChildSpawnCancellationGuard.py`：Mode G 托管 Boss 的 lease 所有权与龙王子代取消契约。
 - `MapSelectionInjectionReuseGuard.py`：BossRush 与 Zombie 都用 `MapSelectionEntryInjectionHelper`。
 - `EnemyRecoveryHealthPreservationGuard.py`：敌人卡住回收时不要重置生命值。
 

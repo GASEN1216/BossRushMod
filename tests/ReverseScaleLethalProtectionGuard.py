@@ -26,7 +26,9 @@ def main() -> int:
     config_text = CONFIG.read_text(encoding="utf-8", errors="ignore")
 
     for token, message in [
-        ("private static bool Prefix(Health __instance, ref bool __result)", "Health.Hurt prefix must be able to skip damage during post-trigger invincibility"),
+        ("private static bool Prefix(Health __instance, ref bool __result, ref bool __state)", "Health.Hurt prefix must own depth through per-call Harmony state"),
+        ("__state = true;", "Health.Hurt prefix must mark calls that increment hurt depth"),
+        ("if (__state && hurtDepth > 0)", "Health.Hurt finalizer must only release depth owned by this call"),
         ("ReverseScaleAbilityManager.IsPostTriggerInvincible(__instance)", "Health.Hurt prefix must honor Reverse Scale invincibility"),
         ("if (TryClampReverseScale(__instance, ref value))", "CurrentHealth setter patch must clamp Reverse Scale lethal damage"),
         ("ReverseScaleAbilityManager.TryPrepareLethalProtectionDuringHurt(health)", "Reverse Scale clamp must prepare the OnHurt trigger path"),

@@ -15,6 +15,20 @@ namespace BossRush
         /// </summary>
         private void StartBossRush_WavesArena(BossRushInteractable interactionSource = null)
         {
+            // Mode G 门控（加法分支）：最终入口先拒绝 IsModeGEntryBlocked，
+            // 覆盖 public wrapper/F9/direct/MapSelection fallback 全部路径。
+            // 查询默认 false、no-throw；Mode G 未运行且无隔离 lease 时条件恒 false，后续逻辑逐字不变。
+            try
+            {
+                if (ModeGRuntimeGates.IsModeGEntryBlocked)
+                {
+                    ShowMessage(L10n.T("宿命回响仍在结算中，暂时无法开始 Legacy 挑战。", "Mode G is still settling; legacy BossRush entry is blocked."));
+                    DevLog("[BossRush] StartBossRush_WavesArena 被 Mode G 门控拒绝（IsModeGEntryBlocked=true）");
+                    return;
+                }
+            }
+            catch { }
+
             if (IsActive)
             {
                 ShowMessage(L10n.T("BossRush已经在进行中！", "BossRush is already in progress!"));

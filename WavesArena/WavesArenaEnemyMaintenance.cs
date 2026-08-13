@@ -286,7 +286,9 @@ namespace BossRush
             const int MAX_SPAWNER_DISABLE_ATTEMPTS = 5;
             const int MAX_LOOP_COUNT = 600;
 
-            while (!IsActive && bossRushArenaActive && !modeEActive && loopCount < MAX_LOOP_COUNT)
+            // Mode G 门控（加法分支）：Mode G run 期间（含 Starting）停止 Legacy 持续清怪，
+            // 避免误删 Mode G 首波；查询 no-throw、未运行时条件与当前完全相同。
+            while (!IsActive && bossRushArenaActive && !modeEActive && !IsModeGRunInProgressSafe() && loopCount < MAX_LOOP_COUNT)
             {
                 loopCount++;
 

@@ -155,13 +155,35 @@ namespace BossRush
             NewWeaponPlaceholderRegistry.ResetStaticCaches();
             SetBonusPlaceholderRegistry.ResetStaticCaches();
             FactionFlagConfig.ResetStaticCaches();
+            ModeGEncounterVariation.ResetStaticCaches();
             DragonBreathWeaponConfig.ClearStaticCache();
             DragonBreathBuffHandler.ClearStaticCache();
-            DragonDescendantAbilityController.ClearStaticCache();
-            DragonKingAbilityController.ClearStaticCache();
-            DragonKingAssetManager.ForceCleanup();
-            PhantomWitchAbilityController.ClearStaticCache();
-            PhantomWitchAssetManager.ForceCleanup();
+            // Mode G 分流（加法分支）：仍被 Mode G late-cleanup sink 持有 lease 时，
+            // 延后 Mode G 相关 controller/AssetManager 的 ForceCleanup 与静态缓存清理，
+            // 由 sink 归零后以同一 owner lease 执行（Felix 侧）。
+            // 无 Mode G lease 时条件恒 false，逐字保持当前即时 teardown。
+            bool modeGLateSinkBusy = false;
+            try
+            {
+                modeGLateSinkBusy = ModeGRuntimeGates.IsModeGGlobalQuarantineActive;
+            }
+            catch
+            {
+                modeGLateSinkBusy = false;
+            }
+
+            if (!modeGLateSinkBusy)
+            {
+                DragonDescendantAbilityController.ClearStaticCache();
+                DragonKingAbilityController.ClearStaticCache();
+                DragonKingAssetManager.ForceCleanup();
+                PhantomWitchAbilityController.ClearStaticCache();
+                PhantomWitchAssetManager.ForceCleanup();
+            }
+            else
+            {
+                DevLog("[BossRush] [WARNING] Mode G late sink 仍有 pending lease，延后 DragonKing/PhantomWitch ForceCleanup 与静态缓存清理");
+            }
             PhantomWitchVfxRedesign.ResetStaticCaches();
             PhantomWitchScytheWeaponConfig.ResetStaticCaches();
             FrostmourneWeaponConfig.ResetStaticCaches();
@@ -357,6 +379,21 @@ namespace BossRush
                 {
                     if (IsActive || bossRushArenaActive)
                     {
+                        // Mode G 分流（加法分支，默认惰性）：Mode G Starting/Active/Rewarding/Exiting
+                        // 期间不清 bossRushOwnedDaXingXing、不调三个 Legacy Boss arena-exit cleanup、
+                        // 不清 Mode G 可能登记的共享引用；只清 Legacy 计数/UI。
+                        // 场景事实交给 Mode G 的 EndModeGRunAsync(SceneChanged)（Felix 侧）。
+                        // 查询 no-throw；无 Mode G run 时条件恒 false，逐字保持原块。
+                        bool modeGRunActiveNow = false;
+                        try
+                        {
+                            modeGRunActiveNow = ModeGRuntimeGates.IsModeGRunInProgress;
+                        }
+                        catch
+                        {
+                            modeGRunActiveNow = false;
+                        }
+
                         waitingForNextWave = false;
                         waveCountdown = 0f;
                         lastWaveCountdownSeconds = -1;
@@ -368,16 +405,20 @@ namespace BossRush
                         currentEnemyIndex = 0;
                         defeatedEnemies = 0;
                         totalEnemies = 0;
-                        bossRushOwnedDaXingXing.Clear();
-                        CleanupDragonDescendant();
-                        CleanupTrackedDragonKingsOnArenaExit();
-                        if (dragonKingSetBonusRegistered)
+
+                        if (!modeGRunActiveNow)
                         {
-                            try { Health.OnHurt -= OnDragonKingBossHurt; } catch { }
-                            dragonKingSetBonusRegistered = false;
+                            bossRushOwnedDaXingXing.Clear();
+                            CleanupDragonDescendant();
+                            CleanupTrackedDragonKingsOnArenaExit();
+                            if (dragonKingSetBonusRegistered)
+                            {
+                                try { Health.OnHurt -= OnDragonKingBossHurt; } catch { }
+                                dragonKingSetBonusRegistered = false;
+                            }
+                            activeDragonKingHealths.Clear();
+                            CleanupPhantomWitchTrackedStateOnArenaExit();
                         }
-                        activeDragonKingHealths.Clear();
-                        CleanupPhantomWitchTrackedStateOnArenaExit();
 
                         try
                         {

@@ -459,6 +459,7 @@ namespace BossRush
                 InjectCalmingDropsLocalization();
                 InjectPeaceCharmLocalization();
                 InjectZombieModeLocalization();
+                InjectModeGLocalization();
                 InjectDragonDescendantLocalization();
                 InjectCommonNPCLocalization();
                 InjectCourierNPCLocalization();
@@ -888,6 +889,88 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Settle_FailReason", "失败原因：{0}", "Reason: {0}");
             InjectZombieModeString("BossRush_ZombieMode_Settle_PointsLost", "净化点数已全部清空。", "All Purification Points lost.");
             InjectZombieModeString("BossRush_ZombieMode_Settle_InsuranceSaved", "保险保留 {0} 件物品。", "Insurance saved {0} items.");
+
+            // Mode G 宿命回响本地化：InjectLocalization_Extra_Integration 未直接列出 Mode G 入口，
+            // 在本方法（运行时注入链成员）末尾挂载，保证 key 随同一注入时机生效
+            InjectModeGLocalization();
+        }
+
+        /// <summary>
+        /// 注入 Mode G「宿命回响」本地化（九波三幕 / 三轴反制 / 宿敌追猎 / 结算面板等 UI 文本）。
+        /// key 集合以 ModeG/ 代码实际引用为准；只新增 key，不改旧 key。
+        /// </summary>
+        public static void InjectModeGLocalization()
+        {
+            try
+            {
+                // 场内交互入口（ModeGInteractable 的 InteractName）
+                InjectModeGString("BossRush_ModeG_Preview", "宿命回响", "Fate Echo");
+
+                // 波次横幅 / 结算标题
+                InjectModeGString("BossRush_ModeG_DefeatTitle", "败北", "DEFEAT");
+                InjectModeGString("BossRush_ModeG_WaveWord", "第", "Wave");
+                InjectModeGString("BossRush_ModeG_WaveOfNine", "/9 波", "/9");
+                InjectModeGString("BossRush_ModeG_NewRecord", "新纪录", "New Record");
+
+                // 三轴反制
+                InjectModeGString("BossRush_ModeG_AxisDistance", "距离回声", "Distance Echo");
+                InjectModeGString("BossRush_ModeG_AxisAmmo", "弹药点名", "Ammo Mark");
+                InjectModeGString("BossRush_ModeG_AxisAttribute", "属性封锁", "Attribute Lock");
+                InjectModeGString("BossRush_ModeG_AmmoBan", "弹药点名：禁止使用", "Ammo Mark: banned");
+                InjectModeGString("BossRush_ModeG_AmmoFallback", "弹药", "Ammo");
+                InjectModeGString("BossRush_ModeG_BanAttrPrefix", "上局你的", "Last run your");
+                InjectModeGString("BossRush_ModeG_BanAttrMid", "贡献了", " contributed");
+                InjectModeGString("BossRush_ModeG_BanAttrTail", "% 威胁", "% of the threat");
+                InjectModeGString("BossRush_ModeG_Axis_Attempts", "次尝试", "attempts");
+                InjectModeGString("BossRush_ModeG_Axis_Breaks", "次破解", "breaks");
+
+                // 宿敌追猎
+                InjectModeGString("BossRush_ModeG_NextNemesis", "下局宿敌", "Next nemesis:");
+                InjectModeGString("BossRush_ModeG_RankWord", "Rank", "Rank");
+                InjectModeGString("BossRush_ModeG_KillerWord", "击杀者", "Killer:");
+                InjectModeGString("BossRush_ModeG_NemesisProtected", "宿敌记录受版本保护，未变更", "nemesis record version-protected, unchanged");
+                InjectModeGString("BossRush_ModeG_NoNewNemesis", "未形成新宿敌", "No new nemesis formed");
+                InjectModeGString("BossRush_ModeG_NemesisKills", "宿敌击败", "Nemesis kills");
+
+                // 结算面板（Recap）
+                InjectModeGString("BossRush_ModeG_Recap_VictoryTitle", "宿命已改写", "Fate Rewritten");
+                InjectModeGString("BossRush_ModeG_Recap_DefeatTitle", "宿命未竟", "Fate Unfinished");
+                InjectModeGString("BossRush_ModeG_Recap_Close", "关闭", "Close");
+                InjectModeGString("BossRush_ModeG_Recap_Rewards", "奖励", "Rewards:");
+                InjectModeGString("BossRush_ModeG_Recap_ItemsUnit", "件", "items");
+                InjectModeGString("BossRush_ModeG_Recap_ResolveGap", "距下一档还差", "to next tier:");
+                InjectModeGString("BossRush_ModeG_Recap_RewardMax", "已达最高档", "max tier reached");
+                InjectModeGString("BossRush_ModeG_Recap_Contract", "本局契约", "Contract");
+                InjectModeGString("BossRush_ModeG_Recap_ContractDone", "达成", "Fulfilled");
+                InjectModeGString("BossRush_ModeG_Recap_ContractFailed", "未达成", "Failed");
+
+                // 宿命契约印章
+                InjectModeGString("BossRush_ModeG_Seal_NextLabel", "下一枚印章", "Next seal");
+                InjectModeGString("BossRush_ModeG_Seal_EntryCondition", "完成本局所选宿命契约即可铭刻", "fulfill this run's chosen Fate Contract to press the seal");
+                InjectModeGString("BossRush_ModeG_Seal_Streak", "契约连胜", "contract streak");
+
+                // 宿敌图鉴
+                InjectModeGString("BossRush_ModeG_Codex", "宿敌图鉴", "Nemesis codex");
+                InjectModeGString("BossRush_ModeG_Codex_Complete", "图鉴集齐", "complete");
+                InjectModeGString("BossRush_ModeG_Codex_Need", "还需", "need");
+                InjectModeGString("BossRush_ModeG_Codex_More", "次宿敌击败解锁下一里程碑", "more nemesis kills for next milestone");
+
+                // 个人记录
+                InjectModeGString("BossRush_ModeG_TotalRuns", "总场次", "Runs");
+                InjectModeGString("BossRush_ModeG_TotalVictories", "胜利", "Victories");
+                InjectModeGString("BossRush_ModeG_BestWave", "最佳波次", "Best wave");
+
+                ModBehaviour.DevLog("[LocalizationInjector] Mode G 本地化注入完成");
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[LocalizationInjector] Mode G 本地化注入失败: " + e.Message);
+            }
+        }
+
+        private static void InjectModeGString(string key, string zh, string en)
+        {
+            LocalizationHelper.InjectLocalization(key, L10n.T(zh, en));
         }
 
         private static void InjectZombieModeString(string key, string zh, string en)

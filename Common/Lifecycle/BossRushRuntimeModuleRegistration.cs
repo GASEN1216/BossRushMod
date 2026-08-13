@@ -13,6 +13,7 @@ namespace BossRush
             runtimeModuleHost.Register(new ModeERuntimeModule());
             runtimeModuleHost.Register(new ModeFRuntimeModule());
             runtimeModuleHost.Register(new ZombieModeRuntimeModule());
+            runtimeModuleHost.Register(new ModeGRuntimeModule());
         }
     }
 }

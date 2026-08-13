@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: mode_d
+title: Mode D 白手起家模式（无限波次挑战）
+scope:
+    - ModeD/
+source_files: []
+depends_on: []
+related_to:
+    - path: loot_and_rewards

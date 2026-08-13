@@ -631,7 +631,11 @@ namespace BossRush
             bossHealth.SetHealth(0f);
 
             // 创建伤害信息触发死亡事件
-            DamageInfo deathDamage = new DamageInfo(null);
+            // Mode G 下孩儿护我联动死亡的击杀来源归因给玩家（规格 §20 第 18 条）；
+            // Legacy 路径 ModeGPreserveLinkedKillAttribution 默认 false，来源为 null 保持原行为。
+            CharacterMainControl attributionSource =
+                ModeGPreserveLinkedKillAttribution ? playerCharacter : null;
+            DamageInfo deathDamage = new DamageInfo(attributionSource);
             deathDamage.damageValue = 1f;
             bossHealth.Hurt(deathDamage);
         }

@@ -19,16 +19,17 @@ EXCLUDE_DIRS = {
 }
 
 EXPECTED_COUNTS = {
-    "Integration": 220,
+    "Integration": 236,
     "ZombieMode": 38,
     "Interactables": 26,
-    "ModeE": 12,
+    "ModeE": 26,
     "Audio": 8,
     "ModeF": 6,
-    "Patches": 6,
+    "Patches": 7,
     "MapSelection": 3,
     "TeleportDebugMonitor.cs": 2,
     "ModeD": 1,
+    "ModeG": 4,
     "DebugAndTools": 1,
 }
 
@@ -66,20 +67,21 @@ def main() -> int:
         return fail("current counts differ from documented baseline: " + repr(counts))
 
     total = sum(counts.values())
-    if total != 323:
-        return fail("expected 323 ModBehaviour.Instance lines, got " + str(total))
+    if total != 358:
+        return fail("expected 358 ModBehaviour.Instance lines, got " + str(total))
 
     doc = DOC.read_text(encoding="utf-8")
     required_doc_tokens = [
-        "- Raw matches: 323",
-        "| `Integration/` | 220 |",
+        "- Raw matches: 358",
+        "| `Integration/` | 236 |",
         "| `ZombieMode/` | 38 |",
         "| `Interactables/` | 26 |",
-        "| `ModeE/` | 12 |",
+        "| `ModeE/` | 26 |",
         "| `Audio/` | 8 |",
         "| `ModeF/` | 6 |",
-        "| `Patches/` | 6 |",
+        "| `Patches/` | 7 |",
         "| `MapSelection/` | 3 |",
+        "| `ModeG/` | 4 |",
         "| `root`, `ModeD`, `DebugAndTools` | 4 |",
         "Keep: Unity owner",
         "Keep: gameplay state",

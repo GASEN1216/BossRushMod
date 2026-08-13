@@ -57,7 +57,9 @@ namespace BossRush
 
         public bool IsAnyBossRushLikeModeActive()
         {
-            return IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive || IsModeFActive || IsZombieModeActive;
+            // Mode G 门控（加法分支）：只纳入 IsModeGRunInProgress（lifecycle），
+            // 绝不纳入 late sink quarantine，避免永不返回的 late task 长期抑制普通地图公共 NPC。
+            return IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive || IsModeFActive || IsZombieModeActive || IsModeGRunInProgressSafe();
         }
 
         public bool UsesArenaSupportNpcPlacement()
@@ -81,6 +83,18 @@ namespace BossRush
         public bool CanStartZombieModeMapSelectionPhase1(out string failureReason)
         {
             failureReason = null;
+            // Mode G 门控（加法分支）：丧尸模式最终入口额外拒绝 IsModeGEntryBlocked
+            // （= RunInProgress || late sink quarantine）；no-throw，未运行时条件恒 false。
+            try
+            {
+                if (ModeGRuntimeGates.IsModeGEntryBlocked)
+                {
+                    failureReason = L10n.T("BossRush_ZombieMode_OtherModeActive");
+                    return false;
+                }
+            }
+            catch { }
+
             if (IsAnyBossRushLikeModeActive() || IsZombieModeStartupInProgress())
             {
                 failureReason = L10n.T("BossRush_ZombieMode_OtherModeActive");

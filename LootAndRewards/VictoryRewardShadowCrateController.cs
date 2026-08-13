@@ -659,6 +659,182 @@ namespace BossRush
         }
     }
 
+    /// <summary>
+    /// Mode G 胜利奖励同步 strict materializer（任务 #7 加法分支，设计文档 §11/§13）。
+    /// 只复用现有 ItemAssetsCollection.InstantiateSync 与 public Item/Inventory API；
+    /// 每帧至多实例化一件，按固定 TypeID 快照逐件提交；
+    /// strict 语义：单件失败只记失败并继续，绝不静默重试/替换，
+    /// 全部完成后触发可观察完成回调并自毁。
+    /// Legacy 路径不创建本组件，旧 void/Loader 入口逐字不变。
+    /// </summary>
+    public sealed class ModeGRewardStrictMaterializer : MonoBehaviour
+    {
+        private int[] typeIdSnapshot;
+        private ItemStatsSystem.Inventory targetInventory;
+        private Action<int, ItemStatsSystem.Item, bool> onItemCommitted;
+        private Action<int, int, int> onMaterializationCompleted;
+        private int nextIndex;
+        private int succeededCount;
+        private int failedCount;
+        private bool finished;
+
+        public bool IsFinished
+        {
+            get { return finished; }
+        }
+
+        /// <summary>
+        /// 初始化：接收固定 TypeID 快照（内部拷贝，后续外部修改不影响本事务）。
+        /// </summary>
+        public bool Initialize(
+            int[] fixedTypeIds,
+            ItemStatsSystem.Inventory inventory,
+            Action<int, ItemStatsSystem.Item, bool> onItemCommittedCallback,
+            Action<int, int, int> onCompletedCallback)
+        {
+            if (fixedTypeIds == null || fixedTypeIds.Length <= 0 || inventory == null)
+            {
+                return false;
+            }
+
+            typeIdSnapshot = (int[])fixedTypeIds.Clone();
+            targetInventory = inventory;
+            onItemCommitted = onItemCommittedCallback;
+            onMaterializationCompleted = onCompletedCallback;
+            nextIndex = 0;
+            succeededCount = 0;
+            failedCount = 0;
+            finished = false;
+            return true;
+        }
+
+        /// <summary>
+        /// 取消未完成的 materializer（幂等），立即自毁，不触发完成回调。
+        /// </summary>
+        public void CancelAndDestroy()
+        {
+            if (finished)
+            {
+                return;
+            }
+
+            finished = true;
+            typeIdSnapshot = null;
+            targetInventory = null;
+            onItemCommitted = null;
+            onMaterializationCompleted = null;
+
+            try
+            {
+                if (gameObject != null)
+                {
+                    UnityEngine.Object.Destroy(gameObject);
+                }
+            }
+            catch { }
+        }
+
+        private void Update()
+        {
+            if (finished || typeIdSnapshot == null || targetInventory == null)
+            {
+                return;
+            }
+
+            // 每帧至多一件 InstantiateSync，避免奖励尖峰
+            int typeId = typeIdSnapshot[nextIndex];
+            ItemStatsSystem.Item item = null;
+            bool committed = false;
+
+            try
+            {
+                item = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(typeId);
+                if (item != null)
+                {
+                    if (targetInventory.AddItem(item))
+                    {
+                        committed = true;
+                        succeededCount++;
+                    }
+                    else
+                    {
+                        // strict：入箱失败即判失败，销毁实例，不静默重试/替换
+                        try
+                        {
+                            if (item.gameObject != null)
+                            {
+                                UnityEngine.Object.Destroy(item.gameObject);
+                            }
+                        }
+                        catch { }
+                        item = null;
+                        failedCount++;
+                    }
+                }
+                else
+                {
+                    failedCount++;
+                }
+            }
+            catch (Exception materializeEx)
+            {
+                committed = false;
+                item = null;
+                failedCount++;
+                ModBehaviour.DevLog("[ModeG] [WARNING] 奖励 strict materializer 单件实例化异常: typeId=" + typeId + ", " + materializeEx.Message);
+            }
+
+            try
+            {
+                if (onItemCommitted != null)
+                {
+                    onItemCommitted(typeId, item, committed);
+                }
+            }
+            catch (Exception callbackEx)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 奖励单件完成回调异常: typeId=" + typeId + ", " + callbackEx.Message);
+            }
+
+            nextIndex++;
+            if (nextIndex >= typeIdSnapshot.Length)
+            {
+                finished = true;
+
+                int total = typeIdSnapshot.Length;
+                int succeeded = succeededCount;
+                int failed = failedCount;
+
+                Action<int, int, int> completionCallback = onMaterializationCompleted;
+                typeIdSnapshot = null;
+                targetInventory = null;
+                onItemCommitted = null;
+                onMaterializationCompleted = null;
+
+                try
+                {
+                    if (completionCallback != null)
+                    {
+                        completionCallback(total, succeeded, failed);
+                    }
+                }
+                catch (Exception completionEx)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 奖励 materializer 完成回调异常: " + completionEx.Message);
+                }
+
+                try
+                {
+                    if (gameObject != null)
+                    {
+                        UnityEngine.Object.Destroy(gameObject);
+                    }
+                }
+                catch { }
+            }
+        }
+    }
+
     internal static class VictoryRewardCrateHeroVisual
     {
         private const float HeroShellScaleMultiplier = 2f;

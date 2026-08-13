@@ -13,7 +13,8 @@ namespace BossRush
             Normal,
             ModeD,
             ModeE,
-            ModeF
+            ModeF,
+            ModeG
         }
 
         /// <summary>
@@ -46,6 +47,18 @@ namespace BossRush
                     }
 
                     DevLog("[BossRush] " + context + ": 检测到船票+血猎收发器，但玩家不满足 Mode F 裸装条件，不进入 Mode F，继续后续入场判定");
+                }
+
+                // Mode G 检测：船票 + 宿命回响信物 + 裸装（优先级低于 Mode F）
+                Item relic = DetectFateEchoRelic();
+                if ((ticket != null || hasPrepaidTicket) && relic != null && transponder == null)
+                {
+                    if (IsPlayerNakedForModeG())
+                    {
+                        return BossRushEntryMode.ModeG;
+                    }
+
+                    DevLog("[BossRush] " + context + ": 检测到船票+宿命回响信物，但玩家不满足 Mode G 裸装条件，不进入 Mode G，继续后续入场判定");
                 }
 
                 if (!isPlayerNaked.HasValue)
@@ -127,6 +140,31 @@ namespace BossRush
                 else
                 {
                     DevLog("[BossRush] [WARNING] Mode F 启动失败，已跳过 Mode F 额外 NPC 生成");
+                }
+                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                yield break;
+            }
+
+            // Mode G 独立分支：成功或失败都不得落入普通 BossRush 初始化。
+            if (entryMode == BossRushEntryMode.ModeG)
+            {
+                DevLog("[BossRush] 检测到船票+宿命回响信物+裸装入场，将尝试启动 Mode G");
+                DisableAllSpawners();
+                ClearEnemiesForBossRush();
+
+                yield return new WaitForSeconds(0.5f);
+                bool startedModeG = TryStartModeG();
+                if (startedModeG)
+                {
+                    SpawnCommonNPCs("DEMO场景 Mode G 初始化完成");
+                    ScheduleRestoreFollowingSpouse(SceneManager.GetActiveScene().name, "DEMO场景 Mode G 初始化完成");
+                }
+                else
+                {
+                    DevLog("[BossRush] [WARNING] Mode G 启动失败，已中止本次竞技场初始化");
+                    ShowMessage(L10n.T(
+                        "宿命回响启动失败，入场物品已恢复。",
+                        "Fate Echo failed to start. Entry items were restored."));
                 }
                 BossRushMapSelectionHelper.ClearPendingEntryFlowState();
                 yield break;

@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: mode_g
+title: Mode G 宿命回响模式运行时
+scope:
+    - ModeG/
+    - Utilities/ManagedBossSpawnContracts.cs
+    - Integration/DragonDescendant/DragonDescendantBoss_ModeGAdapter.cs
+    - Integration/DragonKing/DragonKingBoss_ModeGAdapter.cs
+    - Integration/PhantomWitch/PhantomWitchBoss_ModeGAdapter.cs
+source_files: []
+depends_on: []
+related_to:
+    - path: loot_and_rewards
+    - path: integration_content
+    - path: localization

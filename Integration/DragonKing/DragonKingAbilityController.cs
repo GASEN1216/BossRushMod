@@ -236,6 +236,12 @@ namespace BossRush
         private bool isInChildProtection = false;
 
         /// <summary>
+        /// Mode G 联动死亡击杀归因开关：为 true 时孩儿护我联动死亡的伤害来源归因给玩家；
+        /// Legacy 路径默认 false，保持原行为（来源为 null）。
+        /// </summary>
+        public bool ModeGPreserveLinkedKillAttribution = false;
+
+        /// <summary>
         /// 召唤的龙裔遗族引用
         /// </summary>
         private CharacterMainControl spawnedDescendant = null;

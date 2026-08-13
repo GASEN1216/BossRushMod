@@ -37,6 +37,7 @@ ITEM_REGISTRATION_CALLS = [
     "FactionFlagConfig.RegisterConfigurators();",
     "RespawnItemConfig.RegisterConfigurators();",
     "BloodhuntTransponderConfig.RegisterConfigurator();",
+    "FateEchoRelicConfig.RegisterConfigurator();",
     "FoldableCoverPackConfig.RegisterConfigurator();",
     "ReinforcedRoadblockPackConfig.RegisterConfigurator();",
     "BarbedWirePackConfig.RegisterConfigurator();",

@@ -252,6 +252,7 @@ namespace BossRush
                 yield break;
             }
             yield return RunDeferredStep_Integration("BloodhuntTransponderConfig.InjectIntoShops", () => BloodhuntTransponderConfig.InjectIntoShops(sceneName));
+            yield return RunDeferredStep_Integration("FateEchoRelicConfig.InjectIntoShops", () => FateEchoRelicConfig.InjectIntoShops(sceneName));
 
             StartCoroutine(DelayedBirthdayCakeGift());
             yield return null;

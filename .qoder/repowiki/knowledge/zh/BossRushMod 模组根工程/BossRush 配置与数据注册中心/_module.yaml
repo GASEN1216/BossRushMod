@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: config
+title: BossRush 配置与数据注册中心
+scope:
+    - Config/
+source_files: []
+depends_on: []
+related_to:
+    - path: loot_and_rewards

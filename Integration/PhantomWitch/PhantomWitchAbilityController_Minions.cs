@@ -16,6 +16,44 @@ namespace BossRush
 {
     public partial class PhantomWitchAbilityController : MonoBehaviour
     {
+        // ---- Mode G 托管辅助契约（规格 §20 第 16 条）----
+        // Legacy 路径不绑定（两委托均为 null），行为逐字不变。
+        private Func<CharacterMainControl, ManagedBossRole, bool> _modeGAuxCommit;
+        private Action<CharacterMainControl, ManagedBossRole> _modeGAuxReleased;
+        private readonly HashSet<CharacterMainControl> _modeGCommittedMinions
+            = new HashSet<CharacterMainControl>();
+
+        /// <summary>
+        /// 绑定 Mode G 托管辅助契约（仅 PhantomWitchBoss_ModeGAdapter 激活路径调用）。
+        /// 随从激活前必须经 TryCommitAuxiliaryBeforeActivation 原子提交；
+        /// 返回 true 才放行，迟到 ticket 不写 Legacy 单例。
+        /// </summary>
+        internal void BindModeGAuxiliaryContract(
+            Func<CharacterMainControl, ManagedBossRole, bool> tryCommitBeforeActivation,
+            Action<CharacterMainControl, ManagedBossRole> onReleased)
+        {
+            _modeGAuxCommit = tryCommitBeforeActivation;
+            _modeGAuxReleased = onReleased;
+        }
+
+        /// <summary>
+        /// 释放已提交的 Mode G 辅助单位（仅成功提交者恰好一次；幂等）。
+        /// </summary>
+        internal void ReleaseModeGAuxiliary(CharacterMainControl minion)
+        {
+            if (minion == null) return;
+            try
+            {
+                if (!_modeGCommittedMinions.Remove(minion)) return;
+                if (_modeGAuxReleased == null) return;
+                _modeGAuxReleased(minion, ManagedBossRole.Auxiliary);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitch] [WARNING] Mode G 辅助释放异常: " + e.Message);
+            }
+        }
+
         private async UniTask SpawnMinion(int index, int totalCount, PhantomWitchMinionRole role)
         {
             if (bossCharacter == null)
@@ -66,6 +104,27 @@ namespace BossRush
                 {
                     CleanupSpawnedMinion(minion);
                     return;
+                }
+
+                // Mode G 托管辅助原子提交（规格 §20 第 16 条）：提交返回 true 才激活；
+                // 迟到 ticket（父 owner 失效/run 结束）fail-closed，不写 summonedMinions 等 Legacy 集合。
+                if (_modeGAuxCommit != null)
+                {
+                    bool auxCommitted = false;
+                    try
+                    {
+                        auxCommitted = _modeGAuxCommit(minion, ManagedBossRole.Auxiliary);
+                    }
+                    catch (Exception commitEx)
+                    {
+                        ModBehaviour.DevLog("[PhantomWitch] [WARNING] Mode G 辅助提交异常: " + commitEx.Message);
+                    }
+                    if (!auxCommitted)
+                    {
+                        CleanupSpawnedMinion(minion);
+                        return;
+                    }
+                    _modeGCommittedMinions.Add(minion);
                 }
 
                 FinalizeSpawnedMinion(minion, index);
@@ -153,6 +212,7 @@ namespace BossRush
                 if (deadChar != null && summonedMinions.Contains(deadChar))
                 {
                     summonedMinions.Remove(deadChar);
+                    ReleaseModeGAuxiliary(deadChar);
                     liveMinions.RemoveAll(delegate(MinionEntry entry)
                     {
                         return entry == null || entry.character == null || entry.character == deadChar;

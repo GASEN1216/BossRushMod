@@ -366,6 +366,141 @@ namespace BossRush
             return "Normal";
         }
 
+        // ===== Mode G 独立成就 session（加法分支）=====
+        // Mode G 不复用 Legacy IsActive 语义，按 (token, bossType, wasFlawlessAtDeath)
+        // 纯数据窄去重上报；Legacy 路径不受影响。
+
+        /// <summary>
+        /// Mode G 成就上报去重键：纯数据三元组，不持有任何游戏对象引用。
+        /// </summary>
+        private struct ModeGAchievementReportKey : System.IEquatable<ModeGAchievementReportKey>
+        {
+            public int token;
+            public string bossType;
+            public bool wasFlawlessAtDeath;
+
+            public ModeGAchievementReportKey(int token, string bossType, bool wasFlawlessAtDeath)
+            {
+                this.token = token;
+                this.bossType = bossType ?? string.Empty;
+                this.wasFlawlessAtDeath = wasFlawlessAtDeath;
+            }
+
+            public bool Equals(ModeGAchievementReportKey other)
+            {
+                return token == other.token
+                    && string.Equals(bossType, other.bossType, System.StringComparison.Ordinal)
+                    && wasFlawlessAtDeath == other.wasFlawlessAtDeath;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ModeGAchievementReportKey && Equals((ModeGAchievementReportKey)obj);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + token;
+                    hash = hash * 31 + (bossType != null ? bossType.GetHashCode() : 0);
+                    hash = hash * 31 + (wasFlawlessAtDeath ? 1 : 0);
+                    return hash;
+                }
+            }
+        }
+
+        private readonly System.Collections.Generic.HashSet<ModeGAchievementReportKey> modeGCountedAchievementReports
+            = new System.Collections.Generic.HashSet<ModeGAchievementReportKey>();
+        private bool modeGAchievementSessionActive = false;
+
+        /// <summary>
+        /// Mode G 开局时调用：开启独立 session 并清空去重集。
+        /// </summary>
+        internal void BeginModeGAchievementSession()
+        {
+            try
+            {
+                modeGCountedAchievementReports.Clear();
+                modeGAchievementSessionActive = true;
+                DevLog("[Achievement] [ModeG] 独立成就 session 已开启");
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] [ModeG] session 开启失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Mode G 结束时调用：关闭 session。去重集保留至下次开局再清，
+        /// 防止结束后的延迟击杀回调重复上报。
+        /// </summary>
+        internal void EndModeGAchievementSession()
+        {
+            try
+            {
+                modeGAchievementSessionActive = false;
+                DevLog("[Achievement] [ModeG] 独立成就 session 已关闭");
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] [ModeG] session 关闭失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Mode G Boss 击杀成就上报入口（纯数据参数，不依赖 CharacterMainControl 引用）。
+        /// 窄去重：(token, bossType, wasFlawlessAtDeath) 三元组每 session 仅计一次。
+        /// wasFlawlessAtDeath 使用传入值（Mode G 死亡时刻快照），不重读 HasTakenDamage。
+        /// </summary>
+        internal void ReportModeGBossKillAchievement(int token, string bossType, bool wasFlawlessAtDeath)
+        {
+            if (!modeGAchievementSessionActive) return;
+            if (!achievementSystemInitialized) return;
+
+            try
+            {
+                ModeGAchievementReportKey key = new ModeGAchievementReportKey(token, bossType, wasFlawlessAtDeath);
+                if (!modeGCountedAchievementReports.Add(key))
+                    return;
+
+                // 复用现有统计与解锁逻辑（OnBossKilled 负责 TotalBossKills/TotalDragonKingKills 累计）
+                CheckBossKillAchievements(string.IsNullOrEmpty(bossType) ? "Normal" : bossType);
+
+                // Mode G 无伤成就：以传入的死亡时刻快照为准
+                if (wasFlawlessAtDeath)
+                {
+                    if (bossType == "DragonDescendant")
+                        BossRushAchievementManager.TryUnlock("kill_dragon_descendant_flawless");
+                    else if (bossType == "DragonKing")
+                        BossRushAchievementManager.TryUnlock("kill_dragon_king_flawless");
+                }
+
+                DevLog("[Achievement] [ModeG] Boss击杀上报: token=" + token + ", type=" + bossType + ", flawless=" + wasFlawlessAtDeath);
+            }
+            catch (Exception e)
+            {
+                DevLog("[Achievement] [ModeG] Boss击杀成就上报失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Mode G 成就伤害窗口查询（no-throw，异常返回 false 保 Legacy 行为）。
+        /// 窗口语义由 ModeGRuntimeGates 保证：仅 Active + Fighting/LastStand 为 true。
+        /// </summary>
+        private static bool IsModeGAchievementDamageWindowActiveSafe()
+        {
+            try
+            {
+                return ModeGRuntimeGates.IsModeGAchievementDamageWindowActive;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         #endregion
 
         #region 玩家状态追踪
@@ -410,8 +545,10 @@ namespace BossRush
         /// </summary>
         private void OnPlayerHurtForAchievement(Health health, DamageInfo damageInfo)
         {
-            // 仅在 BossRush 激活时追踪
-            if (!IsActive) return;
+            // 仅在 BossRush 激活时追踪；Mode G 门控（加法分支）：
+            // Mode G 成就伤害窗口（仅 Active+Fighting/LastStand，默认 false）同样纳入追踪。
+            // 不写 IsActive 本身；窗口查询 no-throw。
+            if (!IsActive && !IsModeGAchievementDamageWindowActiveSafe()) return;
             if (!achievementSystemInitialized) return;
 
             try

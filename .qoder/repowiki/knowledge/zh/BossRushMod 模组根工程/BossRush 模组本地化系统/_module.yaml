@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: localization
+title: BossRush 模组本地化系统
+scope:
+    - Localization/
+source_files: []
+depends_on: []
+related_to:
+    - path: integration_content

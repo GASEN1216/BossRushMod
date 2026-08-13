@@ -16,11 +16,11 @@
 
 BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 竞技场玩法为核心，但当前源码已经扩展成一个包含多模式玩法（含血猎追击大逃杀模式）、自定义 Boss、自定义装备与物品（含霜之哀伤等自定义武器）、NPC 关系线、成就、重铸、许愿台、死亡亡魂、游戏内 Wiki、在线 Wiki 站点、本地化、音频和运行时稳定性修复的完整内容包。
 
-这份 README 反映当前仓库源码基线。更完整的开发向说明见 [docs/项目全景文档.md](docs/项目全景文档.md)。
+这份 README 反映当前仓库源码基线。更完整的开发向说明见 [docs/项目全景文档.md](docs/项目全景文档.md)；实现功能前可从 [仓库知识库导航](.qoder/repowiki/README.md) 查找模块知识卡与主题级详解，代码变更后需同步维护。
 
 ## 内容总览
 
-- 6 个主要玩法模式：标准 BossRush 3 档、Mode D、Mode E、Mode F
+- 7 个竞技场玩法入口：标准 BossRush 3 档、Mode D、Mode E、Mode F、Mode G；另有独立的末日丧尸模式
 - 9 张已接入 BossRush 的地图
 - 2 个核心自定义 Boss：龙裔遗族、焚天龙皇
 - 3 位常驻 NPC：阿稳、叮当、羽织
@@ -36,6 +36,7 @@ BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 
 | **Mode D：白手起家** | 裸装携带 BossRush 船票进入 | 随机起装，独立敌池、掉落和成长节奏 |
 | **Mode E：划地为营** | 裸装携带营旗进入 | 多阵营沙盒混战，支持随机旗、指定旗和”爷的营旗”独狼模式 |
 | **Mode F：血猎追击** | 裸装携带 BossRush 船票 + 血猎收发器进入 | 四阶段大逃杀：准备→赏金→猎杀风暴→撤离，持续失血、击杀回血与成长，赏金标记追踪，工事系统 |
+| **Mode G：宿命回响** | 裸装携带 BossRush 船票 + 宿命回响信物进入 | 固定九波三幕挑战，包含三轴反制、跨局宿敌、宿命契约、严格奖励事务与荣誉记录 |
 
 ## 支持地图
 
@@ -104,6 +105,7 @@ BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 
 - 钻石、钻戒、砖石、安神滴剂、平安护身符、叮当涂鸦、荒野号角
 - Mode E 营旗
 - Mode F 血猎收发器
+- Mode G 宿命回响信物（500057）
 - 阿稳扫箱令（Mode E/F Boss 击杀累计自动发放，一键收集散落掉落箱）
 - Mode E 战场道具：挑衅烟雾弹、混沌引爆器、猎王响哨、血狩烽火
 - 成就勋章
@@ -162,7 +164,7 @@ BossRush 目前同时支持两种配置入口：
 本项目**没有 C# 单元测试框架**，验证靠三层：
 
 1. **Windows 编译**：`compile_official.bat` 编译出 `Build/BossRush.dll`（静态类型/语法/引用检查，C# 7.3）。仅 Windows 可编译，WSL/Linux 无编译器。
-2. **架构守卫脚本**：`tests/` 下 358 个 Python 脚本静态断言结构不变式（常量一致性、生命周期契约、缓存复用、变异词条语义禁区等），`python3 tests/*.py`。
+2. **架构守卫脚本**：`tests/` 下 435 个 Python 脚本静态断言结构不变式（常量一致性、生命周期契约、缓存复用、变异词条语义禁区等），逐个运行 `tests/*.py`。
 3. **游戏内 smoke 测试**：Windows 侧启动 `Duckov.exe`，手工验证波次、武器/套装、售货机 UI、过图性能等运行时行为。
 
 编译通过**不代表**运行时无异常——31 个 Harmony patch 与 493 处字符串反射只能在游戏内验证（官方更新可能静默作废绑定，详见 [docs/架构说明/Harmony补丁契约稳定性.md](docs/架构说明/Harmony补丁契约稳定性.md)）。
@@ -215,6 +217,7 @@ BossRushMod/
 ├── ModeD/                           # 白手起家
 ├── ModeE/                           # 划地为营、营旗、商人、战场道具
 ├── ModeF/                           # 血猎追击、阶段状态机、赏金、工事、撤离
+├── ModeG/                           # 宿命回响、九波编排、宿敌、契约、奖励与持久化
 ├── UIAndSigns/                      # 场内提示、横幅、路牌 UI
 ├── Utilities/                       # 刷怪、缓存、敌人恢复监控等工具
 ├── WavesArena/                      # 标准 BossRush / 无间炼狱核心逻辑
@@ -246,6 +249,7 @@ BossRushMod/
 ## 文档
 
 - 开发总览：[docs/项目全景文档.md](docs/项目全景文档.md)
+- 仓库知识库：[.qoder/repowiki/README.md](.qoder/repowiki/README.md)（模块知识卡、主题详解与维护流程）
 - 设计文档目录：[docs/](docs/)
 - 游戏内百科内容：[WikiContent/](WikiContent/)
 - 在线 Wiki 站点：[wiki-site/](wiki-site/)（VitePress，支持 Cloudflare Pages 与 GitHub Pages 双部署）

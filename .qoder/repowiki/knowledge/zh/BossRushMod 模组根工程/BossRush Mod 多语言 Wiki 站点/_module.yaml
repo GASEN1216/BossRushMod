@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: wiki_site
+title: BossRush Mod 多语言 Wiki 站点
+scope:
+    - wiki-site/
+source_files: []
+depends_on: []
+related_to:
+    - path: wiki_content

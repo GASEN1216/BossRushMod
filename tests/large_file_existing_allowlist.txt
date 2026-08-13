@@ -1,2 +1,8 @@
 # path|current_line_budget
 Integration/Affinity/AffinityManager.cs|1392
+Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent.cs|2320
+Integration/WishFountain/WishFountainUI.cs|1379
+ModeD/ModeDEquipment.cs|1676
+ModeE/ModeEMerchantSupportClasses.cs|4085
+ZombieMode/ZombieModeEntry.cs|1232
+ZombieMode/ZombieModePollution.cs|1720

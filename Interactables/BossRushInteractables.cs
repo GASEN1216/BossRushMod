@@ -149,8 +149,31 @@ namespace BossRush
 
         protected override bool IsInteractable()
         {
+            // Mode G 门控（加法分支）：Mode G 运行中或 late sink 隔离期间，
+            // 三个 Legacy 难度实例（弹指可灭/有点意思/无间炼狱）全部不可交互。
+            // 查询默认 false、no-throw；未运行时路径逐字不变。
+            if (IsModeGEntryBlockedSafe())
+            {
+                return false;
+            }
+
             // 只有在Boss Rush未激活时才可以交互
             return BossRush.ModBehaviour.Instance == null || !BossRush.ModBehaviour.Instance.IsActive;
+        }
+
+        /// <summary>
+        /// Mode G 入口门控的 no-throw 读取（异常时视为未阻塞，保持 Legacy 行为）。
+        /// </summary>
+        private static bool IsModeGEntryBlockedSafe()
+        {
+            try
+            {
+                return BossRush.ModeGRuntimeGates.IsModeGEntryBlocked;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         protected override void OnTimeOut()
@@ -729,6 +752,25 @@ namespace BossRush
                 groupOptions.Add(hellInteract);
 
                 ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入 3 个难度子选项（含无间炼狱）");
+
+                // 4. Mode G「宿命回响」独立入口选项（加法分支，设计文档 §11 硬契约）。
+                // 在三个 Legacy 难度选项全部创建完成之后追加，不改变旧实例的创建、名称与超时顺序。
+                // ModeGInteractable 由 ModeG/ModeGInteractable.cs 提供（Felix 重构为继承 InteractableBase，
+                // 其 IsInteractable() 自查 ModeGAvailability + MapSupportRegistry + PresentationAssetCache 预检）。
+                try
+                {
+                    GameObject modeGObj = new GameObject("BossRushOption_ModeG");
+                    modeGObj.transform.SetParent(transform);
+                    modeGObj.transform.localPosition = Vector3.zero;
+                    var modeGInteract = modeGObj.AddComponent<ModeGInteractable>();
+                    list.Add(modeGInteract);
+                    groupOptions.Add(modeGInteract);
+                    ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入 Mode G 独立入口选项");
+                }
+                catch (System.Exception modeGEx)
+                {
+                    ModBehaviour.DevLog("[BossRush] [WARNING] BossRushSignInteractable: 注入 Mode G 入口选项失败（不影响 Legacy 选项）: " + modeGEx.Message);
+                }
             }
             catch (System.Exception e)
             {

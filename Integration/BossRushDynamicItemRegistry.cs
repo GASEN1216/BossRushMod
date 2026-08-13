@@ -305,6 +305,7 @@ namespace BossRush
             Add(plans, ItemOnly(CalmingDropsConfig.BUNDLE_NAME), CalmingDropsConfig.TYPE_ID);
             Add(plans, ItemOnly(PeaceCharmConfig.BUNDLE_NAME), PeaceCharmConfig.TYPE_ID);
             Add(plans, ItemOnly(BloodhuntTransponderConfig.BUNDLE_NAME), BloodhuntTransponderConfig.TYPE_ID);
+            Add(plans, ItemOnly(FateEchoRelicConfig.BUNDLE_NAME), FateEchoRelicConfig.TYPE_ID);
             Add(plans, ItemOnly(FoldableCoverPackConfig.BUNDLE_NAME), FoldableCoverPackConfig.TYPE_ID);
             Add(plans, ItemOnly(ReinforcedRoadblockPackConfig.BUNDLE_NAME), ReinforcedRoadblockPackConfig.TYPE_ID);
             Add(plans, ItemOnly(BarbedWirePackConfig.BUNDLE_NAME), BarbedWirePackConfig.TYPE_ID);

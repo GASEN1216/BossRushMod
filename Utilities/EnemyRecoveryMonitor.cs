@@ -130,7 +130,19 @@ namespace BossRush
         {
             try
             {
-                if (!modeDActive && !modeEActive && !modeFActive && !IsActive && !IsZombieModeActive)
+                // Mode G 门控（加法分支）：no-throw 读取 Mode G 运行状态，
+                // 未运行时为 false，活跃判据与分支链其他模式顺序不变。
+                bool modeGRunActive = false;
+                try
+                {
+                    modeGRunActive = ModeGRuntimeGates.IsModeGRunInProgress;
+                }
+                catch
+                {
+                    modeGRunActive = false;
+                }
+
+                if (!modeDActive && !modeEActive && !modeFActive && !IsActive && !IsZombieModeActive && !modeGRunActive)
                 {
                     ClearEnemyRecoveryMonitorState();
                     return;
@@ -166,6 +178,24 @@ namespace BossRush
                 else if (IsZombieModeActive)
                 {
                     MonitorZombieModeEnemyRecovery(player);
+                }
+                else if (modeGRunActive)
+                {
+                    // Mode G 私有 Boss 列表（Felix 提供的只读访问器，no-throw）
+                    List<CharacterMainControl> modeGBosses = null;
+                    try
+                    {
+                        modeGBosses = ModeGRuntimeGates.GetTrackedBosses();
+                    }
+                    catch
+                    {
+                        modeGBosses = null;
+                    }
+
+                    if (modeGBosses != null)
+                    {
+                        MonitorEnemyRecoveryList(modeGBosses, player);
+                    }
                 }
                 else
                 {

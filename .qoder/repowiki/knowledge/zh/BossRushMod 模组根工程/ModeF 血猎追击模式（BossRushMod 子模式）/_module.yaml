@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: mode_f
+title: ModeF 血猎追击模式（BossRushMod 子模式）
+scope:
+    - ModeF/
+source_files: []
+depends_on: []
+related_to:
+    - path: loot_and_rewards

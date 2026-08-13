@@ -23,6 +23,8 @@ namespace BossRush
                 CharacterMainControl minion = summonedMinions[i];
                 if (minion != null)
                 {
+                    // Mode G 辅助释放（仅成功提交者恰好一次；随 Boss 清理一并释放）
+                    ReleaseModeGAuxiliary(minion);
                     try
                     {
                         if (minion.gameObject != null)
@@ -40,6 +42,7 @@ namespace BossRush
             summonedMinions.Clear();
             liveMinions.Clear();
             pendingMinionRoles.Clear();
+            _modeGCommittedMinions.Clear();
             ModBehaviour.DevLog("[PhantomWitch] 所有随从已清理");
         }
 
@@ -49,6 +52,9 @@ namespace BossRush
             {
                 return;
             }
+
+            // 未激活即被拒/回收的随从：若已提交则释放（幂等，迟到 ticket 通常未提交）
+            ReleaseModeGAuxiliary(minion);
 
             summonedMinions.Remove(minion);
             liveMinions.RemoveAll(delegate(MinionEntry entry)

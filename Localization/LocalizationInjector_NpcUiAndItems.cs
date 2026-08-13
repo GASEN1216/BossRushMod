@@ -510,6 +510,7 @@ namespace BossRush
                 { "BossRush_TrashCan", L10n.T("垃圾桶", "Trash Can") },
 
                 // Mode D 选项
+                { "BossRush_ModeG_Preview", L10n.T("查看宿命回响", "Inspect Fate Echo") },
                 { "BossRush_ModeD_NextWave", L10n.T("冲！（下一波）", "Charge! (Next Wave)") },
 
                 // 弹药和维修

@@ -757,6 +757,15 @@ namespace BossRush
 
         void OnDestroy()
         {
+            // Mode G 宿主销毁预备（加法分支，任务 #7）：至迟在 CleanupAchievementRuntime() 之前，
+            // 先通知 Mode G 释放共享引用/登记。幂等、no-throw 由 Felix 侧保证；
+            // 无 Mode G run 时 O(1) 早返。此处额外 try/catch 兜底，绝不影响后续清理。
+            try
+            {
+                BossRush.ModeG.PrepareHostDestroy();
+            }
+            catch { }
+
             CleanupDebugToolsOnDestroy();
 
             CleanupPlayerLifecycleRuntimeEvents();
@@ -1442,6 +1451,24 @@ namespace BossRush
                     catch {}
 
                     if (isOwnedByBossRush)
+                    {
+                        continue;
+                    }
+
+                    // Mode G owner 查询（加法分支）：Mode G 通过 staging preset/exact Character/
+                    // committed handle 登记的本局角色必须保留，只删除真正外来实例。
+                    // 查询默认 false、no-throw、O(1)；未启用 Mode G 时注册表为空且恒 false。
+                    bool isOwnedByModeG = false;
+                    try
+                    {
+                        isOwnedByModeG = ModeGRuntimeGates.IsDaXingXingOwnedByModeG(c);
+                    }
+                    catch
+                    {
+                        isOwnedByModeG = false;
+                    }
+
+                    if (isOwnedByModeG)
                     {
                         continue;
                     }

@@ -16,11 +16,11 @@
 
 BossRushMod is a large-scale integrated mod for Escape from Duckov. It started from the BossRush arena loop, but the current source baseline now includes multiple gameplay modes (including the Bloodhunt battle royale mode), custom bosses, custom gear and items (including the Frostmourne weapon), persistent NPC storylines, achievements, reforging, a wish fountain, death wraith system, an in-game wiki, an online wiki site, localization, audio work, and runtime stability systems.
 
-This README reflects the current source baseline in the repository. For the full developer-facing overview, see [docs/项目全景文档.md](docs/项目全景文档.md).
+This README reflects the current source baseline in the repository. For the full developer-facing overview, see [docs/项目全景文档.md](docs/项目全景文档.md). Before implementing a feature, use the [repository knowledge base index](.qoder/repowiki/README.md) to find module cards and topic-level deep dives, and keep them in sync with code changes.
 
 ## At a Glance
 
-- 6 major gameplay modes: 3 standard BossRush variants, Mode D, Mode E, and Mode F
+- 7 arena entry modes: 3 standard BossRush variants plus Mode D, Mode E, Mode F, and Mode G; Zombie Mode remains an independent mode
 - 9 maps integrated into the BossRush flow
 - 2 major custom bosses: Dragon Descendant and the Dragon King
 - 3 persistent NPCs: Awen, Dingdang, and Yu Zhi
@@ -36,6 +36,7 @@ This README reflects the current source baseline in the repository. For the full
 | **Mode D: Rags to Riches** | Enter naked with a BossRush Ticket | Random starting loadout, separate enemy pool, separate drop and growth curve |
 | **Mode E: Faction War** | Enter naked with a faction flag | Multi-faction sandbox battle with random flag, fixed faction flags, and the solo `Player Flag` route |
 | **Mode F: Bloodhunt** | Enter naked with a BossRush Ticket + Bloodhunt Transponder | Four-phase battle royale: Preparation → Bounty → Hunt Storm → Extraction, with constant bleed, kill-to-heal growth, bounty mark tracking, and a fortification system |
+| **Mode G: Fate Echo** | Enter naked with a BossRush Ticket + Fate Echo Relic | Fixed nine-wave, three-act challenge with adaptive counters, a persistent nemesis, fate contracts, strict reward transactions, and honor-only records |
 
 ## Supported Maps
 
@@ -83,6 +84,7 @@ Map selection is integrated into the original game UI flow, and that integration
 - Diamond, Diamond Ring, Brickstone, Calming Drops, Peace Charm, Dingdang Graffiti, Wild Horn
 - Mode E faction flags
 - Mode F Bloodhunt Transponder
+- Mode G Fate Echo Relic (500057)
 - Awen Loot Sweep Token (auto-granted on Mode E/F boss kill milestones, one-click collection of scattered loot crates)
 - Mode E battlefield items: Taunt Smoke, Chaos Detonator, Bosscall Whistle, Bloodhunt Beacon
 - Achievement Medal
@@ -184,6 +186,7 @@ BossRushMod/
 ├── ModeD/                           # Rags to Riches
 ├── ModeE/                           # Faction War, flags, merchant, battlefield items
 ├── ModeF/                           # Bloodhunt, phase state machine, bounty, fortifications, extraction
+├── ModeG/                           # Fate Echo, nine-wave plan, nemesis, contracts, rewards, persistence
 ├── UIAndSigns/                      # Arena prompts, banners, sign UI
 ├── Utilities/                       # Spawn logic, caches, enemy recovery monitoring
 ├── WavesArena/                      # Standard BossRush and Infinite Hell core logic
@@ -215,6 +218,7 @@ The project includes an extensive built-in debug layer. Common hotkeys:
 ## Documentation
 
 - Project overview: [docs/项目全景文档.md](docs/项目全景文档.md)
+- Repository knowledge base: [.qoder/repowiki/README.md](.qoder/repowiki/README.md) (module cards, topic deep dives, and update workflow)
 - Design docs: [docs/](docs/)
 - In-game wiki content: [WikiContent/](WikiContent/)
 - Online wiki site: [wiki-site/](wiki-site/) (VitePress, dual-deployed to Cloudflare Pages and GitHub Pages)

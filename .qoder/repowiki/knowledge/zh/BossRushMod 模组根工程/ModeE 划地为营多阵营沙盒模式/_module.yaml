@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: mode_e
+title: ModeE 划地为营多阵营沙盒模式
+scope:
+    - ModeE/
+source_files: []
+depends_on: []
+related_to:
+    - path: loot_and_rewards

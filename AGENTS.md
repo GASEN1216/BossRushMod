@@ -20,7 +20,8 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 3. 代码审查或修复任务读 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md`。
 4. 涉及外部契约读 `docs/contracts.md`。
 5. 涉及架构边界读 `docs/架构说明/` 下对应专项文档。
-6. 最后读实际代码、构建脚本、guard 脚本。旧设计稿和历史计划只能作为线索，不能替代代码确认。
+6. 涉及详细架构/子系统/玩法说明，先查 `.qoder/repowiki/` 详细 Wiki 内容库（见 4.13）。
+7. 最后读实际代码、构建脚本、guard 脚本。旧设计稿和历史计划只能作为线索，不能替代代码确认。
 
 ## 3. 子系统地图
 
@@ -42,6 +43,7 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 | `tests/` | Python 静态守卫脚本，不是 C# 单元测试 |
 | `docs/` | 本地设计、迁移、契约和历史资料，默认 local-only |
 | `wiki-site/` | VitePress 在线 Wiki 站点 |
+| `.qoder/repowiki/` | 详细 Wiki 内容库：`knowledge/zh/` 模块级知识卡 + `zh/content/` 主题级详解，随代码同步维护（见 4.13） |
 | `鸭科夫源码/` | 官方 `Assembly-CSharp.dll` 反编译源码，对照用，非 Mod 源码 |
 
 ## 4. Golden Rules
@@ -70,9 +72,9 @@ cmd.exe /c "cd /d D:\...\BossRushMod && compile_official.bat"
 
 自定义物品/装备 TypeID 使用 5000xx 区间，严格递增，不回填已删 ID。TypeID 会进入存档键、掉落表、Wiki、调试流程，复用属于存档兼容风险。
 
-- 当前登记范围：`500001-500056`。
+- 当前登记范围：`500001-500057`。
 - 已知空缺：`500009`、`500047` 仍视为保留空洞，不回填。
-- 下一可用：`500057`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
+- 下一可用：`500058`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
 - Boss/NPC/建筑字符串 ID 不占此序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入
@@ -111,7 +113,7 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ### 4.10 Python guard 同步
 
-`tests/` 当前有 358 个 `.py` 脚本，其中大多数是 `*Guard.py`。它们是结构不变式守卫，不是功能测试。改动被 guard 断言的结构时，必须同步 guard；不要通过放宽 guard 来掩盖行为变化。
+`tests/` 当前有 435 个 `.py` 脚本，其中大多数是 `*Guard.py`。它们是结构不变式守卫，不是功能测试。改动被 guard 断言的结构时，必须同步 guard；不要通过放宽 guard 来掩盖行为变化。
 
 ### 4.11 变异词条系统不变式
 
@@ -124,6 +126,16 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 - 装备专属的预热、扫描、轮询、对象池扩容或资源准备，默认只在主玩家实际手持、穿戴或启用对应装备时启动；NPC、仓库物品、背包内未使用物品和未激活系统不得触发同类重工作。
 - 优先复用现有装备/手持变化事件做幂等 owner 门控，离手、卸下、停用、死亡、切图和 runtime cleanup 时应立即取消尚未完成的任务并清理 owner 状态。
 - 必须预热时按帧分摊并设置明确完成目标；通常应在约 1 秒内完成，同时限制单帧时间/步骤预算。首次立即使用的兜底不能通过削减特效、伤害或玩法行为来换性能。
+
+### 4.13 代码变更必须同步 `.qoder/repowiki/`
+
+`.qoder/repowiki/` 是仓库的详细 Wiki 内容库，维护入口见 [`.qoder/repowiki/README.md`](.qoder/repowiki/README.md)：
+
+- `knowledge/zh/`：按模块组织的知识卡（模块边界、职责、架构约定），`_index.yaml` 是模块索引。
+- `zh/content/`：主题级详解文档（项目概览、架构设计、游戏模式、自定义 Boss、装备与物品、NPC 关系、本地化、调试工具等），每篇带引用文件与章节来源。
+- `zh/meta/`：repowiki 元数据。
+
+凡修改被这些文档描述的行为、架构、配置、Boss/NPC/装备/物品内容、流程或约束时，必须同步更新对应知识卡与内容文档（新增、改写或标注），保持 repowiki 与代码基线一致；新增子系统或大功能时补充对应条目。这属于变更的一部分，repowiki 内容过时视为未完成变更。
 
 ## 5. 不可破坏契约
 
@@ -172,9 +184,10 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 1. Windows 编译：`compile_official.bat`。
 2. Python guard：相关 guard，必要时 `python3 tests/*.py` 或 Windows 等价循环。
-3. Lint/格式检查：本仓库当前没有统一 C# lint；若任务触及的子系统另有 lint、站点构建或格式脚本，按该子系统要求运行。
-4. 需要部署时：`test_bossrush_official.bat` 或相关 smoke bat。
-5. 游戏内人工 smoke：运行时行为、UI、本地化、刷怪、事件泄漏、过图性能、Harmony/反射只能靠实机确认。
+3. repowiki 同步：改动涉及的行为、架构、配置或内容是否已同步到 `.qoder/repowiki/`（见 4.13）。
+4. Lint/格式检查：本仓库当前没有统一 C# lint；若任务触及的子系统另有 lint、站点构建或格式脚本，按该子系统要求运行。
+5. 需要部署时：`test_bossrush_official.bat` 或相关 smoke bat。
+6. 游戏内人工 smoke：运行时行为、UI、本地化、刷怪、事件泄漏、过图性能、Harmony/反射只能靠实机确认。
 
 文档-only 改动至少做静态检查：确认链接路径存在、旧入口能转发、新旧规则冲突已记录。文档-only 通常不需要编译，但若改动了脚本、guard、资源路径或 README 中命令，必须按影响范围验证。
 
@@ -215,6 +228,7 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 - `Build/`、DLL、部署产物不应加入索引。
 - `docs/superpowers/`、`.kiro/specs/`、`.claude/plans/` 是历史计划/工具过程材料，不是当前规则源。
 - `.cunzhi-memory/`、`.claude/settings*.json` 是工具私有记忆或本机权限配置，不是 canonical；其中可能含个人偏好或本机路径。
+- `.qoder/better-harness/`、`.qoder/better-harness-runs/` 是工具过程材料，不是规则源；`.qoder/repowiki/` 是 active 的详细 Wiki 内容库，按 4.13 随代码同步维护，两者地位不同。
 - `docs/飞书应用密钥.md` 可能包含敏感信息，只能作为本地部署资料，不要复制到回答、commit、PR 或迁移正文。
 - `Injection/` 是旧注入逻辑占位，实际逻辑多已并入 `ModBehaviour` / `Integration`，不要按目录名推断当前架构。
 - `skills/`、`codex-skills/` 是辅助工作流。若 skill 与本文件冲突，以本文件为准，并在 `docs/ai-docs-migration.md` 记录。
@@ -233,5 +247,7 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 根级 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md` 是当前 AI 协作流程入口；旧 `docs/` 路径保留转发，避免老工具失联。
 
 ## 14. 最后更新
+
+2026-08-12：登记 `.qoder/repowiki/` 为仓库详细 Wiki 内容库并纳入同步维护（4.13）。
 
 2026-07-01：完成兼容式 AI 协作文档收敛，迁移记录见 `docs/ai-docs-migration.md`。
