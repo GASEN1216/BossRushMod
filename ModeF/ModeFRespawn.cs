@@ -546,6 +546,7 @@ namespace BossRush
         private void OnModeFBossDied(CharacterMainControl deadBoss, DamageInfo damageInfo, string sourceTag = null)
         {
             int deadBossId = 0;
+            bool replacementRequired = false;
             try
             {
                 if (!modeFActive || deadBoss == null)
@@ -565,6 +566,7 @@ namespace BossRush
                     modeFHandledBossDeathIds.Remove(deadBossId);
                     return;
                 }
+                replacementRequired = true;
 
                 Teams? deadBossTeam = null;
                 if (!(deadBoss == null))
@@ -654,14 +656,28 @@ namespace BossRush
                 }
 
                 FinalizeBossRushLootboxPathTracking(deadBoss);
-                QueueModeFBossRespawn();
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] OnModeFBossDied failed: " + e.Message);
-                if (deadBossId != 0)
+                if (deadBossId != 0 && !replacementRequired)
                 {
                     modeFHandledBossDeathIds.Remove(deadBossId);
+                }
+            }
+            finally
+            {
+                if (replacementRequired && modeFActive)
+                {
+                    try
+                    {
+                        QueueModeFBossRespawn();
+                    }
+                    catch (Exception respawnEx)
+                    {
+                        // Queue increments pending before logging/dispatch, so the 1s integrity tick can retry it.
+                        DevLog("[ModeF] [ERROR] Failed to guarantee replacement after boss death: " + respawnEx.Message);
+                    }
                 }
             }
         }
@@ -678,23 +694,12 @@ namespace BossRush
                 + " | inflight=" + modeFRespawnInFlightCount
                 + " | added=" + count);
 
-            if (modeFState.CurrentPhase == ModeFPhase.Preparation)
-            {
-                DevLog("[ModeF] [RESPAWN] defer during preparation | pending=" + modeFPendingRespawnCount);
-                return;
-            }
-
             TryFulfillModeFPendingRespawns();
         }
 
         private void TryFulfillModeFPendingRespawns()
         {
             if (!modeFActive || modeFPendingRespawnCount <= 0 || modeFRespawnInFlightCount > 0)
-            {
-                return;
-            }
-
-            if (modeFState.CurrentPhase == ModeFPhase.Preparation)
             {
                 return;
             }
@@ -976,29 +981,40 @@ namespace BossRush
                     CharacterMainControl boss = modeFState.ActiveBosses[i];
                     if (boss == null || boss.gameObject == null || boss.Health == null || boss.Health.IsDead)
                     {
-                        Teams? bossTeam = TryGetModeFBossTeam(boss, "ModeFBossIntegrityCheck");
-
-                        modeFState.ActiveBosses.RemoveAt(i);
-                        CleanupModeFBossRuntimeState(boss, bossTeam);
-
-                        if (!(boss == null))
+                        bool replacementRequired = false;
+                        try
                         {
-                            try
+                            Teams? bossTeam = TryGetModeFBossTeam(boss, "ModeFBossIntegrityCheck");
+
+                            modeFState.ActiveBosses.RemoveAt(i);
+                            replacementRequired = true;
+                            CleanupModeFBossRuntimeState(boss, bossTeam);
+
+                            if (!(boss == null))
                             {
-                                modeFHandledBossDeathIds.Add(boss.GetInstanceID());
-                                if (TryRemoveModeFBountyMarks(boss.GetInstanceID(), "ModeFBossIntegrityCheck"))
+                                try
                                 {
-                                    MarkModeFHealthBarNamesDirty();
+                                    modeFHandledBossDeathIds.Add(boss.GetInstanceID());
+                                    if (TryRemoveModeFBountyMarks(boss.GetInstanceID(), "ModeFBossIntegrityCheck"))
+                                    {
+                                        MarkModeFHealthBarNamesDirty();
+                                    }
+                                }
+                                catch (Exception cleanupEx)
+                                {
+                                    DevLog("[ModeF] [WARNING] IntegrityCheck 清理死亡Boss状态失败: " + cleanupEx.Message);
                                 }
                             }
-                            catch (Exception cleanupEx)
+
+                            MarkModeFBountyLeaderDirty();
+                        }
+                        finally
+                        {
+                            if (replacementRequired && modeFActive)
                             {
-                                DevLog("[ModeF] [WARNING] IntegrityCheck 清理死亡Boss状态失败: " + cleanupEx.Message);
+                                QueueModeFBossRespawn();
                             }
                         }
-
-                        MarkModeFBountyLeaderDirty();
-                        QueueModeFBossRespawn();
                     }
                 }
 

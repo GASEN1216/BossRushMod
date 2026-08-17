@@ -51,6 +51,49 @@ def main() -> int:
     respawn = RESPAWN.read_text(encoding="utf-8")
     phases = PHASES.read_text(encoding="utf-8")
 
+    death_body = extract_method_body(respawn, "private void OnModeFBossDied")
+    if death_body is None:
+        return fail("missing OnModeFBossDied")
+    for needle, message in (
+        ("bool replacementRequired = false;", "Mode F death handling must track an irrevocable replacement obligation"),
+        ("replacementRequired = true;", "Mode F must claim replacement immediately after removing the tracked boss"),
+        ("if (deadBossId != 0 && !replacementRequired)", "Mode F must not reopen a handled death after replacement became mandatory"),
+        ("if (replacementRequired && modeFActive)", "Mode F must settle replacement debt from the death-handler finally block"),
+        ("QueueModeFBossRespawn();", "Mode F death-handler finally block must queue the replacement"),
+    ):
+        result = require(death_body, needle, message)
+        if result is not None:
+            return result
+    if death_body.count("QueueModeFBossRespawn();") != 1:
+        return fail("OnModeFBossDied must settle exactly one replacement obligation")
+    removal_index = death_body.find("if (!RemoveModeFBossReference(deadBoss))")
+    claim_index = death_body.find("replacementRequired = true;")
+    finally_index = death_body.find("finally")
+    queue_index = death_body.find("QueueModeFBossRespawn();")
+    if min(removal_index, claim_index, finally_index, queue_index) < 0 or not removal_index < claim_index < finally_index < queue_index:
+        return fail("replacement order must be remove tracked boss -> claim debt -> finally -> queue")
+
+    integrity_body = extract_method_body(respawn, "private void ModeFBossIntegrityCheck")
+    if integrity_body is None:
+        return fail("missing ModeFBossIntegrityCheck")
+    for needle, message in (
+        ("modeFState.ActiveBosses.RemoveAt(i);", "Mode F integrity recovery must remove each invalid tracked boss"),
+        ("replacementRequired = true;", "Mode F integrity recovery must claim replacement immediately after removal"),
+        ("if (replacementRequired && modeFActive)", "Mode F integrity recovery must settle replacement debt from finally"),
+        ("QueueModeFBossRespawn();", "Mode F integrity recovery must queue the replacement"),
+    ):
+        result = require(integrity_body, needle, message)
+        if result is not None:
+            return result
+    if integrity_body.count("QueueModeFBossRespawn();") != 1:
+        return fail("ModeFBossIntegrityCheck must settle exactly one replacement per removed invalid boss")
+    removal_index = integrity_body.find("modeFState.ActiveBosses.RemoveAt(i);")
+    claim_index = integrity_body.find("replacementRequired = true;")
+    finally_index = integrity_body.find("finally")
+    queue_index = integrity_body.find("QueueModeFBossRespawn();")
+    if min(removal_index, claim_index, finally_index, queue_index) < 0 or not removal_index < claim_index < finally_index < queue_index:
+        return fail("integrity replacement order must be remove invalid boss -> claim debt -> finally -> queue")
+
     wrapper = extract_method_body(respawn, "private bool RespawnModeFBoss")
     if wrapper is None:
         return fail("missing RespawnModeFBoss wrapper")

@@ -1274,10 +1274,37 @@
 2. 删除诊断后，`cmd.exe /d /c "set BOSSRUSH_NO_PAUSE=1&&call compile_official.bat"` 正式编译成功并部署。
 3. 玩家已确认位置正确；重复开关商店的恢复路径仍由静态守卫覆盖。
 
+---
+### 2026-08-17 Mode F 全阶段持续补怪
+
+**状态**: fixed（静态实现与自动化验证；正式编译/人工 smoke 未完成）
+**Finding**: 玩家反馈 / 静态调用链确认
+**兼容分类**: COMPAT
+**版本/Commit**: 本次提交
+**Owner decision**: Mode F 从开局起一直刷怪，不允许准备阶段暂停补位
+**现象**: Mode F 大多数时候击杀 Boss 后长时间不再刷怪，但有时又会持续补怪。
+**根因**:
+- `QueueModeFBossRespawn` 和 `TryFulfillModeFPendingRespawns` 都对 `ModeFPhase.Preparation` 提前返回。开局准备阶段长达 180 秒，期间死亡只累计待补数量；进入悬赏阶段后同一队列恢复，因此玩家会观察到同一功能随阶段时有时无。
+- 进一步按“整局完全不补怪”复审后确认第二个永久丢债缺口：`OnModeFBossDied` 先从活跃列表移除 Boss，之后执行日志、奖励与掉落收尾，最后才调用 `QueueModeFBossRespawn`。中间任一未隔离异常都会跳入外层 catch；完整性检查又无法看到已移除对象，导致该人口缺口整局不再补回。
+**修复内容**:
+- `ModeF/ModeFRespawn.cs` 移除准备阶段的两处补位门控；死亡事件和每秒完整性检查产生的缺口现在会在准备、悬赏、猎潮、撤离四阶段立即调度。
+- 死亡处理与每秒完整性兜底都在成功移除活跃引用后设置 `replacementRequired`，并在 `finally` 中且仅在模式仍活跃时入队一次；后续日志、奖励、掉落或清理异常不再吞掉补位，重复死亡回调也不会产生双补。
+- 保留既有单 in-flight 限流与逐缺口补 1 只语义：持续恢复开局压力，不无上限叠加场上数量；生成失败仍回队并由每秒完整性 tick 重试。
+- `tests/ModeFPreparationSpawnGuard.py` 改为锁定全阶段持续补位，同时继续保护初始 Boss 数量、点位与单任务限流不变。
+- 同步 Mode F repowiki 知识卡、专项玩法文档与模式总览。
+**兼容性影响**: 不改存档、配置、TypeID、本地化 key、资源、Harmony/反射目标或开局 Boss 数量；只让准备阶段与其余阶段采用一致的死亡补位规则。
+**验证方法**:
+1. 全部 13 个 `ModeF*Guard.py` 通过，其中 `ModeFPreparationSpawnGuard.py` 明确禁止准备阶段补位门控并锁定入队后立即调度；`ModeFRespawnObservableSpawnGuard.py` 锁定“移除引用 → 建立补位债务 → `finally` 唯一入队”的异常安全顺序、单 in-flight 限流与可观察生成完成语义。
+2. `EnemySpawnCoreObservableGuard.py`、`ModeEFSpawnParityGuard.py`、`ModeEFSpawnPostprocessSchedulerGuard.py`、`ModeEFNoGameplayThrottleGuard.py`、`EventSubscriptionLifecycleGuard.py`、`ArchitectureStructureGuard.py`、`OfficialCompileListFileExistenceGuard.py` 通过；相关验证合计 20/20。
+3. 本轮未执行 `compile_official.bat`：该脚本必须读取工作区外游戏 DLL 并向工作区外加载目录部署，而当前会话明确禁止访问或写入工作区外路径，不能越权把旧构建当作当前源码验证。
+**未验证/需人工**: 当前源码未正式编译，也未做游戏内 smoke。需在获准的 Windows 游戏环境中编译后，从准备阶段开始连续击杀多只 Boss，确认每次都会逐只补位；并跨悬赏、猎潮、撤离阶段验证补位不暂停、场上数量不累加失控。
+**失败尝试**: 无。
+
 ## 变更日志
 
 | 日期 | 变更 | 说明 |
 | --- | --- | --- |
+| 2026-08-17 | 修复 Mode F 准备阶段停刷 | 移除 180 秒准备阶段的补位门控，四阶段均按死亡/失效缺口持续逐只补位，并保留单任务限流。 |
 | 2026-08-07 | 提高丧尸模式前期密度并修复停刷 | 击杀目标保持旧值；场上压力、补怪频率与硬上限至少提高 3 倍，并增加可靠刷新、计数校准和远怪回收。 |
 | 2026-08-07 | 修复 Mode E 两个重刷道具不可用 | 按 owner 决定完全移除重刷人口上限和点位裁剪，仅保留单任务互斥与会话安全。 |
 | 2026-08-07 | 丧尸模式 Boss 与变异尸潮持续成长 | Boss 数量按五波轮次无上限递增，后期精英/特殊权重持续提高，总风险与逐只掉落收益同步成长。 |
