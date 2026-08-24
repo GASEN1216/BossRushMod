@@ -4,14 +4,14 @@
 
 ### Categories
 
-- **Entry & Utility** — Tickets, journal, Achievement Medal
+- **Entry & Utility** — Tickets, Banners, Transponder, Fate Echo Relic, Journal, Achievement Medal
 - **NPC Items** — Gifts, materials, special interaction items
 - **Consumables** — Healing, buffs, summoning
-- **Mode-Exclusive** — Faction War and Blood Hunt only
+- **Mode-Exclusive** — Faction War tactical items, Blood Hunt fortifications, and the Fate Echo Relic
 
 ### Where to Get Them
 
-- **Base Merchant** — Tickets, Banners, Transponder, Journal, Medal, Brick Stone
+- **Base Merchant** — Tickets, Banners, Transponder, Fate Echo Relic, Journal, Medal, Brick Stone
 - **Dingdang** — Diamond, Diamond Ring (Affinity-gated), Cold Quench Fluid
 - **Yuori** — Calming Drops (Lv.3), Peace Amulet (Lv.8)
 - **Boss Drops** — Exclusive equipment

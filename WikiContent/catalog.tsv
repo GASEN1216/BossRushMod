@@ -9,7 +9,8 @@ mode	mode__mode_c	无间炼狱	Infinite Hell	3
 mode	mode__mode_d	白手起家	From Scratch	4
 mode	mode__mode_e	划地为营	Faction War	5
 mode	mode__mode_f	血猎追击	Blood Hunt	6
-mode	mode__zombie_mode	末日丧尸模式	Zombie Mode	7
+mode	mode__mode_g	宿命回响	Fate Echo	7
+mode	mode__zombie_mode	末日丧尸模式	Zombie Mode	8
 map	map__overview	地图总览	Map Overview	1
 boss	boss__overview	Boss 总览	Boss Overview	1
 boss	boss__dragon_descendant	龙裔遗族	Dragon Descendant	2
@@ -55,6 +56,7 @@ tips	tips__hell_and_mode_d	无间炼狱与白手起家攻略	Infinite Hell & Fro
 tips	tips__mode_e_strategy	划地为营攻略	Faction War Guide	3
 tips	tips__boss_fights	Boss 战攻略	Boss Fight Guide	4
 tips	tips__mode_f_strategy	血猎追击攻略	Blood Hunt Guide	5
+tips	tips__mode_g_strategy	宿命回响攻略	Fate Echo Guide	6
 easter	easter__kunkun	彩蛋	Easter Eggs	1
 changelog	changelog__highlights	更新日志总览	Changelog Overview	1
 changelog	changelog__v2_2_5	v2.2.5	v2.2.5	2

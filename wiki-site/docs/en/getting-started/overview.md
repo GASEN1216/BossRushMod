@@ -2,11 +2,11 @@
 
 # What Is BossRush Mod?
 
-A massive content expansion for Escape from Duckov (Steam Workshop). What started as a Boss arena grew into a full content pack: 5 modes, 3 custom Bosses, NPC companions, gear progression, and an achievement system.
+A massive content expansion for Escape from Duckov (Steam Workshop). What started as a Boss arena grew into a full content pack: 7 modes, 3 custom Bosses, NPC companions, gear progression, and an achievement system.
 
 # At a Glance
 
-- **5 Game Modes** — Standard, Infinite Hell, From Scratch, Faction War, Blood Hunt
+- **7 Game Modes** — Standard, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Zombie Mode
 - **9 Maps** — Covering most in-game scenes
 - **3 Custom Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
 - **3 NPCs** — Dingdang (Smith), Yuori (Nurse), Awen (Courier)

@@ -14,8 +14,8 @@ hero:
 
 features:
   - icon: ⚔️
-    title: 6 Game Modes
-    details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt, Zombie Mode
+    title: 7 Game Modes
+    details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Zombie Mode
   - icon: 🐉
     title: Custom Bosses
     details: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch with unique skill sets

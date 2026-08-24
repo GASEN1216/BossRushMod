@@ -14,8 +14,8 @@ hero:
 
 features:
   - icon: ⚔️
-    title: 六大游戏模式
-    details: 标准 BossRush、无间炼狱、白手起家、划地为营、血猎追击、末日丧尸模式
+    title: 七大游戏模式
+    details: 标准 BossRush、无间炼狱、白手起家、划地为营、血猎追击、宿命回响、末日丧尸模式
   - icon: 🐉
     title: 自定义 Boss
     details: 龙裔遗族、焚天龙皇与幽灵女巫，独立技能体系与专属掉落

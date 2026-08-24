@@ -34,3 +34,15 @@ Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss pop
 - Every kill → 1 Cover / Every 3 → 1 Spray / Every 10 → 1 Roadblock / Every 20 → 1 Barbed Wire
 
 Start with 1 free Cover Pack. Transponder: see Entry & Utility Items.
+
+---
+
+### Fate Echo Exclusive
+
+#### Fate Echo Relic
+
+The entry relic for Fate Echo. See Entry & Utility Items for the item details. It is consumed after confirmation and returned only after a wave-9 victory.
+
+- Bring your own loadout, a BossRush Ticket, and the Relic
+- Choose one of two Fate Contracts after the map loads
+- A failed run does not return the consumed Relic

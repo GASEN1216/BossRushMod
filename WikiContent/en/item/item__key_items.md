@@ -5,7 +5,7 @@
 Your gateway to every mode. Consumed on arena entry.
 
 - **Source**: Base merchant / **Stock**: 10
-- Required for: Standard, Infinite Hell, From Scratch, Blood Hunt
+- Required for: Standard, Infinite Hell, From Scratch, Blood Hunt, Fate Echo
 
 ---
 
@@ -30,6 +30,20 @@ Opens the achievement panel (or press **L** directly). Free from the base mercha
 Entry key for Blood Hunt. Carried naked + ticket to trigger the mode.
 
 - **Source**: Base merchant / **Stock**: 5 / **Quality**: Epic / Consumed on entry
+
+---
+
+### Fate Echo Relic
+
+The dedicated key for Fate Echo. It is designed for rematches rather than a one-way entry cost.
+
+- **TypeID**: 500057
+- **Source**: Base merchant / **Stock**: 5
+- **Price**: 20,000
+- **Consumed**: after confirming Fate Echo entry
+- **Returned**: after a wave-9 victory
+
+Bring your current loadout, a Ticket, and the Relic into BossRush map selection. The Fate Contract confirmation appears after the scene loads. Canceling costs nothing; death, defeat, and an aborted run do not return the consumed Relic. See Fate Echo for full rules.
 
 ---
 

@@ -40,6 +40,7 @@ const ENTRY_TO_PATH = {
   'mode__mode_d':               'game-modes/mode-d.md',
   'mode__mode_e':               'game-modes/mode-e.md',
   'mode__mode_f':               'game-modes/mode-f.md',
+  'mode__mode_g':               'game-modes/mode-g.md',
   'mode__zombie_mode':          'game-modes/zombie-mode.md',
   'map__overview':              'maps/index.md',
   'boss__overview':             'bosses/index.md',
@@ -86,6 +87,7 @@ const ENTRY_TO_PATH = {
   'tips__mode_e_strategy':      'guides/mode-e-strategy.md',
   'tips__boss_fights':          'guides/boss-fights.md',
   'tips__mode_f_strategy':      'guides/mode-f-strategy.md',
+  'tips__mode_g_strategy':      'guides/mode-g-strategy.md',
   'easter__kunkun':             'easter-eggs.md',
   'changelog__highlights':      'changelog/index.md',
   'changelog__legacy_archive':  'changelog/legacy-archive.md',
@@ -206,8 +208,8 @@ hero:
 
 features:
   - icon: ⚔️
-    title: 6 Game Modes
-    details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt, Zombie Mode
+    title: 7 Game Modes
+    details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Zombie Mode
   - icon: 🐉
     title: Custom Bosses
     details: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch with unique skill sets
