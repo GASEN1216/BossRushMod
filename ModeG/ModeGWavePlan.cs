@@ -9,7 +9,7 @@ namespace BossRush
     /// </summary>
     public enum ModeGRunFormat
     {
-        /// <summary>首胜叙事：三个署名 Boss（波 3/6/9）</summary>
+        /// <summary>首胜叙事：三个署名 Boss（波 1/4/7）</summary>
         FirstClearNarrative,
         /// <summary>复战混编：保留 2 署名 + 1 官方 wildcard</summary>
         RematchMix
@@ -32,7 +32,8 @@ namespace BossRush
     /// Mode G 九波不可变计划（C4 裁决重写版）。方案文档 §6/§7。
     ///
     /// 固定九波节拍：1/2/1宿敌/1/3/1宿敌/1/3/1宿敌。
-    /// 署名槽/宿敌槽/reserve 6 key 全局互斥（同 key 不得跨类别重复出现）。
+    /// 同波 primary/对应 reserve 默认互斥；官方 draw bag 跨波耗尽后才允许复用。
+    /// 官方池小于 6 时，按本局 runSeed 从已有 stable key 确定性随机复制，保证九波仍可运行。
     /// 休整：普通 8s、第 3/6 波后 20s（owner 冻结值）。
     /// 首胜 3 署名 Boss；复战 RematchMix 保留 2 + 官方 wildcard。
     /// planFingerprint 完整重复时专用 Reroll domain 最多重建一次。
@@ -50,8 +51,13 @@ namespace BossRush
         /// <summary>休整时长：第 3/6 波后 20 秒（owner 冻结值，§7）</summary>
         public const float IntermissionLongSeconds = 20f;
 
-        /// <summary>reserve key 数量（6-key 全局互斥成员之一）</summary>
-        public const int ReserveKeyCount = 6;
+        /// <summary>启动最低唯一官方池容量；小池由已有 key 复制到编排目标。</summary>
+        public const int MinimumOfficialPoolSize =
+            ModeGOfficialBossEligibilityRegistry.MinimumProductionOfficialBossCount;
+
+        /// <summary>完整编排目标容量：3 primary + 3 对应 reserve。</summary>
+        public const int OfficialPoolReplicationTarget =
+            ModeGOfficialBossEligibilityRegistry.OfficialPoolReplicationTarget;
 
         /// <summary>每波 Boss 数量节拍：1/2/1宿敌/1/3/1宿敌/1/3/1宿敌</summary>
         private static readonly int[] WaveBossCounts = { 1, 2, 1, 1, 3, 1, 1, 3, 1 };
@@ -73,10 +79,12 @@ namespace BossRush
             public readonly bool isNemesisWave;          // 第 3/6/9 波
             public readonly ModeGSlotKind slotKind;      // Official/Signature/Nemesis
             public readonly string[] bossPresetKeys;     // 长度 == bossCount，键互斥
+            public readonly string[] reservePresetKeys;  // 长度 == bossCount，与本波全部 primary/reserve 互斥
             public readonly ModeGPlanVariant variant;    // Split/Pincer/Arc 编排包
 
             public WaveSlot(int waveIndex, int actIndex, int bossCount, bool isNemesisWave,
-                ModeGSlotKind slotKind, string[] bossPresetKeys, ModeGPlanVariant variant)
+                ModeGSlotKind slotKind, string[] bossPresetKeys, string[] reservePresetKeys,
+                ModeGPlanVariant variant)
             {
                 this.waveIndex = waveIndex;
                 this.actIndex = actIndex;
@@ -84,6 +92,7 @@ namespace BossRush
                 this.isNemesisWave = isNemesisWave;
                 this.slotKind = slotKind;
                 this.bossPresetKeys = bossPresetKeys;
+                this.reservePresetKeys = reservePresetKeys;
                 this.variant = variant;
             }
         }
@@ -93,17 +102,17 @@ namespace BossRush
         public readonly ulong runSeed;
         public readonly ModeGRunFormat runFormat;
         public readonly WaveSlot[] waves;                        // 固定 9 个
-        public readonly string[] reserveKeys;                  // reserve 6 key（与全部槽位 key 互斥）
+        public readonly string nemesisPresetKey;               // 本局宿敌稳定 key（3/6/9 波相同）
         public readonly int rematchCompositionId;              // RematchMix 时被替换署名槽索引（-1 = 首胜）
         public readonly string planFingerprint;                // §3.2 冻结组合
 
         private ModeGWavePlan(ulong runSeed, ModeGRunFormat runFormat, WaveSlot[] waves,
-            string[] reserveKeys, int rematchCompositionId, string planFingerprint)
+            string nemesisPresetKey, int rematchCompositionId, string planFingerprint)
         {
             this.runSeed = runSeed;
             this.runFormat = runFormat;
             this.waves = waves;
-            this.reserveKeys = reserveKeys;
+            this.nemesisPresetKey = nemesisPresetKey ?? string.Empty;
             this.rematchCompositionId = rematchCompositionId;
             this.planFingerprint = planFingerprint;
         }
@@ -140,13 +149,15 @@ namespace BossRush
         #region Build（确定性，Starting 一次）
 
         /// <summary>
-        /// 从 runSeed 确定性生成九波计划。失败（池不足/互斥失败）返回 null，调用方 fail-closed。
+        /// 从 runSeed 确定性生成九波计划。没有任何合格官方 Boss 时返回 null，调用方 fail-closed；
+        /// 小于 6 个官方 key 时允许从已有 key 复制，不会伪造新的 preset。
         /// </summary>
         /// <param name="runSeed">preview 冻结的 runSeed</param>
         /// <param name="runFormat">首胜叙事 / 复战混编</param>
         /// <param name="signatureKeys">eligible 署名 Boss key（升序快照）；首胜须 >=3</param>
         /// <param name="officialKeys">官方 Boss 池 run-scoped 快照 key（Ordinal 排序）</param>
         /// <param name="selectedFateContractId">入口冻结契约 ID</param>
+        /// <param name="nemesisPresetKey">当前持久宿敌 key；不可用时确定性选择临时宿敌</param>
         /// <param name="nemesisTemperamentId">宿敌性格 ID</param>
         /// <param name="seenFingerprints">同进程已出现 fingerprint（可为 null）</param>
         public static ModeGWavePlan Build(
@@ -155,18 +166,19 @@ namespace BossRush
             IList<string> signatureKeys,
             IList<string> officialKeys,
             int selectedFateContractId,
+            string nemesisPresetKey,
             int nemesisTemperamentId,
             HashSet<string> seenFingerprints)
         {
             ModeGWavePlan plan = BuildCore(runSeed, runFormat, signatureKeys, officialKeys,
-                selectedFateContractId, nemesisTemperamentId, 0);
+                selectedFateContractId, nemesisPresetKey, nemesisTemperamentId, 0);
             if (plan == null) return null;
 
             // 同进程完整 fingerprint 重复：专用 Reroll domain 最多重建一次
             if (seenFingerprints != null && seenFingerprints.Contains(plan.planFingerprint))
             {
                 ModeGWavePlan rerolled = BuildCore(runSeed, runFormat, signatureKeys, officialKeys,
-                    selectedFateContractId, nemesisTemperamentId, 1);
+                    selectedFateContractId, nemesisPresetKey, nemesisTemperamentId, 1);
                 if (rerolled != null) return rerolled;
             }
             return plan;
@@ -178,20 +190,16 @@ namespace BossRush
             IList<string> signatureKeys,
             IList<string> officialKeys,
             int selectedFateContractId,
+            string persistedNemesisPresetKey,
             int nemesisTemperamentId,
             int rerollEpoch)
         {
             int signatureCount = signatureKeys != null ? signatureKeys.Count : 0;
             int officialCount = officialKeys != null ? officialKeys.Count : 0;
 
-            // 首胜须 3 署名；复战须 2 署名。池不足 fail-closed。
-            int requiredSignature = (runFormat == ModeGRunFormat.FirstClearNarrative) ? 3 : 2;
-            if (signatureCount < requiredSignature) return null;
-            // 官方池需足够填充非署名波总量（14 只）+ reserve 6 + wildcard（复战 1）
-            int officialWaveTotal = WaveBossCounts[0] + WaveBossCounts[1] + WaveBossCounts[3]
-                + WaveBossCounts[4] + WaveBossCounts[6] + WaveBossCounts[7];
-            if (runFormat == ModeGRunFormat.RematchMix) officialWaveTotal += 1; // 宿敌波 wildcard
-            if (officialCount < officialWaveTotal + ReserveKeyCount) return null;
+            // 一个合格官方 Boss 即可启动；少于目标容量时在本局允许确定性复用。
+            if (officialCount < MinimumOfficialPoolSize) return null;
+            bool allowOfficialCopies = officialCount < OfficialPoolReplicationTarget;
 
             // ---- domain streams（rerollEpoch 注入 waveEpoch 位）----
             ulong bossState = ModeGDeterministicRandom.SeedDomain(runSeed,
@@ -208,36 +216,57 @@ namespace BossRush
                 bossState ^= ModeGDeterministicRandom.SplitMix64Next(ref rerollState);
             }
 
-            // ---- 署名槽分配（波 3/6/9）----
-            string[] shuffledSignature = Shuffle(signatureKeys, ref bossState);
+            // ---- 宿敌与署名槽分配（署名 1/4/7，宿敌 3/6/9）----
+            string[] shuffledSignature = signatureCount > 0
+                ? Shuffle(signatureKeys, ref bossState)
+                : new string[0];
             int rematchCompositionId = -1;
-            string[] nemesisWaveKeys = new string[3];
-            for (int i = 0; i < 3; i++) nemesisWaveKeys[i] = shuffledSignature[i];
-
-            // ---- 官方 key 无重复消费序列 ----
-            string[] shuffledOfficial = Shuffle(officialKeys, ref bossState);
+            string runNemesisKey = ContainsKey(signatureKeys, persistedNemesisPresetKey)
+                || ContainsKey(officialKeys, persistedNemesisPresetKey)
+                ? persistedNemesisPresetKey
+                : (shuffledSignature.Length > 0
+                    ? shuffledSignature[ModeGDeterministicRandom.NextInt(ref bossState, shuffledSignature.Length)]
+                    : officialKeys[ModeGDeterministicRandom.NextInt(ref bossState, officialCount)]);
+            string[] signatureWaveKeys = new string[3];
+            string[] officialBag = Shuffle(officialKeys, ref bossState);
             int officialCursor = 0;
-            HashSet<string> usedKeys = new HashSet<string>(StringComparer.Ordinal);
-            for (int i = 0; i < 3; i++) usedKeys.Add(nemesisWaveKeys[i]);
+            int signatureCursor = 0;
+            HashSet<string> signatureWaveUsed = new HashSet<string>(StringComparer.Ordinal);
+            signatureWaveUsed.Add(runNemesisKey);
 
-            // RematchMix：保留 2 署名 + 官方 wildcard 替换第 3 个署名槽
+            // RematchMix：保留 2 署名 + 官方 wildcard 替换一个署名槽。
             if (runFormat == ModeGRunFormat.RematchMix)
             {
                 rematchCompositionId = ModeGDeterministicRandom.NextInt(ref rematchState, 3);
-                string wildcard = null;
-                while (officialCursor < shuffledOfficial.Length)
+            }
+
+            // 逐个填充三个署名槽：托管 key 不足、被宿敌占用或复战 wildcard 时只替换该槽。
+            for (int i = 0; i < signatureWaveKeys.Length; i++)
+            {
+                string selected = null;
+                if (i != rematchCompositionId)
                 {
-                    string candidate = shuffledOfficial[officialCursor++];
-                    if (!usedKeys.Contains(candidate)) { wildcard = candidate; break; }
+                    while (signatureCursor < shuffledSignature.Length && selected == null)
+                    {
+                        string candidate = shuffledSignature[signatureCursor++];
+                        if (!string.IsNullOrEmpty(candidate) && !signatureWaveUsed.Contains(candidate))
+                            selected = candidate;
+                    }
                 }
-                if (wildcard == null) return null;
-                usedKeys.Add(wildcard);
-                nemesisWaveKeys[rematchCompositionId] = wildcard;
+                if (selected == null)
+                {
+                    selected = TakeNextOfficial(officialKeys, ref officialBag, ref officialCursor,
+                        ref bossState, signatureWaveUsed, allowOfficialCopies);
+                }
+                if (selected == null) return null;
+                if (!allowOfficialCopies && !signatureWaveUsed.Add(selected)) return null;
+                signatureWaveUsed.Add(selected);
+                signatureWaveKeys[i] = selected;
             }
 
             // ---- 逐波装配 ----
             WaveSlot[] waves = new WaveSlot[WaveCount];
-            int nemesisCursor = 0;
+            int signatureWaveCursor = 0;
             for (int w = 0; w < WaveCount; w++)
             {
                 int act = w / 3;
@@ -246,52 +275,96 @@ namespace BossRush
                 ModeGPlanVariant variant = SelectVariant(count, ref variantState);
 
                 string[] keys = new string[count];
+                string[] reserveKeys = new string[count];
+                HashSet<string> waveUsed = new HashSet<string>(StringComparer.Ordinal);
                 ModeGSlotKind kind;
                 if (isNemesis)
                 {
                     kind = ModeGSlotKind.Nemesis;
-                    string mainKey = nemesisWaveKeys[nemesisCursor++];
-                    keys[0] = mainKey;
-                    // 宿敌波 count 固定为 1（节拍冻结），无副槽
+                    keys[0] = runNemesisKey;
+                    if (string.IsNullOrEmpty(keys[0]) || !waveUsed.Add(keys[0])) return null;
+                }
+                else if (w == 0 || w == 3 || w == 6)
+                {
+                    keys[0] = signatureWaveKeys[signatureWaveCursor++];
+                    if (string.IsNullOrEmpty(keys[0]) || !waveUsed.Add(keys[0])) return null;
+                    kind = ModeGEncounterVariation.IsManagedSignatureKey(keys[0])
+                        ? ModeGSlotKind.Signature
+                        : ModeGSlotKind.Official;
                 }
                 else
                 {
                     kind = ModeGSlotKind.Official;
                     for (int i = 0; i < count; i++)
                     {
-                        string picked = null;
-                        while (officialCursor < shuffledOfficial.Length)
-                        {
-                            string candidate = shuffledOfficial[officialCursor++];
-                            if (!usedKeys.Contains(candidate)) { picked = candidate; break; }
-                        }
+                        string picked = TakeNextOfficial(officialKeys, ref officialBag,
+                            ref officialCursor, ref bossState, waveUsed, allowOfficialCopies);
                         if (picked == null) return null; // 互斥失败 fail-closed
-                        usedKeys.Add(picked);
+                        waveUsed.Add(picked);
                         keys[i] = picked;
                     }
                 }
-                waves[w] = new WaveSlot(w, act, count, isNemesis, kind, keys, variant);
-            }
-
-            // ---- reserve 6 key（与全部槽位 key 全局互斥）----
-            string[] reserve = new string[ReserveKeyCount];
-            int reserved = 0;
-            while (reserved < ReserveKeyCount && officialCursor < shuffledOfficial.Length)
-            {
-                string candidate = shuffledOfficial[officialCursor++];
-                if (!usedKeys.Contains(candidate))
+                for (int i = 0; i < reserveKeys.Length; i++)
                 {
-                    usedKeys.Add(candidate);
-                    reserve[reserved++] = candidate;
+                    string reserve = TakeNextOfficial(officialKeys, ref officialBag,
+                        ref officialCursor, ref bossState, waveUsed, allowOfficialCopies);
+                    if (reserve == null) return null;
+                    if (!allowOfficialCopies && !waveUsed.Add(reserve)) return null;
+                    waveUsed.Add(reserve);
+                    reserveKeys[i] = reserve;
                 }
+                waves[w] = new WaveSlot(w, act, count, isNemesis, kind,
+                    keys, reserveKeys, variant);
             }
-            if (reserved < ReserveKeyCount) return null;
 
             // ---- fingerprint（§3.2 冻结六段）----
             string fingerprint = BuildFingerprint(runFormat, rematchCompositionId,
                 selectedFateContractId, nemesisTemperamentId, waves);
 
-            return new ModeGWavePlan(runSeed, runFormat, waves, reserve, rematchCompositionId, fingerprint);
+            return new ModeGWavePlan(runSeed, runFormat, waves,
+                runNemesisKey, rematchCompositionId, fingerprint);
+        }
+
+        private static bool ContainsKey(IList<string> source, string key)
+        {
+            if (source == null || string.IsNullOrEmpty(key)) return false;
+            for (int i = 0; i < source.Count; i++)
+            {
+                if (string.Equals(source[i], key, StringComparison.Ordinal)) return true;
+            }
+            return false;
+        }
+
+        private static string TakeNextOfficial(IList<string> source, ref string[] bag,
+            ref int cursor, ref ulong state, HashSet<string> excluded, bool allowDuplicates)
+        {
+            if (source == null || source.Count == 0) return null;
+            int remaining = bag != null ? Math.Max(0, bag.Length - cursor) : 0;
+            int maxScans = remaining + source.Count;
+            for (int scan = 0; scan < maxScans; scan++)
+            {
+                if (bag == null || cursor >= bag.Length)
+                {
+                    bag = Shuffle(source, ref state);
+                    cursor = 0;
+                }
+                string candidate = bag[cursor++];
+                if (!string.IsNullOrEmpty(candidate)
+                    && (excluded == null || !excluded.Contains(candidate))) return candidate;
+            }
+
+            // 小池兜底：所有候选都被当前波排除时，从同一确定性随机流重新选一个已有 key。
+            // 只复制 stable key，不创建新的 EnemyPresetInfo，也不改变 run-scoped 快照。
+            if (allowDuplicates)
+            {
+                int start = ModeGDeterministicRandom.NextInt(ref state, source.Count);
+                for (int step = 0; step < source.Count; step++)
+                {
+                    string candidate = source[(start + step) % source.Count];
+                    if (!string.IsNullOrEmpty(candidate)) return candidate;
+                }
+            }
+            return null;
         }
 
         private static ModeGPlanVariant SelectVariant(int bossCount, ref ulong variantState)

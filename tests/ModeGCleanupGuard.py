@@ -18,6 +18,8 @@ ModeGCleanupGuard — Mode G 清理守卫（规格 §20 第 29 条）。
 - 战斗中主 Boss 技术丢失禁推进：批量激活失败 ->
   CleanupOnce(TechnicalLoss) + End(TechnicalIntegrityLoss) + return；
   CanContinueRun 纳入 !_ended 闸门（End 后不得继续生成/推进）；
+- Rewarding 的非胜利退出必须在 Cleanup 前失效 attempt nonce 并取消物化，
+  防止切图/销毁后继续发奖；Victory 完成路径不取消；
 - sink 非空时 EntryBlocked 持续而 RunInProgress/NPC 抑制不得因 sink 为
   true：EntryBlocked = RunInProgress || Quarantine；IsModeGRunInProgress
   仅读 lifecycle（不读 HasPendingLeases）；EnemyRecoveryMonitor（NPC
@@ -31,7 +33,10 @@ import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RUNTIME = os.path.join(REPO_ROOT, "ModeG", "ModeGRuntimeModule.cs")
+RUNTIME_PARTS = [
+    os.path.join(REPO_ROOT, "ModeG", "ModeGRuntimeModule.cs"),
+    os.path.join(REPO_ROOT, "ModeG", "ModeGRuntimeModule_PublicApiAndShutdown.cs"),
+]
 CLEANUP = os.path.join(REPO_ROOT, "ModeG", "ModeGCleanupController.cs")
 STATE = os.path.join(REPO_ROOT, "ModeG", "ModeGStateModel.cs")
 TELEMETRY = os.path.join(REPO_ROOT, "ModeG", "ModeGCombatTelemetry.cs")
@@ -55,7 +60,7 @@ def strip_comments(text):
 
 def main():
     errors = []
-    runtime = read(RUNTIME, errors)
+    runtime = "\n".join(read(path, errors) for path in RUNTIME_PARTS)
     cleanup = read(CLEANUP, errors)
     state = read(STATE, errors)
     telemetry = read(TELEMETRY, errors)
@@ -137,6 +142,13 @@ def main():
             ("CanContinueEndGate",
              r"return !_disposed && !_ended",
              "CanContinueRun 纳入 !_ended（End 后禁生成/推进）"),
+            ("NonVictoryRewardCancellation",
+             r"if \(reason != ModeGExitReason\.Victory && _state\.IsRewarding\)"
+             r"[\s\S]{0,180}?_state\.rewardNonceInvalidated = true;"
+             r"[\s\S]{0,180}?ModeGRewardTransaction\.InvalidateAttemptNonce\(\);"
+             r"[\s\S]{0,300}?CancelModeGRewardMaterialization_LootAndRewards\(\);"
+             r"[\s\S]{0,500}?RefundStartupPaymentOnTechnicalFailure\(reason\);",
+             "Rewarding 非胜利退出先失效 nonce、取消物化，再进入统一 Cleanup"),
         ]
         for name, pattern, desc in checks:
             if not re.search(pattern, runtime):

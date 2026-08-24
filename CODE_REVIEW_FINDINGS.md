@@ -6,12 +6,12 @@
 
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 0 | 1 | 0 | 0 | 1 |
-| P1 | 0 | 2 | 0 | 0 | 2 |
+| P0 | 0 | 3 | 0 | 0 | 3 |
+| P1 | 0 | 5 | 0 | 0 | 5 |
 | P2 | 0 | 4 | 0 | 0 | 4 |
 | P3 | 0 | 0 | 0 | 0 | 0 |
 
-最后更新：2026-07-06。
+最后更新：2026-08-17。
 
 ## Confirmed Findings
 
@@ -182,6 +182,81 @@ Windows 编译通过；仍需进游戏在弱网或临时断网后反复开关许
 #### 验证需求
 
 Windows 编译通过；仍需进游戏确认弱网下频繁开关许愿台不会报错、不会留下卡住的旧 UI，也不会影响下一次打开的弹幕刷新。
+
+### CR-2026-08-17-001：Mode G 官方快照绕过逐 key eligibility，且九波计划错误要求整局全局去重
+
+**严重级**：P0 Blocker
+**兼容分类**：`COMPAT`
+**状态**：Fixed（2026-08-17 owner 发布裁决已替代逐 key allowlist）
+**来源**：代码审查 + 静态代码验证。
+
+#### 问题与影响
+
+`CreateModeGBossSnapshot()` 曾把共享过滤池中的所有普通 preset 直接加入 Mode G；未知 Mod preset、未纳管 attachment/async/死亡/掉落 owner 也可能进入。`ModeGWavePlan` 又把所有 official primary 与 6 个 reserve 做整局全局去重，合法的 6-key 池也会无故拒绝 Starting。
+
+#### 修复与验证
+
+新增默认拒绝的官方资格记录（stable key、revision、副作用摘要、适应能力），快照和 lookup 全部消费 registry，同 key 多引用拒绝；计划改为逐槽 reserve、同波互斥、draw bag 跨波复用。2026-08-17 owner 进一步确认现有 `GetFilteredEnemyPresets()` 池内 Boss 均可用于 Mode G，因此生产策略改为信任该池，不再要求逐 key 硬编码 allowlist；托管 Boss 排除、唯一 stable key、重复引用拒绝仍保留。2026-08-18 owner 进一步裁决：启动最低为 1 个唯一 key，6 个只是完整 primary/reserve 编排目标；1-5 个时按 runSeed 从已有 stable key 确定性复制，事务按槽位/实例而非 key 去重。同期恢复玩家自带装备入场，并移除旧路牌的独立 Mode G 选项，自动分流后的 presenter 仍保持独立确认页。`ModeGManagedBossEligibilityGuard.py`、`ModeGPlayerLoadoutGuard.py` 与全部 Mode G guards 通过。
+
+### CR-2026-08-17-002：未知存档版本和临时挂起宿敌可能被后续对局覆盖
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：代码审查 + 静态代码验证。
+
+#### 问题与影响
+
+未知/不可读 profile 或 nemesis payload 会回退空 DTO，但旧 `Store()` 没有 per-key 写屏障；未来版本数据可能被 v1 覆盖。有效持久宿敌因 preset、BossFilter、revision 或 adapter 暂时不可用时，本局会选临时宿敌，玩家死亡归因又可能把原 key/Rank 改成临时击杀者。
+
+#### 修复与验证
+
+两个 key 独立建立写屏障，Store/flush 均拒绝覆盖，另一 key 仍可保存；RunState 冻结 `ModeGNemesisSelectionSource`，`SuspendedPersistentV1` 时失败归因只展示受保护。宿主销毁前增加不重入官方保存的最终尽力 flush。三个持久化 guards 通过。
+
+### CR-2026-08-17-003：Mode G 奖励 API 回调异常会误判交付失败，Rewarding 死亡可能被完成回调抢占
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：官方源码调用顺序核对 + 代码审查。
+
+#### 问题与影响
+
+官方背包/仓库 API 可能已提交物品后才由事件回调抛异常，旧逻辑会误判失败、跳过 fallback 或重复处理；取消 materializer 的同步完成回调还可能先锁定 `RewardAbandoned`，覆盖真正的 `RewardInterruptedByDeath`。
+
+#### 修复与验证
+
+交付后核对 Inventory、实例消费和 Incoming buffer，三路均失败才销毁；取消前先失效 reward nonce，完成回调首先检查 nonce，非 Victory 的 `End()` 统一取消 Rewarding。`ModeGRewardGuard.py`、`ModeGDeathRoutingGuard.py`、`ModeGCleanupGuard.py` 通过。
+
+### CR-2026-08-17-004：Mode G 启动退款所有权不唯一，后续初始化异常可能双退
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：代码审查 + 失败路径推演。
+
+#### 问题与影响
+
+Runtime 接管启动退款后，若 `StartRun()` 已推进但 HUD 等后续步骤抛异常，Runtime `End()` 与外层失败分支可能各退款一次；首波同步启动后也可能被外层误判为启动前失败。
+
+#### 修复与验证
+
+`StartModeGRuntime` 显式返回退款所有权，`ArmStartupRefund()` 后只有 Runtime 可退款，外层仅在尚未转移所有权时处理；退款逐项核对交付结果。`ModeGPlayerLoadoutGuard.py` 与正式编译通过。
+
+### CR-2026-08-17-005：Mode G 候选地图没有显式验证状态，未实测地图会被当作 Verified
+
+**严重级**：P0 Blocker
+**兼容分类**：`COMPAT`
+**状态**：Fixed（2026-08-17 owner 已批准地图选择 UI 全部有效地图）
+**来源**：设计契约与实际注册表静态对照。
+
+#### 问题与影响
+
+`ModeGMapSupportRegistry` 只有候选 scene pair 和 revision，没有 `NotVerified/Verified` 状态；`TryGetPrimaryVerifiedPair()`、`IsSupported()` 和 `IsVerifiedSceneName()` 会直接接受首发候选。当前发布开关和官方 Boss 空表还能阻断入口，但后续填表开闸时会绕过地图死亡语义、安全三元组、导航与清理 smoke。
+
+#### 修复与验证
+
+新增显式 `ModeGMapSupportStatus`，所有支持查询统一要求状态、当前 revision、死亡风险和安全摘要完整。2026-08-17 owner 确认地图选择 UI 中全部有效配置均为安全地图，注册表因此改为直接复用 `GetAllMapConfigs()` 并生成 Verified 快照；preview 按当前 active scene 冻结玩家实际选择的 exact pair。空 scene、空刷新点、重复 pair 或不属于 UI 配置的场景仍 fail-closed。`ModeGMapSupportGuard.py`、`ModeGReleaseAvailabilityGuard.py` 和全部 28 个 Mode G guards 通过。
 
 ## UNVERIFIED / Seeded Leads
 

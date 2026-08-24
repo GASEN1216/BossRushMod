@@ -181,14 +181,15 @@ namespace BossRush
             base.OnTimeOut();
 
             // 交互完成，根据当前场景决定行为
-            if (BossRush.ModBehaviour.Instance != null)
+            BossRush.ModBehaviour host = BossRush.ModBehaviour.Instance;
+            if (host != null)
             {
                 // 如果已经在有效的 BossRush 竞技场场景内（DEMO竞技场或零号区等），直接开始第一波
-                if (BossRush.ModBehaviour.Instance.IsCurrentSceneValidBossRushArena())
+                if (host.IsCurrentSceneValidBossRushArena())
                 {
                     // 通过交互点配置当前模式（默认1，只在使用自定义难度时生效）
-                    BossRush.ModBehaviour.Instance.ConfigureBossRushMode(bossesPerWave, isInfiniteHell);
-                    BossRush.ModBehaviour.Instance.StartFirstWave();
+                    host.ConfigureBossRushMode(bossesPerWave, isInfiniteHell);
+                    host.StartFirstWave();
 
                     // 交互后隐藏同一菜单下的所有难度选项（包括自己和另一个），防止玩家重复选择
                     try
@@ -254,7 +255,7 @@ namespace BossRush
                 {
                     // 否则打开地图选择 UI，让玩家确认后再传送
                     // 使用官方 MapSelectionView 流程，确认后才扣费
-                    BossRushMapSelectionHelper.ShowBossRushMapSelection();
+                    BossRushMapSelectionHelper.ShowBossRushMapSelection(host.IsModeGEntryIntentNow());
                 }
             }
         }
@@ -753,24 +754,9 @@ namespace BossRush
 
                 ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入 3 个难度子选项（含无间炼狱）");
 
-                // 4. Mode G「宿命回响」独立入口选项（加法分支，设计文档 §11 硬契约）。
-                // 在三个 Legacy 难度选项全部创建完成之后追加，不改变旧实例的创建、名称与超时顺序。
-                // ModeGInteractable 由 ModeG/ModeGInteractable.cs 提供（Felix 重构为继承 InteractableBase，
-                // 其 IsInteractable() 自查 ModeGAvailability + MapSupportRegistry + PresentationAssetCache 预检）。
-                try
-                {
-                    GameObject modeGObj = new GameObject("BossRushOption_ModeG");
-                    modeGObj.transform.SetParent(transform);
-                    modeGObj.transform.localPosition = Vector3.zero;
-                    var modeGInteract = modeGObj.AddComponent<ModeGInteractable>();
-                    list.Add(modeGInteract);
-                    groupOptions.Add(modeGInteract);
-                    ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入 Mode G 独立入口选项");
-                }
-                catch (System.Exception modeGEx)
-                {
-                    ModBehaviour.DevLog("[BossRush] [WARNING] BossRushSignInteractable: 注入 Mode G 入口选项失败（不影响 Legacy 选项）: " + modeGEx.Message);
-                }
+                // Mode G 不再注入旧路牌的独立难度选项。
+                // 它沿用 Mode F 的自动分流：地图选择/传送前冻结 Mode G 意图，
+                // 进入已选地图后由统一入口打开 ModeGInteractable 确认页。
             }
             catch (System.Exception e)
             {

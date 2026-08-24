@@ -709,7 +709,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 取消未完成的 materializer（幂等），立即自毁，不触发完成回调。
+        /// 取消未完成的 materializer（幂等），立即自毁并完成回调。
+        /// 调用方依靠完成回调对称释放隔离 lease 和胜利安全状态。
         /// </summary>
         public void CancelAndDestroy()
         {
@@ -718,11 +719,25 @@ namespace BossRush
                 return;
             }
 
+            int total = typeIdSnapshot != null ? typeIdSnapshot.Length : succeededCount + failedCount;
+            int remaining = Math.Max(0, total - nextIndex);
+            failedCount += remaining;
+            Action<int, int, int> completionCallback = onMaterializationCompleted;
             finished = true;
             typeIdSnapshot = null;
             targetInventory = null;
             onItemCommitted = null;
             onMaterializationCompleted = null;
+
+            try
+            {
+                if (completionCallback != null)
+                    completionCallback(total, succeededCount, failedCount);
+            }
+            catch (Exception callbackEx)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 奖励取消完成回调异常: " + callbackEx.Message);
+            }
 
             try
             {
@@ -751,38 +766,27 @@ namespace BossRush
                 item = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(typeId);
                 if (item != null)
                 {
-                    if (targetInventory.AddItem(item))
+                    if (ModeGRewardTransaction.TryCommitItemToInventoryOrStorage(
+                        item, targetInventory, "奖励 TypeID=" + typeId))
                     {
                         committed = true;
                         succeededCount++;
                     }
-                    else
-                    {
-                        // strict：入箱失败即判失败，销毁实例，不静默重试/替换
-                        try
-                        {
-                            if (item.gameObject != null)
-                            {
-                                UnityEngine.Object.Destroy(item.gameObject);
-                            }
-                        }
-                        catch { }
-                        item = null;
-                        failedCount++;
-                    }
-                }
-                else
-                {
-                    failedCount++;
                 }
             }
             catch (Exception materializeEx)
             {
                 committed = false;
-                item = null;
-                failedCount++;
                 ModBehaviour.DevLog("[ModeG] [WARNING] 奖励 strict materializer 单件实例化异常: typeId=" + typeId + ", " + materializeEx.Message);
             }
+
+            if (!committed)
+            {
+                try { if (item != null) item.DestroyTree(); } catch { }
+                item = null;
+            }
+
+            if (!committed) failedCount++;
 
             try
             {
@@ -832,6 +836,11 @@ namespace BossRush
                 }
                 catch { }
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (!finished) CancelAndDestroy();
         }
     }
 

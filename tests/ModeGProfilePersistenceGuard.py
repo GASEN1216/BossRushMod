@@ -10,7 +10,8 @@ ModeGProfilePersistenceGuard — 个人记录持久化守卫（规格 §20 第 2
 - Victory 后保留语义：胜利只递增统计/刷新最佳时间，不清零历史；
 - 不从 profile 发物品/货币/加成：文件剥注释后无 Inventory/AddItem/
   GiveMoney/Currency 等发放符号（纯展示/匹配数据）；
-- StoreFaulted 单向故障与 Store fail-closed。
+- StoreFaulted 单向故障与 Store fail-closed；未知/不可读 profile schema
+  建立当前槽本 key 写屏障，允许宿敌 key 独立保存但不得覆盖 profile。
 """
 import os
 import re
@@ -20,6 +21,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILE = os.path.join(REPO_ROOT, "ModeG", "ModeGProfilePersistence.cs")
 NEMESIS = os.path.join(REPO_ROOT, "ModeG", "ModeGNemesisPersistence.cs")
 CLEANUP = os.path.join(REPO_ROOT, "ModeG", "ModeGCleanupController.cs")
+ENTRY = os.path.join(REPO_ROOT, "ModeG", "ModeGEntry.cs")
 
 
 def read(path, errors):
@@ -41,6 +43,7 @@ def main():
     profile = read(PROFILE, errors)
     nemesis = read(NEMESIS, errors)
     cleanup = read(CLEANUP, errors)
+    entry = read(ENTRY, errors)
 
     if profile:
         checks = [
@@ -66,10 +69,45 @@ def main():
             ("StoreFailClosed",
              r"if \(_storeFaulted\) return false;",
              "Store 对 StoreFaulted fail-closed"),
+            ("UnknownSchemaWriteBarrier",
+             r"if \(loaded != null && loaded\.schemaVersion == 0\)"
+             r"[\s\S]{0,260}?_writeBarrier = true;",
+             "未知 profile schema 建立本 key 写屏障"),
+            ("UnreadableWriteBarrier",
+             r"个人记录加载失败:[\s\S]{0,120}?_writeBarrier = true;",
+             "不可读 profile payload 建立本 key 写屏障"),
+            ("StoreWriteBarrier",
+             r"if \(HasWriteBarrier\) return false;",
+             "Store 不覆盖未知 profile key"),
+            ("FlushWriteBarrier",
+             r"private static void FlushPendingLocked\(bool writeFile\)"
+             r"[\s\S]{0,180}?if \(_writeBarrier\) return;",
+             "flush 不覆盖未知 profile key"),
             ("KeyExisitsFirst",
              r"if \(SavesSystem\.KeyExisits\(StorageKey\)\)"
              r"[\s\S]{0,200}?SavesSystem\.Load<ProfileDto>\(StorageKey\);",
              "KeyExisits 前置分类再 Load"),
+            ("LastSelectedField",
+             r"public int lastSelectedContractIdPlusOne;",
+             "上一局实际契约使用向后兼容 plus-one 字段"),
+            ("LastSelectedRead",
+             r"GetLastSelectedContractId\(\)[\s\S]{0,220}?"
+             r"lastSelectedContractIdPlusOne - 1[\s\S]{0,180}?ModeGFateContract\.ContractCount",
+             "上一局契约读取解码并做稳定 ID 范围校验"),
+            ("LastSelectedRecord",
+             r"RecordSelectedContract\(int contractId\)[\s\S]{0,300}?"
+             r"copy\.lastSelectedContractIdPlusOne = contractId \+ 1;"
+             r"[\s\S]{0,100}?return Store\(copy\);",
+             "实际选择以 plus-one 写入 typed store"),
+            ("LastSelectedReadback",
+             r"CriticalFieldsMatch\(ProfileDto expected, ProfileDto actual\)"
+             r"[\s\S]{0,500}?expected\.lastSelectedContractIdPlusOne"
+             r" == actual\.lastSelectedContractIdPlusOne",
+             "契约字段参与关键字段回读验证"),
+            ("LastSelectedClone",
+             r"CloneDto\(ProfileDto src\)[\s\S]{0,600}?"
+             r"lastSelectedContractIdPlusOne = src\.lastSelectedContractIdPlusOne",
+             "契约字段参与 DTO 克隆"),
         ]
         for name, pattern, desc in checks:
             if not re.search(pattern, profile):
@@ -104,6 +142,16 @@ def main():
         if "ClearContractStreakOnManualExit" not in cleanup and \
                 "TryConsumeContractStreakBreakToken" not in cleanup:
             errors.append("[StreakBreakConsumed] CleanupController 未消费契约连胜清除 token")
+
+    if entry:
+        if not re.search(
+                r"SelectEntryCandidatePair\(\s*runSeed, "
+                r"ModeGProfilePersistence\.GetLastSelectedContractId\(\)\)", entry):
+            errors.append("[CandidateExclusionWired] preview 未消费上一局实际契约排除值")
+        if not re.search(
+                r"StartRun\(\)[\s\S]{0,500}?ModeGProfilePersistence\.RecordSelectedContract\(contractId\)",
+                entry):
+            errors.append("[SelectedRecordedAfterStart] runtime 成功启动后未记录实际契约")
 
     if errors:
         print("ModeGProfilePersistenceGuard: FAIL ({} errors)".format(len(errors)))

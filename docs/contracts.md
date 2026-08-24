@@ -5,8 +5,8 @@
 ## 1. TypeID 与存档身份
 
 - 自定义物品/装备 TypeID 使用 5000xx 区间。
-- 已登记范围：`500001-500056`，空洞 `500009`、`500047` 不回填。
-- 下一可用：`500057`，以 `docs/Bossrush使用物品ID表.md` 为准。
+- 已登记范围：`500001-500057`，空洞 `500009`、`500047` 不回填。
+- 下一可用：`500058`，以 `docs/Bossrush使用物品ID表.md` 为准。
 
 Breaking:
 
@@ -49,6 +49,15 @@ Breaking:
 
 新持久化 key 使用 `BossRush_` 前缀，避免与原版或其他 Mod 碰撞。
 
+Mode G 冻结 key：
+
+- `BossRush_ModeG_NemesisRecord_v1`
+- `BossRush_ModeG_Profile_v1`
+
+两个 key 独立 typed Save。未知 schema、payload 不可读或 key 分类失败时只为对应 key
+建立当前槽写屏障，不覆盖未来版本；另一 key 仍可独立保存。`StoreFaulted` 在本 runtime
+单向 fail-closed，不能靠切槽清除。
+
 Breaking:
 
 - 改名旧 key 且无迁移。
@@ -77,6 +86,12 @@ Breaking:
 - 改字段名、删除字段、改变坐标单位或轴语义。
 - 改 `sceneName` / `sceneID` 导致旧地图配置失配。
 - 删除硬编码 fallback 但没有版本迁移和 guard 证明。
+
+Mode G 当前生产契约（2026-08-17 owner 裁决）：
+
+- 直接复用地图选择 UI 的 `ModBehaviour.GetAllMapConfigs()`；能够被 JSON registry 正常加载且包含非空 `sceneName`、`sceneID` 和 `spawnPoints` 的配置均为 Mode G 支持地图。首次有效读取形成零热路径分配的缓存快照，Mod runtime 销毁时由 `ResetStaticCaches()` 释放。
+- 入口 preview 按当前 active scene 冻结玩家实际选择的 exact `sceneName + sceneID`，不再固定首张地图。
+- 新增地图 JSON 会同时进入地图选择 UI 与 Mode G 支持集合；重复 pair、空字段或空刷新点仍 fail-closed。
 
 ## 5. 本地化契约
 
@@ -151,3 +166,19 @@ Breaking:
 - 删除 guard 覆盖的不变量。
 - 把 guard 检查对象移走但不更新脚本。
 - 新增子目录后让 guard 漏扫。
+
+## 11. Mode G Boss 池发布契约
+
+2026-08-17 owner 已确认现有过滤 Boss 池可整体用于 Mode G：
+
+- 唯一来源是 `InitializeEnemyPresets()` + `GetFilteredEnemyPresets()`，不维护第二份硬编码 Boss 名单。
+- 托管三 Boss 的 Legacy preset 仍从普通官方池排除；空 key、同 stable key 多 preset 引用仍 fail-closed。
+- 至少 1 个唯一官方 key 即可启动。6 个是完整编排目标；池为 1-5 个时，`ModeGWavePlan` 使用本局 `runSeed` 从已有 stable key 确定性随机复制 primary/reserve，不伪造新 preset、不修改 run-scoped 快照。
+- `TrustConfiguredBossPool=true` 只批准现有池成员，不允许绕过池快照按任意字符串生成 Boss。
+- `disabledBosses` 继续影响过滤池；只有过滤后没有任何可用普通 Boss 时，Mode G 才不消费入场物品并拒绝启动。
+
+Mode G 入场与旧路牌契约（2026-08-18 owner 裁决）：
+
+- 玩家携带船票与宿命回响信物即可沿 Mode F 同类自动分流进入 Mode G，允许保留当前武器、装备、弹药和消耗品；营旗与血猎收发器仍按 Mode E/F 优先级拒绝 Mode G。
+- 旧 BossRush 路牌只保留三个 Legacy 难度选项，不再注入 Mode G 第四项。过图后由短命 `ModeGInteractable` presenter 打开契约二选一确认页。
+- Mode G 不移动、卸下、复制或保险玩家装备；死亡损失继续服从当前地图的官方规则。

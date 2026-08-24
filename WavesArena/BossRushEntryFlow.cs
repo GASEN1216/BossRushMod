@@ -49,16 +49,22 @@ namespace BossRush
                     DevLog("[BossRush] " + context + ": 检测到船票+血猎收发器，但玩家不满足 Mode F 裸装条件，不进入 Mode F，继续后续入场判定");
                 }
 
-                // Mode G 检测：船票 + 宿命回响信物 + 裸装（优先级低于 Mode F）
-                Item relic = DetectFateEchoRelic();
-                if ((ticket != null || hasPrepaidTicket) && relic != null && transponder == null)
+                // Mode G 检测：发布闸关闭时完全不劫持旧入口。FreezeEntryIntent
+                // 发生在切图前，实际启动判定还必须命中 verified runtime scene。
+                bool modeGEntryEnabled = ModeGAvailability.IsProductionReady
+                    || ModeGAvailability.AllowDevTestEntry;
+                bool modeGSceneEligible = string.Equals(context, "FreezeEntryIntent", StringComparison.Ordinal)
+                    || ModeGMapSupportRegistry.IsVerifiedSceneName(SceneManager.GetActiveScene().name);
+                Item relic = modeGEntryEnabled && modeGSceneEligible ? DetectFateEchoRelic() : null;
+                if (modeGEntryEnabled && modeGSceneEligible
+                    && (ticket != null || hasPrepaidTicket) && relic != null && transponder == null)
                 {
-                    if (IsPlayerNakedForModeG())
+                    if (IsModeGLoadoutEligible())
                     {
                         return BossRushEntryMode.ModeG;
                     }
 
-                    DevLog("[BossRush] " + context + ": 检测到船票+宿命回响信物，但玩家不满足 Mode G 裸装条件，不进入 Mode G，继续后续入场判定");
+                    DevLog("[BossRush] " + context + ": 检测到船票+宿命回响信物，但玩家装备状态不满足 Mode G 入场条件，不进入 Mode G，继续后续入场判定");
                 }
 
                 if (!isPlayerNaked.HasValue)
@@ -77,6 +83,11 @@ namespace BossRush
             }
 
             return BossRushEntryMode.Normal;
+        }
+
+        internal bool IsModeGEntryIntentNow()
+        {
+            return DetermineBossRushEntryMode("FreezeEntryIntent") == BossRushEntryMode.ModeG;
         }
 
         private IEnumerator SetupBossRushInDemoChallenge(Scene scene)
@@ -148,12 +159,14 @@ namespace BossRush
             // Mode G 独立分支：成功或失败都不得落入普通 BossRush 初始化。
             if (entryMode == BossRushEntryMode.ModeG)
             {
-                DevLog("[BossRush] 检测到船票+宿命回响信物+裸装入场，将尝试启动 Mode G");
-                DisableAllSpawners();
-                ClearEnemiesForBossRush();
-
+                DevLog("[BossRush] 检测到船票+宿命回响信物，将保留玩家当前装备并尝试启动 Mode G");
                 yield return new WaitForSeconds(0.5f);
-                bool startedModeG = TryStartModeG();
+                bool openedModeG = ModeGInteractable.TryOpenConfirmation(this);
+                while (openedModeG && ModeGInteractable.IsConfirmationOpen)
+                {
+                    yield return null;
+                }
+                bool startedModeG = modeGActive;
                 if (startedModeG)
                 {
                     SpawnCommonNPCs("DEMO场景 Mode G 初始化完成");
@@ -161,12 +174,19 @@ namespace BossRush
                 }
                 else
                 {
-                    DevLog("[BossRush] [WARNING] Mode G 启动失败，已中止本次竞技场初始化");
-                    ShowMessage(L10n.T(
-                        "宿命回响启动失败，入场物品已恢复。",
-                        "Fate Echo failed to start. Entry items were restored."));
+                    if (ModeGInteractable.LastConfirmationAttemptedStart)
+                    {
+                        DevLog("[BossRush] [WARNING] Mode G 启动失败，已中止本次竞技场初始化");
+                        ShowMessage(L10n.T(
+                            "宿命回响启动失败，入场物品已恢复。",
+                            "Fate Echo failed to start. Entry items were restored."));
+                    }
+                    else
+                    {
+                        DevLog("[BossRush] Mode G 确认页已取消，竞技场环境保持不变");
+                    }
                 }
-                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                if (!openedModeG) TryRefundModeGPendingPrepaidTicket();
                 yield break;
             }
 

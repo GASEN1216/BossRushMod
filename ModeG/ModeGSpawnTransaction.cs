@@ -362,6 +362,7 @@ namespace BossRush
                     if (string.IsNullOrEmpty(name)) continue;
                     // 托管三 Boss 的 Legacy preset 不进 official 池（避免署名/官方重复出场）
                     if (IsModeGManagedLegacyPreset(pool[i])) continue;
+                    if (!ModeGOfficialBossEligibilityRegistry.IsEligible(name)) continue;
                     if (seen.Add(name)) keys.Add(name);
                 }
                 keys.Sort(StringComparer.Ordinal);
@@ -380,17 +381,21 @@ namespace BossRush
         internal EnemyPresetInfo FindModeGOfficialPresetByKey(string key)
         {
             if (string.IsNullOrEmpty(key)) return null;
+            if (!ModeGOfficialBossEligibilityRegistry.IsEligible(key)) return null;
             try
             {
                 List<EnemyPresetInfo> pool = GetFilteredEnemyPresets();
                 if (pool == null) return null;
+                EnemyPresetInfo found = null;
                 for (int i = 0; i < pool.Count; i++)
                 {
                     if (pool[i] != null && string.Equals(pool[i].name, key, StringComparison.Ordinal))
                     {
-                        return pool[i];
+                        if (found != null && !ReferenceEquals(found, pool[i])) return null;
+                        found = pool[i];
                     }
                 }
+                return found;
             }
             catch (Exception e)
             {
@@ -432,7 +437,9 @@ namespace BossRush
                     try
                     {
                         ItemStatsSystem.ItemMetaData meta = ItemStatsSystem.ItemAssetsCollection.GetMetaData(typeId);
-                        if (meta.id != typeId) continue;
+                        // Mode G 奖励池只消费现有 Boss 战利品中的 Q5-Q8 高品质候选；
+                        // 普通 BossRush 仍复用原始 Q1-Q8 搜索结果，不改变 Legacy 经济。
+                        if (meta.id != typeId || meta.quality < 5 || meta.quality > 8) continue;
                         candidates.Add(new ModeGRewardCandidate(typeId, meta.priceEach, meta.defaultStackCount));
                     }
                     catch { /* 单项失败跳过 */ }

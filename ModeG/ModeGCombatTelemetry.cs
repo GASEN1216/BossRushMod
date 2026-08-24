@@ -17,25 +17,72 @@ namespace BossRush
     }
 
     /// <summary>
-    /// Mode G 五条件纯函数直伤分类器（规格 §4/§20 guard 20）。
+    /// 只屏蔽 Mode G 遥测的同步 exact-Health 范围。
+    /// 不改写 DamageInfo，也不影响伤害、死亡归因、HitMarker 或其它模式。
+    /// </summary>
+    public static class ModeGTelemetrySuppressionScope
+    {
+        [ThreadStatic]
+        private static Health _suppressedHealth;
+
+        [ThreadStatic]
+        private static int _depth;
+
+        public struct Token : IDisposable
+        {
+            private readonly Health _previousHealth;
+            private readonly int _previousDepth;
+
+            internal Token(Health previousHealth, int previousDepth)
+            {
+                _previousHealth = previousHealth;
+                _previousDepth = previousDepth;
+            }
+
+            public void Dispose()
+            {
+                _suppressedHealth = _previousHealth;
+                _depth = _previousDepth;
+            }
+        }
+
+        public static Token Enter(Health health)
+        {
+            Token token = new Token(_suppressedHealth, _depth);
+            _suppressedHealth = health;
+            _depth++;
+            return token;
+        }
+
+        public static bool IsActiveFor(Health health)
+        {
+            return _depth > 0 && health != null && ReferenceEquals(_suppressedHealth, health);
+        }
+    }
+
+    /// <summary>
+    /// Mode G 直伤分类器（规格 §4/§20 guard 20）。
     /// 无状态、无分配、不 GetComponent。
     /// </summary>
     public static class ModeGDirectDamageClassifier
     {
         /// <summary>
-        /// 五条件判定：
+        /// 判定条件：
         /// 1. 目标是已登记 Boss（exact Health 引用身份，调用方预查）；
         /// 2. 伤害来源是当前玩家角色（引用身份）；
         /// 3. 非 buff/效果来源（isFromBuffOrEffect == false）；
         /// 4. damageValue &gt; 0；
-        /// 5. damageType == normal（realDamage 等间接通道不计分）。
-        /// 通过后按开火武装状态区分 Gun/Melee。
+        /// 5. damageType == normal（realDamage 等间接通道不计分）；
+        /// 6. 非 exact telemetry suppression；
+        /// 7. fromWeaponItemID &gt; 0 且 metadata 明确为 Gun/Melee。
         /// </summary>
         public static ModeGDirectDamageClass Classify(
             bool isRegisteredBoss,
             CharacterMainControl player,
             DamageInfo info,
-            bool gunArmedRecently)
+            bool sourceContaminated,
+            bool exactSuppressionActive,
+            ModeGDirectDamageClass metadataFamily)
         {
             // 条件 1
             if (!isRegisteredBoss) return ModeGDirectDamageClass.NotScoreable;
@@ -45,10 +92,20 @@ namespace BossRush
             if (info.isFromBuffOrEffect) return ModeGDirectDamageClass.NotScoreable;
             // 条件 4
             if (info.damageValue <= 0f) return ModeGDirectDamageClass.NotScoreable;
+            if (float.IsNaN(info.damageValue) || float.IsInfinity(info.damageValue))
+                return ModeGDirectDamageClass.NotScoreable;
             // 条件 5
             if (info.damageType != DamageTypes.normal) return ModeGDirectDamageClass.NotScoreable;
+            // 条件 6
+            if (sourceContaminated || exactSuppressionActive)
+                return ModeGDirectDamageClass.NotScoreable;
+            // 条件 7
+            if (info.fromWeaponItemID <= 0) return ModeGDirectDamageClass.NotScoreable;
+            if (metadataFamily != ModeGDirectDamageClass.Gun
+                && metadataFamily != ModeGDirectDamageClass.Melee)
+                return ModeGDirectDamageClass.NotScoreable;
 
-            return gunArmedRecently ? ModeGDirectDamageClass.Gun : ModeGDirectDamageClass.Melee;
+            return metadataFamily;
         }
     }
 
@@ -96,9 +153,6 @@ namespace BossRush
         private const float ExtremeFarSq = ExtremeFarDistance * ExtremeFarDistance;
         private const float ExtremeCloseSq = ExtremeCloseDistance * ExtremeCloseDistance;
 
-        /// <summary>开火武装记忆窗口（秒）：最近一次开火后此窗口内伤害记为 Gun（owner tunable 0.5s）</summary>
-        private const float GunArmedWindowSeconds = 0.5f;
-
         #endregion
 
         #region Preallocated Caches（Starting 一次分配，波间 Clear）
@@ -107,15 +161,16 @@ namespace BossRush
         private readonly Dictionary<int, double> _ammoThreat = new Dictionary<int, double>(AmmoCacheCapacity);
         // 32：弹药开火计数（ammo TypeID -> shots）
         private readonly Dictionary<int, int> _ammoShotCount = new Dictionary<int, int>(AmmoCacheCapacity);
-        // 64：weapon-family 开火计数（weapon TypeID -> shots）
-        private readonly Dictionary<int, int> _weaponFamilyShots = new Dictionary<int, int>(WeaponFamilyCacheCapacity);
+        // 64：weapon TypeID -> metadata family（Unknown 也缓存为 NotScoreable）
+        private readonly Dictionary<int, ModeGDirectDamageClass> _weaponFamilyCache
+            = new Dictionary<int, ModeGDirectDamageClass>(WeaponFamilyCacheCapacity);
+        // 32：ammo TypeID -> 纯数据 profile；不持有 Item/Prefab 引用
+        private readonly Dictionary<int, BulletThreatProfile> _ammoThreatProfileCache
+            = new Dictionary<int, BulletThreatProfile>(AmmoCacheCapacity);
         // 3：per-Boss 直伤累计（exact Health -> damage）
         private readonly Dictionary<Health, float> _bossDirectDamage = new Dictionary<Health, float>(BossCacheCapacity);
         // 3：已点名弹种（Armed ban 历史）
         private readonly HashSet<int> _namedAmmo = new HashSet<int>();
-
-        // gun agent -> 武器 TypeID（一次解析，避免热路径重复查询）
-        private readonly Dictionary<ItemAgent_Gun, int> _gunWeaponTypeIdCache = new Dictionary<ItemAgent_Gun, int>(WeaponFamilyCacheCapacity);
 
         #endregion
 
@@ -130,15 +185,18 @@ namespace BossRush
 
         // 战斗事实
         private CharacterMainControl _playerCharacter;
-        private float _lastGunShotTime = -1000f;
         private bool _contaminationByCharacterSwitch; // 控制角色变化：单向置位
         private int _armedBanAmmoTypeId;             // 当前波 Armed ban（exact TargetBulletID 比较）
+        private int _shotSequence;                    // run-scoped 成功开火序号（Calm/Spawning guard）
+        private bool _ammoSampleValid = true;         // 生成期预射后单向关闭本波学习样本
         private float _combatStartAggregatePrimaryMaxHealth; // 波开始聚合主 Boss 最大生命和
 
         // 聚合计数
         private float _totalDirectDamage;
         private float _gunDirectDamage;
         private float _meleeDirectDamage;
+        private float _closeExtremeDirectDamage;
+        private float _farExtremeDirectDamage;
         private int _totalShotCount;
         private int _closeHitCount;    // <=8m 命中
         private int _farHitCount;      // >=18m 命中
@@ -148,6 +206,13 @@ namespace BossRush
         /// <summary>距离轴样本：战斗开始时的玩家-主 Boss XZ 平方距离累计</summary>
         private double _distanceSqSum;
         private int _distanceSampleCount;
+
+        private struct BulletThreatProfile
+        {
+            public bool valid;
+            public float damageMultiplier;
+            public float explosionDamage;
+        }
 
         public ModeGCombatTelemetry(ModeGRunState state, Action<Health, DamageInfo> onBossDeadCallback)
         {
@@ -234,11 +299,15 @@ namespace BossRush
         /// </summary>
         public void BeginWave(CharacterMainControl player, float aggregatePrimaryMaxHealth)
         {
+            int preCombatBanViolations = _armedBanAmmoTypeId > 0
+                ? _armedBanViolationCount
+                : 0;
             _playerCharacter = player;
             _combatStartAggregatePrimaryMaxHealth = aggregatePrimaryMaxHealth;
             _contaminationByCharacterSwitch = false;
-            _armedBanAmmoTypeId = 0;
+            _ammoSampleValid = true;
             ClearWaveCaches();
+            _armedBanViolationCount = preCombatBanViolations;
         }
 
         /// <summary>
@@ -248,12 +317,13 @@ namespace BossRush
         {
             _ammoThreat.Clear();
             _ammoShotCount.Clear();
-            _weaponFamilyShots.Clear();
             _bossDirectDamage.Clear();
             // _namedAmmo 跨波保留（已点名历史，上限 NamedAmmoCapacity）
             _totalDirectDamage = 0f;
             _gunDirectDamage = 0f;
             _meleeDirectDamage = 0f;
+            _closeExtremeDirectDamage = 0f;
+            _farExtremeDirectDamage = 0f;
             _totalShotCount = 0;
             _closeHitCount = 0;
             _farHitCount = 0;
@@ -268,6 +338,10 @@ namespace BossRush
         /// </summary>
         public void ArmAmmoBan(int ammoTypeId)
         {
+            if (_armedBanAmmoTypeId != ammoTypeId)
+            {
+                _armedBanViolationCount = 0;
+            }
             _armedBanAmmoTypeId = ammoTypeId;
             if (ammoTypeId > 0 && _namedAmmo.Count < NamedAmmoCapacity)
             {
@@ -276,6 +350,20 @@ namespace BossRush
         }
 
         public int ArmedBanAmmoTypeId { get { return _armedBanAmmoTypeId; } }
+
+        public int ShotSequence { get { return _shotSequence; } }
+
+        public bool IsAmmoSampleValid { get { return _ammoSampleValid; } }
+
+        public void InvalidateAmmoSample()
+        {
+            _ammoSampleValid = false;
+        }
+
+        public void DisarmAmmoBan()
+        {
+            _armedBanAmmoTypeId = 0;
+        }
 
         #endregion
 
@@ -290,9 +378,14 @@ namespace BossRush
                 if (health == null) return;
                 if (!_state.IsRegisteredBossHealth(health)) return;
 
-                bool gunArmed = (UnityEngine.Time.time - _lastGunShotTime) <= GunArmedWindowSeconds;
+                ModeGDirectDamageClass family = ResolveWeaponFamily(info.fromWeaponItemID, false);
                 ModeGDirectDamageClass cls = ModeGDirectDamageClassifier.Classify(
-                    true, _playerCharacter, info, gunArmed);
+                    true,
+                    _playerCharacter,
+                    info,
+                    _contaminationByCharacterSwitch,
+                    ModeGTelemetrySuppressionScope.IsActiveFor(health),
+                    family);
                 if (cls == ModeGDirectDamageClass.NotScoreable) return;
 
                 float amount = info.damageValue;
@@ -319,8 +412,16 @@ namespace BossRush
                     float sq = dx * dx + dz * dz;
                     _distanceSqSum += sq;
                     _distanceSampleCount++;
-                    if (sq <= ExtremeCloseSq) _closeHitCount++;
-                    else if (sq >= ExtremeFarSq) _farHitCount++;
+                    if (sq <= ExtremeCloseSq)
+                    {
+                        _closeHitCount++;
+                        _closeExtremeDirectDamage += amount;
+                    }
+                    else if (sq >= ExtremeFarSq)
+                    {
+                        _farHitCount++;
+                        _farExtremeDirectDamage += amount;
+                    }
                 }
             }
             catch
@@ -333,33 +434,12 @@ namespace BossRush
         {
             try
             {
-                if (_state == null || !_state.IsCombatActive) return;
+                if (_state == null || !_state.IsActive) return;
                 if (gun == null) return;
 
-                _lastGunShotTime = UnityEngine.Time.time;
-                _totalShotCount++;
-
-                // 武器 family 计数（一次解析缓存，overflow 关分）
-                int weaponTypeId;
-                if (!_gunWeaponTypeIdCache.TryGetValue(gun, out weaponTypeId))
-                {
-                    weaponTypeId = ResolveWeaponTypeId(gun);
-                    if (_gunWeaponTypeIdCache.Count < WeaponFamilyCacheCapacity)
-                    {
-                        _gunWeaponTypeIdCache[gun] = weaponTypeId;
-                    }
-                }
-                if (weaponTypeId > 0 &&
-                    (_weaponFamilyShots.Count < WeaponFamilyCacheCapacity || _weaponFamilyShots.ContainsKey(weaponTypeId)))
-                {
-                    int shots;
-                    _weaponFamilyShots.TryGetValue(weaponTypeId, out shots);
-                    _weaponFamilyShots[weaponTypeId] = shots + 1;
-                }
-
-                // 弹药采样与威胁公式
-                ItemStatsSystem.Item bullet = gun.BulletItem;
-                int ammoTypeId = bullet != null ? bullet.TypeID : 0;
+                ItemSetting_Gun gunSetting = gun.GunItemSetting;
+                int ammoTypeId = gunSetting != null ? gunSetting.TargetBulletID : 0;
+                _shotSequence++;
                 if (ammoTypeId > 0)
                 {
                     // Armed ban：仅 exact TargetBulletID 比较（禁 SetTargetBulletType）
@@ -368,35 +448,41 @@ namespace BossRush
                         _armedBanViolationCount++;
                     }
 
+                    // 只在第 2/5/8 波（0-based 1/4/7）Fighting/LastStand
+                    // 记录下一宿敌波要消费的弹药样本。
+                    bool samplingWave = _state.waveEpoch == 1
+                        || _state.waveEpoch == 4
+                        || _state.waveEpoch == 7;
+                    if (!samplingWave
+                        || !_ammoSampleValid
+                        || (_state.combatPhase != ModeGCombatPhase.Fighting
+                            && _state.combatPhase != ModeGCombatPhase.LastStand)) return;
+
+                    BulletThreatProfile profile;
+                    if (!TryGetBulletThreatProfile(ammoTypeId, out profile)) return;
+
+                    int clampedProjectiles = gun.ShotCount;
+                    if (clampedProjectiles < 1 || clampedProjectiles > ProjectileThreatCountCap) return;
+                    double characterMultiplier = gun.CharacterDamageMultiplier;
+                    double directThreat = gun.Damage * profile.damageMultiplier * characterMultiplier;
+                    double explosionThreat = profile.explosionDamage * gun.ExplosionDamageMultiplier
+                        * characterMultiplier * clampedProjectiles;
+                    double rawThreat = directThreat + explosionThreat;
+                    double perShotCap = _combatStartAggregatePrimaryMaxHealth * 0.10;
+                    if (double.IsNaN(rawThreat) || double.IsInfinity(rawThreat)
+                        || rawThreat < 0.0 || perShotCap <= 0.0) return;
+                    if (rawThreat > perShotCap) rawThreat = perShotCap;
+
                     if (_ammoShotCount.Count < AmmoCacheCapacity || _ammoShotCount.ContainsKey(ammoTypeId))
                     {
+                        _totalShotCount++;
                         int shots;
                         _ammoShotCount.TryGetValue(ammoTypeId, out shots);
                         _ammoShotCount[ammoTypeId] = shots + 1;
 
-                        // directThreat = Damage×BulletDamageMultiplier×CharacterDamageMultiplier
-                        float bulletDamage = 0f;
-                        float explosionDamageConst = 0f;
-                        try
-                        {
-                            bulletDamage = bullet.Constants.GetFloat(ConstKey_DamageMultiplier, 0f);
-                            explosionDamageConst = bullet.Constants.GetFloat(ConstKey_ExplosionDamage, 0f);
-                            // ExplosionRange 供距离轴/呈现参考（读取但不参与威胁分）
-                            bullet.Constants.GetFloat(ConstKey_ExplosionRange, 0f);
-                        }
-                        catch { /* 常量读取失败不影响计分 */ }
-
-                        double directThreat = bulletDamage * gun.BulletDamageMultiplier * gun.CharacterDamageMultiplier;
-                        // explosionThreat = BulletExplosionDamage×ExplosionDamageMultiplier×CharacterDamageMultiplier×clamp(ShotCount,1,cap)
-                        int clampedShots = gun.ShotCount;
-                        if (clampedShots < 1) clampedShots = 1;
-                        if (clampedShots > ProjectileThreatCountCap) clampedShots = ProjectileThreatCountCap;
-                        double explosionThreat = explosionDamageConst * gun.ExplosionDamageMultiplier
-                            * gun.CharacterDamageMultiplier * clampedShots;
-
                         double prev;
                         _ammoThreat.TryGetValue(ammoTypeId, out prev);
-                        _ammoThreat[ammoTypeId] = prev + directThreat + explosionThreat;
+                        _ammoThreat[ammoTypeId] = prev + rawThreat;
                     }
                 }
             }
@@ -429,16 +515,85 @@ namespace BossRush
             catch { /* no-throw */ }
         }
 
-        private static int ResolveWeaponTypeId(ItemAgent_Gun gun)
+        private ModeGDirectDamageClass ResolveWeaponFamily(int weaponTypeId, bool terminalCredit)
         {
+            if (weaponTypeId <= 0) return ModeGDirectDamageClass.NotScoreable;
+
+            ModeGWeaponScoringEntry matrixEntry;
+            if (ModeGWeaponScoringCompatibilityMatrix.TryGetEntryByTypeId(weaponTypeId, out matrixEntry))
+            {
+                if (terminalCredit ? !matrixEntry.TerminalCreditAllowed : !matrixEntry.NormalAttackScoreable)
+                    return ModeGDirectDamageClass.NotScoreable;
+                if (matrixEntry.NormalAttackFamily == WeaponFamily.Gun) return ModeGDirectDamageClass.Gun;
+                if (matrixEntry.NormalAttackFamily == WeaponFamily.Melee) return ModeGDirectDamageClass.Melee;
+                return ModeGDirectDamageClass.NotScoreable;
+            }
+
+            ModeGDirectDamageClass cached;
+            if (_weaponFamilyCache.TryGetValue(weaponTypeId, out cached)) return cached;
+            if (_weaponFamilyCache.Count >= WeaponFamilyCacheCapacity)
+                return ModeGDirectDamageClass.NotScoreable;
+
+            ModeGDirectDamageClass resolved = ModeGDirectDamageClass.NotScoreable;
             try
             {
-                // ItemAgent.item 为武器 Item 实例（官方标准引用）
-                ItemStatsSystem.Item weapon = gun.Item;
-                if (weapon != null) return weapon.TypeID;
+                ItemStatsSystem.ItemMetaData metaData = ItemStatsSystem.ItemAssetsCollection.GetMetaData(weaponTypeId);
+                bool gun = false;
+                bool melee = false;
+                if (metaData.id > 0 && metaData.tags != null)
+                {
+                    for (int i = 0; i < metaData.tags.Length; i++)
+                    {
+                        Duckov.Utilities.Tag tag = metaData.tags[i];
+                        if (tag == null) continue;
+                        if (string.Equals(tag.name, "Gun", StringComparison.Ordinal)) gun = true;
+                        else if (string.Equals(tag.name, "MeleeWeapon", StringComparison.Ordinal)
+                            || string.Equals(tag.name, "Melee", StringComparison.Ordinal)) melee = true;
+                    }
+                }
+                if (gun != melee)
+                    resolved = gun ? ModeGDirectDamageClass.Gun : ModeGDirectDamageClass.Melee;
             }
-            catch { }
-            return 0;
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] 武器 family 元数据解析失败 typeId="
+                    + weaponTypeId + ": " + e.Message);
+            }
+            _weaponFamilyCache[weaponTypeId] = resolved;
+            return resolved;
+        }
+
+        private bool TryGetBulletThreatProfile(int ammoTypeId, out BulletThreatProfile profile)
+        {
+            if (_ammoThreatProfileCache.TryGetValue(ammoTypeId, out profile)) return profile.valid;
+            profile = default(BulletThreatProfile);
+            if (ammoTypeId <= 0 || _ammoThreatProfileCache.Count >= AmmoCacheCapacity) return false;
+            try
+            {
+                ItemStatsSystem.Item prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(ammoTypeId);
+                if (prefab != null && prefab.TypeID == ammoTypeId && prefab.Constants != null)
+                {
+                    float damageMultiplier = prefab.Constants.GetFloat(ConstKey_DamageMultiplier, float.NaN);
+                    float explosionDamage = prefab.Constants.GetFloat(ConstKey_ExplosionDamage, float.NaN);
+                    float explosionRange = prefab.Constants.GetFloat(ConstKey_ExplosionRange, float.NaN);
+                    if (!float.IsNaN(damageMultiplier) && !float.IsInfinity(damageMultiplier)
+                        && !float.IsNaN(explosionDamage) && !float.IsInfinity(explosionDamage)
+                        && !float.IsNaN(explosionRange) && !float.IsInfinity(explosionRange)
+                        && damageMultiplier >= 0f && explosionDamage >= 0f && explosionRange >= 0f)
+                    {
+                        profile.valid = true;
+                        profile.damageMultiplier = damageMultiplier;
+                        profile.explosionDamage = explosionDamage;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] 弹药威胁元数据解析失败 typeId="
+                    + ammoTypeId + ": " + e.Message);
+            }
+            _ammoThreatProfileCache[ammoTypeId] = profile;
+            return profile.valid;
         }
 
         #endregion
@@ -448,6 +603,8 @@ namespace BossRush
         public float TotalDirectDamage { get { return _totalDirectDamage; } }
         public float GunDirectDamage { get { return _gunDirectDamage; } }
         public float MeleeDirectDamage { get { return _meleeDirectDamage; } }
+        public float CloseExtremeDirectDamage { get { return _closeExtremeDirectDamage; } }
+        public float FarExtremeDirectDamage { get { return _farExtremeDirectDamage; } }
         public int TotalShotCount { get { return _totalShotCount; } }
         public int CloseHitCount { get { return _closeHitCount; } }
         public int FarHitCount { get { return _farHitCount; } }
@@ -488,6 +645,41 @@ namespace BossRush
             get { return _totalScoreableHits > 0 ? _closeHitCount / (float)_totalScoreableHits : 0f; }
         }
 
+        public float CloseExtremeDamageShare
+        {
+            get { return _totalDirectDamage > 0f ? _closeExtremeDirectDamage / _totalDirectDamage : 0f; }
+        }
+
+        public float FarExtremeDamageShare
+        {
+            get { return _totalDirectDamage > 0f ? _farExtremeDirectDamage / _totalDirectDamage : 0f; }
+        }
+
+        public ModeGDirectDamageClass ClassifyTerminalDamage(Health health, DamageInfo info)
+        {
+            ModeGDirectDamageClass family = ResolveWeaponFamily(info.fromWeaponItemID, true);
+            return ModeGDirectDamageClassifier.Classify(
+                true,
+                _playerCharacter,
+                info,
+                _contaminationByCharacterSwitch,
+                ModeGTelemetrySuppressionScope.IsActiveFor(health),
+                family);
+        }
+
+        public ModeGDistanceVerdict ClassifyTerminalDistance(Health health, DamageInfo info)
+        {
+            if (ClassifyTerminalDamage(health, info) == ModeGDirectDamageClass.NotScoreable
+                || _playerCharacter == null) return ModeGDistanceVerdict.None;
+            UnityEngine.Vector3 a = info.damagePoint;
+            UnityEngine.Vector3 b = _playerCharacter.transform.position;
+            float dx = a.x - b.x;
+            float dz = a.z - b.z;
+            return dx * dx + dz * dz <= BoundarySq
+                ? ModeGDistanceVerdict.Close
+                : ModeGDistanceVerdict.Far;
+        }
+
         /// <summary>
         /// 平均交战距离（米，开方一次仅在读取时）。
         /// </summary>
@@ -514,6 +706,11 @@ namespace BossRush
         /// 已点名弹种只读视图。
         /// </summary>
         public IEnumerable<int> NamedAmmoTypeIds { get { return _namedAmmo; } }
+
+        public bool WasAmmoNamed(int ammoTypeId)
+        {
+            return ammoTypeId > 0 && _namedAmmo.Contains(ammoTypeId);
+        }
 
         /// <summary>
         /// 某 Boss 的直伤贡献占聚合主 Boss 最大血量的比例（0..1+）。

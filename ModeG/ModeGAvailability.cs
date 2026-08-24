@@ -2,16 +2,15 @@ namespace BossRush
 {
     /// <summary>
     /// Mode G 正式可用性门控。
-    /// Phase 0A/0B/1-4 全部通过前 IsProductionReady 必须为 false。
-    /// 只有 owner 签署 Phase0A=Go、完成 release checklist 后才允许改为 true。
-    /// 切换为 true 的同一变更必须包含全部 adapter eligibility、官方 6-key/适应能力 inventory、
-    /// 武器计分矩阵、strict reward、存档、支持地图、展示 AssetBundle、性能、复玩指标和原模式回归 guard。
+    /// 正式发布由 owner 显式裁决；开发直入和 raw PNG fallback 与正式入口独立。
     /// </summary>
     public static class ModeGAvailability
     {
         /// <summary>
-        /// 正式路牌是否显示。Phase 0A-4 全部通过前必须为 false。
+        /// 正式路牌是否显示。
         /// </summary>
+        // Owner release decision: the configured Boss pool and every map exposed by
+        // the BossRush map-selection UI are approved for Mode G production use.
         public const bool IsProductionReady = true;
 
         /// <summary>

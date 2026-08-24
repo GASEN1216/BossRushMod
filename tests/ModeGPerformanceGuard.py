@@ -73,7 +73,8 @@ def main():
              "预分配容量常量 32/32/64/3/3 冻结"),
             ("PreallocatedCaches",
              r"new Dictionary<int, double>\(AmmoCacheCapacity\)"
-             r"[\s\S]*?new Dictionary<int, int>\(WeaponFamilyCacheCapacity\)"
+             r"[\s\S]*?new Dictionary<int, ModeGDirectDamageClass>\(WeaponFamilyCacheCapacity\)"
+             r"[\s\S]*?new Dictionary<int, BulletThreatProfile>\(AmmoCacheCapacity\)"
              r"[\s\S]*?new Dictionary<Health, float>\(BossCacheCapacity\)",
              "遥测字典按容量预分配"),
         ]

@@ -68,6 +68,9 @@ namespace BossRush
         private bool _startupRelicRefundable;
         private bool _startupRefundSettled;
         private bool _batchActivationInProgress;
+        private Health _victorySafetyHealth;
+        private bool _victorySafetyPreviousInvincible;
+        private bool _victorySafetyArmed;
         private int _lastDrivenFrame = -1;
 
         // 遥测/契约统计
@@ -81,100 +84,22 @@ namespace BossRush
         private int _ammoBanNemesisWaveCount;
         private bool _nemesisR3FinalBlowDirect;
         private bool _nemesisDefeatedThisRun;
+        private ModeGDirectDamageClass _lastTerminalFamily = ModeGDirectDamageClass.NotScoreable;
+        private ModeGDistanceVerdict _lastTerminalDistance = ModeGDistanceVerdict.None;
+        private ModeGDistanceVerdict _activeDistanceVerdict = ModeGDistanceVerdict.None;
+        private int _preparedAmmoBanWaveEpoch = -1;
+        private int _preparedAmmoBanTypeId = -1;
+        private int _preparedAmmoBanThreatSharePercent;
+        private int _intermissionObservedShotSequence;
         private string _runNemesisKey; // 本局出场宿敌 key（可能与持久化记录不同）
+        private int _runNemesisStartingRank = 1;
+        private ModeGNemesisTemperament _runNemesisTemperament = ModeGNemesisTemperament.None;
         private readonly int[] _resolvesPerAct = new int[3];
 
         // 三轴本局尝试计数（recap near-miss 呈现用；尝试=该轴反制生效的波数）
         private int _axisAttemptDistance;
         private int _axisAttemptAmmo;
         private int _axisAttemptAttribute;
-
-        #endregion
-
-        #region Public API（DeathRouting / HUD / SpawnTransaction 消费）
-
-        public ModeGRunState State { get { return _state; } }
-        public ModBehaviour Host { get { return _host; } }
-        public ModeGEntryPreview Preview { get { return _preview; } }
-        public ModeGWavePlan WavePlan { get { return _wavePlan; } }
-        public ModeGCombatTelemetry Telemetry { get { return _telemetry; } }
-        public ModeGSpawnTransaction SpawnTransaction { get { return _spawnTransaction; } }
-        public ModeGAdaptiveCombat Adaptive { get { return _adaptive; } }
-        public int TotalBossKills { get { return _totalBossKills; } }
-        public bool IsNemesisDefeatedThisRun { get { return _nemesisDefeatedThisRun; } }
-
-        public void ArmStartupRefund(bool refundTicket, bool refundRelic)
-        {
-            _startupTicketRefundable = refundTicket;
-            _startupRelicRefundable = refundRelic;
-            _startupRefundSettled = false;
-        }
-
-        public void DisarmStartupRefund()
-        {
-            _startupRefundSettled = true;
-            _startupTicketRefundable = false;
-            _startupRelicRefundable = false;
-        }
-
-        // 三轴本局尝试计数（recap 呈现层只读消费）
-        public int AxisAttemptDistance { get { return _axisAttemptDistance; } }
-        public int AxisAttemptAmmo { get { return _axisAttemptAmmo; } }
-        public int AxisAttemptAttribute { get { return _axisAttemptAttribute; } }
-
-        public float RunElapsedSeconds
-        {
-            get
-            {
-                if (_state == null) return 0f;
-                return (float)((DateTime.UtcNow.Ticks - _state.runTimestampTicks) / (double)TimeSpan.TicksPerSecond);
-            }
-        }
-
-        /// <summary>
-        /// 已登记 Boss Character 的冻结 preset key 查询（宿敌归因用）。
-        /// </summary>
-        public bool TryGetRegisteredBossPresetKey(CharacterMainControl character, out string presetKey)
-        {
-            presetKey = null;
-            if (_spawnTransaction == null) return false;
-            return _spawnTransaction.TryGetCommittedKey(character, out presetKey);
-        }
-
-        /// <summary>
-        /// 登记托管 Boss handle（Dispatcher 成功激活后调用；End 统一清理）。
-        /// </summary>
-        public void RegisterManagedHandle(ManagedBossRuntimeHandle handle)
-        {
-            if (handle == null) return;
-            lock (_managedHandles)
-            {
-                _managedHandles.Add(handle);
-            }
-        }
-
-        /// <summary>
-        /// 组装契约进度快照（终局评估用）。
-        /// </summary>
-        public ModeGContractProgress BuildContractProgress()
-        {
-            ModeGContractProgress p = new ModeGContractProgress();
-            if (_adaptive != null)
-            {
-                p.distanceResolves = _adaptive.ResolveDistance;
-                p.ammoResolves = _adaptive.ResolveAmmo;
-                p.attributeResolves = _adaptive.ResolveAttribute;
-            }
-            p.lastStandCount = _lastStandCount;
-            p.nemesisR3FinalBlowDirect = _nemesisR3FinalBlowDirect;
-            p.maxConsecutiveAxisBreaks = _maxAxisBreakChain;
-            p.resolvesPerAct = (int[])_resolvesPerAct.Clone();
-            p.distanceEchoCount = _distanceEchoCount;
-            p.ammoBanCount = _ammoBanCount;
-            p.attributeLockCount = _attributeLockCount;
-            p.ammoBanAvailableOnNemesisWaves = _ammoBanNemesisWaveCount;
-            return p;
-        }
 
         #endregion
 
@@ -210,14 +135,17 @@ namespace BossRush
                 }
 
                 ModeGNemesisPersistence.NemesisRecordDto nemesis = ModeGNemesisPersistence.LoadOrInit();
-                int temperamentId = nemesis != null ? nemesis.temperamentId : (int)ModeGNemesisTemperament.None;
+                string persistedNemesisKey = nemesis != null && !nemesis.tombstone
+                    ? nemesis.bossPresetKey : null;
+                _runNemesisTemperament = ModeGAdaptiveCombat.SelectNemesisTemperament(state.runSeed);
                 _wavePlan = ModeGWavePlan.Build(
                     state.runSeed,
                     preview.runFormat,
                     signatures,
                     _snapshot.officialKeys,
                     state.fateContractId,
-                    temperamentId,
+                    persistedNemesisKey,
+                    (int)_runNemesisTemperament,
                     SeenFingerprints);
                 if (_wavePlan == null)
                 {
@@ -225,6 +153,22 @@ namespace BossRush
                     return false;
                 }
                 SeenFingerprints.Add(_wavePlan.planFingerprint);
+                _runNemesisKey = _wavePlan.nemesisPresetKey;
+                bool hasPersistentNemesis = nemesis != null && !nemesis.tombstone
+                    && !string.IsNullOrEmpty(nemesis.bossPresetKey);
+                bool persistentNemesisSelected = hasPersistentNemesis
+                    && string.Equals(nemesis.bossPresetKey, _runNemesisKey, StringComparison.Ordinal);
+                state.nemesisSelectionSource = ModeGNemesisPersistence.HasWriteBarrier
+                    || (hasPersistentNemesis && !persistentNemesisSelected)
+                    ? ModeGNemesisSelectionSource.SuspendedPersistentV1
+                    : (persistentNemesisSelected
+                        ? ModeGNemesisSelectionSource.PersistentV1
+                        : ModeGNemesisSelectionSource.TemporaryMissing);
+                if (persistentNemesisSelected)
+                {
+                    _runNemesisStartingRank = Math.Max(1,
+                        Math.Min(ModeGNemesisPersistence.MaxRank, nemesis.rank));
+                }
 
                 _telemetry = new ModeGCombatTelemetry(state, HandleBossDead);
                 _spawnTransaction = new ModeGSpawnTransaction(state);
@@ -261,9 +205,16 @@ namespace BossRush
                 _telemetry.SubscribeCombat();
                 SubscribePlayerDeath();
 
-                _host.PrepareModeGArenaRuntime();
-
                 if (!_state.TryAdvanceLifecycle(ModeGLifecyclePhase.Active)) return false;
+
+                // Commit destructive scene ownership only after initialization and lifecycle
+                // validation have succeeded, immediately before the first async wave starts.
+                if (!_host.PrepareModeGArenaRuntime(_preview)
+                    || !_host.CommitModeGArenaEntry(_preview))
+                {
+                    ModBehaviour.DevLog("[ModeG] StartRun 竞技场事务提交失败，首波未启动");
+                    return false;
+                }
 
                 try { _host.BeginModeGAchievementSession(); } catch { /* no-throw */ }
 
@@ -301,13 +252,19 @@ namespace BossRush
                 _state.combatPhase = ModeGCombatPhase.Spawning;
                 _state.intermissionActive = false;
                 _state.lastStandActive = false;
+                _lastTerminalFamily = ModeGDirectDamageClass.NotScoreable;
+                _activeDistanceVerdict = ModeGDistanceVerdict.None;
+                bool isAmmoSamplingWave = waveIndex == 1 || waveIndex == 4 || waveIndex == 7;
+                int spawningGuardShotSequence = _telemetry != null ? _telemetry.ShotSequence : 0;
                 if (!_state.TrySetWaveSlotPlan(wave.bossCount))
                 {
                     End(ModeGExitReason.TechnicalIntegrityLoss);
                     return;
                 }
 
-                Vector3[] positions = _host.GetModeGSpawnPositions(waveIndex, wave.bossCount, wave.variant);
+                Vector3[] positions = _host.GetModeGSpawnPositions(
+                    waveIndex, wave.bossCount, wave.variant,
+                    _runNemesisTemperament, wave.isNemesisWave);
                 if (positions == null || positions.Length < wave.bossCount)
                 {
                     End(ModeGExitReason.SpawnExhausted);
@@ -319,9 +276,13 @@ namespace BossRush
                 int armedAmmoTypeId = -1;
                 ModeGCounterAxis axis = ModeGAdaptiveCombat.GetAxisForWave(waveIndex);
                 int bannedAmmoThreatSharePercent = 0;
+                bool ammoBanAlreadyPublished = false;
                 if (axis == ModeGCounterAxis.Distance)
                 {
-                    distanceVerdict = ModeGAdaptiveCombat.EvaluateDistanceAxis(_telemetry);
+                    // 距离回声只消费上一署名波最后一名 Boss 的可信终结距离，
+                    // 不用上一整波命中分布替代 terminal credit。
+                    distanceVerdict = _lastTerminalDistance;
+                    _activeDistanceVerdict = distanceVerdict;
                     if (distanceVerdict != ModeGDistanceVerdict.None)
                     {
                         _distanceEchoCount++;
@@ -330,13 +291,25 @@ namespace BossRush
                 }
                 else if (axis == ModeGCounterAxis.Ammo)
                 {
-                    armedAmmoTypeId = ModeGAdaptiveCombat.SelectAmmoBan(_state.runSeed, waveIndex, _telemetry);
+                    if (_preparedAmmoBanWaveEpoch == waveIndex)
+                    {
+                        armedAmmoTypeId = _preparedAmmoBanTypeId;
+                        bannedAmmoThreatSharePercent = _preparedAmmoBanThreatSharePercent;
+                        ammoBanAlreadyPublished = armedAmmoTypeId > 0;
+                    }
+                    else
+                    {
+                        armedAmmoTypeId = ModeGAdaptiveCombat.SelectAmmoBan(_state.runSeed, waveIndex, _telemetry);
+                        bannedAmmoThreatSharePercent = GetAmmoThreatSharePercent(armedAmmoTypeId);
+                    }
                     if (armedAmmoTypeId > 0)
                     {
                         _axisAttemptAmmo++;
                         if (wave.isNemesisWave) _ammoBanNemesisWaveCount++;
-                        // 禁令归因占比：BeginWave 会 Clear 波级威胁缓存，必须在此捕获
-                        bannedAmmoThreatSharePercent = GetAmmoThreatSharePercent(armedAmmoTypeId);
+                    }
+                    if (armedAmmoTypeId > 0 && !ammoBanAlreadyPublished)
+                    {
+                        PublishAmmoBan(armedAmmoTypeId, bannedAmmoThreatSharePercent);
                     }
                 }
                 else if (axis == ModeGCounterAxis.Attribute)
@@ -360,7 +333,7 @@ namespace BossRush
 
                         string key = attempt == 0
                             ? wave.bossPresetKeys[slotIndex]
-                            : _wavePlan.reserveKeys[(waveIndex + slotIndex) % _wavePlan.reserveKeys.Length];
+                            : wave.reservePresetKeys[slotIndex];
 
                         ModeGSpawnTransaction.SpawnAttemptLease lease =
                             _spawnTransaction.TryAcquireLease(slotIndex, key);
@@ -372,14 +345,15 @@ namespace BossRush
                         ManagedBossPrepareResult prepared = null;
                         if (ModeGEncounterVariation.IsManagedSignatureKey(key))
                         {
-                            prepared = await SpawnManagedSlotAsync(
-                                info, key, positions[slotIndex], waveIndex);
+                            prepared = await AwaitSpawnAttemptWithTimeout(
+                                SpawnManagedSlotAsync(info, key, positions[slotIndex], waveIndex), key);
                         }
                         else
                         {
-                            prepared = await _host.SpawnModeGOfficialBossAsync(
-                                info, positions[slotIndex], waveIndex + 1,
-                                ctx => CommitOfficialSpawn(ctx));
+                            prepared = await AwaitSpawnAttemptWithTimeout(
+                                _host.SpawnModeGOfficialBossAsync(
+                                    info, positions[slotIndex], waveIndex + 1,
+                                    ctx => CommitOfficialSpawn(ctx)), key);
                         }
 
                         CharacterMainControl boss = prepared != null ? prepared.Character : null;
@@ -395,8 +369,19 @@ namespace BossRush
                         }
                         if (boss == null || boss.Health == null) continue;
 
+                        int modifierCheckpoint;
+                        if (!ApplyWaveModifiers(boss, wave, distanceVerdict, out modifierCheckpoint))
+                        {
+                            if (managedHandle != null)
+                                managedHandle.CleanupOnce(ManagedBossCleanupReason.SpawnRejected);
+                            else
+                                DestroyBoss(boss);
+                            continue;
+                        }
+
                         if (!_spawnTransaction.TryCommit(slotIndex, key, boss))
                         {
+                            _adaptive.RollbackToCheckpoint(modifierCheckpoint);
                             if (managedHandle != null)
                                 managedHandle.CleanupOnce(ManagedBossCleanupReason.SpawnRejected);
                             else
@@ -411,7 +396,6 @@ namespace BossRush
                         }
 
                         committed = true;
-                        ApplyWaveModifiers(boss, wave, distanceVerdict);
                     }
 
                     if (!committed) _spawnTransaction.MarkExhausted(slotIndex);
@@ -463,17 +447,19 @@ namespace BossRush
                     if (_healthScratch[i] != null) aggregateMaxHealth += _healthScratch[i].MaxHealth;
                 }
                 _telemetry.BeginWave(CharacterMainControl.Main, aggregateMaxHealth);
+                if (isAmmoSamplingWave && _telemetry.ShotSequence != spawningGuardShotSequence)
+                {
+                    _telemetry.InvalidateAmmoSample();
+                    ModBehaviour.DevLog("[ModeG] 生成期发生开火，本波弹药学习样本 fail-closed");
+                }
                 if (armedAmmoTypeId > 0)
                 {
                     _telemetry.ArmAmmoBan(armedAmmoTypeId);
-                    _ammoBanCount++;
-                    string bannedAmmoName = ModeGRecapPanel.GetAmmoDisplayName(armedAmmoTypeId);
-                    string banMessage = L10n.T("BossRush_ModeG_AmmoBan") + bannedAmmoName;
-                    string attribution = ModeGRecapPanel.ComposeBanAttributionLine(
-                        bannedAmmoName, bannedAmmoThreatSharePercent);
-                    if (!string.IsNullOrEmpty(attribution)) banMessage += "\n" + attribution;
-                    _host.ShowMessage(banMessage);
                 }
+
+                _preparedAmmoBanWaveEpoch = -1;
+                _preparedAmmoBanTypeId = -1;
+                _preparedAmmoBanThreatSharePercent = 0;
 
                 _state.combatPhase = ModeGCombatPhase.Fighting;
                 if (waveIndex == 0)
@@ -483,7 +469,8 @@ namespace BossRush
                     _startupTicketRefundable = false;
                     _startupRelicRefundable = false;
                 }
-                _host.ShowModeGWaveBanner(waveIndex, wave, axis);
+                _host.ShowModeGWaveBanner(waveIndex, wave, axis,
+                    wave.isNemesisWave ? _runNemesisTemperament : ModeGNemesisTemperament.None);
             }
             catch (Exception e)
             {
@@ -493,6 +480,75 @@ namespace BossRush
             finally
             {
                 _waveSpawnInFlight = false;
+            }
+        }
+
+        private async UniTask<ManagedBossPrepareResult> AwaitSpawnAttemptWithTimeout(
+            UniTask<ManagedBossPrepareResult> source, string presetKey)
+        {
+            UniTask<ManagedBossPrepareResult> pending = source.Preserve();
+            int sinkLease = ModeGLateCleanupSink.AcquireLease("spawn_factory:" + (presetKey ?? "unknown"));
+            float deadline = Time.realtimeSinceStartup + ModeGCleanupController.LateCleanupMaxWaitSeconds;
+            try
+            {
+                while (pending.Status == UniTaskStatus.Pending && CanContinueRun()
+                    && Time.realtimeSinceStartup < deadline)
+                {
+                    await UniTask.Yield();
+                }
+
+                if (pending.Status != UniTaskStatus.Pending)
+                {
+                    ManagedBossPrepareResult completed = await pending;
+                    ModeGLateCleanupSink.ReleaseLease(sinkLease);
+                    return completed;
+                }
+
+                if (CanContinueRun())
+                {
+                    _state.spawnLeasesInvalidated = true;
+                    ModBehaviour.DevLog("[ModeG] [ERROR] Boss factory 超过 15 秒，转入 late-cleanup: "
+                        + (presetKey ?? "unknown"));
+                    End(ModeGExitReason.TechnicalIntegrityLoss);
+                }
+                DrainLateSpawnAttemptAsync(pending, sinkLease, presetKey).Forget();
+                sinkLease = 0;
+                return null;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] Boss factory 等待异常 key="
+                    + (presetKey ?? "unknown") + ": " + e.Message);
+                return null;
+            }
+            finally
+            {
+                if (sinkLease > 0) ModeGLateCleanupSink.ReleaseLease(sinkLease);
+            }
+        }
+
+        private static async UniTaskVoid DrainLateSpawnAttemptAsync(
+            UniTask<ManagedBossPrepareResult> pending, int sinkLease, string presetKey)
+        {
+            try
+            {
+                ManagedBossPrepareResult late = await pending;
+                if (late != null)
+                {
+                    if (late.Handle != null)
+                        late.Handle.CleanupOnce(ManagedBossCleanupReason.OwnerInvalid);
+                    else if (late.Character != null)
+                        ModBehaviour.DestroyManagedCharacterQuiet(late.Character);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] late factory 清理异常 key="
+                    + (presetKey ?? "unknown") + ": " + e.Message);
+            }
+            finally
+            {
+                ModeGLateCleanupSink.ReleaseLease(sinkLease);
             }
         }
 
@@ -612,65 +668,59 @@ namespace BossRush
         /// <summary>
         /// 提交后波级修饰：阵营安全网、距离适应、宿敌 Rank、幕倍率。
         /// </summary>
-        private void ApplyWaveModifiers(CharacterMainControl boss, ModeGWavePlan.WaveSlot wave,
-            ModeGDistanceVerdict verdict)
+        private bool ApplyWaveModifiers(CharacterMainControl boss, ModeGWavePlan.WaveSlot wave,
+            ModeGDistanceVerdict verdict, out int modifierCheckpoint)
         {
-            if (boss == null) return;
+            modifierCheckpoint = _adaptive != null ? _adaptive.CreateModifierCheckpoint() : 0;
+            if (boss == null || wave == null || _adaptive == null) return false;
             try
             {
                 boss.SetTeam(Teams.wolf);
 
-                if (verdict == ModeGDistanceVerdict.Close) _adaptive.ApplyCloseAdaptation(boss);
-                else if (verdict == ModeGDistanceVerdict.Far) _adaptive.ApplyFarAdaptation(boss);
+                bool applied = true;
+                if (verdict == ModeGDistanceVerdict.Close)
+                    applied = _adaptive.ApplyCloseAdaptation(boss);
+                else if (verdict == ModeGDistanceVerdict.Far)
+                    applied = _adaptive.ApplyFarAdaptation(boss);
 
                 // 幕倍率（伤害/生命，owner tunable）
                 float healthBonus = ModeGAdaptiveCombat.GetActHealthBonus(wave.actIndex);
-                if (healthBonus > 0f && boss.Health != null)
-                {
-                    boss.Health.AddHealth(boss.Health.MaxHealth * healthBonus);
-                }
-                // 幕伤害倍率经 Stat Modifier 应用（PercentageAdd）
-                ApplyActDamageBonus(boss, wave.actIndex);
+                if (applied && healthBonus > 0f)
+                    applied = _adaptive.ApplyActHealthBonus(boss, wave.actIndex);
+                if (applied)
+                    applied = _adaptive.ApplyActDamageBonus(boss, wave.actIndex);
 
-                if (wave.isNemesisWave)
+                if (applied && wave.isNemesisWave)
                 {
-                    ModeGNemesisPersistence.NemesisRecordDto record = ModeGNemesisPersistence.LoadOrInit();
-                    int rank = record != null ? Math.Max(1, record.rank) : 1;
-                    _adaptive.ApplyNemesisRank(boss, rank);
+                    int rank = GetNemesisEncounterRank(wave.waveIndex);
+                    applied = _adaptive.ApplyNemesisRank(boss, rank)
+                        && _adaptive.ApplyNemesisTemperament(boss, _runNemesisTemperament);
 
                     // 记录本局出场宿敌 key（死亡归因/击败判定用）
-                    if (record != null && !string.IsNullOrEmpty(record.bossPresetKey))
-                    {
-                        _runNemesisKey = record.bossPresetKey;
-                    }
                 }
+
+                if (!applied)
+                {
+                    _adaptive.RollbackToCheckpoint(modifierCheckpoint);
+                    ModBehaviour.DevLog("[ModeG] Boss 强化能力验证失败，拒绝本次候选");
+                    return false;
+                }
+                return true;
             }
             catch (Exception e)
             {
+                try { _adaptive.RollbackToCheckpoint(modifierCheckpoint); } catch { }
                 ModBehaviour.DevLog("[ModeG] [WARNING] ApplyWaveModifiers 异常: " + e.Message);
+                return false;
             }
         }
 
-        private void ApplyActDamageBonus(CharacterMainControl boss, int actIndex)
+        private int GetNemesisEncounterRank(int waveIndex)
         {
-            float bonus = ModeGAdaptiveCombat.GetActDamageBonus(actIndex);
-            if (bonus <= 0f) return;
-            try
-            {
-                if (boss.CharacterItem == null) return;
-                foreach (string statName in new[] { "GunDamageMultiplier", "MeleeDamageMultiplier" })
-                {
-                    ItemStatsSystem.Stat stat = boss.CharacterItem.GetStat(statName);
-                    if (stat == null) continue;
-                    ItemStatsSystem.Stats.Modifier modifier = new ItemStatsSystem.Stats.Modifier(
-                        ItemStatsSystem.Stats.ModifierType.PercentageAdd, bonus, this);
-                    stat.AddModifier(modifier);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeG] [WARNING] 幕伤害倍率应用失败: " + e.Message);
-            }
+            if (waveIndex >= 8) return ModeGNemesisPersistence.MaxRank;
+            if (waveIndex >= 5)
+                return Math.Min(ModeGNemesisPersistence.MaxRank, _runNemesisStartingRank + 1);
+            return Math.Max(1, _runNemesisStartingRank);
         }
 
         #endregion
@@ -693,7 +743,42 @@ namespace BossRush
                 }
                 if (!_spawnTransaction.MarkKilled(health)) return;
                 _totalBossKills++;
+                if (_spawnTransaction.ActiveBossCount == 0)
+                {
+                    _lastTerminalFamily = _telemetry != null
+                        ? _telemetry.ClassifyTerminalDamage(health, info)
+                        : ModeGDirectDamageClass.NotScoreable;
+                    // 第 1/4/7 波是距离记录波；其真实 terminal distance
+                    // 保留到紧随其后的第 2/5/8 波消费。
+                    if (_state.waveEpoch == 0 || _state.waveEpoch == 3 || _state.waveEpoch == 6)
+                    {
+                        _lastTerminalDistance = _telemetry != null
+                            ? _telemetry.ClassifyTerminalDistance(health, info)
+                            : ModeGDistanceVerdict.None;
+                    }
 
+                    // Last Stand 只在倒计时内由可计分 Gun/Melee 直接终结时得分。
+                    // 非计分末击仍正常结束波次，但不提供 Resolve。
+                    if (_state.lastStandActive)
+                    {
+                        _state.lastStandActive = false;
+                        _state.lastStandTimer = 0f;
+                        _state.combatPhase = ModeGCombatPhase.Fighting;
+                        if (_lastTerminalFamily != ModeGDirectDamageClass.NotScoreable
+                            && _adaptive != null
+                            && _adaptive.RecordLastStandResolve())
+                        {
+                            _lastStandCount++;
+                            if (_state.actIndex >= 0 && _state.actIndex < _resolvesPerAct.Length)
+                            {
+                                _resolvesPerAct[_state.actIndex]++;
+                            }
+                            _host.ShowMessage(L10n.T(
+                                "末位处决完成，Resolve +1",
+                                "Last Stand resolved! Resolve +1"));
+                        }
+                    }
+                }
                 ManagedBossRuntimeHandle deadManagedHandle = FindManagedHandle(health);
                 if (deadManagedHandle != null)
                 {
@@ -732,7 +817,6 @@ namespace BossRush
                     _state.lastStandActive = true;
                     _state.lastStandTimer = ModeGAdaptiveCombat.LastStandDurationSeconds;
                     _state.combatPhase = ModeGCombatPhase.LastStand;
-                    _lastStandCount++;
                     _host.ShowMessage(L10n.T("最后处决倒计时开始！", "Last Stand countdown begins!"));
                 }
 
@@ -823,15 +907,13 @@ namespace BossRush
                 {
                     _nemesisDefeatedThisRun = true;
 
-                    // R3 + 玩家直伤终结：契约进度
-                    CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null && info.fromCharacter == player && !info.isFromBuffOrEffect)
+                    int encounterRank = GetNemesisEncounterRank(_state.waveEpoch);
+
+                    // R3 + 统一分类器接受的玩家直接终结：契约进度
+                    if (encounterRank >= ModeGNemesisPersistence.MaxRank
+                        && _lastTerminalFamily != ModeGDirectDamageClass.NotScoreable)
                     {
-                        ModeGNemesisPersistence.NemesisRecordDto record = ModeGNemesisPersistence.Current;
-                        if (record != null && record.rank >= ModeGNemesisPersistence.MaxRank)
-                        {
-                            _nemesisR3FinalBlowDirect = true;
-                        }
+                        _nemesisR3FinalBlowDirect = true;
                     }
 
                     // 宿敌记账：defeatsByPlayer++；R3 彻底击败写墓碑
@@ -847,13 +929,13 @@ namespace BossRush
                                     {
                                         schemaVersion = dto.schemaVersion,
                                         bossPresetKey = dto.bossPresetKey,
-                                        rank = dto.rank,
+                                        rank = Math.Max(dto.rank, encounterRank),
                                         temperamentId = dto.temperamentId,
                                         defeatsByPlayer = dto.defeatsByPlayer + 1,
                                         defeatsOfPlayer = dto.defeatsOfPlayer,
                                         lastUpdatedTicks = dto.lastUpdatedTicks,
                                         originRunId = dto.originRunId,
-                                        tombstone = dto.rank >= ModeGNemesisPersistence.MaxRank
+                                        tombstone = encounterRank >= ModeGNemesisPersistence.MaxRank
                                     };
                                 ModeGNemesisPersistence.Store(copy);
                             }
@@ -875,26 +957,20 @@ namespace BossRush
             bool resolved = false;
             if (axis == ModeGCounterAxis.Distance)
             {
-                ModeGDistanceVerdict verdict = ModeGAdaptiveCombat.EvaluateDistanceAxis(_telemetry);
-                resolved = ModeGAdaptiveCombat.IsDistanceAxisBroken(_telemetry, verdict);
+                resolved = ModeGAdaptiveCombat.IsDistanceAxisBroken(_telemetry, _activeDistanceVerdict);
             }
             else if (axis == ModeGCounterAxis.Ammo)
             {
-                // 弹药轴破解：样本达标且整波零违规（停火 CalmGate 由采样窗口隐含）
-                resolved = _telemetry.TotalAmmoSamples >= ModeGAdaptiveCombat.AmmoAxisMinSamples
+                // 5 发样本门槛已在上一学习波 SelectAmmoBan 时验证。
+                // 当前宿敌波只要求禁令有效、从公布到终结零违规，且由可计分直伤收尾。
+                resolved = _telemetry.ArmedBanAmmoTypeId > 0
                     && _telemetry.ArmedBanViolationCount == 0
-                    && _telemetry.ArmedBanAmmoTypeId > 0;
+                    && _lastTerminalFamily != ModeGDirectDamageClass.NotScoreable;
             }
             else if (axis == ModeGCounterAxis.Attribute)
             {
                 // 属性封锁破解：被封锁侧仍保持 >=35% 伤害占比并达血量贡献门槛
-                float lockedShare = _telemetry.GunDirectDamage >= _telemetry.MeleeDirectDamage
-                    ? _telemetry.GunDamageShare
-                    : _telemetry.MeleeDamageShare;
-                resolved = lockedShare >= ModeGAdaptiveCombat.DistanceBreakDamageShare
-                    && _telemetry.CombatStartAggregatePrimaryMaxHealth > 0f
-                    && (_telemetry.TotalDirectDamage / _telemetry.CombatStartAggregatePrimaryMaxHealth)
-                        >= ModeGAdaptiveCombat.DistanceBreakHealthContribution;
+                resolved = _adaptive.IsAttributeAxisBroken(_telemetry, _lastTerminalFamily);
             }
 
             if (axis != ModeGCounterAxis.None)
@@ -915,7 +991,11 @@ namespace BossRush
                 }
             }
 
+            _telemetry.DisarmAmmoBan();
+            PrepareNextAmmoBanIfNeeded();
+
             // 第 9 波清：胜利路由
+            if (_adaptive != null) _adaptive.ClearAttributeLock();
             if (_state.IsFinalWave)
             {
                 ModeGDeathRouting.HandleVictory(this);
@@ -926,6 +1006,36 @@ namespace BossRush
             _state.intermissionActive = true;
             _state.intermissionTimer = ModeGWavePlan.GetIntermissionDuration(_state.waveEpoch);
             _state.combatPhase = ModeGCombatPhase.Intermission;
+            _intermissionObservedShotSequence = _telemetry.ShotSequence;
+        }
+
+        private void PrepareNextAmmoBanIfNeeded()
+        {
+            int nextWave = _state.waveEpoch + 1;
+            if (nextWave >= ModeGWavePlan.WaveCount
+                || ModeGAdaptiveCombat.GetAxisForWave(nextWave) != ModeGCounterAxis.Ammo)
+                return;
+
+            int ammoTypeId = ModeGAdaptiveCombat.SelectAmmoBan(_state.runSeed, nextWave, _telemetry);
+            if (ammoTypeId <= 0) return;
+
+            _preparedAmmoBanWaveEpoch = nextWave;
+            _preparedAmmoBanTypeId = ammoTypeId;
+            _preparedAmmoBanThreatSharePercent = GetAmmoThreatSharePercent(ammoTypeId);
+            PublishAmmoBan(ammoTypeId, _preparedAmmoBanThreatSharePercent);
+        }
+
+        private void PublishAmmoBan(int ammoTypeId, int threatSharePercent)
+        {
+            _telemetry.ArmAmmoBan(ammoTypeId);
+            _ammoBanCount++;
+
+            string bannedAmmoName = ModeGRecapPanel.GetAmmoDisplayName(ammoTypeId);
+            string banMessage = L10n.T("BossRush_ModeG_AmmoBan") + bannedAmmoName;
+            string attribution = ModeGRecapPanel.ComposeBanAttributionLine(
+                bannedAmmoName, threatSharePercent);
+            if (!string.IsNullOrEmpty(attribution)) banMessage += "\n" + attribution;
+            _host.ShowMessage(banMessage);
         }
 
         #endregion
@@ -990,11 +1100,21 @@ namespace BossRush
                     // 休整倒计时 -> 下一波
                     if (_state.intermissionActive)
                     {
+                        int nextWave = _state.waveEpoch + 1;
+                        int shotSequence = _telemetry.ShotSequence;
+                        bool calmGateApplies = nextWave == 1 || nextWave == 4 || nextWave == 7;
+                        if (calmGateApplies
+                            && _state.intermissionTimer <= ModeGAdaptiveCombat.CalmGateSeconds
+                            && shotSequence != _intermissionObservedShotSequence)
+                        {
+                            _state.intermissionTimer = ModeGAdaptiveCombat.CalmGateSeconds;
+                        }
+                        _intermissionObservedShotSequence = shotSequence;
+
                         _state.intermissionTimer -= deltaTime;
                         if (_state.intermissionTimer <= 0f)
                         {
                             _state.intermissionActive = false;
-                            int nextWave = _state.waveEpoch + 1;
                             if (_state.TryResetSlotsForNextWave())
                             {
                                 _spawnTransaction.ResetForNextWave();
@@ -1027,154 +1147,6 @@ namespace BossRush
                 }
             }
             catch { /* no-throw */ }
-        }
-
-        #endregion
-
-        #region Module Lifecycle Hooks（BossRushRuntimeModuleBase）
-
-        /// <summary>
-        /// 场景加载守卫：run 进行中离开 verified pair 即 End(SceneChanged)。
-        /// </summary>
-        public override void OnSceneLoaded(SceneRuntimeContext context)
-        {
-            try
-            {
-                if (_state == null || _ended || _disposed) return;
-                if (_state.lifecyclePhase == ModeGLifecyclePhase.None) return;
-                if (!ModeGMapSupportRegistry.IsVerifiedSceneName(context.SceneName))
-                {
-                    ModBehaviour.DevLog("[ModeG] 离开 verified scene pair: " + context.SceneName);
-                    End(ModeGExitReason.SceneChanged);
-                }
-            }
-            catch { /* no-throw */ }
-        }
-
-        /// <summary>
-        /// 宿主销毁：委托静态 PrepareHostDestroy（token CAS 幂等）。
-        /// </summary>
-        public override void OnDestroy()
-        {
-            try { ModeG.PrepareHostDestroy(); } catch { /* no-throw 契约 */ }
-        }
-
-        #endregion
-
-        #region End（九种终局统一幂等出口）
-
-        /// <summary>
-        /// 统一幂等 End：Cleanup 状态机 -> 退订 -> Modifier 恢复 -> managed handle 清理 ->
-        /// Dispatcher 复位 -> 成就 session 结束。
-        /// </summary>
-        public void End(ModeGExitReason reason)
-        {
-            if (_ended || _state == null) return;
-            _ended = true;
-            try
-            {
-                RefundStartupPaymentOnTechnicalFailure(reason);
-                ModeGCleanupController.Cleanup(_state, reason);
-
-                try
-                {
-                    if (_telemetry != null)
-                    {
-                        _telemetry.UnsubscribeCombat();
-                        _telemetry.UnsubscribeDead();
-                    }
-                    UnsubscribePlayerDeath();
-                }
-                catch { }
-
-                try { if (_adaptive != null) _adaptive.RestoreAllModifiers(); } catch { }
-
-                try
-                {
-                    lock (_managedHandles)
-                    {
-                        for (int i = 0; i < _managedHandles.Count; i++)
-                        {
-                            if (_managedHandles[i] != null)
-                            {
-                                _managedHandles[i].CleanupOnce(ManagedBossCleanupReason.RunEnded);
-                            }
-                        }
-                        _managedHandles.Clear();
-                    }
-                }
-                catch { }
-
-                // 辅助提交登记随 run 结束清空（迟到 ticket 此后一律 fail-closed）
-                try { _committedAuxiliaries.Clear(); } catch { }
-
-                try
-                {
-                    if (_dispatcherRef != null
-                        && ReferenceEquals(ModBehaviour.ManagedBossSpawnDispatcher, _dispatcherRef))
-                    {
-                        ModBehaviour.ManagedBossSpawnDispatcher = null;
-                    }
-                }
-                catch { }
-
-                try { if (_host != null) _host.EndModeGAchievementSession(); } catch { }
-                try { ModeGRewardTransaction.ResetRelicReturnGate(); } catch { }
-                try { ModeGNemesisPersistence.ShutdownSubscription(); } catch { }
-                try { ModeGProfilePersistence.ShutdownSubscription(); } catch { }
-
-                ModBehaviour.DevLog("[ModeG] run 结束 reason=" + reason
-                    + " result=" + _state.battleResult + " wave=" + (_state.waveEpoch + 1));
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeG] [ERROR] End 异常: " + e.Message);
-            }
-        }
-
-        private void RefundStartupPaymentOnTechnicalFailure(ModeGExitReason reason)
-        {
-            if (_startupRefundSettled || _firstWaveCombatStarted || _host == null) return;
-            if (reason != ModeGExitReason.SpawnExhausted
-                && reason != ModeGExitReason.TechnicalIntegrityLoss) return;
-
-            _startupRefundSettled = true;
-            if (_startupTicketRefundable)
-            {
-                _host.TryRefundModeGStartupItem(
-                    _host.GetModeGTicketTypeId(), L10n.T("船票", "Boss Rush Ticket"));
-            }
-            if (_startupRelicRefundable)
-            {
-                _host.TryRefundModeGStartupItem(
-                    FateEchoRelicConfig.TYPE_ID, L10n.T("宿命回响信物", "Fate Echo Relic"));
-            }
-            _startupTicketRefundable = false;
-            _startupRelicRefundable = false;
-            _host.ShowMessage(L10n.T(
-                "宿命回响首波未能启动，已返还入场道具。",
-                "Fate Echo failed before wave one; entry items were refunded."));
-        }
-
-        /// <summary>
-        /// Dispose（Entry.ShutdownModeG / Initialize 失败路径）。防御式幂等。
-        /// </summary>
-        public void Dispose()
-        {
-            if (_disposed) return;
-            _disposed = true;
-            try
-            {
-                if (!_ended && _state != null)
-                {
-                    End(_state.exitReason != ModeGExitReason.None
-                        ? _state.exitReason
-                        : ModeGExitReason.ModDestroyed);
-                }
-            }
-            catch { }
-            try { UnsubscribePlayerDeath(); } catch { }
-            _snapshot = null;
         }
 
         #endregion

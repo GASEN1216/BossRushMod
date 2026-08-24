@@ -29,7 +29,7 @@ namespace BossRush
         public int ammoResolves;
         /// <summary>属性轴破解次数</summary>
         public int attributeResolves;
-        /// <summary>Last Stand 触发次数</summary>
+        /// <summary>Last Stand 成功处决次数</summary>
         public int lastStandCount;
         /// <summary>是否以直接伤害终结 R3 宿敌</summary>
         public bool nemesisR3FinalBlowDirect;
@@ -61,12 +61,12 @@ namespace BossRush
         #region Stable Bit IDs（bit 0-31 只追加）
 
         public const int IdTriadBreaker = 0;       // 适应：三轴各破解至少一次
-        public const int IdLastExecutioner = 1;    // 处决：>=2 次 Last Stand 且直接伤害终结 R3 宿敌
+        public const int IdLastExecutioner = 1;    // 处决：>=2 次 Last Stand 成功处决且直接伤害终结 R3 宿敌
         public const int IdCounterflowChain = 2;   // 节奏：连续破解三个三轴目标
         public const int IdUnbrokenActs = 3;       // 节奏：三幕各 >=2 Resolve
         public const int IdEdgeWalker = 4;         // 风格：三次距离回声
         public const int IdArsenalDiscipline = 5;  // 风格：>=2 次弹药禁令 + 1 次属性封锁
-        public const int IdFinalMinute = 6;        // 处决：三次 Last Stand
+        public const int IdFinalMinute = 6;        // 处决：三次 Last Stand 成功处决
         public const int IdNemesisDenied = 7;      // 适应：第 3/6/9 波全部可用弹药禁令
 
         /// <summary>契约总数（正式首发不得少于 8）</summary>
@@ -136,8 +136,8 @@ namespace BossRush
 
             new ContractDef(IdLastExecutioner, ModeGContractFamily.Execution, "LastExecutioner",
                 "终末行刑者", "Last Executioner",
-                "触发至少 2 次 Last Stand，并以直接伤害终结 R3 宿敌。",
-                "Trigger Last Stand at least twice and finish an R3 nemesis with direct damage."),
+                "完成至少 2 次 Last Stand 处决，并以直接伤害终结 R3 宿敌。",
+                "Complete at least two Last Stand executions and finish an R3 nemesis with direct damage."),
 
             new ContractDef(IdCounterflowChain, ModeGContractFamily.Tempo, "CounterflowChain",
                 "逆流连锁", "Counterflow Chain",
@@ -161,8 +161,8 @@ namespace BossRush
 
             new ContractDef(IdFinalMinute, ModeGContractFamily.Execution, "FinalMinute",
                 "最终时刻", "Final Minute",
-                "本局触发三次 Last Stand。",
-                "Trigger Last Stand three times this run."),
+                "本局完成三次 Last Stand 处决。",
+                "Complete three Last Stand executions this run."),
 
             new ContractDef(IdNemesisDenied, ModeGContractFamily.Adaptation, "NemesisDenied",
                 "宿敌否定", "Nemesis Denied",
@@ -196,20 +196,40 @@ namespace BossRush
         /// </summary>
         public static int[] SelectEntryCandidatePair(ulong runSeed)
         {
+            return SelectEntryCandidatePair(runSeed, -1);
+        }
+
+        /// <summary>
+        /// 候选对排除上一局实际选择一次；0..7 均可排除，-1 表示无历史。
+        /// </summary>
+        public static int[] SelectEntryCandidatePair(ulong runSeed, int excludedContractId)
+        {
             try
             {
+                List<int> eligible = new List<int>(_pool.Length);
+                for (int i = 0; i < _pool.Length; i++)
+                {
+                    if (_pool[i].id != excludedContractId) eligible.Add(_pool[i].id);
+                }
+                if (eligible.Count < 2) throw new InvalidOperationException("eligible contract pool < 2");
+
                 ulong state = ModeGDeterministicRandom.SeedDomain(runSeed,
                     ModeGDeterministicRandom.DomainConstants.Contract, 0);
-                int first = ModeGDeterministicRandom.NextInt(ref state, _pool.Length);
-                int second = ModeGDeterministicRandom.NextInt(ref state, _pool.Length - 1);
+                int first = ModeGDeterministicRandom.NextInt(ref state, eligible.Count);
+                int second = ModeGDeterministicRandom.NextInt(ref state, eligible.Count - 1);
                 if (second >= first) second++;
-                int a = Math.Min(first, second);
-                int b = Math.Max(first, second);
-                return new int[] { _pool[a].id, _pool[b].id };
+                int a = Math.Min(eligible[first], eligible[second]);
+                int b = Math.Max(eligible[first], eligible[second]);
+                return new int[] { a, b };
             }
             catch
             {
-                return new int[] { IdTriadBreaker, IdFinalMinute };
+                int firstFallback = excludedContractId == IdTriadBreaker
+                    ? IdLastExecutioner : IdTriadBreaker;
+                int secondFallback = excludedContractId == IdFinalMinute
+                    ? IdNemesisDenied : IdFinalMinute;
+                return new int[] { Math.Min(firstFallback, secondFallback),
+                    Math.Max(firstFallback, secondFallback) };
             }
         }
 

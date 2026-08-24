@@ -33,6 +33,7 @@ namespace BossRush
             public int totalBossKills;
             public int totalNemesisDefeated;
             public int contractStreak;              // 契约连胜（ManualExit 有效清除）
+            public int lastSelectedContractIdPlusOne; // 0=无历史，正数=稳定 ID+1
             public long lastUpdatedTicks;
             public string lastBattleResultToken;    // victory_/defeat_ + runId hex
         }
@@ -49,6 +50,7 @@ namespace BossRush
         private static ProfileDto _pending;
         private static bool _pendingFlushActive;
         private static bool _storeFaulted;
+        private static bool _writeBarrier; // 当前槽未知/不可读版本，只阻断本 key
         private static bool _subscribed;
 
         #endregion
@@ -99,11 +101,13 @@ namespace BossRush
         {
             try
             {
+                ModeGPersistenceFlushCoordinator.NotifySlotChanged();
                 lock (_lock)
                 {
                     _cache = null;
                     _pending = null;
                     _pendingFlushActive = false;
+                    _writeBarrier = false;
                 }
                 LoadOrInit();
             }
@@ -114,11 +118,13 @@ namespace BossRush
         {
             try
             {
+                ModeGPersistenceFlushCoordinator.NotifySlotChanged();
                 lock (_lock)
                 {
                     _cache = null;
                     _pending = null;
                     _pendingFlushActive = false;
+                    _writeBarrier = false;
                 }
             }
             catch { /* no-throw */ }
@@ -129,6 +135,9 @@ namespace BossRush
         #region Load / Store
 
         public static bool IsStoreFaulted { get { return _storeFaulted; } }
+        public static bool HasWriteBarrier { get { lock (_lock) return _writeBarrier; } }
+        internal static bool HasPendingFlush { get { lock (_lock) return _pendingFlushActive && _pending != null; } }
+        internal static void MarkCoordinatorFaulted(Exception e) { _storeFaulted = true; }
 
         public static ProfileDto Current
         {
@@ -154,7 +163,8 @@ namespace BossRush
                             _cache = loaded;
                             return _cache;
                         }
-                        // schema 不匹配：重置（profile 无挂起语义，直接新建）
+                        // 未知 schema：本局可用空 profile 继续，但禁止覆盖未来版本 key。
+                        _writeBarrier = true;
                     }
                     _cache = new ProfileDto();
                     return _cache;
@@ -162,6 +172,7 @@ namespace BossRush
                 catch (Exception e)
                 {
                     ModBehaviour.DevLog("[ModeG] [WARNING] 个人记录加载失败: " + e.Message);
+                    _writeBarrier = true;
                     _cache = new ProfileDto();
                     return _cache;
                 }
@@ -175,6 +186,7 @@ namespace BossRush
         {
             if (record == null) return false;
             if (_storeFaulted) return false;
+            if (HasWriteBarrier) return false;
             try
             {
                 lock (_lock)
@@ -184,11 +196,8 @@ namespace BossRush
                     _cache = record;
                     _pendingFlushActive = true;
 
-                    if (!SavesSystem.IsSaving)
-                    {
-                        FlushPendingLocked(writeFile: true);
-                    }
                 }
+                ModeGPersistenceFlushCoordinator.RequestFlush();
                 return true;
             }
             catch (Exception e)
@@ -210,12 +219,17 @@ namespace BossRush
         private static void FlushPendingLocked(bool writeFile)
         {
             if (!_pendingFlushActive || _pending == null) return;
+            if (_writeBarrier) return;
             try
             {
                 if (SavesSystem.IsSaving) return;
                 SavesSystem.Save<ProfileDto>(StorageKey, _pending);
                 ProfileDto readback = SavesSystem.Load<ProfileDto>(StorageKey);
-                if (readback != null && writeFile)
+                if (!CriticalFieldsMatch(_pending, readback))
+                {
+                    throw new InvalidOperationException("profile typed save readback mismatch");
+                }
+                if (writeFile)
                 {
                     SavesSystem.SaveFile(false);
                 }
@@ -227,6 +241,19 @@ namespace BossRush
                 _storeFaulted = true;
                 ModBehaviour.DevLog("[ModeG] [ERROR] 个人记录 flush 异常，进入 StoreFaulted: " + e.Message);
             }
+        }
+
+        private static bool CriticalFieldsMatch(ProfileDto expected, ProfileDto actual)
+        {
+            return expected != null && actual != null
+                && expected.schemaVersion == actual.schemaVersion
+                && expected.totalRuns == actual.totalRuns
+                && expected.totalVictories == actual.totalVictories
+                && expected.totalDefeats == actual.totalDefeats
+                && expected.totalBossKills == actual.totalBossKills
+                && expected.lastSelectedContractIdPlusOne == actual.lastSelectedContractIdPlusOne
+                && string.Equals(expected.lastBattleResultToken, actual.lastBattleResultToken,
+                    StringComparison.Ordinal);
         }
 
         #endregion
@@ -243,9 +270,26 @@ namespace BossRush
             return dto != null && dto.totalVictories > 0;
         }
 
+        public static int GetLastSelectedContractId()
+        {
+            ProfileDto dto = LoadOrInit();
+            int id = dto != null ? dto.lastSelectedContractIdPlusOne - 1 : -1;
+            return id >= 0 && id < ModeGFateContract.ContractCount ? id : -1;
+        }
+
         #endregion
 
         #region Record
+
+        public static bool RecordSelectedContract(int contractId)
+        {
+            if (contractId < 0 || contractId >= ModeGFateContract.ContractCount) return false;
+            ProfileDto dto = LoadOrInit();
+            if (dto == null) return false;
+            ProfileDto copy = CloneDto(dto);
+            copy.lastSelectedContractIdPlusOne = contractId + 1;
+            return Store(copy);
+        }
 
         /// <summary>
         /// 记录一局结果（终局时调用一次；battleResultToken 幂等防重）。
@@ -329,6 +373,22 @@ namespace BossRush
             }
         }
 
+        public static void ClearContractStreakOnVictoryIncomplete()
+        {
+            try
+            {
+                ProfileDto dto = LoadOrInit();
+                if (dto == null || dto.contractStreak == 0) return;
+                ProfileDto copy = CloneDto(dto);
+                copy.contractStreak = 0;
+                Store(copy);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] victory incomplete streak clear failed: " + e.Message);
+            }
+        }
+
         private static ProfileDto CloneDto(ProfileDto src)
         {
             return new ProfileDto
@@ -342,6 +402,7 @@ namespace BossRush
                 totalBossKills = src.totalBossKills,
                 totalNemesisDefeated = src.totalNemesisDefeated,
                 contractStreak = src.contractStreak,
+                lastSelectedContractIdPlusOne = src.lastSelectedContractIdPlusOne,
                 lastUpdatedTicks = src.lastUpdatedTicks,
                 lastBattleResultToken = src.lastBattleResultToken
             };

@@ -7,7 +7,8 @@ ModeGNemesisPersistenceGuard — 宿敌持久化守卫（规格 §20 第 22 条�
 - DTO 字段冻结（schemaVersion 保持默认 0、墓碑 tombstone）；
 - rank clamp = max(旧+1, current)，上限 MaxRank=3，不允许降级；
 - KeyExisits 前置分类（先判存在再 Load）；
-- SuspendedPersistentV1 挂起不写盘（仅内存；flush 路径不得触碰 _suspended）；
+- SuspendedPersistentV1 挂起不写盘；未知/不可读 payload 设置当前槽本 key
+  写屏障，Store/flush 均不得覆盖，另一 profile key 不受影响；
 - OnSaveDeleted 重置全部内存状态（幂等）；
 - Store/flush 异常进入单向 _storeFaulted 且 Store 对其 fail-closed。
 """
@@ -17,6 +18,10 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NEMESIS = os.path.join(REPO_ROOT, "ModeG", "ModeGNemesisPersistence.cs")
+STATE_MODEL = os.path.join(REPO_ROOT, "ModeG", "ModeGStateModel.cs")
+RUN_STATE = os.path.join(REPO_ROOT, "ModeG", "ModeGRunState.cs")
+RUNTIME = os.path.join(REPO_ROOT, "ModeG", "ModeGRuntimeModule.cs")
+ROUTING = os.path.join(REPO_ROOT, "ModeG", "ModeGDeathRouting.cs")
 
 
 def read(path, errors):
@@ -36,6 +41,10 @@ def strip_comments(text):
 def main():
     errors = []
     text = read(NEMESIS, errors)
+    state_model = read(STATE_MODEL, errors)
+    run_state = read(RUN_STATE, errors)
+    runtime = read(RUNTIME, errors)
+    routing = read(ROUTING, errors)
     if not text:
         print("ModeGNemesisPersistenceGuard: FAIL (1 errors)")
         return 1
@@ -73,6 +82,13 @@ def main():
         ("SchemaMismatchSuspend",
          r'_suspended = new SuspendedPersistentV1[\s\S]{0,200}?reason = "schema_mismatch",',
          "schema 不匹配 → 内存挂起"),
+        ("SchemaMismatchWriteBarrier",
+         r'reason = "schema_mismatch",[\s\S]{0,180}?_writeBarrier = true;',
+         "未知 schema 建立本 key 写屏障"),
+        ("UnreadableWriteBarrier",
+         r'catch \(Exception e\)[\s\S]{0,220}?_writeBarrier = true;'
+         r'[\s\S]{0,260}?"payload_unreadable"',
+         "不可读 payload/分类异常建立写屏障"),
         ("SaveDeletedReset",
          r"private static void HandleSaveDeleted\(\)[\s\S]{0,400}?_cache = null;"
          r"[\s\S]{0,200}?_pending = null;"
@@ -82,6 +98,13 @@ def main():
         ("StoreFailClosed",
          r"if \(_storeFaulted\) return false; // fail-closed",
          "Store 对 StoreFaulted fail-closed"),
+        ("StoreWriteBarrier",
+         r"if \(HasWriteBarrier\) return false;",
+         "Store 对当前槽未知版本写屏障 fail-closed"),
+        ("FlushWriteBarrier",
+         r"private static void FlushPendingLocked\(bool writeFile\)"
+         r"[\s\S]{0,180}?if \(_writeBarrier\) return;",
+         "flush 不覆盖未知版本 key"),
         ("StoreFaultOneWay",
          r"catch \(Exception e\)\s*\{\s*_storeFaulted = true; // 单向，不可恢复",
          "Store 异常单向进入 StoreFaulted"),
@@ -96,13 +119,24 @@ def main():
         if not re.search(pattern, text):
             errors.append("[{}] 不满足: {}".format(name, desc))
 
-    # SuspendedPersistentV1 挂起不写盘：flush 路径不得触碰 _suspended
+    # SuspendedPersistentV1 挂起记录本身不写盘；flush 只允许读取写屏障。
     m = re.search(r"private static void FlushPendingLocked\(bool writeFile\)[\s\S]*?\n        \}", text)
     if m:
         if "_suspended" in m.group(0):
             errors.append("[SuspendNoWrite] flush 路径触碰 _suspended（挂起记录不得写盘）")
     else:
         errors.append("[FlushMethod] FlushPendingLocked 方法未找到")
+
+    if "ModeGNemesisSelectionSource" not in state_model:
+        errors.append("[SelectionSourceEnum] 缺少 run-local 宿敌选择来源")
+    if "ModeGNemesisSelectionSource nemesisSelectionSource" not in run_state:
+        errors.append("[SelectionSourceState] RunState 未冻结宿敌选择来源")
+    if not re.search(r"hasPersistentNemesis[\s\S]{0,800}?SuspendedPersistentV1", runtime):
+        errors.append("[UnavailablePersistentSuspended] 临时不可用持久宿敌未标记挂起")
+    if not re.search(
+            r"nemesisSelectionSource == ModeGNemesisSelectionSource\.SuspendedPersistentV1"
+            r"[\s\S]{0,260}?return outcome;", routing):
+        errors.append("[SuspendedNotOverwritten] 玩家死亡仍可能覆盖临时挂起宿敌")
 
     # DTO 禁字段初始化器
     dto_m = re.search(r"public sealed class NemesisRecordDto\s*\{([\s\S]*?)\n        \}", text)

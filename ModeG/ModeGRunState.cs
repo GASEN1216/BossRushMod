@@ -92,6 +92,9 @@ namespace BossRush
 
         /// <summary>本局宿命契约稳定 ID（-1 = 未选择；bit 0-31 只追加不复用）</summary>
         public int fateContractId = -1;
+        /// <summary>本局宿敌来源；临时挂起时禁止覆盖原持久记录。</summary>
+        public ModeGNemesisSelectionSource nemesisSelectionSource =
+            ModeGNemesisSelectionSource.TemporaryMissing;
 
         #endregion
 

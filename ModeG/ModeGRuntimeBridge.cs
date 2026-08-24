@@ -47,12 +47,20 @@ namespace BossRush
                         continue;
                     }
                     if (IsManagedBossPreset(info)) continue;
+                    if (!ModeGOfficialBossEligibilityRegistry.IsEligible(info.name)) continue;
 
-                    if (!snapshot.infoByKey.ContainsKey(info.name))
+                    EnemyPresetInfo existingOfficial;
+                    if (snapshot.infoByKey.TryGetValue(info.name, out existingOfficial))
                     {
-                        snapshot.infoByKey[info.name] = info;
-                        snapshot.officialKeys.Add(info.name);
+                        if (!ReferenceEquals(existingOfficial, info))
+                        {
+                            DevLog("[ModeG] official stable key 对应多个 preset 引用，拒绝快照: " + info.name);
+                            return null;
+                        }
+                        continue;
                     }
+                    snapshot.infoByKey[info.name] = info;
+                    snapshot.officialKeys.Add(info.name);
                 }
 
                 if (dragonDescendantBase != null)
@@ -69,7 +77,19 @@ namespace BossRush
                 }
 
                 snapshot.officialKeys.Sort(StringComparer.Ordinal);
-                return snapshot.officialKeys.Count > 0 ? snapshot : null;
+                if (snapshot.officialKeys.Count
+                    < ModeGOfficialBossEligibilityRegistry.MinimumProductionOfficialBossCount)
+                {
+                    DevLog("[ModeG] 当前过滤 Boss 池没有可用的官方 Boss key，拒绝创建快照");
+                    return null;
+                }
+                if (snapshot.officialKeys.Count
+                    < ModeGOfficialBossEligibilityRegistry.OfficialPoolReplicationTarget)
+                {
+                    DevLog("[ModeG] 官方 Boss 池仅有 " + snapshot.officialKeys.Count
+                        + " 个唯一 key；本局波次将按 seed 从已有 key 随机复用至编排目标 6 个槽位");
+                }
+                return snapshot;
             }
             catch (Exception e)
             {
@@ -116,7 +136,8 @@ namespace BossRush
             }
         }
 
-        internal Vector3[] GetModeGSpawnPositions(int waveIndex, int count, ModeGPlanVariant variant)
+        internal Vector3[] GetModeGSpawnPositions(int waveIndex, int count, ModeGPlanVariant variant,
+            ModeGNemesisTemperament temperament, bool isNemesisWave)
         {
             try
             {
@@ -125,20 +146,33 @@ namespace BossRush
                 if (source == null || source.Length == 0) return null;
 
                 CharacterMainControl player = CharacterMainControl.Main;
-                Vector3 playerPos = player != null ? player.transform.position : Vector3.zero;
+                if (player == null) return null;
+                Vector3 playerPos = player.transform.position;
 
-                List<Vector3> candidates = new List<Vector3>(source);
-                candidates.Sort((a, b) =>
-                    (b - playerPos).sqrMagnitude.CompareTo((a - playerPos).sqrMagnitude));
-
-                int start = Mathf.Abs((waveIndex * 3 + (int)variant) % candidates.Count);
-                Vector3[] positions = new Vector3[count];
-                for (int i = 0; i < count; i++)
+                ModeGWavePlan.FormationSpec spec = ModeGWavePlan.GetFormationSpec(variant);
+                bool hunter = isNemesisWave && temperament == ModeGNemesisTemperament.Hunter;
+                if (hunter)
                 {
-                    Vector3 raw = candidates[(start + i) % candidates.Count];
-                    positions[i] = SpawnPositionHelper.SnapToGround(raw);
+                    spec = new ModeGWavePlan.FormationSpec(
+                        Mathf.Max(8f, spec.playerMinDistance - 3f), spec.bossPairMinDistance);
                 }
-                return positions;
+
+                Vector3[] positions;
+                if (TrySelectModeGFormation(source, playerPos, waveIndex, count, variant, spec,
+                    hunter, out positions)) return positions;
+
+                if (variant != ModeGPlanVariant.Split)
+                {
+                    ModeGWavePlan.FormationSpec splitSpec =
+                        ModeGWavePlan.GetFormationSpec(ModeGPlanVariant.Split);
+                    if (TrySelectModeGFormation(source, playerPos, waveIndex, count,
+                        ModeGPlanVariant.Split, splitSpec, false, out positions))
+                    {
+                        DevLog("[ModeG] " + variant + " 几何不足，已在同一 verified 点集降级 Split");
+                        return positions;
+                    }
+                }
+                return null;
             }
             catch (Exception e)
             {
@@ -147,24 +181,124 @@ namespace BossRush
             }
         }
 
-        internal void PrepareModeGArenaRuntime()
+        private static bool TrySelectModeGFormation(Vector3[] source, Vector3 playerPos,
+            int waveIndex, int count, ModeGPlanVariant variant,
+            ModeGWavePlan.FormationSpec spec, bool preferNearest,
+            out Vector3[] positions)
+        {
+            positions = null;
+            List<Vector3> candidates = new List<Vector3>(source.Length);
+            for (int i = 0; i < source.Length; i++)
+            {
+                Vector3 grounded;
+                if (!SpawnPositionHelper.TrySnapToGround(source[i], out grounded)) continue;
+                Vector3 playerDelta = grounded - playerPos;
+                playerDelta.y = 0f;
+                if (playerDelta.sqrMagnitude < spec.playerMinDistance * spec.playerMinDistance) continue;
+                candidates.Add(grounded);
+            }
+            if (candidates.Count < count) return false;
+
+            Vector2[] offsets = ModeGEncounterVariation.GetSpawnOffsets(variant, count, spec);
+            if (offsets == null || offsets.Length != count) return false;
+            float rotation = ((waveIndex * 47 + (int)variant * 31) % 360) * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(rotation);
+            float sin = Mathf.Sin(rotation);
+            bool[] used = new bool[candidates.Count];
+            Vector3[] selected = new Vector3[count];
+            float pairMinSqr = spec.bossPairMinDistance * spec.bossPairMinDistance;
+
+            for (int slot = 0; slot < count; slot++)
+            {
+                Vector2 offset = offsets[slot];
+                Vector3 target = playerPos + new Vector3(
+                    offset.x * cos - offset.y * sin, 0f,
+                    offset.x * sin + offset.y * cos);
+                int bestIndex = -1;
+                float bestScore = float.MaxValue;
+                int start = Mathf.Abs((waveIndex * 3 + slot * 5 + (int)variant) % candidates.Count);
+                for (int step = 0; step < candidates.Count; step++)
+                {
+                    int index = (start + step) % candidates.Count;
+                    if (used[index]) continue;
+                    Vector3 candidate = candidates[index];
+                    bool pairSafe = true;
+                    for (int j = 0; j < slot; j++)
+                    {
+                        Vector3 delta = candidate - selected[j];
+                        delta.y = 0f;
+                        if (delta.sqrMagnitude < pairMinSqr) { pairSafe = false; break; }
+                    }
+                    if (!pairSafe) continue;
+
+                    Vector3 scoreDelta = candidate - (preferNearest ? playerPos : target);
+                    scoreDelta.y = 0f;
+                    float score = scoreDelta.sqrMagnitude;
+                    if (score < bestScore)
+                    {
+                        bestScore = score;
+                        bestIndex = index;
+                    }
+                }
+                if (bestIndex < 0) return false;
+                used[bestIndex] = true;
+                selected[slot] = candidates[bestIndex];
+            }
+
+            positions = selected;
+            return true;
+        }
+
+        internal bool PrepareModeGArenaRuntime(ModeGEntryPreview preview)
         {
             try
             {
-                bossRushArenaActive = true;
+                if (!IsModeGEntryPreviewValidForCurrentScene(preview)) return false;
                 SetCurrentMapSpawnPoints(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+                Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
+                if (spawnPoints == null || spawnPoints.Length == 0)
+                {
+                    DevLog("[ModeG] [ERROR] 竞技场准备失败：verified 地图没有刷新点");
+                    return false;
+                }
                 InitializeItemValueCacheAsync();
                 TryCreateArenaDifficultyEntryPoint();
                 BossRushSignInteractable sign = FindObjectOfType<BossRushSignInteractable>();
                 if (sign != null) sign.AddAmmoRefillOption();
+                bossRushArenaActive = true;
+                return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [WARNING] PrepareModeGArenaRuntime 异常: " + e.Message);
+                DevLog("[ModeG] [ERROR] PrepareModeGArenaRuntime 异常: " + e.Message);
+                return false;
             }
         }
 
-        internal void ShowModeGWaveBanner(int waveIndex, ModeGWavePlan.WaveSlot wave, ModeGCounterAxis axis)
+        internal bool CommitModeGArenaEntry(ModeGEntryPreview preview)
+        {
+            try
+            {
+                if (!IsModeGEntryPreviewValidForCurrentScene(preview)) return false;
+                PreCacheMapSpawnerPositions();
+                DisableAllSpawners();
+                if (!spawnersDisabled)
+                {
+                    DevLog("[ModeG] [ERROR] 竞技场提交失败：原生刷怪器未进入禁用状态");
+                    return false;
+                }
+                ClearEnemiesForBossRush();
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeG] [ERROR] CommitModeGArenaEntry 异常: " + e.Message);
+                return false;
+            }
+        }
+
+        internal void ShowModeGWaveBanner(int waveIndex, ModeGWavePlan.WaveSlot wave,
+            ModeGCounterAxis axis, ModeGNemesisTemperament temperament)
         {
             try
             {
@@ -189,6 +323,8 @@ namespace BossRush
                 if (wave != null && wave.isNemesisWave)
                 {
                     axisText += L10n.T(" · 宿敌降临", " · Nemesis Descends");
+                    string temperamentName = ModeGAdaptiveCombat.GetTemperamentDisplayName(temperament);
+                    if (!string.IsNullOrEmpty(temperamentName)) axisText += " · " + temperamentName;
                 }
 
                 ShowBigBanner(L10n.T("第 ", "Wave ") + (waveIndex + 1)

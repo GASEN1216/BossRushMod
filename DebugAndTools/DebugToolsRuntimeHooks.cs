@@ -145,7 +145,7 @@ namespace BossRush
                     DevLog("[BossRush] 发送船票失败: " + e.Message);
                 }
 
-                BossRushMapSelectionHelper.ShowBossRushMapSelection();
+                BossRushMapSelectionHelper.ShowBossRushMapSelection(IsModeGEntryIntentNow());
             }
 
             // 调试快捷键 F8：输出场景中除玩家外所有角色信息

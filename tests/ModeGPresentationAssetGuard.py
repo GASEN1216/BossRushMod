@@ -17,6 +17,7 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(REPO_ROOT, "ModeG", "ModeGPresentationAssetCache.cs")
+INTERACTABLE = os.path.join(REPO_ROOT, "ModeG", "ModeGInteractable.cs")
 BUNDLE_PATH = os.path.join(REPO_ROOT, "Assets", "ui", "modeg_presentation")
 MAX_BUNDLE_BYTES = 256 * 1024
 
@@ -32,6 +33,12 @@ def main():
 
     with open(CACHE, "r", encoding="utf-8", errors="replace") as fh:
         content = fh.read()
+    if not os.path.exists(INTERACTABLE):
+        errors.append("[InteractableMissing] ModeGInteractable.cs 不存在")
+        interactable = ""
+    else:
+        with open(INTERACTABLE, "r", encoding="utf-8", errors="replace") as fh:
+            interactable = fh.read()
 
     checks = [
         ("BundleName",
@@ -62,10 +69,24 @@ def main():
         ("UnloadTrue",
          r"_bundle\.Unload\(true\)",
          "Unload 完全卸载"),
+        ("BothSpritesPreflight",
+         r"Sprite emblem = GetEmblemSprite\(\);\s*"
+         r"Sprite banner = GetBannerSprite\(\);\s*"
+         r"if \(emblem != null && banner != null\)",
+         "预检必须同时实取 emblem/banner 两张 Sprite"),
     ]
     for name, pattern, desc in checks:
         if not re.search(pattern, content):
             errors.append("[{}] 不满足: {}".format(name, desc))
+
+    if interactable:
+        for name, pattern, desc in [
+                ("EmblemPresented", r"GetEmblemSprite\(\)[\s\S]{0,700}?emblemImage\.sprite = emblem;",
+                 "确认页实际展示 emblem"),
+                ("BannerPresented", r"GetBannerSprite\(\)[\s\S]{0,700}?bannerImage\.sprite = banner;",
+                 "确认页实际展示 banner")]:
+            if not re.search(pattern, interactable):
+                errors.append("[{}] 不满足: {}".format(name, desc))
 
     # bundle 体积首版 <256 KiB（文件不存在时仅告警磁盘资产缺失）
     if os.path.exists(BUNDLE_PATH):

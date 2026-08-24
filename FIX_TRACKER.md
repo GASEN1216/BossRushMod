@@ -1274,6 +1274,50 @@
 2. 删除诊断后，`cmd.exe /d /c "set BOSSRUSH_NO_PAUSE=1&&call compile_official.bat"` 正式编译成功并部署。
 3. 玩家已确认位置正确；重复开关商店的恢复路径仍由静态守卫覆盖。
 
+### 2026-08-13 Mode G 完整性收口
+
+**状态**: fixed（代码/自动化验证）；正式入口继续 fail-closed，人工 smoke 未完成
+**兼容分类**: COMPAT / SCHEMA+ / OPERATIONAL
+**修复**:
+- 固定九波计划、首胜/复战署名节拍、宿敌第 3/6/9 波 R1/R2/R3 与墓碑语义；自动入口统一进入契约二选一确认页，取消不扣船票/信物。
+- 距离轴只消费第 1/4/7 波最后一名 Boss 的可信 terminal distance；属性轴、R3 契约和 Last Stand 统一走 metadata 直伤 family。Last Stand 仅 12 秒内可计分直接处决得 Resolve，超时只触发复仇强化。
+- 移除“最近 0.5 秒开枪”猜 Gun/Melee：要求 `fromWeaponItemID>0`，使用 `GetMetaData` 明确 tag 并以 64 项有界缓存复用；TypeID 0、未知、Buff/effect、污染均不计分。幽灵女巫镰刀领域增加 exact-Health 同步 telemetry suppression，实际伤害、死亡归因和 Legacy 不变。
+- 弹药威胁改为 `TargetBulletID -> GetPrefab -> BulletThreatProfile` 的 32 项纯数据缓存，修复最后一发 `BulletItem` 为空/回退；候选排除已点名，支持单发 35% / 多发 15% 门槛，排序后重新计算权重。学习波前 2 秒 CalmGate、生成期预射污染、休整公布即武装、违规跨 BeginWave 保留均已显式接线；弹药 Resolve 改为有效禁令 + 零违规 + 可计分直接终结。
+- profile/nemesis typed Save 增加关键字段回读；共享 coordinator 在官方保存繁忙时有界顺延、冻结存档槽 generation、续接运行中 dirty，每批最多一次 `SaveFile(false)`。切槽/删档取消旧批次，单局结束不退订，故障在扣票前 fail-closed。
+- 入口事务收口：地图 UI 预扣船票在契约页取消、打开失败或启动前失败时幂等退回；Mode G 意图在过图前冻结，避免加载帧玩家对象未就绪时误判。通用过图路径依冻结意图延后 `bossRushArenaActive`、刷怪器禁用和清场，避免确认期 NPC/商店误判；三者只在 runtime 成功推进 Active 后、首波生成前统一提交。
+- 补齐奖励 strict 单件失败语义、背包满缓冲、胜利无敌窗口、factory 15 秒超时与 late cleanup；信物 TypeID 500057 的售货机、编译清单和 Bundle 自动部署链路保持接通。
+**验证**: 2026-08-14 Windows `compile_official.bat` 正式编译通过并部署 `Build/BossRush.dll`，构建/部署 DLL SHA-256 均为 `D5D610BFC0515914E31DCF20FE1D356C1EF2ED34913C6A476EAA936CEB281FEF`；全部 28 个 `ModeG*Guard.py` 通过；Mode G 展示 bundle 112399 B（<256 KiB），信物 bundle `Assets/Items/fate_echo_relic` 已部署且源/部署哈希一致；`git diff --check` 通过（仅 LF/CRLF 提示）。`ModeGAvailability.IsProductionReady=false`、`AllowDevTestEntry=false` 保持不变。
+**待人工**: 售货机购买 500057、裸装+船票+信物自动传送、契约确认/取消、九波三幕、R1/R2/R3 宿敌、距离/弹药/属性三轴、CalmGate/生成期预射/禁令公布期、Last Stand 成功/超时/非计分末击、R3 直伤契约、奖励背包满/死亡/切图中断、factory 超时与迟到清理、多存档槽/删档/保存 busy/故障注入、Legacy/Mode D/E/F/Zombie 回归及 Profiler。复玩率与经济仍需真实玩家样本，不能由静态守卫代替。
+
+### 2026-08-17 Mode G 二次完整审查与发布门禁收口
+
+**状态**: fixed（静态实现与自动化）；正式入口继续 fail-closed
+**兼容分类**: COMPAT / SAFE / OPERATIONAL
+**修复**:
+- 奖励交付按实际归属核对 `AddAndMerge` / `SendToPlayerStorage` 的回调异常，背包、仓库、地面 agent 三路均失败后才销毁；Rewarding 死亡/切图/销毁先失效 nonce 再取消 materializer，死亡路由独占终局原因。
+- 启动支付显式转移退款所有权，首波同步失败、HUD/后续异常不再双退或错退；Runtime 退款逐项检查真实交付结果。
+- 幕伤害、距离适应、Rank 与性格 Modifier 在 Boss 槽提交前逐项验证，候选失败只回滚本候选并尝试 reserve，统一 cleanup 仍精确移除全部已记录 Modifier。
+- profile/nemesis 对未知 schema、不可读 payload 与 key 分类失败建立 per-key 写屏障；宿主销毁前同步尽力提交最后批次。持久宿敌临时不可用时标记 run-local `SuspendedPersistentV1`，玩家死于临时替补不会覆盖原 key/Rank。
+- 新增默认拒绝的官方 Boss eligibility registry，冻结 stable key、revision、副作用和适应能力摘要；快照/lookup 只接收已审计 key，同 key 多 preset 引用 fail-closed。没有真实审计数据时空表保持入口关闭。
+- 官方 Boss 最低池只计算唯一 stable key，重复审计记录不能凑足 6 条且查询直接 fail-closed；地图注册表补齐显式 `NotVerified/Verified`，首发候选保持 `NotVerified`，所有查询统一验证状态/revision/风险与安全摘要，无 Verified 地图不再创建 preview。
+- 九波计划改为每槽冻结一个 reserve，同波 primary/reserve 互斥，官方确定性 draw bag 耗尽后才跨波复用；三 Boss 波只要求正确的 6-key 合格池，不再错误要求整局十余个 key 全局不重复。单个托管署名不可用时只替换该槽。
+- `ModeGRuntimeModule` 的公共 API/终止路径原样拆到 partial 文件，使状态机主文件回到 1200 行预算内；入口意图改为显式布尔快照传递，难度入口 singleton 读取由 4 次收敛为 1 次，本轮新增异常边界均保留防崩并记录低频诊断。
+**自动验证**: 全部 28 个 `ModeG*Guard.py` 通过；工作区内可执行的全库脚本 431/433 通过，剩余两项是未触及的龙王火箭分裂视觉旧断言与 ZombieMode RunScopedRegistry 旧断言。最新代码因构建脚本必须读取工作区外游戏 DLL 并部署到工作区外目录，本轮未重新编译；此前 Windows 编译早于本轮地图状态、partial 拆分和最终 flush 变更，不能作为当前构建通过证据。工作区 `Build/BossRush.dll`（2026-08-17 21:29:00 +08:00，3092480 bytes，SHA-256 `E6B1DA7A6A782A75F701C4E66FF63770994DD7F5AE0BA6B829725DD3A7777599`）同样标记为旧构建，不作为当前源码验证结果。
+**发布阻断**: 官方至少 6 个 Boss 的逐 key 实审、DEMO 地图 `Verified` 矩阵、九波三托管 Boss 实机 smoke、Legacy/Mode D/E/F/Zombie 回归、Profiler 与真实复玩/经济样本尚未完成；`IsProductionReady=false`、两个开发开关=false。
+
+### 2026-08-17 Mode G owner 发布裁决与正式入口开放
+
+**状态**: fixed（代码与专项静态门禁）；当前源码尚未重新 Windows 编译
+**兼容分类**: COMPAT / OPERATIONAL
+**Owner decision**: 现有 `GetFilteredEnemyPresets()` 过滤 Boss 池内 Boss 均可用于 Mode G；地图选择 UI 的全部有效地图均视为安全地图；只开启 `IsProductionReady`，两个开发开关保持关闭。
+**修复内容**:
+- `ModeGOfficialBossEligibilityRegistry.TrustConfiguredBossPool=true`，生产资格直接消费现有过滤池；`CreateModeGBossSnapshot()` 继续排除托管 Boss、拒绝空 key/同 key 多 preset 引用，并要求至少 6 个唯一官方 key。
+- `ModeGMapSupportRegistry` 直接复用 `ModBehaviour.GetAllMapConfigs()`，有效 `sceneName + sceneID + spawnPoints` 配置形成 Verified 快照；preview 按当前 active scene 冻结玩家实际选择地图，不再固定第一个候选。
+- `ModeGAvailability.IsProductionReady=true`；`AllowDevTestEntry=false`、`AllowDevRawPngFallback=false` 保持不变。
+- 同步 Mode G eligibility/map/release/structure guards、contracts、findings、设计提案与 repowiki。
+**自动验证**: 全部 28 个 `ModeG*Guard.py` 通过；地图 JSON 一致性、排序、部署、UI 注入复用和无硬编码 fallback 守卫通过；工作区内允许执行的全库脚本 431/433 通过，剩余仍是未触及的龙王火箭分裂视觉旧断言与 ZombieMode RunScopedRegistry 旧断言；`git diff --check`、EmptyCatch、LargeFileBudget、ArchitectureStructure、EventSubscriptionLifecycle 通过。当前源码未重新 Windows 编译。
+**未验证/需人工**: 当前轮次未获工作区外游戏 DLL/部署目录访问授权，因此尚未执行 `compile_official.bat`；售货机购买、九波实机、旧模式回归与 Profiler 仍需交付 smoke。
+
 ---
 ### 2026-08-17 Mode F 全阶段持续补怪
 
@@ -1299,6 +1343,32 @@
 3. 本轮未执行 `compile_official.bat`：该脚本必须读取工作区外游戏 DLL 并向工作区外加载目录部署，而当前会话明确禁止访问或写入工作区外路径，不能越权把旧构建当作当前源码验证。
 **未验证/需人工**: 当前源码未正式编译，也未做游戏内 smoke。需在获准的 Windows 游戏环境中编译后，从准备阶段开始连续击杀多只 Boss，确认每次都会逐只补位；并跨悬赏、猎潮、撤离阶段验证补位不暂停、场上数量不累加失控。
 **失败尝试**: 无。
+
+### 2026-08-18 Mode G 编译错误修复
+
+**状态**: fixed（源码修复与静态守卫验证；Windows 正式编译待授权环境执行）
+**兼容分类**: SAFE / COMPAT
+**问题**:
+- `ModeG/ModeGEntry.cs` 的静态 `ModeG` 清理入口直接调用实例 partial 上下文中的 `DevLog`，导致 `CS0103`。
+- `ModeGRuntimeModule_PublicApiAndShutdown.cs` 将值类型 `SceneRuntimeContext` 与 `null` 比较，导致 `CS0019`。
+**修复**:
+- 三处宿主销毁日志改为显式 `ModBehaviour.DevLog`。
+- 场景生命周期检查移除值类型空比较，继续按冻结 scene pair/revision fail-closed；空场景名仅用于日志显示 `<empty>`。
+**验证**: 28 个 Mode G 守卫、`ArchitectureStructureGuard.py`、`ModBehaviourInstanceClassificationGuard.py`、`OfficialCompileListFileExistenceGuard.py`、目标文件 `git diff --check` 全部通过。当前会话未执行 `compile_official.bat`，避免访问工作区外游戏 DLL 和部署目录。
+
+### 2026-08-18 Mode G 自带装备、小 Boss 池复制与入口收口
+
+**状态**: fixed（源码、文档与专项静态守卫；Windows 正式编译/实机 smoke 待执行）
+**兼容分类**: COMPAT
+**Owner decision**: 玩家允许携带自己的装备进入 Mode G；官方 Boss 少于 6 个时从现有合格 key 中按本局 seed 随机复制；旧 BossRush 路牌不再显示 Mode G 独立选项。
+**修复**:
+- Mode G 自动分流和最终启动不再调用裸装扫描，不卸下、不移动、不发放 StarterKit，也不改写玩家现有装备、弹药或消耗品；营旗和血猎收发器的 Mode E/F 优先级保持不变。
+- 官方 Boss 启动最低值由 6 个唯一 key 调整为 1 个；6 个保留为完整 primary/reserve 编排目标。1-5 个时 `ModeGWavePlan` 使用同一 `runSeed` 的确定性随机流从现有 stable key 复制，允许同波 primary/reserve 重复，但不伪造 `EnemyPresetInfo`、不修改 run-scoped 快照，空池和同 key 多 preset 引用仍 fail-closed。
+- 移除 `BossRushOption_ModeG` 路牌注入；Mode G 继续沿地图选择/传送前冻结意图，过图后由短命 `ModeGInteractable` presenter 打开契约二选一确认页。
+- Mode G 奖励候选桥接显式过滤为 Q5-Q8，不改变 Legacy Q1-Q8 候选搜索；确认页补充核心玩法与奖励说明：后续波次针对上一波距离、弹药和伤害类型，改变打法获得 Resolve；第 9 波胜利按 Resolve 发放 6-10 件 Q5-Q8 奖励并返还信物。
+- 同步 `ModeGManagedBossEligibilityGuard.py`、`ModeGPlayerLoadoutGuard.py`、`ModeGEntryPreviewGuard.py`、`docs/contracts.md`、设计提案与 repowiki。
+**静态验证**: 全部 28 个 `ModeG*Guard.py` 通过；`ArchitectureStructureGuard.py`、`ModBehaviourInstanceClassificationGuard.py`、`OfficialCompileListFileExistenceGuard.py`、`EventSubscriptionLifecycleGuard.py`、`EmptyCatchGuard.py` 与 `git diff --check` 通过（仅既有 LF/CRLF 提示）。
+**未验证/需人工**: 当前轮次未获工作区外游戏 DLL/部署目录访问授权，未执行 `compile_official.bat`。需实机确认携带装备自动分流、1/2/5 个官方 Boss 池的九波生成、确认页布局、胜利奖励与旧三难度路牌回归。
 
 ## 变更日志
 

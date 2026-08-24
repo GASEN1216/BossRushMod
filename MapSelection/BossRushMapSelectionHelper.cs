@@ -90,6 +90,7 @@ namespace BossRush
         // 地图选择 UI 流程与“船票已被 UI 扣除”的跨场景状态
         private static BossRushEntryFlowSource pendingEntryFlowSource = BossRushEntryFlowSource.None;
         private static bool pendingPrepaidTicketForCurrentEntry = false;
+        private static bool pendingModeGEntryIntent = false;
         
         // 是否已初始化 - 保留用于未来扩展
         #pragma warning disable CS0414
@@ -158,8 +159,14 @@ namespace BossRush
         /// </summary>
         public static void MarkEntryFlowFromMapSelectionUi()
         {
+            MarkEntryFlowFromMapSelectionUi(false);
+        }
+
+        public static void MarkEntryFlowFromMapSelectionUi(bool modeGEntryIntent)
+        {
             pendingEntryFlowSource = BossRushEntryFlowSource.MapSelectionUi;
             pendingPrepaidTicketForCurrentEntry = false;
+            pendingModeGEntryIntent = modeGEntryIntent;
         }
 
         /// <summary>
@@ -167,8 +174,14 @@ namespace BossRush
         /// </summary>
         public static void MarkEntryFlowFromDirectTeleport()
         {
+            MarkEntryFlowFromDirectTeleport(false);
+        }
+
+        public static void MarkEntryFlowFromDirectTeleport(bool modeGEntryIntent)
+        {
             pendingEntryFlowSource = BossRushEntryFlowSource.DirectTeleport;
             pendingPrepaidTicketForCurrentEntry = false;
+            pendingModeGEntryIntent = modeGEntryIntent;
         }
 
         /// <summary>
@@ -189,6 +202,11 @@ namespace BossRush
             return pendingPrepaidTicketForCurrentEntry;
         }
 
+        public static bool HasPendingModeGEntryIntent()
+        {
+            return pendingModeGEntryIntent;
+        }
+
         /// <summary>
         /// 清理当前 BossRush 入场的预扣票状态，避免串到下一次。
         /// </summary>
@@ -196,6 +214,7 @@ namespace BossRush
         {
             pendingEntryFlowSource = BossRushEntryFlowSource.None;
             pendingPrepaidTicketForCurrentEntry = false;
+            pendingModeGEntryIntent = false;
         }
         
         /// <summary>
@@ -203,9 +222,14 @@ namespace BossRush
         /// </summary>
         public static void ShowBossRushMapSelection()
         {
+            ShowBossRushMapSelection(false);
+        }
+
+        public static void ShowBossRushMapSelection(bool modeGEntryIntent)
+        {
             try
             {
-                MarkEntryFlowFromMapSelectionUi();
+                MarkEntryFlowFromMapSelectionUi(modeGEntryIntent);
 
                 // 设置 BossRush 传送标记，确保场景加载后触发 BossRush 设置逻辑
                 SetBossRushArenaPlanned(true);
@@ -602,7 +626,7 @@ namespace BossRush
         {
             try
             {
-                MarkEntryFlowFromDirectTeleport();
+                MarkEntryFlowFromDirectTeleport(pendingModeGEntryIntent);
 
                 ModBehaviour mod = ModBehaviour.Instance;
                 if (mod != null)

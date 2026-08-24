@@ -15,7 +15,10 @@ ModeGRewardGuard — Mode G 严格奖励事务守卫（规格 §20 第 25 条）
   单件失败销毁实例不静默重试/替换、完成回调后自毁；
 - 禁异步 Task/timeout：materializer 类剥注释后无 async/await/Task./
   Invoke(/StartCoroutine/InvokeRepeating；
-- 胜利幂等返还信物（TypeID 500057）一次（Interlocked CAS）。
+- 普通奖励与信物共用分阶段可靠交付：背包/仓库异常以后验归属、
+  缓冲计数或实例销毁确认是否已提交，禁止外层异常跳过 fallback；
+- 胜利幂等返还信物（TypeID 500057）一次（Interlocked CAS），
+  地面 fallback 必须验证拾取代理。
 
 规格偏差注明：规格列举的 CandidateRejected 四类命名原因在实现中以
 入口级 failureReason（快照为空/Inventory 为空/初始化失败）表达，
@@ -29,6 +32,7 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REWARD = os.path.join(REPO_ROOT, "ModeG", "ModeGRewardTransaction.cs")
+SPAWN = os.path.join(REPO_ROOT, "ModeG", "ModeGSpawnTransaction.cs")
 ENTRY = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsVictoryRewards.cs")
 MATERIALIZER = os.path.join(REPO_ROOT, "LootAndRewards", "VictoryRewardShadowCrateController.cs")
 
@@ -50,11 +54,15 @@ def strip_comments(text):
 def main():
     errors = []
     reward = read(REWARD, errors)
+    spawn = read(SPAWN, errors)
     entry = read(ENTRY, errors)
     mat_file = read(MATERIALIZER, errors)
 
     if reward:
         checks = [
+            ("HighQualityCandidateGate",
+             r"meta\.id != typeId \|\| meta\.quality < 5 \|\| meta\.quality > 8",
+             "Mode G 奖励候选只接受 Q5-Q8，不改变 Legacy 候选池"),
             ("SlotCount", r"public const int SlotCount = 10;", "10 槽冻结"),
             ("SlotRanges",
              r"public const int GeneralSlotBegin = 0;"
@@ -108,14 +116,47 @@ def main():
              r'ModeGLateCleanupSink\.AcquireLease\("reward_materializer"\)',
              "胜利安全 lease（materializer 完成前 sink 隔离）"),
             ("RelicReturnCas",
-             r"if \(System\.Threading\.Interlocked\.Exchange\(ref _relicReturnExecuted, 1\) != 0\) return;",
+             r"if \(System\.Threading\.Interlocked\.Exchange\(ref _relicReturnExecuted, 1\) != 0\) return true;",
              "信物返还 Interlocked CAS 幂等一次"),
             ("RelicTypeId",
              r"public const int RelicTypeId = FateEchoRelicConfig\.TYPE_ID;",
              "信物 TypeID 引用 500057 常量"),
+            ("ReliableDeliveryHelper",
+             r"internal static bool TryCommitItemToInventoryOrStorage\("
+             r"[\s\S]{0,500}?inventory\.AddAndMerge\(item, 0\)"
+             r"[\s\S]{0,900}?ItemUtilities\.SendToPlayerStorage\(item, true\)",
+             "背包与仓库缓冲使用独立可靠交付边界"),
+            ("InventoryPostcondition",
+             r"private static bool IsCommittedToInventory\("
+             r"[\s\S]{0,500}?ReferenceEquals\(item\.InInventory, inventory\)",
+             "背包回调异常后验证实际 Inventory 归属/实例消费"),
+            ("StoragePostcondition",
+             r"int bufferCountBefore = GetIncomingBufferCount\(\);"
+             r"[\s\S]{0,900}?DidStorageBufferAcceptItem\(item, bufferCountBefore\)",
+             "仓库回调异常后调用提交后验检查"),
+            ("StoragePostconditionEvidence",
+             r"private static bool DidStorageBufferAcceptItem\("
+             r"[\s\S]{0,500}?buffer\.Count > bufferCountBefore"
+             r"[\s\S]{0,300}?return item == null;",
+             "仓库后验检查验证缓冲计数或实例销毁"),
+            ("RelicReliableDelivery",
+             r"TryCommitItemWithGroundFallback\(\s*relic,\s*inventory,",
+             "信物使用统一关键物品可靠交付入口"),
+            ("GroundFallbackPostcondition",
+             r"internal static bool TryCommitItemWithGroundFallback\("
+             r"[\s\S]{0,700}?TryCommitItemToInventoryOrStorage\(item, inventory, itemLabel\)"
+             r"[\s\S]{0,700}?DuckovItemAgent pickup = item\.Drop\("
+             r"[\s\S]{0,900}?item\.ActiveAgent != null",
+             "关键物品以实际拾取代理验证地面 fallback"),
+            ("RelicFailureRollback",
+             r"relic\.DestroyTree\(\);[\s\S]{0,400}?"
+             r"信物返还失败后的实例清理异常[\s\S]{0,240}?"
+             r"Interlocked\.Exchange\(ref _relicReturnExecuted, 0\);\s*return false;",
+             "信物全部交付失败时销毁临时实例并重开幂等闸"),
         ]
         for name, pattern, desc in checks:
-            if not re.search(pattern, reward):
+            haystack = spawn if name == "HighQualityCandidateGate" else reward
+            if not re.search(pattern, haystack):
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
     if entry:
@@ -148,8 +189,15 @@ def main():
             ("OnePerFrame",
              r"// 每帧至多一件 InstantiateSync，避免奖励尖峰",
              "每帧最多 1 件 InstantiateSync"),
+            ("SharedReliableDelivery",
+             r"ModeGRewardTransaction\.TryCommitItemToInventoryOrStorage\("
+             r"[\s\S]{0,120}?item, targetInventory,",
+             "strict materializer 复用分阶段可靠交付"),
+            ("FailedInstanceCleanup",
+             r"if \(!committed\)\s*\{[\s\S]{0,180}?item\.DestroyTree\(\);",
+             "可靠交付全部失败后销毁未提交实例"),
             ("StrictNoRetry",
-             r"// strict：入箱失败即判失败，销毁实例，不静默重试/替换",
+             r"if \(!committed\) failedCount\+\+;",
              "单件失败不静默重试/替换"),
             ("CompleteThenSelfDestroy",
              r"completionCallback\(total, succeeded, failed\);"

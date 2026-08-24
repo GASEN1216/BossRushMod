@@ -457,7 +457,7 @@ namespace BossRush
                 }
 
                 HideF3DebugCheatMenu();
-                BossRushMapSelectionHelper.ShowBossRushMapSelection();
+                BossRushMapSelectionHelper.ShowBossRushMapSelection(IsModeGEntryIntentNow());
             }
             catch (Exception e)
             {

@@ -63,6 +63,7 @@ namespace BossRush
         private static NemesisRecordDto _pending;
         private static bool _pendingFlushActive;      // 每槽至多一个 pending flush
         private static bool _storeFaulted;            // 单向故障
+        private static bool _writeBarrier;            // 当前槽未知/不可读版本，只阻断本 key
         private static bool _subscribed;
         private static SuspendedPersistentV1 _suspended; // 内存挂起，不写盘
 
@@ -122,12 +123,14 @@ namespace BossRush
         {
             try
             {
+                ModeGPersistenceFlushCoordinator.NotifySlotChanged();
                 // 切档：丢弃内存状态，从新档重新加载
                 lock (_lock)
                 {
                     _cache = null;
                     _pending = null;
                     _pendingFlushActive = false;
+                    _writeBarrier = false;
                     _suspended = null;
                 }
                 LoadOrInit();
@@ -139,12 +142,14 @@ namespace BossRush
         {
             try
             {
+                ModeGPersistenceFlushCoordinator.NotifySlotChanged();
                 // 删档：重置全部内存状态（幂等）
                 lock (_lock)
                 {
                     _cache = null;
                     _pending = null;
                     _pendingFlushActive = false;
+                    _writeBarrier = false;
                     _suspended = null;
                 }
             }
@@ -159,6 +164,9 @@ namespace BossRush
         /// StoreFaulted 单向故障查询。入口 fail-closed 判据之一。
         /// </summary>
         public static bool IsStoreFaulted { get { return _storeFaulted; } }
+        public static bool HasWriteBarrier { get { lock (_lock) return _writeBarrier; } }
+        internal static bool HasPendingFlush { get { lock (_lock) return _pendingFlushActive && _pending != null; } }
+        internal static void MarkCoordinatorFaulted(Exception e) { _storeFaulted = true; }
 
         /// <summary>
         /// 当前宿敌记录缓存（可能为 null）。
@@ -177,10 +185,12 @@ namespace BossRush
             lock (_lock)
             {
                 if (_cache != null) return _cache;
+                bool keyExists = false;
                 try
                 {
                     if (SavesSystem.KeyExisits(StorageKey))
                     {
+                        keyExists = true;
                         NemesisRecordDto loaded = SavesSystem.Load<NemesisRecordDto>(StorageKey);
                         if (loaded != null && loaded.schemaVersion == 0)
                         {
@@ -194,6 +204,7 @@ namespace BossRush
                             suspendedTicks = DateTime.UtcNow.Ticks,
                             suspendedRecord = loaded
                         };
+                        _writeBarrier = true;
                     }
                     _cache = new NemesisRecordDto();
                     return _cache;
@@ -201,6 +212,13 @@ namespace BossRush
                 catch (Exception e)
                 {
                     ModBehaviour.DevLog("[ModeG] [WARNING] 宿敌记录加载失败: " + e.Message);
+                    _writeBarrier = true;
+                    _suspended = new SuspendedPersistentV1
+                    {
+                        reason = keyExists ? "payload_unreadable" : "key_classification_failed",
+                        suspendedTicks = DateTime.UtcNow.Ticks,
+                        suspendedRecord = null
+                    };
                     _cache = new NemesisRecordDto();
                     return _cache;
                 }
@@ -215,6 +233,7 @@ namespace BossRush
         {
             if (record == null) return false;
             if (_storeFaulted) return false; // fail-closed
+            if (HasWriteBarrier) return false; // 未知/不可读版本原样保留，不覆盖本 key
             try
             {
                 lock (_lock)
@@ -226,11 +245,8 @@ namespace BossRush
                     _pendingFlushActive = true;
 
                     // IsSaving 时只合并，不触发写盘
-                    if (!SavesSystem.IsSaving)
-                    {
-                        FlushPendingLocked(writeFile: true);
-                    }
                 }
+                ModeGPersistenceFlushCoordinator.RequestFlush();
                 return true;
             }
             catch (Exception e)
@@ -255,13 +271,18 @@ namespace BossRush
         private static void FlushPendingLocked(bool writeFile)
         {
             if (!_pendingFlushActive || _pending == null) return;
+            if (_writeBarrier) return;
             try
             {
                 if (SavesSystem.IsSaving) return; // 官方保存中：只合并，不打断
                 SavesSystem.Save<NemesisRecordDto>(StorageKey, _pending);
                 // 回读核对（guard 24：Save + 回读核对再一次 SaveFile(false)）
                 NemesisRecordDto readback = SavesSystem.Load<NemesisRecordDto>(StorageKey);
-                if (readback != null && writeFile)
+                if (!CriticalFieldsMatch(_pending, readback))
+                {
+                    throw new InvalidOperationException("nemesis typed save readback mismatch");
+                }
+                if (writeFile)
                 {
                     SavesSystem.SaveFile(false);
                 }
@@ -273,6 +294,17 @@ namespace BossRush
                 _storeFaulted = true;
                 ModBehaviour.DevLog("[ModeG] [ERROR] 宿敌 flush 异常，进入 StoreFaulted: " + e.Message);
             }
+        }
+
+        private static bool CriticalFieldsMatch(NemesisRecordDto expected, NemesisRecordDto actual)
+        {
+            return expected != null && actual != null
+                && expected.schemaVersion == actual.schemaVersion
+                && string.Equals(expected.bossPresetKey, actual.bossPresetKey, StringComparison.Ordinal)
+                && expected.rank == actual.rank
+                && expected.defeatsByPlayer == actual.defeatsByPlayer
+                && expected.defeatsOfPlayer == actual.defeatsOfPlayer
+                && expected.tombstone == actual.tombstone;
         }
 
         #endregion

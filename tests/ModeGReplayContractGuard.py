@@ -96,8 +96,14 @@ def main():
         if not re.search(r"if \(second >= first\) second\+\+;", content):
             errors.append("[PairDistinct] 候选对未保证互异")
         if not re.search(r"int a = Math\.Min\(first, second\);\s*\n\s*int b = Math\.Max\(first, second\);",
-                         content):
+                         content) and not re.search(
+                r"int a = Math\.Min\(eligible\[first\], eligible\[second\]\);\s*\n\s*"
+                r"int b = Math\.Max\(eligible\[first\], eligible\[second\]\);", content):
             errors.append("[PairAscending] 候选对未升序输出")
+        if not re.search(
+                r"if \(_pool\[i\]\.id != excludedContractId\) eligible\.Add\(_pool\[i\]\.id\);",
+                content):
+            errors.append("[ExcludeLastSelected] 候选池未排除上一局实际选择")
         if not re.search(r"SeedDomain\(runSeed,\s*\n?\s*ModeGDeterministicRandom\.DomainConstants\.Contract",
                          content):
             errors.append("[PairDeterministic] 候选对未走 Contract domain 确定性派生")

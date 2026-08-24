@@ -24,6 +24,7 @@ REQUIRED_FILES = [
     "ModeGDeathRouting.cs",
     "ModeGNemesisPersistence.cs",
     "ModeGProfilePersistence.cs",
+    "ModeGPersistenceFlushCoordinator.cs",
     "ModeGRewardTransaction.cs",
     "ModeGMapSupportRegistry.cs",
     "ModeGFateContract.cs",
@@ -32,6 +33,7 @@ REQUIRED_FILES = [
     "ModeGSpawnTransaction.cs",
     "ModeGCleanupController.cs",
     "ModeGRuntimeModule.cs",
+    "ModeGRuntimeModule_PublicApiAndShutdown.cs",
     "ModeGRuntimeLifecycle.cs",
     "ModeGRuntimeBridge.cs",
     "ModeGHUD.cs",
@@ -54,7 +56,7 @@ INVARIANTS = {
     "IsProductionReady_true": (
         "ModeGAvailability.cs",
         r"public const bool IsProductionReady = true",
-        "正式入口已开放，IsProductionReady 必须为 true",
+        "Owner 已批准 Mode G 正式入口",
     ),
     "FnvOffsetBasis": (
         "ModeGAvailability.cs",
@@ -139,13 +141,18 @@ REPO_INVARIANTS = {
         r"UniTask<ManagedBossPrepareResult> DispatchModeGManagedBossSpawnAsync",
         "dispatcher 返回 prepared handle，不提前激活",
     ),
+    "PersistenceCoordinator": (
+        "ModeG/ModeGPersistenceFlushCoordinator.cs",
+        r"class ModeGPersistenceFlushCoordinator.*?SaveFile\(false\)",
+        "宿敌/profile 共享单次 SaveFile flush coordinator",
+    ),
     "BatchActivation": (
         "ModeG/ModeGRuntimeModule.cs",
         r"pendingActivationHandles.*?ActivateOnce",
         "全部槽位结案后批量激活",
     ),
     "StartupRefund": (
-        "ModeG/ModeGRuntimeModule.cs",
+        "ModeG/ModeGRuntimeModule_PublicApiAndShutdown.cs",
         r"RefundStartupPaymentOnTechnicalFailure.*?SpawnExhausted.*?TechnicalIntegrityLoss",
         "首波技术失败返还入场物品",
     ),
@@ -156,13 +163,13 @@ REPO_INVARIANTS = {
     ),
     "DemoEntryFailClosed": (
         "WavesArena/BossRushEntryFlow.cs",
-        r"entryMode == BossRushEntryMode\.ModeG.*?bool startedModeG = TryStartModeG\(\).*?ClearPendingEntryFlowState\(\);\s*yield break;",
-        "DEMO Mode G 分支成功失败均清状态并终止",
+        r"entryMode == BossRushEntryMode\.ModeG.*?TryOpenConfirmation\(this\).*?if \(!openedModeG\) TryRefundModeGPendingPrepaidTicket\(\);\s*yield break;",
+        "DEMO Mode G 分支入口失败退还预扣票并终止",
     ),
     "GroundZeroEntryFailClosed": (
         "Integration/BossRushIntegration_TravelAndSetup.cs",
-        r"entryMode == BossRushEntryMode\.ModeG.*?bool startedModeG = TryStartModeG\(\).*?ClearPendingEntryFlowState\(\);\s*yield break;",
-        "GroundZero Mode G 分支成功失败均清状态并终止",
+        r"entryMode == BossRushEntryMode\.ModeG.*?TryOpenConfirmation\(this\).*?if \(!openedModeG\) TryRefundModeGPendingPrepaidTicket\(\);\s*yield break;",
+        "GroundZero Mode G 分支入口失败退还预扣票并终止",
     ),
 }
 

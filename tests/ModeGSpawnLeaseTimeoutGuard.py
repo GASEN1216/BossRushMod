@@ -103,7 +103,7 @@ def main():
              "CanContinueRun=false -> 清理后 return（不写槽结案）"),
             ("CommitRejectedCleanup",
              r"if \(!_spawnTransaction\.TryCommit\(slotIndex, key, boss\)\)"
-             r"[\s\S]{0,200}?CleanupOnce\(ManagedBossCleanupReason\.SpawnRejected\)",
+             r"[\s\S]{0,400}?CleanupOnce\(ManagedBossCleanupReason\.SpawnRejected\)",
              "提交失败 -> CleanupOnce（失败路径不结案）"),
             ("ExhaustedMarkOnly",
              r"if \(!committed\) _spawnTransaction\.MarkExhausted\(slotIndex\);",

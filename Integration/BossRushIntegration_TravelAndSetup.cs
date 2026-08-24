@@ -382,12 +382,14 @@ namespace BossRush
             // Mode G 独立分支：成功或失败都不得落入普通 BossRush 初始化。
             if (entryMode == BossRushEntryMode.ModeG)
             {
-                DevLog("[BossRush] SetupBossRushInGroundZero: 检测到船票+宿命回响信物+裸装入场，将尝试启动 Mode G");
-                DisableAllSpawners();
-                ClearEnemiesForBossRush();
-
+                DevLog("[BossRush] SetupBossRushInGroundZero: 检测到船票+宿命回响信物，将保留玩家当前装备并尝试启动 Mode G");
                 yield return new UnityEngine.WaitForSeconds(0.5f);
-                bool startedModeG = TryStartModeG();
+                bool openedModeG = ModeGInteractable.TryOpenConfirmation(this);
+                while (openedModeG && ModeGInteractable.IsConfirmationOpen)
+                {
+                    yield return null;
+                }
+                bool startedModeG = modeGActive;
                 if (startedModeG)
                 {
                     SpawnCommonNPCs("GroundZero场景 Mode G 初始化完成");
@@ -397,12 +399,19 @@ namespace BossRush
                 }
                 else
                 {
-                    DevLog("[BossRush] [WARNING] SetupBossRushInGroundZero: Mode G 启动失败，已中止本次竞技场初始化");
-                    ShowMessage(L10n.T(
-                        "宿命回响启动失败，入场物品已恢复。",
-                        "Fate Echo failed to start. Entry items were restored."));
+                    if (ModeGInteractable.LastConfirmationAttemptedStart)
+                    {
+                        DevLog("[BossRush] [WARNING] SetupBossRushInGroundZero: Mode G 启动失败，已中止本次竞技场初始化");
+                        ShowMessage(L10n.T(
+                            "宿命回响启动失败，入场物品已恢复。",
+                            "Fate Echo failed to start. Entry items were restored."));
+                    }
+                    else
+                    {
+                        DevLog("[BossRush] SetupBossRushInGroundZero: Mode G 确认页已取消，竞技场环境保持不变");
+                    }
                 }
-                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                if (!openedModeG) TryRefundModeGPendingPrepaidTicket();
                 yield break;
             }
 

@@ -152,12 +152,15 @@ namespace BossRush
             {
                 case ModeGPlanVariant.Pincer:
                 {
-                    // 钳形包夹：两翼对向玩家，前后微错开
-                    for (int i = 0; i < bossCount; i++)
+                    // 钳形包夹：两翼 + 前压点；三点天然满足冻结两两间距。
+                    offsets[0] = new UnityEngine.Vector2(-r, 0f);
+                    offsets[1] = new UnityEngine.Vector2(r, 0f);
+                    if (bossCount >= 3) offsets[2] = new UnityEngine.Vector2(0f, r);
+                    for (int i = 3; i < bossCount; i++)
                     {
-                        float side = (i % 2 == 0) ? 1f : -1f;
-                        float depth = (i / 2) * spec.bossPairMinDistance * 0.5f;
-                        offsets[i] = new UnityEngine.Vector2(side * r, side * depth);
+                        float angle = (float)((double)i / bossCount * Math.PI * 2.0);
+                        offsets[i] = new UnityEngine.Vector2(
+                            (float)Math.Cos(angle) * r, (float)Math.Sin(angle) * r);
                     }
                     break;
                 }

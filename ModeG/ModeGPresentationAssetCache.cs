@@ -45,21 +45,15 @@ namespace BossRush
             _preflightAttempted = true;
             try
             {
-                if (EnsureBundleLoaded())
+                Sprite emblem = GetEmblemSprite();
+                Sprite banner = GetBannerSprite();
+                if (emblem != null && banner != null)
                 {
                     _preflightResult = true;
                     return true;
                 }
 
-                // 仅开发构建允许 raw PNG fallback
-                if (ModeGAvailability.AllowDevRawPngFallback
-                    && DevRawEmblemPath() != null && DevRawBannerPath() != null)
-                {
-                    _preflightResult = true;
-                    return true;
-                }
-
-                ModBehaviour.DevLog("[ModeG] 展示资源预检失败（fail-closed）");
+                ModBehaviour.DevLog("[ModeG] 展示资源预检失败：emblem/banner 必须同时为 Sprite（fail-closed）");
                 _preflightResult = false;
                 return false;
             }

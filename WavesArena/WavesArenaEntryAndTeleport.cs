@@ -35,7 +35,7 @@ namespace BossRush
                 return;
             }
 
-            BossRushMapSelectionHelper.MarkEntryFlowFromDirectTeleport();
+            BossRushMapSelectionHelper.MarkEntryFlowFromDirectTeleport(IsModeGEntryIntentNow());
 
             // 没有从交互点传入时，使用默认难度（每波1个Boss）
             if (interactionSource == null)

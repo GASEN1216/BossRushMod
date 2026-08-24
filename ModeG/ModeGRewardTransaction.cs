@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ItemStatsSystem;
 
 namespace BossRush
 {
@@ -168,7 +169,7 @@ namespace BossRush
 
                 // 升序价格表（nearest-rank 输入）
                 long[] prices = new long[sorted.Length];
-                for (int i = 0; i < sorted.Length; i++) prices[i] = sorted[i].priceEach;
+                for (int i = 0; i < sorted.Length; i++) prices[i] = sorted[i].EstimatedSlotValue;
                 Array.Sort(prices);
                 long p75 = NearestRankValue(prices, Percentile75);
                 long p95 = NearestRankValue(prices, Percentile95);
@@ -178,7 +179,7 @@ namespace BossRush
                 List<ModeGRewardCandidate> premiumPool = new List<ModeGRewardCandidate>();
                 for (int i = 0; i < sorted.Length; i++)
                 {
-                    ModeGRewardBand band = ClassifyBand(sorted[i].priceEach, p75, p95);
+                    ModeGRewardBand band = ClassifyBand(sorted[i].EstimatedSlotValue, p75, p95);
                     if (band == ModeGRewardBand.GeneralBase) generalPool.Add(sorted[i]);
                     else if (band == ModeGRewardBand.PremiumP75P95) premiumPool.Add(sorted[i]);
                     // ExtremeExcluded 不进任何槽
@@ -332,6 +333,150 @@ namespace BossRush
         private static int _relicReturnExecuted; // Interlocked CAS：信物返还幂等一次
 
         /// <summary>
+        /// 将单件奖励提交到背包或仓库缓冲。官方 API 可能在完成写入后由事件回调抛异常，
+        /// 因此异常路径必须以后验归属/缓冲计数判断是否已经提交，避免重复交付。
+        /// </summary>
+        internal static bool TryCommitItemToInventoryOrStorage(
+            ItemStatsSystem.Item item,
+            ItemStatsSystem.Inventory inventory,
+            string itemLabel)
+        {
+            if (item == null || inventory == null) return false;
+
+            try
+            {
+                if (inventory.AddAndMerge(item, 0)) return true;
+            }
+            catch (Exception inventoryException)
+            {
+                if (IsCommittedToInventory(item, inventory))
+                {
+                    ModBehaviour.DevLog("[ModeG] " + (itemLabel ?? "奖励")
+                        + "背包回调异常，但物品已提交: " + inventoryException.Message);
+                    return true;
+                }
+
+                ModBehaviour.DevLog("[ModeG] [WARNING] " + (itemLabel ?? "奖励")
+                    + "写入背包失败，尝试仓库缓冲: " + inventoryException.Message);
+            }
+
+            // AddAndMerge 可能把整个堆叠合并并销毁传入实例后才由回调抛错。
+            if (IsCommittedToInventory(item, inventory)) return true;
+
+            int bufferCountBefore = GetIncomingBufferCount();
+            try
+            {
+                ItemUtilities.SendToPlayerStorage(item, true);
+                return true;
+            }
+            catch (Exception storageException)
+            {
+                // SendToPlayerStorage 的顺序是 Detach -> Buffer.Add -> DestroyTree -> callback。
+                // 缓冲计数增加或实例已被销毁都表示交付已经完成，禁止再次掉落/销毁。
+                if (DidStorageBufferAcceptItem(item, bufferCountBefore))
+                {
+                    ModBehaviour.DevLog("[ModeG] " + (itemLabel ?? "奖励")
+                        + "仓库回调异常，但物品已提交: " + storageException.Message);
+                    return true;
+                }
+
+                ModBehaviour.DevLog("[ModeG] [WARNING] " + (itemLabel ?? "奖励")
+                    + "写入仓库缓冲失败: " + storageException.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Mode G 关键物品的最终交付：背包/仓库均未提交时，验证地面拾取代理。
+        /// </summary>
+        internal static bool TryCommitItemWithGroundFallback(
+            ItemStatsSystem.Item item,
+            ItemStatsSystem.Inventory inventory,
+            CharacterMainControl player,
+            string itemLabel)
+        {
+            if (item == null) return false;
+            if (TryCommitItemToInventoryOrStorage(item, inventory, itemLabel)) return true;
+            if (player == null) return false;
+
+            try
+            {
+                DuckovItemAgent pickup = item.Drop(
+                    player.transform.position + UnityEngine.Vector3.up * 0.3f,
+                    true, UnityEngine.Vector3.forward, 0f);
+                if (pickup == null) return false;
+                ModBehaviour.DevLog("[ModeG] " + (itemLabel ?? "关键物品")
+                    + "已掉落在玩家脚下");
+                return true;
+            }
+            catch (Exception dropException)
+            {
+                try
+                {
+                    if (item != null && item.ActiveAgent != null)
+                    {
+                        ModBehaviour.DevLog("[ModeG] " + (itemLabel ?? "关键物品")
+                            + "掉落回调异常，但拾取代理已生成: " + dropException.Message);
+                        return true;
+                    }
+                }
+                catch (Exception verificationException)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 地面交付归属核对失败: "
+                        + verificationException.Message);
+                }
+                ModBehaviour.DevLog("[ModeG] [WARNING] " + (itemLabel ?? "关键物品")
+                    + "地面交付失败: " + dropException.Message);
+                return false;
+            }
+        }
+
+        private static bool IsCommittedToInventory(
+            ItemStatsSystem.Item item,
+            ItemStatsSystem.Inventory inventory)
+        {
+            try
+            {
+                return item == null || item.StackCount <= 0
+                    || ReferenceEquals(item.InInventory, inventory);
+            }
+            catch
+            {
+                return item == null;
+            }
+        }
+
+        private static int GetIncomingBufferCount()
+        {
+            try
+            {
+                List<ItemStatsSystem.Data.ItemTreeData> buffer = PlayerStorage.IncomingItemBuffer;
+                return buffer != null ? buffer.Count : -1;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        private static bool DidStorageBufferAcceptItem(ItemStatsSystem.Item item, int bufferCountBefore)
+        {
+            try
+            {
+                List<ItemStatsSystem.Data.ItemTreeData> buffer = PlayerStorage.IncomingItemBuffer;
+                if (bufferCountBefore >= 0 && buffer != null && buffer.Count > bufferCountBefore)
+                    return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 仓库交付归属核对失败: " + e.Message);
+            }
+
+            try { return item == null; }
+            catch { return false; }
+        }
+
+        /// <summary>
         /// 执行严格奖励事务（胜利结算）。
         /// 守卫：仅 Victory；nonce 有效；materializer 每帧最多 1 件（Jimmy 侧组件内部保证）；
         /// 胜利安全 lease 在 materializer 完成前保持 sink 隔离。
@@ -346,7 +491,8 @@ namespace BossRush
             ModeGRunState state,
             ModBehaviour host,
             ItemStatsSystem.Inventory inventory,
-            List<RewardSlotPlan> plan)
+            List<RewardSlotPlan> plan,
+            Action<int, int, int> onCompleted)
         {
             try
             {
@@ -371,8 +517,16 @@ namespace BossRush
                 int[] typeIds = new int[plan.Count];
                 for (int i = 0; i < plan.Count; i++) typeIds[i] = plan[i].typeId;
 
+                // 信物属于胜利必达品，先完成可靠交付再启动逐帧普通奖励。
+                if (!TryReturnRelicOnce(inventory))
+                {
+                    ModBehaviour.DevLog("[ModeG] [ERROR] 信物可靠交付失败，奖励事务 fail-closed");
+                    return false;
+                }
+
                 // 胜利安全 lease：materializer 完成前 sink 隔离不归零
                 int leaseId = ModeGLateCleanupSink.AcquireLease("reward_materializer");
+                int completionGate = 0;
 
                 string failureReason;
                 bool started = host.TryStartModeGRewardMaterialization_LootAndRewards(
@@ -381,6 +535,7 @@ namespace BossRush
                     null,
                     (total, succeeded, failed) =>
                     {
+                        if (System.Threading.Interlocked.Exchange(ref completionGate, 1) != 0) return;
                         try
                         {
                             ModeGLateCleanupSink.ReleaseLease(leaseId);
@@ -388,18 +543,22 @@ namespace BossRush
                                 + " succeeded=" + succeeded + " failed=" + failed);
                         }
                         catch { /* no-throw */ }
+                        try { if (onCompleted != null) onCompleted(total, succeeded, failed); }
+                        catch (Exception callbackException)
+                        {
+                            ModBehaviour.DevLog("[ModeG] [WARNING] 奖励完成回调异常: "
+                                + callbackException.Message);
+                        }
                     },
                     out failureReason);
 
                 if (!started)
                 {
-                    ModeGLateCleanupSink.ReleaseLease(leaseId);
+                    if (System.Threading.Interlocked.Exchange(ref completionGate, 1) == 0)
+                        ModeGLateCleanupSink.ReleaseLease(leaseId);
                     ModBehaviour.DevLog("[ModeG] [ERROR] strict materializer 启动失败: " + (failureReason ?? "unknown"));
                     return false;
                 }
-
-                // 胜利额外幂等返还消耗的信物（TypeID 500057）一次
-                TryReturnRelicOnce(inventory);
 
                 // 消费 nonce（一次性事务）
                 InvalidateAllNonces();
@@ -417,33 +576,43 @@ namespace BossRush
         /// <summary>
         /// 幂等返还 1 枚宿命回响信物（胜利结算专属，全局一次/run）。
         /// </summary>
-        private static void TryReturnRelicOnce(ItemStatsSystem.Inventory inventory)
+        private static bool TryReturnRelicOnce(ItemStatsSystem.Inventory inventory)
         {
-            if (System.Threading.Interlocked.Exchange(ref _relicReturnExecuted, 1) != 0) return;
+            if (System.Threading.Interlocked.Exchange(ref _relicReturnExecuted, 1) != 0) return true;
+            ItemStatsSystem.Item relic = null;
             try
             {
-                ItemStatsSystem.Item relic = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(RelicTypeId);
+                relic = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(RelicTypeId);
                 if (relic == null)
                 {
                     ModBehaviour.DevLog("[ModeG] [WARNING] 信物返还失败：InstantiateSync 返回 null");
-                    _relicReturnExecuted = 0; // 允许重试一次
-                    return;
+                    System.Threading.Interlocked.Exchange(ref _relicReturnExecuted, 0);
+                    return false;
                 }
-                if (!inventory.AddItem(relic))
+
+                if (TryCommitItemWithGroundFallback(
+                    relic,
+                    inventory,
+                    CharacterMainControl.Main,
+                    L10n.T("宿命回响信物", "Fate Echo Relic")))
                 {
-                    ModBehaviour.DevLog("[ModeG] [WARNING] 信物返还失败：AddItem 拒绝");
-                    try { if (relic.gameObject != null) UnityEngine.Object.Destroy(relic.gameObject); } catch { }
-                    _relicReturnExecuted = 0; // 允许重试一次
-                }
-                else
-                {
-                    ModBehaviour.DevLog("[ModeG] 宿命回响信物已返还 x1（幂等）");
+                    ModBehaviour.DevLog("[ModeG] 宿命回响信物已可靠返还 x1（幂等）");
+                    return true;
                 }
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeG] [WARNING] 信物返还异常: " + e.Message);
             }
+
+            try { if (relic != null) relic.DestroyTree(); }
+            catch (Exception cleanupException)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 信物返还失败后的实例清理异常: "
+                    + cleanupException.Message);
+            }
+            System.Threading.Interlocked.Exchange(ref _relicReturnExecuted, 0);
+            return false;
         }
 
         /// <summary>

@@ -156,6 +156,7 @@ namespace BossRush
             SetBonusPlaceholderRegistry.ResetStaticCaches();
             FactionFlagConfig.ResetStaticCaches();
             ModeGEncounterVariation.ResetStaticCaches();
+            ModeGMapSupportRegistry.ResetStaticCaches();
             DragonBreathWeaponConfig.ClearStaticCache();
             DragonBreathBuffHandler.ClearStaticCache();
             // Mode G 分流（加法分支）：仍被 Mode G late-cleanup sink 持有 lease 时，
@@ -326,19 +327,27 @@ namespace BossRush
                     if (bossRushArenaPlanned)
                     {
                         BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
+                        bool deferArenaCommitForModeG =
+                            BossRushMapSelectionHelper.HasPendingModeGEntryIntent();
                         InitializeEnemyPresets();
                         InitializeItemValueCacheAsync();
                         InitializeBossPoolFilter();
-                        bossRushArenaActive = true;
+                        if (!deferArenaCommitForModeG)
+                        {
+                            bossRushArenaActive = true;
+                        }
                         bossRushArenaPlanned = false;
                         DragonBreathBuffHandler.Subscribe();
                         SetCurrentMapSpawnPoints(scene.name);
                         SetArenaCenterFromMapConfig(scene.name);
                         spawnersDisabled = false;
-                        PreCacheMapSpawnerPositions();
-                        ScheduleModeEStartupWarmup("OnSceneLoaded");
-                        DisableAllSpawners();
-                        StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
+                        if (!deferArenaCommitForModeG)
+                        {
+                            PreCacheMapSpawnerPositions();
+                            ScheduleModeEStartupWarmup("OnSceneLoaded");
+                            DisableAllSpawners();
+                            StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
+                        }
                         demoChallengeStartPosition = Vector3.zero;
                         StartCoroutine(WaitForLevelInitializedThenSetup(scene));
                     }

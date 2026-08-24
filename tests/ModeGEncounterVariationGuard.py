@@ -36,10 +36,19 @@ def main():
     errors = []
     variation = read("ModeGEncounterVariation.cs")
     waveplan = read("ModeGWavePlan.cs")
+    bridge = read("ModeGRuntimeBridge.cs")
+    runtime = read("ModeGRuntimeModule.cs")
+    adaptive = read("ModeGAdaptiveCombat.cs")
     if variation is None:
         errors.append("ModeGEncounterVariation.cs 不存在")
     if waveplan is None:
         errors.append("ModeGWavePlan.cs 不存在")
+    if bridge is None:
+        errors.append("ModeGRuntimeBridge.cs 不存在")
+    if runtime is None:
+        errors.append("ModeGRuntimeModule.cs 不存在")
+    if adaptive is None:
+        errors.append("ModeGAdaptiveCombat.cs 不存在")
 
     if variation:
         for key in ["managed_dragon_descendant", "managed_dragon_king", "managed_phantom_witch"]:
@@ -107,6 +116,49 @@ def main():
             r"[\s\S]{0,400}?return", waveplan)
         if m and len(re.findall(r"BuildCore\(", m.group(0))) != 1:
             errors.append("[RerollOnceBuild] Reroll 分支必须恰好重建一次")
+
+    if bridge:
+        checks = [
+            ("FormationSpecConsumed",
+             r"FormationSpec spec = ModeGWavePlan\.GetFormationSpec\(variant\);",
+             "运行时消费冻结 FormationSpec"),
+            ("SpawnOffsetsConsumed",
+             r"ModeGEncounterVariation\.GetSpawnOffsets\(variant, count, spec\)",
+             "运行时消费 Split/Pincer/Arc 偏移"),
+            ("GroundingRequired",
+             r"SpawnPositionHelper\.TrySnapToGround\(source\[i\], out grounded\)",
+             "候选点必须严格落地"),
+            ("PlayerDistanceRequired",
+             r"playerDelta\.sqrMagnitude < spec\.playerMinDistance \* spec\.playerMinDistance",
+             "候选点执行玩家最小距离"),
+            ("PairDistanceRequired",
+             r"delta\.sqrMagnitude < pairMinSqr",
+             "候选点执行 Boss 两两最小距离"),
+            ("SplitOnlyFallback",
+             r"if \(variant != ModeGPlanVariant\.Split\)"
+             r"[\s\S]{0,360}?GetFormationSpec\(ModeGPlanVariant\.Split\)"
+             r"[\s\S]{0,360}?ModeGPlanVariant\.Split",
+             "Pincer/Arc 几何失败只允许降级 Split"),
+            ("FormationFailClosed",
+             r"if \(variant != ModeGPlanVariant\.Split\)[\s\S]{0,900}?return null;",
+             "Split 仍失败时 fail-closed"),
+            ("HunterNearest",
+             r"bool hunter = isNemesisWave && temperament == ModeGNemesisTemperament\.Hunter;"
+             r"[\s\S]{0,4000}?preferNearest \? playerPos : target",
+             "Hunter 宿敌只在宿敌波偏向最近合格锚点"),
+        ]
+        for name, pattern, desc in checks:
+            if not re.search(pattern, bridge):
+                errors.append("[{}] 不满足: {}".format(name, desc))
+
+    if runtime and not re.search(
+            r"GetModeGSpawnPositions\(\s*waveIndex, wave\.bossCount, wave\.variant,"
+            r"\s*_runNemesisTemperament, wave\.isNemesisWave\)", runtime):
+        errors.append("[FormationRuntimeWired] RuntimeModule 未把变体/性格/宿敌波传给落点桥")
+
+    if adaptive and not re.search(
+            r"DomainConstants\.Temperament[\s\S]{0,180}?NextInt\(ref state, 3\)", adaptive):
+        errors.append("[TemperamentDomain] 性格未使用独立确定性 domain 三选一")
 
     if errors:
         print("ModeGEncounterVariationGuard: FAIL ({} errors)".format(len(errors)))

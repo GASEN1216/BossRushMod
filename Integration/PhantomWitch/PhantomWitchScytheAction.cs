@@ -310,7 +310,10 @@ namespace BossRush
                     damageInfo.crit = -1;
                     damageInfo.AddElementFactor(ElementTypes.ghost, 1f);
 
-                    receiver.Hurt(damageInfo);
+                    using (ModeGTelemetrySuppressionScope.Enter(receiver.health))
+                    {
+                        receiver.Hurt(damageInfo);
+                    }
                 }
                 catch (Exception e)
                 {

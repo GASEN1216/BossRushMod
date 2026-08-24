@@ -18,6 +18,7 @@ namespace BossRush
     /// </summary>
     public sealed class ModeGInteractable : InteractableBase
     {
+        private static ModeGInteractable _activeConfirmation;
         private const float ModalWidth = 780f;
         private const float ModalHeight = 560f;
 
@@ -27,6 +28,63 @@ namespace BossRush
         private TextMeshProUGUI _firstChoiceText;
         private TextMeshProUGUI _secondChoiceText;
         private ModeGEntryPreview _modalPreview;
+        private ModBehaviour _entryHost;
+        private bool _confirmed;
+        private bool _autoPresenter;
+
+        internal static bool IsConfirmationOpen
+        {
+            get { return _activeConfirmation != null && _activeConfirmation._modalRoot != null; }
+        }
+
+        internal static bool LastConfirmationAttemptedStart { get; private set; }
+
+        /// <summary>
+        /// 自动船票入场与路牌入口共用同一确认页。自动流程只负责创建短命
+        /// presenter，不直接选择契约或扣除物品。
+        /// </summary>
+        internal static bool TryOpenConfirmation(ModBehaviour host)
+        {
+            LastConfirmationAttemptedStart = false;
+            if (host == null || _activeConfirmation != null) return false;
+            GameObject obj = null;
+            try
+            {
+                if (!ModeGAvailability.IsProductionReady && !ModeGAvailability.AllowDevTestEntry)
+                    return false;
+                if (ModeGRuntimeGates.IsModeGEntryBlocked) return false;
+                if (!ModeGMapSupportRegistry.IsVerifiedSceneName(
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)) return false;
+                if (!ModeGPresentationAssetCache.TryPreflight()) return false;
+
+                ModeGEntryPreview preview = host.GetOrCreateModeGEntryPreview();
+                if (preview == null || preview.contractCandidateIds == null
+                    || preview.contractCandidateIds.Length < 2
+                    || !host.IsModeGEntryPreviewValidForCurrentScene(preview))
+                {
+                    return false;
+                }
+
+                obj = new GameObject("ModeG_AutoConfirmPresenter");
+                UnityEngine.Object.DontDestroyOnLoad(obj);
+                ModeGInteractable presenter = obj.AddComponent<ModeGInteractable>();
+                presenter._autoPresenter = true;
+                _activeConfirmation = presenter;
+                return presenter.OpenConfirmPage(host, preview);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 自动入口确认页创建失败: " + e.Message);
+                _activeConfirmation = null;
+                try { if (obj != null) UnityEngine.Object.Destroy(obj); }
+                catch (Exception cleanupException)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 自动确认页对象清理失败: "
+                        + cleanupException.Message);
+                }
+                return false;
+            }
+        }
 
         #region InteractableBase Overrides
 
@@ -60,13 +118,13 @@ namespace BossRush
         {
             try
             {
-                // 生产闸或开发闸（发布闸保持关闭时仅开发构建可见）
+                // 正式入口或显式开发入口均可见；两个开关都关闭时隐藏。
                 if (!ModeGAvailability.IsProductionReady && !ModeGAvailability.AllowDevTestEntry)
                 {
                     return false;
                 }
                 if (ModeGRuntimeGates.IsModeGEntryBlocked) return false;
-                if (!ModeGMapSupportRegistry.IsCombatSceneSupported(
+                if (!ModeGMapSupportRegistry.IsVerifiedSceneName(
                     UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
                 {
                     return false;
@@ -85,12 +143,15 @@ namespace BossRush
             try
             {
                 if (_modalRoot != null) return; // 确认页已打开（幂等）
+                if (!IsInteractable()) return;
 
                 ModBehaviour host = ModBehaviour.Instance;
                 if (host == null) return;
 
                 ModeGEntryPreview preview = host.GetOrCreateModeGEntryPreview();
-                if (preview == null || preview.contractCandidateIds == null || preview.contractCandidateIds.Length < 2)
+                if (preview == null || preview.contractCandidateIds == null
+                    || preview.contractCandidateIds.Length < 2
+                    || !host.IsModeGEntryPreviewValidForCurrentScene(preview))
                 {
                     host.ShowMessage(L10n.T(
                         "宿命回响入口准备失败，请稍后重试。",
@@ -98,11 +159,21 @@ namespace BossRush
                     return;
                 }
 
-                OpenConfirmPage(host, preview);
+                if (!OpenConfirmPage(host, preview))
+                {
+                    host.ShowMessage(L10n.T(
+                        "宿命回响确认页无法安全暂停战斗，请稍后重试。",
+                        "Fate Echo could not safely pause combat for confirmation. Please try again."));
+                }
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeG] [ERROR] ModeGInteractable.OnTimeOut 异常: " + e.Message);
+                try { CloseModal(); }
+                catch (Exception closeException)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 异常确认页关闭失败: " + closeException.Message);
+                }
             }
         }
 
@@ -110,13 +181,17 @@ namespace BossRush
 
         #region Confirm Page（确认页）
 
-        private void OpenConfirmPage(ModBehaviour host, ModeGEntryPreview preview)
+        private bool OpenConfirmPage(ModBehaviour host, ModeGEntryPreview preview)
         {
+            _activeConfirmation = this;
+            _entryHost = host;
+            _confirmed = false;
             _modalPreview = preview;
-            _selectedCandidateIndex = 0;
+            _selectedCandidateIndex = -1;
 
             GameObject root = new GameObject("ModeG_ConfirmPage");
             UnityEngine.Object.DontDestroyOnLoad(root);
+            _modalRoot = root;
 
             Canvas canvas = root.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -130,6 +205,26 @@ namespace BossRush
                 new Color(0.72f, 0.53f, 0.04f, 1f));
 
             Transform st = surface.transform;
+
+            try
+            {
+                Sprite banner = ModeGPresentationAssetCache.GetBannerSprite();
+                if (banner != null)
+                {
+                    GameObject bannerObj = ZombieModeUIHelper.CreateRect(
+                        "Banner", st, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                        new Vector2(0f, 170f), new Vector2(700f, 150f), new Vector2(0.5f, 0.5f));
+                    Image bannerImage = bannerObj.AddComponent<Image>();
+                    bannerImage.sprite = banner;
+                    bannerImage.preserveAspect = true;
+                    bannerImage.color = new Color(1f, 1f, 1f, 0.28f);
+                    bannerImage.raycastTarget = false;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 确认页横幅加载失败: " + e.Message);
+            }
 
             // 标题
             ZombieModeUIHelper.CreateText("Title", st,
@@ -156,9 +251,9 @@ namespace BossRush
             // 规则说明
             ZombieModeUIHelper.CreateText("Rules", st,
                 L10n.T(
-                    "九波宿敌车轮战 · 三轴反制 · 裸装入场\n消耗 1 船票 + 1 宿命回响信物（胜利返还信物）",
-                    "9 waves of nemesis combat · 3 counter axes · naked entry\nCosts 1 ticket + 1 Fate Echo relic (relic refunded on victory)"),
-                18f, new Vector2(0f, 148f), new Vector2(ModalWidth - 80f, 72f),
+                    "携带自己的装备挑战九波；后续波次会针对你上一波的距离、弹药和伤害类型\n改变打法破解反制可获得 Resolve；第 9 波胜利后按 Resolve 发放 6-10 件 Q5-Q8 奖励并返还信物\n消耗 1 船票 + 1 宿命回响信物",
+                    "Bring your loadout through 9 waves; later waves counter your previous range, ammo, and damage style\nAdapt to break counters and earn Resolve; victory grants 6-10 Q5-Q8 items and refunds the relic\nCosts 1 ticket + 1 Fate Echo relic"),
+                16f, new Vector2(0f, 148f), new Vector2(ModalWidth - 80f, 78f),
                 TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
 
             // 契约二选一
@@ -247,15 +342,21 @@ namespace BossRush
                 ZombieModeUIHelper.DangerColor, ZombieModeUIHelper.DangerHoverColor,
                 ZombieModeUIHelper.DisabledColor);
 
-            _modalRoot = root;
             try
             {
                 _inputLease = ZombieModeUIHelper.ClaimModalInput(root, "ModeGConfirmPage");
+                if (_inputLease == null || !ZombieModeUIHelper.IsModalInputPaused)
+                {
+                    throw new InvalidOperationException("Mode G confirmation could not acquire modal pause");
+                }
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeG] [WARNING] 确认页输入占用失败: " + e.Message);
+                CloseModal();
+                return false;
             }
+            return true;
         }
 
         private static string BuildChoiceLabel(ModeGFateContract.ContractDef def, bool selected)
@@ -299,14 +400,30 @@ namespace BossRush
         {
             try
             {
+                if (_modalPreview == null || _selectedCandidateIndex < 0
+                    || _selectedCandidateIndex >= _modalPreview.contractCandidateIds.Length)
+                {
+                    host.ShowMessage(L10n.T("请先选择一个宿命契约。", "Choose a Fate Contract first."));
+                    return;
+                }
                 if (_modalPreview != null && _modalPreview.contractCandidateIds != null
                     && _selectedCandidateIndex >= 0
                     && _selectedCandidateIndex < _modalPreview.contractCandidateIds.Length)
                 {
                     host.SetModeGSelectedContractId(_modalPreview.contractCandidateIds[_selectedCandidateIndex]);
                 }
+                _confirmed = true;
+                LastConfirmationAttemptedStart = true;
                 CloseModal();
-                host.TryStartModeG();
+                bool started = host.TryStartModeG();
+                if (!started)
+                {
+                    host.TryRefundModeGPendingPrepaidTicket();
+                }
+                else
+                {
+                    BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                }
             }
             catch (Exception e)
             {
@@ -317,6 +434,7 @@ namespace BossRush
 
         private void CloseModal()
         {
+            bool wasConfirmed = _confirmed;
             try
             {
                 if (_inputLease != null)
@@ -333,8 +451,35 @@ namespace BossRush
             catch { }
             _modalRoot = null;
             _modalPreview = null;
+            ModBehaviour entryHost = _entryHost;
+            _entryHost = null;
             _firstChoiceText = null;
             _secondChoiceText = null;
+            if (!wasConfirmed)
+            {
+                // Map selection may already have charged the ticket; direct teleport has no
+                // prepaid ownership and therefore remains a no-op here.
+                try
+                {
+                    if (entryHost != null) entryHost.TryRefundModeGPendingPrepaidTicket();
+                }
+                catch (Exception refundException)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 关闭确认页退回预扣船票失败: "
+                        + refundException.Message);
+                }
+            }
+            if (ReferenceEquals(_activeConfirmation, this)) _activeConfirmation = null;
+            if (_autoPresenter)
+            {
+                _autoPresenter = false;
+                try { UnityEngine.Object.Destroy(gameObject); }
+                catch (Exception destroyException)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 自动确认页销毁失败: "
+                        + destroyException.Message);
+                }
+            }
         }
 
         #endregion

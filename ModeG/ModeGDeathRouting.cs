@@ -119,6 +119,14 @@ namespace BossRush
                     return outcome; // 未形成新宿敌
                 }
 
+                if (state.nemesisSelectionSource == ModeGNemesisSelectionSource.SuspendedPersistentV1)
+                {
+                    // 当前持久宿敌只是临时不可用；本局击杀者不得覆盖原 key/Rank。
+                    outcome.storeBlocked = true;
+                    outcome.bossKey = killerKey;
+                    return outcome;
+                }
+
                 if (ModeGNemesisPersistence.IsStoreFaulted)
                 {
                     // 宿敌写屏障生效：击杀者已知，记录未变更（不得声称已写入）
@@ -197,6 +205,10 @@ namespace BossRush
                 {
                     ModeGProfilePersistence.IncrementContractStreak();
                 }
+                else
+                {
+                    ModeGProfilePersistence.ClearContractStreakOnVictoryIncomplete();
+                }
 
                 if (!state.TryAdvanceLifecycle(ModeGLifecyclePhase.Rewarding))
                 {
@@ -205,6 +217,11 @@ namespace BossRush
                 }
 
                 if (module.Telemetry != null) module.Telemetry.UnsubscribeCombat();
+                if (!module.ArmVictorySafety())
+                {
+                    module.End(ModeGExitReason.TechnicalIntegrityLoss);
+                    return;
+                }
                 SubmitVictoryReward(module, state);
             }
             catch (Exception e)
@@ -233,24 +250,36 @@ namespace BossRush
                 resolve,
                 host.GetModeGRewardCandidates());
             if (plan == null || plan.Count == 0 ||
-                !ModeGRewardTransaction.Execute(state, host, inventory, plan))
+                !ModeGRewardTransaction.Execute(state, host, inventory, plan,
+                    (total, succeeded, failed) =>
+                    {
+                        // CancelAndDestroy 会同步触发完成回调。死亡/宿主销毁已先失效 nonce，
+                        // 此时由对应退出路由唯一决定终局原因，不得改写为 RewardAbandoned。
+                        if (state.rewardNonceInvalidated) return;
+
+                        if (failed > 0)
+                        {
+                            host.ShowMessage(L10n.T(
+                                "宿命回响奖励未能完整发放，请保留日志并重试。",
+                                "Fate Echo rewards were not fully delivered. Keep the log and retry."));
+                            module.End(ModeGExitReason.RewardAbandoned);
+                            return;
+                        }
+
+                        host.ShowBigBanner(L10n.T(
+                            "<color=#B8860B>宿命已改写</color> 九波胜利",
+                            "<color=#B8860B>Fate Rewritten</color> Nine Waves Cleared"));
+                        try { ModeGRecapPanel.Show(module, ModeGBattleResult.Victory, string.Empty); }
+                        catch (Exception e)
+                        {
+                            ModBehaviour.DevLog("[ModeG] [WARNING] 胜利 recap 展示失败: " + e.Message);
+                        }
+                        module.End(ModeGExitReason.Victory);
+                    }))
             {
                 module.End(ModeGExitReason.RewardAbandoned);
                 return;
             }
-
-            host.ShowBigBanner(L10n.T(
-                "<color=#B8860B>宿命已改写</color> 九波胜利",
-                "<color=#B8860B>Fate Rewritten</color> Nine Waves Cleared"));
-
-            // 胜利 recap（near-miss 呈现；profile 已含本局记账，自动倒计时关闭）
-            try
-            {
-                ModeGRecapPanel.Show(module, ModeGBattleResult.Victory, string.Empty);
-            }
-            catch { /* 呈现失败不阻塞结算 */ }
-
-            module.End(ModeGExitReason.Victory);
         }
     }
 }

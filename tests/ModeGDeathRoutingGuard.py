@@ -6,7 +6,8 @@ ModeGDeathRoutingGuard — Mode G 死亡路由守卫（规格 §20 第 19 条）
 - run-lifetime OnDead Starting 首 await 前订阅：telemetry SubscribeDead 独立 run
   owner 幂等订阅（注释冻结「Starting 首 await 前订阅」），精确退订；
 - Rewarding 死亡先失效 reward attempt：先置 rewardNonceInvalidated +
-  ModeGRewardTransaction.InvalidateAttemptNonce() + 取消物化，再 End；
+  ModeGRewardTransaction.InvalidateAttemptNonce() + 取消物化，再 End；同步完成回调
+  必须在 nonce 已失效时立即退出，不能抢先改写为 RewardAbandoned；
 - TechnicalLoss 规则：Spawning 阶段/批量激活中主 Boss 死亡 →
   HandleTechnicalBossDeath + End(TechnicalIntegrityLoss)，禁推进波次；
 - terminal credit 与 countedDead 顺序：正常死亡先 MarkKilled（exact Health 结案，
@@ -78,6 +79,10 @@ def main():
             ("PlayerIdentityExact",
              r"if \(player == null \|\| !ReferenceEquals\(health, player\.Health\)\) return;",
              "玩家死亡 exact Health 引用身份（不路由他人）"),
+            ("CancelledRewardCallbackNoop",
+             r"if \(state\.rewardNonceInvalidated\) return;"
+             r"[\s\S]{0,220}?if \(failed > 0\)",
+             "取消奖励的同步完成回调不得抢先改写终局原因"),
         ]
         for name, pattern, desc in checks:
             if not re.search(pattern, routing):

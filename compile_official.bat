@@ -295,6 +295,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeG\ModeGDeathRouting.cs ^
     ModeG\ModeGNemesisPersistence.cs ^
     ModeG\ModeGProfilePersistence.cs ^
+    ModeG\ModeGPersistenceFlushCoordinator.cs ^
     ModeG\ModeGRewardTransaction.cs ^
     ModeG\ModeGMapSupportRegistry.cs ^
     ModeG\ModeGFateContract.cs ^
@@ -303,6 +304,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeG\ModeGSpawnTransaction.cs ^
     ModeG\ModeGCleanupController.cs ^
     ModeG\ModeGRuntimeModule.cs ^
+    ModeG\ModeGRuntimeModule_PublicApiAndShutdown.cs ^
     ModeG\ModeGRuntimeLifecycle.cs ^
     ModeG\ModeGRuntimeBridge.cs ^
     ModeG\ModeGHUD.cs ^
@@ -669,6 +671,11 @@ if %BUILD_EXIT_CODE% EQU 0 (
             ) else (
                 echo Deployed Mode G presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
             )
+        )
+        if exist "Assets\Items\fate_echo_relic" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items"
+            copy /Y "Assets\Items\fate_echo_relic" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items\fate_echo_relic" >nul 2>nul
+            if errorlevel 1 echo WARNING: Fate Echo relic bundle deploy failed.
         )
     )
 ) else (

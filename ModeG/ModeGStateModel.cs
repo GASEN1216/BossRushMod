@@ -135,6 +135,186 @@ namespace BossRush
     }
 
     /// <summary>
+    /// 本局宿敌选择来源。仅存在于 RunState，不进入存档 schema。
+    /// </summary>
+    public enum ModeGNemesisSelectionSource
+    {
+        TemporaryMissing,
+        TemporaryAfterSanitize,
+        PersistentV1,
+        SuspendedPersistentV1
+    }
+
+    /// <summary>
+    /// 普通官方 Boss 的适应能力审计快照。记录只由开发期实测填写，运行时不扫描场景。
+    /// </summary>
+    public sealed class ModeGAdaptationCapability
+    {
+        public readonly bool supportsMaxHealth;
+        public readonly bool supportsWalkRun;
+        public readonly bool supportsGunDamage;
+        public readonly bool supportsMeleeDamage;
+        public readonly bool supportsGunShootSpeed;
+        public readonly bool usesFixedDamageController;
+        public readonly string verifiedAtRevision;
+
+        public ModeGAdaptationCapability(bool supportsMaxHealth, bool supportsWalkRun,
+            bool supportsGunDamage, bool supportsMeleeDamage, bool supportsGunShootSpeed,
+            bool usesFixedDamageController, string verifiedAtRevision)
+        {
+            this.supportsMaxHealth = supportsMaxHealth;
+            this.supportsWalkRun = supportsWalkRun;
+            this.supportsGunDamage = supportsGunDamage;
+            this.supportsMeleeDamage = supportsMeleeDamage;
+            this.supportsGunShootSpeed = supportsGunShootSpeed;
+            this.usesFixedDamageController = usesFixedDamageController;
+            this.verifiedAtRevision = verifiedAtRevision ?? string.Empty;
+        }
+
+        internal bool IsCompleteForOfficialBoss(string revision)
+        {
+            return !string.IsNullOrEmpty(revision)
+                && string.Equals(verifiedAtRevision, revision, StringComparison.Ordinal)
+                && supportsMaxHealth
+                && supportsGunDamage
+                && supportsMeleeDamage
+                && (supportsWalkRun || supportsGunShootSpeed)
+                && !usesFixedDamageController;
+        }
+    }
+
+    /// <summary>
+    /// 官方 Boss eligibility 的冻结审计记录。任一未知/危险副作用都会使记录失效。
+    /// </summary>
+    public sealed class ModeGOfficialBossEligibilityRecord
+    {
+        public readonly string stableKey;
+        public readonly string verificationRevision;
+        public readonly string specialAttachmentSignature;
+        public readonly bool hasUnmanagedAsync;
+        public readonly bool hasNativeDeathSideEffects;
+        public readonly bool hasNativeLootSideEffects;
+        public readonly bool hasVehicleOrShopRole;
+        public readonly bool hasAdditionalOwner;
+        public readonly string adaptationCapabilitySignature;
+        public readonly ModeGAdaptationCapability adaptationCapability;
+
+        public ModeGOfficialBossEligibilityRecord(string stableKey, string verificationRevision,
+            string specialAttachmentSignature, bool hasUnmanagedAsync,
+            bool hasNativeDeathSideEffects, bool hasNativeLootSideEffects,
+            bool hasVehicleOrShopRole, bool hasAdditionalOwner,
+            string adaptationCapabilitySignature, ModeGAdaptationCapability adaptationCapability)
+        {
+            this.stableKey = stableKey ?? string.Empty;
+            this.verificationRevision = verificationRevision ?? string.Empty;
+            this.specialAttachmentSignature = specialAttachmentSignature ?? string.Empty;
+            this.hasUnmanagedAsync = hasUnmanagedAsync;
+            this.hasNativeDeathSideEffects = hasNativeDeathSideEffects;
+            this.hasNativeLootSideEffects = hasNativeLootSideEffects;
+            this.hasVehicleOrShopRole = hasVehicleOrShopRole;
+            this.hasAdditionalOwner = hasAdditionalOwner;
+            this.adaptationCapabilitySignature = adaptationCapabilitySignature ?? string.Empty;
+            this.adaptationCapability = adaptationCapability;
+        }
+
+        internal bool IsEligible(string revision)
+        {
+            return !string.IsNullOrEmpty(stableKey)
+                && string.Equals(verificationRevision, revision, StringComparison.Ordinal)
+                && !string.IsNullOrEmpty(specialAttachmentSignature)
+                && !hasUnmanagedAsync
+                && !hasNativeDeathSideEffects
+                && !hasNativeLootSideEffects
+                && !hasVehicleOrShopRole
+                && !hasAdditionalOwner
+                && !string.IsNullOrEmpty(adaptationCapabilitySignature)
+                && adaptationCapability != null
+                && adaptationCapability.IsCompleteForOfficialBoss(revision);
+        }
+    }
+
+    /// <summary>
+    /// Mode G 官方 Boss 资格策略。
+    /// Owner 已确认现有 Boss 池条目均可用于 Mode G；实际成员仍只来自
+    /// GetFilteredEnemyPresets() 的 run-scoped 快照，托管 Boss、空 key 和重复 key 仍在快照层
+    /// fail-closed；官方 key 少于编排目标时由 ModeGWavePlan 在本局确定性复用已有 key。
+    /// 冻结审计记录保留供未来收紧策略使用。
+    /// </summary>
+    public static class ModeGOfficialBossEligibilityRegistry
+    {
+        /// <summary>
+        /// 启动所需的最低唯一官方 Boss 数。一个合格 Boss 足以形成可运行的九波计划；
+        /// 少于编排目标时由波次计划从已有 key 确定性复制，不修改快照集合。
+        /// </summary>
+        public const int MinimumProductionOfficialBossCount = 1;
+
+        /// <summary>完整编排希望使用的官方池规模（3 Boss 波 primary + reserve）。</summary>
+        public const int OfficialPoolReplicationTarget = 6;
+
+        /// <summary>
+        /// Owner 发布裁决：信任现有过滤 Boss 池作为官方资格来源。
+        /// 此开关不扩大池成员，只决定池内 stable key 是否需要逐条审计记录。
+        /// </summary>
+        public const bool TrustConfiguredBossPool = true;
+
+        private static readonly ModeGOfficialBossEligibilityRecord[] AuditedRecords =
+            new ModeGOfficialBossEligibilityRecord[0];
+
+        public static int EligibleRecordCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < AuditedRecords.Length; i++)
+                {
+                    if (AuditedRecords[i] != null
+                        && AuditedRecords[i].IsEligible(ModeGAvailability.CurrentVerificationRevision)
+                        && HasUniqueStableKey(i))
+                        count++;
+                }
+                return count;
+            }
+        }
+
+        public static bool IsEligible(string stableKey)
+        {
+            if (TrustConfiguredBossPool) return !string.IsNullOrEmpty(stableKey);
+            ModeGOfficialBossEligibilityRecord ignored;
+            return TryGetEligibleRecord(stableKey, out ignored);
+        }
+
+        public static bool TryGetEligibleRecord(string stableKey,
+            out ModeGOfficialBossEligibilityRecord record)
+        {
+            record = null;
+            if (string.IsNullOrEmpty(stableKey)) return false;
+            for (int i = 0; i < AuditedRecords.Length; i++)
+            {
+                ModeGOfficialBossEligibilityRecord candidate = AuditedRecords[i];
+                if (candidate == null
+                    || !string.Equals(candidate.stableKey, stableKey, StringComparison.Ordinal)) continue;
+                if (record != null) return false;
+                if (!candidate.IsEligible(ModeGAvailability.CurrentVerificationRevision)) return false;
+                record = candidate;
+            }
+            return record != null;
+        }
+
+        private static bool HasUniqueStableKey(int recordIndex)
+        {
+            ModeGOfficialBossEligibilityRecord record = AuditedRecords[recordIndex];
+            if (record == null || string.IsNullOrEmpty(record.stableKey)) return false;
+            for (int i = 0; i < AuditedRecords.Length; i++)
+            {
+                if (i == recordIndex || AuditedRecords[i] == null) continue;
+                if (string.Equals(AuditedRecords[i].stableKey, record.stableKey,
+                    StringComparison.Ordinal)) return false;
+            }
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Mode G 相位守卫：纯函数判定，无状态。
     /// </summary>
     public static class ModeGPhaseGuards
