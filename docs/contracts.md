@@ -5,8 +5,8 @@
 ## 1. TypeID 与存档身份
 
 - 自定义物品/装备 TypeID 使用 5000xx 区间。
-- 已登记范围：`500001-500057`，空洞 `500009`、`500047` 不回填。
-- 下一可用：`500058`，以 `docs/Bossrush使用物品ID表.md` 为准。
+- 已登记范围：`500001-500058`，空洞 `500009`、`500047` 不回填。
+- `500058` 已登记为便携安全区装置；下一可用 ID 以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
 
 Breaking:
 
@@ -38,6 +38,8 @@ Breaking:
 - `useWolfModelForWildHorn`
 - `enableDeathWraithSystem`
 - `milestoneRestBonusSeconds`
+- `modeHEnabled`（可选，默认 `false`）
+- `modeHRealWarehouseStakeEnabled`（可选，默认 `false`）
 
 Breaking:
 
@@ -81,6 +83,8 @@ Breaking:
 - `displayNameCN`
 - `displayNameEN`
 
+Mode H 只做可选 `SCHEMA+` 扩展：`modeHSpawnPoints`、`modeHSpectatorPos`、`modeHPlayerSpawnPos`、`modeHExitPos`。旧 JSON 缺字段时只能使用已通过实机 smoke 的硬编码 fallback；没有有效擂台/看台/玩家/出口点位就拒绝进入。Mode H entry intent 在切图前冻结精确 `sceneName + sceneID + sceneGeneration`，非目标或旧 generation 的 scene callback 不得消费。
+
 Breaking:
 
 - 改字段名、删除字段、改变坐标单位或轴语义。
@@ -118,6 +122,30 @@ Breaking:
 - 把已有资源移动到新目录导致工厂扫描不到。
 - 删除已有模型、图标、Buff、Projectile 依赖。
 - 新增或迁移已发布 TypeID 后未同步 `BossRushDynamicItemRegistry`，导致重启后存档物品按官方 fallback 还原。
+
+## 6.1 Mode H 外部契约（Lite 与后续实验）
+
+Mode H 的可选配置属于 `COMPAT` 扩展，实际字段位于 `Config/Config.cs` 的 `ModBehaviour.BossRushConfig`：`modeHEnabled=false`、`modeHRealWarehouseStakeEnabled=false`。运行时代码只能通过 `ModBehaviour.IsModeHConfiguredEnabled()` 与 `ModBehaviour.IsModeHRealWarehouseStakeConfiguredEnabled()` 读取，隔离判断只能通过 no-throw 只读 `ModeHRuntimeGates.IsModeHRunOwnerActive`/`IsModeHEntryGateReady`/`IsModeHPersistentRiskBlocked` facade，禁止新增静态可写 `Config` 类型或第二配置源。每个 slot 必须先执行 `InitializeForSlot(slotGeneration)`；H 自身 ready 之前 H 入口 fail-closed。旧模式只有在存在 active H journal、恢复壳或 slot barrier 时才受持久风险门阻断；`modeHEnabled=false` 且没有 active H journal 时，旧模式不等待 H 扫描，保持基线行为。`OnSetFile`/`OnSaveDeleted`/读盘异常将 ready 重置为 false。持久 H 风险门只进入最终模式/地图入口，不并入普通 NPC/场景分类 predicate。配置文件 key 为同名 camelCase 字段；可选 ModConfig 镜像键为 `BossRush_ModeHEnabled` 与 `BossRush_ModeHRealWarehouseStakeEnabled`，不存在时保持默认关闭。Mode H Lite 首发只开放无抵押路径；真实仓库抵押必须同时满足配置开关、journal `GatePassed` 和后续运行时故障注入证据，默认关闭。
+
+Mode H 使用两个 Lite 首发 `SCHEMA+` typed key，并为后续真实资产实验保留一个独立 key：
+
+- `BossRush_ModeH_Season_v1`
+- `BossRush_ModeH_HallOfFame_v1`
+- `BossRush_ModeH_StakeJournal_v1`
+
+已启用的 key 均带 `schemaVersion`、`modBuildSignature`、`payloadDigest` 和 `slotGeneration`；存档处理必须幂等订阅/退订 `SavesSystem.OnCollectSaveData`、`OnSetFile`、`OnSaveDeleted`。Lite 不创建 active stake journal；若后续实验曾创建该 key，删档时必须清空 Mode H cache、pending barrier、recovery shell、owner/token、presentation 引用和 slot generation，不能把旧槽的 active journal 带入新槽。
+
+本地化 key 使用唯一前缀 `BossRush_ModeH_`，代码源为 `Localization/ModeHLocalization.cs`，实际注入入口为 `Integration/BossRushIntegration_StartAndScene.cs` 中的 `ModBehaviour.InjectLocalization_Extra_Integration()`；不创建第二个 JSON parser/registry。
+
+首发视觉制品是外部 local-only 资源，不由根仓库源码 checkout 自动生成：
+
+- bundle：`Assets/ui/modeh_presentation`
+- Unity 格式：`UnityFS`，恰好两个 Sprite，零依赖，大小不超过 `256 KiB`
+- Sprite 短名：`ModeH_BlackMarketCup_Emblem`、`ModeH_BlackMarketCup_Banner`
+- 对应完整输入路径：`Assets/UI/ModeH/ModeH_BlackMarketCup_Emblem.png`、`Assets/UI/ModeH/ModeH_BlackMarketCup_Banner.png`
+- 构建输出：兄弟 Unity 工程 `ModeHExport/modeh_presentation`
+
+生产运行时必须一次预检并同时加载两张 Sprite；缺包/缺资源 fail-closed。开发 raw PNG fallback 只由编译期开发门控制，不能进入配置、存档或发布制品。销毁 UI 根、清空 Sprite 引用后才能 `Unload(true)`。`compile_official.bat` 与 `test_bossrush_official.bat` 必须显式复制 `Assets\\Data\\ModeH\\*.json` 和上述 bundle；缺正式 bundle 时 guard/预检失败，不静默依赖 fallback。由于当前 `/Assets/*` 约定会忽略 UI 二进制，发布流程必须从外部 Unity 制品目录复制并记录 source/input/bundle SHA-256；若未来要把它们纳入 Git，需另行登记 `OPERATIONAL` 例外。
 
 ## 7. Harmony、反射与官方游戏契约
 

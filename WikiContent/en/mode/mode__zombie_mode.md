@@ -21,7 +21,7 @@ You must pick one of two loadouts upon entering:
 | Loadout | Starting Gear |
 |---------|---------------|
 | **Melee** | Random melee weapon ×1 (quality ≤5) + healing items (with guaranteed recovery items) + food ×3 + drinks ×2 |
-| **Gunner** | Random firearm ×1 + matching caliber ammo ×1000 + medical ×3 + food ×2 + drinks ×1 |
+| **Gunner** | Random firearm ×1 + matching caliber ammo ×2000 + medical ×3 + food ×2 + drinks ×1 |
 
 ---
 
@@ -37,12 +37,15 @@ Every 5th wave is a **Boss Wave**; all others are normal waves.
 
 ### Preparation Phase
 
-- Normal preparation lasts **45 seconds**; preparation after a Boss Wave lasts **75 seconds** and includes the extraction opportunity
+- The reward screen normally shows only the current **Rest Time** with an **Edit** button, keeping the reward area compact. Edit opens a 15-second-step slider from **15 to 300 seconds (5 minutes)**; click **Apply** to save.
+- Each run starts at **45 seconds**. Once changed, that value becomes the default for every later wave, including the post-Boss extraction preparation.
 - A **Safe Zone** spawns at your feet (radius 8m, green circle)
 - Inside the Safe Zone:
-  - Zombies are pushed outside the boundary
+  - Normal zombies inside are removed immediately when the zone is deployed; Bosses are moved outside the boundary
+  - New zombies entering the zone are continuously pushed out, so the zone never becomes a zombie standing area
   - Zombies won't aggro you (threat suppression)
-  - Attacking zombies with guns/melee weapons while inside **breaks stealth** (zone turns orange, zombies regain aggro)
+  - Directly damaging a zombie while inside cancels the entire safe zone immediately, including its circle, map marker, and bound terminal
+- A Portable Safe-Zone Device remains active through the reward screen and the next preparation phase, then is removed when the next wave formally starts. The same attack-cancellation rule applies during both combat and preparation.
 - Zone flashes yellow in the last 5 seconds as warning
 - A **Supply Terminal** (merchant NPC) spawns inside the safe zone
 - You can use the **Zombie Tide Beacon** to skip the countdown and start the next wave immediately (3-second channel)
@@ -126,7 +129,7 @@ Stronger than normal with unique abilities. Drop **3** purification stars (30–
 | **Official Exploder (`OfficialExploder`)** | HP ×1.30 / damage ×1.20 / speed ×1.10 | Red-orange target `#FF4D14`; safe visual subtree ×1.60 | Uses the official preset's explosion skill. The mod does not layer a second custom blast; official range and damage remain resource-defined and are not guessed here. |
 | **Plague (`Plague`)** | HP ×1.50 / damage ×1.20 / speed ×0.95 | Green target `#2EFF59`; safe visual subtree ×1.80 | Every 12s, casts a poison cloud with 0.9s telegraph, 4m radius, 3s duration, and 8 DPS. The ground zone stays at the cast point; the mutant also carries a green plague aura. |
 | **Summoner (`Summoner`)** | HP ×1.50 / damage ×1.20 / speed ×0.95 | Purple target `#BF4DFF`; safe visual subtree ×2.00 | Every 15s, summons 2 normal zombies. Summoned normal zombies use the split-child visual scale ×0.60. |
-| **Harasser (`Harasser`)** | HP ×1.30 / damage ×1.20 / speed ×1.10 | Cyan target `#26F2FF`; safe visual subtree ×1.45 | Every 4s, fires a projectile (speed 12, damage 25, lifetime 2s). On impact it creates a 3.5m slow zone: 50% slow for 2s. |
+| **Harasser (`Harasser`)** | HP ×1.30 / damage ×1.20 / speed ×1.10 | Cyan target `#26F2FF`; safe visual subtree ×1.45 | Every 4s, fires a visible-trail projectile (speed 10, damage 25, flight lifetime 3.5s). It deals damage and creates a 3.5m slow zone only on an actual player hit; reaching the launch-time target point or expiring without a hit counts as a successful dodge. |
 
 > The early special pool (waves 1–5) excludes both `Exploder` and `OfficialExploder`; the full pool is used from wave 6.
 
@@ -234,7 +237,7 @@ Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purifi
 
 #### Boss Stuck Handling
 
-If a Boss hasn't moved or taken damage for 45 seconds, it's teleported near the player.
+If a Boss has made no positional progress for 12 seconds, it is teleported near the player with its ground position, NavMeshAgent, and rigidbody velocity corrected; ongoing player damage does not block recovery.
 
 ---
 
@@ -247,6 +250,7 @@ The core currency of Zombie Mode:
 #### Sources
 
 - Killing zombies drops **Purification Stars** (auto-magnetize within 30m)
+- Ordinary loose drops, including elite zombies' ordinary drops, are cleared when the next wave actually starts. They remain pickable during reward selection and rest; Boss lootboxes remain until collected or end-of-run cleanup.
 - Cash investment at entry (100 cash = 1 point)
 - "Purification Points" reward option
 
@@ -290,6 +294,7 @@ After each wave, choose from rewards:
 - Wave 5 Boss: **pick 1 of 4**
 - From the Wave 10 Boss onward: first pick **1 of 4** combat upgrades, then pick **1 of 4** from the full reward pool, for two rewards total
 - Waves 1–2 always include one offense upgrade matching the starter loadout and one medical, armor, or healing option
+- The bottom of the panel keeps a compact “Rest Time + Edit” row. The 15–300 second choices appear only after Edit is clicked; choosing one collapses the editor and carries that value into later waves.
 
 **Refresh** options:
 - **3 free refreshes** per node
@@ -300,8 +305,8 @@ After each wave, choose from rewards:
 | Category | Description |
 |----------|-------------|
 | **Attribute** | Permanent boosts to HP/speed/melee damage/ranged damage/reload speed/damage reduction |
-| **Equipment** | Random weapons/ammo/medical/armor/high-quality items |
-| **Economy** | Purification Points/paid-refresh discounts/healing |
+| **Equipment** | Random weapons/ammo/medical/armor/high-quality items/one-use Portable Safe-Zone Device |
+| **Economy** | Purification Points/paid-refresh discounts/healing/a high-weight low-quality junk recycling option; weapons, ammo, medical, food, keys, special items, and containers with attachments or contents are protected |
 | **NPC** | Temporarily summon merchant/nurse/goblin/courier |
 | **Fortification** | Defensive structure supply packs |
 | **Contract** | High-risk high-reward trades (may increase pollution) |
@@ -325,7 +330,7 @@ Spawns automatically in the safe zone each preparation phase. All items cost Pur
 | Firearm | 1 | 500 |
 | Melee Weapon | 1 | 300 |
 | Accessory | 1 | 260 |
-| Ammo | 120 | 100 |
+| Ammo | 120 purchases | 100 per purchase, 200 rounds each |
 | Helmet | 1 | 350 |
 | Armor | 1 | 400 |
 | Backpack | 1 | 260 |
