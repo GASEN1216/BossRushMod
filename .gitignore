@@ -42,6 +42,7 @@ BossRush选项修改方案.md
 /.qoder/better-harness/
 /.qoder/better-harness-runs/
 /tmp/
+/output/
 
 # Wiki 站点构建产物
 wiki-site/node_modules/
