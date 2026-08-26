@@ -1140,5 +1140,6 @@ namespace BossRush
         public const int ZombieTideInvitation = 500045;
         public const int ZombieTideBeacon = 500046;
         public const int SpeedrunGauntletTicket = 500047;
+        public const int PortableSafeZoneDevice = 500058;
     }
 }

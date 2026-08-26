@@ -475,6 +475,7 @@ namespace BossRush
                 AwenLootSweepTokenConfig.EnsureRuntimeRegistration();
                 ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();
                 ZombieTideBeaconConfig.EnsureRuntimeFallbackRegistrationShell();
+                PortableSafeZoneDeviceConfig.EnsureRuntimeFallbackRegistrationShell();
 
                 PeaceCharmRuntime.InitializeRuntime();
             }

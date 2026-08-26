@@ -6,6 +6,7 @@ import sys
 
 
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 ENTRY_PARTS = [
     ENTRY,
     Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
@@ -58,11 +59,30 @@ def extract_block(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = read_entry()
+    tuning = TUNING.read_text(encoding="utf-8")
     rewards = read_rewards()
     catalog = CATALOG.read_text(encoding="utf-8")
 
     if "if (!GrantZombieModeStarterProtectionSet())" not in entry:
         return fail("starter loadout must require the guaranteed armor/helmet/headset set")
+
+    for snippet in [
+        "TryGiveZombieModeStarterGuaranteedHealingItems()",
+        "TryGiveRandomItemByTagsTimes(ZombieModeRewardTagsMedicMedicalHealing",
+        "IsZombieModeRewardCandidateAllowed",
+        "ZombieModeMedicalExcludedTypeIds",
+        "AdvancedDebuffMode",
+        "int ammoCount = ZombieModeTuning.StarterGunnerExtraAmmoCount;",
+        "ammoGranted = TryGiveZombieModeStarterAmmo(zombieModeRunState.StarterAmmoCaliber, ammoCount);",
+    ]:
+        if snippet not in entry:
+            return fail("starter loadout missing medical/ammo safety contract -> " + snippet)
+
+    if "public const int StarterGunnerExtraAmmoCount = 2000;" not in tuning:
+        return fail("starter gunner ammo must be doubled to 2000 rounds")
+
+    if "ZombieModeTuning.MerchantAmmoPurchaseCount" not in Path("ZombieMode/ZombieModeRewardNpcServices.cs").read_text(encoding="utf-8"):
+        return fail("merchant ammo purchase must use the doubled amount constant")
 
     protection = extract_block(entry, "private bool GrantZombieModeStarterProtectionSet(")
     if not protection:

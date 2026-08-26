@@ -35,6 +35,8 @@ REQUIRED_FILES = [
     "Integration\\Items\\ZombieTideInvitationUsage.cs",
     "Integration\\Items\\ZombieTideBeaconConfig.cs",
     "Integration\\Items\\ZombieTideBeaconUsage.cs",
+    "Integration\\Items\\PortableSafeZoneDeviceConfig.cs",
+    "Integration\\Items\\PortableSafeZoneDeviceUsage.cs",
 ]
 
 

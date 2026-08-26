@@ -86,6 +86,18 @@ def main() -> int:
         if token not in projectile_helper:
             return fail("Harasser projectile helper missing token -> " + token)
 
+    visual_helper = extract_method_body(runtime, "private static void ConfigureZombieModeHarasserProjectileVisual(")
+    if visual_helper is None:
+        return fail("missing Harasser projectile visual helper")
+    for token in [
+        "projectile.AddComponent<TrailRenderer>()",
+        "projectile.AddComponent<LineRenderer>()",
+        "projectile.AddComponent<Light>()",
+        "ZombieModeHarasserProjectileMaterialOwner",
+    ]:
+        if token not in visual_helper:
+            return fail("Harasser projectile visual is not readable enough -> " + token)
+
     impact_helper = extract_method_body(runtime, "public void TryExecuteZombieModeHarasserProjectileImpact(")
     if impact_helper is None:
         return fail("missing Harasser projectile impact helper")
@@ -111,11 +123,31 @@ def main() -> int:
         "public sealed class ZombieModeHarasserProjectileRuntime : ZombieModeTimedRunScopedRuntime",
         "float step = speed * Time.unscaledDeltaTime;",
         "ResolveImpact(inst, player.transform.position);",
-        "ResolveImpact(inst, transform.position);",
         "inst.TryExecuteZombieModeHarasserProjectileImpact(",
     ]:
         if token not in components:
             return fail("Harasser projectile runtime missing token -> " + token)
+
+    harasser_runtime_start = components.find(
+        "public sealed class ZombieModeHarasserProjectileRuntime : ZombieModeTimedRunScopedRuntime"
+    )
+    harasser_runtime_text = components[harasser_runtime_start:] if harasser_runtime_start >= 0 else ""
+    stopping = extract_method_body(harasser_runtime_text, "protected override void OnRuntimeStopping(")
+    if stopping is None:
+        return fail("missing Harasser projectile stopping path")
+    if "ResolveImpact(" in stopping:
+        return fail("Harasser projectile timeout must count as a successful dodge, not an invisible explosion")
+    for token in ["if (expired && !resolved)", "Destroy(gameObject);"]:
+        if token not in stopping:
+            return fail("Harasser projectile timeout cleanup missing token -> " + token)
+
+    if "if (IsPlayerHit(player))" not in harasser_runtime_text:
+        return fail("projectile must verify an actual player hit at the old target point")
+    if "ResolveImpact(inst, transform.position);" in harasser_runtime_text:
+        return fail("reaching the old target point must not create an invisible explosion")
+
+    if "class ZombieModeHarasserProjectileMaterialOwner" not in components or "Destroy(trailMaterial)" not in components:
+        return fail("Harasser projectile materials must be released when the projectile is destroyed")
 
     print("ZombieModeHarasserProjectileGuard: PASS")
     return 0

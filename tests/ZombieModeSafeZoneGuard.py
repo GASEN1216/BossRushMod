@@ -52,6 +52,12 @@ def main() -> int:
         "public float LastSafeZoneTickTime;",
         "public bool SafeZoneThreatSuppressed;",
         "TickIntervalSeconds = 0.2f",
+        "EnemyExclusionPadding = 1.5f",
+        "EnemyEjectionClearance = 0.75f",
+        "EnemyEjectionNavMeshRadius = 0.5f",
+        "public static bool AllowsPortableSafeZoneDeployment",
+        "phase == ZombieModeCombatPhase.Settling",
+        "phase == ZombieModeCombatPhase.RewardSelection",
     ]:
         result = require(models, snippet, "safe zone state model")
         if result:
@@ -80,6 +86,14 @@ def main() -> int:
         "ItemAgent_Gun.OnMainCharacterShootEvent -= OnZombieModeMainCharacterShoot",
         "OnZombieModeMainCharacterShoot",
         "UpdateZombieModeSafeZonePlayerPresence();",
+        "TryMoveZombieModeEnemyOutsideSafeZone",
+        "if (!zombieModeRunState.ActiveSafeZoneActive)",
+        "IsZombieModePositionInsideSafeZoneEnemyExclusion(enemyTransform.position)",
+        "ZombieModeTuning.SafeZoneEnemyExclusionPadding",
+        "ZombieModeTuning.SafeZoneEnemyEjectionClearance",
+        "ZombieModeTuning.SafeZoneEnemyEjectionNavMeshRadius",
+        "!IsZombieModePositionInsideSafeZoneEnemyExclusion(resolved)",
+        "suppressThreat",
     ]:
         result = require(safe_zone, snippet, "safe zone tick and stealth breaker")
         if result:
@@ -89,22 +103,44 @@ def main() -> int:
         "TickZombieModeSafeZone();",
         "zombieModeRunState.LastSafeZoneTickTime = 0f;",
         "zombieModeRunState.SafeZoneThreatSuppressed = false;",
+        "CanUseZombieModePortableSafeZoneDevice",
+        "TryUseZombieModePortableSafeZoneDevice",
+        "ZombieModePhaseGuards.AllowsPortableSafeZoneDeployment",
+        "ResetZombieModeSafeZoneForReplacement",
+        "RemoveZombieModeSafeZoneRunOnlyRecord",
+        "CreateZombieModeSafeZone(zombieModeRunState.RunId, false, true, true);",
+        "ClearZombieModeEnemiesInsideActiveSafeZone(runId, \"CreateSafeZone\");",
+        "private void CleanupZombieModePreparationObjects(int runId, bool preservePortableSafeZone = false)",
+        "bool keepPortableSafeZone = preservePortableSafeZone &&",
     ]:
         result = require(extraction, snippet, "safe zone lifecycle")
         if result:
             return result
 
+    drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs").read_text(encoding="utf-8")
+    for signature in [
+        "private void RecycleZombieModeSafeZoneBoundTemporaryNpcs(int runId)",
+        "private void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)",
+    ]:
+        body = extract_method(drops, signature)
+        if not body or "RemoveZombieModeRunOnlyObjectRecord(npc.GameObject);" not in body:
+            return fail("safe-zone NPC recycle must remove its run-only record before destroying the object")
+
     for snippet in [
         "TickZombieModeSafeZone();",
+        "if (zombieModeRunState.ActiveSafeZoneActive)",
+        "CleanupZombieModePreparationObjects(runId, preservePortableSafeZone);",
+        "CleanupZombieModePreparationObjects(runId);",
     ]:
         result = require(waves, snippet, "wave controller safe zone tick")
         if result:
             return result
 
     for snippet in [
-        "TryProcessZombieModeSafeZoneStealthBreak",
+        "TryHandleZombieModeSafeZonePlayerAttack",
         "!IsZombieModePlayerInsideActiveSafeZone()",
-        "BreakZombieModeSafeZoneStealth(runId);",
+        "ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase)",
+        "CancelZombieModeSafeZone(runId, \"PlayerAttack\");",
     ]:
         result = require(waves, snippet, "damage-driven safe zone stealth break")
         if result:
@@ -114,7 +150,7 @@ def main() -> int:
         waves,
         "private void HandleZombieModeHealthHurt(int runId, Health health, DamageInfo damageInfo)",
     )
-    stealth_index = hurt_handler.find("TryProcessZombieModeSafeZoneStealthBreak")
+    stealth_index = hurt_handler.find("TryHandleZombieModeSafeZonePlayerAttack")
     marker_index = hurt_handler.find("TryGetZombieModeKnownEnemyMarker")
     if stealth_index < 0 or marker_index < 0 or stealth_index < marker_index:
         return fail(
@@ -125,7 +161,7 @@ def main() -> int:
         waves,
         "private void HandleZombieModeHealthDead(int runId, Health health, DamageInfo damageInfo)",
     )
-    lethal_stealth_index = dead_handler.find("TryProcessZombieModeSafeZoneStealthBreak")
+    lethal_stealth_index = dead_handler.find("TryHandleZombieModeSafeZonePlayerAttack")
     death_settled_index = dead_handler.find("marker.DeathSettled = true;")
     unregister_index = dead_handler.find("UnregisterZombieModeEnemyInstanceId")
     if (
@@ -139,16 +175,12 @@ def main() -> int:
             "ZombieModeSafeZoneGuard: lethal stealth break must run before death settlement and marker unregister"
         )
 
-    stealth_weapon = extract_method(
-        waves,
-        "private bool IsZombieModeDamageFromStealthBreakingWeapon(DamageInfo damageInfo)",
-    )
-    if 'tag.name == "Weapon"' not in stealth_weapon:
-        return fail("ZombieModeSafeZoneGuard: custom melee Weapon tag is not recognized")
-
     for snippet in [
         "if (ShouldSuppressZombieModeEnemyAggroForSafeZone())",
         "SetZombieModeEnemyThreatSuppressed(enemy.gameObject, marker, true);",
+        "TryMoveZombieModeEnemyOutsideSafeZone(",
+        "RegisterEnemyRecoveryAnchor(zombie, zombie.transform.position);",
+        "RegisterEnemyRecoveryAnchor(boss, boss.transform.position);",
     ]:
         result = require(spawner, snippet, "spawn aggro suppression")
         if result:
@@ -159,6 +191,10 @@ def main() -> int:
 
     if "ItemAgent_Gun.OnMainCharacterShootEvent += OnZombieModeMainCharacterShoot" in debug_tools:
         return fail("ZombieModeSafeZoneGuard: zombie stealth breaker must live in ZombieMode, not DevMode debug")
+
+    hud = Path("ZombieMode/ZombieModeHudController.cs").read_text(encoding="utf-8")
+    if "zombieModeRunState.PreparationTimer > 0f &&" not in hud:
+        return fail("ZombieModeSafeZoneGuard: combat portable safe zone must not flash as a zero-second preparation timer")
 
     print("ZombieModeSafeZoneGuard: PASS")
     return 0

@@ -60,7 +60,7 @@ namespace BossRush
                 gun = null;
                 if (!string.IsNullOrEmpty(caliber))
                 {
-                    TryGiveZombieModeStarterAmmo(caliber, 60);
+                    TryGiveZombieModeStarterAmmo(caliber, ZombieModeTuning.RandomGunRewardAmmoCount);
                 }
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomGunWithAmmo"));
                 return true;
@@ -90,7 +90,7 @@ namespace BossRush
             string caliber = !string.IsNullOrEmpty(zombieModeRunState.StarterAmmoCaliber)
                 ? zombieModeRunState.StarterAmmoCaliber
                 : string.Empty;
-            if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, 120))
+            if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, ZombieModeTuning.AmmoSupplyRewardAmmoCount))
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_AmmoSupply"));
                 return true;
@@ -250,7 +250,7 @@ namespace BossRush
             ItemUtilities.SendToPlayer(gun, false, false);
             if (!string.IsNullOrEmpty(caliber))
             {
-                TryGiveZombieModeAmmo(caliber, 60, minQuality, maxQuality);
+                TryGiveZombieModeAmmo(caliber, ZombieModeTuning.ContractGunRewardAmmoCount, minQuality, maxQuality);
             }
 
             NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_RandomGunWithAmmo"));

@@ -568,10 +568,17 @@ namespace BossRush
         {
             ZombieTideInvitationConfig.InjectLocalization();
             ZombieTideBeaconConfig.InjectLocalization();
+            PortableSafeZoneDeviceConfig.InjectLocalization();
             InjectZombieModeString("BossRush_ZombieTideInvitation", "尸潮邀请函", "Zombie Tide Invitation");
             InjectZombieModeString("BossRush_ZombieTideInvitation_Desc", "进入末日丧尸模式的入场凭证。撤离失败时不退还。", "Required to enter Zombie Mode. Not refunded on failure.");
             InjectZombieModeString("BossRush_ZombieTideBeacon", "尸潮信标", "Zombie Tide Beacon");
             InjectZombieModeString("BossRush_ZombieTideBeacon_Desc", "在准备倒计时阶段使用，立即开始下一波。本局工具，不能带出。", "Use during preparation countdown to start the next wave immediately. Run-only tool.");
+            InjectZombieModeString("BossRush_PortableSafeZoneDevice", "便携安全区装置", "Portable Safe-Zone Device");
+            InjectZombieModeString("BossRush_PortableSafeZoneDevice_Desc", "可在战斗或准备阶段于当前位置重新部署安全区，使用一次后消耗。", "Redeploy the safe zone at your position during combat or preparation; consumed after one use.");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_PortableSafeZoneNotZombieMode", "便携安全区装置只能在丧尸模式中使用。", "The Portable Safe-Zone Device can only be used in Zombie Mode.");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_PortableSafeZoneUnavailable", "当前阶段无法部署安全区。", "The safe zone cannot be deployed during the current phase.");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_PortableSafeZoneDeployed", "便携安全区已部署。", "Portable safe zone deployed.");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_RecycledBackpackJunk", "已回收 {0} 件背包废品，获得 {1} 净化点。", "Recycled {0} backpack junk items and gained {1} Purification Points.");
             InjectZombieModeString("BossRush_ZombieMode", "末日丧尸模式", "Zombie Mode");
             InjectZombieModeString("BossRush_ZombieMode_WaitingStarterChoice", "选择初始流派", "Choose starter class");
             InjectZombieModeString("BossRush_ZombieMode_Active", "尸潮来袭", "Zombie tide incoming");
@@ -629,8 +636,8 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Hud_StageExtractionOpportunity", "撤离机会", "Extraction Opportunity");
             InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_Inside", "在安全区内", "Inside Safe Zone");
             InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_Outside", "离开安全区", "Outside Safe Zone");
-            InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_StealthOk", "保护：未破隐", "Stealth: Intact");
-            InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_StealthBroken", "保护：已破坏", "Stealth: Broken");
+            InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_StealthOk", "安全区：有效", "Safe Zone: Active");
+            InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_StealthBroken", "安全区：已取消", "Safe Zone: Cancelled");
             InjectZombieModeString("BossRush_ZombieMode_Map_SafeZone", "安全区", "Safe Zone");
             InjectZombieModeString("BossRush_ZombieMode_Hud_RefreshAvailable", "免费刷新 {0}", "Free Refresh {0}");
             InjectZombieModeString("BossRush_ZombieMode_Hud_BeaconReady", "信标可用", "Beacon Ready");
@@ -646,7 +653,8 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Banner_BossWaveCleared", "<color=yellow>Boss 节点完成</color>", "<color=yellow>Boss Node Cleared</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_PollutionUp", "<color=#bb55ff>污染上升至 {0}（{1}）</color>", "<color=#bb55ff>Pollution rose to {0} ({1})</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_ExtractionOpen", "<color=#22aaff>撤离点已开放</color>", "<color=#22aaff>Extraction Open</color>");
-            InjectZombieModeString("BossRush_ZombieMode_Banner_StealthBroken", "<color=#ff7733>安全区保护已破坏</color>", "<color=#ff7733>Safe Zone Stealth Broken</color>");
+            InjectZombieModeString("BossRush_ZombieMode_Banner_StealthBroken", "<color=#ff7733>安全区已取消</color>", "<color=#ff7733>Safe Zone Cancelled</color>");
+            InjectZombieModeString("BossRush_ZombieMode_Banner_SafeZoneCancelled", "<color=#ff7733>安全区已取消</color>", "<color=#ff7733>Safe Zone Cancelled</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_PerformanceProtect", "<color=gray>[Dev] 性能保护已启用</color>", "<color=gray>[Dev] Performance protect</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_RepairPackReceived", "<color=#88dd44>已领取工事补给包</color>", "<color=#88dd44>Fortification Pack Received</color>");
             InjectZombieModeString("BossRush_ZombieMode_Extraction_Title", "撤离机会", "Extraction Opportunity");
@@ -716,6 +724,10 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_PickButton", "选择", "Pick");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RefreshFree", "免费刷新", "Free Refresh");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RefreshPaid", "付费刷新 -{0}", "Paid Refresh -{0}");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_RestTitle", "休息时长：{0} 秒", "Rest: {0}s");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_RestEdit", "修改", "Edit");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_RestApply", "确定", "Apply");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_RestOption", "{0} 秒", "{0}s");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RefreshHalfPriced", "下次半价", "Next Half Price");
             InjectZombieModeString("BossRush_ZombieMode_Reward_PurificationPoints", "净化点 +{0}", "Purification +{0}");
             InjectZombieModeString("BossRush_ZombieMode_Reward_Heal", "生命回满", "Refill Health");
@@ -842,6 +854,8 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_RewardCat_Attribute", "属性", "Attribute");
             InjectZombieModeString("BossRush_ZombieMode_RewardCat_Equipment", "装备", "Equipment");
             InjectZombieModeString("BossRush_ZombieMode_RewardCat_Economy", "经济", "Economy");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_RecycleBackpackJunk", "回收背包中的低品质普通废品，按价值兑换净化点（武器、弹药、医疗、食物、钥匙和特殊物品不会被回收）。", "Recycle low-quality ordinary junk from your backpack for Purification Points (weapons, ammo, medical, food, keys, and special items are protected).");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_PortableSafeZoneDevice", "获得一个可在战斗或准备阶段部署一次的便携安全区装置。", "Gain a Portable Safe-Zone Device that can deploy one safe zone during combat or preparation.");
             InjectZombieModeString("BossRush_ZombieMode_RewardCat_Npc", "NPC 服务", "NPC");
             InjectZombieModeString("BossRush_ZombieMode_RewardCat_Fortification", "工事", "Fortification");
             InjectZombieModeString("BossRush_ZombieMode_RewardCat_Curse", "契约", "Pact");

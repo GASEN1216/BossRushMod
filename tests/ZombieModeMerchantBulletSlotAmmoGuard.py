@@ -40,14 +40,20 @@ def main() -> int:
         "PrimWeaponSlot()",
         "SecWeaponSlot()",
         "TryReadZombieModeItemCaliber(weapon)",
-        "TryGiveZombieModeAmmo(caliber, 100",
+        "ZombieModeTuning.MerchantAmmoPurchaseCount",
     ]
     for token in required_tokens:
         if token not in rewards:
             return fail("missing token -> " + token)
 
+    if "public const int MerchantAmmoPurchaseCount = 200;" not in Path("ZombieMode/ZombieModeTuning.cs").read_text(encoding="utf-8"):
+        return fail("merchant ammo purchase count must be doubled to 200 rounds")
+
     if rewards.find("PrimWeaponSlot()") > rewards.find("SecWeaponSlot()"):
         return fail("primary weapon slot must be checked before secondary weapon slot")
+
+    if "public const int MerchantAmmoPurchaseCount = 200;" not in Path("ZombieMode/ZombieModeTuning.cs").read_text(encoding="utf-8"):
+        return fail("merchant ammo purchase count must be doubled to 200 rounds")
 
     print("ZombieModeMerchantBulletSlotAmmoGuard: PASS")
     return 0

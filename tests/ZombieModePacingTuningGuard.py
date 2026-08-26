@@ -11,6 +11,7 @@ SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 BOSS_CONTROLLER = Path("ZombieMode/ZombieModeBossController.cs")
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARD_CATALOG = Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs")
+REWARD_PREPARATION = Path("ZombieMode/ZombieModeRewardPreparationDuration.cs")
 REWARD_SERVICES = Path("ZombieMode/ZombieModeRewardNpcServices.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
@@ -29,18 +30,25 @@ def main() -> int:
     boss_controller_text = BOSS_CONTROLLER.read_text(encoding="utf-8")
     drops_text = DROPS.read_text(encoding="utf-8")
     reward_catalog_text = REWARD_CATALOG.read_text(encoding="utf-8")
+    reward_preparation_text = REWARD_PREPARATION.read_text(encoding="utf-8")
     reward_services_text = REWARD_SERVICES.read_text(encoding="utf-8")
     localization_text = LOCALIZATION.read_text(encoding="utf-8")
 
     for required in [
         "public const float PreparationCountdownSeconds = 45f;",
-        "public const float BossPreparationCountdownSeconds = 75f;",
+        "public const float BossPreparationCountdownSeconds = 45f;",
     ]:
         if required not in text:
             return fail("preparation pacing contract missing -> " + required)
 
-    if "extractionOpportunity\n                ? ZombieModeTuning.BossPreparationCountdownSeconds\n                : ZombieModeTuning.PreparationCountdownSeconds" not in wave_text:
-        return fail("BeginZombieModePreparation must select 75/45 seconds from extractionOpportunity")
+    if not (
+        ": GetZombieModeSelectedPreparationDuration(runId);" in wave_text
+        and "ZombieModePreparationDurationMaximumSeconds = 300" in reward_preparation_text
+    ):
+        return fail("BeginZombieModePreparation must use the run-persistent player duration with a 45-second fallback")
+
+    if "zombieModeRunState.SelectedPreparationDurationSeconds = 0;" in wave_text:
+        return fail("player-selected preparation duration must persist across waves")
 
     for required in [
         "public const float PreparationSpawnIntervalSeconds = 1.65f;",
@@ -80,6 +88,13 @@ def main() -> int:
         "public const float BossRewardScaleMaximum = 3f;",
         "public const int BossBonusSelectionStartCycle = 1;",
         "public const int BossRewardSelectionMaximum = 2;",
+        "public const int StarterGunnerExtraAmmoCount = 2000;",
+        "public const int RandomGunRewardAmmoCount = 120;",
+        "public const int AmmoSupplyRewardAmmoCount = 240;",
+        "public const int ContractGunRewardAmmoCount = 120;",
+        "public const int MerchantAmmoPurchaseCount = 200;",
+        "public const int AmmoRainSingleStackCount = 120;",
+        "public const int AmmoRainDoubleStackCount = 180;",
     ]:
         if required not in text:
             return fail("tidal pacing contract missing -> " + required)

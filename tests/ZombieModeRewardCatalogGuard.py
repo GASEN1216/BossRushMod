@@ -10,6 +10,8 @@ REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+    Path("ZombieMode/ZombieModeRewardPreparationDuration.cs"),
+    Path("ZombieMode/ZombieModeBackpackJunkRecycle.cs"),
 ]
 
 
@@ -94,6 +96,21 @@ def main() -> int:
         "ZombieModeRewardType.MapEventEliteSquad",
         "ZombieModeRewardType.InsuranceRandom10",
         "ZombieModeRewardType.InsuranceRandom20",
+        "ZombieModeRewardType.RecycleBackpackJunk",
+        "ZombieModeRewardType.PortableSafeZoneDevice",
+        "SelectedPreparationDurationSeconds",
+        "ZombieModePreparationDurationOptions",
+        "GetZombieModePreparationDurationOptions",
+        "GetZombieModeSelectedPreparationDuration",
+        "OpenZombieModePreparationDurationEditor",
+        "SetZombieModePreparationDuration",
+        "300",
+        "RecycleZombieModeBackpackJunkForPurification",
+        "BackpackJunkValuePerPurificationPoint",
+        "ZombieModeItemHasNestedContent(item)",
+        "只回收叶子物品",
+        "PortableSafeZoneDeviceConfig.EnsureRuntimeFallbackRegistrationShell",
+        "BossRushItemIds.PortableSafeZoneDevice",
         "ApplyZombieModePlayerAttributeModifiers",
         "RemoveZombieModeAttributeModifiers",
         "AddZombieModeAttributeModifier",
@@ -130,10 +147,23 @@ def main() -> int:
         "BossRush_ZombieMode_Reward_Attribute_MoveSpeed",
         "BossRush_ZombieMode_Reward_MapEventHighValueAirdrop",
         "BossRush_ZombieMode_Reward_MapEventEliteSquad",
+        "BossRush_ZombieMode_Reward_RestTitle",
+        "BossRush_ZombieMode_Reward_RestEdit",
+        "BossRush_ZombieMode_Reward_RestOption",
+        "BossRush_ZombieMode_Reward_RestApply",
+        "restEditorExpanded",
+        "RestDurationSlider",
+        "slider.wholeNumbers = true;",
+        "pendingRestSeconds",
+        "UpdatePendingRestDurationText",
+        "float panelWidth = 840f;",
     ]:
         result = require(rewards, snippet, "reward UI category/key usage")
         if result:
             return result
+
+    if "GridLayoutGroup restLayout" in rewards:
+        return fail("ZombieModeRewardCatalogGuard: rest editor regressed to the oversized 20-button grid")
 
     if "ZombieMode\\ZombieModeNpcCatalog.cs" not in compile_text:
         return fail("ZombieModeRewardCatalogGuard: missing NPC catalog compile entry")

@@ -76,13 +76,13 @@ def main() -> int:
         "ZombieModeEnemyRuntimeMarker marker;",
         "if (victim == null || !TryGetZombieModeKnownEnemyMarker(victim, out marker))",
         "if (marker != null && marker.RunId == runId)",
-        "TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, victim);",
+        "TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, victim);",
     ]
     for snippet in hurt_required:
         if snippet not in hurt:
             return fail("HandleZombieModeHealthHurt missing preserved hot-path structure -> " + snippet)
 
-    stealth_break_index = hurt.find("TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, victim);")
+    stealth_break_index = hurt.find("TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, victim);")
     marker_lookup_index = hurt.find("TryGetZombieModeKnownEnemyMarker(victim, out marker)")
     if stealth_break_index < 0 or marker_lookup_index < 0 or stealth_break_index < marker_lookup_index:
         return fail("HandleZombieModeHealthHurt must require the registered zombie marker before stealth break")
@@ -97,7 +97,7 @@ def main() -> int:
             return fail("HandleZombieModeHealthDead missing marker-cache structure -> " + snippet)
 
     lethal_stealth_index = dead.find(
-        "TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, character);"
+        "TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, character);"
     )
     unregister_index = dead.find("UnregisterZombieModeEnemyInstanceId(character);")
     if (

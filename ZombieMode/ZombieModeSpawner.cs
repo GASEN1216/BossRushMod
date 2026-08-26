@@ -382,9 +382,15 @@ namespace BossRush
                         SanitizeBossRushZombieSpawn(zombie, "ZombieModeNormal");
                         PrepareZombieModeSpawnedEnemy(zombie, marker, ZombieModeTuning.NormalZombieForceTraceDistance);
                         ApplyZombieModeEnemyTuning(zombie, marker);
-                        RegisterEnemyRecoveryAnchor(zombie, ctx.position);
                         zombieModeRunState.LivingZombieCount++;
                         zombieModeRunState.LivingNormalZombieCount++;
+                        // 地图预设点可能落在玩家刚部署的安全区内；生成完成时再次执行边界禁入，
+                        // 避免等到下一次 0.2 秒安全区 tick 才处理。
+                        TryMoveZombieModeEnemyOutsideSafeZone(
+                            zombie.gameObject,
+                            marker,
+                            ShouldSuppressZombieModeEnemyAggroForSafeZone());
+                        RegisterEnemyRecoveryAnchor(zombie, zombie.transform.position);
                         tcs.TrySetResult(zombie);
                     },
                     onFailed: () =>
@@ -483,7 +489,6 @@ namespace BossRush
                         SanitizeBossRushZombieSpawn(boss, "ZombieModeBoss");
                         PrepareZombieModeSpawnedEnemy(boss, bossMarker, 180f);
                         ApplyZombieModeBossTuning(boss, kind, bossMarker);
-                        RegisterEnemyRecoveryAnchor(boss, ctx.position);
                         zombieModeRunState.LivingZombieCount++;
 
                         ZombieModeBossInstance instance = new ZombieModeBossInstance();
@@ -496,6 +501,11 @@ namespace BossRush
                         instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
                         zombieModeRunState.CurrentWaveBossInstances.Add(instance);
                         RegisterZombieModeBossRuntime(runId, boss, kind);
+                        TryMoveZombieModeEnemyOutsideSafeZone(
+                            boss.gameObject,
+                            bossMarker,
+                            ShouldSuppressZombieModeEnemyAggroForSafeZone());
+                        RegisterEnemyRecoveryAnchor(boss, boss.transform.position);
                         tcs.TrySetResult(boss);
                     },
                     onFailed: () => tcs.TrySetResult(null),
@@ -594,6 +604,12 @@ namespace BossRush
 
             int index = Mathf.Abs(zombieModeRunState.CurrentWave + bossIndex) % zombieModeRunState.SpawnPoints.Count;
             Vector3 candidate = zombieModeRunState.SpawnPoints[index].Position;
+            Vector3 resolvedCandidate;
+            if (!TryResolveZombieModeSpawnPoint(candidate, zombieModeRunState.SpawnPoints[index].VirtualPoint, out resolvedCandidate))
+            {
+                return GetZombieModeSpawnPosition();
+            }
+            candidate = resolvedCandidate;
             for (int i = 0; i < zombieModeRunState.CurrentWaveBossInstances.Count; i++)
             {
                 ZombieModeBossInstance existing = zombieModeRunState.CurrentWaveBossInstances[i];

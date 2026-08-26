@@ -673,6 +673,11 @@ namespace BossRush
 
         private void CleanupZombieModeExpiredDropCandidates()
         {
+            CleanupZombieModeExpiredDropCandidates(false);
+        }
+
+        private void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)
+        {
             if (zombieModeRunState.EntityDropCleanupCandidates.Count <= 0)
             {
                 return;
@@ -681,19 +686,44 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             Vector3 playerPosition = player != null ? player.transform.position : Vector3.zero;
             float now = GetZombieModeRuntimeNow();
+            bool shouldPruneDestroyedRunOnlyRecords = false;
             for (int i = zombieModeRunState.EntityDropCleanupCandidates.Count - 1; i >= 0; i--)
             {
                 ZombieModeDropCandidate candidate = zombieModeRunState.EntityDropCleanupCandidates[i];
                 if (candidate == null || candidate.GameObject == null)
                 {
                     zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
+                    shouldPruneDestroyedRunOnlyRecords = true;
                     continue;
                 }
 
-                bool waveExpired = zombieModeRunState.CurrentWave - candidate.WaveAtSpawn >= ZombieModeTuning.DropCleanupWaveAge;
-                bool timeExpired = now - candidate.SpawnTime >= ZombieModeTuning.DropCleanupAgeSeconds;
-                if ((!waveExpired && !timeExpired) || candidate.HighValue || candidate.BossDrop)
+                // 普通掉落物被玩家拾取后仍可能保留候选记录；此时只移除记录，不能
+                // 在下一波启动时 Destroy 已经进入背包或装备槽的物品。
+                Item ownedItem = candidate.GameObject.GetComponent<Item>();
+                if (ownedItem != null && (ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null))
                 {
+                    RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
+                    zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
+                    continue;
+                }
+
+                bool waveExpired = forceWaveCleanup ||
+                                   zombieModeRunState.CurrentWave - candidate.WaveAtSpawn >= ZombieModeTuning.DropCleanupWaveAge;
+                bool timeExpired = now - candidate.SpawnTime >= ZombieModeTuning.DropCleanupAgeSeconds;
+                // 波次结算只保留 Boss 奖励箱；精英丧尸的普通高价值掉落也属于散落物，
+                // 不能因为 HighValue 标记而跨波次无限累积。
+                if (candidate.BossDrop ||
+                    (!forceWaveCleanup && candidate.HighValue) ||
+                    (!waveExpired && !timeExpired))
+                {
+                    continue;
+                }
+
+                if (forceWaveCleanup)
+                {
+                    RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
+                    try { Destroy(candidate.GameObject); } catch (Exception e) { DevLog("[ZombieMode] 下一波启动清理掉落失败: " + e.Message); }
+                    zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
                     continue;
                 }
 
@@ -704,8 +734,14 @@ namespace BossRush
                     continue;
                 }
 
+                RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
                 try { Destroy(candidate.GameObject); } catch (Exception e) { DevLog("[ZombieMode] Destroy 掉落候选 失败: " + e.Message); }
                 zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
+            }
+
+            if (shouldPruneDestroyedRunOnlyRecords)
+            {
+                PruneZombieModeUnknownRunOnlyRecords();
             }
         }
 
@@ -803,6 +839,7 @@ namespace BossRush
                 {
                     if (npc.GameObject != null)
                     {
+                        RemoveZombieModeRunOnlyObjectRecord(npc.GameObject);
                         Destroy(npc.GameObject);
                     }
                 }
@@ -840,7 +877,9 @@ namespace BossRush
                 {
                     if (npc.GameObject != null)
                     {
-                        CloseZombieModeTemporaryRealNpcServices(npc);
+                        // Run-only 记录的清理回调会关闭已打开的 NPC 服务；先移除记录，
+                        // 避免替换/取消安全区后留下指向已销毁 NPC 的失效记录。
+                        RemoveZombieModeRunOnlyObjectRecord(npc.GameObject);
                         Destroy(npc.GameObject);
                     }
                 }

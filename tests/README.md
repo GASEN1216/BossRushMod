@@ -16,7 +16,9 @@
 | --- | --- |
 | `ZombieModeCompileListGuard.py` | `compile_official.bat` 必须列出全部 `ZombieMode/*.cs`。 |
 | `ZombieModeLocalizationGuard.py` | 丧尸模式 L10n key 必须被 `LocalizationInjector.cs` 注入。 |
-| `ZombieModeItemIdentityGuard.py` | `ZombieTideInvitation` / `ZombieTideBeacon` TypeID 不被复用。 |
+| `ZombieModeItemIdentityGuard.py` | `ZombieTideInvitation` / `ZombieTideBeacon` / `PortableSafeZoneDevice` TypeID、注册、本地化与掉落隔离。 |
+| `PortableSafeZoneDeviceBundleGuard.py` | 便携安全区装置 AssetBundle 的 UnityFS 文件头、体积上限、部署脚本与资源契约。 |
+| `ZombieModeWaveCleanupAndBossSpawnGuard.py` | 每波普通散落物清理、Boss 初始点校正与卡死恢复链。 |
 | `ZombieModeSpawnEnemyCoreReuseGuard.py` | `TrySpawnZombieModeNormalZombieAsync` / `TrySpawnZombieModeBossAsync` 必须走 `SpawnEnemyCore(...)`。 |
 | `ZombieModeBossRushSpawnPointsOnlyGuard.py` | 丧尸刷怪点只能来自 BossRush 地图配置画像，不得混入原版 `CharacterSpawnerRoot`。 |
 | `ZombieModeNormalZombieCapAndAggroGuard.py` | 普通丧尸压力必须受 50 只上限、最近 BossRush 刷怪点、玩家仇恨锁定约束。 |
@@ -34,7 +36,7 @@
 | `ZombieModeChoiceUiPauseAndLayoutGuard.py` | 丧尸模式选择 UI 必须暂停时间/释放鼠标并保持 HUD 指定偏移。 |
 | `ZombieModeStarterEquipmentAndNpcUiGuard.py` | 开局保护三件套、补给终端头盔可见、服务 UI 重建不得重复加 Canvas。 |
 | `ZombieModeInsuranceExitGuard.py` | 失败保险结算条件。 |
-| `ZombieModeSafeZoneGuard.py` | 安全区破隐 5 种触发。 |
+| `ZombieModeSafeZoneGuard.py` | 安全区部署时清空普通丧尸、Boss 移出边界、持续物理禁入，以及破隐与威胁压制生命周期。 |
 | `ZombieModeAreaDamagePlayerGuard.py` | 丧尸区域伤害必须保留真实伤害源并从 `mainDamageReceiver` 进入原版伤害链，避免空 source 触发 `Health.Hurt` 补丁异常。 |
 | `ZombieModeTemporaryNpcProtectionGuard.py` | 临时 NPC 保护（避免被原版 cleanup 误清理）。 |
 | `ZombieModeCashAndOriginalExtractionGuard.py` | 现金与原版撤离点的场景隔离 invariant。 |

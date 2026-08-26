@@ -79,6 +79,17 @@ namespace BossRush
                     return GrantZombieModeMedicalSupplyReward();
                 case ZombieModeRewardType.ArmorOrHelmet:
                     return GrantZombieModeArmorOrHelmetReward(bossNode);
+                case ZombieModeRewardType.RecycleBackpackJunk:
+                    return RecycleZombieModeBackpackJunkForPurification();
+                case ZombieModeRewardType.PortableSafeZoneDevice:
+                    PortableSafeZoneDeviceConfig.EnsureRuntimeFallbackRegistrationShell();
+                    if (TryGiveZombieModeItemToPlayerOrDrop(BossRushItemIds.PortableSafeZoneDevice))
+                    {
+                        NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_PortableSafeZoneDevice"));
+                        return true;
+                    }
+                    GrantZombieModeFallbackPurificationReward("PortableSafeZoneDevice", 80);
+                    return true;
                 case ZombieModeRewardType.FortificationPack:
                     return GrantZombieModeFortificationPack(bossNode);
 

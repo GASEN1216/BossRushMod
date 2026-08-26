@@ -204,7 +204,8 @@ namespace BossRush
                 return ZombieModeHudSafeZoneStealthBrokenColor;
             }
 
-            if (zombieModeRunState.PreparationTimer <= ZombieModeTuning.SafeZoneFlashStartSeconds)
+            if (zombieModeRunState.PreparationTimer > 0f &&
+                zombieModeRunState.PreparationTimer <= ZombieModeTuning.SafeZoneFlashStartSeconds)
             {
                 float flash = Mathf.PingPong(Time.unscaledTime / ZombieModeTuning.SafeZoneFlashCycleSeconds, 1f);
                 return Color.Lerp(

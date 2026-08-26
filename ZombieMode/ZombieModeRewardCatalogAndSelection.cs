@@ -17,7 +17,7 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        private void ShowZombieModeRewardSelection(int runId, bool bossNode)
+        private void ShowZombieModeRewardSelection(int runId, bool bossNode, bool restEditorExpanded = false)
         {
             if (!IsZombieModeRunValid(runId))
             {
@@ -30,7 +30,7 @@ namespace BossRush
             zombieModeRewardUiRoot = new GameObject("ZombieMode_RewardSelection");
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.RewardUi, zombieModeRewardUiRoot, zombieModeRewardUiRoot, null);
             ZombieModeRewardSelectionView view = zombieModeRewardUiRoot.AddComponent<ZombieModeRewardSelectionView>();
-            view.Initialize(runId, this);
+            view.Initialize(runId, this, restEditorExpanded);
         }
 
         private void EnsureZombieModeRewardNode(bool bossNode)
@@ -230,11 +230,17 @@ namespace BossRush
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.AmmoSupply, ZombieModeRewardCategory.Equipment, 15);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.MedicalSupply, ZombieModeRewardCategory.Equipment, 15);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.ArmorOrHelmet, ZombieModeRewardCategory.Equipment, 8);
+            AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.PortableSafeZoneDevice, ZombieModeRewardCategory.Equipment, bossNode ? 10 : 14);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.RandomSupply, ZombieModeRewardCategory.Equipment, 15);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.RandomHighQualityItem, ZombieModeRewardCategory.Equipment, bossNode ? 14 : 8);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.StarterReroll, ZombieModeRewardCategory.Equipment, 10);
 
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.PurificationPoints, ZombieModeRewardCategory.Economy, 25);
+            if (HasZombieModeRecyclableBackpackJunk())
+            {
+                // 主动提高出现率，让玩家能稳定获得清理背包与换取局内点数的途径。
+                AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.RecycleBackpackJunk, ZombieModeRewardCategory.Economy, 40);
+            }
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.HalfPricePaidRefresh, ZombieModeRewardCategory.Economy, 8);
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.Heal, ZombieModeRewardCategory.Economy, 8);
 
@@ -688,6 +694,7 @@ namespace BossRush
                 case ZombieModeRewardType.ArmorOrHelmet:
                 case ZombieModeRewardType.RandomHighQualityItem:
                 case ZombieModeRewardType.StarterReroll:
+                case ZombieModeRewardType.PortableSafeZoneDevice:
                     return ZombieModeRewardCategory.Equipment;
                 case ZombieModeRewardType.TempMerchant:
                 case ZombieModeRewardType.TempNurse:
@@ -853,6 +860,8 @@ namespace BossRush
                             CalculateZombieModePurificationRewardPoints(bossNode));
                 case ZombieModeRewardType.Heal:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Economy", "BossRush_ZombieMode_Reward_Heal");
+                case ZombieModeRewardType.RecycleBackpackJunk:
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Economy", "BossRush_ZombieMode_Reward_RecycleBackpackJunk");
                 case ZombieModeRewardType.RandomSupply:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_RandomSupply");
                 case ZombieModeRewardType.RandomMeleeWeapon:
@@ -865,6 +874,8 @@ namespace BossRush
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_MedicalSupply");
                 case ZombieModeRewardType.ArmorOrHelmet:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_ArmorOrHelmet");
+                case ZombieModeRewardType.PortableSafeZoneDevice:
+                    return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_PortableSafeZoneDevice");
                 case ZombieModeRewardType.RandomHighQualityItem:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Equipment", "BossRush_ZombieMode_Reward_RandomHighQualityItem");
                 case ZombieModeRewardType.StarterReroll:

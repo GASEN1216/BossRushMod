@@ -16,7 +16,7 @@ namespace BossRush
 
             if (kind == ZombieModeRunOnlyObjectKind.RewardUi)
             {
-                for (int i = zombieModeRunState.RunOnlyObjects.Count - 1; i >= 0; i--)
+                for (int i = zombieModeRunState.RunOnlyObjects.Count; i-- > 0;)
                 {
                     ZombieModeRunOnlyRecord existing = zombieModeRunState.RunOnlyObjects[i];
                     if (existing != null &&
@@ -94,6 +94,61 @@ namespace BossRush
             }
         }
 
+        private void RemoveZombieModeRunOnlyObjectRecord(UnityEngine.Object target)
+        {
+            if (target == null || zombieModeRunState == null || zombieModeRunState.RunOnlyObjects == null)
+            {
+                return;
+            }
+
+            for (int i = zombieModeRunState.RunOnlyObjects.Count; i-- > 0;)
+            {
+                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                if (record == null || (record.GameObject != target && record.Target != target))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    record.Cleanup(false);
+                }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] Run-only object record cleanup failed: " + e.Message);
+                }
+                zombieModeRunState.RunOnlyObjects.RemoveAt(i);
+            }
+        }
+
+        private void PruneZombieModeUnknownRunOnlyRecords()
+        {
+            if (zombieModeRunState == null || zombieModeRunState.RunOnlyObjects == null)
+            {
+                return;
+            }
+
+            for (int i = zombieModeRunState.RunOnlyObjects.Count; i-- > 0;)
+            {
+                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                if (record == null)
+                {
+                    zombieModeRunState.RunOnlyObjects.RemoveAt(i);
+                    continue;
+                }
+
+                if (record.Kind != ZombieModeRunOnlyObjectKind.Unknown ||
+                    record.GameObject != null ||
+                    record.Target != null)
+                {
+                    continue;
+                }
+
+                record.Cleanup(false);
+                zombieModeRunState.RunOnlyObjects.RemoveAt(i);
+            }
+        }
+
         private void CleanupZombieModeEnemiesNearPlayerSafeZone(int runId, string reason)
         {
             if (!IsZombieModeRunValid(runId))
@@ -146,6 +201,8 @@ namespace BossRush
                     GameObject enemyObject = marker.gameObject;
                     if (enemyObject != null)
                     {
+                        // Destroy 会延迟到帧尾；先停用 AI，避免其在同帧继续执行并访问已失效状态。
+                        enemyObject.SetActive(false);
                         Destroy(enemyObject);
                     }
                     cleaned++;
@@ -161,6 +218,81 @@ namespace BossRush
             if (cleaned > 0)
             {
                 DevLog("[ZombieMode] safe-zone cleanup " + reason + ": removed " + cleaned + " nearby enemies");
+            }
+        }
+
+        private void ClearZombieModeEnemiesInsideActiveSafeZone(int runId, string reason)
+        {
+            if (!IsZombieModeRunValid(runId) ||
+                !zombieModeRunState.ActiveSafeZoneActive ||
+                zombieModeRunState.ActiveSafeZoneRadius <= 0f)
+            {
+                return;
+            }
+
+            int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true);
+            if (count <= 0)
+            {
+                return;
+            }
+
+            int removed = 0;
+            int ejectedBosses = 0;
+            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
+            {
+                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
+                if (marker == null ||
+                    marker.RunId != runId ||
+                    marker.DeathSettled ||
+                    marker.RemovedFromRuntime ||
+                    !IsZombieModePositionInsideActiveSafeZone(marker.transform.position))
+                {
+                    continue;
+                }
+
+                if (marker.IsBoss)
+                {
+                    if (TryMoveZombieModeEnemyOutsideSafeZone(marker.gameObject, marker, true))
+                    {
+                        ejectedBosses++;
+                    }
+                    continue;
+                }
+
+                try
+                {
+                    marker.RemovedFromRuntime = true;
+                    CharacterMainControl owner = marker.Owner;
+                    if (owner == null)
+                    {
+                        owner = marker.GetComponent<CharacterMainControl>();
+                    }
+
+                    UnregisterZombieModeEnemyInstanceId(owner);
+                    UnregisterEnemyRecovery(owner);
+                    zombieModeRunState.LivingZombieCount = Mathf.Max(0, zombieModeRunState.LivingZombieCount - 1);
+                    zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);
+                    if (marker.gameObject != null)
+                    {
+                        marker.gameObject.SetActive(false);
+                        Destroy(marker.gameObject);
+                    }
+                    removed++;
+                }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] safe-zone deployment cleanup failed: " + reason + " - " + e.Message);
+                }
+            }
+
+            zombieModeEnemyMarkerScratch.Clear();
+            PruneZombieModeRunOnlyEnemyRecords(runId);
+            if (removed > 0 || ejectedBosses > 0)
+            {
+                DevLog(
+                    "[ZombieMode] safe-zone deployment " + reason +
+                    ": removed=" + removed +
+                    ", ejectedBosses=" + ejectedBosses);
             }
         }
 

@@ -39,6 +39,7 @@ def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
     spawner_text = SPAWNER.read_text(encoding="utf-8-sig")
     keep = extract_method_body(text, "private void KeepZombieModeEnemiesOutsideSafeZone()")
+    eject = extract_method_body(text, "private bool TryMoveZombieModeEnemyOutsideSafeZone(")
     suppress = extract_method_body(text, "private void SuppressZombieModeSafeZoneThreats()")
     release = extract_method_body(text, "private void ReleaseZombieModeSafeZoneThreatSuppression()")
     setter = extract_method_body(text, "private void SetZombieModeEnemyThreatSuppressed(")
@@ -46,6 +47,8 @@ def main() -> int:
 
     if keep is None:
         return fail("missing KeepZombieModeEnemiesOutsideSafeZone body")
+    if eject is None:
+        return fail("missing TryMoveZombieModeEnemyOutsideSafeZone body")
     if suppress is None:
         return fail("missing SuppressZombieModeSafeZoneThreats body")
     if release is None:
@@ -72,9 +75,13 @@ def main() -> int:
             if snippet not in setter:
                 return fail("marker lookup should only be the validated fallback -> " + snippet)
 
-    required_keep = "SetZombieModeEnemyThreatSuppressed(record.GameObject, marker, true);"
+    required_keep = "TryMoveZombieModeEnemyOutsideSafeZone("
     if required_keep not in keep:
         return fail("safe-zone displacement path should pass the already resolved marker")
+    if "record.GameObject,\n                    marker," not in keep:
+        return fail("safe-zone displacement helper should receive the already resolved marker")
+    if "SetZombieModeEnemyThreatSuppressed(enemyObject, marker, suppressThreat);" not in eject:
+        return fail("safe-zone displacement helper should reuse the supplied marker for threat suppression")
 
     for method_name, body, state in (
         ("SuppressZombieModeSafeZoneThreats", suppress, "true"),

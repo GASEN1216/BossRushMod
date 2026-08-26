@@ -65,7 +65,7 @@ def main() -> int:
     extraction_text = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
     for snippet in [
         "CleanupZombieModePreparationObjects",
-        "BreakZombieModeSafeZoneStealth",
+        "CancelZombieModeSafeZone",
         "zombieModeRunState.ActiveSafeZoneActive = false;",
         "zombieModeRunState.ActiveSafeZoneVisual = null;",
         "DestroyZombieModeSafeZoneMapPoi();",

@@ -36,21 +36,20 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
-    body = extract_method_body(text, "private void KeepZombieModeEnemiesOutsideSafeZone()")
+    body = extract_method_body(text, "private bool TryMoveZombieModeEnemyOutsideSafeZone(")
     if body is None:
-        return fail("missing KeepZombieModeEnemiesOutsideSafeZone body")
+        return fail("missing TryMoveZombieModeEnemyOutsideSafeZone body")
 
-    if "delta.normalized * repelRadius" in body:
+    if "delta.normalized" in body:
         return fail("safe-zone displacement still normalizes delta directly")
 
     required = [
         "float deltaDistanceSqr = delta.sqrMagnitude;",
-        "if (deltaDistanceSqr > radiusSqr)",
-        "if (deltaDistanceSqr < 0.01f)",
-        "deltaDistanceSqr = delta.sqrMagnitude;",
-        "deltaDistanceSqr = 1f;",
         "float inverseDistance = 1f / Mathf.Sqrt(deltaDistanceSqr);",
-        "Vector3 destination = center + delta * (repelRadius * inverseDistance);",
+        "ZombieModeTuning.SafeZoneEnemyEjectionClearance",
+        "delta * (ejectionRadius * inverseDistance);",
+        "ZombieModeTuning.SafeZoneEnemyEjectionNavMeshRadius",
+        "!IsZombieModePositionInsideSafeZoneEnemyExclusion(resolved)",
     ]
     for snippet in required:
         if snippet not in body:

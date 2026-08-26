@@ -75,11 +75,11 @@ def main() -> int:
         if token not in area_damage:
             return fail("player-only area damage missing safe receiver/source token: " + token)
 
-    stealth_break = extract_method(wave, "TryProcessZombieModeSafeZoneStealthBreak")
+    stealth_break = extract_method(wave, "TryHandleZombieModeSafeZonePlayerAttack")
     if not stealth_break:
-        return fail("safe zone stealth break method not found")
+        return fail("safe zone player attack handler not found")
     if "damageInfo.isFromBuffOrEffect" not in stealth_break:
-        return fail("safe zone stealth break must ignore internal effect/self-source damage")
+        return fail("safe zone player attack handler must ignore internal effect/self-source damage")
 
     runtime = boss[boss.find("public sealed class ZombieModeAreaTickRuntime"):]
     for token in [

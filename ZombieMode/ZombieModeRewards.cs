@@ -43,17 +43,27 @@ namespace BossRush
         // 付费刷新
         private static readonly Color PaidRefreshColor = new Color(0.38f, 0.30f, 0.14f, 1.00f);
         private static readonly Color PaidRefreshHoverColor = new Color(0.50f, 0.40f, 0.20f, 1.00f);
+        private static readonly Color RestOptionColor = new Color(0.10f, 0.20f, 0.24f, 0.96f);
+        private static readonly Color RestOptionHoverColor = new Color(0.16f, 0.36f, 0.40f, 1.00f);
+        private static readonly Color RestOptionSelectedColor = new Color(0.12f, 0.52f, 0.48f, 1.00f);
 
         private static readonly Color InfoTextColor = new Color(0.72f, 0.78f, 0.86f, 0.95f);
 
         private int runId;
         private ModBehaviour owner;
         private ZombieModeUIHelper.ModalInputLease inputLease;
+        private bool restEditorExpanded;
+        private int pendingRestSeconds;
+        private TextMeshProUGUI restTitleText;
 
-        public void Initialize(int newRunId, ModBehaviour newOwner)
+        public void Initialize(int newRunId, ModBehaviour newOwner, bool newRestEditorExpanded)
         {
             runId = newRunId;
             owner = newOwner;
+            restEditorExpanded = newRestEditorExpanded;
+            pendingRestSeconds = owner != null
+                ? owner.GetZombieModeSelectedPreparationDuration(runId)
+                : 45;
             Build();
             ClaimInputAndPause();
         }
@@ -67,15 +77,22 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
+            bool bossNode = owner.IsZombieModeBossRewardNode(runId);
+            // CanvasScaler 已经负责不同分辨率缩放；这里使用稳定的参考尺寸，
+            // 避免把物理像素宽高直接当成 1920x1080 参考坐标后造成布局忽大忽小。
+            float panelWidth = 840f;
+            float panelHeight = bossNode
+                ? (restEditorExpanded ? 565f : 510f)
+                : (restEditorExpanded ? 480f : 430f);
             GameObject panel = ZombieModeUIHelper.CreateModalSurface(
                 "Panel",
                 transform,
-                new Vector2(860f, 540f),
+                new Vector2(panelWidth, panelHeight),
                 RewardCardAccentColor);
 
             // ── 标题栏 ──
             float yPos = 0f;
-            float headerH = 64f;
+            float headerH = 56f;
             GameObject header = ZombieModeUIHelper.CreateRect("Header", panel.transform,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(headerH * 0.5f)), new Vector2(0f, headerH), new Vector2(0.5f, 0.5f));
@@ -97,7 +114,7 @@ namespace BossRush
             yPos += 6f;
 
             // ── 信息栏 ──
-            float infoH = 34f;
+            float infoH = 30f;
             ZombieModeUIHelper.CreateText("Info", panel.transform,
                 string.Format(
                     L10n.T("BossRush_ZombieMode_Reward_Info"),
@@ -110,7 +127,7 @@ namespace BossRush
                 TextAlignmentOptions.Center, InfoTextColor);
             yPos += infoH + 10f;
 
-            float previewH = 40f;
+            float previewH = 34f;
             ZombieModeUIHelper.CreateHighlightBar("NextWavePreview", panel.transform,
                 owner.GetZombieModeNextWavePreviewText(runId), 15,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -121,9 +138,8 @@ namespace BossRush
 
             // ── 奖励卡片 ──
             IList<ZombieModeRewardType> options = owner.GetZombieModeRewardOptions(runId);
-            bool bossNode = owner.IsZombieModeBossRewardNode(runId);
             float cardW = bossNode ? 220f : 240f;
-            float cardH = bossNode ? 100f : 120f;
+            float cardH = bossNode ? 88f : 104f;
 
             if (bossNode)
             {
@@ -158,6 +174,115 @@ namespace BossRush
                 yPos += cardH + 16f;
             }
 
+            // ── 休息时间（默认折叠，仅显示当前值与“修改”） ──
+            float restH = restEditorExpanded ? 116f : 48f;
+            GameObject restPanel = ZombieModeUIHelper.CreateRect("RestPanel", panel.transform,
+                new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, -(yPos + restH * 0.5f)), new Vector2(-40f, restH), new Vector2(0.5f, 0.5f));
+            Image restPanelImage = restPanel.AddComponent<Image>();
+            restPanelImage.color = new Color(0.055f, 0.15f, 0.17f, 0.32f);
+            restPanelImage.raycastTarget = false;
+            restTitleText = ZombieModeUIHelper.CreateText("RestTitle", restPanel.transform,
+                string.Format(
+                    L10n.T("BossRush_ZombieMode_Reward_RestTitle"),
+                    pendingRestSeconds),
+                16,
+                restEditorExpanded ? new Vector2(0f, 1f) : new Vector2(0f, 0.5f),
+                restEditorExpanded ? new Vector2(0.72f, 1f) : new Vector2(0.72f, 0.5f),
+                restEditorExpanded ? new Vector2(18f, -19f) : new Vector2(18f, 0f),
+                restEditorExpanded ? new Vector2(-38f, 28f) : new Vector2(-38f, 34f),
+                TextAlignmentOptions.MidlineLeft,
+                InfoTextColor);
+
+            if (!restEditorExpanded)
+            {
+                Button editButton = ZombieModeUIHelper.CreateButton(
+                    "RestEdit", restPanel.transform,
+                    L10n.T("BossRush_ZombieMode_Reward_RestEdit"),
+                    new Vector2(1f, 0.5f), new Vector2(-68f, 0f),
+                    new Vector2(104f, 34f), RestOptionColor, 15,
+                    new Vector2(92f, 28f), null, true);
+                ZombieModeUIHelper.ApplyButtonColors(editButton, RestOptionColor, RestOptionHoverColor, FreeRefreshDisabledColor);
+                editButton.onClick.AddListener(delegate
+                {
+                    if (owner != null)
+                    {
+                        owner.OpenZombieModePreparationDurationEditor(runId);
+                    }
+                });
+            }
+            else
+            {
+                float sliderWidth = Mathf.Clamp(panelWidth - 250f, 390f, 500f);
+                GameObject sliderObject = ZombieModeUIHelper.CreateRect("RestDurationSlider", restPanel.transform,
+                    new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                    new Vector2(-120f, -66f), new Vector2(sliderWidth, 24f), new Vector2(0.5f, 0.5f));
+                Slider slider = sliderObject.AddComponent<Slider>();
+                slider.minValue = 1f;
+                slider.maxValue = 20f;
+                slider.wholeNumbers = true;
+                slider.direction = Slider.Direction.LeftToRight;
+
+                GameObject track = ZombieModeUIHelper.CreateRect("Track", sliderObject.transform,
+                    new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
+                    Vector2.zero, new Vector2(0f, 8f), new Vector2(0.5f, 0.5f));
+                Image trackImage = track.AddComponent<Image>();
+                trackImage.color = new Color(0.06f, 0.09f, 0.12f, 0.95f);
+
+                GameObject fillArea = ZombieModeUIHelper.CreateRect("FillArea", sliderObject.transform,
+                    new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
+                    Vector2.zero, new Vector2(-12f, 8f), new Vector2(0.5f, 0.5f));
+                GameObject fill = ZombieModeUIHelper.CreateRect("Fill", fillArea.transform,
+                    new Vector2(0f, 0f), new Vector2(1f, 1f),
+                    Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+                Image fillImage = fill.AddComponent<Image>();
+                fillImage.color = RestOptionSelectedColor;
+                slider.fillRect = fill.GetComponent<RectTransform>();
+
+                GameObject handleArea = ZombieModeUIHelper.CreateRect("HandleArea", sliderObject.transform,
+                    Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-12f, 0f), new Vector2(0.5f, 0.5f));
+                GameObject handle = ZombieModeUIHelper.CreateRect("Handle", handleArea.transform,
+                    new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+                    Vector2.zero, new Vector2(20f, 20f), new Vector2(0.5f, 0.5f));
+                Image handleImage = handle.AddComponent<Image>();
+                handleImage.color = RewardCardAccentColor;
+                slider.handleRect = handle.GetComponent<RectTransform>();
+                slider.targetGraphic = handleImage;
+                slider.value = Mathf.Clamp(Mathf.RoundToInt(pendingRestSeconds / 15f), 1, 20);
+                slider.onValueChanged.AddListener(delegate(float value)
+                {
+                    pendingRestSeconds = Mathf.Clamp(Mathf.RoundToInt(value) * 15, 15, 300);
+                    UpdatePendingRestDurationText();
+                });
+
+                ZombieModeUIHelper.CreateText("RestMin", restPanel.transform,
+                    string.Format(L10n.T("BossRush_ZombieMode_Reward_RestOption"), 15), 12,
+                    new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                    new Vector2(-120f - sliderWidth * 0.5f, -94f),
+                    new Vector2(76f, 20f), TextAlignmentOptions.MidlineLeft, InfoTextColor);
+                ZombieModeUIHelper.CreateText("RestMax", restPanel.transform,
+                    string.Format(L10n.T("BossRush_ZombieMode_Reward_RestOption"), 300), 12,
+                    new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                    new Vector2(-120f + sliderWidth * 0.5f, -94f),
+                    new Vector2(86f, 20f), TextAlignmentOptions.MidlineRight, InfoTextColor);
+
+                Button applyButton = ZombieModeUIHelper.CreateButton(
+                    "RestApply", restPanel.transform,
+                    L10n.T("BossRush_ZombieMode_Reward_RestApply"),
+                    new Vector2(1f, 1f), new Vector2(-66f, -66f),
+                    new Vector2(104f, 36f), RestOptionSelectedColor, 15,
+                    new Vector2(92f, 30f), null, true);
+                ZombieModeUIHelper.ApplyButtonColors(applyButton, RestOptionSelectedColor, RestOptionHoverColor, FreeRefreshDisabledColor);
+                applyButton.onClick.AddListener(delegate
+                {
+                    if (owner != null)
+                    {
+                        owner.SetZombieModePreparationDuration(runId, pendingRestSeconds);
+                    }
+                });
+            }
+            yPos += restH + 8f;
+
             // ── 分隔线 ──
             ZombieModeUIHelper.CreateSeparator("Sep", panel.transform,
                 new Vector2(0.08f, 1f), new Vector2(0.92f, 1f),
@@ -166,8 +291,8 @@ namespace BossRush
 
             // ── 刷新按钮行（固定底部） ──
             GameObject refreshRow = ZombieModeUIHelper.CreateRect("RefreshRow", panel.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 0f),
-                new Vector2(0f, 42f), new Vector2(-40f, 56f), new Vector2(0.5f, 0.5f));
+                new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, -(yPos + 28f)), new Vector2(-40f, 56f), new Vector2(0.5f, 0.5f));
             HorizontalLayoutGroup refreshLayout = refreshRow.AddComponent<HorizontalLayoutGroup>();
             refreshLayout.spacing = 30f;
             refreshLayout.childAlignment = TextAnchor.MiddleCenter;
@@ -187,6 +312,16 @@ namespace BossRush
                 string.Format(L10n.T("BossRush_ZombieMode_Reward_RefreshPaid"), paidRefreshCost.ToString("N0")),
                 PaidRefreshColor, PaidRefreshHoverColor, FreeRefreshDisabledColor,
                 true, canAffordPaidRefresh, true);
+        }
+
+        private void UpdatePendingRestDurationText()
+        {
+            if (restTitleText != null)
+            {
+                restTitleText.text = string.Format(
+                    L10n.T("BossRush_ZombieMode_Reward_RestTitle"),
+                    pendingRestSeconds);
+            }
         }
 
         private void CreateRewardCard(string name, Transform parent, string text, Vector2 position, Vector2 size, ZombieModeRewardType rewardType)

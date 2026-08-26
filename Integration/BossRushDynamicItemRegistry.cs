@@ -325,6 +325,11 @@ namespace BossRush
                 ItemBundles = new string[] { ZombieTideBeaconConfig.BUNDLE_NAME },
                 FallbackLoader = delegate(int typeId) { return ZombieTideBeaconConfig.EnsureRuntimeFallbackRegistrationShell(); }
             }, BossRushItemIds.ZombieTideBeacon);
+            Add(plans, new RegistrationPlan
+            {
+                ItemBundles = new string[] { PortableSafeZoneDeviceConfig.BUNDLE_NAME },
+                FallbackLoader = delegate(int typeId) { return PortableSafeZoneDeviceConfig.EnsureRuntimeFallbackRegistrationShell(); }
+            }, BossRushItemIds.PortableSafeZoneDevice);
 
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);

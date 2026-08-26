@@ -26,6 +26,7 @@ namespace BossRush
             EmergencyRepairSprayConfig.RegisterConfigurator();
             ZombieTideInvitationConfig.RegisterConfigurator();
             ZombieTideBeaconConfig.RegisterConfigurator();
+            PortableSafeZoneDeviceConfig.RegisterConfigurator();
             ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
             ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);

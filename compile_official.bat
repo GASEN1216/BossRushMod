@@ -341,8 +341,10 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ZombieMode\ZombieModeWaveController.cs ^
     ZombieMode\ZombieModeEnemyRuntime.cs ^
     ZombieMode\ZombieModeRewards.cs ^
-    ZombieMode\ZombieModeRewardCatalogAndSelection.cs ^
-    ZombieMode\ZombieModeRewardEffectsAndNpc.cs ^
+      ZombieMode\ZombieModeRewardCatalogAndSelection.cs ^
+      ZombieMode\ZombieModeRewardPreparationDuration.cs ^
+      ZombieMode\ZombieModeRewardEffectsAndNpc.cs ^
+      ZombieMode\ZombieModeBackpackJunkRecycle.cs ^
     ZombieMode\ZombieModeRewardItemGrants.cs ^
     ZombieMode\ZombieModeRewardNpcServices.cs ^
     ZombieMode\ZombieModeRewardEffects.cs ^
@@ -555,6 +557,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Items\ZombieTideInvitationUsage.cs ^
     Integration\Items\ZombieTideBeaconConfig.cs ^
     Integration\Items\ZombieTideBeaconUsage.cs ^
+    Integration\Items\PortableSafeZoneDeviceConfig.cs ^
+    Integration\Items\PortableSafeZoneDeviceUsage.cs ^
     Integration\UI\ImageViewerUI.cs ^
     Integration\Affinity\INPCAffinityConfig.cs ^
     Integration\Affinity\AffinityConfig.cs ^
@@ -676,6 +680,11 @@ if %BUILD_EXIT_CODE% EQU 0 (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items"
             copy /Y "Assets\Items\fate_echo_relic" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items\fate_echo_relic" >nul 2>nul
             if errorlevel 1 echo WARNING: Fate Echo relic bundle deploy failed.
+        )
+        if exist "Assets\Items\portable_safe_zone_device" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items"
+            copy /Y "Assets\Items\portable_safe_zone_device" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items\portable_safe_zone_device" >nul 2>nul
+            if errorlevel 1 echo WARNING: Portable safe-zone device bundle deploy failed.
         )
     )
 ) else (

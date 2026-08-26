@@ -167,6 +167,7 @@ namespace BossRush
                 DingdangDrawingConfig.TYPE_ID,
                 ZombieTideInvitationConfig.TYPE_ID,
                 ZombieTideBeaconConfig.TYPE_ID,
+                PortableSafeZoneDeviceConfig.TYPE_ID,
             };
         }
     }

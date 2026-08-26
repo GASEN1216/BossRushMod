@@ -99,6 +99,8 @@ namespace BossRush
         AmmoSupply,
         MedicalSupply,
         ArmorOrHelmet,
+        RecycleBackpackJunk,
+        PortableSafeZoneDevice,
         CurrentNodeFreeRefresh,
         NextNodeFreeRefresh,
         HalfPricePaidRefresh,
@@ -705,6 +707,7 @@ namespace BossRush
         public Vector3 ActiveSafeZoneCenter;
         public float ActiveSafeZoneRadius;
         public bool ActiveSafeZoneActive;
+        public bool ActiveSafeZonePortable;
         public bool SafeZoneStealthBroken;
         public bool PlayerInsideSafeZone;
         public bool SafeZoneThreatSuppressed;
@@ -726,6 +729,8 @@ namespace BossRush
         public int PaidRefreshIndexCurrentNode;
         public int PendingFreeRefreshNextNode;
         public bool HalfPriceNextPaidRefresh;
+        // 本局沿用的准备时长；默认 45 秒，玩家在任意波奖励界面修改后持续沿用。
+        public int SelectedPreparationDurationSeconds = 45;
         public readonly Dictionary<string, float> AttributeBonuses = new Dictionary<string, float>();
         public readonly List<ZombieModeAttributeModifierRecord> AttributeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
         public bool AttributeModifierCleanupRegistered;
@@ -782,6 +787,7 @@ namespace BossRush
             ActiveSafeZoneCenter = Vector3.zero;
             ActiveSafeZoneRadius = 0f;
             ActiveSafeZoneActive = false;
+            ActiveSafeZonePortable = false;
             SafeZoneStealthBroken = false;
             PlayerInsideSafeZone = false;
             SafeZoneThreatSuppressed = false;
@@ -795,6 +801,7 @@ namespace BossRush
             PaidRefreshIndexCurrentNode = 0;
             PendingFreeRefreshNextNode = 0;
             HalfPriceNextPaidRefresh = false;
+            SelectedPreparationDurationSeconds = 45;
             AttributeBonuses.Clear();
             AttributeModifierRecords.Clear();
             AttributeModifierCleanupRegistered = false;
@@ -863,6 +870,7 @@ namespace BossRush
             ActiveSafeZoneCenter = Vector3.zero;
             ActiveSafeZoneRadius = 0f;
             ActiveSafeZoneActive = false;
+            ActiveSafeZonePortable = false;
             SafeZoneStealthBroken = false;
             PlayerInsideSafeZone = false;
             SafeZoneThreatSuppressed = false;
@@ -876,6 +884,7 @@ namespace BossRush
             PaidRefreshIndexCurrentNode = 0;
             PendingFreeRefreshNextNode = 0;
             HalfPriceNextPaidRefresh = false;
+            SelectedPreparationDurationSeconds = 45;
             PendingMapEvent = ZombieModePendingMapEventType.None;
             PendingEliteSquadCount = 0;
             ContainersRefilled = false;

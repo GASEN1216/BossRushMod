@@ -11,6 +11,33 @@ using UnityEngine;
 
 namespace BossRush
 {
+    public sealed class ZombieModeHarasserProjectileMaterialOwner : MonoBehaviour
+    {
+        private Material trailMaterial;
+        private Material lineMaterial;
+
+        public void Initialize(Material newTrailMaterial, Material newLineMaterial)
+        {
+            trailMaterial = newTrailMaterial;
+            lineMaterial = newLineMaterial;
+        }
+
+        private void OnDestroy()
+        {
+            if (trailMaterial != null)
+            {
+                Destroy(trailMaterial);
+                trailMaterial = null;
+            }
+
+            if (lineMaterial != null)
+            {
+                Destroy(lineMaterial);
+                lineMaterial = null;
+            }
+        }
+    }
+
     public sealed class ZombieModeSprinterDashRuntime : ZombieModeTimedRunScopedRuntime
     {
         private CharacterMainControl source;
@@ -408,6 +435,7 @@ namespace BossRush
         private float slowPercent;
         private float slowDuration;
         private bool resolved;
+        private LineRenderer trajectory;
 
         public void Initialize(
             int newRunId,
@@ -445,6 +473,7 @@ namespace BossRush
             maxTravelDistance = Mathf.Max(targetDistance, speed * Mathf.Max(0.1f, lifetime));
             lastDistanceToTarget = targetDistance;
             resolved = false;
+            trajectory = GetComponent<LineRenderer>();
             if (velocity.sqrMagnitude > 0.0001f)
             {
                 transform.rotation = Quaternion.LookRotation(velocity, Vector3.up);
@@ -461,6 +490,11 @@ namespace BossRush
             }
 
             CharacterMainControl player = CharacterMainControl.Main;
+            if (trajectory != null)
+            {
+                trajectory.SetPosition(0, transform.position);
+                trajectory.SetPosition(1, targetPosition);
+            }
             if (IsPlayerHit(player))
             {
                 ResolveImpact(inst, player.transform.position);
@@ -485,11 +519,20 @@ namespace BossRush
             Vector3 toTarget = targetPosition - transform.position;
             toTarget.y = 0f;
             float distanceToTarget = toTarget.magnitude;
-            if (distanceToTarget <= impactRadius ||
-                travelledDistance >= maxTravelDistance ||
-                distanceToTarget > lastDistanceToTarget + 0.05f)
+            if (distanceToTarget <= impactRadius || travelledDistance >= maxTravelDistance)
             {
-                ResolveImpact(inst, transform.position);
+                // 目标点只是发射时记录的玩家位置，不代表玩家仍在场。
+                // 抵达旧目标点但没有实际碰到玩家时，按成功躲避处理，不能在
+                // 玩家已经跑开的地方补一次不可见爆炸。
+                if (IsPlayerHit(player))
+                {
+                    ResolveImpact(inst, player.transform.position);
+                }
+                else
+                {
+                    resolved = true;
+                    Destroy(gameObject);
+                }
                 return;
             }
 
@@ -498,9 +541,11 @@ namespace BossRush
 
         protected override void OnRuntimeStopping(ModBehaviour inst, bool expired)
         {
+            // 飞行时间结束代表躲避成功，不在目标点之外补一次不可见爆炸。
             if (expired && !resolved)
             {
-                ResolveImpact(inst, transform.position);
+                resolved = true;
+                Destroy(gameObject);
             }
         }
 

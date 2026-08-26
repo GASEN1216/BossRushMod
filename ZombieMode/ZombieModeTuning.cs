@@ -50,7 +50,7 @@ namespace BossRush
         {
             public const float PreparationCountdownSeconds = 45f;
             // Boss 波奖励与撤离决定 modal 不限时；玩家选择“继续”后才开始消耗这个更长的整理时间。
-            public const float BossPreparationCountdownSeconds = 75f;
+            public const float BossPreparationCountdownSeconds = 45f;
             public const float BeaconChannelDurationSeconds = 3f;
             public const float ExtractionCountdownSeconds = 15f;
             public const float PreparationSpawnIntervalSeconds = 1.65f;
@@ -73,12 +73,15 @@ namespace BossRush
             public const float Radius = 8f;
             public const float CenterPlayerRange = 30f;
             public const float NavMeshRadius = 5f;
+            public const float EnemyExclusionPadding = 1.5f;
+            public const float EnemyEjectionClearance = 0.75f;
+            public const float EnemyEjectionNavMeshRadius = 0.5f;
         }
 
         private static class Performance
         {
             public const float TemporaryNpcProtectionTickIntervalSeconds = 0.25f;
-            public const float BossStuckTimeoutSeconds = 45f;
+            public const float BossStuckTimeoutSeconds = 12f;
             public const int DropCleanupWaveAge = 3;
             public const float DropCleanupAgeSeconds = 300f;
             public const float FarDistance = 60f;
@@ -150,7 +153,15 @@ namespace BossRush
             public const int BossLootboxMinQualityCycleStep = 2;
             public const int BossLootboxMinQualityMaximum = 7;
             public const int StarterMaxQuality = 5;
-            public const int StarterGunnerExtraAmmoCount = 1000;
+            public const int StarterGunnerExtraAmmoCount = 2000;
+            public const int RandomGunRewardAmmoCount = 120;
+            public const int AmmoSupplyRewardAmmoCount = 240;
+            public const int ContractGunRewardAmmoCount = 120;
+            public const int MerchantAmmoPurchaseCount = 200;
+            public const int AmmoRainSingleStackCount = 120;
+            public const int AmmoRainDoubleStackCount = 180;
+            public const int BackpackJunkMaximumQuality = 2;
+            public const int BackpackJunkValuePerPurificationPoint = 100;
         }
 
         private static class Combat
@@ -213,9 +224,9 @@ namespace BossRush
             public const float PlagueCloudDurationSeconds = 3f;
             public const float PlagueCloudDamagePerSecond = 8f;
             public const int SummonerSpawnCount = 2;
-            public const float HarasserProjectileSpeed = 12f;
+            public const float HarasserProjectileSpeed = 10f;
             public const float HarasserProjectileDamage = 25f;
-            public const float HarasserProjectileLifetimeSeconds = 2f;
+            public const float HarasserProjectileLifetimeSeconds = 3.5f;
             public const float HarasserSlowRadius = 3.5f;
             public const float HarasserSlowPercent = 0.50f;
             public const float HarasserSlowDurationSeconds = 2f;
@@ -410,6 +421,9 @@ namespace BossRush
         public const float SafeZoneRadius = SafeZone.Radius;
         public const float SafeZoneCenterPlayerRange = SafeZone.CenterPlayerRange;
         public const float NavMeshSafeZoneRadius = SafeZone.NavMeshRadius;
+        public const float SafeZoneEnemyExclusionPadding = SafeZone.EnemyExclusionPadding;
+        public const float SafeZoneEnemyEjectionClearance = SafeZone.EnemyEjectionClearance;
+        public const float SafeZoneEnemyEjectionNavMeshRadius = SafeZone.EnemyEjectionNavMeshRadius;
 
         // Performance
         public const float TemporaryNpcProtectionTickIntervalSeconds = Performance.TemporaryNpcProtectionTickIntervalSeconds;
@@ -482,6 +496,14 @@ namespace BossRush
         public const int BossLootboxMinQualityMaximum = Reward.BossLootboxMinQualityMaximum;
         public const int StarterMaxQuality = Reward.StarterMaxQuality;
         public const int StarterGunnerExtraAmmoCount = Reward.StarterGunnerExtraAmmoCount;
+        public const int RandomGunRewardAmmoCount = Reward.RandomGunRewardAmmoCount;
+        public const int AmmoSupplyRewardAmmoCount = Reward.AmmoSupplyRewardAmmoCount;
+        public const int ContractGunRewardAmmoCount = Reward.ContractGunRewardAmmoCount;
+        public const int MerchantAmmoPurchaseCount = Reward.MerchantAmmoPurchaseCount;
+        public const int AmmoRainSingleStackCount = Reward.AmmoRainSingleStackCount;
+        public const int AmmoRainDoubleStackCount = Reward.AmmoRainDoubleStackCount;
+        public const int BackpackJunkMaximumQuality = Reward.BackpackJunkMaximumQuality;
+        public const int BackpackJunkValuePerPurificationPoint = Reward.BackpackJunkValuePerPurificationPoint;
 
         // Combat - 倍率
         public const float SpecialHealthMultiplier = Combat.SpecialHealthMultiplier;
@@ -672,6 +694,19 @@ namespace BossRush
             return phase == ZombieModeCombatPhase.InitialPreparation ||
                    phase == ZombieModeCombatPhase.Preparation ||
                    phase == ZombieModeCombatPhase.ExtractionOpportunity;
+        }
+
+        public static bool AllowsSafeZone(ZombieModeCombatPhase phase)
+        {
+            return AllowsBeacon(phase) ||
+                   phase == ZombieModeCombatPhase.Combat ||
+                   phase == ZombieModeCombatPhase.Settling ||
+                   phase == ZombieModeCombatPhase.RewardSelection;
+        }
+
+        public static bool AllowsPortableSafeZoneDeployment(ZombieModeCombatPhase phase)
+        {
+            return AllowsBeacon(phase) || phase == ZombieModeCombatPhase.Combat;
         }
 
         public static bool AllowsExtraction(ZombieModeCombatPhase phase)

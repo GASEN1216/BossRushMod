@@ -63,7 +63,7 @@ namespace BossRush
 
             CharacterMainControl victim = health.TryGetCharacter();
             // O(1) HashSet 早返替代 GetComponent<ZombieModeEnemyRuntimeMarker>（审查 §3.1）。
-            // 非丧尸模式敌人不走 marker 路径，也不能误触发安全区破隐。
+            // 非丧尸模式敌人不走 marker 路径，也不能误触发安全区取消。
             ZombieModeEnemyRuntimeMarker marker;
             if (victim == null || !TryGetZombieModeKnownEnemyMarker(victim, out marker))
             {
@@ -72,7 +72,7 @@ namespace BossRush
 
             if (marker != null && marker.RunId == runId)
             {
-                TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, victim);
+                TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, victim);
                 ApplyZombieModeEnemyHurtAffixes(runId, health, damageInfo, marker);
                 HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);
                 if (marker.IsBoss)
@@ -102,53 +102,22 @@ namespace BossRush
 
         }
 
-        // 安全区破隐：玩家在安全区内用枪械或近战武器伤害丧尸模式敌人时破隐；
-        // 单纯开枪、装填、投掷、误伤非丧尸目标、出圈攻击不破坏安全区。
-        // 出区外射击：SafeZoneStealthBroken 在 EnterPreparation 才重置；本准备期内任意时刻破隐都会持续到下一波。
-        private void TryProcessZombieModeSafeZoneStealthBreak(int runId, DamageInfo damageInfo, CharacterMainControl victim)
+        // 玩家在任意阶段的当前安全区内直接伤害丧尸时，立即取消整个安全区。
+        // 单纯开枪、装填、投掷、误伤非丧尸目标、出圈攻击都不触发。
+        private void TryHandleZombieModeSafeZonePlayerAttack(int runId, DamageInfo damageInfo, CharacterMainControl victim)
         {
             if (damageInfo.fromCharacter == null ||
                 !damageInfo.fromCharacter.IsMainCharacter ||
                 damageInfo.isFromBuffOrEffect ||
-                !IsZombieModeDamageFromStealthBreakingWeapon(damageInfo) ||
                 victim == null ||
                 !zombieModeRunState.ActiveSafeZoneActive ||
                 !IsZombieModePlayerInsideActiveSafeZone() ||
-                zombieModeRunState.SafeZoneStealthBroken)
+                !ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase))
             {
                 return;
             }
 
-            BreakZombieModeSafeZoneStealth(runId);
-        }
-
-        private bool IsZombieModeDamageFromStealthBreakingWeapon(DamageInfo damageInfo)
-        {
-            if (damageInfo.fromWeaponItemID <= 0)
-            {
-                return false;
-            }
-
-            ItemStatsSystem.ItemMetaData metaData = ItemStatsSystem.ItemAssetsCollection.GetMetaData(damageInfo.fromWeaponItemID);
-            if (metaData.id <= 0 || metaData.tags == null)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < metaData.tags.Length; i++)
-            {
-                Duckov.Utilities.Tag tag = metaData.tags[i];
-                if (tag != null &&
-                    (tag.name == "Gun" ||
-                     tag.name == "Weapon" ||
-                     tag.name == "MeleeWeapon" ||
-                     tag.name == "Melee"))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            CancelZombieModeSafeZone(runId, "PlayerAttack");
         }
 
         private void RestoreZombieModeFinalDamageReduction(Health health, DamageInfo damageInfo, float absorbedFinalDamage)
@@ -224,8 +193,8 @@ namespace BossRush
             }
 
             // 官方 Health.Hurt 的致死顺序是 OnDead -> SetActive(false) -> OnHurt。
-            // 必须在 DeathSettled 和 hot-path marker 注销前处理，否则致死一击不会破隐。
-            TryProcessZombieModeSafeZoneStealthBreak(runId, damageInfo, character);
+            // 必须在 DeathSettled 和 hot-path marker 注销前处理，否则致死一击不会取消安全区。
+            TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, character);
             HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);
             marker.DeathSettled = true;
             // 一旦 DeathSettled 就从 hot path 集合移除——后续技能命中尸体不会重新进入 marker 路径。
@@ -282,19 +251,28 @@ namespace BossRush
                 return;
             }
 
-            CleanupZombieModePreparationObjects(runId);
+            bool preservePortableSafeZone = zombieModeRunState.ActiveSafeZoneActive &&
+                                             zombieModeRunState.ActiveSafeZonePortable;
+            CleanupZombieModePreparationObjects(runId, preservePortableSafeZone);
             zombieModeRunState.CombatPhase = initial
                 ? ZombieModeCombatPhase.InitialPreparation
                 : (extractionOpportunity ? ZombieModeCombatPhase.ExtractionOpportunity : ZombieModeCombatPhase.Preparation);
-            zombieModeRunState.PreparationTimer = extractionOpportunity
-                ? ZombieModeTuning.BossPreparationCountdownSeconds
-                : ZombieModeTuning.PreparationCountdownSeconds;
+            zombieModeRunState.PreparationTimer = initial
+                ? ZombieModeTuning.PreparationCountdownSeconds
+                : GetZombieModeSelectedPreparationDuration(runId);
             zombieModeRunState.PeriodicSpawnTimer = 0f;
             zombieModeRunState.BeaconChanneling = false;
             zombieModeRunState.BeaconChannelStartTime = 0f;
             zombieModeRunState.ExtractionChanneling = false;
             zombieModeRunState.SafeZoneStealthBroken = false;
-            CreateZombieModeSafeZone(runId);
+            if (!preservePortableSafeZone)
+            {
+                CreateZombieModeSafeZone(runId);
+            }
+            else
+            {
+                TickZombieModeSafeZone();
+            }
             CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "BeginPreparation");
             EnsureZombieModeAmbientZombiePopulation(runId);
             if (extractionOpportunity)
@@ -316,6 +294,11 @@ namespace BossRush
                 return;
             }
 
+            if (zombieModeRunState.ActiveSafeZoneActive)
+            {
+                TickZombieModeSafeZone();
+            }
+
             if (ZombieModePhaseGuards.IsCombatRunning(zombieModeRunState.CombatPhase))
             {
                 TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);
@@ -324,7 +307,6 @@ namespace BossRush
 
             if (ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase))
             {
-                TickZombieModeSafeZone();
                 TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);
                 if (zombieModeRunState.BeaconChanneling || zombieModeRunState.ExtractionChanneling)
                 {
@@ -347,6 +329,8 @@ namespace BossRush
             }
 
             CleanupZombieModePreparationObjects(runId);
+            // 普通散落物在玩家完成奖励选择和休整后、下一波正式开始时清理；Boss 奖励箱由清理函数保留。
+            CleanupZombieModeExpiredDropCandidates(true);
             zombieModeRunState.CurrentWave++;
             zombieModeRunState.CurrentWaveKills = 0;
             zombieModeRunState.CurrentWaveBossInstances.Clear();

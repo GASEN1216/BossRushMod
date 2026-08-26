@@ -204,7 +204,7 @@ namespace BossRush
                 return false;
             }
 
-            return TryGiveZombieModeAmmo(caliber, 100, minQuality, maxQuality);
+            return TryGiveZombieModeAmmo(caliber, ZombieModeTuning.MerchantAmmoPurchaseCount, minQuality, maxQuality);
         }
 
         private Item TryGetZombieModePreferredWeaponForMerchantAmmo()

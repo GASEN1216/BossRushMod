@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace BossRush
 {
@@ -96,8 +97,9 @@ namespace BossRush
                     instance.Lifecycle.LastReachableTime = now;
                 }
 
-                if (now - instance.Lifecycle.LastReachableTime >= ZombieModeTuning.BossStuckTimeoutSeconds &&
-                    now - instance.Lifecycle.LastHurtTime >= ZombieModeTuning.BossStuckTimeoutSeconds)
+                // 受击时间不能阻止解卡：玩家持续射击一个卡在墙边的 Boss 时，
+                // LastHurtTime 会不断刷新；若把它作为硬门槛，波次可能永远无法结束。
+                if (now - instance.Lifecycle.LastReachableTime >= ZombieModeTuning.BossStuckTimeoutSeconds)
                 {
                     TeleportZombieModeBossNearPlayer(instance);
                 }
@@ -518,9 +520,31 @@ namespace BossRush
                 return;
             }
 
-            boss.transform.position = target;
+            try
+            {
+                boss.SetPosition(target);
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] Boss SetPosition 失败，回退 transform.position: " + e.Message);
+                boss.transform.position = target;
+            }
+
+            NavMeshAgent navAgent = boss.GetComponentInChildren<NavMeshAgent>(true);
+            if (navAgent != null && navAgent.enabled)
+            {
+                try { navAgent.Warp(target); } catch (System.Exception e) { DevLog("[ZombieMode] Boss NavMeshAgent.Warp 失败: " + e.Message); }
+            }
+
+            Rigidbody rb = boss.GetComponent<Rigidbody>();
+            if (rb == null) rb = boss.GetComponentInChildren<Rigidbody>();
+            if (rb != null)
+            {
+                try { rb.velocity = Vector3.zero; rb.angularVelocity = Vector3.zero; } catch { }
+            }
             instance.Lifecycle.LastKnownPosition = target;
             instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
+            instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
             ZombieModeEnemyRuntimeMarker marker = EnsureZombieModeBossMarker(instance);
             AICharacterController ai = GetZombieModeEnemyAI(boss.gameObject, marker);
             CharacterMainControl main = CharacterMainControl.Main;
@@ -583,8 +607,6 @@ namespace BossRush
 
                 instance.Marker = marker;
                 instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
-                instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
-                instance.Lifecycle.LastKnownPosition = victim.transform.position;
 
                 // Hunter low-HP frenzy trigger
                 ZombieModeHunterState hunterDamageState = instance.SkillState as ZombieModeHunterState;

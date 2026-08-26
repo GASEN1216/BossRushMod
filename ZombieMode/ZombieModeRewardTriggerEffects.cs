@@ -290,7 +290,9 @@ namespace BossRush
                 stacks = Mathf.Min(2, zombieModeRunState.OptionRuntime.BattlefieldAmmoRainStacks);
                 nextGrantDelay = stacks >= 2 ? 35f : 45f;
                 countdownRemaining = Mathf.Min(countdownRemaining, nextGrantDelay);
-                int amount = stacks >= 2 ? 90 : 60;
+                int amount = stacks >= 2
+                    ? ZombieModeTuning.AmmoRainDoubleStackCount
+                    : ZombieModeTuning.AmmoRainSingleStackCount;
                 countdownRemaining -= deltaTime;
                 if (countdownRemaining <= 0f)
                 {

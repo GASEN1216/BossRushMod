@@ -46,6 +46,7 @@ CONSTANT_VALUES = {
     "DingdangDrawingConfig.TYPE_ID": 500016,
     "ZombieTideInvitationConfig.TYPE_ID": 500045,
     "ZombieTideBeaconConfig.TYPE_ID": 500046,
+    "PortableSafeZoneDeviceConfig.TYPE_ID": 500058,
 }
 
 

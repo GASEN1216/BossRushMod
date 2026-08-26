@@ -701,6 +701,43 @@ namespace BossRush
             {
                 renderer.renderMode = ParticleSystemRenderMode.Billboard;
             }
+
+            TrailRenderer trail = projectile.AddComponent<TrailRenderer>();
+            trail.time = 0.28f;
+            trail.startWidth = 0.18f;
+            trail.endWidth = 0.02f;
+            trail.startColor = new Color(0.18f, 0.9f, 1f, 0.95f);
+            trail.endColor = new Color(0.08f, 0.35f, 1f, 0f);
+            Shader trailShader = Shader.Find("Sprites/Default");
+            Material trailMaterial = null;
+            if (trailShader != null)
+            {
+                trailMaterial = new Material(trailShader);
+                trail.material = trailMaterial;
+            }
+
+            LineRenderer trajectory = projectile.AddComponent<LineRenderer>();
+            trajectory.positionCount = 2;
+            trajectory.useWorldSpace = true;
+            trajectory.widthMultiplier = 0.035f;
+            trajectory.startColor = new Color(0.25f, 0.9f, 1f, 0.24f);
+            trajectory.endColor = new Color(0.10f, 0.45f, 1f, 0.05f);
+            Shader lineShader = Shader.Find("Sprites/Default");
+            Material lineMaterial = null;
+            if (lineShader != null)
+            {
+                lineMaterial = new Material(lineShader);
+                trajectory.material = lineMaterial;
+            }
+
+            ZombieModeHarasserProjectileMaterialOwner materialOwner = projectile.AddComponent<ZombieModeHarasserProjectileMaterialOwner>();
+            materialOwner.Initialize(trailMaterial, lineMaterial);
+
+            Light light = projectile.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.1f, 0.65f, 1f, 1f);
+            light.range = 2.5f;
+            light.intensity = 1.6f;
         }
 
         public void TryExecuteZombieModeHarasserProjectileImpact(
