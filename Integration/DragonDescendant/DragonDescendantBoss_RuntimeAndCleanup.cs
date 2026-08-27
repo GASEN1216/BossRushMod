@@ -317,10 +317,11 @@ namespace BossRush
         /// </summary>
         private bool IsDragonDescendantPreset(EnemyPresetInfo preset)
         {
-            if (preset == null) return false;
-            return preset.name == DragonDescendantConfig.BOSS_NAME_KEY ||
-                   preset.displayName == DragonDescendantConfig.BOSS_NAME_CN ||
-                   preset.displayName == DragonDescendantConfig.BOSS_NAME_EN;
+            return ModBossPresetLookup.Matches(
+                preset,
+                DragonDescendantConfig.BOSS_NAME_KEY,
+                DragonDescendantConfig.BOSS_NAME_CN,
+                DragonDescendantConfig.BOSS_NAME_EN);
         }
 
         // ========== Boss龙套装效果 ==========

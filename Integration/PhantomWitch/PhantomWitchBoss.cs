@@ -682,16 +682,7 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo FindPhantomWitchPresetInfo()
         {
-            if (enemyPresets == null) return null;
-
-            foreach (var p in enemyPresets)
-            {
-                if (p != null && p.name == PhantomWitchConfig.BossNameKey)
-                {
-                    return p;
-                }
-            }
-            return null;
+            return ModBossPresetLookup.FindByNameKey(enemyPresets, PhantomWitchConfig.BossNameKey);
         }
 
         /// <summary>
@@ -699,10 +690,11 @@ namespace BossRush
         /// </summary>
         private bool IsPhantomWitchPreset(EnemyPresetInfo preset)
         {
-            if (preset == null) return false;
-            return preset.name == PhantomWitchConfig.BossNameKey ||
-                   preset.displayName == PhantomWitchConfig.BossNameCN ||
-                   preset.displayName == PhantomWitchConfig.BossNameEN;
+            return ModBossPresetLookup.Matches(
+                preset,
+                PhantomWitchConfig.BossNameKey,
+                PhantomWitchConfig.BossNameCN,
+                PhantomWitchConfig.BossNameEN);
         }
 
         private bool IsManagedBossPreset(EnemyPresetInfo preset)

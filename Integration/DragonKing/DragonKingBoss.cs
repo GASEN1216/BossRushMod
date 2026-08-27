@@ -396,16 +396,7 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo FindDragonKingPresetInfo()
         {
-            if (enemyPresets == null) return null;
-            
-            foreach (var p in enemyPresets)
-            {
-                if (p != null && p.name == DragonKingConfig.BossNameKey)
-                {
-                    return p;
-                }
-            }
-            return null;
+            return ModBossPresetLookup.FindByNameKey(enemyPresets, DragonKingConfig.BossNameKey);
         }
         
         /// <summary>
@@ -654,10 +645,11 @@ namespace BossRush
         /// </summary>
         private bool IsDragonKingPreset(EnemyPresetInfo preset)
         {
-            if (preset == null) return false;
-            return preset.name == DragonKingConfig.BossNameKey ||
-                   preset.displayName == DragonKingConfig.BossNameCN ||
-                   preset.displayName == DragonKingConfig.BossNameEN;
+            return ModBossPresetLookup.Matches(
+                preset,
+                DragonKingConfig.BossNameKey,
+                DragonKingConfig.BossNameCN,
+                DragonKingConfig.BossNameEN);
         }
         
         /// <summary>
