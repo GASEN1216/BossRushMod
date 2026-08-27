@@ -42,7 +42,7 @@ namespace BossRush.Utils
 
             try
             {
-                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
+                var field = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null)
                 {
                     ModBehaviour.DevLog(logPrefix + " [ERROR] Failed to resolve otherInterablesInGroup field");

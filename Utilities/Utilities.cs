@@ -55,7 +55,7 @@ namespace BossRush
                 try
                 {
                     // 使用缓存的 FieldInfo
-                    var fMerchant = ReflectionCache.StockShop_MerchantID;
+                    var fMerchant = BossRushEagerReflectionCache.StockShop_MerchantID;
                     if (fMerchant != null)
                     {
                         fMerchant.SetValue(ammoShop, "BossRushAmmo");
@@ -66,7 +66,7 @@ namespace BossRush
                 try
                 {
                     // 设置 accountAvaliable = true，允许直接扣银行余额而非消耗现金物品
-                    var fAccount = ReflectionCache.StockShop_AccountAvaliable;
+                    var fAccount = BossRushEagerReflectionCache.StockShop_AccountAvaliable;
                     if (fAccount != null)
                     {
                         fAccount.SetValue(ammoShop, true);
@@ -123,7 +123,7 @@ namespace BossRush
                 try
                 {
                     // 使用缓存的 FieldInfo
-                    var fItems = ReflectionCache.StockShop_ItemInstances;
+                    var fItems = BossRushEagerReflectionCache.StockShop_ItemInstances;
                     if (fItems != null)
                     {
                         var dict = fItems.GetValue(ammoShop) as Dictionary<int, Item>;

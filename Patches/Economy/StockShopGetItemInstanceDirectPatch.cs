@@ -54,7 +54,7 @@ namespace BossRush.Patches.Economy
                 }
 
                 // 使用反射获取 itemInstances 字典
-                var fItems = ReflectionCache.StockShop_ItemInstances;
+                var fItems = BossRushEagerReflectionCache.StockShop_ItemInstances;
                 if (fItems == null)
                 {
                     return;

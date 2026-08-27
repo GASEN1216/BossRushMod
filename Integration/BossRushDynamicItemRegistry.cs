@@ -200,7 +200,9 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [WARNING] 加载装备 bundle 失败: TypeID=" + typeId + ", bundle=" + bundleName + ", " + e.Message);
+                    ModBehaviour.CriticalLog(
+                        "equipment-bundle-" + bundleName,
+                        "[BossRushDynamicItemRegistry] [ERROR] 加载装备 bundle 失败: TypeID=" + typeId + ", bundle=" + bundleName + ", " + e.Message);
                 }
             }
         }
@@ -221,7 +223,9 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [WARNING] 加载物品 bundle 失败: TypeID=" + typeId + ", bundle=" + bundleName + ", " + e.Message);
+                    ModBehaviour.CriticalLog(
+                        "item-bundle-" + bundleName,
+                        "[BossRushDynamicItemRegistry] [ERROR] 加载物品 bundle 失败: TypeID=" + typeId + ", bundle=" + bundleName + ", " + e.Message);
                 }
             }
         }

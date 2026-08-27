@@ -205,11 +205,11 @@ namespace BossRush
 
                     // 对齐龙裔/龙皇：把 characterIconType 改成 boss，
                     // 否则名字左侧没有 Boss 标识，看起来和普通幽灵一样。
-                    if (ReflectionCache.CharacterRandomPreset_CharacterIconType != null)
+                    if (BossRushEagerReflectionCache.CharacterRandomPreset_CharacterIconType != null)
                     {
                         try
                         {
-                            ReflectionCache.CharacterRandomPreset_CharacterIconType.SetValue(
+                            BossRushEagerReflectionCache.CharacterRandomPreset_CharacterIconType.SetValue(
                                 customPreset,
                                 CharacterIconTypes.boss);
                         }

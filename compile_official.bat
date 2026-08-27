@@ -115,11 +115,12 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs ^
     Common\Lifecycle\BossRushRuntimeModuleRegistration.cs ^
     Common\Events\BossRushEventBus.cs ^
-    Common\Infrastructure\ReflectionCache.cs ^
+    Common\Infrastructure\BossRushEagerReflectionCache.cs ^
     Common\UI\BossRushUI.cs ^
     Common\Infrastructure\ObjectCache.cs ^
     Common\Infrastructure\IHarmonyPatchGroup.cs ^
     Common\Infrastructure\HarmonyPatchGroupRegistrar.cs ^
+    Common\Infrastructure\HarmonyBindingSelfCheck.cs ^
     Common\Data\JsonDataRegistry.cs ^
     Common\MapConfig\BossRushMapConfig.cs ^
     Common\MapConfig\MapSpawnPointRegistry.cs ^
@@ -711,7 +712,7 @@ call :try_game_path "%~dp0..\..\..\.."
 if defined GAME_PATH goto :eof
 call :try_game_path "E:\SteamLibrary\steamapps\common\Escape from Duckov"
 if defined GAME_PATH goto :eof
-call :try_game_path "D:\sofrware\steam\steamapps\common\Escape from Duckov"
+call :try_game_path "D:\software\steam\steamapps\common\Escape from Duckov"
 if defined GAME_PATH goto :eof
 call :try_game_path "C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov"
 goto :eof
@@ -732,7 +733,7 @@ if defined GAME_PATH call :try_workshop_path "%GAME_PATH%\..\..\workshop\content
 if defined WORKSHOP_PATH goto :eof
 call :try_workshop_path "E:\SteamLibrary\steamapps\workshop\content\3167020"
 if defined WORKSHOP_PATH goto :eof
-call :try_workshop_path "D:\sofrware\steam\steamapps\workshop\content\3167020"
+call :try_workshop_path "D:\software\steam\steamapps\workshop\content\3167020"
 if defined WORKSHOP_PATH goto :eof
 call :try_workshop_path "C:\Program Files (x86)\Steam\steamapps\workshop\content\3167020"
 goto :eof

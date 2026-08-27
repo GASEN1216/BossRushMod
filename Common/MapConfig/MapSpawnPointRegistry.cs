@@ -49,7 +49,10 @@ namespace BossRush
 
             if (!Directory.Exists(_jsonDirectory))
             {
-                ModBehaviour.DevLog("[MapSpawnPointRegistry] [WARNING] 目录不存在: " + _jsonDirectory);
+                // 刷新点目录整个缺失 = 所有地图都拿不到配置，玩家侧表现为地图列表异常，必须有声
+                ModBehaviour.CriticalLog(
+                    "map-spawn-dir-missing",
+                    "[MapSpawnPointRegistry] [ERROR] 目录不存在: " + _jsonDirectory);
                 return;
             }
 
@@ -153,12 +156,16 @@ namespace BossRush
                 }
                 else
                 {
-                    ModBehaviour.DevLog("[MapSpawnPointRegistry] [WARNING] JSON 解析结果无效: " + filePath);
+                    ModBehaviour.CriticalLog(
+                        "map-spawn-invalid-" + filePath,
+                        "[MapSpawnPointRegistry] [ERROR] JSON 解析结果无效: " + filePath);
                 }
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[MapSpawnPointRegistry] [WARNING] JSON 解析失败: "
+                ModBehaviour.CriticalLog(
+                    "map-spawn-parse-" + filePath,
+                    "[MapSpawnPointRegistry] [ERROR] JSON 解析失败: "
                     + filePath + " - " + e.Message);
             }
         }

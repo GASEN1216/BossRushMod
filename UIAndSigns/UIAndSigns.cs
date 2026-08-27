@@ -49,13 +49,13 @@ namespace BossRush
         /// <summary>消息显示计时器</summary>
         private float messageTimer = 0f;
 
-        /// <summary>涓婁竴鏉″ぇ妯箙鏂囨湰锛堢敤浜庣煭鏃堕棿鍘婚噸锛?/summary>
+        /// <summary>上一条大横幅文本（用于短时间去重）</summary>
         private string lastBigBannerText = "";
 
-        /// <summary>涓婁竴鏉″ぇ妯箙鏄剧ず鏃堕棿锛堝疄鏃舵椂闂达級</summary>
+        /// <summary>上一条大横幅显示时间（实时时间）</summary>
         private float lastBigBannerRealtime = -999f;
 
-        /// <summary>鐩稿悓妯箙鐭椂闂村幓閲嶇獥鍙?/summary>
+        /// <summary>相同横幅短时间去重窗口</summary>
         private const float BIG_BANNER_DEDUP_WINDOW = 1.25f;
         
         #endregion
@@ -291,9 +291,9 @@ namespace BossRush
             // 使用缓存的反射调用 NotificationText.ShowNext
             try
             {
-                if (ReflectionCache.NotificationText_ShowNext != null)
+                if (BossRushEagerReflectionCache.NotificationText_ShowNext != null)
                 {
-                    ReflectionCache.NotificationText_ShowNext.Invoke(null, new object[] { msg });
+                    BossRushEagerReflectionCache.NotificationText_ShowNext.Invoke(null, new object[] { msg });
                 }
             }
             catch {}
@@ -383,8 +383,8 @@ namespace BossRush
                 if (instances != null && instances.Length > 0)
                 {
                     // 使用 ReflectionCache 获取缓存的 FieldInfo
-                    FieldInfo durationField = ReflectionCache.NotificationText_Duration;
-                    FieldInfo durationPendingField = ReflectionCache.NotificationText_DurationIfPending;
+                    FieldInfo durationField = BossRushEagerReflectionCache.NotificationText_Duration;
+                    FieldInfo durationPendingField = BossRushEagerReflectionCache.NotificationText_DurationIfPending;
 
                     for (int i = 0; i < instances.Length; i++)
                     {
@@ -765,7 +765,7 @@ namespace BossRush
                 target.interactableGroup = true;
 
                 // 使用缓存的 FieldInfo 获取 otherInterablesInGroup 字段
-                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
+                var field = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null) return false;
 
                 // 3. 获取列表值，如果为null则初始化

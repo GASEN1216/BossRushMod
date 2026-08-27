@@ -200,10 +200,10 @@ namespace BossRush
                     modeEShellViewMerchantNameTextField, typeof(TextMeshProUGUI), false),
                     "StockShopView.merchantNameText:TextMeshProUGUI");
                 RecordModeEShellContractFailure(failures, IsModeEShellFieldContract(
-                    ReflectionCache.StockShop_MerchantID, typeof(string), false),
+                    BossRushEagerReflectionCache.StockShop_MerchantID, typeof(string), false),
                     "StockShop.merchantID:string");
                 RecordModeEShellContractFailure(failures, IsModeEShellFieldContract(
-                    ReflectionCache.StockShop_AccountAvaliable, typeof(bool), false),
+                    BossRushEagerReflectionCache.StockShop_AccountAvaliable, typeof(bool), false),
                     "StockShop.accountAvaliable:bool");
                 RecordModeEShellContractFailure(failures,
                     ModeEMerchantSellAllUI.VerifyModeEShellRuntimeContracts(),

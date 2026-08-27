@@ -116,7 +116,7 @@ namespace BossRush
 
         /// <summary>
         /// 在所有已加载的程序集中查找指定全名的类型
-        /// 替代 ReflectionCache.GetType，避免依赖外部工具类
+        /// 替代 Common.Utils.ReflectionCache.GetType，避免依赖外部工具类
         /// </summary>
         private static Type FindGameType(string fullTypeName)
         {

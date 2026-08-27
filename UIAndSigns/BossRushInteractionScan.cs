@@ -122,7 +122,7 @@ namespace BossRush
         {
             try
             {
-                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
+                var field = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field != null)
                 {
                     return field.GetValue(target) as List<InteractableBase>;

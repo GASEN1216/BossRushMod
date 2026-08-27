@@ -483,6 +483,75 @@ namespace BossRush
             Debug.LogError(message);
         }
 
+        // ====================================================================
+        // 关键失败日志（CriticalLog）
+        // ====================================================================
+        // DevLog 带 [Conditional("BOSSRUSH_DEV")]，正式构建（compile_official.bat
+        // 不注入 BOSSRUSH_DEV）会把调用点整体删除。这意味着官方游戏更新导致
+        // Harmony 绑定、反射绑定、AssetBundle、数据表加载失败时，玩家端日志
+        // 一条都不会打印，只能看到功能无声消失。
+        //
+        // CriticalLog 是这类"契约级失败"的有声出口：不受 BOSSRUSH_DEV 门控，
+        // 按 key 去重并限制条数上限，只允许出现在初始化/绑定/数据加载的失败分支，
+        // 禁止进入每帧或每次攻击的热路径。
+
+        private const int CriticalLogMaxUniqueEntries = 64;
+        private static readonly HashSet<string> criticalLogEmittedKeys = new HashSet<string>();
+
+        /// <summary>
+        /// 关键失败日志（始终输出，按消息去重）。
+        /// </summary>
+        /// <param name="message">日志消息，含 [ERROR] 标记时按错误级输出</param>
+        internal static void CriticalLog(string message)
+        {
+            CriticalLog(message, message);
+        }
+
+        /// <summary>
+        /// 关键失败日志（始终输出，按 dedupeKey 去重）。
+        /// </summary>
+        /// <param name="dedupeKey">去重键，同一键只输出一次</param>
+        /// <param name="message">日志消息，含 [ERROR] 标记时按错误级输出</param>
+        internal static void CriticalLog(string dedupeKey, string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            string safeKey = string.IsNullOrEmpty(dedupeKey) ? message : dedupeKey;
+
+            // 上限保护：异常场景下也不会无限增长或刷屏
+            if (criticalLogEmittedKeys.Count >= CriticalLogMaxUniqueEntries)
+            {
+                return;
+            }
+
+            if (!criticalLogEmittedKeys.Add(safeKey))
+            {
+                return;
+            }
+
+            string line = "[BossRush][CRITICAL] " + message;
+
+            if (message.IndexOf("[ERROR]", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                LogError(line);
+            }
+            else
+            {
+                LogWarning(line);
+            }
+        }
+
+        /// <summary>
+        /// 重置 CriticalLog 去重状态（OnDestroy 路径调用，便于重载 Mod 后重新上报）
+        /// </summary>
+        internal static void ResetCriticalLogStaticCaches()
+        {
+            criticalLogEmittedKeys.Clear();
+        }
+
         /// <summary>
         /// 开发模式日志输出（仅在 DevModeEnabled = true 时输出）
         /// </summary>

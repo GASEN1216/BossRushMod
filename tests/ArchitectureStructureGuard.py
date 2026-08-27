@@ -52,6 +52,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/BossRushRuntimeModuleBase.cs",
     "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
     "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
+    "Common/Infrastructure/HarmonyBindingSelfCheck.cs",
     "Utilities/AlwaysOnRuntimeHooks.cs",
     "Utilities/PlayerLifecycleRuntimeHooks.cs",
     "ModeD/ModeDRuntimeModule.cs",
@@ -228,17 +229,35 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing InitializeBootstrapRuntime wrapper")
     for required in [
         'var harmony = new Harmony("com.bossrush.mod");',
-        "harmony.PatchAll();",
+        "ApplyHarmonyPatchesPerClass(harmony);",
         'DevLog("[BossRush] Harmony Patch 扫描完成");',
-        'DevLog("[BossRush] [WARNING] Harmony Patch 扫描失败: " + e);',
+        'CriticalLog("[BossRush] [ERROR] Harmony Patch 扫描失败: " + e);',
         ".EnsureCriticalPatchesApplied(harmony);",
-        'DevLog("[BossRush] [ERROR] 动态物品关键补丁验证失败: " + e);',
+        'CriticalLog("[BossRush] [ERROR] 动态物品关键补丁验证失败: " + e);',
         "if (!criticalDynamicItemPatchesReady)",
         "BossRushDynamicItemRegistry.EnsureAllRegistered();",
         "BossRushDynamicItemRegistry.PublishedTypeCount;",
+        "HarmonyBindingSelfCheck.RunStartupSelfCheck(harmony);",
     ]:
         if required not in bootstrap_body:
             return fail("ArchitectureStructureGuard: InitializeBootstrapRuntime missing token: " + required)
+    # 补丁必须逐类 apply：PatchAll 会在官方更新改掉任意一个目标时让全部补丁一起失效。
+    # 逐类隔离后单个补丁类失配只损失该补丁，并经 CriticalLog 上报。
+    if "harmony.PatchAll(" in bootstrap_body:
+        return fail("ArchitectureStructureGuard: InitializeBootstrapRuntime must not fall back to harmony.PatchAll()")
+
+    per_class_body = extract_method_body(
+        always_on_hooks, "private static void ApplyHarmonyPatchesPerClass(Harmony harmony)")
+    if not per_class_body:
+        return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing ApplyHarmonyPatchesPerClass helper")
+    for required in [
+        "AccessTools.GetTypesFromAssembly(typeof(ModBehaviour).Assembly)",
+        "harmony.CreateClassProcessor(type)",
+        "processor.Patch();",
+        'CriticalLog("harmony-per-class-apply",',
+    ]:
+        if required not in per_class_body:
+            return fail("ArchitectureStructureGuard: ApplyHarmonyPatchesPerClass missing token: " + required)
     if "TickAlwaysOnRuntime();" not in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must route always-on runtime through wrapper")
     for forbidden in [
@@ -270,6 +289,10 @@ def main() -> int:
         "AffinityUIManager.Cleanup();",
         "EntityModelFactory.ResetStaticCaches();",
         'DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);',
+        # 关键失败日志与补丁自检的去重状态必须随 OnDestroy 一起重置，
+        # 否则重载 Mod 后同一条契约级失败不会再上报。
+        "HarmonyBindingSelfCheck.ResetStaticCaches();",
+        "ModBehaviour.ResetCriticalLogStaticCaches();",
     ]:
         if required not in always_on_destroy_body:
             return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy missing token: " + required)
@@ -882,7 +905,7 @@ def main() -> int:
             'path = parent.name + "/" + path;',
         ],
         "private List<InteractableBase> GetGroupList(InteractableBase target)": [
-            "ReflectionCache.InteractableBase_OtherInterablesInGroup",
+            "BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup",
         ],
         "private bool InjectIntoInteractableBaseGroup(InteractableBase target)": [
             "InjectIntoInteractableBaseGroup_UIAndSigns(target);",

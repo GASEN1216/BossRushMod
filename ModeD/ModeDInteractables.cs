@@ -155,7 +155,7 @@ namespace BossRush
                 Transform signTransform = bossRushSignInteract.transform;
 
                 // 使用缓存的 FieldInfo 获取路牌的 otherInterablesInGroup 列表
-                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
+                var field = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null)
                 {
                     ModBehaviour.DevLog("[ModeD] [ERROR] 无法获取 otherInterablesInGroup 字段");

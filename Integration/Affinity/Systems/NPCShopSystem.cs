@@ -326,7 +326,7 @@ namespace BossRush
             // 设置 accountAvaliable = true，允许使用银行账户付款（而不仅仅是现金物品）
             try
             {
-                var fAccount = ReflectionCache.StockShop_AccountAvaliable;
+                var fAccount = BossRushEagerReflectionCache.StockShop_AccountAvaliable;
                 if (fAccount != null)
                 {
                     fAccount.SetValue(currentShop, true);
@@ -404,10 +404,10 @@ namespace BossRush
 
             try
             {
-                var fItems = ReflectionCache.StockShop_ItemInstances;
+                var fItems = BossRushEagerReflectionCache.StockShop_ItemInstances;
                 if (fItems == null)
                 {
-                    ModBehaviour.DevLog("[NPCShop] [ERROR] ReflectionCache.StockShop_ItemInstances 为空");
+                    ModBehaviour.DevLog("[NPCShop] [ERROR] BossRushEagerReflectionCache.StockShop_ItemInstances 为空");
                     return;
                 }
 

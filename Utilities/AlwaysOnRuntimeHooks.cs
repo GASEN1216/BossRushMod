@@ -9,12 +9,12 @@ namespace BossRush
             var harmony = new Harmony("com.bossrush.mod");
             try
             {
-                harmony.PatchAll();
+                ApplyHarmonyPatchesPerClass(harmony);
                 DevLog("[BossRush] Harmony Patch 扫描完成");
             }
             catch (System.Exception e)
             {
-                DevLog("[BossRush] [WARNING] Harmony Patch 扫描失败: " + e);
+                CriticalLog("[BossRush] [ERROR] Harmony Patch 扫描失败: " + e);
             }
 
             bool criticalDynamicItemPatchesReady = false;
@@ -25,7 +25,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[BossRush] [ERROR] 动态物品关键补丁验证失败: " + e);
+                CriticalLog("[BossRush] [ERROR] 动态物品关键补丁验证失败: " + e);
             }
 
             if (!criticalDynamicItemPatchesReady)
@@ -35,18 +35,18 @@ namespace BossRush
                     int readyCount = BossRushDynamicItemRegistry.EnsureAllRegistered();
                     int totalCount = BossRushDynamicItemRegistry.PublishedTypeCount;
                     string level = readyCount == totalCount ? "[WARNING]" : "[ERROR]";
-                    DevLog("[BossRush] " + level + " 动态物品关键补丁不完整，已执行全量同步注册: "
+                    CriticalLog("[BossRush] " + level + " 动态物品关键补丁不完整，已执行全量同步注册: "
                         + readyCount + "/" + totalCount);
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[BossRush] [ERROR] 动态物品全量同步注册失败: " + e);
+                    CriticalLog("[BossRush] [ERROR] 动态物品全量同步注册失败: " + e);
                 }
             }
 
             try
             {
-                // 注册 Harmony Patch 分组（仅日志与元数据，不改变 Patch apply 方式）
+                // 注册 Harmony Patch 分组（仅日志与元数据，不参与 Patch apply）
                 HarmonyPatchGroupRegistrar.Clear();
                 HarmonyPatchGroupRegistrar.Register(new BaseHubPatchGroup());
                 HarmonyPatchGroupRegistrar.Register(new CombatPatchGroup());
@@ -56,6 +56,65 @@ namespace BossRush
             catch (System.Exception e)
             {
                 DevLog("[BossRush] [WARNING] Harmony Patch 分组元数据注册失败: " + e);
+            }
+
+            HarmonyBindingSelfCheck.RunStartupSelfCheck(harmony);
+        }
+
+        // ====================================================================
+        // Harmony 补丁逐类应用
+        // ====================================================================
+        // harmony.PatchAll() 内部就是
+        //     AccessTools.GetTypesFromAssembly(assembly).Do(t => CreateClassProcessor(t).Patch())
+        // 本方法保持同一个程序集、同一个类型顺序、同一个 processor 调用，
+        // 因此**全部补丁成功时行为与 PatchAll 完全一致**。
+        //
+        // 差别只在失败路径：PatchAll 遇到第一个无法解析的目标就整体抛出，
+        // 官方更新只要改动 50 个补丁目标里的任意 1 个，其余补丁全部不生效；
+        // 逐类隔离后失配的那个补丁类单独失效，其余照常，并经 CriticalLog 报告。
+        private static void ApplyHarmonyPatchesPerClass(Harmony harmony)
+        {
+            if (harmony == null)
+            {
+                return;
+            }
+
+            var failures = new System.Collections.Generic.List<string>();
+            int patchedClassCount = 0;
+
+            foreach (var type in AccessTools.GetTypesFromAssembly(typeof(ModBehaviour).Assembly))
+            {
+                try
+                {
+                    var processor = harmony.CreateClassProcessor(type);
+                    if (processor == null)
+                    {
+                        continue;
+                    }
+
+                    var patchedMethods = processor.Patch();
+                    if (patchedMethods != null && patchedMethods.Count > 0)
+                    {
+                        patchedClassCount++;
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    failures.Add((type != null ? type.FullName : "<unknown>")
+                        + ": " + (e != null ? e.Message : "unknown"));
+                }
+            }
+
+            if (failures.Count > 0)
+            {
+                CriticalLog("harmony-per-class-apply",
+                    "[BossRush] [ERROR] Harmony 补丁逐类应用失败 " + failures.Count
+                    + " 个（其余 " + patchedClassCount + " 个补丁类已生效）: "
+                    + string.Join(" | ", failures.ToArray()));
+            }
+            else
+            {
+                DevLog("[BossRush] Harmony 补丁逐类应用完成: " + patchedClassCount + " 个补丁类生效");
             }
         }
 
@@ -78,7 +137,8 @@ namespace BossRush
             string modPath = GetModPath();
             if (string.IsNullOrEmpty(modPath))
             {
-                DevLog("[BossRush] [WARNING] Could not get Mod path; EntityModelFactory not initialized");
+                // 取不到 Mod 路径 = 实体模型与地图刷新点两套数据都装不起来，属玩家可见故障
+                CriticalLog("[BossRush] [ERROR] Could not get Mod path; EntityModelFactory not initialized");
             }
             else
             {
@@ -97,7 +157,7 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[BossRush] [ERROR] MapSpawnPointRegistry initialization exception: " + e.Message);
+                    CriticalLog("[BossRush] [ERROR] MapSpawnPointRegistry initialization exception: " + e.Message);
                 }
             }
 
@@ -183,6 +243,8 @@ namespace BossRush
             BossRushEventBus.ResetStaticCaches();
             SafeRuntime.ResetStaticCaches();
             BossRush.Common.Utils.ReflectionCache.ResetStaticCaches();
+            HarmonyBindingSelfCheck.ResetStaticCaches();
+            ModBehaviour.ResetCriticalLogStaticCaches();
         }
     }
 }

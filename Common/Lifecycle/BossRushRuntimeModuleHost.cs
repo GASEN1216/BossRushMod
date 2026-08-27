@@ -123,7 +123,10 @@ namespace BossRush
                 ? module.ModuleName
                 : "<unknown>";
             string message = e != null ? e.Message : string.Empty;
-            ModBehaviour.DevLog("[BossRush] [WARNING] Runtime module " + moduleName + " " + lifecycle + " failed: " + message);
+            // 模块生命周期异常按 模块+阶段 去重上报，避免每帧刷屏的同时保证玩家端可见
+            ModBehaviour.CriticalLog(
+                "runtime-module-" + moduleName + "-" + lifecycle,
+                "[BossRush] [WARNING] Runtime module " + moduleName + " " + lifecycle + " failed: " + message);
         }
     }
 }

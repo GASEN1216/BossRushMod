@@ -260,8 +260,8 @@ namespace BossRush
         {
             try
             {
-                var merchantField = ReflectionCache.StockShop_MerchantID;
-                var accountField = ReflectionCache.StockShop_AccountAvaliable;
+                var merchantField = BossRushEagerReflectionCache.StockShop_MerchantID;
+                var accountField = BossRushEagerReflectionCache.StockShop_AccountAvaliable;
                 if (merchantField == null || accountField == null)
                 {
                     if (requireVerified)
@@ -346,7 +346,7 @@ namespace BossRush
                 mainInteract.interactableGroup = true;
 
                 // 获取 otherInterablesInGroup 列表
-                var field = ReflectionCache.InteractableBase_OtherInterablesInGroup;
+                var field = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null)
                 {
                     DevLog("[ModeE] [ERROR] 未找到 otherInterablesInGroup 反射字段");
@@ -696,7 +696,7 @@ namespace BossRush
 
                     if (merchantPreset == null)
                     {
-                        FieldInfo iconField = ReflectionCache.CharacterRandomPreset_CharacterIconType;
+                        FieldInfo iconField = BossRushEagerReflectionCache.CharacterRandomPreset_CharacterIconType;
                         if (iconField != null)
                         {
                             for (int i = 0; i < allPresets.Length; i++)
@@ -1028,7 +1028,7 @@ namespace BossRush
         {
             const int BATCH_SIZE = 8;
 
-            var fItems = ReflectionCache.StockShop_ItemInstances;
+            var fItems = BossRushEagerReflectionCache.StockShop_ItemInstances;
             if (fItems == null) yield break;
 
             // 快照商店列表，防止 CleanupModeEMerchant 清空列表导致迭代异常

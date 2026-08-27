@@ -73,7 +73,9 @@ namespace BossRush.Patches.ItemStatsSystem
                 CriticalPatchSpec spec = specs[i];
                 if (spec.Original == null)
                 {
-                    ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [ERROR] 官方关键方法不存在: " + spec.Label);
+                    ModBehaviour.CriticalLog(
+                        "critical-patch-missing-" + spec.Label,
+                        "[BossRushDynamicItemRegistry] [ERROR] 官方关键方法不存在: " + spec.Label);
                     continue;
                 }
 
@@ -86,7 +88,9 @@ namespace BossRush.Patches.ItemStatsSystem
                     }
                     catch (Exception e)
                     {
-                        ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [ERROR] 关键补丁补装失败: " + spec.Label + ", " + e);
+                        ModBehaviour.CriticalLog(
+                            "critical-patch-repair-" + spec.Label,
+                            "[BossRushDynamicItemRegistry] [ERROR] 关键补丁补装失败: " + spec.Label + ", " + e);
                     }
                 }
 
@@ -96,7 +100,9 @@ namespace BossRush.Patches.ItemStatsSystem
                 }
                 else
                 {
-                    ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [ERROR] 关键补丁未生效: " + spec.Label);
+                    ModBehaviour.CriticalLog(
+                        "critical-patch-inactive-" + spec.Label,
+                        "[BossRushDynamicItemRegistry] [ERROR] 关键补丁未生效: " + spec.Label);
                 }
             }
 

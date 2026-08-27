@@ -54,7 +54,10 @@ namespace BossRush
             int[] ids = ParseItemIds(json);
             if (ids == null || ids.Length == 0)
             {
-                ModBehaviour.DevLog("[LootBlacklistRegistry] [WARNING] LootBlacklist.json 无有效 itemIds，使用硬编码兜底");
+                // 回退硬编码兜底意味着 JSON 数据表实际没生效，属数据契约级失败
+                ModBehaviour.CriticalLog(
+                    "loot-blacklist-fallback",
+                    "[LootBlacklistRegistry] [WARNING] LootBlacklist.json 无有效 itemIds，使用硬编码兜底");
                 return null;
             }
 

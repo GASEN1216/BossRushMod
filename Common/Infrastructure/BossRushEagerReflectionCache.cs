@@ -7,12 +7,19 @@ using Duckov.ItemUsage;
 namespace BossRush
 {
     // ============================================================================
-    // ReflectionCache - 反射结果缓存（性能优化）
+    // BossRushEagerReflectionCache - 启动期急切绑定的反射结果缓存（性能优化）
     // ============================================================================
     /// <summary>
     /// 反射缓存 - 存储常用的 FieldInfo 和 MethodInfo，避免重复反射调用
     /// </summary>
-    internal static class ReflectionCache
+    /// <remarks>
+    /// 与 <see cref="BossRush.Common.Utils.ReflectionCache"/> 是两个不同的东西：
+    /// 本类在类型初始化时一次性急切绑定一批固定的官方私有成员（readonly 字段）；
+    /// Common/Utils 那个是运行时按需查找的字典懒缓存。
+    /// 两者曾经同名（都叫 ReflectionCache），调用点的语义只能靠文件顶部的 using 区分，
+    /// 因此本类改名为 BossRushEagerReflectionCache 以消除歧义。
+    /// </remarks>
+    internal static class BossRushEagerReflectionCache
     {
         // InteractableBase.otherInterablesInGroup (私有字段)
         public static readonly FieldInfo InteractableBase_OtherInterablesInGroup;
@@ -38,7 +45,7 @@ namespace BossRush
         // 缓存初始化标志
         public static readonly bool IsInitialized;
 
-        static ReflectionCache()
+        static BossRushEagerReflectionCache()
         {
             try
             {
@@ -78,7 +85,8 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[BossRush] ReflectionCache 初始化异常: " + e.Message);
+                // 急切绑定整体失败 = 后续所有依赖这批字段的功能静默降级，必须有声
+                ModBehaviour.CriticalLog("[BossRush] [ERROR] BossRushEagerReflectionCache 初始化异常: " + e.Message);
                 IsInitialized = false;
             }
         }

@@ -145,8 +145,8 @@ def main() -> int:
         "typeof(TextMeshProUGUI)",
         "typeof(Button)",
         "typeof(Image)",
-        "ReflectionCache.StockShop_MerchantID",
-        "ReflectionCache.StockShop_AccountAvaliable",
+        "BossRushEagerReflectionCache.StockShop_MerchantID",
+        "BossRushEagerReflectionCache.StockShop_AccountAvaliable",
     ]:
         if token not in resolve:
             return fail("runtime preflight must validate member types -> " + token)

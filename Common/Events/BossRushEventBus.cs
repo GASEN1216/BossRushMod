@@ -93,7 +93,10 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        ModBehaviour.DevLog("[BossRushEventBus] [WARNING] handler failed for "
+                        // 按事件类型去重，避免高频事件刷屏
+                        ModBehaviour.CriticalLog(
+                            "event-bus-handler-" + eventType.Name,
+                            "[BossRushEventBus] [WARNING] handler failed for "
                             + eventType.Name + ": " + e.Message);
                     }
                 }

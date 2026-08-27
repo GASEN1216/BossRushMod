@@ -431,7 +431,7 @@ namespace BossRush
             {
                 lootbox.interactableGroup = true;
 
-                System.Reflection.FieldInfo othersField = ReflectionCache.InteractableBase_OtherInterablesInGroup;
+                System.Reflection.FieldInfo othersField = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (othersField != null)
                 {
                     System.Collections.Generic.List<InteractableBase> hostList =

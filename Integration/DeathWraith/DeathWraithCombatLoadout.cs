@@ -797,9 +797,9 @@ namespace BossRush
                     ? displayNameKey
                     : displayName;
 
-                if (ReflectionCache.CharacterRandomPreset_CharacterIconType != null)
+                if (BossRushEagerReflectionCache.CharacterRandomPreset_CharacterIconType != null)
                 {
-                    ReflectionCache.CharacterRandomPreset_CharacterIconType.SetValue(
+                    BossRushEagerReflectionCache.CharacterRandomPreset_CharacterIconType.SetValue(
                         runtimePreset,
                         CharacterIconTypes.pmc);
                 }
