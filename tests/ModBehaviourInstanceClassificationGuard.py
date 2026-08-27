@@ -29,6 +29,7 @@ EXPECTED_COUNTS = {
     "MapSelection": 3,
     "ModeD": 1,
     "ModeG": 4,
+    "ModeH": 1,
     "DebugAndTools": 1,
 }
 
@@ -66,12 +67,12 @@ def main() -> int:
         return fail("current counts differ from documented baseline: " + repr(counts))
 
     total = sum(counts.values())
-    if total != 355:
-        return fail("expected 355 ModBehaviour.Instance lines, got " + str(total))
+    if total != 356:
+        return fail("expected 356 ModBehaviour.Instance lines, got " + str(total))
 
     doc = DOC.read_text(encoding="utf-8")
     required_doc_tokens = [
-        "- Raw matches: 355",
+        "- Raw matches: 356",
         "| `Integration/` | 238 |",
         "| `ZombieMode/` | 38 |",
         "| `Interactables/` | 23 |",

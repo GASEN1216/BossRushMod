@@ -119,3 +119,19 @@ def strip_cs_comments(source):
 def contains_symbol(source, symbol):
     """在去注释后的源码里查找符号。"""
     return symbol in strip_cs_comments(source or "")
+
+
+def read_modeh_group(*names):
+    """把一组 ModeH 源文件按顺序拼接成一个逻辑单元再读。
+
+    Mode H 的数据契约、规范摘要与内容目录都因仓库单文件 1200 行预算被拆成
+    多个文件（例如 ModeHStateModel.cs + ModeHStateDtos.cs）。守卫应当按契约
+    而不是按物理文件断言，因此这里提供统一的拼接读取入口；任一文件缺失返回 None。
+    """
+    parts = []
+    for name in names:
+        text = read_text(os.path.join(REPO_ROOT, "ModeH", name))
+        if text is None:
+            return None
+        parts.append(text)
+    return "\n".join(parts)

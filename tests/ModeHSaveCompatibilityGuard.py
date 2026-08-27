@@ -21,7 +21,7 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
-from modeh_guard_util import read_text, strip_cs_comments  # noqa: E402
+from modeh_guard_util import read_text, strip_cs_comments, read_modeh_group  # noqa: E402
 
 MODEH_DIR = os.path.join(REPO_ROOT, "ModeH")
 CONFIG = os.path.join(MODEH_DIR, "ModeHConfig.cs")
@@ -61,7 +61,7 @@ def main():
             if literal not in code:
                 errors.append("[Key] 冻结 key 缺失: " + desc)
 
-    model = read_text(STATE_MODEL)
+    model = read_modeh_group("ModeHStateModel.cs", "ModeHStateDtos.cs")
     if model:
         code = strip_cs_comments(model)
         for dto, label in (("ModeHSeasonDto", "Season"), ("ModeHHallOfFameEnvelopeDto", "HallOfFame")):

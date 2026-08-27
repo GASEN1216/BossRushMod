@@ -265,6 +265,31 @@ namespace BossRush
             // modeEPlayerSpawnPos
             sb.Append("  \"modeEPlayerSpawnPos\": ");
             AppendNullableVector3(sb, config.modeEPlayerSpawnPos);
+            sb.Append(",\n");
+
+            // modeHSpawnPoints（Mode H 可选扩展，SCHEMA+；旧地图缺失时为 null）
+            sb.Append("  \"modeHSpawnPoints\": ");
+            AppendVector3Array(sb, config.modeHSpawnPoints);
+            sb.Append(",\n");
+
+            // modeHStagingPos
+            sb.Append("  \"modeHStagingPos\": ");
+            AppendNullableVector3(sb, config.modeHStagingPos);
+            sb.Append(",\n");
+
+            // modeHSpectatorPos
+            sb.Append("  \"modeHSpectatorPos\": ");
+            AppendNullableVector3(sb, config.modeHSpectatorPos);
+            sb.Append(",\n");
+
+            // modeHPlayerSpawnPos
+            sb.Append("  \"modeHPlayerSpawnPos\": ");
+            AppendNullableVector3(sb, config.modeHPlayerSpawnPos);
+            sb.Append(",\n");
+
+            // modeHExitPos
+            sb.Append("  \"modeHExitPos\": ");
+            AppendNullableVector3(sb, config.modeHExitPos);
             sb.Append("\n");
 
             sb.Append("}");
@@ -295,11 +320,16 @@ namespace BossRush
             // 提取 Vector3 数组字段
             Vector3[] spawnPoints = ExtractVector3Array(json, "spawnPoints");
             Vector3[] modeESpawnPoints = ExtractVector3Array(json, "modeESpawnPoints");
+            Vector3[] modeHSpawnPoints = ExtractVector3Array(json, "modeHSpawnPoints");
 
             // 提取可空 Vector3 字段
             Vector3? customSpawnPos = ExtractNullableVector3(json, "customSpawnPos");
             Vector3? defaultSignPos = ExtractNullableVector3(json, "defaultSignPos");
             Vector3? modeEPlayerSpawnPos = ExtractNullableVector3(json, "modeEPlayerSpawnPos");
+            Vector3? modeHStagingPos = ExtractNullableVector3(json, "modeHStagingPos");
+            Vector3? modeHSpectatorPos = ExtractNullableVector3(json, "modeHSpectatorPos");
+            Vector3? modeHPlayerSpawnPos = ExtractNullableVector3(json, "modeHPlayerSpawnPos");
+            Vector3? modeHExitPos = ExtractNullableVector3(json, "modeHExitPos");
 
             // 提取 mapNorth（必填，默认使用 DEMO 竞技场北方向量）
             Vector3? mapNorthNullable = ExtractNullableVector3(json, "mapNorth");
@@ -333,7 +363,12 @@ namespace BossRush
                 mapNorth,
                 modeESpawnPoints,
                 modeEPlayerSpawnPos,
-                sortOrder
+                sortOrder,
+                modeHSpawnPoints,
+                modeHStagingPos,
+                modeHSpectatorPos,
+                modeHPlayerSpawnPos,
+                modeHExitPos
             );
         }
 

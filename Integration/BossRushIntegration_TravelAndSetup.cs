@@ -316,6 +316,15 @@ namespace BossRush
 
             // Mode E 提前分支：先扫描刷怪点（AllocateSpawnPoints 内部调用），再禁用spawner和清理敌人
             // 跳过路牌、撤离点、快递员等 BossRush 竞技场逻辑
+            if (entryMode == BossRushEntryMode.ModeH)
+            {
+                // Mode H 显式 intent：本协程不做任何 Legacy 竞技场初始化，
+                // 只把控制权交给唯一 ModeHRuntimeModule 实例；隔离租约、观战租约、
+                // 生产认证与 Season 创建全部由该实例在 host.OnSceneLoaded 内完成。
+                DevLog("[BossRush] SetupBossRushInGroundZero: 检测到显式 Mode H 入场意图，跳过 Legacy 接管");
+                yield break;
+            }
+
             if (entryMode == BossRushEntryMode.ModeE)
             {
                 DevLog("[BossRush] SetupBossRushInGroundZero: 检测到营旗+裸装入场，将启动 Mode E");

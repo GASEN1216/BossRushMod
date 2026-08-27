@@ -95,7 +95,7 @@ namespace BossRush
             }
             catch { }
 
-            if (IsAnyBossRushLikeModeActive() || IsZombieModeStartupInProgress())
+            if (!ModeHRuntimeGates.IsLegacyModeEntryAllowed() || IsAnyBossRushLikeModeActive() || IsZombieModeStartupInProgress()) // 含 Mode H 真实资产风险门（§24.3）
             {
                 failureReason = L10n.T("BossRush_ZombieMode_OtherModeActive");
                 return false;

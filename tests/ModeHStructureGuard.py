@@ -20,6 +20,9 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
+
+from modeh_guard_util import read_modeh_group  # noqa: E402
 MODEH_DIR = os.path.join(REPO_ROOT, "ModeH")
 STATE_MODEL = os.path.join(MODEH_DIR, "ModeHStateModel.cs")
 CONFIG = os.path.join(MODEH_DIR, "ModeHConfig.cs")
@@ -226,7 +229,10 @@ def main():
         if not os.path.exists(path):
             errors.append("[File] 缺少关键文件: " + os.path.relpath(path, REPO_ROOT))
 
-    model = read(STATE_MODEL, errors)
+    model = read_modeh_group("ModeHStateModel.cs", "ModeHStateDtos.cs")
+    if model is None:
+        errors.append("[File] 缺少 ModeH 数据契约文件组")
+        model = ""
     config = read(CONFIG, errors)
 
     if model:

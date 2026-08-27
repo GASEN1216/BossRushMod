@@ -3,7 +3,7 @@
 ## Baseline
 
 - Command: `rg -n "ModBehaviour\\.Instance" --glob "*.cs"`
-- Raw matches: 355
+- Raw matches: 356
 - Current event-bus pilot: achievement popup notification only.
 - Guard evidence: `BossRushEventBusLifecycleGuard.py` PASS; `LongTermGoalNonGoalGuard.py` still blocks broad `EventBus`, `IGameWorldProbe`, and `IBossRushEventSubscriber` abstractions.
 
@@ -30,6 +30,7 @@
 | `Patches/` | 7 | patch entrypoint | Harmony patches need the current mod singleton to route base-game callbacks into the mod (含 `DeadBodyAppendPatch` 把原版尸体快照转发给亡魂系统)。 |
 | `MapSelection/` | 3 | gameplay command | Map selection must call active mod entry/exit state. |
 | `ModeG/` | 4 | gameplay state / Unity owner | Mode G uses the live mod instance for entry, presentation and managed runtime ownership; these calls stay direct to preserve the run transaction boundary. |
+| `ModeH/` | 1 | gameplay command / Unity owner | Mode H 场内交互只在一个解析器里取活动 mod 实例，其余路径复用捕获的 host，保持入口事务边界。 |
 | `ModeD`, `DebugAndTools` | 2 | debug/manual or mode command | Retained. |
 
 ## Already Migrated

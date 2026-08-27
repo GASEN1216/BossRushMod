@@ -20,6 +20,8 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
+from modeh_guard_util import read_modeh_group  # noqa: E402
+
 from modeh_canonical_json import content_signature  # noqa: E402
 
 ODDS_JSON = os.path.join(REPO_ROOT, "Assets", "Data", "ModeH", "OddsWeights.json")
@@ -196,7 +198,10 @@ def main():
             if not re.search(pattern, config):
                 errors.append("[Code] 冻结阈值缺失: " + desc)
 
-    catalog = read_text(CATALOG, errors)
+    catalog = read_modeh_group("ModeHContentCatalog.cs", "ModeHContentCatalogParsers.cs", "ModeHContentModels.cs")
+    if catalog is None:
+        errors.append("[File] 缺少 ModeH 内容目录文件组")
+        catalog = ""
     if catalog:
         if not re.search(r"private static void ApplyBuiltInOddsFallback\(\)", catalog):
             errors.append("[Code] 缺少赔率权重的同版本内置 fallback")

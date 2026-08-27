@@ -116,5 +116,21 @@ namespace BossRush
                 return false;
             }
         }
+
+        /// <summary>
+        /// Mode H 是否正在进行（no-throw，未运行时恒 false）。
+        /// 供 Legacy 清怪循环等旧路径做加法分支使用（设计提案 §19.2）。
+        /// </summary>
+        internal static bool IsModeHRunInProgressSafe()
+        {
+            try
+            {
+                return ModeHRuntimeGates.IsModeHRunOwnerActive;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

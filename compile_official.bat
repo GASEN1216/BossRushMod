@@ -313,17 +313,29 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeG\ModeGHUD.cs ^
     ModeG\ModeGRecapPanel.cs ^
     ModeG\ModeGInteractable.cs ^
+    ModeH\ModeHAvailability.cs ^
     ModeH\ModeHCanonicalDigest.cs ^
     ModeH\ModeHCommandCompatibilityRegistry.cs ^
     ModeH\ModeHConfig.cs ^
     ModeH\ModeHContentCatalog.cs ^
+    ModeH\ModeHContentCatalogParsers.cs ^
+    ModeH\ModeHContentModels.cs ^
+    ModeH\ModeHEntry.cs ^
     ModeH\ModeHHallOfFamePersistence.cs ^
+    ModeH\ModeHInteractable.cs ^
+    ModeH\ModeHJsonValue.cs ^
     ModeH\ModeHLoadoutKitRegistry.cs ^
+    ModeH\ModeHMapSupportRegistry.cs ^
+    ModeH\ModeHPresentationAssetCache.cs ^
     ModeH\ModeHProfilePersistence.cs ^
     ModeH\ModeHProfileRegistry.cs ^
+    ModeH\ModeHRunState.cs ^
     ModeH\ModeHRuntimeGates.cs ^
+    ModeH\ModeHRuntimeModule.cs ^
     ModeH\ModeHSaveFlushCoordinator.cs ^
     ModeH\ModeHSeedStream.cs ^
+    ModeH\ModeHStateDtos.cs ^
+    ModeH\ModeHStateMachine.cs ^
     ModeH\ModeHStateModel.cs ^
     ModeF\ModeFBounty_EquipmentAndLoot.cs ^
     ModeF\ModeFRespawn.cs ^

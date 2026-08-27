@@ -329,10 +329,16 @@ namespace BossRush
                         BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
                         bool deferArenaCommitForModeG =
                             BossRushMapSelectionHelper.HasPendingModeGEntryIntent();
+                        // Mode H 与 Mode G 同形：识别 typed H intent 后跳过 Legacy 接管四件事
+                        //（bossRushArenaActive、Mode E warmup、DisableAllSpawners、ContinuousClear），
+                        // 随后由 ModeHArenaIsolationLease 完成原图 spawner 与原生敌人隔离（§17.1、§19.2）。
+                        bool deferArenaCommitForModeH =
+                            BossRushMapSelectionHelper.HasPendingModeHEntryIntent();
+                        bool deferArenaCommit = deferArenaCommitForModeG || deferArenaCommitForModeH;
                         InitializeEnemyPresets();
                         InitializeItemValueCacheAsync();
                         InitializeBossPoolFilter();
-                        if (!deferArenaCommitForModeG)
+                        if (!deferArenaCommit)
                         {
                             bossRushArenaActive = true;
                         }
@@ -341,7 +347,7 @@ namespace BossRush
                         SetCurrentMapSpawnPoints(scene.name);
                         SetArenaCenterFromMapConfig(scene.name);
                         spawnersDisabled = false;
-                        if (!deferArenaCommitForModeG)
+                        if (!deferArenaCommit)
                         {
                             PreCacheMapSpawnerPositions();
                             ScheduleModeEStartupWarmup("OnSceneLoaded");

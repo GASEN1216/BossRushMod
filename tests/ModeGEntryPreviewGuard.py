@@ -125,21 +125,32 @@ def main():
         errors.append("[ArenaCommitMissing] Mode G runtime bridge 缺少统一清场提交")
 
     scene_content = open(SCENE_ENTRY, "r", encoding="utf-8", errors="replace").read()
+    # 2026-08-28：Legacy 接管的延后判定改为 Mode G / Mode H 组合标志（typed pending entry kind）；
+    # 行为不变——Mode G intent 仍在切场景前冻结并延后 active/清场提交，断言强度保持一致。
     if not re.search(
             r"deferArenaCommitForModeG\s*=\s*.*?HasPendingModeGEntryIntent\(\);\s*"
-            r".*?if \(!deferArenaCommitForModeG\)\s*\{\s*bossRushArenaActive = true;\s*\}"
-            r".*?if \(!deferArenaCommitForModeG\).*?DisableAllSpawners\(\).*?"
+            r".*?bool deferArenaCommit = deferArenaCommitForModeG \|\| deferArenaCommitForModeH;"
+            r".*?if \(!deferArenaCommit\)\s*\{\s*bossRushArenaActive = true;\s*\}"
+            r".*?if \(!deferArenaCommit\).*?DisableAllSpawners\(\).*?"
             r"ContinuousClearEnemiesUntilWaveStart\(\)",
             scene_content, re.DOTALL):
         errors.append("[SceneLoadDeferral] 通用过图路径未对 Mode G 延后 active/清场提交")
 
     map_helper_content = open(MAP_HELPER, "r", encoding="utf-8", errors="replace").read()
+    # 2026-08-28：pendingModeGEntryIntent 布尔收敛为 BossRushPendingEntryKind 枚举，
+    # 布尔 overload 保留为兼容 wrapper；冻结时机与随事务清理的语义完全不变。
     if not re.search(
-            r"pendingModeGEntryIntent.*?MarkEntryFlowFromMapSelectionUi\(bool modeGEntryIntent\).*?"
-            r"pendingModeGEntryIntent = modeGEntryIntent.*?"
+            r"private static BossRushPendingEntryKind pendingEntryKind = BossRushPendingEntryKind\.None;"
+            r".*?MarkEntryFlowFromMapSelectionUi\(bool modeGEntryIntent\).*?"
+            r"BossRushPendingEntryKind\.ModeG.*?"
+            r"MarkEntryFlowFromMapSelectionUi\(BossRushPendingEntryKind kind\).*?"
+            r"pendingEntryKind = kind;.*?"
             r"MarkEntryFlowFromDirectTeleport\(bool modeGEntryIntent\).*?"
-            r"pendingModeGEntryIntent = modeGEntryIntent.*?HasPendingModeGEntryIntent\(\).*?"
-            r"ClearPendingEntryFlowState\(\).*?pendingModeGEntryIntent = false",
+            r"BossRushPendingEntryKind\.ModeG.*?"
+            r"MarkEntryFlowFromDirectTeleport\(BossRushPendingEntryKind kind\).*?"
+            r"pendingEntryKind = kind;.*?HasPendingModeGEntryIntent\(\).*?"
+            r"pendingEntryKind == BossRushPendingEntryKind\.ModeG.*?"
+            r"ClearPendingEntryFlowState\(\).*?pendingEntryKind = BossRushPendingEntryKind\.None",
             map_helper_content, re.DOTALL):
         errors.append("[FrozenEntryIntent] Mode G 过图意图未在切场景前冻结并随事务清理")
     legacy_entry_content = open(

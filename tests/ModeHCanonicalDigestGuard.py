@@ -18,6 +18,9 @@ import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
+
+from modeh_guard_util import read_modeh_group  # noqa: E402
 DIGEST = os.path.join(REPO_ROOT, "ModeH", "ModeHCanonicalDigest.cs")
 CONFIG = os.path.join(REPO_ROOT, "ModeH", "ModeHConfig.cs")
 
@@ -55,7 +58,10 @@ def read(path, errors):
 
 def main():
     errors = []
-    digest = read(DIGEST, errors)
+    digest = read_modeh_group("ModeHCanonicalDigest.cs", "ModeHJsonValue.cs")
+    if digest is None:
+        errors.append("[File] 缺少 ModeH 规范摘要文件组")
+        digest = ""
     config = read(CONFIG, errors)
 
     if digest:

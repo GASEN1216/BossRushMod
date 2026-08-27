@@ -29,6 +29,25 @@ namespace BossRush
             }
             catch { }
 
+            // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
+            // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
+            // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
+            try
+            {
+                if (!ModeHRuntimeGates.IsLegacyModeEntryAllowed())
+                {
+                    ShowMessage(L10n.T(
+                        "黑市鸭王杯仍有未结算的真实资产事务，暂时无法开始 Legacy 挑战。",
+                        "Mode H has unsettled real-asset transactions; legacy BossRush is blocked."));
+                    DevLog("[BossRush] StartBossRush_WavesArena 被 Mode H 真实资产风险门拒绝");
+                    return;
+                }
+            }
+            catch
+            {
+                // 门查询本身 no-throw；异常只表示未能判定，放行旧模式既有流程
+            }
+
             if (IsActive)
             {
                 ShowMessage(L10n.T("BossRush已经在进行中！", "BossRush is already in progress!"));

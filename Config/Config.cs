@@ -79,8 +79,7 @@ namespace BossRush
             /// <summary>每局变异词条数量（1-10，默认3）</summary>
             public int mutatorCount = 3;
 
-            /// <summary>Mode H（百战留痕：黑市鸭王杯）入口总开关。
-            /// 设计提案 §24.1：这是 Mode H 唯一可写入口开关，默认关闭；
+            /// <summary>Mode H 唯一可写入口开关（§24.1），默认关闭；
             /// 真实仓库抵押没有配置字段，进入模式即知情同意。</summary>
             public bool modeHEnabled = false;
         }
@@ -1162,11 +1161,8 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>
-        /// Mode H 入口总开关的唯一只读入口（设计提案 §24.1）。
-        /// no-throw，缺配置时返回 false；运行时模块只能通过 owner 调用它，
-        /// 禁止反射私有字段或把开关缓存进 ModeHConfig / 存档。
-        /// </summary>
+        /// <summary>Mode H 入口总开关的唯一只读入口（§24.1）：no-throw，缺配置返回 false，
+        /// 禁止反射私有字段或把开关缓存进 ModeHConfig / 存档。</summary>
         internal bool IsModeHConfiguredEnabled()
         {
             try

@@ -14,16 +14,26 @@ namespace BossRush
             ModeD,
             ModeE,
             ModeF,
-            ModeG
+            ModeG,
+            ModeH
         }
 
         /// <summary>
-        /// 统一判定 BossRush 入场模式，优先级：Mode E > Mode F > Mode D > Normal
+        /// 统一判定 BossRush 入场模式，优先级：
+        /// 显式 Mode H intent > Mode E > Mode F > Mode G > Mode D > Normal。
+        /// Mode H 只由 ModeHEntry/ModeHInteractable 写入的显式 typed intent 触发，
+        /// 不按背包物品猜测；没有 H intent 时后续判定顺序逐字不变（设计提案 §17.1）。
         /// </summary>
         private BossRushEntryMode DetermineBossRushEntryMode(string context)
         {
             try
             {
+                // 显式 Mode H intent 先于全部自动判定（含裸装 Mode D 判定）
+                if (BossRushMapSelectionHelper.HasPendingModeHEntryIntent())
+                {
+                    return BossRushEntryMode.ModeH;
+                }
+
                 bool? isPlayerNaked = null;
 
                 var (modeEFaction, modeEFlag) = DetectFactionFlag();
@@ -90,6 +100,14 @@ namespace BossRush
             return DetermineBossRushEntryMode("FreezeEntryIntent") == BossRushEntryMode.ModeG;
         }
 
+        /// <summary>
+        /// 当前是否存在显式 Mode H 入场意图（只读 typed pending intent，不做物品猜测）。
+        /// </summary>
+        internal bool IsModeHEntryIntentNow()
+        {
+            return BossRushMapSelectionHelper.HasPendingModeHEntryIntent();
+        }
+
         private IEnumerator SetupBossRushInDemoChallenge(Scene scene)
         {
             // 等待场景初始化（缩短等待时间，尽快传送玩家）
@@ -100,6 +118,15 @@ namespace BossRush
             BossRushEntryMode entryMode = DetermineBossRushEntryMode("SetupBossRushInDemoChallenge");
 
             // Mode E 提前分支：先扫描刷怪点，再禁用spawner和清理敌人，跳过路牌/气泡/快递员
+            if (entryMode == BossRushEntryMode.ModeH)
+            {
+                // Mode H 显式 intent：本协程不做任何 Legacy 竞技场初始化，
+                // 只把控制权交给唯一 ModeHRuntimeModule 实例；隔离租约、观战租约、
+                // 生产认证与 Season 创建全部由该实例在 host.OnSceneLoaded 内完成。
+                DevLog("[BossRush] SetupBossRushInDemoChallenge: 检测到显式 Mode H 入场意图，跳过 Legacy 接管");
+                yield break;
+            }
+
             if (entryMode == BossRushEntryMode.ModeE)
             {
                 DevLog("[BossRush] 检测到营旗+裸装入场，将启动 Mode E");

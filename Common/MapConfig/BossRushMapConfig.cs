@@ -21,13 +21,18 @@ namespace BossRush
         public Vector3 mapNorth;           // 地图北方向量（用于方位播报，与小地图朝向一致）
         public Vector3[] modeESpawnPoints;  // Mode E 专用刷怪点（null 表示使用原地图 spawner 位置兜底）
         public Vector3? modeEPlayerSpawnPos; // Mode E 独狼玩家落点（null 表示使用远离Boss的安全位置兜底）
+        public Vector3[] modeHSpawnPoints;   // Mode H 擂台刷怪点（null 表示该地图不支持 Mode H）
+        public Vector3? modeHStagingPos;     // Mode H 隔离生成点（必须远离擂台、看台与可行走区）
+        public Vector3? modeHSpectatorPos;   // Mode H 看台位置（观战与 ERROR 互换时玩家身体所在）
+        public Vector3? modeHPlayerSpawnPos; // Mode H 玩家入场落点
+        public Vector3? modeHExitPos;        // Mode H 安全离场点（隔离失败退款离场用）
 
         /// <summary>
         /// 获取本地化的显示名称
         /// </summary>
         public string displayName { get { return L10n.T(displayNameCN, displayNameEN); } }
 
-        public BossRushMapConfig(string name, string id, string displayCN, string displayEN, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null, Vector3[] modeESpawns = null, Vector3? modeEPlayerPos = null, int order = 0)
+        public BossRushMapConfig(string name, string id, string displayCN, string displayEN, Vector3[] spawns, Vector3? customPos = null, Vector3? signPos = null, int beacon = 0, string preview = null, Vector3? north = null, Vector3[] modeESpawns = null, Vector3? modeEPlayerPos = null, int order = 0, Vector3[] modeHSpawns = null, Vector3? modeHStaging = null, Vector3? modeHSpectator = null, Vector3? modeHPlayerPos = null, Vector3? modeHExit = null)
         {
             sceneName = name;
             sceneID = id;
@@ -43,6 +48,11 @@ namespace BossRush
             mapNorth = north.HasValue ? north.Value : new Vector3(-0.959f, 0f, 0.284f);
             modeESpawnPoints = modeESpawns;
             modeEPlayerSpawnPos = modeEPlayerPos;
+            modeHSpawnPoints = modeHSpawns;
+            modeHStagingPos = modeHStaging;
+            modeHSpectatorPos = modeHSpectator;
+            modeHPlayerSpawnPos = modeHPlayerPos;
+            modeHExitPos = modeHExit;
         }
     }
 }

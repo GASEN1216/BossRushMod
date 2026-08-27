@@ -28,6 +28,21 @@ using TMPro;
 namespace BossRush
 {
     /// <summary>
+    /// 切图前冻结的显式入场意图类别（设计提案 §17.1）。
+    /// 原先只有一个 Mode G 布尔，这里收敛为命名枚举；
+    /// 既有 Mode G 布尔 overload 与查询保留为兼容 wrapper。
+    /// </summary>
+    public enum BossRushPendingEntryKind
+    {
+        /// <summary>无显式意图（旧模式按既有顺序自动判定）。</summary>
+        None = 0,
+        /// <summary>宿命回响显式意图。</summary>
+        ModeG = 1,
+        /// <summary>百战留痕：黑市鸭王杯显式意图。</summary>
+        ModeH = 2
+    }
+
+    /// <summary>
     /// BossRush 地图选择 UI 辅助类
     /// 注：地图配置已统一到 BossRushMapConfig，此类仅负责 UI 交互
     /// </summary>
@@ -90,7 +105,15 @@ namespace BossRush
         // 地图选择 UI 流程与“船票已被 UI 扣除”的跨场景状态
         private static BossRushEntryFlowSource pendingEntryFlowSource = BossRushEntryFlowSource.None;
         private static bool pendingPrepaidTicketForCurrentEntry = false;
-        private static bool pendingModeGEntryIntent = false;
+        private static BossRushPendingEntryKind pendingEntryKind = BossRushPendingEntryKind.None;
+
+        // Mode H 切图前冻结的目标场景对与单调递增 generation（设计提案 §17.1）。
+        // 只有同时匹配 sceneName/sceneID 的 scene callback 能消费本次 intent；
+        // Loading、Menu、主场景过渡和 additive scene 只能忽略，不得再次递增或启动 H。
+        private static string pendingModeHTargetSceneName = null;
+        private static string pendingModeHTargetSceneId = null;
+        private static int pendingModeHSceneGeneration = 0;
+        private static int modeHSceneGenerationCounter = 0;
         
         // 是否已初始化 - 保留用于未来扩展
         #pragma warning disable CS0414
@@ -164,9 +187,17 @@ namespace BossRush
 
         public static void MarkEntryFlowFromMapSelectionUi(bool modeGEntryIntent)
         {
+            MarkEntryFlowFromMapSelectionUi(modeGEntryIntent
+                ? BossRushPendingEntryKind.ModeG
+                : BossRushPendingEntryKind.None);
+        }
+
+        /// <summary>标记本次启动来自地图选择 UI，并冻结显式入场意图类别。</summary>
+        public static void MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind kind)
+        {
             pendingEntryFlowSource = BossRushEntryFlowSource.MapSelectionUi;
             pendingPrepaidTicketForCurrentEntry = false;
-            pendingModeGEntryIntent = modeGEntryIntent;
+            pendingEntryKind = kind;
         }
 
         /// <summary>
@@ -179,9 +210,17 @@ namespace BossRush
 
         public static void MarkEntryFlowFromDirectTeleport(bool modeGEntryIntent)
         {
+            MarkEntryFlowFromDirectTeleport(modeGEntryIntent
+                ? BossRushPendingEntryKind.ModeG
+                : BossRushPendingEntryKind.None);
+        }
+
+        /// <summary>标记本次启动来自直接传送路径，并冻结显式入场意图类别。</summary>
+        public static void MarkEntryFlowFromDirectTeleport(BossRushPendingEntryKind kind)
+        {
             pendingEntryFlowSource = BossRushEntryFlowSource.DirectTeleport;
             pendingPrepaidTicketForCurrentEntry = false;
-            pendingModeGEntryIntent = modeGEntryIntent;
+            pendingEntryKind = kind;
         }
 
         /// <summary>
@@ -204,7 +243,69 @@ namespace BossRush
 
         public static bool HasPendingModeGEntryIntent()
         {
-            return pendingModeGEntryIntent;
+            return pendingEntryKind == BossRushPendingEntryKind.ModeG;
+        }
+
+        /// <summary>当前冻结的显式入场意图类别。</summary>
+        public static BossRushPendingEntryKind GetPendingEntryKind()
+        {
+            return pendingEntryKind;
+        }
+
+        /// <summary>是否存在显式 Mode H 入场意图。</summary>
+        public static bool HasPendingModeHEntryIntent()
+        {
+            return pendingEntryKind == BossRushPendingEntryKind.ModeH;
+        }
+
+        /// <summary>
+        /// 冻结一次 Mode H 入场意图：类别 + 目标 sceneName/sceneID + 单调递增 generation。
+        /// generation 每次创建 intent 只递增一次；返回本次 generation。
+        /// </summary>
+        public static int FreezeModeHEntryIntent(string targetSceneName, string targetSceneId)
+        {
+            pendingEntryKind = BossRushPendingEntryKind.ModeH;
+            pendingModeHTargetSceneName = targetSceneName;
+            pendingModeHTargetSceneId = targetSceneId;
+            modeHSceneGenerationCounter++;
+            pendingModeHSceneGeneration = modeHSceneGenerationCounter;
+            return pendingModeHSceneGeneration;
+        }
+
+        /// <summary>
+        /// 场景回调侧消费判定：只有同时匹配目标 sceneName/sceneID 的场景才算命中；
+        /// 其余场景一律忽略，不得再次递增 generation 或启动 Mode H。
+        /// </summary>
+        public static bool TryMatchModeHSceneIntent(
+            string sceneName, string sceneId, out int sceneGeneration)
+        {
+            sceneGeneration = 0;
+            if (pendingEntryKind != BossRushPendingEntryKind.ModeH) return false;
+            if (string.IsNullOrEmpty(pendingModeHTargetSceneName)) return false;
+            if (!string.Equals(sceneName, pendingModeHTargetSceneName, StringComparison.Ordinal))
+            {
+                return false;
+            }
+            if (!string.IsNullOrEmpty(pendingModeHTargetSceneId)
+                && !string.IsNullOrEmpty(sceneId)
+                && !string.Equals(sceneId, pendingModeHTargetSceneId, StringComparison.Ordinal))
+            {
+                return false;
+            }
+            sceneGeneration = pendingModeHSceneGeneration;
+            return true;
+        }
+
+        /// <summary>当前冻结的 Mode H 目标场景名（诊断与审计用）。</summary>
+        public static string GetPendingModeHTargetSceneName()
+        {
+            return pendingModeHTargetSceneName;
+        }
+
+        /// <summary>当前冻结的 Mode H scene generation。</summary>
+        public static int GetPendingModeHSceneGeneration()
+        {
+            return pendingModeHSceneGeneration;
         }
 
         /// <summary>
@@ -214,7 +315,10 @@ namespace BossRush
         {
             pendingEntryFlowSource = BossRushEntryFlowSource.None;
             pendingPrepaidTicketForCurrentEntry = false;
-            pendingModeGEntryIntent = false;
+            pendingEntryKind = BossRushPendingEntryKind.None;
+            pendingModeHTargetSceneName = null;
+            pendingModeHTargetSceneId = null;
+            pendingModeHSceneGeneration = 0;
         }
         
         /// <summary>
@@ -227,9 +331,20 @@ namespace BossRush
 
         public static void ShowBossRushMapSelection(bool modeGEntryIntent)
         {
+            ShowBossRushMapSelection(modeGEntryIntent
+                ? BossRushPendingEntryKind.ModeG
+                : BossRushPendingEntryKind.None);
+        }
+
+        /// <summary>
+        /// 打开地图选择 UI 并冻结显式入场意图类别。
+        /// Mode H 复用同一张 BossRush 船票的预扣、取消与退款语义（设计提案 §17.1）。
+        /// </summary>
+        public static void ShowBossRushMapSelection(BossRushPendingEntryKind kind)
+        {
             try
             {
-                MarkEntryFlowFromMapSelectionUi(modeGEntryIntent);
+                MarkEntryFlowFromMapSelectionUi(kind);
 
                 // 设置 BossRush 传送标记，确保场景加载后触发 BossRush 设置逻辑
                 SetBossRushArenaPlanned(true);
@@ -626,7 +741,7 @@ namespace BossRush
         {
             try
             {
-                MarkEntryFlowFromDirectTeleport(pendingModeGEntryIntent);
+                MarkEntryFlowFromDirectTeleport(pendingEntryKind);
 
                 ModBehaviour mod = ModBehaviour.Instance;
                 if (mod != null)
