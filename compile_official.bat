@@ -316,7 +316,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHArenaIsolationLease.cs ^
     ModeH\ModeHAvailability.cs ^
     ModeH\ModeHCanonicalDigest.cs ^
+    ModeH\ModeHCommandAdapters.cs ^
     ModeH\ModeHCommandCompatibilityRegistry.cs ^
+    ModeH\ModeHCommandController.cs ^
     ModeH\ModeHConfig.cs ^
     ModeH\ModeHContentCatalog.cs ^
     ModeH\ModeHContentCatalogParsers.cs ^
