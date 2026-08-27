@@ -25,7 +25,9 @@ namespace BossRush
             // 先读静态 bool 快速早返，未激活时不建集合、不分配；
             // 激活后再做 staging preset/已登记 Character 引用身份 O(1) 查询。
             // 任何异常 fail-open=false（让原两个 handler 继续），绝不能打断宿主 OnDead。
-            if (IsModeGSuppressionArmed())
+            // Mode H 使用同形的引用身份查询（设计提案 §19.5）：clone preset 在创建调用之前登记，
+            // 角色引用在创建返回后补登记；命中后同样只跳过本 Mod 的两个额外掉落 handler。
+            if (IsModeGSuppressionArmed() || ModeHDeathSuppressionRegistry.IsSuppressionArmed)
             {
                 bool suppressed = false;
                 try
@@ -40,7 +42,8 @@ namespace BossRush
                         deadHealth = null;
                     }
 
-                    suppressed = ModeGRuntimeGates.IsModeGOnDeadSuppressionActive(deadHealth);
+                    suppressed = ModeGRuntimeGates.IsModeGOnDeadSuppressionActive(deadHealth)
+                        || ModeHDeathSuppressionRegistry.IsModeHOnDeadSuppressionActive(deadHealth);
                 }
                 catch (Exception suppressionQueryEx)
                 {
@@ -50,8 +53,9 @@ namespace BossRush
 
                 if (suppressed)
                 {
-                    // 命中 Mode G staging preset/已登记 Character 身份：
-                    // 整段跳过霜之哀伤与女巫镰刀两个额外掉落 handler
+                    // 命中 Mode G 或 Mode H 的 staging preset/已登记 Character 身份：
+                    // 整段跳过霜之哀伤与女巫镰刀两个额外掉落 handler；
+                    // 原版 CharacterMainControl.OnDead 与 Health.OnDead 继续执行
                     return;
                 }
             }

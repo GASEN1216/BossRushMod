@@ -69,10 +69,13 @@ def main():
             if symbol in code:
                 errors.append("[Legacy] {} 不得写入旧模式状态: {}".format(name, symbol))
 
-        # ActiveInput 必须判空 instance
+        # ActiveInput 不检查内部 instance：调用点必须自行判空。
+        # InputManager.instance 是私有静态成员，Mod 侧等价判空是 LevelManager.Instance.InputManager。
         if "InputManager.ActiveInput" in code:
-            if not re.search(r"InputManager\.instance != null", code):
-                errors.append("[Input] {} 调用 ActiveInput 前必须判空 InputManager.instance".format(name))
+            has_guard = (re.search(r"IsInputManagerAlive\(\)", code)
+                         and re.search(r"LevelManager\.Instance\.InputManager != null", code))
+            if not has_guard:
+                errors.append("[Input] {} 调用 ActiveInput 前必须判空 InputManager 实例".format(name))
 
     entry = read_text(os.path.join(MODEH_DIR, "ModeHEntry.cs"))
     if entry is None:

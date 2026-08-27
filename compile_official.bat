@@ -313,6 +313,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeG\ModeGHUD.cs ^
     ModeG\ModeGRecapPanel.cs ^
     ModeG\ModeGInteractable.cs ^
+    ModeH\ModeHArenaIsolationLease.cs ^
     ModeH\ModeHAvailability.cs ^
     ModeH\ModeHCanonicalDigest.cs ^
     ModeH\ModeHCommandCompatibilityRegistry.cs ^
@@ -320,6 +321,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHContentCatalog.cs ^
     ModeH\ModeHContentCatalogParsers.cs ^
     ModeH\ModeHContentModels.cs ^
+    ModeH\ModeHDeathSuppressionRegistry.cs ^
     ModeH\ModeHEntry.cs ^
     ModeH\ModeHHallOfFamePersistence.cs ^
     ModeH\ModeHInteractable.cs ^
@@ -327,6 +329,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHLoadoutKitRegistry.cs ^
     ModeH\ModeHMapSupportRegistry.cs ^
     ModeH\ModeHPresentationAssetCache.cs ^
+    ModeH\ModeHPresetRegistry.cs ^
+    ModeH\ModeHProductionCertification.cs ^
     ModeH\ModeHProfilePersistence.cs ^
     ModeH\ModeHProfileRegistry.cs ^
     ModeH\ModeHRunState.cs ^
@@ -334,6 +338,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHRuntimeModule.cs ^
     ModeH\ModeHSaveFlushCoordinator.cs ^
     ModeH\ModeHSeedStream.cs ^
+    ModeH\ModeHSpawnBridge.cs ^
+    ModeH\ModeHSpawnTransaction.cs ^
+    ModeH\ModeHSpectatorLease.cs ^
     ModeH\ModeHStateDtos.cs ^
     ModeH\ModeHStateMachine.cs ^
     ModeH\ModeHStateModel.cs ^

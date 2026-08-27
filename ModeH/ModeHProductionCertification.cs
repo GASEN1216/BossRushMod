@@ -1,0 +1,630 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace BossRush
+{
+    /// <summary>
+    /// Mode H 生产兼容性认证（设计提案 §17.2、§19.3、§25.1）。
+    ///
+    /// 冻结契约：
+    /// - 在正式入口内、取得 arena isolation 与 spectator lease 之后运行，不是独立技术样机；
+    /// - 每个 stable key 用同一审计 preset 的**两个独立 runtime clone**，一只 Teams.scav、
+    ///   一只 Teams.wolf，按“逐帧创建、双方隔离、双向 Team.IsEnemy、自然索敌、受控伤害 ping、
+    ///   逐只规范死亡、整批回收”固定顺序执行，因此不依赖另一个尚未认证的基准 key；
+    /// - 认证角色只登记到独立 diagnostic owner，禁止生成 ModeHFighterDownToken、伤病、
+    ///   战报、奖励或任何中途 Season 写入；
+    /// - 每 key 15 秒、全池 180 秒上限，超时条目标 Rejected 并继续下一条；
+    /// - 报告带 game/mod/content 三签名，按四签名缓存到 HallOfFame envelope；
+    ///   缓存只跳过耗时的逐 key 诊断，绝不跳过两个 lease 与地图点位审计。
+    /// </summary>
+    internal sealed class ModeHProductionCertification
+    {
+        #region 状态
+
+        private readonly Dictionary<string, ModeHPresetCertificationRecordDto> _records =
+            new Dictionary<string, ModeHPresetCertificationRecordDto>(StringComparer.Ordinal);
+
+        private readonly ModeHSpawnDiagnostics _diagnostics = new ModeHSpawnDiagnostics();
+
+        private ModeHProductionCertificationDto _report;
+        private bool _running;
+        private bool _cancelled;
+        private string _lastError;
+
+        /// <summary>诊断 owner 注册表：认证角色的事件只进认证记录，不进战斗遥测。</summary>
+        private static readonly HashSet<int> _diagnosticHealthIds = new HashSet<int>();
+
+        #endregion
+
+        #region 只读
+
+        /// <summary>当前 runtime 的认证报告（可能为 null）。</summary>
+        internal ModeHProductionCertificationDto Report { get { return _report; } }
+
+        /// <summary>认证是否正在运行。</summary>
+        internal bool IsRunning { get { return _running; } }
+
+        /// <summary>最后一次失败原因。</summary>
+        internal string LastError { get { return _lastError; } }
+
+        /// <summary>当前 runtime 是否已通过认证门槛。</summary>
+        internal bool IsCurrentRuntimePassed
+        {
+            get { return _report != null && _report.overallPassed; }
+        }
+
+        /// <summary>正式开战前 diagnostic registry 必须为空。</summary>
+        internal static bool IsDiagnosticRegistryEmpty
+        {
+            get { return _diagnosticHealthIds.Count == 0; }
+        }
+
+        /// <summary>该 Health 是否属于认证诊断批次（查询优先于战斗 participant registry）。</summary>
+        internal static bool IsDiagnosticHealth(Health health)
+        {
+            if (health == null) return false;
+            try
+            {
+                return _diagnosticHealthIds.Contains(health.GetInstanceID());
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region 缓存
+
+        /// <summary>
+        /// 按 (gameBuildSignature, modBuildSignature, contentCatalogSignature, slotGeneration)
+        /// 四元组命中缓存；命中且 overallPassed=true 时可跳过逐 key 诊断。
+        /// </summary>
+        internal bool TryUseCachedReport(int slotGeneration)
+        {
+            string game;
+            string mod;
+            string error;
+            if (!ModeHCanonicalDigest.TryGetGameBuildSignature(out game, out error)) return false;
+            if (!ModeHCanonicalDigest.TryGetModBuildSignature(out mod, out error)) return false;
+            string content = ModeHContentCatalog.ContentCatalogSignature;
+            if (string.IsNullOrEmpty(content)) return false;
+
+            ModeHProductionCertificationDto cached =
+                ModeHHallOfFamePersistence.TryGetCertificationCache(game, mod, content, slotGeneration);
+            if (cached == null) return false;
+
+            _report = cached;
+            ApplyReportToRegistries(cached);
+            ModBehaviour.DevLog("[ModeH] 生产认证缓存命中，跳过逐 key 诊断");
+            return true;
+        }
+
+        /// <summary>作废缓存（诊断页“强制重新认证”）。</summary>
+        internal static bool InvalidateCache(out string error)
+        {
+            return ModeHSaveFlushCoordinator.RequestCertificationCacheInvalidate(out error);
+        }
+
+        #endregion
+
+        #region 认证主流程
+
+        /// <summary>
+        /// 逐 key 运行认证。协程形式，受每 key 15 秒 / 全池 180 秒上限约束。
+        /// </summary>
+        internal IEnumerator Run(
+            IList<string> stableKeys,
+            ModeHSupportedMap map,
+            ModeHCertificationResult result)
+        {
+            if (result == null) yield break;
+            result.Completed = false;
+            result.Passed = false;
+
+            if (stableKeys == null || stableKeys.Count == 0 || map == null)
+            {
+                result.FailureReasonId = "certification_input_invalid";
+                yield break;
+            }
+
+            _running = true;
+            _cancelled = false;
+            _records.Clear();
+            _diagnosticHealthIds.Clear();
+
+            float poolDeadline = Time.realtimeSinceStartup + ModeHConfig.CertificationPoolTimeoutSeconds;
+
+            for (int i = 0; i < stableKeys.Count; i++)
+            {
+                if (_cancelled)
+                {
+                    result.FailureReasonId = "certification_cancelled";
+                    break;
+                }
+                if (Time.realtimeSinceStartup >= poolDeadline)
+                {
+                    // 全池超时：剩余条目一律标 Rejected，不静默通过
+                    for (int j = i; j < stableKeys.Count; j++)
+                    {
+                        RecordRejected(stableKeys[j], "certification_pool_timeout", 0);
+                    }
+                    break;
+                }
+
+                string stableKey = stableKeys[i];
+                ModeHCertificationKeyResult keyResult = new ModeHCertificationKeyResult();
+                yield return CertifyKey(stableKey, map, poolDeadline, keyResult);
+                if (!keyResult.Passed)
+                {
+                    ModBehaviour.DevLog("[ModeH] 认证拒绝 " + stableKey + ": " + keyResult.FailureReasonId);
+                }
+            }
+
+            _running = false;
+            _report = BuildReport();
+            ApplyReportToRegistries(_report);
+
+            result.Completed = true;
+            result.Passed = _report != null && _report.overallPassed;
+            result.Report = _report;
+            if (!result.Passed && string.IsNullOrEmpty(result.FailureReasonId))
+            {
+                result.FailureReasonId = "certification_threshold_not_met";
+            }
+            yield break;
+        }
+
+        /// <summary>取消当前认证批次（离场、技术中止、场景切换）。</summary>
+        internal void Cancel()
+        {
+            _cancelled = true;
+            _diagnosticHealthIds.Clear();
+        }
+
+        private IEnumerator CertifyKey(
+            string stableKey, ModeHSupportedMap map, float poolDeadline, ModeHCertificationKeyResult result)
+        {
+            float keyStart = Time.realtimeSinceStartup;
+            float keyDeadline = Mathf.Min(
+                keyStart + ModeHConfig.CertificationPerKeyTimeoutSeconds, poolDeadline);
+
+            CharacterRandomPreset audited = ResolveAuditedPreset(stableKey);
+            if (audited == null)
+            {
+                RecordRejected(stableKey, "certification_preset_unavailable", ElapsedMs(keyStart));
+                result.FailureReasonId = "certification_preset_unavailable";
+                yield break;
+            }
+
+            string auditFailure;
+            if (!PassesStaticAudit(audited, out auditFailure))
+            {
+                RecordRejected(stableKey, auditFailure, ElapsedMs(keyStart));
+                result.FailureReasonId = auditFailure;
+                yield break;
+            }
+
+            ModeHSpawnHandle scavHandle = null;
+            ModeHSpawnHandle wolfHandle = null;
+            string failure = null;
+
+            // 逐帧创建两个独立 clone：一只 scav、一只 wolf
+            Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> scavTask =
+                ModeHSpawnBridge.CreateIsolatedAsync(audited, stableKey, Teams.scav, map.StagingPos, _diagnostics);
+            while (scavTask.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
+            {
+                if (Time.realtimeSinceStartup >= keyDeadline) break;
+                yield return null;
+            }
+            try { scavHandle = scavTask.GetAwaiter().GetResult(); }
+            catch (Exception e) { failure = "certification_scav_create:" + e.GetType().Name; }
+
+            if (failure == null && scavHandle == null) failure = "certification_scav_create_null";
+            if (failure == null && _diagnostics.HasWindowSideEffects())
+            {
+                failure = "certification_scav_window_side_effect";
+            }
+
+            if (failure == null)
+            {
+                yield return null;
+                Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> wolfTask =
+                    ModeHSpawnBridge.CreateIsolatedAsync(audited, stableKey, Teams.wolf, map.StagingPos, _diagnostics);
+                while (wolfTask.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
+                {
+                    if (Time.realtimeSinceStartup >= keyDeadline) break;
+                    yield return null;
+                }
+                try { wolfHandle = wolfTask.GetAwaiter().GetResult(); }
+                catch (Exception e) { failure = "certification_wolf_create:" + e.GetType().Name; }
+
+                if (failure == null && wolfHandle == null) failure = "certification_wolf_create_null";
+                if (failure == null && _diagnostics.HasWindowSideEffects())
+                {
+                    failure = "certification_wolf_window_side_effect";
+                }
+            }
+
+            // 登记诊断 owner：这些角色的事件只进认证记录
+            if (failure == null)
+            {
+                RegisterDiagnostic(scavHandle);
+                RegisterDiagnostic(wolfHandle);
+            }
+
+            // 下一帧核对阵营稳定与双向敌对
+            if (failure == null)
+            {
+                yield return null;
+                if (scavHandle.Character == null || wolfHandle.Character == null)
+                {
+                    failure = "certification_handle_lost";
+                }
+                else if (scavHandle.Character.Team != Teams.scav || wolfHandle.Character.Team != Teams.wolf)
+                {
+                    failure = "certification_team_drift";
+                }
+                else if (!Team.IsEnemy(Teams.scav, Teams.wolf) || !Team.IsEnemy(Teams.wolf, Teams.scav))
+                {
+                    failure = "certification_team_enemy_rule";
+                }
+            }
+
+            // 受控伤害 ping + 规范死亡（无战利品）
+            if (failure == null)
+            {
+                if (!TryControlledKill(wolfHandle, out failure))
+                {
+                    // failure 已填
+                }
+                else
+                {
+                    yield return null;
+                }
+            }
+
+            int durationMs = ElapsedMs(keyStart);
+            if (failure == null && Time.realtimeSinceStartup >= keyDeadline)
+            {
+                failure = "certification_key_timeout";
+            }
+
+            // 整批回收
+            UnregisterDiagnostic(scavHandle);
+            UnregisterDiagnostic(wolfHandle);
+            ModeHSpawnBridge.Recycle(wolfHandle);
+            ModeHSpawnBridge.Recycle(scavHandle);
+
+            if (failure != null)
+            {
+                RecordRejected(stableKey, failure, durationMs);
+                result.FailureReasonId = failure;
+                yield break;
+            }
+
+            RecordPassed(stableKey, durationMs);
+            result.Passed = true;
+        }
+
+        private bool TryControlledKill(ModeHSpawnHandle handle, out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (handle == null || handle.Character == null || handle.Health == null)
+            {
+                failureReasonId = "certification_kill_handle_invalid";
+                return false;
+            }
+            try
+            {
+                // 认证角色仍处于隔离态：先解除无敌，再用 SetHealth 归零走原版死亡路径。
+                handle.Health.SetInvincible(false);
+                handle.Health.SetHealth(0f);
+                return true;
+            }
+            catch (Exception e)
+            {
+                failureReasonId = "certification_kill_failed:" + e.GetType().Name;
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region 审计与记录
+
+        /// <summary>按 stable key 回查原版审计 preset。</summary>
+        internal static CharacterRandomPreset ResolveAuditedPreset(string stableKey)
+        {
+            if (string.IsNullOrEmpty(stableKey)) return null;
+            try
+            {
+                CharacterRandomPreset[] presets = ObjectCache.GetCharacterPresets();
+                if (presets == null) return null;
+                for (int i = 0; i < presets.Length; i++)
+                {
+                    CharacterRandomPreset preset = presets[i];
+                    if (preset == null) continue;
+                    if (string.Equals(preset.nameKey, stableKey, StringComparison.Ordinal)) return preset;
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 静态资格审计（§17.2）：EnemyPresetInfo 字段有限，不能单独作为资格判断，
+        /// 必须回查原版 CharacterRandomPreset。
+        /// </summary>
+        internal static bool PassesStaticAudit(CharacterRandomPreset preset, out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (preset == null)
+            {
+                failureReasonId = "audit_preset_null";
+                return false;
+            }
+            try
+            {
+                if (!preset.isBoss)
+                {
+                    failureReasonId = "audit_not_boss";
+                    return false;
+                }
+                if (preset.team == Teams.player || preset.team == Teams.middle)
+                {
+                    failureReasonId = "audit_team_forbidden";
+                    return false;
+                }
+                if (preset.isVehicle)
+                {
+                    failureReasonId = "audit_is_vehicle";
+                    return false;
+                }
+                if (!preset.showName)
+                {
+                    failureReasonId = "audit_no_show_name";
+                    return false;
+                }
+                if (!preset.canDieIfNotRaidMap)
+                {
+                    failureReasonId = "audit_cannot_die";
+                    return false;
+                }
+                if (preset.specialAttachmentBases != null && preset.specialAttachmentBases.Count > 0)
+                {
+                    failureReasonId = "audit_special_attachments";
+                    return false;
+                }
+                if (ModeHProfileRegistry.IsExcludedStableKey(preset.nameKey))
+                {
+                    failureReasonId = "audit_excluded_key";
+                    return false;
+                }
+                if (string.IsNullOrEmpty(preset.nameKey) || preset.nameKey.Contains("(Clone)"))
+                {
+                    failureReasonId = "audit_invalid_key";
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                failureReasonId = "audit_exception:" + e.GetType().Name;
+                return false;
+            }
+        }
+
+        private void RegisterDiagnostic(ModeHSpawnHandle handle)
+        {
+            if (handle == null || handle.Health == null) return;
+            try { _diagnosticHealthIds.Add(handle.Health.GetInstanceID()); }
+            catch (Exception)
+            {
+                // 登记失败时该角色的事件会落到普通过滤路径，仍不会进入战斗结算
+            }
+        }
+
+        private void UnregisterDiagnostic(ModeHSpawnHandle handle)
+        {
+            if (handle == null || handle.Health == null) return;
+            try { _diagnosticHealthIds.Remove(handle.Health.GetInstanceID()); }
+            catch (Exception)
+            {
+                // 同上
+            }
+        }
+
+        private static int ElapsedMs(float start)
+        {
+            return Mathf.Max(0, Mathf.RoundToInt((Time.realtimeSinceStartup - start) * 1000f));
+        }
+
+        private void RecordPassed(string stableKey, int durationMs)
+        {
+            ModeHPresetCertificationRecordDto record = new ModeHPresetCertificationRecordDto();
+            record.stableKey = stableKey;
+            record.status = (int)ModeHCertificationStatus.Passed;
+            record.failureReasonIds = new List<string>();
+            record.commandStatuses = BuildCommandStatuses(stableKey);
+            record.spawnTimelineDigest = string.Empty;
+            record.durationMs = durationMs;
+            _records[stableKey] = record;
+        }
+
+        private void RecordRejected(string stableKey, string failureReasonId, int durationMs)
+        {
+            ModeHPresetCertificationRecordDto record = new ModeHPresetCertificationRecordDto();
+            record.stableKey = stableKey;
+            record.status = (int)ModeHCertificationStatus.Rejected;
+            record.failureReasonIds = new List<string>();
+            if (!string.IsNullOrEmpty(failureReasonId)) record.failureReasonIds.Add(failureReasonId);
+            List<string> extra = _diagnostics.GetFailures(stableKey);
+            for (int i = 0; i < extra.Count; i++)
+            {
+                if (!record.failureReasonIds.Contains(extra[i])) record.failureReasonIds.Add(extra[i]);
+            }
+            record.commandStatuses = new List<ModeHCommandCertificationStatusDto>();
+            record.spawnTimelineDigest = string.Empty;
+            record.durationMs = durationMs;
+            _records[stableKey] = record;
+        }
+
+        private List<ModeHCommandCertificationStatusDto> BuildCommandStatuses(string stableKey)
+        {
+            List<ModeHCommandCertificationStatusDto> statuses =
+                new List<ModeHCommandCertificationStatusDto>();
+            for (int i = 0; i < ModeHStableIds.AllCommonCommands.Length; i++)
+            {
+                string commandId = ModeHStableIds.AllCommonCommands[i];
+                ModeHCommandCertificationStatusDto dto = new ModeHCommandCertificationStatusDto();
+                dto.commandId = commandId;
+                dto.status = (int)ModeHCommandCompatibilityRegistry.GetCommandStatus(stableKey, commandId);
+                dto.effectStatuses = new List<ModeHBehaviorStatusDto>();
+                List<string> effectIds = ModeHCommandCompatibilityRegistry.GetEffectIds(commandId);
+                if (effectIds != null)
+                {
+                    for (int j = 0; j < effectIds.Count; j++)
+                    {
+                        ModeHBehaviorStatusDto effect = new ModeHBehaviorStatusDto();
+                        effect.entryId = effectIds[j];
+                        effect.entryKind = "effect";
+                        effect.status = (int)ModeHCommandCompatibilityRegistry.GetEffectStatus(
+                            stableKey, effectIds[j]);
+                        dto.effectStatuses.Add(effect);
+                    }
+                }
+                statuses.Add(dto);
+            }
+            return statuses;
+        }
+
+        private ModeHProductionCertificationDto BuildReport()
+        {
+            ModeHProductionCertificationDto report = new ModeHProductionCertificationDto();
+            report.certificationSchemaVersion = ModeHConfig.CurrentCertificationSchemaVersion;
+
+            string game;
+            string mod;
+            string error;
+            ModeHCanonicalDigest.TryGetGameBuildSignature(out game, out error);
+            ModeHCanonicalDigest.TryGetModBuildSignature(out mod, out error);
+            report.gameBuildSignature = game;
+            report.modBuildSignature = mod;
+            report.contentCatalogSignature = ModeHContentCatalog.ContentCatalogSignature;
+            report.completedUtc = DateTime.UtcNow.ToString("O");
+
+            List<ModeHPresetCertificationRecordDto> records =
+                new List<ModeHPresetCertificationRecordDto>(_records.Values);
+            records.Sort(delegate (ModeHPresetCertificationRecordDto a, ModeHPresetCertificationRecordDto b)
+            {
+                return string.CompareOrdinal(a.stableKey, b.stableKey);
+            });
+            report.records = records;
+
+            List<string> passed = new List<string>();
+            for (int i = 0; i < records.Count; i++)
+            {
+                if (records[i].status == (int)ModeHCertificationStatus.Passed)
+                {
+                    passed.Add(records[i].stableKey);
+                }
+            }
+            passed.Sort(StringComparer.Ordinal);
+            report.passedStableKeys = passed;
+
+            // 全池均可用的通用口令
+            List<string> commonVerified = new List<string>();
+            for (int i = 0; i < ModeHStableIds.AllCommonCommands.Length; i++)
+            {
+                string commandId = ModeHStableIds.AllCommonCommands[i];
+                bool allUsable = passed.Count > 0;
+                for (int j = 0; j < passed.Count; j++)
+                {
+                    if (!ModeHCommandCompatibilityRegistry.IsCommandSelectable(passed[j], commandId))
+                    {
+                        allUsable = false;
+                        break;
+                    }
+                }
+                if (allUsable) commonVerified.Add(commandId);
+            }
+            commonVerified.Sort(StringComparer.Ordinal);
+            report.commonVerifiedCommandIds = commonVerified;
+
+            report.overallPassed = EvaluateThreshold(passed);
+            return report;
+        }
+
+        /// <summary>
+        /// 门槛：至少 8 个 key 通过、五种原型可覆盖，且每个通过 key 至少 3 条可用通用口令。
+        /// </summary>
+        private bool EvaluateThreshold(List<string> passedKeys)
+        {
+            if (passedKeys == null || passedKeys.Count < ModeHConfig.MinProductionCandidateCount)
+            {
+                _lastError = "certification_passed_below_min";
+                return false;
+            }
+
+            HashSet<string> archetypes = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < passedKeys.Count; i++)
+            {
+                ModeHProfileTemplate template = ModeHProfileRegistry.GetByStableKey(passedKeys[i]);
+                if (template != null) archetypes.Add(template.ArchetypeId);
+
+                if (!ModeHCommandCompatibilityRegistry.MeetsCommandGate(passedKeys[i]))
+                {
+                    _lastError = "certification_command_gate:" + passedKeys[i];
+                    return false;
+                }
+            }
+            if (archetypes.Count < ModeHConfig.RequiredArchetypeCoverage)
+            {
+                _lastError = "certification_archetype_coverage";
+                return false;
+            }
+
+            _lastError = null;
+            return true;
+        }
+
+        private void ApplyReportToRegistries(ModeHProductionCertificationDto report)
+        {
+            if (report == null) return;
+            ModeHCommandCompatibilityRegistry.BindBuildSignature(
+                report.gameBuildSignature, report.modBuildSignature, report.contentCatalogSignature);
+            ModeHPresetRegistry.MaterializeFromReport(report);
+        }
+
+        #endregion
+    }
+
+    /// <summary>认证批次结果（协程载体）。</summary>
+    internal sealed class ModeHCertificationResult
+    {
+        /// <summary>是否跑完。</summary>
+        public bool Completed;
+        /// <summary>是否达到门槛。</summary>
+        public bool Passed;
+        /// <summary>失败原因。</summary>
+        public string FailureReasonId;
+        /// <summary>本次报告。</summary>
+        public ModeHProductionCertificationDto Report;
+    }
+
+    /// <summary>单个 key 的认证结果（协程载体）。</summary>
+    internal sealed class ModeHCertificationKeyResult
+    {
+        /// <summary>是否通过。</summary>
+        public bool Passed;
+        /// <summary>失败原因。</summary>
+        public string FailureReasonId;
+    }
+}

@@ -11,8 +11,15 @@ ModeHPresetEligibilityGuard — Mode H 选手资格与生产目录守卫（设�
 - 硬排除名单包含 managed Boss、特殊无名预设与 Character_Ming；
 - ModeHProfileRegistry 执行上述审计并 fail-closed。
 
-运行时认证不变式（逐 key 诊断、四签名缓存、EnemyPresetInfo 不得当完整资格、
-生产 registry 只物化 Passed key、无独立样机入口）在实现生成桥与生产认证后由本文件继续断言。
+运行时认证不变式：
+- 逐 key 用同一审计 preset 的两个独立 clone（scav/wolf）做双向敌对与规范死亡诊断；
+- 报告带 game/mod/content 三签名，按四签名缓存并命中才跳过逐 key 诊断；
+- 缓存不得跳过 arena isolation lease、spectator lease 与地图点位审计；
+- 存在“强制重新认证”入口；
+- isBoss/team/vehicle/showName/canDie/附件/managed key 过滤存在，
+  EnemyPresetInfo 未被当作完整资格；
+- 生产 registry 只物化当前 runtime Passed key；
+- 除编译期 dev harness 外不存在独立样机入口。
 """
 import io
 import json
@@ -24,10 +31,14 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
 from modeh_canonical_json import content_signature  # noqa: E402
-from modeh_guard_util import read_text  # noqa: E402
+from modeh_guard_util import read_text, strip_cs_comments  # noqa: E402
 
 PROFILES_JSON = os.path.join(REPO_ROOT, "Assets", "Data", "ModeH", "BossProfiles.json")
 PROFILE_REGISTRY = os.path.join(REPO_ROOT, "ModeH", "ModeHProfileRegistry.cs")
+CERTIFICATION = os.path.join(REPO_ROOT, "ModeH", "ModeHProductionCertification.cs")
+PRESET_REGISTRY = os.path.join(REPO_ROOT, "ModeH", "ModeHPresetRegistry.cs")
+AVAILABILITY = os.path.join(REPO_ROOT, "ModeH", "ModeHAvailability.cs")
+MODEH_DIR = os.path.join(REPO_ROOT, "ModeH")
 CONFIG = os.path.join(REPO_ROOT, "ModeH", "ModeHConfig.cs")
 
 ARCHETYPES = ["assault", "finisher", "ranged", "sustain", "tank"]
@@ -175,6 +186,73 @@ def main():
             errors.append("[Config] 逐 key 认证上限未冻结为 15 秒")
         if not re.search(r"public const float CertificationPoolTimeoutSeconds = 180f;", config):
             errors.append("[Config] 全池认证上限未冻结为 180 秒")
+
+    certification = read_text(CERTIFICATION)
+    if certification is None:
+        errors.append("[File] 缺少 ModeH/ModeHProductionCertification.cs")
+    else:
+        ccode = strip_cs_comments(certification)
+        cert_checks = [
+            (r"Teams\.scav, map\.StagingPos", "scav clone 在 staging 创建"),
+            (r"Teams\.wolf, map\.StagingPos", "wolf clone 在 staging 创建"),
+            (r"Team\.IsEnemy\(Teams\.scav, Teams\.wolf\)", "双向敌对核对"),
+            (r"certification_team_drift", "下一帧阵营稳定核对"),
+            (r"handle\.Health\.SetHealth\(0f\)", "受控规范死亡"),
+            (r"CertificationPerKeyTimeoutSeconds", "逐 key 15 秒上限"),
+            (r"CertificationPoolTimeoutSeconds", "全池 180 秒上限"),
+            (r"certification_pool_timeout", "全池超时条目标 Rejected"),
+            (r"TryUseCachedReport\(int slotGeneration\)", "四签名缓存命中入口"),
+            (r"TryGetCertificationCache\(game, mod, content, slotGeneration\)", "四签名键控"),
+            (r"internal static bool InvalidateCache\(out string error\)", "强制重新认证入口"),
+            (r"PassesStaticAudit\(CharacterRandomPreset preset, out string failureReasonId\)",
+             "回查原版 preset 做资格审计"),
+            (r"audit_not_boss", "isBoss 过滤"),
+            (r"audit_team_forbidden", "team 过滤"),
+            (r"audit_is_vehicle", "载具过滤"),
+            (r"audit_cannot_die", "非 Raid 图可死亡过滤"),
+            (r"audit_special_attachments", "特殊附件过滤"),
+            (r"audit_excluded_key", "managed / 排除 key 过滤"),
+            (r"IsDiagnosticRegistryEmpty", "正式开战前 diagnostic registry 为空"),
+        ]
+        for pattern, desc in cert_checks:
+            if not re.search(pattern, ccode):
+                errors.append("[Certification] 不满足: " + desc)
+
+        # 缓存只跳过逐 key 诊断：不得出现跳过 lease/点位审计的分支
+        for forbidden in ["SkipIsolationLease", "SkipSpectatorLease", "SkipMapAudit"]:
+            if forbidden in ccode:
+                errors.append("[Certification] 缓存不得跳过: " + forbidden)
+
+        # EnemyPresetInfo 不得单独作为资格判断
+        if "EnemyPresetInfo" in ccode:
+            errors.append("[Certification] 不得用 EnemyPresetInfo 判定资格，必须回查 CharacterRandomPreset")
+
+    preset_registry = read_text(PRESET_REGISTRY)
+    if preset_registry is None:
+        errors.append("[File] 缺少 ModeH/ModeHPresetRegistry.cs")
+    else:
+        pcode = strip_cs_comments(preset_registry)
+        if not re.search(r"record\.status != \(int\)ModeHCertificationStatus\.Passed", pcode):
+            errors.append("[PresetRegistry] 只能物化 Passed key")
+        if not re.search(r"template == null \|\| !template\.ProductionCandidate", pcode):
+            errors.append("[PresetRegistry] 必须同时满足静态签名目录")
+        if not re.search(r"if \(!IsProductionKey\(stableKey\)\) return null;", pcode):
+            errors.append("[PresetRegistry] 不在生产池的 key 不得取到 preset")
+
+    availability = read_text(AVAILABILITY)
+    if availability is not None:
+        acode = strip_cs_comments(availability)
+        if not re.search(r"public const bool AllowDevControlPointHarness = false;", acode):
+            errors.append("[Harness] 编译期 harness 门必须恒 false")
+
+    # 除编译期 harness 外不得存在独立样机入口
+    for name in sorted(os.listdir(MODEH_DIR)):
+        if not name.endswith(".cs"):
+            continue
+        c = strip_cs_comments(read_text(os.path.join(MODEH_DIR, name)) or "")
+        for forbidden in ["AllowDevTestEntry", "TryStartModeHPrototype", "ModeHSandbox"]:
+            if forbidden in c:
+                errors.append("[Prototype] {} 不得提供独立样机入口: {}".format(name, forbidden))
 
     if errors:
         print("ModeHPresetEligibilityGuard: FAIL ({} errors)".format(len(errors)))

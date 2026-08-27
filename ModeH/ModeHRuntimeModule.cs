@@ -325,6 +325,8 @@ namespace BossRush
             ModeHPresentationAssetCache.ResetStaticCaches();
             ModeHCanonicalDigest.ResetStaticCaches();
             ModeHStateMachine.ResetStaticCaches();
+            ModeHPresetRegistry.ResetStaticCaches();
+            ModeHDeathSuppressionRegistry.ResetStaticCaches();
         }
 
         private static void LogFailure(string stage, Exception e)
