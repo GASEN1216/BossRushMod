@@ -84,10 +84,26 @@ CR-YYYY-MM-DD-NNN
 compile_official.bat
 ```
 
-相关 guard：
+相关 guard（聚合 runner，全量跑不中断并汇总失败清单）：
 
 ```cmd
-for %f in (tests\*.py) do python %f
+run_guards.bat
 ```
 
-或只跑相关脚本。运行时项必须写明是否已人工进游戏 smoke；未 smoke 不得写成已验证。
+只跑与本次改动相关的：
+
+```cmd
+run_guards.bat --changed-only
+```
+
+不要再用 `for %f in (tests\*.py) do python %f`——它不聚合结果，仓库存在既有红项时会误判为已通过。
+已知红项登记在 `tests\known_red_guards.txt`。
+
+本机没装游戏、跑不了 `compile_official.bat` 时，至少做语法层探针（**不等于编译通过**）：
+
+```cmd
+verify_syntax.bat --with-bcl
+```
+
+运行时项必须写明是否已人工进游戏 smoke；未 smoke 不得写成已验证；
+只过了语法探针的必须写成「语法通过，未正式编译」。
