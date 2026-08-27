@@ -27,7 +27,7 @@ namespace BossRush
     public static class NPCMarriageSystem
     {
         private const float MARRIAGE_VIDEO_TIMEOUT_SECONDS = 120f;
-        private const int MARRIAGE_VIDEO_CANVAS_ORDER = 32000;
+        private const int MARRIAGE_VIDEO_CANVAS_ORDER = BossRushUILayers.WeddingCutscene;
         private const float DIVORCE_RELOCATE_DELAY_SECONDS = 2.8f;
         private static GameObject marriageVideoInputToken;
         private static bool marriageVideoInputLocked = false;

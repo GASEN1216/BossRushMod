@@ -97,13 +97,10 @@ namespace BossRush
 
             Canvas canvas = uiRoot.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 1000;  // 确保在最上层
+            canvas.sortingOrder = BossRushUILayers.Modal;
 
             CanvasScaler scaler = uiRoot.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
+            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
             uiRoot.AddComponent<GraphicRaycaster>();
 

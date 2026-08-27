@@ -626,10 +626,7 @@ namespace BossRush
                 return;
             }
 
-            // Boss 池配置窗口现在使用 Unity UI Canvas 实现，不再需要 OnGUI
-
-            // 绘制变异词条 UI
-            MutatorUI.DrawGUI();
+            // Boss 池配置窗口与变异词条 UI 现在都走 Unity UI Canvas，不再需要 OnGUI
 
             DrawDebugToolsRuntimeGui();
         }
@@ -651,6 +648,9 @@ namespace BossRush
             }
 
             runtimeModuleHost.OnUpdate(Time.deltaTime, Time.unscaledDeltaTime);
+
+            // 变异词条 overlay：uGUI 实现，按帧维护可见性与悬停详情。
+            MutatorUI.Tick();
 
             // 龙套装冲刺检测
             TickEquipmentAbilityRuntime();
@@ -775,6 +775,7 @@ namespace BossRush
             SafeRuntime.Run("BossRushAchievementManager.ResetStaticCaches", () => BossRushAchievementManager.ResetStaticCaches());
             SafeRuntime.Run("AchievementIconLoader.ResetStaticCaches", () => AchievementIconLoader.ResetStaticCaches());
             SafeRuntime.Run("BossRushUI.ResetStaticCaches", () => BossRushUI.ResetStaticCaches());
+            SafeRuntime.Run("MutatorUI.ResetStaticCaches", () => MutatorUI.ResetStaticCaches());
 
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();

@@ -137,7 +137,7 @@ namespace BossRush
             Canvas canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             // 比 MapSelectionView 高一层，但避免压住游戏顶层错误提示。
-            canvas.sortingOrder = 30100;
+            canvas.sortingOrder = BossRushUILayers.ZombieModalInput;
             CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();

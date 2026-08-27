@@ -28,12 +28,10 @@ namespace BossRush
                 f3DebugCheatMenuRoot = new GameObject("F3DebugCheatMenu");
                 Canvas canvas = f3DebugCheatMenuRoot.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = 1001;
+                canvas.sortingOrder = BossRushUILayers.Modal;
 
                 CanvasScaler scaler = f3DebugCheatMenuRoot.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920f, 1080f);
-                scaler.matchWidthOrHeight = 0.5f;
+                ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
                 f3DebugCheatMenuRoot.AddComponent<GraphicRaycaster>();
 

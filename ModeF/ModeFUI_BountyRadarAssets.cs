@@ -93,27 +93,6 @@ namespace BossRush
             return modeFBountyRadarArrowSprite;
         }
 
-        private static Sprite GetModeFBountyRadarPanelSprite()
-        {
-            if (modeFBountyRadarPanelSprite != null)
-            {
-                return modeFBountyRadarPanelSprite;
-            }
-
-            Texture2D texture = new Texture2D(2, 2, TextureFormat.ARGB32, false);
-            texture.SetPixel(0, 0, Color.white);
-            texture.SetPixel(1, 0, Color.white);
-            texture.SetPixel(0, 1, Color.white);
-            texture.SetPixel(1, 1, Color.white);
-            texture.Apply();
-            modeFBountyRadarPanelSprite = Sprite.Create(
-                texture,
-                new Rect(0f, 0f, texture.width, texture.height),
-                new Vector2(0.5f, 0.5f),
-                texture.width);
-            return modeFBountyRadarPanelSprite;
-        }
-
         private static Sprite CreateModeFBountyRadarSprite(Color fillColor, Color ringColor, float fillRadius, float ringRadius)
         {
             const int textureSize = 128;

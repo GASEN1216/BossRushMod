@@ -75,7 +75,7 @@ namespace BossRush
         private const float BASE_INPUT_HEIGHT = 186f;
         private const float MIN_INPUT_HEIGHT = 100f;
         private const float FIXED_CONTENT_HEIGHT = 466f;
-        private const int HOST_TOPMOST_SORTING_ORDER = 1100;
+        private const int HOST_TOPMOST_SORTING_ORDER = BossRushUILayers.HudOverlay;
 
         public static WishFountainView CreateRuntime(Transform parent)
         {
@@ -392,6 +392,7 @@ namespace BossRush
             panelFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
 
             Image panelImage = panel.GetComponent<Image>();
+            BossRushUI.ApplyPanelSkin(panelImage, 14);
             panelImage.color = new Color(0.07f, 0.1f, 0.17f, 0.98f);
 
             Shadow panelShadow = panel.GetComponent<Shadow>();
@@ -434,6 +435,7 @@ namespace BossRush
             GameObject contentCard = CreateUIObject("ContentCard", panelRect, typeof(Image), typeof(VerticalLayoutGroup));
             RectTransform contentCardRect = contentCard.GetComponent<RectTransform>();
             Image contentCardImage = contentCard.GetComponent<Image>();
+            BossRushUI.ApplyPanelSkin(contentCardImage, 10);
             contentCardImage.color = new Color(0.09f, 0.13f, 0.22f, 0.98f);
             VerticalLayoutGroup contentCardLayout = contentCard.GetComponent<VerticalLayoutGroup>();
             contentCardLayout.padding = new RectOffset(20, 20, 16, 16);
@@ -1278,21 +1280,18 @@ namespace BossRush
             SetPreferredHeight(rect, height);
 
             Image image = root.GetComponent<Image>();
+            BossRushUI.ApplyPanelSkin(image, 6);
             image.color = primary
                 ? new Color(0.22f, 0.53f, 0.76f, 1f)
                 : new Color(0.16f, 0.19f, 0.27f, 1f);
 
+            // 按钮态走共享实现（pressed 由 normal 推导），不再自己拼 ColorBlock。
             Button button = root.GetComponent<Button>();
-            ColorBlock colors = button.colors;
-            colors.normalColor = image.color;
-            colors.highlightedColor = primary
-                ? new Color(0.28f, 0.61f, 0.86f, 1f)
-                : new Color(0.22f, 0.26f, 0.35f, 1f);
-            colors.pressedColor = primary
-                ? new Color(0.16f, 0.44f, 0.66f, 1f)
-                : new Color(0.11f, 0.14f, 0.2f, 1f);
-            colors.disabledColor = new Color(0.11f, 0.13f, 0.17f, 0.9f);
-            button.colors = colors;
+            ZombieModeUIHelper.ApplyButtonColors(
+                button,
+                image.color,
+                primary ? new Color(0.28f, 0.61f, 0.86f, 1f) : new Color(0.22f, 0.26f, 0.35f, 1f),
+                new Color(0.11f, 0.13f, 0.17f, 0.9f));
 
             label = CreateText("Text", rect, font, 20, FontStyles.Bold, TextAlignmentOptions.Center);
             StretchRect(label.rectTransform);

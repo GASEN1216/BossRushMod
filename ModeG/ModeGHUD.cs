@@ -85,7 +85,7 @@ namespace BossRush
         /// <summary>刷新间隔（4Hz 上限，规格 §15/§17 冻结）</summary>
         private const float RefreshIntervalSeconds = 0.25f;
         private const string RootName = "ModeG_Hud";
-        private const int CanvasSortOrder = 900;
+        private const int CanvasSortOrder = BossRushUILayers.ModeGHud;
 
         private readonly ModeGRuntimeModule _module;
         private readonly StringBuilder _builder = new StringBuilder(256);

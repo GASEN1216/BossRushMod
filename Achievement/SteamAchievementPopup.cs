@@ -34,12 +34,12 @@ namespace BossRush
         private const float MARGIN_BOTTOM = 10f;
 
         // ========== 颜色常量 ==========
-        private static readonly Color FRAME_COLOR_STANDARD = new Color32(210, 195, 170, 255);  // 米色边框
-        private static readonly Color FRAME_COLOR_RARE = new Color32(220, 200, 160, 255);      // 金米色边框（稀有）
-        private static readonly Color TITLE_COLOR = new Color32(235, 235, 235, 255);           // 标题白色
-        private static readonly Color DESC_COLOR = new Color32(185, 185, 185, 255);            // 描述灰色
-        private static readonly Color BG_COLOR = new Color32(22, 25, 29, 245);                 // 背景深灰色
-        private static readonly Color INNER_BG_COLOR = new Color32(30, 30, 35, 255);           // 图标内部背景
+        private static readonly Color FRAME_COLOR_STANDARD = BossRushUIColors.Divider;          // 统一分隔线色
+        private static readonly Color FRAME_COLOR_RARE = BossRushUIColors.RarityLegendary;     // 稀有：传说金
+        private static readonly Color TITLE_COLOR = BossRushUIColors.TextPrimary;              // 统一主文本色
+        private static readonly Color DESC_COLOR = BossRushUIColors.TextSecondary;             // 统一次文本色
+        private static readonly Color BG_COLOR = BossRushUIColors.Surface;                     // 统一面板底色
+        private static readonly Color INNER_BG_COLOR = BossRushUIColors.SurfaceRaised;         // 统一抬升面色
 
         // ========== 动画常量 ==========
         private const float SLIDE_IN_DURATION = 0.5f;
@@ -165,7 +165,7 @@ namespace BossRush
 
             sharedCanvas = canvasObj.AddComponent<Canvas>();
             sharedCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            sharedCanvas.sortingOrder = 1000;
+            sharedCanvas.sortingOrder = BossRushUILayers.Toast;
 
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;

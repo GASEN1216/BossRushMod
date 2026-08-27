@@ -597,7 +597,8 @@ namespace BossRush
             distanceRect.sizeDelta = leaderStyle ? new Vector2(70f, 20f) : new Vector2(62f, 18f);
 
             Image distanceBackground = distanceObject.GetComponent<Image>();
-            distanceBackground.sprite = GetModeFBountyRadarPanelSprite();
+            // 距离底板从 2x2 纯白硬边换成共享圆角九宫格，和其余界面同一套观感。
+            BossRushUI.ApplyPanelSkin(distanceBackground, 6);
             distanceBackground.color = ModeFBountyRadarDistancePanelColor;
             distanceBackground.raycastTarget = false;
 

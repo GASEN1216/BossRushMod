@@ -72,7 +72,7 @@ namespace BossRush
         {
             Canvas canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 30000;
+            canvas.sortingOrder = BossRushUILayers.ZombieModal;
             CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
@@ -334,12 +334,16 @@ namespace BossRush
             cardImage.color = RewardCardColor;
             BossRushUI.ApplyPanelSkin(cardImage, 10);
 
-            // ── 顶部高亮条 ──
+            // ── 左侧类别强调条 ──
+            // 颜色按奖励类别分级，让玩家一眼分清属性 / 装备 / 带代价的契约。
+            Color accentColor = owner != null
+                ? owner.GetZombieModeRewardAccentColor(rewardType)
+                : RewardCardAccentColor;
             GameObject sideAccent = ZombieModeUIHelper.CreateRect("SideAccent", card.transform,
                 new Vector2(0f, 0.18f), new Vector2(0f, 0.82f),
                 new Vector2(2f, 0f), new Vector2(4f, 0f), new Vector2(0f, 0.5f));
             Image sideAccentImage = sideAccent.AddComponent<Image>();
-            sideAccentImage.color = RewardCardAccentColor;
+            sideAccentImage.color = accentColor;
             BossRushUI.ApplyPanelSkin(sideAccentImage, 2);
             sideAccentImage.raycastTarget = false;
 
@@ -543,7 +547,7 @@ namespace BossRush
                 canvas = gameObject.AddComponent<Canvas>();
             }
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 30500;
+            canvas.sortingOrder = BossRushUILayers.ZombieService;
             CanvasScaler scaler = gameObject.GetComponent<CanvasScaler>();
             if (scaler == null)
             {
@@ -675,6 +679,8 @@ namespace BossRush
 
         private void BuildMerchantStock(Transform parent)
         {
+            // 列数固定为 4：列数变少会让内容变高，把靠后的头盔项推到关闭按钮上面
+            // （见 ZombieModeStarterEquipmentAndNpcUiGuard 记录的重叠问题）。
             GridLayoutGroup grid = parent.gameObject.AddComponent<GridLayoutGroup>();
             grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             grid.constraintCount = 4;

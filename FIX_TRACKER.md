@@ -59,6 +59,18 @@
 - 新增 `tests/BossRushUISharedLibraryGuard.py`：锁住层级表严格递增、图集注入点、九宫格 border、`ResetStaticCaches` 销毁程序化贴图并挂在 OnDestroy 路径、字体走四级回退、编译清单登记、已迁移界面不得回退成裸数值或第二套遮罩色、源码不得再出现内置 Arial。
 - 新增 `docs/制作教程/BossRushUI_图集规格.md`：素材清单（尺寸/border/命名）、注入方式、fail-open 约定与层级表。
 
+**第二批（B2/B3 收尾）**:
+- 变异词条 overlay 从 IMGUI 迁到 uGUI：`MutatorUI` 重写为 Canvas + EventTrigger 悬停，由 `Update` 的 `Tick()` 驱动（IMGUI 一帧会跑多次，不适合做对象管理），`OnGUI` 调用点移除，Canvas 挂进 OnDestroy 释放路径。这是全 Mod 唯一常驻可见的 IMGUI，此前不随 CanvasScaler 缩放、观感与其余界面割裂。`MutatorUiOverlaySuppressionGuard` 按 uGUI 形态重写，仍锁死同一条契约：抑制判定必须早于显示、抑制期间清悬停、InputManager 抛异常按抑制处理、不得退回 IMGUI。
+- Canvas 层级表补齐并全量接管：新增 ModeG 三档（900/940/950）与独立模式档（ZombieMode 28000~30500、婚礼过场 32000），数值沿用既有实现，只消除魔法数、不改叠放次序；ZombieMode HUD/奖励/撤离/配装/现金/服务面板、成就弹窗、图片查看器、许愿池动画与宿主、婚礼过场、F3/传送面板全部改引用常量。
+- 奖励卡改按类别着色：新增 `GetZombieModeRewardAccentColor`，12 个奖励类别各有强调色（契约与地图事件用警示色，它们带负面代价），取代所有卡片共用一个青色。奖励系统没有稀有度字段，按类别是唯一有真实数据支撑的分级。
+- Steam 成就弹窗配色并入设计 token（原米色边框与深色调冲突）；ModeF 悬赏雷达距离底板从 2x2 纯白硬边换成共享圆角九宫格，顺带删掉不再有人用的 `GetModeFBountyRadarPanelSprite` 与其静态字段。
+- 许愿池面板/内容卡/按钮接入圆角皮肤，按钮态改用共享 `ApplyButtonColors`（净减 4 行，文件回到冻结上限之下）。
+- `NPCTeleportUI`、`F3DebugCheatMenuUi`、`ImageViewerUI` 的 CanvasScaler 统一走 `ConfigureCanvasScaler`；其中传送面板此前没设 `matchWidthOrHeight`，默认只按宽度缩放，超宽屏会溢出。
+
+**有意未做**:
+- 临时 NPC 服务面板的「4 列小格改宽行列表」：改成 2 列后 `ZombieModeStarterEquipmentAndNpcUiGuard` 与 `ZombieModeTemporaryNpcResponsiveUiGuard` 同时失败，两者都记录了同一条历史约束——列数变少会让内容变高，把靠后的头盔项推到关闭按钮上面。这是一次真实重叠 bug 的修复，本机无法实机复验是否已被 ScrollRect 兜住，按“不放宽 guard 掩盖行为变化”回退，只在代码里补注释说明列数为何锁死。
+- F3 作弊菜单全量 TMP 化：`Font` 贯穿十余个辅助方法且混用 legacy `InputField`（其 `textComponent` 只接受 legacy `Text`），半迁移会直接编译失败，只做字体替换。
+
 **兼容性影响**: 纯表现层。不改存档、配置、TypeID、本地化 key、Harmony/反射目标或装备工厂。程序化贴图带 `HideFlags.DontSave`，已在 `ModBehaviour` 的 OnDestroy 路径显式销毁。Wiki 阅读器（美术驱动 prefab）与地图选择界面（克隆官方 prefab）有意不接管。
 
 **验证方法**:

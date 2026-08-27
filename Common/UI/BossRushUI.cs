@@ -27,6 +27,12 @@ namespace BossRush
     {
         /// <summary>世界空间标记、常驻角标等最底层装饰。</summary>
         internal const int WorldOverlay = 100;
+        /// <summary>ModeG 常驻 HUD。</summary>
+        internal const int ModeGHud = 900;
+        /// <summary>ModeG 战后 Recap，压住自家 HUD、让位入口确认页。</summary>
+        internal const int ModeGRecap = 940;
+        /// <summary>ModeG 入口确认页，ModeG 自己这组里最高。</summary>
+        internal const int ModeGEntry = 950;
         /// <summary>常驻 HUD（不接收点击）。</summary>
         internal const int Hud = 1000;
         /// <summary>雷达、状态角标一类的 HUD 附属层。</summary>
@@ -41,6 +47,23 @@ namespace BossRush
         internal const int Toast = 4000;
         /// <summary>过场视频，压住一切。</summary>
         internal const int Cutscene = 5000;
+
+        // ── 独立模式层 ─────────────────────────────────────────────
+        // ZombieMode 是接管整局的独立模式，它的 HUD 与模态必须压住上面那些
+        // 环境级浮层（许愿池动画、成就弹窗、图片查看器），因此整体抬到 28000+。
+        // 这不是历史遗留的“第二个孤岛”，而是有意的分层；数值沿用既有实现，
+        // 收进常量表只为消除魔法数，不改变任何叠放次序。
+
+        /// <summary>ZombieMode 常驻 HUD。</summary>
+        internal const int ZombieHud = 28000;
+        /// <summary>ZombieMode 主模态（奖励选择、撤离确认、起始配装）。</summary>
+        internal const int ZombieModal = 30000;
+        /// <summary>ZombieMode 模态之上的输入框（现金投入）。</summary>
+        internal const int ZombieModalInput = 30100;
+        /// <summary>ZombieMode 临时 NPC 服务面板，压住奖励面板。</summary>
+        internal const int ZombieService = 30500;
+        /// <summary>婚礼过场视频，全 Mod 最高。</summary>
+        internal const int WeddingCutscene = 32000;
     }
 
     /// <summary>

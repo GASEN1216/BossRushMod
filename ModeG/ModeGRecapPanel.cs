@@ -165,7 +165,7 @@ namespace BossRush
 
                 Canvas canvas = root.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = 940; // 低于入口确认页(950)，高于 HUD(900)
+                canvas.sortingOrder = BossRushUILayers.ModeGRecap;
                 CanvasScaler scaler = root.AddComponent<CanvasScaler>();
                 ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
                 root.AddComponent<GraphicRaycaster>();

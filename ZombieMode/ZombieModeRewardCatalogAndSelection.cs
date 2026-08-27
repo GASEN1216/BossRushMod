@@ -675,6 +675,44 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 奖励卡的类别强调色。奖励系统没有稀有度，但有真实的类别数据，
+        /// 按类别着色能让玩家一眼分辨这一张是属性、装备还是有代价的契约。
+        /// 契约与地图事件用警示色（它们带负面代价），保险用中性蓝。
+        /// </summary>
+        internal Color GetZombieModeRewardAccentColor(ZombieModeRewardType rewardType)
+        {
+            switch (GetZombieModeRewardCategory(rewardType))
+            {
+                case ZombieModeRewardCategory.Attribute:
+                    return new Color(0.42f, 0.78f, 0.52f, 0.95f);
+                case ZombieModeRewardCategory.Equipment:
+                    return new Color(0.44f, 0.82f, 0.92f, 0.95f);
+                case ZombieModeRewardCategory.Economy:
+                    return new Color(0.95f, 0.78f, 0.34f, 0.95f);
+                case ZombieModeRewardCategory.Npc:
+                    return new Color(0.72f, 0.60f, 0.92f, 0.95f);
+                case ZombieModeRewardCategory.Fortification:
+                    return new Color(0.68f, 0.70f, 0.74f, 0.95f);
+                case ZombieModeRewardCategory.Contract:
+                    return new Color(0.92f, 0.42f, 0.38f, 0.95f);
+                case ZombieModeRewardCategory.Insurance:
+                    return new Color(0.45f, 0.66f, 0.88f, 0.95f);
+                case ZombieModeRewardCategory.MapEvent:
+                    return new Color(0.95f, 0.60f, 0.28f, 0.95f);
+                case ZombieModeRewardCategory.ProjectileMod:
+                    return new Color(0.55f, 0.82f, 0.78f, 0.95f);
+                case ZombieModeRewardCategory.Trigger:
+                    return new Color(0.88f, 0.52f, 0.72f, 0.95f);
+                case ZombieModeRewardCategory.Mutator:
+                    return new Color(0.62f, 0.74f, 0.96f, 0.95f);
+                case ZombieModeRewardCategory.Battlefield:
+                    return new Color(0.86f, 0.66f, 0.42f, 0.95f);
+                default:
+                    return new Color(0.44f, 0.82f, 0.92f, 0.95f);
+            }
+        }
+
         private ZombieModeRewardCategory GetZombieModeRewardCategory(ZombieModeRewardType rewardType)
         {
             switch (rewardType)

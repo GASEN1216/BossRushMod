@@ -135,11 +135,11 @@ namespace BossRush
                 npcTeleportUIRoot = new GameObject("NPCTeleportUI");
                 Canvas canvas = npcTeleportUIRoot.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = 1000; // 确保在最上层
+                canvas.sortingOrder = BossRushUILayers.Panel;
 
                 CanvasScaler scaler = npcTeleportUIRoot.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
+                // 此前没设 matchWidthOrHeight，默认只按宽度缩放，超宽屏会溢出。
+                ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
                 npcTeleportUIRoot.AddComponent<GraphicRaycaster>();
 

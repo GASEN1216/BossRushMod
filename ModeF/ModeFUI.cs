@@ -63,7 +63,6 @@ namespace BossRush
         private static Sprite modeFBountyRadarLeaderSprite = null;
         private static Sprite modeFBountyRadarGuideSprite = null;
         private static Sprite modeFBountyRadarArrowSprite = null;
-        private static Sprite modeFBountyRadarPanelSprite = null;
         private static readonly Color ModeFBountyRadarRegularColor = new Color(1f, 0.48f, 0.22f, 1f);
         private static readonly Color ModeFBountyRadarLeaderColor = new Color(1f, 0.83f, 0.30f, 1f);
         private static readonly Color ModeFBountyRadarDistancePanelColor = new Color(0.025f, 0.03f, 0.035f, 0.55f);

@@ -49,6 +49,8 @@ def main() -> int:
         "viewportMask.showMaskGraphic = false;",
         "GridLayoutGroup grid = parent.gameObject.AddComponent<GridLayoutGroup>();",
         "grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;",
+        # 列数必须保持 4：列数变少会让内容变高，把靠后的头盔项推到关闭按钮上面
+        # （另见 ZombieModeStarterEquipmentAndNpcUiGuard 对同一约束的断言）。
         "grid.constraintCount = 4;",
         "ContentSizeFitter fitter = parent.gameObject.AddComponent<ContentSizeFitter>();",
         "VerticalLayoutGroup layout = parent.gameObject.AddComponent<VerticalLayoutGroup>();",

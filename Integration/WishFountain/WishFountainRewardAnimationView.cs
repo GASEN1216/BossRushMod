@@ -111,7 +111,7 @@ namespace BossRush
 
                 Canvas canvas = root.GetComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = 1000;
+                canvas.sortingOrder = BossRushUILayers.Modal;
 
                 CanvasScaler scaler = root.GetComponent<CanvasScaler>();
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;

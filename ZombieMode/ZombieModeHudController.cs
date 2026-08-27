@@ -324,7 +324,7 @@ namespace BossRush
         {
             canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 28000;
+            canvas.sortingOrder = BossRushUILayers.ZombieHud;
             CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
