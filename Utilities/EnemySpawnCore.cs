@@ -159,6 +159,7 @@ namespace BossRush
             public bool applyBossMultiplier;
             public bool skipBossRushLootTracking;
             public Func<EnemySpawnContext, bool> onCommit;
+            public EnemySpawnCoreOptions options;
             public UniTaskCompletionSource<EnemySpawnCoreResult> completionSource;
             public ModeEFSpawnProfiler profiler;
             public int queuedFrame;
@@ -309,6 +310,8 @@ namespace BossRush
                 : MODE_EF_SPAWN_POSTPROCESS_BASE_JOB_STEPS;
         }
 
+        // options 必须由调用方显式传入（无默认值），防止未来新增 defer 调用点时
+        // 静默丢失 HoldForExternalCommit 等门控语义；options == null 逐字保持 Legacy 行为。
         private UniTask<EnemySpawnCoreResult> ScheduleModeEFSpawnPostprocessAsync(
             CharacterMainControl character,
             EnemyPresetInfo actualPreset,
@@ -318,7 +321,8 @@ namespace BossRush
             SharedModeEnemyEquipmentMaterializationPlan equipmentPlan,
             bool applyBossMultiplier,
             bool skipBossRushLootTracking,
-            Func<EnemySpawnContext, bool> onCommit)
+            Func<EnemySpawnContext, bool> onCommit,
+            EnemySpawnCoreOptions options)
         {
             EnemySpawnContext ctx = new EnemySpawnContext
             {
@@ -346,6 +350,7 @@ namespace BossRush
                 applyBossMultiplier = applyBossMultiplier,
                 skipBossRushLootTracking = skipBossRushLootTracking,
                 onCommit = onCommit,
+                options = options,
                 completionSource = completionSource,
                 profiler = profiler,
                 queuedFrame = queuedFrame,
@@ -418,8 +423,24 @@ namespace BossRush
                 return false;
             }
 
-            character.gameObject.SetActive(true);
-            MutatorManager.ApplyToEnemy(character);
+            // Mode G 门控（加法分支）：与同步路径（HoldForExternalCommit 冻结分支）语义一致，
+            // 外部提交路径先冻结，全部槽位结案后由 run owner 批量激活；
+            // job.options == null 逐字保持原行为
+            if (job.options != null && job.options.HoldForExternalCommit)
+            {
+                if (character.Health != null) character.Health.SetInvincible(true);
+                character.gameObject.SetActive(false);
+            }
+            else
+            {
+                character.gameObject.SetActive(true);
+            }
+
+            // Mode G 门控（加法分支）：job.options == null 逐字保持原行为
+            if (job.options == null || job.options.ApplySharedMutators)
+            {
+                MutatorManager.ApplyToEnemy(character);
+            }
 
             if (job.context.isBoss && !job.skipBossRushLootTracking)
             {
@@ -441,9 +462,14 @@ namespace BossRush
                 }
             }
 
-            if (!InvokeSpawnCoreCommitCallback(job.onCommit, job.context))
+            // Mode G 门控（加法分支）：HoldForExternalCommit 时跳过 Legacy 提交回调，
+            // 由 Mode G 按 handle 自行提交；job.options == null 逐字保持原行为
+            if (job.options == null || !job.options.HoldForExternalCommit)
             {
-                return false;
+                if (!InvokeSpawnCoreCommitCallback(job.onCommit, job.context))
+                {
+                    return false;
+                }
             }
 
             job.profiler.Mark("Commit");
@@ -956,7 +982,8 @@ namespace BossRush
                                     equipmentPlan,
                                     applyBossMultiplier,
                                     skipBossRushLootTracking,
-                                    onCommit);
+                                    onCommit,
+                                    options);
                             }
 
                             // 应用配装（Boss 保留原有头盔和护甲）

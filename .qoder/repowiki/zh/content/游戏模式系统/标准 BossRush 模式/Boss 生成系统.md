@@ -190,6 +190,7 @@ J --> K
   - 龙王/龙裔遗族/幽灵女巫走专用生成方法，内部完成配装与激活；SpawnCore 仅做伤害归一化、变异词条应用与提交回调。
 - 后处理队列
   - 将装备装配、Boss 倍率应用、掉落追踪注册等延后至异步队列，按帧预算分步执行，避免卡顿。
+  - EnemySpawnCoreOptions 全量透传进延后队列（ScheduleModeEFSpawnPostprocessAsync 显式无默认值参数）：队列收尾与同步路径保持同一组门控——HoldForExternalCommit 时冻结（SetInvincible + SetActive(false)）并跳过 Legacy 提交回调、ApplySharedMutators 门控变异词条；options == null 逐字保持 Legacy 行为（激活 + 变异 + 提交）。
 
 ```mermaid
 classDiagram
