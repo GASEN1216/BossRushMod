@@ -1,0 +1,8 @@
+# TypeIdLedgerGuard 豁免清单
+#
+# 格式：<相对路径>:<数字> | <原因>
+#
+# 只登记「长得像 5000xx TypeID、但实际不是 TypeID」的数字。
+# 真正的新 TypeID 不许进这里——它应该走 docs/contracts.md §1 与 AGENTS.md §4.3 的台账登记。
+
+Achievement/BossRushAchievementManager.cs:500000 | 成就奖励分数阈值，不是物品 TypeID

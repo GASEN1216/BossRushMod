@@ -1,0 +1,6 @@
+# LocalizationInjectionGuard 豁免清单
+#
+# 格式：<BossRush_key> 或 <相对路径>:<BossRush_key> | <原因>
+#
+# 只登记「确实不需要注入」或「注入方式 guard 静态识别不了」的 key，并写清原因。
+# 新增物品默认不进这里——它应该老老实实在 Config 的 InjectLocalization() 注入。
