@@ -17,6 +17,31 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        // ====================================================================
+        // 与 ModeF 血条名牌那套的关系（读之前先看这段，别急着合并）
+        // ====================================================================
+        // ModeF/ModeFUI.cs + ModeFUI_BountyRadarAndHealthBars.cs 里有一组名字高度对称的
+        // 方法（ResetModeFUiCaches / RegisterModeFHealthBar / FindModeFHealthBar ...），
+        // 看上去像是本文件的 modeE→modeF 机械复制，但**两边行为已经分叉**，
+        // 直接抽公共基类会改行为：
+        //
+        //   - RegisterHealthBar：本文件在换绑时多清一个 modeEHealthBarBaseTextByBarId，
+        //     ModeF 没有这个字典（它不保存原始文本，用 desired/applied 两张表）。
+        //   - 查找与节流：本文件用 modeECachedPlayerHealthBar 缓存玩家血条，并在
+        //     FindModeEHealthBar 里按 modeENextHealthBarLookupTime 节流；
+        //     ModeF 把节流放进 ScanAndCacheModeFHealthBars(force)，Find 本身不节流，
+        //     而且另有一个 FindModeFPlayerHealthBar 与 FindModeFHealthBar 并存。
+        //   - 失败处理：本文件走 LogModeEUiWarningLimited（按 MODEE_UI_WARNING_LOG_INTERVAL
+        //     限流上报）；ModeF 用空 catch。
+        //   - ModeF 还额外挂着悬赏后缀缓存与赏金雷达刷新节流，本文件没有。
+        //
+        // 真正逐字相同的只有三个小方法（TryGetCached*HealthBar、Mark*NamesDirty、
+        // Sync*NameLanguageState），把它们抽出去的净收益接近零（省下的行数和新增的
+        // helper 差不多），却要把上面那些差异一并绑进同一个抽象里。
+        // 结论：**保持两套独立**。Harmony 层已经在 ModeE/ModeEHarmonyPatch.cs 合并过
+        // （名字后缀 patch 统一走 ModeFUI 的 BossRushHealthBarNamePatch），C# 缓存层不再合。
+        // 将来若要合并，先把上面四条差异逐条对齐并各自补 guard，再动手。
+
         #region Mode E UI
 
         private void ResetModeEUiCaches()

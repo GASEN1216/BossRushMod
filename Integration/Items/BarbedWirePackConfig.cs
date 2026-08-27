@@ -1,4 +1,3 @@
-using System;
 using ItemStatsSystem;
 
 namespace BossRush
@@ -16,25 +15,17 @@ namespace BossRush
 
         public static void ConfigureItem(Item item)
         {
-            if (item == null) return;
-            try
-            {
-                item.DisplayNameRaw = LOC_KEY_DISPLAY;
-                item.MaxStackCount = 5;
-                item.StackCount = 1;
-                item.Value = 2200;
-                item.Quality = 3;
-                item.name = DISPLAY_NAME_EN;
-                ModeFItemConfigHelper.SetHiddenMember(item, "description", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
-                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
-                EquipmentHelper.AddTagToItem(item, "Special");
-                ModeFItemUsageHelper.AttachToItem(item);
-                ModBehaviour.DevLog("[BarbedWirePackConfig] Item configured: TypeID=" + TYPE_ID);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BarbedWirePackConfig] ConfigureItem failed: " + e.Message);
-            }
+            ModeFItemConfigHelper.ConfigureSimpleConsumable(
+                item,
+                "BarbedWirePackConfig",
+                TYPE_ID,
+                LOC_KEY_DISPLAY,
+                DISPLAY_NAME_EN,
+                DESCRIPTION_CN,
+                DESCRIPTION_EN,
+                maxStackCount: 5,
+                value: 2200,
+                quality: 3);
         }
 
         public static void RegisterConfigurator()

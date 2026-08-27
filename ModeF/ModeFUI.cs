@@ -30,7 +30,7 @@ namespace BossRush
         private const float MODEF_BOUNTY_RADAR_WORLD_HEIGHT = 1.4f;
         private const float MODEF_BOUNTY_RADAR_GUIDE_SIZE = 760f;
         private const float MODEF_BOUNTY_RADAR_EDGE_MARGIN = 54f;
-        private const int MODEF_BOUNTY_RADAR_CANVAS_ORDER = 240;
+        private const int MODEF_BOUNTY_RADAR_CANVAS_ORDER = BossRushUILayers.ModeFBountyRadar;
         private const string MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH = "Assets/ui/modef_bounty_radar/bounty_circle_regular.png";
         private const string MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH = "Assets/ui/modef_bounty_radar/bounty_circle_leader.png";
         private const string MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH_LEGACY = "Assets/ui/bounty_circle_regular.png";
@@ -94,6 +94,13 @@ namespace BossRush
             public bool leaderStyle;
         }
 
+        // ====================================================================
+        // 与 ModeE 血条名牌那套的关系：**保持两套独立，不要合并**
+        // ====================================================================
+        // ModeE/ModeEUiAndHealthBars.cs 有一组名字对称的方法，但两边行为已分叉：
+        // 本文件不保存原始文本（没有 BaseText 表）、节流放在 ScanAndCacheModeFHealthBars(force)
+        // 而不是 Find 里、失败走空 catch 而非限流日志，并且额外挂着悬赏后缀缓存与赏金雷达节流。
+        // 详细差异清单见 ModeEUiAndHealthBars.cs 顶部注释。
         private void ResetModeFUiCaches()
         {
             modeFCachedPlayerName = null;

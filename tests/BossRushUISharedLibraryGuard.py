@@ -19,7 +19,18 @@ MIGRATED = [
     Path("BossFilter/BossFilterUi.cs"),
     Path("Achievement/AchievementView.cs"),
     Path("Integration/NPCs/Courier/OriginalConfirmDialogueAdapter.cs"),
+    Path("ModeF/ModeFUI.cs"),
+    Path("Achievement/SteamAchievementPopup.cs"),
+    Path("Integration/Wedding/NPCMarriageSystem.cs"),
+    Path("Integration/WishFountain/WishFountainRewardAnimationView.cs"),
 ]
+
+# CanvasScaler 必须走 ZombieModeUIHelper.ConfigureCanvasScaler（AGENTS 4.14）。
+# 只 AddComponent 不配置会退化成 ConstantPixelSize，4K 屏上面板缩成一小块；
+# 各写各的参数则会在不同界面之间产生不一致的缩放。
+# 唯一允许出现 uiScaleMode 赋值的地方就是 helper 自身的实现。
+CANVAS_SCALER_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
+SCAN_EXCLUDE_DIRS = {"Build", "tests", ".git", ".kiro", ".codex_tmp", "鸭科夫源码", "wiki-site", ".qoder", "obj", "bin"}
 
 # legacy UI.Text + 内置 Arial 渲染不了中文，这些文件已转 TMP 或改用字体解析器
 NO_ARIAL = [
@@ -98,6 +109,25 @@ def main():
             continue
         if 'GetBuiltinResource<Font>("Arial.ttf")' in path.read_text(encoding="utf-8", errors="ignore"):
             return fail(path.as_posix() + " 仍在用内置 Arial，中文会显示为方块")
+
+    # 8) CanvasScaler 不得再手写参数，必须走 ZombieModeUIHelper.ConfigureCanvasScaler
+    offenders = []
+    for path in sorted(Path(".").rglob("*.cs")):
+        if any(part in SCAN_EXCLUDE_DIRS for part in path.parts):
+            continue
+        if path == CANVAS_SCALER_HELPER:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        if re.search(r"\.uiScaleMode\s*=", text):
+            offenders.append(path.as_posix())
+
+    if offenders:
+        return fail(
+            "CanvasScaler 必须调 ZombieModeUIHelper.ConfigureCanvasScaler，"
+            "不要各写各的参数 -> " + ", ".join(offenders))
 
     print("BossRushUISharedLibraryGuard: PASS")
     return 0

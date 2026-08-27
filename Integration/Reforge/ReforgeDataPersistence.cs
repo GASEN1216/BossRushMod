@@ -1060,6 +1060,48 @@ namespace BossRush
     [HarmonyPatch(typeof(Duckov.Buildings.Showcase), "RefreshSlot")]
     public static class ShowcaseRefreshSlotWeaponEffectsPatch
     {
+        /// <summary>展示柜特效登记项：TypeID + 给展示模型挂特效的方法。</summary>
+        private struct ShowcaseWeaponEffectEntry
+        {
+            public readonly int TypeId;
+            public readonly Action<GameObject> Apply;
+
+            public ShowcaseWeaponEffectEntry(int typeId, Action<GameObject> apply)
+            {
+                TypeId = typeId;
+                Apply = apply;
+            }
+        }
+
+        /// <summary>
+        /// 展示柜特效分派表。新增带展示特效的武器时只在这里加一行即可，
+        /// 不用再回来改判断链（此前 TypeID 判断和特效调用分散在两处，加一把武器要改两个地方）。
+        ///
+        /// 这是一张不可变的分派表，不是缓存：条目在类型初始化时定死，运行时不增删、
+        /// 不持有 Unity 对象，因此不需要 ResetStaticCaches。
+        /// </summary>
+        private static readonly ShowcaseWeaponEffectEntry[] ShowcaseWeaponEffects =
+        {
+            new ShowcaseWeaponEffectEntry(
+                DragonBreathWeaponConfig.WEAPON_TYPE_ID, DragonBreathWeaponConfig.TryAddFireEffectsToGraphic),
+            new ShowcaseWeaponEffectEntry(
+                FrostmourneIds.WeaponTypeId, FrostmourneWeaponConfig.TryAddIceEffectsToGraphic),
+        };
+
+        /// <summary>查分派表；没有登记的 TypeID 返回 null。</summary>
+        private static Action<GameObject> FindShowcaseWeaponEffect(int typeId)
+        {
+            for (int i = 0; i < ShowcaseWeaponEffects.Length; i++)
+            {
+                if (ShowcaseWeaponEffects[i].TypeId == typeId)
+                {
+                    return ShowcaseWeaponEffects[i].Apply;
+                }
+            }
+
+            return null;
+        }
+
         [HarmonyPostfix]
         public static void Postfix(Duckov.Buildings.Showcase __instance, Transform slotDisplayParent)
         {
@@ -1079,9 +1121,7 @@ namespace BossRush
                 Item content = slot.Content;
                 if (content == null) return;
 
-                bool isDragonBreath = content.TypeID == DragonBreathWeaponConfig.WEAPON_TYPE_ID;
-                bool isFrostmourne = content.TypeID == FrostmourneIds.WeaponTypeId;
-                if (!isDragonBreath && !isFrostmourne) return;
+                if (FindShowcaseWeaponEffect(content.TypeID) == null) return;
 
                 // 延迟1帧执行，等待 Object.Destroy 完成旧对象销毁
                 __instance.StartCoroutine(DelayedAddWeaponEffects(slotDisplayParent, content.TypeID));
@@ -1110,13 +1150,10 @@ namespace BossRush
                     var graphic = child.GetComponent<ItemGraphicInfo>();
                     if (graphic == null) continue;
 
-                    if (typeId == DragonBreathWeaponConfig.WEAPON_TYPE_ID)
+                    Action<GameObject> applyEffects = FindShowcaseWeaponEffect(typeId);
+                    if (applyEffects != null)
                     {
-                        DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(graphic.gameObject);
-                    }
-                    else if (typeId == FrostmourneIds.WeaponTypeId)
-                    {
-                        FrostmourneWeaponConfig.TryAddIceEffectsToGraphic(graphic.gameObject);
+                        applyEffects(graphic.gameObject);
                     }
                     break;
                 }

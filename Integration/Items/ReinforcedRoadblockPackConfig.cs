@@ -1,4 +1,3 @@
-using System;
 using ItemStatsSystem;
 
 namespace BossRush
@@ -16,25 +15,17 @@ namespace BossRush
 
         public static void ConfigureItem(Item item)
         {
-            if (item == null) return;
-            try
-            {
-                item.DisplayNameRaw = LOC_KEY_DISPLAY;
-                item.MaxStackCount = 5;
-                item.StackCount = 1;
-                item.Value = 2800;
-                item.Quality = 4;
-                item.name = DISPLAY_NAME_EN;
-                ModeFItemConfigHelper.SetHiddenMember(item, "description", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
-                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", L10n.T(DESCRIPTION_CN, DESCRIPTION_EN));
-                EquipmentHelper.AddTagToItem(item, "Special");
-                ModeFItemUsageHelper.AttachToItem(item);
-                ModBehaviour.DevLog("[ReinforcedRoadblockPackConfig] Item configured: TypeID=" + TYPE_ID);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ReinforcedRoadblockPackConfig] ConfigureItem failed: " + e.Message);
-            }
+            ModeFItemConfigHelper.ConfigureSimpleConsumable(
+                item,
+                "ReinforcedRoadblockPackConfig",
+                TYPE_ID,
+                LOC_KEY_DISPLAY,
+                DISPLAY_NAME_EN,
+                DESCRIPTION_CN,
+                DESCRIPTION_EN,
+                maxStackCount: 5,
+                value: 2800,
+                quality: 4);
         }
 
         public static void RegisterConfigurator()

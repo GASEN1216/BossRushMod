@@ -266,9 +266,7 @@ namespace BossRush
                 canvas.sortingOrder = MARRIAGE_VIDEO_CANVAS_ORDER;
 
                 CanvasScaler scaler = root.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920f, 1080f);
-                scaler.matchWidthOrHeight = 0.5f;
+                ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
                 root.AddComponent<GraphicRaycaster>();
 
                 GameObject bgObj = new GameObject("Background");

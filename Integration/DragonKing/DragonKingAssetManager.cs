@@ -454,7 +454,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog($"[DragonKing] [ERROR] 鍒涘缓甯︾埗鑺傜偣鍚庡鐗规晥澶辫触: {e.Message}");
+                ModBehaviour.DevLog($"[DragonKing] [ERROR] 创建带父节点的兜底特效失败: {e.Message}");
                 return null;
             }
         }

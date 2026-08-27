@@ -477,21 +477,33 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 注入船票本地化
+        /// 物品本地化注入的公共形态：中文名键、英文名键、规范 BossRush_* 键各注一条显示名，
+        /// 再按 "&lt;key&gt;_Desc" 注三条描述，最后按 typeId 注 "Item_&lt;id&gt;" 与 "Item_&lt;id&gt;_Desc"。
+        ///
+        /// 船票 / 生日蛋糕 / Wiki Book 此前各抄了一遍这段（三个方法结构逐行相同，
+        /// 只差常量名和那一个规范 key 字面量）。收成一处后**注入的 key 与内容逐字不变**。
+        ///
+        /// 注意一个 grep 上的差别：`BossRush_Ticket_Desc` / `BossRush_BirthdayCake_Desc` /
+        /// `BossRush_WikiBook_Desc` 这三个 key 此前是源码里的字面量，现在由
+        /// `canonicalKey + "_Desc"` 在运行时拼出，源码里 grep 不到。
+        /// 运行时注册的 key 完全一样，只是找它们要按 canonicalKey 找。
         /// </summary>
-        public static void InjectTicketLocalization(int typeId)
+        private static void InjectItemLocalization(
+            int typeId,
+            string nameKeyCn,
+            string nameKeyEn,
+            string canonicalKey,
+            string displayName,
+            string description)
         {
-            string displayName = L10n.T(TICKET_NAME_CN, TICKET_NAME_EN);
-            string description = L10n.T(TICKET_DESC_CN, TICKET_DESC_EN);
-
             // 注入中英文键
-            LocalizationHelper.InjectLocalization(TICKET_NAME_CN, displayName);
-            LocalizationHelper.InjectLocalization(TICKET_NAME_EN, displayName);
-            LocalizationHelper.InjectLocalization("BossRush_Ticket", displayName);
+            LocalizationHelper.InjectLocalization(nameKeyCn, displayName);
+            LocalizationHelper.InjectLocalization(nameKeyEn, displayName);
+            LocalizationHelper.InjectLocalization(canonicalKey, displayName);
 
-            LocalizationHelper.InjectLocalization(TICKET_NAME_CN + "_Desc", description);
-            LocalizationHelper.InjectLocalization(TICKET_NAME_EN + "_Desc", description);
-            LocalizationHelper.InjectLocalization("BossRush_Ticket_Desc", description);
+            LocalizationHelper.InjectLocalization(nameKeyCn + "_Desc", description);
+            LocalizationHelper.InjectLocalization(nameKeyEn + "_Desc", description);
+            LocalizationHelper.InjectLocalization(canonicalKey + "_Desc", description);
 
             // 注入物品 ID 键
             if (typeId > 0)
@@ -503,29 +515,31 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 注入船票本地化
+        /// </summary>
+        public static void InjectTicketLocalization(int typeId)
+        {
+            InjectItemLocalization(
+                typeId,
+                TICKET_NAME_CN,
+                TICKET_NAME_EN,
+                "BossRush_Ticket",
+                L10n.T(TICKET_NAME_CN, TICKET_NAME_EN),
+                L10n.T(TICKET_DESC_CN, TICKET_DESC_EN));
+        }
+
+        /// <summary>
         /// 注入生日蛋糕本地化
         /// </summary>
         public static void InjectCakeLocalization(int typeId)
         {
-            string displayName = L10n.T(CAKE_NAME_CN, CAKE_NAME_EN);
-            string description = L10n.T(CAKE_DESC_CN, CAKE_DESC_EN);
-
-            // 注入中英文键
-            LocalizationHelper.InjectLocalization(CAKE_NAME_CN, displayName);
-            LocalizationHelper.InjectLocalization(CAKE_NAME_EN, displayName);
-            LocalizationHelper.InjectLocalization("BossRush_BirthdayCake", displayName);
-
-            LocalizationHelper.InjectLocalization(CAKE_NAME_CN + "_Desc", description);
-            LocalizationHelper.InjectLocalization(CAKE_NAME_EN + "_Desc", description);
-            LocalizationHelper.InjectLocalization("BossRush_BirthdayCake_Desc", description);
-
-            // 注入物品 ID 键
-            if (typeId > 0)
-            {
-                string itemKey = "Item_" + typeId;
-                LocalizationHelper.InjectLocalization(itemKey, displayName);
-                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
-            }
+            InjectItemLocalization(
+                typeId,
+                CAKE_NAME_CN,
+                CAKE_NAME_EN,
+                "BossRush_BirthdayCake",
+                L10n.T(CAKE_NAME_CN, CAKE_NAME_EN),
+                L10n.T(CAKE_DESC_CN, CAKE_DESC_EN));
         }
 
         /// <summary>
@@ -536,27 +550,14 @@ namespace BossRush
             string displayName = L10n.T(WIKI_BOOK_NAME_CN, WIKI_BOOK_NAME_EN);
             string description = L10n.T(WIKI_BOOK_DESC_CN, WIKI_BOOK_DESC_EN);
 
-            // 注入中英文键
-            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_CN, displayName);
-            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_EN, displayName);
-            LocalizationHelper.InjectLocalization("BossRush_WikiBook", displayName);
-
-            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_CN + "_Desc", description);
-            LocalizationHelper.InjectLocalization(WIKI_BOOK_NAME_EN + "_Desc", description);
-            LocalizationHelper.InjectLocalization("BossRush_WikiBook_Desc", description);
+            InjectItemLocalization(
+                typeId, WIKI_BOOK_NAME_CN, WIKI_BOOK_NAME_EN, "BossRush_WikiBook",
+                displayName, description);
 
             // 注入 Unity 预制体中使用的本地化键（冒险家日志）
             // 预制体 displayName 字段设置为 "冒险家日志"，游戏会用它作为本地化键查找
             LocalizationHelper.InjectLocalization("冒险家日志", displayName);
             LocalizationHelper.InjectLocalization("冒险家日志_Desc", description);
-
-            // 注入物品 ID 键
-            if (typeId > 0)
-            {
-                string itemKey = "Item_" + typeId;
-                LocalizationHelper.InjectLocalization(itemKey, displayName);
-                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
-            }
 
             ModBehaviour.DevLog("[LocalizationInjector] Wiki Book 本地化注入完成");
         }

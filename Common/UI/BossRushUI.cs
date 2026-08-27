@@ -27,6 +27,8 @@ namespace BossRush
     {
         /// <summary>世界空间标记、常驻角标等最底层装饰。</summary>
         internal const int WorldOverlay = 100;
+        /// <summary>ModeF 赏金雷达画布，压住世界装饰、让位各模式 HUD。</summary>
+        internal const int ModeFBountyRadar = 240;
         /// <summary>ModeG 常驻 HUD。</summary>
         internal const int ModeGHud = 900;
         /// <summary>ModeG 战后 Recap，压住自家 HUD、让位入口确认页。</summary>

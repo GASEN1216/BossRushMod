@@ -423,10 +423,9 @@ namespace BossRush
             canvas.sortingOrder = MODEF_BOUNTY_RADAR_CANVAS_ORDER;
 
             CanvasScaler scaler = root.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
+            // screenMatchMode 原本显式写成 MatchWidthOrHeight，而 CanvasScaler 是随
+            // new GameObject(typeof(CanvasScaler)) 一起新建的，默认值本就是它，行为不变。
+            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
             GraphicRaycaster raycaster = root.GetComponent<GraphicRaycaster>();
             raycaster.enabled = false;

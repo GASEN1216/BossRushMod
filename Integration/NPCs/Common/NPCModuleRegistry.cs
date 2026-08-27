@@ -411,17 +411,28 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 哥布林模块
+    /// 竞技场辅助 NPC（哥布林、护士）的共享基类。
+    ///
+    /// 这两个模块的 ShouldSpawnInScene 此前逐字相同，唯一差异是拿哪个 NPC_ID 判断婚姻状态；
+    /// 而 NpcId 本来就是接口成员，所以直接提到基类即可，两边行为逐字不变。
+    /// 快递员不走这里——它没有婚姻门控，竞技场判定也不同（见 CourierNPCModule）。
     /// </summary>
-    internal sealed class GoblinNPCModule : INPCModule
+    internal abstract class ArenaSupportNpcModuleBase : INPCModule
     {
-        public string NpcId { get { return GoblinAffinityConfig.NPC_ID; } }
-        public int SpawnOrder { get { return 20; } }
-        public INPCAffinityConfig CreateAffinityConfig() { return GoblinAffinityConfig.Instance; }
+        public abstract string NpcId { get; }
+        public abstract int SpawnOrder { get; }
+        public abstract INPCAffinityConfig CreateAffinityConfig();
+        public abstract void Spawn(ModBehaviour mod);
+        public abstract void Destroy(ModBehaviour mod);
 
+        /// <summary>
+        /// 已与玩家结婚的 NPC 不再作为竞技场辅助 NPC 刷新；
+        /// 随机辅助 NPC 选择或竞技场安置模式下按竞技场场景判定；
+        /// 其余情况沿用快递员的普通模式场景配置表。
+        /// </summary>
         public bool ShouldSpawnInScene(ModBehaviour mod, string sceneName)
         {
-            if (AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
+            if (AffinityManager.IsMarriedToPlayer(NpcId))
             {
                 return false;
             }
@@ -441,13 +452,23 @@ namespace BossRush
 
             return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
         }
+    }
 
-        public void Spawn(ModBehaviour mod)
+    /// <summary>
+    /// 哥布林模块
+    /// </summary>
+    internal sealed class GoblinNPCModule : ArenaSupportNpcModuleBase
+    {
+        public override string NpcId { get { return GoblinAffinityConfig.NPC_ID; } }
+        public override int SpawnOrder { get { return 20; } }
+        public override INPCAffinityConfig CreateAffinityConfig() { return GoblinAffinityConfig.Instance; }
+
+        public override void Spawn(ModBehaviour mod)
         {
             mod.SpawnGoblinNPC();
         }
 
-        public void Destroy(ModBehaviour mod)
+        public override void Destroy(ModBehaviour mod)
         {
             mod.DestroyGoblinNPC();
         }
@@ -456,41 +477,18 @@ namespace BossRush
     /// <summary>
     /// 护士模块
     /// </summary>
-    internal sealed class NurseNPCModule : INPCModule
+    internal sealed class NurseNPCModule : ArenaSupportNpcModuleBase
     {
-        public string NpcId { get { return NurseAffinityConfig.NPC_ID; } }
-        public int SpawnOrder { get { return 30; } }
-        public INPCAffinityConfig CreateAffinityConfig() { return NurseAffinityConfig.Instance; }
+        public override string NpcId { get { return NurseAffinityConfig.NPC_ID; } }
+        public override int SpawnOrder { get { return 30; } }
+        public override INPCAffinityConfig CreateAffinityConfig() { return NurseAffinityConfig.Instance; }
 
-        public bool ShouldSpawnInScene(ModBehaviour mod, string sceneName)
-        {
-            if (AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID))
-            {
-                return false;
-            }
-            if (mod == null || string.IsNullOrEmpty(sceneName))
-            {
-                return false;
-            }
-
-            if (mod.ShouldUseRandomSupportNpcSelection(sceneName))
-            {
-                return mod.IsValidBossRushArenaScene(sceneName);
-            }
-            if (mod.UsesArenaSupportNpcPlacement())
-            {
-                return mod.IsValidBossRushArenaScene(sceneName);
-            }
-
-            return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
-        }
-
-        public void Spawn(ModBehaviour mod)
+        public override void Spawn(ModBehaviour mod)
         {
             mod.SpawnNurseNPC();
         }
 
-        public void Destroy(ModBehaviour mod)
+        public override void Destroy(ModBehaviour mod)
         {
             mod.DestroyNurseNPC();
         }

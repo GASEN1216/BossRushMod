@@ -71,6 +71,23 @@ namespace BossRush
             ForceRefresh();
         }
 
+        // --------------------------------------------------------------------
+        // 关于下面各 getter 的失效判断为什么不一致（不是笔误，别顺手"统一"掉）
+        // --------------------------------------------------------------------
+        // 分两类：
+        //
+        // 1) 场景级：用 FindObjectsOfType 拿的是当前场景里的活对象，过图或对象被销毁后
+        //    数组里会出现 Unity 的"假 null"，因此用 IsUnityObjectArrayAlive 逐个体检，
+        //    发现死对象就整体重扫。GetCharacterSpawnerRoots / GetStockShops /
+        //    GetSceneObjectsByType 属于这一类。
+        //
+        // 2) 资产级：用 Resources.FindObjectsOfTypeAll 拿的是已加载资产（含未激活的），
+        //    不随场景卸载而销毁，所以只判 null 就够，不需要每次遍历整个数组。
+        //    GetTmpFonts 虽然也是资产级，但历史上按场景级写法处理，属于偏保守、
+        //    不影响正确性的多余检查，这里保持原样不动。
+        //
+        // GetBoxColliders 目前**没有任何调用点**（全仓仅剩定义），它只判 null 的写法
+        // 因此不构成实际问题；将来若要启用，需要先按上面的分类决定用哪种失效判断。
         private static bool IsUnityObjectArrayAlive<T>(T[] objects) where T : UnityEngine.Object
         {
             if (objects == null || objects.Length == 0)
@@ -149,6 +166,17 @@ namespace BossRush
 
         private static CharacterRandomPreset[] _cachedCharacterPresets;
 
+        /// <summary>
+        /// 角色随机 preset 缓存。
+        /// </summary>
+        /// <remarks>
+        /// 有意与其它 getter 不对称，别按其它 getter 的样子"补齐"：
+        /// - 不调 RefreshIfNeeded()，RefreshIfNeeded() 里也不清它——
+        ///   preset 走 Resources.FindObjectsOfTypeAll 拿的是资产而不是场景实例，
+        ///   过图不会失效，每次过图重扫纯属浪费（刷怪路径会频繁取它）。
+        /// - 但 ForceRefresh()/ResetStaticCaches() 里**要**清它，
+        ///   因为 Mod 卸载或强制刷新时不能把旧程序集的资产引用留下来。
+        /// </remarks>
         public static CharacterRandomPreset[] GetCharacterPresets()
         {
             if (_cachedCharacterPresets == null)

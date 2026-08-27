@@ -3,7 +3,7 @@ namespace BossRush
     public partial class ModBehaviour
     {
         /// <summary>
-        /// 鏃犻棿鐐肩嫳鍗曟尝瀹屾垚锛氭帀钀界幇閲戙€佹洿鏂版樉绀哄苟鍑嗗涓嬩竴娉?
+        /// 无间炼狱单波完成：掉落现金、更新显示并准备下一波
         /// </summary>
         private void OnInfiniteHellWaveCompleted()
         {
@@ -12,23 +12,23 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 鎵€鏈夋晫浜哄嚮璐ュ畬鎴?
+        /// 所有敌人击败完成
         /// </summary>
         private void OnAllEnemiesDefeated()
         {
-            // 姣忔棩鎸戞垬閫氬叧缁撶畻
+            // 每日挑战通关结算
 
             OnAllEnemiesDefeated_LootAndRewards();
             return;
         }
 
         /// <summary>
-        /// 鐜╁姝讳骸淇濇姢锛圔ossRush鏈熼棿锛? 鍙傝€僰eep_items_on_death瀹炵幇
-        /// 涓嶅共棰勬父鎴忔浜℃祦绋嬶紝鍙樆姝㈢墿鍝佹帀钀?
+        /// 玩家死亡保护（BossRush 期间），参考 keep_items_on_death 实现
+        /// 不干预游戏死亡流程，只阻止物品掉落
         /// </summary>
         private void OnPlayerDeathInBossRush(Health deadHealth, DamageInfo damageInfo)
         {
-            // 姣忔棩鎸戞垬姝讳骸缁撶畻
+            // 每日挑战死亡结算
 
             OnPlayerDeathInBossRush_LootAndRewards(deadHealth, damageInfo);
             return;
