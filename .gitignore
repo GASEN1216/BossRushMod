@@ -17,11 +17,8 @@ Build/
 big_preview.png
 BossRush_学习笔记.md
 bossrush模式D设计文档.md
-cleanup_old_files.bat
-compile_official.bat
 info.ini
 ngm.mp3
-test_bossrush_official.bat
 Assets/BirthdayCake.png
 /.cunzhi-memory
 /Assets/*
@@ -32,7 +29,20 @@ Assets/BirthdayCake.png
 战利品掉落机制
 战利品掉落机制.md
 BossRush选项修改方案.md
-/docs
+# docs/ 默认 local-only（AGENTS.md §13）。但下面这几份被 tests/ 的 guard 直接读取
+# （文件不存在时 guard 是硬失败，不是 skip），不纳管会让 fresh clone 一跑 guard 就红，
+# 因此显式放行。新增此类「guard 依赖的文档」时必须同步加到这里。
+/docs/*
+!/docs/testing/
+/docs/testing/*
+!/docs/testing/2026-05-14-final-runtime-smoke.md
+!/docs/testing/2026-05-14-modbehaviour-instance-classification.md
+!/docs/制作教程/
+/docs/制作教程/*
+!/docs/制作教程/便携安全区装置_Unity资源制作约定.md
+!/docs/末日丧尸模式/
+/docs/末日丧尸模式/*
+!/docs/末日丧尸模式/末日丧尸模式_goal执行文档.md
 /.sanshu-memory
 /.sanshu-memory
 /.claude

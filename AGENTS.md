@@ -27,7 +27,7 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 
 | 路径 | 职责 |
 | --- | --- |
-| `ModBehaviour.cs`、`ModConfigApi.cs`、`TeleportDebugMonitor.cs` | 主入口、全局状态、配置 API、传送调试 |
+| `ModBehaviour.cs`、`ModConfigApi.cs` | 主入口、全局状态、配置 API |
 | `Integration/` | 物品、装备、NPC、商店、Wiki、好感度、婚姻、重铸、新武器、死亡亡魂等集成总线 |
 | `WavesArena/` | 标准 BossRush 与无间炼狱波次逻辑 |
 | `ModeD/`、`ModeE/`、`ModeF/` | 白手起家、划地为营、血猎追击 |
@@ -50,7 +50,13 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 
 ### 4.1 新增 `.cs` 必须登记编译清单
 
-`compile_official.bat` 当前显式列出 483 个 `.cs` 文件，无通配符。新增 `.cs` 文件后必须手动加入对应段落，否则源码存在但不会编译进 `Build/BossRush.dll`，且不会报错。
+`compile_official.bat` 显式列出全部 `.cs` 文件，无通配符。新增 `.cs` 文件后必须手动加入对应段落，否则源码存在但不会编译进 `Build/BossRush.dll`，且不会报错。
+
+清单与磁盘的一致性由 `tests/OfficialCompileListFileExistenceGuard.py` 双向守卫（清单里的文件必须存在 + 仓库里的生产 `.cs` 必须都在清单里），**不要在本文写死文件数**——历史上这个数字漂移过（曾写 483，实际已 532）。要看当前数量跑：
+
+```bash
+python tools/run_guards.py --filter OfficialCompileList
+```
 
 自检：
 

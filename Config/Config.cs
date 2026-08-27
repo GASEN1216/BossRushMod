@@ -1139,7 +1139,9 @@ namespace BossRush
         public const int AdventureJournal = 500007;
         public const int ZombieTideInvitation = 500045;
         public const int ZombieTideBeacon = 500046;
-        public const int SpeedrunGauntletTicket = 500047;
+        // 500047 是保留空洞，不回填、不复用（见 AGENTS.md §4.3 与 docs/contracts.md §1）。
+        // 此前这里有一个 SpeedrunGauntletTicket = 500047 常量，属被删功能的残留：
+        // 全 Mod 零使用点，且与三份契约文档「500047 为空洞」的记载直接矛盾，已移除。
         public const int PortableSafeZoneDevice = 500058;
     }
 }

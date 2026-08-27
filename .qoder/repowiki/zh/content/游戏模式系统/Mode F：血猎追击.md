@@ -11,7 +11,7 @@
 - [ModeFUI_BountyRadarAndHealthBars.cs](file://ModeF/ModeFUI_BountyRadarAndHealthBars.cs)
 - [ModeFBounty_EquipmentAndLoot.cs](file://ModeF/ModeFBounty_EquipmentAndLoot.cs)
 - [ModeFModels.cs](file://ModeF/ModeFModels.cs)
-- [ModeFRuntimeModule.cs](file://ModeFRuntimeModule.cs)
+- [ModeFRuntimeModule.cs](file://ModeF/ModeFRuntimeModule.cs)
 </cite>
 
 ## 目录
@@ -53,7 +53,7 @@ C --> J["数据模型<br/>ModeFModels.cs"]
 
 **图表来源**
 - [ModeFEntry.cs:15-396](file://ModeF/ModeFEntry.cs#L15-L396)
-- [ModeFRuntimeModule.cs:1-23](file://ModeFRuntimeModule.cs#L1-L23)
+- [ModeFRuntimeModule.cs:1-23](file://ModeF/ModeFRuntimeModule.cs#L1-L23)
 - [ModeFPhases.cs:72-267](file://ModeF/ModeFPhases.cs#L72-L267)
 - [ModeFBounty.cs:69-208](file://ModeF/ModeFBounty.cs#L69-L208)
 - [ModeFFortifications.cs:202-261](file://ModeF/ModeFFortifications.cs#L202-L261)

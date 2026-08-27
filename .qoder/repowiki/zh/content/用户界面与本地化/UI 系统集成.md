@@ -8,7 +8,7 @@
 - [BossRushInteractables.cs](file://Interactables/BossRushInteractables.cs)
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 - [ObjectCache.cs](file://Common/Infrastructure/ObjectCache.cs)
-- [ReflectionCache.cs](file://Common/Infrastructure/ReflectionCache.cs)
+- [ReflectionCache.cs](file://Common/Infrastructure/BossRushEagerReflectionCache.cs)
 </cite>
 
 ## 目录
@@ -52,7 +52,7 @@ B --> I["ReflectionCache<br/>反射缓存"]
 - [BossRushInteractionScan.cs:16-100](file://UIAndSigns/BossRushInteractionScan.cs#L16-L100)
 - [BossRushInteractables.cs:41-238](file://Interactables/BossRushInteractables.cs#L41-L238)
 - [ObjectCache.cs:17-172](file://Common/Infrastructure/ObjectCache.cs#L17-L172)
-- [ReflectionCache.cs:15-87](file://Common/Infrastructure/ReflectionCache.cs#L15-L87)
+- [ReflectionCache.cs:15-87](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L15-L87)
 
 章节来源
 - [ModBehaviour.cs:380-440](file://ModBehaviour.cs#L380-L440)
@@ -72,7 +72,7 @@ B --> I["ReflectionCache<br/>反射缓存"]
 - [BossRushInteractables.cs:41-238](file://Interactables/BossRushInteractables.cs#L41-L238)
 - [ModBehaviour.cs:1521-1557](file://ModBehaviour.cs#L1521-L1557)
 - [ObjectCache.cs:17-172](file://Common/Infrastructure/ObjectCache.cs#L17-L172)
-- [ReflectionCache.cs:15-87](file://Common/Infrastructure/ReflectionCache.cs#L15-L87)
+- [ReflectionCache.cs:15-87](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L15-L87)
 
 ## 架构总览
 BossRush 的 UI 集成采用“扫描 + 注入 + 运行时桥接”的分层设计：
@@ -217,7 +217,7 @@ UI->>Notify : "Push(text)"
 - [UIAndSigns.cs:432-466](file://UIAndSigns/UIAndSigns.cs#L432-L466)
 - [UIAndSigns.cs:367-427](file://UIAndSigns/UIAndSigns.cs#L367-L427)
 - [ObjectCache.cs:161-172](file://Common/Infrastructure/ObjectCache.cs#L161-L172)
-- [ReflectionCache.cs:23-36](file://Common/Infrastructure/ReflectionCache.cs#L23-L36)
+- [ReflectionCache.cs:23-36](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L23-L36)
 
 章节来源
 - [UIAndSigns.cs:285-300](file://UIAndSigns/UIAndSigns.cs#L285-L300)
@@ -262,14 +262,14 @@ Mod["ModBehaviour"] --> Gate["SceneRuntimeGate"]
 - [BossRushInteractionScan.cs:16-100](file://UIAndSigns/BossRushInteractionScan.cs#L16-L100)
 - [UIAndSigns.cs:432-466](file://UIAndSigns/UIAndSigns.cs#L432-L466)
 - [ObjectCache.cs:17-172](file://Common/Infrastructure/ObjectCache.cs#L17-L172)
-- [ReflectionCache.cs:15-87](file://Common/Infrastructure/ReflectionCache.cs#L15-L87)
+- [ReflectionCache.cs:15-87](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L15-L87)
 - [ModBehaviour.cs:380-440](file://ModBehaviour.cs#L380-L440)
 
 章节来源
 - [BossRushInteractionScan.cs:16-100](file://UIAndSigns/BossRushInteractionScan.cs#L16-L100)
 - [UIAndSigns.cs:432-466](file://UIAndSigns/UIAndSigns.cs#L432-L466)
 - [ObjectCache.cs:17-172](file://Common/Infrastructure/ObjectCache.cs#L17-L172)
-- [ReflectionCache.cs:15-87](file://Common/Infrastructure/ReflectionCache.cs#L15-L87)
+- [ReflectionCache.cs:15-87](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L15-L87)
 - [ModBehaviour.cs:380-440](file://ModBehaviour.cs#L380-L440)
 
 ## 性能与内存优化
@@ -287,7 +287,7 @@ Mod["ModBehaviour"] --> Gate["SceneRuntimeGate"]
 
 章节来源
 - [ObjectCache.cs:17-172](file://Common/Infrastructure/ObjectCache.cs#L17-L172)
-- [ReflectionCache.cs:15-87](file://Common/Infrastructure/ReflectionCache.cs#L15-L87)
+- [ReflectionCache.cs:15-87](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L15-L87)
 - [UIAndSigns.cs:432-466](file://UIAndSigns/UIAndSigns.cs#L432-L466)
 - [UIAndSigns.cs:65-103](file://UIAndSigns/UIAndSigns.cs#L65-L103)
 
@@ -336,4 +336,4 @@ BossRush 的 UI 系统集成通过扫描与注入机制，实现了在基地入�
 - [BossRushInteractables.cs:41-238](file://Interactables/BossRushInteractables.cs#L41-L238)
 - [UIAndSigns.cs:122-200](file://UIAndSigns/UIAndSigns.cs#L122-L200)
 - [ObjectCache.cs:17-172](file://Common/Infrastructure/ObjectCache.cs#L17-L172)
-- [ReflectionCache.cs:15-87](file://Common/Infrastructure/ReflectionCache.cs#L15-L87)
+- [ReflectionCache.cs:15-87](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L15-L87)

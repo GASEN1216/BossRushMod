@@ -5,8 +5,8 @@
 - [FrostSpearConfig.cs](file://Integration/NewWeapons/FrostSpear/FrostSpearConfig.cs)
 - [FrostSpearWeaponConfig.cs](file://Integration/NewWeapons/FrostSpear/FrostSpearWeaponConfig.cs)
 - [FrostSetBonus.cs](file://Integration/Bonus/FrostSetBonus.cs)
-- [frost-spear.md](file://wiki-site/zh/equipment/frost-spear.md)
-- [frost-set.md](file://wiki-site/en/equipment/frost-set.md)
+- [frost-spear.md](file://wiki-site/docs/equipment/frost-spear.md)
+- [frost-set.md](file://wiki-site/docs/en/equipment/frost-set.md)
 </cite>
 
 ## 目录
@@ -44,7 +44,7 @@ F["wiki 文档<br/>玩家可见面板与提示"] -.-> A
 章节来源
 - [FrostSpearConfig.cs:1-56](file://Integration/NewWeapons/FrostSpear/FrostSpearConfig.cs#L1-L56)
 - [FrostSpearWeaponConfig.cs:1-233](file://Integration/NewWeapons/FrostSpear/FrostSpearWeaponConfig.cs#L1-L233)
-- [frost-spear.md:1-37](file://wiki-site/zh/equipment/frost-spear.md#L1-L37)
+- [frost-spear.md:1-37](file://wiki-site/docs/equipment/frost-spear.md#L1-L37)
 
 ## 核心组件
 - 配置常量：集中管理名称、描述、品质、伤害、攻速、范围、穿透、体力消耗、移速、格挡、冰冻概率、寒冷防护等。

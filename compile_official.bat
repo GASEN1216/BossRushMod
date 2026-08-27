@@ -251,7 +251,6 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     LootAndRewards\ModeEFLootboxTracker.cs ^
     Interactables\BossRushInteractables.cs ^
     Interactables\BossRushLootboxInteractables.cs ^
-    TeleportDebugMonitor.cs ^
     ModeD\ModeD.cs ^
     ModeD\ModeDStaticCacheReset.cs ^
     ModeD\ModeDRuntimeModule.cs ^
